@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, expect, it } from 'vitest';
 import { AssetService } from '../../src/app/services/AssetService';
 import { SettingsService } from '../../src/app/services/SettingsService';
@@ -58,6 +59,28 @@ it('adds the starter tokens only once, so deleted ones stay deleted', async () =
 
   await addStarterTokens(vault.app, assets, settings);
 
-  expect(settings.getSetting('starterTokensAdded')).toBe(true);
+  expect(await assets.starterTokensAdded()).toBe(true);
+  expect(vault.files.get('atlas-vtt/library.json')).toContain('"starterTokensAdded": true');
   expect(await assets.getAssets(collection, 'token')).toHaveLength(STARTER_TOKENS.length - 1);
+});
+
+it('gives the starter tokens the same ids on every device, so two devices adding them before they sync add one set', async () => {
+  const first = await setup();
+  await addStarterTokens(first.vault.app, first.assets, first.settings);
+  const firstIds = (await first.assets.getAssets(undefined, 'token')).map((token) => token.id).sort();
+  AssetService.resetInstance();
+  const second = await setup();
+  await addStarterTokens(second.vault.app, second.assets, second.settings);
+
+  expect((await second.assets.getAssets(undefined, 'token')).map((token) => token.id).sort()).toEqual(firstIds);
+});
+
+it('adds none in a vault whose earlier version added them, by the flag it kept in the settings', async () => {
+  const { vault, assets, settings } = await setup();
+  settings.setSetting('starterTokensAdded', true);
+
+  await addStarterTokens(vault.app, assets, settings);
+
+  expect(await assets.getAssets(undefined, 'token')).toEqual([]);
+  expect(await assets.starterTokensAdded()).toBe(true);
 });

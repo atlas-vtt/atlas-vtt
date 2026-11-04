@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -60,7 +61,7 @@ it('mounts only the rows in view of a large bestiary', async () => {
   const { app } = createInMemoryApp({ files: { 'goblin.webp': 'art' } });
   app.vault.getResourcePath = (p: { path: string }) => p.path;
   render(<StatblockImportContent app={app} queuedPaths={[]} onAdd={vi.fn()} onClose={vi.fn()} controller={new AbortController()} />);
-  await screen.findByRole('button', { name: 'Add 6000 to import' });
+  await screen.findByRole('button', { name: 'Add 6,000 to import' });
   const mounted = screen.getAllByRole('checkbox');
   expect(mounted.length).toBeGreaterThan(0);
   expect(mounted.length).toBeLessThan(50);

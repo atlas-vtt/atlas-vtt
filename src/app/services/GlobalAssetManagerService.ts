@@ -17,7 +17,7 @@ export class GlobalAssetManagerService {
     this.app = app;
   }
 
-  open(tab?: 'scenes' | 'maps' | 'campaigns' | 'characters' | 'tokens' | 'encounters'): void {
+  open(tab?: 'scenes' | 'maps' | 'campaigns' | 'characters' | 'tokens' | 'party' | 'encounters'): void {
     if (this.isOpen) {
       // If already open, just update the tab
       this.close();

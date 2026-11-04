@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { isHexColor } from '../utils/hexColor';
 
 /** The laser pointer's look, kept in Atlas' settings so it follows the GM to every map. */
@@ -14,18 +15,18 @@ export interface LaserPointerSettings {
  * blue and white stay vivid for every kind of colour blindness.
  */
 export const LASER_COLOR_SWATCHES = [
-  { value: '#ff0059', label: 'Red' },
-  { value: '#ff9f2e', label: 'Orange' },
-  { value: '#fff133', label: 'Yellow' },
-  { value: '#66ffa9', label: 'Mint' },
-  { value: '#00a9ff', label: 'Sky blue' },
-  { value: '#3d6bff', label: 'Blue' },
-  { value: '#e85aa8', label: 'Pink' },
-  { value: '#ffffff', label: 'White' },
+  { value: '#ff0059', label: t('laser.color.red') },
+  { value: '#ff9f2e', label: t('laser.color.orange') },
+  { value: '#fff133', label: t('laser.color.yellow') },
+  { value: '#66ffa9', label: t('laser.color.mint') },
+  { value: '#00a9ff', label: t('laser.color.sky') },
+  { value: '#3d6bff', label: t('laser.color.blue') },
+  { value: '#e85aa8', label: t('laser.color.pink') },
+  { value: '#ffffff', label: t('laser.color.white') },
 ] as const;
 
 /** Shown with the swatches, since colour-blind players cannot tell which ones work for them. */
-export const LASER_COLOR_HINT = 'Sky blue, blue and white stay clear for colour-blind players.';
+export const LASER_COLOR_HINT = t('laser.colorHint');
 
 export const LASER_SIZE_MIN = 8;
 export const LASER_SIZE_MAX = 100;

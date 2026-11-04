@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
-import { cn } from "src/utils/cn"
+import { cn } from "../../../../utils/cn"
 import { noteTooltipDismissal } from "../../../keyboard/tooltipEscape"
 import "./tooltip.css"
 
@@ -48,6 +48,8 @@ interface LabelTooltipProps {
   describe?: boolean
   /** For a sentence or two of explanation: the label wraps instead of running on one line. */
   multiline?: boolean
+  /** Keeps the tooltip shut whatever the pointer does, as while its control is being dragged. */
+  suppressed?: boolean
   children: React.ReactElement
 }
 
@@ -57,11 +59,11 @@ interface LabelTooltipProps {
  * `aria-label` on `children`. Never give `children` a `title`: it adds the browser's
  * tooltip. Obsidian's `aria-label` tooltip is off throughout Atlas (styles/_native-tooltips.scss).
  */
-function LabelTooltip({ label, side = "top", describe = false, multiline = false, children }: LabelTooltipProps): React.ReactElement {
+function LabelTooltip({ label, side = "top", describe = false, multiline = false, suppressed = false, children }: LabelTooltipProps): React.ReactElement {
   const labelId = React.useId()
   const hasProvider = React.useContext(ProviderMounted)
   const tooltip = (
-    <Tooltip>
+    <Tooltip {...(suppressed ? { open: false } : {})}>
       <TooltipTrigger asChild {...(describe ? { "aria-describedby": labelId } : { "aria-labelledby": labelId })}>{children}</TooltipTrigger>
       <span id={labelId} hidden>{label}</span>
       <TooltipContent side={side} sideOffset={10}>

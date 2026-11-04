@@ -2,6 +2,438 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.12.1 — TrueScale fixes, levels and multi-token actions
+
+2026-11-02
+
+### Improved
+- TrueScale: better tooltips for various buttons
+- TrueScale: the chips on the map have a cleaner look
+- TrueScale: the frame players see no longer tints the map inside it
+- Player window: better animation when switching between saved frames and when showing/hiding the map to players
+- Tokens: The context menu options "Kill, Delete, Reset" now work with multiple tokens selected
+- Tokens: Clicking on a HP bar with multiple tokens selected now allows adjusting for all selected tokens
+
+### Fixed
+- Scenes with several levels open on the level they were last shown on
+- Fixed bug where player window couldn't be dragged
+- TrueScale: saved frames can be shown and removed every time
+- TrueScale: a moved Bring players here frame goes back to its place when a drag is cancelled, and no longer carries its position over to the next map
+- Editing a value in the statblock beside a note no longer jumps away from what you are editing
+- Picking or resetting a game system now correctly updates token resource widgets
+- The confirmation for deleting a collection no longer opens behind the asset manager
+- Tags in a selection of several assets: a tag only some of them have now goes to all of them when pressed, and from all of them when pressed again
+- Statblocks: a backslash keeps a comma in a label or word (`Fire\, cold: 3` shows as Fire, cold)
+- Statblocks: rows added to a Counter block in a template now show on notes that already had some of its rows
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Andrew, Anna B. Meyer, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, Markus Baumann, Michael Breuer, Pau Benazet Montobbio, Pavel Zinoviev, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.12.0 — TrueScale and the player window bar
+
+2026-11-01
+
+### New
+
+**New Feature: TrueScale**
+- For a TV lying on the table: the players' zoom locks so a grid cell measures an inch, or 25 or 30 mm, on the glass, on every map
+- Set up without typing a number: lay a bank card on the TV and turn one dial until the outline hugs it. Atlas remembers the set-up for that screen
+- The players' screen is a frame on your map that you can slide and pin, snapping to the grid
+- Saved frames: bookmark a frame on the scene and send the players back to it with a click
+- Contributions by ThatMattLatt
+
+**New Feature: Player Window Bar**
+- Opening the local player view now reveals a toolbar
+- Full screen on the TV with one click
+- Hide the map: the player window goes black until you reveal it, also across scenes and restarts
+- Choose what players see: widgets, initiative, dice rolls, resource bars and nameplates
+- Take back a handout with one click
+
+**General**
+- Improved Cave map generation with more varied rooms
+- Walls on forest maps follow the edge of the trees, and roads and rivers stay open
+- Render the player view up to 4K, in the command palette's player view settings, for a 4K TV or an ultrawide screen
+
+### Fixed
+- Bright dots no longer flash on the floor at the Saver lighting quality while a light moves
+- Magical darkness no longer shows a room's shape to players when a token stands in a companion's light that outshines it
+- A note pin on a repeated heading opens the one you picked, and the heading list shows the sections around it
+- Roofs stay on the map at every zoom and pan
+- The Roofs switch hides roofs from your GM view at every zoom, and is disabled in session view
+- Animated maps and water keep moving on the player view while the Obsidian window is hidden or minimised
+- On Windows and Linux the mouse wheel scrolls a note or statblock opened with Ctrl held, and no longer resizes the toolbar
+- Fixed issue where Asset Manager would bug out on Mac
+### Atlas Online
+- A campaign can no longer hold two players with the same name
+- Notes and pins a player sets on the world map stay when you present another scene
+- The online table menu closes when you click outside it
+- Improved tooltip panel UI for abilities and inventory
+
+## 0.11.0 — Mosaic Canvas, procedural forest maps and new crayon style
+
+2026-10-30
+
+### New
+
+**New Feature: Mosaic Canvas**
+- Maps of up to 1,000 megapixels and 65,535 pixels a side, up to 20 million squares in one scene. Atlas now works with maps roughly seven times the largest maps other virtual tabletops take
+- No megabyte limit: a 200 MB map or a 2 GB one imports as it is, and every pixel is kept
+- How it works: Atlas reads the map once and cuts it into tesserae using pyramid tiling, small lossless tiles laid in a pyramid from a thumbnail of the whole map down to every pixel of the original. The scene opens within seconds and sharpens as the finer tesserae are cut
+-  Processing indicator shown in the asset manager
+
+**New Feature: Forests**
+- The dungeon generator makes forests: clearings joined by glades, lone trees for cover, brooks, rivers, lakes and roads
+- Multi-level forest maps use caves as underground levels
+
+**New Feature: Crayon Style**
+- New default style for all generated map types: pencil lines and hatching on vellum, coloured in with wax crayon
+
+**General**
+- Graphics settings page in the command palette: three quality presets as tabs
+- Dice volume in Atlas' settings; slide it down to turn dice sounds off. Contributed by ISorokaI
+
+### Improved
+- Optimised grid drawing with Mosaic Canvas
+- Saver lighting quality runs smoother on low-power machines
+- Improvements to Dynamic Lighting performance and visuals
+- Russian translation of online play, native statblocks, the template editor, random tables, campaigns, the dungeon generator, scene levels and the dice lab. Contributed by ISorokaI
+
+### Fixed
+- Widgets that do not fit beside the scene tabs stack in the map's corner instead of covering the initiative tracker
+- Create scenes from several selected maps at once
+- Fixed a bug where a deleted scene would re-appear
+- The number badge on look-alike tokens no longer grows past the token on a very fine grid
+- Menus in Edit Token open at their button. Contributed by ISorokaI
+- A pinned statblock scrolled down can be moved up again. Contributed by ISorokaI
+
+### Atlas Online
+- Room pins of a generated dungeon readable by players show on the players' page
+- Players see the resource wheels shown to them, not only the bars
+- Explored areas no longer black out while players move on
+- Fixed bug where values typed into a table on the character sheet would disappear
+- Several improvements to mobile UI
+
+### Important changes
+- Atlas draws with WebGL only. Where it cannot start, a new notice will display why
+
+
+Thanks to my Patreon supporters Aaron, Andrew, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, Markus Baumann, Michael Breuer, Pavel Zinoviev, s g, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.10.2 — Token numbers, dark maps and the main window
+
+2026-10-28
+
+### Atlas Online
+- Players see animated maps move, and the water, lava and acid of generated dungeons
+- Maps whose grid alignment stretched or turned them now line up correctly for players
+- Players can remove items from their inventory
+- Ticking the boxes of a Track on a player's sheet no longer overwrites the resource's maximum
+
+### Important changes
+- Atlas runs in your main Obsidian window: moved into another window, it moves back. To use two screens, move your notes into a new window
+- Players see the same token numbers as the GM in the player view and Atlas Online, and hidden tokens still count
+
+### Fixed
+- "Kill" no longer disappears from the token menu after switching an HP resource to static and back
+- Dark maps no longer look darker and purple with dynamic lighting in daylight
+- A small light that outshines magical darkness no longer gives the token next to it sight on some grids
+
+## 0.10.1 — Lit maps on Windows
+
+2026-10-26
+
+### Fixed
+- Maps with dynamic lighting no longer turn black on Windows with the Balanced or Saver lighting quality
+
+## 0.10.0 — Dungeon generator, map layers and random encounters
+
+2026-10-26
+
+### New
+
+**New Feature: Dungeon Generator**
+- Generate multi-layer Dungeons from the asset manager or directly through the pin tool on a scene
+- 16 different styles, 3 themes, animated water, lava, acid and automatic placement of walls, doors and lighting.
+
+**New Feature: Map Layers**
+- Maps can now have multiple layers
+- Switch between layers with a layer switch panel on the left of each scene
+
+**New Feature: Random Encounters**
+- Use the note pin tool to pin a folder of premade encounters in a dungeon room
+- Left clicking the pin will spawn a random encounter from your pinned folder
+- The Encounter Builder now allows random creature counts such as 2d4 Wolves etc.
+
+**General**
+- Notes can now be created through the note pin tool
+- Generators: a note table whose rows are parts rolls them into one result, with a reroll and a lock per part, Give for results with a Type and Save as note; a link to a generator rolls all of it
+- A random table row that links its own table rolls that table again without itself, for rows such as "Mithral + reroll"
+- Animated maps: WebM and MP4 videos play as maps, on the map and in the player window; Animate maps in Atlas' settings shows their first frame instead
+- Replace map image: put a video, a gridless version or a larger export of the same map in its place, keeping the grid, walls, lights and tokens
+
+### Improved
+- Improved performance of Dynamic Lighting and the look of light reflections off of walls and map floors
+- Atlas command palette now has max and min width to accommodate for varied setup
+- Import a building's Universal VTT files together as one scene with a floor each
+
+### Fixed
+- Tags removed in an asset's Manage Tags dialog are removed from it
+- Fixed issue where Atlas would crash with third party Atlas plugins installed
+- A token exactly at the edge of a light's reach, such as one standing next to a token carrying a 5 ft light, no longer counts as lit from one side and unlit from another. Inside magical darkness it no longer gets its sight back
+- One-way walls no longer show a thick black line where they stop a light
+
+
+Thanks to my Patreon supporters Aaron, Andrew, Bradley Bell, Carl Corneil, Daria Ambrose, Deus Ex Minima, Dewwww, Giodude, Ionazh, Kevin Hait, Michael Breuer, Pavel Zinoviev, s g, SamDark, Scaradeus, Silo Slate, Tim, Xethgnur and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.9.1 — Dynamic lighting for everyone and a richer player sheet online
+
+2026-10-22
+
+### New
+- Turn several selected tokens at once with the button above their selection
+- Dynamic lighting is no longer experimental
+### Improved
+- Improved UI for selected tokens, rulers, templates and drag rulers, sharp at any zoom
+- Turn spotlight of the initiative tracker now only flashes temporarily instead of always showing
+- Improved behaviour of resource wheels on zoomed out tokens
+
+### Fixed
+- Maps work in a scene moved to its own window
+- Dice in statblock tables roll, and so does any formula or bonus such as +4+1
+- An tracked value written in a note, such as 15 (natural armor), shows on its token
+- Holding Backspace in a statblock's Abilities component no longer erases the entry above it
+- Random tables from notes can be added when a collection already has tables
+- Statblock previews can be moved, pinned and shown to players again, and can no longer be dragged out of reach
+- @ references also find a value by its label, such as @str for Strength
+- Fixed issue where sometimes dice rolls triggered from within the encounter builder would show twice
+
+### Atlas Online
+- The played campaign auto stops when a stable goes offline
+- Aligned character sheet sidebar with statblock layout
+- Typing @ in a statblock field suggests values to reference like 2d8+@strength
+- Rolls name the values they use: 2d8 + @agility shows Agility, and so does a click on Agility in a table of traits
+- Players can change every value on their sheet, even max values etc.
+- Players roll with advantage or disadvantage: right-click or long-press a die
+- Players can click a combatant in the initiative list to find its token
+- Better error logging for world map issues
+- Performance improvements for Notes, Abilities and Inventory panels
+
+
+Thanks to my Patreon supporters @ekorngutt  , @theandrew93, @giodude  , @imhkr , @ionazh  , @menacingspade  , @m0eb1us  , @.orlon  , @.samdark  , @scaradeus  , @sero_sen  , @xethgnur  , @_zlf__21340  and @zookus  . You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.9.0 — Encounter builder, recovery actions and a new initiative tracker
+
+2026-10-20
+
+### New
+- Smarter Token Placement: A preview now shows where tokens land before you accept their position and orientation
+- New Encounter Builder feature: Access through the plus button in the Asset Manager
+- Send specific items to players right from a Table or Base while an online session is active
+- Statblock templates: recovery actions such as Short rest and Long rest can now be configured
+- Statblock templates: counters, tracked numbers, clickable bonuses and `@` references such as `1d8 + @str.mod`
+- Initiative by cards, more sides, and sides that roll their order each round
+- Initiative: add combatants without placing them, start a fight from an encounter, and roll hit points
+- Initiative: delay turns, a turn banner, a ring on the active token, and many new tracker options
+- Change HP of several tokens at once
+- Atlas now shows a notification message when a new update is available
+- DM Screen: Filter to only those statblocks currently in a fight
+- Simplified Chinese Translation. Contributed by kun041011
+
+### Improved/Fixed
+- Statblock numbers can show as boxes or a gauge
+- Many initiative tracker improvements: typing numbers, skipping defeated combatants, tie-breaks, and more. With a contribution by Jackson98Tomphson
+- Dragging a token no longer selects it
+- Smaller improvements to filters, random tables, HP input, messages and animations
+- Improvements to Dynamic Lighting on integrated graphics
+- Various improvements in initiative, dice, statblocks, menus and online play. With contributions by aecorn, young-george and ISorokaI (Russian translations)
+
+### Atlas Online
+- Optimisations to online play performance
+- Tokens of the same player character share their hit points
+- Statblocks assigned to player tokens now show in the online character sheet
+- New Abilities tab which allows players to input their character's abilities
+- Let players move only on their turn
+- Atlas Dice Chrome Extension - Rolls on DnDBeyond or for Daggerheart on Demiplane  
+  sync with Atlas Online: https://github.com/atlas-vtt/atlas-dice
+
+Thanks to my Patreon supporters @ekorngutt  , @theandrew93, @giodude  , @imhkr , @ionazh  , @menacingspade  , @m0eb1us  , @.orlon  , @.samdark  , @scaradeus  , @sero_sen  , @xethgnur  , @_zlf__21340  and @zookus  . You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.8.0 — Online play and native statblocks
+
+2026-10-14
+
+### What's New
+#### New Feature: Online Play
+- Online play (closed beta): host a table that your players join in their web browser. It is off until you turn it on under Experimental features in the command palette.
+- Campaigns on the dashboard: create and search campaigns, and play one to track its scenes and player characters.
+- Right-click a token to make it a player character. Player characters have their own Players tab in the asset manager.
+- A campaign keeps one set of values for each player character. Hit points changed on one scene show on every scene and sync to your other devices.
+- The token and map creators have a From vault tab, so you can use images already in your vault.
+- Dice formulas support the notation of Foundry and Roll20: keep and drop (2d20kh1), rerolls, explosions, success counts, d%, Fate dice, labels and brackets. Dropped and rerolled dice are shown struck through.
+- Initiative rolls add each creature's modifier from its statblock. With a contribution by anacletoTM.
+
+#### New Feature: Native Statblocks
+- Atlas draws statblocks itself, so they show without the Fantasy Statblocks plugin.
+- Statblock templates for 5E (2014 and 2024), Cairn, Draw Steel and Fate, plus general ones for creatures, NPCs and hazards.
+- A template value can be limited to a list of choices, picked from a dropdown.
+- A template value can be shown in a box, with a small label over a large number, like hit points in a printed statblock.
+#### General
+- The Loot Feature is now "Random Tables": roll on tables in your notes and on your loot bases.
+- Each collection sets its item rarities and their colours in its Random tables settings.
+- New table: paste a table from a PDF, web page or spreadsheet and save it as a file.
+- You can give a combatant your own initiative modifier in its edit dialog, which replaces the statblock's modifier until you clear it. With a contribution by anacletoTM.
+- The initial opening of scenes is now faster. The Spectral Engine now visualises grid detection with an animation
+- Added Toggle to turn off Grid Detection in the Grid Settings
+### What's Fixed / Improved
+
+- The asset manager's Characters tab is now called Tokens.
+- Tokens no longer snap to a default hidden grid if no grid was found during automatic detection
+- Improved UX for Grid Alignment panel
+- Atlas' toast messages now match the look of your theme.
+- Several tokens can share one statblock, for example colour variants of a creature.
+- Linking a token no longer replaces a statblock's own picture. A token copied to another collection keeps its statblock.
+- The creature filter Layout is now called Template. `layout:` still works in the search.
+- Fixed bug where note pin and statblock previews would open in a shifted position while an Obsidian sidebar was open
+- Measured distances show one decimal place, so a 1.5 m cell reads 1.5 m. Contributed by giopalma.
+- The fog brush draws an even stroke while you drag it. Contributed by MavethGH.
+- The first fog stroke after deleting all fog shows while you draw it. Contributed by MavethGH.
+- Saving an encounter from the asset manager or scene browser no longer opens the name dialog behind it.
+- Cmd+A (Ctrl+A) in an asset manager text field selects the text, not every asset.
+- Creating maps, tokens and scenes only offers the tags of the chosen collection.
+- A fixed value such as armour class now shows on its token when it is 0.
+- A ring colour picked from the right-click menu colours all selected tokens, in one undo step.
+- Resource wheels that players may see now show in the player window. Every resource has its own switch in the player view settings.
+
+## 0.7.1 — Local player window and more precise grid alignment
+
+2026-10-10
+
+### New
+
+- New command in Atlas Command Palette: Show Current Map in Local Player Window as a differentiation between online player view and local player view
+
+### Improved
+
+- Significantly improved reliability and precision of grid alignment both in auto and manual mode
+- Grid alignment now detects stretched hexes and pointy hex grids much better
+### Fixed
+
+- A collection's cover and the thumbnails of small images are saved as WebP, as their file names say, and an export no longer carries one that is a PNG or JPEG under a WebP name
+- Fixed a bug where too small cover images of exported collections weren't converted to .webp correctly as expected by the Armarium parser
+- Fixed a bug where modifier rolls in FS statblock tables weren't clickable
+
+## 0.7.0 — Huge sharp maps, gliding tokens and a lighting quality setting
+
+2026-10-09
+
+### New
+
+- Huge maps of up to 144 megapixels (about 16,000 × 9,000 pixels) stay sharp at every zoom
+- Imported maps keep their full quality: PNG, JPEG and WebP files are no longer compressed
+- Tokens glide to their place instead of jumping
+- Lighting quality setting (High, Balanced, Saver) for laptops with weaker graphics
+
+### Important changes
+
+- Local player view window no longer adapts in size and resolution to host windows and instead adapts to it's own monitor
+- When the map pane changes size, the map keeps its centre in place instead of its top-left corner
+- Hidden tokens no longer give players sight or explore new areas. Areas already explored stay explored
+- Tokens and door icons under fog are hidden from players, with their names and rulers
+- Players see a roll's token picture and name only when they can see that token
+- Measurements that start on a token players can't see are hidden from players
+- Look-alike token numbers in the player view count only the tokens players can see
+- Atlas skips statblocks, note properties and loot files larger than 32 KB
+
+### Improved
+
+- Large maps open faster, and much faster the second time. Settings show the space this uses and clear it
+- Grid on maps now correctly adjusts again to host changes on the player view
+- New toggle for public dice rolls in the dice tray
+- Invalid or oversized dice formulas are rejected with a clear message
+- Sight and light are much faster on maps with thousands of walls
+- Fog strokes keep consistent shapes
+
+### Fixed
+
+- The map no longer flickers when a sidebar opens or closes
+- Fit map (Shift+1) shows very large maps entirely
+- Maps larger than the graphics card can show no longer stay black
+- The player window no longer zooms in, cuts off the map or turns blocky when you open a sidebar or use a small pane
+- The frozen player camera no longer jumps or resizes when you switch tabs or open a sidebar
+- Freezing the player camera right after switching scenes freezes it in the right place
+- Obsidian no longer turns sluggish after a right-click menu while Fantasy Statblocks is enabled
+- Dragging tokens and measuring no longer slow Obsidian down
+- Fixed performance for DM screen after fresh Obsidian start
+- Empty or broken statblock entries no longer break the toolbar or the asset manager. With a contribution by ISorokaI
+- Dice in statblocks can be clicked in every Fantasy Statblocks layout, including custom ones with scripts
+- Dice rolls, sounds and history stay in the map view that made them
+- Undo and redo change only what that edit changed
+- The ruler and token dragging measure the same distance everywhere on the map
+- Distance per square takes decimals with a comma or a point, and values below 1
+- Ruler labels are readable in the light theme
+- Timers keep correct time while Obsidian is in the background
+- Fog updates correctly when you return to a map or cancel a drawing
+- Erasing part of a drawing keeps the drawing's settings
+- Map shortcuts keep working after two note previews open at once
+- Scenes no longer fail with "Failed to fetch" on older Obsidian installers
+- A scene that fails to open no longer leaves the previous scene's tokens on screen
+- The command palette no longer takes focus back after you close it
+- Without graphics acceleration, areas that two tokens see are no longer black for players
+
+## 0.6.0 — Customizable toolbar, links to scenes in notes, Russian and library sync
+
+2026-10-05
+
+### New
+
+- Customize the toolbar from the command palette. With a contribution by oscar-eriksson
+- You can now link and embed scenes, snapshots and encounters in your notes
+- Atlas uses Obsidian's language. Russian is the first translation and more will follow Contributed by ISorokaI
+
+### Important changes
+
+- Your library now syncs with Obsidian Sync, Remotely Save and Self-hosted LiveSync. Update Atlas on every device before you edit your library there
+- With Obsidian Sync, turn on "Sync all other types"
+- Atlas settings now sync with your plugin settings
+
+### Improved
+
+- Set a different distance per cell for each scene in Grid Settings. Contributed by ISorokaI
+- Number the cells on square grids. New format: A1, B1, …
+- Maps use much less graphics memory
+- On narrow windows, the command palette button always stays in the toolbar
+- Walls join at their end points
+- Right-click a wall to place a door
+- Right-click a door, point or wall to remove it
+
+### Fixed
+
+- Grid lines no longer disappear at some zoom levels. Contributed by ISorokaI
+- Links in Fantasy Statblocks statblocks work. Contributed by ISorokaI
+- The asset manager is faster with many tokens. Contributed by ISorokaI
+- Zooming a map without a grid no longer distorts it
+- The laser pointer no longer disappears
+- Rolls show as cards when 3D dice can't be drawn. Contributed by ISorokaI
+- Fixed the swapped export and import icons in the asset manager. Contributed by anacletoTM
+- Large and Gargantuan tokens snap to whole cells
+- The selection outline follows a resized token
+- A d100 shows the right tens die in 3D
+- Fixed graphics memory leaks after a reload and after loading a scene
+- With dynamic lighting, the grid, pins and ruler stay visible in the dark
+- Brush rings stay under the pointer when you scroll with a trackpad. With a contribution by Lobby444
+- The DM screen fits narrow maps
+- Restoring a snapshot works with dynamic lighting on
+
 ## 0.5.0 — Dynamic lighting as an experimental feature, 3D dice, token resources and map imports
 
 2026-10-02

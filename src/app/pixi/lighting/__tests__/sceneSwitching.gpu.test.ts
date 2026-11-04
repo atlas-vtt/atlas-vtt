@@ -10,6 +10,7 @@ vi.mock('obsidian', () => ({
       notices.push(message);
     }
   },
+  getLanguage: () => 'en',
 }));
 
 const CRYPT = 'maps/crypt.atlasmap';

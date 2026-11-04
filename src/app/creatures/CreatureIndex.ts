@@ -1,16 +1,30 @@
 import { TAbstractFile, type App, type EventRef, type Events } from 'obsidian';
-import { layoutForCreature } from '../services/FantasyStatblocksService';
-import { bestiaryLookup, resolveLinkedCreature, type BestiaryLookup } from './linkedCreature';
+import { TemplateLibrary } from '../statblocks/library/TemplateLibrary';
+import { shownFieldsOf, type LibraryTemplate, type TemplateLookup } from '../statblocks/model/resolvedTypes';
+import type { TemplateId } from '../statblocks/model/templateTypes';
+import type { FieldMeanings } from '../statblocks/resolve/fieldMeanings';
+import { resolveStatblock } from '../statblocks/resolve/resolveStatblock';
+import { bestiaryLookup, type BestiaryLookup } from './linkedCreature';
 import { workSlices } from '../utils/workSlices';
 
 /** A linked statblock as filters read it. */
 export interface IndexedCreature {
   /** Vault path of the statblock note. */
   path: string;
-  /** Every field of the creature, merged as Fantasy Statblocks renders it. */
+  /** Every field of the creature as `resolveStatblock` gives it: renamed keys of native notes under their current key too. */
   fields: Readonly<Record<string, unknown>>;
-  /** Name of the layout the statblock renders with; null when Fantasy Statblocks is missing and the note names none. */
-  layout: string | null;
+  /** The template a native statblock names; null for Fantasy Statblocks' statblocks. */
+  templateId: TemplateId | null;
+  /** Keys of the template's fields that carry a meaning; empty for Fantasy Statblocks' statblocks and the auto template. */
+  meanings: FieldMeanings;
+  /** Name of the template or Fantasy Statblocks layout the statblock renders with; null when none is known. */
+  lookName: string | null;
+}
+
+/** The template a native note was read with. */
+interface TemplateRead {
+  id: TemplateId;
+  template: LibraryTemplate | null;
 }
 
 /** Fantasy Statblocks events after which its bestiary may hold other creatures. */
@@ -28,8 +42,10 @@ export const BESTIARY_SETTLE_MS = 150;
 /**
  * The creatures of the statblock notes tokens link to, by note path. Resolves
  * the notes it is asked for and keeps them current: a note edit re-reads that
- * note, a bestiary update re-reads all of them. Old entries stay readable until
- * their replacement is ready, so filters never flash empty while it works.
+ * note, a bestiary update re-reads all of them, and a change, rename or
+ * deletion of a template re-reads the native notes drawn with it. Old entries
+ * stay readable until their replacement is ready, so filters never flash empty
+ * while it works.
  *
  * One per app, shared by every view; released when the plugin unloads.
  */
@@ -58,6 +74,10 @@ export class CreatureIndex {
   private readonly queue = new Set<string>();
   private readonly listeners = new Set<() => void>();
   private readonly detachers: Array<() => void> = [];
+  /** The template each native note was read with, by note path. */
+  private readonly templateReads = new Map<string, TemplateRead>();
+  /** Taken from the app only once a native note is read, so vaults without one never load templates. */
+  private library: TemplateLibrary | null = null;
   private bestiary: BestiaryLookup | null = null;
   private running = false;
   private destroyed = false;
@@ -111,6 +131,25 @@ export class CreatureIndex {
     if (this.settleTimer !== null) window.clearTimeout(this.settleTimer);
     this.listeners.clear();
     this.queue.clear();
+  }
+
+  /** The app's template library, followed from the first time a note asks for a template. */
+  private templateLibrary(): TemplateLibrary {
+    if (!this.library) {
+      const library = TemplateLibrary.forApp(this.app);
+      this.detachers.push(library.subscribe(() => this.templatesChanged()));
+      this.library = library;
+    }
+    return this.library;
+  }
+
+  /** Reads again every native note whose template is no longer the one it was read with. */
+  private templatesChanged(): void {
+    const library = this.library;
+    if (!library) return;
+    for (const [path, read] of this.templateReads) {
+      if (library.get(read.id) !== read.template) this.invalidate(path);
+    }
   }
 
   private listen(source: Events, name: string, callback: (...data: unknown[]) => unknown): void {
@@ -178,11 +217,21 @@ export class CreatureIndex {
   }
 
   private async resolve(path: string, bestiary: BestiaryLookup): Promise<IndexedCreature | null> {
+    this.templateReads.delete(path);
+    const templates: TemplateLookup = {
+      get: (id) => {
+        if (this.destroyed) return null;
+        const template = this.templateLibrary().get(id);
+        this.templateReads.set(path, { id, template });
+        return template;
+      },
+    };
     try {
-      const creature = await resolveLinkedCreature(this.app, path, bestiary);
-      if (!creature) return null;
-      const requested = typeof creature.layout === 'string' ? creature.layout : null;
-      return { path, fields: creature, layout: layoutForCreature(this.app, creature)?.name ?? requested };
+      const resolved = await resolveStatblock(this.app, path, { templates, bestiary });
+      if (!resolved) return null;
+      const { meanings, lookName, source } = resolved;
+      // Filters, ratings and token defaults read numbers as the card shows them
+      return { path, fields: shownFieldsOf(resolved), templateId: source.kind === 'atlas' ? source.templateId : null, meanings, lookName };
     } catch (error) {
       console.error(`[CreatureIndex] Could not read the statblock in ${path}:`, error);
       return null;

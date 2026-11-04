@@ -2,7 +2,7 @@ import type { App } from 'obsidian';
 import type { AtlasView } from '../atlas-view';
 import { findSense } from '../gameSystems/senseRules';
 import { readCollectionSenses } from '../gameSystems/senseValidation';
-import { SceneSnapshotService } from '../snapshots/SceneSnapshotService';
+import { rewriteCollectionSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { runUntracked } from '../stores/history';
 import type { TokenVision, TokenVisionDefaults } from '../types/lightingTypes';
 import type { SenseDefinition } from '../types/senseTypes';
@@ -77,14 +77,6 @@ export async function removeUndefinedSenses(app: App, collectionId: string, pres
   if (defaults !== settings.defaultTokenVision) await assets.updateCollectionSettings(collectionId, { defaultTokenVision: defaults });
 
   const rewrite = (content: string): string | null => dropUnknownSensesFromJson(content, definitions);
-  const files = await updateCollectionScenes(app, collectionId, { updateOpen: (view) => pruneOpenView(view, definitions), rewrite });
-
-  const snapshots = new SceneSnapshotService(app);
-  for (const file of files) {
-    try {
-      await snapshots.rewriteFiles(file.path, rewrite);
-    } catch (error) {
-      console.error(`[Atlas] Could not remove old senses from the snapshots of ${file.path}:`, error);
-    }
-  }
+  await updateCollectionScenes(app, collectionId, { updateOpen: (view) => pruneOpenView(view, definitions), rewrite });
+  await rewriteCollectionSnapshots(app, collectionId, rewrite);
 }

@@ -1,4 +1,5 @@
 import { useLayoutEffect, type Dispatch, type RefObject, type SetStateAction } from 'react'
+import { isToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import type { ToolbarFitItem } from '../toolbarFit'
 import type { BarGeometry } from '../toolbarGeometry'
 import { settledBar } from './toolbarDragGeometry'
@@ -65,7 +66,9 @@ export function useBarDragView(
   const { wells, closed } = useBarWells(wellOverflows ? undefined : preview.wellAfter, settle?.kind === 'drop')
 
   const overflowKey = Array.from(overflowing).join(' ')
-  const overBar = drag?.zone === 'bar' && drag.barWidth !== null
+  // The undo/redo bar never lands in the bar, so it needs no thresholds there.
+  const draggedControl = drag !== null && isToolbarControlId(drag.id)
+  const overBar = draggedControl && drag.zone === 'bar' && drag.barWidth !== null
   useLayoutEffect(() => {
     const bar = barRef.current
     const current = editStore.state.getState().drag
@@ -74,7 +77,7 @@ export function useBarDragView(
   }, [overBar, overflowKey, barRef, editStore])
 
   // The width the ghost measured stands in, so the drop is fitted as it will be drawn.
-  const draggedId = drag?.id ?? null
+  const draggedId = draggedControl ? drag.id : null
   const draggedWidth = drag?.barWidth ?? null
   useLayoutEffect(() => {
     if (draggedId === null || draggedWidth === null) return

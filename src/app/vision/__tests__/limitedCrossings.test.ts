@@ -63,7 +63,8 @@ function compare(from: Point, walls: readonly WallSegment[], rand: () => number,
 
 const empty = (): Tally => ({ asked: 0, leaks: 0, deepest: 0, hidden: 0, behindOne: 0 });
 
-describe('limited walls that cross between their ends', () => {
+// Seeded checks with a fixed workload: 3 to 4.5 s on a hosted runner, close to the 5 s default.
+describe('limited walls that cross between their ends', { timeout: 30_000 }, () => {
   it('shows nothing behind both of two hedges that cross: the reviewer\'s case', () => {
     const from = { x: 520, y: 1000 };
     const walls = [hedge(300, 600, 700, 200), hedge(300, 200, 700, 600)];
@@ -125,7 +126,8 @@ describe('limited walls that cross between their ends', () => {
   });
 });
 
-describe('the cost of crossings', () => {
+// Seeded checks with a fixed workload: 3 to 4.5 s on a hosted runner, close to the 5 s default.
+describe('the cost of crossings', { timeout: 30_000 }, () => {
   // A hatch of 2 x 150 hedges has 22,500 crossings and is swept in about 1 s; a stroke of
   // 2,000 hedges that never cross in about 30 ms. The bound guards against a count that grows
   // with every pair of walls, crossing or not (minutes for the stroke).

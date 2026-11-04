@@ -1,5 +1,6 @@
 import type { App, TFile } from 'obsidian';
-import { AtlasView, ATLAS_VIEW_TYPE } from '../atlas-view';
+import type { AtlasView } from '../atlas-view';
+import { ATLAS_VIEW_TYPE, isAtlasView } from '../atlasViewType';
 import { storeLegacyResources } from '../resources/legacyResourcesMigration';
 import { AssetService } from './AssetService';
 
@@ -7,7 +8,7 @@ import { AssetService } from './AssetService';
 export function openMapViews(app: App): AtlasView[] {
   return app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)
     .map((leaf) => leaf.view)
-    .filter((view): view is AtlasView => view instanceof AtlasView && !view.getStore().getState().isPlayerView);
+    .filter((view): view is AtlasView => isAtlasView(view) && !view.getStore().getState().isPlayerView);
 }
 
 /**

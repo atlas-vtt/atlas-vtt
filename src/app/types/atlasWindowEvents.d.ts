@@ -9,6 +9,8 @@ export interface TokenGestureEventDetail {
 export interface PinActionEventDetail {
   action: 'open' | 'edit';
   pin: NotePin;
+  /** The view store whose map holds the pin, so only that view's tool acts on it. */
+  store: object;
 }
 
 /** Asks the active renderer to convert a world position to client coordinates. */

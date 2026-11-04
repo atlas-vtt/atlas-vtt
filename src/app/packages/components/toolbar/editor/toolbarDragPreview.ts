@@ -1,4 +1,4 @@
-import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import { isToolbarControlId, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import type { ToolbarDrag } from './toolbarEditStore'
 
 /** The well's id among the controls the bar's fit sees. */
@@ -27,10 +27,11 @@ function withWell(ids: readonly string[], after: string | null): string[] {
  * well while it is over its own place, outside both zones or refused by the
  * tray (the Command palette), so nothing moves at pickup; anywhere else on
  * the bar its slot closes and a well opens after `drag.after`. Over the tray
- * the bar has no well.
+ * the bar has no well. The undo/redo bar is no control of the bar: dragging
+ * it changes nothing there.
  */
 export function barDragPreview(ids: readonly string[], drag: ToolbarDrag | null): BarDragPreview {
-  if (!drag) return { fitIds: [...ids], wellAfter: undefined, originHolds: false }
+  if (!drag || !isToolbarControlId(drag.id)) return { fitIds: [...ids], wellAfter: undefined, originHolds: false }
   const others = ids.filter(id => id !== drag.id)
   if (drag.from === 'bar') {
     const home = drag.zone === null || drag.refused || (drag.zone === 'bar' && drag.after === drag.originAfter)

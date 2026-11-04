@@ -41,9 +41,10 @@ $font-ui-smaller: var(--font-ui-smaller); // 12px – captions, counts, shortcut
 $font-ui-small:   var(--font-ui-small);   // 13px – labels, body UI text
 $font-ui-medium:  var(--font-ui-medium);  // 15px – section titles
 $font-ui-large:   var(--font-ui-large);   // 20px – modal titles
-// The dice numerals' display face (@font-face in main.scss): medieval FantaisieArtistique,
-// or Oxanium where `.atlas-dice-font--scifi` sets --atlas-dice-font.
-$font-dice-display: var(--atlas-dice-font, 'Atlas Fantaisie Artistique', 'Palatino Linotype', Palatino, Georgia, serif);
+// Atlas' own display face (@font-face in main.scss): medieval Fantaisie Artistique, with one weight.
+$font-atlas-display: 'Atlas Fantaisie Artistique', 'Palatino Linotype', Palatino, Georgia, serif;
+// The dice numerals' face: Atlas' own, or Oxanium where `.atlas-dice-font--scifi` sets --atlas-dice-font.
+$font-dice-display: var(--atlas-dice-font, #{$font-atlas-display});
 $font-dice-scifi: 'Atlas Oxanium', 'Rajdhani', 'Segoe UI', sans-serif;
 $font-weight-normal:   var(--font-normal);
 $font-weight-medium:   var(--font-medium);
@@ -115,6 +116,16 @@ $input-height-l: 44px;
 // border above and beside it, whatever the panel's size or radius.
 $close-button-size: var(--input-height);
 $close-button-gap: $spacing-s;
+
+// ── Statblock surfaces ───────────────────────────────────────────────────────
+// Mirrors src/app/statblocks/render/statblockSurfaceWidths.ts (a unit test keeps
+// them equal): the hover preview is at most 480px wide, 540px from a 1600px
+// wide window; DM screen feeds are 340px to 540px.
+$statblock-preview-max-width: 480px;
+$statblock-preview-wide-max-width: 540px;
+$statblock-preview-wide-from: 1600px;
+$statblock-feed-min-width: 340px;
+$statblock-feed-max-width: 540px;
 
 // ── Breakpoints (for responsive layouts) ─────────────────────────────────────
 $breakpoint-xs: 480px;

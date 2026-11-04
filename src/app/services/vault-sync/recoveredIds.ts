@@ -11,6 +11,9 @@ export function recoveredId(prefix: string, seed: string): string {
   return `${prefix}-recovered-${Math.abs(hash).toString(36)}`;
 }
 
+/** Whether `id` was made by `recoveredId`: the same on every device that rebuilds the record from the same file. */
+export const isRecoveredId = (id: string): boolean => id.includes('-recovered-');
+
 /** The file name without its extension: `a/Cave.atlasmap` → `Cave`. */
 export const stemOf = (path: string): string => baseName(path).replace(/\.[^.]+$/, '');
 

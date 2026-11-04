@@ -1,0 +1,40 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The template editor's settings: a tile's Options
+// ═══════════════════════════════════════════════════════════════════════════
+// A group is one grid: labels in the first column, controls in the second,
+// with the same 12 px for its padding and every gap. Only transform and
+// opacity animate. Imported by the components that draw groups, so the rules
+// take the `.atlas-vtt-plugin` scope themselves.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use 'controls';
+@use 'picker';
+
+$group-space: $spacing-m;
+$label-column: 80px;
+
+.atlas-vtt-plugin {
+  .atlas-te-insp__locked {
+    margin: 0;
+    padding: $group-space;
+    border-top: $border-width-s solid var(--divider-color);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    text-wrap: pretty;
+  }
+
+  // ── Groups ──────────────────────────────────────────────────────────────
+  .atlas-te-group {
+    display: grid;
+    grid-template-columns: $label-column minmax(0, 1fr);
+    align-items: center;
+    gap: $group-space;
+    padding: $group-space;
+    border-top: $border-width-s solid var(--divider-color);
+  }
+
+  .atlas-te-span {
+    grid-column: 1 / -1;
+  }
+}

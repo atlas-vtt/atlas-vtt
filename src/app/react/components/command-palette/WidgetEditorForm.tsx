@@ -6,6 +6,7 @@ import type { WidgetScope, WidgetType } from '../../../types/widgetTypes';
 import { CLOCK_SEGMENT_OPTIONS, DEFAULT_CLOCK_SEGMENTS } from '../../../utils/clockWidget';
 import { WidgetIconPicker } from '../WidgetIconPicker';
 import { SettingToggleRow } from './SettingRows';
+import { t } from '../../../i18n';
 
 export interface WidgetDraft {
   type: WidgetType;
@@ -30,9 +31,9 @@ interface WidgetEditorFormProps {
 }
 
 const WIDGET_TYPES: { type: WidgetType; label: string }[] = [
-  { type: 'counter', label: 'Counter' },
-  { type: 'clock', label: 'Clock' },
-  { type: 'timer', label: 'Timer' },
+  { type: 'counter', label: t('widgets.type.counter') },
+  { type: 'clock', label: t('widgets.type.clock') },
+  { type: 'timer', label: t('widgets.type.timer') },
 ];
 
 const DEFAULT_COLOR = '#ffc107';
@@ -59,7 +60,7 @@ export function WidgetEditorForm({
 
   const trimmedLabel = label.trim();
 
-  const submit = (e: React.FormEvent): void => {
+  const submit = (e: React.SubmitEvent<HTMLFormElement>): void => {
     e.preventDefault();
     if (!trimmedLabel) return;
     onSubmit({ type, label: trimmedLabel, icon, color, scope, segments, showCount });
@@ -69,7 +70,7 @@ export function WidgetEditorForm({
     <form className="atlas-widget-editor" onSubmit={submit}>
       {isNew && (
         <div className="atlas-widget-editor-types" role="radiogroup" aria-labelledby={typeLabelId}>
-          <span id={typeLabelId} hidden>Widget type</span>
+          <span id={typeLabelId} hidden>{t('widgets.type')}</span>
           {WIDGET_TYPES.map((option) => (
             <Button
               key={option.type}
@@ -87,18 +88,18 @@ export function WidgetEditorForm({
       )}
 
       <div className="atlas-widget-editor-name-row">
-        <span id={nameLabelId} hidden>Widget name</span>
+        <span id={nameLabelId} hidden>{t('widgets.name')}</span>
         <input
           type="text"
           className="atlas-setting-input"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Widget name"
+          placeholder={t('widgets.name')}
           aria-labelledby={nameLabelId}
           maxLength={24}
           autoFocus
         />
-        <LabelTooltip label="Widget colour">
+        <LabelTooltip label={t('widgets.colour')}>
           <input
             type="color"
             className="atlas-widget-editor-color"
@@ -110,7 +111,7 @@ export function WidgetEditorForm({
 
       {type === 'clock' && (
         <div className="atlas-widget-editor-segments" role="radiogroup" aria-labelledby={segmentsLabelId}>
-          <span id={segmentsLabelId} className="atlas-setting-hint">Segments</span>
+          <span id={segmentsLabelId} className="atlas-setting-hint">{t('widgets.segments')}</span>
           {CLOCK_SEGMENT_OPTIONS.map((count) => (
             <Button
               key={count}
@@ -129,19 +130,19 @@ export function WidgetEditorForm({
 
       {type === 'clock' && (
         <SettingToggleRow
-          label="Show count"
-          hint="Shows how many segments are filled in the clock's centre"
+          label={t('widgets.showCount')}
+          hint={t('widgets.showCountHint')}
           value={showCount}
           onToggle={() => setShowCount(!showCount)}
         />
       )}
 
-      <WidgetIconPicker label="Widget icon" value={icon} onChange={setIcon} color={color} />
+      <WidgetIconPicker label={t('widgets.icon')} value={icon} onChange={setIcon} color={color} />
 
       {canShareWithCollection && (
         <SettingToggleRow
-          label="Show in every scene"
-          hint="Every scene of this collection shows it with the same value. Off, it shows in the scenes where you switch it on"
+          label={t('widgets.everyScene')}
+          hint={t('widgets.everySceneHint')}
           value={scope === 'collection'}
           onToggle={() => setScope(scope === 'collection' ? 'scene' : 'collection')}
         />
@@ -149,7 +150,7 @@ export function WidgetEditorForm({
 
       <div className="atlas-widget-editor-actions">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" variant="default" size="sm" disabled={!trimmedLabel}>
           {submitLabel}

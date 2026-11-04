@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import React from "react"
 import { useAtlasSettings } from "../../keyboard/useMapHotkeys"
 import {
@@ -18,14 +19,14 @@ export function LaserPointerOptions(): React.ReactElement {
   return (
     <div className="atlas-dropdown-section">
       <DropdownSwatchGrid
-        label="Laser colour"
+        label={t('toolbar.laserColour')}
         swatches={LASER_COLOR_SWATCHES}
         value={color}
         onChange={(value) => settings?.setLaserPointerSettings({ color: value })}
         hint={LASER_COLOR_HINT}
       />
       <DropdownSliderRow
-        label="Laser size"
+        label={t('toolbar.laserSize')}
         value={size}
         min={LASER_SIZE_MIN}
         max={LASER_SIZE_MAX}

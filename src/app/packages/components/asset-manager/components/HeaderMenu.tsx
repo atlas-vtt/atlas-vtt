@@ -14,6 +14,8 @@ export interface HeaderMenuItem {
   checked?: boolean;
   /** Draws a divider above the item. */
   separated?: boolean;
+  /** Shown but not offered, so the menu keeps its shape. */
+  disabled?: boolean;
   onSelect: (() => void) | undefined;
 }
 
@@ -85,6 +87,7 @@ export function HeaderMenu({
                 role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
                 aria-checked={item.checked}
                 className={`atlas-am-menu-item ${item.checked ? 'atlas-checked' : ''}`}
+                disabled={item.disabled}
                 onClick={() => select(item)}
               >
                 {hasChoices && <span className="atlas-am-menu-check">{item.checked && <Check />}</span>}

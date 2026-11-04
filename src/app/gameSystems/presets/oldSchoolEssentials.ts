@@ -1,3 +1,4 @@
+import { D20_DICE_SET_ID } from '../builtInDiceSets';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { OLD_SCHOOL_ESSENTIALS_LIGHTS } from '../lightPresets/oldSchoolEssentials';
 import { HP_RESOURCE } from '../../resources/resourceDefinitions';
@@ -25,6 +26,9 @@ export const OLD_SCHOOL_ESSENTIALS: SystemPreset = {
       abstractRangeBands: [],
     },
     dice: { defaultRoll: '1d20', crit: 'natural' },
+    diceSetId: D20_DICE_SET_ID,
+    // Group initiative: every round each side rolls 1d6, the higher acts first, and equal rolls act at once.
+    initiative: { mode: 'sides', roll: '1d20', firstSide: 'players', sideRoll: '1d6' },
     conditions: conditionsOf('ose', [
       { name: 'Paralysed', color: '#38bdf8', icon: 'frozen-body' },
       { name: 'Petrified', color: '#78716c', icon: 'stoned-skull' },
@@ -39,5 +43,6 @@ export const OLD_SCHOOL_ESSENTIALS: SystemPreset = {
     resources: [{ ...HP_RESOURCE }],
     senses: OLD_SCHOOL_ESSENTIALS_SENSES,
     lightPresets: OLD_SCHOOL_ESSENTIALS_LIGHTS,
+    statblockRoles: [{ id: 'monster', name: 'Monster', templateId: 'builtin:bx-creature' }],
   },
 };

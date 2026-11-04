@@ -1,0 +1,119 @@
+// The tokens to link, a grid of the asset manager's art.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'socket-shared' as *;
+
+.atlas-vtt-plugin {
+  // ── The tokens to link ──────────────────────────────────────────────────
+  .atlas-sb-token-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax($choice-min, 1fr));
+    gap: $spacing-s;
+  }
+
+  .atlas-sb-token-choice {
+    position: relative;
+    @include atlas-flex-col($spacing-xs);
+    align-items: center;
+    padding: $spacing-xs;
+    border-radius: $radius-l;
+    @include atlas-corner-shape;
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    text-align: center;
+
+    &::before {
+      @include socket-layer;
+      inset: 0;
+      border-radius: inherit;
+      background: var(--background-modifier-hover);
+    }
+
+    &--placeholder {
+      pointer-events: none;
+    }
+  }
+
+  button.atlas-sb-token-choice {
+    height: auto;
+    margin: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    cursor: pointer;
+
+    &:hover,
+    &:active {
+      background: none;
+      box-shadow: none;
+    }
+
+    &:hover::before {
+      opacity: 1;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--interactive-accent);
+      outline-offset: -2px;
+    }
+
+    &[aria-disabled='true'] {
+      cursor: default;
+    }
+
+    // Linked already: washed in the accent, and choosing it again does nothing.
+    &[data-linked]::before {
+      opacity: 1;
+      background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    }
+
+    // Waiting for a link being made.
+    &[aria-disabled='true']:not([data-linked]) {
+      opacity: 0.6;
+    }
+  }
+
+  .atlas-sb-token-choice__art {
+    position: relative;
+    width: $choice-art;
+    height: $choice-art;
+    flex-shrink: 0;
+  }
+
+  .atlas-sb-token-choice__tick {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 18px;
+    height: 18px;
+    padding: 3px;
+    border-radius: $radius-full;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+  }
+
+  // Two lines, broken between words (a word alone too long for the line breaks
+  // where it must); what does not fit ends in an ellipsis.
+  // What tells same-named tokens apart: the statblock they are on, or their art's file.
+  .atlas-sb-token-choice__detail {
+    @include atlas-truncate;
+    width: 100%;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    text-align: center;
+  }
+
+  .atlas-sb-token-choice__name {
+    display: -webkit-box;
+    width: 100%;
+    overflow: hidden;
+    font-size: $font-ui-smaller;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}

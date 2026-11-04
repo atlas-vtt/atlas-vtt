@@ -35,7 +35,7 @@ export function beamWidth(size: number, zoom: number): BeamWidth {
   return { halfWidth: radius / zoom, bodyShare: body / radius };
 }
 
-/** Draws the laser beam; `LaserBeam` on the GPU, `CanvasLaserBeam` without one. */
+/** Draws the laser beam. */
 export interface LaserBeamView {
   /** Add this to the scene. */
   readonly view: Container;
@@ -108,7 +108,9 @@ export class LaserBeam implements LaserBeamView {
     this.indexBuffer.update();
     this.shader.update(color, pointer, halfWidth, bodyShare);
     // The layer covers the beam only; vertices left from longer frames must not widen it.
-    this.view.boundsArea = new Rectangle(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
+    // Not `boundsArea`: inside a render group PIXI applies the group's transform to it twice, and a
+    // scene thumbnail makes the viewport one, which cut the beam away in most of the map (#213).
+    this.view.filterArea = new Rectangle(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
   }
 
   /**

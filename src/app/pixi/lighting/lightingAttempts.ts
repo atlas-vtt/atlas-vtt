@@ -1,5 +1,3 @@
-import type { App } from 'obsidian';
-
 export const LIGHTING_ATTEMPTS_KEY = 'atlas-vtt:lighting-attempts';
 
 /** One view's attempts to light its map with the GPU engine. */
@@ -10,7 +8,11 @@ export interface LightingAttempt {
   finish(): void;
 }
 
-type LocalStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
+/** The vault's device-local storage, as Obsidian's `App` offers it. */
+interface LocalStorage {
+  loadLocalStorage(key: string): unknown;
+  saveLocalStorage(key: string, data: unknown): void;
+}
 
 /**
  * How many views of this session are attempting each map now: a note on such a map is not left

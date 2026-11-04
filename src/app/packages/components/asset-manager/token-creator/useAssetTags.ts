@@ -8,7 +8,11 @@ interface AssetTags {
   isCreatingTag: boolean;
 }
 
-/** Shared tag catalog and creation of one tag group for asset importers and scene creation. */
+/**
+ * The tags of one group that `collection` registers, as its tag manager lists them, and
+ * creation of new ones, for asset importers and scene creation. Tags of other collections,
+ * or left on assets after their tag was deleted, are not offered.
+ */
 export function useAssetTags(assetService: AssetService | null, isOpen: boolean, collection: string, group: TagGroup): AssetTags {
   const [tags, setTags] = useState<string[]>([]);
   const [isCreatingTag, setIsCreatingTag] = useState(false);
@@ -16,11 +20,11 @@ export function useAssetTags(assetService: AssetService | null, isOpen: boolean,
   useEffect(() => {
     if (!assetService || !isOpen) return;
     let cancelled = false;
-    assetService.getAllTags(group)
-      .then((names) => { if (!cancelled) setTags(names); })
+    assetService.getCollectionTags(collection, group)
+      .then((registered) => { if (!cancelled) setTags(registered.map((tag) => tag.name).sort()); })
       .catch((error) => console.error('[AssetTags] Error loading tags:', error));
     return () => { cancelled = true; };
-  }, [assetService, isOpen, group]);
+  }, [assetService, isOpen, collection, group]);
 
   const createTag = useCallback(async (name: string): Promise<string> => {
     if (!assetService) throw new Error('Asset service is not ready');

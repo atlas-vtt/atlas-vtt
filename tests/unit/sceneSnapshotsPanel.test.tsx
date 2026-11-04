@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +7,7 @@ import { TFile } from 'obsidian';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { SNAPSHOT_THUMBNAIL_SIZE, type ThumbnailSize } from '../../src/app/services/MapThumbnailService';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
+import { AssetService } from '../../src/app/services/AssetService';
 
 const MAP_PATH = 'atlas-vtt/collections/c/scenes/Cave.atlasmap';
 const ui = vi.hoisted(() => ({ current: { app: {}, view: {} } as { app: unknown; view: unknown } }));
@@ -26,24 +28,27 @@ interface FakeView {
   file: TFile;
   saveMap: ReturnType<typeof vi.fn>;
   reloadActiveScene: ReturnType<typeof vi.fn>;
-  serviceManager: { renderMapThumbnail: ReturnType<typeof vi.fn<(size?: ThumbnailSize) => ArrayBuffer>> };
+  serviceManager: { renderMapThumbnailWhenDrawn: ReturnType<typeof vi.fn<(size: ThumbnailSize) => Promise<ArrayBuffer>>> };
 }
 
 function mapWithGoblinAt(x: number): string {
   return JSON.stringify({ version: 4, state: { schema: 'atlas-vtt', version: 4, mapPath: MAP_PATH, objects: { tokens: { g: { id: 'g', x, y: 0, imagePath: 'goblin.webp' } } } } });
 }
 
-function renderPanel(): { vault: InMemoryApp; view: FakeView; onClose: ReturnType<typeof vi.fn> } {
-  const vault = createInMemoryApp({ files: { [MAP_PATH]: mapWithGoblinAt(10) } });
+/** Renders the page for the map at `mapPath`; one in a collection folder becomes a scene when the vault is checked. */
+async function renderPanel(mapPath = MAP_PATH): Promise<{ vault: InMemoryApp; view: FakeView; onClose: ReturnType<typeof vi.fn> }> {
+  const vault = createInMemoryApp({ files: { [mapPath]: mapWithGoblinAt(10) } });
+  AssetService.resetInstance();
+  await AssetService.getInstance(vault.app).initialize();
   const view: FakeView = {
     viewId: 'view-1',
-    file: new TFile(MAP_PATH),
+    file: new TFile(mapPath),
     saveMap: vi.fn(async () => {}),
-    reloadActiveScene: vi.fn(async (rewrite: (file: TFile) => Promise<void>) => rewrite(new TFile(MAP_PATH))),
-    serviceManager: { renderMapThumbnail: vi.fn(() => new TextEncoder().encode('JPG').buffer) },
+    reloadActiveScene: vi.fn(async (rewrite: (file: TFile) => Promise<void>) => rewrite(new TFile(mapPath))),
+    serviceManager: { renderMapThumbnailWhenDrawn: vi.fn(async () => new TextEncoder().encode('JPG').buffer) },
   };
   ui.current = { app: vault.app, view };
-  const store = create(() => ({ mapPath: MAP_PATH }));
+  const store = create(() => ({ mapPath }));
   const onClose = vi.fn();
   render(<ViewStoreProvider store={store}><SceneSnapshotsPanel onRestore={onClose} /></ViewStoreProvider>);
   return { vault, view, onClose };
@@ -52,6 +57,7 @@ function renderPanel(): { vault: InMemoryApp; view: FakeView; onClose: ReturnTyp
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  AssetService.resetInstance();
 });
 
 interface MenuItem { type: string; label?: string; onClick?: () => unknown }
@@ -65,12 +71,14 @@ function chooseFromMenu(cardName: string, label: string): void {
 
 /** The goblin's x position stored in the only snapshot of the map. */
 function savedGoblinX(vault: InMemoryApp): number | undefined {
-  const path = [...vault.files.keys()].find((file) => file.endsWith('.json') && file.includes('.snapshots/'));
+  const path = [...vault.files.keys()].find((file) => file.endsWith('.json') && file.includes('/snapshots/'));
   const snapshot = path ? JSON.parse(vault.files.get(path)!) as { state: { objects: { tokens: { g: { x: number } } } } } : null;
   return snapshot?.state.objects.tokens.g.x;
 }
 
 async function saveSnapshot(): Promise<void> {
+  // The page finds the scene's snapshot folder first; until then there is nowhere to save.
+  await waitFor(() => expect(screen.getByRole('button', { name: /New snapshot/ }).hasAttribute('disabled')).toBe(false));
   const count = screen.queryAllByRole('group').length;
   fireEvent.click(screen.getByRole('button', { name: /New snapshot/ }));
   await waitFor(() => expect(screen.queryAllByRole('group')).toHaveLength(count + 1));
@@ -78,7 +86,7 @@ async function saveSnapshot(): Promise<void> {
 
 describe('scene snapshots page', () => {
   it('saves the current map under the next default name without asking', async () => {
-    const { view } = renderPanel();
+    const { view } = await renderPanel();
     expect(await screen.findByText(/No snapshots yet/)).toBeTruthy();
 
     await saveSnapshot();
@@ -87,13 +95,13 @@ describe('scene snapshots page', () => {
     expect(screen.getAllByRole('group').map((card) => card.getAttribute('aria-label')).sort()).toEqual(['Snapshot 1', 'Snapshot 2']);
     expect(view.saveMap).toHaveBeenCalledTimes(2);
     // The map view's own thumbnail render, at the snapshot card's size: lit and without GM overlays like a scene card's
-    expect(view.serviceManager.renderMapThumbnail.mock.calls).toEqual([[SNAPSHOT_THUMBNAIL_SIZE], [SNAPSHOT_THUMBNAIL_SIZE]]);
+    expect(view.serviceManager.renderMapThumbnailWhenDrawn.mock.calls).toEqual([[SNAPSHOT_THUMBNAIL_SIZE], [SNAPSHOT_THUMBNAIL_SIZE]]);
     const thumbnail = screen.getByRole('button', { name: 'Restore Snapshot 1' }).querySelector('img');
-    expect(thumbnail?.getAttribute('src')).toMatch(/^app:\/\/local\/.*\/\.snapshots\/Cave\/.*\.jpg\?v=\d+$/);
+    expect(thumbnail?.getAttribute('src')).toMatch(/^app:\/\/vault\/atlas-vtt\/collections\/c\/snapshots\/[^/]+\/.*\.jpg\?v=\d+$/);
   });
 
   it('renames in place: Enter keeps the new name, Escape cancels', async () => {
-    renderPanel();
+    await renderPanel();
     await saveSnapshot();
 
     fireEvent.click(screen.getByRole('button', { name: 'Rename Snapshot 1' }));
@@ -111,7 +119,7 @@ describe('scene snapshots page', () => {
   });
 
   it('keeps the name when the rename loses focus, and never allows an empty name', async () => {
-    renderPanel();
+    await renderPanel();
     await saveSnapshot();
 
     fireEvent.click(screen.getByRole('button', { name: 'Rename Snapshot 1' }));
@@ -128,7 +136,7 @@ describe('scene snapshots page', () => {
   });
 
   it('restores a snapshot into the map after confirmation and closes the palette', async () => {
-    const { vault, view, onClose } = renderPanel();
+    const { vault, view, onClose } = await renderPanel();
     await saveSnapshot();
 
     vault.files.set(MAP_PATH, mapWithGoblinAt(99));
@@ -142,7 +150,7 @@ describe('scene snapshots page', () => {
   });
 
   it('leaves the map alone when the restore is not confirmed', async () => {
-    const { view, onClose } = renderPanel();
+    const { view, onClose } = await renderPanel();
     await saveSnapshot();
 
     dialogs.confirmAction.mockResolvedValueOnce(false);
@@ -154,7 +162,7 @@ describe('scene snapshots page', () => {
   });
 
   it('overwrites a snapshot with the current map after confirmation', async () => {
-    const { vault, view } = renderPanel();
+    const { vault, view } = await renderPanel();
     await saveSnapshot();
 
     vault.files.set(MAP_PATH, mapWithGoblinAt(42));
@@ -166,13 +174,19 @@ describe('scene snapshots page', () => {
     dialogs.confirmAction.mockResolvedValueOnce(true);
     chooseFromMenu('Snapshot 1', 'Overwrite with current map');
     await waitFor(() => expect(savedGoblinX(vault)).toBe(42));
-    expect(view.serviceManager.renderMapThumbnail).toHaveBeenLastCalledWith(SNAPSHOT_THUMBNAIL_SIZE);
-    expect(view.serviceManager.renderMapThumbnail).toHaveBeenCalledTimes(2);
+    expect(view.serviceManager.renderMapThumbnailWhenDrawn).toHaveBeenLastCalledWith(SNAPSHOT_THUMBNAIL_SIZE);
+    expect(view.serviceManager.renderMapThumbnailWhenDrawn).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('group', { name: 'Snapshot 1' })).toBeTruthy();
   });
 
+  it('offers snapshots for a map outside every collection too, kept beside it', async () => {
+    await renderPanel('Elsewhere/Loose.atlasmap');
+    expect(await screen.findByText(/No snapshots yet/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /New snapshot/ }).hasAttribute('disabled')).toBe(false);
+  });
+
   it('deletes a snapshot from the context menu after confirmation', async () => {
-    renderPanel();
+    await renderPanel();
     await saveSnapshot();
 
     dialogs.confirmAction.mockResolvedValueOnce(true);

@@ -235,3 +235,24 @@
     transform: none;
   }
 }
+
+// A choice row's control spans the row (`SettingChoiceRow`): its options share the width evenly.
+.atlas-setting-choice {
+  width: 100%;
+
+  .atlas-segmented {
+    width: 100%;
+  }
+
+  .atlas-segmented__option {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: $spacing-xs;
+  }
+}
+
+// The Graphics page: the line under the presets' tabs.
+.atlas-graphics__picked {
+  @include atlas-flex-row($spacing-s);
+  justify-content: flex-end;
+}

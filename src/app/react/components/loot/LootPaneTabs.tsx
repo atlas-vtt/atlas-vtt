@@ -2,6 +2,7 @@ import React from 'react';
 import { History, Sparkles } from 'lucide-react';
 import type { LootPane } from '../../../stores/lootRollerSlice';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { t } from '../../../i18n';
 
 interface LootPaneTabsProps {
   pane: LootPane;
@@ -14,8 +15,8 @@ interface LootPaneTabsProps {
 export function LootPaneTabs({ pane, historyCount, onSelect, onClearHistory }: LootPaneTabsProps): React.ReactElement {
   return (
     <div className="atlas-loot-pane-tabs">
-      <div className="atlas-loot-pane-tabs__switch" role="tablist" aria-label="Loot list">
-        <LabelTooltip describe label="The last roll on this map.">
+      <div className="atlas-loot-pane-tabs__switch" role="tablist" aria-label={t('loot.tabs.list')}>
+        <LabelTooltip describe label={t('loot.tabs.latestHint')}>
           <button
             type="button"
             role="tab"
@@ -24,10 +25,10 @@ export function LootPaneTabs({ pane, historyCount, onSelect, onClearHistory }: L
             onClick={() => onSelect('results')}
           >
             <Sparkles />
-            Latest roll
+            {t('loot.tabs.latest')}
           </button>
         </LabelTooltip>
-        <LabelTooltip describe label="Every roll in this collection, from all its maps.">
+        <LabelTooltip describe label={t('loot.tabs.historyHint')}>
           <button
             type="button"
             role="tab"
@@ -36,14 +37,14 @@ export function LootPaneTabs({ pane, historyCount, onSelect, onClearHistory }: L
             onClick={() => onSelect('history')}
           >
             <History />
-            History
+            {t('loot.tabs.history')}
             <span className="atlas-tab-count">{historyCount}</span>
           </button>
         </LabelTooltip>
       </div>
       {pane === 'history' && historyCount > 0 && (
-        <LabelTooltip describe label="Removes every roll of this collection, for all its maps.">
-          <button type="button" className="atlas-loot-text-button" onClick={onClearHistory}>Clear history</button>
+        <LabelTooltip describe label={t('loot.tabs.clearHint')}>
+          <button type="button" className="atlas-loot-text-button" onClick={onClearHistory}>{t('loot.tabs.clear')}</button>
         </LabelTooltip>
       )}
     </div>

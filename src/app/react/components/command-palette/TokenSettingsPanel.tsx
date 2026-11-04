@@ -1,18 +1,19 @@
 import React from 'react';
 import { SettingToggleRow } from './SettingRows';
 import type { AtlasView } from '../../../atlas-view';
-import { AssetService } from '../../../services/AssetService';
 import { mapResources } from '../../../resources/collectionResources';
+import { rulesLookup } from '../../../services/mapRules';
 import { slottedResources } from '../../../resources/resourceSlots';
 import { toggleHidden } from '../../../resources/sceneVisibility';
-import { shapeOf } from '../../../resources/visibleResources';
+import { resourceToggleLabel } from './resourceToggleLabel';
 import { DEFAULT_TOKEN_SETTINGS } from '../../../storeFactory';
+import { t } from '../../../i18n';
 
 type TokenToggleKey = 'showNameplates' | 'showInstanceBadges';
 
 const TOGGLES: ReadonlyArray<{ key: TokenToggleKey; label: string; hint?: string }> = [
-  { key: 'showNameplates', label: 'Show nameplates' },
-  { key: 'showInstanceBadges', label: 'Show instance badges', hint: 'Numbers tokens that share an image' },
+  { key: 'showNameplates', label: t('tokens.showNameplates') },
+  { key: 'showInstanceBadges', label: t('tokens.showBadges'), hint: t('tokens.showBadgesHint') },
 ];
 
 interface TokenSettingsPanelProps {
@@ -23,7 +24,7 @@ interface TokenSettingsPanelProps {
 export function TokenSettingsPanel({ view }: TokenSettingsPanelProps): React.ReactElement {
   const store = view?.atlasStore;
   const tokenSettings = store?.getState()?.tokenSettings ?? DEFAULT_TOKEN_SETTINGS;
-  const definitions = view && store ? mapResources(AssetService.getInstance(view.app), store.getState().mapPath) : [];
+  const definitions = view && store ? mapResources(rulesLookup(view.app), store.getState().mapPath) : [];
   const hidden = tokenSettings.hiddenResources ?? [];
 
   const change = (changes: Partial<typeof tokenSettings>): void => {
@@ -48,7 +49,7 @@ export function TokenSettingsPanel({ view }: TokenSettingsPanelProps): React.Rea
         {slottedResources(definitions).map(({ definition, slot }) => (
           <SettingToggleRow
             key={definition.key}
-            label={`Show ${definition.name} ${shapeOf(slot) === 'bar' ? 'bars' : 'wheels'}`}
+            label={resourceToggleLabel(definition, slot)}
             value={!hidden.includes(definition.key)}
             onToggle={() => change({ hiddenResources: toggleHidden(store?.getState().tokenSettings?.hiddenResources, definition.key) })}
           />

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, PackageOpen } from 'lucide-react';
+import { PackageOpen } from 'lucide-react';
 import type { App } from 'obsidian';
 import type {
   Tab, AnyAsset, Folder as FolderType, SelectionEvent,
@@ -8,6 +8,8 @@ import type {
 import { getTabDisplayName } from '../types';
 import { AssetCard } from './AssetCard';
 import { FolderGridItem } from './FolderGridItem';
+import { SectionHeader } from './SectionHeader';
+import { SelectionInfo } from './SelectionInfo';
 import { VirtualAssetGrid } from './VirtualAssetGrid';
 import { fadeVariants } from './gridMotion';
 import { useOpenAsset } from '../hooks/useOpenAsset';
@@ -19,7 +21,10 @@ import { useSpawnCountTyping } from '../hooks/useSpawnCountTyping';
 import { useAssetStatblockPreview } from '../hooks/useAssetStatblockPreview';
 import { useRememberedScroll, type ScrollMemory } from '../hooks/useRememberedScroll';
 import { useScrollbarGutter } from '../../primitives/useScrollbarGutter';
+import { MapProcessing } from '../../../../pixi/mosaicCanvas/mapProcessing';
+import { MapProcessingContext, type MapProcessingLookup } from './mapProcessingContext';
 import { Button } from '../../primitives/button';
+import { t } from '../../../../i18n';
 
 export interface ContentPaneProps {
   activeTab: Tab;
@@ -56,30 +61,6 @@ export interface ContentPaneProps {
   onClearFilters?: () => void;
 }
 
-interface SectionHeaderProps {
-  title: string;
-  count: number;
-  collapsed: boolean;
-  onToggle: () => void;
-}
-
-function SectionHeader({ title, count, collapsed, onToggle }: SectionHeaderProps): React.JSX.Element {
-  return (
-    <div
-      className="atlas-section-header"
-      onClick={onToggle}
-      role="button"
-      aria-expanded={!collapsed}
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle(); }}
-    >
-      <ChevronDown className={`atlas-chevron ${collapsed ? 'atlas-collapsed' : ''}`} />
-      <h3>{title}</h3>
-      <span className="atlas-section-count">{count}</span>
-    </div>
-  );
-}
-
 const NO_IDS: ReadonlySet<string> = new Set();
 
 /** The scrolling content of one folder: its subfolders and assets, or the empty state. */
@@ -104,7 +85,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   const cardHandlers = useAssetCardHandlers({
     app: props.app, openAsset, selectedAssetIds, setDraggedItems,
     onAssetSelect: props.onAssetSelect, onAssetContextMenu: props.onAssetContextMenu,
-    onSpawnCountChange: props.onSpawnCountChange, onArtNeeded,
+    onSpawnCountChange: props.onSpawnCountChange, onArtNeeded, onClose: props.onClose,
   });
   useSpawnCountTyping(scrollElement, props.onSpawnCountChange);
   useAssetStatblockPreview({
@@ -114,6 +95,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   useScrollbarGutter(scrollElement);
   useRememberedScroll(scrollElement, props.scrollKey, props.scrollMemory);
 
+  const processing = useMemo((): MapProcessingLookup => ({ app: props.app, processing: MapProcessing.forApp(props.app) }), [props.app]);
   const selectedIds = useMemo(() => new Set(selectedAssetIds), [selectedAssetIds]);
   const draggingIds = useMemo(
     () => (draggedItems?.type === 'asset' ? new Set(draggedItems.ids) : NO_IDS),
@@ -142,6 +124,10 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   const endDrag = (): void => { setDraggedItems(null); setDropTarget(null); };
 
   const isEmpty = assets.length === 0 && folders.length === 0;
+  // The first section's header carries the selection, under the sort.
+  const selection = (
+    <SelectionInfo count={selectedAssetIds.length + selectedFolderIds.length} onClear={onClearSelection} />
+  );
 
   return (
     <div
@@ -154,11 +140,11 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
         {isEmpty ? (
           <motion.div key="empty" className="atlas-empty-state" variants={fadeVariants} initial="hidden" animate="visible" exit="exit">
             <PackageOpen className="atlas-empty-icon" />
-            <h3>No {getTabDisplayName(activeTab).toLowerCase()} {props.onClearFilters ? 'match these filters' : 'yet'}</h3>
+            <h3>{t(props.onClearFilters ? 'am.empty.noMatch' : 'am.empty.none', { tab: getTabDisplayName(activeTab).toLocaleLowerCase() })}</h3>
             {props.onClearFilters ? (
-              <Button variant="outline" className="atlas-empty-action" onClick={props.onClearFilters}>Clear filters</Button>
+              <Button variant="outline" className="atlas-empty-action" onClick={props.onClearFilters}>{t('am.empty.clearFilters')}</Button>
             ) : (
-              <p>Use the + button to add some, or adjust your search and tag filters.</p>
+              <p>{t(activeTab === 'party' ? 'am.empty.partyHint' : 'am.empty.hint')}</p>
             )}
           </motion.div>
         ) : (
@@ -174,10 +160,11 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
             {folders.length > 0 && (
               <section className="atlas-content-section">
                 <SectionHeader
-                  title="Folders"
+                  title={t('am.folders')}
                   count={folders.length}
                   collapsed={collapsedSections.folders}
                   onToggle={() => setCollapsedSections((prev) => ({ ...prev, folders: !prev.folders }))}
+                  end={selection}
                 />
                 {!collapsedSections.folders && (
                   <div className="atlas-folder-grid" onClick={clearIfBackground}>
@@ -209,15 +196,18 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
                   count={assets.length}
                   collapsed={collapsedSections.assets}
                   onToggle={() => setCollapsedSections((prev) => ({ ...prev, assets: !prev.assets }))}
+                  end={folders.length === 0 && selection}
                 />
                 {!collapsedSections.assets && (
-                  <VirtualAssetGrid
-                    assets={assets}
-                    scrollElement={scrollElement}
-                    renderCard={renderCard}
-                    onBackgroundClick={clearIfBackground}
-                    appear={paneShown.current}
-                  />
+                  <MapProcessingContext.Provider value={processing}>
+                    <VirtualAssetGrid
+                      assets={assets}
+                      scrollElement={scrollElement}
+                      renderCard={renderCard}
+                      onBackgroundClick={clearIfBackground}
+                      appear={paneShown.current}
+                    />
+                  </MapProcessingContext.Provider>
                 )}
               </section>
             )}

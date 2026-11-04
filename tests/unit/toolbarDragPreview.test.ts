@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { cancelledMessage } from '../../src/app/packages/components/toolbar/editor/toolbarAnnouncements';
@@ -28,6 +29,13 @@ describe('the bar during a drag', () => {
       fitIds: ['move', 'draw', 'text', WELL, 'palette'], wellAfter: 'text', originHolds: false,
     });
     expect(barDragPreview(BAR, drag({ after: null })).fitIds).toEqual([WELL, 'move', 'draw', 'text', 'palette']);
+  });
+
+  it('leaves the bar alone while the undo/redo bar is dragged, which never lands in it', () => {
+    for (const from of ['bar', 'tray'] as const) for (const zone of ['bar', 'tray', null] as const) {
+      expect(barDragPreview(BAR, drag({ id: 'undo', from, zone, after: null, originAfter: null })).fitIds).toEqual(BAR);
+      expect(barDragPreview(BAR, drag({ id: 'undo', from, zone, after: null, originAfter: null })).wellAfter).toBeUndefined();
+    }
   });
 
   it('has no well while the tool is over the tray', () => {

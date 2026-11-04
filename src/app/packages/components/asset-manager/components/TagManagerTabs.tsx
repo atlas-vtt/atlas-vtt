@@ -2,13 +2,14 @@ import React from 'react';
 import { FolderOpen, Map as MapIcon } from 'lucide-react';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
 import type { TagGroup } from '../../../../services/tagGroups';
+import { t } from '../../../../i18n';
 
 export type TagManagerTab = TagGroup | 'collections';
 
 const TABS: readonly { id: TagManagerTab; label: string; icon: React.ReactElement }[] = [
-  { id: 'maps', label: 'Map Tags', icon: <MapIcon /> },
-  { id: 'tokens', label: 'Character Tags', icon: <TokenIcon /> },
-  { id: 'collections', label: 'Collections', icon: <FolderOpen /> },
+  { id: 'maps', label: t('am.manage.mapTags'), icon: <MapIcon /> },
+  { id: 'tokens', label: t('am.manage.characterTags'), icon: <TokenIcon /> },
+  { id: 'collections', label: t('am.manage.collections'), icon: <FolderOpen /> },
 ];
 
 interface TagManagerTabsProps {

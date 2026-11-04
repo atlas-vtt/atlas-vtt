@@ -5,6 +5,7 @@ import type { Tab, Folder as FolderType } from '../types';
 import { CloseButton } from '../../primitives/CloseButton';
 import { Button } from '../../primitives/button';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../primitives/dialogMotion';
+import { t } from '../../../../i18n';
 
 export interface MoveModalProps {
   selectedAssetIds: string[];
@@ -35,7 +36,7 @@ export function MoveModal({
     >
       <motion.div className="atlas-asset-manager-move-container" variants={windowVariants} onClick={(e) => e.stopPropagation()}>
         <div className="atlas-asset-manager-move-header">
-          <h3>Move to Folder</h3>
+          <h3>{t('am.move.title')}</h3>
           <CloseButton onClick={(e) => { e.stopPropagation(); onClose(); }} />
         </div>
         <div className="atlas-asset-manager-move-body">
@@ -43,11 +44,11 @@ export function MoveModal({
             Moving {selectedAssetIds.length} item{selectedAssetIds.length !== 1 ? 's' : ''}
           </p>
           <div className="atlas-asset-manager-move-collections">
-            <div className="atlas-asset-manager-move-label">Select target folder:</div>
+            <div className="atlas-asset-manager-move-label">{t('am.move.target')}</div>
             <input
               type="text"
               className="atlas-asset-manager-move-input"
-              placeholder="Search folders..."
+              placeholder={t('am.move.search')}
               value={moveFolderSearch}
               onChange={(e) => setMoveFolderSearch(e.target.value)}
               onFocus={() => setMoveFolderListOpen(true)}
@@ -61,7 +62,7 @@ export function MoveModal({
                     onClick={() => setMoveTargetFolderId(null)}
                   >
                     <Home size={14} />
-                    <span>Root Folder</span>
+                    <span>{t('am.move.root')}</span>
                     {moveTargetFolderId === null && <Check size={14} className="atlas-move-folder-check" />}
                   </div>
                 )}
@@ -88,8 +89,8 @@ export function MoveModal({
           </div>
         </div>
         <div className="atlas-asset-manager-move-footer">
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onClose(); }}>Cancel</Button>
-          <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onConfirm(); }}>Move</Button>
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onClose(); }}>{t('common.cancel')}</Button>
+          <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); onConfirm(); }}>{t('am.move.move')}</Button>
         </div>
       </motion.div>
     </motion.div>

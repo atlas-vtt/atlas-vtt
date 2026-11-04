@@ -1,3 +1,4 @@
+import { getDomHost } from '../../../host/dom';
 import type React from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { observeResize } from '../../../utils/observeResize'
@@ -6,7 +7,7 @@ import { POPOVER_FITS, fitPopover, type PopoverFit, type PopoverPlacement, type 
 export interface KeepInView {
   /** CSS variables the `atlas-keep-in-view` mixin reads. */
   style: React.CSSProperties
-  /** The content is taller than the room and scrolls. */
+  /** A height cap is applied; shorter content still sizes naturally. */
   capped: boolean
 }
 
@@ -17,8 +18,33 @@ export interface KeepInView {
 export function viewFrame(element: HTMLElement): ViewFrame {
   const leaf = element.closest('.workspace-leaf')
   if (leaf) return leaf.getBoundingClientRect()
-  const win = element.win
+  const win = getDomHost().ownerWindow(element)
   return { left: 0, top: 0, right: win.innerWidth, bottom: win.innerHeight }
+}
+
+/** Whether an `overflow` value cuts what lies outside the box (an unset one does not). */
+const clips = (overflow: string): boolean => overflow !== '' && overflow !== 'visible'
+
+/**
+ * The part of the view an element that hangs inside its ancestors can be seen in: the view
+ * (`viewFrame`), cut by every ancestor up to the leaf that clips its content (a page that scrolls).
+ */
+export function clippedViewFrame(element: HTMLElement): ViewFrame {
+  // A DOMRect's sides are getters of its prototype, which spreading leaves behind.
+  const { left, top, right, bottom } = viewFrame(element)
+  const frame = { left, top, right, bottom }
+  const leaf = element.closest('.workspace-leaf')
+  const win = getDomHost().ownerWindow(element)
+  for (let node = element.parentElement; node !== null && node !== leaf; node = node.parentElement) {
+    const { overflowX, overflowY } = win.getComputedStyle(node)
+    if (!clips(overflowX) && !clips(overflowY)) continue
+    const rect = node.getBoundingClientRect()
+    frame.left = Math.max(frame.left, rect.left)
+    frame.top = Math.max(frame.top, rect.top)
+    frame.right = Math.min(frame.right, rect.right)
+    frame.bottom = Math.min(frame.bottom, rect.bottom)
+  }
+  return frame
 }
 
 /**
@@ -46,22 +72,25 @@ export function useKeepInView(
 
     const update = (): void => {
       // Measure where the popover would sit without the shift already applied.
-      const shift = applied.current.shiftX
+      const current = applied.current
+      const shift = current.shiftX
       const rect = element.getBoundingClientRect()
       const box = {
         left: rect.left - shift,
         right: rect.right - shift,
         top: rect.top,
         bottom: rect.bottom,
-        contentHeight: Math.max(rect.height, element.scrollHeight),
+        // An inner scrolling panel hides its full height from this wrapper once capped.
+        // Keep the cap until close, recalculating it from the room on every update.
+        // max-height still lets smaller content shrink and a larger view reveal more.
+        contentHeight: current.maxHeight === null ? Math.max(rect.height, element.scrollHeight) : Infinity,
       }
       const next = fitPopover(box, viewFrame(element), placement)
-      const current = applied.current
       if (next.shiftX !== current.shiftX || next.maxHeight !== current.maxHeight) setFit(next)
     }
 
     update()
-    const win = element.win
+    const win = getDomHost().ownerWindow(element)
     win.addEventListener('resize', update)
     // Sections that appear while the popover is open (a mode's options) change its height.
     const stopObserving = observeResize([element], update)

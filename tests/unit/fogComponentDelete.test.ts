@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { extractConnectedComponentRects } from '../../src/app/pixi/fog/fogComponentDelete';
+import { extractConnectedComponentRects, fogWithErasers } from '../../src/app/pixi/fog/fogComponentDelete';
+import type { FogOperation } from '../../src/app/types/fogTypes';
 
 function buildMask(width: number, height: number, on: Array<{ x: number; y: number }>): Uint8Array {
   const mask = new Uint8Array(width * height);
@@ -28,3 +29,19 @@ describe('extractConnectedComponentRects', () => {
   });
 });
 
+
+describe('erasing a connected region of fog', () => {
+  const fog = (id: string, level?: string): FogOperation => ({ id, kind: 'fog', timestamp: 1, type: 'rectangle', isErasing: false, x: 0, y: 0, width: 10, height: 10, ...(level && { level }) });
+
+  it('adds the erasers on the floor shown and keeps every floor\'s fog', () => {
+    const next = fogWithErasers({ low: fog('low'), high: fog('high', 'upper') }, [{ x: 1, y: 2, width: 3, height: 4 }, { x: 0, y: 0, width: 0, height: 5 }], 100, { level: 'upper' });
+
+    expect(Object.keys(next ?? {})).toHaveLength(3);
+    const erasers = Object.values(next ?? {}).filter((operation) => operation.isErasing);
+    expect(erasers).toEqual([expect.objectContaining({ type: 'rectangle', x: 1, y: 2, width: 3, height: 4, level: 'upper', timestamp: 100 })]);
+  });
+
+  it('changes nothing where no rectangle has an area', () => {
+    expect(fogWithErasers({}, [{ x: 0, y: 0, width: 0, height: 0 }], 100, {})).toBeNull();
+  });
+});

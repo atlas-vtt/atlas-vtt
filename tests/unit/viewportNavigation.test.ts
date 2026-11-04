@@ -1,9 +1,12 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { Viewport } from 'pixi-viewport';
 import type { EventSystem } from 'pixi.js';
 import { applyNavigationMode, bindViewportNavigation } from '../../src/app/pixi/viewportNavigation';
 import { SmoothWheelZoom } from '../../src/app/pixi/SmoothWheelZoom';
+import { App } from 'obsidian';
 import { SettingsService } from '../../src/app/services/SettingsService';
+import { INPUT_MODE_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 
 function createMockApp() {
   return {
@@ -70,11 +73,11 @@ describe('bindViewportNavigation', () => {
   it('takes the stored mode when the settings finish loading after the viewport was bound', async () => {
     let finishMigration!: () => void;
     const storageReady = new Promise<void>((resolve) => { finishMigration = resolve; });
-    const app = createMockApp();
-    app.vault.adapter.exists = async () => true;
-    app.vault.adapter.read = async () => JSON.stringify({ navigation: { inputMode: 'mouse' } });
+    const app = new App();
     const settings = new SettingsService(app, storageReady);
     settings.setNavigationSettings({ inputMode: 'trackpad' });
+    // The startup migration carries this device's mode over from the old settings file.
+    app.saveLocalStorage(INPUT_MODE_STORAGE_KEY, 'mouse');
     const viewport = createViewport();
 
     // A map tab restored at startup binds while the service still holds the defaults.
@@ -92,7 +95,7 @@ describe('bindViewportNavigation', () => {
 
     bindViewportNavigation(viewport, settings);
     const installed = viewport.plugins.get('wheel');
-    settings.setLocalPlayerViewSettings({ showGrid: false });
+    settings.setLocalPlayerViewSettings({ showWidgets: false });
 
     expect(viewport.plugins.get('wheel')).toBe(installed);
   });

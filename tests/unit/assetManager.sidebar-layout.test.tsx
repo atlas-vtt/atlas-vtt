@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useSidebarLayout } from '../../src/app/packages/components/asset-manager/hooks/useSidebarLayout';

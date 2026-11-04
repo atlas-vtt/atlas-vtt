@@ -1,9 +1,10 @@
 import type JSZip from 'jszip';
 import { BUNDLE_MANIFEST, manifestProblem, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
-import { sha256 } from './hashing';
+import { sha256 } from '../../utils/hashing';
+import type { LibraryTemplate } from '../../statblocks/model/resolvedTypes';
 import { baseName } from '../../utils/pathUtils';
-import { plural } from '../../utils/plural';
+import { t } from '../../i18n';
 
 /** A bundle whose manifest is sound and whose files match their checksums. */
 export interface OpenedBundle {
@@ -29,7 +30,7 @@ async function readManifest(zip: JSZip): Promise<CollectionBundleManifest> {
 
 /** Reads the zip and checks every file against its recorded checksum before anything is written. */
 export async function openBundle(data: Blob, onProgress: BundleProgressListener): Promise<OpenedBundle> {
-  onProgress({ message: 'Reading bundle…', fraction: 0 });
+  onProgress({ message: t('bundle.reading'), fraction: 0 });
   const { default: JSZip } = await import('jszip');
   let zip: JSZip;
   try {
@@ -42,7 +43,7 @@ export async function openBundle(data: Blob, onProgress: BundleProgressListener)
   const sourceHashes = new Map<string, string>();
   const damaged: BundleFile[] = [];
   for (const [index, file] of manifest.files.entries()) {
-    reportFileStep(onProgress, 'Checking', index, manifest.files.length, 0, 0.5);
+    reportFileStep(onProgress, 'bundle.step.checking', index, manifest.files.length, 0, 0.5);
     const entry = zip.file(zipPathFor(file.vaultPath));
     if (!entry) {
       if (file.sha256) damaged.push(file);
@@ -54,7 +55,7 @@ export async function openBundle(data: Blob, onProgress: BundleProgressListener)
   }
   if (damaged.length > 0) {
     const names = damaged.slice(0, 3).map((file) => baseName(file.vaultPath)).join(', ');
-    throw new Error(`This collection export is damaged: ${plural(damaged.length, 'file')} ${damaged.length === 1 ? 'does' : 'do'} not match ${damaged.length === 1 ? 'its' : 'their'} checksum (${names}${damaged.length > 3 ? ', …' : ''}). Nothing was imported.`);
+    throw new Error(t('bundle.checksum', { count: damaged.length, names: `${names}${damaged.length > 3 ? ', …' : ''}` }));
   }
   return { zip, manifest, sourceHashes };
 }
@@ -63,6 +64,8 @@ export async function openBundle(data: Blob, onProgress: BundleProgressListener)
 export interface BundleFileReader {
   blob(path: string): Promise<Blob | null>;
   text(path: string): Promise<string | null>;
+  /** The bundle's statblock templates, read without code, which previews of its notes look up first. */
+  templates?: readonly LibraryTemplate[] | undefined;
 }
 
 export function bundleFileReader({ zip }: OpenedBundle): BundleFileReader {

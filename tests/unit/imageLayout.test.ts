@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { fitWithin, frameImageRect, frameSize, scaleDown, vectorRasterSize } from '../../src/app/imageProcessing/imageLayout';
+import { DECODED_MAX_PIXELS, WEBP_MAX_SIDE } from '../../src/app/imageProcessing/decodeLimits';
+import { IMAGE_PRESETS } from '../../src/app/imageProcessing/imageProcessing';
+import { fitSize, fitWithin, frameImageRect, frameSize, scaleDown, vectorRasterSize } from '../../src/app/imageProcessing/imageLayout';
 import { renderedImageRect, TOKEN_CROP_FRACTION, tokenCropPlacement } from '../../src/app/packages/components/asset-manager/token-creator/cropMath';
 
 describe('fitWithin', () => {
@@ -10,6 +12,52 @@ describe('fitWithin', () => {
 
   it('never scales up', () => {
     expect(fitWithin({ width: 300, height: 120 }, 400, 400)).toEqual({ width: 300, height: 120 });
+    expect(fitWithin({ width: 300, height: 120 }, 400, 400, 1_000_000)).toEqual({ width: 300, height: 120 });
+  });
+
+  it('keeps the area within maxPixels', () => {
+    expect(fitWithin({ width: 13000, height: 13000 }, 16383, 16383, 144_000_000)).toEqual({ width: 12000, height: 12000 });
+    const wide = fitWithin({ width: 16000, height: 12000 }, 16383, 16383, 144_000_000);
+    expect(wide.width * wide.height).toBeLessThanOrEqual(144_000_000);
+    expect(wide.width / wide.height).toBeCloseTo(16000 / 12000, 3);
+  });
+
+  it('rounds down where rounding would take the area over maxPixels', () => {
+    // At the exact area scale 1001 × 999 rounds to 999 × 998, two pixels over.
+    const fitted = fitWithin({ width: 1001, height: 999 }, 4000, 4000, 997_000);
+    expect(fitted).toEqual({ width: 999, height: 997 });
+  });
+
+  it('lets the tighter of sides and area decide', () => {
+    expect(fitWithin({ width: 20000, height: 9000 }, 16383, 16383, 144_000_000)).toEqual({ width: 16383, height: 7372 });
+    expect(fitWithin({ width: 60000, height: 2000 }, 16383, 16383, 144_000_000)).toEqual({ width: 16383, height: 546 });
+  });
+});
+
+describe('fitSize', () => {
+  const map = { kind: 'fit', ...IMAGE_PRESETS.map } as const;
+
+  it('fits a map within 65535 px a side and a gigapixel', () => {
+    expect(fitSize({ width: 20000, height: 9000 }, map)).toEqual({ width: 20000, height: 9000 });
+    expect(fitSize({ width: 25000, height: 20000 }, map)).toEqual({ width: 25000, height: 20000 });
+    expect(fitSize({ width: 70000, height: 1000 }, map)).toEqual({ width: 65535, height: 936 });
+    // 1.12 gigapixels, over the limit
+    expect(fitSize({ width: 35000, height: 32000 }, map)).toEqual({ width: 33072, height: 30237 });
+  });
+
+  it('keeps every map within the band decoders\' cap, and a scaled one below what the browser decodes', () => {
+    for (const size of [{ width: 35000, height: 32000 }, { width: 32767, height: 32767 }, { width: 65535, height: 65535 }]) {
+      const fitted = fitSize(size, map);
+      expect(fitted.width * fitted.height).toBeLessThanOrEqual(IMAGE_PRESETS.map.maxPixels);
+    }
+    // A source the browser decodes is scaled on a canvas, which holds up to 2^28 pixels, as a bitmap of it does.
+    expect(DECODED_MAX_PIXELS).toBeLessThan(IMAGE_PRESETS.map.maxPixels);
+  });
+
+  it('lets a fit go past a WebP side; the renderer writes such a picture as PNG', () => {
+    const generous = { kind: 'fit', maxWidth: 40000, maxHeight: 40000 } as const;
+    expect(fitSize({ width: 30000, height: 100 }, generous)).toEqual({ width: 30000, height: 100 });
+    expect(fitSize({ width: 100, height: 20000 }, generous)).toEqual({ width: 100, height: 20000 });
   });
 });
 
@@ -37,6 +85,12 @@ describe('vectorRasterSize', () => {
     expect(vectorRasterSize({ width: 24, height: 24 }, { kind: 'fit', maxWidth: 400, maxHeight: 400 })).toEqual({ width: 400, height: 400 });
   });
 
+  it('fills a map within its area limit', () => {
+    const map = { kind: 'fit', ...IMAGE_PRESETS.map } as const;
+    expect(vectorRasterSize({ width: 400, height: 200 }, map)).toEqual({ width: 23170, height: 11585 });
+    expect(vectorRasterSize({ width: 100, height: 100 }, map)).toEqual({ width: 16383, height: 16383 });
+  });
+
   it('gives a frame enough pixels to crop from', () => {
     const frame = { kind: 'frame', placement: tokenCropPlacement(1, { x: 0, y: 0 }), minSize: 256, maxSize: 400 } as const;
     expect(vectorRasterSize({ width: 100, height: 50 }, frame)).toEqual({ width: 2048, height: 1024 });
@@ -50,6 +104,7 @@ describe('token frames', () => {
     expect(frameSize({ width: 350, height: 350 }, placement, 256, 400)).toBe(280);
     expect(frameSize({ width: 100, height: 100 }, placement, 256, 400)).toBe(256);
     expect(frameSize({ width: 2048, height: 2048 }, tokenCropPlacement(3, { x: 0, y: 0 }), 256, 400)).toBe(400);
+    expect(frameSize({ width: 40000, height: 40000 }, placement, 256, 40000)).toBe(WEBP_MAX_SIDE);
   });
 
   it('place the image exactly where the crop editor shows it', () => {

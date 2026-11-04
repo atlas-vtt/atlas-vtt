@@ -263,6 +263,13 @@ $changelog-scroll-fade: $spacing-xl;
     gap: $spacing-s;
   }
 
+  .atlas-changelog-group {
+    margin: 0;
+    color: var(--text-normal);
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+  }
+
   .atlas-changelog-category {
     margin: 0;
     color: var(--text-muted);

@@ -1,0 +1,68 @@
+@use '../../../../styles/tokens' as *;
+
+// Tabs in the native card: a Tabs block's sections, a Spells block's levels.
+// The strip stands where a section heading would, in its type (small caps in
+// the accent, over a faint rule), so it reads as part of the statblock; the
+// open tab is the one in the accent with the accent under it, the others
+// muted. The companion theme sets its heading face on the heading classes
+// only, so the tabs keep the interface font.
+
+.atlas-sb-sheet {
+  .atlas-sb-tabs {
+    break-inside: avoid;
+  }
+
+  .atlas-sb-tabstrip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs $spacing-m;
+    border-bottom: 1px solid color-mix(in oklch, var(--text-accent) 30%, transparent);
+  }
+
+  // Two classes: above Obsidian's `button:not(.clickable-icon)` look.
+  .atlas-sb-tab.atlas-sb-tab {
+    height: auto;
+    margin: 0 0 -1px;
+    padding: $spacing-xs 0;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text-normal);
+    }
+
+    &[aria-selected='true'] {
+      border-bottom-color: var(--interactive-accent);
+      color: var(--text-accent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--background-modifier-border-focus);
+      outline-offset: 2px;
+      border-radius: $radius-s;
+    }
+  }
+
+  .atlas-sb-tabpanel {
+    padding-top: $spacing-s;
+  }
+
+  // A Spells group's levels stand under its loose lines, a line's gap below them.
+  .atlas-sb-spell-group > .atlas-sb-spell-tabs {
+    margin-top: $spacing-s;
+  }
+
+  .atlas-sb-spell-panel {
+    text-wrap: pretty;
+  }
+}

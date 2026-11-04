@@ -7,6 +7,7 @@ import type { TransferMode } from '../../../../services/assetTransfer/transferPl
 import { showAtlasToast } from '../../../../react/components/AtlasToast';
 import { chooseAction } from '../../../../ui/confirmDialog';
 import type { AnyAsset, CollectionOption } from '../types';
+import { t } from '../../../../i18n';
 
 export interface CollectionTransferContext {
   app: ObsidianApp;
@@ -25,8 +26,6 @@ export function transferTargets(collections: readonly CollectionOption[], curren
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 }
 
-const scenesText = (count: number): string => (count === 1 ? '1 linked scene' : `${count} linked scenes`);
-
 /**
  * The ids to transfer: `assets`, plus the scenes they are linked with if the
  * user takes those along (declining removes the links, since links never cross
@@ -37,19 +36,17 @@ async function idsToTransfer(app: ObsidianApp, assetService: AssetService, asset
   const linked = await linkedScenesFor(app, assetService, ids, target.id, mode);
   if (linked.length === 0) return ids;
 
-  const verb = mode === 'move' ? 'Move' : 'Copy';
-  const subject = assets.length === 1 ? `"${assets[0]!.name}"` : 'The selection';
-  const relation = mode === 'move' ? 'is linked with' : 'links to';
-  const names = linked.map((scene) => `"${scene.name}"`).join(', ');
+  const subject = assets.length === 1 ? t('common.quoted', { name: assets[0]!.name }) : t('transfer.selection');
+  const names = linked.map((scene) => t('common.quoted', { name: scene.name })).join(', ');
   const choice = await chooseAction({
-    title: 'Linked scenes',
+    title: t('transfer.linked.title'),
     message: [
-      `${subject} ${relation} ${linked.length === 1 ? 'another scene' : `${linked.length} other scenes`} of this collection: ${names}.`,
-      `Scenes only link to scenes of their own collection. Take the linked scenes to ${target.name} to keep the links, or remove the links.`,
+      t(`transfer.linked.${mode}`, { subject, count: linked.length, names }),
+      t('transfer.linked.rule', { target: target.name }),
     ],
     choices: [
-      { label: `${verb} without links`, value: 'unlink' as const },
-      { label: `${verb} with ${scenesText(linked.length)}`, value: 'along' as const, style: 'cta' },
+      { label: t(`transfer.${mode}.withoutLinks`), value: 'unlink' as const },
+      { label: t(`transfer.${mode}.withScenes`, { count: linked.length }), value: 'along' as const, style: 'cta' },
     ],
   });
   if (choice === null) return null;
@@ -69,26 +66,22 @@ export async function transferToCollection(
 ): Promise<void> {
   const { assetService } = context;
   if (!assetService || assets.length === 0) return;
-  const chosen = assets.length === 1 ? `"${assets[0]!.name}"` : `${assets.length} items`;
+  const chosen = assets.length === 1 ? t('common.quoted', { name: assets[0]!.name }) : t('count.items', { count: assets.length });
   let what = chosen;
   try {
     const assetIds = await idsToTransfer(context.app, assetService, assets, target, mode);
     if (!assetIds) return;
     const along = assetIds.length - assets.length;
-    if (along > 0) what = `${chosen} and ${scenesText(along)}`;
+    if (along > 0) what = t('transfer.andScenes', { what: chosen, count: along });
     const result = await transferAssets(context.app, assetService, { assetIds, targetCollectionId: target.id, mode });
     if (mode === 'move') {
       const moved = new Set(result.assets.map((record) => record.id));
       context.setAssets((prev) => prev.filter((asset) => !moved.has(asset.id)));
       context.setSelectedAssetIds((prev) => prev.filter((id) => !moved.has(id)));
     }
-    const unlinked = result.unlinkedStatblocks.length;
-    const note = unlinked === 0 ? '' : unlinked === 1
-      ? `. "${result.unlinkedStatblocks[0]!.name}" arrived without its statblock, which stays with the original`
-      : `. ${unlinked} characters arrived without their statblocks, which stay with the originals`;
-    showAtlasToast(`${mode === 'move' ? 'Moved' : 'Copied'} ${what} to ${target.name}${note}`, unlinked > 0 ? LONG_TOAST_DURATION : undefined);
+    showAtlasToast(t(mode === 'move' ? 'transfer.moved' : 'transfer.copied', { what, target: target.name }));
   } catch (error) {
     console.error(`[Atlas] Could not ${mode} assets to ${target.id}:`, error);
-    showAtlasToast(`Could not ${mode} ${what}: ${error instanceof Error ? error.message : String(error)}`, LONG_TOAST_DURATION);
+    showAtlasToast(t(`transfer.${mode}Failed`, { what, error: error instanceof Error ? error.message : String(error) }), LONG_TOAST_DURATION);
   }
 }

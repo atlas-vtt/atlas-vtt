@@ -1,3 +1,5 @@
+import { getLocale } from '../i18n';
+
 /** Time units from largest to smallest, each with its length in milliseconds. */
 const UNITS: ReadonlyArray<readonly [Intl.RelativeTimeFormatUnit, number]> = [
   ['year', 365 * 24 * 60 * 60 * 1000],
@@ -11,7 +13,7 @@ const UNITS: ReadonlyArray<readonly [Intl.RelativeTimeFormatUnit, number]> = [
 let formatter: Intl.RelativeTimeFormat | undefined;
 
 function getFormatter(): Intl.RelativeTimeFormat {
-  formatter ??= new Intl.RelativeTimeFormat(navigator.language || 'en', { numeric: 'auto' });
+  formatter ??= new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto' });
   return formatter;
 }
 

@@ -1,0 +1,89 @@
+// Lists edited in place (§7.6): chips for a list field. An ability of a list
+// is typed in its own place (`EntryInlineEditor`, _pane-entry-editor.scss); its menu
+// and drag handle stand in the card's gutter (interaction/, spec §3).
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  // ── Chips ───────────────────────────────────────────────────────────────
+  .atlas-sb-pane-chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  .atlas-sb-pane-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    height: 20px;
+    padding: 0 0 0 $spacing-s;
+    border-radius: $radius-full;
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  // A choice's picks: the chip holds its number (typed in place) and the unit after it.
+  .atlas-sb-pane-pick {
+    color: var(--text-normal);
+  }
+
+  // The number reads as the chip's text and shows a field where the pointer or focus is.
+  input.atlas-sb-pane-input.atlas-sb-pane-pick__number {
+    min-width: 2ch;
+    padding: 0 2px;
+    border-radius: $radius-s;
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+
+    &:hover,
+    &:focus {
+      background: var(--background-modifier-form-field);
+    }
+  }
+
+  .atlas-sb-pane-pick__unit {
+    color: var(--text-muted);
+  }
+
+  // A part of the stored line that names no option: kept as written, marked like a value that does not fit.
+  .atlas-sb-pane-pick--unread {
+    background: color-mix(in oklch, var(--text-warning) 14%, transparent);
+    color: var(--text-normal);
+  }
+
+  // The input that adds a pick, with the options under it.
+  .atlas-sb-pane-pick__add {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  .atlas-sb-pane-chip__remove {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: $radius-full;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    cursor: pointer;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+
+    &:hover {
+      background: var(--background-modifier-active-hover);
+      color: var(--text-normal);
+    }
+  }
+}

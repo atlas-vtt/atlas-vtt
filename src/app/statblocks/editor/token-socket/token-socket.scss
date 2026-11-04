@@ -1,0 +1,13 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The token socket (statblock beside its note) and its panel
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported by TokenSocket.tsx, outside the `.atlas-vtt-plugin` scope of
+// styles/main.scss: the rules take that scope themselves. The panel is drawn
+// in the window's body and carries `.atlas-vtt-plugin` itself.
+//
+// Only transform and opacity move: the hover ring, the wash and the badge
+// fade in, the press scales the frame.
+
+@use 'socket';
+@use 'token-panel';
+@use 'token-grid';

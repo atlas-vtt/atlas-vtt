@@ -1,0 +1,187 @@
+/// <reference types="vite/client" />
+import { Container, Matrix, RenderTexture, Sprite, Texture, type TextureSource, type WebGLRenderer } from 'pixi.js';
+import { describe, expect, it } from 'vitest';
+import { LIGHTING_QUALITY, LIGHTING_QUALITY_LEVELS, type LightingQuality, type LightingQualityLevel } from '../../../../lighting/lightingQuality';
+import type { MapBounds } from '../../../../vision/visibility';
+import { LightingEngine } from '../LightingEngine';
+import { costScene } from './costScene';
+import { createTestRenderer } from './gpuTestUtils';
+
+const STRICT = import.meta.env.VITE_PERF_STRICT === '1';
+const SCREEN = { width: 1440, height: 900 };
+const FRAMES = 7;
+
+interface TimerExt { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number }
+
+/** Bytes per texel of the formats the engine allocates. */
+const BYTES: Record<string, number> = { rgba16float: 8, r16float: 2, r8unorm: 1, rgba8unorm: 4, bgra8unorm: 4, r32float: 4, rgba32float: 16 };
+
+/** Graphics memory of the textures `renderer` holds now, by source. */
+function heldTextures(renderer: WebGLRenderer): Map<TextureSource, number> {
+  return new Map(renderer.texture.managedTextures.filter((source): source is TextureSource => !!source).map((source) => [source, source.pixelWidth * source.pixelHeight * (BYTES[source.format] ?? 4) * (source.mipLevelCount > 1 ? 4 / 3 : 1)]));
+}
+
+/** Bytes of the textures `renderer` holds now that it did not hold in `before`. */
+function heldBytes(renderer: WebGLRenderer, before: Map<TextureSource, number>): number {
+  let bytes = 0;
+  for (const [source, size] of heldTextures(renderer)) if (!before.has(source)) bytes += size;
+  return bytes;
+}
+
+async function gpuMs(gl: WebGL2RenderingContext, ext: TimerExt | null, fn: () => void): Promise<number | null> {
+  if (!ext) {
+    fn();
+    return null;
+  }
+  gl.getParameter(ext.GPU_DISJOINT_EXT);
+  const query = gl.createQuery()!;
+  gl.beginQuery(ext.TIME_ELAPSED_EXT, query);
+  fn();
+  gl.endQuery(ext.TIME_ELAPSED_EXT);
+  while (!gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE)) await new Promise((r) => setTimeout(r, 5));
+  const ns = gl.getQueryParameter(query, gl.QUERY_RESULT) as number;
+  gl.deleteQuery(query);
+  return gl.getParameter(ext.GPU_DISJOINT_EXT) ? null : ns / 1e6;
+}
+
+/** Waits until the graphics device has done everything asked of it: a pixel read back. */
+function settleGpu(gl: WebGL2RenderingContext): void {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+}
+
+/** Median over five runs of the wall-clock ms one of 30 back-to-back calls of `frame` takes until the device is done. */
+async function throughputMs(gl: WebGL2RenderingContext, frame: () => void): Promise<number> {
+  const runs: number[] = [];
+  for (let run = 0; run < 5; run++) {
+    settleGpu(gl);
+    const started = performance.now();
+    for (let i = 0; i < 30; i++) frame();
+    settleGpu(gl);
+    runs.push((performance.now() - started) / 30);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  return median(runs)!;
+}
+
+function median(values: (number | null)[]): number | null {
+  const kept = values.filter((value): value is number => value !== null).sort((a, b) => a - b);
+  return kept.length > 0 ? Math.round(kept[Math.floor(kept.length / 2)]! * 100) / 100 : null;
+}
+
+interface Cost {
+  level: LightingQualityLevel;
+  map: string;
+  texel: number;
+  /** Graphics memory the lighting holds for the map, MB: its world textures, and with the composite's screen-sized textures after rendering. */
+  worldMb: number;
+  memoryMb: number;
+  /** GPU milliseconds: the first build, the bounce, one frame of the composite over the whole map and close up, one flicker redraw. */
+  build: number | null;
+  bounce: number | null;
+  frameFit: number | null;
+  frameClose: number | null;
+  flicker: number | null;
+  /**
+   * Wall-clock ms a frame takes on a Retina-sized target (the screen at resolution 2, 2880 × 1800
+   * pixels) close up, the map filling the screen: 30 renders back to back, then a pixel read back.
+   * Timer queries do not hold on ANGLE's Metal backend once renders queue up.
+   */
+  retinaClose: number;
+  /** The same with the composite on every pixel, measured in turn with `retinaClose` (the levels that work on fewer). */
+  retinaCloseEveryPixel: number | null;
+}
+
+/** A white map lit by `engine`; each call renders one frame through a camera at `scale` centred on the map. */
+function framer(renderer: WebGLRenderer, engine: LightingEngine, target: RenderTexture, bounds: MapBounds): (scale: number) => () => void {
+  const stage = new Container();
+  const map = new Sprite(Texture.WHITE);
+  map.setSize(bounds.width, bounds.height);
+  const world = new Container();
+  world.addChild(map, engine.layer);
+  stage.addChild(world);
+  return (scale) => () => {
+    world.scale.set(scale);
+    world.position.set(SCREEN.width / 2 - (bounds.width / 2) * scale, SCREEN.height / 2 - (bounds.height / 2) * scale);
+    engine.setView(new Matrix(scale, 0, 0, scale, world.x, world.y).invert(), scale);
+    renderer.render({ container: stage, target, clear: true });
+  };
+}
+
+async function measure(renderer: WebGLRenderer, ext: TimerExt | null, level: LightingQualityLevel, bounds: MapBounds): Promise<Cost> {
+  const before = heldTextures(renderer);
+  const engine = new LightingEngine(renderer, LIGHTING_QUALITY[level]);
+  const target = RenderTexture.create(SCREEN);
+  const retina = RenderTexture.create({ ...SCREEN, resolution: 2 });
+  const lit = costScene(bounds, 3);
+  try {
+    engine.setEnabled(true);
+    engine.setMode('player');
+    const build = await gpuMs(renderer.gl, ext, () => engine.update(lit));
+    const bounce = await gpuMs(renderer.gl, ext, () => engine.flush());
+    const worldBytes = heldBytes(renderer, before);
+    const frame = framer(renderer, engine, target, bounds);
+    const fit = frame(Math.min(SCREEN.width / bounds.width, SCREEN.height / bounds.height));
+    const close = frame(1);
+    const fits: (number | null)[] = [];
+    const closes: (number | null)[] = [];
+    const flickers: (number | null)[] = [];
+    for (let i = 0; i < FRAMES; i++) {
+      fits.push(await gpuMs(renderer.gl, ext, fit));
+      closes.push(await gpuMs(renderer.gl, ext, close));
+      flickers.push(await gpuMs(renderer.gl, ext, () => engine.animate(10_000 + i * 1000)));
+    }
+    const retinaFrame = framer(renderer, engine, retina, bounds)(1);
+    const quality = LIGHTING_QUALITY[level];
+    const reduced: number[] = [];
+    const every: number[] = [];
+    const everyPixel: LightingQuality = { ...quality };
+    delete everyPixel.compositePixelRatio;
+    for (let round = 0; round < (quality.compositePixelRatio ? 3 : 1); round++) {
+      reduced.push(await throughputMs(renderer.gl, retinaFrame));
+      if (!quality.compositePixelRatio) continue;
+      engine.setQuality(everyPixel);
+      every.push(await throughputMs(renderer.gl, retinaFrame));
+      engine.setQuality(quality);
+    }
+    const bytes = heldBytes(renderer, before);
+    const texel = Math.max(2, Math.max(bounds.width, bounds.height) / LIGHTING_QUALITY[level].maxTexels);
+    return {
+      level, map: `${bounds.width}x${bounds.height}`, texel: Math.round(texel * 100) / 100, worldMb: Math.round(worldBytes / 1e5) / 10, memoryMb: Math.round(bytes / 1e5) / 10,
+      build: median([build]), bounce: median([bounce]), frameFit: median(fits), frameClose: median(closes), flicker: quality.picture === 'polygons' ? 0 : median(flickers),
+      retinaClose: median(reduced)!, retinaCloseEveryPixel: median(every),
+    };
+  } finally {
+    engine.destroy();
+    target.destroy(true);
+    retina.destroy(true);
+  }
+}
+
+describe('lighting quality cost', () => {
+  it('holds less graphics memory at each lower quality on a large map, and measures the GPU time of each (budgets with VITE_PERF_STRICT)', { timeout: 600_000 }, async () => {
+    const renderer = await createTestRenderer(64);
+    try {
+      const debug = renderer.gl.getExtension('WEBGL_debug_renderer_info');
+      const gpu = debug ? String(renderer.gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : 'unknown';
+      const timer = renderer.gl.getExtension('EXT_disjoint_timer_query_webgl2') as TimerExt | null;
+      const ext = timer && !gpu.includes('SwiftShader') ? timer : null;
+      // The first engine on a context compiles the shaders: measured once and dropped.
+      await measure(renderer, ext, 'high', { width: 1024, height: 1024 });
+      const costs: Cost[] = [];
+      for (const bounds of [{ width: 3682, height: 4555 }, { width: 8192, height: 8192 }]) {
+        for (const level of LIGHTING_QUALITY_LEVELS) costs.push(await measure(renderer, ext, level, bounds));
+      }
+      console.info(`lighting quality cost (${gpu}):\n${costs.map((cost) => JSON.stringify(cost)).join('\n')}`);
+      const large = (level: LightingQualityLevel): Cost => costs.find((cost) => cost.level === level && cost.map === '8192x8192')!;
+      expect(large('balanced').worldMb).toBeLessThan(large('high').worldMb / 2);
+      expect(large('saver').worldMb).toBeLessThan(large('balanced').worldMb / 2);
+      expect(large('saver').worldMb).toBeLessThan(30);
+      if (STRICT && ext) {
+        expect(large('saver').frameFit!).toBeLessThanOrEqual(large('high').frameFit! * 1.1);
+      }
+    } finally {
+      renderer.destroy();
+    }
+  });
+});

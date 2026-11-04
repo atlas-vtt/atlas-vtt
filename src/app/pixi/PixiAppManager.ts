@@ -3,11 +3,10 @@ import { Viewport } from "pixi-viewport";
 import { SmoothDecelerate } from "./SmoothDecelerate";
 import { RenderScheduler } from "./RenderScheduler";
 import { destroyTree } from "./utils/destroyTree";
-import { usesCanvasRenderer } from "./utils/rendererType";
-import { webglAvailable } from "./utils/webglAvailable";
-import { showSoftwareRenderingNotice } from "./softwareRenderingNotice";
+import { addRendererSystemsByEntry } from "./utils/rendererSystems";
+import { showNoGraphicsNotice } from './noGraphicsNotice';
+import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
 
-type RendererPreference = 'webgl' | 'canvas';
 
 export class PixiAppManager {
   private _isDestroyed: boolean = false;
@@ -20,17 +19,11 @@ export class PixiAppManager {
   private _canvasContextMenuPreventer: ((e: Event) => void) | null = null;
   public onRecoverCallback?: () => void;
 
-  /**
-   * `throughBackBuffer`: WebGL draws through a multisampled back buffer and the canvas gets no
-   * samples. For a view that will light its scenes: dynamic lighting needs the back buffer anyway
-   * and from resolution 2 draws it plain (`BackBufferHold`), so samples on the canvas were 190 to
-   * 250 MB of graphics memory nothing drew into. Unlit, the back buffer costs about 80 MB more
-   * than samples on the canvas, so a view without dynamic lighting keeps those.
-   */
-  constructor(initialWidth: number, initialHeight: number, private readonly throughBackBuffer = false) {
+  constructor(initialWidth: number, initialHeight: number) {
     this.width = initialWidth;
     this.height = initialHeight;
     this.canvasEl = createEl('canvas');
+    addRendererSystemsByEntry();
     this.app = new Application();
   }
 
@@ -41,7 +34,6 @@ export class PixiAppManager {
     }
     try {
       await this.initRenderer();
-      if (usesCanvasRenderer(this.app.renderer)) showSoftwareRenderingNotice();
 
       this.app.stage.eventMode = 'static'; // Or 'passive'. 'static' means it can be an event target.
       this.app.stage.interactiveChildren = true;
@@ -100,42 +92,41 @@ export class PixiAppManager {
   }
 
   /**
-   * Atlas ships GLSL shaders only; without WebGL it draws with Canvas 2D instead of WebGPU.
-   * PIXI picks Canvas 2D by itself only when WebGL is missing at its first check, whose answer
-   * it keeps, so Atlas asks again before every start (`webglAvailable`) and goes straight to
-   * Canvas 2D when WebGL is gone: PIXI never builds a WebGL renderer that cannot start.
-   *
-   * Should WebGL fail to start all the same, Canvas 2D gets one try of its own, on a new
-   * canvas, since one that was asked for WebGL may never give a 2D context. PIXI keeps no
-   * reference to the renderer whose start threw, so that one cannot be destroyed: its
-   * scheduler stays on PIXI's system ticker, with nothing to do.
+   * Atlas draws with WebGL alone: its grid, lights, lasers and liquids are GLSL programs, and a
+   * machine without WebGL (a blocklisted driver, some virtual machines) is not one it runs on.
+   * When WebGL cannot start the user is told what to turn on, and the view is left without a map.
    */
   private async initRenderer(): Promise<void> {
-    if (!webglAvailable()) {
-      await this.app.init(this.rendererOptions(['canvas']));
-      return;
-    }
     try {
-      await this.app.init(this.rendererOptions(['webgl', 'canvas']));
+      await this.app.init(this.rendererOptions());
     } catch (error) {
-      console.error('[PixiAppManager] WebGL could not start, drawing with Canvas 2D instead:', error);
-      this.canvasEl = createEl('canvas');
-      await this.app.init(this.rendererOptions(['canvas']));
+      showNoGraphicsNotice();
+      throw error;
     }
   }
 
-  private rendererOptions(preference: RendererPreference[]): Partial<ApplicationOptions> {
+  private rendererOptions(): Partial<ApplicationOptions> {
     return {
-      preference,
+      preference: 'webgl',
       canvas: this.canvasEl,
       width: this.width,
       height: this.height,
       backgroundColor: 0xf4e8d0, // Default parchment color
       backgroundAlpha: 1,
       antialias: true,
-      useBackBuffer: this.throughBackBuffer,
+      // WebGL draws through a multisampled back buffer and the canvas gets no samples: dynamic
+      // lighting needs the back buffer anyway and from resolution 2 draws it plain
+      // (`BackBufferHold`), so samples on the canvas were 190 to 250 MB of graphics memory nothing
+      // drew into. A scene that is not lit pays about 80 MB more than samples on the canvas would.
+      useBackBuffer: true,
       autoDensity: true,
       resolution: window.devicePixelRatio || 1,
+      // Asks for the faster of two graphics chips, as Foundry and Owlbear Rodeo do; Chromium on
+      // Windows keeps the chip its GPU process started on whatever this says.
+      powerPreference: 'high-performance',
+      // The map has no accessible display objects; since PIXI 8.22 Tab would otherwise
+      // switch on its accessibility layer, which walks the whole stage after every render.
+      accessibilityOptions: { activateOnTab: false },
     };
   }
 
@@ -171,8 +162,8 @@ export class PixiAppManager {
     this.viewport
       .drag({ mouseButtons: 'right', pressDrag: true })
       .clampZoom({
-        minScale: 0.1,
-        maxScale: 5,
+        minScale: MIN_ZOOM,
+        maxScale: MAX_ZOOM,
       });
     this.viewport.plugins.add('decelerate', new SmoothDecelerate(this.viewport));
     
@@ -195,26 +186,48 @@ export class PixiAppManager {
   }
   
 
+  /**
+   * The map keeps its centre: what was in the middle of the pane stays there when a sidebar or a
+   * split changes the pane's size, so the view loses or gains the same on both sides. The
+   * players' frame is centred on that point, and would slide by half of what the pane lost if
+   * the pane kept its top left corner instead.
+   *
+   * A pane without a size is hidden (`display: none` while another Obsidian tab covers it), and
+   * the screen keeps the size it had. PIXI leaves the canvas as it is for a side of 0, but the
+   * viewport would take it, and with it everything that reads what the screen shows: the centre
+   * kept here, and the world rectangle the players' frame is fitted to.
+   */
   resize(newWidth: number, newHeight: number): void {
-    if (this._isDestroyed) return;
+    if (this._isDestroyed || newWidth <= 0 || newHeight <= 0) return;
     this.width = newWidth;
     this.height = newHeight;
 
-    if (this.app.renderer) {
-      this.app.renderer.resize(newWidth, newHeight);
-      // Resizing clears the drawing buffer
-      this.renderScheduler?.requestRender();
-    }
+    if (this.app.renderer) this.app.renderer.resize(newWidth, newHeight);
 
-    if (this.viewport) {
-      this.viewport.resize(newWidth, newHeight);
-    }
+    if (this.viewport) this.resizeViewport(this.viewport, newWidth, newHeight);
     
     // Update canvas element dimensions
     if (this.canvasEl) {
       this.canvasEl.style.width = `${newWidth}px`;
       this.canvasEl.style.height = `${newHeight}px`;
     }
+
+    // Resizing clears the drawing buffer. A pane resizes from a ResizeObserver, after the frame's
+    // render and before the paint: rendering only on the next tick showed a blank frame, so a
+    // sidebar sliding open made the map flicker.
+    if (this.app.renderer) this.renderScheduler?.renderNow();
+  }
+
+  /** Gives `viewport` its new screen around the world point that was in the middle of the old one. */
+  private resizeViewport(viewport: Viewport, width: number, height: number): void {
+    if (viewport.screenWidth === width && viewport.screenHeight === height) return;
+    const { x, y } = viewport.center;
+    viewport.resize(width, height);
+    const moved = viewport.center.x !== x || viewport.center.y !== y;
+    viewport.moveCenter(x, y);
+    // As after a pan: what follows the camera (the laser's dot, handles, what is drawn for the screen only) follows.
+    // `ensureVisible` is the viewport's name for a move of its own that keeps something in view.
+    if (moved) viewport.emit('moved', { viewport, type: 'ensureVisible' });
   }
 
   destroy(): void {

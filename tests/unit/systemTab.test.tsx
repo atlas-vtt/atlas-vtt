@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React, { useState } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -6,7 +7,7 @@ import { rulesOfPreset } from '../../src/app/gameSystems/systemRules';
 import { SystemTab } from '../../src/app/react/components/collection-settings/SystemTab';
 import { SystemPresetService } from '../../src/app/services/SystemPresetService';
 import type { SystemRules } from '../../src/app/types/systemPresetTypes';
-import { memorySettings } from '../mocks/memorySettings';
+import { memoryPresets } from '../mocks/memoryPresets';
 
 const [daggerheart, dnd5e] = BUILT_IN_SYSTEM_PRESETS;
 
@@ -39,7 +40,7 @@ afterEach(cleanup);
 
 describe('SystemTab', () => {
   it('shows custom rules as their own entry and applies a preset when it is chosen', () => {
-    const service = new SystemPresetService(memorySettings());
+    const service = new SystemPresetService(memoryPresets());
     render(<Harness service={service} initial={{ gridDefaults: structuredClone(dnd5e!.rules.gridDefaults), conditions: [] }} />);
 
     expect(radio('Custom').getAttribute('aria-checked')).toBe('true');
@@ -51,7 +52,7 @@ describe('SystemTab', () => {
   });
 
   it('marks an edited preset and resets it', () => {
-    const service = new SystemPresetService(memorySettings());
+    const service = new SystemPresetService(memoryPresets());
     render(<Harness service={service} initial={structuredClone(dnd5e!.rules)} />);
     fireEvent.click(radio('D&D 5e'));
     fireEvent.click(screen.getByText('Edit rules'));
@@ -62,7 +63,7 @@ describe('SystemTab', () => {
   });
 
   it('saves the current rules as a new preset and selects it', () => {
-    const service = new SystemPresetService(memorySettings());
+    const service = new SystemPresetService(memoryPresets());
     render(<Harness service={service} initial={structuredClone(daggerheart!.rules)} />);
 
     fireEvent.click(screen.getByRole('button', { name: /Save as Preset/ }));

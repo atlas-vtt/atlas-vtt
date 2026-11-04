@@ -1,36 +1,42 @@
 /**
- * Reads user presets from the settings file. The file can be edited by hand or
- * written by an older or newer Atlas, so every field is checked and an entry
- * that cannot be used is left out instead of breaking the list.
+ * Reads user presets from their files, and the game system rules they and campaigns store. A file
+ * can be edited by hand or written by an older or newer Atlas, so every field is checked and an
+ * entry that cannot be used is left out instead of breaking the list.
  */
 
 import { HP_RESOURCE, parseResourceDefinitions, withLegacyBars } from '../resources/resourceDefinitions';
 import { isValidConeAngle, isValidRangeBandThreshold } from '../grid/measurementFormat';
+import { isUnitDistance } from '../grid/unitDistance';
 import {
   CONDITION_EFFECTS,
   type CollectionGridDefaults,
   type ConditionDefinition,
   type DiagonalRule,
+  type DifficultTerrainRule,
   type GridUnitType,
   type MeasurementMode,
   type RangeBand,
 } from '../types/collectionSettingsTypes';
 import type { DiceRules } from '../types/diceRulesTypes';
-import { BUILT_IN_ID_PREFIX, type SystemPreset } from '../types/systemPresetTypes';
+import { BUILT_IN_ID_PREFIX, type SystemPreset, type SystemRules } from '../types/systemPresetTypes';
 import { WIDGET_ICON_PATHS, resolveWidgetIcon, type WidgetIcon } from '../types/widgetIcons';
 import type { AnyWidget } from '../types/widgetTypes';
 import { isValidClockSegments } from '../utils/clockWidget';
-import { CRIT_RULES, isValidDefaultRoll, parseExplodeRule } from './diceRules';
+import { CRIT_RULES, parseExplodeRule } from './diceRules';
+import { parseRollGroups } from './diceSets';
 import { parseInitiativeRules } from './initiativeRules';
 import { parseLightPresets } from './lightPresetValidation';
+import { parseItemRarities } from './itemRarities';
 import { GENERIC_SENSES } from './senses/generic';
 import { parseSenseDefinitions } from './senseValidation';
 import { parseVisionDefaults } from './visionDefaults';
 import { isHexColor } from '../utils/hexColor';
+import { parseStatblockRoles } from '../statblocks/roles/roleValidation';
 
 const UNIT_TYPES: readonly GridUnitType[] = ['feet', 'yards', 'meters', 'units', 'custom'];
 const MEASUREMENT_MODES: readonly MeasurementMode[] = ['metric', 'abstract'];
 const DIAGONAL_RULES: readonly DiagonalRule[] = ['equidistant', 'alternating', 'euclidean'];
+const DIFFICULT_TERRAIN_RULES: readonly DifficultTerrainRule[] = ['double', 'none'];
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -53,9 +59,9 @@ function parseBand(raw: unknown): RangeBand | null {
 
 function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
   if (!isRecord(raw)) return null;
-  const { unitType, unitDistance, measurementMode, diagonalRule, coneAngle, abstractRangeBands } = raw;
+  const { unitType, unitDistance, measurementMode, diagonalRule, difficultTerrain, coneAngle, abstractRangeBands } = raw;
   if (!isOneOf(UNIT_TYPES, unitType) || !isOneOf(MEASUREMENT_MODES, measurementMode)) return null;
-  if (typeof unitDistance !== 'number' || !(unitDistance > 0)) return null;
+  if (!isUnitDistance(unitDistance)) return null;
   const bands = Array.isArray(abstractRangeBands) ? abstractRangeBands.map(parseBand) : [];
   if (bands.some((band) => band === null)) return null;
   return {
@@ -63,6 +69,7 @@ function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
     unitDistance,
     measurementMode,
     diagonalRule: isOneOf(DIAGONAL_RULES, diagonalRule) ? diagonalRule : 'equidistant',
+    ...(isOneOf(DIFFICULT_TERRAIN_RULES, difficultTerrain) && { difficultTerrain }),
     ...(isValidConeAngle(coneAngle) && { coneAngle }),
     abstractRangeBands: bands as RangeBand[],
   };
@@ -120,7 +127,8 @@ function parseWidget(raw: unknown): AnyWidget | null {
 }
 
 function parseDiceRules(raw: unknown): DiceRules | null {
-  if (!isRecord(raw) || typeof raw.defaultRoll !== 'string' || !isValidDefaultRoll(raw.defaultRoll)) return null;
+  // One dice group, or the groups of a dice set written for older versions (`1d20+1d6`).
+  if (!isRecord(raw) || typeof raw.defaultRoll !== 'string' || !parseRollGroups(raw.defaultRoll)) return null;
   if (!isOneOf(CRIT_RULES, raw.crit)) return null;
   const explode = parseExplodeRule(raw.explode);
   return { defaultRoll: raw.defaultRoll.trim(), crit: raw.crit, ...(explode && { explode }) };
@@ -132,44 +140,57 @@ function parseEnabledFlags(raw: unknown): Record<string, boolean> {
   return Object.fromEntries(Object.entries(raw).filter(([, on]) => on === true).map(([key]) => [key, true]));
 }
 
+/**
+ * The rules of a stored game system (a preset's `rules`), or null without usable measurement or a
+ * list of conditions. Entries that cannot be used are left out; senses in the default vision are
+ * kept only where the rules' own senses, else the generic ones, define them.
+ */
+export function parseSystemRules(raw: unknown): SystemRules | null {
+  if (!isRecord(raw)) return null;
+  const gridDefaults = parseGridDefaults(raw.gridDefaults);
+  if (!gridDefaults || !Array.isArray(raw.conditions)) return null;
+  const conditions = raw.conditions.map(parseCondition).filter((c): c is ConditionDefinition => c !== null);
+  const widgets = Array.isArray(raw.widgets)
+    ? raw.widgets.map(parseWidget).filter((w): w is AnyWidget => w !== null)
+    : [];
+  const defaultWidgets = parseEnabledFlags(raw.defaultWidgets);
+  const dice = parseDiceRules(raw.dice);
+  const diceSetId = isNonEmptyString(raw.diceSetId) ? raw.diceSetId : undefined;
+  const initiative = parseInitiativeRules(raw.initiative);
+  // Rules saved before resources existed track the bars their default widgets switched on.
+  const resources = Array.isArray(raw.resources)
+    ? parseResourceDefinitions(raw.resources)
+    : withLegacyBars([{ ...HP_RESOURCE }], defaultWidgets);
+  const senses = parseSenseDefinitions(raw.senses);
+  const lightPresets = parseLightPresets(raw.lightPresets);
+  // An empty list names no roles: the preset's collections offer the generic ones.
+  const statblockRoles = parseStatblockRoles(raw.statblockRoles);
+  const itemRarities = parseItemRarities(raw.itemRarities);
+  // A collection set from the preset has these senses, so only they can be a default.
+  const defaultTokenVision = parseVisionDefaults(raw.defaultTokenVision, senses ?? GENERIC_SENSES);
+  return {
+    gridDefaults,
+    conditions,
+    ...(widgets.length > 0 && { widgets }),
+    ...(Object.keys(defaultWidgets).length > 0 && { defaultWidgets }),
+    ...(dice && { dice }),
+    ...(diceSetId && { diceSetId }),
+    ...(initiative && { initiative }),
+    ...(resources.length > 0 && { resources }),
+    ...(defaultTokenVision && { defaultTokenVision }),
+    ...(senses && { senses }),
+    ...(lightPresets?.length && { lightPresets }),
+    ...(statblockRoles?.length && { statblockRoles }),
+    ...(itemRarities && { itemRarities }),
+  };
+}
+
 /** A stored user preset, or null when it cannot be used. */
 export function parseUserPreset(raw: unknown): SystemPreset | null {
-  if (!isRecord(raw) || !isNonEmptyString(raw.id) || !isNonEmptyString(raw.name) || !isRecord(raw.rules)) return null;
+  if (!isRecord(raw) || !isNonEmptyString(raw.id) || !isNonEmptyString(raw.name)) return null;
   if (raw.id.startsWith(BUILT_IN_ID_PREFIX)) return null;
-  const gridDefaults = parseGridDefaults(raw.rules.gridDefaults);
-  if (!gridDefaults || !Array.isArray(raw.rules.conditions)) return null;
-  const conditions = raw.rules.conditions.map(parseCondition).filter((c): c is ConditionDefinition => c !== null);
-  const widgets = Array.isArray(raw.rules.widgets)
-    ? raw.rules.widgets.map(parseWidget).filter((w): w is AnyWidget => w !== null)
-    : [];
-  const defaultWidgets = parseEnabledFlags(raw.rules.defaultWidgets);
-  const dice = parseDiceRules(raw.rules.dice);
-  const initiative = parseInitiativeRules(raw.rules.initiative);
-  // A preset saved before resources existed tracks the bars its default widgets switched on.
-  const resources = Array.isArray(raw.rules.resources)
-    ? parseResourceDefinitions(raw.rules.resources)
-    : withLegacyBars([{ ...HP_RESOURCE }], defaultWidgets);
-  const senses = parseSenseDefinitions(raw.rules.senses);
-  const lightPresets = parseLightPresets(raw.rules.lightPresets);
-  // A collection set from the preset has these senses, so only they can be a default.
-  const defaultTokenVision = parseVisionDefaults(raw.rules.defaultTokenVision, senses ?? GENERIC_SENSES);
-  return {
-    id: raw.id,
-    name: raw.name.trim(),
-    builtIn: false,
-    rules: {
-      gridDefaults,
-      conditions,
-      ...(widgets.length > 0 && { widgets }),
-      ...(Object.keys(defaultWidgets).length > 0 && { defaultWidgets }),
-      ...(dice && { dice }),
-      ...(initiative && { initiative }),
-      ...(resources.length > 0 && { resources }),
-      ...(defaultTokenVision && { defaultTokenVision }),
-      ...(senses && { senses }),
-      ...(lightPresets?.length && { lightPresets }),
-    },
-  };
+  const rules = parseSystemRules(raw.rules);
+  return rules && { id: raw.id, name: raw.name.trim(), builtIn: false, rules };
 }
 
 /** Every usable preset in `raw`, the first one kept when ids repeat. */

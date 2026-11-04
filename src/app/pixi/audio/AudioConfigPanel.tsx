@@ -12,6 +12,8 @@ import { useDraggablePosition } from '../../react/hooks/useDraggablePosition';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { unitLabelFor } from '../../grid/measurementFormat';
+import { t } from '../../i18n';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** Convert game units (feet/meters) to world pixels. */
 function unitsToPixels(units: number, gridSize: number, unitDistance: number): number {
@@ -107,13 +109,13 @@ function AudioConfigPanelInner({
       {/* Drag handle + header */}
       <div className="atlas-audio-config__header" onPointerDown={startDrag}>
         <GripHorizontal size={14} className="atlas-audio-config__grip" />
-        <span className="atlas-audio-config__title">Sound Source</span>
+        <span className="atlas-audio-config__title">{t('audio.title')}</span>
         <CloseButton onClick={onClose} />
       </div>
 
       <div className="atlas-audio-config__body">
         {/* Sound picker */}
-        <div className="atlas-audio-config__section-label">Sound</div>
+        <div className="atlas-audio-config__section-label">{t('audio.sound')}</div>
         <div className="atlas-audio-config__sound-picker">
           <select
             className="atlas-input atlas-audio-config__select"
@@ -135,7 +137,7 @@ function AudioConfigPanelInner({
               ))}
           </select>
           {onPreview && (
-            <LabelTooltip label="Preview sound">
+            <LabelTooltip label={t('audio.preview')}>
               <button
                 className="atlas-audio-config__preview-btn"
                 onClick={() => onPreview(soundId)}
@@ -147,7 +149,7 @@ function AudioConfigPanelInner({
         </div>
 
         {/* Volume */}
-        <div className="atlas-audio-config__section-label">Volume</div>
+        <div className="atlas-audio-config__section-label">{t('audio.volume')}</div>
         <div className="atlas-audio-config__field">
           <div className="atlas-audio-config__slider-row">
             <Volume2 size={14} className="atlas-audio-config__volume-icon" />
@@ -165,7 +167,7 @@ function AudioConfigPanelInner({
         </div>
 
         {/* Range */}
-        <div className="atlas-audio-config__section-label">Range</div>
+        <div className="atlas-audio-config__section-label">{t('audio.range')}</div>
         <div className="atlas-audio-config__field">
           <label className="atlas-audio-config__label">
             Inner Radius{unitLabel ? ` (${unitLabel})` : ''}
@@ -216,7 +218,7 @@ function AudioConfigPanelInner({
 
         {/* Loop toggle */}
         <div className="atlas-audio-config__loop-row">
-          <label className="atlas-audio-config__label">Loop</label>
+          <label className="atlas-audio-config__label">{t('audio.loop')}</label>
           <input
             type="checkbox"
             checked={loop}
@@ -244,7 +246,7 @@ export function openAudioConfigPanel(
   screenX?: number,
   screenY?: number,
 ): void {
-  const audio = store.getState().objects.audios[audioId];
+  const audio = levelObjects(store.getState()).audios[audioId];
   if (!audio) return;
 
   const container = document.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });

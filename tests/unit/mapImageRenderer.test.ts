@@ -1,0 +1,201 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { EventEmitter } from 'events';
+import { Container, Ticker } from 'pixi.js';
+import { TFile } from 'obsidian';
+import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
+import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
+import type { MosaicCanvasOpener } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
+import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
+
+interface Harness {
+  renderer: PixiRendererOrchestrator;
+  store: ViewAtlasStore;
+  mapImage: MosaicCanvas;
+  viewport: Container;
+  events: EventEmitter;
+}
+
+const renderers: PixiRendererOrchestrator[] = [];
+
+/** A renderer without a GPU over a view whose map image is a world rect of `size` (no tesserae). */
+async function showScene(size = 1400): Promise<Harness> {
+  // jsdom has no canvas; the token and text renderers built with the grid only need it for icons
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+  const { app } = createInMemoryApp({ files: { 'maps/a.png': 'a', 'maps/b.png': 'b' } });
+  const store = createViewAtlasStore(app, 'map-image-renderer-test');
+  const viewport = Object.assign(new Container(), {
+    plugins: { resume: vi.fn(), pause: vi.fn(), get: () => null },
+    screenWidth: 800, screenHeight: 600,
+    moveCenter: vi.fn(),
+    left: 0, top: 0, worldScreenWidth: 800, worldScreenHeight: 600,
+    worldWidth: 0,
+    worldHeight: 0,
+    dirty: false,
+  });
+  const ticker = new Ticker();
+  const manager = {
+    init: vi.fn(),
+    getViewport: () => viewport,
+    getApp: () => ({ renderer: { resolution: 1, name: 'canvas' }, canvas: document.createElement('canvas'), ticker }),
+    destroy: vi.fn(),
+  };
+  const events = new EventEmitter();
+  const renderer = new PixiRendererOrchestrator(app, manager as never, events, store, 'map-image-renderer-test');
+  vi.spyOn(renderer as never, 'setupRenderersAndManagers').mockImplementation(() => {});
+  vi.spyOn(renderer as never, 'setupKeyboardHandlers').mockImplementation(() => {});
+  await renderer.init(document.createElement('div'));
+  renderers.push(renderer);
+
+  const opener: MosaicCanvasOpener = {
+    open: vi.fn(),
+    tessera: vi.fn(),
+    overview: vi.fn(),
+    close: vi.fn(),
+    reportUnshown: vi.fn(),
+    onRestart: vi.fn(() => () => undefined),
+  };
+  const mapImage = new MosaicCanvas({ service: opener, viewport, ticker: new Ticker(), renderer: null, requestRender: vi.fn() });
+  await mapImage.load({ kind: 'none', width: size, height: size });
+  renderer.initGrid({ size: 70, color: 0xffffff, enabled: true }, mapImage);
+  return { renderer, store, mapImage, viewport, events };
+}
+
+afterEach(() => {
+  for (const renderer of renderers.splice(0)) renderer.destroy();
+  vi.restoreAllMocks();
+});
+
+describe('the renderer and its map image', () => {
+  it('puts the image under everything, frames the map on it and draws the grid over it', async () => {
+    const { renderer, viewport, mapImage } = await showScene();
+
+    // As PIXI sorts the viewport's children before it draws them.
+    viewport.sortChildren();
+    expect(viewport.getChildAt(0)).toBe(mapImage.layer);
+    expect(renderer.getMapImage()).toBe(mapImage);
+    expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1400, height: 1400 });
+    // The liquids lie on the map, under the grid, so the lighting lights them as floor.
+    expect(viewport.getChildAt(1).label).toBe('liquids');
+    expect(viewport.children.indexOf(renderer.getGridSystem()!.getGridSprite()!)).toBe(2);
+  });
+
+  it('tells the fog the world rect of every image it shows', async () => {
+    const { mapImage, events } = await showScene();
+    const bounds = vi.fn();
+    events.on('map-image-updated', bounds);
+
+    await mapImage.load({ kind: 'none', width: 2100, height: 700 });
+    mapImage.clear();
+
+    expect(bounds.mock.calls).toEqual([[{ x: 0, y: 0, width: 2100, height: 700 }], [undefined]]);
+  });
+
+  it('keeps what covers the map at the scene\'s size while an alignment previews a stretch, and lets it follow once applied', async () => {
+    const { renderer, store, mapImage, events } = await showScene(1000);
+    store.getState().setGrid({ enabled: true, visible: true, type: 'square', size: 70, offsetX: 0, offsetY: 0, opacity: 0.5 });
+    store.getState().setMapLoaded(true);
+    const bounds = vi.fn();
+    events.on('map-image-updated', bounds);
+
+    // The panel's preview: the image alone is drawn wider.
+    mapImage.setStretch({ x: 1.1, y: 1 });
+    expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1100, height: 1000 });
+    expect(bounds).not.toHaveBeenCalled();
+
+    // Cancelled: the map is the scene's again, and nothing was told another size meanwhile.
+    renderer.cancelGridAlignment();
+    expect(bounds).toHaveBeenCalledTimes(1);
+    expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1000, height: 1000 });
+
+    // Previewed again and applied: the store's stretch is the image's, and the fog and the lighting follow.
+    mapImage.setStretch({ x: 1.1, y: 1 });
+    expect(bounds).toHaveBeenCalledTimes(1);
+    store.getState().alignGrid({ ...store.getState().grid!, mapStretch: { x: 1.1, y: 1 } });
+    expect(bounds).toHaveBeenCalledTimes(2);
+    expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1100, height: 1000 });
+
+    // Undone: both go back together.
+    store.temporal.getState().undo();
+    expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1000, height: 1000 });
+    expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1000, height: 1000 });
+  });
+
+  it('takes the stretch a load shows for the scene\'s size at once', async () => {
+    const { store, mapImage, events } = await showScene(1000);
+    store.getState().setMapLoading(true);
+    const bounds = vi.fn();
+    events.on('map-image-updated', bounds);
+
+    // The first load's detection shows what it found while the scene is still loading.
+    mapImage.setStretch({ x: 1, y: 1.05 });
+
+    expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1000, height: 1050 });
+  });
+
+  it('leaves the map without a grid when the image is taken off, and draws it again on the next', async () => {
+    const { renderer, mapImage } = await showScene();
+
+    renderer.clearMapImage();
+
+    expect(renderer.getMapRect()).toBeNull();
+    expect(renderer.getGridSystem()?.getGridSprite()).toBeNull();
+    expect(() => renderer.toggleGrid(true)).not.toThrow();
+
+    await mapImage.load({ kind: 'none', width: 700, height: 700 });
+
+    expect(renderer.getGridSystem()?.getGridSprite()).not.toBeNull();
+    expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 700, height: 700 });
+  });
+
+  it('releases the image with the view', async () => {
+    const { renderer, mapImage } = await showScene();
+
+    renderer.destroy();
+    renderers.splice(renderers.indexOf(renderer), 1);
+
+    expect(mapImage.layer.destroyed).toBe(true);
+  });
+});
+
+describe('a background that changes outside a load', () => {
+  it('loads into the same map image: undo or redo of a background change, a missing image removed', async () => {
+    const { store, mapImage } = await showScene();
+    store.setState({ mapLoaded: true, isMapLoading: false, persistenceEnabled: false });
+    const load = vi.spyOn(mapImage, 'load').mockResolvedValue();
+
+    store.getState().setBackground('maps/b.png');
+    store.getState().setBackground(null);
+
+    expect(load).toHaveBeenCalledTimes(2);
+    const shown = load.mock.calls[0]?.[0];
+    const none = load.mock.calls[1]?.[0];
+    expect(shown).toMatchObject({ kind: 'file' });
+    expect(shown?.kind === 'file' && shown.file).toBeInstanceOf(TFile);
+    expect(shown?.kind === 'file' && shown.file.path).toBe('maps/b.png');
+    expect(none).toEqual({ kind: 'none', width: 1400, height: 1400 });
+  });
+
+  it('leaves the background a load sets to the load', async () => {
+    const { store, mapImage } = await showScene();
+    store.setState({ mapLoaded: false, isMapLoading: true, persistenceEnabled: false });
+    const load = vi.spyOn(mapImage, 'load').mockResolvedValue();
+
+    store.getState().setBackground('maps/b.png');
+
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it('shows the placeholder for a background whose file is gone', async () => {
+    const { store, mapImage } = await showScene();
+    store.setState({ mapLoaded: true, isMapLoading: false, persistenceEnabled: false });
+    const load = vi.spyOn(mapImage, 'load').mockResolvedValue();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    store.getState().setBackground('maps/gone.png');
+
+    // Drawn as the level it shows is placed: the scene's own stretch
+    expect(load).toHaveBeenCalledWith({ kind: 'placeholder' }, { x: 1, y: 1 });
+  });
+});

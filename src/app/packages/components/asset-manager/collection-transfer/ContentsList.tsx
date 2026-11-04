@@ -1,10 +1,11 @@
 import React, { useId, useState } from 'react';
-import { ChevronDown, CircleUser, Clapperboard, Coins, Map as MapIcon, NotebookText, Paperclip, ScrollText, Swords, type LucideIcon } from 'lucide-react';
+import { ChevronDown, CircleUser, Clapperboard, Coins, LayoutTemplate, Map as MapIcon, NotebookText, Paperclip, ScrollText, Swords, type LucideIcon } from 'lucide-react';
 import type { ContentCategory, ContentGroup } from '../../../../services/collectionBundle/bundleContents';
 import type { ContentMedia } from './contentMedia';
 import { Checkbox, withKeys, type ContentSelection } from './contentSelection';
 import { ItemGrid } from './ItemGrid';
 import { TokenGrid } from './TokenGrid';
+import { t } from '../../../../i18n';
 
 interface ContentsListProps {
   groups: readonly ContentGroup[];
@@ -20,7 +21,7 @@ interface GroupRowProps {
 }
 
 const ICONS: Record<ContentCategory, LucideIcon> = {
-  scenes: Clapperboard, maps: MapIcon, tokens: CircleUser, encounters: Swords, statblocks: ScrollText, notes: NotebookText, attachments: Paperclip, loot: Coins,
+  scenes: Clapperboard, maps: MapIcon, tokens: CircleUser, encounters: Swords, statblocks: ScrollText, templates: LayoutTemplate, notes: NotebookText, attachments: Paperclip, loot: Coins,
 };
 
 function GroupRow({ group, media, selection }: GroupRowProps): React.JSX.Element {
@@ -33,7 +34,7 @@ function GroupRow({ group, media, selection }: GroupRowProps): React.JSX.Element
   const total = keys.length;
   const included = selection ? keys.filter((key) => selection.included.has(key)).length : total;
   const leftOut = selection ? keys.filter((key) => selection.excluded.has(key)).length : 0;
-  const count = total === 0 ? 'None' : included === total ? String(total) : `${included} of ${total}`;
+  const count = total === 0 ? t('contents.none') : included === total ? String(total) : t('contents.countOf', { count: included, total });
   return (
     <li className="atlas-transfer-group" data-empty={total === 0 || undefined}>
       <div className="atlas-transfer-group__header">
@@ -62,7 +63,7 @@ function GroupRow({ group, media, selection }: GroupRowProps): React.JSX.Element
           <span className="atlas-transfer-group__count">{count}</span>
           <ChevronDown className="atlas-transfer-group__chevron" aria-hidden="true" />
         </button>
-        {selection && <span id={`${id}-all`} hidden>Include all {group.label.toLowerCase()}</span>}
+        {selection && <span id={`${id}-all`} hidden>{t('contents.includeAll', { group: group.label.toLocaleLowerCase() })}</span>}
       </div>
       <div id={`${id}-items`} className="atlas-transfer-group__panel" data-expanded={expanded} aria-hidden={!expanded} inert={!expanded}>
         <div className="atlas-transfer-group__clip">

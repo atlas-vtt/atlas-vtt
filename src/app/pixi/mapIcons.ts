@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /**
  * Icons stampable onto a map with the draw tool.
  *
@@ -21,18 +22,18 @@ export const MAP_ICON_SVG: Record<string, string> = {
 
 /** Human-readable names, shared by the toolbar picker and the drawing context menu. */
 export const MAP_ICON_LABELS: Record<string, string> = {
-  'door-open': 'Open Door',
-  'door-closed': 'Closed Door',
-  'lock': 'Locked',
-  'key-round': 'Key',
-  'triangle-alert': 'Trap',
-  'skull': 'Danger',
-  'flame': 'Fire',
-  'package': 'Loot',
-  'gem': 'Treasure',
-  'swords': 'Combat',
-  'footprints': 'Tracks',
-  'circle-x': 'Blocked',
+  'door-open': t('mapIcon.doorOpen'),
+  'door-closed': t('mapIcon.doorClosed'),
+  'lock': t('mapIcon.lock'),
+  'key-round': t('mapIcon.key'),
+  'triangle-alert': t('mapIcon.trap'),
+  'skull': t('mapIcon.danger'),
+  'flame': t('mapIcon.fire'),
+  'package': t('mapIcon.loot'),
+  'gem': t('mapIcon.treasure'),
+  'swords': t('mapIcon.combat'),
+  'footprints': t('mapIcon.tracks'),
+  'circle-x': t('mapIcon.blocked'),
 };
 
 export type MapIconName = keyof typeof MAP_ICON_SVG;

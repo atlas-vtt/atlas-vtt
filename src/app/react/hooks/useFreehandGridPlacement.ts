@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AtlasView } from '../../atlas-view';
 import type { GridType } from '../../grid/GridSystem';
 import type { Point } from '../../grid/hexGeometry';
+import { NO_STRETCH, type MapStretch } from '../../grid/mapStretch';
 import { FreehandGridPreview, freehandCellSize } from '../../pixi/FreehandGridPreview';
 import { useCanvasClick } from './useGridAlignmentEffects';
 
@@ -9,6 +10,8 @@ export interface FreehandPlacement {
   /** World point the placed grid centres a cell on. */
   point: Point;
   cellSize: number;
+  /** How the map was drawn when it was clicked: what `point` and `cellSize` are measured in. */
+  mapStretch: MapStretch;
 }
 
 /**
@@ -75,7 +78,11 @@ export function useFreehandGridPlacement(
     if (!viewport || !renderer) return;
     const rect = renderer.getCanvasElement().getBoundingClientRect();
     const world = viewport.toWorld(e.clientX - rect.left, e.clientY - rect.top);
-    onPlace({ point: { x: world.x, y: world.y }, cellSize: freehandCellSize(viewport.scale.x) });
+    onPlace({
+      point: { x: world.x, y: world.y },
+      cellSize: freehandCellSize(viewport.scale.x),
+      mapStretch: renderer.getMapImage()?.mapStretch ?? NO_STRETCH,
+    });
   });
 
   return cellSize;

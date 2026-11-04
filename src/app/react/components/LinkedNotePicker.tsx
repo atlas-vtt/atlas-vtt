@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { FileText, Search, SearchX, type LucideIcon } from 'lucide-react';
 import { App, TFile } from 'obsidian';
 import { formatRelativeTime } from '../../utils/relativeTime';
+import { t } from '../../i18n';
 
 const MAX_NOTE_SIZE_BYTES = 1_000_000;
 const RECENT_LIMIT = 20;
@@ -12,8 +13,8 @@ interface LinkedNotePickerProps {
   onSelect: (path: string) => void;
   /** The files offered; the vault's Markdown notes by default. */
   files?: readonly TFile[];
-  /** What the files are, in the plural, e.g. "bases". */
-  noun?: string;
+  /** What the files are. */
+  noun?: 'notes' | 'bases';
   icon?: LucideIcon;
 }
 
@@ -73,10 +74,10 @@ export default function LinkedNotePicker({ app, onSelect, files, noun = 'notes',
     <div className="atlas-linked-note-picker">
       <div className="atlas-linked-note-search">
         <Search className="atlas-linked-note-search-icon" />
-        <span id={searchLabelId} hidden>Search {noun}</span>
+        <span id={searchLabelId} hidden>{t(`picker.search.${noun}`)}</span>
         <input
           type="text"
-          placeholder={`Search ${noun}...`}
+          placeholder={t(`picker.searchPlaceholder.${noun}`)}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -85,14 +86,14 @@ export default function LinkedNotePicker({ app, onSelect, files, noun = 'notes',
       </div>
 
       <div className="atlas-linked-note-caption">
-        <span>{query.trim() ? 'Results' : 'Recently modified'}</span>
+        <span>{query.trim() ? t('picker.results') : t('picker.recent')}</span>
         <span className="atlas-linked-note-count">{notes.length}</span>
       </div>
 
       {notes.length === 0 ? (
         <div className="atlas-linked-note-empty">
           <SearchX />
-          <p>No {noun} match “{query.trim()}”</p>
+          <p>{t(`picker.none.${noun}`, { query: query.trim() })}</p>
         </div>
       ) : (
         <div className="atlas-linked-note-list" ref={listRef}>
@@ -108,7 +109,7 @@ export default function LinkedNotePicker({ app, onSelect, files, noun = 'notes',
               <span className="atlas-linked-note-item-text">
                 <span className="atlas-linked-note-item-name">{file.basename}</span>
                 <span className="atlas-linked-note-item-path">
-                  {file.parent && !file.parent.isRoot() ? file.parent.path : 'Vault root'}
+                  {file.parent && !file.parent.isRoot() ? file.parent.path : t('csm.loot.vaultRoot')}
                 </span>
               </span>
               <span className="atlas-linked-note-item-date">{formatRelativeTime(file.stat.mtime)}</span>

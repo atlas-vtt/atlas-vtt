@@ -9,7 +9,9 @@ import type { DiceRules } from './diceRulesTypes';
 import type { InitiativeRules } from './initiativeRulesTypes';
 import type { TokenVisionDefaults } from './lightingTypes';
 import type { LightPresetDefinition } from './lightPresetTypes';
+import type { RarityOption } from './randomTableTypes';
 import type { SenseDefinition } from './senseTypes';
+import type { StatblockRole } from '../statblocks/model/roleTypes';
 import type { AnyWidget } from './widgetTypes';
 
 /** The parts of a collection's settings that a game system defines. */
@@ -29,6 +31,8 @@ export interface SystemRules {
   defaultWidgets?: Record<string, boolean>;
   /** Default roll and critical rule. Unset means `DEFAULT_DICE_RULES`. */
   dice?: DiceRules;
+  /** The dice set the system rolls a bare bonus with; a preset without one keeps its rules in `dice`. */
+  diceSetId?: string;
   /** How the initiative tracker runs a fight. Unset means `DEFAULT_INITIATIVE_RULES`: a d20 each, highest first. */
   initiative?: InitiativeRules;
   /** Token resources the system defines, copied on apply like conditions. */
@@ -48,6 +52,16 @@ export interface SystemRules {
    * collections offer the generic ones (`collectionLightPresets`).
    */
   lightPresets?: readonly LightPresetDefinition[];
+  /**
+   * The kinds of statblock the system's GMs make, each with the template it starts from. Unset
+   * for a system that names none: its collections offer the generic roles (`collectionStatblockRoles`).
+   */
+  statblockRoles?: readonly StatblockRole[];
+  /**
+   * The words the system's items name their rarity with. Unset for a system without rarities:
+   * its collections read the classic ladder (`collectionItemRarities`).
+   */
+  itemRarities?: readonly RarityOption[];
 }
 
 /** Built-in preset ids start with this; user presets never do. */

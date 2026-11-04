@@ -4,16 +4,19 @@ import { useStore } from 'zustand';
 import { cn } from '../../../utils/cn';
 import { useSceneTabStore } from '../hooks/useSceneTabStore';
 import { useTabStripOverflow } from '../hooks/useTabStripOverflow';
-import { playerWindowStore } from '../../stores/playerWindowStore';
 import type { SceneTab } from '../../types/sceneTabTypes';
 import { LabelTooltip, TooltipProvider } from '../../packages/components/primitives/tooltip';
+import { SceneTabProcessing } from './SceneTabProcessing';
 import './scene-tab-bar.scss';
+import { t } from '../../i18n';
 
 interface SceneTabBarProps {
   onSwitchTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onAddTab: () => void;
   onPresentTab: (tabId: string) => void;
+  /** The tab players are shown, whether or not the player window is open; null while none is. */
+  presentedTabId?: string | null;
   /** Lists every open map; offered while the tabs do not fit the bar. */
   onShowAllTabs: () => void;
 }
@@ -47,13 +50,11 @@ function TabActionButton({ icon: Icon, label, isActive, onClick }: TabActionButt
   );
 }
 
-export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
+export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
   const store = useSceneTabStore();
 
   const tabs = useStore(store, (s) => s.tabs);
   const activeTabId = useStore(store, (s) => s.activeTabId);
-  const presentedTabId = useStore(playerWindowStore, (s) => s.presentedTabId);
-  const isPlayerWindowOpen = useStore(playerWindowStore, (s) => s.isOpen);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
   const { overflows, hiddenBefore, hiddenAfter } = useTabStripOverflow(strip, activeTabId);
 
@@ -65,7 +66,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
         <div
           ref={setStrip}
           role="tablist"
-          aria-label="Open maps"
+          aria-label={t('tabs.openMaps')}
           className={cn(
             'atlas-scene-tab-bar__strip',
             hiddenBefore && 'atlas-scene-tab-bar__strip--hidden-before',
@@ -74,7 +75,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
         >
           {tabs.map((tab: SceneTab) => {
             const isActive = tab.id === activeTabId;
-            const isPresented = isPlayerWindowOpen && tab.id === presentedTabId;
+            const isPresented = tab.id === presentedTabId;
             const stateClass = isActive
               ? 'atlas-scene-tab--active'
               : tab.isLoaded
@@ -105,21 +106,22 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
                 {/* Show and close sit at opposite ends, so one is never clicked for the other */}
                 <TabActionButton
                   icon={Eye}
-                  label={isPresented ? `${tab.displayName} is shown on the player view` : `Show ${tab.displayName} on the player view`}
+                  label={t(isPresented ? 'tabs.shown' : 'tabs.show', { name: tab.displayName })}
                   isActive={isPresented}
                   onClick={() => onPresentTab(tab.id)}
                 />
                 <LabelTooltip side="bottom" label={tab.filePath}>
                   <span className="atlas-scene-tab__name">{tab.displayName}</span>
                 </LabelTooltip>
+                <SceneTabProcessing scenePath={tab.filePath} />
                 {tab.isDirty && <span className="atlas-scene-tab__dirty" />}
-                <TabActionButton icon={X} label={`Close ${tab.displayName}`} onClick={() => onCloseTab(tab.id)} />
+                <TabActionButton icon={X} label={t('tabs.close', { name: tab.displayName })} onClick={() => onCloseTab(tab.id)} />
               </div>
             );
           })}
         </div>
         {overflows && (
-          <LabelTooltip side="bottom" label="All open maps">
+          <LabelTooltip side="bottom" label={t('tabs.allOpen')}>
             <button
               type="button"
               className="atlas-scene-tab atlas-scene-tab-bar__button"
@@ -130,7 +132,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
             </button>
           </LabelTooltip>
         )}
-        <LabelTooltip side="bottom" label="Open scene">
+        <LabelTooltip side="bottom" label={t('tabs.openScene')}>
           <button
             type="button"
             className="atlas-scene-tab atlas-scene-tab-bar__button atlas-scene-tab-bar__add"

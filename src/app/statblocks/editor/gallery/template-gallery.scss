@@ -1,0 +1,244 @@
+// The template gallery (§7.9): an Atlas dialog, the sources down the left,
+// the cards of the chosen source on the right. Imported by TemplateGallery.tsx,
+// so the rules take the `.atlas-vtt-plugin` scope themselves.
+
+@use 'sass:math';
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'attribution-popover';
+
+// A card is a real 320 px render shown in a 200 px frame.
+$card-width: 200px;
+$render-width: 320px;
+$frame-height: 250px;
+
+.atlas-vtt-plugin.atlas-te-gallery-overlay {
+  @include atlas-modal-overlay($z-atlas-modal);
+}
+
+.atlas-vtt-plugin {
+  .atlas-te-gallery {
+    @include atlas-modal-window;
+    width: 880px;
+    height: 600px;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  .atlas-te-gallery__header {
+    @include atlas-modal-header;
+  }
+
+  .atlas-te-gallery__body {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+  }
+
+  // ── Sources: the collection settings' vertical tabs ─────────────────────
+  .atlas-te-gallery__sources {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+    padding: $spacing-s;
+    overflow-y: auto;
+    background: var(--background-secondary);
+    border-inline-end: $border-width-s solid var(--divider-color);
+  }
+
+  .atlas-te-gallery__source {
+    @include atlas-corner-shape;
+    height: auto;
+    padding: $spacing-s;
+    justify-content: flex-start;
+    border-radius: $radius-m;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+    font-weight: $font-weight-medium;
+
+    &:hover:not(.atlas-active) {
+      color: var(--text-normal);
+      background: var(--background-modifier-hover);
+    }
+
+    &.atlas-active {
+      background: var(--background-primary);
+      color: var(--text-normal);
+      box-shadow: $shadow-sm;
+    }
+  }
+
+  .atlas-te-gallery__content {
+    min-width: 0;
+    min-height: 0;
+    padding: $spacing-l;
+    overflow-y: auto;
+    @include atlas-scrollbar;
+  }
+
+  // ── Cards ───────────────────────────────────────────────────────────────
+  .atlas-te-gallery__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, $card-width);
+    align-content: start;
+    gap: $spacing-l;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .atlas-te-gallery-card {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+    width: $card-width;
+    cursor: pointer;
+  }
+
+  // Fades out at its foot, so a long statblock reads as continuing.
+  .atlas-te-gallery-card__frame {
+    @include atlas-corner-shape;
+    position: relative;
+    height: $frame-height;
+    overflow: hidden;
+    border-radius: $radius-l;
+    background: var(--background-secondary);
+    mask-image: linear-gradient(to bottom, #000 80%, transparent);
+  }
+
+  .atlas-te-gallery-card[data-selected] .atlas-te-gallery-card__frame,
+  .atlas-te-gallery-card:has(.atlas-te-gallery-card__name:focus-visible) .atlas-te-gallery-card__frame {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+    mask-image: none;
+  }
+
+  // Scaled once and never animated: the render keeps its layout at 320 px.
+  .atlas-te-gallery-card__render {
+    width: $render-width;
+    transform: scale(math.div($card-width, $render-width));
+    transform-origin: top left;
+    pointer-events: none;
+  }
+
+  .atlas-te-gallery-card__ghost {
+    @include atlas-flex-col($spacing-l);
+    align-items: stretch;
+    padding: $spacing-l;
+  }
+
+  .atlas-te-gallery-card__ghost-row {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    padding: 0 $spacing-l;
+    border: $border-width-m solid transparent;
+    border-radius: $radius-l;
+    background: var(--background-modifier-hover);
+    color: var(--text-faint);
+    font-size: $font-ui-medium;
+  }
+
+  .atlas-te-gallery-card__caption {
+    @include atlas-flex-col(2px);
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  button.atlas-te-gallery-card__name {
+    @include atlas-truncate;
+    display: block;
+    height: auto;
+    padding: 0;
+    border: none;
+    border-radius: $radius-s;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-normal);
+    font-size: $font-ui-small;
+    font-weight: $font-weight-medium;
+    text-align: start;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: none;
+    }
+  }
+
+  .atlas-te-gallery-card__source {
+    @include atlas-flex-row($spacing-xs);
+    min-width: 0;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-gallery-card__source-text {
+    @include atlas-truncate;
+    min-width: 0;
+  }
+
+  .atlas-te-gallery-card__info.btn--icon {
+    flex-shrink: 0;
+    width: $icon-m;
+    height: $icon-m;
+    padding: 0;
+    color: var(--text-faint);
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  // ── From a statblock ────────────────────────────────────────────────────
+  .atlas-te-gallery__statblocks {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: $spacing-l;
+    min-height: 100%;
+  }
+
+  .atlas-te-gallery__notes {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  input.atlas-te-gallery__search {
+    height: $input-height-s;
+    font-size: $font-ui-small;
+  }
+
+  .atlas-te-gallery__note-list {
+    @include atlas-flex-col(var(--size-2-1));
+    align-items: stretch;
+  }
+
+  .atlas-te-gallery__empty {
+    margin: 0;
+    padding: $spacing-s;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    list-style: none;
+  }
+
+  // ── Footer ──────────────────────────────────────────────────────────────
+  .atlas-te-gallery__footer {
+    @include atlas-modal-footer;
+  }
+
+  .atlas-te-gallery__use-for {
+    @include atlas-flex-row($spacing-s);
+    margin-inline-end: auto;
+
+    .atlas-select {
+      width: 180px;
+    }
+  }
+
+  .atlas-te-gallery__use-for-label {
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+  }
+}

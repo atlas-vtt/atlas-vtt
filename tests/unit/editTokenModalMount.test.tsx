@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -10,9 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 import { openEditTokenModal } from '../../src/app/pixi/token-renderer/EditTokenModal';
 import { AssetService } from '../../src/app/services/AssetService';
 import type { TokenEntity } from '../../src/app/types';
-import { withDynamicLighting } from '../mocks/experimentalFeatures';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { genericLight } from '../mocks/lights';
 import { HP, STR } from '../mocks/resourceFixtures';
 
 const darkvision = senseWithRole(GENERIC_SENSES, 'darkvision');
@@ -24,9 +23,8 @@ afterEach(() => {
   if (cancel) act(() => cancel.click());
 });
 
-function open(overrides: Partial<TokenEntity> = {}, lighting = true): { store: ViewAtlasStore; saved: () => TokenEntity } {
+function open(overrides: Partial<TokenEntity> = {}): { store: ViewAtlasStore; saved: () => TokenEntity } {
   const { app } = createInMemoryApp();
-  if (lighting) withDynamicLighting(app);
   const store = createViewAtlasStore(app, `edit-token-${Math.random()}`);
   const token: TokenEntity = { id: 't', kind: 'token', imagePath: 't.png', x: 0, y: 0, ...overrides };
   store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
@@ -47,7 +45,7 @@ describe('openEditTokenModal', () => {
   });
 
   it('has its sections and fields in the order they are read and tabbed through, which a dialog of one column keeps: token, resources, vision, carried light', () => {
-    const app = withDynamicLighting(createInMemoryApp().app);
+    const app = createInMemoryApp().app;
     const store = createViewAtlasStore(app, `edit-token-order-${Math.random()}`);
     const token: TokenEntity = { id: 't', kind: 'character', name: 'Mirabel', imagePath: 't.png', x: 0, y: 0, vision: { enabled: true }, light: emissionOf(lightPresetsOnMap(GENERIC_LIGHT_PRESETS, { unitType: 'feet', ruleDistance: 5 }, Infinity)[0]!) };
     store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
@@ -68,15 +66,19 @@ describe('openEditTokenModal', () => {
     }
   });
 
-  it('has no vision or light sections while dynamic lighting is switched off, and a save leaves the token\'s vision and light alone', () => {
-    const light = genericLight('torch');
-    const { saved } = open({ name: 'Scout', vision: { enabled: true, range: 60 }, light }, false);
-    expect(screen.getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent)).toEqual(['Token']);
-    expect(screen.queryByRole('switch', { name: 'Vision (party member)' })).toBeNull();
-    expect(screen.queryByRole('switch', { name: 'Carries a light' })).toBeNull();
-    save();
-    expect(saved().vision).toEqual({ enabled: true, range: 60 });
-    expect(saved().light).toEqual(light);
+  it("opens in the document of the token's map, a popout's, and closes on Escape there", () => {
+    const frame = document.body.createEl('iframe');
+    const win = frame.contentWindow!;
+    const { app } = createInMemoryApp();
+    const store = createViewAtlasStore(app, `edit-token-popout-${Math.random()}`);
+    const token: TokenEntity = { id: 't', kind: 'token', imagePath: 't.png', x: 0, y: 0 };
+    store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
+    act(() => openEditTokenModal(token, store, app, [], win.document));
+    expect(win.document.querySelector('.atlas-edit-token-modal')).not.toBeNull();
+    expect(document.querySelector('.atlas-edit-token-modal')).toBeNull();
+    act(() => { win.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape' })); });
+    expect(win.document.querySelector('.atlas-edit-token-modal')).toBeNull();
+    frame.remove();
   });
 
   it('says in one line what the vision switch means', () => {
@@ -144,7 +146,7 @@ describe('openEditTokenModal', () => {
 describe('openEditTokenModal in a collection with senses of its own', () => {
   it('offers the collection\'s senses, by their names, and saves the one chosen', () => {
     const witchSight = { ...darkvision, id: 'home-witch', name: 'Witch sight', role: undefined, range: 'required' as const, defaultRange: 30 };
-    const app = withDynamicLighting(createInMemoryApp().app);
+    const app = createInMemoryApp().app;
     const assets = AssetService.getInstance(app);
     vi.spyOn(assets, 'getCollectionForMap').mockReturnValue('coven');
     vi.spyOn(assets, 'getCollectionSettings').mockReturnValue({ conditions: [], senses: [witchSight] } as never);

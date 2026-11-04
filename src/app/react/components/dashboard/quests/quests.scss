@@ -1,0 +1,170 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use '../campaign-controls' as *;
+
+// The quests of a campaign's page (CampaignQuests.tsx): the campaign's quest notes, grouped, each
+// row with its status and its name.
+
+$quest-status-width: 112px;
+
+.campaign-quests {
+  @include atlas-flex-col($spacing-s);
+}
+
+.campaign-quests__heading {
+  @include atlas-flex-row($spacing-s);
+  justify-content: space-between;
+  min-height: var(--input-height);
+}
+
+.campaign-quests__new.btn {
+  @include campaign-ghost-control;
+}
+
+// Padding and gaps alike; rows take the panel's inner radius step.
+.dashboard-panel.campaign-quests__panel {
+  height: auto;
+  max-height: none;
+  gap: $spacing-s;
+  padding: $spacing-s;
+
+  > .campaigns-empty {
+    padding: $spacing-xs $spacing-s;
+  }
+}
+
+.campaign-quests__group {
+  @include atlas-flex-col($spacing-xs);
+}
+
+.campaign-quests__label {
+  margin: 0;
+  padding: $spacing-xs $spacing-s 0;
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  color: var(--text-faint);
+}
+
+.campaign-quests__list {
+  @include atlas-flex-col(2px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.campaign-quests__fold {
+  @include atlas-ghost-button;
+  @include atlas-focus-ring;
+  @include atlas-flex-row($spacing-xs);
+  justify-content: flex-start;
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 $spacing-s;
+  border-radius: $radius-l;
+  box-shadow: none;
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+}
+
+.campaign-quests__chevron {
+  flex-shrink: 0;
+  width: $icon-s;
+  height: $icon-s;
+  transition: transform $transition-fast $transition-ease;
+}
+
+// The stylesheet nests these under the plugin's root class, so no `&` may follow another selector.
+.campaign-quests__fold[aria-expanded='true'] .campaign-quests__chevron {
+  transform: rotate(90deg);
+}
+
+.campaign-quests__count {
+  color: var(--text-faint);
+}
+
+// ── A quest ─────────────────────────────────────────────────────────────────
+
+.campaign-quest {
+  @include atlas-flex-row($spacing-s);
+  position: relative;
+  min-width: 0;
+  padding: $spacing-xs;
+  border-radius: $radius-l;
+  transition: background-color $transition-fast $transition-ease;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+.campaign-quest__status {
+  flex-shrink: 0;
+  width: $quest-status-width;
+}
+
+.campaign-quest__open {
+  @include atlas-focus-ring;
+  @include atlas-flex-col(2px);
+  align-items: flex-start;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  min-height: var(--input-height);
+  padding: 0 $spacing-xs;
+  border: none;
+  border-radius: $radius-m;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: transparent;
+  }
+}
+
+.campaign-quest__title {
+  @include atlas-truncate;
+  max-width: 100%;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  color: var(--text-normal);
+}
+
+.campaign-quest__open:hover .campaign-quest__title {
+  color: var(--text-accent);
+}
+
+.campaign-quest--done .campaign-quest__title,
+.campaign-quest--failed .campaign-quest__title {
+  color: var(--text-muted);
+}
+
+.campaign-quest--failed .campaign-quest__title {
+  text-decoration: line-through;
+}
+
+.campaign-quest__gains {
+  @include atlas-truncate;
+  max-width: 100%;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
+// ── A new quest ─────────────────────────────────────────────────────────────
+
+.campaign-quest-new {
+  @include atlas-flex-row($spacing-s);
+  padding: $spacing-xs;
+}
+
+.campaign-quest-new__input {
+  @include atlas-text-input;
+  flex: 1;
+  min-width: 0;
+}
+
+.campaign-quest-new__kind {
+  flex-shrink: 0;
+}

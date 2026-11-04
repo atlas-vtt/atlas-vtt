@@ -16,11 +16,10 @@ async function emptyService(): Promise<AssetService> {
 const tagNames = async (service: AssetService, group: 'tokens' | 'maps'): Promise<string[]> =>
   (await service.getCollectionTags('Default', group)).map((tag) => tag.name).sort();
 
-it('offers registered tags before they are assigned and retains tags from assets', async () => {
+it('registers a created tag before any asset carries it', async () => {
   const service = await emptyService();
   await service.createTag('Default', 'tokens', 'Unused');
-  await service.addTokenAsset({ name: 'Goblin', imagePath: 'goblin.webp', collection: 'Default', tags: ['Forest'] });
-  expect(await service.getAllTags('tokens')).toEqual(['Forest', 'Unused']);
+  expect(await tagNames(service, 'tokens')).toEqual(['Unused']);
 });
 
 it('keeps the tags of tokens and encounters apart from those of maps and scenes', async () => {
@@ -32,8 +31,6 @@ it('keeps the tags of tokens and encounters apart from those of maps and scenes'
 
   expect(await tagNames(service, 'tokens')).toEqual(['Undead']);
   expect(await tagNames(service, 'maps')).toEqual(['Forest']);
-  expect(await service.getAllTags('tokens')).toEqual(['Boss', 'Undead']);
-  expect(await service.getAllTags('maps')).toEqual(['Forest', 'Night']);
 });
 
 it('lets both groups hold a tag of the same name and edits only the group asked for', async () => {

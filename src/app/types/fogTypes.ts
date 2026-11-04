@@ -2,14 +2,16 @@
  * Operation-based fog of war data model.
  *
  * Each user action (brush stroke, lasso fill, rectangle) is stored as an
- * individual record in `state.objects.fog`.  A `FogCanvasCompositor`
- * replays them in timestamp order onto a half-resolution HTML Canvas 2D,
- * which is displayed as a PIXI Sprite.
+ * individual record in `state.objects.fog`. Their ordered paint/erase geometry
+ * forms shared coverage, drawn by `FogCanvasCompositor` onto a half-resolution
+ * HTML Canvas 2D and displayed as a PIXI Sprite.
  */
+
+import type { OnOneLevel } from './sceneLevelTypes';
 
 // ── Base ────────────────────────────────────────────────────────────────
 
-export interface FogOperationBase {
+export interface FogOperationBase extends OnOneLevel {
   id: string;
   kind: 'fog';
   timestamp: number;

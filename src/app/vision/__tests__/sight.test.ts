@@ -238,22 +238,22 @@ describe('vision cones', () => {
     return (x: number, y: number, ambient = 1): boolean => isSeen({ x, y }, sight, { ambient: ambient }, []);
   };
 
-  it('looks up at rotation 0, as the token art does', () => {
+  it('looks down at rotation 0, towards the art\'s bottom, since token art faces the viewer', () => {
     const sees = seenFrom({ enabled: true, angle: 90 });
-    expect(sees(500, 300)).toBe(true);
-    expect(sees(500, 700)).toBe(false);
+    expect(sees(500, 700)).toBe(true);
+    expect(sees(500, 300)).toBe(false);
     expect(sees(700, 500)).toBe(false);
   });
 
   it('turns clockwise with the token rotation', () => {
-    const right = seenFrom({ enabled: true, angle: 90 }, 90);
-    expect(right(700, 500)).toBe(true);
-    expect(right(300, 500)).toBe(false);
-    expect(right(500, 300)).toBe(false);
+    const left = seenFrom({ enabled: true, angle: 90 }, 90);
+    expect(left(300, 500)).toBe(true);
+    expect(left(700, 500)).toBe(false);
+    expect(left(500, 700)).toBe(false);
     for (const rotation of [-90, 270]) {
-      const left = seenFrom({ enabled: true, angle: 90 }, rotation);
-      expect(left(300, 500)).toBe(true);
-      expect(left(700, 500)).toBe(false);
+      const right = seenFrom({ enabled: true, angle: 90 }, rotation);
+      expect(right(700, 500)).toBe(true);
+      expect(right(300, 500)).toBe(false);
     }
   });
 
@@ -267,8 +267,8 @@ describe('vision cones', () => {
 
   it('limits darkvision to the cone', () => {
     const sees = seenFrom({ enabled: true, angle: 90, darkvision: 30 }, 0);
-    expect(sees(500, 400, 0)).toBe(true);
-    expect(sees(500, 600, 0)).toBe(false);
+    expect(sees(500, 600, 0)).toBe(true);
+    expect(sees(500, 400, 0)).toBe(false);
   });
 
   it('does not limit a sense that needs no eyes to the cone', () => {
@@ -280,15 +280,15 @@ describe('vision cones', () => {
 
   it('always sees its own space, even behind the cone', () => {
     const sees = seenFrom({ enabled: true, angle: 90 }, 0);
-    expect(sees(500, 525)).toBe(true);
+    expect(sees(500, 475)).toBe(true);
     expect(sees(475, 500)).toBe(true);
-    expect(sees(500, 535)).toBe(false);
+    expect(sees(500, 465)).toBe(false);
   });
 
   it('sees in the dark within its own space when it has darkvision', () => {
     const sees = seenFrom({ enabled: true, angle: 90, darkvision: 30 }, 0);
-    expect(sees(500, 525, 0)).toBe(true);
-    expect(sees(500, 535, 0)).toBe(false);
+    expect(sees(500, 475, 0)).toBe(true);
+    expect(sees(500, 465, 0)).toBe(false);
   });
 
   it('takes its own space from the token\'s size', () => {
@@ -341,12 +341,12 @@ describe('tremorsense', () => {
 
 describe('sceneSight', () => {
   it('computes the tokens\' sight while the scene uses token vision', () => {
-    expect(sceneSight({}, [source()], [wall]).regions).toEqual(computeSight([source()], [wall]).regions);
-    expect(sceneSight({ tokenVision: true }, [source()], [wall]).all).toBe(false);
+    expect(sceneSight({}, [source()], [wall], undefined, { sceneHasVision: true }).regions).toEqual(computeSight([source()], [wall]).regions);
+    expect(sceneSight({ tokenVision: true }, [source()], [wall], undefined, { sceneHasVision: true }).all).toBe(false);
   });
 
   it('sees everything when the scene switches token vision off', () => {
-    const sight = sceneSight({ tokenVision: false }, [source()], [wall]);
+    const sight = sceneSight({ tokenVision: false }, [source()], [wall], undefined, { sceneHasVision: true });
     expect(sight).toBe(SEES_ALL);
     expect(isSeen({ x: 300, y: 100 }, sight, { ambient: 1 }, [])).toBe(true);
   });

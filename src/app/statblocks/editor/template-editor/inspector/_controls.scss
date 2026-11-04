@@ -1,0 +1,163 @@
+// The inspector's settings rows and the inputs the left pane shares (§7.10).
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$icon-button: $button-height-s;
+
+/// An input at Obsidian's control height. Nothing about it animates: its
+/// states change at once.
+@mixin te-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--input-height);
+  margin: 0;
+  padding: 0 $spacing-s;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-m;
+  background: var(--background-modifier-form-field);
+  box-shadow: none;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: $font-ui-small;
+  transition: none;
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+
+  &:hover:not(:focus) {
+    border-color: var(--background-modifier-border-hover);
+  }
+
+  &:focus,
+  &:focus-within {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--text-error);
+  }
+
+  &:disabled,
+  &[aria-disabled='true'] {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.atlas-vtt-plugin {
+  // ── Settings rows ───────────────────────────────────────────────────────
+  .atlas-te-setting__label {
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    overflow-wrap: anywhere;
+  }
+
+  .atlas-te-setting__control {
+    @include atlas-flex-col($spacing-xs);
+    align-items: stretch;
+    min-width: 0;
+
+    > .atlas-toggle {
+      align-self: flex-start;
+    }
+  }
+
+  .atlas-te-setting__inline {
+    @include atlas-flex-row($spacing-xs);
+    min-width: 0;
+
+    > .atlas-te-picker,
+    > .atlas-te-input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    > .atlas-select {
+      flex: 0 0 96px;
+    }
+  }
+
+  .atlas-te-setting__list {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+  }
+
+  .atlas-te-setting__hint,
+  .atlas-te-setting__note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    text-wrap: pretty;
+
+    code {
+      font-size: inherit;
+    }
+  }
+
+  .atlas-te-setting__note--warning,
+  .atlas-te-setting__problem {
+    margin: 0;
+    color: var(--text-error);
+    font-size: $font-ui-smaller;
+    text-wrap: pretty;
+  }
+
+  .atlas-te-setting__add.btn {
+    align-self: flex-start;
+    justify-self: start;
+    gap: $spacing-xs;
+    padding-inline: $spacing-s;
+  }
+
+  // Small icon buttons beside a control: Clear, Remove, Edit as text, the sample's reset.
+  .atlas-te-group .atlas-tool-button button.btn {
+    @include atlas-corner-shape;
+    width: $icon-button;
+    height: $icon-button;
+    padding: 0;
+    border: none;
+    border-radius: $radius-m;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+
+    &:hover:not([aria-disabled='true']),
+    &.is-active {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
+
+    &[aria-disabled='true'] {
+      opacity: 0.5;
+    }
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  // ── Inputs ──────────────────────────────────────────────────────────────
+  input.atlas-te-input,
+  textarea.atlas-te-input,
+  .atlas-te-input {
+    @include te-input;
+  }
+
+  textarea.atlas-te-input {
+    padding-block: $spacing-xs;
+    resize: vertical;
+    line-height: var(--line-height-normal);
+  }
+
+  .atlas-te-input--code {
+    font-family: var(--font-monospace);
+    font-size: $font-ui-smaller;
+  }
+}

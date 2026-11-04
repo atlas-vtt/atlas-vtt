@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { importUvttFile, type UvttImportDeps, type UvttImportResult, type UvttImported } from '../../src/app/import/uvtt/importUvttFile';
 import { parseUvtt } from '../../src/app/import/uvtt/parseUvtt';
@@ -9,9 +8,11 @@ import { MEMORY_BUDGET_BYTES, type ProcessedImage } from '../../src/app/imagePro
 import { sealTolerance } from '../../src/app/lighting/lightingConstants';
 import { readSceneLighting } from '../../src/app/lighting/sceneLightingOptions';
 import { sealWalls } from '../../src/app/lighting/sealWalls';
+import { prebuildMosaicCanvasAt } from '../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas';
 import { AssetService, type Asset } from '../../src/app/services/AssetService';
 import { AssetThumbnailService } from '../../src/app/services/AssetThumbnailService';
-import { createAtlasStorage, migrateMapFile, parseSceneFile, type GridState } from '../../src/app/services/MapPersistence';
+import { createAtlasStorage, migrateMapFile, parseSceneFile } from '../../src/app/services/MapPersistence';
+import type { GridState } from '../../src/app/types/gridTypes';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { CollectionGridDefaults } from '../../src/app/types/collectionSettingsTypes';
 import type { SceneLighting } from '../../src/app/types/lightingTypes';
@@ -23,6 +24,8 @@ import { createInMemoryApp, interceptWrites, type InMemoryApp } from '../mocks/i
 // milliseconds and refusing a hostile file under half a second; joining every pair of 20,000
 // crowded wall ends, which they guard against, took minutes. A machine under load stays below it.
 const SLOW = 15_000;
+
+vi.mock('../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', () => ({ prebuildMosaicCanvasAt: vi.fn() }));
 
 const COLLECTION = 'Dungeons';
 const SCENES = `atlas-vtt/collections/${COLLECTION}/scenes`;
@@ -73,7 +76,10 @@ const sceneState = ({ vault }: Bench, path: string): SceneState => (JSON.parse(v
 const filesOf = ({ vault }: Bench): string[] => [...vault.files.keys()].sort();
 const recordsOf = async ({ assets }: Bench): Promise<Asset[]> => assets.getAssets(COLLECTION);
 
-beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}); });
+beforeEach(() => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.mocked(prebuildMosaicCanvasAt).mockClear();
+});
 afterEach(() => { vi.restoreAllMocks(); AssetService.resetInstance(); });
 
 describe('importing a Universal VTT file', () => {
@@ -91,11 +97,15 @@ describe('importing a Universal VTT file', () => {
     expect(scene).toMatchObject({ name: 'Crypt', tags: [], collection: COLLECTION, data: { mapPath: result.scenePath } });
     if (map?.type !== 'map' || scene?.type !== 'scene') throw new Error('Records are missing');
 
-    expect(map.mapFilePath).toMatch(/^atlas-vtt\/assets\/Crypt_.+\.webp$/);
+    expect(map.mapFilePath).toMatch(/^atlas-vtt\/assets\/Crypt_.+\.png$/);
     expect(b.vault.files.has(map.mapFilePath)).toBe(true);
+    expect(prebuildMosaicCanvasAt).toHaveBeenCalledWith(b.vault.app, map.mapFilePath);
     expect(b.vault.files.get(map.thumbnailPath!)).toBe('THUMB');
     expect(JSON.parse(b.vault.files.get(map.filePath!)!)).toMatchObject({ id: map.id, name: 'Crypt', mapFilePath: map.mapFilePath });
-    expect(JSON.parse(b.vault.files.get(scene.filePath!)!)).toEqual({ mapPath: result.scenePath });
+    expect(JSON.parse(b.vault.files.get(scene.filePath!)!)).toEqual({
+      mapPath: result.scenePath,
+      atlasRecord: expect.objectContaining({ id: scene.id, type: 'scene', name: 'Crypt' }),
+    });
 
     const state = sceneState(b, result.scenePath);
     expect(state.background).toBe(map.mapFilePath);
@@ -378,6 +388,7 @@ describe('a Universal VTT file that is refused', () => {
 
     expect(filesOf(b)).toEqual(before);
     expect(await recordsOf(b)).toEqual([]);
+    expect(prebuildMosaicCanvasAt).not.toHaveBeenCalled();
   });
 
   it('when the decoded image is not the size its header stated, changes nothing', async () => {
@@ -460,7 +471,8 @@ describe('an import that fails half way', () => {
       return await importUvttFile(b.deps, uvttFile(cryptFile()), COLLECTION);
     } finally {
       restore();
-      expect(refused).toBe(1);
+      // A failed save of the index is followed by one that puts the library files back, which meets the refusal again.
+      expect(refused).toBeGreaterThanOrEqual(1);
     }
   }
 
@@ -529,7 +541,6 @@ describe('the notice of an import', () => {
 
   it('counts what arrived', () => {
     expect(uvttImportSummary(imported)).toBe('Imported "Crypt": 412 walls, 9 doors, 14 lights.');
-    expect(uvttImportSummary(imported, false)).toBe('Imported "Crypt": 412 walls, 9 doors, 14 lights. They show once you switch on dynamic lighting under Experimental features in the command palette.');
     expect(uvttImportSummary({ ...imported, counts: { walls: 1, doors: 1, lights: 1 } })).toBe('Imported "Crypt": 1 wall, 1 door, 1 light.');
     expect(uvttImportSummary({ ...imported, counts: { walls: 20000, doors: 0, lights: 0 } })).toBe('Imported "Crypt": 20,000 walls, 0 doors, 0 lights.');
   });

@@ -6,6 +6,7 @@ import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { AnyWidget } from '../../../types/widgetTypes';
 import { isCollectionWidget } from '../../../utils/collectionWidgets';
 import { WidgetIconGlyph } from '../WidgetIconGlyph';
+import { t } from '../../../i18n';
 
 interface WidgetListItemProps {
   widget: AnyWidget;
@@ -64,20 +65,20 @@ export function WidgetListItem({
         </div>
       </div>
       <div className="atlas-command-palette-widget-controls">
-        <LabelTooltip label="Edit name and icon">
-          <Button variant="ghost" size="icon" className="atlas-command-palette-icon-btn" onClick={onEdit} aria-label="Edit name and icon">
+        <LabelTooltip label={t('widgets.editNameIcon')}>
+          <Button variant="ghost" size="icon" className="atlas-command-palette-icon-btn" onClick={onEdit} aria-label={t('widgets.editNameIcon')}>
             <Pencil />
           </Button>
         </LabelTooltip>
         <ToggleButton
-          label={widget.visibleToPlayers ? 'Hide from players' : 'Show to players'}
+          label={widget.visibleToPlayers ? t('widgets.hideFromPlayers') : t('widgets.showToPlayers')}
           pressed={widget.visibleToPlayers}
           onClick={() => onUpdate({ visibleToPlayers: !widget.visibleToPlayers })}
         >
           <Users />
         </ToggleButton>
         <ToggleButton
-          label={active ? 'Switch off in this scene' : 'Switch on in this scene'}
+          label={active ? t('widgets.switchOff') : t('widgets.switchOn')}
           pressed={active}
           onClick={onToggleHere}
         >
@@ -85,20 +86,20 @@ export function WidgetListItem({
         </ToggleButton>
         {inCollection && (
           <ToggleButton
-            label={everyScene ? 'Show only where switched on' : 'Show in every scene'}
+            label={everyScene ? t('widgets.onlyWhereOn') : t('widgets.everyScene')}
             pressed={everyScene}
             onClick={onToggleEveryScene}
           >
             <Globe />
           </ToggleButton>
         )}
-        <LabelTooltip label={inCollection ? 'Delete from every scene' : 'Delete widget'}>
+        <LabelTooltip label={inCollection ? t('widgets.deleteEverywhere') : t('widgets.delete')}>
           <Button
             variant="ghost"
             size="icon"
             className="atlas-command-palette-icon-btn atlas-icon-btn--danger"
             onClick={onDelete}
-            aria-label={inCollection ? 'Delete from every scene' : 'Delete widget'}
+            aria-label={inCollection ? t('widgets.deleteEverywhere') : t('widgets.delete')}
           >
             <Trash2 />
           </Button>

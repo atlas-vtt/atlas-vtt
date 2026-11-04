@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { TFile } from 'obsidian';
 
-vi.mock('obsidian', () => ({ moment: vi.fn() }));
+vi.mock('obsidian', () => ({ moment: vi.fn(), getLanguage: () => 'en' }));
 
 import { rankNotes } from '../LinkedNotePicker';
 

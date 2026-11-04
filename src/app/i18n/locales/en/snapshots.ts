@@ -1,0 +1,26 @@
+import type { Message } from '../../types';
+
+export const snapshots = {
+  'snapshots.deleteBody': 'The snapshot is removed from this map. The map itself does not change.',
+  'snapshots.deleteFailed': 'Could not delete the snapshot',
+  'snapshots.deleteTitle': 'Delete "{name}"?',
+  'snapshots.empty': 'No snapshots yet. Save the map as it is now to reset it to this state later, for example before an encounter starts.',
+  'snapshots.name': 'Snapshot name',
+  'snapshots.new': 'New snapshot',
+  'snapshots.overwriteBody': 'The snapshot is replaced with the map as it is now. Its previous state is lost.',
+  'snapshots.overwriteFailed': 'Could not overwrite the snapshot',
+  'snapshots.overwriteTitle': 'Overwrite "{name}"?',
+  'snapshots.overwriteWithCurrent': 'Overwrite with current map',
+  'snapshots.renameFailed': 'Could not rename the snapshot',
+  'snapshots.renameNamed': 'Rename {name}',
+  'snapshots.restoreBody': 'Tokens, pins, fog, drawings, initiative and everything else on this map return to how they were in this snapshot.',
+  'snapshots.restoreFailed': 'Could not restore the snapshot',
+  'snapshots.restoreNamed': 'Restore {name}',
+  'snapshots.restoreTitle': 'Restore "{name}"?',
+  'snapshots.restoreWarning': 'Changes made since then are lost and cannot be undone. Save a snapshot first to keep them.',
+  'snapshots.restored': 'Restored "{name}"',
+  'snapshots.saveFailed': 'Could not save the snapshot',
+  'snapshots.savedAt': 'Saved {date}',
+  'snapshots.updatedAt': 'Updated {date}',
+  'snapshots.defaultName': 'Snapshot',
+} as const satisfies Record<string, Message>;

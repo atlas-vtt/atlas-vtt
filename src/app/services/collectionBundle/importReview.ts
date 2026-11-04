@@ -2,8 +2,10 @@ import type { Asset, CollectionMetadata } from '../AssetService';
 import type { BundleKind, CollectionBundleManifest } from './bundleFormat';
 import { groupContents, type ContentGroup } from './bundleContents';
 import type { CollectionField, InstallRecord } from './installRecord';
+import type { TemplateReview } from './importTemplates';
 import { planHasChanges, type ChangeStatus, type ConflictReason, type ImportPlan } from './importPlan';
 import { baseName } from '../../utils/pathUtils';
+import { t } from '../../i18n';
 
 /** How the bundle's version relates to the one in the vault. */
 type ImportRelation = 'new' | 'newer' | 'same' | 'older';
@@ -22,6 +24,8 @@ export interface ImportReview {
   description?: string | undefined;
   /** The collection's cover image, when the bundle carries one. */
   cover?: Blob | undefined;
+  /** The bundle's statblock templates that come in as copies, and the vault's notes that may switch to them. */
+  templates?: TemplateReview | undefined;
   /** Name of the vault's copy, when it has one. */
   localName?: string | undefined;
   author?: string | undefined;
@@ -54,19 +58,19 @@ export interface ImportReview {
 }
 
 const ASSET_KINDS: Record<Asset['type'], string> = {
-  token: 'Token', map: 'Map', note: 'Note', statblock: 'Statblock',
-  character: 'Character', scene: 'Scene', encounter: 'Encounter', player: 'Player',
+  token: t('review.kind.token'), map: t('review.kind.map'), note: t('review.kind.note'), statblock: t('review.kind.statblock'),
+  character: t('review.kind.character'), scene: t('review.kind.scene'), encounter: t('review.kind.encounter'), player: t('review.kind.player'),
 };
 
 const FIELD_NAMES: Record<CollectionField, string> = {
-  name: 'Collection name', description: 'Description', tags: 'Tags', settings: 'Collection settings',
+  name: t('review.field.name'), description: t('review.field.description'), tags: t('review.field.tags'), settings: t('review.field.settings'),
 };
 
 function describeUnit(key: string, unitAssets: ReadonlyMap<string, Asset>): Pick<ReviewUnit, 'kind' | 'name'> {
   const asset = unitAssets.get(key);
-  if (asset) return { kind: ASSET_KINDS[asset.type] ?? 'Asset', name: asset.name };
-  if (key.startsWith('field:')) return { kind: 'Collection', name: FIELD_NAMES[key.slice('field:'.length) as CollectionField] ?? key };
-  return { kind: 'File', name: baseName(key.slice(key.indexOf(':') + 1)) };
+  if (asset) return { kind: ASSET_KINDS[asset.type] ?? t('review.kind.asset'), name: asset.name };
+  if (key.startsWith('field:')) return { kind: t('review.kind.collection'), name: FIELD_NAMES[key.slice('field:'.length) as CollectionField] ?? key };
+  return { kind: t('review.kind.file'), name: baseName(key.slice(key.indexOf(':') + 1)) };
 }
 
 function relationOf(version: number, installedVersion: number | undefined): ImportRelation {
@@ -82,7 +86,7 @@ function relationOf(version: number, installedVersion: number | undefined): Impo
  * when a release names a different publisher. Without signatures this guards
  * against mix-ups, not against deliberate forgery.
  */
-function publisherWarning(manifest: CollectionBundleManifest, existing: CollectionMetadata | null, vaultId: string): ImportReview['publisherWarning'] {
+function publisherWarning(manifest: CollectionBundleManifest, existing: CollectionMetadata | null, vaultId: string | null): ImportReview['publisherWarning'] {
   if (!existing?.publisherId) return undefined;
   if (existing.publisherId === vaultId) return manifest.collection.version > existing.version ? 'own-collection' : undefined;
   const claimed = manifest.collection.publisherId;
@@ -91,7 +95,8 @@ function publisherWarning(manifest: CollectionBundleManifest, existing: Collecti
 
 export function buildReview(
   manifest: CollectionBundleManifest,
-  vaultId: string,
+  /** Null while this vault has published nothing. */
+  vaultId: string | null,
   existing: CollectionMetadata | null,
   record: InstallRecord | null,
   plan: ImportPlan,

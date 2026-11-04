@@ -1,22 +1,26 @@
 import type { ChangelogService } from '../changelog/ChangelogService';
 import type { SettingsService } from '../services/SettingsService';
+import type { UpdateWatch } from '../updates/UpdateWatch';
+import { updateSettingsRows } from '../updates/updateSettingsRows';
 import type { AtlasSettingSection } from './settingSections';
+import { t } from '../i18n';
 
-export function changelogSettingsSection(settings: SettingsService, changelog: ChangelogService, version: string): AtlasSettingSection {
+export function changelogSettingsSection(settings: SettingsService, changelog: ChangelogService, version: string, updates: UpdateWatch): AtlasSettingSection {
   return {
-    heading: 'Updates',
+    heading: t('settings.updates.heading'),
     rows: [
+      ...updateSettingsRows(settings, updates),
       {
-        name: 'Changelog',
-        desc: `Installed version ${version}. Browse new features, improvements and fixes.`,
+        name: t('settings.updates.changelog'),
+        desc: t('settings.updates.changelogDesc', { version }),
         aliases: ['release notes', 'what is new', 'history', 'version'],
         render: setting => {
-          setting.addButton(button => button.setButtonText('View changelog').onClick(() => changelog.open()));
+          setting.addButton(button => button.setButtonText(t('settings.updates.viewChangelog')).onClick(() => changelog.open()));
         },
       },
       {
-        name: 'Show changelog after updates',
-        desc: 'Open release notes once after updating Atlas. You can always view the changelog here.',
+        name: t('settings.updates.showAfterUpdates'),
+        desc: t('settings.updates.showAfterUpdatesDesc'),
         render: setting => {
           let unsubscribe: (() => void) | undefined;
           setting.addToggle(toggle => {
@@ -31,8 +35,8 @@ export function changelogSettingsSection(settings: SettingsService, changelog: C
         },
       },
       {
-        name: 'Feature updates only',
-        desc: 'Show feature releases such as 1.2 and 1.3. Skip patches such as 1.2.1.',
+        name: t('settings.updates.featureOnly'),
+        desc: t('settings.updates.featureOnlyDesc'),
         render: setting => {
           let unsubscribe: (() => void) | undefined;
           setting.addToggle(toggle => {

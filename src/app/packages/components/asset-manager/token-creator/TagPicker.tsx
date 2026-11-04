@@ -3,6 +3,7 @@ import { Check, Plus, Search, Tag as TagIcon, X } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
+import { t } from '../../../../i18n';
 
 interface TagPickerProps {
   available: string[];
@@ -51,17 +52,17 @@ export function TagPicker({ available, selected, onToggle, onCreate, disabled = 
   return (
     <section className="atlas-token-creator__section">
       <div className="atlas-token-creator__section-title">
-        <span>Tags <span className="atlas-token-creator__count">{selected.length} selected</span></span>
+        <span>{t('creator.tags')} <span className="atlas-token-creator__count">{t('creator.selected', { count: selected.length })}</span></span>
       </div>
 
       <div className="atlas-token-creator__search">
         <Search />
-        <span id={labelId} hidden>Search or create tags</span>
+        <span id={labelId} hidden>{t('creator.searchTags')}</span>
         <input
           ref={inputRef}
           type="text"
           aria-labelledby={labelId}
-          placeholder="Search or create tags…"
+          placeholder={t('creator.searchTagsPlaceholder')}
           value={query}
           disabled={disabled}
           readOnly={isCreating}
@@ -75,7 +76,7 @@ export function TagPicker({ available, selected, onToggle, onCreate, disabled = 
           }}
         />
         {query && (
-          <LabelTooltip label="Clear search">
+          <LabelTooltip label={t('common.clearSearch')}>
             <Button type="button" variant="ghost" size="icon" className="atlas-collection-header-btn" disabled={disabled || isCreating}
               onClick={() => { setQuery(''); setError(''); }}>
               <X />
@@ -87,7 +88,7 @@ export function TagPicker({ available, selected, onToggle, onCreate, disabled = 
       {name && !existing && (
         <Button type="button" variant="outline" size="sm" disabled={disabled || isCreating} onClick={() => { void addTag(); }}>
           <Plus />
-          <span>{isCreating ? 'Creating tag…' : `Create "${name}"`}</span>
+          <span>{isCreating ? t('creator.creatingTag') : t('creator.createTag', { name })}</span>
         </Button>
       )}
       {error && <div className="atlas-token-creator__empty-note" role="alert">{error}</div>}
@@ -114,7 +115,7 @@ export function TagPicker({ available, selected, onToggle, onCreate, disabled = 
           })}
         </div>
       ) : !name && (
-        <div className="atlas-token-creator__empty-note">Type a name to create your first tag.</div>
+        <div className="atlas-token-creator__empty-note">{t('creator.firstTag')}</div>
       )}
     </section>
   );

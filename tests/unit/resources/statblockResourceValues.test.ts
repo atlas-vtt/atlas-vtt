@@ -25,4 +25,10 @@ describe('statblock resource values', () => {
     expect(statblockResourceValue({ hp: '2d8' }, HP_RESOURCE)).toBeNull();
     expect(startingResources({}, [HP_RESOURCE, STR])).toEqual({});
   });
+
+  it('reads a static value of 0 and still gives no counting resource without a maximum', () => {
+    const ac = { ...HP_RESOURCE, key: 'ac', name: 'AC', field: 'ac', direction: 'static' as const, defeatedWhenSpent: false };
+    expect(statblockResourceValue({ ac: 0 }, ac)).toEqual({ current: 0, max: 0 });
+    expect(startingResources({ ac: 0, hp: 0 }, [ac, HP_RESOURCE])).toEqual({ ac: { current: 0, max: 0 } });
+  });
 });

@@ -1,0 +1,79 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The template editor's dock (§2.5)
+// ═══════════════════════════════════════════════════════════════════════════
+// A capsule in the note column, beside the line between the note and the
+// card and halfway down it: the five kinds, then undo and redo. Imported by
+// EditorDock.tsx, so the rules take the scope themselves.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$dock-button: 32px;
+$dock-inset: $spacing-xs;
+// A capsule: its corner is half its width, the border included, so its end buttons, $dock-inset inside the border, are round.
+$dock-radius: ($dock-button + 2 * $dock-inset) * 0.5 + $border-width-m;
+$dock-end-radius: atlas-panel-inset-radius-value($dock-inset, $dock-button * 0.5);
+
+.atlas-vtt-plugin {
+  // Only transform and opacity animate in the dock (§14): the buttons' colour fades change at once, their presses still move.
+  .atlas-te-dock .btn {
+    transition-property: transform;
+  }
+
+  // ── The dock ────────────────────────────────────────────────────────────
+  .atlas-te-dock {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($dock-radius);
+    @include atlas-flex-col($dock-inset);
+    position: absolute;
+    // Left of the panel's edge (`--atlas-te-panel-width`, set by TemplateEditor), where the kinds have the shortest way onto the card.
+    top: 50%;
+    right: calc(var(--atlas-te-panel-width, 0px) + #{$spacing-s});
+    z-index: 3;
+    translate: 0 -50%;
+    // The buttons' own width, with the same room on every side of them.
+    box-sizing: content-box;
+    align-items: center;
+    width: $dock-button;
+    padding: $dock-inset;
+    box-shadow: $shadow-md;
+
+    .atlas-tool-button button.btn {
+      @include atlas-corner-shape;
+      width: $dock-button;
+      height: $dock-button;
+      padding: 0;
+      border: none;
+      border-radius: $radius-l;
+      background: transparent;
+      box-shadow: none;
+      color: var(--text-muted);
+
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--interactive-accent);
+        outline-offset: -2px;
+      }
+    }
+
+    > :first-child button.btn {
+      border-start-start-radius: $dock-end-radius;
+      border-start-end-radius: $dock-end-radius;
+    }
+
+    > :last-child button.btn {
+      border-end-start-radius: $dock-end-radius;
+      border-end-end-radius: $dock-end-radius;
+    }
+  }
+
+  .atlas-te-dock__divider {
+    width: $dock-button - 2 * $spacing-xs;
+    height: $border-width-s;
+    background: var(--divider-color);
+  }
+}

@@ -8,10 +8,10 @@
 
 import { Container, Graphics, Sprite } from 'pixi.js';
 import type { Texture } from 'pixi.js';
-import { ALIGNMENT_GRID_COLOR } from '../grid/GridSystem';
+import { alignmentGridColor } from '../grid/GridSystem';
 import type { GridType } from '../grid/GridSystem';
 import { gridOffsetCenteredAt } from '../grid/gridPlacement';
-import { gridLineSegments } from './gridDetection/gridTemplate';
+import { gridLineSegments } from './spectralEngine/gridTemplate';
 import { radialFadeGroups } from './radialFade';
 import type { FadeStop } from './radialFade';
 import { destroyTree } from './utils/destroyTree';
@@ -91,7 +91,7 @@ export class FreehandGridPreview {
     const groups = radialFadeGroups(segments, FADE_STOPS, FADE_PIECE_LENGTH, FADE_LEVELS);
 
     this.lines.clear();
-    for (const [width, color, strength] of [[HALO_WIDTH, 0x000000, HALO_ALPHA], [LINE_WIDTH, ALIGNMENT_GRID_COLOR, 1]] as const) {
+    for (const [width, color, strength] of [[HALO_WIDTH, 0x000000, HALO_ALPHA], [LINE_WIDTH, alignmentGridColor(), 1]] as const) {
       for (const { alpha, pieces } of groups) {
         for (const piece of pieces) this.lines.moveTo(piece.x1, piece.y1).lineTo(piece.x2, piece.y2);
         this.lines.stroke({ width, color, alpha: alpha * strength, cap: 'butt' });

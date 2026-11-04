@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand';
 import type { TokenControlsUI } from '../../src/app/pixi/TokenControlsUI';
 import type { ResourceSlot } from '../../src/app/pixi/token-renderer/resources/ResourceStack';
-import { wheelSlot } from '../../src/app/pixi/token-renderer/resources/ResourceWheels';
+import { wheelSlot } from '../../src/app/pixi/token-renderer/resources/wheelGeometry';
 import { HP_RESOURCE, STRESS_RESOURCE } from '../../src/app/resources/resourceDefinitions';
 import type { ResourceDefinition, VisibleResource } from '../../src/app/resources/resourceTypes';
 import { shapeOf, visibleResources } from '../../src/app/resources/visibleResources';

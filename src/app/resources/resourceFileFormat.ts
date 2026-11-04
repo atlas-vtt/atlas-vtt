@@ -5,7 +5,7 @@
  * entries), so every version of Atlas reads every file. In memory a token holds
  * `resources` and a scene `hiddenResources`; nothing but this module knows the file's fields.
  */
-import { isFiniteNumber, isRecord } from '../services/assetMetadataGuards';
+import { isFiniteNumber, isRecord } from '../utils/guards';
 import type { ResourceHolder, ResourceValue } from './resourceTypes';
 
 /** Maxima the old bars showed for values stored as bare numbers; a larger number is its own maximum. */

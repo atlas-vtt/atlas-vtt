@@ -1,0 +1,383 @@
+// The online panel: its header, Copy invite link, the players and their tokens. No row
+// has a fill at rest; a row lights under the pointer or with focus in it, and the controls inside it
+// share its rhythm (`_online.scss`).
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'online' as *;
+
+// A player's colour is `--atlas-online-player`, set by `atlas-online-colour-N` (`marks/styles/_player-colours.scss`).
+
+.atlas-online-dock {
+  // Title, the status in words, and the close button $close-button-gap inside the corner.
+  .atlas-online-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-s;
+    min-height: $close-button-size;
+    padding-left: $online-text-inset;
+
+    // The table's campaign: its name gives way to the status dot and the buttons, cut with an ellipsis.
+    .atlas-online-title {
+      flex: 0 1 auto;
+      min-width: 0;
+      unicode-bidi: isolate;
+      @include atlas-truncate;
+    }
+  }
+
+  .atlas-online-header__status {
+    flex: 1;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+
+    .atlas-online-status__text {
+      @include atlas-truncate;
+    }
+  }
+
+  .atlas-online-header__more.is-open {
+    background: var(--background-modifier-hover);
+  }
+
+  // Stops the table for everyone, so it warns as the pointer comes to it; it takes the corner where the surface has no Close.
+  .atlas-online-header__stop {
+    &:hover {
+      background: color-mix(in oklch, var(--text-error) 12%, transparent);
+      color: var(--text-error);
+    }
+
+    &:last-child {
+      @include atlas-panel-inset-radius($spacing-s, top-right);
+    }
+  }
+
+  // Copy invite link: a row like a player's, a ghost at rest, its icon where avatars and portraits stand.
+  .atlas-online-invite {
+    &,
+    &:hover,
+    &:active,
+    &:focus-visible {
+      display: flex;
+      flex: none;
+      align-items: center;
+      justify-content: flex-start;
+      gap: $spacing-s;
+      box-sizing: border-box;
+      width: 100%;
+      height: $online-row;
+      padding: $online-inset;
+      border: none;
+      border-radius: $online-row-radius;
+      box-shadow: none;
+      color: var(--text-muted);
+      font-size: $font-ui-small;
+      font-weight: $font-weight-medium;
+      text-align: left;
+      cursor: pointer;
+      @include atlas-corner-shape;
+    }
+
+    & {
+      background: transparent;
+      transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+    &:active {
+      background: var(--background-modifier-active-hover);
+    }
+
+    &:focus-visible {
+      box-shadow: $online-focus-ring;
+    }
+
+    &.is-copied {
+      color: var(--color-green);
+    }
+  }
+
+  .atlas-online-invite__icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: $online-control;
+    height: $online-control;
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+  }
+
+  .atlas-online-list {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: $spacing-s;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    @include atlas-scrollbar;
+  }
+
+  // A player and their tokens, or those not assigned yet: rows close together, groups $spacing-s apart.
+  .atlas-online-group {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+  }
+
+  .atlas-online-group-label {
+    display: flex;
+    align-items: center;
+    height: $online-control;
+    padding: 0 $online-text-inset;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-medium;
+  }
+
+  .atlas-online-player,
+  .atlas-online-token {
+    display: flex;
+    flex: none;
+    align-items: center;
+    box-sizing: border-box;
+    height: $online-row;
+    border-radius: $online-row-radius;
+    @include atlas-corner-shape;
+  }
+
+  .atlas-online-player {
+    gap: $spacing-s;
+    padding: $online-inset;
+  }
+
+  // The player's picture and name. A button where the player plays a token: pressing it selects that token.
+  .atlas-online-player__main {
+    &,
+    &:hover,
+    &:active,
+    &:focus-visible {
+      display: flex;
+      flex: 0 1 auto;
+      align-items: center;
+      justify-content: flex-start;
+      gap: $spacing-s;
+      min-width: 0;
+      height: auto;
+      padding: 0;
+      border: none;
+      border-radius: $online-row-radius;
+      background: transparent;
+      box-shadow: none;
+      color: inherit;
+      font-size: $font-ui-small;
+      text-align: left;
+    }
+  }
+
+  button.atlas-online-player__main {
+    cursor: pointer;
+
+    &:focus-visible {
+      box-shadow: $online-focus-ring;
+    }
+  }
+
+  .atlas-online-avatar {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: $online-control;
+    height: $online-control;
+    border-radius: $radius-full;
+    // Tinted, so the initial reads on every player colour, light or dark theme.
+    background: color-mix(in oklch, var(--atlas-online-player) 22%, transparent);
+    // Drawn towards the text colour, so a light player colour (yellow) still reads on its tint.
+    color: color-mix(in oklch, var(--atlas-online-player) 75%, var(--text-normal));
+    font-size: $font-ui-small;
+    font-weight: $font-weight-bold;
+
+    // Whether the player is here, on the avatar's edge, ringed in the panel's colour.
+    &::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      width: 8px;
+      height: 8px;
+      border-radius: $radius-full;
+      background: var(--atlas-online-tone);
+      box-shadow: 0 0 0 2px var(--background-primary);
+    }
+  }
+
+  // The token a player plays is their picture: it fills the avatar, which keeps the dot.
+  .atlas-online-avatar--token {
+    background: none;
+  }
+
+  .atlas-online-avatar__portrait {
+    width: 100%;
+    height: 100%;
+  }
+
+  .atlas-online-player__name {
+    flex: 0 1 auto;
+    min-width: 0;
+    color: var(--text-normal);
+    font-size: $font-ui-small;
+    font-weight: $font-weight-semibold;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-player.is-away {
+    .atlas-online-avatar {
+      opacity: 0.6;
+    }
+
+    .atlas-online-player__name {
+      color: var(--text-muted);
+    }
+  }
+
+  .atlas-online-player__more {
+    margin-left: auto;
+    @include online-on-row-hover;
+  }
+
+  .atlas-online-player:hover .atlas-online-player__more,
+  .atlas-online-player:focus-within .atlas-online-player__more,
+  .atlas-online-token:hover .atlas-online-owner,
+  .atlas-online-token:focus-within .atlas-online-owner,
+  .atlas-online-token .atlas-online-owner--free {
+    opacity: 1;
+  }
+
+  // The token's row: one button for the row, the owner picker inside it at the right.
+  .atlas-online-token {
+    transition: background-color $transition-fast $transition-ease;
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+      }
+    }
+
+    &:has(> .atlas-online-token__main:active) {
+      background: var(--background-modifier-active-hover);
+    }
+
+    &:has(> .atlas-online-token__main:focus-visible) {
+      background: var(--background-modifier-hover);
+      box-shadow: $online-focus-ring;
+    }
+  }
+
+  .atlas-online-token__main {
+    &,
+    &:hover,
+    &:active,
+    &:focus-visible {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      justify-content: flex-start;
+      gap: $spacing-s;
+      min-width: 0;
+      height: 100%;
+      padding: $online-inset;
+      border: none;
+      border-radius: inherit;
+      background: transparent;
+      box-shadow: none;
+      color: var(--text-normal);
+      font-size: $font-ui-small;
+      text-align: left;
+      cursor: pointer;
+    }
+  }
+
+  .atlas-online-token__portrait {
+    flex: none;
+    width: $online-control;
+    height: $online-control;
+  }
+
+  // The name takes only its own width, so the hidden mark follows it rather than the hidden picker's place.
+  .atlas-online-token__name {
+    flex: 0 1 auto;
+    min-width: 0;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-token__hidden {
+    display: flex;
+    flex: none;
+    color: var(--text-faint);
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+  }
+
+  // One elevation above its row: Obsidian's raised button, the row's controls' height and corner.
+  .atlas-online-owner {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: $spacing-xs;
+    max-width: 45%;
+    height: $online-control;
+    margin-right: $online-inset;
+    padding: 0 $spacing-xs 0 $spacing-s;
+    border: none;
+    border-radius: $radius-m;
+    background: var(--interactive-normal);
+    box-shadow: var(--input-shadow);
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: background-color $transition-fast $transition-ease, opacity $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+    @include atlas-corner-shape;
+
+    &:hover {
+      background: var(--interactive-hover);
+      box-shadow: var(--input-shadow-hover);
+    }
+
+    &:active {
+      transform: scale(0.97);
+    }
+
+    &:focus-visible {
+      box-shadow: var(--input-shadow), 0 0 0 2px var(--background-modifier-border-focus);
+    }
+
+    @include online-on-row-hover;
+  }
+
+  .atlas-online-owner__dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: $radius-full;
+    background: var(--atlas-online-player);
+  }
+
+  .atlas-online-owner__text {
+    @include atlas-truncate;
+  }
+}

@@ -3,7 +3,6 @@ import type { GridOptions } from './GridSystem';
 import { parseGridColor } from './gridContrastColor';
 import { cellNumberStyleOfGrid } from './cellNumbering';
 import type { MapFile } from '../services/MapPersistence';
-import { Sprite } from 'pixi.js';
 
 /** The part of the loaded map the grid helpers read and keep in sync. */
 export type GridMapData = Pick<MapFile, 'grid'>;
@@ -33,13 +32,13 @@ function ensureInitialised(
     enabled: true,
   } as const;
 
-  const bgSprite: Sprite | null = renderer.getBackgroundSprite();
-  if (!bgSprite) {
-    console.error('[GridController] Cannot create grid – background sprite missing');
+  const mapImage = renderer.getMapImage();
+  if (!mapImage) {
+    console.error('[GridController] Cannot create grid – no map image');
     return;
   }
 
-  renderer.initGrid(gridOptions, bgSprite);
+  renderer.initGrid(gridOptions, mapImage);
 }
 
 /**

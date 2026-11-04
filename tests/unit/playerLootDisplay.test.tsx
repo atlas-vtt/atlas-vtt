@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LootDraw } from '../../src/app/loot/lootRoller';
@@ -103,5 +104,39 @@ describe('PlayerLootDisplay', () => {
     act(() => { document.querySelector<HTMLElement>('.atlas-player-loot__scrim')?.click(); });
     expect(display.shownIds().size).toBe(0);
     await vi.waitFor(() => expect(document.querySelector('.atlas-player-loot')).toBeNull());
+  });
+});
+
+describe('PlayerLootDisplay with an outlet', () => {
+  const display = PlayerLootDisplay.get();
+
+  afterEach(() => {
+    act(() => display.setOutlet(null));
+    act(() => display.close());
+    playerWindow.current = null;
+  });
+
+  it('hands an item out through the outlet without a player window, and takes it back on a second click', () => {
+    const handed: string[] = [];
+    display.setOutlet((item) => (handed.push(item.name), true));
+    act(() => display.toggle(draw('a', 'Rope')));
+    expect(handed).toEqual(['Rope']);
+    expect([...display.shownIds()]).toEqual(['a']);
+    act(() => display.toggle(draw('a', 'Rope')));
+    expect(display.shownIds().size).toBe(0);
+    expect(handed).toEqual(['Rope']);
+  });
+
+  it('shows the item in an open player window too, and forgets what it handed out once the outlet goes', () => {
+    playerWindow.current = window;
+    HTMLElement.prototype.animate = vi.fn(() => ({ finished: Promise.resolve() }) as unknown as Animation);
+    Element.prototype.scrollIntoView = vi.fn();
+    display.setOutlet(() => true);
+    act(() => display.toggle(draw('b', 'Lantern')));
+    expect(names()).toEqual(['Lantern']);
+    playerWindow.current = null;
+    act(() => display.toggle(draw('c', 'Map')));
+    act(() => display.setOutlet(null));
+    expect([...display.shownIds()]).toEqual(['b']);
   });
 });

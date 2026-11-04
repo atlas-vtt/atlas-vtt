@@ -25,12 +25,18 @@ describe('placementVision', () => {
     expect(placementVision({ darkvision: 60 }, true)).toBeUndefined();
   });
 
-  it('never switches vision on', () => {
-    for (const linked of [false, true]) expect(placementVision({ range: 120 }, linked)).toEqual({ enabled: false, range: 120 });
+  it('switches vision on for a player character alone', () => {
+    for (const linked of [false, true]) {
+      expect(placementVision({ range: 120 }, linked)).toEqual({ enabled: false, range: 120 });
+      expect(placementVision({ range: 120 }, linked, true)).toEqual({ enabled: true, range: 120 });
+    }
+    expect(placementVision(SENSES, false, true)).toEqual({ enabled: true, ...SENSES });
+    expect(placementVision({ senses: [{ id: darkvision.id }] }, true, true)).toEqual({ enabled: true });
   });
 
-  it('stamps nothing without a default', () => {
+  it('stamps nothing without a default, but for a player character, who sees', () => {
     expect(placementVision(undefined, true)).toBeUndefined();
     expect(placementVision(undefined, false)).toBeUndefined();
+    expect(placementVision(undefined, false, true)).toEqual({ enabled: true });
   });
 });

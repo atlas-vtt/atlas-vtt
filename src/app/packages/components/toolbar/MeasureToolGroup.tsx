@@ -1,3 +1,4 @@
+import { t } from '../../../i18n';
 import React, { useState } from "react"
 import { Circle, Ruler, Triangle } from "lucide-react"
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
@@ -8,9 +9,9 @@ import { MEASURE_SHAPES, measureToolFace, type MeasureTool } from "./toolFaces"
 import { useEmitViewEvent } from "./useEmitViewEvent"
 
 const SHAPE_OPTIONS: readonly { tool: MeasureTool; icon: typeof Ruler; label: string }[] = [
-  { tool: "measure", icon: Ruler, label: "Line" },
-  { tool: "measure-circle", icon: Circle, label: "Circle/Sphere" },
-  { tool: "measure-cone", icon: Triangle, label: "Cone" },
+  { tool: "measure", icon: Ruler, label: t('toolbar.line') },
+  { tool: "measure-circle", icon: Circle, label: t('toolbar.circle') },
+  { tool: "measure-cone", icon: Triangle, label: t('toolbar.cone') },
 ]
 
 /** Line, circle and cone measurements, and whether they stay on the map. */
@@ -24,7 +25,7 @@ export function MeasureToolGroup({ activeTool, selectTool, menuOpen, toggleMenu 
     <ToolGroup
       face={face}
       shortcut={hotkeyLabel('measure')}
-      menuLabel="Measure Tool Options"
+      menuLabel={t('toolbar.measureOptions')}
       menuOpen={menuOpen}
       onSelect={() => selectTool(face.tool)}
       onMenuToggle={toggleMenu}
@@ -48,7 +49,7 @@ export function MeasureToolGroup({ activeTool, selectTool, menuOpen, toggleMenu 
 
       <div className="atlas-dropdown-section">
         <DropdownToggleRow
-          label="Persist Measurements"
+          label={t('toolbar.persist')}
           value={persist}
           onChange={() => {
             const next = !persist;

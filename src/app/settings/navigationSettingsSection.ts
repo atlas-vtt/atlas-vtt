@@ -1,22 +1,23 @@
 import type { NavigationInputMode, SettingsService } from '../services/SettingsService';
 import type { AtlasSettingSection } from './settingSections';
+import { t } from '../i18n';
 
 const MODE_LABELS: Record<NavigationInputMode, string> = {
-  mouse: 'Mouse',
-  trackpad: 'Trackpad',
+  mouse: t('settings.navigation.mouse'),
+  trackpad: t('settings.navigation.trackpad'),
 };
 
 const MODE_HINTS: Record<NavigationInputMode, string> = {
-  mouse: 'Scroll wheel zooms in and out. Right-click and drag to pan around the map.',
-  trackpad: 'Two-finger scroll pans around the map. Pinch to zoom in and out. Right-click and drag also pans.',
+  mouse: t('settings.navigation.mouseHint'),
+  trackpad: t('settings.navigation.trackpadHint'),
 };
 
 /** Map navigation options. */
 export function navigationSettingsSection(settingsService: SettingsService): AtlasSettingSection {
   return {
-    heading: 'Navigation',
+    heading: t('settings.navigation.heading'),
     rows: [{
-      name: 'Input device',
+      name: t('settings.navigation.inputDevice'),
       desc: MODE_HINTS[settingsService.getNavigationSettings().inputMode],
       aliases: ['mouse', 'trackpad', 'zoom', 'pan'],
       render: (setting) => {

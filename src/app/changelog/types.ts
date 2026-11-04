@@ -11,9 +11,11 @@ export interface ReleaseBundle {
   releases: ReleaseNote[];
 }
 
-/** One `## Heading` block of a release note; the leading text before any heading has no label. */
+/** One headed block of a release note; the leading text before any heading has no label. */
 export interface ReleaseSection {
   label: string | null;
+  /** 1 under a `#` group heading, 2 under a `##` category heading, null before any heading. */
+  level: 1 | 2 | null;
   markdown: string;
 }
 

@@ -6,7 +6,9 @@ import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { LootDraw } from '../../../loot/lootRoller';
 import { EASE_OUT_CONTROL_POINTS, PANEL_ENTER_FROM, PANEL_ENTER_MS } from '../../../utils/motion';
 import { LootItemContent } from './LootItemContent';
+import { LootGiveButton } from './LootGiveButton';
 import { rarityTone } from '../../../loot/lootRarity';
+import { t } from '../../../i18n';
 
 interface LootResultCardProps {
   draw: LootDraw;
@@ -32,7 +34,7 @@ function LootResultCardView({ draw, fresh, order, onOpenSource, onOpenLink, show
   return (
     <motion.li
       className={`atlas-loot-card${fresh ? ' atlas-loot-card--fresh' : ''}`}
-      data-rarity={rarityTone(draw.rarity)}
+      data-rarity={draw.tone ?? rarityTone(draw.rarity)}
       initial={fresh ? enter : false}
       animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }}
       transition={{ duration: PANEL_ENTER_MS / 1000, ease: EASE_OUT_CONTROL_POINTS, delay: fresh ? order * STAGGER_S : 0 }}
@@ -41,23 +43,26 @@ function LootResultCardView({ draw, fresh, order, onOpenSource, onOpenLink, show
         draw={draw}
         onOpenLink={onOpenLink}
         actions={(
-          <LabelTooltip label={shownToPlayers ? 'Hide from players' : 'Show to players'}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`atlas-loot-card__show${shownToPlayers ? ' is-shown' : ''}`}
-              aria-label={shownToPlayers ? 'Hide from players' : 'Show to players'}
-              aria-pressed={shownToPlayers}
-              onClick={() => onShowToPlayers(draw)}
-            >
-              <Eye />
-            </Button>
-          </LabelTooltip>
+          <>
+            <LootGiveButton draw={draw} />
+            <LabelTooltip label={shownToPlayers ? t('widgets.hideFromPlayers') : t('widgets.showToPlayers')}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`atlas-loot-card__action atlas-loot-card__show${shownToPlayers ? ' is-shown' : ''}`}
+                aria-label={shownToPlayers ? t('widgets.hideFromPlayers') : t('widgets.showToPlayers')}
+                aria-pressed={shownToPlayers}
+                onClick={() => onShowToPlayers(draw)}
+              >
+                <Eye />
+              </Button>
+            </LabelTooltip>
+          </>
         )}
       />
 
       <div className="atlas-loot-card__foot">
-        <LabelTooltip label={`Open the note of ${draw.name}`}>
+        <LabelTooltip label={t('loot.card.openNote', { name: draw.name })}>
           <button
             type="button"
             className="atlas-loot-text-button atlas-loot-card__source"

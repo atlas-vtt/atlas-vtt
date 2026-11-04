@@ -1,6 +1,14 @@
 import { statblockResourceValue } from './statblockResourceValues';
 import { clampValue } from './resourceValues';
 import type { ResourceDefinition, ResourceHolder, ResourceValue } from './resourceTypes';
+import { shownFieldsOf } from '../statblocks/model/resolvedTypes';
+import { NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
+
+/** A statblock's fields with the meanings of its template, as the resolver gives them. */
+export interface StatblockFields {
+  fields: Readonly<Record<string, unknown>>;
+  meanings?: FieldMeanings;
+}
 
 /**
  * A linked token's resources after its statblock changed: each defined
@@ -11,11 +19,12 @@ export function syncedResources(
   token: ResourceHolder,
   record: Readonly<Record<string, unknown>>,
   definitions: readonly ResourceDefinition[],
+  meanings: FieldMeanings = NO_MEANINGS,
 ): Record<string, ResourceValue> {
   const next: Record<string, ResourceValue> = { ...token.resources };
   for (const definition of definitions) {
     if (token.overriddenMax?.includes(definition.key)) continue;
-    const fromStatblock = statblockResourceValue(record, definition);
+    const fromStatblock = statblockResourceValue(record, definition, meanings);
     if (!fromStatblock) continue;
     const current = next[definition.key];
     next[definition.key] = current ? clampValue({ current: current.current, max: fromStatblock.max }) : fromStatblock;
@@ -41,7 +50,7 @@ export interface ResourceTokens {
 export async function fillMissingResources(
   host: ResourceTokens,
   definitions: readonly ResourceDefinition[],
-  readStatblock: (path: string) => Promise<Readonly<Record<string, unknown>> | null>,
+  readStatblock: (path: string) => Promise<StatblockFields | null>,
 ): Promise<void> {
   const incomplete = (): Array<[string, LinkedToken & { statblockPath: string }]> =>
     Object.entries(host.tokens()).filter((entry): entry is [string, LinkedToken & { statblockPath: string }] =>
@@ -56,11 +65,11 @@ export async function fillMissingResources(
   // Read the tokens again: they may have changed while the statblocks were read.
   const entries: Parameters<ResourceTokens['apply']>[0] = [];
   for (const [id, token] of incomplete()) {
-    const record = records.get(token.statblockPath);
-    if (!record) continue;
+    const statblock = records.get(token.statblockPath);
+    if (!statblock) continue;
     const resources = { ...token.resources };
     for (const definition of definitions) {
-      const value = resources[definition.key] ? null : statblockResourceValue(record, definition);
+      const value = resources[definition.key] ? null : statblockResourceValue(shownFieldsOf(statblock), definition, statblock.meanings);
       if (value) resources[definition.key] = value;
     }
     if (Object.keys(resources).length > Object.keys(token.resources ?? {}).length) entries.push({ id, changes: { resources } });

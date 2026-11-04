@@ -1,55 +1,62 @@
-import { App, Notice } from 'obsidian';
+import { App } from 'obsidian';
 import type { AtlasView } from '../atlas-view';
-import { AssetValidationService } from '../services/AssetValidationService';
+import { AssetValidationService, SCENE_BACKGROUND } from '../services/AssetValidationService';
+import { changeLevelBackground, setLevelRoof } from '../react/components/levels/levelEditing';
 import { runHistoryTransaction } from '../stores/history';
 import { ChoiceModal } from './ChoiceModal';
+import { formatList, t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
-function describeCount(count: number, singular: string): string | null {
-  if (count === 0) return null;
-  return `${count} ${singular}${count === 1 ? '' : 's'}`;
-}
-
-/** Finds tokens and backgrounds whose image is gone and offers to drop them from the map. */
+/** Finds tokens on any floor and floor maps whose image is gone and offers to drop them from the scene. */
 export async function cleanupMissingAssets(app: App, view: AtlasView): Promise<void> {
   const store = view.getStore();
   if (!store) {
-    new Notice('Unable to access map data');
+    showNotice(t('cleanup.noMapData'));
     return;
   }
 
   const state = store.getState();
   const validation = await new AssetValidationService({ app }).validateMapAssets({
     background: state.background,
+    levels: state.levels,
     objects: { tokens: state.objects?.tokens ?? {} },
   });
 
   const missingTokenIds = validation.missingAssets.filter((a) => a.type === 'token').map((a) => a.objectId);
-  const missingBackgrounds = validation.missingAssets.filter((a) => a.type === 'map').length;
-  const removable = missingTokenIds.length + missingBackgrounds;
+  const missingMaps = validation.missingAssets.filter((a) => a.type === 'map').map((a) => a.objectId);
+  const missingRoofs = validation.missingAssets.filter((a) => a.type === 'roof').map((a) => a.objectId);
+  const missingBackgrounds = missingMaps.length;
+  const removable = missingTokenIds.length + missingBackgrounds + missingRoofs.length;
 
   if (removable === 0) {
-    new Notice('No missing assets found');
+    showNotice(t('cleanup.nothingMissing'));
     return;
   }
 
-  const found = [
-    describeCount(missingTokenIds.length, 'token'),
-    describeCount(missingBackgrounds, 'map background'),
-  ].filter(Boolean).join(' and ');
+  const found = formatList([
+    missingTokenIds.length > 0 ? t('cleanup.tokens', { count: missingTokenIds.length }) : '',
+    missingBackgrounds > 0 ? t('cleanup.backgrounds', { count: missingBackgrounds }) : '',
+    missingRoofs.length > 0 ? t('cleanup.roofs', { count: missingRoofs.length }) : '',
+  ].filter(Boolean));
 
   const confirmed = await new ChoiceModal<true>(app, {
-    title: 'Clean up missing assets',
-    message: [`Found ${found} pointing at images that no longer exist.`, 'Remove these references from the map?'],
-    buttons: [{ text: 'Remove', value: true, variant: 'warning' }],
+    title: t('cleanup.title'),
+    message: [t('cleanup.found', { found }), t('cleanup.confirm')],
+    buttons: [{ text: t('common.remove'), value: true, variant: 'warning' }],
   }).prompt();
   if (!confirmed) return;
 
   runHistoryTransaction(store, () => {
     const actions = store.getState();
     if (missingTokenIds.length > 0) actions.deleteTokens(missingTokenIds);
-    if (missingBackgrounds > 0) actions.setBackground(null);
+    for (const level of missingMaps) {
+      if (level === SCENE_BACKGROUND) actions.setBackground(null);
+      else changeLevelBackground(store, level, null);
+    }
+    // Roofs are scene settings, like a level's map above the first: untracked.
+    for (const level of missingRoofs) setLevelRoof(store, level, null);
   });
 
-  new Notice(`Cleaned up ${removable} missing asset reference${removable === 1 ? '' : 's'}`);
+  showNotice(t('cleanup.done', { count: removable }));
   await view.saveMap();
 }

@@ -1,0 +1,83 @@
+// "More properties (n)" under the card (§7.2).
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  .atlas-sb-pane-tray {
+    @include atlas-flex-col($spacing-s);
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  .atlas-sb-pane-tray__toggle {
+    align-self: flex-start;
+    gap: $spacing-xs;
+    color: var(--text-muted);
+
+    &[aria-expanded='true'] .atlas-sb-pane-tray__chevron {
+      transform: rotate(90deg);
+    }
+  }
+
+  .atlas-sb-pane-tray__chevron {
+    width: $icon-xs;
+    height: $icon-xs;
+    transition: transform $transition-fast $transition-ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  // An inset surface: padding equals the gap between its rows.
+  .atlas-sb-pane-tray__content {
+    @include atlas-flex-col($spacing-s);
+    @include atlas-inset-surface;
+    padding: $spacing-s;
+  }
+
+  .atlas-sb-pane-tray__heading {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .atlas-sb-pane-tray__row {
+    @include atlas-flex-row($spacing-s);
+    flex-wrap: wrap;
+    min-height: $button-height-s;
+    font-size: $font-ui-small;
+  }
+
+  .atlas-sb-pane-tray__key {
+    flex: 0 0 8em;
+    min-width: 0;
+    color: var(--text-muted);
+    @include atlas-truncate;
+  }
+
+  .atlas-sb-pane-tray__value {
+    flex: 1 1 8em;
+    min-width: 0;
+
+    &--read-only {
+      color: var(--text-muted);
+      @include atlas-truncate;
+    }
+  }
+
+  .atlas-sb-pane-tray__actions {
+    @include atlas-flex-row($spacing-xs);
+    margin-inline-start: auto;
+
+    .btn--sm {
+      height: $button-height-s;
+      padding: 0 $spacing-s;
+      font-size: $font-ui-smaller;
+    }
+  }
+}

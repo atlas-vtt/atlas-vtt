@@ -48,7 +48,7 @@ export async function readVault(app: App, metadata: AssetMetadata): Promise<Vaul
  * The vault as it is right now. Taken synchronously just before the check runs,
  * so the check never works from a listing older than the index it changes.
  */
-export function listVault(app: App, readings: VaultReadings, deleted: ReadonlySet<string>): VaultListing {
+export function listVault(app: App, readings: VaultReadings, deleted: ReadonlySet<string>, recorded: ReadonlySet<string> = new Set()): VaultListing {
   const files = listedFiles(app);
   for (const path of readings.unlisted) files.add(path);
   const root = app.vault.getFolderByPath(COLLECTIONS_DIR);
@@ -57,5 +57,5 @@ export function listVault(app: App, readings: VaultReadings, deleted: ReadonlySe
       .filter((child): child is TFolder => child instanceof TFolder && !child.name.startsWith('.'))
       .map((folder) => folder.name),
   );
-  return { files, collectionFolders, deleted, json: readings.json };
+  return { files, collectionFolders, deleted, json: readings.json, recorded };
 }

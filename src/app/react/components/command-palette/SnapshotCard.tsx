@@ -4,6 +4,7 @@ import type { SceneSnapshotEntry } from '../../../snapshots/SceneSnapshotService
 import { formatRelativeTime } from '../../../utils/relativeTime';
 import { cn } from '../../../../utils/cn';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { getLocale, t } from '../../../i18n';
 
 interface SnapshotCardProps {
   entry: SceneSnapshotEntry;
@@ -17,7 +18,7 @@ interface SnapshotCardProps {
   onContextMenu: (entry: SceneSnapshotEntry, event: React.MouseEvent) => void;
 }
 
-const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+const dateFormat = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' });
 
 interface NameInputProps {
   name: string;
@@ -45,7 +46,7 @@ function NameInput({ name, onDone }: NameInputProps): React.ReactElement {
       ref={inputRef}
       className="atlas-snapshot-card__name-input"
       defaultValue={name}
-      aria-label="Snapshot name"
+      aria-label={t('snapshots.name')}
       spellCheck={false}
       onBlur={(event) => finish(event.currentTarget.value)}
       onKeyDown={(event) => {
@@ -86,7 +87,7 @@ export function SnapshotCard({
         className="atlas-snapshot-card__image"
         disabled={disabled}
         onClick={() => onRestore(entry)}
-        aria-label={`Restore ${name}`}
+        aria-label={t('snapshots.restoreNamed', { name })}
       >
         {thumbnailUrl ? <img src={thumbnailUrl} alt="" draggable={false} /> : <ImageOff />}
       </button>
@@ -99,12 +100,12 @@ export function SnapshotCard({
             className="atlas-snapshot-card__name"
             disabled={disabled}
             onClick={() => onStartRename(entry)}
-            aria-label={`Rename ${name}`}
+            aria-label={t('snapshots.renameNamed', { name })}
           >
             {name}
           </button>
         )}
-        <LabelTooltip label={`${updatedAt ? 'Updated' : 'Saved'} ${dateFormat.format(takenAt)}`} describe>
+        <LabelTooltip label={t(updatedAt ? 'snapshots.updatedAt' : 'snapshots.savedAt', { date: dateFormat.format(takenAt) })} describe>
           <span className="atlas-snapshot-card__date">{formatRelativeTime(takenAt)}</span>
         </LabelTooltip>
       </div>

@@ -1,23 +1,25 @@
-import { Notice, type Setting, type ToggleComponent } from 'obsidian';
+import { type Setting, type ToggleComponent } from 'obsidian';
 import { availableHotkeys, DEFAULT_MAP_HOTKEYS, formatHotkey, hotkeyAction, hotkeyFromEvent } from '../keyboard/mapHotkeys';
 import type { HotkeyOrigin } from '../keyboard/hotkeyOverrides';
 import type { SettingsService } from '../services/SettingsService';
 import type { AtlasSettingRow, AtlasSettingSection } from './settingSections';
 import type { ButtonComponent } from 'obsidian';
 import { TUTORIAL_IDS } from '../services/SettingsService';
+import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 type HotkeyAction = ReturnType<typeof availableHotkeys>[number];
 
 function notifyFailure(error: unknown, fallback: string): void {
-  new Notice(error instanceof Error ? error.message : fallback);
+  showNotice(error instanceof Error ? error.message : fallback);
 }
 
 /** The action's group, plus its default once changed or why it lost its default. */
 function describeHotkey(descEl: HTMLElement, action: HotkeyAction, origin: HotkeyOrigin): void {
   const defaultKey = formatHotkey(DEFAULT_MAP_HOTKEYS[action.id]);
-  descEl.setText(origin.kind === 'custom' ? `${action.group} · Default: ${defaultKey}` : action.group);
+  descEl.setText(origin.kind === 'custom' ? t('settings.hotkeys.defaultSuffix', { group: action.group, key: defaultKey }) : action.group);
   if (origin.kind === 'displaced') {
-    descEl.createDiv({ cls: 'atlas-hotkey-warning', text: `Unassigned: its default, ${defaultKey}, is assigned to ${hotkeyAction(origin.by).label}.` });
+    descEl.createDiv({ cls: 'atlas-hotkey-warning', text: t('settings.hotkeys.displaced', { key: defaultKey, action: hotkeyAction(origin.by).label }) });
   }
 }
 
@@ -42,8 +44,8 @@ export function hotkeySettingsSection(settings: SettingsService): AtlasSettingSe
         const recorder = text.inputEl;
         recorder.readOnly = true;
         recorder.classList.add('atlas-hotkey-recorder');
-        recorder.setAttribute('aria-label', `Shortcut for ${action.label}`);
-        recorder.addEventListener('focus', () => { recorder.value = 'Press a key…'; });
+        recorder.setAttribute('aria-label', t('settings.hotkeys.shortcutFor', { action: action.label }));
+        recorder.addEventListener('focus', () => { recorder.value = t('settings.hotkeys.pressKey'); });
         recorder.addEventListener('blur', sync);
         recorder.addEventListener('keydown', event => {
           event.preventDefault(); event.stopPropagation();
@@ -52,17 +54,17 @@ export function hotkeySettingsSection(settings: SettingsService): AtlasSettingSe
           const binding = hotkeyFromEvent(event);
           if (!binding) return;
           try { settings.setHotkey(action.id, binding); recorder.blur(); }
-          catch (error) { notifyFailure(error, 'Could not assign shortcut'); }
+          catch (error) { notifyFailure(error, t('settings.hotkeys.assignFailed')); }
         });
       });
-      setting.addExtraButton(button => button.setIcon('x').setTooltip('Clear shortcut').onClick(() => {
+      setting.addExtraButton(button => button.setIcon('x').setTooltip(t('settings.hotkeys.clear')).onClick(() => {
         settings.setHotkey(action.id, '');
       }));
       setting.addExtraButton(button => {
         restoreEl = button.extraSettingsEl;
-        button.setIcon('reset').setTooltip('Restore default').onClick(() => {
+        button.setIcon('reset').setTooltip(t('settings.hotkeys.restore')).onClick(() => {
           try { settings.setHotkey(action.id, DEFAULT_MAP_HOTKEYS[action.id]); }
-          catch (error) { notifyFailure(error, 'Could not restore shortcut'); }
+          catch (error) { notifyFailure(error, t('settings.hotkeys.restoreFailed')); }
         });
       });
 
@@ -72,17 +74,17 @@ export function hotkeySettingsSection(settings: SettingsService): AtlasSettingSe
   });
 
   return {
-    heading: 'Map hotkeys',
+    heading: t('settings.hotkeys.heading'),
     rows: [
       {
-        name: 'Single keys and combinations',
-        desc: 'These shortcuts work only in the active map, outside text fields and dialogs. Select a shortcut field and press a key or combination. Escape cancels recording. Clear a binding before assigning its key to another action. Keys for a held widget work only while you hold its number key, so they can share a key with another shortcut.',
+        name: t('settings.hotkeys.intro'),
+        desc: t('settings.hotkeys.introDesc'),
         aliases: ['hotkey', 'shortcut', 'reset'],
         render: (setting) => {
-          setting.addButton(button => button.setButtonText('Reset all hotkeys').onClick(() => settings.resetHotkeys()));
+          setting.addButton(button => button.setButtonText(t('settings.hotkeys.resetAll')).onClick(() => settings.resetHotkeys()));
         },
       },
-      ...availableHotkeys(false, feature => settings.isExperimentalOn(feature)).map(hotkeyRow),
+      ...availableHotkeys().map(hotkeyRow),
     ],
   };
 }
@@ -90,8 +92,8 @@ export function hotkeySettingsSection(settings: SettingsService): AtlasSettingSe
 /** How far the user is through the tutorials, for the Reset row. */
 function tutorialProgress(settings: SettingsService): string {
   const finished = settings.finishedTutorialCount();
-  if (finished === 0) return 'Each tutorial shows the first time you open its feature.';
-  return `You finished or skipped ${finished} of ${TUTORIAL_IDS.length} tutorials; they stay hidden. Reset them to see each again the next time you open its feature.`;
+  if (finished === 0) return t('settings.tutorials.firstTime');
+  return t('settings.tutorials.progress', { finished, total: TUTORIAL_IDS.length });
 }
 
 /**
@@ -102,11 +104,11 @@ function tutorialProgress(settings: SettingsService): string {
 export function onboardingSettingsSection(settings: SettingsService): AtlasSettingSection {
   let tutorialToggle: ToggleComponent | undefined;
   return {
-    heading: 'Getting started',
+    heading: t('settings.tutorials.heading'),
     rows: [
       {
-        name: 'Show tutorials',
-        desc: 'Short guided tours of the asset manager, the command palette, token statblocks and loot, each shown once.',
+        name: t('settings.tutorials.show'),
+        desc: t('settings.tutorials.showDesc'),
         aliases: ['onboarding', 'walkthrough', 'tour'],
         render: (setting) => {
           setting.addToggle(toggle => {
@@ -118,17 +120,17 @@ export function onboardingSettingsSection(settings: SettingsService): AtlasSetti
         },
       },
       {
-        name: 'Reset tutorials',
-        desc: 'Show every tutorial again the next time you open its feature.',
+        name: t('settings.tutorials.reset'),
+        desc: t('settings.tutorials.resetDesc'),
         aliases: ['onboarding', 'walkthrough', 'tour', 'replay'],
         render: (setting) => {
           let button: ButtonComponent | undefined;
           setting.addButton(component => {
             button = component;
-            component.setButtonText('Reset tutorials').onClick(() => {
+            component.setButtonText(t('settings.tutorials.reset')).onClick(() => {
               settings.resetTutorials();
               tutorialToggle?.setValue(true);
-              new Notice('Tutorials will show again the next time you open each feature.');
+              showNotice(t('settings.tutorials.resetDone'));
             });
           });
           const sync = (): void => {

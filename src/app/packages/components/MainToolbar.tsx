@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo, forwardRef } from "react"
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { AnimatePresence, MotionConfig } from "framer-motion"
+import { createPortal } from "react-dom"
 import { useStore } from "zustand"
 import { Eye, EyeOff } from "lucide-react"
 
@@ -12,8 +13,6 @@ import AssetManager from "./asset-manager/AssetManager"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { Toggle } from "./primitives/Toggle"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
-import { useExperimentalFeature } from "../../react/hooks/useExperimentalFeature"
-import type { ExperimentalFeatureId } from "../../experimental/experimentalFeatures"
 import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER } from "../../toolbar/toolbarCatalog"
 import { ResponsiveToolbar } from "./toolbar/ResponsiveToolbar"
 import { useToolbarHotkeys } from "./toolbar/useToolbarHotkeys"
@@ -23,10 +22,12 @@ import { ToolbarEditContext } from "./toolbar/editor/toolbarEditContext"
 import { ToolbarEditor } from "./toolbar/editor/ToolbarEditor"
 import { ToolbarLiveRegion } from "./toolbar/editor/ToolbarLiveRegion"
 import { createToolbarEditStore, ToolbarEditStoreContext } from "./toolbar/editor/toolbarEditStore"
+import { useToolbarRowBridge } from "./toolbar/editor/toolbarRowBridge"
 import { useToolbarEditor } from "./toolbar/editor/useToolbarEditor"
 import type { Tool } from "./toolbar/toolFaces"
 import type { ToolbarContext, ToolMenu } from "./toolbar/toolbarContext"
 import type { ResponsiveToolbarItem } from "./toolbar/toolbarTypes"
+import { t } from '../../i18n';
 
 interface MainToolbarProps {
   viewId?: string;
@@ -40,12 +41,12 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const isGMView = useAtlasStore(state => state.isGMView)
   const setGMView = useAtlasStore(state => state.setGMView)
   const hotkeyLabel = useHotkeyLabels()
-  const experimentalOn: Record<ExperimentalFeatureId, boolean> = {
-    dynamicLighting: useExperimentalFeature('dynamicLighting'),
-  }
   const liveLayout = useToolbarLayout()
   // During a drag the bar keeps the layout it began with; changes made elsewhere wait for the drop.
-  const [editStore] = useState(createToolbarEditStore)
+  // The bottom row shares the drag state with the undo/redo bar, which the editor arranges too.
+  const rowBridge = useToolbarRowBridge()
+  const [ownEditStore] = useState(createToolbarEditStore)
+  const editStore = rowBridge?.editStore ?? ownEditStore
   const frozenLayout = useStore(editStore.state, s => s.frozenLayout)
   const layoutAccess = frozenLayout ? { ...liveLayout, layout: frozenLayout } : liveLayout
   const { layout } = layoutAccess
@@ -152,15 +153,22 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   }
 
   // The player view's bar ignores the GM's layout.
-  const available = availableToolbarControls(!dm, (feature) => experimentalOn[feature])
+  const available = availableToolbarControls(!dm)
   const order = (dm ? layout.order : DEFAULT_TOOLBAR_ORDER).filter((id) => available.has(id))
   const items: ResponsiveToolbarItem[] = order.map((id) => ({ id, ...TOOLBAR_CONTROL_ITEMS[id](ctx) }))
   const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, hotkeyLabel, editing, stop: stopEditing })
   const hiddenIds: ReadonlySet<string> = layout.hidden
+  const publishedEdit = editing ? editor.api : null
+
+  // The undo/redo bar beside the bar works through the same editor.
+  useLayoutEffect(() => {
+    rowBridge?.edit.setState({ api: publishedEdit })
+  })
+  useEffect(() => () => rowBridge?.edit.setState({ api: null }), [rowBridge])
 
   return (
     <TooltipProvider delayDuration={300}>
-      <ToolbarEditContext.Provider value={editing ? editor.api : null}>
+      <ToolbarEditContext.Provider value={publishedEdit}>
         <ToolbarEditStoreContext.Provider value={editStore}>
           <MotionConfig reducedMotion="user">
             <ResponsiveToolbar
@@ -175,8 +183,8 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
                   onChange={toggleGMView}
                   iconOn={Eye}
                   iconOff={EyeOff}
-                  tooltipOn={`GM View (${hotkeyLabel('gmView')})`}
-                  tooltipOff={`Session View (${hotkeyLabel('gmView')})`}
+                  tooltipOn={t('toolbar.gmView', { key: hotkeyLabel('gmView') })}
+                  tooltipOff={t('toolbar.sessionView', { key: hotkeyLabel('gmView') })}
                 />
               )}
             />
@@ -202,11 +210,20 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
         toolbarRef={toolbarRef}
         {...(dm && { onCustomizeToolbar: startEditing })}
       />
-      <AssetManager
-        isOpen={isAssetManagerOpen}
-        onClose={handleCloseAssetManager}
-        {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
-      />
+      {/* On the main window's body (the map lives there only), as the command palette opens it:
+          inside the map's leaf the overlay is composited with the map's WebGL canvas, which on
+          some Macs drew the manager without its backgrounds and cards. The element around it is
+          the scope the stylesheet's rules look for above the overlay, which alone is not fixed. */}
+      {createPortal(
+        <div className="atlas-vtt-plugin">
+          <AssetManager
+            isOpen={isAssetManagerOpen}
+            onClose={handleCloseAssetManager}
+            {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
+          />
+        </div>,
+        document.body,
+      )}
       {isDiceTrayOpen && !diceTool && (
         <div style={{
           position: 'fixed',
@@ -219,8 +236,8 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           borderRadius: 'var(--atlas-radius-l)',
           zIndex: 1000
         }}>
-          <p>Dice tool not initialized. Please try reloading the view.</p>
-          <button onClick={() => setDiceTrayOpen(false)}>Close</button>
+          <p>{t('toolbar.diceFailed')}</p>
+          <button onClick={() => setDiceTrayOpen(false)}>{t('common.close')}</button>
         </div>
       )}
     </TooltipProvider>

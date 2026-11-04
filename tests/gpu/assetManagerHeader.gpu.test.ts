@@ -14,14 +14,14 @@ const OBSIDIAN = `
     --radius-s: 4px; --radius-m: 8px; --font-interface: sans-serif; }
 `;
 /** Every control of the toolbar that takes room of its own; the controls inside one are part of it. */
-const CONTROLS = 'button, nav, .atlas-selection-info, .atlas-asset-manager-search, .atlas-am-toolbar-divider';
-const WHOLES = 'nav, .atlas-selection-info, .atlas-asset-manager-search';
+const CONTROLS = 'button, nav, .atlas-asset-manager-search';
+const WHOLES = 'nav, .atlas-asset-manager-search';
 /** Layout rounds to fractions of a pixel. */
 const SLACK = 0.5;
 
 const noop = (): void => undefined;
 
-function headerProps(selected: number, tokens: number): HeaderProps {
+function headerProps(tokens: number): HeaderProps {
   return {
     app: new App(),
     search: '',
@@ -29,23 +29,14 @@ function headerProps(selected: number, tokens: number): HeaderProps {
     query: { suggestionsFor: () => null, commit: (text) => text, chips: [], activeCount: 0, panel: null, reset: noop },
     activeTab: 'tokens',
     onTabChange: noop,
-    assetCounts: { scenes: 12, maps: 34, encounters: 5, tokens },
+    assetCounts: { scenes: 12, maps: 34, encounters: 5, tokens, party: 4 },
     onCreateFolder: noop,
-    onRefresh: noop,
     sidebarToggleLabel: 'Hide sidebar',
     onToggleSidebar: noop,
     sel: {
       navigationHistory: new NavigationHistory(),
       handleNavigateBack: noop,
       handleNavigateForward: noop,
-      selectedAssetIds: Array.from({ length: selected }, (_, index) => String(index)),
-      selectedFolderIds: [],
-      handleClearSelection: noop,
-      sortBy: 'name',
-      sortOptions: ['name', 'date', 'type', 'rating'],
-      setSortBy: noop,
-      sortOrder: 'asc',
-      setSortOrder: noop,
     },
   };
 }
@@ -68,7 +59,7 @@ function layoutProblems(header: HTMLElement): string[] {
   const bounds = header.getBoundingClientRect();
   const controls = shownControls(header).map((control) => ({ name: control.className, rect: control.getBoundingClientRect() }));
   const problems: string[] = [];
-  if (controls.length < 9) problems.push(`only ${controls.length} controls found`);
+  if (controls.length < 5) problems.push(`only ${controls.length} controls found`);
   controls.forEach((a, index) => {
     if (a.rect.left < bounds.left - SLACK || a.rect.right > bounds.right + SLACK) problems.push(`${a.name} leaves the header`);
     for (const b of controls.slice(index + 1)) {
@@ -86,9 +77,9 @@ describe('the asset manager header', () => {
   let host: HTMLElement;
   let root: Root;
 
-  const show = async (width: number, selected: number, tokens = 412): Promise<HTMLElement> => {
+  const show = async (width: number, tokens = 412): Promise<HTMLElement> => {
     host.style.width = `${width}px`;
-    flushSync(() => root.render(React.createElement(Header, headerProps(selected, tokens))));
+    flushSync(() => root.render(React.createElement(Header, headerProps(tokens))));
     // Resize observers report between layout and paint.
     await nextFrame();
     await nextFrame();
@@ -112,38 +103,48 @@ describe('the asset manager header', () => {
   });
 
   it.each([
-    ['nothing selected', 0, 412],
-    ['a selection', 2, 412],
-    ['a large selection and large counts', 12345, 98765],
-  ])('keeps its controls apart and inside it at every width, with %s', async (_what, selected, tokens) => {
+    ['small counts', 412],
+    ['large counts', 98765],
+  ])('keeps its controls apart and inside it at every width, with %s', async (_what, tokens) => {
     const problems: string[] = [];
     for (let width = 1500; width >= 280; width -= 12) {
-      const header = await show(width, selected, tokens);
+      const header = await show(width, tokens);
       problems.push(...layoutProblems(header).map((problem) => `${width}px: ${problem}`));
     }
     expect(problems).toEqual([]);
   });
 
   it('follows its content, not only its width', async () => {
-    const header = await show(700, 0);
+    const header = await show(860, 4);
     const before = shownControls(header).length;
-    await show(700, 12345);
+    await show(860, 98765);
     expect(layoutProblems(header)).toEqual([]);
-    await show(700, 0);
+    await show(860, 4);
     expect(shownControls(header)).toHaveLength(before);
   });
 
   it('shows the tabs side by side when there is room and one row of controls when there is not', async () => {
-    const wide = await show(1400, 2);
+    const wide = await show(1100);
     expect(wide.querySelector('.atlas-asset-manager-tabs')?.getClientRects()).toHaveLength(1);
-    const narrow = await show(600, 2);
+    const narrow = await show(600);
     expect(narrow.querySelector('.atlas-asset-manager-tabs')?.getClientRects()).toHaveLength(0);
     const tops = new Set(shownControls(narrow).map((control) => Math.round(control.getBoundingClientRect().top + control.offsetHeight / 2)));
     expect(tops.size).toBe(1);
   });
 
+  it.each([1500, 1200, 1000, 900])('puts the tabs right after the navigation and the search at its end at %ipx', async (width) => {
+    const header = await show(width);
+    const toolbar = header.querySelector<HTMLElement>('.atlas-am-toolbar');
+    const navigation = header.querySelector<HTMLElement>('.atlas-am-toolbar-left')?.getBoundingClientRect();
+    const tabs = header.querySelector<HTMLElement>('.atlas-asset-manager-tabs')?.getBoundingClientRect();
+    const create = header.querySelector<HTMLElement>('.atlas-asset-manager-create-btn')?.getBoundingClientRect();
+    if (!toolbar || !navigation || !tabs || !create) throw new Error('the header did not render its groups');
+    expect(Math.abs(tabs.left - navigation.right - parseFloat(getComputedStyle(toolbar).columnGap))).toBeLessThanOrEqual(SLACK);
+    expect(Math.abs(create.right - toolbar.getBoundingClientRect().right)).toBeLessThanOrEqual(SLACK);
+  });
+
   it.each([1250, 1000, 870, 600, 400])('does not animate its controls while it fits again at %ipx', async (width) => {
-    const header = await show(width, 2);
+    const header = await show(width);
     await new Promise((resolve) => setTimeout(resolve, 300));
     const field = header.querySelector<HTMLElement>('.atlas-asset-manager-search');
     if (!field) throw new Error('the search field did not render');
@@ -151,17 +152,17 @@ describe('the asset manager header', () => {
     const opacity = getComputedStyle(field).opacity;
     expect(opacity).toBe(getComputedStyle(field).position === 'absolute' ? '0' : '1');
 
-    flushSync(() => root.render(React.createElement(Header, headerProps(3, 412))));
+    flushSync(() => root.render(React.createElement(Header, headerProps(413))));
     expect(getComputedStyle(field).opacity).toBe(opacity);
     expect(header.getAnimations({ subtree: true })).toHaveLength(0);
   });
 
   it('keeps the focus on a control while it fits again', async () => {
-    const header = await show(600, 2);
+    const header = await show(600);
     const trigger = header.querySelector<HTMLElement>('.atlas-am-tab-menu-trigger');
     trigger?.focus();
     expect(document.activeElement).toBe(trigger);
-    await show(590, 3);
+    await show(590, 413);
     await nextFrame();
     expect(document.activeElement).toBe(trigger);
   });

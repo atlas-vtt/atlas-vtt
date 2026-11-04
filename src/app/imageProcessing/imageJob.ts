@@ -9,6 +9,11 @@
  * width), origin at the frame's top-left. The height follows from the image's
  * aspect ratio, which only the worker knows once it has decoded the image.
  */
+export interface Size {
+  width: number;
+  height: number;
+}
+
 export interface FramePlacement {
   centerX: number;
   centerY: number;
@@ -16,8 +21,8 @@ export interface FramePlacement {
 }
 
 export type ImageLayout =
-  /** The whole image, scaled down (never up) to fit within the bounds. */
-  | { kind: 'fit'; maxWidth: number; maxHeight: number }
+  /** The whole image, scaled down (never up) to fit within the bounds and, if set, `maxPixels` in all. */
+  | { kind: 'fit'; maxWidth: number; maxHeight: number; maxPixels?: number | undefined }
   /**
    * A square frame showing the image at `placement`; areas the image does not
    * cover stay transparent. The frame gets as many pixels as the source has
@@ -44,16 +49,35 @@ export interface ImageJob {
   preview?: ThumbnailSpec | undefined;
   /** Also render a copy of the whole source, e.g. for a crop editor next to a cropped result. */
   sourcePreview?: ThumbnailSpec | undefined;
+  /**
+   * Decode a JPEG source at `decoded`, one of the sizes DCT scaling gives
+   * (`jpegScaledSize`), instead of at its natural size `source`. The output is
+   * sized as if the source had been decoded whole.
+   */
+  scaledDecode?: { source: Size; decoded: Size } | undefined;
+  /**
+   * The result is stored under a WebP name, so a PNG or JPEG that needs no
+   * scaling is encoded too instead of kept. A WebP source is still kept.
+   */
+  webpOnly?: boolean | undefined;
+  /**
+   * The source is larger than the browser decodes and is read in bands by Atlas' own decoder of
+   * `format` instead: it is kept as it is, and its copies come from a decode at an eighth.
+   */
+  band?: { format: string } | undefined;
 }
 
 /** Pixel sizes of a source and of the smaller image a fit made of it. */
 export interface ScaleDown {
-  from: { width: number; height: number };
-  to: { width: number; height: number };
+  from: Size;
+  to: Size;
 }
 
 export interface ImageJobResult {
-  /** WebP bytes. A WebP source that needs no scaling is returned as it is, avoiding a lossy re-encode. */
+  /**
+   * WebP bytes (PNG for a picture wider or taller than a WebP can be), or the source itself where a
+   * PNG, JPEG or WebP needed no scaling (`webpOnly`: only a WebP).
+   */
   image: Blob;
   thumbnail: Blob | null;
   preview: Blob | null;
@@ -69,5 +93,8 @@ export interface ImageJobRequest {
 
 export type ImageJobResponse =
   | { id: number; ok: true; result: ImageJobResult }
-  /** `decodeFailed` means the worker could not read the source format; the main thread may decode it instead. */
-  | { id: number; ok: false; message: string; decodeFailed: boolean };
+  /**
+   * `decodeFailed` means the worker could not read the source format; the main thread may decode it
+   * instead. `unsupported` names why a band decoder refused the source (`BandUnsupportedReason`).
+   */
+  | { id: number; ok: false; message: string; decodeFailed: boolean; unsupported?: string | undefined };

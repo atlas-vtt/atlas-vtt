@@ -14,6 +14,8 @@ import type { ThumbnailSize } from '../MapThumbnailService';
 
 /** The map: 800 × 600 world pixels. A scene card (400 × 300) frames all of it, a snapshot card (640 × 360) rows 75 to 525. */
 export const MAP = { width: 800, height: 600 };
+/** The map image's world rect, which a thumbnail frames. */
+export const MAP_RECT = { x: 0, y: 0, ...MAP };
 /** A torch, bright to 70 px and dim to 140 px. */
 export const LIGHT_AT = { x: 200, y: 300 };
 /** Floor far beyond the torch's reach. */
@@ -135,7 +137,7 @@ export async function createThumbnailScene(lighting: SceneLighting, antialias: b
   const overlays = {
     pins: overlay(95),
     hexLinks: overlay(40),
-    gmOverlays: { wallEditor: overlay(96), lightZones: overlay(96), exploredMemory: overlay(91), doorBadges: overlay(97), lightMarkers: overlay(98), rangeRings: overlay(99), sightAids: overlay(99) },
+    gmOverlays: { wallEditor: overlay(96), lightZones: overlay(96), levelSurfaces: overlay(96), exploredMemory: overlay(91), doorBadges: overlay(97), lightMarkers: overlay(98), rangeRings: overlay(99), sightAids: overlay(99) },
   };
   const markerLayers = [{ layer: overlays.pins, visible: false }, { layer: overlays.hexLinks, visible: false }];
   const capture: SceneFrameCapture = (frame, render) =>

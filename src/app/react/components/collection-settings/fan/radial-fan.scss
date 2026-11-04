@@ -1,0 +1,84 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Radial fan: round buttons that fan out of what they act on
+// (fan/RadialFan.tsx: the Resources tab's sockets, the dice lab's dice).
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$fan-button: 34px;
+
+// ── Fan ────────────────────────────────────────────────────────────────────
+.atlas-csm-fan {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 1;
+}
+
+.atlas-csm-fan.atlas-leaving { pointer-events: none; }
+
+.atlas-csm-fan__item {
+  position: absolute;
+  left: calc(#{$fan-button} / -2);
+  top: calc(#{$fan-button} / -2);
+  width: $fan-button;
+  height: $fan-button;
+}
+
+.atlas-csm-fan__button {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: $fan-button;
+  height: $fan-button;
+  padding: 0;
+  margin: 0;
+  border: $border-width-s solid var(--background-modifier-border) !important;
+  border-radius: $radius-full !important;
+  // Circles: Obsidian shapes every button and input as a squircle on macOS
+  corner-shape: round;
+  background-color: var(--background-primary) !important;
+  box-shadow: $shadow-md !important;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color $transition-fast $transition-ease, border-color $transition-fast $transition-ease,
+    background-color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  &:active { transform: scale(0.94); }
+
+  &:focus-visible { border-color: var(--background-modifier-border-focus) !important; }
+
+  &[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-csm-fan__button.atlas-pressed {
+  background-color: var(--interactive-accent) !important;
+  border-color: var(--interactive-accent) !important;
+  color: var(--text-on-accent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-csm-fan__button:not(.atlas-pressed):not([aria-disabled='true']):hover {
+    color: var(--text-normal);
+    border-color: var(--background-modifier-border-hover) !important;
+    background-color: var(--background-modifier-hover) !important;
+  }
+
+  .atlas-csm-fan__button.atlas-danger:not([aria-disabled='true']):hover {
+    color: var(--text-error);
+    border-color: var(--text-error) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-csm-fan__button { transition: none; }
+}

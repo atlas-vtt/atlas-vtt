@@ -17,7 +17,8 @@
 // rarities are never rolled.
 .atlas-loot-rarities {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  // As many words as the collection names, each at least wide enough for a short word and its count.
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: $spacing-xs;
 }
 

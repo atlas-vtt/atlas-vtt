@@ -5,10 +5,11 @@ import { SegmentedControl } from '../../../packages/components/primitives/Segmen
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { filterFields, isCompleteCreatureFilter, withFilterKind } from '../../../creatures/creatureFilterDefinitions';
 import type { CreatureFilterDefinition, CreatureFilterKind } from '../../../types/creatureFilterTypes';
+import { t } from '../../../i18n';
 
 const KIND_OPTIONS = [
-  { value: 'range', label: 'Range' },
-  { value: 'options', label: 'Options' },
+  { value: 'range', label: t('csm.filters.kind.range') },
+  { value: 'options', label: t('csm.filters.kind.options') },
 ] as const;
 
 interface CreatureFilterRowProps {
@@ -44,22 +45,22 @@ export function CreatureFilterRow({ filter, isFirst, isLast, onChange, onMove, o
         <input
           type="text"
           className="atlas-csm-input"
-          placeholder="Label"
-          aria-label="Filter label"
+          placeholder={t('csm.filters.label')}
+          aria-label={t('csm.filters.filterLabel')}
           value={filter.label}
           onChange={(e) => onChange({ ...filter, label: e.target.value })}
         />
-        <LabelTooltip label="Move up">
+        <LabelTooltip label={t('common.moveUp')}>
           <Button variant="ghost" size="icon" className="atlas-csm-creature-filter__move" disabled={isFirst} onClick={() => onMove(-1)}>
             <ChevronUp />
           </Button>
         </LabelTooltip>
-        <LabelTooltip label="Move down">
+        <LabelTooltip label={t('common.moveDown')}>
           <Button variant="ghost" size="icon" className="atlas-csm-creature-filter__move" disabled={isLast} onClick={() => onMove(1)}>
             <ChevronDown />
           </Button>
         </LabelTooltip>
-        <LabelTooltip label="Remove filter">
+        <LabelTooltip label={t('csm.filters.remove')}>
           <Button variant="ghost" size="icon" className="atlas-csm-condition-delete" onClick={onRemove}>
             <Trash2 />
           </Button>
@@ -69,8 +70,8 @@ export function CreatureFilterRow({ filter, isFirst, isLast, onChange, onMove, o
         <input
           type="text"
           className="atlas-csm-input atlas-csm-creature-filter__fields"
-          placeholder={filter.kind === 'range' ? 'Statblock field, e.g. cr' : 'Fields, comma separated'}
-          aria-label="Statblock fields"
+          placeholder={filter.kind === 'range' ? t('csm.filters.rangePlaceholder') : t('csm.filters.optionsPlaceholder')}
+          aria-label={t('csm.filters.statblockFields')}
           aria-invalid={incomplete || undefined}
           spellCheck={false}
           value={fieldText}
@@ -81,13 +82,13 @@ export function CreatureFilterRow({ filter, isFirst, isLast, onChange, onMove, o
         />
         <SegmentedControl
           className="atlas-csm-creature-filter__kind"
-          ariaLabel="Filter kind"
+          ariaLabel={t('csm.filters.kind')}
           value={filter.kind}
           options={KIND_OPTIONS}
           onChange={changeKind}
         />
       </div>
-      {incomplete && <p className="atlas-csm-hint atlas-csm-hint--error">Name the statblock field this filter reads.</p>}
+      {incomplete && <p className="atlas-csm-hint atlas-csm-hint--error">{t('csm.filters.incomplete')}</p>}
     </div>
   );
 }

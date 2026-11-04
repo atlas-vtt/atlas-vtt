@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { EventEmitter } from 'events';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -24,6 +25,8 @@ vi.mock('../../src/app/react/hooks/useMapLightPresets', async (importOriginal) =
 
 vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({
   useHotkeyLabels: () => (id: string) => `key:${id}`,
+  // No settings: the lighting quality section renders nothing here.
+  useAtlasSettings: () => undefined,
 }));
 
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';

@@ -1,0 +1,27 @@
+// The row a note and its statblock share (§2.1): the note view's
+// `.view-content` and the template editor's `.atlas-te-row` take it alike, so
+// the panel beside the note gets the same room in both.
+
+// The note's columns (an editor and a reader, or the template editor's note column) and the panel stand side by side.
+@mixin atlas-sb-note-row($notes...) {
+  display: flex;
+  flex-direction: row;
+
+  @each $note in $notes {
+    > #{$note} {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+}
+
+// Too narrow for two columns: the statblock stands above the note, at most half the height.
+@mixin atlas-sb-note-row-stacked($notes...) {
+  flex-direction: column;
+
+  @each $note in $notes {
+    > #{$note} {
+      min-height: 0;
+    }
+  }
+}

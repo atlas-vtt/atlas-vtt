@@ -2,7 +2,8 @@ import { readWall } from '../../lighting/lightingObjects';
 import { wallList } from '../../vision/wallList';
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { DOOR_GLYPH_PATHS, type DoorGlyph } from '../../lighting/doorGlyphs';
-import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
+import type { StoreApi } from 'zustand';
+import type { ViewState } from '../../types/viewState';
 import type { WallSegment } from '../../types/wallTypes';
 import { doorMiddle } from '../../vision/doorSight';
 import { MOTION_SLOW_MS, prefersReducedMotion } from '../../utils/motion';
@@ -10,6 +11,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 import { destroyTree } from '../utils/destroyTree';
 import { createGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** Above the lighting layer and token UI, so the GM finds doors in the dark. */
 export const DOOR_ICONS_Z_INDEX = 1150;
@@ -35,6 +37,14 @@ function isDoor(wall: WallSegment): boolean {
 }
 
 const NO_DOORS: ReadonlySet<string> = new Set();
+
+/** What the badges read of their view's state: the doors, the cell size they are sized by, what moves the players' sight, and the door switch. */
+export type DoorIconsState = Pick<ViewState, 'grid' | 'lighting' | 'mapPath'> & {
+  objects: Pick<ViewState['objects'], 'walls' | 'fog'>;
+  toggleDoor(id: string): void;
+};
+
+export type DoorIconsStore = Pick<StoreApi<DoorIconsState>, 'getState' | 'subscribe'>;
 
 /** One set of badges: the discs and padlocks in one drawing, and the door glyph of every badge that has one. */
 interface BadgeSet {
@@ -75,7 +85,7 @@ export class DoorIcons {
 
   /** `canvas` is the map's: a popout window has its own document, whose motion setting counts. */
   constructor(
-    private readonly store: ViewAtlasStore,
+    private readonly store: DoorIconsStore,
     private readonly canvas: HTMLCanvasElement,
     /** The doors the players see now (`playerDoorSight`). */
     private readonly playersSee: () => ReadonlySet<string> = () => NO_DOORS,
@@ -86,8 +96,8 @@ export class DoorIcons {
       view.addChild(graphics);
     }
     this.unsubscribe = store.subscribe((state, previous) => {
-      if (state.objects.walls !== previous.objects.walls || state.grid !== previous.grid) this.draw(state);
-      else if (state.lighting !== previous.lighting) this.refreshPlayers();
+      if (levelObjects(state).walls !== levelObjects(previous).walls || state.grid !== previous.grid) this.draw(state);
+      else if (state.lighting !== previous.lighting || levelObjects(state).fog !== levelObjects(previous).fog || state.mapPath !== previous.mapPath) this.refreshPlayers();
     });
     this.draw(store.getState());
   }
@@ -119,7 +129,7 @@ export class DoorIcons {
   private badgeAt(x: number, y: number, shown: (wall: WallSegment) => boolean): string | null {
     const state = this.store.getState();
     const radius = this.radius(state);
-    for (const wall of wallList(state.objects.walls)) {
+    for (const wall of wallList(levelObjects(state).walls)) {
       if (!shown(wall)) continue;
       const centre = doorMiddle(wall);
       if (Math.hypot(x - centre.x, y - centre.y) <= radius) return wall.id;
@@ -130,7 +140,7 @@ export class DoorIcons {
   /** Opens or closes the door; a locked one stays shut and its badge says no. */
   toggle(wallId: string): void {
     const state = this.store.getState();
-    if (!readWall(state.objects.walls[wallId])?.locked) {
+    if (!readWall(levelObjects(state).walls[wallId])?.locked) {
       state.toggleDoor(wallId);
       return;
     }
@@ -152,23 +162,23 @@ export class DoorIcons {
     return { doorId, offset, tint: reduced };
   }
 
-  private radius(state: ViewAtlasState): number {
+  private radius(state: DoorIconsState): number {
     return (state.grid?.size ?? 70) * BADGE_SHARE;
   }
 
-  private draw(state: ViewAtlasState): void {
+  private draw(state: DoorIconsState): void {
     this.seen = this.playersSee();
     this.drawBadges(this.gmBadges, state, false);
     this.drawBadges(this.playerBadges, state, true);
   }
 
-  private drawBadges(badges: BadgeSet, state: ViewAtlasState, forPlayers: boolean): void {
+  private drawBadges(badges: BadgeSet, state: DoorIconsState, forPlayers: boolean): void {
     const { view, graphics: g, glyphs } = badges;
     g.clear();
     const r = this.radius(state);
     const withGlyph = new Set<string>();
     const refusal = this.refusal();
-    for (const wall of wallList(state.objects.walls)) {
+    for (const wall of wallList(levelObjects(state).walls)) {
       if (forPlayers ? !this.seen.has(wall.id) : !isDoor(wall)) continue;
       const refusing = refusal?.doorId === wall.id ? refusal : null;
       const centre = doorMiddle(wall);

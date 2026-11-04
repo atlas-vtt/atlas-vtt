@@ -9,7 +9,7 @@ import type { AnyAsset, AssetManagerProps, Tab } from './types';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Content } from './components/Content';
-import { Breadcrumb } from './components/Breadcrumb';
+import { LocationBar } from './components/LocationBar';
 import { ModalLayer } from './components/ModalLayer';
 import { useAssetData } from './hooks/useAssetData';
 import { useSelectionHandlers, type VisibleIds } from './hooks/useSelectionHandlers';
@@ -22,9 +22,11 @@ import { useStatblockLink } from './hooks/useStatblockLink';
 import { useAssetManagerEffects } from './hooks/useAssetManagerEffects';
 import { useFollowSelectedCollection } from './hooks/useFollowSelectedCollection';
 import { useHeldWhile } from './hooks/useHeldWhile';
+import { useOverlayBodyClass } from './hooks/useOverlayBodyClass';
 import { useLoadingReveal } from '../primitives/useLoadingReveal';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useRememberedPlace } from './hooks/useRememberedPlace';
+import { useLeaveHiddenFolder } from './hooks/useLeaveHiddenFolder';
 import { sortAssets } from './utils/assetSort';
 import { filterFolders, type AssetFilter } from './utils/assetFilter';
 import { useCreatureFilters } from './hooks/useCreatureFilters';
@@ -32,6 +34,9 @@ import { useCollectionFilterDefinitions } from './hooks/useCollectionFilterDefin
 import { useFilterSearch, useSearchKeywords } from './hooks/useFilterSearch';
 import { ActiveFilterBar } from './components/search/ActiveFilterBar';
 import { DIALOG_EXIT_DURATION, dialogBackdropVariants, useDialogWindowVariants } from '../primitives/dialogMotion';
+import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator';
+import { runInBackground } from '../../../utils/backgroundTask';
+import { t } from '../../../i18n';
 
 const NO_ASSETS: AnyAsset[] = [];
 
@@ -49,6 +54,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
   const [draggedItems, setDraggedItems] = useState<{ type: 'asset' | 'folder'; ids: string[] } | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useOverlayBodyClass(modalRef);
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebar = useSidebarLayout(containerRef, isOpen);
   const windowVariants = useDialogWindowVariants();
@@ -59,6 +65,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
 
   const visibleIds = useRef<VisibleIds>({ assets: [], folders: [] });
   const sel = useSelectionHandlers(visibleIds, data.folders, activeTab, isOpen);
+  useLeaveHiddenFolder(data, sel);
 
   const changeTab = useCallback((tab: Tab): void => {
     if (tab === activeTab) return;
@@ -159,7 +166,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
   const statblock = useStatblockLink(data.app);
 
   const { handleAssetContextMenu, handleFolderContextMenu, handleContentContextMenu } =
-    useContextMenus({ data, sel, crud, tags, statblock, selectedCollection, onClose });
+    useContextMenus({ data, sel, crud, tags, statblock, selectedCollection, activeTab, onClose });
 
   useAssetManagerEffects({
     isOpen, onClose,
@@ -168,7 +175,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
     data, sel, crud, tags, statblock,
   });
 
-  const anyModalOpen = crud.isTokenCreatorOpen || crud.isMapCreatorOpen;
+  const anyModalOpen = crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isMapCreatorOpen;
 
   return (
     <>
@@ -178,7 +185,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
           <motion.div
             key="asset-manager-modal"
             className="atlas-vtt-plugin atlas-vtt-root atlas-asset-manager-modal"
-            ref={modalRef}
+            ref={overlayRef}
             tabIndex={-1}
             variants={wrapperVariants}
             initial="hidden"
@@ -233,9 +240,13 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   assetCounts={data.assetCounts}
                   onCreateTokens={() => crud.setIsTokenCreatorOpen(true)}
                   onCreateMap={crud.handleCreateMap}
+                  onGenerateDungeon={() => {
+                    runInBackground(showDungeonGenerator(data.app, selectedCollection), 'Opening the dungeon generator');
+                    onClose();
+                  }}
+                  onCreateEncounter={() => crud.setIsEncounterBuilderOpen(true)}
                   onCreateCollection={crud.handleCreateCollection}
                   onCreateFolder={crud.handleCreateFolder}
-                  onRefresh={() => { void crud.handleRefresh(); }}
                   sidebarToggleLabel={sidebar.toggleLabel}
                   onToggleSidebar={sidebar.toggle}
                   sel={sel}
@@ -246,10 +257,11 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
                 >
                   <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
-                  <Breadcrumb
+                  <LocationBar
                     activeTab={shown.tab}
                     path={shown.folderPath}
                     onNavigateToFolder={sel.handleNavigateToFolder}
+                    sort={sel}
                   />
                   <div className="atlas-asset-manager-main">
                     <AssetTagMenuContext.Provider value={tagMenuActions}>
@@ -300,11 +312,11 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
 
       {isOpen && !anyModalOpen && !crud.inputModalState?.isOpen && !crud.settingsModalCollectionId && !crud.isCreateSceneModalOpen && !crud.isMoveModalOpen && !tags.isTagManagerOpen && !statblock.linkingStatblockAsset && (
         settings?.shouldShowTutorial('assets') ? <Tutorial settings={settings} id="assets" steps={[
-          { title: 'Your campaign library', body: 'Keep tokens, maps, scenes, and encounters together. Use the tabs to browse, and import your images to get started.', selector: '.atlas-am-toolbar-center' },
-          { title: 'Start with a collection', body: 'Create a collection for your campaign to keep its assets together. You can switch collections here at any time.', selector: '.atlas-collections' },
-        ]} action={{ label: 'Create collection', onClick: crud.handleCreateCollection }} /> :
+          { title: t('am.tour.libraryTitle'), body: t('am.tour.libraryBody'), selector: '.atlas-am-toolbar-center' },
+          { title: t('am.tour.collectionTitle'), body: t('am.tour.collectionBody'), selector: '.atlas-collections' },
+        ]} action={{ label: t('am.tour.createCollection'), onClick: crud.handleCreateCollection }} /> :
         settings?.getSetting('onboarding').tokenImported ? <Tutorial settings={settings} id="tokenStatblocks" steps={[
-          { title: 'Give your tokens a statblock', body: 'Use Fantasy Statblocks? Right-click a token in this library and choose Link Statblock. Pick a note containing a Fantasy Statblocks statblock to connect its stats to the token.', selector: '.atlas-asset-manager-main' },
+          { title: t('am.tour.statblockTitle'), body: t('am.tour.statblockBody'), selector: '.atlas-asset-manager-main' },
         ]} /> : null
       )}
 

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { parseUvtt } from '../../src/app/import/uvtt/parseUvtt';
 import { isUvttFileName, uvttSceneName } from '../../src/app/import/uvtt/uvttFileNames';

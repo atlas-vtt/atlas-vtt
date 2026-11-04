@@ -1,107 +1,52 @@
+import { readFogEdge, type FogEdge } from '../fog/fogEdge';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
-import { App, Platform, normalizePath } from 'obsidian';
+import type { App, Plugin } from 'obsidian';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
-import { hotkeyOrigin, readHotkeyOverrides, resolveHotkeys, withHotkey, type HotkeyOrigin, type HotkeyOverrides } from '../keyboard/hotkeyOverrides';
-import { getDataFilePath } from '../utils/dataFileMigration';
-import {
-  DEFAULT_LASER_POINTER_SETTINGS,
-  resolveLaserPointerSettings,
-  type LaserPointerSettings,
-} from '../tools/laserPointerSettings';
+import { hotkeyOrigin, resolveHotkeys, withHotkey, type HotkeyOrigin } from '../keyboard/hotkeyOverrides';
+import { resolveLaserPointerSettings, type LaserPointerSettings } from '../tools/laserPointerSettings';
 import { isDiceDisplay, type DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
+import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import {
-  DEFAULT_DICE_LOOK,
-  isDiceColour,
-  isDiceFont,
-  type DiceColour,
-  type DiceFont,
-  type DiceLook,
-} from '../dice3d/diceLook';
+  DEFAULT_SETTINGS,
+  isRecord,
+  defaultInputMode,
+  readStoredSettings,
+  storedSettings,
+  type AtlasSettings,
+  type NavigationInputMode,
+  type NavigationSettings,
+  type TutorialId,
+  TUTORIAL_IDS,
+} from './atlasSettings';
+import {
+  loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
+  saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
+} from './deviceSettings';
+import { readGpuFacts } from './gpuFacts';
+import { pickLightingQuality } from '../lighting/deviceTier';
+import { readDock, type InitiativeLayout } from '../initiative/initiativeLayout';
+import type { InitiativeTurnOptions } from '../initiative/turnOptions';
+import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
+import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
+import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import type { TableTvSettings } from './tableTvSettings';
+import { loadTableTvDevice, saveTableTvDevice, type TableTvDevice, type TvScreenRecord, type TvScreenSetup } from './tableTvDevice';
 
-/**
- * How wheel events drive the map viewport.
- * - `mouse`: the wheel always zooms; right-drag pans.
- * - `trackpad`: two-finger scroll pans; pinch (Ctrl/Cmd + wheel) zooms.
- */
-export type NavigationInputMode = 'mouse' | 'trackpad';
+export { TUTORIAL_IDS } from './atlasSettings';
+export type { AtlasSettings, NavigationInputMode, NavigationSettings, TutorialId } from './atlasSettings';
 
-export interface NavigationSettings {
-  inputMode: NavigationInputMode;
-}
-
-/** Every tutorial Atlas has; the settings list those the user finished or skipped. */
-export const TUTORIAL_IDS = ['assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults'] as const;
-export type TutorialId = typeof TUTORIAL_IDS[number];
-
-export interface AtlasSettings {
-  showChangelogOnUpdate: boolean;
-  changelogMajorUpdatesOnly: boolean;
-  /** Only the bindings the user changed; read the effective ones with `getHotkeys`. */
-  hotkeys: HotkeyOverrides;
-  onboarding: { enabled: boolean; completed: Partial<Record<TutorialId, boolean>>; tokenImported: boolean };
-  /** The starter tokens were added to the default collection once; deleted ones stay deleted. */
-  starterTokensAdded: boolean;
-  navigation: NavigationSettings;
-  laserPointer: LaserPointerSettings;
-  /** How rolls show: a result card, or 3D dice at double or normal speed. Read with `getDiceDisplay`. */
-  diceDisplay: DiceDisplay;
-  /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
-  diceColour: DiceColour;
-  /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
-  diceFont: DiceFont;
-  /** Game system presets the user saved, as stored; `SystemPresetService` validates them. */
-  systemPresets: unknown[];
-  /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
-  experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
-  /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
-  toolbar: StoredToolbarLayout;
-  localPlayerView: {
-    // UI element visibility toggles
-    showToolbar: boolean;
-    showTokenNameplates: boolean;
-    showNotePreviews: boolean;
-    showGrid: boolean;
-    showWidgets: boolean;
-    showInitiative: boolean;
-    /** Show the DM's dice rolls to players as toasts in the player window. */
-    showDiceRolls: boolean;
-    showCommandPalette: boolean;
-  };
-}
-
-const DEFAULT_SETTINGS: AtlasSettings = {
-  showChangelogOnUpdate: true,
-  changelogMajorUpdatesOnly: false,
-  hotkeys: {},
-  onboarding: { enabled: true, completed: {}, tokenImported: false },
-  starterTokensAdded: false,
-  navigation: {
-    inputMode: Platform.isMacOS ? 'trackpad' : 'mouse',
-  },
-  laserPointer: DEFAULT_LASER_POINTER_SETTINGS,
-  diceDisplay: 'full',
-  diceColour: DEFAULT_DICE_LOOK.colour,
-  diceFont: DEFAULT_DICE_LOOK.font,
-  systemPresets: [],
-  experimental: {},
-  toolbar: {},
-  localPlayerView: {
-    // UI element visibility defaults
-    showToolbar: false, // Hide toolbar by default in player view
-    showTokenNameplates: false, // Hide nameplates
-    showNotePreviews: false, // Hide note previews
-    showGrid: true, // Show grid by default
-    showWidgets: true,
-    showInitiative: true,
-    showDiceRolls: false,
-    showCommandPalette: false // Hide command palette
-  },
-};
+/** Where the settings are kept: the plugin's `data.json`, which Obsidian syncs with the plugin's settings. */
+export type PluginDataStore = Pick<Plugin, 'loadData' | 'saveData'>;
 
 type SettingsListener = (settings: AtlasSettings) => void;
 
+/**
+ * The GM's Atlas preferences, kept in the plugin's data (`data.json`), except the input mode,
+ * the lighting quality, whether maps animate and the collapsed initiative tracker, which belong to the device (`deviceSettings.ts`). Without a data store (tests, a view
+ * without the plugin) the settings live in memory only.
+ */
 export class SettingsService {
   private static instances = new WeakMap<App, SettingsService>();
   static forApp(app: App | undefined): SettingsService | undefined {
@@ -110,22 +55,25 @@ export class SettingsService {
   private initialization?: Promise<void>;
   private app: App;
   private settings: AtlasSettings;
-  private settingsPath: string;
+  /** Bindings of actions a newer Atlas added, written back unchanged. */
+  private foreignHotkeys: Record<string, string> = {};
   private saveTimeout: number | undefined;
+  /** The settings as last read from or written to the plugin's data. */
+  private saved: AtlasSettings;
   private listeners: Set<SettingsListener> = new Set();
-  /** Settles once the settings file is in place (after the startup migration). */
+  /** Settles once the plugin's data is in place (after the startup migration). */
   private readonly storageReady: Promise<unknown>;
 
-  constructor(app: App, storageReady: Promise<unknown> = Promise.resolve()) {
+  constructor(app: App, storageReady: Promise<unknown> = Promise.resolve(), private readonly data: PluginDataStore | null = null) {
     this.app = app;
     this.storageReady = storageReady;
     SettingsService.instances.set(app, this);
-    this.settings = { ...DEFAULT_SETTINGS };
-    this.settingsPath = normalizePath(getDataFilePath('atlas-vtt/settings.json'));
+    this.settings = { ...DEFAULT_SETTINGS, navigation: { inputMode: this.deviceInputMode() } };
+    this.saved = structuredClone(this.settings);
   }
 
   /**
-   * Loads the settings file once and notifies subscribers, since views restored at startup
+   * Loads the plugin's data once and notifies subscribers, since views restored at startup
    * subscribe while the service still holds the defaults.
    */
   async initialize(): Promise<void> {
@@ -133,103 +81,58 @@ export class SettingsService {
   }
 
   /**
-   * Ensure a directory exists, creating nested directories if necessary
+   * Reads the plugin's data again after it changed on disk (another device's change delivered
+   * by sync) and tells every subscriber, so dice, hotkeys and switches follow at once.
    */
-  private async ensureDirectoryExists(path: string): Promise<void> {
-    const parts = path.split('/');
-    let currentPath = '';
-
-    for (const part of parts) {
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-
-      if (!await this.app.vault.adapter.exists(currentPath)) {
-        await this.app.vault.adapter.mkdir(currentPath);
+  async reload(): Promise<void> {
+    await this.initialize();
+    const local = this.settings;
+    const saved = this.saved;
+    // A file a sync tool is still writing reads as nothing: the settings stay as they are.
+    if (!(await this.loadSettings(true))) return;
+    // A change made here and not saved yet is newer than what arrived; it stays and is saved.
+    if (this.saveTimeout !== undefined) {
+      for (const key of Object.keys(local) as Array<keyof AtlasSettings>) {
+        if (JSON.stringify(local[key]) !== JSON.stringify(saved[key])) this.settings = { ...this.settings, [key]: local[key] };
       }
     }
+    this.notify();
   }
 
-  /**
-   * Deep merge two objects, with source values overriding target
-   */
-  private isRecord(value: unknown): value is Record<string, unknown> {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  private deviceInputMode(): NavigationInputMode {
+    return loadInputMode(this.app) ?? defaultInputMode();
   }
 
-  private deepMerge<T extends object>(target: T, source: Partial<T>): T {
-    const result: Record<string, unknown> = { ...(target as Record<string, unknown>) };
-    for (const [key, sourceValue] of Object.entries(source as Record<string, unknown>)) {
-      const targetValue = (target as Record<string, unknown>)[key];
-      if (
-        this.isRecord(sourceValue) &&
-        this.isRecord(targetValue)
-      ) {
-        result[key] = this.deepMerge(targetValue, sourceValue);
-      } else if (sourceValue !== undefined) {
-        result[key] = sourceValue;
-      }
-    }
-    return result as T;
-  }
-
-  private async loadSettings(): Promise<void> {
+  /** Reads the settings; returns false, changing nothing, when `onlyRecords` is set and the data is no settings record. */
+  private async loadSettings(onlyRecords = false): Promise<boolean> {
     // A failed migration is reported by the plugin's startup; settings still load.
     await this.storageReady.catch(() => undefined);
+    let stored: unknown = null;
     try {
-      // Use adapter.exists() and adapter.read() to bypass vault index timing issues
-      // The vault index may not be ready at plugin startup, but adapter reads directly from disk
-
-      // Try new location first
-      if (await this.app.vault.adapter.exists(this.settingsPath)) {
-        const content = await this.app.vault.adapter.read(this.settingsPath);
-        this.applyStoredSettings(JSON.parse(content) as Partial<AtlasSettings>);
-        return;
-      }
-
-      // Try old location as fallback
-      const oldPath = 'atlas-vtt/settings.json';
-      if (await this.app.vault.adapter.exists(oldPath)) {
-        const content = await this.app.vault.adapter.read(oldPath);
-        this.applyStoredSettings(JSON.parse(content) as Partial<AtlasSettings>);
-        return;
-      }
-
-      this.settings = { ...DEFAULT_SETTINGS };
-    } catch {
-      this.settings = { ...DEFAULT_SETTINGS };
+      stored = this.data ? await this.data.loadData() : null;
+    } catch (error) {
+      console.error('[SettingsService] Failed to read settings:', error);
     }
-  }
-
-  private applyStoredSettings(stored: Partial<AtlasSettings>): void {
-    this.settings = this.deepMerge(DEFAULT_SETTINGS, stored);
-    this.settings.hotkeys = readHotkeyOverrides(stored.hotkeys);
-    if (!this.isRecord(stored.experimental)) this.settings.experimental = {};
-    this.settings.toolbar = readToolbarLayout(stored.toolbar);
-    // Rewrite files from versions that saved every binding, so they keep only the user's.
-    if (JSON.stringify(stored.hotkeys ?? {}) !== JSON.stringify(this.settings.hotkeys)) this.scheduleSave();
+    if (onlyRecords && !isRecord(stored)) return false;
+    const read = readStoredSettings(stored, this.deviceInputMode());
+    this.settings = read.settings;
+    // A copy: setters change the settings in place.
+    this.saved = structuredClone(read.settings);
+    this.foreignHotkeys = read.foreignHotkeys;
+    return true;
   }
 
   private async saveSettings(): Promise<void> {
-    // Saving before the file was read would write the defaults over the user's settings.
+    // Saving before the data was read would write the defaults over the user's settings.
     await this.initialize();
+    if (!this.data) return;
+    const settings = this.settings;
     try {
-      const settingsJson = JSON.stringify(this.settings, null, 2);
-
-      // Use adapter.exists() to bypass vault index timing issues (same as loadSettings)
-      // Always save to the new location - this is the canonical path
-      const fileExists = await this.app.vault.adapter.exists(this.settingsPath);
-      if (fileExists) {
-        await this.app.vault.adapter.write(this.settingsPath, settingsJson);
-      } else {
-        // Ensure directory exists
-        const dir = this.settingsPath.substring(0, this.settingsPath.lastIndexOf('/'));
-        await this.ensureDirectoryExists(dir);
-
-        await this.app.vault.adapter.write(this.settingsPath, settingsJson);
-      }
+      const stored = structuredClone(settings);
+      await this.data.saveData(storedSettings(stored, this.foreignHotkeys));
+      this.saved = stored;
     } catch (error) {
       console.error('[SettingsService] Failed to save settings:', error);
-      console.error('[SettingsService] Settings path:', this.settingsPath);
-      console.error('[SettingsService] Current settings:', this.settings);
     }
   }
 
@@ -239,6 +142,7 @@ export class SettingsService {
     }
 
     this.saveTimeout = window.setTimeout(() => {
+      this.saveTimeout = undefined;
       void this.saveSettings();
     }, 500); // Debounce saves by 500ms
   }
@@ -271,7 +175,6 @@ export class SettingsService {
 
   setHotkey(id: MapHotkeyId, key: string): void {
     const bindings = this.getHotkeys();
-    // The shortcuts of an experimental feature keep their keys while it is off.
     const conflict = key && availableHotkeys().find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
     if (conflict) throw new Error(`Already assigned to ${conflict.label}. Clear that shortcut first.`);
     this.settings.hotkeys = withHotkey(this.settings.hotkeys, id, key);
@@ -313,9 +216,93 @@ export class SettingsService {
     return { ...this.settings.navigation };
   }
 
+  /** The input mode is this device's: it goes to local storage, not into the synced settings. */
   setNavigationSettings(settings: Partial<NavigationSettings>): void {
     this.settings.navigation = { ...this.settings.navigation, ...settings };
-    this.commit();
+    saveInputMode(this.app, this.settings.navigation.inputMode);
+    this.notify();
+  }
+
+  /** How much the lighting may ask of this device's graphics: the GM's choice, else the level Atlas picked for the device. */
+  /** The preset this device's graphics follow: the Graphics page's, else a level chosen before the page, else the one Atlas picked. */
+  getLightingQuality(): LightingQualityLevel {
+    return this.getGraphics().preset;
+  }
+
+  /** Whether the level in effect is Atlas' pick for this device's graphics, nothing chosen yet. */
+  isLightingQualityPicked(): boolean {
+    return loadGraphicsChoice(this.app) === null && loadLightingQuality(this.app) === null;
+  }
+
+  /** Chooses a preset whole, every knob its own. */
+  setLightingQuality(level: LightingQualityLevel): void {
+    this.setGraphics({ preset: level, overrides: {} });
+  }
+
+  /** The Graphics page's choice: a preset and the knobs set away from it (`GraphicsChoice`). */
+  getGraphics(): GraphicsChoice {
+    const stored = loadGraphicsChoice(this.app);
+    if (stored) return stored;
+    const level = loadLightingQuality(this.app);
+    return { preset: level ?? this.pickedLightingQuality(), overrides: {} };
+  }
+
+  /** The graphics are this device's: they go to local storage, not into the synced settings. Listeners hear only of a change in effect. */
+  setGraphics(choice: GraphicsChoice): void {
+    const shown = this.getGraphicsQuality();
+    saveGraphicsChoice(this.app, choice);
+    if (JSON.stringify(shown) !== JSON.stringify(this.getGraphicsQuality())) this.notify();
+  }
+
+  /** Forgets the choice: the level Atlas picked for the device holds again. */
+  resetGraphics(): void {
+    const shown = this.getGraphicsQuality();
+    saveGraphicsChoice(this.app, null);
+    if (JSON.stringify(shown) !== JSON.stringify(this.getGraphicsQuality())) this.notify();
+  }
+
+  /** What the lighting, the liquids and the composite read: the quality the choice describes (`qualityOf`). */
+  getGraphicsQuality(): LightingQuality {
+    return qualityOf(knobsOf(this.getGraphics()));
+  }
+
+  /**
+   * The level picked for this device's graphics (`pickLightingQuality`) the first time it is
+   * asked, then stored, so it never changes by itself. `high` where the graphics cannot be read,
+   * which is asked again next time.
+   */
+  private pickedLightingQuality(): LightingQualityLevel {
+    const stored = loadPickedLightingQuality(this.app);
+    if (stored) return stored;
+    const facts = readGpuFacts();
+    if (!facts) return 'high';
+    const level = pickLightingQuality(facts);
+    savePickedLightingQuality(this.app, level);
+    return level;
+  }
+
+  /** Whether animated maps play on this device as chosen, or null when never chosen (`animateMapsOn` decides then). */
+  getAnimateMaps(): boolean | null {
+    return loadAnimateMaps(this.app);
+  }
+
+  /** Animating maps is this device's choice: it goes to local storage, not into the synced settings. */
+  setAnimateMaps(on: boolean): void {
+    if (this.getAnimateMaps() === on) return;
+    saveAnimateMaps(this.app, on);
+    this.notify();
+  }
+
+  /** Whether this device renders the player view with up to 4K pixels instead of 1440p. */
+  isPlayerView4k(): boolean {
+    return loadPlayerView4k(this.app);
+  }
+
+  /** The player view's resolution is this device's, as its graphics card pays for it: local storage, not the synced settings. */
+  setPlayerView4k(on: boolean): void {
+    if (this.isPlayerView4k() === on) return;
+    savePlayerView4k(this.app, on);
+    this.notify();
   }
 
   getLaserPointerSettings(): LaserPointerSettings {
@@ -323,7 +310,19 @@ export class SettingsService {
   }
 
   setLaserPointerSettings(settings: Partial<LaserPointerSettings>): void {
-    this.settings.laserPointer = resolveLaserPointerSettings({ ...this.settings.laserPointer, ...settings });
+    // Spread over the stored record, so fields a newer Atlas added survive.
+    this.settings.laserPointer = { ...this.settings.laserPointer, ...resolveLaserPointerSettings({ ...this.settings.laserPointer, ...settings }) };
+    this.commit();
+  }
+
+  /** The dungeon generator's preferences, each field checked. */
+  getDungeonGenerator(): DungeonGeneratorSettings {
+    return readDungeonGeneratorSettings(this.settings.dungeonGenerator);
+  }
+
+  setDungeonGenerator(changes: Partial<DungeonGeneratorSettings>): void {
+    // Spread over the stored record, so fields a newer Atlas added survive.
+    this.settings.dungeonGenerator = { ...this.settings.dungeonGenerator, ...changes };
     this.commit();
   }
 
@@ -335,6 +334,92 @@ export class SettingsService {
   setDiceDisplay(display: DiceDisplay): void {
     if (this.settings.diceDisplay === display) return;
     this.settings.diceDisplay = display;
+    this.commit();
+  }
+
+  /** Whether the GM's initiative cards show names: off unless the file says `true`. */
+  showsInitiativeNames(): boolean {
+    return this.settings.initiativeNames === true;
+  }
+
+  setInitiativeNames(on: boolean): void {
+    if (this.showsInitiativeNames() === on) return;
+    this.settings.initiativeNames = on;
+    this.commit();
+  }
+
+  /** How the initiative lists are laid out: the GM's choices, and whether this device collapsed the tracker. */
+  initiativeLayout(): InitiativeLayout {
+    return {
+      fromTurn: this.settings.initiativeFromTurn !== false,
+      dock: readDock(this.settings.initiativeDock),
+      collapsed: loadInitiativeCollapsed(this.app),
+    };
+  }
+
+  /** The GM's choices go into the synced settings, the collapsed tracker into this device's local storage. */
+  setInitiativeLayout(changes: Partial<InitiativeLayout>): void {
+    const current = this.initiativeLayout();
+    const { fromTurn = current.fromTurn, dock = current.dock, collapsed = current.collapsed } = changes;
+    if (collapsed !== current.collapsed) saveInitiativeCollapsed(this.app, collapsed);
+    if (fromTurn === current.fromTurn && dock === current.dock) {
+      if (collapsed !== current.collapsed) this.notify();
+      return;
+    }
+    this.settings.initiativeFromTurn = fromTurn;
+    this.settings.initiativeDock = dock;
+    this.commit();
+  }
+
+  /** What a turn change does: the banner is on unless the file says `false`, the others off unless it says `true`. */
+  initiativeTurnOptions(): InitiativeTurnOptions {
+    return {
+      banner: this.settings.initiativeBanner !== false,
+      followTurn: this.settings.initiativeFollowTurn === true,
+      movesOnTurn: this.settings.initiativeMovesOnTurn === true,
+    };
+  }
+
+  setInitiativeTurnOptions(changes: Partial<InitiativeTurnOptions>): void {
+    const next = { ...this.initiativeTurnOptions(), ...changes };
+    const current = this.initiativeTurnOptions();
+    if (next.banner === current.banner && next.followTurn === current.followTurn && next.movesOnTurn === current.movesOnTurn) return;
+    this.settings.initiativeBanner = next.banner;
+    this.settings.initiativeFollowTurn = next.followTurn;
+    this.settings.initiativeMovesOnTurn = next.movesOnTurn;
+    this.commit();
+  }
+
+  /** The stored dice volume, 0 to 1; full volume when the file holds something else. */
+  getDiceVolume(): number {
+    const volume = this.settings.diceVolume;
+    return typeof volume === 'number' && volume >= 0 && volume <= 1 ? volume : 1;
+  }
+
+  setDiceVolume(volume: number): void {
+    const next = Math.min(1, Math.max(0, volume));
+    if (this.settings.diceVolume === next) return;
+    this.settings.diceVolume = next;
+    this.commit();
+  }
+
+  /** Whether a new scene looks for the grid of its map: on unless the file says `false`. */
+  detectsGridOnNewScenes(): boolean {
+    return this.settings.detectGridOnNewScenes !== false;
+  }
+
+  setDetectGridOnNewScenes(on: boolean): void {
+    if (this.detectsGridOnNewScenes() === on) return;
+    this.settings.detectGridOnNewScenes = on;
+    this.commit();
+  }
+
+  getFogEdge(): FogEdge {
+    return readFogEdge(this.settings.fogEdge);
+  }
+
+  setFogEdge(changes: Partial<FogEdge>): void {
+    this.settings.fogEdge = { ...this.getFogEdge(), ...changes };
     this.commit();
   }
 
@@ -398,6 +483,38 @@ export class SettingsService {
     this.scheduleSave();
   }
 
+  getTableTvSettings(): TableTvSettings {
+    return { ...this.settings.tableTv };
+  }
+
+  setTableTvSettings(changes: Partial<TableTvSettings>): void {
+    this.settings.tableTv = { ...this.settings.tableTv, ...changes };
+    this.commit();
+  }
+
+  /** TrueScale's facts about this device's TVs: local storage, since a TV belongs to the computer it is plugged into. */
+  getTableTvDevice(): TableTvDevice {
+    return loadTableTvDevice(this.app);
+  }
+
+  setTableTvDevice(patch: Partial<TableTvDevice>): void {
+    saveTableTvDevice(this.app, { ...this.getTableTvDevice(), ...patch });
+    this.notify();
+  }
+
+  /**
+   * Changes what this device keeps of the screen `key`. A screen is stored from its first
+   * change: turned at once (rotation 0 until one is given), set up only once it holds a
+   * positive `pxPerMm` (`setupOf`); a `pxPerMm` that is none leaves the one it had.
+   */
+  setTvScreenSetup(key: string, patch: Partial<TvScreenSetup>): void {
+    const device = this.getTableTvDevice();
+    const { pxPerMm, ...rest } = patch;
+    const screen: TvScreenRecord = { rotation: 0, ...device.screens[key], ...rest };
+    if (pxPerMm !== undefined && Number.isFinite(pxPerMm) && pxPerMm > 0) screen.pxPerMm = pxPerMm;
+    this.setTableTvDevice({ screens: { ...device.screens, [key]: screen } });
+  }
+
   getLocalPlayerViewSettings(): AtlasSettings['localPlayerView'] {
     return { ...this.settings.localPlayerView };
   }
@@ -437,7 +554,7 @@ export class SettingsService {
 
   // Reset to default settings
   resetToDefaults(): void {
-    this.settings = { ...DEFAULT_SETTINGS };
+    this.settings = { ...DEFAULT_SETTINGS, navigation: this.settings.navigation };
     this.commit();
   }
 }

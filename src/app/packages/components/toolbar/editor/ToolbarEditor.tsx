@@ -5,6 +5,7 @@ import { useContextMenu } from '../../../../react/root/ContextMenuContext'
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext'
 import { findAtlasLeafByViewId } from '../../../../utils/atlasLeafLookup'
 import { observeResize } from '../../../../utils/observeResize'
+import { UNDO_BAR_ID } from '../../../../toolbar/toolbarCatalog'
 import type { ResponsiveToolbarItem } from '../toolbarTypes'
 import type { ToolbarMotion } from '../useLayoutMotion'
 import { useToolbarEdit, type ToolbarEditApi } from './toolbarEditContext'
@@ -13,7 +14,11 @@ import { useToolbarEditState, useToolbarEditStore } from './toolbarEditStore'
 import { useTrayVariants } from './editorMotion'
 import { doneButtonOf, focusTargetOf, groupHandles, mainToolbarOf } from './toolbarEditDom'
 import { ToolbarEditTooltip } from './ToolbarEditTooltip'
+import { faceItemOf } from './ToolbarFace'
 import { ToolbarTray } from './ToolbarTray'
+
+/** Where a press keeps edit mode open: the bars, the tray and its card, "More tools", and the editor's context menu. */
+const EDITOR_SURFACES = '.atlas-main-toolbar, .atlas-undo-bar, .atlas-toolbar-editor, .atlas-toolbar-ghost-layer, .atlas-ctx-menu'
 
 interface ToolbarEditorProps {
   /** Every control this view offers, in layout order: the tray shows the hidden ones, a flight any. */
@@ -27,7 +32,8 @@ interface ToolbarEditorProps {
 /**
  * Edit mode's own parts, mounted while it lasts: the tray hanging above the
  * bar, and the ways out other than Done and the panels that end it (Escape no
- * control used, another tab coming to the front, the scene unloading). It
+ * control used, a left press outside the bars and the tray, another tab coming to the
+ * front, the scene unloading). It
  * sits over the bar's cell of the bottom row without taking one, so the bar's
  * width and corners are those of any other moment; the layer that holds a
  * flying or dragged tool spans the whole row. While the tray sinks away after edit mode
@@ -58,7 +64,8 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
 
   useLayoutEffect(() => {
     const row = rootRef.current?.parentElement
-    if (focusOnEntry && row) groupHandles(row, 'bar')[0]?.focus()
+    // The main bar's first tool, not the undo/redo bar's handle before it.
+    if (focusOnEntry && row) groupHandles(row, 'bar').find(handle => handle.dataset.control !== UNDO_BAR_ID)?.focus()
   }, [focusOnEntry])
 
   // After a change is drawn, focus goes where the change asked; Done where that is gone.
@@ -84,6 +91,21 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
     return () => doc.removeEventListener('keydown', onKeyDown)
   }, [finish, viewId])
 
+  // A left press outside the bars, the tray and the editor's menu ends edit mode; the press still does what it does there.
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || !finish) return undefined
+    const doc = root.doc
+    const onPointerDown = (event: PointerEvent): void => {
+      if (event.button !== 0) return
+      const target = event.target as Element | null
+      if (target?.closest?.(EDITOR_SURFACES)) return
+      finish()
+    }
+    doc.addEventListener('pointerdown', onPointerDown, true)
+    return () => doc.removeEventListener('pointerdown', onPointerDown, true)
+  }, [finish])
+
   useEffect(() => {
     if (!finish) return undefined
     const leafChange = app.workspace.on('active-leaf-change', (leaf) => {
@@ -105,8 +127,8 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
   if (!shown) return null
   const style = barHeight === null ? undefined : { '--atlas-toolbar-bar-height': `${barHeight}px` } as React.CSSProperties
   const flight = edit?.flight ?? null
-  const flying = flight ? items.find(item => item.id === flight.id) : undefined
-  const dragged = dragGhost ? items.find(item => item.id === dragGhost.id) : undefined
+  const flying = flight ? faceItemOf(flight.id, items) : undefined
+  const dragged = dragGhost ? faceItemOf(dragGhost.id, items) : undefined
   return (
     <>
       <div ref={rootRef} className="atlas-toolbar-editor" style={style} inert={!present}>

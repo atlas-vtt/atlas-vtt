@@ -1,0 +1,81 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The statblock beside its note (§7.2, D7, D14)
+// ═══════════════════════════════════════════════════════════════════════════
+// `NoteStatblockPanel` appends one element, `.atlas-sb-note-panel`, to a
+// Markdown view's content and marks the view's container with `.atlas-sb-note`.
+// The rules on the view are not scoped under `.atlas-vtt-plugin`: the view is
+// Obsidian's. They only make its content a row and size its two editors as
+// flex items; nothing else of Obsidian's editor or reader is restyled.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use '../panel-frame/panel-row' as *;
+
+.workspace-leaf-content.atlas-sb-note {
+  > .view-content {
+    @include atlas-sb-note-row('.markdown-source-view', '.markdown-reading-view');
+  }
+
+  // Too narrow for two columns: the statblock stands above the note in one scroll, as if it were
+  // the note's first part. The content scrolls; the panel, the editor and the reader take their
+  // full heights and scroll nothing themselves (CodeMirror follows a scrolling ancestor).
+  &.atlas-sb-note--stacked > .view-content {
+    @include atlas-sb-note-row-stacked('.markdown-source-view', '.markdown-reading-view');
+    overflow-y: auto;
+
+    > .markdown-source-view,
+    > .markdown-reading-view {
+      flex: 0 0 auto;
+      height: auto;
+    }
+
+    > .markdown-source-view .cm-editor,
+    > .markdown-source-view .cm-scroller,
+    > .markdown-reading-view .markdown-preview-view {
+      height: auto;
+      overflow: visible;
+    }
+
+    > .atlas-sb-note-panel {
+      flex: 0 0 auto;
+      max-height: none;
+      border-block-end: 0;
+
+      .atlas-sb-note-panel__scroll {
+        overflow: visible;
+        scrollbar-gutter: auto;
+      }
+    }
+  }
+
+  // The note's own `atlas-statblock` fence would draw the card a second time:
+  // it shrinks to one line. A fence of an embedded note shows its own note, so it stays.
+  .atlas-statblock-fence:not(.markdown-embed *) {
+    > * {
+      display: none;
+    }
+
+    &::before {
+      content: 'Shown beside';
+      display: block;
+      color: var(--text-faint);
+      font-size: $font-ui-smaller;
+    }
+  }
+}
+
+// Properties hide through Obsidian's own variables while the panel's tray edits
+// them: its rules out-rank a plain `display: none`, and keep showing the
+// "invalid properties" message of a note whose YAML is broken. If Obsidian
+// renames the variables, Properties simply show again.
+.workspace-leaf-content.atlas-sb-note--hide-properties {
+  --metadata-display-editing: none;
+  --metadata-display-reading: none;
+}
+
+// What `@` offers in a value (`ReferenceSuggest`): Obsidian's suggestion rows, each name with the
+// number it reads at the row's end, in figures that line up.
+.suggestion-item.atlas-sb-reference-option .atlas-sb-reference-option__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}

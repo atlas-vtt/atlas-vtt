@@ -1,0 +1,260 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Dice lab: the vault's dice sets in a sidebar, the open set's options under
+// them, and its dice on a tray beside them (DiceLabDialog, DiceLab, DiceSetList).
+// The options are styled in dice-lab-options.scss, the tray in dice-tray.scss and
+// dice-step.scss.
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$sidebar-width: 304px;
+// The list of sets keeps its height, so the options under it never move it.
+$library-height: 272px;
+$set-row-height: 36px;
+
+// ── Dialog ─────────────────────────────────────────────────────────────────
+// Portaled to the document's body, so the overlay itself carries .atlas-vtt-plugin.
+&.atlas-dice-lab-overlay {
+  @include atlas-modal-overlay($z-atlas-modal);
+}
+
+.atlas-dice-lab-dialog {
+  @include atlas-modal-window;
+  container: atlas-dice-lab / inline-size;
+  width: 960px;
+  height: 700px;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.atlas-dice-lab-dialog__header {
+  @include atlas-modal-header;
+}
+
+.atlas-dice-lab-dialog__footer {
+  @include atlas-modal-footer;
+}
+
+// ── Layout ─────────────────────────────────────────────────────────────────
+.atlas-dice-lab {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: $sidebar-width minmax(0, 1fr);
+  grid-template-rows: $library-height minmax(0, 1fr);
+  grid-template-areas:
+    'library stage'
+    'options stage';
+}
+
+// A narrow window: the sidebar above the tray, all of it scrolling as one.
+@container atlas-dice-lab (max-width: 720px) {
+  .atlas-dice-lab {
+    @include atlas-scrollbar;
+    overflow-y: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas: 'library' 'options' 'stage';
+  }
+
+  .atlas-dice-lab__library,
+  .atlas-dice-lab__options {
+    border-inline-end: none;
+  }
+
+  .atlas-dice-lab__sets {
+    max-height: 184px;
+  }
+
+  .atlas-dice-lab__options {
+    overflow: visible;
+  }
+
+}
+
+// ── Sidebar: the library ───────────────────────────────────────────────────
+.atlas-dice-lab__library,
+.atlas-dice-lab__options {
+  background: var(--background-secondary);
+  border-inline-end: $border-width-s solid var(--divider-color);
+}
+
+.atlas-dice-lab__library {
+  @include atlas-flex-col($spacing-xs);
+  grid-area: library;
+  min-height: 0;
+  padding: $spacing-s;
+}
+
+.atlas-dice-lab__library-head {
+  @include atlas-flex-row($spacing-s);
+  justify-content: space-between;
+  // The label on the rows' text edge, the button on their end
+  padding-inline-start: $spacing-s;
+}
+
+.atlas-dice-lab__section-label {
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-semibold;
+  color: var(--text-muted);
+}
+
+.atlas-dice-lab__icon-btn.btn {
+  flex: none;
+  width: $input-height-s;
+  height: $input-height-s;
+  padding: 0;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-dice-lab__sets {
+  @include atlas-flex-col(2px);
+  @include atlas-scrollbar;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.atlas-dice-lab__set-row {
+  position: relative;
+  flex: none;
+  margin: 0;
+  border-radius: $radius-l;
+  transition: background-color $transition-fast $transition-ease;
+
+  &.atlas-selected {
+    background: var(--background-primary);
+    box-shadow: $shadow-sm;
+  }
+}
+
+button.atlas-dice-lab__set {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 22px minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: $spacing-s;
+  width: 100%;
+  height: $set-row-height;
+  padding: 0 $spacing-s;
+  margin: 0;
+  border: none;
+  border-radius: $radius-l;
+  background: none;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  font-weight: normal;
+  text-align: start;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+  }
+}
+
+.atlas-dice-lab__set-name {
+  @include atlas-truncate;
+}
+
+.atlas-dice-lab__set-detail {
+  @include atlas-truncate;
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
+  transition: opacity $transition-fast $transition-ease;
+}
+
+.atlas-dice-lab__hidden-text {
+  @include atlas-visually-hidden;
+}
+
+.atlas-dice-lab__lock {
+  width: $icon-xs;
+  height: $icon-xs;
+  color: var(--text-faint);
+  transition: opacity $transition-fast $transition-ease;
+}
+
+// A row's actions lie over its end and show while it is hovered, focused or asking;
+// the detail under them steps aside, so nothing in the row moves.
+.atlas-dice-lab__set-actions {
+  @include atlas-flex-row(2px);
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: $spacing-xs;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity $transition-fast $transition-ease;
+}
+
+.atlas-dice-lab__set-row:hover,
+.atlas-dice-lab__set-row:focus-within,
+.atlas-dice-lab__set-row.atlas-asking {
+  .atlas-dice-lab__set-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .atlas-dice-lab__set-detail,
+  .atlas-dice-lab__lock {
+    opacity: 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-dice-lab__set-row:not(.atlas-selected):hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+.atlas-dice-lab__dots {
+  @include atlas-flex-row(0);
+
+  // Overlapping, like dice held in a hand
+  > * + * {
+    margin-inline-start: -3px;
+  }
+}
+
+.atlas-dice-lab__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: $radius-full;
+  background: var(--atlas-die-colour);
+  box-shadow: 0 0 0 1.5px var(--background-secondary);
+
+  // Dice in the dice look of the settings: a ring, not a colour
+  &.atlas-plain {
+    background: var(--background-secondary);
+    border: 1.5px solid var(--text-faint);
+  }
+}
+
+// Spelled out, not `.atlas-selected &`: these rules are nested in `.atlas-vtt-plugin`.
+.atlas-dice-lab__set-row.atlas-selected .atlas-dice-lab__dot {
+  box-shadow: 0 0 0 1.5px var(--background-primary);
+
+  &.atlas-plain {
+    background: var(--background-primary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-dice-lab__set-row,
+  .atlas-dice-lab__set-actions,
+  .atlas-dice-lab__set-detail,
+  .atlas-dice-lab__lock {
+    transition: none;
+  }
+}

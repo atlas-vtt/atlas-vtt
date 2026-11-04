@@ -6,6 +6,8 @@ import { beginHistoryTransaction, endHistoryTransaction } from '../stores/histor
 import { hitTestDrawing } from './drawingGeometry';
 import { MAP_ICON_LABELS } from './mapIcons';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
+import { t } from '../i18n';
+import { levelObjects } from '../levels/levelObjects';
 
 /** Screen-space slack around ink, so thin lines stay grabbable at any zoom. */
 const HIT_TOLERANCE_PX = 6;
@@ -13,8 +15,8 @@ const HIT_TOLERANCE_PX = 6;
 const DRAG_THRESHOLD = 5;
 /** Same inks the toolbar offers. */
 const INK_COLORS = [
-  { label: 'White', value: '#ffffff' },
-  { label: 'Black', value: '#000000' },
+  { label: t('color.white'), value: '#ffffff' },
+  { label: t('color.black'), value: '#000000' },
 ];
 
 /**
@@ -31,7 +33,7 @@ export class DrawingInteraction {
 
   /** Topmost drawing under a world-space point, or null. */
   public hitTest(worldX: number, worldY: number): string | null {
-    const drawings = Object.values(this.store.getState().objects?.drawings ?? {});
+    const drawings = Object.values(levelObjects(this.store.getState())?.drawings ?? {});
     const tolerance = HIT_TOLERANCE_PX / this.viewport.scale.x;
     const point = { x: worldX, y: worldY };
 
@@ -77,7 +79,7 @@ export class DrawingInteraction {
 
     const initial = this.store.getState();
     if (initial.isPlayerView) return;
-    const dragIds = initial.selectedIds.filter((id) => initial.objects.drawings[id]);
+    const dragIds = initial.selectedIds.filter((id) => levelObjects(initial).drawings[id]);
     if (dragIds.length === 0) return;
 
     const start = this.viewport.toWorld(e.global);
@@ -118,15 +120,16 @@ export class DrawingInteraction {
 
   /** Menu actions apply to every selected drawing, so a group can be restyled at once. */
   private showContextMenu(drawingId: string, e: FederatedPointerEvent): void {
-    const { selectedIds, objects } = this.store.getState();
-    const ids = selectedIds.filter((id) => objects.drawings[id]);
+    const state = this.store.getState();
+    const objects = levelObjects(state);
+    const ids = state.selectedIds.filter((id) => objects.drawings[id]);
     const clicked = objects.drawings[drawingId];
     if (!clicked || ids.length === 0) return;
 
     const entries: ContextMenuEntry[] = [
       {
         type: 'submenu',
-        label: 'Color',
+        label: t('drawing.color'),
         icon: 'palette',
         children: INK_COLORS.map(({ label, value }) => ({
           type: 'item' as const,
@@ -141,7 +144,7 @@ export class DrawingInteraction {
     if (clicked.type === 'icon') {
       entries.push({
         type: 'submenu',
-        label: 'Change Icon',
+        label: t('drawing.changeIcon'),
         icon: 'shapes',
         children: Object.entries(MAP_ICON_LABELS).map(([icon, label]) => ({
           type: 'item' as const,
@@ -153,15 +156,11 @@ export class DrawingInteraction {
     }
 
     entries.push(
-      { type: 'item', label: 'Duplicate', icon: 'files', onClick: () => this.store.getState().duplicateMapObjects(ids) },
-      { type: 'item', label: 'Delete', icon: 'trash', destructive: true, onClick: () => this.store.getState().deleteSelected() },
+      { type: 'item', label: t('common.duplicate'), icon: 'files', onClick: () => this.store.getState().duplicateMapObjects(ids) },
+      { type: 'item', label: t('common.delete'), icon: 'trash', destructive: true, onClick: () => this.store.getState().deleteSelected() },
     );
 
-    const original = e.originalEvent as unknown;
-    const position = original instanceof MouseEvent
-      ? { x: original.clientX, y: original.clientY }
-      : { x: e.global.x, y: e.global.y };
-    openContextMenuGlobal(entries, position);
+    openContextMenuGlobal(entries, { x: e.clientX, y: e.clientY });
   }
 
   public destroy(): void {

@@ -3,16 +3,20 @@ import { AssetService, Asset } from './AssetService';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { normalizeImagePath } from '../utils/pathUtils';
 import { mapThumbnailPath } from '../utils/dataFileMigration';
-import { movedPathOf, rewriteMapReferences, type MovedPath, type PathMove } from './renamedPaths';
+import { movedFolderPathOf, movedPathOf, rewriteMapReferences, type MovedPath, type PathMove } from './renamedPaths';
 import { SceneSnapshotService } from '../snapshots/SceneSnapshotService';
+import { allSnapshotFiles, hiddenSnapshotFiles } from '../snapshots/sceneSnapshotFolders';
 import { STATBLOCK_IMAGE_KEYS } from './statblockImageKeys';
+import { NoteFieldWriter } from '../statblocks/notes/NoteFieldWriter';
+import type { NotePatch } from '../statblocks/notes/patchTypes';
+import { withMovedTableNotes } from '../randomTables/tableSettings';
 
 /**
  * Propagates file path changes (renames/moves) across all storage layers:
  * - Asset metadata (assets-metadata.json), including scene records of a renamed map
  * - Map files (.atlasmap token instances and pin targets) and scene snapshots
  * - Statblock frontmatter (the image fields)
- * - Collection loot bases
+ * - Collection loot bases and random table notes
  * - The thumbnail of a renamed map
  *
  * The open map is updated separately by its view, from the same vault event.
@@ -43,7 +47,7 @@ export class FileReferenceService {
     for (const { from, to } of fileMoves) await this.renameMapThumbnail(from, to);
     await this.updateMapFiles(moved);
     await this.updateStatblockFrontmatter(moved);
-    await this.updateLootBases(moved);
+    await this.updateRandomTableSources(moved);
   }
 
   /**
@@ -56,6 +60,11 @@ export class FileReferenceService {
     if (await assetService.followCollectionFolderRename(oldPath, newPath)) {
       this.app.workspace.trigger('atlas-vtt:refresh-assets');
     }
+  }
+
+  /** Points what maps and snapshots name at or below moved folders (pins rolling a folder of encounters) at the folders' new places. */
+  async followMovedFolders(moves: readonly PathMove[]): Promise<void> {
+    if (moves.length > 0) await this.updateMapFiles(movedFolderPathOf(moves));
   }
 
   // ---------------------------------------------------------------------------
@@ -159,26 +168,26 @@ export class FileReferenceService {
       } catch (error) {
         console.error(`[FileReferenceService] Error updating map ${mapFile.path}:`, error);
       }
-      // Scene snapshots hold the same map state, so they follow renamed files too.
-      try {
-        if (await snapshots.rewriteFiles(mapFile.path, rewriteMap)) anyChanged = true;
-      } catch (error) {
-        console.error(`[FileReferenceService] Error updating snapshots of ${mapFile.path}:`, error);
-      }
     }
+    // Scene snapshots hold the same map state, so they follow renamed files too.
+    const snapshotFiles = [...allSnapshotFiles(this.app), ...await hiddenSnapshotFiles(this.app, mapFiles.map((file) => file.path))];
+    if (await snapshots.rewriteFiles(snapshotFiles, rewriteMap)) anyChanged = true;
 
     return anyChanged;
   }
 
   // ---------------------------------------------------------------------------
-  /** Collections keep rolling on a loot base after it is renamed or moved. */
-  private async updateLootBases(moved: MovedPath): Promise<void> {
+  /** Collections keep rolling on a loot base or a table note after it is renamed or moved. */
+  private async updateRandomTableSources(moved: MovedPath): Promise<void> {
     const assetService = AssetService.getInstance(this.app);
     for (const collection of await assetService.getCollections()) {
-      const lootBases = collection.settings.lootBases;
-      if (!lootBases?.some((path) => moved(path) !== null)) continue;
+      const { lootBases } = collection.settings;
+      const basesMoved = lootBases?.some((path) => moved(path) !== null) ?? false;
+      const randomTables = withMovedTableNotes(collection.settings, moved);
+      if (!basesMoved && !randomTables) continue;
       await assetService.updateCollectionSettings(collection.id, {
-        lootBases: lootBases.map((path) => moved(path) ?? path),
+        ...(basesMoved && lootBases && { lootBases: lootBases.map((path) => moved(path) ?? path) }),
+        ...(randomTables && { randomTables }),
       });
     }
   }
@@ -189,31 +198,28 @@ export class FileReferenceService {
   /**
    * Statblock notes name their artwork by vault path in `image` (what Atlas
    * writes when it links a token), `token` or the older `token-image`. Obsidian keeps
-   * wikilinks there up to date itself, but not plain paths.
+   * wikilinks there up to date itself, but not plain paths. The cache picks the notes;
+   * the writer rewrites each key the note itself still holds, through its open editor if
+   * it has one, so unsaved typing there is kept.
    */
   private async updateStatblockFrontmatter(moved: MovedPath): Promise<void> {
-    const mdFiles = this.app.vault.getFiles().filter(f => f.extension === 'md');
-
-    for (const mdFile of mdFiles) {
-      try {
-        const frontmatter = this.app.metadataCache.getFileCache(mdFile)?.frontmatter;
-        if (!frontmatter) continue;
-
-        const targets = STATBLOCK_IMAGE_KEYS.flatMap((key) => {
-          const value: unknown = frontmatter[key];
-          const target = typeof value === 'string' ? moved(value) : null;
-          return target === null ? [] : [[key, target] as const];
-        });
-        if (targets.length === 0) continue;
-
-        await this.app.fileManager.processFrontMatter(mdFile, (latest: Record<string, unknown>) => {
-          for (const [key, target] of targets) latest[key] = target;
-        });
-      } catch (error) {
-        console.error(`[FileReferenceService] Error updating frontmatter in ${mdFile.path}:`, error);
-      }
+    const writer = NoteFieldWriter.forApp(this.app);
+    for (const mdFile of this.app.vault.getFiles().filter((file) => file.extension === 'md')) {
+      const frontmatter = this.app.metadataCache.getFileCache(mdFile)?.frontmatter;
+      if (!frontmatter || imagePatches(frontmatter, moved).length === 0) continue;
+      const outcome = await writer.patchNow(mdFile.path, (latest) => imagePatches(latest ?? {}, moved));
+      if (outcome.problem) console.error(`[FileReferenceService] Could not update the image of ${mdFile.path}: ${outcome.problem}`);
     }
   }
+}
+
+/** A path change for each image key of a statblock's frontmatter that names a moved file. */
+function imagePatches(frontmatter: Readonly<Record<string, unknown>>, moved: MovedPath): NotePatch[] {
+  return STATBLOCK_IMAGE_KEYS.flatMap((key): NotePatch[] => {
+    const value = frontmatter[key];
+    const target = typeof value === 'string' ? moved(value) : null;
+    return typeof value === 'string' && target !== null ? [{ op: 'set', path: [key], base: value, next: target }] : [];
+  });
 }
 
 const basename = (path: string): string => path.slice(path.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '');

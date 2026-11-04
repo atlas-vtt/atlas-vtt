@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const snapshots: Translation = {
+  'snapshots.deleteBody': 'Снимок удалится с этой карты. Сама карта не изменится.',
+  'snapshots.deleteFailed': 'Не удалось удалить снимок',
+  'snapshots.deleteTitle': 'Удалить «{name}»?',
+  'snapshots.empty': 'Снимков пока нет. Сохраните карту как есть, чтобы потом вернуть её в это состояние, например перед началом боя.',
+  'snapshots.name': 'Название снимка',
+  'snapshots.new': 'Новый снимок',
+  'snapshots.overwriteBody': 'Снимок заменится текущим состоянием карты. Прежнее состояние пропадёт.',
+  'snapshots.overwriteFailed': 'Не удалось заменить снимок',
+  'snapshots.overwriteTitle': 'Заменить «{name}»?',
+  'snapshots.overwriteWithCurrent': 'Заменить текущей картой',
+  'snapshots.renameFailed': 'Не удалось переименовать снимок',
+  'snapshots.renameNamed': 'Переименовать «{name}»',
+  'snapshots.restoreBody': 'Токены, пины, туман, рисунки, инициатива и всё остальное на карте вернутся к состоянию снимка.',
+  'snapshots.restoreFailed': 'Не удалось восстановить снимок',
+  'snapshots.restoreNamed': 'Восстановить «{name}»',
+  'snapshots.restoreTitle': 'Восстановить «{name}»?',
+  'snapshots.restoreWarning': 'Изменения после снимка пропадут без возможности отмены. Чтобы их сохранить, сначала сделайте снимок.',
+  'snapshots.restored': 'Восстановлен «{name}»',
+  'snapshots.saveFailed': 'Не удалось сохранить снимок',
+  'snapshots.savedAt': 'Сохранён {date}',
+  'snapshots.updatedAt': 'Обновлён {date}',
+  'snapshots.defaultName': 'Снимок',
+};

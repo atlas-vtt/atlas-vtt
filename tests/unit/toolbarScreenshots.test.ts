@@ -1,10 +1,9 @@
-// @vitest-environment node
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { imageDimensions } from '../../src/app/imageProcessing/imageDimensions';
 import { TOOLBAR_SCREENSHOTS } from '../../src/app/packages/components/toolbar/toolbarScreenshots';
-import { TOOLBAR_CONTROLS } from '../../src/app/toolbar/toolbarCatalog';
+import { TOOLBAR_CONTROLS, UNDO_BAR_ID, type ToolbarUnitId } from '../../src/app/toolbar/toolbarCatalog';
 
 // The build inlines every screenshot into main.js, and CI has no bundle budget: this is it.
 const FOLDER = join(__dirname, '../../src/app/assets/toolbar');
@@ -14,9 +13,10 @@ const MAX_TOTAL_BYTES = 400 * 1024;
 const files = readdirSync(FOLDER).filter((name) => name.endsWith('.webp'));
 
 describe('the toolbar editor\'s screenshots', () => {
-  it('has a screenshot for every control but ambient sound, and no file the card never shows', () => {
-    const withScreenshot = TOOLBAR_CONTROLS.map((control) => control.id).filter((id) => TOOLBAR_SCREENSHOTS[id] !== null);
-    expect(withScreenshot).toEqual(TOOLBAR_CONTROLS.map((control) => control.id).filter((id) => id !== 'audio'));
+  it('has a screenshot for every control but ambient sound and for the undo/redo bar, and no file the card never shows', () => {
+    const units: ToolbarUnitId[] = [...TOOLBAR_CONTROLS.map((control) => control.id), UNDO_BAR_ID];
+    const withScreenshot = units.filter((id) => TOOLBAR_SCREENSHOTS[id] !== null);
+    expect(withScreenshot).toEqual(units.filter((id) => id !== 'audio'));
     expect(files.map((name) => name.replace(/\.webp$/, '')).sort()).toEqual([...withScreenshot].sort());
   });
 

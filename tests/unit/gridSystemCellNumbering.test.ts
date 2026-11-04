@@ -1,7 +1,9 @@
+// @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { Container, Sprite, Texture } from 'pixi.js';
+import { Container } from 'pixi.js';
 import { GridSystem } from '../../src/app/grid/GridSystem';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { fakeMapImageView, settleGridColor } from '../helpers/fakeMapImageView';
 
 let restoreGraphics: (() => void) | undefined;
 
@@ -11,21 +13,23 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it('builds a cell-numbers container with one label per cell on a square grid', () => {
+it('builds a cell-numbers container drawing the labels of a square grid as one mesh', async () => {
   restoreGraphics = stubJsdomGraphics();
   const viewport = new Container();
-  const background = new Sprite(Texture.WHITE); background.width = 200; background.height = 200;
-  viewport.addChild(background);
-  const app = { renderer: { resolution: 1 } } as any;
-  const grid = new GridSystem(app, viewport as any, background, {
+  const map = fakeMapImageView(200, 200);
+  viewport.addChild(map.layer);
+  const app = { renderer: { resolution: 1 } } as never;
+  const grid = new GridSystem(app, viewport as never, map, {
     type: 'square',
     size: 100,
     cellNumbers: { format: 'column-row', opacity: 0.8 },
   });
   try {
+    await settleGridColor();
     const sprite = grid.getGridSprite();
     const numbers = sprite!.children.find((child) => child.label === 'cell-numbers');
     expect(numbers).toBeDefined();
-    expect(numbers!.children).toHaveLength(4);
+    expect(numbers!.children).toHaveLength(1);
+    expect(grid.cellLabels()).toHaveLength(4);
   } finally { grid.destroy(); }
 });

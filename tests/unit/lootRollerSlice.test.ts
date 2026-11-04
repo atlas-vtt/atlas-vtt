@@ -30,12 +30,12 @@ describe('readLootRollerState', () => {
       open: true,
       position: { x: 10, y: 'top' },
       disabledViews: ['Items.base#Armor', 3],
-      excludedRarities: ['epic', 'mythic'],
+      excludedRarities: ['Very rare', 'epic'],
       count: 99,
       pane: 'history',
       lastRoll: { id: 'broken' },
     });
-    expect(state).toEqual({ open: true, disabledViews: [], excludedRarities: ['epic'], count: LOOT_MAX_COUNT, pane: 'history' });
+    expect(state).toEqual({ open: true, disabledViews: [], excludedRarities: ['very rare', 'epic'], count: LOOT_MAX_COUNT, pane: 'history' });
   });
 
   it('keeps a resized window size and drops an impossible one', () => {

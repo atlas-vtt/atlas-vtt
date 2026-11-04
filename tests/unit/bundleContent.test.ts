@@ -72,3 +72,24 @@ describe('loot bases', () => {
     expect(rewriteContent(base, raw, moves)).toBe(raw);
   });
 });
+
+describe('notes naming statblock templates', () => {
+  const ids = new Map([['marsh-creature-k7m2qa', 'marsh-creature-c0py01']]);
+
+  it('name the template\'s id here, together with their moved artwork', () => {
+    const note: BundleFile = { vaultPath: 'B/g.md', role: 'statblock-note', statblockImage: { key: 'image', path: 'B/g.png' } };
+    const raw = '---\natlas-template: marsh-creature-k7m2qa\nimage: B/g.png\n---\n';
+    expect(decode(rewriteContent(note, encode(raw), new Map([['B/g.png', 'C/g.png']]), ids)))
+      .toBe('---\natlas-template: marsh-creature-c0py01\nimage: "C/g.png"\n---\n');
+    const pinned: BundleFile = { vaultPath: 'Lore/Hag.md', role: 'linked-note' };
+    expect(decode(rewriteContent(pinned, encode('---\natlas-template: marsh-creature-k7m2qa\n---\n'), new Map(), ids)))
+      .toBe('---\natlas-template: marsh-creature-c0py01\n---\n');
+  });
+
+  it('leave every other file and a note of another template byte for byte', () => {
+    const json = encode('{"atlas-template":"marsh-creature-k7m2qa"}');
+    expect(rewriteContent({ vaultPath: 'atlas-vtt/s.json', role: 'asset-file' }, json, new Map(), ids)).toBe(json);
+    const other = encode('---\natlas-template: bog-hag-b0g001\n---\n');
+    expect(rewriteContent({ vaultPath: 'Lore/Bog.md', role: 'linked-note' }, other, new Map(), ids)).toBe(other);
+  });
+});

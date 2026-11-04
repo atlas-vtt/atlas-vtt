@@ -1,0 +1,95 @@
+// The selected tile's toolbar (spec §4.2): a 36 px capsule under the tile,
+// its kind's name, then its controls; its buttons sit $spacing-xs inside the
+// border, so their outer corners run concentric with the capsule's ends. It
+// takes the pointer over its whole capsule while its tile is selected.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$toolbar-height: 36px;
+$toolbar-inset: $spacing-xs;
+$toolbar-button: calc(#{$toolbar-height} - 2 * #{$border-width-m} - 2 * #{$toolbar-inset});
+$chip-max: 88px;
+
+.atlas-vtt-plugin {
+  .atlas-te-toolbar {
+    @include atlas-elevated-surface;
+    @include atlas-keep-in-view;
+    position: absolute;
+    left: var(--atlas-te-toolbar-x);
+    top: var(--atlas-te-toolbar-y);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: $toolbar-inset;
+    box-sizing: border-box;
+    height: $toolbar-height;
+    padding: $toolbar-inset;
+    border-radius: $toolbar-height * 0.5;
+    box-shadow: $shadow-md;
+    pointer-events: auto;
+
+    &[data-hidden] {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .atlas-tool-button button.btn {
+      @include atlas-corner-shape;
+      height: $toolbar-button;
+      border: none;
+      border-radius: calc(#{$toolbar-button} / 2);
+      background: transparent;
+      box-shadow: none;
+      color: var(--text-muted);
+
+      &:hover:not(:disabled) {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--interactive-accent);
+        outline-offset: -2px;
+      }
+
+      svg {
+        flex: none;
+        width: $icon-s;
+        height: $icon-s;
+      }
+    }
+
+    .atlas-tool-button button.btn {
+      width: $toolbar-button;
+      padding: 0;
+    }
+  }
+
+  // The tile's kind, with its glyph: a name, no control.
+  .atlas-te-toolbar__type {
+    @include atlas-flex-row($spacing-xs);
+    max-width: $chip-max;
+    padding: 0 $spacing-s;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+
+    svg {
+      flex: none;
+      width: $icon-s;
+      height: $icon-s;
+    }
+  }
+
+  .atlas-te-toolbar__type-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .atlas-te-toolbar :is([data-value-kind], [data-options]),
+  .atlas-te-toolbar__more {
+    position: relative;
+    display: flex;
+  }
+}

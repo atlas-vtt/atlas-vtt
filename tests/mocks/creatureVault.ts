@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { stringify as stringifyYaml } from 'yaml';
 import type { App, TFile } from 'obsidian';
 import type { FantasyStatblocksCreature } from '../../src/app/services/FantasyStatblocksService';
 import { createInMemoryApp } from './inMemoryVault';
@@ -66,4 +67,33 @@ export function creatureVault(): CreatureVault {
     },
   });
   return { app, files, frontmatter, bestiary, workspace, metadata, vault, getBestiaryCreatures };
+}
+
+/** Adds a note whose metadata cache holds `frontmatter`, with that frontmatter written into its text. */
+export function addNote(vault: CreatureVault, path: string, frontmatter: Record<string, unknown>, body = ''): void {
+  vault.frontmatter[path] = frontmatter;
+  vault.files.set(path, `---\n${stringifyYaml(frontmatter)}---\n${body}`);
+}
+
+const WRITE_METHODS = {
+  vault: ['create', 'createBinary', 'createFolder', 'modify', 'modifyBinary', 'process', 'append', 'rename', 'copy', 'delete', 'trash'],
+  adapter: ['write', 'writeBinary', 'append', 'process', 'mkdir', 'remove', 'rename', 'copy', 'rmdir', 'trashSystem', 'trashLocal'],
+  fileManager: ['renameFile', 'trashFile', 'processFrontMatter'],
+} as const;
+
+/**
+ * Makes every write of the vault, its adapter and the file manager throw, so a test proves that
+ * viewing only reads. Returns the replaced methods; none of them should have been called.
+ */
+export function forbidWrites(app: App): ReturnType<typeof vi.fn>[] {
+  const refusals: ReturnType<typeof vi.fn>[] = [];
+  const targets = { vault: app.vault, adapter: app.vault.adapter, fileManager: app.fileManager } as Record<keyof typeof WRITE_METHODS, Record<string, unknown>>;
+  for (const [target, methods] of Object.entries(WRITE_METHODS) as [keyof typeof WRITE_METHODS, readonly string[]][]) {
+    for (const method of methods) {
+      const refusal = vi.fn(() => { throw new Error(`${target}.${method} writes, but viewing must not write.`); });
+      refusals.push(refusal);
+      targets[target][method] = refusal;
+    }
+  }
+  return refusals;
 }

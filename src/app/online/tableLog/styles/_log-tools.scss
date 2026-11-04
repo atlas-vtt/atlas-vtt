@@ -1,0 +1,205 @@
+// A row's tools: a pill on the row's top edge with reactions, Reply, Edit and Delete, which turns
+// into the question Delete asks. It exists only while its row is active, so it fades in where it
+// stands and leaves at once.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+$tools-pad: $spacing-xs;
+$tools-ease: cubic-bezier(0.2, 0, 0, 1);
+
+.atlas-online-log {
+  --atlas-online-log-tool: 28px;
+
+  #{$log-coarse} & {
+    --atlas-online-log-tool: #{$log-target};
+  }
+
+  // Sticky inside the row: while the row's top is scrolled out of the list, the pill rides down
+  // with the list's edge (half its height below it) and stops at the row's end, so it is never
+  // clipped and never sits on the next row. It climbs over the row's top padding to sit on its edge
+  // and gives that space back below itself, so the row keeps its size and its content its place.
+  .atlas-online-log__tools-anchor {
+    position: sticky;
+    top: calc(var(--atlas-online-log-tool) / 2 + #{$tools-pad} + #{$border-width-m} + 2px);
+    z-index: 2;
+    height: 0;
+    margin-top: calc(-1 * var(--atlas-online-log-row-top));
+    margin-bottom: var(--atlas-online-log-row-top);
+  }
+
+  .atlas-online-log__tools {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    max-width: 100%;
+    padding: $tools-pad;
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($radius-xl);
+    box-shadow: $shadow-md;
+    transform: translateY(-50%);
+    animation: atlas-online-log-tools-in 140ms $transition-ease-out both;
+  }
+
+  // Two layers, the tools and the question, both always there: each is a grid track that closes to
+  // nothing, so the pill's width follows what shows, and the swap can turn around half way.
+  .atlas-online-log__tools-layer {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-width: 0;
+    transition: grid-template-columns 260ms $tools-ease;
+
+    // The pill's padding is folded into the layer and pulled back, so a control's fill and focus
+    // ring reach the pill's edge without being cut where the layer clips.
+    > .atlas-online-log__tools-inner {
+      margin: calc(-1 * #{$tools-pad});
+      padding: $tools-pad;
+      overflow: hidden;
+      opacity: 1;
+      scale: 1;
+      filter: blur(0);
+      transition: opacity 260ms $tools-ease 60ms, scale 260ms $tools-ease 60ms, filter 260ms $tools-ease 60ms;
+    }
+
+    &.is-out {
+      grid-template-columns: 0fr;
+      pointer-events: none;
+
+      > .atlas-online-log__tools-inner {
+        opacity: 0;
+        scale: 0.9;
+        filter: blur(4px);
+        transition-duration: 150ms;
+        transition-delay: 0ms;
+      }
+    }
+  }
+
+  .atlas-online-log__tools-inner {
+    display: flex;
+    align-items: center;
+    gap: $tools-pad;
+    min-width: 0;
+  }
+
+  // The other three reactions unfold inside the pill. Closed, the group gives back the gap it
+  // would hold open beside it.
+  .atlas-online-log__tools-more {
+    display: grid;
+    grid-template-columns: 0fr;
+    margin-left: calc(-1 * #{$tools-pad});
+    opacity: 0;
+    transition: grid-template-columns 180ms $transition-ease-out, margin-left 180ms $transition-ease-out, opacity 120ms ease-out;
+
+    > .atlas-online-log__tools-inner {
+      overflow: hidden;
+    }
+
+    .atlas-online-log__tool {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+
+    &.is-open {
+      grid-template-columns: 1fr;
+      margin-left: 0;
+      opacity: 1;
+
+      .atlas-online-log__tool {
+        opacity: 1;
+        transform: none;
+
+        // Among the buttons: each has its tooltip's hidden label beside it.
+        &:nth-of-type(2) { transition-delay: 35ms; }
+        &:nth-of-type(3) { transition-delay: 70ms; }
+      }
+    }
+  }
+
+  .atlas-online-log__tool {
+    @include log-button;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--atlas-online-log-tool);
+    height: var(--atlas-online-log-tool);
+    // Concentric with the pill.
+    @include atlas-panel-inset-radius($tools-pad);
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease-out;
+    @include log-button-states;
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+      transition: transform 180ms $transition-ease-out;
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+
+    }
+
+    &:active {
+      background: var(--background-modifier-active-hover);
+    }
+
+    &.is-open,
+    &.is-mine {
+      background: $log-accent-wash;
+      color: var(--text-normal);
+    }
+
+    .atlas-online-log__emoji {
+      font-size: 16px;
+    }
+  }
+
+  .atlas-online-log__tool--more.is-open svg {
+    transform: rotate(45deg);
+  }
+
+  .atlas-online-log__tool--danger {
+    color: var(--text-error);
+
+    @media (hover: hover) {
+      &:hover {
+        background: color-mix(in oklch, var(--color-red) 14%, transparent);
+        color: var(--text-error);
+      }
+    }
+  }
+
+  .atlas-online-log__tool--text {
+    width: auto;
+    padding: 0 $spacing-s;
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-medium;
+  }
+
+  .atlas-online-log__tools-divider {
+    flex: none;
+    width: $border-width-s;
+    height: $icon-s;
+    background: var(--background-modifier-border);
+  }
+
+  .atlas-online-log__tools-question {
+    padding: 0 $spacing-xs 0 $spacing-s;
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    white-space: nowrap;
+  }
+
+  // With fingers the controls are wide: the six reactions take the pill, and what else it offers
+  // waits until they fold away again.
+  #{$log-coarse} & .atlas-online-log__tools-more.is-open ~ :not(.atlas-online-log__tool--more) {
+    display: none;
+  }
+}

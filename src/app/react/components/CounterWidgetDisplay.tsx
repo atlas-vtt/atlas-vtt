@@ -6,6 +6,7 @@ import type { ViewAtlasStore } from '../../storeFactory';
 import { DEFAULT_COUNTER_COLOR, clampCounterValue, readCounterValue, stepCounter } from '../../utils/counterWidget';
 import { WidgetIconGlyph } from './WidgetIconGlyph';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
+import { t } from '../../i18n';
 
 interface CounterWidgetDisplayProps {
   widget: CounterWidget;
@@ -81,7 +82,7 @@ export function CounterWidgetDisplay({
       </div>
       <div className="atlas-widget-content">
         <div className="atlas-widget-value-row">
-          <LabelTooltip label="Decrease">
+          <LabelTooltip label={t('counter.decrease')}>
             <button onClick={() => step(-1)} className="atlas-widget-btn">
               <Minus />
             </button>
@@ -112,7 +113,7 @@ export function CounterWidgetDisplay({
               {value}
             </span>
           )}
-          <LabelTooltip label="Increase">
+          <LabelTooltip label={t('counter.increase')}>
             <button onClick={() => step(1)} className="atlas-widget-btn">
               <Plus />
             </button>

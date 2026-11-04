@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { Container } from 'pixi.js';
-import { PerceptionMemo, playerDoorSight, playerLightingLayers, playerTokenSight, tokenPerception, type GmOverlays } from '../playerLightingLayers';
+import { playerDoorSight, playerLightingLayers, playerTokenSight, type GmOverlays } from '../playerLightingLayers';
+import { PerceptionMemo, tokenPerception } from '../../../vision/tokenPerception';
 import { hiddenTokenLayers } from '../../playerSafeFrame';
 import { computeSight, lightReach, sightSources, type LightReach } from '../../../vision/sight';
 import type { Perception } from '../../../vision/perception';
 import { tremorsense } from '../../../vision/__tests__/senseSources';
 import type { ConditionDefinition } from '../../../types/collectionSettingsTypes';
 import type { TokenEntity } from '../../../types';
+import { fogCoverage } from '../../../fog/fogCoverage';
+import { fogRectangle } from '../../../../../tests/helpers/fogOperations';
 
 describe('playerLightingLayers', () => {
   function overlays(): GmOverlays {
-    return { wallEditor: new Container(), lightZones: new Container(), exploredMemory: new Container(), doorBadges: new Container(), lightMarkers: new Container(), rangeRings: new Container(), sightAids: new Container() };
+    return { wallEditor: new Container(), lightZones: new Container(), levelSurfaces: new Container(), exploredMemory: new Container(), doorBadges: new Container(), lightMarkers: new Container(), rangeRings: new Container(), sightAids: new Container() };
   }
 
   it('switches the lighting to the player view and hides every GM overlay, light markers, range rings and sight aids included', () => {
@@ -20,6 +23,7 @@ describe('playerLightingLayers', () => {
       { layer: modeLayer, visible: true },
       { layer: gm.wallEditor, visible: false },
       { layer: gm.lightZones, visible: false },
+      { layer: gm.levelSurfaces, visible: false },
       { layer: gm.exploredMemory, visible: false },
       { layer: gm.doorBadges, visible: false },
       { layer: gm.lightMarkers, visible: false },
@@ -54,6 +58,7 @@ describe('playerLightingLayers', () => {
     expect(playerLightingLayers({ enabled: false, modeLayer: { visible: false }, gmOverlays: gm })).toEqual([
       { layer: gm.wallEditor, visible: false },
       { layer: gm.lightZones, visible: false },
+      { layer: gm.levelSurfaces, visible: false },
       { layer: gm.exploredMemory, visible: false },
       { layer: gm.doorBadges, visible: false },
       { layer: gm.lightMarkers, visible: false },
@@ -84,6 +89,42 @@ describe('playerDoorSight', () => {
   it('is the doors the players\' sight and the scene\'s light show, and none while the scene is unlit', () => {
     expect([...playerDoorSight(view(true), { door })]).toEqual(['door']);
     expect([...playerDoorSight(view(false), { door })]).toEqual([]);
+  });
+});
+
+describe('door fog eligibility', () => {
+  const door = { ...wall, id: 'door', type: 'door' as const, closed: true };
+  const view: Parameters<typeof playerDoorSight>[0] = {
+    isEnabled: () => true,
+    currentSight: () => ({ all: true, regions: [] }),
+    ambientLight: () => ({ ambient: 1 }),
+    lightReaches: () => [],
+  };
+
+  it('tests the midpoint, including its boundary, rather than either endpoint', () => {
+    const middle = fogCoverage({ paint: fogRectangle({ x: 200, y: 190, width: 10, height: 20 }) });
+    expect(middle.covers(door.p1)).toBe(false);
+    expect(middle.covers(door.p2)).toBe(false);
+    expect([...playerDoorSight(view, { door }, middle)]).toEqual([]);
+    const endpoint = fogCoverage({ paint: fogRectangle({ x: 190, y: -10, width: 20, height: 20 }) });
+    expect([...playerDoorSight(view, { door }, endpoint)]).toEqual(['door']);
+  });
+
+  it('restores an erased midpoint without exposing secret or out-of-sight doors', () => {
+    const fog = fogCoverage({
+      paint: fogRectangle({ x: 100, y: 100, width: 200, height: 200 }),
+      erase: fogRectangle({ id: 'erase', timestamp: 2, isErasing: true, x: 190, y: 190, width: 20, height: 20 }),
+    });
+    const secret = { ...door, id: 'secret', type: 'secret-door' as const };
+    expect([...playerDoorSight(view, { door, secret }, fog)]).toEqual(['door']);
+    expect([...playerDoorSight({ ...view, currentSight: () => ({ all: false, regions: [] }) }, { door }, fog)]).toEqual([]);
+    expect([...playerDoorSight({ ...view, isEnabled: () => false }, { door }, fog)]).toEqual([]);
+  });
+
+  it('fails closed for invalid coverage and retains existing behavior when no provider is supplied', () => {
+    expect([...playerDoorSight(view, { door }, null)]).toEqual([]);
+    expect([...playerDoorSight(view, { door })]).toEqual(['door']);
+    expect([...playerDoorSight(view, { door }, fogCoverage({}))]).toEqual(['door']);
   });
 });
 

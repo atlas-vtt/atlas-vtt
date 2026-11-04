@@ -1,17 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Notice, normalizePath } from 'obsidian';
 import { motion } from 'framer-motion';
 import { MapIcon } from 'lucide-react';
 import type { AssetService } from '../../../services/AssetService';
-import { newSceneFile } from '../../../services/newSceneFile';
-import { normalizeImagePath } from '../../../utils/pathUtils';
-import { ensureFolder } from '../../../plugin/vaultFolders';
+import { createScene, SceneNameTakenError } from '../../../services/createScene';
 import { useAtlasUI } from '../../../react/root/AtlasUIContext';
 import { CloseButton } from '../primitives/CloseButton';
 import { Button } from '../primitives/button';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../primitives/dialogMotion';
 import { TagPicker } from './token-creator/TagPicker';
 import { useAssetTags } from './token-creator/useAssetTags';
+import { t } from '../../../i18n';
+import { showNotice } from '../../../ui/notice';
 
 interface CreateSceneModalProps {
   isOpen: boolean;
@@ -86,38 +85,12 @@ export default function CreateSceneModal({
 
     setIsCreating(true);
     try {
-      const collection = await assetService.getCollection(selectedCollection);
-      if (!collection) {
-        throw new Error(`Collection "${selectedCollection}" no longer exists. Select another collection and try again.`);
-      }
-      const collectionId = collection.id;
-
-      // If invoked from a map, the scene starts on its image (as a vault-relative path)
-      const mapData = newSceneFile(
-        assetService.getCollectionSettings(collectionId),
-        backgroundPath ? normalizeImagePath(backgroundPath) : null,
-      );
-
-      const scenePath = normalizePath(`atlas-vtt/collections/${collectionId}/scenes/${sceneName.trim()}.atlasmap`);
-
-      if (app.vault.getAbstractFileByPath(scenePath)) {
-        new Notice(`A scene named "${sceneName.trim()}" already exists`);
-        return;
-      }
-
-      // The map file and its scene record are written as one step, so the vault
-      // check never finds the new map without a scene and adds a second one.
-      const sceneFile = await assetService.runExclusive(async () => {
-        await ensureFolder(app, scenePath.substring(0, scenePath.lastIndexOf('/')));
-        const file = await app.vault.create(scenePath, JSON.stringify(mapData, null, 2));
-        await assetService.addAsset({
-          type: 'scene',
-          name: sceneName.trim(),
-          collection: collectionId,
-          tags: selectedTags,
-          data: { mapPath: scenePath },
-        });
-        return file;
+      const { file: sceneFile } = await createScene(app, assetService, {
+        name: sceneName,
+        collectionId: selectedCollection,
+        // If invoked from a map, the scene starts on its image
+        background: backgroundPath ?? null,
+        tags: selectedTags,
       });
 
       await app.workspace.getLeaf(false).openFile(sceneFile);
@@ -128,8 +101,12 @@ export default function CreateSceneModal({
       // Notify that scene was created (this will close the asset manager)
       onSceneCreated();
     } catch (error) {
+      if (error instanceof SceneNameTakenError) {
+        showNotice(t('am.scene.nameTaken', { name: error.sceneName }));
+        return;
+      }
       console.error('[CreateSceneModal] Error creating scene:', error);
-      new Notice(`Could not create scene: ${error instanceof Error ? error.message : String(error)}`);
+      showNotice(t('am.scene.createFailed', { error: error instanceof Error ? error.message : String(error) }));
     } finally {
       setIsCreating(false);
     }
@@ -190,14 +167,14 @@ export default function CreateSceneModal({
         <div className="atlas-create-scene-header">
           <h3>
             <MapIcon />
-            New scene
+            {t('am.scene.new')}
           </h3>
           <CloseButton onClick={onClose} />
         </div>
 
         <div className="atlas-create-scene-body">
           <div className="atlas-create-scene-field">
-            <label className="atlas-create-scene-label">Scene Name</label>
+            <label className="atlas-create-scene-label">{t('am.scene.name')}</label>
             <input
               ref={inputRef}
               type="text"
@@ -205,7 +182,7 @@ export default function CreateSceneModal({
               value={sceneName}
               onChange={(e) => setSceneName(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Enter scene name"
+              placeholder={t('am.scene.namePlaceholder')}
             />
           </div>
 
@@ -219,9 +196,9 @@ export default function CreateSceneModal({
         </div>
 
         <div className="atlas-create-scene-footer">
-          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="default" size="sm" onClick={() => { void handleCreate(); }} disabled={!sceneName.trim() || !assetService || isCreating || isCreatingTag}>
-            {isCreating ? 'Creating…' : 'Create scene'}
+            {isCreating ? t('am.create.creating') : t('am.scene.create')}
           </Button>
         </div>
       </motion.div>

@@ -1,0 +1,24 @@
+@use '../../../styles/tokens' as *;
+
+// Rows of the snapshot suggester (SnapshotLinkSuggest.ts) and the Insert link
+// picker (InsertAtlasLinkModal.ts), in Obsidian's own suggestion lists.
+
+.atlas-snapshot-suggestion,
+.atlas-link-choice {
+  align-items: center;
+  gap: $spacing-s;
+}
+
+.atlas-snapshot-suggestion__thumbnail {
+  flex: none;
+  width: 64px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: $radius-s;
+}
+
+.atlas-link-choice__icon {
+  display: flex;
+  flex: none;
+  color: var(--text-muted);
+}

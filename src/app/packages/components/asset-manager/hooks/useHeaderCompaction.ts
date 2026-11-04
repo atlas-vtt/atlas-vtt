@@ -4,10 +4,9 @@ import { observeResize } from '../../../../utils/observeResize';
 /**
  * What the header toolbar gives up for room, first to last (`data-compact` in
  * `_header.scss` and `_header-controls.scss`): the tabs fold into a menu, the
- * search into a button, the sort into a menu (the selection then shows only
- * its count), and at last the groups wrap onto rows.
+ * search into a button, and at last the groups wrap onto rows.
  */
-export const HEADER_COMPACT_STEPS = ['tabs', 'search', 'sort', 'wrap'] as const;
+export const HEADER_COMPACT_STEPS = ['tabs', 'search', 'wrap'] as const;
 
 /** Layout rounds to fractions of a pixel. */
 const SLACK = 0.5;

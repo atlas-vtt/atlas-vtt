@@ -1,52 +1,55 @@
-import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { AMBIENT_AUDIO_ENABLED } from '../featureFlags';
 import { isActiveAtlasLeaf } from '../utils/activeLeafGuard';
 import { handledByAnotherControl } from './tooltipEscape';
+import { isTextEntryTarget } from './textEntry';
 import type { SettingsService } from '../services/SettingsService';
+import { t } from '../i18n';
 
 export const MAP_HOTKEYS = [
-  { id: 'help', label: 'Keyboard shortcuts', group: 'Map', defaultKey: '?' },
-  { id: 'palette', label: 'Command palette', group: 'Map', defaultKey: 'Space' },
-  { id: 'assets', label: 'Asset manager', group: 'Map', defaultKey: 'a', dmOnly: true },
+  { id: 'help', label: t('hotkey.help'), group: t('hotkey.group.map'), defaultKey: '?' },
+  { id: 'palette', label: t('hotkey.palette'), group: t('hotkey.group.map'), defaultKey: 'Space' },
+  { id: 'assets', label: t('hotkey.assets'), group: t('hotkey.group.map'), defaultKey: 'a', dmOnly: true },
   // The id stays `dashboard` (the DM screen's former name): custom keys are saved under it.
-  { id: 'dashboard', label: 'DM screen', group: 'Map', defaultKey: 'Tab', dmOnly: true },
-  { id: 'gmView', label: 'Toggle GM view', group: 'Map', defaultKey: 'd', dmOnly: true },
-  { id: 'sceneSwitcher', label: 'Switch between open maps', group: 'Map', defaultKey: 'g', dmOnly: true },
-  { id: 'lightingPeek', label: 'Hold to see what the players see', group: 'Map', defaultKey: 'h', dmOnly: true, experimental: 'dynamicLighting' },
-  { id: 'fitMap', label: 'Fit map to view', group: 'Map', defaultKey: 'Shift+1' },
-  { id: 'fitToken', label: 'Zoom to selected token', group: 'Map', defaultKey: 'Shift+2' },
-  { id: 'move', label: 'Move / selection tools', group: 'Tools', defaultKey: 'v' },
-  { id: 'fog', label: 'Fog tools', group: 'Tools', defaultKey: 'f', dmOnly: true },
-  { id: 'draw', label: 'Drawing tools', group: 'Tools', defaultKey: 'b', dmOnly: true },
-  { id: 'erase', label: 'Eraser', group: 'Tools', defaultKey: 'e', dmOnly: true },
-  { id: 'text', label: 'Text tool', group: 'Tools', defaultKey: 't', dmOnly: true },
-  { id: 'measure', label: 'Measure tools', group: 'Tools', defaultKey: 'm' },
-  { id: 'pin', label: 'Note pin', group: 'Tools', defaultKey: 'p', dmOnly: true },
-  { id: 'wall', label: 'Lighting (walls and lights)', group: 'Tools', defaultKey: 'w', dmOnly: true, experimental: 'dynamicLighting' },
-  { id: 'audio', label: 'Ambient audio', group: 'Tools', defaultKey: 's', dmOnly: true, enabled: AMBIENT_AUDIO_ENABLED },
-  { id: 'selectAll', label: 'Select all tokens', group: 'Editing', defaultKey: 'Mod+a', dmOnly: true },
-  { id: 'copy', label: 'Copy selection', group: 'Editing', defaultKey: 'Mod+c', dmOnly: true, yieldsToTextSelection: true },
-  { id: 'cut', label: 'Cut selection', group: 'Editing', defaultKey: 'Mod+x', dmOnly: true, yieldsToTextSelection: true },
-  { id: 'paste', label: 'Paste at cursor', group: 'Editing', defaultKey: 'Mod+v', dmOnly: true },
-  { id: 'duplicate', label: 'Duplicate selection', group: 'Editing', defaultKey: 'Mod+d', dmOnly: true },
-  { id: 'undo', label: 'Undo', group: 'Editing', defaultKey: 'Mod+z', dmOnly: true },
-  { id: 'redo', label: 'Redo', group: 'Editing', defaultKey: 'Mod+Shift+z', dmOnly: true },
-  { id: 'redoAlt', label: 'Redo (alternate)', group: 'Editing', defaultKey: 'Mod+y', dmOnly: true },
-  { id: 'delete', label: 'Delete selection', group: 'Editing', defaultKey: 'Delete', dmOnly: true },
-  { id: 'deleteAlt', label: 'Delete selection (alternate)', group: 'Editing', defaultKey: 'Backspace', dmOnly: true },
-  { id: 'cancel', label: 'Cancel tool / clear selection', group: 'Editing', defaultKey: 'Escape' },
-  { id: 'diceTray', label: 'Dice tray', group: 'Combat', defaultKey: 'r' },
-  { id: 'diceLog', label: 'Dice roll log', group: 'Combat', defaultKey: 'Enter' },
-  { id: 'initiative', label: 'Initiative tracker', group: 'Combat', defaultKey: 'i', dmOnly: true },
-  { id: 'lootRoller', label: 'Loot roller', group: 'Combat', defaultKey: 'l', dmOnly: true },
-  { id: 'previousTurn', label: 'Previous turn (during combat)', group: 'Combat', defaultKey: 'ArrowUp', dmOnly: true },
-  { id: 'nextTurn', label: 'Next turn (during combat)', group: 'Combat', defaultKey: 'ArrowDown', dmOnly: true },
-  ...([1, 2, 3, 4, 5] as const).map(n => ({ id: `widget${n}` as const, label: `Hold to select widget ${n}`, group: 'Widgets', defaultKey: String(n), selectsWidget: true })),
-  { id: 'increase', label: 'Increase held counter', group: 'Widgets', defaultKey: '+', whileWidgetHeld: true },
-  { id: 'increaseAlt', label: 'Increase held counter (alternate)', group: 'Widgets', defaultKey: '=', whileWidgetHeld: true },
-  { id: 'decrease', label: 'Decrease held counter', group: 'Widgets', defaultKey: '-', whileWidgetHeld: true },
-  { id: 'timerPlayPause', label: 'Start / pause held timer', group: 'Widgets', defaultKey: 'Space', dmOnly: true, whileWidgetHeld: true },
-  { id: 'timerReset', label: 'Reset held timer', group: 'Widgets', defaultKey: 'r', dmOnly: true, whileWidgetHeld: true },
+  { id: 'dashboard', label: t('hotkey.dashboard'), group: t('hotkey.group.map'), defaultKey: 'Tab', dmOnly: true },
+  { id: 'gmView', label: t('hotkey.gmView'), group: t('hotkey.group.map'), defaultKey: 'd', dmOnly: true },
+  { id: 'sceneSwitcher', label: t('hotkey.sceneSwitcher'), group: t('hotkey.group.map'), defaultKey: 'g', dmOnly: true },
+  { id: 'lightingPeek', label: t('hotkey.lightingPeek'), group: t('hotkey.group.map'), defaultKey: 'h', dmOnly: true },
+  { id: 'fitMap', label: t('hotkey.fitMap'), group: t('hotkey.group.map'), defaultKey: 'Shift+1' },
+  { id: 'fitToken', label: t('hotkey.fitToken'), group: t('hotkey.group.map'), defaultKey: 'Shift+2' },
+  { id: 'levelUp', label: t('hotkey.levelUp'), group: t('hotkey.group.map'), defaultKey: 'PageUp', dmOnly: true },
+  { id: 'levelDown', label: t('hotkey.levelDown'), group: t('hotkey.group.map'), defaultKey: 'PageDown', dmOnly: true },
+  { id: 'move', label: t('hotkey.move'), group: t('hotkey.group.tools'), defaultKey: 'v' },
+  { id: 'fog', label: t('hotkey.fog'), group: t('hotkey.group.tools'), defaultKey: 'f', dmOnly: true },
+  { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
+  { id: 'erase', label: t('hotkey.erase'), group: t('hotkey.group.tools'), defaultKey: 'e', dmOnly: true },
+  { id: 'text', label: t('hotkey.text'), group: t('hotkey.group.tools'), defaultKey: 't', dmOnly: true },
+  { id: 'measure', label: t('hotkey.measure'), group: t('hotkey.group.tools'), defaultKey: 'm' },
+  { id: 'pin', label: t('hotkey.pin'), group: t('hotkey.group.tools'), defaultKey: 'p', dmOnly: true },
+  { id: 'wall', label: t('hotkey.wall'), group: t('hotkey.group.tools'), defaultKey: 'w', dmOnly: true },
+  { id: 'audio', label: t('hotkey.audio'), group: t('hotkey.group.tools'), defaultKey: 's', dmOnly: true, enabled: AMBIENT_AUDIO_ENABLED },
+  { id: 'selectAll', label: t('hotkey.selectAll'), group: t('hotkey.group.editing'), defaultKey: 'Mod+a', dmOnly: true },
+  { id: 'copy', label: t('hotkey.copy'), group: t('hotkey.group.editing'), defaultKey: 'Mod+c', dmOnly: true, yieldsToTextSelection: true },
+  { id: 'cut', label: t('hotkey.cut'), group: t('hotkey.group.editing'), defaultKey: 'Mod+x', dmOnly: true, yieldsToTextSelection: true },
+  { id: 'paste', label: t('hotkey.paste'), group: t('hotkey.group.editing'), defaultKey: 'Mod+v', dmOnly: true },
+  { id: 'duplicate', label: t('hotkey.duplicate'), group: t('hotkey.group.editing'), defaultKey: 'Mod+d', dmOnly: true },
+  { id: 'undo', label: t('hotkey.undo'), group: t('hotkey.group.editing'), defaultKey: 'Mod+z', dmOnly: true },
+  { id: 'redo', label: t('hotkey.redo'), group: t('hotkey.group.editing'), defaultKey: 'Mod+Shift+z', dmOnly: true },
+  { id: 'redoAlt', label: t('hotkey.redoAlt'), group: t('hotkey.group.editing'), defaultKey: 'Mod+y', dmOnly: true },
+  { id: 'delete', label: t('hotkey.delete'), group: t('hotkey.group.editing'), defaultKey: 'Delete', dmOnly: true },
+  { id: 'deleteAlt', label: t('hotkey.deleteAlt'), group: t('hotkey.group.editing'), defaultKey: 'Backspace', dmOnly: true },
+  { id: 'cancel', label: t('hotkey.cancel'), group: t('hotkey.group.editing'), defaultKey: 'Escape' },
+  { id: 'diceTray', label: t('hotkey.diceTray'), group: t('hotkey.group.combat'), defaultKey: 'r' },
+  { id: 'diceLog', label: t('hotkey.diceLog'), group: t('hotkey.group.combat'), defaultKey: 'Enter' },
+  { id: 'initiative', label: t('hotkey.initiative'), group: t('hotkey.group.combat'), defaultKey: 'i', dmOnly: true },
+  { id: 'lootRoller', label: t('hotkey.lootRoller'), group: t('hotkey.group.combat'), defaultKey: 'l', dmOnly: true },
+  { id: 'previousTurn', label: t('hotkey.previousTurn'), group: t('hotkey.group.combat'), defaultKey: 'ArrowUp', dmOnly: true },
+  { id: 'nextTurn', label: t('hotkey.nextTurn'), group: t('hotkey.group.combat'), defaultKey: 'ArrowDown', dmOnly: true },
+  ...([1, 2, 3, 4, 5] as const).map(n => ({ id: `widget${n}` as const, label: t('hotkey.holdWidget', { n }), group: t('hotkey.group.widgets'), defaultKey: String(n), dmOnly: true, selectsWidget: true })),
+  { id: 'increase', label: t('hotkey.increase'), group: t('hotkey.group.widgets'), defaultKey: '+', dmOnly: true, whileWidgetHeld: true },
+  { id: 'increaseAlt', label: t('hotkey.increaseAlt'), group: t('hotkey.group.widgets'), defaultKey: '=', dmOnly: true, whileWidgetHeld: true },
+  { id: 'decrease', label: t('hotkey.decrease'), group: t('hotkey.group.widgets'), defaultKey: '-', dmOnly: true, whileWidgetHeld: true },
+  { id: 'timerPlayPause', label: t('hotkey.timerPlayPause'), group: t('hotkey.group.widgets'), defaultKey: 'Space', dmOnly: true, whileWidgetHeld: true },
+  { id: 'timerReset', label: t('hotkey.timerReset'), group: t('hotkey.group.widgets'), defaultKey: 'r', dmOnly: true, whileWidgetHeld: true },
 ] as const;
 type MapHotkey = typeof MAP_HOTKEYS[number];
 export type MapHotkeyId = MapHotkey['id'];
@@ -54,9 +57,9 @@ export type MapHotkeyId = MapHotkey['id'];
 export type HeldWidgetHotkeyId = Extract<MapHotkey, { whileWidgetHeld: true }>['id'];
 export type MapHotkeys = Record<MapHotkeyId, string>;
 export const DEFAULT_MAP_HOTKEYS = Object.fromEntries(MAP_HOTKEYS.map(h => [h.id, h.defaultKey])) as MapHotkeys;
-/** The shortcuts on offer: `isOn` leaves out those of experimental features that are switched off. */
-export const availableHotkeys = (player = false, isOn: (feature: ExperimentalFeatureId) => boolean = () => true) => MAP_HOTKEYS.filter(h =>
-  !('enabled' in h && !h.enabled) && !('experimental' in h && !isOn(h.experimental)) && !(player && 'dmOnly' in h && h.dmOnly));
+/** The shortcuts on offer: those of the build (`enabled`), and only the players' in the player view. */
+export const availableHotkeys = (player = false) => MAP_HOTKEYS.filter(h =>
+  !('enabled' in h && !h.enabled) && !(player && 'dmOnly' in h && h.dmOnly));
 
 export const hotkeyAction = (id: MapHotkeyId): MapHotkey => MAP_HOTKEYS.find(action => action.id === id)!;
 const runsWhileWidgetHeld = (action: MapHotkey): boolean => 'whileWidgetHeld' in action;
@@ -84,7 +87,7 @@ export function matchesHotkey(event: KeyboardEvent, binding: string, allowRepeat
 export function matchesMapHotkey(event: KeyboardEvent, id: MapHotkeyId, settings?: SettingsService): boolean {
   return matchesHotkey(event, (settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS)[id]);
 }
-const UNASSIGNED_HOTKEY = 'Unassigned';
+const UNASSIGNED_HOTKEY = t('hotkey.unassigned');
 export function formatHotkey(binding: string): string {
   return binding ? binding.replace(/Mod\+/g, 'Ctrl/Cmd + ').replace(/Shift\+/g, 'Shift + ').replace(/Alt\+/g, 'Alt + ').replace(/(^| \+ )([a-z])$/, (_, prefix: string, key: string) => prefix + key.toUpperCase()) : UNASSIGNED_HOTKEY;
 }
@@ -94,8 +97,8 @@ export function namesHotkey(label: string): boolean {
 }
 export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean {
   if (handledByAnotherControl(event) || event.isComposing || !isActiveAtlasLeaf(viewId)) return false;
-  const target = event.target as Element | null;
-  if (target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .cm-editor, [role="textbox"]')) return false;
-  if (document.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
+  if (isTextEntryTarget(event.target)) return false;
+  // Modals and overlays open in the focused window
+  if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
   return true;
 }

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useRememberedScroll, type ScrollMemory } from '../../src/app/packages/components/asset-manager/hooks/useRememberedScroll';

@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from 'react'
 import { MotionGlobalConfig, useReducedMotion } from 'framer-motion'
-import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import type { ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 
-/** A tool on its way between the bar and the tray after Hide, Show on toolbar, Delete or Enter. */
+/** A tool (or the undo/redo bar) on its way between the bar and the tray after Hide, Show on toolbar, Delete or Enter. */
 export interface ToolbarFlight {
-  id: ToolbarControlId
+  id: ToolbarUnitId
   /** Where it took off: the bar (or "More tools") when hidden, the tray when shown. */
   from: 'bar' | 'tray'
   /** It flies to its new place; with reduced motion it only fades out where it was. */
@@ -15,7 +15,7 @@ export interface ToolbarFlight {
 export interface ToolbarFlights {
   flight: ToolbarFlight | null
   /** Starts a flight, which ends the one in the air. None while Motion's animations are skipped. */
-  launch: (id: ToolbarControlId, from: ToolbarFlight['from']) => void
+  launch: (id: ToolbarUnitId, from: ToolbarFlight['from']) => void
   /** The flight with this serial arrived; a later one stays. */
   land: (serial: number) => void
   cancel: () => void
@@ -27,7 +27,7 @@ export function useToolbarFlight(): ToolbarFlights {
   const serial = useRef(0)
   const reduced = useReducedMotion() === true
 
-  const launch = useCallback((id: ToolbarControlId, from: ToolbarFlight['from']): void => {
+  const launch = useCallback((id: ToolbarUnitId, from: ToolbarFlight['from']): void => {
     if (MotionGlobalConfig.skipAnimations) return
     serial.current += 1
     setFlight({ id, from, travel: !reduced, serial: serial.current })

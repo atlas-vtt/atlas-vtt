@@ -1,20 +1,15 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { App, Setting } from 'obsidian';
 import { SettingsService, TUTORIAL_IDS } from '../../src/app/services/SettingsService';
 import { onboardingSettingsSection } from '../../src/app/settings/hotkeySettingsSection';
+import { memoryPluginData } from '../mocks/pluginData';
+
+const data = memoryPluginData();
 
 function service(): SettingsService {
-  const app = new App();
-  const files = new Map<string, string>();
-  app.vault = {
-    adapter: {
-      exists: async (path: string) => files.has(path),
-      read: async (path: string) => files.get(path) ?? '',
-      write: async (path: string, content: string) => { files.set(path, content); },
-      mkdir: async () => undefined,
-    },
-  };
-  return new SettingsService(app);
+  data.set(null);
+  return new SettingsService(new App(), undefined, data);
 }
 
 /** The Reset tutorials row, rendered like Atlas' settings tab does. */
@@ -63,8 +58,7 @@ describe('resetting tutorials', () => {
     settings.completeTutorial('lootResults');
     await settings.saveSettingsNow();
 
-    const app = (settings as unknown as { app: App }).app;
-    const restarted = new SettingsService(app);
+    const restarted = new SettingsService(new App(), undefined, data);
     await restarted.initialize();
     expect(restarted.shouldShowTutorial('lootResults')).toBe(false);
     expect(restarted.shouldShowTutorial('lootRoller')).toBe(true);

@@ -2,6 +2,7 @@ import React, { useId } from 'react';
 import { ChevronRight, Folder } from 'lucide-react';
 import type { Tab, Folder as FolderType } from '../types';
 import { getTabDisplayName } from '../types';
+import { t } from '../../../../i18n';
 
 export interface BreadcrumbProps {
   activeTab: Tab;
@@ -29,7 +30,7 @@ export function Breadcrumb({ activeTab, path, onNavigateToFolder }: BreadcrumbPr
 
   return (
     <nav className="atlas-asset-manager-breadcrumb" aria-labelledby={labelId}>
-      <span id={labelId} hidden>Folder path</span>
+      <span id={labelId} hidden>{t('am.breadcrumb')}</span>
       {segment('root', getTabDisplayName(activeTab), null, path.length === 0)}
       {path.map((folder, index) => (
         <React.Fragment key={folder.id}>

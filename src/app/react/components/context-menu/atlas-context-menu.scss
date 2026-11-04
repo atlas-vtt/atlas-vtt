@@ -16,12 +16,31 @@ $ctx-inset: $spacing-xs;
   padding: $ctx-inset;
   // Rows sit close like Obsidian's own menus.
   gap: var(--size-2-1);
-  min-width: 180px;
-  max-width: 280px;
-  max-height: 70vh;
+  box-sizing: border-box;
+  min-width: min(180px, var(--radix-dropdown-menu-content-available-width, 180px));
+  max-width: min(280px, var(--radix-dropdown-menu-content-available-width, 280px));
+  // Never scrolls: `useMenuFit` gives it room, and this only keeps it on screen until then
+  max-height: var(--radix-dropdown-menu-content-available-height, none);
   overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: $z-atlas-dropdown;
   @include atlas-scrollbar;
+}
+
+// A menu too tall for its window (`useMenuFit`); `--atlas-ctx-rows` is how many rows fit
+.atlas-ctx-menu--columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--atlas-ctx-rows), auto);
+  align-content: start;
+  column-gap: $ctx-inset;
+  max-width: none;
+}
+
+.atlas-ctx-separator {
+  height: $border-width-s;
+  margin: $spacing-xs 0;
+  background: var(--background-modifier-border);
 }
 
 .atlas-ctx-menu--dropdown {
@@ -99,6 +118,22 @@ $ctx-inset: $spacing-xs;
         height: $icon-xs;
       }
     }
+  }
+}
+
+// ── Detail (a quieter second text after the label) ───────────────────────────
+
+// It keeps to the row's end and never takes more than half of it from the label.
+.atlas-ctx-item__detail {
+  @include atlas-truncate;
+  max-width: 50%;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+
+  // The detail already keeps to the end; what follows it stays beside it.
+  + .atlas-ctx-item__trailing {
+    margin-left: 0;
   }
 }
 

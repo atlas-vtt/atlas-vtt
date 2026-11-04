@@ -1,5 +1,5 @@
 import type { MeasurementSettings } from '../grid/measurementFormat';
-import type { GridState } from '../services/MapPersistence';
+import type { GridState } from '../types/gridTypes';
 
 /** How many game units one grid cell spans, and how many world pixels it is wide. */
 export interface UnitScale {

@@ -1,12 +1,17 @@
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { Notice } from 'obsidian';
+
 import { PlayerWindowService } from './PlayerWindowService';
 import { PlayerLootWindow } from '../react/components/loot/PlayerLootWindow';
 import { MOTION_EASE_OUT, MOTION_NORMAL_MS } from '../utils/motion';
 import type { LootDraw } from '../loot/lootRoller';
+import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 type Listener = (shownIds: ReadonlySet<string>) => void;
+
+/** Another place players are handed loot; true where it took the item. */
+export type LootOutlet = (draw: LootDraw) => boolean;
 
 /** The mounted handout in the player window. */
 interface Mounted {
@@ -30,6 +35,9 @@ export class PlayerLootDisplay {
   }
 
   private items: LootDraw[] = [];
+  /** Items handed out through the outlet, while no player window shows them. */
+  private handed = new Set<string>();
+  private outlet: LootOutlet | null = null;
   private mounted: Mounted | null = null;
   private readonly listeners = new Set<Listener>();
 
@@ -37,7 +45,20 @@ export class PlayerLootDisplay {
 
   /** Ids of the items players currently see. */
   shownIds(): ReadonlySet<string> {
-    return new Set(this.items.map((item) => item.id));
+    return new Set([...this.items.map((item) => item.id), ...this.handed]);
+  }
+
+  /** Whether the player window shows the loot window now; `close` takes it away. */
+  showsInWindow(): boolean {
+    return this.items.length > 0;
+  }
+
+  /** Hands every item out through `outlet` too, besides the player window; null takes it away. */
+  setOutlet(outlet: LootOutlet | null): void {
+    this.outlet = outlet;
+    if (outlet !== null || this.handed.size === 0) return;
+    this.handed = new Set();
+    this.notify();
   }
 
   subscribe(listener: Listener): () => void {
@@ -47,13 +68,17 @@ export class PlayerLootDisplay {
 
   /** Hands an item to the players, or takes it back when they already see it. */
   toggle(draw: LootDraw): void {
-    if (this.items.some((item) => item.id === draw.id)) {
+    if (this.shownIds().has(draw.id)) {
+      this.handed.delete(draw.id);
       this.setItems(this.items.filter((item) => item.id !== draw.id));
       return;
     }
+    const handed = this.outlet?.(draw) === true;
+    if (handed) this.handed.add(draw.id);
     const win = PlayerWindowService.getInstance()?.getWindow();
     if (!win) {
-      new Notice('Open the player view to show loot to your players.');
+      if (handed) this.notify();
+      else showNotice(t('loot.openPlayerView'));
       return;
     }
     // Rebuilt in a new player window, or when the page dropped it.
@@ -70,6 +95,7 @@ export class PlayerLootDisplay {
   dispose(): void {
     this.unmount();
     this.items = [];
+    this.handed = new Set();
     this.notify();
   }
 

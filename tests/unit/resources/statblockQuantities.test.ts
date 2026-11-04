@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { fsQuantityLook } from '../../../src/app/resources/quantityLooks';
 import { tokenQuantities } from '../../../src/app/resources/statblockQuantities';
 import type { StatblockLayout } from '../../../src/app/react/components/statblock/statblockTypes';
 import { ARMOR, HP, STRESS } from '../../mocks/resourceFixtures';
 
-const daggerheart: StatblockLayout = { id: 'daggerheart-adversary', name: 'Daggerheart Adversary', blocks: [] };
-const basic: StatblockLayout = { id: 'basic', name: 'Basic', blocks: [] };
+const daggerheart = fsQuantityLook({ id: 'daggerheart-adversary', name: 'Daggerheart Adversary', blocks: [] });
+const basic = fsQuantityLook({ id: 'basic', name: 'Basic', blocks: [] });
 
 describe('the quantities the DM screen lists for a token', () => {
   it('shows the collection\'s resources as boxes on a Daggerheart statblock, which draws them as tracks', () => {
@@ -43,10 +44,10 @@ describe('the quantities the DM screen lists for a token', () => {
   });
 
   it('lists Fate stress tracks one by one, as boxes that fill', () => {
-    const layout: StatblockLayout = { ...basic, blocks: [
+    const layout: StatblockLayout = { id: 'basic', name: 'Basic', blocks: [
       { id: 'stress', type: 'table', properties: ['stress'], headers: ['Physical', 'Mental'] },
     ] };
-    expect(tokenQuantities({ stress: [3, 2] }, layout, {}, [HP])).toEqual([
+    expect(tokenQuantities({ stress: [3, 2] }, fsQuantityLook(layout), {}, [HP])).toEqual([
       { key: 'stress.0', label: 'Physical stress', value: { current: 0, max: 3 }, fills: true, boxes: true },
       { key: 'stress.1', label: 'Mental stress', value: { current: 0, max: 2 }, fills: true, boxes: true },
     ]);

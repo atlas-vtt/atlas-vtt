@@ -1,0 +1,113 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// Shared by the dashboard's stylesheets (home, cards, the campaign page, the world map card).
+
+/// How long a card's art takes to settle into its hover zoom: slow, so it reads as depth, not as a jump.
+$dashboard-art-zoom: 600ms;
+
+/// The press of anything large on the dashboard: a little smaller, at once.
+$dashboard-press-scale: 0.985;
+
+/// Clears Obsidian's button look (fill, shadow, fixed height) from a `<button>` that draws its own.
+/// Two classes deep under the plugin's root, it outranks Obsidian's `button:hover` too.
+@mixin dashboard-button-reset {
+  appearance: none;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  text-align: start;
+  // Obsidian centres a button's content; a card lays out its own.
+  justify-content: flex-start;
+  color: var(--text-normal);
+  background: none;
+  border: none;
+  box-shadow: none;
+  cursor: var(--cursor);
+  white-space: normal;
+
+  &:focus-visible {
+    box-shadow: none;
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+/// A card of the dashboard: the theme's secondary surface and a hairline, highlighted on hover and
+/// pressed in on press. It never lifts (Fabian, 2026-10-14: highlight, hover and press are enough).
+@mixin dashboard-card-surface {
+  background: var(--background-secondary);
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-xl;
+  @include atlas-corner-shape;
+  transition: transform $transition-press $transition-ease-out,
+              border-color $transition-fast $transition-ease;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      border-color: var(--background-modifier-border-hover);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: scale($dashboard-press-scale);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}
+
+/// Art that fills its well: images and placeholders cover it edge to edge.
+@mixin dashboard-art-well {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: color-mix(in oklch, var(--text-normal) 5%, var(--background-secondary));
+
+  > img,
+  > .atlas-map-art > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+/// A map's picture in a card is drawn this much larger than its well, so the printed margin or
+/// frame many maps have stays out of sight at the card's edges.
+$dashboard-art-overscan: 1.04;
+
+/// The slow zoom of the art (`$art`, inside the card this is included in) while the card is
+/// hovered, from `$rest` (the overscan, or 1 where the whole picture must show). Written from the
+/// card down: the stylesheet nests under the plugin's root class, so no `&` may follow another selector.
+@mixin dashboard-art-zoom($art, $rest: $dashboard-art-overscan) {
+  #{$art} > img,
+  #{$art} > .atlas-map-art > img {
+    transform: scale($rest);
+    transition: transform $dashboard-art-zoom $transition-ease-out, opacity $transition-normal $transition-ease-out;
+  }
+
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    &:hover:not(:disabled) #{$art} > img,
+    &:hover:not(:disabled) #{$art} > .atlas-map-art > img {
+      transform: scale($rest * 1.04);
+    }
+  }
+}
+
+/// A heading set large: the theme's heading face (the Atlas theme's, where it is on), tight on large sizes.
+@mixin dashboard-display-type {
+  font-family: var(--h1-font, inherit);
+  font-weight: var(--h1-weight, 700);
+  letter-spacing: var(--h1-letter-spacing, -0.015em);
+  line-height: 1.1;
+}

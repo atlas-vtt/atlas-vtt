@@ -1,0 +1,195 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'dashboard-mixins' as *;
+@use 'campaign-controls' as *;
+
+// A campaign's page (CampaignPage.tsx): its world map behind the head of the page, fading into the
+// page; the name and the party over it; then the world map card and the game system beside the
+// description and the quests (one column in a narrow pane).
+
+$backdrop-height: clamp(300px, 42cqi, 500px);
+/// How much of the backdrop shows above the name: the page's head starts this far down.
+$backdrop-head-room: clamp(72px, 12cqi, 168px);
+$campaign-side-width: 360px;
+$campaign-narrow: 820px;
+$hero-row-height: 40px;
+
+.campaign-page {
+  position: relative;
+}
+
+// ── The world behind the page ───────────────────────────────────────────────
+
+.campaign-backdrop {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: $backdrop-height;
+  overflow: hidden;
+  pointer-events: none;
+  // A campaign without a world map still has a glow of its own hue.
+  background: radial-gradient(80% 100% at 20% 0%, hsl(var(--campaign-hue, 220) 45% 50% / 0.16), transparent 70%);
+  // The picture fades out towards the page below it.
+  mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 85%) 40%, transparent 100%);
+
+  // A little larger than the pane, so a map's printed margin or frame stays out of sight.
+  .atlas-map-art {
+    transform: scale(1.06);
+    animation: campaign-backdrop-in 900ms $transition-ease-out both;
+  }
+
+  .atlas-map-art > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 35%;
+  }
+
+  .atlas-image-reveal[data-shown] {
+    opacity: var(--campaign-backdrop-opacity, 0.72);
+  }
+
+  .theme-light & {
+    --campaign-backdrop-opacity: 0.58;
+  }
+
+  // The page's colour over the picture: strongest where the name stands, so it reads on any map.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to right, color-mix(in oklch, var(--background-primary) 70%, transparent) 0%, transparent 65%),
+      linear-gradient(to bottom, color-mix(in oklch, var(--background-primary) 15%, transparent) 0%, color-mix(in oklch, var(--background-primary) 55%, transparent) 100%);
+  }
+}
+
+// The picture settles from a little closer as it fades in, once per page.
+@keyframes campaign-backdrop-in {
+  from {
+    transform: scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campaign-backdrop .atlas-map-art {
+    animation: none;
+  }
+}
+
+// ── The head of the page ────────────────────────────────────────────────────
+
+.campaign-page__container {
+  @include atlas-flex-col($spacing-xl);
+  align-items: stretch;
+}
+
+.campaign-page__back.btn {
+  @include campaign-ghost-control;
+  align-self: flex-start;
+  // The arrow lines up with the page's text.
+  margin-inline-start: -$spacing-s;
+}
+
+// Over the world map the way back is frosted, so it reads on any picture.
+.campaign-page[data-backdrop] .campaign-page__back.btn {
+  margin-inline-start: 0;
+  color: var(--text-normal);
+  background: color-mix(in oklch, var(--background-primary) 70%, transparent);
+  backdrop-filter: blur(10px);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in oklch, var(--background-primary) 88%, transparent);
+  }
+}
+
+.campaign-hero {
+  @include atlas-flex-col($spacing-s);
+  align-items: stretch;
+}
+
+.campaign-page[data-backdrop] .campaign-hero {
+  padding-top: $backdrop-head-room;
+}
+
+.campaign-hero__meta {
+  @include atlas-flex-row($spacing-xs);
+  margin: 0;
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+}
+
+.campaign-hero__system {
+  font-weight: $font-weight-semibold;
+  color: var(--text-normal);
+}
+
+.campaign-page__locked {
+  @include atlas-help-text;
+  margin: 0;
+}
+
+.campaign-hero__actions {
+  @include atlas-flex-row($spacing-m);
+  flex-wrap: wrap;
+  // Holds the party's room, so the page does not move when the faces arrive.
+  min-height: $hero-row-height;
+  margin-top: $spacing-s;
+  font-size: $font-ui-small;
+}
+
+// While played (its online table is open): the mark as a pill of the page's surface, over the map.
+.campaign-hero__playing {
+  @include atlas-flex-row($spacing-s);
+  height: $hero-row-height;
+  box-sizing: border-box;
+  padding: 0 $spacing-m;
+  border-radius: $radius-full;
+  background: color-mix(in oklch, var(--background-secondary) 85%, transparent);
+  border: $border-width-s solid var(--background-modifier-border);
+  backdrop-filter: blur(8px);
+}
+
+// ── Body ────────────────────────────────────────────────────────────────────
+
+.campaign-page__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) $campaign-side-width;
+  grid-template-areas: 'main side';
+  align-items: start;
+  gap: $spacing-2xl;
+
+  @container atlas-dashboard (max-width: #{$campaign-narrow}) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'side' 'main';
+    gap: $spacing-xl;
+  }
+}
+
+.campaign-page__main,
+.campaign-page__side {
+  @include atlas-flex-col($spacing-xl);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.campaign-page__main {
+  grid-area: main;
+}
+
+.campaign-page__side {
+  grid-area: side;
+}
+
+.campaign-page__delete.btn {
+  @include campaign-ghost-control;
+  align-self: flex-start;
+  margin-inline-start: -$spacing-s;
+
+  &:hover:not(:disabled) {
+    color: var(--text-error);
+    background: color-mix(in oklch, var(--background-modifier-error) 12%, transparent);
+  }
+}

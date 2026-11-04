@@ -1,4 +1,9 @@
 import type { DrawingStroke, NotePin, TextElement, TokenEntity } from '../types';
+import type { LevelLink } from '../types/sceneLevelTypes';
+import { copiedLevelLink, type CopiedLevelLink } from '../levels/levelLinkCopies';
+import { levelLinkList } from '../levels/levelLinks';
+import { viewedLevelId, type LevelView } from '../levels/sceneLevels';
+import { mapTokens } from '../tokens/offMap';
 
 export interface Point {
   x: number;
@@ -11,6 +16,8 @@ export interface CopyableCollections {
   drawings: Record<string, DrawingStroke>;
   texts: Record<string, TextElement>;
   pins: Record<string, NotePin>;
+  /** Stairs, which the stairs tool copies; a scene from an older version has none. */
+  levelLinks?: Record<string, LevelLink> | undefined;
 }
 
 /** Detached copies of map objects, as held on the clipboard or inserted by paste and duplicate. */
@@ -19,25 +26,34 @@ export interface MapObjectContent {
   drawings: DrawingStroke[];
   texts: TextElement[];
   pins: NotePin[];
+  levelLinks: CopiedLevelLink[];
 }
 
 /**
  * Deep copies of the objects with the given ids, in selection order.
- * Ids of objects that cannot be copied (fog, walls) are ignored.
+ * Ids of objects that cannot be copied (fog, walls) are ignored. Stairs are copied only with the
+ * view they are copied in (`view`), whose level shown their levels are counted from.
  */
-export function collectMapObjects(objects: CopyableCollections, ids: readonly string[]): MapObjectContent {
+export function collectMapObjects(objects: CopyableCollections, ids: readonly string[], view?: LevelView): MapObjectContent {
   const pick = <T>(collection: Record<string, T>): T[] =>
     ids.flatMap((id) => (collection[id] ? [structuredClone(collection[id])] : []));
+  const links = view ? levelLinkList(objects.levelLinks) : [];
+  const from = view ? viewedLevelId(view) : null;
   return {
-    tokens: pick(objects.tokens),
+    tokens: pick(mapTokens(objects)),
     drawings: pick(objects.drawings),
     texts: pick(objects.texts),
     pins: pick(objects.pins),
+    levelLinks: ids.flatMap((id) => {
+      const link = links.find((candidate) => candidate.id === id);
+      const copy = link && copiedLevelLink(link, from, view?.levels);
+      return copy ? [copy] : [];
+    }),
   };
 }
 
 export function countMapObjects(content: MapObjectContent): number {
-  return content.tokens.length + content.drawings.length + content.texts.length + content.pins.length;
+  return content.tokens.length + content.drawings.length + content.texts.length + content.pins.length + content.levelLinks.length;
 }
 
 /** Every position that defines where the content sits on the map. */
@@ -47,6 +63,7 @@ function referencePoints(content: MapObjectContent): Point[] {
     ...content.texts,
     ...content.pins,
     ...content.drawings.flatMap((drawing) => drawing.points),
+    ...content.levelLinks.flatMap((link) => link.polygon),
   ].map(({ x, y }) => ({ x, y }));
 }
 
@@ -84,6 +101,7 @@ export function translateMapObjects(
     })),
     texts: content.texts.map(move),
     pins: content.pins.map(move),
+    levelLinks: content.levelLinks.map((link) => ({ ...structuredClone(link), polygon: link.polygon.map(shift) })),
   };
 }
 
@@ -99,16 +117,25 @@ export function anchorKey(kind: string, point: Point): string {
   return `${kind}:${Math.round(point.x)},${Math.round(point.y)}`;
 }
 
-/** The anchor of every object: tokens by image, texts and pins by position, drawings by their first point. */
-export function objectAnchors(objects: CopyableCollections | MapObjectContent): ObjectAnchor[] {
+/** Whether `source` is copied content (lists) rather than a scene's collections (records). */
+function isCopiedContent(source: CopyableCollections | MapObjectContent): source is MapObjectContent {
+  return Array.isArray(source.tokens);
+}
+
+/** The anchor of every object: tokens by image, texts and pins by position, drawings and stairs by their first point. */
+export function objectAnchors(source: CopyableCollections | MapObjectContent): ObjectAnchor[] {
   const values = <T>(collection: Record<string, T> | T[]): T[] => (Array.isArray(collection) ? collection : Object.values(collection));
   const anchors: ObjectAnchor[] = [];
   const add = (kind: string, point: Point | undefined, tokenSize?: number): void => {
     if (point) anchors.push({ kind, point: { x: point.x, y: point.y }, ...(tokenSize !== undefined && { tokenSize }) });
   };
-  values(objects.tokens).forEach((token) => add(`token:${token.imagePath}`, token, token.size || 1));
-  values(objects.texts).forEach((text) => add('text', text));
-  values(objects.pins).forEach((pin) => add('pin', pin));
-  values(objects.drawings).forEach((drawing) => add('drawing', drawing.points[0]));
+  // Of a scene only the tokens on the map stand where a copy is put down
+  const tokens = isCopiedContent(source) ? source.tokens : mapTokens(source);
+  values(tokens).forEach((token) => add(`token:${token.imagePath}`, token, token.size || 1));
+  values(source.texts).forEach((text) => add('text', text));
+  values(source.pins).forEach((pin) => add('pin', pin));
+  values(source.drawings).forEach((drawing) => add('drawing', drawing.points[0]));
+  const links = Array.isArray(source.levelLinks) ? source.levelLinks : levelLinkList(source.levelLinks);
+  links.forEach((link) => add('stairs', link.polygon[0]));
   return anchors;
 }

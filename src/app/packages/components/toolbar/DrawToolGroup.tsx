@@ -1,3 +1,4 @@
+import { t } from '../../../i18n';
 import React, { useEffect, useState } from "react"
 import {
   Circle, CircleX, DoorClosed, DoorOpen, Eraser, Flame, Footprints, Gem, KeyRound, Lock, Package, Pencil, Skull, Stamp, Swords, Trash2, TriangleAlert,
@@ -49,7 +50,7 @@ export function DrawToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, cl
     <ToolGroup
       face={face}
       shortcut={hotkeyLabel('draw')}
-      menuLabel="Draw Tool Options"
+      menuLabel={t('toolbar.drawOptions')}
       menuOpen={menuOpen}
       onSelect={() => selectTool(face.tool)}
       onMenuToggle={toggleMenu}
@@ -57,21 +58,21 @@ export function DrawToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, cl
       <div className="atlas-dropdown-section">
         <DropdownMenuItem
           icon={Pencil}
-          label="Pen"
+          label={t('toolbar.pen')}
           shortcut={hotkeyLabel('draw')}
           isActive={activeTool === "draw-pen"}
           onClick={() => selectTool("draw-pen")}
         />
         <DropdownMenuItem
           icon={Stamp}
-          label="Icon Stamp"
+          label={t('toolbar.iconStamp')}
           shortcut={hotkeyLabel('draw')}
           isActive={activeTool === "draw-icon"}
           onClick={() => selectTool("draw-icon")}
         />
         <DropdownMenuItem
           icon={Eraser}
-          label="Drawing Eraser"
+          label={t('toolbar.drawingEraser')}
           shortcut={hotkeyLabel('draw')}
           isActive={activeTool === "draw-eraser"}
           onClick={() => selectTool("draw-eraser")}
@@ -80,7 +81,7 @@ export function DrawToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, cl
 
       <div className="atlas-dropdown-section">
         <div className="space-y-2">
-          <span className="atlas-dropdown-label">Icons</span>
+          <span className="atlas-dropdown-label">{t('toolbar.icons')}</span>
           <div className="atlas-icon-grid">
             {MAP_ICON_OPTIONS.map(({ key, icon: Icon }) => (
               <LabelTooltip key={key} label={MAP_ICON_LABELS[key] ?? key}>
@@ -103,17 +104,17 @@ export function DrawToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, cl
       <div className="atlas-dropdown-section">
         <div className="space-y-3">
           <DropdownModeSelector
-            label="Ink"
+            label={t('toolbar.ink')}
             value={drawColor}
             options={[
-              { value: '#ffffff' as const, icon: Circle, label: 'White' },
-              { value: '#000000' as const, icon: Circle, label: 'Black' },
+              { value: '#ffffff' as const, icon: Circle, label: t('color.white') },
+              { value: '#000000' as const, icon: Circle, label: t('color.black') },
             ]}
             onChange={(color) => setDrawColor(color)}
           />
 
           <DropdownSliderRow
-            label="Pen Size"
+            label={t('toolbar.penSize')}
             value={drawWidth}
             min={1}
             max={40}
@@ -121,7 +122,7 @@ export function DrawToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, cl
           />
 
           <DropdownSliderRow
-            label="Eraser Size"
+            label={t('toolbar.eraserSize')}
             value={eraserWidth}
             min={10}
             max={200}
@@ -133,7 +134,7 @@ export function DrawToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, cl
       <div className="atlas-dropdown-section">
         <DropdownMenuItem
           icon={Trash2}
-          label="Delete All Drawings"
+          label={t('toolbar.deleteDrawings')}
           destructive
           onClick={() => {
             emit('drawing-clear-all');

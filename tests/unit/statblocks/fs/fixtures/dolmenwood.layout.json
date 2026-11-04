@@ -1,0 +1,50 @@
+{
+  "name": "Dolmenwood Statblock",
+  "id": "dolmenwood-statblock-layout",
+  "blocks": [
+    {
+      "type": "image",
+      "id": "dw-img-000000",
+      "properties": [
+        "image"
+      ],
+      "conditioned": true,
+      "hasRule": false
+    },
+    {
+      "type": "heading",
+      "id": "dw-hdr-000000",
+      "properties": [
+        "name"
+      ],
+      "size": 1,
+      "fallback": "Creature",
+      "conditioned": false
+    },
+    {
+      "type": "text",
+      "id": "dw-cls-000000",
+      "properties": [
+        "groessetyp"
+      ],
+      "text": null,
+      "fallback": "-",
+      "conditioned": true,
+      "markdown": true,
+      "hasRule": true
+    },
+    {
+      "type": "traits",
+      "id": "dw-sta-000000",
+      "properties": [
+        "statlines"
+      ],
+      "fallback": "-",
+      "conditioned": true,
+      "markdown": true,
+      "hasRule": false
+    }
+  ],
+  "columns": 1,
+  "columnWidth": 300
+}

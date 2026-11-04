@@ -4,6 +4,7 @@ import type { NoteOrigin } from '../../../../services/collectionBundle/noteTree'
 import { plural } from '../../../../utils/plural';
 import { Checkbox, itemState, withKeys, type ContentSelection } from './contentSelection';
 import { VirtualGrid } from './VirtualGrid';
+import { t } from '../../../../i18n';
 
 interface ItemGridProps {
   items: readonly ContentItem[];
@@ -28,7 +29,7 @@ function ItemRow({ item, selection }: { item: ContentItem; selection?: ContentSe
     <>
       <span className="atlas-transfer-item__name">{item.name}</span>
       {orphaned
-        ? <span className="atlas-transfer-item__hint">Only used by content you left out</span>
+        ? <span className="atlas-transfer-item__hint">{t('contents.orphaned')}</span>
         : item.origin && <span className="atlas-transfer-chip atlas-transfer-chip--quiet">{originLabel(item.origin)}</span>}
       {item.linked !== undefined && <span className="atlas-transfer-item__linked">{plural(item.linked, 'linked note')}</span>}
     </>

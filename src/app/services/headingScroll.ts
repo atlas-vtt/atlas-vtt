@@ -12,6 +12,8 @@ export interface HeadingScrollTarget {
   findHeading: () => HTMLElement | null;
   /** Scrolls roughly to the heading's line, so the view draws it. */
   scrollToLine: () => void;
+  /** Has the view go to the heading's line once it has drawn the note, for a note too long to draw in the time held. */
+  scrollOnceDrawn?: () => void;
 }
 
 /**
@@ -31,11 +33,12 @@ export function alignHeading(heading: HTMLElement, scroller: HTMLElement): numbe
  * settles. The editor and reading view estimate the height of lines they have
  * not drawn and correct it as they draw them, so a single scroll drifts off
  * the heading; this aligns the drawn heading every frame until it holds
- * still. `onSettled` gets the heading, or null when it was never drawn. The
- * reader's own scrolling ends it early. Returns a function that cancels.
+ * still. `onSettled` gets the heading, or null when it was never drawn, which
+ * leaves it to `scrollOnceDrawn`. The reader's own scrolling ends it early.
+ * Returns a function that cancels.
  */
 export function holdHeadingInView(target: HeadingScrollTarget, onSettled: (heading: HTMLElement | null) => void): () => void {
-  const { container, findHeading, scrollToLine } = target;
+  const { container, findHeading, scrollToLine, scrollOnceDrawn } = target;
   let frame = 0;
   let stillFrames = 0;
   let request = 0;
@@ -59,6 +62,7 @@ export function holdHeadingInView(target: HeadingScrollTarget, onSettled: (headi
     if (!element) {
       scrollToLine();
       stillFrames = 0;
+      if (frame >= MAX_FRAMES) scrollOnceDrawn?.();
     } else if (Math.abs(alignHeading(element, scrollerOf(element, container))) < 1) {
       stillFrames++;
     } else {

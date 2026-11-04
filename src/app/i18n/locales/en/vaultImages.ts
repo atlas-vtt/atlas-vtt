@@ -1,0 +1,16 @@
+export const vaultImages = {
+  'vaultImages.source': 'From vault',
+  'vaultImages.hint': 'Add images already in your vault to the same preview cards as uploaded images. Your files stay where they are.',
+  'vaultImages.intro.token': 'Choose images from your vault to make tokens of. Crop, ring and name them in the preview cards.',
+  'vaultImages.intro.map': 'Choose images from your vault to make maps of. Name them in the preview cards.',
+  'vaultImages.list': 'Vault images',
+  'vaultImages.search': 'Search vault images',
+  'vaultImages.searchPlaceholder': 'Search images or folders…',
+  'vaultImages.selected': '{count} selected',
+  'vaultImages.select': 'Select {name}',
+  'vaultImages.added': 'Added',
+  'vaultImages.noMatch': 'No images match your search.',
+  'vaultImages.noneFound': 'Your vault has no images outside the Atlas folder.',
+  'vaultImages.gone': '{path} no longer exists.',
+  'vaultImages.loadFailed': 'Could not load the images.',
+} as const;

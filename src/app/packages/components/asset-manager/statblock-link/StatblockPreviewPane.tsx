@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import type { App } from 'obsidian';
 import { FileText, ScrollText } from 'lucide-react';
-import FantasyStatblock from '../../../../react/components/FantasyStatblock';
+import { LinkedStatblock } from '../../../../statblocks/render/LinkedStatblock';
 import type { TokenVitals } from '../../../../services/statblockVitalsSync';
+import { t } from '../../../../i18n';
 
 /** The token being linked, whose art the statblock shows once linked. */
 export interface StatblockPreviewToken {
@@ -36,12 +37,12 @@ export function StatblockPreviewPane({ app, path, token }: StatblockPreviewPaneP
             <span>{path}</span>
           </div>
           {/* Keyed by note, so every statblock opens scrolled to its top. */}
-          <FantasyStatblock key={path} notePath={path} app={app} tokens={tokens} />
+          <LinkedStatblock key={path} app={app} path={path} variant="hover" tokens={tokens} />
         </>
       ) : (
         <div className="atlas-statblock-link__placeholder">
           <ScrollText aria-hidden />
-          <span>Select a creature to preview its statblock.</span>
+          <span>{t('am.link.selectCreature')}</span>
         </div>
       )}
     </div>

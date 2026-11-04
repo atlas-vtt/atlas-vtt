@@ -1,0 +1,24 @@
+// A player's colour: one of Obsidian's eight by the player's id (`playerTone`, whose list
+// `PLAYER_COLOURS` these rules follow), and the accent for the GM. The one place that gives a player a
+// colour: the GM's panel and the cursors on the map both read `--atlas-online-player`.
+.atlas-online-colour-0 { --atlas-online-player: var(--color-red); }
+.atlas-online-colour-1 { --atlas-online-player: var(--color-orange); }
+.atlas-online-colour-2 { --atlas-online-player: var(--color-yellow); }
+.atlas-online-colour-3 { --atlas-online-player: var(--color-green); }
+.atlas-online-colour-4 { --atlas-online-player: var(--color-cyan); }
+.atlas-online-colour-5 { --atlas-online-player: var(--color-blue); }
+.atlas-online-colour-6 { --atlas-online-player: var(--color-purple); }
+.atlas-online-colour-7 { --atlas-online-player: var(--color-pink); }
+.atlas-online-colour-gm { --atlas-online-player: var(--interactive-accent); }
+
+// The ink of text on a player's colour (a cursor's name tag): white where the colour is dark enough
+// to carry it, near black on the light ones.
+.atlas-online-colour-0,
+.atlas-online-colour-5,
+.atlas-online-colour-6,
+.atlas-online-colour-7 { --atlas-online-player-ink: #ffffff; }
+.atlas-online-colour-1,
+.atlas-online-colour-2,
+.atlas-online-colour-3,
+.atlas-online-colour-4 { --atlas-online-player-ink: #1b1b1b; }
+.atlas-online-colour-gm { --atlas-online-player-ink: var(--text-on-accent); }

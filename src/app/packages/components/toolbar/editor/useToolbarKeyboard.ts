@@ -1,5 +1,5 @@
 import type React from 'react'
-import { isHideableToolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import { isHideableToolbarControl, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import { useToolbarEdit, type ToolbarEditApi, type ToolbarFocusTarget, type ToolbarHandleGroup } from './toolbarEditContext'
 import { editorRowOf, groupHandles, nearestHandle } from './toolbarEditDom'
 import { useToolbarEditStore } from './toolbarEditStore'
@@ -26,7 +26,7 @@ export function stopMapShortcuts(event: React.KeyboardEvent): void {
 
 interface KeyContext {
   edit: ToolbarEditApi
-  id: ToolbarControlId
+  id: ToolbarUnitId
   group: ToolbarHandleGroup
   handle: HTMLElement
   row: Element
@@ -95,7 +95,7 @@ function runKey(event: React.KeyboardEvent, { edit, id, group, handle, row, open
  * While a tool is dragged with the pointer they do nothing and are still kept
  * from both (Escape cancels the drag before it gets here).
  */
-export function useToolbarKeyboard(id: ToolbarControlId, group: ToolbarHandleGroup): (event: React.KeyboardEvent<HTMLElement>) => void {
+export function useToolbarKeyboard(id: ToolbarUnitId, group: ToolbarHandleGroup): (event: React.KeyboardEvent<HTMLElement>) => void {
   const edit = useToolbarEdit()
   const openEditMenu = useToolbarEditMenu()
   const editStore = useToolbarEditStore()

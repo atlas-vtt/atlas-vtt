@@ -1,11 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
+import { LevelSurfacePopoverHost } from '../pixi/levelSurfaces/LevelSurfacePopover';
 import { SceneLightingPanelHost } from '../pixi/lighting/SceneLightingPanel';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
-import { BackgroundSprite } from './BackgroundSprite';
 import { MainToolbar } from '../packages/components/MainToolbar';
+import { PlayerWindowBar } from '../packages/components/player-window-bar/PlayerWindowBar';
+import { GlassChip } from '../packages/components/true-scale/GlassChip';
 import { GridSettingsModal } from './components/GridSettingsModalSimple';
 import { GridAlignmentOverlay } from './components/GridAlignmentOverlay';
 import { ResponsiveWidgetBar } from './components/ResponsiveWidgetBar';
@@ -14,17 +16,23 @@ import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
 import DMScreen from './components/DMScreen';
+import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
 import { DiceRollLog } from './components/dice-log/DiceRollLog';
 import { DiceRollDisplay } from './components/dice/DiceRollDisplay';
-import { LootRoller } from './components/loot/LootRollerPanel';
+import { TurnAnnouncer } from './components/TurnAnnouncer';
+import { RandomTables } from './components/randomTables/RandomTablesPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
+import { LevelSwitcher } from './components/levels/LevelSwitcher';
+import { LevelLinkPopoverHost } from './components/levels/LevelLinkPopover';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
-import { presentTabInPlayerWindow } from '../services/PlayerWindowPresenter';
+import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
+import { usePresentedScene } from './hooks/usePresentedScene';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
+import { defeatedOnMap } from '../initiative/defeatedOnMap';
 
 
 // Import the new context and hook
@@ -32,7 +40,6 @@ import { AtlasUIContext, AtlasUIContextValue } from './root/AtlasUIContext';
 import { ContextMenuProvider } from './root/ContextMenuContext';
 import { PanelBoundary } from './root/PanelBoundary';
 import { useMapNavigationHotkeys } from './useMapNavigationHotkeys';
-import { useExperimentalFeature } from './hooks/useExperimentalFeature';
 import type { AtlasView } from '../atlas-view';
 import { runInBackground } from '../utils/backgroundTask';
 
@@ -48,7 +55,6 @@ interface UIRootProps {
  */
 export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const settings = SettingsService.forApp(app);
-  const lightingOn = useExperimentalFeature('dynamicLighting', settings);
   const [hotkeyHelpOpen, setHotkeyHelpOpen] = useState(false);
   const [isSceneSwitcherOpen, setSceneSwitcherOpen] = useState(false);
 
@@ -71,8 +77,9 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
     if (view) runInBackground(view.switchToTab(tabId), 'Switching scene tab');
   };
   const presentTab = (tabId: string): void => {
-    if (view) void presentTabInPlayerWindow(app, view, tabId);
+    if (view) void presentSceneTab(app, view, tabId);
   };
+  const presentedScene = usePresentedScene(app);
 
   // Context value with all required objects
   const contextValue: AtlasUIContextValue = useMemo(
@@ -92,9 +99,6 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const isMapLoading = useAtlasStore(state => state.isMapLoading);
   const mapLoadingProgress = useAtlasStore(state => state.mapLoadingProgress);
   const mapLoadingMessage = useAtlasStore(state => state.mapLoadingMessage);
-  
-  // Get background directly from store (for streamed maps)
-  const storeBackground = useAtlasStore(state => state.background);
 
   // Get initiative state and actions for keyboard shortcuts
   const initiativeTrackerOpen = useAtlasStore(state => state.initiativeTrackerOpen);
@@ -128,13 +132,13 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
       if (!isPlayerView && initiativeTrackerOpen && initiativeIsActive) {
         if (matchesMapHotkey(e, 'previousTurn', settings)) {
           e.preventDefault();
-          previousTurn();
+          previousTurn(defeatedOnMap(app, store.getState()));
           window.dispatchEvent(new CustomEvent('atlas-initiative-hotkey', { detail: 'prev' }));
           return;
         }
         if (matchesMapHotkey(e, 'nextTurn', settings)) {
           e.preventDefault();
-          nextTurn();
+          nextTurn(defeatedOnMap(app, store.getState()));
           window.dispatchEvent(new CustomEvent('atlas-initiative-hotkey', { detail: 'next' }));
           return;
         }
@@ -143,7 +147,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlayerView, initiativeTrackerOpen, initiativeIsActive, nextTurn, previousTurn, store, view, settings]);
+  }, [app, isPlayerView, initiativeTrackerOpen, initiativeIsActive, nextTurn, previousTurn, store, view, settings]);
 
   return (
     <AtlasUIContext.Provider value={contextValue}>
@@ -154,23 +158,28 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           </PanelBoundary>
         )}
         <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
-          {/* Every surface has its own boundary: one that fails must not take the map image or the others with it */}
-          {storeBackground && <PanelBoundary name="the map image"><BackgroundSprite imagePath={storeBackground} /></PanelBoundary>}
-
+          {/* Every surface has its own boundary: one that fails must not take the others with it */}
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">
-            {!isPlayerView && (
-              <PanelBoundary name="the scene tabs">
-                <SceneTabBar
-                  onSwitchTab={switchTab}
-                  onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
-                  onAddTab={() => view?.openSceneBrowser()}
-                  onPresentTab={presentTab}
-                  onShowAllTabs={() => setSceneSwitcherOpen(true)}
-                />
-              </PanelBoundary>
-            )}
+            {/* The scene tabs at the left end; what hangs directly below them (online play's unread table log) is put in the slot */}
+            <div className="atlas-top-bar-start">
+              {!isPlayerView && (
+                <PanelBoundary name="the scene tabs">
+                  <SceneTabBar
+                    onSwitchTab={switchTab}
+                    onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
+                    onAddTab={() => view?.openSceneBrowser()}
+                    onPresentTab={presentTab}
+                    presentedTabId={presentedScene?.tabId ?? null}
+                    onShowAllTabs={() => setSceneSwitcherOpen(true)}
+                  />
+                </PanelBoundary>
+              )}
+              <div className="atlas-top-bar-start__below">
+                {!isPlayerView && <PanelBoundary name="the player window bar"><PlayerWindowBar view={view} /></PanelBoundary>}
+              </div>
+            </div>
             {/* Widgets and the DM's dice rolls share the right end; rolls hang below the widgets */}
             <div className="atlas-top-bar-end">
               <PanelBoundary name="the widgets">
@@ -184,9 +193,14 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           <BottomToolbarRow
             start={!isPlayerView && <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>}
             end={!isPlayerView && <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>}
+            above={!isPlayerView && <PanelBoundary name="the turn banner"><TurnAnnouncer /></PanelBoundary>}
           >
             <PanelBoundary name="the toolbar"><MainToolbar viewId={view?.viewId} /></PanelBoundary>
           </BottomToolbarRow>
+
+          {!isPlayerView && !isMapLoading && (
+            <PanelBoundary name="the level switcher"><LevelSwitcher /><LevelLinkPopoverHost /></PanelBoundary>
+          )}
 
           {!isPlayerView && !isMapLoading && (
             <PanelBoundary name="the scene switcher">
@@ -219,6 +233,8 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
             </PanelBoundary>
           )}
 
+          {!isPlayerView && <PanelBoundary name="the dungeon generator"><DungeonGeneratorOverlay /></PanelBoundary>}
+
           {/* Dice Roll Log - left side panel */}
           <PanelBoundary name="the dice log"><DiceRollLog isOpen={isDiceLogOpen} onClose={() => setDiceLogOpen(false)} /></PanelBoundary>
 
@@ -226,9 +242,10 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && <PanelBoundary name="the initiative tracker"><InitiativeTracker /></PanelBoundary>}
 
           {/* Loot Roller - floating window, DM only */}
-          {!isPlayerView && <PanelBoundary name="the loot roller"><LootRoller /></PanelBoundary>}
-          {!isPlayerView && lightingOn && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /></PanelBoundary>}
-          {!isPlayerView && lightingOn && <PanelBoundary name="the scene lighting"><SceneLightingPanelHost /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the players' glass"><GlassChip view={view} /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the scene lighting"><SceneLightingPanelHost /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}
           

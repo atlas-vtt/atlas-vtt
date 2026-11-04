@@ -1,9 +1,10 @@
-// "Save as Encounter" Obsidian modal (encounterSaveService.ts). It mounts on
-// document.body, outside .atlas-vtt-plugin, hence the top-level classes.
+@use '../../../styles/tokens' as *;
+
+// "Save as encounter" dialog (encounterSaveService.ts), built in Atlas' dialog shell
+// (`atlas-text-dialog`), whose backdrop carries .atlas-vtt-plugin.
 .atlas-encounter-save-preview {
   display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
+  gap: $spacing-m;
 }
 
 .atlas-encounter-save-thumbnail {
@@ -21,12 +22,4 @@
 
 input.atlas-encounter-save-input {
   width: 100%;
-  margin-top: 10px;
-}
-
-.atlas-encounter-save-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 15px;
 }

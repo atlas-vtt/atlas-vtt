@@ -2,7 +2,8 @@ import React, { useId, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { RotateCcw, Undo2 } from 'lucide-react'
 import { cn } from 'src/utils/cn'
-import { isHideableToolbarControl, isToolbarControlId, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import { t } from '../../../../i18n'
+import { isHideableToolbarControl, isToolbarControlId, UNDO_BAR_ID, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import { Button } from '../../primitives/button'
 import { ToolButton } from '../../primitives/ToolButton'
 import { useKeepInView } from '../../primitives/useKeepInView'
@@ -13,13 +14,13 @@ import type { ToolbarEditApi } from './toolbarEditContext'
 import { trayShows } from './toolbarDragPreview'
 import { useToolbarEditState } from './toolbarEditStore'
 import type { SlotDrag } from './useBarDragView'
-import { ToolbarFace } from './ToolbarFace'
+import { ToolbarFace, UNDO_BAR_FACE, type ToolbarFaceItem } from './ToolbarFace'
 import { ToolbarItemHandle } from './ToolbarItemHandle'
 import { stopMapShortcuts } from './useToolbarKeyboard'
 
 interface ToolbarTraySlotProps {
-  id: ToolbarControlId
-  item: ResponsiveToolbarItem
+  id: ToolbarUnitId
+  item: ToolbarFaceItem
   shown: boolean
   /** A hidden tool, which its handle can drag and show; not the well of a tool dragged here from the bar. */
   withHandle: boolean
@@ -63,8 +64,9 @@ interface ToolbarTrayProps {
 }
 
 /**
- * The slim capsule above the bar while the toolbar editor is open: the tools
- * that are not on the bar, then Reset (Undo reset right after one) and Done.
+ * The slim capsule above the bar while the toolbar editor is open: the
+ * undo/redo bar while it is hidden, the tools that are not on the bar, then
+ * Reset (Undo reset right after one) and Done.
  * It is no dialog, so hidden tools keep their hotkeys meanwhile. While the
  * Command palette is dragged, which it refuses, it dims.
  */
@@ -88,7 +90,19 @@ export function ToolbarTray({ edit, items, motion: layoutMotion }: ToolbarTrayPr
       revealing: landing && !settle.travel,
     }
   }
-  const anyOpen = items.some(item => opens(item.id))
+  const anyOpen = opens(UNDO_BAR_ID) || items.some(item => opens(item.id))
+  const slot = (id: ToolbarUnitId, item: ToolbarFaceItem): React.ReactElement => (
+    <ToolbarTraySlot
+      key={id}
+      id={id}
+      item={item}
+      shown={opens(id)}
+      withHandle={inTray.has(id)}
+      change={slotChange(layoutMotion, id, animateChanges)}
+      drag={slotDrag(id)}
+      tabIndex={id === tabStop ? 0 : -1}
+    />
+  )
 
   return (
     <div
@@ -100,27 +114,17 @@ export function ToolbarTray({ edit, items, motion: layoutMotion }: ToolbarTrayPr
       aria-labelledby={labelId}
       onKeyDown={stopMapShortcuts}
     >
-      <span id={labelId} hidden>Hidden tools</span>
-      {items.map(item => isToolbarControlId(item.id) && (
-        <ToolbarTraySlot
-          key={item.id}
-          id={item.id}
-          item={item}
-          shown={opens(item.id)}
-          withHandle={inTray.has(item.id)}
-          change={slotChange(layoutMotion, item.id, animateChanges)}
-          drag={slotDrag(item.id)}
-          tabIndex={item.id === tabStop ? 0 : -1}
-        />
-      ))}
+      <span id={labelId} hidden>{t('toolbarEdit.hiddenTools')}</span>
+      {slot(UNDO_BAR_ID, UNDO_BAR_FACE)}
+      {items.map(item => isToolbarControlId(item.id) && slot(item.id, item))}
       {anyOpen
         ? <div className="atlas-toolbar-tray__divider" />
-        : <span className="atlas-toolbar-tray__hint">Drag a tool here to hide it</span>}
+        : <span className="atlas-toolbar-tray__hint">{t('toolbarEdit.dragHere')}</span>}
       {edit.canUndoReset
-        ? <ToolButton icon={Undo2} label="Undo reset" isActive={false} onClick={edit.undoReset} />
-        : <ToolButton icon={RotateCcw} label="Reset toolbar" isActive={false} disabled={!edit.canReset} onClick={edit.reset} />}
+        ? <ToolButton icon={Undo2} label={t('toolbarEdit.undoReset')} isActive={false} onClick={edit.undoReset} />
+        : <ToolButton icon={RotateCcw} label={t('toolbarEdit.resetToolbar')} isActive={false} disabled={!edit.canReset} onClick={edit.reset} />}
       <Button variant="default" className="atlas-toolbar-tray__done" onClick={(event) => edit.finish(event.currentTarget)}>
-        Done
+        {t('common.done')}
       </Button>
     </div>
   )

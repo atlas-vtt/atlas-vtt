@@ -1,0 +1,14 @@
+// The line of an image shown to the players, laid out as the line of a pause is (`_gate.scss`): what
+// it says on the text edge, the way to take the image away at the row's end.
+@use '../../../../../styles/tokens' as *;
+@use 'online' as *;
+
+.atlas-online-dock {
+  .atlas-online-image-row__text {
+    flex: 1;
+    min-width: 0;
+    padding-left: $online-text-inset;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+  }
+}

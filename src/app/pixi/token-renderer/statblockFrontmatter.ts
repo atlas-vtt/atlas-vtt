@@ -1,17 +1,15 @@
 /**
- * Reads the token-relevant values out of a statblock note's frontmatter.
- * Frontmatter is user-authored YAML, so every value is validated here once.
+ * What a token takes from its statblock when it is linked or unlinked. The statblock is read
+ * through the resolver (`TokenStatblockLinkService.readStatblockRecord`), so renamed keys and
+ * a template's meanings count, as on closed maps.
  */
 
+import { difficultyLabel, statblockDisplayName } from '../../creatures/statblockRating';
 import type { ResourceDefinition, ResourceHolder } from '../../resources/resourceTypes';
+import type { StatblockFields } from '../../resources/statblockResourceSync';
 import { startingResources } from '../../resources/statblockResourceValues';
-import type { FrontMatterCache } from 'obsidian';
+import { NO_MEANINGS } from '../../statblocks/resolve/fieldMeanings';
 import type { Character } from '../../types';
-
-export interface StatblockVitals {
-  name?: string;
-  difficulty?: string;
-}
 
 /**
  * Fields a token takes over when it is first linked to a statblock. Display
@@ -30,43 +28,28 @@ export const STATBLOCK_UNLINK_UPDATES = {
   difficulty: undefined,
 } as const;
 
-export function readStatblockVitals(frontmatter: FrontMatterCache): StatblockVitals {
-  const source: Record<string, unknown> = frontmatter;
-  const vitals: StatblockVitals = {};
-
-  if (typeof source.name === 'string' && source.name) {
-    vitals.name = source.name;
-  }
-
-  if (typeof source.difficulty === 'string') {
-    vitals.difficulty = source.difficulty;
-  } else if (typeof source.difficulty === 'number') {
-    vitals.difficulty = String(source.difficulty);
-  }
-
-  return vitals;
-}
-
 /**
  * A freshly linked token starts every resource its statblock supplies. What it holds of
  * the others (`held`: hand-set hit points, the DM screen's quantities) stays.
  */
 export function buildStatblockLinkUpdates(
-  frontmatter: FrontMatterCache,
+  statblock: StatblockFields,
   currentName: string | undefined,
   definitions: readonly ResourceDefinition[],
   held: ResourceHolder['resources'],
 ): StatblockLinkUpdates {
-  const vitals = readStatblockVitals(frontmatter);
-  const updates: StatblockLinkUpdates = { resources: { ...held, ...startingResources(frontmatter, definitions) } };
+  const { fields } = statblock;
+  const meanings = statblock.meanings ?? NO_MEANINGS;
+  const updates: StatblockLinkUpdates = { resources: { ...held, ...startingResources(fields, definitions, meanings) } };
 
-  const name = vitals.name || currentName;
+  const name = statblockDisplayName(fields, meanings) ?? currentName;
   if (name !== undefined) {
     updates.name = name;
   }
 
-  if (vitals.difficulty !== undefined) {
-    updates.difficulty = vitals.difficulty;
+  const difficulty = difficultyLabel(fields, meanings);
+  if (difficulty !== undefined) {
+    updates.difficulty = difficulty;
   }
 
   return updates;

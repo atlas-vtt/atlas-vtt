@@ -1,0 +1,94 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The undo/redo bar's place left of the main toolbar (UndoBarSlot): hidden by
+// the toolbar editor, opening and closing its width, and arranged while the
+// editor is open, under a handle that lies over the whole bar
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// The slot wraps the bar exactly; the row around it takes no pointer.
+.atlas-undo-bar {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  pointer-events: auto;
+
+  &[hidden] {
+    display: none;
+  }
+
+  // Opening or closing its real width, the bar keeps its own, clipped.
+  &[data-animating] {
+    overflow: hidden;
+  }
+
+  &[data-collapsing] {
+    pointer-events: none;
+  }
+
+  // A ghost flying or settling here: the bar waits invisible until it lands.
+  &[data-settling] > .atlas-undo-redo-controls {
+    visibility: hidden;
+  }
+
+  // Dragged: its place stays open, empty, so the toolbar beside it keeps still.
+  &[data-lifted] {
+    > .atlas-undo-redo-controls {
+      visibility: hidden;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: $radius-2xl;
+      background: var(--background-modifier-hover);
+      pointer-events: none;
+      animation: atlas-toolbar-fade-in $transition-fast $transition-ease-out;
+      @include atlas-corner-shape;
+    }
+  }
+
+  // Pressed before a drag, the bar gives a little under the pointer, as a tool does.
+  > .atlas-undo-redo-controls {
+    transition: border-color $transition-normal $transition-ease, transform $transition-press $transition-ease-out;
+  }
+
+  &[data-pressed] > .atlas-undo-redo-controls {
+    transform: scale(0.96);
+  }
+
+  // With reduced motion a dropped bar fades in where it landed.
+  &[data-revealing] > .atlas-undo-redo-controls {
+    animation: atlas-toolbar-fade-in $transition-fast $transition-ease-out;
+  }
+
+  // The bar's buttons have a surface of their own under them, so the handle lies over the whole
+  // bar: its hover fill and focus ring follow the bar's corners.
+  > .atlas-toolbar-handle {
+    z-index: 1;
+    border-radius: $radius-2xl;
+
+    &:focus-visible {
+      outline: 2px solid var(--interactive-accent);
+      outline-offset: -2px;
+    }
+  }
+
+  > .atlas-toolbar-handle + .atlas-undo-redo-controls {
+    pointer-events: none;
+  }
+}
+
+// While the editor is open its stroke takes the accent, as the main toolbar's does.
+.atlas-undo-redo-controls.is-editing {
+  @include atlas-elevated-surface(editing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-undo-bar[data-pressed] > .atlas-undo-redo-controls {
+    transform: none;
+  }
+}

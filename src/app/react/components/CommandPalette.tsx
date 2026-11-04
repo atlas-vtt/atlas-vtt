@@ -18,19 +18,25 @@ import {
   Settings,
   Snowflake,
   MonitorUp,
+  MonitorPlay,
+  AppWindow,
   Move,
   Users,
   Palette,
   UserCheck,
   History,
-} from 'lucide-react';
+  Layers,
+  Replace, Gauge } from 'lucide-react';
+import { runInBackground } from '../../utils/backgroundTask';
+import { viewedLevelId } from '../../levels/sceneLevels';
+import { collectionIdOfPath } from '../../services/assetPaths';
 import { CoinIcon } from './CoinIcon';
-import { Notice } from 'obsidian';
+
 import { useStore } from 'zustand';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { PlayerWindowService } from '../../services/PlayerWindowService';
-import { presentActiveTabInPlayerWindow } from '../../services/PlayerWindowPresenter';
+import { openPlayerWindow, presentActiveTab } from '../../services/PlayerWindowPresenter';
 import { playerWindowStore } from '../../stores/playerWindowStore';
 import { debounce } from '../../../utils/debounce';
 import { cn } from '../../../utils/cn';
@@ -38,6 +44,7 @@ import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
 import { EASE_OUT_CONTROL_POINTS as EASE_OUT } from '../../utils/motion';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
+import { OverlayScroll } from '../../packages/components/primitives/OverlayScroll';
 import { CommandItem } from './command-palette/CommandItem';
 import { SettingsPanelHeader } from './command-palette/SettingsPanelHeader';
 import { GridSettingsPanel } from './command-palette/GridSettingsPanel';
@@ -46,10 +53,16 @@ import { WidgetSettingsPanel } from './command-palette/WidgetSettingsPanel';
 import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewSettingsPanel';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
+import { GraphicsPanel } from './command-palette/GraphicsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
+import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
+import { replaceMapImage } from './levels/replaceMapImage';
+import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
+import { t } from '../../i18n';
+import { showNotice } from '../../ui/notice';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -76,13 +89,15 @@ const paletteVariants = {
 };
 
 const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.ReactNode }> = {
-  'scene-snapshots': { title: 'Scene Snapshots', icon: <History /> },
-  'grid-settings': { title: 'Grid Settings', icon: <Grid /> },
-  'token-settings': { title: 'Token Settings', icon: <Users /> },
-  'widget-settings': { title: 'Widget Settings', icon: <Palette /> },
-  'local-player-view-settings': { title: 'Local Player View Settings', icon: <MonitorUp /> },
-  'dice-settings': { title: 'Dice Settings', icon: <Dices /> },
+  'scene-snapshots': { title: t('palette.panel.snapshots'), icon: <History /> },
+  'scene-levels': { title: t('palette.panel.levels'), icon: <Layers /> },
+  'grid-settings': { title: t('palette.panel.grid'), icon: <Grid /> },
+  'token-settings': { title: t('palette.panel.tokens'), icon: <Users /> },
+  'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
+  'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
+  'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
+  'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
 };
 
 export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
@@ -197,7 +212,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "move-tool",
       icon: <Hand />,
-      label: "Move Tool",
+      label: t('palette.moveTool'),
       shortcut: hotkeyLabel('move'),
       section: "tools",
       action: () => {
@@ -208,7 +223,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "fog-tool",
       icon: <Cloud />,
-      label: "Fog Tool",
+      label: t('palette.fogTool'),
       shortcut: hotkeyLabel('fog'),
       section: "tools",
       action: () => {
@@ -219,7 +234,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "measure-tool",
       icon: <Ruler />,
-      label: "Measure Tool",
+      label: t('palette.measureTool'),
       shortcut: hotkeyLabel('measure'),
       section: "tools",
       action: () => {
@@ -230,7 +245,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "note-pin-tool",
       icon: <MapPin />,
-      label: "Note Pin Tool",
+      label: t('palette.notePinTool'),
       shortcut: hotkeyLabel('pin'),
       section: "tools",
       action: () => {
@@ -241,7 +256,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "open-scene-browser",
       icon: <FolderOpen />,
-      label: "Open scene browser",
+      label: t('palette.openSceneBrowser'),
       keywords: ["asset manager", "maps", "toggle"],
       section: "tools",
       action: () => {
@@ -252,16 +267,40 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "scene-snapshots",
       icon: <History />,
-      label: "Scene snapshots",
+      label: t('palette.sceneSnapshots'),
       keywords: ["save", "restore", "reset", "encounter", "state"],
       section: "tools",
       hasSubmenu: true,
       submenu: [],
     },
     {
+      id: "scene-levels",
+      icon: <Layers />,
+      label: t('palette.sceneLevels'),
+      keywords: ["floors", "storeys", "stories", "upstairs", "basement", "elevation"],
+      section: "tools",
+      hasSubmenu: true,
+      submenu: [],
+    },
+    {
+      id: "replace-map-image",
+      icon: <Replace />,
+      label: t('palette.replaceMapImage'),
+      keywords: ["swap", "gridless", "gridded", "video", "animated", "background"],
+      section: "tools",
+      action: () => {
+        onClose();
+        const state = store.getState();
+        const levelId = viewedLevelId(state);
+        runInBackground(pickMapImage(app, collectionIdOfPath(state.mapPath), (path) => {
+          if (path) runInBackground(replaceMapImage(app, store, levelId, path), 'Replacing the map image');
+        }), 'Picking a map image');
+      },
+    },
+    {
       id: "open-dice-log",
       icon: <Dices />,
-      label: "Open dice log",
+      label: t('palette.openDiceLog'),
       keywords: ["roll history", "toggle"],
       shortcut: hotkeyLabel('diceLog'),
       section: "tools",
@@ -273,7 +312,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "open-loot-roller",
       icon: <CoinIcon />,
-      label: "Open loot roller",
+      label: t('palette.openLootRoller'),
       keywords: ["loot", "treasure", "items", "roll", "base", "toggle"],
       shortcut: hotkeyLabel('lootRoller'),
       section: "tools",
@@ -286,7 +325,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "toggle-player-mode",
       icon: isPlayerMode ? <EyeOff /> : <Eye />,
-      label: isPlayerMode ? "Exit Player Mode" : "Enter Player Mode",
+      label: isPlayerMode ? t('palette.exitPlayerMode') : t('palette.enterPlayerMode'),
       section: "mode",
       action: () => {
         setPlayerMode(!isPlayerMode);
@@ -298,26 +337,46 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "freeze-player-camera",
       icon: <Snowflake />,
-      label: "Freeze Player Camera",
+      label: t('palette.freezePlayerCamera'),
       section: "mode",
       action: () => {
         const service = PlayerWindowService.getInstance();
         if (service?.isWindowOpen()) {
           service.toggleCameraFreeze();
         } else {
-          new Notice("No player window is open");
+          showNotice(t('palette.noPlayerWindow'));
         }
       },
       isToggle: true,
       isActive: isPlayerWindowFrozen,
     },
     {
-      id: "transfer-player-view",
-      icon: <MonitorUp />,
-      label: "Send Current Map to Player View",
+      id: "open-player-window",
+      icon: <AppWindow />,
+      label: t('palette.openPlayerWindow'),
       section: "mode",
       action: () => {
-        void presentActiveTabInPlayerWindow(app);
+        void openPlayerWindow(app);
+        onClose();
+      },
+    },
+    {
+      id: "transfer-player-view",
+      icon: <MonitorUp />,
+      label: t('palette.sendMapToPlayerView'),
+      section: "mode",
+      action: () => {
+        void presentActiveTab(app);
+        onClose();
+      },
+    },
+    {
+      id: "show-map-in-player-window",
+      icon: <MonitorPlay />,
+      label: t('palette.showMapInPlayerWindow'),
+      section: "mode",
+      action: () => {
+        void presentActiveTab(app, { openWindow: true });
         onClose();
       },
     },
@@ -325,14 +384,14 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "grid-settings",
       icon: <Settings />,
-      label: "Grid settings",
+      label: t('palette.gridSettings'),
       section: "settings",
       hasSubmenu: true,
       submenu: [
         {
           id: "grid-all-settings",
           icon: null,
-          label: "Grid appearance",
+          label: t('palette.gridAppearance'),
           section: "grid",
           hasSubmenu: false,
         },
@@ -341,14 +400,14 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "token-settings",
       icon: <Settings />,
-      label: "Token settings",
+      label: t('palette.tokenSettings'),
       section: "settings",
       hasSubmenu: true,
       submenu: [
         {
           id: "token-all-settings",
           icon: null,
-          label: "Token appearance",
+          label: t('palette.tokenAppearance'),
           section: "tokens",
           hasSubmenu: false,
         },
@@ -357,7 +416,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "widget-settings",
       icon: <Settings />,
-      label: "Widget settings",
+      label: t('palette.widgetSettings'),
       section: "settings",
       hasSubmenu: true,
       submenu: [
@@ -366,14 +425,14 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "local-player-view-settings",
       icon: <UserCheck />,
-      label: "Local player view settings",
+      label: t('palette.localPlayerViewSettings'),
       section: "settings",
       hasSubmenu: true,
       submenu: [
         {
           id: "local-player-view-all-settings",
           icon: null,
-          label: "Player dashboard configuration",
+          label: t('palette.playerDashboard'),
           section: "local-player-view",
           hasSubmenu: false,
         },
@@ -382,7 +441,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "dice-settings",
       icon: <Dices />,
-      label: "Dice settings",
+      label: t('diceSettings.command'),
       keywords: ["roll", "3d", "speed", "fast", "result card", "toast"],
       section: "settings",
       hasSubmenu: true,
@@ -390,8 +449,25 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         {
           id: "dice-all-settings",
           icon: null,
-          label: "Roll display",
+          label: t('diceSettings.display'),
           section: "dice",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
+      id: "graphics-settings",
+      icon: <Gauge />,
+      label: t('graphics.command'),
+      keywords: ["graphics", "quality", "performance", "lighting", "gpu", "battery", "fps", "bounce", "flicker", "saver", "balanced"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "graphics-all-settings",
+          icon: null,
+          label: t('graphics.commandHint'),
+          section: "graphics",
           hasSubmenu: false,
         },
       ],
@@ -425,16 +501,16 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Tab order for forward and backward keyboard cycling
   const tabs = [
-    { id: "all", label: "All" },
-    { id: "tools", label: "Tools" },
-    { id: "mode", label: "Mode" },
-    { id: "settings", label: "Settings" },
+    { id: "all", label: t('palette.tab.all') },
+    { id: "tools", label: t('palette.tab.tools') },
+    { id: "mode", label: t('palette.tab.mode') },
+    { id: "settings", label: t('palette.tab.settings') },
   ];
 
   // Obsidian sets `contain: strict` on `.workspace-leaf`, which makes the leaf the
   // containing block of our fixed overlay. Viewport coordinates from the toolbar are
   // therefore converted into the overlay's frame before being applied.
-  const updatePosition = useCallback((isInitial: boolean = false): void => {
+  const updatePosition = useCallback((): void => {
     const overlay = overlayRef.current;
     if (!overlay) return;
     const frame = overlay.getBoundingClientRect();
@@ -450,19 +526,17 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       });
     }
 
-    if (isInitial) {
-      // Small delay to ensure the position is set before enabling transitions
-      window.setTimeout(() => {
-        setHasCalculatedInitialPosition(true);
-      }, 50); // Allow one frame for position to be applied
-    }
   }, [toolbarRef]);
 
   // Measure before the first paint so the palette never flashes at a stale spot
   // The position is kept after closing so the palette leaves from where it was.
   useLayoutEffect(() => {
     if (isOpen) {
-      updatePosition(true);
+      updatePosition();
+      const win = overlayRef.current?.ownerDocument.defaultView;
+      if (!win) return;
+      const timeout = win.setTimeout(() => setHasCalculatedInitialPosition(true), 50);
+      return () => win.clearTimeout(timeout);
     } else {
       setHasCalculatedInitialPosition(false);
     }
@@ -473,7 +547,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (!isOpen) return;
     setSearchQuery("");
     setActiveTab("all");
-    setActiveSubmenu(null);
+    // A page asked for with the opening (a menu's "Graphics settings…" row) is opened in place of the list.
+    const page = store.getState().commandPalettePage;
+    setActiveSubmenu(isSettingsPanelId(page) ? page : null);
     setSubmenuOptions([]);
     setIsTemporarilyHidden(false);
     if (filteredOptions.length > 0) {
@@ -504,39 +580,25 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     }
   }, [searchQuery, activeTab, activeSubmenu, submenuOptions, showingSubmenu, filteredOptions.length]);
 
-  // Focus input when opened
+  // Every delayed focus attempt belongs to this opening and its own window.
   useEffect(() => {
-    if (isOpen && !isTemporarilyHidden) {
-      const focusInput = (): void => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          // Retry focus if it didn't take (e.g. animation timing)
-          window.setTimeout(() => {
-            if (document.activeElement !== inputRef.current && inputRef.current) {
-              inputRef.current.focus();
-            }
-          }, 10);
-        }
-      };
-
-      // Try multiple approaches to ensure focus
-      // Immediate attempt
-      focusInput();
-
-      // RAF attempt
-      window.requestAnimationFrame(() => {
-        focusInput();
-      });
-
-      // Delayed attempt as backup
-      const timeoutId = window.setTimeout(() => {
-        focusInput();
-      }, 50);
-
-      return () => {
-        window.clearTimeout(timeoutId);
-      };
-    }
+    const input = inputRef.current;
+    const win = input?.ownerDocument.defaultView;
+    if (!isOpen || isTemporarilyHidden || !input || !win) return;
+    const timers: number[] = [];
+    const focusInput = (): void => {
+      input.focus();
+      timers.push(win.setTimeout(() => {
+        if (input.ownerDocument.activeElement !== input) input.focus();
+      }, 10));
+    };
+    focusInput();
+    const frame = win.requestAnimationFrame(focusInput);
+    timers.push(win.setTimeout(focusInput, 50));
+    return () => {
+      win.cancelAnimationFrame(frame);
+      timers.forEach(timer => win.clearTimeout(timer));
+    };
   }, [isOpen, isTemporarilyHidden]);
 
   const clearSearch = (): void => {
@@ -675,54 +737,53 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Close on click outside
   useEffect(() => {
-    const handleMouseDown = (e: MouseEvent): void => {
-      // Don't handle outside clicks when temporarily hidden
-      if (isTemporarilyHidden) {
-        return;
+    if (!isOpen || isTemporarilyHidden) return;
+
+    const isOutsidePress = (target: Element | null): boolean => {
+      if (target?.closest?.('.atlas-onboarding-overlay')) return false;
+      // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
+      if (target?.closest?.('.atlas-text-dialog-backdrop')) return false;
+
+      // Don't close if clicking on Obsidian menu elements
+      if (target?.closest?.('.menu') ||
+          target?.closest?.('.obsidian-menu') ||
+          target?.closest?.('[class*="menu"]') ||
+          target?.classList?.contains('menu-item') ||
+          target?.classList?.contains('clickable-icon') ||
+          // Check if target is within any dropdown that might be open
+          target?.closest?.('.atlas-obsidian-menu-dropdown')) {
+        return false;
       }
 
-      // Add a small delay to allow dropdown menus to properly handle their events first
-      window.setTimeout(() => {
-        const target = e.target as Element;
-        if (target?.closest?.('.atlas-onboarding-overlay')) return;
-        // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
-        if (target?.closest?.('.atlas-text-dialog-backdrop')) return;
+      // Allow interaction with grid settings without closing
+      if (activeSubmenu === 'grid-settings' &&
+          (target?.closest?.('.atlas-command-palette-grid-settings') ||
+           target?.closest?.('[role="slider"]') ||
+           target?.closest?.('.atlas-command-palette-custom-content'))) {
+        return false;
+      }
 
-        // Don't close if clicking on Obsidian menu elements
-        if (target?.closest?.('.menu') ||
-            target?.closest?.('.obsidian-menu') ||
-            target?.closest?.('[class*="menu"]') ||
-            target?.classList?.contains('menu-item') ||
-            target?.classList?.contains('clickable-icon') ||
-            // Check if target is within any dropdown that might be open
-            target?.closest?.('.atlas-obsidian-menu-dropdown')) {
-          return;
-        }
-
-        // Also don't close if we're in grid settings and clicking on grid setting controls
-        if (activeSubmenu === 'grid-settings') {
-          // Allow interaction with grid settings without closing
-          if (target?.closest?.('.atlas-command-palette-grid-settings') ||
-              target?.closest?.('[role="slider"]') ||
-              target?.closest?.('.atlas-command-palette-custom-content')) {
-            return;
-          }
-        }
-
-        if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-          if (toolbarRef?.current && !toolbarRef.current.contains(e.target as Node)) {
-            onClose();
-          }
-        }
-      }, 10); // Small delay to allow menu events to complete
+      return !!containerRef.current && !containerRef.current.contains(target) &&
+        !!toolbarRef?.current && !toolbarRef.current.contains(target);
     };
 
-    if (isOpen && !isTemporarilyHidden) {
-      document.addEventListener("mousedown", handleMouseDown);
-    }
+    const timers = new Set<number>();
+    const handleMouseDown = (e: MouseEvent): void => {
+      // Decided at the press: by the time the close runs, the click may already have
+      // replaced the pressed entry (one that opens a page), which then lies in no container.
+      if (!isOutsidePress(e.target as Element | null)) return;
+      // A small delay lets dropdown menus handle their events first.
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        onClose();
+      }, 10);
+      timers.add(timer);
+    };
 
+    document.addEventListener("mousedown", handleMouseDown);
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
+      timers.forEach(timer => window.clearTimeout(timer));
     };
   }, [isOpen, isTemporarilyHidden, onClose, toolbarRef, activeSubmenu]);
 
@@ -760,9 +821,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const activePanel: SettingsPanelId | null = isSettingsPanelId(activeSubmenu) ? activeSubmenu : null;
 
   const sections = [
-    { id: 'tools', title: 'Tools' },
-    { id: 'mode', title: 'Mode' },
-    { id: 'settings', title: 'Settings' },
+    { id: 'tools', title: t('palette.tab.tools') },
+    { id: 'mode', title: t('palette.tab.mode') },
+    { id: 'settings', title: t('palette.tab.settings') },
   ].map((section) => ({
     ...section,
     options: filteredOptions.filter((option) => option.section === section.id),
@@ -790,6 +851,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     switch (panel) {
       case 'scene-snapshots':
         return <SceneSnapshotsPanel onRestore={onClose} />;
+      case 'scene-levels':
+        return <SceneLevelsPanel />;
       case 'grid-settings':
         return (
           <GridSettingsPanel
@@ -829,6 +892,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         return <DiceSettingsPanel />;
       case 'experimental-features':
         return <ExperimentalFeaturesPanel />;
+      case 'graphics-settings':
+        return <GraphicsPanel />;
     }
   };
 
@@ -855,8 +920,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
             exit="closed"
           >
             {!isTemporarilyHidden && position && <Tutorial id="palette" steps={[
-              { title: 'Find a command', body: 'Search for a tool or setting here. Use the tabs to narrow the list, then arrow keys and Enter to choose.', selector: '.atlas-command-palette-search' },
-              { title: 'Make the map your own', body: `Adjust your grid, tokens, and widgets from Settings. Back on the map, press ${hotkeyLabel('help')} to see shortcuts. Change them in Obsidian Settings → Atlas VTT → Map hotkeys.`, selector: '.atlas-command-palette-tabs' },
+              { title: t('palette.tour.findTitle'), body: t('palette.tour.findBody'), selector: '.atlas-command-palette-search' },
+              { title: t('palette.tour.ownTitle'), body: t('palette.tour.ownBody', { key: hotkeyLabel('help') }), selector: '.atlas-command-palette-tabs' },
             ]} />}
             <div className="atlas-command-palette-backdrop" onClick={onClose} />
 
@@ -887,7 +952,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                         activePanel === 'grid-settings' ? (
                           <Button variant="secondary" size="sm" onClick={() => store.getState().setGridAlignmentOpen(true)}>
                             <Move />
-                            Enter Alignment Mode
+                            {t('palette.enterAlignment')}
                           </Button>
                         ) : undefined
                       }
@@ -900,7 +965,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                           <input
                             ref={inputRef}
                             type="text"
-                            placeholder="Search commands..."
+                            placeholder={t('palette.searchPlaceholder')}
                             className="atlas-command-palette-input"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -910,7 +975,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                             spellCheck={false}
                           />
                           {searchQuery && (
-                            <CloseButton placement="inline" onClick={clearSearch} aria-label="Clear search" />
+                            <CloseButton placement="inline" onClick={clearSearch} aria-label={t('common.clearSearch')} />
                           )}
                         </div>
                       </div>
@@ -934,8 +999,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                     </>
                   )}
 
-                  <div
+                  <OverlayScroll
                     ref={optionsContainerRef}
+                    frameClassName="atlas-command-palette-options-frame"
                     className="atlas-command-palette-options"
                     onMouseMove={handleMouseMove}
                   >
@@ -954,36 +1020,36 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
                         {filteredOptions.length === 0 && (
                           <div className="atlas-command-palette-empty">
-                            <div className="atlas-command-palette-empty-text">No results found</div>
-                            <div className="atlas-command-palette-empty-hint">Try a different search term</div>
+                            <div className="atlas-command-palette-empty-text">{t('palette.noResults')}</div>
+                            <div className="atlas-command-palette-empty-hint">{t('palette.noResultsHint')}</div>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </OverlayScroll>
 
                   {!activePanel && (
                     <div className="atlas-command-palette-footer">
                       <div className="atlas-command-palette-footer-left">
                         <div className="atlas-command-palette-footer-item">
                           <kbd className="atlas-command-palette-kbd">Tab / Shift+Tab</kbd>
-                          <span>to switch tabs</span>
+                          <span>{t('palette.footer.switchTabs')}</span>
                         </div>
                         <div className="atlas-command-palette-footer-item">
                           <span className="atlas-command-palette-footer-arrows">
                             <ArrowUp className="atlas-command-palette-arrow" />
                             <ArrowUp className="atlas-command-palette-arrow atlas-down" />
                           </span>
-                          <span>to navigate</span>
+                          <span>{t('palette.footer.navigate')}</span>
                         </div>
                         <div className="atlas-command-palette-footer-item">
                           <kbd className="atlas-command-palette-kbd">↵</kbd>
-                          <span>to select</span>
+                          <span>{t('palette.footer.select')}</span>
                         </div>
                       </div>
                       <div className="atlas-command-palette-footer-right">
                         <kbd className="atlas-command-palette-kbd">Esc</kbd>
-                        <span>{searchQuery ? "to clear" : "to close"}</span>
+                        <span>{searchQuery ? t('palette.footer.clear') : t('palette.footer.close')}</span>
                       </div>
                     </div>
                   )}

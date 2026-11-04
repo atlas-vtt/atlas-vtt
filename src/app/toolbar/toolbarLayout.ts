@@ -1,9 +1,12 @@
-import { isRecord } from '../services/assetMetadataGuards';
-import { DEFAULT_TOOLBAR_ORDER, isHideableToolbarControl, isToolbarControlId, type ToolbarControlId } from './toolbarCatalog';
+import { isRecord } from '../utils/guards';
+import {
+  DEFAULT_TOOLBAR_ORDER, isHideableToolbarControl, isToolbarControlId, isToolbarUnitId, UNDO_BAR_ID, type ToolbarControlId, type ToolbarUnitId,
+} from './toolbarCatalog';
 
 /**
  * What `AtlasSettings.toolbar` holds: only what differs from the default. Ids
- * this version does not know (a newer Atlas on another device) are kept.
+ * this version does not know (a newer Atlas on another device) are kept. A
+ * hidden undo/redo bar is `UNDO_BAR_ID` in `hidden`; it is never in `order`.
  */
 export interface StoredToolbarLayout {
   readonly order?: readonly string[];
@@ -13,10 +16,12 @@ export interface StoredToolbarLayout {
 /**
  * The layout this version works with: every catalog id once, in order. A
  * hidden control keeps its slot in the order, which is where it returns to.
+ * `hidden` also holds `UNDO_BAR_ID` while the undo/redo bar is hidden; that
+ * bar has its own place left of the main one, so it has none in the order.
  */
 export interface ToolbarLayout {
   readonly order: readonly ToolbarControlId[];
-  readonly hidden: ReadonlySet<ToolbarControlId>;
+  readonly hidden: ReadonlySet<ToolbarUnitId>;
 }
 
 const MAX_STORED_IDS = 64;
@@ -33,11 +38,11 @@ function readIds(value: unknown, keep: (id: string) => boolean): string[] {
   return [...ids];
 }
 
-/** Reads a stored layout defensively; the Command palette can never be hidden. */
+/** Reads a stored layout defensively; the Command palette can never be hidden, and the undo/redo bar has no place in the order. */
 export function readToolbarLayout(stored: unknown): StoredToolbarLayout {
   if (!isRecord(stored)) return {};
-  const order = readIds(stored.order, () => true);
-  const hidden = readIds(stored.hidden, id => !isToolbarControlId(id) || isHideableToolbarControl(id));
+  const order = readIds(stored.order, id => id !== UNDO_BAR_ID);
+  const hidden = readIds(stored.hidden, id => !isToolbarUnitId(id) || isHideableToolbarControl(id));
   return { ...(order.length > 0 && { order }), ...(hidden.length > 0 && { hidden }) };
 }
 
@@ -59,7 +64,7 @@ export function orderedToolbarIds(defaultIds: readonly string[], custom: readonl
 
 export function resolveToolbarLayout(stored: StoredToolbarLayout): ToolbarLayout {
   const order = orderedToolbarIds(DEFAULT_TOOLBAR_ORDER, stored.order ?? []).filter(isToolbarControlId);
-  const hidden = new Set((stored.hidden ?? []).filter(isToolbarControlId).filter(isHideableToolbarControl));
+  const hidden = new Set((stored.hidden ?? []).filter(isToolbarUnitId).filter(isHideableToolbarControl));
   return { order, hidden };
 }
 
@@ -81,15 +86,15 @@ function sameIds(a: readonly string[], b: readonly string[]): boolean {
 /** A resolved layout in stored form: only what differs from the default, with the unknown ids of `previous` kept. */
 export function storedToolbarLayout(previous: StoredToolbarLayout, next: ToolbarLayout): StoredToolbarLayout {
   const order = withUnknownIds(next.order, previous.order ?? []);
-  const unknownHidden = (previous.hidden ?? []).filter(id => !isToolbarControlId(id));
-  const hidden = [...next.order.filter(id => next.hidden.has(id)), ...unknownHidden];
+  const unknownHidden = (previous.hidden ?? []).filter(id => !isToolbarUnitId(id));
+  const hidden = [...(next.hidden.has(UNDO_BAR_ID) ? [UNDO_BAR_ID] : []), ...next.order.filter(id => next.hidden.has(id)), ...unknownHidden];
   return {
     ...(!sameIds(order, DEFAULT_TOOLBAR_ORDER) && { order }),
     ...(hidden.length > 0 && { hidden }),
   };
 }
 
-function withoutHidden(hidden: ReadonlySet<ToolbarControlId>, id: ToolbarControlId): ReadonlySet<ToolbarControlId> {
+function withoutHidden(hidden: ReadonlySet<ToolbarUnitId>, id: ToolbarUnitId): ReadonlySet<ToolbarUnitId> {
   if (!hidden.has(id)) return hidden;
   const next = new Set(hidden);
   next.delete(id);
@@ -104,14 +109,14 @@ export function withControlAfter(layout: ToolbarLayout, id: ToolbarControlId, af
   return { order: [...rest.slice(0, index), id, ...rest.slice(index)], hidden: withoutHidden(layout.hidden, id) };
 }
 
-/** Hides a control; its slot in the order stays, so showing it puts it back there. */
-export function withControlHidden(layout: ToolbarLayout, id: ToolbarControlId): ToolbarLayout {
+/** Hides a control or the undo/redo bar; a control's slot in the order stays, so showing it puts it back there. */
+export function withControlHidden(layout: ToolbarLayout, id: ToolbarUnitId): ToolbarLayout {
   if (layout.hidden.has(id) || !isHideableToolbarControl(id)) return layout;
   return { order: layout.order, hidden: new Set([...layout.hidden, id]) };
 }
 
-/** Shows a control at its remembered slot. */
-export function withControlShown(layout: ToolbarLayout, id: ToolbarControlId): ToolbarLayout {
+/** Shows a control at its remembered slot, or the undo/redo bar at its own place. */
+export function withControlShown(layout: ToolbarLayout, id: ToolbarUnitId): ToolbarLayout {
   return { order: layout.order, hidden: withoutHidden(layout.hidden, id) };
 }
 

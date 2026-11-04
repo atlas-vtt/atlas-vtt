@@ -6,10 +6,8 @@ import { CollectionReferenceCollector } from '../collectionBundle/collectionRefe
 import { saveOpenMaps } from '../collectionBundle/importJournal';
 import type { PathMap } from '../collectionBundle/pathRemap';
 import { collectionMapFiles, viewOnScene } from '../collectionScenes';
-import { collectionFolderPath } from '../assetPaths';
-import { SceneSnapshotService } from '../../snapshots/SceneSnapshotService';
-import { listHiddenFiles } from '../../utils/hiddenVaultFiles';
-import { parentPath } from '../../utils/pathUtils';
+import { collectionSnapshotFiles, snapshotFolderOf, trashEmptySnapshotFolder } from '../../snapshots/sceneSnapshotFolders';
+import { snapshotOwnerOf } from '../../snapshots/snapshotPaths';
 import { dropSceneLinksFromJson } from '../sceneLinks';
 import { sceneAdoption, unlessUnreadable, type SceneAdoption, type TextRewrite } from './sceneAdoption';
 import { TransferFiles } from './transferFiles';
@@ -25,8 +23,6 @@ export interface AssetTransferRequest {
 export interface AssetTransferResult {
   /** The records as the target collection now holds them. */
   assets: Asset[];
-  /** Tokens whose statblock note stayed linked to the original, so they arrived without one. */
-  unlinkedStatblocks: Asset[];
 }
 
 /** The asset types the asset manager shows; only these go between collections. */
@@ -46,7 +42,7 @@ const decoder = new TextDecoder();
  * put back and no record changes.
  */
 export async function transferAssets(app: App, assetService: AssetService, request: AssetTransferRequest): Promise<AssetTransferResult> {
-  const result: AssetTransferResult = { assets: [], unlinkedStatblocks: [] };
+  const result: AssetTransferResult = { assets: [] };
   try {
     await assetService.runExclusive(() => runTransfer(app, assetService, request, result));
     return result;
@@ -92,13 +88,11 @@ async function transferGroup(app: App, assetService: AssetService, transfer: Gro
   const leaving = new Set(assets.map((asset) => asset.id));
   const staying = (await assetService.getAssets(sourceCollectionId)).filter((asset) => !leaving.has(asset.id));
   const newIds = new Map(mode === 'copy' ? assets.map((asset) => [asset.id, AssetService.newAssetId(asset.type)]) : []);
-  const hiddenFiles = await listHiddenFiles(app, collectionFolderPath(targetCollectionId));
   const plan = planTransfer({
     mode, sourceCollectionId, targetCollectionId, assets, newIds, files,
     usedBySource: mode === 'move' ? await filesUsedBy(app, assetService, staying) : new Set(),
     ownedBySource: tokenArtwork(staying),
     existsInVault: (path) => app.vault.getAbstractFileByPath(path) !== null,
-    hiddenFolders: new Set([...hiddenFiles].map(parentPath)),
   });
   const rewrite = contentRewriter(plan.rewrites, sceneAdoption(targetCollectionId, assetService.getCollectionSettings(targetCollectionId)));
 
@@ -118,8 +112,8 @@ async function transferGroup(app: App, assetService: AssetService, transfer: Gro
       (await assetService.getCollection(targetCollectionId))?.tags ?? {},
     );
     await assetService.commitAssetTransfer({ collectionId: targetCollectionId, records, tags });
+    if (mode === 'move') await removeEmptiedSnapshotFolders(app, assets);
     result.assets.push(...records);
-    result.unlinkedStatblocks.push(...records.filter((record, index) => lostStatblock(assets[index]!, record)));
   } catch (error) {
     const unrestored = await transferFiles.undo();
     const reason = (error instanceof Error ? error.message : String(error)).replace(/\.$/, '');
@@ -128,8 +122,17 @@ async function transferGroup(app: App, assetService: AssetService, transfer: Gro
   }
 }
 
-const lostStatblock = (asset: Asset, record: Asset): boolean =>
-  asset.type === 'token' && Boolean(asset.statblockPath) && record.type === 'token' && !record.statblockPath;
+/** A moved scene's snapshots left one by one, so its old folder is left empty; it goes too. */
+async function removeEmptiedSnapshotFolders(app: App, moved: readonly Asset[]): Promise<void> {
+  for (const scene of moved) {
+    if (scene.type !== 'scene') continue;
+    try {
+      await trashEmptySnapshotFolder(app, snapshotFolderOf(scene));
+    } catch (error) {
+      console.error('[Atlas] Could not remove an emptied snapshot folder:', error);
+    }
+  }
+}
 
 /** Every file `assets` use; a move leaves these where they are for the assets staying behind. */
 async function filesUsedBy(app: App, assetService: AssetService, assets: readonly Asset[]): Promise<Set<string>> {
@@ -151,9 +154,8 @@ function contentRewriter(rewrites: PathMap, adoption: SceneAdoption): ContentRew
 
 /**
  * Runs the plan's file operations. Copies come first, so every file a moved
- * scene will point at exists by then. A moved scene's snapshots are rewritten
- * before they move, while nothing else writes them; its map moves last, after
- * its snapshot folder, and is rewritten once everything is in place.
+ * scene will point at exists by then. Maps move last and every moved file is
+ * rewritten once everything is in place.
  */
 async function carryOut(app: App, files: TransferFiles, steps: readonly TransferStep[], rewrite: ContentRewriter): Promise<void> {
   for (const { file, to } of steps.filter((step) => step.op === 'copy')) {
@@ -165,18 +167,8 @@ async function carryOut(app: App, files: TransferFiles, steps: readonly Transfer
   }
 
   const moves = steps.filter((step) => step.op === 'move');
-  const maps = moves.filter((step) => step.file.role === 'scene-map');
-  const snapshots = new SceneSnapshotService(app);
-  for (const { file } of maps) {
-    for (const { path } of await snapshots.list(file.vaultPath)) {
-      await files.rewrite(path, rewrite({ vaultPath: path, role: 'scene-snapshot' }));
-    }
-  }
   for (const { file, to } of moves.filter((step) => step.file.role !== 'scene-map')) await files.move(file.vaultPath, to);
-  for (const { file, to } of maps) {
-    await files.moveSnapshots(file.vaultPath, to);
-    await files.move(file.vaultPath, to);
-  }
+  for (const { file, to } of moves.filter((step) => step.file.role === 'scene-map')) await files.move(file.vaultPath, to);
 
   for (const { file, to } of moves.filter((step) => refersToFiles(step.file))) {
     if (file.role === 'scene-map') await rewriteSceneMap(app, files, to, rewrite(file));
@@ -189,12 +181,15 @@ async function carryOut(app: App, files: TransferFiles, steps: readonly Transfer
  * behind (maps and snapshots), before it moves: links never cross collections.
  */
 async function unlinkStayingScenes(app: App, files: TransferFiles, sourceCollectionId: string, steps: readonly TransferStep[]): Promise<void> {
-  const leaving = new Set(steps.filter((step) => step.op === 'move' && step.file.role === 'scene-map').map((step) => step.file.vaultPath));
-  if (leaving.size === 0) return;
+  const leavingMaps = steps.filter((step) => step.op === 'move' && step.file.role === 'scene-map');
+  if (leavingMaps.length === 0) return;
+  const leaving = new Set(leavingMaps.map((step) => step.file.vaultPath));
+  const leavingScenes = new Set(leavingMaps.flatMap((step) => step.file.owners ?? []));
   const rewrite = unlessUnreadable((content) => dropSceneLinksFromJson(content, (mapPath) => !leaving.has(mapPath)));
-  const snapshots = new SceneSnapshotService(app);
+  for (const path of collectionSnapshotFiles(app, sourceCollectionId)) {
+    if (!leavingScenes.has(snapshotOwnerOf(path)?.sceneId ?? '')) await files.rewrite(path, rewrite);
+  }
   for (const { path } of collectionMapFiles(app, sourceCollectionId).filter((file) => !leaving.has(file.path))) {
-    for (const snapshot of await snapshots.list(path)) await files.rewrite(snapshot.path, rewrite);
     await rewriteSceneMap(app, files, path, rewrite);
   }
 }

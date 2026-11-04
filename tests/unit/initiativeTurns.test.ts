@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
-import { rollInitiativeDice } from '../../src/app/initiative/turns';
+import { rollInitiativeDice } from '../../src/app/initiative/initiativeDice';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
@@ -106,6 +106,37 @@ describe('clearing the initiative', () => {
 });
 
 describe('rolling initiative', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('notifies once for changed rolls and not for unchanged or missing entries', () => {
+    const store = fight();
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const changed = vi.fn();
+    const unsubscribe = store.subscribe(changed);
+    store.getState().rollAllInitiative();
+    expect(changed).toHaveBeenCalledOnce();
+    const first = store.getState().initiative.entries[0]!.id;
+    store.getState().rollAllInitiative();
+    store.getState().rollEntryInitiative(first);
+    store.getState().rollEntryInitiative('missing');
+    expect(changed).toHaveBeenCalledOnce();
+    store.getState().rollEntryInitiative(first, '1d6');
+    expect(changed).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it('does not notify or draw random values for an empty tracker', () => {
+    const store = fight([]);
+    const random = vi.spyOn(Math, 'random');
+    const changed = vi.fn();
+    const unsubscribe = store.subscribe(changed);
+    store.getState().rollAllInitiative();
+    store.getState().rollEntryInitiative('missing');
+    expect(changed).not.toHaveBeenCalled();
+    expect(random).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
   it('rolls the collection\'s dice', () => {
     expect(rollInitiativeDice('1d10', () => 0.999)).toBe(10);
     expect(rollInitiativeDice('2d6', () => 0)).toBe(2);
@@ -121,7 +152,7 @@ describe('rolling initiative', () => {
     store.getState().rollAllInitiative('1d10');
     expect(store.getState().initiative.entries.map((entry) => entry.initiative)).toEqual([10, 10, 10]);
     store.getState().rollEntryInitiative(store.getState().initiative.entries[1]!.id, '1d6');
-    expect(store.getState().initiative.entries.map((entry) => entry.initiative)).toEqual([10, 6, 10]);
+    expect(store.getState().initiative.entries.map((entry) => entry.initiative)).toEqual([10, 10, 6]);
     store.getState().rollAllInitiative();
     expect(store.getState().initiative.entries.map((entry) => entry.initiative)).toEqual([20, 20, 20]);
     random.mockRestore();

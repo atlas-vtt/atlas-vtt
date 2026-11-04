@@ -1,0 +1,106 @@
+// Other people's cursors over a shared map (`CursorOverlay`, `RemoteCursors`): an arrow whose tip is
+// the pointer and a name tag beside it, in the owner's colour (`--atlas-online-player`), the same size
+// at every zoom. Each cursor is moved by a transform only; it fades and grows in from its tip.
+$fade: 160ms;
+
+.atlas-online-cursors {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.atlas-online-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.atlas-online-cursor__body {
+  opacity: 0;
+  transform: scale(0.5);
+  transform-origin: 0 0;
+  transition: opacity $fade ease-out, transform $fade cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.atlas-online-cursor.is-shown > .atlas-online-cursor__body {
+  opacity: 1;
+  transform: none;
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+// The arrow: a white outline (`::before`) and the owner's colour inside it (`::after`), each a path
+// with rounded corners (`clip-path: path()`), so it stays sharp at any pixel ratio and needs no image.
+// The fill's tip is the pointer: the paths are drawn in a box whose origin lies 1.6 px left of and
+// 1.73 px above it.
+.atlas-online-cursor__arrow {
+  position: absolute;
+  top: -1.73px;
+  left: -1.6px;
+  width: 17px;
+  height: 24px;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.28)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.14));
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &::before {
+    background: #ffffff;
+    clip-path: path('M 0 3.31 L 0 19.98 Q 0 24.64 3.45 21.51 L 7.58 17.76 Q 7.67 17.68 7.78 17.68 L 13.27 17.68 Q 17.85 17.68 14.82 14.25 L 3.85 1.85 Q 0 -2.49 0 3.31 Z');
+  }
+
+  &::after {
+    background: var(--atlas-online-player);
+    clip-path: path('M 1.6 3.31 L 1.6 17.72 Q 1.6 21.03 4.05 18.8 L 6.74 16.36 Q 7.05 16.08 7.47 16.08 L 11.04 16.08 Q 14.3 16.08 12.14 13.64 L 2.65 2.91 Q 1.6 1.73 1.6 3.31 Z');
+  }
+}
+
+// The name tag hangs from the arrow's tail: its corner towards the arrow is tighter than the others,
+// so the two read as one mark. A tag is wider inside than tall, as text is.
+.atlas-online-cursor__label {
+  position: absolute;
+  top: 19px;
+  left: 12px;
+  max-width: 180px;
+  padding: 2px 7px;
+  border-radius: 3px 9px 9px 9px;
+  background: var(--atlas-online-player);
+  color: var(--atlas-online-player-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 3px 10px rgba(0, 0, 0, 0.14);
+  font-family: var(--font-interface);
+  font-size: 12px;
+  font-weight: var(--font-semibold);
+  line-height: 16px;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &:empty {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-online-cursor__body,
+  .atlas-online-cursor.is-shown > .atlas-online-cursor__body {
+    transform: none;
+    transition: opacity $fade linear;
+
+    @starting-style {
+      transform: none;
+    }
+  }
+}

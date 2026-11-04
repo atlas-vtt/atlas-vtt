@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react"
 import { Button } from "./button"
 import { ChevronDown } from "lucide-react"
-import { cn } from "src/utils/cn"
+import { cn } from "../../../../utils/cn"
 import { useKeepInView } from "./useKeepInView"
 
 // Extend HTMLAttributes for the root div element to allow standard HTML props like onClick, className etc.
@@ -79,14 +79,16 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
       }
     };
 
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
+    // The document the menu is in: a menu in a popout hears its presses there, never in the main one.
+    const doc = containerRef.current?.ownerDocument ?? document;
+    doc.addEventListener('mousedown', handlePointerDown);
+    doc.addEventListener('touchstart', handlePointerDown);
+    doc.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
+      doc.removeEventListener('mousedown', handlePointerDown);
+      doc.removeEventListener('touchstart', handlePointerDown);
+      doc.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onToggle]);
 

@@ -25,11 +25,18 @@ export interface PreviewImage {
   size?: number | undefined;
   name?: string;
   statblockPath?: string;
+  /** The vault image the preview was read from. */
+  vaultPath?: string;
 }
+
+/** Where the creator takes images from: uploads, statblock art or images already in the vault. */
+export type CreatorSource = 'images' | 'statblocks' | 'vault';
 
 export interface TokenPreview {
   tags?: string[];
   statblockPath?: string;
+  /** The vault image the preview was read from. */
+  vaultPath?: string;
   showRing?: boolean;
   /** Default footprint saved on the asset; undefined keeps 1×1. */
   size?: number | undefined;
@@ -46,6 +53,8 @@ export interface TokenPreview {
   imagePosition: ImagePosition;
   isSelected: boolean;
   isOptimizing: boolean;
+  /** Why the upload cannot be converted (too large, or a huge image in a form Atlas cannot read); the card shows it instead of the upload. */
+  refused?: string | undefined;
 }
 
 export type TokenPreviewPatch = Partial<Pick<TokenPreview, 'name' | 'imageScale' | 'imagePosition' | 'showRing' | 'size' | 'tags'>>;
@@ -56,9 +65,4 @@ export const ZOOM_STEP = 0.1;
 
 export function clampZoom(scale: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale));
-}
-
-export function modeNoun(mode: CreatorMode, count: number): string {
-  const singular = mode === 'map' ? 'map' : 'token';
-  return count === 1 ? singular : `${singular}s`;
 }

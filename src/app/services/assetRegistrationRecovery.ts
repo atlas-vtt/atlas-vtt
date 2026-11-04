@@ -2,10 +2,11 @@ import type { App } from 'obsidian';
 import { isAssetMetadata } from './assetMetadataGuards';
 import type { TokenAsset } from './AssetService';
 import { getDataFilePath } from '../utils/dataFileMigration';
+import { t } from '../i18n';
 
 export class AssetRegistrationUncertainError extends Error {
   constructor() {
-    super('Could not verify whether the token was saved. Import stopped; keep its image and check vault storage before retrying.');
+    super(t('recovery.uncertain'));
     this.name = 'AssetRegistrationUncertainError';
   }
 }

@@ -1,0 +1,240 @@
+// The controls the menu and the panel share: text, buttons, ghost buttons, the status line, the
+// sign-in parts and the feedback form. Nested in the control, so a ghost outranks Obsidian's
+// `button:not(.clickable-icon)` fill (one class and an element) without `!important`.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'online' as *;
+
+// A secondary control with no fill or frame at rest: Atlas's ghost button, and the press of its bars.
+@mixin online-ghost {
+  border: none;
+  box-shadow: none;
+  @include atlas-ghost-button;
+  transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease, opacity $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  &:hover {
+    box-shadow: none;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &:focus-visible {
+    box-shadow: $online-focus-ring;
+  }
+}
+
+.atlas-online-dock {
+  .atlas-online-text-block {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    padding: $online-text-inset;
+  }
+
+  .atlas-online-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-s;
+  }
+
+  .atlas-online-title {
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+    color: var(--text-normal);
+  }
+
+  // The signed-in account's handle at the title row's end.
+  .atlas-online-handle {
+    @include atlas-truncate;
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+  }
+
+  .atlas-online-help {
+    @include atlas-help-text;
+  }
+
+  .atlas-online-truncate {
+    @include atlas-truncate;
+  }
+
+  .atlas-online-sr-only {
+    @include atlas-visually-hidden;
+  }
+
+  .atlas-online-button {
+    font-size: $font-ui-small;
+    border-radius: $radius-m;
+    @include atlas-corner-shape;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .atlas-online-button--ghost {
+    @include online-ghost;
+
+    &.is-active {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
+  }
+
+  .atlas-online-icon-button {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: $online-control;
+    height: $online-control;
+    padding: 0;
+    border-radius: $radius-m;
+    cursor: pointer;
+    @include atlas-corner-shape;
+    @include online-ghost;
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+
+  }
+
+  .atlas-online-close {
+    @include atlas-close-button;
+    @include online-ghost;
+  }
+
+  .atlas-online-chevron {
+    display: flex;
+    color: var(--text-faint);
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  // A dot in the status's colour and the status in words.
+  .atlas-online-status,
+  .atlas-online-header__status {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs + 2px;
+    min-width: 0;
+  }
+
+  .atlas-online-status {
+    color: var(--text-normal);
+  }
+
+  .atlas-online-status__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: $radius-full;
+    background: var(--atlas-online-tone);
+  }
+
+  // ── Sign-in ───────────────────────────────────────────────────────────────
+
+  // The code the GM approves in the browser, set as the approve page sets it: large, spaced, monospaced.
+  .atlas-online-code {
+    padding: $spacing-xs 0;
+    font-family: var(--font-monospace);
+    font-size: $font-ui-large;
+    font-weight: $font-weight-semibold;
+    letter-spacing: 0.12em;
+    color: var(--text-normal);
+    user-select: all;
+  }
+
+  .atlas-online-menu > .atlas-online-button {
+    width: 100%;
+  }
+
+  // A control in the surface's bottom corners runs concentric with them.
+  .atlas-online-menu > .atlas-online-corner-button {
+    @include atlas-panel-inset-radius($spacing-s, bottom-left, bottom-right);
+  }
+
+  // Two buttons side by side at the menu's foot, each concentric with its own bottom corner.
+  .atlas-online-actions {
+    display: flex;
+    gap: $spacing-s;
+
+    > .atlas-online-button {
+      flex: 1;
+    }
+
+    // A ghost beside the main action (Sign out) is as wide as its words.
+    > .atlas-online-button--ghost {
+      flex: none;
+    }
+
+    > .atlas-online-corner-button:first-child {
+      @include atlas-panel-inset-radius($spacing-s, bottom-left);
+    }
+
+    > .atlas-online-corner-button:last-child {
+      @include atlas-panel-inset-radius($spacing-s, bottom-right);
+    }
+  }
+
+  // The full table's note, on the text edge.
+  .atlas-online-seats {
+    padding: 0 $online-text-inset;
+  }
+
+  // ── Feedback ──────────────────────────────────────────────────────────────
+
+  // The form above the footer: the field spans the panel, its texts stand on the text edge.
+  .atlas-online-feedback {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: $spacing-s;
+  }
+
+  .atlas-online-feedback__text {
+    @include atlas-text-input;
+    box-sizing: border-box;
+    height: auto;
+    min-height: 80px;
+    padding: $spacing-s;
+    resize: vertical;
+    line-height: var(--line-height-normal);
+    @include atlas-corner-shape;
+  }
+
+  .atlas-online-feedback__toggle {
+    display: flex;
+    align-items: center;
+    gap: $spacing-s;
+    padding: 0 $online-text-inset;
+    cursor: pointer;
+  }
+
+  .atlas-online-feedback__note,
+  .atlas-online-feedback__status {
+    padding: 0 $online-text-inset;
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-online-feedback__actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-s;
+
+    .atlas-online-feedback__status {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}

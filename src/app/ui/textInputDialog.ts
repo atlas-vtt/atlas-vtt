@@ -1,4 +1,5 @@
 import { createDialogShell } from './dialogShell';
+import { t } from '../i18n';
 
 export interface TextInputDialogOptions {
   title: string;
@@ -20,7 +21,7 @@ export function promptForText(options: TextInputDialogOptions): Promise<string |
     if (options.placeholder) textarea.placeholder = options.placeholder;
 
     const actions = dialog.createDiv({ cls: 'atlas-text-dialog__actions' });
-    const cancelButton = actions.createEl('button', { text: 'Cancel' });
+    const cancelButton = actions.createEl('button', { text: t('common.cancel') });
     const confirmButton = actions.createEl('button', { cls: 'mod-cta', text: options.confirmLabel });
 
     const close = (result: string | null): void => {

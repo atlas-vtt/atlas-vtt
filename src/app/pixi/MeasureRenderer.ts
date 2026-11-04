@@ -1,39 +1,86 @@
-import { FederatedPointerEvent, Graphics, Text } from "pixi.js";
+import { Container, FederatedPointerEvent } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import { EventEmitter } from 'events';
+import type { StoreApi } from 'zustand/vanilla';
 import { getObsidianAccentColor, cssColorToHexNumber } from "./utils/colorUtils";
 import type { GridSystem } from "../grid/GridSystem";
 import { pathLengthInCells } from '../grid/gridDistance';
 import { formatDistance, resolveMeasurementSettings, type MeasurementSettings } from '../grid/measurementFormat';
-import type { ViewAtlasState } from '../storeFactory';
-import type { StoreApi } from 'zustand';
+import type { SceneSource } from '../host/sceneSource';
+import type { ViewState } from '../types/viewState';
 import { isHandled } from './utils/handledEvents';
-import { createMeasureLabelText, drawMeasureCircle, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, measureLabelFontSize } from './utils/measureDrawing';
+import { drawMeasurement, measureLabelTarget, type MeasureRecord, type MeasureShape } from './utils/measureDrawing';
+import { MeasureInk, MeasureInkLayer } from './utils/measureInk';
+import { destroyTree } from './utils/destroyTree';
+import { MeasureLabel, watchMeasureLabelTheme } from './utils/measureLabel';
+import { MAP_LAYER_Z } from './mapLayerOrder';
+import { MeasurePartsVisibility, type MeasurePlayersView } from './measurePartsVisibility';
+import type { LayerVisibility } from './playerSafeFrame';
+import type { TokenSeen } from '../vision/measureOrigin';
 
-interface PersistentMeasurement {
-  graphics: Graphics;
-  pill: Graphics;
-  text: Text;
+/** What the measure tool reads of its view's state: the active tool, and the grid's snapping and measurement defaults. */
+export type MeasureStore = Pick<StoreApi<Pick<ViewState, 'activeTool' | 'grid'>>, 'getState' | 'subscribe'>;
+
+/** The grid a measurement snaps to and is measured on. */
+export type MeasureGrid = Pick<GridSystem, 'getOptions' | 'snapToCellCenter'>;
+
+/** Where the measure tool's options arrive: the shape picked and whether measurements stay on the map. */
+export interface MeasureToolEvents {
+  on(event: 'measure-shape-changed', listener: (shape: MeasureShape) => void): unknown;
+  on(event: 'measure-persistence-changed', listener: (persist: boolean) => void): unknown;
+  off(event: 'measure-shape-changed', listener: (shape: MeasureShape) => void): unknown;
+  off(event: 'measure-persistence-changed', listener: (persist: boolean) => void): unknown;
+}
+
+/** The measurements on the map: the one being drawn (or showing after its release) and those kept there. */
+export interface Measurements {
+  readonly live: MeasureRecord | null;
+  readonly kept: readonly MeasureRecord[];
+}
+
+const NO_MEASUREMENTS: Measurements = Object.freeze({ live: null, kept: Object.freeze([]) });
+
+/** A measurement drawn on the map: what it measures, its shape and its distance label. */
+interface DrawnMeasurement {
+  readonly record: MeasureRecord;
+  readonly shape: MeasureInk;
+  readonly label: MeasureLabel;
 }
 
 export class MeasureRenderer {
   private viewport: Viewport;
-  private eventBus: EventEmitter;
-  private store: StoreApi<ViewAtlasState>;
-  private gridSystem: GridSystem;
+  private eventBus: MeasureToolEvents;
+  private store: MeasureStore;
+  private gridSystem: MeasureGrid;
   
-  private measureGraphics: Graphics;
-  private measureText: Text;
-  private measurePill: Graphics; // Background pill for text
+  /** The measurement being drawn, or showing after its release. */
+  /** Every measurement's shape, composed in one pass; every label above all of them. */
+  private readonly shapes = new MeasureInkLayer();
+  private readonly labels = new Container({ label: 'measure-labels', eventMode: 'none', interactiveChildren: false });
+  private readonly liveShape = new MeasureInk(this.shapes);
+  private readonly liveLabel = new MeasureLabel();
+  /** The zoom everything is drawn at: shapes and labels keep their size on screen. */
+  private drawnZoom = 1;
   /** Measurement settings of the current map, from its collection when it has one. */
   public measurementSettingsProvider: (() => MeasurementSettings) | null = null;
+  /** How the players see the tokens a measurement starts on; without it, the players' picture shows every measurement. */
+  public playersView: MeasurePlayersView | null = null;
+  private readonly parts: MeasurePartsVisibility;
 
   private isDrawing: boolean = false;
-  private startPoint: { x: number; y: number } | null = null;
-  private endPoint: { x: number; y: number } | null = null;
-  private measureShape: 'line' | 'cone' | 'circle' | 'sphere' = 'line';
+  private measureShape: MeasureShape = 'line';
   private persistMeasurements: boolean = false;
-  private persistentMeasurements: PersistentMeasurement[] = [];
+  private persistentMeasurements: DrawnMeasurement[] = [];
+  private current: Measurements = NO_MEASUREMENTS;
+  private readonly listeners = new Set<(next: Measurements, previous: Measurements) => void>();
+
+  /** The measurements as data, read-only: the live one and the kept ones, in the order they were kept. */
+  public readonly measurements: SceneSource<Measurements> = {
+    get: () => this.current,
+    subscribe: (listener) => {
+      this.listeners.add(listener);
+      return () => { this.listeners.delete(listener); };
+    },
+  };
   
   private pointerDownHandler: (e: FederatedPointerEvent) => void;
   private pointerMoveHandler: (e: FederatedPointerEvent) => void;
@@ -42,36 +89,30 @@ export class MeasureRenderer {
   
   private _unsubscribeFromToolChanges?: () => void;
   private _viewportScaleHandler?: () => void;
-  private _measureShapeChangedHandler?: (shape: 'line' | 'cone' | 'circle' | 'sphere') => void;
+  private _measureShapeChangedHandler?: (shape: MeasureShape) => void;
   private _measurePersistenceChangedHandler?: (persist: boolean) => void;
+  private readonly stopThemeWatch: () => void;
 
   constructor(
     viewport: Viewport,
-    eventBus: EventEmitter,
-    store: StoreApi<ViewAtlasState>,
-    gridSystem: GridSystem
+    eventBus: MeasureToolEvents,
+    store: MeasureStore,
+    gridSystem: MeasureGrid
   ) {
     this.viewport = viewport;
     this.eventBus = eventBus;
     this.store = store;
     this.gridSystem = gridSystem;
     
-    // Create graphics for drawing measurements
-    this.measureGraphics = new Graphics();
-    this.measureGraphics.eventMode = 'none';
-    this.measureGraphics.interactiveChildren = false;
-    this.viewport.addChild(this.measureGraphics);
+    // Same zIndex, labels added after: the stable sort keeps every label above every shape.
+    this.shapes.view.zIndex = MAP_LAYER_Z.measure;
+    this.labels.zIndex = MAP_LAYER_Z.measure;
+    this.viewport.addChild(this.shapes.view, this.labels);
+    this.labels.addChild(this.liveLabel.view);
+    this.parts = new MeasurePartsVisibility({ shape: this.liveShape.shape, label: this.liveLabel.view }, () => this.playersView);
     
-    // Create graphics for text pill background
-    this.measurePill = new Graphics();
-    this.measurePill.eventMode = 'none';
-    this.viewport.addChild(this.measurePill);
-    
-    this.measureText = createMeasureLabelText();
-    this.viewport.addChild(this.measureText);
-    
-    // Setup viewport scale listener
     this.setupViewportScaleListener();
+    this.stopThemeWatch = watchMeasureLabelTheme(() => this.redrawAll());
     
     // Bind handlers
     this.pointerDownHandler = this.handlePointerDown.bind(this);
@@ -79,7 +120,7 @@ export class MeasureRenderer {
     this.pointerUpHandler = this.handlePointerUp.bind(this);
     
     // Subscribe to tool changes
-    this._unsubscribeFromToolChanges = this.store.subscribe((state: ViewAtlasState) => {
+    this._unsubscribeFromToolChanges = this.store.subscribe((state) => {
       const tool = state.activeTool;
       if (tool === 'measure' || tool === 'measure-circle' || tool === 'measure-cone') {
         this.enableMeasureTool();
@@ -103,7 +144,7 @@ export class MeasureRenderer {
     }
     
     // Listen for measure shape changes
-    this._measureShapeChangedHandler = (shape: 'line' | 'cone' | 'circle' | 'sphere') => {
+    this._measureShapeChangedHandler = (shape: MeasureShape) => {
       this.measureShape = shape;
       // Clear any existing measurement when shape changes
       this.clearMeasurement();
@@ -122,27 +163,36 @@ export class MeasureRenderer {
   }
   
   private setupViewportScaleListener(): void {
-    // Update text scale whenever viewport scale changes
+    // Shapes and labels keep their size on screen, so a new zoom draws them again; a pan changes nothing.
     this._viewportScaleHandler = () => {
-      this.updateTextScale();
+      if (this.viewport.scale.x !== this.drawnZoom) this.redrawAll();
     };
-    
-    // Listen to viewport scale changes
     this.viewport.on('zoomed', this._viewportScaleHandler);
+    this.viewport.on('zoomed-end', this._viewportScaleHandler);
     this.viewport.on('moved', this._viewportScaleHandler);
   }
-  
-  private updateTextScale(): void {
-    if (!this.measureText.visible) return;
-    
-    this.measureText.style.fontSize = measureLabelFontSize(this.viewport.scale.x);
-    
-    // Redraw pill if text is visible
-    if (this.startPoint && this.endPoint) {
-      this.updatePillAndText();
-    }
+
+  /** Draws every measurement again at the current zoom and in the current theme. */
+  private redrawAll(): void {
+    this.drawnZoom = this.viewport.scale.x;
+    const live = this.current.live;
+    if (live) this.drawLive(live);
+    for (const kept of this.persistentMeasurements) this.draw(kept);
   }
-  
+
+  /** Draws `measurement`'s shape and label at the current zoom. */
+  private draw({ record, shape, label }: DrawnMeasurement): void {
+    const zoom = this.viewport.scale.x;
+    shape.begin(zoom);
+    drawMeasurement(shape, cssColorToHexNumber(getObsidianAccentColor()), record, this.measurementSettings().coneAngle);
+    label.show(this.measurementLabel(record.start, record.end), measureLabelTarget(record), zoom, this.gridSystem.getOptions().size);
+  }
+
+  private drawLive(record: MeasureRecord): void {
+    this.drawnZoom = this.viewport.scale.x;
+    this.draw({ record, shape: this.liveShape, label: this.liveLabel });
+  }
+
   private enableMeasureTool(): void {
     this.viewport.on('pointerdown', this.pointerDownHandler);
     this.viewport.on('pointermove', this.pointerMoveHandler);
@@ -175,11 +225,10 @@ export class MeasureRenderer {
       e.stopPropagation();
       
       const point = this.measurePoint(e);
-      this.startPoint = point;
-      this.endPoint = point;
+      this.parts.start([this.viewport.toWorld(e.global), point]);
       this.isDrawing = true;
       
-      this.updateMeasurement();
+      this.updateMeasurement(point, point);
     }
   }
   
@@ -197,8 +246,8 @@ export class MeasureRenderer {
     
     e.stopPropagation();
     
-    this.endPoint = this.measurePoint(e);
-    this.updateMeasurement();
+    const live = this.current.live;
+    if (live) this.updateMeasurement(live.start, this.measurePoint(e));
   }
 
   /** Pointer position in world space, snapped to the cell centre while the grid's snap setting is on. */
@@ -241,66 +290,18 @@ export class MeasureRenderer {
     }
   }
   
-  private updateMeasurement(): void {
-    if (!this.startPoint || !this.endPoint) return;
-    
-    this.measureGraphics.clear();
-    
-    // Get accent color from Obsidian theme
-    const accent = getObsidianAccentColor();
-    const accentHex = cssColorToHexNumber(accent);
-    
-    // Calculate distance for radius
-    const dx = this.endPoint.x - this.startPoint.x;
-    const dy = this.endPoint.y - this.startPoint.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    switch (this.measureShape) {
-      case 'line':
-        this.drawLine(accentHex);
-        break;
-      case 'circle':
-      case 'sphere':
-        this.drawCircle(accentHex, distance);
-        break;
-      case 'cone':
-        this.drawCone(accentHex, distance, dx, dy);
-        break;
-    }
-    
-    drawMeasurePoint(this.measureGraphics, accentHex, this.startPoint);
-
-    this.measureText.text = this.measurementLabel(this.startPoint, this.endPoint);
-    this.measureText.visible = true;
-    this.measurePill.visible = true;
-    
-    // Update pill and text for current zoom level
-    this.updatePillAndText();
-  }
-  
-  private drawLine(color: number): void {
-    if (!this.startPoint || !this.endPoint) return;
-    this.drawLineOnGraphics(this.measureGraphics, color, this.startPoint, this.endPoint);
-  }
-  
-  private drawCircle(color: number, radius: number): void {
-    if (!this.startPoint) return;
-    drawMeasureCircle(this.measureGraphics, color, this.startPoint, radius);
-  }
-  
-  private drawCone(color: number, distance: number, dx: number, dy: number): void {
-    if (!this.startPoint) return;
-    this.drawConeOnGraphics(this.measureGraphics, color, distance, dx, dy, this.startPoint);
-  }
-  
-  private updatePillAndText(): void {
-    if (!this.startPoint || !this.endPoint || !this.measureText.text) return;
-    drawMeasureLabel(this.measurePill, this.measureText, this.labelAnchor(this.startPoint, this.endPoint), this.viewport.scale.x);
+  private updateMeasurement(start: { x: number; y: number }, end: { x: number; y: number }): void {
+    const live = { shape: this.measureShape, start, end };
+    this.setMeasurements({ ...this.current, live });
+    this.drawLive(live);
+    this.parts.drawn();
   }
 
-  /** Midpoint of the measurement, lifted a constant screen distance above the line. */
-  private labelAnchor(start: { x: number; y: number }, end: { x: number; y: number }): { x: number; y: number } {
-    return { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 30 / this.viewport.scale.x };
+  /** Records the measurements on the map and tells whoever follows them. */
+  private setMeasurements(next: Measurements): void {
+    const previous = this.current;
+    this.current = next;
+    for (const listener of [...this.listeners]) listener(next, previous);
   }
 
   private measurementSettings(): MeasurementSettings {
@@ -313,153 +314,57 @@ export class MeasureRenderer {
   }
   
   private clearMeasurement(): void {
-    this.measureGraphics.clear();
-    this.measurePill.clear();
-    this.measureText.visible = false;
-    this.measurePill.visible = false;
-    this.startPoint = null;
-    this.endPoint = null;
+    this.liveShape.clear();
+    this.parts.cleared();
     this.rightClickDownPos = null;
+    if (this.current.live) this.setMeasurements({ ...this.current, live: null });
   }
   
   private createPersistentMeasurement(): void {
-    if (!this.startPoint || !this.endPoint || !this.measureText.text) return;
-    
-    // Create new graphics objects for the persistent measurement
-    const persistGraphics = new Graphics();
-    const persistPill = new Graphics();
-    const persistText = new Text({ 
-      text: this.measureText.text, 
-      style: this.measureText.style.clone() 
-    });
-    
-    // Copy the current measurement graphics
-    persistGraphics.clear();
-    const accent = getObsidianAccentColor();
-    const accentHex = cssColorToHexNumber(accent);
-    
-    // Redraw the measurement shape
-    const dx = this.endPoint.x - this.startPoint.x;
-    const dy = this.endPoint.y - this.startPoint.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    switch (this.measureShape) {
-      case 'line':
-        this.drawLineOnGraphics(persistGraphics, accentHex, this.startPoint, this.endPoint);
-        break;
-      case 'circle':
-      case 'sphere':
-        drawMeasureCircle(persistGraphics, accentHex, this.startPoint, distance);
-        break;
-      case 'cone':
-        this.drawConeOnGraphics(persistGraphics, accentHex, distance, dx, dy, this.startPoint);
-        break;
-    }
-    
-    drawMeasurePoint(persistGraphics, accentHex, this.startPoint);
-
-    persistText.anchor.set(0.5);
-    drawMeasureLabel(persistPill, persistText, this.labelAnchor(this.startPoint, this.endPoint), this.viewport.scale.x);
-    persistText.visible = true;
-    
-    // Add to viewport
-    this.viewport.addChild(persistGraphics);
-    this.viewport.addChild(persistPill);
-    this.viewport.addChild(persistText);
-    
-    // Store the persistent measurement
-    this.persistentMeasurements.push({
-      graphics: persistGraphics,
-      pill: persistPill,
-      text: persistText
-    });
-  }
-  
-  private drawLineOnGraphics(graphics: Graphics, color: number, start: { x: number; y: number }, end: { x: number; y: number }): void {
-    drawMeasurePath(graphics, color, [start, end]);
-    drawMeasurePoint(graphics, color, end);
-  }
-  
-  private drawConeOnGraphics(graphics: Graphics, color: number, distance: number, dx: number, dy: number, start: { x: number; y: number }): void {
-    // The collection's game system sets how wide the cone opens
-    const halfAngle = this.measurementSettings().coneAngle * Math.PI / 360;
-    
-    // Calculate the angle of the line
-    const baseAngle = Math.atan2(dy, dx);
-    
-    // Calculate the two edge points of the cone
-    const leftAngle = baseAngle - halfAngle;
-    const rightAngle = baseAngle + halfAngle;
-    
-    const leftX = start.x + distance * Math.cos(leftAngle);
-    const leftY = start.y + distance * Math.sin(leftAngle);
-    const rightX = start.x + distance * Math.cos(rightAngle);
-    const rightY = start.y + distance * Math.sin(rightAngle);
-    
-    // Draw the cone shape
-    graphics.moveTo(start.x, start.y);
-    graphics.lineTo(leftX, leftY);
-    graphics.arc(
-      start.x, 
-      start.y, 
-      distance, 
-      leftAngle, 
-      rightAngle, 
-      false
-    );
-    graphics.lineTo(start.x, start.y);
-    graphics.fill({ color: color, alpha: 0.1 });
-    
-    // Draw the outline
-    graphics.moveTo(start.x, start.y);
-    graphics.lineTo(leftX, leftY);
-    graphics.stroke({ width: 3, color: color, alpha: 0.8 });
-    
-    graphics.moveTo(start.x, start.y);
-    graphics.lineTo(rightX, rightY);
-    graphics.stroke({ width: 3, color: color, alpha: 0.8 });
-    
-    // Draw the arc
-    graphics.arc(
-      start.x, 
-      start.y, 
-      distance, 
-      leftAngle, 
-      rightAngle, 
-      false
-    );
-    graphics.stroke({ width: 3, color: color, alpha: 0.8 });
+    const live = this.current.live;
+    if (!live) return;
+    const record: MeasureRecord = { shape: this.measureShape, start: live.start, end: live.end };
+    const measurement: DrawnMeasurement = { record, shape: new MeasureInk(this.shapes), label: new MeasureLabel() };
+    this.draw(measurement);
+    this.labels.addChild(measurement.label.view);
+    this.parts.keep({ shape: measurement.shape.shape, label: measurement.label.view });
+    this.persistentMeasurements.push(measurement);
+    this.setMeasurements({ ...this.current, kept: [...this.current.kept, record] });
   }
   
   private clearAllPersistentMeasurements(): void {
-    // Remove all persistent measurements from viewport
-    for (const measurement of this.persistentMeasurements) {
-      if (measurement.graphics.parent) {
-        this.viewport.removeChild(measurement.graphics);
-      }
-      if (measurement.pill.parent) {
-        this.viewport.removeChild(measurement.pill);
-      }
-      if (measurement.text.parent) {
-        this.viewport.removeChild(measurement.text);
-      }
-      
-      // Destroy the graphics objects
-      measurement.graphics.destroy();
-      measurement.pill.destroy();
-      measurement.text.destroy();
+    for (const { shape, label } of this.persistentMeasurements) {
+      shape.destroy();
+      label.destroy();
     }
-    
-    // Clear the array
     this.persistentMeasurements = [];
+    this.parts.forgetKept();
+    if (this.current.kept.length > 0) this.setMeasurements({ ...this.current, kept: [] });
+  }
+
+  /** What the players' picture shows of the measurements: one that started on a token they do not see is left out. */
+  public getPlayerViewLayers(seen: TokenSeen): LayerVisibility[] {
+    return this.parts.playerViewLayers(seen);
+  }
+
+  /** The measurements as the GM view shows them, whatever the canvas shows: for a picture of the scene. */
+  public getGmViewLayers(): LayerVisibility[] {
+    return this.parts.gmViewLayers();
+  }
+
+  /** The players' sight changed, or whether the canvas shows it: measurements show or hide by it. */
+  public refreshVisibility(): void {
+    this.parts.refresh();
   }
   
   public destroy(): void {
     this._unsubscribeFromToolChanges?.();
+    this.stopThemeWatch();
     
     // Remove viewport scale listener
     if (this._viewportScaleHandler) {
       this.viewport.off('zoomed', this._viewportScaleHandler);
+      this.viewport.off('zoomed-end', this._viewportScaleHandler);
       this.viewport.off('moved', this._viewportScaleHandler);
     }
     
@@ -475,8 +380,8 @@ export class MeasureRenderer {
     this.clearAllPersistentMeasurements();
     
     this.disableMeasureTool();
-    this.measureGraphics.destroy();
-    this.measurePill.destroy();
-    this.measureText.destroy();
+    this.shapes.destroy();
+    destroyTree(this.labels);
+    this.listeners.clear();
   }
 }

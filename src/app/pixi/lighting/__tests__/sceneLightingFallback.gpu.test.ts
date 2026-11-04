@@ -11,6 +11,7 @@ vi.mock('obsidian', () => ({
       notices.push(message);
     }
   },
+  getLanguage: () => 'en',
 }));
 
 const SAVED_MASK = 'data:image/png;base64,AAAA';

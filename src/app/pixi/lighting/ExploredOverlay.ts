@@ -29,14 +29,17 @@ export class ExploredOverlay {
   /** The last stretch of a brush stroke, up to the pointer: drawn anew with every move. */
   private readonly tail = new Graphics();
   private readonly outline = new Graphics();
-  private readonly cursor = new FogCursorPreview();
+  private readonly cursor: FogCursorPreview;
   private readonly fade = new AlphaFilter({ alpha: OVERLAY_ALPHA, resolution: 'inherit' });
   /** How many points of the brush stroke under way were looked at, and the last of them the stroke keeps. */
   private brushed = 0;
   private kept: Point | null = null;
   private tint = 0xffffff;
+  /** The pointer the ring was last placed at: a redraw with the same point keeps the place the ring followed the camera to. */
+  private placedAt: Point | null = null;
 
   constructor(private readonly viewport: Viewport) {
+    this.cursor = new FogCursorPreview(viewport);
     this.layer.filters = [this.fade];
     this.layer.addChild(this.memory, this.pending, this.tail);
     this.view.addChild(this.layer, this.outline, this.cursor.getDisplayObject());
@@ -63,10 +66,12 @@ export class ExploredOverlay {
   drawCursor(at: Point | null, stroke: ShapeStroke, mode: ExploredEditMode): void {
     if (!at || stroke.mode !== 'brush') {
       this.cursor.hide();
+      this.placedAt = null;
       return;
     }
     this.cursor.setBrushRadius(stroke.brushRadius);
-    this.cursor.updatePosition(at.x, at.y);
+    if (at !== this.placedAt) this.cursor.updatePosition(at.x, at.y);
+    this.placedAt = at;
     this.cursor.show(mode === 'forget');
   }
 

@@ -16,8 +16,17 @@ describe('visibleResources', () => {
     expect(visibleResources(token, definitions, 'player').map((r) => r.definition.key)).toEqual(['hp']);
   });
 
+  it('shows the player whose character the token is every value it holds', () => {
+    expect(visibleResources(token, definitions, 'owner').map((r) => r.definition.key)).toEqual(['hp', 'str']);
+  });
+
   it('hides values without a usable maximum', () => {
     expect(visibleResources({ resources: { hp: { current: 0, max: 0 } } }, definitions, 'dm')).toEqual([]);
+  });
+
+  it('shows a static value of 0, which is a value and no empty maximum', () => {
+    const ac: ResourceDefinition = { ...def('ac', true), direction: 'static' };
+    expect(visibleResources({ resources: { ac: { current: 0, max: 0 } } }, [ac], 'dm').map((r) => r.value)).toEqual([{ current: 0, max: 0 }]);
   });
 
   it('gives each resource the slot of its place in the collection, whatever the token holds', () => {

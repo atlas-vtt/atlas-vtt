@@ -1,8 +1,7 @@
 import React, { createRef, useLayoutEffect, useMemo, useState, type RefObject } from 'react'
-import { motion, useMotionValue, useTransform, type MotionValue } from 'framer-motion'
-import type { ResponsiveToolbarItem } from '../toolbarTypes'
+import { motion, useMotionValue, useTransform, type MotionStyle, type MotionValue } from 'framer-motion'
 import type { ToolbarEditStore, ToolbarGhostTicket } from './toolbarEditStore'
-import { ToolbarFace } from './ToolbarFace'
+import { ToolbarFace, type ToolbarFaceItem } from './ToolbarFace'
 import { useDragGhost } from './useDragGhost'
 import { useFlightGhost } from './useFlightGhost'
 import type { ToolbarFlight } from './useToolbarFlight'
@@ -28,7 +27,7 @@ export interface GhostElements {
   trayFace: RefObject<HTMLDivElement | null>
 }
 
-type GhostItem = Pick<ResponsiveToolbarItem, 'kind' | 'menuEntry'>
+type GhostItem = ToolbarFaceItem
 
 /** Where a face's first button (the tool's icon) is centred, from the face's left edge. */
 function iconCentre(face: HTMLElement | null): number {
@@ -46,6 +45,8 @@ function useGhostElements(): GhostElements {
  * control waits, invisible, at its new place. It changes its real size
  * between the bar's face and the tray's, crossfading the two with their icons
  * kept on one spot (a tool group's chevron is clipped away as it shrinks).
+ * The undo/redo bar's ghost is a whole bar while it shows the bar's face: its
+ * corners follow its look (`--atlas-ghost-bar-look`, 1 as a bar).
  */
 function GhostView({ values, item, elements }: { values: GhostValues; item: GhostItem; elements: GhostElements }): React.ReactElement {
   const { x, y, width, height, scale, opacity, trayLook, shadow } = values
@@ -64,8 +65,10 @@ function GhostView({ values, item, elements }: { values: GhostValues; item: Ghos
     return trayLook.on('change', align)
   }, [trayLook, elements, barFaceX, trayFaceX])
 
+  const barUnit = item.kind === 'undo-bar'
+  const style: MotionStyle = { x, y, width, height, scale, opacity, ...(barUnit && { '--atlas-ghost-bar-look': barLook }) }
   return (
-    <motion.div ref={elements.ghost} className="atlas-toolbar-ghost" aria-hidden="true" inert style={{ x, y, width, height, scale, opacity }}>
+    <motion.div ref={elements.ghost} className="atlas-toolbar-ghost" aria-hidden="true" inert {...(barUnit && { 'data-bar-unit': '' })} style={style}>
       <motion.div className="atlas-toolbar-ghost__shadow" style={{ opacity: shadow }} />
       <div className="atlas-toolbar-ghost__faces">
         <ToolbarFace ref={elements.barFace} item={item} look="bar" style={{ opacity: barLook, x: barFaceX }} />

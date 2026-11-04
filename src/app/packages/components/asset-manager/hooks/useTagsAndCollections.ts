@@ -4,7 +4,8 @@ import type { AnyAsset, Tag } from '../types';
 import type { AssetService } from '../../../../services/AssetService';
 import { hasAssetTag, type TagGroup } from '../../../../services/tagGroups';
 import { showAtlasToast } from '../../../../react/components/AtlasToast';
-import { tagGroupOfTab, type TagsByGroup } from '../utils/assetTags';
+import { tagGroupOfTab, type AssetTagChange, type TagsByGroup } from '../utils/assetTags';
+import { t } from '../../../../i18n';
 
 export interface TagsAndCollectionsState {
   // Tag manager modal
@@ -14,7 +15,9 @@ export interface TagsAndCollectionsState {
   handleCreateTag: (group: TagGroup, tag: string) => Promise<Tag | null>;
   handleUpdateTag: (group: TagGroup, tagId: string, name: string) => Promise<void>;
   handleDeleteTag: (group: TagGroup, tagId: string) => Promise<void>;
-  /** Replaces an asset's tags: shown at once, restored if saving fails. */
+  /** Replaces the tags of several assets in one save: shown at once, restored if saving fails. */
+  setTagsOfAssets: (changes: AssetTagChange[]) => Promise<void>;
+  /** Replaces an asset's tags, as `setTagsOfAssets` does. */
   setAssetTags: (asset: AnyAsset, tags: string[]) => Promise<void>;
   // Collection CRUD
   handleUpdateCollection: (collectionId: string, name: string) => Promise<void>;
@@ -45,7 +48,7 @@ export function useTagsAndCollections(
       return { id, name };
     } catch (error) {
       console.error('[AssetManager] Failed to create tag:', error);
-      showAtlasToast('Could not create the tag');
+      showAtlasToast(t('am.tag.createFailed'));
       return null;
     }
   }, [assetService, collection, reloadGlobalTags]);
@@ -60,7 +63,7 @@ export function useTagsAndCollections(
       await reloadGlobalTags();
     } catch (error) {
       console.error('[AssetManager] Failed to rename tag:', error);
-      showAtlasToast('Could not rename the tag');
+      showAtlasToast(t('am.tag.renameFailed'));
     }
   }, [assetService, collection, tagsByGroup, retagAssets, reloadGlobalTags]);
 
@@ -73,22 +76,34 @@ export function useTagsAndCollections(
       await reloadGlobalTags();
     } catch (error) {
       console.error('[AssetManager] Failed to delete tag:', error);
-      showAtlasToast('Could not delete the tag');
+      showAtlasToast(t('am.tag.deleteFailed'));
     }
   }, [assetService, collection, tagsByGroup, retagAssets, reloadGlobalTags]);
 
-  const setAssetTags = useCallback(async (asset: AnyAsset, tags: string[]): Promise<void> => {
-    if (!assetService) return;
-    setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, tags } : a));
+  const setTagsOfAssets = useCallback(async (changes: AssetTagChange[]): Promise<void> => {
+    if (!assetService || changes.length === 0) return;
+    const changeOf = new Map(changes.map((change) => [change.asset.id, change]));
+    setAssets(prev => prev.map(a => {
+      const change = changeOf.get(a.id);
+      return change ? { ...a, tags: change.tags } : a;
+    }));
     try {
-      await assetService.updateAssetTags(asset.id, tags);
+      await assetService.updateTagsOfAssets(changes.map(({ asset, tags }) => ({ id: asset.id, tags })));
     } catch (error) {
       console.error('[AssetManager] Failed to update asset tags:', error);
       // Restore the previous tags unless a later edit replaced these meanwhile.
-      setAssets(prev => prev.map(a => a.id === asset.id && a.tags === tags ? { ...a, tags: asset.tags ?? [] } : a));
-      showAtlasToast('Could not save the tags');
+      setAssets(prev => prev.map(a => {
+        const change = changeOf.get(a.id);
+        return change && a.tags === change.tags ? { ...a, tags: change.asset.tags ?? [] } : a;
+      }));
+      showAtlasToast(t('am.tag.saveFailed'));
     }
   }, [assetService, setAssets]);
+
+  const setAssetTags = useCallback(
+    (asset: AnyAsset, tags: string[]): Promise<void> => setTagsOfAssets([{ asset, tags }]),
+    [setTagsOfAssets],
+  );
 
   const handleUpdateCollection = useCallback(async (collectionId: string, name: string): Promise<void> => {
     if (!assetService) return;
@@ -97,7 +112,7 @@ export function useTagsAndCollections(
       await reloadCollections();
     } catch (error) {
       console.error('[AssetManager] Failed to rename collection:', error);
-      showAtlasToast(error instanceof Error ? error.message : 'Could not rename the collection');
+      showAtlasToast(error instanceof Error ? error.message : t('am.collection.renameFailed'));
     }
   }, [assetService, reloadCollections]);
 
@@ -105,20 +120,20 @@ export function useTagsAndCollections(
     if (!assetService) return;
     try {
       if (collectionId === assetService.getDefaultCollectionId()) {
-        showAtlasToast('The default collection cannot be deleted');
+        showAtlasToast(t('am.collection.defaultUndeletable'));
         return;
       }
       await assetService.deleteCollection(collectionId);
       await reloadCollections();
     } catch (error) {
       console.error('[AssetManager] Failed to delete collection:', error);
-      showAtlasToast('Could not delete the collection');
+      showAtlasToast(t('am.collection.deleteFailed'));
     }
   }, [assetService, reloadCollections]);
 
   return {
     isTagManagerOpen, setIsTagManagerOpen,
-    handleCreateTag, handleUpdateTag, handleDeleteTag, setAssetTags,
+    handleCreateTag, handleUpdateTag, handleDeleteTag, setTagsOfAssets, setAssetTags,
     handleUpdateCollection, handleDeleteCollection,
   };
 }

@@ -1,5 +1,6 @@
 import { App, Modal } from 'obsidian';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
+import { t } from '../i18n';
 
 export interface ChoiceModalButton<T> {
   text: string;
@@ -57,7 +58,7 @@ export class ChoiceModal<T> extends Modal {
       });
     }
     buttonContainer
-      .createEl('button', { text: 'Cancel' })
+      .createEl('button', { text: t('common.cancel') })
       .addEventListener('click', () => this.close());
   }
 

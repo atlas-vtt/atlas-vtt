@@ -27,6 +27,21 @@ export function assetJsonPath(asset: Asset): string | null {
   return asset.filePath || defaultJsonPath(asset.type, asset.collection, asset.id);
 }
 
+/** The folder below a collection that holds the record files of tokens and notes, which have no JSON of their own. */
+const RECORD_FOLDERS = { token: 'tokens', note: 'notes' } as const;
+
+/**
+ * The vault file that holds an asset's whole record: the JSON of maps, scenes,
+ * encounters and the other JSON-backed types, and `tokens/<id>.json` or
+ * `notes/<id>.json` for tokens and notes, whose primary file is art or a note.
+ */
+export function recordFilePath(asset: Asset): string {
+  if (asset.type === 'token' || asset.type === 'note') {
+    return `${collectionFolderPath(asset.collection)}/${RECORD_FOLDERS[asset.type]}/${asset.id}.json`;
+  }
+  return assetJsonPath(asset) ?? '';
+}
+
 /** The vault file that backs an asset: the token image, the note, or the asset's JSON file. */
 export function assetFilePath(asset: Asset): string {
   if (asset.type === 'token') return asset.imagePath;
@@ -72,7 +87,8 @@ export function sidecarPath(asset: Asset): string | null {
 
 /** Every vault path an asset record owns. */
 export function ownedPaths(asset: Asset): string[] {
-  return [primaryPath(asset), sidecarPath(asset)].filter((path): path is string => Boolean(path));
+  const record = asset.type === 'token' || asset.type === 'note' ? recordFilePath(asset) : null;
+  return [primaryPath(asset), sidecarPath(asset), record].filter((path): path is string => Boolean(path));
 }
 
 /** The paths owned by any asset in the index. */

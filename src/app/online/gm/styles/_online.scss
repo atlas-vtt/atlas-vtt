@@ -1,0 +1,27 @@
+// The panel's rhythm, on Atlas's tokens: every control is Obsidian's control height, and every row (a
+// player, a token, the link field) is that control with $spacing-xs around it. Text, portraits and
+// avatars share one left edge, $spacing-xs inside the rows.
+@use '../../../../../styles/tokens' as *;
+
+$online-control: var(--input-height);
+$online-inset: $spacing-xs;
+$online-row: calc(#{$online-control} + 2 * #{$online-inset});
+// Concentric with the controls inside a row: their radius plus the inset.
+$online-row-radius: $radius-xl;
+$online-text-inset: $spacing-xs;
+// Drawn inside the element, so a scrolling list never clips it.
+$online-focus-ring: inset 0 0 0 2px var(--background-modifier-border-focus);
+
+// A row's control that waits for the pointer, the keyboard or what it opened (its menu, its card);
+// always there where nothing hovers.
+@mixin online-on-row-hover {
+  opacity: 0;
+
+  &.is-open {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}

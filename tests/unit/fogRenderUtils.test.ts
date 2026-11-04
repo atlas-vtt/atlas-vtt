@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateOperationBounds } from '../../src/app/pixi/fog/fogRenderUtils';
+import { calculateOperationBounds, renderBrush } from '../../src/app/pixi/fog/fogRenderUtils';
 import type {
   FogBrushStroke,
   FogLassoFill,
@@ -127,5 +127,50 @@ describe('calculateOperationBounds – unknown type', () => {
     const unknown = { type: 'mystery' } as any;
     const b = calculateOperationBounds(unknown);
     expect(b).toEqual({ x: 0, y: 0, width: 0, height: 0 });
+  });
+});
+
+// ── renderBrush ──────────────────────────────────────────────────────────
+
+interface BrushCalls {
+  calls: string[];
+  ctx: CanvasRenderingContext2D;
+}
+
+/** Records the drawing calls and the stroke settings in force when it strokes. */
+function recordingContext(): BrushCalls {
+  const calls: string[] = [];
+  const state = { lineWidth: 1, lineCap: 'butt', lineJoin: 'miter' };
+  const record = (name: string) => (): void => { calls.push(name); };
+  const ctx = {
+    ...state,
+    beginPath: record('beginPath'),
+    moveTo: record('moveTo'),
+    lineTo: record('lineTo'),
+    arc: record('arc'),
+    fill: record('fill'),
+    stroke(this: typeof state): void {
+      calls.push(`stroke ${this.lineWidth} ${this.lineCap} ${this.lineJoin}`);
+    },
+  };
+  return { calls, ctx: ctx as unknown as CanvasRenderingContext2D };
+}
+
+describe('renderBrush', () => {
+  const bounds = { x: 0, y: 0, width: 200, height: 200 };
+
+  it('strokes the whole path once with round ends, never stamping discs', () => {
+    const { calls, ctx } = recordingContext();
+    const points = Array.from({ length: 50 }, (_, i) => ({ x: 20 + i * 0.3, y: 50 }));
+    renderBrush(ctx, makeBrush({ brushRadius: 12, points }), bounds, 0.5, 0, 0);
+    expect(calls.filter((c) => c.startsWith('stroke'))).toEqual(['stroke 12 round round']);
+    expect(calls).not.toContain('arc');
+    expect(calls).not.toContain('fill');
+  });
+
+  it('draws a dab, whose path has no length, as one disc', () => {
+    const { calls, ctx } = recordingContext();
+    renderBrush(ctx, makeBrush({ points: [{ x: 5, y: 5 }, { x: 5, y: 5 }] }), bounds, 1, 0, 0);
+    expect(calls).toEqual(['beginPath', 'arc', 'fill']);
   });
 });

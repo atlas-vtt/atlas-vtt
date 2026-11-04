@@ -1,8 +1,11 @@
+// @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Application, EventSystem, FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { genericLight } from '../mocks/lights';
+import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';
+import { fogRectangle } from '../helpers/fogOperations';
 import { holdTokens } from '../../src/app/lighting/sightOnDrop';
 import { LightingController } from '../../src/app/pixi/lighting/LightingController';
 import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
@@ -22,6 +25,8 @@ import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
 const lighting = vi.hoisted(() => ({
   sight: null as unknown,
+  /** Whether the view's sight is that of the scene the store holds. */
+  sightIsCurrent: true,
   deps: null as unknown,
   modeLayer: { visible: false },
   refreshBounds: (): void => {},
@@ -36,6 +41,7 @@ vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
       modeLayer: lighting.modeLayer,
       isEnabled: () => deps.store.getState().lighting.enabled,
       currentSight: () => lighting.sight as Sight,
+      sightIsCurrent: () => lighting.sightIsCurrent,
       lightReaches: () => [],
       ambientLight: () => ({ ambient: 1 }),
       refreshBounds: () => lighting.refreshBounds(),
@@ -64,6 +70,9 @@ interface Wired {
   cursor: (x: number, y: number) => string;
   doorClick: (x: number, y: number) => boolean;
   playerSight: () => ((tokenId: string) => string) | undefined;
+  playerViewActive?: (() => boolean) | undefined;
+  /** Whether the sight `playerSight` answers by is that of the scene the store holds. */
+  sightIsCurrent?: (() => boolean) | undefined;
   refreshPlayerSight: ReturnType<typeof vi.fn>;
   /** The layer of the sensed tokens' outlines, as the token renderer gives it. */
   sensedOutlines: { visible: boolean };
@@ -93,6 +102,7 @@ const nextFrame = (): Promise<void> => new Promise((resolve) => window.requestAn
 function setup(extra: Partial<ConstructorParameters<typeof LightingController>[0]> = {}): Setup {
   const restoreGraphics = stubJsdomGraphics();
   lighting.sight = SEES_ALL;
+  lighting.sightIsCurrent = true;
   const events = { domElement: document.createElement('canvas') } as unknown as EventSystem;
   const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, events });
   const { app: obsApp } = createInMemoryApp({ files: {} });
@@ -122,7 +132,13 @@ function setup(extra: Partial<ConstructorParameters<typeof LightingController>[0
     setDoorMenuHandlers: (handlers: DoorMenuHandlers) => { doorMenu.current = handlers; },
     setDoorClickHandler: (fn: Wired['doorClick']) => { wired.doorClick = fn; },
     setLightHandlers: (handlers: LightPointerHandlers) => { wired.light = handlers; },
-    setPlayerSightProvider: (fn: Wired['playerSight']) => { wired.playerSight = fn; },
+    setPlayerSightProvider: (fn: Wired['playerSight'], active?: () => boolean, current?: () => boolean) => {
+      wired.playerSight = fn;
+      wired.playerViewActive = active;
+      wired.sightIsCurrent = current;
+    },
+    setGlideWay: () => undefined,
+    setArtFloors: () => undefined,
     refreshPlayerSight: wired.refreshPlayerSight,
     getSensedOutlineLayer: () => wired.sensedOutlines,
   } as unknown as TokenRenderer);
@@ -149,6 +165,53 @@ function pressPeek(type: 'keydown' | 'keyup'): void {
 }
 
 describe('LightingController in session view', () => {
+  it('reports existing session and peek activity even on an unlit scene', () => {
+    const { store, wired } = setup();
+    store.getState().setSceneLighting({ enabled: false });
+    expect(wired.playerViewActive?.()).toBe(false);
+    expect(wired.playerSight()).toBeUndefined();
+    pressPeek('keydown');
+    expect(wired.playerViewActive?.()).toBe(true);
+    expect(wired.playerSight()).toBeUndefined();
+    pressPeek('keyup');
+    expect(wired.playerViewActive?.()).toBe(false);
+    store.getState().setGMView(false);
+    expect(wired.playerViewActive?.()).toBe(true);
+  });
+
+  it('tells the token renderer whether the sight it answers by is the scene\'s, as the lighting view says', () => {
+    const { wired } = setup();
+    expect(wired.sightIsCurrent?.()).toBe(true);
+    // A scene switch: the view still holds the sight of the scene before.
+    lighting.sightIsCurrent = false;
+    expect(wired.sightIsCurrent?.()).toBe(false);
+  });
+
+  it('removes fogged door hit targets on fog-only changes and restores them after erase', () => {
+    let coverage: FogCoverage | null = fogCoverage({});
+    const { store, wired, controller } = setup({ fogCoverage: () => coverage });
+    store.getState().setSceneLighting({ enabled: true });
+    const door = store.getState().addWall({ type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
+    store.getState().setGMView(false);
+    const paint = fogRectangle({ x: 40, y: 90, width: 20, height: 20 });
+    coverage = fogCoverage({ paint });
+    store.setState((state) => ({ objects: { ...state.objects, fog: { paint } } }));
+    expect(wired.doorClick(50, 100)).toBe(false);
+    expect(store.getState().objects.walls[door]?.closed).toBe(true);
+    const erase = fogRectangle({ id: 'erase', timestamp: 2, isErasing: true, x: 45, y: 95, width: 10, height: 10 });
+    coverage = fogCoverage({ paint, erase });
+    store.setState((state) => ({ objects: { ...state.objects, fog: { paint, erase } } }));
+    expect(wired.doorClick(50, 100)).toBe(true);
+    expect(store.getState().objects.walls[door]?.closed).toBe(false);
+    // A map change must refresh the same walls even before their record changes.
+    coverage = null;
+    store.getState().setMapPath('maps/invalid.atlasmap');
+    expect(wired.doorClick(50, 100)).toBe(false);
+    store.getState().setGMView(true);
+    expect(wired.doorClick(50, 100)).toBe(true);
+    expect(controller.gmOverlays().doorBadges.visible).toBe(true);
+  });
+
   it('shows the GM his overlays in GM view', () => {
     const { controller, store } = setup();
     store.getState().setSceneLighting({ enabled: true });
@@ -166,9 +229,9 @@ describe('LightingController in session view', () => {
     store.getState().setSceneLighting({ enabled: true });
     store.getState().setGMView(false);
     const layers = controller.playerLayers();
-    // The players' lighting, the outlines of sensed tokens, the players' door badges, and each of the GM's seven overlays.
-    expect(layers).toHaveLength(10);
-    expect(Object.keys(controller.gmOverlays())).toHaveLength(7);
+    // The players' lighting, the outlines of sensed tokens, the players' door badges, and each of the GM's eight overlays.
+    expect(layers).toHaveLength(11);
+    expect(Object.keys(controller.gmOverlays())).toHaveLength(8);
     for (const { layer, visible } of layers) expect(layer.visible).toBe(visible);
     expect(lighting.modeLayer.visible).toBe(true);
   });

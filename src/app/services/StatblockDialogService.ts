@@ -2,6 +2,8 @@ import { App } from 'obsidian';
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import StatblockLinkModal from '../packages/components/asset-manager/StatblockLinkModal';
+import type { NewStatblockOption } from '../statblocks/editor/create/roleChoices';
+import { t } from '../i18n';
 
 export class StatblockDialogService {
   private app: App;
@@ -18,12 +20,14 @@ export class StatblockDialogService {
    * @param onLink Callback when a statblock is selected or unlinked
    * @param assetName The name of the asset/token being linked
    * @param art The token's artwork, which the previewed statblock shows as its portrait
+   * @param newStatblock "New statblock…" for the token; absent while the statblock editor is off
    */
   public showStatblockDialog(
     currentStatblockPath: string | null,
     onLink: (statblockPath: string | null) => void,
-    assetName: string = 'Token',
+    assetName: string = t('initiative.token'),
     art: { imagePath?: string | undefined; showRing?: boolean | undefined } = {},
+    newStatblock?: NewStatblockOption,
   ): void {
     // Clean up any existing modal
     this.closeDialog();
@@ -49,6 +53,7 @@ export class StatblockDialogService {
           this.closeDialog();
         },
         app: this.app,
+        newStatblock,
       })
     );
   }

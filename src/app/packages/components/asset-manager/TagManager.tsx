@@ -11,6 +11,7 @@ import { dialogOverlayMotion, useDialogWindowVariants } from '../primitives/dial
 import { ManagedItemRow, type ManagedItem } from './components/ManagedItemRow';
 import { TagManagerTabs, type TagManagerTab } from './components/TagManagerTabs';
 import { useItemSelection } from './hooks/useItemSelection';
+import { t } from '../../../i18n';
 
 interface TagManagerProps {
   isOpen: boolean;
@@ -56,8 +57,7 @@ const TagManager: React.FC<TagManagerProps> = ({
   const updateItem = (id: string, name: string): void | Promise<void> =>
     tagGroup ? onUpdateTag(tagGroup, id, name) : onUpdateCollection(id, name);
   const deleteItem = (id: string): Promise<void> => tagGroup ? onDeleteTag(tagGroup, id) : onDeleteCollection(id);
-  const itemLabel = tagGroup ? 'tags' : 'collections';
-  const itemNoun = tagGroup ? 'Tag' : 'Collection';
+  const existsMessage = tagGroup ? t('am.manage.tagExists') : t('am.manage.collectionExists');
 
   const filteredItems = items.filter((item) => item.name.toLowerCase().includes(searchValue.toLowerCase()));
   const selection = useItemSelection(filteredItems.map((item) => item.id));
@@ -107,7 +107,7 @@ const TagManager: React.FC<TagManagerProps> = ({
   const handleCreate = (): void => {
     if (!searchValue.trim()) return;
     if (nameTaken(searchValue.trim())) {
-      setError(`${itemNoun} already exists`);
+      setError(existsMessage);
       return;
     }
     createItem(searchValue.trim());
@@ -133,7 +133,7 @@ const TagManager: React.FC<TagManagerProps> = ({
       return;
     }
     if (editingId && nameTaken(name, editingId)) {
-      setError(`${itemNoun} already exists`);
+      setError(existsMessage);
       return;
     }
     if (editingId) void updateItem(editingId, name);
@@ -143,9 +143,9 @@ const TagManager: React.FC<TagManagerProps> = ({
   const confirmDelete = async (targets: readonly ManagedItem[]): Promise<boolean> => {
     if (tagGroup) return true;
     return confirmAction({
-      title: targets.length === 1 ? `Delete collection "${targets[0]!.name}"?` : `Delete ${targets.length} collections?`,
-      message: ['Every scene, map, token and encounter in it moves to the trash.'],
-      confirmLabel: 'Delete',
+      title: targets.length === 1 ? t('am.manage.deleteCollection', { name: targets[0]!.name }) : t('am.manage.deleteCollections', { count: targets.length }),
+      message: [t('am.manage.toTrash')],
+      confirmLabel: t('common.delete'),
       destructive: true,
     });
   };
@@ -164,10 +164,10 @@ const TagManager: React.FC<TagManagerProps> = ({
     if (!selectedIds.has(item.id)) selection.replace([item.id]);
 
     const entries: ContextMenuEntry[] = [
-      { type: 'item', label: 'Edit', icon: 'edit', onClick: () => handleEdit(item) },
+      { type: 'item', label: t('common.edit'), icon: 'edit', onClick: () => handleEdit(item) },
       {
         type: 'item',
-        label: targets.length > 1 ? `Delete ${targets.length} items` : 'Delete',
+        label: targets.length > 1 ? t('am.manage.deleteItems', { count: targets.length }) : t('common.delete'),
         icon: 'trash',
         destructive: true,
         onClick: () => { void deleteItems(targets); },
@@ -203,7 +203,7 @@ const TagManager: React.FC<TagManagerProps> = ({
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="atlas-tag-manager-header">
-              <h2>Manage Tags & Collections</h2>
+              <h2>{t('am.manage.title')}</h2>
               <CloseButton onClick={onClose} />
             </div>
 
@@ -215,7 +215,7 @@ const TagManager: React.FC<TagManagerProps> = ({
                   <Search size={16} className="atlas-search-icon" />
                   <input
                     type="text"
-                    placeholder={`Search or create ${itemLabel}…`}
+                    placeholder={tagGroup ? t('am.manage.searchTags') : t('am.manage.searchCollections')}
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -238,7 +238,7 @@ const TagManager: React.FC<TagManagerProps> = ({
                 {showCreateOption && (
                   <div className="atlas-create-item" onClick={handleCreate}>
                     <Plus size={16} />
-                    Create "{searchValue}"
+                    {t('am.manage.create', { name: searchValue })}
                   </div>
                 )}
 
@@ -259,7 +259,7 @@ const TagManager: React.FC<TagManagerProps> = ({
 
                 {filteredItems.length === 0 && !showCreateOption && (
                   <div className="atlas-empty-state">
-                    No {itemLabel} found
+                    {tagGroup ? t('am.manage.noTags') : t('am.manage.noCollections')}
                   </div>
                 )}
               </div>
@@ -270,11 +270,11 @@ const TagManager: React.FC<TagManagerProps> = ({
                 <>
                   <span className="atlas-selected-count">{selectedIds.size} selected</span>
                   <Button variant="destructive" size="sm" onClick={() => { void deleteItems(selectedItems()); }}>
-                    Delete selected
+                    {t('am.manage.deleteSelected')}
                   </Button>
                 </>
               )}
-              <Button variant="default" size="sm" onClick={onClose}>Done</Button>
+              <Button variant="default" size="sm" onClick={onClose}>{t('common.done')}</Button>
             </div>
           </motion.div>
         </motion.div>

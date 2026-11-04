@@ -1,0 +1,209 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// New table — pasted text on the left, the table it will be on the right (read only)
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss, after
+// random-tables.scss (its chips). The overlay is itself `.atlas-vtt-plugin`.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$paste-padding: $spacing-l;
+
+&.atlas-paste-table-overlay {
+  @include atlas-modal-overlay($z-atlas-modal);
+}
+
+.atlas-paste-table__backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.atlas-paste-table {
+  @include atlas-modal-window;
+  position: relative;
+  width: 920px;
+  height: min(640px, 100%);
+}
+
+.atlas-paste-table__header {
+  @include atlas-modal-header;
+
+  h3 {
+    font-size: $font-ui-medium;
+  }
+}
+
+.atlas-paste-table__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+
+.atlas-paste-table__input {
+  @include atlas-flex-col($paste-padding);
+  min-height: 0;
+  padding: $paste-padding;
+  border-right: $border-width-s solid var(--divider-color);
+}
+
+.atlas-paste-table__row {
+  @include atlas-flex-row($spacing-s);
+
+  .atlas-csm-input {
+    flex: 1;
+    min-width: 0;
+    height: var(--input-height);
+  }
+
+  .atlas-segmented {
+    flex-shrink: 0;
+    gap: 2px;
+    padding: 2px;
+    border-radius: $radius-m;
+  }
+
+  .atlas-segmented__option {
+    height: calc(var(--input-height) - 4px);
+    padding: 0 $spacing-m;
+    border-radius: calc(#{$radius-m} - 2px);
+  }
+}
+
+.atlas-paste-table__text {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: $spacing-s;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-l;
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  font-size: $font-ui-small;
+  line-height: 1.5;
+  resize: none;
+  @include atlas-scrollbar;
+  @include atlas-input-focus;
+}
+
+.atlas-paste-table__preview {
+  @include atlas-scrollbar;
+  min-height: 0;
+  padding: $paste-padding;
+  overflow-y: auto;
+}
+
+.atlas-paste-table__empty {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-paste-table__footer {
+  @include atlas-modal-footer;
+}
+
+.atlas-paste-table__folder {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+}
+
+// ── The preview: chips, then the rows as the note will hold them ──────────
+.atlas-table-preview {
+  @include atlas-flex-col($spacing-m);
+}
+
+.atlas-tables-chip--fine {
+  color: var(--text-normal);
+
+  svg {
+    color: var(--color-green);
+  }
+}
+
+.atlas-table-preview__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-ui-small;
+
+  th {
+    padding: 0 $spacing-s $spacing-xs;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    letter-spacing: 0.04em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding: $spacing-xs $spacing-s;
+    border-top: $border-width-s solid var(--divider-color);
+    vertical-align: top;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+}
+
+.atlas-table-preview__roll {
+  width: 1%;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+// A roll cell that is no number or range: the problem chip counts it.
+.atlas-table-preview__table tr.is-unread .atlas-table-preview__roll {
+  color: var(--color-orange);
+}
+
+.atlas-table-preview__dice {
+  font-weight: $font-weight-semibold;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
+  text-underline-offset: 3px;
+}
+
+.atlas-table-preview__more {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+}
+
+// ── The window's sidebar: search and the ways to add a table side by side ──
+.atlas-tables-sidebar__head {
+  @include atlas-flex-row($spacing-xs);
+
+  .atlas-tables-search {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.atlas-tables-sidebar__action.btn--icon {
+  width: var(--input-height);
+  height: var(--input-height);
+  flex-shrink: 0;
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+@media (max-width: 760px) {
+  .atlas-paste-table__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(160px, 1fr) minmax(0, 1fr);
+  }
+
+  .atlas-paste-table__input {
+    border-right: none;
+    border-bottom: $border-width-s solid var(--divider-color);
+  }
+}

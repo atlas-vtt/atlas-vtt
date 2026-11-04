@@ -1,16 +1,16 @@
 import { createContext, useContext } from 'react'
 import { motionValue, type MotionValue } from 'framer-motion'
 import { createStore, useStore, type StoreApi } from 'zustand'
-import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import type { ToolbarControlId, ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import type { ToolbarLayout } from '../../../../toolbar/toolbarLayout'
 import type { ToolbarZone } from './toolbarDropIndex'
 
 /** Where a control lives in the editor: on the bar or in the tray. */
 export type ToolbarPlace = 'bar' | 'tray'
 
-/** A tool being dragged with the pointer. */
+/** A tool, or the undo/redo bar, being dragged with the pointer. */
 export interface ToolbarDrag {
-  id: ToolbarControlId
+  id: ToolbarUnitId
   from: ToolbarPlace
   /** null: outside both zones, where the tool's own slot holds the well again. */
   zone: ToolbarZone | null
@@ -18,7 +18,7 @@ export interface ToolbarDrag {
   after: ToolbarControlId | null
   /** Taken from the bar: the shown control it followed there. */
   originAfter: ToolbarControlId | null
-  /** The tool's width in the bar, measured on the ghost's face; null until it is. */
+  /** The tool's width in the bar (the undo/redo bar's own width), measured on the ghost's face; null until it is. */
   barWidth: number | null
   /** The tool stays on the bar when it is full, so its well does too. */
   pinned: boolean
@@ -28,7 +28,7 @@ export interface ToolbarDrag {
 
 /** A ghost on its way to a control after the drag: dropped, or going back. */
 export interface ToolbarSettle {
-  id: ToolbarControlId
+  id: ToolbarUnitId
   to: ToolbarPlace
   kind: 'drop' | 'return'
   /** It moves there; otherwise (reduced motion) it goes at once and the control fades in. */
@@ -40,7 +40,7 @@ export interface ToolbarSettle {
 /** The ghost of the current drag, from pickup until it has landed. */
 export interface ToolbarGhostTicket {
   serial: number
-  id: ToolbarControlId
+  id: ToolbarUnitId
   from: ToolbarPlace
 }
 
@@ -52,7 +52,7 @@ export interface FrozenBar {
 
 export interface ToolbarEditState {
   /** Pressed, not yet dragged. */
-  pressed: ToolbarControlId | null
+  pressed: ToolbarUnitId | null
   drag: ToolbarDrag | null
   settle: ToolbarSettle | null
   ghost: ToolbarGhostTicket | null

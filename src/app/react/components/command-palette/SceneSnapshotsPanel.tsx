@@ -4,6 +4,7 @@ import { openContextMenuGlobal } from '../../root/ContextMenuContext';
 import type { SceneSnapshotEntry } from '../../../snapshots/SceneSnapshotService';
 import { SnapshotCard } from './SnapshotCard';
 import { useSceneSnapshots } from './useSceneSnapshots';
+import { t } from '../../../i18n';
 
 interface SceneSnapshotsPanelProps {
   /** Called right before a snapshot replaces the map, so the palette can close. */
@@ -15,7 +16,7 @@ interface SceneSnapshotsPanelProps {
  * one under a default name, then the snapshots newest first.
  */
 export function SceneSnapshotsPanel({ onRestore }: SceneSnapshotsPanelProps): React.ReactElement {
-  const { entries, isLoading, isBusy, thumbnailUrl, save, restore, overwrite, rename, remove } = useSceneSnapshots(onRestore);
+  const { entries, isLoading, isBusy, thumbnailUrl, save, restore, overwrite, rename, remove, copyLink } = useSceneSnapshots(onRestore);
   const [renamingId, setRenamingId] = useState<string | null>(null);
 
   const finishRename = useCallback((entry: SceneSnapshotEntry, name: string | null): void => {
@@ -26,19 +27,20 @@ export function SceneSnapshotsPanel({ onRestore }: SceneSnapshotsPanelProps): Re
   const openMenu = useCallback((entry: SceneSnapshotEntry, event: React.MouseEvent): void => {
     event.preventDefault();
     openContextMenuGlobal([
-      { type: 'item', label: 'Restore', icon: 'history', onClick: () => restore(entry) },
-      { type: 'item', label: 'Overwrite with current map', icon: 'refresh-cw', onClick: () => overwrite(entry) },
-      { type: 'item', label: 'Rename', icon: 'pencil', onClick: () => setRenamingId(entry.snapshot.id) },
-      { type: 'item', label: 'Delete', icon: 'trash-2', destructive: true, onClick: () => remove(entry) },
+      { type: 'item', label: t('common.restore'), icon: 'history', onClick: () => restore(entry) },
+      { type: 'item', label: t('snapshots.overwriteWithCurrent'), icon: 'refresh-cw', onClick: () => overwrite(entry) },
+      { type: 'item', label: t('common.rename'), icon: 'pencil', onClick: () => setRenamingId(entry.snapshot.id) },
+      { type: 'item', label: t('atlasLinks.copyLink'), icon: 'link', onClick: () => copyLink(entry) },
+      { type: 'item', label: t('common.delete'), icon: 'trash-2', destructive: true, onClick: () => remove(entry) },
     ], { x: event.clientX, y: event.clientY });
-  }, [overwrite, remove, restore]);
+  }, [copyLink, overwrite, remove, restore]);
 
   return (
     <div className="atlas-snapshots">
       <div className="atlas-snapshots-grid">
-        <button type="button" className="atlas-snapshot-new" disabled={isBusy} onClick={() => void save()}>
+        <button type="button" className="atlas-snapshot-new" disabled={isBusy || isLoading} onClick={() => void save()}>
           <Plus />
-          <span>New snapshot</span>
+          <span>{t('snapshots.new')}</span>
         </button>
         {entries.map((entry) => (
           <SnapshotCard
@@ -56,7 +58,7 @@ export function SceneSnapshotsPanel({ onRestore }: SceneSnapshotsPanelProps): Re
       </div>
       {entries.length === 0 && !isLoading && (
         <p className="atlas-snapshots-hint">
-          No snapshots yet. Save the map as it is now to reset it to this state later, for example before an encounter starts.
+          {t('snapshots.empty')}
         </p>
       )}
     </div>

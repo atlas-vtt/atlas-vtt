@@ -1,4 +1,5 @@
 import type { ImageJobRequest, ImageJobResponse } from './imageJob';
+import { BandUnsupportedError } from './band/bandTypes';
 import { renderImageJob, SourceDecodeError } from './imageRenderer';
 
 /** Entry of the image workers that `ImageWorkerPool` runs. Bundled inline into main.js by Vite. */
@@ -16,6 +17,7 @@ self.addEventListener('message', (event: MessageEvent<ImageJobRequest>) => {
       ok: false,
       message: error instanceof Error ? error.message : 'Could not process the image.',
       decodeFailed: error instanceof SourceDecodeError,
+      unsupported: error instanceof BandUnsupportedError ? error.reason : undefined,
     }),
   );
 });

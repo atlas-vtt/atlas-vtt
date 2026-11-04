@@ -1,0 +1,81 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Dice lab: the open set's options in the sidebar (LabWorkspace, CritRuleField,
+// ExplodingDiceFields) and the Dice tab's way into the lab. The sets to pick
+// from are in dice-set-picker.scss.
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// ── Sidebar: the open set's options ────────────────────────────────────────
+.atlas-dice-lab__options {
+  @include atlas-flex-col($spacing-m);
+  @include atlas-scrollbar;
+  @include atlas-scroll-padding($spacing-l);
+  grid-area: options;
+  min-height: 0;
+  overflow-y: auto;
+  border-top: $border-width-s solid var(--divider-color);
+}
+
+.atlas-dice-lab__name {
+  @include atlas-flex-col($spacing-xs);
+
+  .atlas-csm-input {
+    height: $button-height-m;
+  }
+}
+
+.atlas-dice-lab__option-group {
+  @include atlas-flex-col($spacing-xs);
+}
+
+// One setting in one row: its name (and info mark), its control at the row's end.
+.atlas-dice-lab__option {
+  @include atlas-flex-row($spacing-s);
+  justify-content: space-between;
+  min-height: $button-height-m;
+}
+
+.atlas-dice-lab__option-label {
+  @include atlas-flex-row($spacing-xs);
+  min-width: 0;
+  white-space: nowrap;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+}
+
+.atlas-dice-lab__select.atlas-setting-dropdown {
+  flex: none;
+  width: 128px;
+  justify-content: space-between;
+}
+
+.atlas-dice-lab__select--wide.atlas-setting-dropdown {
+  width: 152px;
+}
+
+.atlas-csm-input.atlas-dice-lab__number {
+  flex: none;
+  width: 64px;
+  height: $input-height-s;
+}
+
+.atlas-dice-lab__more {
+  > summary {
+    cursor: pointer;
+    font-size: $font-ui-smaller;
+    color: var(--text-muted);
+  }
+
+  // A margin, not a gap: the rows lie in the element's own content slot, which no flex rule reaches.
+  > .atlas-dice-lab__option-group {
+    margin-top: $spacing-s;
+  }
+}
+
+// ── The way into the lab, on the Dice tab ──────────────────────────────────
+.atlas-dice-lab__entry {
+  @include atlas-flex-row($spacing-s);
+  justify-content: space-between;
+}

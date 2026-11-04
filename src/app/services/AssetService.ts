@@ -1,7 +1,7 @@
 import { parseResourceDefinitions } from '../resources/resourceDefinitions';
 import { wasTokenRegistrationSaved } from './assetRegistrationRecovery';
 import { SettingsService } from './SettingsService';
-import { App, Notice, TFile, TFolder } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
 import { ensureAdapterFolder } from '../plugin/vaultFolders';
 import type { TokenStateSnapshot } from '../types';
 import type { CellCoord, EncounterFormation } from '../encounters/encounterFormation';
@@ -12,15 +12,25 @@ import { preserveUnreadableMetadata, readStoredMetadata, type StoredMetadata } f
 import { collectionNameKey, uniqueCollectionName } from './collectionNaming';
 import { collectionFolderName, collectionFolderPath, collectionIdOfFolder, collectionNameProblem, COLLECTIONS_DIR, GLOBAL_ASSETS_DIR, ATLAS_VTT_DIR } from './assetPaths';
 import { planFolderNameFixes } from './collectionFolderNames';
-import { moveInstallRecord } from './collectionBundle/installRecord';
-import { createCollectionRecord, defaultCollectionIdOf, forgetCollection, INITIAL_COLLECTION_ID, moveCollectionRecord, numberedCollectionName, prettifyIdentifier } from './collectionRecords';
+import { migrateInstallRecords } from './collectionBundle/installRecord';
+import { createCollectionRecord, derivedCollectionRecord, defaultCollectionIdOf, forgetCollection, INITIAL_COLLECTION_ID, moveCollectionRecord, numberedCollectionName, prettifyIdentifier } from './collectionRecords';
 import { assetFilePath, groupTokenRefs } from './vault-sync/assetFiles';
 import { reconcileIndex, type VaultReconciliation } from './vault-sync/reconcileIndex';
 import { listVault, readVault } from './vault-sync/vaultListing';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
-import { isLegacyTokenRecord, isRecord, type LegacyAssetMetadata } from './assetMetadataGuards';
+import { isLegacyTokenRecord, type LegacyAssetMetadata } from './assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import { groupLegacyTags, hasAssetTag, tagGroupOf, tagKey, type TagGroup } from './tagGroups';
+import { t } from '../i18n';
 import { trashVaultItem } from '../utils/trashVaultItem';
+import { encounterThumbnailFile } from '../encounters/encounterThumbnailFile';
+import { LibrarySync } from './library/LibrarySync';
+import type { LibraryMergeResult } from './library/mergeLibraryChanges';
+import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libraryPaths';
+import { isPayloadUnread, serializeRecord } from './library/recordFile';
+import { libraryClock, parseLibraryState } from './library/libraryState';
+import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
+import { showNotice } from '../ui/notice';
 
 export interface BaseAsset {
   id: string;
@@ -43,6 +53,8 @@ export interface TokenAsset extends BaseAsset {
   /** Small preview written by AssetThumbnailService; regenerated when missing. */
   thumbnailPath?: string;
   statblockPath?: string; // Optional link to statblock note
+  /** Set (only ever to true) on the tokens that are the players' characters; see `characters/playerCharacters.ts`. */
+  playerCharacter?: true;
 }
 
 export interface MapAsset extends BaseAsset {
@@ -74,6 +86,11 @@ export interface EncounterTokenRef extends GroupTokenRef {
   offset?: { x: number; y: number };
   /** Full token state at save time (HP, conditions, statblock link, ...). Restored verbatim on spawn. */
   state?: TokenStateSnapshot;
+  /**
+   * Dice (`"2d4"`) that say how many copies this reference stands for, rolled on every spawn
+   * (`encounterQuantity.ts`). Unset, it is one copy, which is also what older versions spawn.
+   */
+  quantity?: string;
 }
 
 export type EncounterDifficulty = 'easy' | 'medium' | 'hard' | 'deadly';
@@ -196,6 +213,8 @@ export interface AssetMetadata {
   vaultId?: string;
   /** The collection new content goes to when none is chosen; read it through `defaultCollectionIdOf`. */
   defaultCollectionId?: string;
+  /** The starter tokens were added once; deleted ones stay deleted on every device. */
+  starterTokensAdded?: boolean;
 }
 
 /** What an import writes into the asset index, in one save. */
@@ -217,10 +236,17 @@ export interface AssetTransferCommit {
   tags: ReadonlyArray<TagMetadata & { group: TagGroup }>;
 }
 
+/**
+ * This device's cache of the library, which lives in vault files (record files,
+ * `collection.json`, `library.json`; see `library/`). Hidden on purpose: every
+ * device builds its own from the files, so sync tools must not carry it.
+ */
 const ASSETS_METADATA_PATH = getDataFilePath(`${ATLAS_VTT_DIR}/assets-metadata.json`);
-const LEGACY_ASSETS_METADATA_PATH = `${ATLAS_VTT_DIR}/assets-metadata.json`;
+const LEGACY_ASSETS_METADATA_PATH = LEGACY_INDEX_FILE;
 /** A sync tool may be rewriting the index; a few more reads ride that out. */
 const METADATA_READ_OPTIONS = { retries: 3, retryDelayMs: 200 };
+/** The key under which the cache keeps the library's device-local bookkeeping. */
+const LIBRARY_STATE_KEY = 'libraryState';
 
 /** Tags are keyed by their lower-case, hyphenated name. */
 const tagIdOf = (name: string): string => name.trim().toLowerCase().replace(/\s+/g, '-');
@@ -238,9 +264,15 @@ export class AssetService {
   /** Collections whose folder is being renamed to their name, so no check starts it twice. */
   private readonly folderRenames = new Set<string>();
   private readonly reconciledListeners = new Set<(result: VaultReconciliation) => void>();
+  private readonly library: LibrarySync;
+  /** Above zero while Atlas changes the index by itself (loading, a vault check); saves then reach only the cache. */
+  private automaticDepth = 0;
+  /** A vault check waiting for files that look like copies to stand long enough. */
+  private copyCheck: number | null = null;
 
   private constructor(app: App) {
     this.app = app;
+    this.library = new LibrarySync(app);
   }
 
   static getInstance(app?: App): AssetService {
@@ -270,17 +302,30 @@ export class AssetService {
     await this.reconcileOnceVaultIsListed();
   }
 
+  /** The first check of the index against the vault, which reads the library files; null until initialization starts it. */
+  private firstCheck: Promise<void> | null = null;
+
+  /** Settles once the index was first checked against the vault and its library files, so it holds what other devices synced. */
+  async vaultChecked(): Promise<void> {
+    await this.initialize();
+    await this.firstCheck;
+  }
+
   /**
    * Checks the index against the vault's files once Obsidian has listed them all;
    * before the layout is ready `getFiles()` can miss files that exist. Resolves
    * after the check when the layout is already ready, at once otherwise.
    */
   private reconcileOnceVaultIsListed(): Promise<void> {
-    const reconciled = new Promise<void>((resolve) => {
+    const reconciled = this.firstCheck = new Promise<void>((resolve) => {
       this.app.workspace.onLayoutReady(() => {
-        resolve(this.reconcileWithVault().then(() => undefined, (error: unknown) => {
-          console.error('[AssetService] Checking the index against the vault failed:', error);
-        }));
+        resolve(this.reconcileWithVault().then(
+          // Install records older versions kept in the hidden data folder move into their collection folders.
+          () => migrateInstallRecords(this.app, Object.values(this.metadata?.collections ?? {})),
+          (error: unknown) => {
+            console.error('[AssetService] Checking the index against the vault failed:', error);
+          },
+        ));
       });
     });
     return this.app.workspace.layoutReady ? reconciled : Promise.resolve();
@@ -340,31 +385,59 @@ export class AssetService {
     return assetFilePath(asset);
   }
 
-  private readStoredMetadata(): Promise<StoredMetadata> {
-    return readStoredMetadata(this.app.vault.adapter, [ASSETS_METADATA_PATH, LEGACY_ASSETS_METADATA_PATH], METADATA_READ_OPTIONS);
+  /**
+   * The cache, or the visible index of older versions while no device has written
+   * the library files: once one has, those files are the library and that index
+   * is frozen at an older state, which would bring back what was deleted since.
+   */
+  private async readStoredMetadata(): Promise<StoredMetadata> {
+    const legacyApplies = !(await this.app.vault.adapter.exists(LIBRARY_FILE));
+    const paths = legacyApplies ? [ASSETS_METADATA_PATH, LEGACY_ASSETS_METADATA_PATH] : [ASSETS_METADATA_PATH];
+    return readStoredMetadata(this.app.vault.adapter, paths, METADATA_READ_OPTIONS);
   }
 
   private async loadMetadata(): Promise<void> {
+    // What the cache holds is the user's library; only what Atlas adds from here on counts as worked out by itself.
     const stored = await this.readStoredMetadata();
-    switch (stored.kind) {
-      case 'missing':
-        this.metadata = await this.createDefaultMetadata();
-        await this.saveMetadata();
-        break;
-      case 'legacy':
-        await this.migrateFromOldFormat(stored.metadata);
-        break;
-      case 'current':
-        this.metadata = stored.metadata;
-        await this.migrateTags();
-        break;
-      case 'unreadable':
-        await this.startOverFromUnreadableMetadata(stored);
-        break;
-    }
+    if (stored.kind === 'current') this.metadata = this.withoutBookkeeping(stored.metadata);
+    if (stored.kind === 'legacy') await this.migrateFromOldFormat(stored.metadata);
+    await this.automatically(async () => {
+      if (stored.kind === 'missing') this.metadata = await this.createDefaultMetadata();
+      if (stored.kind === 'unreadable') await this.startOverFromUnreadableMetadata(stored);
+      if (stored.kind === 'current') await this.migrateTags();
+      // Ensure all collections have uid, version, and settings fields
+      await this.migrateCollectionFields();
+      return stored.kind !== 'current';
+    });
+  }
 
-    // Ensure all collections have uid, version, and settings fields
-    await this.migrateCollectionFields();
+  /** The cached index without the library bookkeeping stored beside it, which the library sync takes. */
+  private withoutBookkeeping(stored: AssetMetadata): AssetMetadata {
+    const fields: Record<string, unknown> = { ...stored };
+    this.library.restore(parseLibraryState(fields[LIBRARY_STATE_KEY]));
+    Reflect.deleteProperty(stored, LIBRARY_STATE_KEY);
+    return stored;
+  }
+
+  /**
+   * Runs a step Atlas takes by itself, such as loading or a vault check. Its
+   * saves reach only the cache; afterwards the records it created without a
+   * file are marked derived, and one save writes the library files. `step`
+   * returns whether it changed the index without saving.
+   */
+  private async automatically(step: () => Promise<boolean>): Promise<void> {
+    const before = this.metadata ? this.library.assetIds(this.metadata) : new Set<string>();
+    const savesBefore = this.saveCount;
+    this.automaticDepth++;
+    let changed: boolean;
+    try {
+      changed = await step();
+    } finally {
+      this.automaticDepth--;
+    }
+    if (!this.metadata || this.automaticDepth > 0) return;
+    this.library.markDerived(this.metadata, before);
+    if (changed || this.saveCount !== savesBefore || this.library.awaitsFirstWrite) await this.saveMetadata();
   }
 
   /**
@@ -378,38 +451,16 @@ export class AssetService {
     try {
       copyPath = await preserveUnreadableMetadata(this.app.vault.adapter, stored.path);
     } catch (error) {
-      new Notice(`Atlas VTT could not read its asset index (${stored.path}) and left it untouched. Restart Obsidian to try again.`, 0);
+      showNotice(t('index.unreadable', { path: stored.path }), 0);
       throw error;
     }
-    new Notice(`Atlas VTT could not read its asset index and is rebuilding it from your collection files. The unreadable file was kept as ${copyPath}.`, 0);
+    showNotice(t('index.rebuilding', { path: copyPath }), 0);
     this.metadata = await this.createDefaultMetadata();
-  }
-
-  /**
-   * Replaces the in-memory index with the one on disk. Waits for pending saves
-   * and reads again when a save lands meanwhile, so it never goes back to an
-   * older index; a file that cannot be read leaves the index in memory as it is.
-   */
-  private async rereadMetadata(): Promise<void> {
-    for (;;) {
-      await this.writes.idle();
-      const savesBefore = this.saveCount;
-      const stored = await this.readStoredMetadata();
-      if (this.saveCount !== savesBefore) continue;
-      if (stored.kind !== 'current') {
-        console.error('[AssetService] Could not re-read the asset index; keeping the loaded one.', stored);
-        return;
-      }
-      this.metadata = stored.metadata;
-      await this.migrateTags();
-      await this.migrateCollectionFields();
-      return;
-    }
   }
 
   private async createDefaultMetadata(): Promise<AssetMetadata> {
     return {
-      collections: { [INITIAL_COLLECTION_ID]: createCollectionRecord(INITIAL_COLLECTION_ID) },
+      collections: { [INITIAL_COLLECTION_ID]: derivedCollectionRecord(INITIAL_COLLECTION_ID) },
       defaultCollectionId: INITIAL_COLLECTION_ID,
       assets: {},
       version: 2
@@ -424,10 +475,6 @@ export class AssetService {
     if (!this.metadata) return;
 
     let needsSave = false;
-    if (!this.metadata.vaultId) {
-      this.metadata.vaultId = crypto.randomUUID();
-      needsSave = true;
-    }
     for (const collection of Object.values(this.metadata.collections)) {
       if (!collection.uid) {
         collection.uid = crypto.randomUUID();
@@ -495,34 +542,48 @@ export class AssetService {
     await this.saveMetadata();
   }
 
-  /** Saves the index as it is now; saves reach the disk in the order they were made. */
+  /**
+   * Saves the index: the library files that changed first, then the cache, so
+   * the cache never holds a record its file lacks. Saves reach the disk in the
+   * order they were made, each with the index as it is when its turn comes, so
+   * a save waiting behind a read of the files never writes what the read replaced.
+   */
   private saveMetadata(): Promise<void> {
     if (!this.metadata) return Promise.resolve();
-    const content = JSON.stringify(this.metadata, null, 2);
+    const persistFiles = this.automaticDepth === 0;
     this.saveCount++;
-    return this.writes.run(() => this.writeMetadataFile(content));
+    return this.writes.run(async () => {
+      if (!this.metadata) return;
+      const snapshot = structuredClone(this.metadata);
+      let failure: Error | null = null;
+      try {
+        if (persistFiles) await this.library.persist(snapshot);
+      } catch (error) {
+        failure = error instanceof Error ? error : new Error(String(error));
+      }
+      // The cache follows even when a library file failed, so this device keeps what the files will get on the next save.
+      await this.writeMetadataFile(JSON.stringify({ ...snapshot, [LIBRARY_STATE_KEY]: this.library.bookkeeping }));
+      if (failure) throw failure;
+    });
+  }
+
+  /**
+   * Puts the index back as it was before a change whose save failed, and the
+   * library files it already wrote with it, so a failed import or transfer
+   * leaves nothing behind.
+   */
+  private async rollBackTo(previous: AssetMetadata): Promise<void> {
+    this.metadata = previous;
+    try {
+      await this.saveMetadata();
+    } catch (error) {
+      console.error('[AssetService] Could not put the library files back after a failed save:', error);
+    }
   }
 
   private async writeMetadataFile(content: string): Promise<void> {
-    const oldPath = LEGACY_ASSETS_METADATA_PATH;
-    const hasLegacyPath = await this.app.vault.adapter.exists(oldPath);
-    const hasHiddenPath = await this.app.vault.adapter.exists(ASSETS_METADATA_PATH);
-    const saveTargets = new Set<string>();
-
-    // Prefer hidden metadata location, and create it when no legacy file exists.
-    if (hasHiddenPath || !hasLegacyPath) {
-      saveTargets.add(ASSETS_METADATA_PATH);
-    }
-    // Keep legacy metadata synchronized for backwards compatibility.
-    if (hasLegacyPath) {
-      saveTargets.add(oldPath);
-    }
-
-    for (const savePath of saveTargets) {
-      const dir = savePath.substring(0, savePath.lastIndexOf('/'));
-      await this.ensureDirectoryViaAdapter(dir);
-      await this.app.vault.adapter.write(savePath, content);
-    }
+    await this.ensureDirectoryViaAdapter(ASSETS_METADATA_PATH.substring(0, ASSETS_METADATA_PATH.lastIndexOf('/')));
+    await this.app.vault.adapter.write(ASSETS_METADATA_PATH, content);
   }
 
   /**
@@ -621,7 +682,7 @@ export class AssetService {
   /** Deletes the given encounters if their token list is now empty. */
   private async deleteEmptiedGroups(groups: GroupAsset[]): Promise<void> {
     for (const group of groups) {
-      if (groupTokenRefs(group).length === 0) await this.deleteAsset(group.id);
+      if (groupTokenRefs(group).length === 0) await this.removeAsset(group.id);
     }
   }
 
@@ -631,7 +692,7 @@ export class AssetService {
     await this.ensureLoaded();
     const id = this.assertCollectionFolderName(name);
 
-    const collection: CollectionMetadata = { ...createCollectionRecord(id), publisherId: this.metadata!.vaultId! };
+    const collection: CollectionMetadata = { ...createCollectionRecord(id), publisherId: this.vaultIdNow() };
     if (description === undefined) delete collection.description;
     else collection.description = description;
 
@@ -645,6 +706,11 @@ export class AssetService {
     await this.ensureLoaded();
 
     return Object.values(this.metadata!.collections);
+  }
+
+  /** The collections of the index as loaded, without waiting for it; none before it has loaded. */
+  loadedCollections(): CollectionMetadata[] {
+    return Object.values(this.metadata?.collections ?? {});
   }
 
   /** The collection new content goes to when none is chosen; it cannot be deleted. */
@@ -662,7 +728,7 @@ export class AssetService {
     if (this.metadata!.collections[id]) return;
     // The folder first: a vault check forgets records whose folder is missing.
     await this.ensureCollectionStructure(id);
-    this.metadata!.collections[id] ??= createCollectionRecord(id);
+    this.metadata!.collections[id] ??= derivedCollectionRecord(id);
     await this.saveMetadata();
   }
 
@@ -708,7 +774,8 @@ export class AssetService {
     const folder = this.app.vault.getFolderByPath(collectionFolderPath(oldId));
     if (folder) await this.renameInVault(folder, collectionFolderPath(newId));
     if (!this.metadata!.collections[oldId]) return;
-    await this.moveRecordWithInstall(oldId, newId);
+    // The install record lies in the folder and moved with it.
+    moveCollectionRecord(this.metadata!, oldId, newId);
     await this.saveMetadata();
   }
 
@@ -734,12 +801,6 @@ export class AssetService {
     });
   }
 
-  /** Moves a collection record to the folder `newId`, and its install record along, so updates still find its files. */
-  private async moveRecordWithInstall(oldId: string, newId: string): Promise<void> {
-    moveCollectionRecord(this.metadata!, oldId, newId);
-    const uid = this.metadata!.collections[newId]?.uid;
-    if (uid) await moveInstallRecord(this.app, uid, oldId, newId);
-  }
 
   /**
    * Gives every collection its folder's name: the folder takes the collection's
@@ -794,7 +855,7 @@ export class AssetService {
     const newId = collectionIdOfFolder(newPath);
     if (!oldId || oldId === newId || !this.metadata!.collections[oldId]) return false;
 
-    if (newId) await this.moveRecordWithInstall(oldId, newId);
+    if (newId) moveCollectionRecord(this.metadata!, oldId, newId);
     else forgetCollection(this.metadata!, oldId);
     for (const id of Object.keys(this.metadata!.collections)) {
       if (!this.app.vault.getFolderByPath(collectionFolderPath(id))) await this.ensureCollectionStructure(id);
@@ -814,21 +875,36 @@ export class AssetService {
   reconcileWithVault(deleted: ReadonlySet<string> = new Set()): Promise<VaultReconciliation> {
     return this.indexLock.run(async () => {
       await this.ensureLoaded();
-      await this.matchFolderNames();
-      const readings = await readVault(this.app, this.metadata!);
-      // From the listing on, nothing awaits until the index is changed, so no other edit interleaves.
-      const result = reconcileIndex(this.metadata!, listVault(this.app, readings, deleted));
-      if (result.changed) await this.saveMetadata();
-      for (const { from, to } of result.folderMoves) {
-        const [oldId, newId] = [collectionIdOfFolder(from), collectionIdOfFolder(to)];
-        const uid = newId ? this.metadata!.collections[newId]?.uid : undefined;
-        if (oldId && newId && uid) await moveInstallRecord(this.app, uid, oldId, newId);
-      }
-      for (const id of result.missingFolders) await this.ensureCollectionStructure(id);
-      await this.applyVaultFileOps(result);
-      if (result.changed) this.notifyReconciled(result);
-      return result;
+      const check: { result?: VaultReconciliation } = {};
+      await this.automatically(async () => {
+        await this.matchFolderNames();
+        // Library files first: they are the library, the index only this device's cache of them.
+        const library = await this.readLibraryFiles();
+        const readings = await readVault(this.app, this.metadata!);
+        // From the listing on, nothing awaits until the index is changed, so no other edit interleaves.
+        const listing = listVault(this.app, readings, deleted, this.recordedAssets());
+        const result = reconcileIndex(this.metadata!, listing);
+        if (library.changed) result.changed = true;
+        result.folderMoves.unshift(...library.folderMoves);
+        check.result = result;
+        return result.changed;
+      });
+      const reconciled = check.result!;
+      for (const id of reconciled.missingFolders) await this.ensureCollectionStructure(id);
+      await this.applyVaultFileOps(reconciled);
+      if (reconciled.changed) this.notifyReconciled(reconciled);
+      return reconciled;
     });
+  }
+
+  /** Assets whose record file this device has read or written; their art or map missing for now does not remove them. */
+  private recordedAssets(): Set<string> {
+    const recorded = new Set<string>();
+    for (const asset of Object.values(this.metadata!.assets)) {
+      const path = recordFilePath(asset);
+      if (path && this.library.hasRecordFile(asset.id, path) && this.app.vault.getFileByPath(path)) recorded.add(asset.id);
+    }
+    return recorded;
   }
 
   /** Moves and trashes the JSON copies the vault check asked for; a failure only skips that file. */
@@ -932,7 +1008,6 @@ export class AssetService {
         newAsset.filePath = this.getAssetPath(newAsset);
       }
       await this.ensureCollectionRecord(newAsset.collection);
-      await this.writeRecordFile(newAsset);
     }
 
     for (const newAsset of newAssets) this.metadata!.assets[newAsset.id] = newAsset;
@@ -943,7 +1018,9 @@ export class AssetService {
       const token = newAssets.find((asset): asset is TokenAsset => asset.type === 'token');
       if (!token || newAssets.some((asset) => asset.type !== 'token')) throw error;
       if (!await wasTokenRegistrationSaved(this.app, token)) {
-        for (const newAsset of newAssets) delete this.metadata!.assets[newAsset.id];
+        const previous = structuredClone(this.metadata!);
+        for (const newAsset of newAssets) delete previous.assets[newAsset.id];
+        await this.rollBackTo(previous);
         throw error;
       }
     }
@@ -999,59 +1076,33 @@ export class AssetService {
       this.propagateTokenReferenceUpdate(updatedAsset);
     }
 
-    // Update asset data file if needed
-    let fileContent: string | null = null;
-    if (updatedAsset.type === 'map') {
-      fileContent = this.serializeMapAsset(updatedAsset);
-    } else if (updatedAsset.type !== 'token' && updatedAsset.type !== 'note' && 'data' in updates) {
-      fileContent = JSON.stringify(updates.data, null, 2) || '{}';
-    }
-    if (fileContent !== null) {
-      const content = fileContent;
-      const file = this.app.vault.getAbstractFileByPath(this.getAssetPath(updatedAsset));
-      if (file instanceof TFile) {
-        await this.app.vault.process(file, () => content);
-      }
-    }
-
+    // The save writes the record file along with every other record that changed.
     await this.saveMetadata();
   }
 
-  /** Content of the JSON file that accompanies a map asset. */
-  private serializeMapAsset(asset: MapAsset): string {
-    return JSON.stringify({
-      id: asset.id,
-      name: asset.name,
-      mapFilePath: asset.mapFilePath,
-      tags: asset.tags,
-      collection: asset.collection,
-      createdAt: asset.createdAt,
-      modifiedAt: asset.modifiedAt
-    }, null, 2);
+  /**
+   * The record file of an asset whose files are written outside the index
+   * (transfers, imports), so they land in one journalled step: the whole record,
+   * as saving the index would write it. Null when the record's payload is not
+   * loaded yet and its file exists, which only that file holds.
+   */
+  pendingRecordFile(asset: Asset): { path: string; content: string } | null {
+    const path = recordFilePath(asset);
+    if (!path) return null;
+    if (isPayloadUnread(asset) && this.app.vault.getFileByPath(path)) return null;
+    return { path, content: serializeRecord(asset) };
   }
 
   /**
-   * The JSON file a record needs written, or null when it needs none: a map's
-   * always, since it repeats the record; the payload of other JSON-backed types
-   * only when the file is missing, because older records keep it in the file alone.
+   * Deletes an asset with its files. Holds the index while it does, so the vault check never
+   * meets a half-deleted asset: a scene whose record file is gone while its map is still there
+   * would be taken in again as a scene of its own.
    */
-  pendingRecordFile(asset: Asset): { path: string; content: string } | null {
-    if (asset.type === 'token' || asset.type === 'note') return null;
-    const path = this.getAssetPath(asset);
-    if (asset.type === 'map') return { path, content: this.serializeMapAsset(asset) };
-    if (this.app.vault.getAbstractFileByPath(path)) return null;
-    return { path, content: JSON.stringify(asset.data, null, 2) || '{}' };
+  deleteAsset(id: string): Promise<void> {
+    return this.runExclusive(() => this.removeAsset(id));
   }
 
-  private async writeRecordFile(asset: Asset): Promise<void> {
-    const file = this.pendingRecordFile(asset);
-    if (!file) return;
-    const existing = this.app.vault.getAbstractFileByPath(file.path);
-    if (existing instanceof TFile) await this.app.vault.process(existing, () => file.content);
-    else await this.app.vault.create(file.path, file.content);
-  }
-
-  async deleteAsset(id: string): Promise<void> {
+  private async removeAsset(id: string): Promise<void> {
     await this.ensureLoaded();
 
     const asset = this.metadata!.assets[id];
@@ -1117,6 +1168,11 @@ export class AssetService {
           console.error('[AssetService] Error deleting scene map file:', error);
         }
       }
+      try {
+        await trashSceneSnapshots(this.app, asset);
+      } catch (error) {
+        console.error('[AssetService] Error deleting scene snapshots:', error);
+      }
     }
 
     const emptiedGroups = asset.type === 'token' ? await this.getGroupsUsingTokens([asset.id]) : [];
@@ -1124,12 +1180,28 @@ export class AssetService {
       this.removeTokenReferencesFromGroups(asset.id);
       await this.trashFileIfPresent(asset.thumbnailPath);
     }
+    if (asset.type === 'encounter') await this.trashEncounterThumbnail(asset);
 
     // Remove from metadata
     delete this.metadata!.assets[id];
     await this.saveMetadata();
 
     await this.deleteEmptiedGroups(emptiedGroups);
+  }
+
+  /** An encounter's thumbnail goes with it, unless another encounter (a copy) still shows the same file. */
+  private async trashEncounterThumbnail(encounter: EncounterAsset): Promise<void> {
+    const url = encounter.thumbnailUrl;
+    if (!url) return;
+    const shared = Object.values(this.metadata!.assets)
+      .some((other) => other.id !== encounter.id && other.type === 'encounter' && other.thumbnailUrl === url);
+    const file = shared ? null : encounterThumbnailFile(this.app, url);
+    if (!file) return;
+    try {
+      await trashVaultItem(this.app, file);
+    } catch (error) {
+      console.error('[AssetService] Error deleting encounter thumbnail:', error);
+    }
   }
 
   private async trashFileIfPresent(path: string | undefined): Promise<void> {
@@ -1158,10 +1230,43 @@ export class AssetService {
     return Object.values(this.metadata!.collections).find((collection) => collection.uid === uid) ?? null;
   }
 
-  /** This vault's identity as a publisher of collections. */
+  /** Whether the starter tokens were added to this vault, on any device. */
+  async starterTokensAdded(): Promise<boolean> {
+    await this.ensureLoaded();
+    return this.metadata!.starterTokensAdded === true;
+  }
+
+  /** Records that the starter tokens were added, before the first is written, so no device adds them again. */
+  async markStarterTokensAdded(): Promise<void> {
+    await this.ensureLoaded();
+    if (this.metadata!.starterTokensAdded) return;
+    this.metadata!.starterTokensAdded = true;
+    await this.saveMetadata();
+  }
+
+  /** This vault's identity as a publisher, when it has one; comparing with it never makes one. */
+  async knownVaultId(): Promise<string | null> {
+    await this.ensureLoaded();
+    return this.metadata!.vaultId ?? null;
+  }
+
+  /** This vault's identity as a publisher of collections, made and saved when it publishes for the first time. */
   async getVaultId(): Promise<string> {
     await this.ensureLoaded();
-    return this.metadata!.vaultId!;
+    if (this.metadata!.vaultId) return this.metadata!.vaultId;
+    const id = this.vaultIdNow();
+    await this.saveMetadata();
+    return id;
+  }
+
+  /**
+   * This vault's publisher id, made when first needed (a collection created or
+   * published) rather than at start: a device that starts before sync delivers
+   * the library would otherwise make an id of its own and write it over the vault's.
+   */
+  private vaultIdNow(): string {
+    this.metadata!.vaultId ??= crypto.randomUUID();
+    return this.metadata!.vaultId;
   }
 
   /** Whether another collection than `exceptId` already uses `name`; names are compared without case. */
@@ -1217,7 +1322,21 @@ export class AssetService {
     else collection.author = release.author;
     if (release.coverPath === undefined) delete collection.coverPath;
     else collection.coverPath = release.coverPath;
-    collection.publisherId = this.metadata!.vaultId!;
+    collection.publisherId = this.vaultIdNow();
+    await this.saveMetadata();
+  }
+
+  /**
+   * Gives a collection Atlas worked out from its folder an identity of its own. Its derived uid
+   * is the same in every vault that has a folder of that name, so a bundle carrying it would
+   * be taken for an update of an unrelated collection elsewhere. Saved to its file at once.
+   */
+  async ensureOwnCollectionUid(collectionId: string): Promise<void> {
+    await this.ensureLoaded();
+    const collection = this.metadata!.collections[collectionId];
+    if (!collection || collection.uid !== derivedCollectionRecord(collectionId).uid) return;
+    collection.uid = crypto.randomUUID();
+    collection.modifiedAt = Date.now();
     await this.saveMetadata();
   }
 
@@ -1233,7 +1352,7 @@ export class AssetService {
     const id = name.trim() === collectionId ? collectionId : this.assertCollectionFolderName(name, collectionId);
     collection.uid = uid;
     collection.version = 1;
-    collection.publisherId = this.metadata!.vaultId!;
+    collection.publisherId = this.vaultIdNow();
     delete collection.releasedAt;
     collection.modifiedAt = Date.now();
     if (id !== collectionId) await this.moveCollectionFolder(collectionId, id);
@@ -1267,7 +1386,7 @@ export class AssetService {
     try {
       await this.saveMetadata();
     } catch (error) {
-      this.metadata = current;
+      await this.rollBackTo(current);
       throw error;
     }
     if (upsert.some((asset) => asset.type === 'token')) SettingsService.forApp(this.app)?.markTokenImported();
@@ -1296,22 +1415,52 @@ export class AssetService {
     try {
       await this.saveMetadata();
     } catch (error) {
-      this.metadata = current;
+      await this.rollBackTo(current);
       throw error;
     }
   }
 
   // Backward compatibility methods
-  /** `userImport: false` adds a token Atlas provides, which does not count as the user's first import. */
+  /**
+   * `userImport: false` adds a token Atlas provides, which does not count as the
+   * user's first import; `id` gives such a token the same id on every device.
+   */
   async addTokenAsset(
     asset: Omit<TokenAsset, 'id' | 'createdAt' | 'modifiedAt' | 'type'>,
-    { userImport = true }: { userImport?: boolean } = {},
+    { userImport = true, id }: { userImport?: boolean; id?: string } = {},
   ): Promise<TokenAsset> {
-    return this.registerAsset<TokenAsset>({ ...asset, type: 'token', ...this.createAssetIdentity('token') }, userImport);
+    const identity = this.createAssetIdentity('token');
+    return this.registerAsset<TokenAsset>({ ...asset, type: 'token', ...identity, id: id ?? identity.id }, userImport);
   }
 
   async getTokenAssets(): Promise<TokenAsset[]> {
     return this.getAssets(undefined, 'token');
+  }
+
+  /** Every library token, read from the index in memory; none before it was loaded. For menus that open at once. */
+  loadedTokenAssets(): TokenAsset[] {
+    const assets = this.metadata ? Object.values(this.metadata.assets) : [];
+    return assets.filter((asset): asset is TokenAsset => asset.type === 'token');
+  }
+
+  /**
+   * Makes library tokens the players' characters, or no longer, in one save. An edit like any
+   * other: written to each token's record file and stamped; the flag is stored only as true.
+   * Tokens that already are what is asked, and ids that name no token, are left alone.
+   */
+  async setPlayerCharacters(ids: readonly string[], on: boolean): Promise<void> {
+    await this.ensureLoaded();
+    const assets = this.metadata!.assets;
+    const modifiedAt = Date.now();
+    let changed = false;
+    for (const id of ids) {
+      const asset = assets[id];
+      if (asset?.type !== 'token' || (asset.playerCharacter === true) === on) continue;
+      const { playerCharacter: _was, ...rest } = asset;
+      assets[id] = on ? { ...rest, playerCharacter: true, modifiedAt } : { ...rest, modifiedAt };
+      changed = true;
+    }
+    if (changed) await this.saveMetadata();
   }
 
   async deleteTokenAsset(id: string): Promise<void> {
@@ -1356,13 +1505,38 @@ export class AssetService {
     return changed;
   }
 
-  /** Re-reads the index from disk, after any import in progress has finished. */
+  /**
+   * Takes in library files changed on disk (by a sync tool, by hand), after any
+   * import in progress has finished. Checking the index against the rest of the
+   * vault is left to the vault check.
+   */
   async refreshMetadata(): Promise<void> {
-    if (!this.metadata) {
-      await this.ensureLoaded();
-      return;
-    }
-    await this.indexLock.run(() => this.rereadMetadata());
+    await this.ensureLoaded();
+    await this.indexLock.run(() => this.automatically(async () => (await this.readLibraryFiles()).changed));
+  }
+
+  /** Reads the library files that changed into the index. Open maps hear of changed collection settings. */
+  private async readLibraryFiles(): Promise<LibraryMergeResult> {
+    // Inside the write queue, so no save writes a file while it is read.
+    const merged = await this.writes.run(() => this.library.read(this.metadata!));
+    for (const id of merged.changedCollections) this.app.workspace.trigger('atlas-vtt:collection-settings-changed', id);
+    if (merged.retryAt !== null) this.checkAgainAt(merged.retryAt);
+    return merged;
+  }
+
+  /** Checks the vault again once files that look like copies have stood long enough to be taken in. */
+  private checkAgainAt(time: number): void {
+    if (this.copyCheck !== null) window.clearTimeout(this.copyCheck);
+    this.copyCheck = window.setTimeout(() => {
+      this.copyCheck = null;
+      runInBackground(this.reconcileWithVault().then(() => undefined), 'Taking in copied Atlas files');
+    }, Math.max(0, time - libraryClock.now()) + 100);
+  }
+
+  /** Stops a check waiting for copies; called when the plugin unloads. */
+  cancelScheduledChecks(): void {
+    if (this.copyCheck !== null) window.clearTimeout(this.copyCheck);
+    this.copyCheck = null;
   }
 
   /**
@@ -1389,23 +1563,6 @@ export class AssetService {
       }
     }
     if (changed) await this.saveMetadata();
-  }
-
-  /** The tags of a group: registered in any collection or carried by any asset of the group, sorted by name. */
-  async getAllTags(group: TagGroup): Promise<string[]> {
-    await this.ensureLoaded();
-    if (!this.metadata) return [];
-
-    const tags = new Set<string>();
-    for (const collection of Object.values(this.metadata.collections)) {
-      for (const tag of Object.values(collection.tags ?? {})) {
-        if (tag.group === group) tags.add(tag.name);
-      }
-    }
-    for (const asset of Object.values(this.metadata.assets)) {
-      if (tagGroupOf(asset.type) === group) asset.tags.forEach((tag) => tags.add(tag));
-    }
-    return Array.from(tags).sort();
   }
 
   /** The tags a collection registers in a group. */
@@ -1476,19 +1633,22 @@ export class AssetService {
       .filter((asset) => asset.collection === collectionId && tagGroupOf(asset.type) === group);
   }
 
-  /**
-   * Update asset tags
-   */
-  async updateAssetTags(assetId: string, tags: string[]): Promise<void> {
+  /** Replaces the tags of several assets in one save of the index; changes nothing when one of them is gone. */
+  async updateTagsOfAssets(changes: readonly { id: string; tags: string[] }[]): Promise<void> {
     await this.ensureLoaded();
-    if (!this.metadata) throw new Error('Metadata not loaded');
-    
-    const asset = this.metadata.assets[assetId];
-    if (!asset) throw new Error(`Asset ${assetId} not found`);
-    
-    asset.tags = tags;
-    asset.modifiedAt = Date.now();
-    
+    const metadata = this.metadata;
+    if (!metadata) throw new Error('Metadata not loaded');
+
+    for (const { id } of changes) {
+      if (!metadata.assets[id]) throw new Error(`Asset ${id} not found`);
+    }
+    const now = Date.now();
+    for (const { id, tags } of changes) {
+      const asset = metadata.assets[id]!;
+      asset.tags = tags;
+      asset.modifiedAt = now;
+    }
+
     await this.saveMetadata();
   }
 
@@ -1538,6 +1698,7 @@ export class AssetService {
    * Reset the singleton instance (useful for testing)
    */
   static resetInstance(): void {
+    AssetService.instance?.cancelScheduledChecks();
     AssetService.instance = null;
   }
 }

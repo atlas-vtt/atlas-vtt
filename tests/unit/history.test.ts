@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { temporal } from 'zundo';
 import {
   HISTORY_LIMIT,
   abandonHistoryTransaction,
   beginHistoryTransaction,
-  createHistoryOptions,
   endHistoryTransaction,
   getHistoryStore,
   runHistoryTransaction,
   runUntracked,
+  withHistory,
   type HistoryState,
 } from '../../src/app/stores/history';
 
@@ -26,7 +25,7 @@ interface TestState {
 
 function createTestStore() {
   const store = create<TestState>()(
-    temporal(
+    withHistory(
       immer<TestState>((set) => ({
         objects: { tokens: { a: { x: 0, y: 0 } } },
         grid: null,
@@ -46,7 +45,6 @@ function createTestStore() {
             draft.selectedIds = ids;
           }),
       })),
-      createHistoryOptions(() => store.getState()),
     ),
   );
   const history = getHistoryStore(store) as ReturnType<typeof getHistoryStore> & { getState: () => HistoryState };

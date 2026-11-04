@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILT_IN_SENSES, GENERIC_SENSES, NORMAL_SIGHT } from '../../src/app/gameSystems/senses';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { LIGHT_PRESETS } from '../../src/app/lighting/lightPresets';
-import { SceneModelBuilder, SceneSpots } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder, SceneSpots } from '../../src/app/vision/sceneModel';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import type { LightEmission, LightSource } from '../../src/app/types/lightingTypes';
@@ -49,12 +49,13 @@ describe('a light inside magical darkness', () => {
     expect(lightLevelAt({ x: 650, y: 600 }, { ambient: 0 }, outside.reaches)).toBe('magical-dark');
   });
 
-  it('hands the engine the areas the rule counts, of the darkness and of the lights it may swallow: the reaches\' own polygons', () => {
+  it('hands the engine the areas the rule counts, of the darkness and of every light: the reaches\' own polygons', () => {
     const model = build(state({ dark: DARK, torch: light('torch', 800, torch) }));
     expect(model.lights.map((engine) => engine.area)).toEqual(model.reaches.map((reach) => reach.polygon));
     model.lights.forEach((engine, i) => expect(engine.area).toBe(model.reaches[i]!.polygon));
-    // A scene without a darkness hands none on: its lights are as they always were.
-    expect(build(state({ torch: light('torch', 800, torch) })).lights[0]).not.toHaveProperty('area');
+    // A scene without a darkness hands them on too: the polygon picture draws every light as its reach.
+    const plain = build(state({ torch: light('torch', 800, torch) }));
+    expect(plain.lights[0]!.area).toBe(plain.reaches[0]!.polygon);
   });
 
   it('is put out when a token carries it into the darkness, and a darkness is never put out by another', () => {
@@ -86,6 +87,16 @@ describe('a vision token inside magical darkness', () => {
   it('sees as ever outside the darkness, past it too, and inside one a light outshines where it stands', () => {
     expect(regionsOf({ hero: token('hero', 900) })).toEqual([`hero:${NORMAL_SIGHT.id}`]);
     expect(regionsOf({ hero: token('hero', 520) }, { dark: DARK, sun: light('sun', 540, { ...torch, priority: 1 }) }, 0)).toEqual([`hero:${NORMAL_SIGHT.id}`]);
+  });
+
+  it('stays without its eyes beside a companion whose small light outshines the darkness, on every side', () => {
+    // A 5 ft light reaches exactly to the centre of the next cell, where its picture has faded to nothing.
+    const lantern: LightEmission = { bright: 0, dim: 5, color: '#aa00ff', intensity: 1, animation: 'none', priority: 1 };
+    const bearer: TokenEntity = { ...token('bearer', 500), light: lantern };
+    for (const [dx, dy] of [[-70, 0], [70, 0], [0, -70], [0, 70]] as const) {
+      const hero: TokenEntity = { ...token('hero', 500 + dx, [{ id: 'dnd5e-darkvision', range: 60 }]), y: 600 + dy };
+      expect(regionsOf({ bearer, hero }, { dark: DARK }, 0)).toEqual([`bearer:${NORMAL_SIGHT.id}`]);
+    }
   });
 
   it('is still shown to the players within its own space', () => {

@@ -3,7 +3,7 @@
 @use 'variables' as *;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Asset Manager – Header controls: asset type, search, sort, create
+// Asset Manager – Header controls: asset type, search, create
 // ═══════════════════════════════════════════════════════════════════════════
 // Each control has a wide and a compact form; the toolbar's `data-compact`
 // steps show one of them (see `_header.scss`).
@@ -102,10 +102,9 @@
   // Anchors the suggestions; narrow headers make the field an absolute overlay instead.
   position: relative;
   @include atlas-flex-row($gap: $spacing-xs);
-  // The same on every tab: room for typed filters and the filter button.
-  flex: 0 1 240px;
-  width: 240px;
-  min-width: 120px;
+  // The same on every tab: room for typed filters and the filter button. Its
+  // width is the toolbar's track (`_header.scss`), which narrows before the
+  // asset type tabs give up their room.
   height: $control-height;
   padding: 0 $spacing-xs 0 $spacing-s;
   background: var(--background-modifier-form-field);
@@ -126,6 +125,7 @@
 
   input {
     flex: 1;
+    width: 0;
     min-width: 0;
     height: 100%;
     background: transparent !important;
@@ -197,62 +197,6 @@
 // fade out from there over the whole row on every render.
 .atlas-am-toolbar[data-fitting] .atlas-asset-manager-search {
   transition: none;
-}
-
-// ── Sort ────────────────────────────────────────────────────────────────────
-
-.atlas-am-sort-inline {
-  @include atlas-flex-row($gap: $spacing-xs);
-}
-
-.atlas-am-sort-menu {
-  display: none;
-}
-
-.atlas-am-toolbar[data-compact~='sort'] {
-  .atlas-am-sort-inline {
-    display: none;
-  }
-
-  .atlas-am-sort-menu {
-    display: block;
-  }
-}
-
-.atlas-am-sort {
-  &.btn {
-    height: $control-height;
-    padding: 0 $spacing-s;
-    border-radius: $radius-m;
-    font-size: $font-ui-small;
-    font-weight: $font-weight-normal;
-    color: var(--text-muted);
-    transition: transform $transition-press $transition-ease-out;
-  }
-
-  &:hover {
-    color: var(--text-normal);
-  }
-
-  &:active {
-    transform: scale(0.97);
-  }
-
-  // All labels stacked in one grid cell: width = longest label, no layout shift
-  .atlas-am-sort-stack {
-    display: grid;
-
-    > span {
-      grid-area: 1 / 1;
-      text-align: left;
-      white-space: nowrap;
-      visibility: hidden;
-
-      &.atlas-current {
-        visibility: visible;
-      }
-    }
-  }
 }
 
 // ── Create ──────────────────────────────────────────────────────────────────

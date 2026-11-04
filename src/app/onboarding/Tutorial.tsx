@@ -5,6 +5,7 @@ import { useAtlasSettings } from '../keyboard/useMapHotkeys';
 import type { SettingsService, TutorialId } from '../services/SettingsService';
 import { useDialogFocus } from './useDialogFocus';
 import { placeTutorialCard } from './tutorialPlacement';
+import { t } from '../i18n';
 
 /** A screenshot shown above a step's text, for what the user cannot see yet. */
 export interface TutorialImage { src: string; alt: string }
@@ -22,7 +23,7 @@ export function Tutorial(props: TutorialProps): React.JSX.Element | null {
   if (!settings?.shouldShowTutorial(props.id)) return null;
   return <TutorialCard {...props} settings={settings} />;
 }
-function TutorialCard({ settings, id, steps, label = 'Getting started', action }: TutorialProps & { settings: SettingsService }): React.JSX.Element {
+function TutorialCard({ settings, id, steps, label = t('tour.label'), action }: TutorialProps & { settings: SettingsService }): React.JSX.Element {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -61,11 +62,11 @@ function TutorialCard({ settings, id, steps, label = 'Getting started', action }
           <p id={bodyId}>{step.body}</p>
         </div>
         <div className="atlas-onboarding-actions">
-          <Button variant="ghost" onClick={finish}>Skip</Button>
+          <Button variant="ghost" onClick={finish}>{t('tour.skip')}</Button>
           <div className="atlas-onboarding-actions-end">
-            {index > 0 && <Button variant="ghost" onClick={() => setIndex(index - 1)}>Back</Button>}
-            {index < steps.length - 1 ? <Button onClick={() => setIndex(index + 1)}>Next</Button> :
-              <Button onClick={() => { finish(); action?.onClick(); }}>{action?.label ?? 'Got it'}</Button>}
+            {index > 0 && <Button variant="ghost" onClick={() => setIndex(index - 1)}>{t('common.back')}</Button>}
+            {index < steps.length - 1 ? <Button onClick={() => setIndex(index + 1)}>{t('tour.next')}</Button> :
+              <Button onClick={() => { finish(); action?.onClick(); }}>{action?.label ?? t('tour.gotIt')}</Button>}
           </div>
         </div>
       </div>

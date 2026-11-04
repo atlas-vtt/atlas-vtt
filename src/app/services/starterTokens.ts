@@ -39,17 +39,28 @@ export const STARTER_TOKENS: readonly StarterToken[] = [
 
 const STARTER_TAG = 'Class';
 
+/** The same id on every device, so two devices adding the starter tokens before they sync add one set. */
+const STARTER_ID_PREFIX = 'token-starter-';
+const starterTokenId = (name: string): string => `${STARTER_ID_PREFIX}${name.toLowerCase()}`;
+
+/** Whether a record is one of the starter tokens every vault gets. */
+export const isStarterTokenId = (id: string): boolean => id.startsWith(STARTER_ID_PREFIX);
+
 /**
- * Adds the starter tokens to the default collection, once per vault. The flag is
- * set before the first write, so an interrupted run never adds a second set and
- * tokens the user deleted never come back. Images and records are written under
- * the index lock, so the vault check never adopts an image as a second asset.
+ * Adds the starter tokens to the default collection, once per vault. The flag
+ * lives in the library file every device shares and is set before the first
+ * write, so an interrupted run never adds a second set and tokens the user
+ * deleted never come back. Images and records are written under the index lock,
+ * so the vault check never adopts an image as a second asset.
  */
 export async function addStarterTokens(app: App, assets: AssetService, settings: SettingsService): Promise<void> {
-  if (settings.getSetting('starterTokensAdded')) return;
-  await assets.initialize();
-  settings.setSetting('starterTokensAdded', true);
-  await settings.saveSettingsNow();
+  // The flag another device set arrives with the library files, which the first vault check reads.
+  await assets.vaultChecked();
+  if (await assets.starterTokensAdded()) return;
+  // Versions before the flag synced kept it in Atlas' settings.
+  const addedBefore = settings.getSetting('starterTokensAdded');
+  await assets.markStarterTokensAdded();
+  if (addedBefore) return;
 
   await assets.runExclusive(async () => {
     const collection = assets.getDefaultCollectionId();
@@ -59,7 +70,7 @@ export async function addStarterTokens(app: App, assets: AssetService, settings:
       const imagePath = await writeAssetImage(app, token.name, data);
       await assets.addTokenAsset(
         { name: token.name, imagePath, collection, tags: [tag.name], showRing: true },
-        { userImport: false },
+        { userImport: false, id: starterTokenId(token.name) },
       );
     }
   });

@@ -8,7 +8,9 @@ import { AssetThumbnailService, type ThumbnailAsset, type ThumbnailState } from 
 import { tagGroupOfTab, type TagsByGroup } from '../utils/assetTags';
 import { folderIdOf, tabFolderPath } from '../utils/assetFolders';
 import type { TagGroup } from '../../../../services/tagGroups';
-import { formatServiceAsset, partitionByTab, tokenPreviewSources, withThumbnails, type TabServiceAsset } from '../utils/assetFormatters';
+import { assetFolderId, formatServiceAsset, partitionByTab, tokenPreviewSources, withThumbnails, type TabServiceAsset } from '../utils/assetFormatters';
+import { tabHasFolders } from '../utils/tabKinds';
+import { nearestShownFolder, withoutPartyOnlyFolders } from '../utils/partyFolders';
 import { reconcileAssets } from '../utils/assetReconcile';
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext';
 import { useOptionalAtlasStore } from '../../../../react/ViewStoreContext';
@@ -16,7 +18,10 @@ import { runInBackground } from '../../../../utils/backgroundTask';
 import type { AtlasView } from '../../../../atlas-view';
 
 export interface AssetData {
+  /** The tab's folders; on the Characters tab without those only player characters fill. */
   folders: Folder[];
+  /** The folder to show for an open one: itself, or where it leads while it is hidden (`nearestShownFolder`). */
+  shownFolderOf: (folderId: string | null) => string | null;
   assets: AnyAsset[];
   /**
    * Whether `assets` are not those of the selected tab and collection yet: on
@@ -81,6 +86,8 @@ export function useAssetData(
   const [collections, setCollections] = useState<CollectionOption[]>([]);
   const [assetService, setAssetService] = useState<AssetService | null>(null);
   const [counts, setCounts] = useState<Record<Tab, number> | null>(null);
+  // The folders of the Characters tab that hold player characters, one per line: they are hidden where nothing else fills them.
+  const [partyFolderKey, setPartyFolderKey] = useState('');
   const thumbnails = useMemo(
     () => (assetService ? AssetThumbnailService.getInstance(app, assetService) : null),
     [app, assetService],
@@ -89,6 +96,10 @@ export function useAssetData(
   // ── Load folders ──────────────────────────────────────────────
   const loadFoldersForActiveTab = useCallback(async (): Promise<void> => {
     if (!app) return;
+    if (!tabHasFolders(activeTab)) {
+      setFolders([]);
+      return;
+    }
     try {
       const basePath = tabFolderPath(selectedCollection, activeTab);
       const baseFolder = app.vault.getAbstractFileByPath(basePath);
@@ -130,19 +141,24 @@ export function useAssetData(
       const byTab = partitionByTab(await assetService.getAssets(selectedCollection));
       if (load !== latestLoad.current) return;
       // Queued before the cards are built, so a card whose thumbnail is on its way shows a placeholder.
-      thumbnails?.ensureThumbnails([...byTab.tokens, ...byTab.maps]);
-      const previewSources = tokenPreviewSources(byTab.tokens);
+      const allTokens = [...byTab.tokens, ...byTab.party];
+      thumbnails?.ensureThumbnails([...allTokens, ...byTab.maps]);
+      const previewSources = tokenPreviewSources(allTokens);
       const tabBase = tabFolderPath(selectedCollection, activeTab);
       const tabAssets: TabServiceAsset[] = byTab[activeTab];
       const thumbnailOf = thumbnails ? (asset: ThumbnailAsset): ThumbnailState => thumbnails.stateOf(asset) : undefined;
-      const formatted = tabAssets.map((a) => formatServiceAsset(a, tabBase, app, previewSources, thumbnailOf));
+      const folderBase = tabHasFolders(activeTab) ? tabBase : null;
+      const formatted = tabAssets.map((a) => formatServiceAsset(a, folderBase, app, previewSources, thumbnailOf));
       setAssets((previous) => reconcileAssets(previous, formatted));
+      const partyFolders = activeTab === 'tokens' ? byTab.party.flatMap((pc) => assetFolderId(pc, tabBase) ?? []) : [];
+      setPartyFolderKey([...new Set(partyFolders)].sort().join('\n'));
       // Counts cover every tab so the tab bar never reflows when switching
       const loaded: Record<Tab, number> = {
         scenes: byTab.scenes.length,
         maps: byTab.maps.length,
         encounters: byTab.encounters.length,
         tokens: byTab.tokens.length,
+        party: byTab.party.length,
       };
       setCounts((previous) => (previous && tabs.every((tab) => previous[tab] === loaded[tab]) ? previous : loaded));
     } catch (error) {
@@ -256,9 +272,17 @@ export function useAssetData(
   // Counts are loaded with the assets and cover every tab, so a tab switch keeps them.
   const assetCounts = loadedPlace?.collection === selectedCollection ? counts : null;
   const tagsLoading = !isUnavailable && tagsSelection !== selectedCollection;
+  const shownFolders = useMemo(
+    () => withoutPartyOnlyFolders(folders, assets, new Set(partyFolderKey ? partyFolderKey.split('\n') : [])),
+    [folders, assets, partyFolderKey],
+  );
+  const shownFolderOf = useCallback(
+    (folderId: string | null): string | null => nearestShownFolder(folderId, folders, shownFolders),
+    [folders, shownFolders],
+  );
 
   return {
-    folders, assets, assetsLoading, availableTags, tagsByGroup, tagsCollection, tagsLoading, collections, assetCounts, assetService,
+    folders: shownFolders, shownFolderOf, assets, assetsLoading, availableTags, tagsByGroup, tagsCollection, tagsLoading, collections, assetCounts, assetService,
     setFolders, setAssets,
     loadFoldersForActiveTab, loadAssetsForActiveTab, reloadGlobalTags, reloadCollections,
     app, view, mapPath,

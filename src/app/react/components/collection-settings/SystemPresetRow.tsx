@@ -3,6 +3,7 @@ import { cn } from '../../../../utils/cn';
 import { describeSystemRules } from '../../../gameSystems/systemRules';
 import type { SystemRules } from '../../../types/systemPresetTypes';
 import { ConditionBadgeStack } from './ConditionBadgeStack';
+import { t } from '../../../i18n';
 
 interface SystemPresetRowProps {
   name: string;
@@ -40,8 +41,8 @@ export function SystemPresetRow({
             <span className="atlas-csm-preset__text">
               <span className="atlas-csm-preset__title">
                 <span className="atlas-csm-preset__name">{name}</span>
-                {isBuiltIn && <span className="atlas-csm-tag">Built-in</span>}
-                {isEdited && <span className="atlas-csm-tag atlas-csm-tag--accent">Edited</span>}
+                {isBuiltIn && <span className="atlas-csm-tag">{t('csm.system.builtIn')}</span>}
+                {isEdited && <span className="atlas-csm-tag atlas-csm-tag--accent">{t('csm.system.edited')}</span>}
               </span>
               <span className="atlas-csm-preset__summary">{summary ?? (rules ? describeSystemRules(rules) : '')}</span>
             </span>

@@ -4,17 +4,25 @@ const { createHash } = require('crypto');
 const { parseVersion } = require('./release-channel');
 
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
-const HEADINGS = new Set(['New', 'Improved', 'Fixed', 'Important changes']);
 const PENDING_FILE = 'changelog/Unreleased.md';
 const read = (root, file) => fs.readFileSync(path.join(root, file), 'utf8');
 const hash = value => createHash('sha256').update(value).digest('hex');
 const compare = (a, b) => a.localeCompare(b, 'en', { numeric: true });
 
+/** Notes hold bullets under `#` group and `##` category headings of any name, nothing deeper. */
 function validateNotes(markdown, label) {
   if (!markdown || !/^- \S/m.test(markdown)) throw new Error(`${label}: empty release notes`);
-  for (const heading of markdown.matchAll(/^(#+) (.+)$/gm)) {
-    if (heading[1] !== '##' || !HEADINGS.has(heading[2])) throw new Error(`${label}: unsupported heading ${heading[2]}`);
+  for (const heading of markdown.matchAll(/^(#+) (.*)$/gm)) {
+    if (heading[1].length > 2 || !heading[2].trim()) throw new Error(`${label}: unsupported heading ${heading[0]}`);
   }
+}
+
+/** The notes with their headings moved so the highest stands at `level`, under a heading of the level above. */
+function nestHeadings(markdown, level) {
+  const levels = [...markdown.matchAll(/^(#+) /gm)].map(heading => heading[1].length);
+  if (!levels.length) return markdown;
+  const shift = level - Math.min(...levels);
+  return markdown.replace(/^(#+) /gm, (_, hashes) => `${'#'.repeat(hashes.length + shift)} `);
 }
 
 function readReleases(root, currentVersion) {
@@ -68,12 +76,12 @@ function pendingRelease(root, version) {
 }
 
 function formatRelease(release) {
-  return `# Atlas VTT ${release.version} — ${release.title}\n\n${release.date}\n\n${release.markdown}\n`;
+  return `# Atlas VTT ${release.version} — ${release.title}\n\n${release.date}\n\n${nestHeadings(release.markdown, 2)}\n`;
 }
 
 function formatPrerelease(version, pendingNotes) {
   const { base } = parseVersion(version);
-  const notes = pendingNotes || '- No player-facing changes recorded yet.';
+  const notes = pendingNotes ? nestHeadings(pendingNotes, 2) : '- No player-facing changes recorded yet.';
   return `# Atlas VTT ${version} — Beta build\n\nPre-release build for testing ahead of ${base}. Install it through BRAT; it is not published to the Obsidian community directory.\n\n${notes}\n`;
 }
 
@@ -87,7 +95,7 @@ function generateChangelog(root, { check = false } = {}) {
   const outputs = {
     'src/app/changelog/releases.json': `${JSON.stringify(bundle, null, 2)}\n`,
     'CHANGELOG.md': '# Atlas VTT changelog\n\n<!-- Generated from changelog/*.md. Run npm run changelog:generate. -->\n\n' +
-      releases.map(release => `## ${release.version} — ${release.title}\n\n${release.date}\n\n${release.markdown.replace(/^## /gm, '### ')}\n`).join('\n'),
+      releases.map(release => `## ${release.version} — ${release.title}\n\n${release.date}\n\n${nestHeadings(release.markdown, 3)}\n`).join('\n'),
   };
   for (const [file, content] of Object.entries(outputs)) {
     const destination = path.join(root, file);

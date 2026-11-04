@@ -1,0 +1,273 @@
+// A roll, in the look of an entry of Atlas's dice log: portrait or disc, who rolled, the formula and
+// its total, the dice on demand.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+.atlas-online-log {
+  // The card is the row's surface: no tint around it, and its tools sit on the card's top edge.
+  .atlas-online-log__row--roll {
+    --atlas-online-log-row-top: 0px;
+    padding: 0;
+
+    &.is-active,
+    &.is-opener:active,
+    &.is-selected,
+    &.is-highlighted {
+      background: transparent;
+    }
+
+    // The card takes the row's highlight: a tint under its own fill (a critical's is a gradient).
+    &.is-active .atlas-online-log__roll {
+      background-color: var(--background-modifier-hover);
+      transition-duration: $transition-fast;
+    }
+
+    &.is-opener:active:not(:has(button:active)) .atlas-online-log__roll,
+    &.is-selected .atlas-online-log__roll {
+      background-color: var(--background-modifier-active-hover);
+      transition-duration: 0ms;
+    }
+
+    &.is-highlighted .atlas-online-log__roll {
+      background: $log-accent-wash;
+    }
+
+    .atlas-online-log__tools {
+      right: $spacing-s;
+    }
+
+    .atlas-online-log__chips {
+      margin-top: $spacing-xs;
+      padding: 0 $spacing-s;
+    }
+  }
+
+  .atlas-online-log__roll {
+    // Tints the ability's name, as on Atlas's result card.
+    --atlas-dice-accent: var(--interactive-accent);
+    display: flex;
+    gap: $spacing-s;
+    padding: $spacing-s;
+    border: $border-width-s solid $log-hairline;
+    background: var(--background-modifier-hover);
+    @include atlas-panel-inset-radius($spacing-s);
+    transition: background-color 600ms ease;
+  }
+
+  .atlas-online-log__roll--crit-success {
+    --atlas-dice-accent: var(--color-green);
+    border-color: color-mix(in oklch, var(--color-green) 40%, transparent);
+    background: linear-gradient(135deg, color-mix(in oklch, var(--color-green) 8%, transparent) 0%, var(--background-modifier-hover) 100%);
+  }
+
+  .atlas-online-log__roll--crit-fail {
+    --atlas-dice-accent: var(--color-red);
+    border-color: color-mix(in oklch, var(--color-red) 40%, transparent);
+    background: linear-gradient(135deg, color-mix(in oklch, var(--color-red) 8%, transparent) 0%, var(--background-modifier-hover) 100%);
+  }
+
+  .atlas-online-log__roll-portrait {
+    flex: none;
+    width: $log-roll-disc;
+    height: $log-roll-disc;
+  }
+
+  .atlas-online-log__roll-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: $spacing-xs;
+    min-width: 0;
+  }
+
+  .atlas-online-log__roll-who {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__roll-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 $spacing-xs;
+    font-family: var(--font-monospace);
+  }
+
+  .atlas-online-log__roll-formula {
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-medium;
+    overflow-wrap: anywhere;
+  }
+
+  .atlas-online-log__roll-equals {
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-medium;
+  }
+
+  .atlas-online-log__roll-total {
+    color: var(--atlas-dice-accent);
+    font-size: $font-ui-large;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .atlas-online-log__roll-toggle {
+    @include log-button;
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: $spacing-xs;
+    border-radius: $radius-s;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-weight: $font-weight-medium;
+    line-height: $icon-s;
+    transition: color $transition-fast $transition-ease;
+    @include log-button-states;
+
+    @media (hover: hover) {
+      &:hover {
+        color: var(--text-normal);
+      }
+    }
+
+    #{$log-coarse} & {
+      @include log-wide-target;
+    }
+  }
+
+  .atlas-online-log__roll-chevron {
+    flex: none;
+    width: $icon-xs;
+    height: $icon-xs;
+    transition: transform $transition-fast $transition-ease;
+
+    &.is-open {
+      transform: rotate(180deg);
+    }
+  }
+
+  .atlas-online-log__roll-dice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+  }
+
+  .atlas-online-log__die {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 22px;
+    padding: 0 $spacing-xs;
+    border-radius: $radius-s;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-family: var(--font-monospace);
+    font-size: $font-ui-smaller;
+    font-weight: 600;
+  }
+
+  .atlas-online-log__die--max {
+    background: color-mix(in oklch, var(--color-green) 15%, transparent);
+    color: var(--color-green);
+  }
+
+  .atlas-online-log__die--min {
+    background: color-mix(in oklch, var(--color-red) 15%, transparent);
+    color: var(--color-red);
+  }
+
+  .atlas-online-log__die--success {
+    box-shadow: inset 0 0 0 1px var(--color-green);
+    color: var(--color-green);
+  }
+
+  .atlas-online-log__die--failure {
+    box-shadow: inset 0 0 0 1px var(--color-red);
+    color: var(--color-red);
+  }
+
+  // Counted for nothing: dropped by keep or drop, or rolled again.
+  .atlas-online-log__die--dropped,
+  .atlas-online-log__die--rerolled {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+    color: var(--text-faint);
+    text-decoration: line-through;
+  }
+
+  .atlas-online-log__roll-hidden {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    color: var(--text-faint);
+    font-size: 11px;
+
+    svg {
+      flex: none;
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+}
+
+.atlas-online-log {
+  // A private roll keeps its card, framed in dashes as a whisper is.
+  .atlas-online-log__roll--private {
+    border-style: dashed;
+    border-color: color-mix(in oklch, var(--interactive-accent) 45%, transparent);
+  }
+
+  .atlas-online-log__roll-flavor {
+    // The theme's heading face carries no small capitals: a description reads as written.
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  // "for Dex save": leads to the roll button the roll answers.
+  .atlas-online-log__roll-request {
+    @include log-button;
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: $spacing-xs;
+    max-width: 100%;
+    border-radius: $radius-s;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: var(--line-height-tight);
+    transition: color $transition-fast $transition-ease;
+    @include log-button-states;
+
+    @media (hover: hover) {
+      &:hover {
+        color: var(--text-normal);
+      }
+    }
+
+    svg {
+      flex: none;
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+
+    #{$log-coarse} & {
+      @include log-wide-target;
+    }
+  }
+
+  .atlas-online-log__roll-request-text {
+    min-width: 0;
+    @include atlas-truncate;
+  }
+}

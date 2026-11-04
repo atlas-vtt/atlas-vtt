@@ -1,0 +1,40 @@
+name: Release Gate
+
+# A new version goes on `main` only after its release is published: Obsidian
+# offers what the manifest on `main` names and downloads it from the release, so
+# the other order makes every install fail until the release is out. Fails on
+# the release pull request until then; publishing runs it again on the same
+# commit, which turns the check green.
+
+on:
+  pull_request:
+    branches:
+      - main
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  release-published:
+    if: github.event_name == 'pull_request' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Check that the version is released
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/release-gate.js

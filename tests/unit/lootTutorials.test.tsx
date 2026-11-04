@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from 'obsidian';
 import { SettingsService } from '../../src/app/services/SettingsService';
@@ -8,13 +9,14 @@ import { Tutorial } from '../../src/app/onboarding/Tutorial';
 import { lootRollerSteps } from '../../src/app/onboarding/lootTutorials';
 import { LootRollerTutorials } from '../../src/app/react/components/loot/LootRollerTutorials';
 import { LootEmptyState } from '../../src/app/react/components/loot/LootEmptyState';
-import { LootTab } from '../../src/app/react/components/collection-settings/LootTab';
+import { RandomTablesTab } from '../../src/app/react/components/collection-settings/RandomTablesTab';
 
 afterEach(cleanup);
 
 function appWithSettings(): { app: App; settings: SettingsService } {
   const app = new App();
   app.vault = { adapter: { exists: async () => true, write: async () => undefined }, getFiles: () => [], on: () => ({}), offref: () => undefined };
+  app.metadataCache = { on: () => ({}), offref: () => undefined };
   return { app, settings: new SettingsService(app) };
 }
 
@@ -66,34 +68,37 @@ describe('the loot roller’s tours', () => {
   });
 });
 
-describe('the empty loot roller', () => {
-  it('offers to set up loot in a collection without bases', () => {
-    const onSetUp = vi.fn();
-    render(<LootEmptyState inCollection basesAvailable loaded baseCount={0} onSetUp={onSetUp} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Set up loot' }));
-    expect(onSetUp).toHaveBeenCalledOnce();
+describe('the empty Random tables window', () => {
+  it('offers a table from a note in a collection without tables', () => {
+    const onUseNote = vi.fn();
+    render(<LootEmptyState inCollection basesOff={false} onUseNote={onUseNote} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Use a table from a note' }));
+    expect(onUseNote).toHaveBeenCalledOnce();
   });
 
   it('has nothing to set up outside a collection or while Bases is off', () => {
-    render(<LootEmptyState inCollection={false} basesAvailable loaded baseCount={0} onSetUp={vi.fn()} />);
+    render(<LootEmptyState inCollection={false} basesOff={false} onUseNote={vi.fn()} />);
     expect(screen.queryByRole('button')).toBeNull();
     cleanup();
-    render(<LootEmptyState inCollection basesAvailable={false} loaded baseCount={1} onSetUp={vi.fn()} />);
+    render(<LootEmptyState inCollection basesOff onUseNote={vi.fn()} />);
     expect(screen.queryByRole('button')).toBeNull();
   });
 });
 
-describe('the Loot tab of the collection settings', () => {
+describe('the Random tables tab of the collection settings', () => {
   it('tours loot on its first visit and ends by adding the first base', () => {
     const { app, settings } = appWithSettings();
     render(
       <AtlasUIContext.Provider value={{ app, view: null, pixiApp: null, renderer: null }}>
-        <LootTab app={app} lootBases={[]} onBasesChange={vi.fn()} currency="" onCurrencyChange={vi.fn()} />
+        <RandomTablesTab
+          app={app} lootBases={[]} onBasesChange={vi.fn()} randomTables={[]} onRandomTablesChange={vi.fn()} currency="" onCurrencyChange={vi.fn()}
+          itemRarities={undefined} onItemRaritiesChange={vi.fn()} systemPresetId={undefined} presets={[]}
+        />
       </AtlasUIContext.Provider>,
     );
     expect(screen.getByText('Loot lives in your notes')).toBeTruthy();
     for (let step = 0; step < 3; step++) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add a base' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add a base' }));
 
     expect(settings.shouldShowTutorial('lootSettings')).toBe(false);
     expect(screen.getByPlaceholderText('Search bases...')).toBeTruthy();

@@ -3,6 +3,7 @@ import { collectionIdOfPath } from '../assetPaths';
 import type { PathMove } from '../renamedPaths';
 import { baseName } from '../../utils/pathUtils';
 import { defaultJsonPath, primaryPath, setPrimaryPath, sidecarPath } from './assetFiles';
+import { isReservedCollectionPath } from './reservedPaths';
 
 /** File operations that bring the collection folders in line with the index. */
 export interface VaultFileOps {
@@ -22,7 +23,7 @@ class UnownedFiles {
 
   constructor(files: ReadonlySet<string>, private readonly owned: Set<string>) {
     for (const path of files) {
-      if (owned.has(path)) continue;
+      if (owned.has(path) || isReservedCollectionPath(path)) continue;
       const name = baseName(path);
       const paths = this.byName.get(name);
       if (paths) paths.push(path);
@@ -41,11 +42,16 @@ class UnownedFiles {
 }
 
 /**
- * Whether a record goes when its file is gone. Art, maps and scenes are their
- * file. The index holds everything else in full, so those go only after the
- * user deleted the file, never because a file is missing at startup.
+ * Whether a record goes when its file is gone. A record with a record file of
+ * its own goes only with that file: a sync tool may deliver the record before
+ * its art, or another device's rename as a deletion and a creation, and a
+ * device cannot tell those from the user deleting the file, so going here
+ * would delete the record on every device. Without a record file, art, maps
+ * and scenes are their file. The index holds everything else in full, so those
+ * go only after the user deleted the file, never because a file is missing at startup.
  */
-function isGoneWithFile(asset: Asset, path: string | null, deleted: ReadonlySet<string>): boolean {
+function isGoneWithFile(asset: Asset, path: string | null, deleted: ReadonlySet<string>, recorded: ReadonlySet<string>): boolean {
+  if (recorded.has(asset.id)) return false;
   switch (asset.type) {
     case 'token':
     case 'map':
@@ -71,6 +77,7 @@ export function relinkAssets(
   deleted: ReadonlySet<string>,
   owned: Set<string>,
   ops: VaultFileOps,
+  recorded: ReadonlySet<string> = new Set(),
 ): RelinkResult {
   const unowned = new UnownedFiles(files, owned);
   const fileMoves: PathMove[] = [];
@@ -94,7 +101,7 @@ export function relinkAssets(
         setPrimaryPath(asset, found);
         fileMoves.push({ from: primary, to: found });
         changed = true;
-      } else if (isGoneWithFile(asset, primary, deleted)) {
+      } else if (isGoneWithFile(asset, primary, deleted, recorded)) {
         delete metadata.assets[id];
         if (sidecarAt) ops.trash.push(sidecarAt);
         changed = true;

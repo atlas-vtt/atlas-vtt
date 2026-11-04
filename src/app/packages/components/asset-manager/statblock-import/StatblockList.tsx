@@ -5,13 +5,14 @@ import { ImageOff } from 'lucide-react';
 import { TokenPortrait } from '../../shared/TokenPortrait';
 import { LabelTooltip } from '../../primitives/tooltip';
 import type { StatblockImportCandidate, StatblockImportStatus } from '../../../../services/statblockImportCandidates';
+import { t } from '../../../../i18n';
 
 /** A row's height until measured: the 48px portrait, its padding and the border between rows. */
 const ROW_HEIGHT = 73;
 const OVERSCAN_ROWS = 8;
 
 const statusLabels: Record<StatblockImportStatus, string> = {
-  ready: 'Ready', imported: 'Already imported', 'missing-image': 'Missing image', 'remote-image': 'Remote image', conflict: 'Conflict',
+  ready: t('sbImport.status.ready'), imported: t('sbImport.status.imported'), 'missing-image': t('sbImport.status.missingImage'), 'remote-image': t('sbImport.status.remoteImage'), conflict: t('sbImport.status.conflict'),
 };
 
 function thumbnail(app: App, row: StatblockImportCandidate): string | undefined {
@@ -47,12 +48,12 @@ export function StatblockList({ app, rows, selected, queued, disabled, scrollEle
   });
 
   return (
-    <div ref={listRef} className="atlas-statblock-import__list" aria-label="Statblocks" style={{ height: virtualizer.getTotalSize() }}>
+    <div ref={listRef} className="atlas-statblock-import__list" aria-label={t('sbImport.list')} style={{ height: virtualizer.getTotalSize() }}>
       {virtualizer.getVirtualItems().map(({ index, start }) => {
         const row = rows[index]!;
         const url = thumbnail(app, row);
         const isQueued = queued.has(row.path);
-        const status = <span className={`atlas-statblock-import__status atlas-statblock-import__status--${row.status}`}>{isQueued ? 'Added to import' : statusLabels[row.status]}</span>;
+        const status = <span className={`atlas-statblock-import__status atlas-statblock-import__status--${row.status}`}>{isQueued ? t('sbImport.added') : statusLabels[row.status]}</span>;
         return (
           <div
             key={row.path}

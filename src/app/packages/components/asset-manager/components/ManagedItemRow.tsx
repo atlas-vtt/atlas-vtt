@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Tag, FolderOpen, MoreVertical, Check, X } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
+import { t } from '../../../../i18n';
 
 /** A tag or collection in the manager: acted on by id, shown by name. */
 export interface ManagedItem {
@@ -42,7 +43,7 @@ export function ManagedItemRow({
       onContextMenu={onOpenMenu}
     >
       <div className="atlas-selection-checkbox">
-        <LabelTooltip label={`Select ${item.name}`}>
+        <LabelTooltip label={t('am.card.select', { name: item.name })}>
           <input
             type="checkbox"
             checked={isSelected}
@@ -68,12 +69,12 @@ export function ManagedItemRow({
             }}
             className="atlas-edit-input"
           />
-          <LabelTooltip label="Save">
+          <LabelTooltip label={t('common.save')}>
             <Button variant="ghost" size="icon" className="atlas-collection-header-btn atlas-save-button" onClick={onSaveEdit}>
               <Check />
             </Button>
           </LabelTooltip>
-          <LabelTooltip label="Cancel">
+          <LabelTooltip label={t('common.cancel')}>
             <Button variant="ghost" size="icon" className="atlas-collection-header-btn" onClick={onCancelEdit}>
               <X />
             </Button>
@@ -86,7 +87,7 @@ export function ManagedItemRow({
             {item.name}
           </span>
           <div className="atlas-item-actions">
-            <LabelTooltip label="More actions">
+            <LabelTooltip label={t('am.row.moreActions')}>
               <Button
                 variant="ghost"
                 size="icon"

@@ -1,14 +1,16 @@
 /**
  * The colour of the dice, as painted into their face atlas: the ground of each
  * cell, its worn rim and the colour of the numerals. The light dice are the
- * card stock as it is; dark and accent dice lay a colour under the card's grain,
- * so the faces keep their paper texture in any colour.
+ * card stock as it is; dark, accent and set-coloured dice are the card stock
+ * dyed in their colour (`dyedCard.ts`), so the faces keep their paper texture
+ * in any colour.
  */
 
 import { CELL, seededRandom } from './atlasCell';
 import {
-  DARK_INK, DEFAULT_DICE_LOOK, LIGHT_INK, readableInk, type DiceColour, type DiceFont, type DiceLook, type Rgb,
+  DARK_INK, DEFAULT_DICE_LOOK, LIGHT_INK, parseHex, readableInk, type DiceColour, type DiceFont, type DiceLook, type Rgb,
 } from './diceLook';
+import { dyeCard } from './dyedCard';
 
 /** A look with its colours worked out for painting. */
 export interface ResolvedLook {
@@ -24,8 +26,12 @@ export interface ResolvedLook {
 const CARD = '#a98f66';
 /** A dark body: near black, a touch warm, so the grain still shows. */
 const DARK_BODY = '#1f1e21';
-/** How strongly the card's grain shows through a coloured body. */
-const GRAIN_ALPHA = 0.55;
+/**
+ * What the faces of a look are painted with changed in a way no look tells:
+ * still images of dice (`dieImages.ts`) drawn before must not be reused.
+ * 2: coloured bodies are dyed card instead of a colour under a soft-light grain.
+ */
+export const SKIN_REVISION = 2;
 /** Obsidian's default accent, for a theme that does not report one. */
 const FALLBACK_ACCENT: Rgb = [0x8a, 0x5c, 0xf5];
 
@@ -54,27 +60,35 @@ export function resolveLook(look: DiceLook, accent: Rgb | null): ResolvedLook {
   return { ...look, body: null, ink: look.font === 'medieval' ? null : DARK_INK };
 }
 
+/** What a face's ground is cut from: the card image, or the card dyed on a canvas. */
+export type CardStock = HTMLImageElement | HTMLCanvasElement;
+
+/**
+ * The card stock a look paints its faces with: the card as it is for the light
+ * dice, dyed in the body colour for the others; null while the card has not
+ * arrived (or cannot be dyed), when faces show the bare ground colour.
+ */
+export function stockFor(card: HTMLImageElement | null, body: string | null): CardStock | null {
+  if (card === null || body === null) return card;
+  const rgb = parseHex(body);
+  return rgb === null ? null : dyeCard(card, rgb);
+}
+
 /**
  * The ground of a face: a cut from the card stock, taken from a different spot
  * per cell. The same cut on twenty faces would look stamped, precisely when
- * the die turns. A coloured body lies under the cut, which then only lends it grain.
+ * the die turns. `body` is the ground under it while the stock is missing.
  */
 export function paintCard(
-  ctx: CanvasRenderingContext2D, x: number, y: number, seed: number, card: HTMLImageElement | null, look: ResolvedLook,
+  ctx: CanvasRenderingContext2D, x: number, y: number, seed: number, stock: CardStock | null, body: string | null,
 ): void {
-  ctx.fillStyle = look.body ?? CARD;
+  ctx.fillStyle = body ?? CARD;
   ctx.fillRect(x - CELL / 2, y - CELL / 2, CELL, CELL);
-  if (card === null) return;
+  if (stock === null) return;
   const random = seededRandom(seed);
-  const sx = random() * Math.max(1, card.width - CELL);
-  const sy = random() * Math.max(1, card.height - CELL);
-  ctx.save();
-  if (look.body !== null) {
-    ctx.globalCompositeOperation = 'soft-light';
-    ctx.globalAlpha = GRAIN_ALPHA;
-  }
-  ctx.drawImage(card, sx, sy, CELL, CELL, x - CELL / 2, y - CELL / 2, CELL, CELL);
-  ctx.restore();
+  const sx = random() * Math.max(1, stock.width - CELL);
+  const sy = random() * Math.max(1, stock.height - CELL);
+  ctx.drawImage(stock, sx, sy, CELL, CELL, x - CELL / 2, y - CELL / 2, CELL, CELL);
 }
 
 /**

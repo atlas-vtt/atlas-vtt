@@ -1,3 +1,4 @@
+import { D20_DICE_SET_ID } from '../builtInDiceSets';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { HP_RESOURCE, STRESS_RESOURCE } from '../../resources/resourceDefinitions';
 import { builtInPresetId, conditionsOf } from './presetHelpers';
@@ -28,6 +29,7 @@ export const DAGGERHEART: SystemPreset = {
     },
     // Adversary statblocks roll a d20; player characters' duality dice come with character sheets.
     dice: { defaultRoll: '1d20', crit: 'natural' },
+    diceSetId: D20_DICE_SET_ID,
     conditions: conditionsOf('daggerheart', [
       { name: 'Hidden', color: '#475569', icon: 'hidden' },
       { name: 'Restrained', color: '#0d9488', icon: 'imprisoned' },
@@ -35,5 +37,15 @@ export const DAGGERHEART: SystemPreset = {
     ]),
     // Every Daggerheart character and adversary tracks Hit Points and Stress.
     resources: [{ ...HP_RESOURCE }, { ...STRESS_RESOURCE }],
+    statblockRoles: [
+      { id: 'adversary', name: 'Adversary', templateId: 'builtin:generic-creature' },
+      { id: 'environment', name: 'Environment', templateId: 'builtin:generic-hazard' },
+    ],
+    itemRarities: [
+      { name: 'Common', tone: 'common' },
+      { name: 'Uncommon', tone: 'uncommon' },
+      { name: 'Rare', tone: 'rare' },
+      { name: 'Legendary', tone: 'legendary' },
+    ],
   },
 };

@@ -5,6 +5,7 @@ import { defaultLightPreset, emissionOf } from './lightPresetChoice';
 import { numberText, parseNumberText, positiveNumber } from '../utils/numberInput';
 import { tokenSenses, withSenses } from '../vision/tokenSenses';
 import { coneAngle } from '../vision/visionCone';
+import { t } from '../i18n';
 
 /** One sense in a list being edited. */
 export interface SenseRow {
@@ -41,16 +42,16 @@ export interface VisionFieldSpec {
 }
 
 export const VISION_FIELDS: readonly VisionFieldSpec[] = [
-  { key: 'range', label: 'Sight range', inGameUnits: true, placeholder: 'Unlimited', resetLabel: 'Unlimited sight' },
+  { key: 'range', label: t('vision.range'), inGameUnits: true, placeholder: t('vision.unlimited'), resetLabel: t('vision.unlimitedSight') },
   {
-    key: 'angle', label: 'Vision angle (°)', inGameUnits: false, placeholder: '360', resetLabel: 'See all around',
-    hint: "Faces the token's rotation", min: 1, max: 360,
+    key: 'angle', label: t('vision.angle'), inGameUnits: false, placeholder: '360', resetLabel: t('vision.allAround'),
+    hint: t('vision.angleHint'), min: 1, max: 360,
   },
 ];
 
 /** `label` with the map's game unit, which is empty for abstract units. */
 export function withUnit(label: string, unit: string): string {
-  return unit ? `${label} (${unit})` : label;
+  return unit ? t('vision.withUnit', { label, unit }) : label;
 }
 
 /** The label of `field` with the map's game unit where it is a distance. */

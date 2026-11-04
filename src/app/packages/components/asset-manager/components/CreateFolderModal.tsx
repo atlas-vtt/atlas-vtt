@@ -6,6 +6,7 @@ import { getTabDisplayName } from '../types';
 import { CloseButton } from '../../primitives/CloseButton';
 import { Button } from '../../primitives/button';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../primitives/dialogMotion';
+import { t } from '../../../../i18n';
 
 export interface CreateFolderModalProps {
   selectedFolderId: string | null;
@@ -30,18 +31,18 @@ export function CreateFolderModal({
     >
       <motion.div className="atlas-asset-manager-move-container" variants={windowVariants} onClick={(e) => e.stopPropagation()}>
         <div className="atlas-asset-manager-move-header">
-          <h3><FolderPlus /> New folder</h3>
+          <h3><FolderPlus /> {t('am.folder.newTitle')}</h3>
           <CloseButton onClick={(e) => { e.stopPropagation(); onClose(); }} />
         </div>
         <div className="atlas-asset-manager-move-body">
           <p className="atlas-asset-manager-move-info">
-            Creates a folder {selectedFolderId ? 'inside the current folder' : 'at the top level'} of your {getTabDisplayName(activeTab).toLowerCase()}.
+            {t(selectedFolderId ? 'am.folder.createsInside' : 'am.folder.createsTop', { tab: getTabDisplayName(activeTab).toLocaleLowerCase() })}
           </p>
           <div className="atlas-asset-manager-move-collections">
-            <div className="atlas-asset-manager-move-label">Folder Name</div>
+            <div className="atlas-asset-manager-move-label">{t('am.folder.name')}</div>
             <input
               type="text"
-              placeholder="Enter folder name"
+              placeholder={t('am.folder.namePlaceholder')}
               value={targetFolderName}
               onChange={(e) => setTargetFolderName(e.target.value)}
               className="atlas-asset-manager-move-input"
@@ -51,14 +52,14 @@ export function CreateFolderModal({
           </div>
         </div>
         <div className="atlas-asset-manager-move-footer">
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onClose(); }}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onClose(); }}>{t('common.cancel')}</Button>
           <Button
             variant="default"
             size="sm"
             onClick={(e) => { e.stopPropagation(); onConfirm(); }}
             disabled={!targetFolderName.trim()}
           >
-            Create folder
+            {t('am.folder.create')}
           </Button>
         </div>
       </motion.div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Component, MarkdownRenderer, type App } from 'obsidian';
 import { splitReleaseSections } from './releaseSections';
+import { t } from '../i18n';
 
 interface Props {
   app: App;
@@ -23,8 +24,9 @@ export function ReleaseMarkdown({ app, markdown, onRendered }: Props): React.JSX
       try {
         for (const section of splitReleaseSections(markdown)) {
           const container = element.createDiv({ cls: 'atlas-changelog-section' });
-          if (section.label) container.createEl('h4', { cls: 'atlas-changelog-category', text: section.label });
-          await MarkdownRenderer.render(app, section.markdown, container.createDiv({ cls: 'atlas-changelog-section-body' }), '', owner);
+          if (section.label && section.level === 1) container.createEl('h3', { cls: 'atlas-changelog-group', text: section.label });
+          else if (section.label) container.createEl('h4', { cls: 'atlas-changelog-category', text: section.label });
+          if (section.markdown) await MarkdownRenderer.render(app, section.markdown, container.createDiv({ cls: 'atlas-changelog-section-body' }), '', owner);
         }
         if (active) onRendered();
       } catch (error) {
@@ -44,7 +46,7 @@ export function ReleaseMarkdown({ app, markdown, onRendered }: Props): React.JSX
   return <>
     <div ref={host} className="atlas-changelog-markdown" />
     {failed && <>
-      <p role="alert">Formatting could not be loaded. The release notes are shown below.</p>
+      <p role="alert">{t('changelog.formatFailed')}</p>
       <pre className="atlas-changelog-fallback">{markdown}</pre>
     </>}
   </>;

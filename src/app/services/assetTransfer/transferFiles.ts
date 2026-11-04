@@ -1,13 +1,11 @@
 import { TFile, type App } from 'obsidian';
 import { ensureFolder } from '../../plugin/vaultFolders';
-import { moveSceneSnapshots } from '../../snapshots/snapshotFolderSync';
-import { ensureHiddenFolder, isHiddenVaultPath, readVaultBinary, trashHiddenPath } from '../../utils/hiddenVaultFiles';
+import { readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { parentPath } from '../../utils/pathUtils';
 
 type JournalEntry =
   | { kind: 'created'; path: string }
   | { kind: 'moved'; from: string; to: string }
-  | { kind: 'snapshots'; fromMap: string; toMap: string }
   | { kind: 'rewritten'; path: string; original: string };
 
 /**
@@ -20,29 +18,17 @@ export class TransferFiles {
 
   constructor(private readonly app: App) {}
 
-  /** Writes `transform` of the file at `from` to the new file `to`; hidden paths go through the adapter. */
+  /** Writes `transform` of the file at `from` to the new file `to`. */
   async copy(from: string, to: string, transform: (raw: ArrayBuffer) => ArrayBuffer): Promise<void> {
     const raw = await readVaultBinary(this.app, from);
     if (!raw) return;
-    const content = transform(raw);
-    if (isHiddenVaultPath(to)) {
-      await ensureHiddenFolder(this.app, parentPath(to));
-      await this.app.vault.adapter.writeBinary(to, content);
-    } else {
-      await ensureFolder(this.app, parentPath(to));
-      await this.app.vault.createBinary(to, content);
-    }
+    await ensureFolder(this.app, parentPath(to));
+    await this.app.vault.createBinary(to, transform(raw));
     this.journal.push({ kind: 'created', path: to });
   }
 
   async move(from: string, to: string): Promise<void> {
     if (await this.rename(from, to)) this.journal.push({ kind: 'moved', from, to });
-  }
-
-  /** Moves a scene's snapshot folder ahead of its map, so the map's rename finds nothing left to move. */
-  async moveSnapshots(fromMap: string, toMap: string): Promise<void> {
-    await moveSceneSnapshots(this.app, fromMap, toMap);
-    this.journal.push({ kind: 'snapshots', fromMap, toMap });
   }
 
   /** Writes `content` to the vault file at `path`, creating it when missing. */
@@ -56,21 +42,13 @@ export class TransferFiles {
     this.journal.push({ kind: 'created', path });
   }
 
-  /** Replaces the text of the file at `path` (hidden or not) with `rewrite` of it, unless that returns null. */
+  /** Replaces the text of the file at `path` with `rewrite` of it, unless that returns null. */
   async rewrite(path: string, rewrite: (content: string) => string | null): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(path);
-    if (file instanceof TFile) {
-      const original = await this.app.vault.read(file);
-      if (rewrite(original) === null) return;
-      await this.app.vault.process(file, (latest) => rewrite(latest) ?? latest);
-      this.journal.push({ kind: 'rewritten', path, original });
-      return;
-    }
-    if (!isHiddenVaultPath(path) || !(await this.app.vault.adapter.exists(path))) return;
-    const original = await this.app.vault.adapter.read(path);
-    const content = rewrite(original);
-    if (content === null) return;
-    await this.app.vault.adapter.write(path, content);
+    if (!(file instanceof TFile)) return;
+    const original = await this.app.vault.read(file);
+    if (rewrite(original) === null) return;
+    await this.app.vault.process(file, (latest) => rewrite(latest) ?? latest);
     this.journal.push({ kind: 'rewritten', path, original });
   }
 
@@ -82,7 +60,7 @@ export class TransferFiles {
         await this.undoEntry(entry);
       } catch (error) {
         console.error('[TransferFiles] Could not undo', entry, error);
-        failed.push(entry.kind === 'snapshots' ? entry.fromMap : entry.kind === 'moved' ? entry.from : entry.path);
+        failed.push(entry.kind === 'moved' ? entry.from : entry.path);
       }
     }
     return failed;
@@ -101,19 +79,14 @@ export class TransferFiles {
       case 'created': {
         const file = this.app.vault.getAbstractFileByPath(entry.path);
         if (file instanceof TFile) await this.app.fileManager.trashFile(file);
-        else await trashHiddenPath(this.app, entry.path);
         return;
       }
       case 'moved':
         await this.rename(entry.to, entry.from);
         return;
-      case 'snapshots':
-        await moveSceneSnapshots(this.app, entry.toMap, entry.fromMap);
-        return;
       case 'rewritten': {
         const file = this.app.vault.getAbstractFileByPath(entry.path);
         if (file instanceof TFile) await this.app.vault.process(file, () => entry.original);
-        else await this.app.vault.adapter.write(entry.path, entry.original);
       }
     }
   }

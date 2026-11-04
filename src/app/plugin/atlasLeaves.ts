@@ -1,5 +1,7 @@
 import { App, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
-import { AtlasView, ATLAS_VIEW_TYPE } from '../atlas-view';
+import type { AtlasView } from '../atlas-view';
+import { ATLAS_VIEW_TYPE, isAtlasView } from '../atlasViewType';
+import { inMainWindow, keepAtlasInMainWindow, mainWindowLeaf, showMainWindowNotice } from './atlasMainWindow';
 
 function getExistingAtlasLeaf(app: App): WorkspaceLeaf | null {
   return app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)[0] ?? null;
@@ -8,7 +10,13 @@ function getExistingAtlasLeaf(app: App): WorkspaceLeaf | null {
 /** The loaded Atlas view, or null when none is open (or it is still deferred). */
 export function getLoadedAtlasView(app: App): AtlasView | null {
   const view = getExistingAtlasLeaf(app)?.view;
-  return view instanceof AtlasView ? view : null;
+  return isAtlasView(view) ? view : null;
+}
+
+/** The loaded Atlas view whose map is held by `store`, or null when no view shows it. */
+export function atlasViewOfStore(app: App, store: unknown): AtlasView | null {
+  const view = getLoadedAtlasView(app);
+  return view?.getStore() === store ? view : null;
 }
 
 /** The Atlas view, first loading its leaf if Obsidian deferred it (background tabs after a restart). */
@@ -16,7 +24,7 @@ export async function loadAtlasView(app: App): Promise<AtlasView | null> {
   const leaf = getExistingAtlasLeaf(app);
   if (!leaf) return null;
   await leaf.loadIfDeferred();
-  return leaf.view instanceof AtlasView ? leaf.view : null;
+  return isAtlasView(leaf.view) ? leaf.view : null;
 }
 
 /**
@@ -29,7 +37,7 @@ export async function openMapInView(app: App, mapFile: TFile): Promise<void> {
   if (existingLeaf) {
     await app.workspace.revealLeaf(existingLeaf);
     const atlasView = existingLeaf.view;
-    if (!(atlasView instanceof AtlasView)) return;
+    if (!isAtlasView(atlasView)) return;
 
     const existingTab = atlasView.tabMetaStore.getState().getTabByFilePath(mapFile.path);
     if (existingTab) {
@@ -40,9 +48,10 @@ export async function openMapInView(app: App, mapFile: TFile): Promise<void> {
     return;
   }
 
-  let leaf = app.workspace.getMostRecentLeaf();
+  // In the main window, also while a popout has the focus: Atlas runs there alone
+  let leaf = app.workspace.getMostRecentLeaf(app.workspace.rootSplit);
   if (!leaf || leaf.getViewState().pinned) {
-    leaf = app.workspace.getLeaf('tab');
+    leaf = mainWindowLeaf(app.workspace);
   }
 
   await leaf.loadIfDeferred();
@@ -51,19 +60,24 @@ export async function openMapInView(app: App, mapFile: TFile): Promise<void> {
 }
 
 /**
- * Folds duplicate Atlas leaves (e.g. from drag-to-split) into the first one,
- * re-opening their maps there as scene tabs.
+ * Folds duplicate Atlas leaves (e.g. from drag-to-split or "Open in new window") into the first
+ * one in the main window, re-opening their maps there as scene tabs.
  */
 function mergeDuplicateAtlasLeaves(app: App): void {
-  const [primaryLeaf, ...extraLeaves] = app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE);
+  const { workspace } = app;
+  const leaves = workspace.getLeavesOfType(ATLAS_VIEW_TYPE);
+  // None in the main window yet: they fold once one is back there (`keepAtlasInMainWindow`)
+  const primaryLeaf = leaves.find((leaf) => inMainWindow(workspace, leaf));
+  const extraLeaves = leaves.filter((leaf) => leaf !== primaryLeaf);
   if (!primaryLeaf || extraLeaves.length === 0) return;
 
   for (const extraLeaf of extraLeaves) {
     const extraView = extraLeaf.view;
-    const file = extraView instanceof AtlasView ? extraView.file : null;
+    const file = isAtlasView(extraView) ? extraView.file : null;
+    if (!inMainWindow(workspace, extraLeaf)) showMainWindowNotice();
     extraLeaf.detach();
 
-    if (file && primaryLeaf.view instanceof AtlasView) {
+    if (file && isAtlasView(primaryLeaf.view)) {
       void primaryLeaf.view.onLoadFile(file);
     }
   }
@@ -77,9 +91,17 @@ export function closeMapTab(app: App, mapPath: string): void {
   if (atlasView && tab) void atlasView.closeTab(tab.id);
 }
 
-/** Keeps a single Atlas leaf: leaves split off by the user fold back into it as scene tabs. */
+/**
+ * Keeps a single Atlas leaf, in the main window: leaves split off by the user fold back into it
+ * as scene tabs, and the one leaf moves back from a popout (`keepAtlasInMainWindow`).
+ */
 export function registerAtlasLeafSync(plugin: Plugin): void {
-  plugin.registerEvent(
-    plugin.app.workspace.on('layout-change', () => mergeDuplicateAtlasLeaves(plugin.app))
-  );
+  const { app } = plugin;
+  const keep = (): void => {
+    mergeDuplicateAtlasLeaves(app);
+    keepAtlasInMainWindow(app);
+  };
+  plugin.registerEvent(app.workspace.on('layout-change', keep));
+  // A workspace restored with the map in a popout
+  app.workspace.onLayoutReady(keep);
 }

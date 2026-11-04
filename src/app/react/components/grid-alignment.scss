@@ -1,11 +1,27 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Grid Alignment Overlay
 // ═══════════════════════════════════════════════════════════════════════════
-// Floating panel for the grid alignment tool (Intersections and Freehand tabs).
-// All child classes scoped under .atlas-grid-alignment-panel.
+// Floating panel for the grid alignment tool (Intersections and Freehand tabs), with the hint for
+// aligning by hand below it. The panel holds controls alone and is as tall in every state.
 
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
+
+// ── The panel and its hint, one below the other ─────────────────────────
+.atlas-grid-alignment {
+  @include atlas-flex-col($spacing-s);
+
+  position: fixed;
+  top: $spacing-xl;
+  right: $spacing-xl;
+  z-index: 1001;
+  width: 300px;
+
+  // Closed while the engine works on the map: out of sight until that is over.
+  &[hidden] {
+    display: none;
+  }
+}
 
 // ── Floating control panel ──────────────────────────────────────────────
 .atlas-grid-alignment-panel {
@@ -14,11 +30,6 @@
   @include atlas-flex-col($spacing-m);
   @include atlas-panel-padding;
 
-  position: fixed;
-  top: $spacing-xl;
-  right: $spacing-xl;
-  z-index: 1001;
-  width: 320px;
   pointer-events: auto;
 
   // ── Header row: title + close ───────────────────────────────────────
@@ -43,145 +54,11 @@
     }
   }
 
-
-  // ── Tab switcher (segmented control) ───────────────────────────────
-  .atlas-grid-alignment-tabs {
-    display: flex;
-    gap: $spacing-xs;
-    background: var(--background-secondary);
-    border-radius: $radius-l;
-    padding: $spacing-xs;
-  }
-
-  .atlas-grid-alignment-tab {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: $spacing-xs;
-    padding: $spacing-s;
-    border: none;
-    border-radius: $radius-m;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all $transition-fast $transition-ease;
-
-    &:hover:not(.is-active) {
-      color: var(--text-normal);
-    }
-
-    &.is-active {
-      background: var(--background-primary);
-      color: var(--text-normal);
-      box-shadow: $shadow-sm;
-    }
-
-    svg {
-      width: 14px;
-      height: 14px;
-      flex-shrink: 0;
-    }
-  }
-
-  // Lucide's hexagon is pointy-top; turned a quarter it shows flat-top hexes.
-  .atlas-grid-alignment-icon--flat {
-    transform: rotate(90deg);
-  }
-
-  // ── Progress indicator (Intersections tab) ───────────────────────────
-  .atlas-grid-alignment-progress {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-  }
-
-  .atlas-grid-alignment-step {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: $button-height-s;
-    height: $button-height-s;
-    border-radius: 50%;
-    font-size: 0.75rem;
-    font-weight: 600;
-    flex-shrink: 0;
-    background: var(--background-secondary);
-    border: $border-width-m solid var(--background-modifier-border);
-    color: var(--text-muted);
-    transition: all 150ms $transition-ease;
-
-    svg {
-      width: 14px;
-      height: 14px;
-    }
-
-    &--active {
-      background: var(--interactive-accent);
-      border-color: var(--interactive-accent);
-      color: var(--text-on-accent);
-    }
-
-    &--completed {
-      background: transparent;
-      border-color: var(--interactive-accent);
-      color: var(--interactive-accent);
-    }
-  }
-
-  .atlas-grid-alignment-step-connector {
-    width: $spacing-xl;
-    height: $border-width-m;
-    background: var(--background-modifier-border);
-    flex-shrink: 0;
-    transition: background 150ms $transition-ease;
-
-    &--completed {
-      background: var(--interactive-accent);
-    }
-  }
-
-  // ── Instructions block ──────────────────────────────────────────────
-  .atlas-grid-alignment-hint {
-    @include atlas-inset-surface;
-    margin: 0;
-    padding: $spacing-m;
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    color: var(--text-muted);
-  }
-
-  // ── Result display ──────────────────────────────────────────────────
-  .atlas-grid-alignment-result {
-    @include atlas-flex-col($spacing-xs);
-    font-size: 0.8125rem;
-    font-family: var(--font-monospace);
-    font-variant-numeric: tabular-nums;
-    color: var(--text-muted);
-  }
-
-  .atlas-grid-alignment-measurements {
-    font-size: 0.75rem;
-    color: var(--text-faint);
-  }
-
-  // ── Action buttons row ──────────────────────────────────────────────
-  // The last row: its outer button sits in the panel's bottom-right corner.
-  .atlas-grid-alignment-actions {
-    @include atlas-flex-row($spacing-s);
-    justify-content: flex-end;
-
-    > :last-child {
-      @include atlas-panel-inset-radius($spacing-m, bottom-right);
-    }
-  }
-
+  // ── Buttons ─────────────────────────────────────────────────────────
   .atlas-grid-alignment-btn {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: $spacing-xs;
     font-size: 0.8125rem;
     font-weight: 500;
@@ -204,6 +81,149 @@
 
   .atlas-grid-alignment-btn--wide {
     width: 100%;
-    justify-content: center;
+  }
+
+  // What a detection is doing, for screen readers: the button and the map show it.
+  .atlas-grid-alignment-status {
+    @include atlas-visually-hidden;
+  }
+}
+
+// ── What to click next, while aligning by hand ──────────────────────────
+// A surface of its own below the panel: it comes, goes and wraps without the panel changing.
+@keyframes atlas-grid-alignment-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(-#{$spacing-xs});
+  }
+}
+
+.atlas-grid-alignment-hint {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+  @include atlas-flex-row($spacing-m);
+  @include atlas-panel-padding;
+
+  pointer-events: auto;
+  animation: atlas-grid-alignment-hint-in $transition-normal $transition-ease-out;
+
+  // A way that asks for nothing right now (a grid placed, a fit shown) has no hint.
+  &:empty {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+
+  // What to do now, in the text's own colour.
+  .atlas-grid-alignment-instruction {
+    flex: 1;
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--text-normal);
+  }
+
+  // Measurements taken, once one was not enough.
+  .atlas-grid-alignment-dots {
+    display: flex;
+    flex-shrink: 0;
+    gap: $spacing-xs;
+
+    span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--background-modifier-border);
+      transition: background-color $transition-normal $transition-ease-out;
+
+      &.is-done {
+        background: var(--interactive-accent);
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A detection under way
+// ═══════════════════════════════════════════════════════════════════════════
+// The button that started it stays where it is and shows the work: light passes through it in two
+// soft bands, each drifting at its own even pace, so no two passes look alike and one of them is
+// always under way, and its icon breathes. Transform and opacity alone, so it keeps moving whatever
+// the window is busy with. The map itself shows the search (`pixi/gridAlignment/`).
+
+@keyframes atlas-detect-light {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes atlas-detect-breath {
+  from {
+    opacity: 0.55;
+    transform: scale(0.86);
+  }
+}
+
+.atlas-grid-alignment-panel .atlas-grid-alignment-detect {
+  position: relative;
+  overflow: hidden;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity $transition-slow $transition-ease-out;
+  }
+
+  // A wide, faint light and a narrower, brighter one.
+  &::before {
+    background: linear-gradient(100deg, transparent 15%, rgb(255 255 255 / 0.16) 50%, transparent 85%);
+  }
+
+  &::after {
+    background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.24) 50%, transparent 70%);
+  }
+
+  &[data-working] {
+    &::before {
+      animation: atlas-detect-light 2600ms linear infinite;
+    }
+
+    &::after {
+      animation: atlas-detect-light 1900ms linear -900ms infinite;
+    }
+
+    svg {
+      animation: atlas-detect-breath 1100ms $transition-ease-in-out infinite alternate;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &[data-working] {
+      &::before,
+      &::after {
+        animation: none;
+      }
+
+      svg {
+        animation-duration: 2200ms;
+      }
+    }
   }
 }

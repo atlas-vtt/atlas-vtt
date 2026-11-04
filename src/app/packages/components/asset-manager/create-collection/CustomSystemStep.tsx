@@ -6,6 +6,7 @@ import { ResourcesTab } from '../../../../react/components/collection-settings/R
 import type { ResourceDefinition } from '../../../../resources/resourceTypes';
 import type { CollectionGridDefaults, ConditionDefinition } from '../../../../types/collectionSettingsTypes';
 import type { InitiativeRules } from '../../../../types/initiativeRulesTypes';
+import { t } from '../../../../i18n';
 
 /** The rules a game system set up while creating a collection consists of. */
 export interface CustomSystemRules {
@@ -35,7 +36,7 @@ export function CustomSystemStep({
   return (
     <>
       <div className="atlas-csm-field">
-        <label className="atlas-csm-label" htmlFor="atlas-new-system-name">Preset name</label>
+        <label className="atlas-csm-label" htmlFor="atlas-new-system-name">{t('am.system.presetName')}</label>
         <input
           id="atlas-new-system-name"
           type="text"
@@ -50,7 +51,7 @@ export function CustomSystemStep({
       </div>
 
       <section className="atlas-create-collection__section" aria-labelledby="atlas-new-system-measure">
-        <h4 id="atlas-new-system-measure" className="atlas-create-collection__heading">Measurement</h4>
+        <h4 id="atlas-new-system-measure" className="atlas-create-collection__heading">{t('am.system.measurement')}</h4>
         <GridMeasurementTab
           gridDefaults={rules.gridDefaults}
           onChange={(gridDefaults) => onRulesChange({ ...rules, gridDefaults })}
@@ -58,7 +59,7 @@ export function CustomSystemStep({
       </section>
 
       <section className="atlas-create-collection__section" aria-labelledby="atlas-new-system-conditions">
-        <h4 id="atlas-new-system-conditions" className="atlas-create-collection__heading">Conditions</h4>
+        <h4 id="atlas-new-system-conditions" className="atlas-create-collection__heading">{t('am.system.conditions')}</h4>
         <ConditionsTab
           conditions={rules.conditions}
           onChange={(conditions) => onRulesChange({ ...rules, conditions })}
@@ -75,12 +76,13 @@ export function CustomSystemStep({
       </section>
 
       <section className="atlas-create-collection__section" aria-labelledby="atlas-new-system-widgets">
-        <h4 id="atlas-new-system-widgets" className="atlas-create-collection__heading">Widgets</h4>
+        <h4 id="atlas-new-system-widgets" className="atlas-create-collection__heading">{t('am.system.bars')}</h4>
         <DefaultWidgetsTab
           defaultWidgets={rules.defaultWidgets}
           onChange={(defaultWidgets) => onRulesChange({ ...rules, defaultWidgets })}
           initiative={rules.initiative}
           onInitiativeChange={(initiative) => onRulesChange({ ...rules, initiative })}
+          initiativeFieldSuggestions={[]}
         />
       </section>
     </>

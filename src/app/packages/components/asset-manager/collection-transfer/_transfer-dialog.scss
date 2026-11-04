@@ -209,7 +209,7 @@ $hero-height: 288px;
     width: 100%;
     padding: 0;
     border: none;
-    border-bottom: $border-width-m dashed var(--background-modifier-border-hover);
+    border-bottom: $border-width-m solid var(--background-modifier-border);
     border-radius: 0;
     background: transparent;
     color: inherit;

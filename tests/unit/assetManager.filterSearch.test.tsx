@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { App, Scope, TFile } from 'obsidian';
@@ -45,6 +46,7 @@ vi.mock('../../src/app/packages/components/asset-manager/hooks/useAssetData', ()
   // The second collection holds two characters at its root.
   useAssetData: (_tab: string, collection: string | null) => ({
     app, assetService,
+    shownFolderOf: (folderId: string | null) => folderId,
     folders: collection === 'other' ? [] : view.folders,
     assets: collection === 'other' ? [token('Acid Burrower'), token('Dryad')] : view.assets,
     availableTags: [{ id: 'forest', name: 'Forest' }],
@@ -101,7 +103,7 @@ function type(text: string): void {
 
 it('suggests the keywords the characters in view have, and their values with counts', async () => {
   await openManager();
-  expect(suggestionLabels().map((label) => label.split(':')[0])).toEqual(['name', 'tag', 'statblock', 'cr', 'type', 'source']);
+  expect(suggestionLabels().map((label) => label.split(':')[0])).toEqual(['name', 'tag', 'statblock', 'cr', 'type', 'source', 'text']);
   type('type:');
   expect(suggestionLabels()).toEqual(['beast2', 'dragon1', 'humanoid1']);
 });
@@ -250,7 +252,7 @@ it('keeps the filter button on every tab, disabled where a tab has no filters ye
   expect(filters.disabled).toBe(true);
   expect(filters.getAttribute('aria-expanded')).toBe('false');
   await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: 'Filters' })).toBeNull());
-  fireEvent.click(screen.getAllByRole('button', { name: /^Characters/ })[0]!);
+  fireEvent.click(screen.getAllByRole('button', { name: /^Tokens/ })[0]!);
   expect((screen.getByRole('button', { name: 'Filters' }) as HTMLButtonElement).disabled).toBe(false);
   expect(screen.queryByRole('dialog', { name: 'Filters' })).toBeNull();
 });

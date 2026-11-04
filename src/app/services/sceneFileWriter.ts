@@ -1,9 +1,10 @@
-import { Notice, TFile, type App } from 'obsidian';
+import { TFile, type App } from 'obsidian';
 import { debounce, type DebouncedFunction } from '../../utils/debounce';
 import { ensureFolder } from '../plugin/vaultFolders';
 import { getDataFilePath } from '../utils/dataFileMigration';
 import { sceneNameOf } from '../utils/sceneName';
 import { settledWithin } from '../utils/settledWithin';
+import { showNotice } from '../ui/notice';
 
 /** How long a flush waits for a file write before it reports the save as stuck. */
 export const STALLED_SAVE_MS = 5000;
@@ -28,6 +29,12 @@ export class SceneFileWriter<V> {
    * much later, after a newer save or after the scene was loaded again.
    */
   private readonly generations = new Map<string, number>();
+  /**
+   * Scene files this writer has seen on disk. One of them that is gone was deleted: a rename
+   * moves the store to the new path, so only a deletion leaves it bound to the old one, and
+   * a save must not bring the file back.
+   */
+  private readonly seenOnDisk = new Set<string>();
 
   /**
    * @param isBoundTo Whether the store is still bound to the scene at `path`; only then may its file be created.
@@ -55,6 +62,11 @@ export class SceneFileWriter<V> {
     this.nextGeneration(path);
   }
 
+  /** The scene's file is there (it is being read): should it go, no save creates it again. */
+  fileSeen(path: string): void {
+    this.seenOnDisk.add(path);
+  }
+
   /** Writes every scheduled snapshot now and waits for the writes, but not forever. */
   async flush(): Promise<void> {
     // ALL scenes, not just the current one: a scene switch must see the old scene's saves complete
@@ -66,7 +78,7 @@ export class SceneFileWriter<V> {
       // The stuck writes are let go, so later saves of these scenes are not queued behind them.
       for (const path of this.pendingWrites.keys()) {
         console.error(`[AtlasStorage] Saving ${path} did not finish`);
-        new Notice(`Atlas VTT could not finish saving ${sceneNameOf(path)}. Its latest changes may be missing from its file.`, 0);
+        showNotice(`Atlas VTT could not finish saving ${sceneNameOf(path)}. Its latest changes may be missing from its file.`, 0);
       }
       this.pendingWrites.clear();
     }
@@ -98,13 +110,15 @@ export class SceneFileWriter<V> {
 
       const existingFile = this.app.vault.getAbstractFileByPath(dataPath);
       if (existingFile instanceof TFile) {
+        this.seenOnDisk.add(path);
         await this.app.vault.process(existingFile, (current) => (isLatest() ? data : current));
-      } else if (this.isBoundTo(path) && isLatest()) {
+      } else if (!this.seenOnDisk.has(path) && this.isBoundTo(path) && isLatest()) {
         await this.app.vault.create(dataPath, data);
+        this.seenOnDisk.add(path);
       }
-      // Otherwise the map was renamed while this save waited; the store has
-      // already scheduled its state for the new path, so recreating the old
-      // file would only leave a stale copy under the old name.
+      // Otherwise the map was deleted, or renamed while this save waited; the
+      // store has already scheduled its state for the new path, so recreating
+      // the old file would bring back a deleted scene or leave a stale copy.
     } catch (error) {
       console.error(`[AtlasStorage] Error writing map file ${path}:`, error);
     }

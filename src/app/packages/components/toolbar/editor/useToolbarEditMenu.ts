@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useContextMenu } from '../../../../react/root/ContextMenuContext'
-import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import type { ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import { useToolbarEdit, type ToolbarFocusTarget } from './toolbarEditContext'
 import type { ToolbarEditPlace } from './toolbarEditMenus'
 
@@ -10,7 +10,7 @@ export interface ToolbarEditMenuFocus {
   back: HTMLElement | null
 }
 
-type OpenToolbarEditMenu = (id: ToolbarControlId, place: ToolbarEditPlace, at: { x: number; y: number }, focus?: ToolbarEditMenuFocus) => void
+type OpenToolbarEditMenu = (id: ToolbarUnitId, place: ToolbarEditPlace, at: { x: number; y: number }, focus?: ToolbarEditMenuFocus) => void
 
 /** Opens the editor's menu for a control at a point in client coordinates. Only for parts mounted while editing. */
 export function useToolbarEditMenu(): OpenToolbarEditMenu {

@@ -9,7 +9,7 @@ export interface PopoverBox {
   right: number
   top: number
   bottom: number
-  /** Height of the whole content, also when the box is capped and scrolls. */
+  /** Height of the whole content, also when the box is capped and scrolls; `Infinity` keeps a cap that is applied. */
   contentHeight: number
 }
 
@@ -28,6 +28,29 @@ export interface PopoverFit {
 }
 
 export const POPOVER_FITS: PopoverFit = { shiftX: 0, maxHeight: null }
+
+export interface ListFit {
+  /** The list opens above its trigger, because the room below ran out and above is roomier. */
+  up: boolean
+  /** Height cap in px where the list is taller than the room on its side, else null. */
+  maxHeight: number | null
+}
+
+export const LIST_FITS: ListFit = { up: false, maxHeight: null }
+
+/**
+ * Where a list hanging from a trigger opens (a select's options): below it,
+ * above it where below is too short and above is roomier, and no taller than
+ * the room on that side, so the view's edge never cuts it. `gap` is the room
+ * between trigger and list.
+ */
+export function fitList(trigger: Pick<ViewFrame, 'top' | 'bottom'>, height: number, frame: ViewFrame, gap: number, margin = POPOVER_VIEW_MARGIN): ListFit {
+  const below = frame.bottom - margin - trigger.bottom - gap
+  const above = trigger.top - gap - frame.top - margin
+  const up = height > below && above > below
+  const room = Math.max(0, Math.floor(up ? above : below))
+  return !up && height <= room ? LIST_FITS : { up, maxHeight: height > room ? room : null }
+}
 
 /**
  * Keeps a popover inside its view: shifts it sideways off the edge it crosses

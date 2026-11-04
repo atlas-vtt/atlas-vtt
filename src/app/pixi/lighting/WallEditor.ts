@@ -8,10 +8,13 @@ import { runHistoryTransaction } from '../../stores/history';
 import { WallTool, type WallToolMode, type WallToolSubMode } from '../../tools/WallTool';
 import type { Point } from '../../types/visionTypes';
 import type { WallType } from '../../types/wallTypes';
+import { DoorPlacement } from '../vision/DoorPlacement';
 import { WallInteraction } from '../vision/WallInteraction';
 import { WallRenderer } from '../vision/WallRenderer';
 import { WallDrawingSession } from './WallDrawingSession';
 import { splitWall } from './wallEdits';
+import { chainEndingAt, wallEndNear } from './wallEnds';
+import { levelObjects } from '../../levels/levelObjects';
 
 interface SegmentEvent { p1: Point; p2: Point; type: WallType; chainId: string }
 
@@ -25,9 +28,12 @@ interface SegmentEvent { p1: Point; p2: Point; type: WallType; chainId: string }
 export class WallEditor {
   readonly renderer: WallRenderer;
   readonly walls: WallInteraction;
+  readonly doors: DoorPlacement;
   private readonly tool: WallTool;
   private readonly drawing: WallDrawingSession;
   private readonly cleanups: Array<() => void> = [];
+  /** Alt was held at the last pointer move: what is drawn lands where the pointer is, not on a wall end close by. */
+  private free = false;
 
   /** `onLightSelection` shows the selected lights on their markers; `lightPresets` are the lights of the map's collection. */
   constructor(
@@ -39,6 +45,7 @@ export class WallEditor {
   ) {
     this.renderer = new WallRenderer(viewport, store);
     this.walls = new WallInteraction(store, this.renderer, onLightSelection);
+    this.doors = new DoorPlacement(store, this.renderer, this.walls);
     this.tool = new WallTool(eventBus);
     this.drawing = new WallDrawingSession(store);
     this.listen(eventBus);
@@ -59,19 +66,24 @@ export class WallEditor {
     else this.stop();
   }
 
-  pointerDown(point: Point, shift: boolean, ctrl: boolean): boolean {
+  /** Alt places a wall's corner freely, where it would otherwise land on a wall's end close by. */
+  pointerDown(point: Point, shift: boolean, ctrl: boolean, alt: boolean = false): boolean {
     if (!this.shown) return false;
-    if (this.walls.isPlacingDoor()) {
-      this.walls.confirmDoorPlacement();
+    if (this.doors.active) {
+      this.doors.confirm();
       return true;
     }
     const settings = this.tool.getSettings();
-    if (shift && !ctrl && settings.mode === 'point-to-point' && settings.subMode === 'draw') {
+    // A chain under way takes every press, also on a wall or its end: that is where it joins them.
+    if (this.drawingChain && !ctrl) {
+      this.placeCorner(point, shift, alt);
+      return true;
+    }
+    if (shift && !ctrl && this.drawsChains) {
       // Shift on a vertex continues from it; Shift on a wall line splits the wall there
       const endpoint = this.vertexAt(point);
       if (endpoint) {
-        this.tool.continueFromEndpoint(endpoint.x, endpoint.y);
-        this.renderer.setPreviewAnchor(endpoint);
+        this.startChainAt(endpoint);
         return true;
       }
       const wallId = this.renderer.hitTestWalls(point.x, point.y);
@@ -82,7 +94,7 @@ export class WallEditor {
     }
     // Without Shift (or with Ctrl to multi-select), existing walls take the click
     if ((!shift || ctrl) && this.walls.handlePointerDown(point.x, point.y, ctrl)) {
-      this.renderer.clearPreview();
+      this.renderer.preview.clear();
       return true;
     }
     if (settings.subMode === 'place-light') {
@@ -96,31 +108,38 @@ export class WallEditor {
     }
     const start = this.vertexAt(point) ?? point;
     this.tool.startFreeform(start.x, start.y);
-    this.renderer.startFreeformPreview(start.x, start.y);
+    this.renderer.preview.startStroke(start.x, start.y);
     return true;
   }
 
-  pointerMove(point: Point): void {
+  pointerMove(point: Point, alt: boolean = false): void {
     if (!this.shown) return;
-    if (this.walls.isPlacingDoor()) {
-      this.walls.updateDoorPlacement(point.x, point.y);
+    this.free = alt;
+    if (this.doors.active) {
+      this.doors.move(point);
       return;
     }
     if (this.walls.isDragging()) {
-      this.walls.handlePointerMove(point.x, point.y);
+      this.walls.handlePointerMove(point.x, point.y, alt);
       return;
     }
     if (!this.tool.isCurrentlyDrawing()) return;
     if (this.tool.getSettings().mode === 'point-to-point') {
-      this.renderer.updatePreviewCursor(point.x, point.y);
+      const end = alt ? null : this.wallEndNear(point);
+      this.renderer.preview.moveCursor((end ?? point).x, (end ?? point).y, end !== null);
     } else {
       this.tool.addFreeformPoint(point.x, point.y);
-      this.renderer.addFreeformPreviewPoint(point.x, point.y);
+      this.renderer.preview.addStrokePoint(point.x, point.y);
     }
   }
 
+  /** A wall end clicked in place starts a chain there, joined to it; pressed and dragged, it moved. */
   pointerUp(): void {
-    this.walls.handlePointerUp();
+    const clicked = this.walls.handlePointerUp();
+    if (clicked && this.drawsChains && !this.tool.isCurrentlyDrawing()) {
+      this.walls.clearSelection();
+      this.startChainAt(clicked);
+    }
     this.finishStroke();
   }
 
@@ -131,19 +150,20 @@ export class WallEditor {
 
   cursorAt(point: Point): string {
     if (!this.shown) return 'default';
+    if (this.doors.active || this.drawingChain) return 'crosshair';
     if (this.renderer.hitTestVertices(point.x, point.y)) return 'grab';
     return this.renderer.hitTestWalls(point.x, point.y) ? 'pointer' : 'crosshair';
   }
 
-  /** A wall handle shows at the point: it is grabbed before a light's marker beneath it. */
+  /** The editor takes a press at the point before a light's marker beneath it: on a wall's handle, and anywhere while a chain is drawn or a door placed. */
   handleAt(point: Point): boolean {
-    return this.shown && this.renderer.hitTestVertices(point.x, point.y) !== null;
+    return this.shown && (this.doors.active || this.drawingChain || this.renderer.hitTestVertices(point.x, point.y) !== null);
   }
 
   /** Escape: stop placing a door, drop the chain being drawn, or clear the wall selection. */
   handleEscape(): boolean {
     if (!this.shown) return false;
-    if (this.walls.isPlacingDoor()) this.walls.cancelDoorPlacement();
+    if (this.doors.active) this.doors.cancel();
     else if (this.tool.isCurrentlyDrawing()) this.tool.cancelDrawing();
     else if (this.walls.hasSelection()) this.walls.clearSelection();
     else return false;
@@ -161,10 +181,48 @@ export class WallEditor {
     this.tool.cancelDrawing();
   }
 
+  /** The tool draws walls corner by corner. */
+  private get drawsChains(): boolean {
+    const { mode, subMode } = this.tool.getSettings();
+    return mode === 'point-to-point' && subMode === 'draw';
+  }
+
+  private get drawingChain(): boolean {
+    return this.drawsChains && this.tool.isCurrentlyDrawing();
+  }
+
+  /** The chain's next corner, on the wall end close by unless `free`. A click on its last corner adds nothing, and one that closes the chain on its first ends it. */
+  private placeCorner(point: Point, shift: boolean, free: boolean): void {
+    const at = free ? point : this.wallEndNear(point) ?? point;
+    const chain = this.tool.getCurrentChain();
+    const same = (other: Point | undefined): boolean => !!other && other.x === at.x && other.y === at.y;
+    if (same(chain[chain.length - 1])) return;
+    this.tool.addVertex(at.x, at.y, shift && !same(chain[0]));
+  }
+
+  /** Starts a chain at a wall end; it continues the chain of the one wall ending there. */
+  private startChainAt(point: Point): void {
+    this.tool.continueFromEndpoint(point.x, point.y, chainEndingAt(point, levelObjects(this.store.getState()).walls));
+  }
+
+  /** Ends the stroke being drawn, on a wall end close to where it stopped (or its own start) unless Alt was held. */
+  private finishStroke(): void {
+    if (!this.tool.isCurrentlyDrawing() || this.tool.getSettings().mode !== 'freeform') return;
+    const stroke = this.tool.getCurrentChain();
+    const last = stroke[stroke.length - 1];
+    const end = last && !this.free ? this.wallEndNear(last, stroke.slice(0, 1)) : null;
+    if (end) this.tool.addFreeformPoint(end.x, end.y);
+    // A stroke's segments arrive together; one session makes them one undo step
+    this.drawing.start();
+    this.tool.finishFreeform();
+    this.drawing.finish();
+    this.renderer.preview.clearStroke();
+  }
+
   /** Ends a drag, a door placement and the chain or stroke being drawn. */
   private stop(): void {
     this.walls.handlePointerUp();
-    this.walls.cancelDoorPlacement();
+    this.doors.cancel();
     if (this.store.getState().activeTool === 'wall') {
       // Only hidden (session view, the peek key): what was drawn so far is kept, as its one undo step.
       this.finishStroke();
@@ -172,27 +230,22 @@ export class WallEditor {
     } else {
       this.tool.cancelDrawing();
     }
-    this.renderer.clearPreview();
-    this.renderer.clearFreeformPreview();
+    this.renderer.preview.clear();
+    this.renderer.preview.clearStroke();
   }
 
-  private finishStroke(): void {
-    if (!this.tool.isCurrentlyDrawing() || this.tool.getSettings().mode !== 'freeform') return;
-    // A stroke's segments arrive together; one session makes them one undo step
-    this.drawing.start();
-    this.tool.finishFreeform();
-    this.drawing.finish();
-    this.renderer.clearFreeformPreview();
+  private wallEndNear(point: Point, also: readonly Point[] = []): Point | null {
+    return wallEndNear(point, levelObjects(this.store.getState()).walls, this.renderer.zoom, { also });
   }
 
   private vertexAt(point: Point): Point | null {
     const hit = this.renderer.hitTestVertices(point.x, point.y);
-    return hit ? this.store.getState().objects.walls[hit.wallId]?.[hit.vertex] ?? null : null;
+    return hit ? levelObjects(this.store.getState()).walls[hit.wallId]?.[hit.vertex] ?? null : null;
   }
 
   private split(wallId: string, at: Point): void {
     const state = this.store.getState();
-    const wall = state.objects.walls[wallId];
+    const wall = levelObjects(state).walls[wallId];
     const halves = wall ? splitWall(wall, at) : null;
     if (!halves) return;
     runHistoryTransaction(this.store, () => {
@@ -212,20 +265,20 @@ export class WallEditor {
     on('lighting-preset-changed', (preset: string) => this.tool.setLightPreset(preset));
     on('wall-chain-start', (point: Point) => {
       this.drawing.start();
-      this.renderer.setPreviewAnchor(point);
+      this.renderer.preview.setAnchor(point);
     });
     on('wall-segment-created', ({ p1, p2, type, chainId }: SegmentEvent) => {
       this.drawing.add({ type, p1, p2, chainId, closed: true });
-      if (this.tool.isCurrentlyDrawing()) this.renderer.setPreviewAnchor(p2);
+      if (this.tool.isCurrentlyDrawing()) this.renderer.preview.setAnchor(p2);
     });
     on('wall-chain-finish', () => {
       this.drawing.finish();
-      this.renderer.clearPreview();
+      this.renderer.preview.clear();
     });
     on('wall-drawing-cancelled', () => {
       this.drawing.cancel();
-      this.renderer.clearPreview();
-      this.renderer.clearFreeformPreview();
+      this.renderer.preview.clear();
+      this.renderer.preview.clearStroke();
     });
   }
 

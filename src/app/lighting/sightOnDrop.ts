@@ -1,37 +1,42 @@
-import type { StoreApi } from 'zustand';
 import { shallow } from 'zustand/vanilla/shallow';
-import type { ViewAtlasState } from '../storeFactory';
+import type { ViewState } from '../types/viewState';
+import type { HeldTokens } from '../types/viewUIState';
 import type { TokenEntity } from '../types';
 import type { Point } from '../types/visionTypes';
 import { sightOnDropOn } from './sceneLightingOptions';
+import { levelObjects } from '../levels/levelObjects';
+import { mapTokens } from '../tokens/offMap';
 
-/** The tokens the pointer holds, each with the place it had when it was taken. */
-export type HeldTokens = Readonly<Record<string, Point>>;
+interface HeldTokenSource {
+  getState(): Pick<ViewState, 'objects' | 'heldTokens' | 'levels' | 'viewedLevel'> & { setHeldTokens: (held: HeldTokens) => void };
+}
 
 /**
  * Notes the tokens the pointer holds (pressed or dragged), or none once it lets go. A token
  * held before keeps the place it was taken from; a new one is noted where it stands now.
  */
-export function holdTokens(store: Pick<StoreApi<ViewAtlasState>, 'getState'>, tokenIds: readonly string[]): void {
-  const { heldTokens, objects, setHeldTokens } = store.getState();
+export function holdTokens(store: HeldTokenSource, tokenIds: readonly string[]): void {
+  const state = store.getState();
+  const { heldTokens, setHeldTokens } = state;
+  const objects = levelObjects(state);
   const before = Object.keys(heldTokens);
   if (before.length === tokenIds.length && tokenIds.every((id) => heldTokens[id])) return;
   const held: Record<string, Point> = {};
   for (const id of tokenIds) {
-    const token = objects.tokens[id];
+    const token = mapTokens(objects)[id];
     const start = heldTokens[id] ?? (token && { x: token.x, y: token.y });
     if (start) held[id] = start;
   }
   setHeldTokens(held);
 }
 
-type SceneTokens = Pick<ViewAtlasState, 'objects' | 'lighting' | 'heldTokens'>;
+type SceneTokens = { objects: Pick<ViewState['objects'], 'tokens'> } & Pick<ViewState, 'lighting' | 'heldTokens'>;
 type Tokens = Record<string, TokenEntity>;
 
 const NONE: HeldTokens = {};
 
 /** The held tokens whose sight and light wait for the drop: all of them, or none with the scene's sight on drop off. */
-export function heldForSight({ lighting, heldTokens }: Pick<ViewAtlasState, 'lighting' | 'heldTokens'>): HeldTokens {
+export function heldForSight({ lighting, heldTokens }: Pick<ViewState, 'lighting' | 'heldTokens'>): HeldTokens {
   return sightOnDropOn(lighting) ? heldTokens : NONE;
 }
 
@@ -55,7 +60,7 @@ export class SightTokens {
   private last: Tokens | null = null;
 
   read(state: SceneTokens): Tokens {
-    const tokens = this.withHeldAtStart(state.objects.tokens, heldForSight(state));
+    const tokens = this.withHeldAtStart(mapTokens(levelObjects(state)), heldForSight(state));
     this.last = tokens;
     return tokens;
   }

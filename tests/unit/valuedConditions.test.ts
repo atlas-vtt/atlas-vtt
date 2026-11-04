@@ -78,6 +78,25 @@ describe('changeTokensConditionValue', () => {
   });
 });
 
+describe('setTokensConditionValue', () => {
+  it('sets every token to the value in one undo step, adding the condition where it was not', () => {
+    const store = createStore();
+    const pastBefore = getHistoryStore(store)?.getState().pastStates.length ?? 0;
+    store.getState().setTokensConditionValue(['a', 'b'], 'frightened', 1);
+    const { a, b } = store.getState().objects.tokens;
+    expect(a).toMatchObject({ conditions: ['frightened'], conditionValues: { frightened: 1 } });
+    expect(b).toMatchObject({ conditions: ['frightened'], conditionValues: { frightened: 1 } });
+    expect(getHistoryStore(store)?.getState().pastStates.length ?? 0).toBe(pastBefore + 1);
+  });
+
+  it('takes the condition and its number off for null or 0', () => {
+    const store = createStore();
+    store.getState().setTokensConditionValue(['a'], 'frightened', null);
+    expect(store.getState().objects.tokens.a).not.toHaveProperty('conditions');
+    expect(store.getState().objects.tokens.a).not.toHaveProperty('conditionValues');
+  });
+});
+
 describe('conditions menu stepper', () => {
   it('shows the shared value or the range and steps all tokens', () => {
     const store = createStore();

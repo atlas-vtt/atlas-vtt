@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { migrateMapFile, parseSceneFile } from '../../src/app/services/MapPersistence';
 import { newSceneTokenSettings } from '../../src/app/resources/sceneVisibility';
@@ -61,6 +60,13 @@ describe('the file of a new scene', () => {
     expect(file.state.tokenSettings).toMatchObject({ showHPBars: false, showStressBars: true });
     expect(newSceneFile({ ...settings, gridDefaults: { unitType: 'meters', unitDistance: 1.5, measurementMode: 'metric' } }, null).state.grid)
       .toMatchObject({ unitType: 'meters', unitDistance: 1.5, measurementType: 'units' });
+  });
+
+  it('has no grid at a table that plays without one: nothing shows, nothing snaps and nothing is looked for', () => {
+    const { grid } = newSceneFile({ conditions: [] }, 'atlas-vtt/assets/keep.webp', false).state;
+
+    expect(grid).toMatchObject({ enabled: true, visible: false, snapToGrid: false, size: 70 });
+    expect(grid).not.toHaveProperty('autoDetect');
   });
 
   it('loads as an empty scene', () => {

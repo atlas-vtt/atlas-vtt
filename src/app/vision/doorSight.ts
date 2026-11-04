@@ -30,11 +30,21 @@ function besideDoor(wall: WallSegment): Point[] {
  * token vision off (`sight.all`), every ordinary door on lit floor.
  */
 export function doorsInSight(walls: readonly WallSegment[], sight: Sight, ambient: AmbientLight, lights: readonly LightReach[]): Set<string> {
-  const picture: Sight = { all: sight.all, regions: sight.regions.filter((region) => showsMap(region.sense)) };
+  const shows = mapShownAt(sight, ambient, lights);
   const seen = new Set<string>();
   for (const wall of walls) {
     if (wall.type !== 'door') continue;
-    if (besideDoor(wall).some((point) => perceive(point, picture, () => lightLevelAt(point, ambient, lights)) !== 'unseen')) seen.add(wall.id);
+    if (besideDoor(wall).some(shows)) seen.add(wall.id);
   }
   return seen;
+}
+
+/**
+ * Whether the players' picture shows the map at a point now, by the rule door badges follow: a
+ * sense that shows the map perceives it there (`perceive`), in sight and in light it sees by. Never
+ * where the map is only remembered.
+ */
+export function mapShownAt(sight: Sight, ambient: AmbientLight, lights: readonly LightReach[]): (point: Point) => boolean {
+  const picture: Sight = { all: sight.all, regions: sight.regions.filter((region) => showsMap(region.sense)) };
+  return (point) => perceive(point, picture, () => lightLevelAt(point, ambient, lights)) !== 'unseen';
 }

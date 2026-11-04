@@ -4,7 +4,6 @@ import type { CoverChoice } from '../../../../services/collectionBundle/collecti
 import type { ExportChoice, ExportPreview } from '../../../../services/collectionBundle/collectionExport';
 import { formatFileSize } from '../../../../utils/fileSize';
 import { baseName } from '../../../../utils/pathUtils';
-import { plural } from '../../../../utils/plural';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
 import { CollectionHero } from './CollectionHero';
@@ -13,6 +12,7 @@ import { ContentsList } from './ContentsList';
 import { CoverPicker } from './CoverPicker';
 import { TransferDialog } from './TransferDialog';
 import { useObjectUrl } from './useObjectUrl';
+import { t } from '../../../../i18n';
 
 interface ExportCollectionDialogProps {
   preview: ExportPreview;
@@ -67,11 +67,11 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
   const isWholeVersion = Number.isInteger(versionNumber);
 
   const choice = (): ExportChoice | string => {
-    if (selected.assets.length === 0) return 'Include at least one item.';
+    if (selected.assets.length === 0) return t('exportDialog.includeOne');
     const content = { excluded, cover, author, notes };
-    if (isFork) return forkName.trim() ? { kind: 'fork', name: forkName, ...content } : 'Enter a name for your collection.';
+    if (isFork) return forkName.trim() ? { kind: 'fork', name: forkName, ...content } : t('exportDialog.enterName');
     if (!isWholeVersion || versionNumber < preview.minimumVersion) {
-      return `The version must be a whole number of at least ${preview.minimumVersion}.`;
+      return t('exportDialog.versionInvalid', { min: preview.minimumVersion });
     }
     return { kind: 'release', version: versionNumber, ...content };
   };
@@ -82,7 +82,7 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
   };
 
   const sameVersion = versionNumber === collection.version && collection.releasedAt !== undefined;
-  const confirmLabel = isFork ? 'Publish' : `Export v${isWholeVersion ? versionNumber : '…'}`;
+  const confirmLabel = isFork ? t('exportDialog.publish') : t('exportDialog.exportVersion', { version: isWholeVersion ? String(versionNumber) : '…' });
 
   const heroUrl = coverUrl(cover, preview, uploadUrl);
   // The tint is blurred beyond recognition, so the small preview gives the same colours at a fraction of the cost.
@@ -93,23 +93,23 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
 
   return (
     <TransferDialog
-      label={isFork ? `Publish ${collection.name} as your own` : `Export ${collection.name}`}
+      label={t(isFork ? 'exportDialog.publishNamed' : 'exportDialog.exportNamed', { name: collection.name })}
       onClose={onCancel}
       ambientUrl={ambientUrl}
       hero={(
         <CollectionHero
-          eyebrow={isFork ? 'Publish as your own' : 'Export collection'}
+          eyebrow={isFork ? t('exportDialog.publishOwn') : t('exportDialog.exportCollection')}
           imageUrl={heroUrl}
           name={isFork
             ? (
               <>
-                <span id={nameLabelId} hidden>Name</span>
+                <span id={nameLabelId} hidden>{t('exportDialog.name')}</span>
                 <input className="atlas-transfer-hero__name-input" aria-labelledby={nameLabelId} value={forkName} onChange={(event) => setForkName(event.target.value)} />
               </>
             )
             : collection.name}
           version={`v${isWholeVersion ? versionNumber : '…'}`}
-          details={[author.trim() && `by ${author.trim()}`]}
+          details={[author.trim() && t('common.by', { author: author.trim() })]}
           description={collection.description}
         />
       )}
@@ -126,13 +126,13 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
           onChange={setCover}
         />
       )}
-      summary={`${plural(itemCount, 'item')} · ${plural(selected.files.length + (cover.kind === 'none' ? 0 : 1), 'file')} · ${formatFileSize(bytes)}`}
+      summary={`${t('count.items', { count: itemCount })} · ${t('count.files', { count: selected.files.length + (cover.kind === 'none' ? 0 : 1) })} · ${formatFileSize(bytes)}`}
       actions={(
         <>
-          <LabelTooltip label="Close without exporting" describe>
-            <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <LabelTooltip label={t('exportDialog.closeHint')} describe>
+            <Button variant="outline" onClick={onCancel}>{t('common.cancel')}</Button>
           </LabelTooltip>
-          <LabelTooltip label={selected.assets.length === 0 ? 'Include at least one item to export' : 'Save the collection as a .zip file you can give to others'} describe>
+          <LabelTooltip label={selected.assets.length === 0 ? t('exportDialog.includeHint') : t('exportDialog.zipHint')} describe>
             <Button variant="default" className="atlas-transfer-confirm" disabled={selected.assets.length === 0} onClick={() => { void submit(); }}>{confirmLabel}</Button>
           </LabelTooltip>
         </>
@@ -140,38 +140,37 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
     >
       {isFork && (
         <p className="atlas-transfer-text atlas-transfer-text--muted">
-          You installed this collection{collection.author ? ` from ${collection.author}` : ''}. Publishing turns your copy, with your changes,
-          into a collection of your own that starts at v1. It no longer receives updates from the original.
+          {t('exportDialog.forkIntro', { from: collection.author ? t('exportDialog.fromAuthor', { author: collection.author }) : '' })}
         </p>
       )}
       <div className="atlas-transfer-fields">
         {!isFork && (
           <label className="atlas-transfer-field atlas-transfer-field--version">
-            <span>Version</span>
+            <span>{t('exportDialog.version')}</span>
             <input className="atlas-input" type="number" min={preview.minimumVersion} step={1} value={version} onChange={(event) => setVersion(event.target.value)} />
           </label>
         )}
         <label className="atlas-transfer-field atlas-transfer-field--grow">
-          <span>Author</span>
-          <input className="atlas-input" value={author} placeholder="Shown to people who install it" onChange={(event) => setAuthor(event.target.value)} />
+          <span>{t('exportDialog.author')}</span>
+          <input className="atlas-input" value={author} placeholder={t('exportDialog.authorPlaceholder')} onChange={(event) => setAuthor(event.target.value)} />
         </label>
       </div>
       {sameVersion && !isFork && (
-        <p className="atlas-transfer-hint">Same as your last release. People who installed v{collection.version} will see a changed copy of it.</p>
+        <p className="atlas-transfer-hint">{t('exportDialog.sameVersion', { version: String(collection.version) })}</p>
       )}
       <label className="atlas-transfer-field">
-        <span>Release notes</span>
-        <textarea className="atlas-input atlas-transfer-notes" value={notes} placeholder="What is new in this version" onChange={(event) => setNotes(event.target.value)} />
+        <span>{t('exportDialog.notes')}</span>
+        <textarea className="atlas-input atlas-transfer-notes" value={notes} placeholder={t('exportDialog.notesPlaceholder')} onChange={(event) => setNotes(event.target.value)} />
       </label>
       <ContentsList groups={groups} media={media} selection={{ included, excluded, onChange: setExcluded }} />
       {preview.missing.length > 0 && (
         <div className="atlas-transfer-callout atlas-transfer-callout--warning" role="note">
-          <strong>{preview.missing.length} referenced {preview.missing.length === 1 ? 'file is' : 'files are'} missing and will not be included:</strong>
+          <strong>{t('exportDialog.missing', { count: preview.missing.length })}</strong>
           <ul>
             {preview.missing.slice(0, MISSING_SHOWN).map((missing) => (
               <li key={missing.path}>{baseName(missing.path)} ({missing.assetName})</li>
             ))}
-            {preview.missing.length > MISSING_SHOWN && <li>and {preview.missing.length - MISSING_SHOWN} more</li>}
+            {preview.missing.length > MISSING_SHOWN && <li>{t('common.andMore', { count: preview.missing.length - MISSING_SHOWN })}</li>}
           </ul>
         </div>
       )}

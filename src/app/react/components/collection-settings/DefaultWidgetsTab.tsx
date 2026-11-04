@@ -3,27 +3,36 @@
  */
 
 import React from 'react';
+import type { FieldSuggestion } from '../../../resources/resourceFieldSuggestions';
+import type { NamedModifierStatblock } from '../../../initiative/modifierPreview';
 import type { InitiativeRules } from '../../../types/initiativeRulesTypes';
 import { InitiativeFields } from './InitiativeFields';
+import { t } from '../../../i18n';
 
 interface DefaultWidgetsTabProps {
   defaultWidgets: Record<string, boolean>;
   onChange: (widgets: Record<string, boolean>) => void;
   initiative: InitiativeRules;
   onInitiativeChange: (initiative: InitiativeRules) => void;
+  /** The statblock fields offered for the initiative modifier (`initiativeFieldSuggestions`). */
+  initiativeFieldSuggestions: readonly FieldSuggestion[];
+  /** The collection's statblocks, for what the modifier's field reads in them. */
+  modifierStatblocks?: readonly NamedModifierStatblock[] | undefined;
+  /** A line above the initiative rules, such as that a played campaign's rules apply in their place. */
+  initiativeNotice?: React.ReactNode;
 }
 
 /** Available widget definitions for the MVP. */
 const WIDGET_OPTIONS: { key: string; label: string; description: string }[] = [
   {
     key: 'initiativeTracker',
-    label: 'Initiative Tracker',
-    description: 'Turn-order tracker for combat encounters',
+    label: t('csm.widgets.initiative'),
+    description: t('csm.widgets.initiativeDesc'),
   },
   {
     key: 'timer',
-    label: 'Timer',
-    description: 'Countdown timer for timed encounters or breaks',
+    label: t('csm.widgets.timer'),
+    description: t('csm.widgets.timerDesc'),
   },
 ];
 
@@ -32,6 +41,9 @@ export function DefaultWidgetsTab({
   onChange,
   initiative,
   onInitiativeChange,
+  initiativeFieldSuggestions,
+  modifierStatblocks,
+  initiativeNotice,
 }: DefaultWidgetsTabProps): React.ReactElement {
   const toggle = (key: string): void => {
     onChange({ ...defaultWidgets, [key]: !defaultWidgets[key] });
@@ -58,7 +70,8 @@ export function DefaultWidgetsTab({
           </label>
         </div>
       ))}
-      <InitiativeFields initiative={initiative} onChange={onInitiativeChange} />
+      {initiativeNotice}
+      <InitiativeFields initiative={initiative} onChange={onInitiativeChange} fieldSuggestions={initiativeFieldSuggestions} modifierStatblocks={modifierStatblocks} />
     </>
   );
 }

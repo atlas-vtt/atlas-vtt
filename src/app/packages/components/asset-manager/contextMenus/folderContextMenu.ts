@@ -2,6 +2,7 @@ import type * as React from 'react';
 import type { ContextMenuEntry } from '../../../../react/components/context-menu/AtlasContextMenu';
 import type { AnyAsset, Folder, InputModalState } from '../types';
 import { confirmAction } from '../../../../ui/confirmDialog';
+import { t } from '../../../../i18n';
 
 export interface FolderContextMenuDeps {
   folders: Folder[];
@@ -23,7 +24,7 @@ export function buildFolderContextMenuEntries(
   // Open / Navigate
   entries.push({
     type: 'item',
-    label: 'Open',
+    label: t('common.open'),
     icon: 'folder-open',
     onClick: () => deps.handleFolderDoubleClick(folder.id),
   });
@@ -32,13 +33,13 @@ export function buildFolderContextMenuEntries(
   // Rename
   entries.push({
     type: 'item',
-    label: 'Rename',
+    label: t('common.rename'),
     icon: 'edit',
     onClick: () => {
       deps.setInputModalState({
         isOpen: true,
-        title: `Rename folder "${folder.name}"`,
-        placeholder: 'Enter new folder name',
+        title: t('am.folder.renameTitle', { name: folder.name }),
+        placeholder: t('am.folder.newName'),
         defaultValue: folder.name,
         onConfirm: (newName: string) => {
           if (newName.trim() !== folder.name) {
@@ -53,12 +54,12 @@ export function buildFolderContextMenuEntries(
         },
         validation: (value: string) => {
           const trimmed = value.trim();
-          if (!trimmed) return 'Folder name cannot be empty';
+          if (!trimmed) return t('am.folder.nameEmpty');
           const siblings = deps.folders.filter(
             (f) => f.parentId === folder.parentId && f.id !== folder.id
           );
           if (siblings.some((f) => f.name === trimmed)) {
-            return `A folder named "${trimmed}" already exists in this location`;
+            return t('am.folder.exists', { name: trimmed });
           }
           return null;
         },
@@ -69,13 +70,13 @@ export function buildFolderContextMenuEntries(
   // New Subfolder
   entries.push({
     type: 'item',
-    label: 'New Subfolder',
+    label: t('am.folder.newSubfolder'),
     icon: 'folder-plus',
     onClick: () => {
       deps.setInputModalState({
         isOpen: true,
-        title: 'Create New Subfolder',
-        placeholder: 'Enter subfolder name',
+        title: t('am.folder.createSubfolder'),
+        placeholder: t('am.folder.subfolderName'),
         onConfirm: (subfolderName: string) => {
           const newFolder: Folder = {
             id: `folder-${Date.now()}`,
@@ -88,10 +89,10 @@ export function buildFolderContextMenuEntries(
         },
         validation: (value: string) => {
           const trimmed = value.trim();
-          if (!trimmed) return 'Subfolder name cannot be empty';
+          if (!trimmed) return t('am.folder.subfolderEmpty');
           const children = deps.folders.filter((f) => f.parentId === folder.id);
           if (children.some((f) => f.name === trimmed)) {
-            return `A subfolder named "${trimmed}" already exists`;
+            return t('am.folder.subfolderExists', { name: trimmed });
           }
           return null;
         },
@@ -107,7 +108,7 @@ export function buildFolderContextMenuEntries(
   if (otherFolders.length > 0) {
     entries.push({
       type: 'item',
-      label: 'Move Contents to Root',
+      label: t('am.folder.moveToRoot'),
       icon: 'folder-input',
       onClick: () => {
         deps.setAssets((prev) =>
@@ -119,7 +120,7 @@ export function buildFolderContextMenuEntries(
     otherFolders.slice(0, 5).forEach((target) => {
       entries.push({
         type: 'item',
-        label: `Move Contents to "${target.name}"`,
+        label: t('am.folder.moveTo', { name: target.name }),
         icon: 'folder-input',
         onClick: () => {
           deps.setAssets((prev) =>
@@ -134,16 +135,16 @@ export function buildFolderContextMenuEntries(
   // Delete
   entries.push({
     type: 'item',
-    label: 'Delete Folder',
+    label: t('am.folder.delete'),
     icon: 'trash',
     destructive: true,
     onClick: async () => {
       const assetsInFolder = deps.assets.filter((a) => a.folderId === folder.id);
-      const message = [`Are you sure you want to delete the folder "${folder.name}"?`];
+      const message = [t('am.folder.confirmDelete', { name: folder.name })];
       if (assetsInFolder.length > 0) {
-        message.push(`This folder contains ${assetsInFolder.length} asset${assetsInFolder.length !== 1 ? 's' : ''}. They will be moved to the parent folder.`);
+        message.push(t('am.folder.contains', { count: assetsInFolder.length }));
       }
-      const confirmed = await confirmAction({ title: 'Delete folder', message, confirmLabel: 'Delete', destructive: true });
+      const confirmed = await confirmAction({ title: t('am.folder.deleteTitle'), message, confirmLabel: t('common.delete'), destructive: true });
       if (!confirmed) return;
 
       deps.setAssets((prev) =>

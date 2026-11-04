@@ -18,7 +18,7 @@ function stage(gpu: DiceGpu, sides: DieSides, width: number, height: number, dpr
   const canvas = document.createElement('canvas');
   const renderer = new DiceRenderer(gpu, canvas);
   renderer.setSize(width, height, dpr);
-  renderer.setPlan([sides]);
+  renderer.setPlan([{ sides }]);
   const geometry = dieGeometry(sides);
   const anim = makeDie(seededRandom(7), [0, 0], 0.92, renderer.stage(), lyingHeight(geometry));
   restImmediately(anim, restingQuaternion(geometry, faceIndexForValue(geometry, sides), 0.3));

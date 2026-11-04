@@ -2,6 +2,7 @@ import type { AssetMetadata, CollectionMetadata } from './AssetService';
 import { collectionFolderPath } from './assetPaths';
 import { uniqueCollectionName } from './collectionNaming';
 import { mapStrings } from '../utils/mapStrings';
+import { hashText } from '../utils/hashing';
 
 /** The folder of the collection a new vault starts with. */
 export const INITIAL_COLLECTION_ID = 'Default';
@@ -55,6 +56,16 @@ export function createCollectionRecord(id: string, now = Date.now()): Collection
 }
 
 /**
+ * A record for a collection Atlas finds rather than the user makes: a folder
+ * that appeared, the first collection of a new vault. Every device that finds
+ * the folder works out the same record, so it needs no file until the user
+ * changes it.
+ */
+export function derivedCollectionRecord(id: string): CollectionMetadata {
+  return { ...createCollectionRecord(id, 0), uid: `collection-${hashText(String(id))}` };
+}
+
+/**
  * Moves a collection record to the folder `newId`: the record keeps its uid,
  * settings and default role, takes the folder name as its name, and every
  * stored path into the old folder follows.
@@ -90,6 +101,6 @@ export function forgetCollection(metadata: AssetMetadata, id: string, now = Date
   delete metadata.collections[id];
   if (!wasDefault) return;
   delete metadata.defaultCollectionId;
-  if (Object.keys(metadata.collections).length === 0) metadata.collections[INITIAL_COLLECTION_ID] = createCollectionRecord(INITIAL_COLLECTION_ID, now);
+  if (Object.keys(metadata.collections).length === 0) metadata.collections[INITIAL_COLLECTION_ID] = derivedCollectionRecord(INITIAL_COLLECTION_ID);
   metadata.defaultCollectionId = defaultCollectionIdOf(metadata);
 }

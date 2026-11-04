@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import type { AtlasView } from '../atlas-view';
-import { SceneSnapshotService } from '../snapshots/SceneSnapshotService';
+import { rewriteCollectionSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { runUntracked } from '../stores/history';
 import { AssetService } from './AssetService';
 import { isPersistedMapEnvelope } from './MapPersistence';
@@ -68,14 +68,6 @@ function pruneOpenView(view: AtlasView, defined: ReadonlySet<string>): void {
 export async function removeUndefinedConditions(app: App, collectionId: string): Promise<void> {
   const defined = new Set(AssetService.getInstance(app).getCollectionSettings(collectionId).conditions.map((condition) => condition.id));
   const rewrite = (content: string): string | null => dropUnknownConditionsFromJson(content, defined);
-  const files = await updateCollectionScenes(app, collectionId, { updateOpen: (view) => pruneOpenView(view, defined), rewrite });
-
-  const snapshots = new SceneSnapshotService(app);
-  for (const file of files) {
-    try {
-      await snapshots.rewriteFiles(file.path, rewrite);
-    } catch (error) {
-      console.error(`[Atlas] Could not remove old conditions from the snapshots of ${file.path}:`, error);
-    }
-  }
+  await updateCollectionScenes(app, collectionId, { updateOpen: (view) => pruneOpenView(view, defined), rewrite });
+  await rewriteCollectionSnapshots(app, collectionId, rewrite);
 }

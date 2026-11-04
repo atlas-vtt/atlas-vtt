@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const align: Translation = {
+  'align.analysing': 'Смотрю на карту…',
+  'align.checking': 'Найдена сетка: {type}. Проверяю размер клетки…',
+  'align.cornerFirst': 'Щёлкните угол клетки.',
+  'align.cornerNext': 'Теперь следующий угол справа.',
+  'align.find': 'Автоопределение',
+  'align.flat': 'Плоские',
+  'align.flatHexes': 'гексы с плоской вершиной',
+  'align.freehandHint': 'Приближайте, пока клетка образца не совпадёт с клеткой карты, затем щёлкните.',
+  'align.gridType': 'Тип сетки',
+  'align.hexCornerFirst': 'Щёлкните угол гекса.',
+  'align.hexCornerNext': 'Теперь соседний угол того же гекса.',
+  'align.measureCount': 'Измерение {done} из {total}',
+  'align.measureMore': 'Линии карты не дали ответа. Измерьте ещё одну клетку.',
+  'align.noGrid': 'Сетка на изображении не найдена. Выровняйте вручную.',
+  'align.orByHand': 'Или выровнять самостоятельно',
+  'align.pointy': 'Острые',
+  'align.pointyHexes': 'гексы с острой вершиной',
+  'align.square': 'Квадраты',
+  'align.squares': 'квадраты',
+  'align.tab.freehand': 'Вручную',
+  'align.tab.intersections': 'Измерение',
+  'align.title': 'Выравнивание сетки',
+};

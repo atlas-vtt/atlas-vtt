@@ -1,0 +1,192 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'dashboard-mixins' as *;
+@use 'campaign-controls' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Atlas VTT – the dashboard (Dashboard.tsx, HomePage.tsx)
+// ═══════════════════════════════════════════════════════════════════════════
+// A start screen built on Obsidian's theme variables, so light, dark and the
+// Atlas theme all carry it: the scene to continue as a large card, then the
+// campaigns and the recent scenes as cards with their own art. The layout
+// follows the pane's width (a container query), never the window's.
+
+$dashboard-max-width: 1200px;
+/// Below this pane width the dashboard takes one column and tighter margins.
+$dashboard-narrow: 720px;
+
+.atlas-dashboard {
+  container: atlas-dashboard / inline-size;
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.dashboard-container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: $dashboard-max-width;
+  margin: 0 auto;
+  padding: $spacing-xl $spacing-2xl $spacing-2xl;
+
+  @container atlas-dashboard (max-width: #{$dashboard-narrow}) {
+    padding: $spacing-l $spacing-l $spacing-xl;
+  }
+}
+
+// A page arrives with a short fade and rise; opening a campaign or going back is no keyboard repeat.
+.dashboard-page {
+  animation: dashboard-page-in $transition-slow $transition-ease-out both;
+}
+
+@keyframes dashboard-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes dashboard-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-page {
+    animation-name: dashboard-fade-in;
+  }
+}
+
+.dashboard-home {
+  @include atlas-flex-col($spacing-2xl);
+  align-items: stretch;
+}
+
+// The last scene's colours, blurred to a glow behind the top of the start screen.
+.dashboard-ambient {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 560px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.38;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+
+  .atlas-map-art {
+    filter: blur(56px) saturate(1.2);
+    transform: scale(1.2);
+  }
+
+  .atlas-map-art > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .theme-light & {
+    opacity: 0.14;
+  }
+}
+
+// ── Top bar ─────────────────────────────────────────────────────────────────
+
+.dashboard-topbar {
+  @include atlas-flex-row($spacing-m);
+  justify-content: space-between;
+  flex-wrap: wrap;
+  // The hero follows closer than the sections do.
+  margin-bottom: -$spacing-m;
+}
+
+.dashboard-wordmark {
+  @include atlas-flex-row($spacing-s);
+  margin: 0;
+  font-family: $font-atlas-display;
+  font-weight: normal;
+  font-size: calc(var(--font-ui-large) * 1.4);
+  line-height: 1;
+  color: var(--text-normal);
+
+  span {
+    color: var(--text-accent);
+  }
+}
+
+// The app's icon, its rounded square drawn into the image.
+.dashboard-wordmark__icon {
+  flex: none;
+  width: 1.5em;
+  height: 1.5em;
+}
+
+.dashboard-topbar__actions {
+  @include atlas-flex-row($spacing-xs);
+}
+
+.dashboard-topbar__action.btn {
+  @include campaign-ghost-control;
+  padding: 0 $spacing-m;
+  transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+// ── Sections and their grids ────────────────────────────────────────────────
+
+.dashboard-section {
+  @include atlas-flex-col($spacing-m);
+  align-items: stretch;
+}
+
+.dashboard-section__heading {
+  @include atlas-flex-row($spacing-m);
+  justify-content: space-between;
+  min-height: var(--input-height);
+}
+
+.dashboard-section__title {
+  margin: 0;
+  font-size: calc(var(--font-ui-medium) * 1.15);
+  font-weight: $font-weight-semibold;
+  line-height: var(--line-height-tight);
+  color: var(--text-normal);
+}
+
+.dashboard-section__search {
+  display: flex;
+  flex: 0 1 280px;
+  min-width: 0;
+
+  .atlas-asset-manager-search {
+    flex: 1 1 auto;
+    width: auto;
+  }
+}
+
+.dashboard-section__none {
+  margin: 0;
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: $spacing-l;
+}
+
+.campaign-grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.scene-grid {
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: $spacing-m;
+}

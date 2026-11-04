@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useMotionValue } from 'framer-motion'
-import { isToolbarControlId, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import { isToolbarUnitId, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import { workSlices } from '../../../../utils/workSlices'
 import { TOOLBAR_SCREENSHOTS } from '../toolbarScreenshots'
 import { appearCard, cardFits, vanishCard, type CardEntrance, type EditCardMotion } from './editCardMotion'
@@ -11,7 +11,7 @@ import { useToolbarEditStore, type ToolbarEditState } from './toolbarEditStore'
 
 /** The tool the card is about, from the moment it was asked to show. */
 export interface EditCardContent {
-  id: ToolbarControlId
+  id: ToolbarUnitId
   anchor: HTMLElement
   entrance: CardEntrance
   serial: number
@@ -118,7 +118,7 @@ export function useEditTooltip(cardRef: React.RefObject<HTMLElement | null>, act
     const show = (anchor: HTMLElement, by: CardSource): void => {
       const id = anchor.dataset.control ?? ''
       stopTimer()
-      if (!isToolbarControlId(id) || busy()) return
+      if (!isToolbarUnitId(id) || busy()) return
       if (shown?.id === id) {
         shown = { id, by }
         return

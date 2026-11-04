@@ -1,12 +1,14 @@
-import React, { useId, useLayoutEffect, useRef } from 'react';
+import React, { useId, useLayoutEffect, useMemo, useRef } from 'react';
 import { LocateFixed, Minus, Plus } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { resourceUpdate, withCurrent } from '../../../resources/resourceValues';
+import { fsQuantityLook, PLAIN_QUANTITY_LOOK, type QuantityLook } from '../../../resources/quantityLooks';
 import { tokenQuantities, type TokenQuantity } from '../../../resources/statblockQuantities';
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
 import type { StatblockLayout, StatblockMonster } from './statblockTypes';
 import type { TokenVitals } from '../../../services/statblockVitalsSync';
+import { t } from '../../../i18n';
 
 export interface StatblockTokenActions {
   /** The resources of the map's collection. */
@@ -15,11 +17,16 @@ export interface StatblockTokenActions {
   onHoverToken?: (id: string) => void;
   onUpdateToken: (id: string, updates: ReturnType<typeof resourceUpdate>) => void;
 }
-export interface StatblockTokenResourcesProps extends StatblockTokenActions {
+/**
+ * What the statblock draws of its quantities: a native template's look (`templateQuantityLook`),
+ * or a Fantasy Statblocks layout, which is read with `fsQuantityLook`.
+ */
+type QuantitySource = { look: QuantityLook; layout?: never } | { layout: StatblockLayout; look?: never };
+
+export type StatblockTokenResourcesProps = StatblockTokenActions & QuantitySource & {
   monster: StatblockMonster;
-  layout: StatblockLayout;
   tokens: TokenVitals[];
-}
+};
 function ResourceControl({ quantity, onChange }: {
   quantity: TokenQuantity;
   onChange: (value: number) => void;
@@ -34,7 +41,7 @@ function ResourceControl({ quantity, onChange }: {
       {boxes ? (
         <div className="atlas-sb-token-pips">
           {Array.from({ length: max }, (_, index) => (
-            <LabelTooltip key={index} label={`${label}${fills ? '' : ' damage'} ${index + 1} of ${max}`}>
+            <LabelTooltip key={index} label={t(fills ? 'statblock.pip' : 'statblock.pipDamage', { label, n: index + 1, max })}>
               <input
                 type="checkbox"
                 checked={index < marked}
@@ -48,7 +55,7 @@ function ResourceControl({ quantity, onChange }: {
         </div>
       ) : (
         <div className="atlas-sb-token-gauge-controls">
-          <LabelTooltip label={`Decrease ${label}`}>
+          <LabelTooltip label={t('statblock.decrease', { label })}>
             <Button variant="ghost" size="icon"
               disabled={current <= 0} onClick={() => onChange(current - 1)}><Minus /></Button>
           </LabelTooltip>
@@ -57,7 +64,7 @@ function ResourceControl({ quantity, onChange }: {
             <span className="atlas-sb-token-gauge-fill" style={{ width: `${max > 0 ? current / max * 100 : 0}%` }} />
             <span className="atlas-sb-token-gauge-value">{current} / {max}</span>
           </div>
-          <LabelTooltip label={`Increase ${label}`}>
+          <LabelTooltip label={t('statblock.increase', { label })}>
             <Button variant="ghost" size="icon"
               disabled={current >= max} onClick={() => onChange(current + 1)}><Plus /></Button>
           </LabelTooltip>
@@ -67,7 +74,8 @@ function ResourceControl({ quantity, onChange }: {
   );
 }
 
-export function StatblockTokenResources({ monster, layout, definitions, tokens, onLocateToken, onHoverToken, onUpdateToken }: StatblockTokenResourcesProps): React.JSX.Element {
+export function StatblockTokenResources({ monster, layout, look, definitions, tokens, onLocateToken, onHoverToken, onUpdateToken }: StatblockTokenResourcesProps): React.JSX.Element {
+  const quantityLook = useMemo(() => look ?? (layout ? fsQuantityLook(layout) : PLAIN_QUANTITY_LOOK), [look, layout]);
   const listRef = useRef<HTMLDivElement>(null);
   const entryLabelId = useId();
   const identified = tokens.filter((token): token is TokenVitals & { id: string } => Boolean(token.id));
@@ -82,7 +90,7 @@ export function StatblockTokenResources({ monster, layout, definitions, tokens, 
       while (used.has(number) || reserved.has(number)) number++;
     }
     used.add(number);
-    return { token, label: `${token.name || monster.name || 'Creature'} #${number}` };
+    return { token, label: `${token.name || monster.name || t('statblock.creature')} #${number}` };
   });
 
   useLayoutEffect(() => {
@@ -102,21 +110,21 @@ export function StatblockTokenResources({ monster, layout, definitions, tokens, 
     observer?.observe(list);
     Array.from(list.children).slice(0, 3).forEach((child) => observer?.observe(child));
     return () => observer?.disconnect();
-  }, [scrollable, tokens, definitions, monster, layout]);
+  }, [scrollable, tokens, definitions, monster, quantityLook]);
 
   return (
     <div ref={listRef} className="atlas-sb-token-list" data-scrollable={scrollable}
       onKeyDown={(event) => event.stopPropagation()}>
       {entries.map(({ token, label }) => (
         <div key={token.id} className="atlas-sb-token-entry" role="group" aria-labelledby={`${entryLabelId}-${token.id}`}>
-          <LabelTooltip label={`Locate ${label} on map`}>
+          <LabelTooltip label={t('statblock.locate', { label })}>
             <Button className="atlas-sb-token-name" variant="ghost" size="sm"
               onMouseEnter={() => onHoverToken?.(token.id)} onFocus={() => onHoverToken?.(token.id)}
               onClick={() => onLocateToken(token.id)}>
               <span id={`${entryLabelId}-${token.id}`}>{label}</span><LocateFixed aria-hidden="true" />
             </Button>
           </LabelTooltip>
-          {tokenQuantities(monster, layout, token, definitions).map((quantity) => (
+          {tokenQuantities(monster, quantityLook, token, definitions).map((quantity) => (
             <ResourceControl key={quantity.key} quantity={quantity}
               onChange={(current) => onUpdateToken(token.id, resourceUpdate(token, quantity.key, withCurrent(quantity.value, current), false))} />
           ))}

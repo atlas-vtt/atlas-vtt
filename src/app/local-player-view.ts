@@ -1,27 +1,49 @@
 import { ItemView, type WorkspaceLeaf, type ViewStateResult } from 'obsidian';
 import { PlayerWindowService } from './services/PlayerWindowService';
 import { restorePlayerWindow } from './services/PlayerWindowPresenter';
+import { t } from './i18n';
+import type { PlayerCameraState } from './types/playerCamera';
+import { isRecord } from './utils/guards';
+
+export type { PlayerCameraState } from './types/playerCamera';
 
 export const LOCAL_PLAYER_VIEW_TYPE = 'atlas-vtt-local-player';
 
-export interface PlayerCameraState {
-  centerX: number;
-  centerY: number;
-  scale: number;
+/** A number a size or a zoom can be: positive, finite, and not so small that dividing by it gives none. */
+function isPositive(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 && Number.isFinite(1 / value);
 }
 
-function isPlayerCamera(value: unknown): value is PlayerCameraState {
-  if (typeof value !== 'object' || value === null) return false;
-  return 'centerX' in value && typeof value.centerX === 'number' && Number.isFinite(value.centerX)
-    && 'centerY' in value && typeof value.centerY === 'number' && Number.isFinite(value.centerY)
-    && 'scale' in value && typeof value.scale === 'number' && Number.isFinite(value.scale) && value.scale > 0;
+/**
+ * The camera a saved session holds, or none where it holds no usable one. The world rectangle
+ * (`width`, `height`) is read only where both sides are sizes: a session an older Atlas saved
+ * has none, and its camera then frames what the DM's screen shows.
+ */
+function readPlayerCamera(value: unknown): PlayerCameraState | null {
+  if (typeof value !== 'object' || value === null) return null;
+  if (!('centerX' in value) || typeof value.centerX !== 'number' || !Number.isFinite(value.centerX)) return null;
+  if (!('centerY' in value) || typeof value.centerY !== 'number' || !Number.isFinite(value.centerY)) return null;
+  if (!('scale' in value) || !isPositive(value.scale)) return null;
+  const camera: PlayerCameraState = { centerX: value.centerX, centerY: value.centerY, scale: value.scale };
+  if ('width' in value && 'height' in value && isPositive(value.width) && isPositive(value.height)) {
+    camera.width = value.width;
+    camera.height = value.height;
+  }
+  return camera;
 }
 
 export interface LocalPlayerSession extends Record<string, unknown> {
   tabId: string;
   filePath: string;
   frozen: boolean;
-  camera?: PlayerCameraState;
+  /** The camera players saw the scene of `tabId` through last; null once another scene is presented, until a frame of it was shown. */
+  camera?: PlayerCameraState | null;
+  /** The camera the GM framed players on, per map file; presenting the map again returns them to it. */
+  frames?: Record<string, PlayerCameraState>;
+  /** The level of that scene players saw, whose camera `camera` is; unset for a scene without levels. */
+  levelId?: string | undefined;
+  /** Whether the curtain was down: a restored window comes back black until the GM lifts it. */
+  curtain?: boolean;
 }
 
 /** A real workspace leaf lets Obsidian restore the presentation and window geometry. */
@@ -35,7 +57,7 @@ export class LocalPlayerView extends ItemView {
   }
 
   getViewType(): string { return LOCAL_PLAYER_VIEW_TYPE; }
-  getDisplayText(): string { return 'Player view'; }
+  getDisplayText(): string { return t('view.player'); }
   getIcon(): string { return 'presentation'; }
   getState(): LocalPlayerSession { return { ...this.session }; }
 
@@ -49,7 +71,16 @@ export class LocalPlayerView extends ItemView {
     if (!('tabId' in state) || typeof state.tabId !== 'string') return;
     if (!('filePath' in state) || typeof state.filePath !== 'string') return;
     this.session = { tabId: state.tabId, filePath: state.filePath, frozen: 'frozen' in state && state.frozen === true };
-    if ('camera' in state && isPlayerCamera(state.camera)) this.session.camera = { ...state.camera };
+    const camera = 'camera' in state ? readPlayerCamera(state.camera) : null;
+    if (camera) this.session.camera = camera;
+    if ('levelId' in state && typeof state.levelId === 'string' && state.levelId !== '') this.session.levelId = state.levelId;
+    if ('curtain' in state && state.curtain === true) this.session.curtain = true;
+    if ('frames' in state && isRecord(state.frames)) {
+      this.session.frames = Object.fromEntries(Object.entries(state.frames).flatMap(([map, framed]): Array<[string, PlayerCameraState]> => {
+        const camera = readPlayerCamera(framed);
+        return camera ? [[map, camera]] : [];
+      }));
+    }
     this.app.workspace.onLayoutReady(() => {
       if (this.isClosed) return;
       if (this.restoreTimer !== null) window.clearTimeout(this.restoreTimer);
@@ -58,7 +89,7 @@ export class LocalPlayerView extends ItemView {
         this.restoreTimer = null;
         if (!this.isClosed) void restorePlayerWindow(this.app, this).catch((error: unknown) => {
           console.error('[LocalPlayerView] Could not restore presentation:', error);
-          this.contentEl.setText('Unable to restore player view. Send a scene to this window again.');
+          this.contentEl.setText(t('view.playerRestoreFailed'));
         });
       }, 0);
     });
@@ -67,7 +98,7 @@ export class LocalPlayerView extends ItemView {
   async onOpen(): Promise<void> {
     this.isClosed = false;
     this.contentEl.addClass('atlas-local-player-content');
-    this.contentEl.setText('Connecting to game session…');
+    this.contentEl.setText(t('view.connecting'));
     if (this.contentEl.win !== window) this.contentEl.doc.body.addClass('atlas-player-window');
   }
 

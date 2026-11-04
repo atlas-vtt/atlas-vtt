@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 const collection = vi.hoisted(() => ({ resources: undefined as unknown }));
 vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => ({
   getCollectionForMap: () => 'collection',
@@ -13,6 +12,7 @@ import { AMMO, HP } from '../mocks/resourceFixtures';
 interface Roll {
   formula: string;
   source: Record<string, unknown>;
+  origin?: unknown;
 }
 
 /** An open map view with a dice tool that returns `totals` in order, and a store holding `tokenIds`. */
@@ -21,8 +21,8 @@ function mapView(totals: number[], tokenIds: string[], isPlayerView = false) {
   const updateTokens = vi.fn();
   const view = {
     serviceManager: { getToolController: () => ({ getDiceTool: () => ({
-      rollDice: (formula: string, source: Record<string, unknown>) => {
-        rolls.push({ formula, source });
+      rollDice: (formula: string, source: Record<string, unknown>, origin?: unknown) => {
+        rolls.push({ formula, source, origin });
         return { formula, total: totals[rolls.length - 1] ?? 0 };
       },
     }) }) },
@@ -36,7 +36,10 @@ function mapView(totals: number[], tokenIds: string[], isPlayerView = false) {
   return { view, rolls, updateTokens };
 }
 
-const appWith = (...views: unknown[]) => ({ workspace: { getLeavesOfType: () => views.map((view) => ({ view })) } }) as never;
+const appWith = (...views: unknown[]) => ({
+  workspace: { getLeavesOfType: () => views.map((view) => ({ view })) },
+  vault: { getFileByPath: () => null },
+}) as never;
 
 describe('rollHitPoints', () => {
   beforeEach(() => { collection.resources = [HP]; });
@@ -55,6 +58,31 @@ describe('rollHitPoints', () => {
       { id: 'a', changes: { resources: { hp: { current: 9, max: 9 } }, overriddenMax: ['hp'] } },
       { id: 'b', changes: { resources: { hp: { current: 4, max: 4 } }, overriddenMax: ['hp'] } },
     ]);
+  });
+
+  it('rolls and updates only the named view when both contain the same token', () => {
+    const first = mapView([2], ['a']);
+    const second = mapView([9], ['a']);
+    const app = appWith({ ...first.view, viewId: 'first' }, { ...second.view, viewId: 'second' });
+    rollHitPoints(app, '2d6', 'Goblin.md', [{ id: 'a' }], 'Hit Points', 'second');
+    expect(first.rolls).toEqual([]);
+    expect(first.updateTokens).not.toHaveBeenCalled();
+    expect(second.rolls).toHaveLength(1);
+    expect(second.updateTokens).toHaveBeenCalledWith([
+      { id: 'a', changes: { resources: { hp: { current: 9, max: 9 } }, overriddenMax: ['hp'] } },
+    ]);
+  });
+
+  it('passes each token the origin of the statblock it was opened for, never one from the map it finds', () => {
+    const { view, rolls } = mapView([9, 4], ['a', 'b']);
+    const app = appWith({ ...view, viewId: 'view-1' });
+    const context = { viewId: 'view-1', mapPath: 'maps/opened.atlasmap', tokenIds: ['a'] };
+    rollHitPoints(app, '2d6', 'Goblin.md', [{ id: 'a' }, { id: 'b' }], 'Hit Points', 'view-1', context);
+    expect(rolls.map((roll) => roll.origin)).toEqual([{ viewId: 'view-1', mapPath: 'maps/opened.atlasmap', tokenId: 'a' }, undefined]);
+
+    // The map that holds the tokens does not make an origin up
+    rollHitPoints(app, '2d6', 'Goblin.md', [{ id: 'a' }], 'Hit Points', 'view-1');
+    expect(rolls[2]?.origin).toBeUndefined();
   });
 
   it('never rolls a creature below 1 hit point', () => {

@@ -1,0 +1,203 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The statblock pane (§7.2, §7.10)
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported by StatblockPane.tsx, so not inside the `.atlas-vtt-plugin` scope of
+// styles/main.scss: the rules take that scope themselves. The panel beside the
+// note (`.atlas-sb-note-panel`, note-panel/) carries `.atlas-vtt-plugin` and scrolls.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'pane-inputs';
+@use 'pane-entry-editor';
+@use 'pane-lists';
+@use 'pane-tray';
+@use 'change-template';
+@use 'pane-recovery';
+@use 'rest-chooser';
+
+// The header's end controls are capsules: the bar is shorter than 48 px.
+$header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--input-height) / 2));
+
+.atlas-vtt-plugin {
+  // Padding equals the gap between the header, the hint, the card and the tray.
+  .atlas-sb-pane {
+    @include atlas-flex-col($spacing-l);
+    align-items: stretch;
+    padding: $spacing-l;
+    min-height: 100%;
+  }
+
+  .atlas-sb-pane-body {
+    @include atlas-flex-col($spacing-l);
+  }
+
+  // ── Header: a capsule bar ───────────────────────────────────────────────
+  .atlas-sb-pane-header {
+    @include atlas-flex-row($spacing-s);
+    @include atlas-panel-radius($radius-2xl, $border-width-s);
+    padding: $spacing-s;
+    background: var(--background-secondary);
+    border: $border-width-s solid var(--background-modifier-border);
+
+    > :first-child,
+    > :first-child .btn {
+      border-start-start-radius: $header-control-radius;
+      border-end-start-radius: $header-control-radius;
+    }
+
+    > :last-child .btn {
+      border-start-end-radius: $header-control-radius;
+      border-end-end-radius: $header-control-radius;
+    }
+  }
+
+  .atlas-sb-pane-header__end {
+    display: flex;
+    margin-inline-start: auto;
+  }
+
+  .atlas-sb-pane-header__more.btn--icon {
+    width: var(--input-height);
+    height: var(--input-height);
+    @include atlas-corner-shape;
+  }
+
+  .atlas-sb-pane-menu-button {
+    @include atlas-flex-row($spacing-xs);
+    @include atlas-corner-shape;
+    min-width: 0;
+    max-width: 100%;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+  }
+
+  .atlas-sb-pane-menu-button__text {
+    @include atlas-flex-row($spacing-xs);
+    @include atlas-truncate;
+    min-width: 0;
+  }
+
+  .atlas-sb-pane-template__lock {
+    color: var(--text-faint);
+  }
+
+  // ── Card ────────────────────────────────────────────────────────────────
+  // Centred; a one-column template keeps the DM screen's widest feed.
+  .atlas-sb-pane-card {
+    width: 100%;
+    margin-inline: auto;
+
+    &[data-columns='1'] {
+      max-width: $statblock-feed-max-width;
+    }
+  }
+
+  // The ⋯ under the card ends where the card does.
+  .atlas-sb-pane-card[data-columns='1'] + .atlas-sb-card-menu {
+    width: 100%;
+    max-width: $statblock-feed-max-width;
+    margin-inline: auto;
+  }
+
+  // A line about the statblock above its card, in the body's gap: one step down the radius scale.
+  .atlas-sb-pane-bar {
+    @include atlas-flex-row($spacing-s);
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin: 0;
+    padding: $spacing-s;
+    border-radius: $radius-l;
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+
+    code {
+      font-size: inherit;
+    }
+  }
+
+  .atlas-sb-pane-bar__text {
+    min-width: 0;
+    text-wrap: pretty;
+  }
+
+  // ── States ──────────────────────────────────────────────────────────────
+  .atlas-sb-pane-state {
+    @include atlas-flex-col($spacing-l);
+  }
+
+  .atlas-sb-pane-live {
+    @include atlas-visually-hidden;
+  }
+
+  // ── Rolls no map on screen shows (PaneDiceRolls) ────────────────────────
+  // The dice display's column hangs from the top of the panel beside the note
+  // (its positioned ancestor, outside the scroller), so it stays in view while
+  // the card scrolls, and lies over the card as rolls lie over a map.
+  .atlas-sb-pane-rolls {
+    position: absolute;
+    top: $spacing-s;
+    inset-inline-end: $spacing-s;
+    z-index: $z-atlas-dice-rolls;
+    width: min(21rem, calc(100% - 2 * #{$spacing-s}));
+    pointer-events: none;
+
+    > .atlas-vtt-plugin.atlas-dice-rolls {
+      position: relative;
+      top: auto;
+      right: auto;
+      width: 100%;
+      max-width: none;
+    }
+  }
+}
+
+// The statblock's ⋯ (`StatblockCardMenu`): under the card, at its right edge, so the card's corner is
+// the token art's. Shown while the pointer is over the panel, focus is in it or its menu is open;
+// always on touch screens. Its row keeps its height while hidden, so nothing below moves.
+.atlas-vtt-plugin .atlas-sb-pane:is(:hover, :focus-within) .atlas-sb-card-menu,
+.atlas-vtt-plugin .atlas-sb-card-menu:has([data-state='open']) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.atlas-vtt-plugin .atlas-sb-card-menu {
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity $transition-fast $transition-ease;
+
+  @media (hover: none) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+
+  .atlas-sb-card-menu__button.btn {
+    @include atlas-corner-shape;
+    width: $input-height-s;
+    height: $input-height-s;
+    padding: 0;
+    border-radius: $radius-m;
+    color: var(--text-muted);
+
+    &:hover,
+    &[data-state='open'] {
+      color: var(--text-normal);
+    }
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+  }
+}

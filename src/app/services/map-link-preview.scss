@@ -59,11 +59,10 @@
 
   &:hover {
     background: var(--interactive-accent-hover);
-    transform: translateY(-1px);
   }
 
   &:active {
-    transform: translateY(0);
+    transform: scale(0.97);
   }
 }
 

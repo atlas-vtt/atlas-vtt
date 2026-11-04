@@ -7,6 +7,9 @@ export interface IssueReceipt {
   url: string;
 }
 
+/** The reporting service names issues under the repository's former owner too, which GitHub redirects. */
+const RECEIPT_REPOSITORY_URLS = [ATLAS_GITHUB_URL, 'https://github.com/ByteMirror/atlas-vtt'];
+
 type SendRequest = (request: RequestUrlParam) => Promise<{ status: number; json: unknown }>;
 
 export function createIssueSubmitter(
@@ -37,10 +40,12 @@ export function createIssueSubmitter(
     if (response.status !== 201) {
       throw new Error(typeof data?.error === 'string' ? data.error : 'The reporting service could not confirm submission.');
     }
-    if (!Number.isSafeInteger(data?.number) || (data?.number ?? 0) < 1
-      || data?.url !== `${ATLAS_GITHUB_URL}/issues/${data?.number}`) {
+    const number = data?.number;
+    const url = data?.url;
+    if (number === undefined || !Number.isSafeInteger(number) || number < 1 || url === undefined
+      || !RECEIPT_REPOSITORY_URLS.some(repository => url === `${repository}/issues/${number}`)) {
       throw new Error('The reporting service returned an invalid confirmation.');
     }
-    return { number: data.number!, url: data.url };
+    return { number, url };
   };
 }

@@ -1,0 +1,123 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Collection settings — Random tables: the words a collection's items name their
+// rarity with, a row each, its tone a row of dots
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss, after
+// random-tables-tab.scss (whose row remove button it shows on hover).
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// ── Item rarities: a row per word, its tone a row of dots ──────────────────
+.atlas-rt-section-head {
+  @include atlas-flex-row($spacing-s);
+  justify-content: space-between;
+  min-height: $button-height-s;
+}
+
+.atlas-rt-rarities__list {
+  @include atlas-flex-col(1px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-rt-rarity {
+  @include atlas-flex-row($spacing-s);
+  padding: $spacing-xs;
+  border-radius: $radius-m;
+  @include atlas-corner-shape;
+  transition: background-color $transition-fast $transition-ease;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  &.is-dragged {
+    opacity: 0.5;
+  }
+}
+
+.atlas-rt-rarity__grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: $button-height-s;
+  height: $button-height-s;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: grab;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover {
+    background: transparent;
+    color: var(--text-normal);
+  }
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+}
+
+.atlas-rt-rarity__name.atlas-csm-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.atlas-rt-tones {
+  @include atlas-flex-row(2px);
+  flex-shrink: 0;
+}
+
+// A tone of the ladder as a dot in its colour; "none" is a hollow ring.
+.atlas-rt-tone {
+  --atlas-rt-tone: var(--text-muted);
+  position: relative;
+  width: $button-height-s;
+  height: $button-height-s;
+  padding: 0;
+  border: none;
+  border-radius: $radius-full;
+  box-shadow: none;
+  background: transparent;
+  cursor: pointer;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 7px;
+    border-radius: $radius-full;
+    background: var(--atlas-rt-tone);
+  }
+
+  &[data-rarity='none']::after {
+    background: transparent;
+    box-shadow: inset 0 0 0 $border-width-l var(--text-faint);
+  }
+
+  &[data-rarity='uncommon'] { --atlas-rt-tone: var(--color-green); }
+  &[data-rarity='rare'] { --atlas-rt-tone: var(--color-blue); }
+  &[data-rarity='epic'] { --atlas-rt-tone: var(--color-purple); }
+  &[data-rarity='legendary'] { --atlas-rt-tone: var(--color-orange); }
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+
+  // The chosen tone: ringed in the accent around its dot.
+  &.is-chosen {
+    box-shadow: inset 0 0 0 $border-width-m var(--interactive-accent);
+  }
+}

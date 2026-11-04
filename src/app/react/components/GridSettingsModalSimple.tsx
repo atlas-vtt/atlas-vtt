@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Grid, Hexagon } from 'lucide-react';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import type { AtlasView } from '../../atlas-view';
+import { t } from '../../i18n';
 
 interface GridSettingsModalProps {
   isOpen: boolean;
@@ -118,42 +119,42 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
       
       <div className="atlas-vtt-plugin atlas-grid-settings-modal">
         <div className="atlas-grid-settings-header">
-          <h2>Grid Settings</h2>
+          <h2>{t('gridModal.title')}</h2>
           <CloseButton onClick={onClose} />
         </div>
         
         <div className="atlas-grid-settings-content">
           {/* Grid Type Selection */}
           <div className="atlas-grid-settings-section">
-            <h3>Grid Type</h3>
+            <h3>{t('gridModal.type')}</h3>
             <div className="atlas-grid-type-options">
               <button
                 className={`atlas-grid-type-option ${settings.type === 'square' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'square')}
               >
                 <Grid size={24} />
-                <span>Square</span>
+                <span>{t('grid.type.square')}</span>
               </button>
               <button
                 className={`atlas-grid-type-option ${settings.type === 'hex-horizontal' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'hex-horizontal')}
               >
                 <Hexagon size={24} />
-                <span>Hex (Flat)</span>
+                <span>{t('grid.type.hexFlat')}</span>
               </button>
               <button
                 className={`atlas-grid-type-option ${settings.type === 'hex-vertical' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'hex-vertical')}
               >
                 <Hexagon size={24} className="atlas-rotate-30" />
-                <span>Hex (Pointy)</span>
+                <span>{t('grid.type.hexPointy')}</span>
               </button>
             </div>
           </div>
           
           {/* Grid Size */}
           <div className="atlas-grid-settings-section">
-            <h3>Grid Size</h3>
+            <h3>{t('gridModal.size')}</h3>
             <div className="atlas-grid-size-control">
               <input
                 type="range"
@@ -169,7 +170,7 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
           
           {/* Grid Units */}
           <div className="atlas-grid-settings-section">
-            <h3>Grid Units</h3>
+            <h3>{t('gridModal.units')}</h3>
             <div className="atlas-grid-units-control">
               <input
                 type="number"
@@ -184,18 +185,18 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
                 onChange={(e) => updateSetting('unitType', e.target.value as UnitType)}
                 className="atlas-grid-units-select"
               >
-                <option value="feet">feet</option>
-                <option value="yards">yards</option>
-                <option value="meters">meters</option>
-                <option value="units">units</option>
+                <option value="feet">{t('gridModal.unit.feet')}</option>
+                <option value="yards">{t('gridModal.unit.yards')}</option>
+                <option value="meters">{t('gridModal.unit.meters')}</option>
+                <option value="units">{t('gridModal.unit.units')}</option>
               </select>
-              <span className="atlas-grid-units-label">per {settings.type === 'square' ? 'square' : 'hex'}</span>
+              <span className="atlas-grid-units-label">{settings.type === 'square' ? t('gridModal.perSquare') : t('gridModal.perHex')}</span>
             </div>
           </div>
           
           {/* Grid Opacity */}
           <div className="atlas-grid-settings-section">
-            <h3>Grid Opacity</h3>
+            <h3>{t('gridModal.opacity')}</h3>
             <div className="atlas-grid-opacity-control">
               <input
                 type="range"
@@ -217,17 +218,17 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
                 checked={gridVisible}
                 onChange={(e) => setLocalGridVisible(e.target.checked)}
               />
-              <span>Show Grid</span>
+              <span>{t('gridModal.show')}</span>
             </label>
           </div>
         </div>
         
         <div className="atlas-grid-settings-footer">
           <button className="atlas-grid-settings-cancel" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button className="atlas-grid-settings-apply" onClick={applySettings}>
-            Apply Settings
+            {t('gridModal.apply')}
           </button>
         </div>
       </div>

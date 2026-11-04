@@ -1,6 +1,7 @@
 import React from 'react';
 import { SystemPresetRow } from '../../../../react/components/collection-settings/SystemPresetRow';
 import type { SystemPreset } from '../../../../types/systemPresetTypes';
+import { t } from '../../../../i18n';
 
 /** What a new collection plays: no game system, a saved preset, or one set up on the spot. */
 export type SystemChoice = { kind: 'none' } | { kind: 'preset'; presetId: string } | { kind: 'custom' };
@@ -14,10 +15,10 @@ interface SystemChoiceListProps {
 /** The game systems a new collection can start with, as one radio group. */
 export function SystemChoiceList({ presets, choice, onChange }: SystemChoiceListProps): React.ReactElement {
   return (
-    <div className="atlas-csm-preset-list" role="radiogroup" aria-label="Game system">
+    <div className="atlas-csm-preset-list" role="radiogroup" aria-label={t('am.create.system')}>
       <SystemPresetRow
-        name="No game system"
-        summary="Default measurement, no conditions"
+        name={t('am.system.none')}
+        summary={t('am.system.noneSummary')}
         isActive={choice.kind === 'none'}
         onSelect={() => onChange({ kind: 'none' })}
       />
@@ -32,8 +33,8 @@ export function SystemChoiceList({ presets, choice, onChange }: SystemChoiceList
         />
       ))}
       <SystemPresetRow
-        name="Create your own"
-        summary="Set up measurement, conditions and bars, saved as a preset"
+        name={t('am.system.own')}
+        summary={t('am.system.ownSummary')}
         isActive={choice.kind === 'custom'}
         onSelect={() => onChange({ kind: 'custom' })}
       />

@@ -1,8 +1,7 @@
-// @vitest-environment node
 // JSZip needs Node's ArrayBuffer realm; jsdom's differs and its Blob support is absent.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
-import { AtlasView } from '../../src/app/atlas-view';
+import { ATLAS_VIEW_TYPE } from '../../src/app/atlasViewType';
 import { AssetService } from '../../src/app/services/AssetService';
 import { transferAssets } from '../../src/app/services/assetTransfer/assetTransfer';
 import { groupContents } from '../../src/app/services/collectionBundle/bundleContents';
@@ -13,12 +12,8 @@ import type { ImportReview } from '../../src/app/services/collectionBundle/impor
 import { readInstallRecord } from '../../src/app/services/collectionBundle/installRecord';
 import { noteTree } from '../../src/app/services/collectionBundle/noteTree';
 import { createSnapshot } from '../../src/app/snapshots/sceneSnapshotFormat';
+import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
 import { createInMemoryApp, parseFrontmatter, type InMemoryApp } from '../mocks/inMemoryVault';
-
-vi.mock('../../src/app/atlas-view', () => ({
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-  AtlasView: class { async saveMap(): Promise<void> {} },
-}));
 
 // Covers are drawn on a canvas, which Node lacks.
 vi.mock('../../src/app/imageProcessing/imageProcessing', () => ({
@@ -132,6 +127,36 @@ async function importInto(target: Vault, blob: Blob, decision: ImportDecision = 
   const { review, apply } = await reviewImport(target, blob);
   await apply(decision);
   return review;
+}
+
+/** Saves a snapshot of the creator's scene in which an ogre with artwork of its own stands; returns the snapshot folder. */
+async function withOgreSnapshot({ vault, assets }: Vault, ogreImage: string): Promise<string> {
+  const [scene] = await assets.getAssets('source', 'scene');
+  const folder = sceneSnapshotFolder('source', scene!.id);
+  const snapshot = createSnapshot({ version: 4, state: {
+    schema: 'atlas-vtt', version: 4, background: BACKGROUND, grid: null,
+    objects: { tokens: { o1: { id: 'o1', kind: 'character', x: 0, y: 0, imagePath: ogreImage, statblockPath: NOTE_PATH, name: 'Ogre', hp: 30 } } },
+  } }, 'snap1', 'Ogre ambush', 1000);
+  await vault.app.vault.create(ogreImage, 'OGRE');
+  await vault.app.vault.create(`${folder}/snap1.json`, JSON.stringify(snapshot));
+  await vault.app.vault.create(`${folder}/snap1.jpg`, 'SNAPJPG');
+  return folder;
+}
+
+/** `blob` as an earlier version wrote it: snapshot files under `legacyFolder`, owned by `owners` when given. */
+async function withLegacySnapshotPaths(blob: Blob, legacyFolder: string, owners?: string[]): Promise<Blob> {
+  const { default: JSZip } = await import('jszip');
+  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+  const manifest = JSON.parse(await zip.file('manifest.json')!.async('string')) as PackedManifest;
+  for (const file of manifest.files.filter((entry) => entry.role.startsWith('scene-snapshot'))) {
+    const legacyPath = `${legacyFolder}/${file.vaultPath.slice(file.vaultPath.lastIndexOf('/') + 1)}`;
+    zip.file(`files/${legacyPath}`, await zip.file(`files/${file.vaultPath}`)!.async('arraybuffer'));
+    zip.remove(`files/${file.vaultPath}`);
+    file.vaultPath = legacyPath;
+    if (owners) file.owners = owners;
+  }
+  zip.file('manifest.json', JSON.stringify(manifest));
+  return new Blob([await zip.generateAsync({ type: 'arraybuffer' })]);
 }
 
 const theirs = (unit: string): ImportDecision => ({ resolutions: new Map([[unit, 'theirs']]) });
@@ -260,28 +285,68 @@ describe('installing', () => {
     expect(token).toMatchObject({ imagePath: TOKEN_IMAGE, statblockPath: `${statblocks}/Goblin.md`, showRing: false, size: 1.5 });
     expect(JSON.parse(fan.vault.files.get(MAP_PATH)!).state.objects.tokens.t1.statblockPath).toBe(`${statblocks}/Goblin.md`);
     expect(parseFrontmatter(fan.vault.files.get(`${statblocks}/Goblin.md`)!)).toMatchObject({ image: `${statblocks}/goblin.png` });
-    expect(await readInstallRecord(fan.vault.app, collection!.uid)).toMatchObject({ version: 1, collectionId: 'source' });
+    expect(await readInstallRecord(fan.vault.app, collection!)).toMatchObject({ version: 1, collectionId: 'source' });
+    // In the collection's folder, so it syncs and moves with the collection.
+    expect(fan.vault.files.has('atlas-vtt/collections/source/install.json')).toBe(true);
+  });
+
+  it('carries the map of every floor of a scene, videos too, and points the installed scene at them', async () => {
+    const creator = await creatorVault();
+    const upper = 'Maps/Upper floor.webm';
+    await creator.vault.app.vault.create(upper, 'WEBM');
+    const map = JSON.parse(creator.vault.files.get(MAP_PATH)!) as { version: number; state: Record<string, unknown> };
+    map.version = 5;
+    map.state.levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: BACKGROUND },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: upper },
+    ];
+    creator.vault.files.set(MAP_PATH, JSON.stringify(map));
+
+    const blob = await exportFrom(creator);
+    expect((await manifestOf(blob)).files).toContainEqual(expect.objectContaining({ vaultPath: upper, role: 'background' }));
+
+    const fan = await emptyVault();
+    await importInto(fan, blob);
+    const levels = (JSON.parse(fan.vault.files.get(MAP_PATH)!) as { state: { levels: Array<{ background: string }> } }).state.levels;
+    const installed = levels[1]!.background;
+    expect(installed).toBe('atlas-vtt/collections/source/files/Upper floor.webm');
+    expect(fan.vault.files.get(installed)).toBe('WEBM');
   });
 
   it('carries scene snapshots with their thumbnails and artwork into the installed collection', async () => {
     const creator = await creatorVault();
     const ogreImage = 'atlas-vtt/assets/ogre.webp';
-    const snapshotFolder = 'atlas-vtt/collections/source/scenes/.snapshots/Cave';
-    const snapshot = createSnapshot({ version: 4, state: {
-      schema: 'atlas-vtt', version: 4, background: BACKGROUND, grid: null,
-      objects: { tokens: { o1: { id: 'o1', kind: 'character', x: 0, y: 0, imagePath: ogreImage, statblockPath: NOTE_PATH, name: 'Ogre', hp: 30 } } },
-    } }, 'snap1', 'Ogre ambush', 1000);
-    await creator.vault.app.vault.create(ogreImage, 'OGRE');
-    await creator.vault.app.vault.adapter.write(`${snapshotFolder}/snap1.json`, JSON.stringify(snapshot));
-    await creator.vault.app.vault.adapter.write(`${snapshotFolder}/snap1.jpg`, 'SNAPJPG');
+    const snapshotFolder = await withOgreSnapshot(creator, ogreImage);
 
+    const blob = await exportFrom(creator);
+    const packed = (await manifestOf(blob)).files.filter((file) => file.role.startsWith('scene-snapshot'));
+    expect(packed.map((file) => file.vaultPath).sort()).toEqual([`${snapshotFolder}/snap1.jpg`, `${snapshotFolder}/snap1.json`]);
     const fan = await emptyVault();
-    await importInto(fan, await exportFrom(creator));
+    await importInto(fan, blob);
     const restored = JSON.parse(fan.vault.files.get(`${snapshotFolder}/snap1.json`)!) as typeof snapshot;
     expect(restored).toMatchObject({ id: 'snap1', name: 'Ogre ambush' });
     expect(restored.state.objects?.tokens?.o1).toMatchObject({ imagePath: ogreImage, statblockPath: 'atlas-vtt/collections/source/statblocks/Goblin.md' });
     expect(fan.vault.files.get(`${snapshotFolder}/snap1.jpg`)).toBe('SNAPJPG');
     expect(fan.vault.files.get(ogreImage)).toBe('OGRE');
+  });
+
+  it('places the snapshots of a bundle an earlier version wrote, in hidden folders, by their scene', async () => {
+    const creator = await creatorVault();
+    const snapshotFolder = await withOgreSnapshot(creator, 'atlas-vtt/assets/ogre.webp');
+    const legacy = await withLegacySnapshotPaths(await exportFrom(creator), 'atlas-vtt/collections/source/scenes/.snapshots/Cave');
+
+    const fan = await emptyVault();
+    await importInto(fan, legacy);
+    expect(JSON.parse(fan.vault.files.get(`${snapshotFolder}/snap1.json`)!)).toMatchObject({ id: 'snap1', name: 'Ogre ambush' });
+    expect(fan.vault.files.get(`${snapshotFolder}/snap1.jpg`)).toBe('SNAPJPG');
+    expect([...fan.vault.files.keys()].filter((path) => path.includes('.snapshots'))).toEqual([]);
+  });
+
+  it('refuses a hidden snapshot path that belongs to no scene of the bundle', async () => {
+    const creator = await creatorVault();
+    await withOgreSnapshot(creator, 'atlas-vtt/assets/ogre.webp');
+    const legacy = await withLegacySnapshotPaths(await exportFrom(creator), '.obsidian/.snapshots/Cave', []);
+    await expect(reviewImport(await emptyVault(), legacy)).rejects.toThrow(/will not write/);
   });
 
   it('imports a different collection with a name the vault already uses under a name of the user\'s choice', async () => {
@@ -298,6 +363,7 @@ describe('installing', () => {
 
   it('gives a copy imported next to its source fresh asset ids and leaves the source alone', async () => {
     const creator = await creatorVault();
+    const snapshotFolder = await withOgreSnapshot(creator, 'atlas-vtt/assets/ogre.webp');
     const sourceAssets = await creator.assets.getAssets('source');
     const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(await (await exportFrom(creator)).arrayBuffer());
@@ -312,6 +378,9 @@ describe('installing', () => {
     expect(copied.every((asset) => !sourceAssets.some((original) => original.id === asset.id))).toBe(true);
     const [scene] = await creator.assets.getAssets('Source copy', 'scene');
     expect(scene?.data?.mapPath).toBe('atlas-vtt/collections/Source copy/scenes/Cave.atlasmap');
+    // The copy's snapshots are found by its own new id; the original's stay where they were.
+    expect(creator.vault.files.get(`${sceneSnapshotFolder('Source copy', scene!.id)}/snap1.jpg`)).toBe('SNAPJPG');
+    expect(creator.vault.files.get(`${snapshotFolder}/snap1.jpg`)).toBe('SNAPJPG');
   });
 
   it('keeps statblock notes the vault already has and never rewrites them', async () => {
@@ -483,7 +552,7 @@ describe('updating', () => {
   it('treats a copy from before install records as unknown: restores what is missing and asks about the rest', async () => {
     const { creator, fan } = await installedV1();
     const collection = await fan.assets.getCollection('source');
-    await fan.vault.app.vault.adapter.remove(`atlas-vtt/.atlas-data/installs/${collection!.uid}.json`);
+    fan.vault.files.delete('atlas-vtt/collections/source/install.json');
     fan.vault.files.delete(TOKEN_IMAGE);
     fan.vault.files.set(MAP_PATH, 'PLAYED');
 
@@ -493,17 +562,19 @@ describe('updating', () => {
     await apply();
     expect(fan.vault.files.get(TOKEN_IMAGE)).toBe('IMG');
     expect(fan.vault.files.get(MAP_PATH)).toBe('PLAYED');
-    expect(await readInstallRecord(fan.vault.app, collection!.uid)).not.toBeNull();
+    expect(await readInstallRecord(fan.vault.app, collection!)).not.toBeNull();
   });
 
   it('saves and closes open views of maps it replaces before writing them', async () => {
     const { creator, fan } = await installedV1();
     creator.vault.files.set(MAP_PATH, mapFile(12));
     const steps: string[] = [];
-    const view = Object.assign(Object.create(AtlasView.prototype) as AtlasView, {
+    const view = {
+      getViewType: () => ATLAS_VIEW_TYPE,
+      atlasStore: {},
       getState: () => ({ file: MAP_PATH }),
       saveMap: vi.fn(async () => { steps.push('save'); }),
-    });
+    };
     const leaf = { view, detach: vi.fn(() => { steps.push('detach'); }) };
     fan.vault.app.workspace.getLeavesOfType = vi.fn(() => [leaf]);
     const modifyBinary = fan.vault.app.vault.modifyBinary.bind(fan.vault.app.vault);
@@ -800,19 +871,20 @@ describe('third review findings', () => {
     expect(fan.vault.files.get('atlas-vtt/collections/source/scenes/Lair-2.thumb.jpg')).toBe('THUMB');
   });
 
-  it('keeps scene snapshots with their map when the map is placed under another name', async () => {
+  it('keeps scene snapshots with their scene when the map is placed under another name', async () => {
     const { creator, fan } = await installed();
     const lair = 'atlas-vtt/collections/source/scenes/Lair.atlasmap';
     await fan.vault.app.vault.create(lair, 'MY LAIR');
     await creator.vault.app.vault.create(lair, '{"creator":true}');
+    const scene = await creator.assets.addAsset({ type: 'scene', name: 'Lair', collection: 'source', tags: [], data: { mapPath: lair } });
     const snapshot = createSnapshot({ version: 4, state: { schema: 'atlas-vtt', version: 4, background: BACKGROUND, grid: null } }, 'snap1', 'Start', 1000);
-    await creator.vault.app.vault.adapter.write('atlas-vtt/collections/source/scenes/.snapshots/Lair/snap1.json', JSON.stringify(snapshot));
-    await creator.vault.app.vault.adapter.write('atlas-vtt/collections/source/scenes/.snapshots/Lair/snap1.jpg', 'SNAPJPG');
-    await creator.assets.addAsset({ type: 'scene', name: 'Lair', collection: 'source', tags: [], data: { mapPath: lair } });
+    await creator.vault.app.vault.create(`${sceneSnapshotFolder('source', scene.id)}/snap1.json`, JSON.stringify(snapshot));
+    await creator.vault.app.vault.create(`${sceneSnapshotFolder('source', scene.id)}/snap1.jpg`, 'SNAPJPG');
     await importInto(fan, await exportFrom(creator));
-    expect(fan.vault.files.has('atlas-vtt/collections/source/scenes/.snapshots/Lair/snap1.json')).toBe(false);
-    expect(fan.vault.files.has('atlas-vtt/collections/source/scenes/.snapshots/Lair-2/snap1.json')).toBe(true);
-    expect(fan.vault.files.get('atlas-vtt/collections/source/scenes/.snapshots/Lair-2/snap1.jpg')).toBe('SNAPJPG');
+    const installedLair = (await fan.assets.getAssets('source', 'scene')).find((entry) => entry.name !== 'Cave');
+    expect(installedLair?.data?.mapPath).toBe('atlas-vtt/collections/source/scenes/Lair-2.atlasmap');
+    expect(fan.vault.files.get(`${sceneSnapshotFolder('source', installedLair!.id)}/snap1.jpg`)).toBe('SNAPJPG');
+    expect(fan.vault.files.has(`${sceneSnapshotFolder('source', installedLair!.id)}/snap1.json`)).toBe(true);
   });
 });
 
@@ -837,7 +909,7 @@ describe('remaining findings', () => {
     const fan = await emptyVault();
     await importInto(fan, await exportFrom(creator));
     const collection = await fan.assets.getCollection('source');
-    await fan.vault.app.vault.adapter.remove(`atlas-vtt/.atlas-data/installs/${collection!.uid}.json`);
+    fan.vault.files.delete('atlas-vtt/collections/source/install.json');
     creator.vault.files.set(TOKEN_IMAGE, 'NEW IMG');
     await (await reviewImport(fan, await exportFrom(creator))).apply({ restore: true });
     expect([...fan.vault.files.keys()].filter((path) => path.includes('goblin_1-2'))).toEqual([]);
@@ -923,7 +995,8 @@ describe('final review findings', () => {
     await (await reviewImport(fan, v1)).apply({ restore: true });
     const [restored] = await fan.assets.getAssets('source', 'map');
     expect(restored?.id).not.toBe(fanMap!.id);
-    expect(fan.vault.files.get(fan.assets.getAssetFilePath(restored!))).toBe('{"name":"Region"}');
+    // The file the bundle carried, with the restored record beside it.
+    expect(JSON.parse(fan.vault.files.get(fan.assets.getAssetFilePath(restored!))!)).toMatchObject({ name: 'Region', atlasRecord: { id: restored!.id } });
   });
 });
 
@@ -1335,5 +1408,35 @@ describe('loot tables', () => {
     ]));
     expect(manifest.collection.settings).toMatchObject({ lootBases: [BASE] });
     expect((await reviewImport(creator, shared)).review).toMatchObject({ upToDate: true, conflicts: [] });
+  });
+});
+
+describe('record files of an installed collection', () => {
+  it('read as unchanged after Atlas rewrote them for a collection installed under another name', async () => {
+    const creator = await creatorVault();
+    await creator.assets.addAsset({ type: 'map', name: 'Region', collection: 'source', tags: [], mapFilePath: BACKGROUND });
+    const v1 = await exportFrom(creator, { kind: 'release', version: 1 });
+    const fan = await emptyVault();
+    await fan.assets.createCollection('source');
+    await importInto(fan, v1, { name: 'source (2)' });
+
+    expect((await reviewImport(fan, v1)).review).toMatchObject({ relation: 'same', upToDate: true, canRestore: false, conflicts: [] });
+  });
+});
+
+describe('the level a scene was last shown on', () => {
+  it('goes with the scene to whoever imports the collection', async () => {
+    const creator = await creatorVault();
+    const levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: BACKGROUND },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: BACKGROUND },
+    ];
+    const file = JSON.parse(mapFile());
+    creator.vault.files.set(MAP_PATH, JSON.stringify({ version: 5, state: { ...file.state, version: 5, levels, viewedLevel: 'upper' } }));
+
+    const target = await emptyVault();
+    await importInto(target, await exportFrom(creator));
+
+    expect(JSON.parse(target.vault.files.get(MAP_PATH)!).state.viewedLevel).toBe('upper');
   });
 });

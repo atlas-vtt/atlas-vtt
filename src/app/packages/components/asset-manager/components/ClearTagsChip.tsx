@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
 import { EASE_OUT_CONTROL_POINTS } from '../../../../utils/motion';
+import { t } from '../../../../i18n';
 
 interface ClearTagsChipProps {
   /** Number of tags filtering the assets; the chip shows only while it is above zero. */
@@ -30,7 +31,7 @@ export function ClearTagsChip({ count, onClear, label }: ClearTagsChipProps): Re
           exit={HIDDEN}
           transition={TRANSITION}
         >
-          <LabelTooltip label={label ?? (count === 1 ? 'Clear tag filter' : `Clear ${count} tag filters`)}>
+          <LabelTooltip label={label ?? t('am.clearTags', { count })}>
             <Button
               variant="ghost"
               className="atlas-tags-clear"

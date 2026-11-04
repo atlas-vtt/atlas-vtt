@@ -1,12 +1,12 @@
 import { createContext, useContext } from 'react'
 import type { ContextMenuEntry } from '../../../../react/root/ContextMenuContext'
-import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import type { ToolbarControlId, ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import type { ToolbarEditPlace } from './toolbarEditMenus'
 import type { ToolbarMove } from './toolbarMoves'
 import type { ToolbarDragControls } from './useToolbarDrag'
 import type { ToolbarFlight } from './useToolbarFlight'
 
-/** A group of handles that share one Tab stop (roving tabindex). */
+/** A group of handles that share one Tab stop (roving tabindex); the undo/redo bar's handle is the bar group's first. */
 export type ToolbarHandleGroup = 'bar' | 'tray'
 
 /**
@@ -19,15 +19,16 @@ export type ToolbarFocusTarget = { group: ToolbarHandleGroup; id: string } | 'do
 export interface ToolbarEditApi extends ToolbarDragControls {
   /** The bar's controls in order: shown and in "More tools", not hidden. Positions count these. */
   barIds: readonly ToolbarControlId[]
-  /** The hidden controls this view offers, in their remembered order. */
-  trayIds: readonly ToolbarControlId[]
+  /** What the tray holds: the undo/redo bar first while it is hidden, then the hidden controls this view offers in their remembered order. */
+  trayIds: readonly ToolbarUnitId[]
   /** The handle of each group that last had focus; it keeps the group's Tab stop. */
   current: Readonly<Record<ToolbarHandleGroup, string | null>>
   setCurrent: (group: ToolbarHandleGroup, id: string) => void
   /** Each change optionally names where focus goes once it is drawn. */
-  hide: (id: ToolbarControlId, then?: ToolbarFocusTarget) => void
-  show: (id: ToolbarControlId, then?: ToolbarFocusTarget) => void
-  move: (id: ToolbarControlId, move: ToolbarMove, then?: ToolbarFocusTarget) => void
+  hide: (id: ToolbarUnitId, then?: ToolbarFocusTarget) => void
+  show: (id: ToolbarUnitId, then?: ToolbarFocusTarget) => void
+  /** The undo/redo bar has no place in the order: moving it only says so. */
+  move: (id: ToolbarUnitId, move: ToolbarMove, then?: ToolbarFocusTarget) => void
   /** The layout differs from the default. */
   canReset: boolean
   reset: () => void
@@ -37,7 +38,7 @@ export interface ToolbarEditApi extends ToolbarDragControls {
   /** Ends edit mode; from a control of the editor, focus returns to the Command palette button. */
   finish: (from?: Element | null) => void
   /** `then` is where focus goes after the menu's change (a menu opened from the keyboard). */
-  menuEntries: (id: ToolbarControlId, place: ToolbarEditPlace, then?: ToolbarFocusTarget) => ContextMenuEntry[]
+  menuEntries: (id: ToolbarUnitId, place: ToolbarEditPlace, then?: ToolbarFocusTarget) => ContextMenuEntry[]
   /** The focus target of the last change, once; the editor moves focus there after drawing it. */
   takeFocusRequest: () => ToolbarFocusTarget | null
   /** The tool flying to its new place after the last Hide or Show, if it is still in the air. */

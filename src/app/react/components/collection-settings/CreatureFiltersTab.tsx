@@ -8,13 +8,17 @@ import React, { useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { CATALOG_CREATURE_FILTERS } from '../../../creatures/creatureFieldCatalog';
-import { discoverCreatureFields, type DiscoveredField } from '../../../creatures/creatureFieldDiscovery';
+import type { DiscoveredField } from '../../../creatures/creatureFieldDiscovery';
 import { filterFields, filterForField, newCreatureFilterId } from '../../../creatures/creatureFilterDefinitions';
 import type { IndexedCreature } from '../../../creatures/CreatureIndex';
+import { suggestedFilterFields } from '../../../creatures/templateFilterFields';
+import { templateCreatureFilters } from '../../../creatures/templateCreatureFilters';
+import type { StatblockTemplate } from '../../../statblocks/model/templateTypes';
 import type { CreatureFilterDefinition } from '../../../types/creatureFilterTypes';
 import { CatalogFilterList } from './CatalogFilterList';
 import { CreatureFieldSuggestions } from './CreatureFieldSuggestions';
 import { CreatureFilterRow } from './CreatureFilterRow';
+import { t } from '../../../i18n';
 
 interface CreatureFiltersTabProps {
   /** Ids of Atlas' own filters switched off. */
@@ -27,14 +31,20 @@ interface CreatureFiltersTabProps {
   creatures: readonly IndexedCreature[];
   /** Whether those statblocks are still being read. */
   pending: boolean;
+  /** The templates of the collection's statblock roles, whose fields are suggested first. */
+  templates?: readonly StatblockTemplate[];
 }
 
-export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomChange, creatures, pending }: CreatureFiltersTabProps): React.ReactElement {
-  const discovered = useMemo(() => discoverCreatureFields(creatures), [creatures]);
+const NO_TEMPLATES: readonly StatblockTemplate[] = [];
+
+export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomChange, creatures, pending, templates = NO_TEMPLATES }: CreatureFiltersTabProps): React.ReactElement {
+  const discovered = useMemo(() => suggestedFilterFields(templates, creatures), [templates, creatures]);
+  // The templates' fields filter by themselves, so only those the collection does not filter yet are suggested.
+  const fromTemplates = useMemo(() => templateCreatureFilters(templates, [...CATALOG_CREATURE_FILTERS, ...custom]), [templates, custom]);
   const unused = useMemo(() => {
-    const used = new Set([...CATALOG_CREATURE_FILTERS, ...custom].flatMap(filterFields));
+    const used = new Set([...CATALOG_CREATURE_FILTERS, ...custom, ...fromTemplates].flatMap(filterFields));
     return discovered.filter((field) => !used.has(field.field));
-  }, [discovered, custom]);
+  }, [discovered, custom, fromTemplates]);
   // Custom ids never take one of Atlas' own.
   const taken = useMemo(() => [...CATALOG_CREATURE_FILTERS, ...custom], [custom]);
 
@@ -55,27 +65,39 @@ export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomCha
   };
 
   const addDiscovered = (field: DiscoveredField): void => {
-    onCustomChange([...custom, filterForField(taken, field.field, field.kind)]);
+    onCustomChange([...custom, filterForField(taken, field.field, field.kind, field.label)]);
   };
 
   return (
     <>
       <p className="atlas-csm-hint">
-        The asset manager filters this collection&apos;s characters by what their linked
-        statblocks say. Atlas knows the fields most statblock layouts share, whatever the
-        game system, and shows each filter only where the statblocks have its field.
+        {t('csm.filters.intro')}
       </p>
 
       <div className="atlas-csm-field">
-        <div className="atlas-csm-label">Atlas filters</div>
+        <div className="atlas-csm-label">{t('csm.filters.atlasFilters')}</div>
         <CatalogFilterList hidden={hidden} onHiddenChange={onHiddenChange} creatures={creatures} pending={pending} />
       </div>
 
+      {fromTemplates.length > 0 && (
+        <div className="atlas-csm-field">
+          <div className="atlas-csm-label">{t('csm.filters.templateFilters')}</div>
+          <p className="atlas-csm-hint">{t('csm.filters.templateFiltersHint')}</p>
+          <CatalogFilterList
+            hidden={hidden}
+            onHiddenChange={onHiddenChange}
+            creatures={creatures}
+            pending={pending}
+            filters={fromTemplates}
+            label={t('csm.filters.templateFilters')}
+          />
+        </div>
+      )}
+
       <div className="atlas-csm-field">
-        <div className="atlas-csm-label">Your filters</div>
+        <div className="atlas-csm-label">{t('csm.filters.yours')}</div>
         <p className="atlas-csm-hint">
-          Filter by other fields: a range for numbers such as hit dice, options for
-          categories. Options can merge several fields.
+          {t('csm.filters.yoursHint')}
         </p>
         {custom.length > 0 && (
           <div className="atlas-csm-condition-list">
@@ -94,7 +116,7 @@ export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomCha
         )}
         <Button variant="ghost" className="atlas-csm-add-btn" onClick={addBlank}>
           <Plus />
-          Add filter
+          {t('csm.filters.add')}
         </Button>
       </div>
 

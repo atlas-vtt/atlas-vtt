@@ -23,6 +23,11 @@ const THEME = `
   button, input { corner-shape: var(--corner-shape); }
   button { height: 30px; }
 `;
+// Exercise a real gutter on platforms whose native scrollbars otherwise overlay the content.
+const CLASSIC_SCROLLBAR = `
+  .atlas-vtt-plugin .atlas-collection-settings-content { scrollbar-width: auto; scrollbar-color: auto; }
+  .atlas-vtt-plugin .atlas-collection-settings-content::-webkit-scrollbar { width: 8px; height: 8px; }
+`;
 const NAMES = ['HP', 'STR', 'Ammo', 'Luck', 'Mana', 'Grit'];
 const h = React.createElement;
 
@@ -35,13 +40,13 @@ function Dialog(): React.ReactElement {
       h('div', { className: 'atlas-collection-settings-body' },
         h('div', { className: 'atlas-collection-settings-sidebar' }),
         h(SettingsContent, null,
-          h(ResourcesTab, { resources, onChange: setResources, fieldSuggestions: ['hp', 'ammo'] }))),
+          h(ResourcesTab, { resources, onChange: setResources, fieldSuggestions: [{ path: 'hp' }, { path: 'ammo' }] }))),
       h('div', { className: 'atlas-collection-settings-footer' }, h('button', null, 'Cancel'), h('button', null, 'Save'))));
 }
 
 describe('the socket editor of the Resources tab', () => {
   const style = document.createElement('style');
-  style.textContent = THEME + css;
+  style.textContent = THEME + css + CLASSIC_SCROLLBAR;
 
   beforeEach(async () => {
     await page.viewport(760, 860);

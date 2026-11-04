@@ -1,0 +1,56 @@
+// The Statblocks tab's Templates (§9): one row per template, a condition row's
+// inset surface with padding equal to its gap.
+
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  .atlas-sb-templates__list {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .atlas-sb-templates__row {
+    @include atlas-flex-row($spacing-s);
+    @include atlas-inset-surface;
+    padding: $spacing-s;
+    font-size: $font-ui-small;
+  }
+
+  .atlas-sb-templates__name {
+    @include atlas-truncate;
+    flex: 1;
+    min-width: 0;
+    color: var(--text-normal);
+    font-weight: $font-weight-medium;
+  }
+
+  .atlas-sb-templates__detail,
+  .atlas-sb-templates__usage {
+    @include atlas-truncate;
+    flex-shrink: 1;
+    min-width: 0;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-sb-templates__usage {
+    flex-shrink: 0;
+  }
+
+  .atlas-sb-templates__more.btn--icon {
+    @include atlas-corner-shape;
+    flex-shrink: 0;
+    width: $button-height-s;
+    height: $button-height-s;
+  }
+
+  .atlas-sb-templates__empty {
+    margin: 0;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+}

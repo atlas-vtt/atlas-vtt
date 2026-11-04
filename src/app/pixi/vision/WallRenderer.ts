@@ -10,9 +10,12 @@ import { cssColorToHexNumber } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
 import { KindWallLayer, type KindWall } from './KindWallLayer';
 import { drawDashedLine, hasKindLook } from './wallKindLook';
+import { VERTEX_HANDLE_RADIUS, WallPreview } from './WallPreview';
+import { levelObjects } from '../../levels/levelObjects';
 
-const VERTEX_HANDLE_RADIUS = 4;
+/** Screen pixels: how close to a wall or a wall's end a press lands on it, never less than what is drawn. */
 const HIT_TOLERANCE = 6;
+const VERTEX_HIT = 12;
 
 /**
  * Renders GM-only wall editor visuals: wall lines, door icons, vertex handles and
@@ -25,21 +28,13 @@ export class WallRenderer {
   /** The walls with a look of their own (`wallKindLook`), laid out in screen pixels. */
   private readonly kinds: KindWallLayer;
   private handleGraphics: Graphics;
-  private previewGraphics: Graphics;
+  /** The chain being drawn, a freehand stroke, a door being placed. */
+  readonly preview: WallPreview;
   private store: StoreApi<ViewAtlasState>;
   private selectedWallIds: Set<string> = new Set();
   private accentColor = 0x7f6df2;
   private _unsubscribe?: () => void;
 
-  /** Live preview state: anchor point + current cursor position */
-  private previewAnchor: { x: number; y: number } | null = null;
-  private previewCursor: { x: number; y: number } | null = null;
-
-  /** Door placement preview state */
-  private doorPreviewState: { wall: { p1: { x: number; y: number }; p2: { x: number; y: number } }; t: number; doorType: string } | null = null;
-
-  /** Freeform drawing preview path */
-  private freeformPath: Array<{ x: number; y: number }> = [];
 
   constructor(
     private readonly viewport: Viewport,
@@ -55,25 +50,25 @@ export class WallRenderer {
 
     this.wallGraphics = new Graphics();
     this.handleGraphics = new Graphics();
-    this.previewGraphics = new Graphics();
 
     this.container.addChild(this.wallGraphics);
     this.kinds = new KindWallLayer(viewport);
     this.container.addChild(this.kinds.graphics);
     this.container.addChild(this.handleGraphics);
-    this.container.addChild(this.previewGraphics);
+    this.preview = new WallPreview(() => this.accentColor);
+    this.container.addChild(this.preview.graphics);
 
     viewport.addChild(this.container);
 
     // Redraw while shown; whoever shows it (the wall tool) owns `visible`.
     this._unsubscribe = store.subscribe((state, previous) => {
-      if (this.container.visible && state.objects !== previous.objects) this.redraw(state);
+      if (this.container.visible && levelObjects(state) !== levelObjects(previous)) this.redraw(state);
     });
   }
 
   /** The walls that block one thing or are limited, in the colours of now. */
   private kindWalls(state: ViewAtlasState): KindWall[] {
-    return wallList(state.objects.walls).filter(hasKindLook).map((wall) => {
+    return wallList(levelObjects(state).walls).filter(hasKindLook).map((wall) => {
       const open = (wall.type === 'door' || wall.type === 'secret-door') && !(wall.closed ?? true);
       return { wall, color: this.selectedWallIds.has(wall.id) ? this.accentColor : open ? 0x44dd44 : this.getWallColor(wall), alpha: open ? 0.6 : 1, hollow: wall.type === 'secret-door' };
     });
@@ -89,166 +84,13 @@ export class WallRenderer {
     this.forceRedraw();
   }
 
-  /**
-   * Set the anchor point for the live wall preview (the last placed vertex).
-   * Pass null to clear the preview.
-   */
-  setPreviewAnchor(point: { x: number; y: number } | null): void {
-    this.previewAnchor = point;
-    this.drawPreview();
-  }
-
-  /** Update the cursor end of the live preview line. Called on pointermove. */
-  updatePreviewCursor(x: number, y: number): void {
-    this.previewCursor = { x, y };
-    this.drawPreview();
-  }
-
-  /** Clear the preview line. */
-  clearPreview(): void {
-    this.previewAnchor = null;
-    this.previewCursor = null;
-    this.previewGraphics.clear();
-  }
-
-  /** Start freeform preview path. */
-  startFreeformPreview(x: number, y: number): void {
-    this.freeformPath = [{ x, y }];
-    this.drawFreeformPreview();
-  }
-
-  /** Add a point to the freeform preview path. */
-  addFreeformPreviewPoint(x: number, y: number): void {
-    this.freeformPath.push({ x, y });
-    this.drawFreeformPreview();
-  }
-
-  /** Clear freeform preview. */
-  clearFreeformPreview(): void {
-    this.freeformPath = [];
-    this.previewGraphics.clear();
-  }
-
-  private drawFreeformPreview(): void {
-    this.previewGraphics.clear();
-    if (this.freeformPath.length < 2) {
-      // Single point — just show the anchor dot
-      if (this.freeformPath.length === 1) {
-        const p = this.freeformPath[0]!;
-        this.previewGraphics.circle(p.x, p.y, VERTEX_HANDLE_RADIUS + 1);
-        this.previewGraphics.fill({ color: 0xffffff, alpha: 0.9 });
-      }
-      return;
-    }
-
-    const g = this.previewGraphics;
-
-    // Draw the path as a continuous line
-    g.moveTo(this.freeformPath[0]!.x, this.freeformPath[0]!.y);
-    for (let i = 1; i < this.freeformPath.length; i++) {
-      g.lineTo(this.freeformPath[i]!.x, this.freeformPath[i]!.y);
-    }
-    g.stroke({ width: 3, color: 0xffffff, alpha: 0.7 });
-
-    // Start point
-    const first = this.freeformPath[0]!;
-    g.circle(first.x, first.y, VERTEX_HANDLE_RADIUS + 1);
-    g.fill({ color: 0xffffff, alpha: 0.9 });
-
-    // Current point
-    const last = this.freeformPath[this.freeformPath.length - 1]!;
-    g.circle(last.x, last.y, VERTEX_HANDLE_RADIUS);
-    g.stroke({ width: 1.5, color: 0xffffff, alpha: 0.7 });
-  }
-
-  /** Show a door icon preview sliding along a wall. */
-  setDoorPreview(wall: { p1: { x: number; y: number }; p2: { x: number; y: number } }, t: number, doorType: string): void {
-    this.doorPreviewState = { wall, t, doorType };
-    this.drawDoorPreview();
-  }
-
-  clearDoorPreview(): void {
-    this.doorPreviewState = null;
-    this.previewGraphics.clear();
-  }
-
-  private drawDoorPreview(): void {
-    this.previewGraphics.clear();
-    if (!this.doorPreviewState) return;
-
-    const { wall, t, doorType } = this.doorPreviewState;
-    const g = this.previewGraphics;
-
-    const dx = wall.p2.x - wall.p1.x;
-    const dy = wall.p2.y - wall.p1.y;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    const doorHalf = len > 0 ? Math.min(20, len * 0.4) : 10;
-    const doorHalfT = len > 0 ? doorHalf / len : 0.1;
-
-    const tStart = Math.max(0, t - doorHalfT);
-    const tEnd = Math.min(1, t + doorHalfT);
-
-    const startX = wall.p1.x + dx * tStart;
-    const startY = wall.p1.y + dy * tStart;
-    const endX = wall.p1.x + dx * tEnd;
-    const endY = wall.p1.y + dy * tEnd;
-    const midX = wall.p1.x + dx * t;
-    const midY = wall.p1.y + dy * t;
-
-    const color = doorType === 'secret-door' ? 0xff8844 : 0x44aaff;
-
-    // Door segment preview line
-    g.moveTo(startX, startY);
-    g.lineTo(endX, endY);
-    g.stroke({ width: 4, color, alpha: 0.8 });
-
-    // Door leaf preview at the midpoint, turned across the wall. Graphics.setTransform does not
-    // move drawing commands in PIXI 8, so the corners are rotated by hand.
-    const along = { x: dx / (len || 1), y: dy / (len || 1) };
-    const across = { x: -along.y, y: along.x };
-    const corner = (u: number, v: number): number[] => [midX + along.x * u + across.x * v, midY + along.y * u + across.y * v];
-    g.poly([...corner(-10, -8), ...corner(10, -8), ...corner(10, 8), ...corner(-10, 8)]);
-    g.fill({ color, alpha: 0.6 });
-    g.stroke({ width: 1.5, color: 0xffffff, alpha: 0.8 });
-
-    // Endpoint markers
-    g.circle(startX, startY, 3);
-    g.fill({ color: 0xffffff, alpha: 0.8 });
-    g.circle(endX, endY, 3);
-    g.fill({ color: 0xffffff, alpha: 0.8 });
-  }
-
-  private drawPreview(): void {
-    this.previewGraphics.clear();
-    if (!this.previewAnchor || !this.previewCursor) return;
-
-    const g = this.previewGraphics;
-    const color = 0xffffff;
-
-    // Anchor point: filled circle
-    g.circle(this.previewAnchor.x, this.previewAnchor.y, VERTEX_HANDLE_RADIUS + 1);
-    g.fill({ color, alpha: 0.9 });
-
-    // Preview line: dashed to show it's not placed yet
-    drawDashedLine(
-      g,
-      this.previewAnchor.x, this.previewAnchor.y,
-      this.previewCursor.x, this.previewCursor.y,
-      color, 2, 6, 4,
-    );
-
-    // Cursor point: hollow circle
-    g.circle(this.previewCursor.x, this.previewCursor.y, VERTEX_HANDLE_RADIUS);
-    g.stroke({ width: 1.5, color, alpha: 0.7 });
-  }
-
   private redraw(state: ViewAtlasState): void {
     this.accentColor = cssColorToHexNumber(
       getComputedStyle(activeDocument.body).getPropertyValue('--interactive-accent').trim() || '#7f6df2'
     );
     this.wallGraphics.clear();
     this.handleGraphics.clear();
-    for (const wall of wallList(state.objects.walls)) {
+    for (const wall of wallList(levelObjects(state).walls)) {
       this.drawWall(wall);
     }
     this.kinds.set(this.kindWalls(state));
@@ -380,8 +222,9 @@ export class WallRenderer {
 
   /** Hit-test walls at a world coordinate. Returns wall id or null. */
   hitTestWalls(worldX: number, worldY: number): string | null {
-    for (const wall of wallList(this.store.getState().objects.walls)) {
-      if (this.pointToSegmentDist(worldX, worldY, wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y) < HIT_TOLERANCE) {
+    const tolerance = Math.max(HIT_TOLERANCE, HIT_TOLERANCE / this.zoom);
+    for (const wall of wallList(levelObjects(this.store.getState()).walls)) {
+      if (this.pointToSegmentDist(worldX, worldY, wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y) < tolerance) {
         return wall.id;
       }
     }
@@ -390,8 +233,8 @@ export class WallRenderer {
 
   /** Hit-test wall vertex handles. Returns { wallId, vertex } or null. */
   hitTestVertices(worldX: number, worldY: number): { wallId: string; vertex: 'p1' | 'p2' } | null {
-    const walls = this.store.getState().objects.walls;
-    const threshold = VERTEX_HANDLE_RADIUS * 3;
+    const walls = levelObjects(this.store.getState()).walls;
+    const threshold = Math.max(VERTEX_HIT, VERTEX_HIT / this.zoom);
     const thresholdSq = threshold * threshold;
 
     for (const wall of wallList(walls)) {
@@ -420,6 +263,11 @@ export class WallRenderer {
     return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
   }
 
+  /** The viewport's zoom: how many screen pixels a world pixel takes. */
+  get zoom(): number {
+    return this.viewport.scale.x;
+  }
+
   getContainer(): Container {
     return this.container;
   }
@@ -429,7 +277,7 @@ export class WallRenderer {
     this.kinds.destroy();
     this.wallGraphics.destroy();
     this.handleGraphics.destroy();
-    this.previewGraphics.destroy();
+    this.preview.destroy();
     destroyTree(this.container);
   }
 }

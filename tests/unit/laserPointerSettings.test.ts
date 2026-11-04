@@ -1,11 +1,15 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { Application } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { LaserPointerRenderer } from '../../src/app/pixi/LaserPointerRenderer';
-import type { ViewAtlasStore } from '../../src/app/storeFactory';
+import type { SceneSource } from '../../src/app/host/sceneSource';
+import type { ViewState } from '../../src/app/types/viewState';
 import { beamWidth, type BeamWidth } from '../../src/app/pixi/laser/LaserBeam';
 import { COLOR_VISIONS, colorDifference, seenAs } from '../fixtures/colorVision';
+import { App } from 'obsidian';
+import { memoryPluginData } from '../mocks/pluginData';
 import {
   DEFAULT_LASER_POINTER_SETTINGS,
   LASER_COLOR_SWATCHES,
@@ -22,8 +26,7 @@ vi.mock('../../src/app/pixi/laser/LaserBeam', async (importOriginal) => {
 });
 
 function settingsFrom(stored: unknown): Promise<SettingsService> {
-  const app = { vault: { adapter: { exists: async () => true, read: async () => JSON.stringify(stored) } } };
-  const settings = new SettingsService(app as never);
+  const settings = new SettingsService(new App(), undefined, memoryPluginData(stored));
   return settings.initialize().then(() => settings);
 }
 
@@ -35,10 +38,10 @@ interface RendererInternals {
 
 function rendererAtZoom(zoom: number, settings: SettingsService): RendererInternals & LaserPointerRenderer {
   const viewport = { on: vi.fn(), off: vi.fn(), scale: { x: zoom } } as unknown as Viewport;
-  const store = { subscribe: vi.fn(() => () => {}) } as unknown as ViewAtlasStore;
+  const source: SceneSource<ViewState['activeTool']> = { get: () => 'move', subscribe: vi.fn(() => () => {}) };
   const pixiApp = { ticker: { add: vi.fn(), remove: vi.fn() }, renderer: { name: 'webgl' } } as unknown as Application;
   const readSettings = (): ReturnType<SettingsService['getLaserPointerSettings']> => settings.getLaserPointerSettings();
-  const renderer = new LaserPointerRenderer(viewport, pixiApp, store, createEl('canvas'), readSettings) as unknown as RendererInternals & LaserPointerRenderer;
+  const renderer = new LaserPointerRenderer(viewport, pixiApp, source, createEl('canvas'), readSettings) as unknown as RendererInternals & LaserPointerRenderer;
   Object.assign(renderer, { isToolActive: true, pointer: { x: 0, y: 0 } });
   return renderer;
 }

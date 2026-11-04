@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { GlBackBufferSystem, type Renderer, type Texture, type WebGLRenderer } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { BackBufferHold, PLAIN_BACK_BUFFER_RESOLUTION } from '../../src/app/pixi/lighting/engine/backBuffer';

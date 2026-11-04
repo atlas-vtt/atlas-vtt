@@ -1,18 +1,24 @@
 import type { App } from 'obsidian';
-import { COLLECTIONS_DIR, type Asset, type AssetService, type CollectionMetadata } from '../AssetService';
-import { BUNDLE_FORMAT, BUNDLE_MANIFEST, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
-import { rewriteContent } from './bundleContent';
+import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
+import { collectionFolderPath } from '../assetPaths';
+import { BUNDLE_MANIFEST, bundleFormatFor, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
+import { withDiceSetFiles } from './bundleDiceSetFiles';
+import { BundlePacker } from './bundlePacking';
+import { withSystemPresetFile } from './bundlePresetFiles';
 import { selectContent } from './bundleContents';
-import { withLootBases } from './bundleSettings';
+import { exportedSettings, folderBelow } from './bundleSettings';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
-import { coverCandidates, coverFileFor, currentCover, storeCover, type CoverCandidate, type CoverChoice, type CoverFile, type CurrentCover } from './collectionCover';
-import { CollectionReferenceCollector, type MissingReference } from './collectionReferences';
-import { assetFingerprint, fieldFingerprint } from './fingerprints';
-import { sha256 } from './hashing';
-import { COLLECTION_FIELDS, deleteInstallRecord, moveInstallRecord, readInstallRecord, writeInstallRecord, type InstallRecord } from './installRecord';
+import { coverCandidates, coverFileFor, currentCover, type CoverCandidate, type CoverChoice, type CurrentCover } from './collectionCover';
+import { CollectionReferenceCollector, withStatblockTemplates, type MissingReference } from './collectionReferences';
+import { sha256 } from '../../utils/hashing';
+import { readInstallRecord } from './installRecord';
 import { withLinkedFiles } from './noteLinks';
 import { remapPaths } from './pathRemap';
-import { readVaultBinary, vaultFileSize } from '../../utils/hiddenVaultFiles';
+import { originNames, recordRelease } from './releaseRecord';
+import { systemPresetsOf } from '../mapCollectionRules';
+import { storeNamedWebps } from './webpNamedFiles';
+import { vaultFileSize } from '../../utils/hiddenVaultFiles';
+import { t } from '../../i18n';
 
 /**
  * The kinds of content Atlas has today, as the asset manager shows them. Older
@@ -21,8 +27,8 @@ import { readVaultBinary, vaultFileSize } from '../../utils/hiddenVaultFiles';
  */
 const EXPORTED_TYPES: ReadonlySet<Asset['type']> = new Set<Asset['type']>(['token', 'map', 'scene', 'encounter']);
 
-/** Images and audio are already compressed; deflating them only costs time. */
-const STORED_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|mp3|ogg|wav|m4a|zip)$/i;
+/** Images, audio and video are already compressed; deflating them only costs time. */
+const STORED_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|mp3|ogg|wav|m4a|webm|mp4|m4v|zip)$/i;
 
 /** What an export would pack, shown before the user decides how to export. */
 export interface ExportPreview {
@@ -77,16 +83,18 @@ export interface ExportedBundle {
 }
 
 async function publisherOf(app: App, assets: AssetService, collection: CollectionMetadata): Promise<ExportPreview['publisher']> {
-  if (collection.publisherId !== undefined) return collection.publisherId === await assets.getVaultId() ? 'self' : 'other';
-  return (await readInstallRecord(app, collection.uid)) === null ? 'unknown' : 'other';
+  if (collection.publisherId !== undefined) return collection.publisherId === await assets.knownVaultId() ? 'self' : 'other';
+  return (await readInstallRecord(app, collection)) === null ? 'unknown' : 'other';
 }
 
 export async function prepareCollectionExport(app: App, assets: AssetService, collectionId: string): Promise<ExportPreview> {
+  await assets.ensureOwnCollectionUid(collectionId);
   const collection = await assets.getCollection(collectionId);
   if (!collection) throw new Error(`Collection ${collectionId} not found`);
   const collectionAssets = (await assets.getAssets(collectionId)).filter((asset) => EXPORTED_TYPES.has(asset.type));
   const { files: referenced, missing } = await new CollectionReferenceCollector(app, assets).collect(collectionAssets, collection.settings.lootBases);
-  const files = withLinkedFiles(app, referenced);
+  const withTemplates = await withStatblockTemplates(app, withLinkedFiles(app, referenced), collection.settings);
+  const files = await withDiceSetFiles(app, withSystemPresetFile(app, withTemplates, collection.settings), collection.settings);
   const fileSizes = new Map<string, number>();
   for (const file of files) fileSizes.set(file.vaultPath, await vaultFileSize(app, file.vaultPath));
   const publisher = await publisherOf(app, assets, collection);
@@ -157,24 +165,27 @@ export async function exportCollectionBundle(
     : { collectionId: preview.collection.id, name: preview.collection.name, names: new Map<string, string>() };
   const named = (value: string): string => origin.names.get(value) ?? value;
   const exported = await exportedCollection(assets, preview, choice, exportedAt);
-  // The settings name only the loot bases that travel, as the bundle names them.
+  // The settings name only the loot bases that travel and the role folders of the collection, as the bundle names them.
   const packed = new Set(selected.files.map((file) => file.vaultPath));
   const collection: CollectionMetadata = {
     ...exported,
     id: origin.collectionId,
     name: choice.kind === 'share' ? origin.name : exported.name,
-    settings: withLootBases(exported.settings, (path) => (packed.has(path) ? named(path) : undefined)),
+    settings: exportedSettings(exported.settings, systemPresetsOf(app), {
+      file: (path) => (packed.has(path) ? named(path) : undefined),
+      folder: (folder) => folderBelow(folder, collectionFolderPath(preview.collection.id), collectionFolderPath(origin.collectionId)),
+    }),
   };
   if (cover) collection.coverPath = named(cover.path);
   else delete collection.coverPath;
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const files: BundleFile[] = [];
+  const packer = await BundlePacker.open(app, selected.files, origin.names);
   for (const [index, file] of selected.files.entries()) {
-    reportFileStep(onProgress, 'Adding', index, selected.files.length, 0, 0.6);
-    const content = await readVaultBinary(app, file.vaultPath);
-    if (!content) continue;
-    const data = rewriteContent(file, content, origin.names);
+    reportFileStep(onProgress, 'bundle.step.adding', index, selected.files.length, 0, 0.6);
+    const data = await packer.pack(file);
+    if (!data) continue;
     const bundlePath = named(file.vaultPath);
     files.push({
       ...file,
@@ -192,7 +203,7 @@ export async function exportCollectionBundle(
   }
   const notes = choice.kind === 'share' ? undefined : choice.notes?.trim() || undefined;
   const manifest: CollectionBundleManifest = {
-    format: BUNDLE_FORMAT,
+    format: bundleFormatFor(files),
     exportedAt,
     collection,
     release: { kind: choice.kind === 'share' ? 'share' : 'release', ...(notes ? { notes } : {}) },
@@ -202,92 +213,20 @@ export async function exportCollectionBundle(
   zip.file(BUNDLE_MANIFEST, JSON.stringify(manifest, null, 2));
 
   const blob = await zip.generateAsync({ type: 'blob', streamFiles: true }, ({ percent }) => {
-    onProgress({ message: 'Compressing…', fraction: 0.6 + (percent / 100) * 0.4 });
+    onProgress({ message: t('bundle.compressing'), fraction: 0.6 + (percent / 100) * 0.4 });
   });
   return {
     blob,
-    commit: () => (choice.kind === 'share' ? Promise.resolve() : recordRelease(app, assets, preview, manifest, cover)),
+    commit: async (): Promise<void> => {
+      // A shared copy leaves the vault as its install record knows it.
+      if (choice.kind === 'share') return;
+      await storeNamedWebps(app, packer.namedWebps);
+      await recordRelease(app, assets, preview.collection, manifest, cover, packer.byId);
+    },
     fileName: bundleFileName(collection.name, collection.version),
     collectionName: collection.name,
     version: collection.version,
     assetCount: selected.assets.length,
     fileCount: files.length,
   };
-}
-
-/**
- * A shared copy names its files and assets as the bundles it was installed
- * from did, so every vault that has the collection compares the same items.
- * Files the sharer added move from their collection folder to the original's.
- */
-async function originNames(app: App, collection: CollectionMetadata, packedPaths: readonly string[]): Promise<{ collectionId: string; name: string; names: Map<string, string> }> {
-  const record = await readInstallRecord(app, collection.uid);
-  const collectionId = record?.sourceCollectionId ?? collection.id;
-  // A name the vault had to give the copy (because another collection used the original) is not a rename by the user.
-  const keptOwnName = record?.sourceName !== undefined && record.fields.name?.installed === await fieldFingerprint(collection, 'name');
-  const name = keptOwnName ? record.sourceName : collection.name;
-  const names = new Map<string, string>();
-  for (const [bundlePath, file] of Object.entries(record?.files ?? {})) {
-    if (file.target !== bundlePath) names.set(file.target, bundlePath);
-  }
-  for (const [bundleId, asset] of Object.entries(record?.assets ?? {})) {
-    if (asset.localId !== bundleId) names.set(asset.localId, bundleId);
-  }
-  const localFolder = `${COLLECTIONS_DIR}/${collection.id}/`;
-  if (collectionId !== collection.id) {
-    for (const vaultPath of packedPaths) {
-      if (!names.has(vaultPath) && vaultPath.startsWith(localFolder)) {
-        names.set(vaultPath, `${COLLECTIONS_DIR}/${collectionId}/${vaultPath.slice(localFolder.length)}`);
-      }
-    }
-  }
-  return { collectionId, name, names };
-}
-
-/**
- * The publisher's vault holds exactly what it exported, so every fingerprint is
- * both source and installed state. A new cover is stored first, so it is too. Files outside Atlas's folder are recorded
- * too, so a shared copy coming back is matched to them instead of copied; an
- * import only ever removes files inside the collection's own folder.
- */
-async function recordRelease(app: App, assets: AssetService, preview: ExportPreview, manifest: CollectionBundleManifest, cover: CoverFile | null): Promise<void> {
-  const { collection } = manifest;
-  let collectionId = preview.collection.id;
-  if (cover) await storeCover(app, cover);
-  if (collection.uid !== preview.collection.uid) {
-    // A fork takes its new name, and with it a folder of that name.
-    collectionId = (await assets.forkCollection(collectionId, collection.name, collection.uid)).id;
-    await deleteInstallRecord(app, preview.collection.uid);
-  }
-  await assets.recordCollectionRelease(collectionId, {
-    version: collection.version, releasedAt: manifest.exportedAt, author: collection.author, coverPath: collection.coverPath,
-  });
-
-  // The bundle's paths live under the folder the collection had when it was exported.
-  const bundleCollectionId = preview.collection.id;
-  const record: InstallRecord = {
-    uid: collection.uid,
-    collectionId: bundleCollectionId,
-    sourceCollectionId: bundleCollectionId,
-    sourceName: collection.name,
-    version: collection.version,
-    releasedAt: manifest.exportedAt,
-    installedAt: manifest.exportedAt,
-    files: {},
-    assets: {},
-    fields: {},
-  };
-  for (const file of manifest.files) {
-    if (file.sha256) record.files[file.vaultPath] = { target: file.vaultPath, source: file.sha256, installed: file.sha256 };
-  }
-  for (const asset of manifest.assets) {
-    const fingerprint = await assetFingerprint(asset);
-    record.assets[asset.id] = { localId: asset.id, source: fingerprint, installed: fingerprint };
-  }
-  for (const field of COLLECTION_FIELDS) {
-    const fingerprint = await fieldFingerprint(collection, field);
-    record.fields[field] = { source: fingerprint, installed: fingerprint };
-  }
-  await writeInstallRecord(app, record);
-  if (collectionId !== bundleCollectionId) await moveInstallRecord(app, collection.uid, bundleCollectionId, collectionId);
 }

@@ -1,0 +1,66 @@
+@use '../../../../../styles/tokens' as *;
+
+// The glass's chip over the map (GlassChip.tsx): a capsule with the toolbars' surface
+// (`.atlas-vtt-toolbar`), placed with `translate` by useGlass on the glass's top edge.
+.atlas-glass-chip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  // Over the map, under the bars and the popovers that open over it
+  z-index: 40;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  // Quiet over the map until the pointer or the keyboard comes to it
+  opacity: 0.8;
+  transition: opacity $transition-fast $transition-ease;
+
+  &:hover,
+  &:focus-within,
+  &:active {
+    opacity: 1;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  // Above the toolbar's own `display: flex`
+  &.atlas-vtt-toolbar[hidden] {
+    display: none;
+  }
+}
+
+// What the chips hold, small: they stand over the map at any zoom, where a frame may be narrower
+// than a toolbar's capsule. Above the toolbar's own padding, gap and button size.
+.atlas-vtt-plugin .atlas-vtt-toolbar.atlas-glass-chip {
+  gap: 2px;
+  padding: 2px;
+
+  .atlas-tool-button > span > .btn {
+    width: $button-height-s;
+    height: $button-height-s;
+    border-radius: $radius-full;
+  }
+}
+
+.atlas-glass-chip__grip {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  // A bare icon stands as far from the border as the icon inside the button at the other end
+  padding-inline-start: $spacing-xs;
+}
+
+.atlas-glass-chip__icon {
+  flex: none;
+  width: $icon-s;
+  height: $icon-s;
+  color: var(--text-muted);
+}
+
+.atlas-glass-chip__label {
+  font-size: $font-ui-smaller;
+  color: var(--text-normal);
+  white-space: nowrap;
+}

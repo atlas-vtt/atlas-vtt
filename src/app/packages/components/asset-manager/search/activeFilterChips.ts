@@ -1,8 +1,9 @@
 import type { CreatureFacets, FacetOption } from '../../../../creatures/creatureFilterEngine';
-import { clearFacet, LAYOUT_FACET, STATBLOCK_FACET, withOptionState } from '../../../../creatures/creatureSelection';
+import { clearFacet, LAYOUT_FACET, STATBLOCK_FACET, TEXT_FACET, withOptionState } from '../../../../creatures/creatureSelection';
 import { formatRange } from '../../../../creatures/creatureValues';
 import type { CreatureFilterDefinition, CreatureFilterSelection, OptionPicks } from '../../../../types/creatureFilterTypes';
 import type { Tag } from '../types';
+import { t } from '../../../../i18n';
 
 type Update<T> = (update: (current: T) => T) => void;
 
@@ -58,9 +59,9 @@ export function activeFilterChips({ selection, definitions, facets, tagIds, tags
   };
 
   if (selection.statblock !== 'any') {
-    addGroup(STATBLOCK_FACET, 'Statblock', [{
+    addGroup(STATBLOCK_FACET, t('filters.statblock'), [{
       key: selection.statblock,
-      label: selection.statblock === 'linked' ? 'With statblock' : 'Without statblock',
+      label: selection.statblock === 'linked' ? t('filters.withStatblock') : t('filters.withoutStatblock'),
       excluded: false,
       remove: clear(STATBLOCK_FACET),
     }]);
@@ -76,11 +77,12 @@ export function activeFilterChips({ selection, definitions, facets, tagIds, tags
     const options = facets?.options.find((facet) => facet.definition.id === definition.id)?.options;
     addGroup(definition.id, definition.label, pickChips(definition.id, picks, options, setSelection));
   }
-  addGroup(LAYOUT_FACET, 'Layout', pickChips(LAYOUT_FACET, selection.layouts, facets?.layouts, setSelection));
+  addGroup(LAYOUT_FACET, t('filters.template'), pickChips(LAYOUT_FACET, selection.layouts, facets?.layouts, setSelection));
+  addGroup(TEXT_FACET, t('filters.text'), pickChips(TEXT_FACET, selection.text, undefined, setSelection));
   if (tagIds.length > 0) {
     groups.push({
       key: 'tags',
-      category: 'Tag',
+      category: t('filters.tag'),
       items: tagIds.map((id) => ({
         key: id,
         label: tags.find((tag) => tag.id === id)?.name ?? id,

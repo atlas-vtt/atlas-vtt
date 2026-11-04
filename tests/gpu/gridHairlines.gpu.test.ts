@@ -1,5 +1,5 @@
 import '../setup/obsidianDom';
-import { Container, GraphicsContext, Rectangle, Sprite, Texture, WebGLRenderer, type Application, type Graphics } from 'pixi.js';
+import { Container, GraphicsContext, Rectangle, Sprite, Texture, WebGLRenderer, type Application, type Mesh } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { describe, expect, it, vi } from 'vitest';
 import { GridSystem, type GridType } from '../../src/app/grid/GridSystem';
@@ -8,6 +8,7 @@ import { createHexLayout, hexCellExtent, isHexGridType } from '../../src/app/gri
 import { drawSquareGrid } from '../../src/app/grid/squareGridDrawer';
 import type { GridBounds, GridLineType, GridPath } from '../../src/app/grid/gridLineStyle';
 import { captureBeforeRender } from '../../src/app/pixi/playerSafeFrame';
+import { mapImageViewOf } from '../helpers/fakeMapImageView';
 
 const VIEW = 300;
 const MAP = 2048;
@@ -113,7 +114,7 @@ interface Scene {
   stage: Container;
   viewport: Viewport;
   grid: GridSystem;
-  lines(): Graphics;
+  lines(): Mesh;
   /** Renders the stage onto the canvas, as the map view does, and reads it back. */
   render(): Picture;
   destroy(): void;
@@ -126,12 +127,12 @@ async function scene(resolution: number, type: GridType, lineType: GridLineType)
   const stage = new Container();
   const viewport = stage.addChild(new Viewport({ screenWidth: VIEW, screenHeight: VIEW, worldWidth: MAP, worldHeight: MAP, events: renderer.events }));
   const map = viewport.addChild(new Sprite(plainMap()));
-  const grid = new GridSystem({ renderer } as unknown as Application, viewport, map, {
+  const grid = new GridSystem({ renderer } as unknown as Application, viewport, mapImageViewOf(map), {
     type, size: SIZE, offsetX: OFFSET, offsetY: OFFSET, color: 0x000000, alpha: 1, lineWidth: 1, lineType,
   });
   return {
     renderer, stage, viewport, grid,
-    lines: () => grid.getGridSprite()!.children[0] as Graphics,
+    lines: () => grid.getGridSprite()!.getChildByLabel('grid-lines') as Mesh,
     render: () => {
       renderer.render(stage);
       const { resolution } = renderer;
@@ -193,7 +194,7 @@ describe('grid lines thinner than a pixel', () => {
     }
   }
 
-  it('are drawn once while the map is zoomed out, frame by frame', async () => {
+  it('are one quad whose shader reads each render\'s zoom: zooming builds nothing', async () => {
     const stroke = vi.spyOn(GraphicsContext.prototype, 'stroke');
     const fill = vi.spyOn(GraphicsContext.prototype, 'fill');
     try {
@@ -204,16 +205,17 @@ describe('grid lines thinner than a pixel', () => {
           view.render();
           stroke.mockClear();
           fill.mockClear();
-          const contexts = new Set([view.lines().context]);
+          const mesh = view.lines();
+          const { geometry, shader } = mesh;
           for (let scale = 0.5; scale > 0.1; scale *= 0.973) {
             zoomTo(view.viewport, scale);
             view.renderer.render(view.stage);
-            contexts.add(view.lines().context);
           }
-          // From one device pixel to a fifth: one hairline drawing, or markers 2, 4 and 8 map pixels thick
-          const drawings = lineType === 'solid' ? 1 : 3;
-          expect(stroke.mock.calls.length + fill.mock.calls.length).toBe(drawings);
-          expect(contexts.size).toBe(drawings + 1);
+          expect(view.lines()).toBe(mesh);
+          expect(mesh.geometry).toBe(geometry);
+          expect(mesh.shader).toBe(shader);
+          expect(geometry.getBuffer('aPosition').data).toHaveLength(8);
+          expect(stroke.mock.calls.length + fill.mock.calls.length).toBe(0);
         } finally {
           view.destroy();
         }
@@ -232,7 +234,7 @@ describe('grid lines thinner than a pixel', () => {
       view.render();
       const camera = { centerX: 600, centerY: 500, scale: 1 };
       const players: Picture[] = [];
-      captureBeforeRender([], () => undefined, () => players.push(view.render()), { target: view.viewport, camera });
+      captureBeforeRender([], () => undefined, () => players.push(view.render()), { target: view.viewport, camera, screen: { width: VIEW, height: VIEW } });
       const gm = view.render();
 
       // The players see the lines at their zoom: two device pixels of full black
@@ -252,11 +254,15 @@ describe('grid lines thinner than a pixel', () => {
     const expected = expectedGrid('square', 'solid');
     try {
       zoomTo(view.viewport, 0.4);
-      view.render();
-      expect(view.lines().alpha).toBeCloseTo(0.4);
+      // Lines 0.4 device pixels wide: one pixel at two fifths of the ink where a line is centred on it, less where it is not
+      const before = darkest(view.render());
+      expect(before).toBeGreaterThan(255 * (1 - 0.45));
+      expect(before).toBeLessThan(255 * (1 - 0.33));
       view.renderer.resize(VIEW, VIEW, 2);
-      expect(gaps(view.render(), expected)).toEqual([]);
-      expect(view.lines().alpha).toBeCloseTo(0.8);
+      const picture = view.render();
+      expect(gaps(picture, expected)).toEqual([]);
+      // At two device pixels a map pixel the same lines are 0.8 wide, and twice as dark
+      expect(darkest(picture)).toBeLessThan(before - 60);
     } finally {
       view.destroy();
     }

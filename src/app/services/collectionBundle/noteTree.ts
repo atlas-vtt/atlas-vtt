@@ -1,5 +1,5 @@
 import type { BundleFile } from './bundleFormat';
-import { baseName } from '../../utils/pathUtils';
+import { noteName } from '../../utils/pathUtils';
 
 /** Why a note is part of the collection: a scene opens it, or another note links to it. `more` counts the others that do. */
 export interface NoteOrigin {
@@ -18,7 +18,7 @@ export interface NoteEntry {
   linked?: number;
 }
 
-export const noteName = (path: string): string => baseName(path).replace(/\.md$/i, '');
+export { noteName };
 const byName = (a: BundleFile, b: BundleFile): number => noteName(a.vaultPath).localeCompare(noteName(b.vaultPath), undefined, { numeric: true });
 
 /**

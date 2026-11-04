@@ -14,6 +14,7 @@ function assets(settings: Partial<CollectionSettings>): Parameters<typeof mapVis
   return {
     getCollectionForMap: (path: string) => (path === 'maps/cave.atlasmap' ? 'dungeon' : null),
     getCollectionSettings: () => ({ conditions: [], ...settings }),
+    playedSystem: () => null,
   };
 }
 

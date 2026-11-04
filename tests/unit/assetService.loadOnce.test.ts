@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AssetService } from '../../src/app/services/AssetService';
@@ -39,45 +40,54 @@ describe('AssetService metadata loading', () => {
     const tokens = await service.getAssets('default', 'token');
     await service.getAssets('default');
     await service.getCollectionTags('default', 'tokens');
-    await service.getAllTags('tokens');
 
     expect(tokens.map((asset) => asset.id)).toEqual(['token-1']);
     expect(app.vault.adapter.read).toHaveBeenCalledTimes(1);
   });
 
-  it('re-reads the index only on an explicit refresh', async () => {
-    const { app } = seededApp();
+  it('takes in record files changed on disk on an explicit refresh, never the cache again', async () => {
+    const { app, files } = seededApp();
     const service = AssetService.getInstance(app as any);
     await service.initialize();
+    // The folder took its collection's name at startup.
+    const recordPath = 'atlas-vtt/collections/Default/tokens/token-1.json';
+    const record = JSON.parse(files.get(recordPath)!);
+    record.atlasRecord.name = 'Hobgoblin';
+    files.set(recordPath, JSON.stringify(record));
+    await app.vault.process(app.vault.getFileByPath(recordPath), (text: string) => text);
 
     await service.refreshMetadata();
 
-    expect(app.vault.adapter.read).toHaveBeenCalledTimes(2);
+    expect((await service.getAssetById('token-1'))?.name).toBe('Hobgoblin');
+    expect(app.vault.adapter.read).toHaveBeenCalledTimes(1);
   });
 
   it('keeps a save made while a refresh was reading the file', async () => {
     const { app } = seededApp();
     const service = AssetService.getInstance(app as any);
     await service.initialize();
-    const read = app.vault.adapter.read.getMockImplementation()!;
+    const recordPath = 'atlas-vtt/collections/Default/tokens/token-1.json';
+    await app.vault.process(app.vault.getFileByPath(recordPath), (text: string) => `${text}\n`);
+    const read = app.vault.read.getMockImplementation()!;
     let finishRead = (): void => {};
     const readStarted = new Promise<void>((started) => {
-      app.vault.adapter.read = vi.fn(async (path: string) => {
-        const content = await read(path);
+      app.vault.read = vi.fn(async (file: { path: string }) => {
+        const content = await read(file);
         started();
         await new Promise<void>((resolve) => { finishRead = resolve; });
-        app.vault.adapter.read = vi.fn(read);
+        app.vault.read = vi.fn(read);
         return content;
       });
     });
 
     const refresh = service.refreshMetadata();
     await readStarted;
-    await service.addTokenAsset({ name: 'Orc', imagePath: 'atlas-vtt/assets/goblin.webp', collection: 'default', tags: [] });
+    // The save waits for the read, so no file is written halfway through it.
+    const save = service.addTokenAsset({ name: 'Orc', imagePath: 'atlas-vtt/assets/goblin.webp', collection: 'Default', tags: [] });
     finishRead();
-    await refresh;
+    await Promise.all([refresh, save]);
 
-    expect((await service.getAssets('default', 'token')).map((asset) => asset.name).sort()).toEqual(['Goblin', 'Orc']);
+    expect((await service.getAssets('Default', 'token')).map((asset) => asset.name).sort()).toEqual(['Goblin', 'Orc']);
   });
 
   it('keeps the loaded index when a refresh finds the file unreadable', async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
-import { DEFAULT_DICE_RULES, collectionDiceRules, isValidDefaultRoll, parseExplodeRule, sameDiceRules, withExplodeScope } from '../../src/app/gameSystems/diceRules';
+import { DEFAULT_DICE_RULES, isValidDefaultRoll, parseExplodeRule, sameDiceRules, withExplodeScope } from '../../src/app/gameSystems/diceRules';
+import { collectionDiceSet } from '../../src/app/gameSystems/diceSetResolution';
 import { parseUserPresets } from '../../src/app/gameSystems/presetValidation';
 import { describeExplodeRule, highFaceNames, lowFaceNames } from '../../src/app/gameSystems/explodeRuleText';
 import { defaultDiceExplanation } from '../../src/app/react/components/collection-settings/DefaultDiceInfo';
@@ -8,15 +9,15 @@ import { sameSystemRules } from '../../src/app/gameSystems/systemRules';
 
 const cthulhu = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.id === 'builtin:coc7e')!;
 
-describe('collectionDiceRules', () => {
-  it('takes the collection\'s own rules first', () => {
+describe('a collection\'s dice', () => {
+  it('are its own stored rules first', () => {
     const own = { defaultRoll: '2d12', crit: 'doubles' as const };
-    expect(collectionDiceRules({ dice: own, systemPresetId: cthulhu.id }, BUILT_IN_SYSTEM_PRESETS)).toBe(own);
+    expect(collectionDiceSet({ dice: own, systemPresetId: cthulhu.id }, BUILT_IN_SYSTEM_PRESETS, [])).toMatchObject({ dice: [{ count: 2, sides: 12 }], crit: 'doubles' });
   });
 
-  it('falls back to the recorded preset, then to the default', () => {
-    expect(collectionDiceRules({ systemPresetId: cthulhu.id }, BUILT_IN_SYSTEM_PRESETS)).toEqual({ defaultRoll: '1d100', crit: 'roll-under' });
-    expect(collectionDiceRules({ systemPresetId: 'deleted' }, BUILT_IN_SYSTEM_PRESETS)).toEqual(DEFAULT_DICE_RULES);
+  it('fall back to the recorded preset, then to the default', () => {
+    expect(collectionDiceSet({ systemPresetId: cthulhu.id }, BUILT_IN_SYSTEM_PRESETS, [])).toMatchObject({ dice: [{ count: 1, sides: 100 }], crit: 'roll-under' });
+    expect(collectionDiceSet({ systemPresetId: 'deleted' }, BUILT_IN_SYSTEM_PRESETS, [])).toMatchObject({ dice: [{ count: 1, sides: 20 }], crit: DEFAULT_DICE_RULES.crit });
   });
 });
 
@@ -29,7 +30,7 @@ describe('isValidDefaultRoll', () => {
 
 describe('dice in system rules', () => {
   it('counts missing dice as the default when comparing', () => {
-    const { dice, ...withoutDice } = structuredClone(BUILT_IN_SYSTEM_PRESETS[0]!.rules);
+    const { dice, diceSetId: _set, ...withoutDice } = structuredClone(BUILT_IN_SYSTEM_PRESETS[0]!.rules);
     expect(dice).toEqual(DEFAULT_DICE_RULES);
     expect(sameSystemRules(withoutDice, { ...withoutDice, dice: { ...DEFAULT_DICE_RULES } })).toBe(true);
     expect(sameSystemRules(withoutDice, { ...withoutDice, dice: { defaultRoll: '1d20', crit: 'none' } })).toBe(false);
@@ -123,7 +124,7 @@ describe('exploding dice in words', () => {
 describe('default dice explained', () => {
   it('says what they are with the collection\'s own roll, and with 1d20 while that is not valid', () => {
     expect(defaultDiceExplanation(' 2d12 ')).toBe(
-      'The default dice are the dice of the default roll, 2d12. Atlas rolls them when a statblock gives only a bonus without dice: +3 rolls 2d12+3, −3 rolls 2d12−3.',
+      'The default dice are the set\'s dice, 2d12. Atlas rolls them when a statblock gives only a bonus without dice: +3 rolls 2d12+3, −3 rolls 2d12−3.',
     );
     expect(defaultDiceExplanation('2d')).toContain('+3 rolls 1d20+3');
   });

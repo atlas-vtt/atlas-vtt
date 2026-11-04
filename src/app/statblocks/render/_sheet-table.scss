@@ -1,0 +1,123 @@
+// A Table as Obsidian draws a Markdown table: its `--table-*` theme variables
+// (with Obsidian's own values where a theme sets none), so a theme that styles
+// tables styles these too. Type stays the card's own.
+//
+// The table's frame stands in a room one handle wider than the table on every
+// side (Obsidian's table widget does the same): the editors draw their handles
+// and add buttons there. The room's negative margin gives that space back,
+// inside a flow root so the margin collapses with nothing, which keeps the
+// card laid out the same with and without an editor around it.
+//
+// A table never scrolls: one too wide for its card wraps into bands, tables
+// one under another (`useTableBands`), as Fantasy Statblocks wraps its own.
+
+.atlas-sb-sheet {
+  .atlas-sb-sheet-table {
+    --atlas-sb-sheet-table-handle: var(--size-4-4, 16px);
+    display: flow-root;
+  }
+
+  .atlas-sb-sheet-table__room {
+    margin: calc(-1 * var(--atlas-sb-sheet-table-handle));
+    padding: var(--atlas-sb-sheet-table-handle);
+    // The room around the table reaches over its neighbours: only the table and what an editor draws take the pointer.
+    pointer-events: none;
+  }
+
+  // The table fills the width it is given, as a statblock's rows do.
+  .atlas-sb-sheet-table__frame {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2, 8px);
+    width: 100%;
+    pointer-events: auto;
+  }
+
+  // Every band holds one column and the table is still wider than its card: its words break where they must.
+  .atlas-sb-sheet-table[data-squeezed]:not([data-measuring]) .atlas-sb-sheet-table__grid > :is(thead, tbody) > tr > :is(th, td) {
+    overflow-wrap: anywhere;
+  }
+
+  // For the moment `useTableBands` reads them, the bands stand at their least width: each column at its own.
+  .atlas-sb-sheet-table[data-measuring] .atlas-sb-sheet-table__grid {
+    width: min-content;
+  }
+
+  .atlas-sb-sheet-table__grid {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    line-height: var(--table-line-height, var(--line-height-tight, 1.3));
+    word-break: normal;
+    font-variant-numeric: tabular-nums;
+
+    > :is(thead, tbody) > tr > :is(th, td) {
+      position: relative;
+      min-width: var(--table-column-min-width, 6ch);
+      max-width: var(--table-column-max-width, none);
+      padding: var(--size-2-2, 4px) var(--size-4-2, 8px);
+      border: var(--table-border-width, 1px) solid var(--table-border-color, var(--background-modifier-border));
+      color: var(--table-text-color, inherit);
+      text-align: start;
+      vertical-align: var(--table-cell-vertical-alignment, top);
+      white-space: var(--table-white-space, break-spaces);
+      overflow-wrap: normal;
+    }
+
+    > thead > tr {
+      background-color: var(--table-header-background, transparent);
+    }
+
+    > thead > tr > th {
+      border-color: var(--table-header-border-color, var(--table-border-color, var(--background-modifier-border)));
+      border-top-width: var(--table-header-border-width, var(--table-border-width, 1px));
+      color: var(--table-header-color, var(--text-normal));
+      font-family: var(--table-header-font, inherit);
+      font-weight: var(--table-header-weight, var(--font-semibold, 600));
+      line-height: var(--line-height-tight, 1.3);
+    }
+
+    > tbody > tr {
+      background-color: var(--table-background, transparent);
+
+      &:nth-child(odd) {
+        background-color: var(--table-row-alt-background, var(--table-background, transparent));
+      }
+    }
+
+    > tbody > tr:last-child > td {
+      border-bottom-width: var(--table-row-last-border-width, var(--table-border-width, 1px));
+    }
+
+    > :is(thead, tbody) > tr > :is(th, td):first-child {
+      border-left-width: var(--table-column-first-border-width, var(--table-border-width, 1px));
+    }
+
+    > :is(thead, tbody) > tr > :is(th, td):last-child {
+      border-right-width: var(--table-column-last-border-width, var(--table-border-width, 1px));
+    }
+
+    // Worked-out rows ("Mod" under the ability scores) are read, never typed: muted.
+    > tbody > tr.atlas-sb-sheet-table__derived > :is(th, td) {
+      color: var(--text-muted);
+    }
+
+    > tbody > tr.atlas-sb-sheet-table__derived > th {
+      font-weight: var(--font-normal, 400);
+    }
+
+    // The corner over the worked-out rows' labels stands outside the grid: the cells beside and below keep their lines.
+    > :is(thead, tbody) > tr > td.atlas-sb-sheet-table__corner {
+      border-top-style: none;
+      border-left-style: none;
+      border-bottom-style: none;
+    }
+  }
+
+  // A column not named yet, while a statblock or template is edited.
+  .atlas-sb-sheet-table__unnamed {
+    color: var(--text-faint);
+    font-weight: var(--font-normal, 400);
+  }
+}

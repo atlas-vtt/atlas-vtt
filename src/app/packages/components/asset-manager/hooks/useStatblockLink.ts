@@ -17,9 +17,8 @@ function tokenImagePathOf(asset: TokenAsset): string {
 
 /**
  * Drives the "Link Statblock" flow for token assets in the asset manager.
- * All vault/metadata writes go through TokenStatblockLinkService so the
- * one-to-one token/statblock relationship stays consistent with the
- * token picker and the on-map context menu.
+ * All vault/metadata writes go through TokenStatblockLinkService so links
+ * stay consistent with the token picker and the on-map context menu.
  */
 export function useStatblockLink(app: ObsidianApp): StatblockLinkState {
   const [linkingStatblockAsset, setLinkingStatblockAsset] = useState<TokenAsset | null>(null);
@@ -51,7 +50,6 @@ export function useStatblockLink(app: ObsidianApp): StatblockLinkState {
       await TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(
         tokenImagePathOf(asset),
         statblockPath,
-        { showConfirmation: true, updateStatblockAvatar: true },
       );
     } catch (error) {
       console.error('[AssetManager] Failed to link statblock:', error);

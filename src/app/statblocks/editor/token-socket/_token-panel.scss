@@ -1,0 +1,176 @@
+// The panel the socket opens: header, linked tokens, search and Ring switch, the tabs and their choices.
+// No rules between them: spacing alone parts them.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'socket-shared' as *;
+
+.atlas-vtt-plugin {
+  // ── The panel ───────────────────────────────────────────────────────────
+  &.atlas-sb-token-popover {
+    position: fixed;
+    top: var(--atlas-sb-socket-top, auto);
+    right: var(--atlas-sb-socket-right, 0);
+    bottom: var(--atlas-sb-socket-bottom, auto);
+    z-index: $z-popover;
+    width: min(#{$panel-width}, calc(100vw - 2 * #{$spacing-s}));
+    translate: var(--atlas-keep-in-view-x);
+  }
+
+  .atlas-sb-token-popover__motion {
+    transform-origin: top right;
+  }
+
+  &.atlas-sb-token-popover[data-above] > .atlas-sb-token-popover__motion {
+    transform-origin: bottom right;
+  }
+
+  // Holds the focus while a control it pressed goes away; it shows no ring of its own.
+  .atlas-sb-token-panel:focus {
+    outline: none;
+  }
+
+  .atlas-sb-token-panel .btn[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .atlas-sb-token-panel {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($radius-2xl);
+    display: flex;
+    flex-direction: column;
+    max-height: min(880px, var(--atlas-keep-in-view-max-height, 880px));
+    overflow: hidden;
+    color: var(--text-normal);
+    font-size: $font-ui-small;
+  }
+
+  .atlas-sb-token-panel__header {
+    @include atlas-flex-row($spacing-s);
+    @include atlas-close-header($panel-inset);
+    flex-shrink: 0;
+  }
+
+  .atlas-sb-token-panel__title {
+    flex: 1;
+    margin: 0;
+    font-size: $font-ui-small;
+    font-weight: $font-weight-semibold;
+  }
+
+  // Padding equals the gap between its rows; the header's own padding is the rest of the top's.
+  .atlas-sb-token-panel__body {
+    @include atlas-flex-col($panel-inset);
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: calc(#{$panel-inset} - #{$close-button-gap}) $panel-inset $panel-inset;
+    overflow-y: auto;
+    @include atlas-scrollbar;
+  }
+
+  // The search fills the row; the Ring switch stands at its end, its label beside it.
+  .atlas-sb-token-panel__controls {
+    @include atlas-flex-row($spacing-m);
+    flex-shrink: 0;
+
+    > .atlas-dropdown-toggle-row {
+      --atlas-menu-text-inset: 0px;
+      flex: none;
+      gap: $spacing-s;
+    }
+
+    > .atlas-dropdown-toggle-row .atlas-dropdown-toggle-row__label {
+      flex: none;
+    }
+  }
+
+  .atlas-sb-token-panel__sources {
+    flex-shrink: 0;
+  }
+
+  // One well for either tab, of a fixed height: switching tabs or searching never resizes the panel.
+  // Where the window is too short for it, it gives up rows. It scrolls on its own, with room for the choices' focus rings.
+  .atlas-sb-token-panel__choices {
+    flex-shrink: 1;
+    height: $grid-max-height;
+    min-height: $grid-min-height;
+    padding: 2px;
+    margin: -2px;
+    overflow-y: auto;
+    @include atlas-scrollbar;
+  }
+
+  .atlas-sb-token-panel__make {
+    align-self: flex-start;
+    gap: $spacing-xs;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  .atlas-sb-token-panel__linked {
+    @include atlas-flex-col($spacing-xs);
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .atlas-sb-token-panel__row {
+    @include atlas-flex-row($spacing-s);
+    min-height: var(--input-height);
+  }
+
+  .atlas-sb-token-panel__portrait {
+    width: $linked-art;
+    flex-shrink: 0;
+  }
+
+  .atlas-sb-token-panel__name {
+    @include atlas-truncate;
+    flex: 1;
+    min-width: 0;
+  }
+
+  // A capsule: its height is fixed and only its ends take padding, for the curve.
+  .atlas-sb-token-panel__badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 20px;
+    padding-inline: $spacing-s;
+    border-radius: $radius-full;
+    background: color-mix(in oklch, var(--interactive-accent) 16%, transparent);
+    color: var(--text-accent);
+    font-size: $font-ui-smaller;
+    white-space: nowrap;
+  }
+
+  .atlas-sb-token-panel__unlink svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  // As tall as the switch beside it.
+  input.atlas-sb-token-panel__search {
+    flex: 1;
+    align-self: stretch;
+    min-width: 0;
+    height: auto;
+  }
+
+  .atlas-sb-token-panel__empty {
+    margin: 0;
+    padding: $spacing-m;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    text-align: center;
+  }
+
+  .atlas-sb-token-panel__hidden {
+    @include atlas-visually-hidden;
+  }
+}

@@ -43,6 +43,7 @@ interface HarnessOptions {
   onUnavailable?: LightingRendererDeps['onUnavailable'];
   /** The sight rules of the map's collection; unset, the generic ones. */
   rules?: () => SightRules;
+  quality?: LightingRendererDeps['quality'];
 }
 
 /** A token with vision; a range (in game units) limits what it sees to a circle. */
@@ -100,7 +101,7 @@ async function fullMask(renderer: WebGLRenderer): Promise<string> {
   return mask;
 }
 
-export async function createHarness({ patch = {}, holdFirstDecode = false, failFirstDecode = false, attempt, onUnavailable, rules }: HarnessOptions = {}): Promise<Harness> {
+export async function createHarness({ patch = {}, holdFirstDecode = false, failFirstDecode = false, attempt, onUnavailable, rules, quality }: HarnessOptions = {}): Promise<Harness> {
   const renderer = await createTestRenderer(SIZE);
   const setExploredMask = vi.fn();
   const listeners = new Set<(state: ViewAtlasState) => void>();
@@ -150,6 +151,7 @@ export async function createHarness({ patch = {}, holdFirstDecode = false, failF
     ...(attempt ? { attempt } : {}),
     ...(onUnavailable ? { onUnavailable } : {}),
     ...(rules ? { rules } : {}),
+    ...(quality ? { quality } : {}),
   });
   const explored = (): ExploredTexture => (lighting as unknown as { memory: { texture: ExploredTexture } }).memory.texture;
   const stageTarget = RenderTexture.create({ width: SIZE, height: SIZE });

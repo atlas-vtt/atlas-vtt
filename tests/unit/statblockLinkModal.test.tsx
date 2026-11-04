@@ -1,10 +1,11 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/react/components/FantasyStatblock', () => ({
-  default: ({ notePath, tokens }: { notePath: string; tokens: Array<{ imagePath?: string }> }) => (
-    <div data-testid="statblock" data-portrait={tokens[0]?.imagePath}>{notePath}</div>
+vi.mock('../../src/app/statblocks/render/LinkedStatblock', () => ({
+  LinkedStatblock: ({ path, tokens }: { path: string; tokens: Array<{ imagePath?: string }> }) => (
+    <div data-testid="statblock" data-portrait={tokens[0]?.imagePath}>{path}</div>
   ),
 }));
 
@@ -15,7 +16,8 @@ import {
   statblockEntries,
 } from '../../src/app/packages/components/asset-manager/statblock-link/statblockEntries';
 import { BESTIARY_SETTLE_MS } from '../../src/app/creatures/CreatureIndex';
-import { unparsedStatblockNotes } from '../../src/app/creatures/linkedCreature';
+import { bestiaryLookup } from '../../src/app/creatures/linkedCreature';
+import { statblockNoteEntries } from '../../src/app/packages/components/asset-manager/statblock-link/statblockNoteEntries';
 
 type Handler = () => void;
 
@@ -81,6 +83,16 @@ describe('statblock entries', () => {
     expect(describeCreature({ name: 'B', type: 'Solo', tier: 1 })).toBe('Solo · Tier 1');
     expect(describeCreature({ name: 'C', level: '3' })).toBe('Level 3');
     expect(describeCreature({ name: 'D', type: { nested: true } })).toBe('');
+  });
+
+  it('lists a creature whose name is no text by what its name reads as', () => {
+    const entries = statblockEntries([
+      { name: 'Zombie', path: 'Bestiary/Zombie.md' },
+      { name: 7, path: 'Bestiary/Seven.md' },
+      { name: ['Grik', 'the Bold'], path: 'Bestiary/Grik.md' },
+      { name: {}, path: 'Bestiary/Nameless.md' },
+    ] as never);
+    expect(entries.map((entry) => entry.name)).toEqual(['7', 'Grik, the Bold', 'Zombie']);
   });
 
   it('keeps note-backed creatures only, sorted by name, falling back to the folder', () => {
@@ -156,9 +168,10 @@ describe('StatblockLinkModal', () => {
     expect(onLink).toHaveBeenCalledWith(null);
   });
 
-  it('explains a missing Fantasy Statblocks plugin', () => {
+  it('explains a missing Fantasy Statblocks plugin', async () => {
     open();
-    expect(screen.getByText(/Install and enable the Fantasy Statblocks plugin/)).toBeTruthy();
+    // Without the plugin the vault is still read for statblocks it can list.
+    expect(await screen.findByText(/Install and enable the Fantasy Statblocks plugin/)).toBeTruthy();
     expect(search().disabled).toBe(true);
   });
 
@@ -257,7 +270,7 @@ describe('StatblockLinkModal while the bestiary parses', () => {
       metadataCache: { getFileCache: () => null },
     } as never;
 
-    expect(await unparsedStatblockNotes(app, undefined, controller.signal)).toEqual([]);
+    expect(await statblockNoteEntries(app, bestiaryLookup(), controller.signal)).toEqual([]);
     expect(cachedRead).toHaveBeenCalledTimes(1);
   });
 

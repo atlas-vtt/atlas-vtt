@@ -1,7 +1,8 @@
 import type { Point } from '../types/visionTypes';
 import type { Polygon } from './visibility';
 import { positiveNumber } from '../utils/numberInput';
-import { angleTo, raySegmentIntersect } from './visionGeometry';
+import { angleTo } from './visionGeometry';
+import { indexOutline, outlineAt, type OutlineIndex } from './outlineIndex';
 
 const TURN = 2 * Math.PI;
 const DEGREE = Math.PI / 180;
@@ -24,11 +25,19 @@ export interface VisionCone {
 }
 
 /**
- * The cone of a token with `rotation` (degrees) seeing `angle` degrees wide, or none when it
- * sees all around. Rotation follows the token renderer (`SpriteFactory` sets the art sprite's
- * `rotation` to these degrees in radians): 0 faces the art's up, which is up on the map, and
- * positive turns clockwise on screen, so 90 faces right. On the y-down map that is the world
- * angle `rotation - 90°`.
+ * Where a token with `rotation` (degrees, as the token renderer turns its art: `SpriteFactory`)
+ * looks, in the degrees `visionCone` takes: towards its art's bottom. Token art faces the viewer,
+ * so a token that is not turned looks down the map.
+ */
+export function tokenFacing(rotation: number | undefined): number {
+  return ((rotation ?? 0) + 180) % 360;
+}
+
+/**
+ * The cone of something facing `rotation` (degrees) seeing `angle` degrees wide, or none when it
+ * sees all around: 0 faces up on the map and positive turns clockwise on screen, so 90 faces
+ * right. On the y-down map that is the world angle `rotation - 90°`. A token's facing is
+ * `tokenFacing` of its rotation.
  */
 export function visionCone(rotation: number | undefined, angle: number | undefined, apex = 0): VisionCone | undefined {
   const degrees = coneAngle(angle);
@@ -69,16 +78,21 @@ export function coneContains(cone: VisionCone, origin: Point, point: Point): boo
 export function clipToCone(origin: Point, polygon: Polygon, cone: VisionCone): Polygon {
   const start = cone.facing - cone.angle / 2;
   const end = start + cone.angle;
-  const inCone = [outlineAt(origin, polygon, start), ...within(origin, polygon, start, cone.angle), outlineAt(origin, polygon, end)];
+  const bearings = Float64Array.from(polygon, (point) => angleTo(origin, point));
+  const index = indexOutline(origin, polygon, bearings);
+  const inCone = [outlineAt(origin, polygon, start, index), ...within(origin, polygon, start, cone.angle, bearings), outlineAt(origin, polygon, end, index)];
   const apex = cone.apex ?? 0;
   if (!(apex > 0)) return [{ ...origin }, ...inCone];
-  return withoutRepeats([...inCone, ...outlineWithin(origin, polygon, end, TURN - cone.angle, apex)]);
+  return withoutRepeats([...inCone, ...outlineWithin(origin, polygon, bearings, end, TURN - cone.angle, apex, index)]);
 }
 
-/** The polygon's vertices strictly between `from` and `from + span`, in angular order. */
-function within(origin: Point, points: Polygon, from: number, span: number): Point[] {
+/**
+ * The points strictly between `from` and `from + span`, in angular order (as they come where
+ * equal). `bearings` holds each point's bearing from the origin where it is already known, else NaN.
+ */
+function within(origin: Point, points: Polygon, from: number, span: number, bearings: Float64Array): Point[] {
   return points
-    .map((point) => ({ point, rel: relativeAngle(angleTo(origin, point) - from) }))
+    .map((point, i) => ({ point, rel: relativeAngle((Number.isNaN(bearings[i]!) ? angleTo(origin, point) : bearings[i]!) - from) }))
     .filter(({ rel }) => rel > EDGE_SLACK && rel < span - EDGE_SLACK)
     .sort((a, b) => a.rel - b.rel)
     .map(({ point }) => point);
@@ -91,17 +105,27 @@ function within(origin: Point, points: Polygon, from: number, span: number): Poi
  * piece lying wholly inside or wholly outside the circle: each chord then runs along the outline
  * or across the circle within the triangle that piece spans with the origin, never outside the polygon.
  */
-function outlineWithin(origin: Point, polygon: Polygon, from: number, span: number, radius: number): Polygon {
+function outlineWithin(origin: Point, polygon: Polygon, bearings: Float64Array, from: number, span: number, radius: number, index: OutlineIndex | null): Polygon {
   const candidates: Point[] = [];
+  const known: number[] = [];
   polygon.forEach((vertex, i) => {
-    candidates.push(pullIn(origin, vertex, radius), ...circleCrossings(origin, vertex, polygon[(i + 1) % polygon.length]!, radius));
+    const pulled = pullIn(origin, vertex, radius);
+    candidates.push(pulled);
+    known.push(pulled === vertex ? bearings[i]! : NaN);
+    for (const crossing of circleCrossings(origin, vertex, polygon[(i + 1) % polygon.length]!, radius)) {
+      candidates.push(crossing);
+      known.push(NaN);
+    }
   });
   const steps = Math.ceil(span / ARC_STEP);
-  for (let i = 1; i < steps; i++) candidates.push(pullIn(origin, outlineAt(origin, polygon, from + (span * i) / steps), radius));
+  for (let i = 1; i < steps; i++) {
+    candidates.push(pullIn(origin, outlineAt(origin, polygon, from + (span * i) / steps, index), radius));
+    known.push(NaN);
+  }
   return [
-    pullIn(origin, outlineAt(origin, polygon, from), radius),
-    ...within(origin, candidates, from, span),
-    pullIn(origin, outlineAt(origin, polygon, from + span), radius),
+    pullIn(origin, outlineAt(origin, polygon, from, index), radius),
+    ...within(origin, candidates, from, span, Float64Array.from(known)),
+    pullIn(origin, outlineAt(origin, polygon, from + span, index), radius),
   ];
 }
 
@@ -141,14 +165,4 @@ function samePoint(a: Point, b: Point): boolean {
 function relativeAngle(angle: number): number {
   const rel = ((angle % TURN) + TURN) % TURN;
   return rel > TURN - EDGE_SLACK ? 0 : rel;
-}
-
-/** Where the ray from `origin` at `angle` leaves the polygon; the origin itself if it misses (never, for a star-shaped polygon). */
-function outlineAt(origin: Point, polygon: Polygon, angle: number): Point {
-  let reach = Infinity;
-  for (let i = 0; i < polygon.length; i++) {
-    reach = Math.min(reach, raySegmentIntersect(origin, angle, polygon[i]!, polygon[(i + 1) % polygon.length]!));
-  }
-  if (!Number.isFinite(reach)) return { ...origin };
-  return { x: origin.x + Math.cos(angle) * reach, y: origin.y + Math.sin(angle) * reach };
 }

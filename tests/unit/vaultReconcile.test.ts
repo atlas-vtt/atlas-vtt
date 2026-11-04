@@ -1,7 +1,11 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AssetService, type SceneAsset } from '../../src/app/services/AssetService';
 import { FileReferenceService } from '../../src/app/services/FileReferenceService';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
+import { tabs } from '../../src/app/packages/components/asset-manager/types';
+import { SNAPSHOTS_FOLDER } from '../../src/app/snapshots/snapshotPaths';
+import { LOOT_HISTORY_FOLDER } from '../../src/app/loot/lootHistoryPaths';
 
 const camp = 'atlas-vtt/collections/Winter Camp';
 const keep = 'atlas-vtt/collections/Frozen Keep';
@@ -145,14 +149,18 @@ describe('scenes changed outside Atlas', () => {
     expect(vault.files.has(`${keep}/scenes/${vault.sceneId}.json`)).toBe(true);
   });
 
-  it('removes a scene whose map was deleted, with its JSON', async () => {
+  it('keeps a scene whose map was deleted until its record file goes, since another device may only have renamed the map', async () => {
     const vault = await setup();
+    const json = `${camp}/scenes/${vault.sceneId}.json`;
     vault.files.delete(`${camp}/scenes/Cave.atlasmap`);
 
     await vault.service.reconcileWithVault(new Set([`${camp}/scenes/Cave.atlasmap`]));
+    expect(await vault.service.getAssetById(vault.sceneId)).not.toBeNull();
+    expect(vault.files.has(json)).toBe(true);
 
+    vault.files.delete(json);
+    await vault.service.reconcileWithVault(new Set([json]));
     expect(await vault.service.getAssetById(vault.sceneId)).toBeNull();
-    expect(vault.files.has(`${camp}/scenes/${vault.sceneId}.json`)).toBe(false);
   });
 
   it('adds a scene for a map file copied into a collection', async () => {
@@ -178,16 +186,20 @@ describe('other assets changed outside Atlas', () => {
     ]);
   });
 
-  it('removes an encounter only when its file was deleted, not when it is missing at startup', async () => {
+  it('drops an encounter whose record file is gone, never writes it back, and takes it in again when the file returns', async () => {
     const vault = await setup();
     const json = `${camp}/encounters/${vault.encounterId}.json`;
+    const content = vault.files.get(json)!;
     vault.files.delete(json);
 
     await vault.service.reconcileWithVault();
-    expect(await vault.service.getAssetById(vault.encounterId)).not.toBeNull();
-
-    await vault.service.reconcileWithVault(new Set([json]));
     expect(await vault.service.getAssetById(vault.encounterId)).toBeNull();
+    expect(vault.files.has(json)).toBe(false);
+
+    // A sync tool or a storage provider that evicted the file brings it back.
+    await vault.app.vault.create(json, content);
+    await vault.service.reconcileWithVault();
+    expect(await vault.service.getAssetById(vault.encounterId)).toMatchObject({ name: 'Ambush', collection: 'Winter Camp' });
   });
 
   it('moves an encounter whose file was moved to another collection', async () => {
@@ -222,5 +234,49 @@ describe('an incomplete vault listing', () => {
 
     expect((await vault.service.getCollections()).map((c) => c.id).sort()).toEqual(['Default', 'Winter Camp']);
     expect(await vault.service.getAssetById(vault.sceneId)).not.toBeNull();
+  });
+});
+
+describe('Atlas\' own folders at a collection\'s root', () => {
+  it('lie outside every tab folder, so the asset manager never lists them', () => {
+    for (const folder of [SNAPSHOTS_FOLDER, LOOT_HISTORY_FOLDER]) expect(tabs).not.toContain(folder);
+  });
+
+  it('never takes snapshots or loot history for assets, nor relinks a record to them', async () => {
+    const vault = await setup();
+    const scene = (await vault.service.getAssetById(vault.sceneId)) as SceneAsset;
+    const sidecar = scene.filePath ?? `${camp}/scenes/${vault.sceneId}.json`;
+    const before = new Set((await vault.service.getAssets()).map((asset) => asset.id));
+    // Files there may look like records or token art, even by name.
+    await vault.app.vault.create(`${camp}/snapshots/${vault.sceneId}/s1.json`, JSON.stringify({ mapPath: `${camp}/scenes/Cave.atlasmap`, name: 'Cave' }));
+    await vault.app.vault.create(`${camp}/snapshots/${vault.sceneId}/${vault.sceneId}.json`, '{}');
+    await vault.app.vault.create(`${camp}/snapshots/tokens/goblin_1790000000000_abcdef.webp`, 'IMG');
+    await vault.app.vault.create(`${camp}/snapshots/x/Lost.atlasmap`, MAP);
+    await vault.app.vault.create(`${camp}/loot-history/device.json`, '{"format":1,"rolls":[]}');
+
+    vault.files.delete(sidecar);
+    vault.files.delete(`${camp}/tokens/goblin_1790000000000_abcdef.webp`);
+    await vault.service.reconcileWithVault(new Set([`${camp}/tokens/goblin_1790000000000_abcdef.webp`]));
+
+    const after = await vault.service.getAssets();
+    // Nothing refers into Atlas' own folders; the scene whose record file went is its map again.
+    expect(after.filter((asset) => /\/(snapshots|loot-history)\//.test(JSON.stringify(asset)))).toEqual([]);
+    // The token keeps its record file, so it stays, its art missing.
+    expect(await vault.service.getAssetById(vault.tokenId)).toMatchObject({ imagePath: `${camp}/tokens/goblin_1790000000000_abcdef.webp` });
+    expect(after.filter((asset) => !before.has(asset.id)).map((asset) => [asset.type, asset.name])).toEqual([['scene', 'Cave']]);
+  });
+});
+
+describe('recovered tokens', () => {
+  it('keep a name the user gave them', async () => {
+    const vault = await setup();
+    await vault.app.vault.create(`${camp}/tokens/orc_1790000000000_abcdef.webp`, 'IMG');
+    await vault.service.reconcileWithVault();
+    const recovered = (await vault.service.getAssets('Winter Camp', 'token')).find((token) => token.id.includes('-recovered-'))!;
+    expect(recovered.name).toBe('Orc');
+
+    await vault.service.updateAsset(recovered.id, { name: 'Orc chieftain' });
+    await vault.service.reconcileWithVault();
+    expect((await vault.service.getAssetById(recovered.id))?.name).toBe('Orc chieftain');
   });
 });

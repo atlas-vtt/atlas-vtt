@@ -1,5 +1,6 @@
 import React from 'react';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
+import { t } from '../../../i18n';
 
 interface SettingsPanelHeaderProps {
   icon: React.ReactNode;
@@ -17,7 +18,7 @@ export function SettingsPanelHeader({ icon, title, onBack, actions }: SettingsPa
       </div>
       <div className="atlas-command-palette-panel-actions">
         {actions}
-        <CloseButton onClick={onBack} aria-label="Back" />
+        <CloseButton onClick={onBack} aria-label={t('common.back')} />
       </div>
     </div>
   );

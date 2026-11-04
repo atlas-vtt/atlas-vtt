@@ -107,8 +107,6 @@
 
   &:hover {
     background-color: var(--background-modifier-hover);
-    transform: translateY(-1px);
-    box-shadow: $shadow-sm;
   }
 
   &:focus {
@@ -164,6 +162,10 @@
   white-space: nowrap;
   font-size: $font-ui-small;
   color: var(--text-normal);
+}
+
+.atlas-dropdown-toggle-row--disabled .atlas-dropdown-toggle-row__label {
+  color: var(--text-faint);
 }
 
 /* A label of a section or control, on the menu's text edge */

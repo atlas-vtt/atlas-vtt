@@ -2,7 +2,7 @@ import { App, TFile } from 'obsidian';
 import { groupTokenRefs, type AssetService, type GroupAsset } from '../../../../services/AssetService';
 import { findTokenPlacements, removeTokenPlacements } from '../../../../services/tokenAssetPlacements';
 import type { AnyAsset } from '../types';
-import { plural } from '../../../../utils/plural';
+import { t } from '../../../../i18n';
 
 /** Where the token assets about to be deleted are still in use. */
 export interface TokenDeleteImpact {
@@ -13,8 +13,8 @@ export interface TokenDeleteImpact {
 }
 
 function listNames(names: string[]): string {
-  const shown = names.slice(0, 5).map((n) => `"${n}"`).join(', ');
-  return names.length > 5 ? `${shown} and ${names.length - 5} more` : shown;
+  const shown = names.slice(0, 5).map((n) => t('common.quoted', { name: n })).join(', ');
+  return names.length > 5 ? t('am.impact.more', { names: shown, count: names.length - 5 }) : shown;
 }
 
 /** Looks up encounters and maps that use any of the given token assets. */
@@ -39,13 +39,13 @@ export function describeTokenDeleteImpact(impact: TokenDeleteImpact): string[] {
   const paragraphs: string[] = [];
   if (impact.groups.length > 0) {
     const emptied = impact.groups.filter((g) => groupTokenRefs(g).every((ref) => ids.has(ref.id)));
-    paragraphs.push(`Used in ${plural(impact.groups.length, 'encounter')}: ${listNames(impact.groups.map((g) => g.name))}. The token will be removed from them.`);
+    paragraphs.push(t('am.impact.encounters', { count: impact.groups.length, names: listNames(impact.groups.map((g) => g.name)) }));
     if (emptied.length > 0) {
-      paragraphs.push(`${listNames(emptied.map((g) => g.name))} would be left empty and will be deleted too.`);
+      paragraphs.push(t('am.impact.emptied', { names: listNames(emptied.map((g) => g.name)) }));
     }
   }
   if (impact.maps.length > 0) {
-    paragraphs.push(`Placed on ${plural(impact.maps.length, 'map')}: ${listNames(impact.maps.map((m) => m.basename))}. Those tokens will be removed from the map.`);
+    paragraphs.push(t('am.impact.maps', { count: impact.maps.length, names: listNames(impact.maps.map((m) => m.basename)) }));
   }
   return paragraphs;
 }

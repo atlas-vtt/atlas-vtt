@@ -1,7 +1,9 @@
 import type { App } from 'obsidian';
-import { Container, Graphics, RenderTexture, type Application, type WebGLRenderer } from 'pixi.js';
+import { Container, RenderTexture, type Application, type WebGLRenderer } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { vi } from 'vitest';
+import type { FogOperation } from '../../../types/fogTypes';
+import type { ExploredMemoryWatcher } from '../sceneLightingView';
 import type { MeasurementSettings } from '../../../grid/measurementFormat';
 import type { ViewAtlasState, ViewAtlasStore } from '../../../storeFactory';
 import type { MapBounds } from '../../../vision/visibility';
@@ -23,6 +25,7 @@ export interface SceneOptions {
   exploredMask?: string | null;
   /** Told when the view worked out new sight, as `LightingController` is. */
   onSightChange?: () => void;
+  exploredWatcher?: ExploredMemoryWatcher;
 }
 
 /** `createSceneLighting` over a real renderer, with the store, storage and ticker a map view gives it. */
@@ -39,12 +42,19 @@ export interface Scene {
   moveToken: (x: number, y: number) => void;
   /** A change to the scene's lighting that leaves sight as it is, e.g. `{ ambientColor }`. */
   setLighting: (changes: Partial<ViewAtlasState['lighting']>) => void;
+  /** A fog-only update, preserving every lighting and source record. */
+  setFog: (fog: Record<string, FogOperation>) => void;
   /** The store writes and lighting calls of `MapService.loadMap`, in its order. */
   loadMap: (path: string, saved: SavedScene, bounds: MapBounds) => void;
-  /** `loadMap` up to the rehydrated scene: the store holds it, and the loading screen is still up. */
-  startLoad: (path: string, saved: SavedScene, bounds: MapBounds) => void;
+  /**
+   * `loadMap` up to the rehydrated scene: the store holds it, and the loading screen is still up. A load
+   * that follows one which failed starts without the map unloading (`unloads` false), as no map was loaded.
+   */
+  startLoad: (path: string, saved: SavedScene, bounds: MapBounds, unloads?: boolean) => void;
   /** The loading screen goes: the last write of a load. */
   finishLoad: () => void;
+  /** Subscribes `listener` to the store ahead of the lighting, as a token renderer made before the lighting is. */
+  listenFirst: (listener: (state: ViewAtlasState) => void) => void;
   tick: () => void;
   renderStage: () => void;
   dispose: () => void;
@@ -58,7 +68,7 @@ export function litScene(tokenX: number, tokenY: number): SavedScene {
   } as unknown as SavedScene;
 }
 
-export async function createScene({ enabled, noted = null, exploredMask = null, onSightChange }: SceneOptions): Promise<Scene> {
+export async function createScene({ enabled, noted = null, exploredMask = null, onSightChange, exploredWatcher }: SceneOptions): Promise<Scene> {
   const renderer = await createTestRenderer(SIZE);
   const viewport = new Container();
   const target = RenderTexture.create({ width: SIZE, height: SIZE });
@@ -87,8 +97,8 @@ export async function createScene({ enabled, noted = null, exploredMask = null, 
     getState: () => state,
     subscribe: (listener: (state: ViewAtlasState, previous: ViewAtlasState) => void) => (listeners.add(listener), () => listeners.delete(listener)),
   } as unknown as ViewAtlasStore;
-  const startLoad = (path: string, saved: SavedScene, mapBounds: MapBounds): void => {
-    host.beforeMapUnload(); // 'map-unloading'
+  const startLoad = (path: string, saved: SavedScene, mapBounds: MapBounds, unloads = true): void => {
+    if (unloads) host.beforeMapUnload(); // 'map-unloading'
     write({ isMapLoading: true }); // setMapLoading(true, 0)
     write({ mapPath: path }); // setMapPath
     write({ lighting: { enabled: false, ambient: 0.1 }, exploredMask: null, exploredEdits: 0, objects: { ...state.objects, walls: {}, lights: {}, tokens: {} } }); // clearMapState
@@ -113,6 +123,7 @@ export async function createScene({ enabled, noted = null, exploredMask = null, 
     bounds: () => bounds,
     albedo: () => null,
     ...(onSightChange && { onSightChange }),
+    ...(exploredWatcher && { exploredWatcher }),
   });
   return {
     renderer,
@@ -124,12 +135,19 @@ export async function createScene({ enabled, noted = null, exploredMask = null, 
     switchLighting: (on) => write({ lighting: { ...state.lighting, enabled: on } }),
     moveToken: (x, y) => write({ objects: { ...state.objects, tokens: { t: visionToken(x, y, 5) } } }),
     setLighting: (changes) => write({ lighting: { ...state.lighting, ...changes } }),
+    setFog: (fog) => write({ objects: { ...state.objects, fog } }),
     loadMap: (path, saved, mapBounds) => {
       startLoad(path, saved, mapBounds);
       finishLoad();
     },
     startLoad,
     finishLoad,
+    listenFirst: (listener) => {
+      const later = [...listeners];
+      listeners.clear();
+      listeners.add(listener);
+      for (const other of later) listeners.add(other);
+    },
     tick: () => [...ticks].forEach((tick) => tick()),
     renderStage: () => renderer.render({ container: viewport, target, clear: true }),
     dispose: () => {
@@ -147,8 +165,8 @@ export function engineLayer(viewport: Container): Container | undefined {
 }
 
 /** The fallback's darkness in the viewport, while line of sight stands in. */
-export function darkness(viewport: Container): Graphics | undefined {
-  return viewport.children.find((child): child is Graphics => child instanceof Graphics);
+export function darkness(viewport: Container): Container | undefined {
+  return viewport.children.find((child) => child.label === 'line-of-sight');
 }
 
 /** Every program link fails from now on, as on a driver that rejects the shaders. */

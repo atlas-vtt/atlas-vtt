@@ -112,6 +112,36 @@ describe('layout operations', () => {
   });
 });
 
+describe('the undo/redo bar', () => {
+  it('reads it from the hidden list and never from the order', () => {
+    expect(readToolbarLayout({ order: ['undo', 'fog', 'move'], hidden: ['undo', 'fog'] })).toEqual({ order: ['fog', 'move'], hidden: ['undo', 'fog'] });
+    expect(readToolbarLayout({ order: ['undo'] })).toEqual({});
+  });
+
+  it('resolves it as hidden without giving it a place in the order', () => {
+    const resolved = resolveToolbarLayout({ hidden: ['undo'] });
+    expect(resolved.order).toEqual(DEFAULT_TOOLBAR_ORDER);
+    expect(resolved.hidden.has('undo')).toBe(true);
+    expect(isDefaultToolbarLayout(resolved)).toBe(false);
+  });
+
+  it('stores it first in the hidden list, keeps unknown ids, and stores nothing once it shows again', () => {
+    const previous = readToolbarLayout({ hidden: ['future', 'fog'] });
+    const hidden = withControlHidden(resolveToolbarLayout(previous), 'undo');
+    expect(hidden.order).toEqual(DEFAULT_TOOLBAR_ORDER);
+    const stored = storedToolbarLayout(previous, hidden);
+    expect(stored).toEqual({ hidden: ['undo', 'fog', 'future'] });
+    expect(storedToolbarLayout({ hidden: ['undo'] }, withControlShown(resolveToolbarLayout({ hidden: ['undo'] }), 'undo'))).toEqual({});
+    expect(storedToolbarLayout({}, withControlHidden(DEFAULT, 'undo'))).toEqual({ hidden: ['undo'] });
+  });
+
+  it('keeps it hidden while controls move and show', () => {
+    const layout = withControlHidden(DEFAULT, 'undo');
+    expect(withControlAfter(layout, 'palette', null).hidden.has('undo')).toBe(true);
+    expect(withControlShown(withControlHidden(layout, 'fog'), 'fog').hidden.has('undo')).toBe(true);
+  });
+});
+
 describe('visits', () => {
   const booleans = [false, true] as const;
 

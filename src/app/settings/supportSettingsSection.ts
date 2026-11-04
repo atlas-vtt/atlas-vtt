@@ -1,41 +1,42 @@
 import { ATLAS_DISCORD_URL, ATLAS_GITHUB_URL } from '../support/communityLinks';
 import type { IssueReporter } from '../support/IssueReporter';
 import type { AtlasSettingSection } from './settingSections';
+import { t } from '../i18n';
 
 export function supportSettingsSection(reporter: IssueReporter): AtlasSettingSection {
   return {
-    heading: 'Help and feedback',
+    heading: t('settings.support.heading'),
     rows: [
       {
-        name: 'Report an issue',
-        desc: 'Submit a report from Atlas with your Atlas and Obsidian versions. No GitHub account is needed. Also available as the "Report an issue" command.',
+        name: t('settings.support.reportIssue'),
+        desc: t('settings.support.reportIssueDesc'),
         aliases: ['bug', 'crash', 'problem', 'feedback', 'github', 'support'],
         render: setting => {
-          setting.addButton(button => button.setButtonText('Report an issue').onClick(() => reporter.open({ type: 'bug' })));
+          setting.addButton(button => button.setButtonText(t('settings.support.reportIssue')).onClick(() => reporter.open({ type: 'bug' })));
         },
       },
       {
-        name: 'Suggest a feature',
-        desc: 'Tell us what would make Atlas better at your table.',
+        name: t('settings.support.suggestFeature'),
+        desc: t('settings.support.suggestFeatureDesc'),
         aliases: ['idea', 'request', 'enhancement'],
         render: setting => {
-          setting.addButton(button => button.setButtonText('Suggest a feature').onClick(() => reporter.open({ type: 'feature' })));
+          setting.addButton(button => button.setButtonText(t('settings.support.suggestFeature')).onClick(() => reporter.open({ type: 'feature' })));
         },
       },
       {
-        name: 'Discord community',
-        desc: 'Get help, share feedback and ideas, and hear about new releases first.',
+        name: t('settings.support.discord'),
+        desc: t('settings.support.discordDesc'),
         aliases: ['discord', 'community', 'chat', 'help'],
         render: setting => {
-          setting.addButton(button => button.setButtonText('Join Discord').onClick(() => { window.open(ATLAS_DISCORD_URL); }));
+          setting.addButton(button => button.setButtonText(t('settings.support.joinDiscord')).onClick(() => { window.open(ATLAS_DISCORD_URL); }));
         },
       },
       {
         name: 'GitHub',
-        desc: 'Browse the source code, follow development and read the release history.',
+        desc: t('settings.support.githubDesc'),
         aliases: ['github', 'source code', 'repository', 'releases'],
         render: setting => {
-          setting.addButton(button => button.setButtonText('Open GitHub').onClick(() => { window.open(ATLAS_GITHUB_URL); }));
+          setting.addButton(button => button.setButtonText(t('settings.support.openGithub')).onClick(() => { window.open(ATLAS_GITHUB_URL); }));
         },
       },
     ],

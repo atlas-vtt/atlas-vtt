@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -12,6 +13,7 @@ const workspaceApp = { workspace: { on: () => ({}), offref: () => {} } };
 vi.mock('../../src/app/packages/components/asset-manager/hooks/useAssetData', () => ({
   useAssetData: () => ({
     app: workspaceApp,
+    shownFolderOf: (folderId: string | null) => folderId,
     folders: [], collections: [{ id: 'default', uid: 'u-default', name: 'Default' }],
     availableTags: [{ id: 'testing-tags', name: 'Testing Tags' }, { id: 'forest', name: 'Forest' }],
     assets: [

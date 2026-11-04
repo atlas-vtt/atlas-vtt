@@ -3,17 +3,18 @@ import type { ConflictReason, Resolution } from '../../../../services/collection
 import type { ReviewUnit } from '../../../../services/collectionBundle/importReview';
 import { Button } from '../../primitives/button';
 import { SegmentedControl, type SegmentedOption } from '../../primitives/SegmentedControl';
+import { t } from '../../../../i18n';
 
 const REASONS: Record<ConflictReason, string> = {
-  'both-changed': 'You and the update both changed it.',
-  'deleted-by-you': 'You deleted it; the update changes it.',
-  'removed-by-update': 'The update removes it, but you changed it.',
-  'unknown-origin': 'Your version differs from the update.',
+  'both-changed': t('conflict.bothChanged'),
+  'deleted-by-you': t('conflict.deletedByYou'),
+  'removed-by-update': t('conflict.removedByUpdate'),
+  'unknown-origin': t('conflict.unknownOrigin'),
 };
 
 const RESOLUTIONS: readonly SegmentedOption<Resolution>[] = [
-  { value: 'mine', label: 'Keep mine' },
-  { value: 'theirs', label: 'Use update' },
+  { value: 'mine', label: t('conflict.keepMine') },
+  { value: 'theirs', label: t('conflict.useUpdate') },
 ];
 
 interface ConflictListProps {
@@ -31,8 +32,8 @@ export function ConflictList({ conflicts, resolutions, onChange }: ConflictListP
       <div className="atlas-transfer-conflicts__header">
         <strong id={titleId}>Your changes and the update overlap ({conflicts.length})</strong>
         <div className="atlas-transfer-conflicts__bulk">
-          <Button variant="ghost" size="sm" onClick={() => setAll('mine')}>Keep mine for all</Button>
-          <Button variant="ghost" size="sm" onClick={() => setAll('theirs')}>Use update for all</Button>
+          <Button variant="ghost" size="sm" onClick={() => setAll('mine')}>{t('conflict.keepMineAll')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => setAll('theirs')}>{t('conflict.useUpdateAll')}</Button>
         </div>
       </div>
       <ul className="atlas-transfer-conflicts__list">

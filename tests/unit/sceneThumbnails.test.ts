@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStore } from 'zustand/vanilla';
 import { SceneThumbnailUpdater, type SceneThumbnailPorts } from '../../src/app/services/SceneThumbnailUpdater';
@@ -28,6 +29,7 @@ function setup(thumbnails: Record<string, boolean> = {}) {
   }));
   const ports = {
     render: vi.fn(() => new TextEncoder().encode(`pixels of ${store.getState().mapPath}`).buffer),
+    levelShown: vi.fn(() => true),
     save: vi.fn(async () => {}),
     hasThumbnail: vi.fn(async (mapPath: string) => thumbnails[mapPath] ?? false),
   } satisfies SceneThumbnailPorts;
@@ -50,6 +52,19 @@ describe('SceneThumbnailUpdater', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
+  it('shows the level the view went to, once that level\'s image has loaded', async () => {
+    const { store, ports, open, savedPaths } = setup({ [CAVE]: true });
+    await open(CAVE);
+    ports.levelShown.mockReturnValue(false);
+    store.setState({ viewedLevel: 'upper' });
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(savedPaths()).toEqual([]);
+
+    ports.levelShown.mockReturnValue(true);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(savedPaths()).toEqual([CAVE]);
+  });
+
   it('gives a newly opened scene without a thumbnail one shortly after it opens', async () => {
     const { ports, open, savedPaths } = setup();
     await open(CAVE);
@@ -71,6 +86,33 @@ describe('SceneThumbnailUpdater', () => {
     expect(ports.render).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(savedPaths()).toEqual([CAVE]);
+  });
+
+  it('waits while the grid is being aligned, whose preview and marks are on the map, and takes the thumbnail after', async () => {
+    const { store, ports, open, edit, savedPaths } = setup({ [CAVE]: true });
+    await open(CAVE);
+    edit();
+    store.setState({ isGridAlignmentOpen: true } as Partial<ReturnType<typeof store.getState>>);
+
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(ports.render).not.toHaveBeenCalled();
+
+    store.setState({ isGridAlignmentOpen: false } as Partial<ReturnType<typeof store.getState>>);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(savedPaths()).toEqual([CAVE]);
+  });
+
+  it('takes no thumbnail of an alignment\'s preview when the view closes on it, and stops', async () => {
+    const { store, ports, updater, open, edit } = setup({ [CAVE]: true });
+    await open(CAVE);
+    edit();
+    store.setState({ isGridAlignmentOpen: true } as Partial<ReturnType<typeof store.getState>>);
+
+    updater.destroy();
+    await vi.advanceTimersByTimeAsync(10000);
+
+    expect(ports.render).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('writes a pending thumbnail at once when the view moves on, never from another scene', async () => {

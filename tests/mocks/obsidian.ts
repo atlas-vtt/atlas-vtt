@@ -35,7 +35,17 @@ export class App {
     pushScope(scope: Scope): void { this.scopes.push(scope); },
     popScope(scope: Scope): void { this.scopes = this.scopes.filter((candidate) => candidate !== scope); },
   };
+  /** Obsidian's device-local storage of the vault, kept in memory. */
+  localStorage = new Map<string, unknown>();
   constructor() {}
+  loadLocalStorage(key: string): unknown {
+    return this.localStorage.get(key) ?? null;
+  }
+  /** As Obsidian does: any falsy value (`false`, `0`, `''`, null) clears the key instead of storing it. */
+  saveLocalStorage(key: string, data: unknown): void {
+    if (!data) this.localStorage.delete(key);
+    else this.localStorage.set(key, data);
+  }
 }
 
 export class Plugin {}
@@ -53,30 +63,70 @@ export class View {
   leaf: WorkspaceLeaf;
   app: any;
   containerEl: HTMLElement;
+  scope: Scope | null = null;
+  navigation = false;
 
   constructor(leaf: WorkspaceLeaf) {
     this.leaf = leaf;
     this.app = (leaf as any)?.app ?? (leaf as any)?.view?.app ?? {};
     this.containerEl = document.createElement('div');
   }
+
+  getState(): Record<string, unknown> {
+    return {};
+  }
+
+  async setState(_state: unknown, _result: unknown): Promise<void> {}
+
+  setEphemeralState(_state: unknown): void {}
 }
 
 export class ItemView extends View {
   contentEl: HTMLElement;
+  /** The header's action buttons, as `addAction` makes them. */
+  actionsEl: HTMLElement;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
+    this.actionsEl = this.containerEl.createDiv({ cls: 'view-actions' });
     this.contentEl = document.createElement('div');
+  }
+
+  addAction(icon: string, title: string, callback: (evt: MouseEvent) => unknown): HTMLElement {
+    const el = this.actionsEl.createEl('button', { cls: 'clickable-icon view-action', attr: { 'aria-label': title, 'data-icon': icon } });
+    el.addEventListener('click', (event) => callback(event));
+    return el;
   }
 }
 
 export class FileView extends ItemView {
   file: TFile | null;
+  allowNoFile = false;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
     this.file = null;
   }
+
+  /** As Obsidian's: the file it shows. */
+  getState(): Record<string, unknown> {
+    return this.file ? { file: this.file.path } : {};
+  }
+
+  /** As Obsidian's: a state naming another file loads it, unloading the one shown. */
+  async setState(state: unknown, _result: unknown): Promise<void> {
+    const path = (state as { file?: unknown } | null)?.file;
+    if (typeof path !== 'string' || path === this.file?.path) return;
+    const file = this.app?.vault?.getAbstractFileByPath?.(path);
+    if (!(file instanceof TFile)) return;
+    if (this.file) await this.onUnloadFile(this.file);
+    this.file = file;
+    await this.onLoadFile(file);
+  }
+
+  async onLoadFile(_file: TFile): Promise<void> {}
+
+  async onUnloadFile(_file: TFile): Promise<void> {}
 }
 
 /**
@@ -140,6 +190,13 @@ export class TFile extends TAbstractFile {
   }
 }
 
+/** The desktop adapter; tests' vaults are in memory, so none is one. */
+export class FileSystemAdapter {
+  getBasePath(): string {
+    return '';
+  }
+}
+
 export class TFolder extends TAbstractFile {
   children: TAbstractFile[];
 
@@ -151,7 +208,7 @@ export class TFolder extends TAbstractFile {
 
 export class Notice {
   // Keep a signature close to Obsidian's constructor.
-  constructor(_message: string, _timeout?: number) {}
+  constructor(_message: string | DocumentFragment, _timeout?: number) {}
   hide(): void {}
 }
 
@@ -168,26 +225,40 @@ export async function requestUrl(_params: RequestUrlParam): Promise<any> {
 
 interface CachedHeading {
   heading: string;
+  level: number;
   position: { start: { line: number } };
 }
 
+/** Obsidian's: what a link compares a heading by. */
+export function stripHeading(heading: string): string {
+  return heading.replace(/[!"#$%&()*+,.:;<=>?@^`{|}~/[\]\\\r\n]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
- * Resolves a `#heading` subpath against the cached headings as Obsidian does:
- * every `#` starts a nested heading, so `#Keep#Cellar` is the Cellar after Keep
- * and a heading containing `#` itself is never found this way.
+ * Resolves a `#heading` subpath against the cached headings as Obsidian's does:
+ * every `#` starts a heading deeper than the one before, empty parts count for
+ * nothing, and a heading containing `#` itself is never found by that text.
  */
-export function resolveSubpath(cache: { headings?: CachedHeading[] }, subpath: string): { start: { line: number } } | null {
-  const headings = cache.headings ?? [];
-  let index = -1;
-  for (const part of subpath.split('#').filter(Boolean)) {
-    index = headings.findIndex((h, i) => i > index && h.heading === part);
-    if (index === -1) return null;
+export function resolveSubpath(cache: { headings?: CachedHeading[] }, subpath: string): { type: 'heading'; current: CachedHeading; start: { line: number } } | null {
+  const parts = subpath.split('#').filter(Boolean);
+  if (parts.length === 0) return null;
+  let matched = 0;
+  let level = 0;
+  for (const heading of cache.headings ?? []) {
+    if (heading.level <= level || stripHeading(heading.heading).toLowerCase() !== stripHeading(parts[matched]!).toLowerCase()) continue;
+    matched++;
+    level = heading.level;
+    if (matched === parts.length) return { type: 'heading', current: heading, start: heading.position.start };
   }
-  return index === -1 ? null : { start: headings[index].position.start };
+  return null;
 }
 
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/').replace(/\/+/g, '/');
+}
+
+export function getLanguage(): string {
+  return 'en';
 }
 
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
@@ -205,6 +276,10 @@ export class Component {
   onunload(): void {}
   register(cb: () => void): void {
     this.cleanups.push(cb);
+  }
+  registerDomEvent<K extends keyof HTMLElementEventMap>(el: HTMLElement, type: K, callback: (event: HTMLElementEventMap[K]) => unknown): void {
+    el.addEventListener(type, callback);
+    this.register(() => el.removeEventListener(type, callback));
   }
   addChild<T>(child: T): T {
     return child;
@@ -254,6 +329,15 @@ export function stringifyYaml(value: unknown): string {
   return stringifyYamlImpl(value);
 }
 
+/** As Obsidian's: where a note's frontmatter lies, and where its text starts. */
+export function getFrontMatterInfo(content: string): { exists: boolean; frontmatter: string; from: number; to: number; contentStart: number } {
+  const match = /^---\r?\n(?:([\s\S]*?)\r?\n)?---[ \t]*(?:\r?\n|$)/.exec(content);
+  if (!match) return { exists: false, frontmatter: '', from: 0, to: 0, contentStart: 0 };
+  const from = content.indexOf('\n') + 1;
+  const frontmatter = match[1] ?? '';
+  return { exists: true, frontmatter, from, to: from + frontmatter.length, contentStart: match[0].length };
+}
+
 export class Modal {
   app: unknown;
   contentEl: HTMLElement;
@@ -274,11 +358,136 @@ export class Modal {
   onClose(): void {}
 }
 
+/** Obsidian's editor suggester; Obsidian sets `context` when one of its suggestions is chosen. */
+/** The list of a suggestion popover: its values, the highlighted one, and taking it. */
+class SuggestChooser<T> {
+  values: T[] = [];
+  selectedItem = 0;
+  constructor(private readonly owner: PopoverSuggest<T>) {}
+  setSuggestions(values: T[]): void {
+    this.values = values;
+    this.selectedItem = 0;
+    this.owner.suggestEl.replaceChildren();
+    for (const value of values) {
+      const el = document.createElement('div');
+      el.className = 'suggestion-item';
+      this.owner.renderSuggestion(value, el);
+      this.owner.suggestEl.appendChild(el);
+    }
+  }
+  moveSelectedItem(step: number): void {
+    if (this.values.length) this.selectedItem = (this.selectedItem + step + this.values.length) % this.values.length;
+  }
+  useSelectedItem(event: KeyboardEvent): boolean {
+    const value = this.values[this.selectedItem];
+    if (value === undefined) return false;
+    this.owner.selectSuggestion(value, event);
+    return true;
+  }
+}
+
+/** Obsidian's suggestion popover: a key scope pushed while open (arrows, Enter, Escape) over the list, not attached to a document. */
+export abstract class PopoverSuggest<T> {
+  scope: Scope;
+  isOpen = false;
+  suggestEl: HTMLElement = document.createElement('div');
+  suggestions: SuggestChooser<T> = new SuggestChooser(this);
+  constructor(public app: any, scope?: Scope) {
+    this.scope = new Scope(scope ?? app.scope);
+    this.scope.register([], 'ArrowDown', () => { this.suggestions.moveSelectedItem(1); return false; });
+    this.scope.register([], 'ArrowUp', () => { this.suggestions.moveSelectedItem(-1); return false; });
+    this.scope.register([], 'Enter', (event) => { this.suggestions.useSelectedItem(event); return false; });
+    this.scope.register([], 'Escape', () => { this.close(); return false; });
+  }
+  open(): void {
+    if (this.isOpen) return;
+    this.isOpen = true;
+    this.app.keymap.pushScope(this.scope);
+  }
+  close(): void {
+    this.app.keymap.popScope(this.scope);
+    this.isOpen = false;
+    this.suggestions.values = [];
+  }
+  abstract renderSuggestion(value: T, el: HTMLElement): void;
+  abstract selectSuggestion(value: T, event: MouseEvent | KeyboardEvent): void;
+}
+
+/** Obsidian's suggestions for a text field: asked on every `input` while it has focus, closed on blur. */
+export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
+  limit = 100;
+  private selectCb: ((value: T, event: MouseEvent | KeyboardEvent) => void) | null = null;
+  constructor(app: any, protected textInputEl: HTMLInputElement | HTMLDivElement) {
+    super(app);
+    textInputEl.addEventListener('input', () => this.onInputChange());
+    textInputEl.addEventListener('focus', () => this.onInputChange());
+    textInputEl.addEventListener('blur', () => this.close());
+  }
+  getValue(): string {
+    return this.textInputEl instanceof HTMLInputElement ? this.textInputEl.value : this.textInputEl.innerText;
+  }
+  setValue(value: string): void {
+    if (this.textInputEl instanceof HTMLInputElement) this.textInputEl.value = value;
+    else this.textInputEl.innerText = value;
+  }
+  onSelect(callback: (value: T, event: MouseEvent | KeyboardEvent) => void): this {
+    this.selectCb = callback;
+    return this;
+  }
+  selectSuggestion(value: T, event: MouseEvent | KeyboardEvent): void {
+    this.selectCb?.(value, event);
+  }
+  protected abstract getSuggestions(query: string): T[] | Promise<T[]>;
+  private onInputChange(): void {
+    if (this.textInputEl.ownerDocument.activeElement !== this.textInputEl) return;
+    const found = this.getSuggestions(this.getValue());
+    if (!Array.isArray(found)) return;
+    if (found.length === 0) {
+      this.close();
+      return;
+    }
+    this.suggestions.setSuggestions(this.limit > 0 ? found.slice(0, this.limit) : found);
+    this.open();
+  }
+}
+
+/** The aliases a note's frontmatter names, under `aliases` or `alias`, as a list. */
+export function parseFrontMatterAliases(frontmatter: any): string[] | null {
+  const raw = frontmatter?.aliases ?? frontmatter?.alias;
+  if (raw === undefined || raw === null) return null;
+  const list = Array.isArray(raw) ? raw : String(raw).split(/,\s*/);
+  return list.map(String).filter((alias) => alias.trim() !== '');
+}
+
+export abstract class EditorSuggest<T> {
+  context: { editor: unknown; file: unknown; start: unknown; end: unknown; query: string } | null = null;
+  /** Never read: present so a subclass's item type is used. */
+  protected readonly item?: T;
+  constructor(public app: any) {}
+}
+
+/** Obsidian's prompt of suggestions: a modal with a search field; the tests choose items directly. */
+export class SuggestModal<T> extends Modal {
+  emptyStateText = '';
+  inputEl: HTMLInputElement = document.createElement('input');
+  /** Never read: present so a subclass's item type is used. */
+  protected readonly item?: T;
+  setPlaceholder(placeholder: string): void { this.inputEl.placeholder = placeholder; }
+}
+
+export interface FuzzyMatch<T> {
+  item: T;
+  match: { score: number; matches: Array<[number, number]> };
+}
+
+export class FuzzySuggestModal<T> extends SuggestModal<FuzzyMatch<T>> {}
+
 export const Platform = {
   isMacOS: false,
   isWin: false,
   isLinux: false,
   isDesktop: true,
+  isDesktopApp: true,
   isMobile: false,
 };
 
@@ -380,6 +589,7 @@ export class Setting {
   setName(name: string): this { this.nameEl.textContent = name; return this; }
   setDesc(desc: string): this { this.descEl.textContent = desc; return this; }
   setClass(cls: string): this { this.settingEl.classList.add(cls); return this; }
+  clear(): this { this.controlEl.replaceChildren(); return this; }
 
   private create<T extends HTMLElement>(tag: string): T {
     const el = this.settingEl.ownerDocument.createElement(tag) as T;
@@ -396,6 +606,8 @@ export class Setting {
 }
 
 export function setIcon(_parent: HTMLElement, _iconId: string): void {}
+
+export function displayTooltip(_target: HTMLElement, _content: string | DocumentFragment): void {}
 
 /** Case-insensitive subsequence match; Obsidian's real scoring is richer. */
 export function prepareFuzzySearch(query: string): (text: string) => { score: number; matches: [number, number][] } | null {
@@ -414,4 +626,39 @@ export function prepareFuzzySearch(query: string): (text: string) => { score: nu
     }
     return { score: -matches.length - (matches[0]?.[0] ?? 0) / 100, matches };
   };
+}
+
+/** Obsidian's menu: the items it was given, and where it was shown; the last one shown is `Menu.shown`. */
+export class MenuItem {
+  title = '';
+  icon: string | null = null;
+  handler: ((event: MouseEvent | KeyboardEvent) => unknown) | null = null;
+  setTitle(title: string): this { this.title = title; return this; }
+  setIcon(icon: string | null): this { this.icon = icon; return this; }
+  setSection(_section: string): this { return this; }
+  onClick(handler: (event: MouseEvent | KeyboardEvent) => unknown): this { this.handler = handler; return this; }
+}
+
+export class Menu {
+  static shown: Menu | null = null;
+  items: MenuItem[] = [];
+  position: { x: number; y: number } | null = null;
+  addItem(build: (item: MenuItem) => unknown): this {
+    const item = new MenuItem();
+    build(item);
+    this.items.push(item);
+    return this;
+  }
+  addSeparator(): this { return this; }
+  showAtPosition(position: { x: number; y: number }): this {
+    this.position = position;
+    Menu.shown = this;
+    return this;
+  }
+  showAtMouseEvent(event: MouseEvent): this {
+    return this.showAtPosition({ x: event.clientX, y: event.clientY });
+  }
+}
+export async function loadPdfJs(): Promise<unknown> {
+  throw new Error('PDF.js must be supplied by PDF reader tests');
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { t } from '../../../i18n';
 
 interface PresetNameInputProps {
   initialName: string;
@@ -38,7 +39,7 @@ export function PresetNameInput({
           ref={inputRef}
           type="text"
           className="atlas-csm-input"
-          placeholder="Preset name"
+          placeholder={t('csm.system.presetName')}
           value={name}
           aria-invalid={(showError && error !== null) || undefined}
           onChange={(e) => { setName(e.target.value); setShowError(false); }}
@@ -52,7 +53,7 @@ export function PresetNameInput({
             <Check />
           </Button>
         </LabelTooltip>
-        <LabelTooltip label="Cancel">
+        <LabelTooltip label={t('common.cancel')}>
           <Button variant="ghost" size="icon" className="atlas-csm-preset-icon-btn" onClick={onCancel}>
             <X />
           </Button>

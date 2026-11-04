@@ -5,6 +5,7 @@ import { LoadingSpinner } from '../../packages/components/primitives/LoadingSpin
 import { EASE_OUT_CONTROL_POINTS, MOTION_NORMAL_MS } from '../../utils/motion';
 import { cn } from '../../../utils/cn';
 import './map-loading-overlay.scss';
+import { t } from '../../i18n';
 
 /** Timing shared with the canvas frame hold, which hands over to the overlay once it is opaque. */
 const TIMING_STYLE = {
@@ -23,7 +24,7 @@ interface MapLoadingOverlayProps {
 export const MapLoadingOverlay: React.FC<MapLoadingOverlayProps> = ({
     isLoading,
     progress,
-    message = "Loading map..."
+    message = t('map.loading')
 }): React.ReactElement => {
     // Stays mounted so it can fade out; it blocks input from the start of a load but only fades in after the reveal delay
     return (

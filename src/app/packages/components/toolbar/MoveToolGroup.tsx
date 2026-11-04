@@ -1,3 +1,4 @@
+import { t } from '../../../i18n';
 import React from "react"
 import { Flashlight, Hand } from "lucide-react"
 import { useAtlasStore } from "src/app/react/ViewStoreContext"
@@ -19,7 +20,7 @@ export function MoveToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
     <ToolGroup
       face={face}
       shortcut={hotkeyLabel('move')}
-      menuLabel="Move Tool Options"
+      menuLabel={t('toolbar.moveOptions')}
       menuOpen={menuOpen}
       onSelect={() => selectTool(face.tool)}
       onMenuToggle={toggleMenu}
@@ -27,14 +28,14 @@ export function MoveToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
       <div className="atlas-dropdown-section">
         <DropdownMenuItem
           icon={Hand}
-          label="Move/Select"
+          label={t('toolbar.moveSelect')}
           shortcut={hotkeyLabel('move')}
           isActive={activeTool === "move"}
           onClick={() => selectTool("move")}
         />
         <DropdownMenuItem
           icon={Flashlight}
-          label="Laser Pointer"
+          label={t('toolbar.laser')}
           shortcut={hotkeyLabel('move')}
           isActive={activeTool === "laser-pointer"}
           onClick={() => selectTool("laser-pointer")}
@@ -43,7 +44,7 @@ export function MoveToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
 
       <div className="atlas-dropdown-section">
         <DropdownToggleRow
-          label="Lasso Selection"
+          label={t('toolbar.lassoSelection')}
           value={selectionMode === 'lasso'}
           onChange={() => setSelectionMode(selectionMode === 'box' ? 'lasso' : 'box')}
         />

@@ -1,7 +1,8 @@
 import React, { Fragment, forwardRef, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "react"
 import { cn } from "src/utils/cn"
+import { t } from "../../../i18n"
 import { observeResize } from "../../../utils/observeResize"
-import { isToolbarControlId } from "../../../toolbar/toolbarCatalog"
+import { isToolbarControlId, UNDO_BAR_ID } from "../../../toolbar/toolbarCatalog"
 import { CARRY, GAP } from "./editor/editorMotion"
 import { useToolbarEdit } from "./editor/toolbarEditContext"
 import { ToolbarEditOverflowMenu } from "./editor/ToolbarEditOverflowMenu"
@@ -104,7 +105,9 @@ export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarPro
   const inBar = (item: ResponsiveToolbarItem): boolean => dragView.inFit.has(item.id) && !overflowing.has(item.id)
   const overflowItems = shown.filter((item) => overflowing.has(item.id))
   const barIds = shown.filter(inBar).map((item) => item.id)
-  const tabStop = edit?.current.bar && barIds.includes(edit.current.bar) ? edit.current.bar : barIds[0]
+  // The undo/redo bar's handle, first of the bar's group, holds its Tab stop once it had focus last.
+  const undoHolds = edit?.current.bar === UNDO_BAR_ID && !edit.trayIds.includes(UNDO_BAR_ID)
+  const tabStop = undoHolds ? null : edit?.current.bar && barIds.includes(edit.current.bar) ? edit.current.bar : barIds[0]
   // Controls come and go with a change of the layout, and overflow follows a flight or a drag; a window resize is instant.
   const flight = edit?.flight ?? null
   const animateChanges = useChangedSinceCommit(motion.revision) || flight !== null || dragView.active
@@ -146,7 +149,7 @@ export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarPro
         ? <ToolbarEditOverflowMenu items={overflowItems} dropTarget={dragView.dropTarget} />
         : <ToolbarOverflowMenu items={overflowItems} />)}
       {end && <div className="atlas-toolbar-end">{end}</div>}
-      {withHandles && <span id={labelId} hidden>Toolbar</span>}
+      {withHandles && <span id={labelId} hidden>{t('toolbarEdit.toolbar')}</span>}
     </div>
   )
 })

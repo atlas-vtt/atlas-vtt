@@ -31,14 +31,20 @@
   min-width: 0;
 }
 
-// ── Breadcrumb ──────────────────────────────────────────────────────────────
+// ── Location: breadcrumb and sort ───────────────────────────────────────────
 
 // Its own row above the panes, so it stays put while they slide. The buttons'
-// inline padding lines their labels up with the content's edge.
-.atlas-asset-manager-breadcrumb {
-  @include atlas-flex-row($gap: 2px);
+// inline padding lines their labels up with the content's edges.
+.atlas-asset-manager-location {
+  @include atlas-flex-row($gap: $spacing-s);
   flex-shrink: 0;
   padding: $spacing-s;
+}
+
+.atlas-asset-manager-breadcrumb {
+  @include atlas-flex-row($gap: 2px);
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
 
   .atlas-breadcrumb-separator {
@@ -83,6 +89,49 @@
   }
 }
 
+// The field's labels share one cell, so the button is as wide as the longest
+// and does not move the order button as it cycles; right-aligned, the current
+// label stands next to the order button.
+.atlas-am-sort {
+  @include atlas-flex-row($gap: $spacing-xs);
+  flex-shrink: 0;
+}
+
+.atlas-am-sort-field {
+  &.btn {
+    height: $control-height;
+    padding: 0 $spacing-s;
+    border-radius: $radius-m;
+    font-size: $font-ui-small;
+    font-weight: $font-weight-normal;
+    color: var(--text-muted);
+    transition: transform $transition-press $transition-ease-out;
+  }
+
+  &:hover {
+    color: var(--text-normal);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  .atlas-am-sort-stack {
+    display: grid;
+
+    > span {
+      grid-area: 1 / 1;
+      text-align: right;
+      white-space: nowrap;
+      visibility: hidden;
+
+      &.atlas-current {
+        visibility: visible;
+      }
+    }
+  }
+}
+
 // One pane per open folder. Panes stack so the one leaving can fade out over
 // the one arriving without either pushing the other.
 .atlas-asset-manager-pane {
@@ -115,6 +164,19 @@
 }
 
 // ── Section headers ─────────────────────────────────────────────────────────
+
+.atlas-section-header-row {
+  @include atlas-flex-row($gap: $spacing-s);
+  // The header's hover reaches past the content's edge on the left only, so
+  // whatever stands at the row's end ends on that edge.
+  margin-left: -$spacing-xs;
+
+  .atlas-section-header {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+  }
+}
 
 .atlas-section-header {
   @include atlas-flex-row($gap: $spacing-xs);
@@ -155,6 +217,51 @@
 
     &.atlas-collapsed {
       transform: rotate(-90deg);
+    }
+  }
+}
+
+// ── Selection, at the end of the first section's header ─────────────────────
+
+.atlas-selection-info {
+  @include atlas-flex-row($gap: $spacing-xs);
+  flex-shrink: 0;
+  // As tall as the section header it stands in, so a selection moves no row.
+  height: 24px;
+  padding: 0 2px 0 $spacing-s;
+  background: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
+  color: var(--text-accent);
+  // Concentric with the clear button, 2px inside it.
+  border-radius: calc(#{$radius-s} + 2px);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 150ms $transition-ease-out, transform 150ms $transition-ease-out;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+
+  .atlas-clear-selection-btn {
+    &.btn,
+    &.btn--icon {
+      width: 20px;
+      height: 20px;
+      border-radius: $radius-s;
+      color: var(--text-accent);
+    }
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    &:hover {
+      background: color-mix(in oklch, var(--interactive-accent) 20%, transparent);
+      color: var(--text-accent);
     }
   }
 }

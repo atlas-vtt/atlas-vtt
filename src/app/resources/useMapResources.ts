@@ -1,20 +1,20 @@
 import { useMemo } from 'react';
-import { useCollectionRulesRevision } from '../react/hooks/useCollectionRulesRevision';
+import { useMapRulesRevision } from '../react/hooks/useMapRulesRevision';
 import { useAtlasUI } from '../react/root/AtlasUIContext';
 import { useAtlasStore } from '../react/ViewStoreContext';
-import { AssetService } from '../services/AssetService';
+import { rulesLookup } from '../services/mapRules';
 import { mapResources } from './collectionResources';
 import type { ResourceDefinition } from './resourceTypes';
 
-/** The resources of the collection the view's map belongs to; follows edits to the collection's settings and the loading of the asset index. */
+/** The resources of the rules the view's map plays by; follows edits to them and the loading of the asset index. */
 export function useMapResources(): readonly ResourceDefinition[] {
   const { app } = useAtlasUI();
   const mapPath = useAtlasStore((state) => state.mapPath);
-  const revision = useCollectionRulesRevision(app);
+  const revision = useMapRulesRevision(app);
 
   return useMemo(
-    () => (app ? mapResources(AssetService.getInstance(app), mapPath) : []),
-    // `revision` stands for the collection's settings and the asset index, which are read here.
+    () => (app ? mapResources(rulesLookup(app), mapPath) : []),
+    // `revision` stands for the rules and the asset index, which are read here.
     [app, mapPath, revision],
   );
 }

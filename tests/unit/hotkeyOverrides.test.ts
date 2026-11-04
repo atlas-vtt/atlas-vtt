@@ -1,22 +1,16 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { DEFAULT_MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
 import { readHotkeyOverrides, resolveHotkeys, withHotkey } from '../../src/app/keyboard/hotkeyOverrides';
+import { App } from 'obsidian';
+import { memoryPluginData } from '../mocks/pluginData';
 
-const SETTINGS_PATH = 'atlas-vtt/.atlas-data/settings.json';
-
-function vault(stored?: object): { app: never; files: Map<string, string> } {
-  const files = new Map<string, string>();
-  if (stored) files.set(SETTINGS_PATH, JSON.stringify(stored));
-  const app = { vault: { adapter: {
-    exists: async (path: string) => files.has(path) || [...files.keys()].some(file => file.startsWith(`${path}/`)),
-    mkdir: async () => {},
-    read: async (path: string) => files.get(path)!,
-    write: async (path: string, data: string) => { files.set(path, data); },
-  } } } as never;
-  return { app, files };
+function stored(initial?: object): { settings: SettingsService; data: ReturnType<typeof memoryPluginData> } {
+  const data = memoryPluginData(initial ?? null);
+  return { settings: new SettingsService(new App(), undefined, data), data };
 }
-const savedHotkeys = (files: Map<string, string>): unknown => (JSON.parse(files.get(SETTINGS_PATH)!) as { hotkeys: unknown }).hotkeys;
+const savedHotkeys = (data: ReturnType<typeof memoryPluginData>): unknown => (data.stored() as { hotkeys: unknown }).hotkeys;
 
 describe('hotkey overrides', () => {
   it('keeps only changed bindings from files that saved every binding', () => {
@@ -46,26 +40,28 @@ afterEach(() => { vi.useRealTimers(); });
 
 describe('saved hotkeys', () => {
   it('saves only the bindings the user changed', async () => {
-    const { app, files } = vault();
-    const settings = new SettingsService(app);
+    const { settings, data } = stored();
     await settings.initialize();
     settings.setHotkey('assets', 'q');
     settings.setHotkey('help', '');
     await settings.saveSettingsNow();
-    expect(savedHotkeys(files)).toEqual({ assets: 'q', help: '' });
+    expect(savedHotkeys(data)).toEqual({ assets: 'q', help: '' });
 
     settings.setHotkey('assets', DEFAULT_MAP_HOTKEYS.assets);
     await settings.saveSettingsNow();
-    expect(savedHotkeys(files)).toEqual({ help: '' });
+    expect(savedHotkeys(data)).toEqual({ help: '' });
   });
 
-  it('rewrites files that saved every binding on load', async () => {
+  it('never rewrites the shared settings on load, so a binding another version calls a choice survives', async () => {
     vi.useFakeTimers();
-    const { app, files } = vault({ hotkeys: { ...DEFAULT_MAP_HOTKEYS, assets: 'q' } });
-    const settings = new SettingsService(app);
+    const { settings, data } = stored({ hotkeys: { help: DEFAULT_MAP_HOTKEYS.help, assets: 'q' } });
     await settings.initialize();
     await vi.runAllTimersAsync();
-    expect(savedHotkeys(files)).toEqual({ assets: 'q' });
+    expect(data.saveData).not.toHaveBeenCalled();
     expect(settings.getHotkeys()).toEqual({ ...DEFAULT_MAP_HOTKEYS, assets: 'q' });
+
+    settings.setHotkey('palette', 'Shift+F12');
+    await vi.runAllTimersAsync();
+    expect(savedHotkeys(data)).toEqual({ help: DEFAULT_MAP_HOTKEYS.help, assets: 'q', palette: 'Shift+F12' });
   });
 });

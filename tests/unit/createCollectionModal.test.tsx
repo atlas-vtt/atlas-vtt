@@ -1,21 +1,29 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { App } from 'obsidian';
 import { CreateCollectionModal } from '../../src/app/packages/components/asset-manager/CreateCollectionModal';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { AssetService } from '../../src/app/services/AssetService';
 import { SettingsService } from '../../src/app/services/SettingsService';
+import { SystemPresetFiles } from '../../src/app/services/systemPresets/SystemPresetFiles';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+
+const opened: App[] = [];
 
 afterEach(() => {
   cleanup();
+  for (const app of opened.splice(0)) SystemPresetFiles.release(app);
   vi.restoreAllMocks();
 });
 
 function setup(existingNames: string[] = []) {
-  const { app } = createInMemoryApp();
+  const { app, files } = createInMemoryApp();
   app.workspace = { getLeavesOfType: () => [], trigger: vi.fn() } as any;
   const settings = new SettingsService(app);
+  const presets = SystemPresetFiles.open(app);
+  opened.push(app);
   const stored: Record<string, Record<string, unknown>> = {};
   const assets = {
     createCollection: vi.fn(async (name: string) => {
@@ -36,7 +44,7 @@ function setup(existingNames: string[] = []) {
       <CreateCollectionModal existingNames={existingNames} onClose={onClose} onCreated={onCreated} />
     </AtlasUIContext.Provider>,
   );
-  return { assets, stored, settings, onCreated, onClose };
+  return { assets, stored, settings, presets, files, onCreated, onClose };
 }
 
 const radio = (name: string): HTMLElement => screen.getByRole('radio', { name: new RegExp(`^${name}`) });
@@ -75,7 +83,7 @@ describe('CreateCollectionModal', () => {
   });
 
   it('sets up a new game system, saves it as a preset and starts the collection with it', async () => {
-    const { stored, settings, onCreated } = setup();
+    const { stored, presets, files, onCreated } = setup();
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Homebrew Hills' } });
     fireEvent.click(radio('Create your own'));
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
@@ -90,10 +98,30 @@ describe('CreateCollectionModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create collection' }));
 
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith('Homebrew Hills'));
-    const saved = settings.getSetting('systemPresets') as Array<{ id: string; name: string; rules: { conditions: Array<{ name: string }> } }>;
+    await presets.flush();
+    const saved = presets.entries();
     expect(saved).toHaveLength(1);
     expect(saved[0]).toMatchObject({ name: 'Hills Rules', rules: { conditions: [{ name: 'Muddy' }] } });
+    expect(JSON.parse(files.get('atlas-vtt/system-presets/Hills Rules.json')!)).toMatchObject({ format: 1, id: saved[0]!.id, name: 'Hills Rules' });
     expect(stored['Homebrew Hills']).toMatchObject({ systemPresetId: saved[0]!.id, conditions: [{ name: 'Muddy' }] });
+  });
+
+  it('creates no game system while its distance per square is no distance', async () => {
+    const { presets, onCreated } = setup();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Homebrew Hills' } });
+    fireEvent.click(radio('Create your own'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.change(screen.getByLabelText('Preset name'), { target: { value: 'Hills Rules' } });
+    const distance = screen.getByDisplayValue<HTMLInputElement>('5');
+
+    fireEvent.change(distance, { target: { value: 'far' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create collection' }));
+    // Creating starts by saving the preset, in the click itself.
+    expect(presets.entries()).toHaveLength(0);
+
+    fireEvent.change(distance, { target: { value: '1,5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create collection' }));
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('Homebrew Hills'));
   });
 
   it('goes back from the setup to the name and system', () => {

@@ -1,17 +1,25 @@
 import type { App } from 'obsidian';
+import { payloadBytes } from './recordPayload';
 import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
 import { zipPathFor } from './bundleFormat';
 import { rewriteContent } from './bundleContent';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
-import { bundleCover, bundleFileReader, openBundle, type BundleFileReader, type OpenedBundle } from './bundleReader';
-import { settingsFromBundle } from './bundleSettings';
+import { bundleCover, bundleFileReader, openBundle, type BundleFileReader } from './bundleReader';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
-import { gatherImportInputs, installedAsset, installedSettings, ownAsset, planTargets, referencedStrings, vaultFileHash, type ImportTargets } from './importInputs';
+import { gatherImportInputs, installedAsset, ownAsset, planTargets, referencedStrings, vaultFileHash, type ImportTargets } from './importInputs';
 import { storeLegacyCollectionResources } from '../collectionScenes';
+import { systemPresetsOf } from '../mapCollectionRules';
+import { idOf, mergedCollection, nextInstallRecord, type ImportContext } from './importCommit';
 import { ImportJournal, saveOpenMaps } from './importJournal';
-import { planImport, resolvePlan, type ImportAction, type ImportPlan, type PlannedItem, type Resolution } from './importPlan';
+import { planImport, resolvePlan, type ImportAction, type PlannedItem, type Resolution } from './importPlan';
 import { buildReview, type ImportReview } from './importReview';
-import { COLLECTION_FIELDS, readInstallRecord, writeInstallRecord, type CollectionField, type InstallRecord } from './installRecord';
+import { planTemplateImport, reusedNotesOf, switchReusedNotes, templateReview, templatesChangedSinceReview, writeTemplates } from './importTemplates';
+import { readInstallRecord, writeInstallRecord, type CollectionField } from './installRecord';
+import { DICE_SET_RECORDS } from './bundleDiceSetFiles';
+import { PRESET_RECORDS, withPresetDiceSet } from './bundlePresetFiles';
+import { planRecordImport, recordsChangedSinceReview, writeRecords } from './bundleRecordFiles';
+import { recordIdMap } from '../vaultRecords/bundleRecords';
+import { t } from '../../i18n';
 
 export interface ImportDecision {
   /** Name for a new collection; defaults to the bundle's, or the suggested free name when that is taken. */
@@ -20,6 +28,8 @@ export interface ImportDecision {
   resolutions?: ReadonlyMap<string, Resolution> | undefined;
   /** Re-applies the bundle over the user's changes too. */
   restore?: boolean | undefined;
+  /** Switches the vault's notes the review lists (`templates.reusedNotes`) to the copies of their templates. */
+  switchReusedNotes?: boolean | undefined;
 }
 
 export interface CollectionImportResult {
@@ -33,6 +43,8 @@ export interface CollectionImportResult {
   keptLocal: number;
   backupCount: number;
   backupFolder: string;
+  /** The vault's own notes switched to the copies of their templates. */
+  switchedNotes: number;
 }
 
 /** A read and checked bundle, planned against the vault, waiting for the user's decision. */
@@ -41,14 +53,6 @@ export interface ImportSession {
   /** The bundle's files, for showing its token art and statblocks before the import. */
   files: BundleFileReader;
   apply(decision: ImportDecision, onProgress?: BundleProgressListener): Promise<CollectionImportResult>;
-}
-
-interface ImportContext {
-  bundle: OpenedBundle;
-  existing: CollectionMetadata | null;
-  record: InstallRecord | null;
-  targets: ImportTargets;
-  plan: ImportPlan;
 }
 
 /**
@@ -65,33 +69,41 @@ export async function openCollectionImport(
   const bundle = await openBundle(data, onProgress);
   const { manifest } = bundle;
   const existing = await assets.findCollectionByUid(manifest.collection.uid);
-  const record = existing ? await readInstallRecord(app, existing.uid) : null;
+  const record = existing ? await readInstallRecord(app, existing) : null;
   const nameTaken = await assets.isCollectionNameTaken(manifest.collection.name, existing?.id);
   const suggestedName = !existing && nameTaken ? await assets.freeCollectionName(manifest.collection.name) : undefined;
   const collectionId = existing?.id ?? await assets.freeCollectionIdFor(manifest.collection.name);
 
-  onProgress({ message: 'Comparing with your vault…', fraction: 0.6 });
-  const targets = await planTargets(app, assets, bundle, collectionId, record);
+  onProgress({ message: t('bundle.comparing'), fraction: 0.6 });
+  const reader = bundleFileReader(bundle);
+  const collectionName = existing?.name ?? suggestedName ?? manifest.collection.name;
+  // Sets first: a preset or template the bundle carries names a set that came in as a copy by the copy's id.
+  const diceSets = await planRecordImport(app, DICE_SET_RECORDS, manifest, reader, record?.diceSets, collectionName);
+  const diceSetIds = recordIdMap(diceSets);
+  const templates = await planTemplateImport(app, manifest, reader, record, collectionName, diceSetIds);
+  const presets = await planRecordImport(app, PRESET_RECORDS, manifest, reader, record?.presets, collectionName, (entry) => withPresetDiceSet(entry, diceSetIds));
+  const targets = await planTargets(app, assets, bundle, collectionId, record, templates.planned, { presets, diceSets });
   // Compare against what the user sees: open maps may hold unsaved changes.
   await saveOpenMaps(app, new Set([...targets.paths.values(), ...Object.values(record?.files ?? {}).map((file) => file.target)]));
   const { items, unitAssets } = await gatherImportInputs(app, assets, bundle, targets, existing, record);
   const plan = planImport(items);
   const restorePlan = planImport(items, { restore: true });
-  onProgress({ message: 'Ready', fraction: 1 });
+  // Notes the import keeps as the vault has them are never rewritten: the review offers to switch them.
+  const reusedNotes = reusedNotesOf(app, [...targets.shared].flatMap((path) => targets.paths.get(path) ?? []), targets.templates);
+  onProgress({ message: t('bundle.ready'), fraction: 1 });
 
   return {
     review: {
-      ...buildReview(manifest, await assets.getVaultId(), existing, record, plan, restorePlan, unitAssets, suggestedName, targets.skipped),
+      ...buildReview(manifest, await assets.knownVaultId(), existing, record, plan, restorePlan, unitAssets, suggestedName, targets.skipped),
       cover: await bundleCover(bundle),
+      templates: templateReview(targets.templates, reusedNotes),
     },
-    files: bundleFileReader(bundle),
+    files: { ...reader, templates: templates.bundle.map((template) => template.entry) },
     // Nothing may re-read or check the index while the import writes files and commits them.
     apply: (decision, progress = () => undefined) => assets.runExclusive(() =>
-      applyImport(app, assets, { bundle, existing, record, targets, plan: decision.restore ? restorePlan : plan }, decision, progress)),
+      applyImport(app, assets, { bundle, existing, record, targets, plan: decision.restore ? restorePlan : plan, reusedNotes }, decision, progress)),
   };
 }
-
-const idOf = (key: string): string => key.slice(key.indexOf(':') + 1);
 
 /**
  * Everything that may still name a file after the import: the paths the bundle
@@ -123,7 +135,7 @@ async function currentFingerprint(app: App, assets: AssetService, { existing, ta
     return local ? assetFingerprint(local) : null;
   }
   const collection = existing ? await assets.getCollection(existing.id) : null;
-  return collection ? fieldFingerprint(collection, id as CollectionField) : null;
+  return collection ? fieldFingerprint(collection, id as CollectionField, systemPresetsOf(app)) : null;
 }
 
 /**
@@ -135,11 +147,12 @@ async function assertUnchangedSinceReview(app: App, assets: AssetService, contex
   const items = context.plan.units.flatMap((unit) => unit.items).filter((item) => item.kind === 'field' || actions.has(item.key));
   const files = items.filter((item) => item.kind === 'file').map((item) => context.targets.targetOf(idOf(item.key))!);
   await saveOpenMaps(app, new Set(files));
-  for (const item of items) {
-    if (await currentFingerprint(app, assets, context, item) !== item.mine) {
-      throw new Error('Your vault changed since the review. Import the file again to see the current changes');
-    }
-  }
+  const { templates, presets, diceSets } = context.targets;
+  let changed = await templatesChangedSinceReview(app, templates)
+    || await recordsChangedSinceReview(app, PRESET_RECORDS, presets)
+    || await recordsChangedSinceReview(app, DICE_SET_RECORDS, diceSets);
+  for (const item of items) changed ||= await currentFingerprint(app, assets, context, item) !== item.mine;
+  if (changed) throw new Error('Your vault changed since the review. Import the file again to see the current changes');
 }
 
 async function applyImport(
@@ -174,26 +187,30 @@ async function applyImport(
     const writes = fileItems.filter((item) => actions.get(item.key) === 'write');
     const removals = fileItems.filter((item) => actions.get(item.key) === 'remove');
     for (const [index, item] of writes.entries()) {
-      reportFileStep(onProgress, 'Writing', index, fileItems.length, 0, 0.9);
+      reportFileStep(onProgress, 'bundle.step.writing', index, fileItems.length, 0, 0.9);
       const bundlePath = idOf(item.key);
       const target = targets.targetOf(bundlePath);
       if (!target) continue;
       const file = filesByPath.get(bundlePath)!;
-      await journal.write(target, rewriteContent(file, await zip.file(zipPathFor(bundlePath))!.async('arraybuffer'), targets.rewrites));
+      const raw = payloadBytes(file.vaultPath, await zip.file(zipPathFor(bundlePath))!.async('arraybuffer'));
+      await journal.write(target, rewriteContent(file, raw, targets.rewrites, targets.templateIds));
       written += 1;
     }
+    written += await writeTemplates(journal, targets.templates);
+    written += await writeRecords(app, PRESET_RECORDS, journal, targets.presets);
+    written += await writeRecords(app, DICE_SET_RECORDS, journal, targets.diceSets);
     // Removals come last, checked against the vault as the writes left it.
     const removalTargets = new Set(removals.map((item) => targets.targetOf(idOf(item.key))!));
     const inUse = removalTargets.size > 0 ? await pathsInUse(app, assets, targets, upsert, remove, removalTargets) : new Set<string>();
     for (const [index, item] of removals.entries()) {
-      reportFileStep(onProgress, 'Cleaning up', writes.length + index, fileItems.length, 0, 0.9);
+      reportFileStep(onProgress, 'bundle.step.cleaning', writes.length + index, fileItems.length, 0, 0.9);
       const target = targets.targetOf(idOf(item.key));
       if (!target || inUse.has(target)) continue;
       await journal.remove(target);
       removed += 1;
     }
 
-    onProgress({ message: 'Registering assets…', fraction: 0.95 });
+    onProgress({ message: t('bundle.registering'), fraction: 0.95 });
     const merged = await mergedCollection(assets, context, actions, name);
     collection = await assets.commitCollectionImport({ collectionId: targets.collectionId, collection: merged, upsert, remove });
   } catch (error) {
@@ -204,7 +221,7 @@ async function applyImport(
   }
 
   try {
-    await writeInstallRecord(app, await nextInstallRecord(context, actions, collection));
+    await writeInstallRecord(app, await nextInstallRecord(context, actions, collection, systemPresetsOf(app)));
   } catch (error) {
     console.error('[collectionImport] Could not record the install:', error);
   }
@@ -214,9 +231,10 @@ async function applyImport(
   } catch (error) {
     console.error('[collectionImport] Could not store the collection\'s resources:', error);
   }
+  const switchedNotes = decision.switchReusedNotes ? await switchNotes(app, context) : 0;
   // A collection is named like its folder: a new name from the review or an update moves the folder, install record included.
   const installed = await assets.matchCollectionFolder(targets.collectionId) ?? collection;
-  onProgress({ message: 'Done', fraction: 1 });
+  onProgress({ message: t('bundle.done'), fraction: 1 });
   return {
     collectionId: installed.id,
     collectionName: installed.name,
@@ -227,81 +245,16 @@ async function applyImport(
     keptLocal: plan.units.filter((unit) => unit.status === 'kept' || (unit.status === 'conflict' && decision.resolutions?.get(unit.key) !== 'theirs')).length,
     backupCount: journal.backupCount,
     backupFolder: journal.backupFolder,
+    switchedNotes,
   };
 }
 
-/** The collection record after the import: release identity from the bundle, each field from whichever side won. */
-async function mergedCollection(assets: AssetService, { bundle, existing, targets }: ImportContext, actions: ReadonlyMap<string, ImportAction>, name: string): Promise<CollectionMetadata> {
-  const theirs: CollectionMetadata = { ...bundle.manifest.collection, settings: installedSettings(bundle.manifest.collection, targets) };
-  const now = Date.now();
-  const merged: CollectionMetadata = {
-    ...(existing ?? theirs),
-    id: targets.collectionId,
-    uid: theirs.uid,
-    version: theirs.version,
-    releasedAt: bundle.manifest.exportedAt,
-    createdAt: existing?.createdAt ?? now,
-    modifiedAt: now,
-  };
-  // A collection keeps its publisher: a bundle cannot hand someone else's collection over to another publisher.
-  const publisherId = existing?.publisherId ?? theirs.publisherId;
-  if (publisherId === undefined) delete merged.publisherId;
-  else merged.publisherId = publisherId;
-  // Only a release speaks for the author and cover; a shared copy keeps what the vault had.
-  const isRelease = bundle.manifest.release?.kind !== 'share';
-  if (isRelease) {
-    if (theirs.author === undefined) delete merged.author;
-    else merged.author = theirs.author;
+/** Switches the notes the review listed; the import itself is done, so a failure here is reported, not undone. */
+async function switchNotes(app: App, { reusedNotes }: ImportContext): Promise<number> {
+  try {
+    return await switchReusedNotes(app, reusedNotes);
+  } catch (error) {
+    console.error('[collectionImport] Could not switch notes to the collection\'s templates:', error);
+    return 0;
   }
-  if (isRelease || !existing) {
-    const coverPath = theirs.coverPath && targets.targetOf(theirs.coverPath);
-    if (coverPath) merged.coverPath = coverPath;
-    else delete merged.coverPath;
-  }
-  if (!existing) return { ...merged, name };
-  for (const field of COLLECTION_FIELDS) {
-    if (actions.get(`field:${field}`) !== 'write') continue;
-    if (theirs[field] === undefined) delete merged[field];
-    else if (field === 'settings') merged.settings = settingsFromBundle(theirs.settings, existing.settings);
-    else Object.assign(merged, { [field]: theirs[field] });
-  }
-  // The update's name may belong to another collection here; the copy then keeps its own.
-  if (await assets.isCollectionNameTaken(merged.name, targets.collectionId)) merged.name = existing.name;
-  return merged;
-}
-
-/**
- * What the vault now holds from the bundle: every item the bundle carries is
- * recorded as the bundle's version installed. An item the user kept in their
- * own version therefore still differs from `installed`, so a later update never
- * overwrites it silently, and re-importing this bundle does not ask again.
- * Unchanged items keep their earlier record, including its exact bytes, and
- * collection fields record the value actually applied (a name the user chose
- * because the bundle's was taken counts as theirs).
- */
-async function nextInstallRecord({ bundle: { manifest }, record, targets, plan }: ImportContext, actions: ReadonlyMap<string, ImportAction>, collection: CollectionMetadata): Promise<InstallRecord> {
-  const next: InstallRecord = {
-    uid: collection.uid, collectionId: targets.collectionId, sourceCollectionId: manifest.collection.id, sourceName: manifest.collection.name,
-    version: manifest.collection.version, releasedAt: manifest.exportedAt, installedAt: Date.now(), files: {}, assets: {}, fields: {},
-  };
-  // Files the import only reads (the user's own notes) keep their record, so a later import still recognises them.
-  for (const path of targets.shared) {
-    const installed = record?.files[path];
-    if (installed) next.files[path] = installed;
-  }
-  for (const unit of plan.units) {
-    for (const item of unit.items) {
-      if (item.theirs === null || actions.get(item.key) === 'remove') continue;
-      // Never installed and not in the vault: recording it would make a later update say the user deleted it.
-      if (!actions.has(item.key) && !item.base && item.mine === null) continue;
-      const keepsRecord = !actions.has(item.key) && item.base?.source === item.theirs;
-      const entry = keepsRecord && item.base ? item.base : { source: item.theirs, installed: item.theirsInstalled ?? item.theirs };
-      const id = idOf(item.key);
-      if (item.kind === 'file') next.files[id] = { ...entry, target: targets.targetOf(id)!, unit: unit.key };
-      else if (item.kind === 'asset') next.assets[id] = { ...entry, localId: targets.localIdOf(id) };
-      else if (actions.get(item.key) === 'write') next.fields[id as CollectionField] = { source: item.theirs, installed: await fieldFingerprint(collection, id as CollectionField) };
-      else next.fields[id as CollectionField] = entry;
-    }
-  }
-  return next;
 }

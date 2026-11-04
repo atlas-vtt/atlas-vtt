@@ -1,0 +1,213 @@
+// The chrome both statblock surfaces share (spec §3, §5, §7.2): the layer
+// handles float in, the gutter handle, the outline a handle's menu acts on,
+// menu separators, and an ability drag's copy, line and bounds. Nothing here
+// changes a box on the card: outlines, washes, transforms and opacity only.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$handle-size: 24px;
+$glyph-size: 16px;
+$line-width: 2px;
+$dot-size: 6px;
+$chrome-offset: 4px;
+
+@keyframes atlas-sb-handle-in {
+  from {
+    opacity: 0;
+    translate: -2px 0;
+  }
+}
+
+@keyframes atlas-sb-handle-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.atlas-vtt-plugin.atlas-sb-surface-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+
+  // Said once, by the list, when a drag pulls against its edge.
+  .atlas-sb-drag-hint {
+    @include atlas-elevated-surface;
+    position: absolute;
+    left: 50%;
+    bottom: calc(#{$spacing-l} * 2 + var(--input-height));
+    max-width: calc(100% - 2 * #{$spacing-l});
+    translate: -50% 0;
+    padding: $spacing-s;
+    border-radius: $radius-l;
+    box-shadow: $shadow-md;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  // The toast hangs at the panel's foot; a long sentence wraps rather than leaving it.
+  .atlas-te-toast {
+    max-width: calc(100% - 2 * #{$spacing-l});
+    pointer-events: auto;
+  }
+
+  .atlas-te-toast__text {
+    white-space: normal;
+  }
+}
+
+.atlas-vtt-plugin {
+  // A real button that never takes focus; it draws no background, only its
+  // glyph. It stands in a surface's floating layer (the panel's, the template
+  // editor's), placed by the gutter of what it points at.
+  .atlas-sb-handle {
+    position: absolute;
+    left: var(--atlas-sb-handle-x);
+    top: var(--atlas-sb-handle-y);
+    display: grid;
+    place-items: center;
+    width: $handle-size;
+    height: $handle-size;
+    margin: (-$handle-size * 0.5) 0 0 (-$handle-size * 0.5);
+    padding: 0;
+    border: none;
+    border-radius: $radius-full;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-faint);
+    cursor: grab;
+    pointer-events: auto;
+    touch-action: none;
+    animation: atlas-sb-handle-in $transition-fast $transition-ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation-name: atlas-sb-handle-fade;
+    }
+
+    &:hover,
+    &:active {
+      background: transparent;
+      color: var(--text-normal);
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &[data-glyph='menu'],
+    &[data-glyph='lock'] {
+      cursor: pointer;
+    }
+
+    svg {
+      width: $glyph-size;
+      height: $glyph-size;
+    }
+  }
+
+  // While a handle is hovered or pressed, or its menu is open, what it acts on shows (§3.5).
+  .atlas-statblock [data-sb-menu-target] {
+    border-radius: $radius-l;
+    outline: $border-width-s solid var(--interactive-accent);
+    outline-offset: $chrome-offset;
+    background-color: color-mix(in oklch, var(--interactive-accent) 6%, transparent);
+  }
+
+  // An ability the pointer is over: a wash on its whole line, reaching past it by a shadow. Its handle turns
+  // the same shape accent, so nothing jumps between the two. One being typed has its fields instead.
+  .atlas-sb-pane .atlas-statblock [data-item-key]:not(.atlas-sb-pane-entry-editor) {
+    border-radius: $radius-s;
+    outline: $border-width-s solid transparent;
+    outline-offset: $chrome-offset;
+    transition-property: background-color, box-shadow, outline-color;
+    transition-duration: $transition-fast;
+    transition-timing-function: $transition-ease;
+
+    &[data-sb-hover] {
+      background-color: var(--background-modifier-hover);
+      box-shadow: 0 0 0 $chrome-offset var(--background-modifier-hover);
+    }
+
+    &[data-sb-menu-target] {
+      $tint: color-mix(in oklch, var(--interactive-accent) 10%, transparent);
+      background-color: $tint;
+      box-shadow: 0 0 0 $chrome-offset $tint;
+      outline-color: color-mix(in oklch, var(--interactive-accent) 50%, transparent);
+    }
+  }
+
+  // The ability being dragged leaves an empty place of its own height; the others slide aside into it, never over its text.
+  .atlas-statblock [data-sb-dragging] {
+    opacity: 0;
+  }
+
+  .atlas-statblock [data-sb-shift] {
+    transition: transform $transition-normal $transition-ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+}
+
+// ── An ability drag: its copy, the drop line, the list's bounds ────────────
+.atlas-vtt-plugin.atlas-list-drag-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-dragged-item, #{$z-atlas-modal});
+  pointer-events: none;
+
+  // The copy: the ability's own width and text, on a raised surface just around it.
+  // The card's and the theme's padding and borders on `.atlas-statblock` never reach it.
+  .atlas-statblock.atlas-sb-sheet.atlas-list-drag-ghost {
+    @include atlas-elevated-surface;
+    position: absolute;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: calc(var(--atlas-list-ghost-inset) - #{$border-width-m});
+    border-radius: $radius-l;
+    background: var(--background-primary);
+    box-shadow: $shadow-elevated;
+    transition: scale $transition-fast $transition-ease-out;
+
+    &[data-lifted] {
+      scale: 1.02;
+      transform-origin: center;
+    }
+
+    > * {
+      margin: 0;
+    }
+  }
+
+  // A 2 px accent line across the list with a dot at its start.
+  .atlas-list-drag-line {
+    position: absolute;
+    height: $line-width;
+    margin-top: -$line-width * 0.5;
+    border-radius: $radius-full;
+    background: var(--interactive-accent);
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: ($line-width - $dot-size) * 0.5;
+      left: -$dot-size * 0.5;
+      width: $dot-size;
+      height: $dot-size;
+      border-radius: $radius-full;
+      background: var(--interactive-accent);
+    }
+  }
+
+  // The list's bounds, one per column it runs through, shown only while dragging.
+  .atlas-list-drag-bound {
+    position: absolute;
+    border-radius: $radius-l;
+    outline: $border-width-m solid color-mix(in oklch, var(--interactive-accent) 50%, transparent);
+    outline-offset: $chrome-offset;
+  }
+}

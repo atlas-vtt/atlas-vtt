@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssetService } from '../../src/app/services/AssetService';
 import { transferAssets } from '../../src/app/services/assetTransfer/assetTransfer';
@@ -6,12 +5,9 @@ import { linkedScenesFor, scenesToBringAlong } from '../../src/app/services/asse
 import type { TransferMode } from '../../src/app/services/assetTransfer/transferPlan';
 import { mayLinkFromScene, sceneLinkTarget } from '../../src/app/services/sceneLinks';
 import { createSnapshot } from '../../src/app/snapshots/sceneSnapshotFormat';
+import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
 
-vi.mock('../../src/app/atlas-view', () => ({
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-  AtlasView: class { async saveMap(): Promise<void> {} },
-}));
 
 const SOURCE = 'atlas-vtt/collections/source';
 const TARGET = 'atlas-vtt/collections/target';
@@ -101,25 +97,30 @@ describe('scene links between collections', () => {
   it('removes the links of a copy to scenes that stay behind, in its map and snapshots', async () => {
     const vault = await linkedVault();
     const snapshot = createSnapshot(JSON.parse(mapFile(['Cave'])) as never, 'snap1', 'Start', 1000);
-    await vault.vault.app.vault.adapter.write(`${SOURCE}/scenes/.snapshots/Hub/snap1.json`, JSON.stringify(snapshot));
+    await vault.vault.app.vault.create(`${sceneSnapshotFolder('source', vault.ids.Hub!)}/snap1.json`, JSON.stringify(snapshot));
 
     await transfer(vault, ['Hub'], 'copy');
 
+    const copy = (await vault.assets.getAssets('target', 'scene'))[0]!;
     expect(pinLinks(vault, scenePath(TARGET, 'Hub'))).toEqual([NOTE]);
-    expect(pinLinks(vault, `${TARGET}/scenes/.snapshots/Hub/snap1.json`)).toEqual([NOTE]);
+    expect(pinLinks(vault, `${sceneSnapshotFolder('target', copy.id)}/snap1.json`)).toEqual([NOTE]);
+    expect(pinLinks(vault, `${sceneSnapshotFolder('source', vault.ids.Hub!)}/snap1.json`)).toEqual([NOTE, scenePath(SOURCE, 'Cave')]);
     expect(pinLinks(vault, scenePath(SOURCE, 'Hub'))).toEqual([NOTE, scenePath(SOURCE, 'Cave')]);
   });
 
   it('removes the links between a moved scene and the scenes staying behind', async () => {
     const vault = await linkedVault();
     const snapshot = createSnapshot(JSON.parse(mapFile(['Cave'])) as never, 'snap1', 'Start', 1000);
-    await vault.vault.app.vault.adapter.write(`${SOURCE}/scenes/.snapshots/Hub/snap1.json`, JSON.stringify(snapshot));
+    await vault.vault.app.vault.create(`${sceneSnapshotFolder('source', vault.ids.Hub!)}/snap1.json`, JSON.stringify(snapshot));
+    await vault.vault.app.vault.create(`${sceneSnapshotFolder('source', vault.ids.Cave!)}/snap2.json`, JSON.stringify({ ...snapshot, id: 'snap2' }));
 
     await transfer(vault, ['Cave'], 'move');
 
     expect(pinLinks(vault, scenePath(TARGET, 'Cave'))).toEqual([NOTE]);
     expect(pinLinks(vault, scenePath(SOURCE, 'Hub'))).toEqual([NOTE]);
-    expect(pinLinks(vault, `${SOURCE}/scenes/.snapshots/Hub/snap1.json`)).toEqual([NOTE]);
+    expect(pinLinks(vault, `${sceneSnapshotFolder('source', vault.ids.Hub!)}/snap1.json`)).toEqual([NOTE]);
+    // The moved scene's own snapshot went along with it, under the same id.
+    expect(vault.vault.files.has(`${sceneSnapshotFolder('target', vault.ids.Cave!)}/snap2.json`)).toBe(true);
     expect(pinLinks(vault, scenePath(SOURCE, 'Tower'))).toEqual([NOTE, scenePath(SOURCE, 'Hub')]);
   });
 });

@@ -5,7 +5,7 @@
  * Handles text creation, updates, selection, and interaction similar to tokens.
  */
 
-import { Container, Graphics, Text as PIXIText, TextStyle, FederatedPointerEvent } from 'pixi.js';
+import { Container, Graphics, Text as PIXIText, FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { OutlineFilter } from 'pixi-filters';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
@@ -15,8 +15,11 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { TextRotationUI } from './TextRotationUI';
 import { TextResizeUI } from './TextResizeUI';
+import { createTextElementView, TEXT_BACKGROUND_LABEL, TEXT_CONTENT_LABEL, updateTextElementView } from './textElementView';
 import { promptForText } from '../ui/textInputDialog';
 import { destroyTree } from './utils/destroyTree';
+import { t } from '../i18n';
+import { levelObjects } from '../levels/levelObjects';
 
 export class TextRenderer {
   private viewport: Viewport;
@@ -69,22 +72,22 @@ export class TextRenderer {
     this.hoverOutline = new OutlineFilter({ thickness: 2, color: 0x00FFFF, quality: 0.5 });
     
     // Initialize UI components
-    this.rotationUI = new TextRotationUI(viewport, store);
-    this.resizeUI = new TextResizeUI(viewport, store);
+    this.rotationUI = new TextRotationUI(viewport, store, (text) => this.resizeUI.refresh(text));
+    this.resizeUI = new TextResizeUI(viewport, store, (text) => this.rotationUI.refresh(text));
     
     // Subscribe to store changes
     this.subscribeToStore();
     
     // Initial sync
-    this.syncTexts(this.store.getState().objects.texts, {});
+    this.syncTexts(levelObjects(this.store.getState()).texts, {});
   }
 
   private subscribeToStore(): void {
     // Store the unsubscribe function for cleanup
     this.unsubscribeFromStore = this.store.subscribe((state, prevState) => {
       // Check if texts changed
-      if (state.objects.texts !== prevState.objects.texts) {
-        this.syncTexts(state.objects.texts, prevState.objects.texts);
+      if (levelObjects(state).texts !== levelObjects(prevState).texts) {
+        this.syncTexts(levelObjects(state).texts, levelObjects(prevState).texts);
       }
 
       // Check if selection changed
@@ -121,43 +124,8 @@ export class TextRenderer {
   }
 
   private createText(textElement: TextElement): void {
-    const container = new Container();
-    container.label = textElement.id;
-    container.position.set(textElement.x, textElement.y);
-    container.sortableChildren = true;
-    
-    // Create background
-    const background = new Graphics();
-    background.label = 'textBackground';
-    container.addChild(background);
-    
-    // Create text style
-    const style = new TextStyle({
-      fontFamily: textElement.fontFamily,
-      fontSize: textElement.fontSize,
-      fill: textElement.color,
-      align: textElement.align || 'center',
-      fontWeight: textElement.bold ? 'bold' : 'normal',
-      fontStyle: textElement.italic ? 'italic' : 'normal'
-    });
-    
-    // Create text
-    const pixiText = new PIXIText({ text: textElement.text, style });
-    pixiText.label = 'textContent';
-    pixiText.anchor.set(0.5);
-    container.addChild(pixiText);
-    
-    // Draw background
-    this.drawTextBackground(background, pixiText, textElement);
-    
-    // Apply transformations
-    if (textElement.rotation) {
-      container.rotation = (textElement.rotation * Math.PI) / 180;
-    }
-    if (textElement.scale) {
-      container.scale.set(textElement.scale);
-    }
-    
+    const container = createTextElementView(textElement);
+
     // Set up interaction if not player view
     if (!this.isPlayerView) {
       this.setupInteraction(container, textElement.id);
@@ -168,71 +136,13 @@ export class TextRenderer {
     this.textElements[textElement.id] = container;
   }
 
-  private drawTextBackground(
-    background: Graphics,
-    text: PIXIText,
-    textElement: TextElement
-  ): void {
-    background.clear();
-    
-    if (textElement.backgroundColor) {
-      const padding = textElement.padding || 8;
-      const bounds = text.getLocalBounds();
-      
-      if (textElement.borderRadius) {
-        background.roundRect(
-          bounds.x - padding,
-          bounds.y - padding,
-          bounds.width + padding * 2,
-          bounds.height + padding * 2,
-          textElement.borderRadius
-        );
-      } else {
-        background.rect(
-          bounds.x - padding,
-          bounds.y - padding,
-          bounds.width + padding * 2,
-          bounds.height + padding * 2
-        );
-      }
-
-      background.fill({
-        color: parseInt(textElement.backgroundColor.replace('#', ''), 16),
-        alpha: textElement.opacity || 1,
-      });
-    }
-  }
-
   private updateText(textElement: TextElement): void {
     const container = this.textElements[textElement.id];
     if (!container) return;
-    
-    // Update position
-    container.position.set(textElement.x, textElement.y);
-    
-    // Update text content and style
-    const pixiText = container.getChildByLabel('textContent') as PIXIText;
-    if (pixiText) {
-      pixiText.text = textElement.text;
-      pixiText.style = new TextStyle({
-        fontFamily: textElement.fontFamily,
-        fontSize: textElement.fontSize,
-        fill: textElement.color,
-        align: textElement.align || 'center',
-        fontWeight: textElement.bold ? 'bold' : 'normal',
-        fontStyle: textElement.italic ? 'italic' : 'normal'
-      });
-    }
-    
-    // Update background
-    const background = container.getChildByLabel('textBackground') as Graphics;
-    if (background && pixiText) {
-      this.drawTextBackground(background, pixiText, textElement);
-    }
-    
-    // Update transformations
-    container.rotation = textElement.rotation ? (textElement.rotation * Math.PI) / 180 : 0;
-    container.scale.set(textElement.scale || 1);
+    updateTextElementView(container, textElement);
+    this.rotationUI.refresh(textElement);
+    this.resizeUI.refresh(textElement);
+    this.updateUIControlsPosition();
   }
 
   private removeText(id: string): void {
@@ -249,8 +159,8 @@ export class TextRenderer {
     container.cursor = 'move';
     
     // Make both background and text interactive
-    const background = container.getChildByLabel('textBackground') as Graphics;
-    const text = container.getChildByLabel('textContent') as PIXIText;
+    const background = container.getChildByLabel(TEXT_BACKGROUND_LABEL) as Graphics;
+    const text = container.getChildByLabel(TEXT_CONTENT_LABEL) as PIXIText;
     
     if (background) {
       background.eventMode = 'static';
@@ -275,7 +185,7 @@ export class TextRenderer {
   private onPointerDown(e: FederatedPointerEvent, textId: string): void {
     e.stopPropagation();
 
-    const textElement = this.store.getState().objects.texts[textId];
+    const textElement = levelObjects(this.store.getState()).texts[textId];
     if (!textElement) return;
 
     if (e.button === 2) {
@@ -386,36 +296,36 @@ export class TextRenderer {
 
   private showContextMenu(textElement: TextElement, e: FederatedPointerEvent): void {
     const textColors = [
-      { name: 'White', value: '#FFFFFF' },
-      { name: 'Black', value: '#000000' },
-      { name: 'Red', value: '#FF0000' },
-      { name: 'Green', value: '#00FF00' },
-      { name: 'Blue', value: '#0000FF' },
-      { name: 'Yellow', value: '#FFFF00' },
-      { name: 'Purple', value: '#FF00FF' },
-      { name: 'Cyan', value: '#00FFFF' },
-      { name: 'Orange', value: '#FFA500' },
-      { name: 'Pink', value: '#FFC0CB' },
+      { name: t('color.white'), value: '#FFFFFF' },
+      { name: t('color.black'), value: '#000000' },
+      { name: t('color.red'), value: '#FF0000' },
+      { name: t('color.green'), value: '#00FF00' },
+      { name: t('color.blue'), value: '#0000FF' },
+      { name: t('color.yellow'), value: '#FFFF00' },
+      { name: t('color.purple'), value: '#FF00FF' },
+      { name: t('color.cyan'), value: '#00FFFF' },
+      { name: t('color.orange'), value: '#FFA500' },
+      { name: t('color.pink'), value: '#FFC0CB' },
     ];
 
     const bgColors: Array<{ name: string; value: string | undefined }> = [
-      { name: 'None', value: undefined },
-      { name: 'Black', value: '#000000' },
-      { name: 'White', value: '#FFFFFF' },
-      { name: 'Dark Gray', value: '#333333' },
-      { name: 'Red', value: '#FF0000' },
-      { name: 'Green', value: '#00FF00' },
-      { name: 'Blue', value: '#0000FF' },
-      { name: 'Yellow', value: '#FFFF00' },
+      { name: t('common.none'), value: undefined },
+      { name: t('color.black'), value: '#000000' },
+      { name: t('color.white'), value: '#FFFFFF' },
+      { name: t('color.darkGray'), value: '#333333' },
+      { name: t('color.red'), value: '#FF0000' },
+      { name: t('color.green'), value: '#00FF00' },
+      { name: t('color.blue'), value: '#0000FF' },
+      { name: t('color.yellow'), value: '#FFFF00' },
     ];
 
     const fontSizes = [12, 16, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72];
 
     const entries: ContextMenuEntry[] = [
-      { type: 'item', label: 'Edit Text', icon: 'edit', onClick: () => void this.editText(textElement) },
+      { type: 'item', label: t('text.edit'), icon: 'edit', onClick: () => void this.editText(textElement) },
       {
         type: 'submenu',
-        label: 'Text Color',
+        label: t('text.color'),
         icon: 'palette',
         children: textColors.map(c => ({
           type: 'item' as const,
@@ -425,7 +335,7 @@ export class TextRenderer {
       },
       {
         type: 'submenu',
-        label: 'Background Color',
+        label: t('text.background'),
         icon: 'square',
         children: bgColors.map(c => ({
           type: 'item' as const,
@@ -435,7 +345,7 @@ export class TextRenderer {
       },
       {
         type: 'submenu',
-        label: 'Font Size',
+        label: t('text.fontSize'),
         icon: 'text-cursor',
         children: fontSizes.map(s => ({
           type: 'item' as const,
@@ -446,17 +356,17 @@ export class TextRenderer {
       },
       {
         type: 'item',
-        label: textElement.bold ? '\u2713 Bold' : 'Bold',
+        label: textElement.bold ? `\u2713 ${t('text.bold')}` : t('text.bold'),
         onClick: () => this.store.getState().updateText(textElement.id, { bold: !textElement.bold }),
       },
       {
         type: 'item',
-        label: textElement.italic ? '\u2713 Italic' : 'Italic',
+        label: textElement.italic ? `\u2713 ${t('text.italic')}` : t('text.italic'),
         onClick: () => this.store.getState().updateText(textElement.id, { italic: !textElement.italic }),
       },
       {
         type: 'item',
-        label: 'Delete',
+        label: t('common.delete'),
         icon: 'trash',
         destructive: true,
         onClick: () => this.store.getState().deleteText(textElement.id),
@@ -468,8 +378,8 @@ export class TextRenderer {
 
   private async editText(textElement: TextElement): Promise<void> {
     const newText = await promptForText({
-      title: 'Edit text',
-      confirmLabel: 'Save',
+      title: t('text.editTitle'),
+      confirmLabel: t('common.save'),
       initialValue: textElement.text,
     });
     if (newText && newText !== textElement.text) {
@@ -488,7 +398,7 @@ export class TextRenderer {
     // Update UI controls
     if (selectedIds.length === 1 && selectedIds[0]!.startsWith('text_')) {
       const textId = selectedIds[0]!;
-      const textElement = this.store.getState().objects.texts[textId];
+      const textElement = levelObjects(this.store.getState()).texts[textId];
       const container = this.textElements[textId];
       
       if (textElement && container) {

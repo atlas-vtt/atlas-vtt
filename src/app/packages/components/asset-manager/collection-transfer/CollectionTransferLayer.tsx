@@ -5,6 +5,7 @@ import type { CollectionTransferActions } from '../hooks/useCollectionTransfer';
 import { bundleMedia, vaultMedia } from './contentMedia';
 import { ExportCollectionDialog } from './ExportCollectionDialog';
 import { ImportReviewDialog } from './ImportReviewDialog';
+import { t } from '../../../../i18n';
 
 type CollectionTransferLayerProps = Pick<CollectionTransferActions, 'transfer' | 'confirmExport' | 'confirmImport' | 'closeTransfer'>;
 
@@ -29,7 +30,7 @@ export function CollectionTransferLayer({ transfer, confirmExport, confirmImport
           title={transfer.title}
           message={transfer.message}
           fraction={1}
-          prompt={{ actions: [{ label: 'Close', onSelect: closeTransfer, isPrimary: true }], onDismiss: closeTransfer }}
+          prompt={{ actions: [{ label: t('common.close'), onSelect: closeTransfer, isPrimary: true }], onDismiss: closeTransfer }}
         />
       );
     default:

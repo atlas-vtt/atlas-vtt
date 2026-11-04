@@ -18,11 +18,18 @@ describe('direct issue submission', () => {
     expect(JSON.parse(request.body)).toEqual({ requestId: 'request-id', report });
     expect(request.headers.Authorization).toBeUndefined();
   });
+  it('accepts receipts under the repository and its former owner', async () => {
+    for (const url of ['https://github.com/atlas-vtt/atlas-vtt/issues/42', 'https://github.com/ByteMirror/atlas-vtt/issues/42']) {
+      const submit = createIssueSubmitter('https://reports.example.test/atlas/reports', async () => ({ status: 201, json: { number: 42, url } }));
+      await expect(submit(report, 'request-id')).resolves.toEqual({ number: 42, url });
+    }
+  });
   it('rejects failed responses and invalid receipts', async () => {
     for (const response of [
       { status: 429, json: { error: 'Please try again later.' } },
       { status: 201, json: { number: 42, url: 'https://evil.example/42' } },
       { status: 201, json: { number: 42, url: 'https://github.com/ByteMirror/atlas-vtt/issues/43' } },
+      { status: 201, json: { number: 42, url: 'https://github.com/someone-else/atlas-vtt/issues/42' } },
       { status: 200, json: {} },
     ]) {
       const submit = createIssueSubmitter('https://reports.example.test/atlas/reports', async () => response);

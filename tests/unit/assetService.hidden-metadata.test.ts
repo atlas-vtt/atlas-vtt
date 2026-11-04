@@ -528,8 +528,11 @@ describe('AssetService hidden metadata saves', () => {
     await service.initialize();
     await service.deleteAsset('token-1');
 
-    expect(app.fileManager.trashFile).toHaveBeenCalledTimes(1);
+    // The art, the token's record file and the emptied encounter's record file.
+    expect(app.fileManager.trashFile).toHaveBeenCalledTimes(3);
     expect(files.has('atlas-vtt/collections/default/tokens/goblin.webp')).toBe(false);
+    expect(files.has('atlas-vtt/collections/default/tokens/token-1.json')).toBe(false);
+    expect([...files.keys()].some((path) => path.includes('/encounters/'))).toBe(false);
 
     expect(await service.getAssets('default', 'encounter')).toEqual([]);
   });

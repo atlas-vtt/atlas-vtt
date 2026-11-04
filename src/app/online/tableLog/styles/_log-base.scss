@@ -1,0 +1,69 @@
+// What the log's stylesheets share: its sizes, and a button that starts from nothing.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$log-width: 360px;
+$log-edge: 12px;
+$log-disc: 32px;
+$log-roll-disc: 44px;
+$log-quote-disc: 16px;
+// A speaker's face on the composer's chip and in its menu.
+$log-chip-face: 24px;
+// A touch target, where fingers are the pointer (`html[data-pointer="coarse"]`, set by the player's page).
+$log-target: 44px;
+$log-coarse: 'html[data-pointer="coarse"]';
+// Drawn inside the element, so the scrolling list never clips it.
+$log-focus-ring: inset 0 0 0 2px var(--background-modifier-border-focus);
+$log-hairline: color-mix(in oklch, var(--mono-100) #{$border-opacity-subtle}, transparent);
+$log-accent-wash: color-mix(in oklch, var(--interactive-accent) 16%, transparent);
+$log-on-accent: var(--atlas-online-text-on-accent, var(--text-on-accent));
+
+// A button without Obsidian's fill, frame and shadow: `log-button` first in its rule, and
+// `log-button-states` after the rule's own declarations, since Obsidian sets fill and shadow per
+// state and each state is reset. A rule after that gives a state its own look.
+@mixin log-button {
+  appearance: none;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  @include atlas-corner-shape;
+}
+
+@mixin log-button-states($fill: transparent, $shadow: null) {
+  &,
+  &:hover,
+  &:active,
+  &:focus,
+  &:focus-visible {
+    background: $fill;
+    box-shadow: if($shadow, $shadow, none);
+    outline: none;
+  }
+
+  &:focus-visible {
+    @if $shadow {
+      box-shadow: $shadow, $log-focus-ring;
+    } @else {
+      box-shadow: $log-focus-ring;
+    }
+  }
+}
+
+// A touch target of full size around a small control, without moving anything.
+@mixin log-wide-target {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, #{$log-target});
+    height: max(100%, #{$log-target});
+    transform: translate(-50%, -50%);
+  }
+}

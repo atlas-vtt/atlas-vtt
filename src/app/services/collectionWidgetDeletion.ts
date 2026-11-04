@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import type { AtlasView } from '../atlas-view';
-import { SceneSnapshotService } from '../snapshots/SceneSnapshotService';
+import { rewriteCollectionSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { runUntracked } from '../stores/history';
 import { withoutWidget } from '../utils/collectionWidgets';
 import { AssetService } from './AssetService';
@@ -23,16 +23,8 @@ function removeFromOpenView(view: AtlasView, widgetId: string): void {
  */
 export async function deleteCollectionWidget(app: App, collectionId: string, widgetId: string): Promise<void> {
   const rewrite = (content: string): string | null => dropWidgetsFromJson(content, (id) => id === widgetId);
-  const files = await updateCollectionScenes(app, collectionId, { updateOpen: (view) => removeFromOpenView(view, widgetId), rewrite });
-
-  const snapshots = new SceneSnapshotService(app);
-  for (const file of files) {
-    try {
-      await snapshots.rewriteFiles(file.path, rewrite);
-    } catch (error) {
-      console.error(`[Atlas] Could not remove the widget from the snapshots of ${file.path}:`, error);
-    }
-  }
+  await updateCollectionScenes(app, collectionId, { updateOpen: (view) => removeFromOpenView(view, widgetId), rewrite });
+  await rewriteCollectionSnapshots(app, collectionId, rewrite);
 
   const sync = WidgetSyncService.forApp(app);
   if (sync) {

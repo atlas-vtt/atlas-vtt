@@ -11,6 +11,9 @@ import { Viewport } from 'pixi-viewport';
 import type { TextElement } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
+import { MAP_LAYER_Z } from './mapLayerOrder';
+import { levelObjects } from '../levels/levelObjects';
+import { textHandleBounds } from './textHandleBounds';
 
 /** Gap between the top of the text and the handle. */
 const HANDLE_OFFSET = 28;
@@ -33,12 +36,18 @@ export class TextRotationUI {
   private dragStartAngle: number = 0;
   private textStartRotation: number = 0;
 
-  constructor(viewport: Viewport, store: StoreApi<ViewAtlasState>) {
+  /** `onPreview` hears the rotation a drag shows before it reaches the store. */
+  constructor(
+    viewport: Viewport,
+    store: StoreApi<ViewAtlasState>,
+    private readonly onPreview: (text: TextElement) => void = () => {},
+  ) {
     this.viewport = viewport;
     this.store = store;
 
     this.container = new Container();
     this.container.label = 'textRotationUI';
+    this.container.zIndex = MAP_LAYER_Z.textHandles;
     this.container.visible = false;
     this.viewport.addChild(this.container);
 
@@ -120,6 +129,12 @@ export class TextRotationUI {
   show(textElement: TextElement): void {
     this.activeTextId = textElement.id;
     this.container.visible = true;
+    this.refresh(textElement);
+  }
+
+  /** Follows a change of the shown text (an edit, an undo, a resize being dragged). */
+  refresh(textElement: TextElement): void {
+    if (textElement.id !== this.activeTextId || this.isDragging) return;
     this.temporaryRotation = textElement.rotation || 0;
     this.updateHandlePositions(textElement);
   }
@@ -137,13 +152,9 @@ export class TextRotationUI {
   }
 
   private updateHandlePositions(textElement: TextElement): void {
-    const textContainer = this.viewport.children
-      .find((child) => child.label === 'textContainer')
-      ?.children.find((child) => child.label === textElement.id);
+    const bounds = textHandleBounds(this.viewport, textElement);
+    if (!bounds) return;
 
-    if (!textContainer) return;
-
-    const bounds = textContainer.getLocalBounds();
     const centerX = (bounds.left + bounds.right) / 2;
     const handleY = bounds.top - HANDLE_OFFSET;
 
@@ -165,7 +176,7 @@ export class TextRotationUI {
     this.isDragging = true;
     this.drawHandle();
 
-    const textElement = this.store.getState().objects.texts[this.activeTextId];
+    const textElement = levelObjects(this.store.getState()).texts[this.activeTextId];
     if (!textElement) return;
 
     const worldPos = this.viewport.toWorld(e.global);
@@ -181,7 +192,7 @@ export class TextRotationUI {
   private onPointerMove = (e: FederatedPointerEvent): void => {
     if (!this.isDragging || !this.activeTextId) return;
 
-    const textElement = this.store.getState().objects.texts[this.activeTextId];
+    const textElement = levelObjects(this.store.getState()).texts[this.activeTextId];
     if (!textElement) return;
 
     const worldPos = this.viewport.toWorld(e.global);
@@ -204,6 +215,7 @@ export class TextRotationUI {
     if (textContainer) {
       textContainer.rotation = (newRotation * Math.PI) / 180;
     }
+    this.onPreview({ ...textElement, rotation: newRotation });
   };
 
   private onPointerUp = (): void => {

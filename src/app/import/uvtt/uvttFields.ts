@@ -1,4 +1,4 @@
-import { isFiniteNumber, isRecord } from '../../services/assetMetadataGuards';
+import { isFiniteNumber, isRecord } from '../../utils/guards';
 import { UVTT_LIMITS, type UvttPoint } from './uvttTypes';
 
 /**

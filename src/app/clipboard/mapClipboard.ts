@@ -1,4 +1,5 @@
 import type { MapObjectContent } from './mapObjectContent';
+import { t } from '../i18n';
 
 interface ClipboardEntry {
   content: MapObjectContent;
@@ -15,12 +16,13 @@ let entry: ClipboardEntry | null = null;
 /** Readable summary of the objects, one line per token, text or pin. */
 export function describeMapObjects(content: MapObjectContent): string {
   const lines = [
-    ...content.tokens.map((token) => (token.kind === 'character' && (token.name || token.statblockName)) || 'Token'),
+    ...content.tokens.map((token) => (token.kind === 'character' && (token.name || token.statblockName)) || t('initiative.token')),
     ...content.texts.map((text) => text.text),
     ...content.pins.map((pin) => pin.notePath),
   ];
   const drawings = content.drawings.length;
   if (drawings > 0) lines.push(drawings === 1 ? '1 drawing' : `${drawings} drawings`);
+  if (content.levelLinks.length > 0) lines.push(t('levels.copiedStairs', { count: content.levelLinks.length }));
   return lines.join('\n');
 }
 

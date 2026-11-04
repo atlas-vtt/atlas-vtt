@@ -1,0 +1,158 @@
+// Threads: the pill under a message with answers, and the thread in the panel's place, with the
+// way back over it and its root ruled off from the answers.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+$pill-pad: 2px;
+$pill-height: calc(#{$log-quote-disc} + 2 * #{$pill-pad});
+
+.atlas-online-log {
+  // What changes between the whole log and a thread, and moves as one when it does.
+  .atlas-online-log__view {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: $spacing-s;
+    min-height: 0;
+  }
+
+  // ── The pill ────────────────────────────────────────────────────────────────
+  // The faces sit in the pill's round end, concentric with it, so their side takes only the pad.
+  .atlas-online-log__thread-pill {
+    @include log-button;
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: $spacing-xs;
+    height: $pill-height;
+    margin-top: 2px;
+    padding: 0 $spacing-s 0 $pill-pad;
+    border-radius: $radius-full;
+    color: var(--text-accent);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background-color $transition-fast $transition-ease;
+    @include log-button-states;
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+      }
+    }
+
+    &:active {
+      background: var(--background-modifier-active-hover);
+    }
+
+    #{$log-coarse} & {
+      @include log-wide-target;
+    }
+  }
+
+  .atlas-online-log__thread-faces {
+    display: flex;
+
+    .atlas-online-log__disc + .atlas-online-log__disc {
+      margin-left: -4px;
+    }
+
+    // A ring of the panel's surface keeps overlapping faces apart.
+    .atlas-online-log__disc {
+      box-shadow: 0 0 0 1.5px var(--background-primary);
+    }
+  }
+
+  .atlas-online-log__row--roll .atlas-online-log__thread-pill {
+    margin-left: $spacing-s;
+  }
+
+  // ── The thread ──────────────────────────────────────────────────────────────
+  .atlas-online-log__thread-bar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: $spacing-s;
+    min-width: 0;
+  }
+
+  .atlas-online-log__thread-back {
+    @include log-button;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: $spacing-xs;
+    height: $button-height-m;
+    // The chevron's glyph has room of its own on its open side.
+    padding: 0 $spacing-s 0 $spacing-xs;
+    border-radius: $radius-m;
+    color: var(--text-muted);
+    transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+    @include log-button-states;
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+    &:active {
+      background: var(--background-modifier-active-hover);
+    }
+
+    #{$log-coarse} & {
+      height: $log-target;
+    }
+  }
+
+  .atlas-online-log__thread-title {
+    color: var(--text-normal);
+    font-weight: $font-weight-semibold;
+  }
+
+  // What arrived in the rest of the log meanwhile, as the unread tab counts it.
+  .atlas-online-log__thread-unseen {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 $spacing-xs;
+    border-radius: $radius-full;
+    background: var(--interactive-accent);
+    color: $log-on-accent;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+  }
+
+  .atlas-online-log__thread-replies {
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    @include atlas-truncate;
+  }
+
+  // A thread starts under its root, not on the message field.
+  .atlas-online-log__rows--thread {
+    margin-top: 0;
+  }
+
+  .atlas-online-log__item--root {
+    padding-bottom: $spacing-s;
+    border-bottom: $border-width-s solid var(--background-modifier-border);
+  }
+
+  .atlas-online-log__thread-empty {
+    padding: $spacing-m $spacing-s;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    text-align: center;
+  }
+}

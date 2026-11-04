@@ -20,6 +20,7 @@ body:
         - Asset manager
         - Player view
         - Settings, commands and updates
+        - Online play
         - Not sure / other
     validations:
       required: true

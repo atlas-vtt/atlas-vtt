@@ -1,0 +1,26 @@
+import type { Message } from '../../types';
+
+export const exportDialog = {
+  'exportDialog.author': 'Author',
+  'exportDialog.authorPlaceholder': 'Shown to people who install it',
+  'exportDialog.closeHint': 'Close without exporting',
+  'exportDialog.enterName': 'Enter a name for your collection.',
+  'exportDialog.exportCollection': 'Export collection',
+  'exportDialog.exportNamed': 'Export {name}',
+  'exportDialog.exportVersion': 'Export v{version}',
+  'exportDialog.forkIntro': 'You installed this collection{from}. Publishing turns your copy, with your changes, into a collection of your own that starts at v1. It no longer receives updates from the original.',
+  'exportDialog.fromAuthor': ' from {author}',
+  'exportDialog.includeHint': 'Include at least one item to export',
+  'exportDialog.includeOne': 'Include at least one item.',
+  'exportDialog.missing': { one: '{count} referenced file is missing and will not be included:', other: '{count} referenced files are missing and will not be included:' },
+  'exportDialog.name': 'Name',
+  'exportDialog.notes': 'Release notes',
+  'exportDialog.notesPlaceholder': 'What is new in this version',
+  'exportDialog.publish': 'Publish',
+  'exportDialog.publishNamed': 'Publish {name} as your own',
+  'exportDialog.publishOwn': 'Publish as your own',
+  'exportDialog.sameVersion': 'Same as your last release. People who installed v{version} will see a changed copy of it.',
+  'exportDialog.version': 'Version',
+  'exportDialog.versionInvalid': 'The version must be a whole number of at least {min}.',
+  'exportDialog.zipHint': 'Save the collection as a .zip file you can give to others',
+} as const satisfies Record<string, Message>;

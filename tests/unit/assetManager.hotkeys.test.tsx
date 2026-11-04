@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React, { useRef, useState } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -105,12 +106,14 @@ it.each(['atlas-onboarding-overlay', 'menu', 'modal-container'])('does not close
   expect(screen.queryByTestId('manager')).not.toBeNull();
 });
 
-it('switches tabs with Tab, Shift+Tab and Cmd+1 to 4 through the tab change that resets the folder', () => {
+it('switches tabs with Tab, Shift+Tab and Cmd+1 to 5 through the tab change that resets the folder', () => {
   const { changeTab } = setup();
   fireEvent.keyDown(document, { key: 'a' });
   const manager = screen.getByTestId('manager');
   fireEvent.keyDown(manager, { key: 'Tab' });
   fireEvent.keyDown(manager, { key: 'Tab', shiftKey: true });
   fireEvent.keyDown(manager, { key: '4', metaKey: true });
-  expect(changeTab.mock.calls.map(([tab]) => tab)).toEqual(['encounters', 'scenes', 'tokens']);
+  fireEvent.keyDown(manager, { key: '5', ctrlKey: true });
+  fireEvent.keyDown(manager, { key: '6', metaKey: true });
+  expect(changeTab.mock.calls.map(([tab]) => tab)).toEqual(['encounters', 'scenes', 'tokens', 'party']);
 });

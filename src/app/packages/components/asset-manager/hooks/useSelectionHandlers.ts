@@ -5,6 +5,7 @@ import { NavigationHistory } from '../NavigationHistory';
 import { applyClickSelection, resolveSelectAll } from '../utils/clickSelection';
 import { clampSpawnCount } from '../utils/spawnCount';
 import { resolveSortOption, sortOptionsFor } from '../utils/assetSort';
+import { isTextEntryTarget } from '../../../../keyboard/textEntry';
 
 /** IDs currently rendered, in display order, so Shift-click can span them. */
 export interface VisibleIds {
@@ -183,7 +184,7 @@ export function useSelectionHandlers(
   useEffect(() => {
     if (!isOpen) return;
     const handler = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'a') {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'a' && !isTextEntryTarget(event.target)) {
         event.preventDefault();
         const next = resolveSelectAll({ visible: visibleIds.current, selectedAssetIds, selectedFolderIds });
         setSelectedAssetIds(next.assets);

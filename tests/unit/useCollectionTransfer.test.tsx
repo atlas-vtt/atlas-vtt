@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, cleanup, renderHook, type RenderHookResult } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Notice } from 'obsidian';
@@ -13,7 +14,7 @@ vi.mock('../../src/app/services/collectionBundle/collectionExport', () => ({ pre
 const review = { relation: 'newer', collectionName: 'Source', version: 2 } as ImportReview;
 const updated: CollectionImportResult = {
   collectionId: 'source', collectionName: 'Source', version: 2, created: false, written: 3, removed: 1, keptLocal: 1,
-  backupCount: 4, backupFolder: 'atlas-vtt/.atlas-data/backups/source/2026-09-23 19-30-05',
+  backupCount: 4, backupFolder: 'atlas-vtt/.atlas-data/backups/source/2026-09-23 19-30-05', switchedNotes: 0,
 };
 
 function session(apply: ImportSession['apply'] = vi.fn(async () => updated)): ImportSession {
@@ -86,6 +87,17 @@ it('reports the result as a notice when the asset manager closed during the impo
   finish({ ...updated, created: true });
   await applying;
   expect(Notice).toHaveBeenCalledWith('Imported “Source” v2.');
+});
+
+it('says how many statblocks the import switched to the copies of their templates', async () => {
+  vi.mocked(openCollectionImport).mockResolvedValue(session(vi.fn(async () => ({ ...updated, switchedNotes: 2 }))));
+  const { hook } = setup();
+  await pickFile(hook);
+  await vi.waitFor(() => expect(hook.result.current.transfer?.step).toBe('import-review'));
+  await act(async () => hook.result.current.confirmImport({ switchReusedNotes: true }));
+  expect(hook.result.current.transfer).toMatchObject({
+    message: expect.stringContaining('1 item kept as you had them. Replaced files were backed up to atlas-vtt/.atlas-data/backups/source/2026-09-23 19-30-05. 2 statblocks now use the template copies.'),
+  });
 });
 
 it('shows export options, keeps them open for a name that is taken, and exports the chosen release', async () => {

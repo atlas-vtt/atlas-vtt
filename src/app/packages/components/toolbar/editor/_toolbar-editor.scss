@@ -133,6 +133,23 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
   @include atlas-corner-shape;
 }
 
+// The undo/redo bar's ghost is a whole bar while it shows the bar's face: its corners turn from the
+// bar's to a tool's as it takes the tray's face (`--atlas-ghost-bar-look`, 1 as a bar), and its
+// stroke lies inside its box, where the bar's border is, so it lands on the bar exactly.
+.atlas-toolbar-ghost[data-bar-unit] {
+  border-radius: calc(var(--atlas-ghost-bar-look, 0) * #{$radius-2xl} + (1 - var(--atlas-ghost-bar-look, 0)) * #{$radius-l});
+  box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent), $shadow-elevated;
+}
+
+// The undo/redo bar's two buttons as the bar lays them out, its border kept as room.
+.atlas-toolbar-face__undo-bar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  border: $border-width-m solid transparent;
+}
+
 .atlas-toolbar-ghost__shadow {
   position: absolute;
   inset: 0;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_EXPLOSIONS, explodes, rollExplosions, type Explosion } from '../diceExplosion';
-import { rollFormula, type RolledDie } from '../diceFormula';
+import type { RolledDie } from '../diceFormula';
+import { rollTestFormula as rollFormula } from './rollTestFormula';
 import { getDiceCrit } from '../diceCrit';
 import type { DiceRules, ExplodeRule } from '../../types/diceRulesTypes';
 
@@ -96,6 +97,12 @@ describe('rollFormula with exploding dice', () => {
     expect(rollFormula('1d6!3', showing(6, 6)).rolls).toHaveLength(4);
     expect(rollFormula('1d6!i', showing(6, 6)).rolls).toHaveLength(1 + MAX_EXPLOSIONS);
     expect(rollFormula('2d6! + 1d4', showing(6, 6, 2, 3, 4)).rolls.map((die) => die.exploded ?? false)).toEqual([false, true, false, false]);
+  });
+
+  it('bounds numeric explosions even at the maximum dice count', () => {
+    const result = rollFormula('100d6!99', () => 0.999);
+    expect(result.rolls).toHaveLength(100 * (1 + MAX_EXPLOSIONS));
+    expect(rollFormula('d6!0', () => 0.999).rolls).toHaveLength(1);
   });
 
   it('lets the notation of a term win over the rule', () => {

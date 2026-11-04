@@ -1,33 +1,47 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { hotkeyFromEvent, formatHotkey, matchesHotkey, canRunMapHotkeys, canShareHotkey, MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
+import { hotkeyFromEvent, formatHotkey, matchesHotkey, canRunMapHotkeys, canShareHotkey, availableHotkeys, MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
 import { handledByAnotherControl, noteTooltipDismissal } from '../../src/app/keyboard/tooltipEscape';
+import { App } from 'obsidian';
+import { memoryPluginData } from '../mocks/pluginData';
 
 function service() {
-  const files = new Map<string, string>();
-  const app = { vault: { adapter: {
-    exists: async (path: string) => files.has(path), mkdir: async () => {},
-    read: async (path: string) => files.get(path)!,
-    write: async (path: string, data: string) => { files.set(path, data); },
-  } } } as any;
-  return { settings: new SettingsService(app), app, files };
+  const app = new App();
+  const data = memoryPluginData();
+  return { settings: new SettingsService(app, undefined, data), app, data };
 }
 afterEach(() => { document.body.innerHTML = ''; vi.useRealTimers(); });
 
 describe('map hotkeys', () => {
+  it.each([
+    ['widget1', '1'], ['widget2', '2'], ['widget3', '3'], ['widget4', '4'], ['widget5', '5'],
+    ['increase', '+'], ['increaseAlt', '='], ['decrease', '-'],
+    ['timerPlayPause', 'Space'], ['timerReset', 'r'],
+  ] as const)('offers %s only to the GM, with its existing default key', (id, defaultKey) => {
+    expect(availableHotkeys(false).find(action => action.id === id)).toMatchObject({ id, defaultKey });
+    expect(availableHotkeys(true).some(action => action.id === id)).toBe(false);
+  });
+
+  it('offers the GM the lighting shortcuts', () => {
+    const ids = availableHotkeys(false).map(({ id }) => id);
+    expect(ids).toEqual(expect.arrayContaining(['wall', 'lightingPeek']));
+    expect(availableHotkeys(true).map(({ id }) => id)).not.toContain('wall');
+  });
+
   it('formats letter bindings without changing named keys', () => {
     expect(formatHotkey('Enter')).toBe('Enter');
     expect(formatHotkey('Space')).toBe('Space');
     expect(formatHotkey('Mod+Shift+z')).toBe('Ctrl/Cmd + Shift + Z');
   });
   it('persists single-key bindings and tutorial progress across reloads', async () => {
-    const { settings, app } = service();
+    const { settings, app, data } = service();
     await settings.initialize();
     settings.setHotkey('assets', 'q');
     settings.completeTutorial('assets');
     settings.markTokenImported();
     await settings.saveSettingsNow();
-    const reloaded = new SettingsService(app);
+    const reloaded = new SettingsService(app, undefined, data);
     await reloaded.initialize();
     expect(reloaded.getHotkeys().assets).toBe('q');
     expect(reloaded.shouldShowTutorial('assets')).toBe(false);

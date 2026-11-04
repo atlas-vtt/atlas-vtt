@@ -67,11 +67,13 @@ describe('built-in presets', () => {
   it('give every built-in system HP, Cairn STR from its stat row and Daggerheart Stress', () => {
     for (const preset of BUILT_IN_SYSTEM_PRESETS) {
       const hp = preset.rules.resources?.find((r) => r.key === 'hp');
-      expect(hp?.defeatedWhenSpent, preset.name).toBe(true);
+      // In Cairn a character at 0 HP still stands; STR 0 is death
+      expect(hp?.defeatedWhenSpent, preset.name).toBe(preset.name !== 'Cairn');
       expect(preset.rules.defaultWidgets?.hpBar, preset.name).toBeUndefined();
     }
     const cairn = BUILT_IN_SYSTEM_PRESETS.find((p) => p.name === 'Cairn')!;
     expect(cairn.rules.resources?.map((r) => [r.key, r.field, r.direction])).toEqual([['hp', 'hp', 'drains'], ['str', 'stats.0', 'drains']]);
+    expect(cairn.rules.resources?.filter((r) => r.defeatedWhenSpent).map((r) => r.key)).toEqual(['str']);
     const daggerheart = BUILT_IN_SYSTEM_PRESETS.find((p) => p.name === 'Daggerheart')!;
     expect(daggerheart.rules.resources?.map((r) => [r.key, r.direction])).toEqual([['hp', 'drains'], ['stress', 'fills']]);
   });
@@ -94,10 +96,10 @@ describe('built-in presets', () => {
   it('does not count the old bar switches or what players see as an edit of the system', () => {
     const daggerheart = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.id === 'builtin:daggerheart')!;
     const rules = rulesOfPreset(daggerheart);
-    expect(sameSystemRules({ ...rules, defaultWidgets: { hpBar: true, stressBar: true } }, daggerheart.rules)).toBe(true);
-    expect(sameSystemRules({ ...rules, resources: rules.resources.map((r) => ({ ...r, visibleToPlayers: true })) }, daggerheart.rules)).toBe(true);
-    expect(sameSystemRules({ ...rules, resources: rules.resources.map((r) => ({ ...r, direction: 'fills' as const })) }, daggerheart.rules)).toBe(false);
-    expect(sameSystemRules({ ...rules, defaultWidgets: { initiativeTracker: true } }, daggerheart.rules)).toBe(false);
+    expect(sameSystemRules(daggerheart.rules, { ...rules, defaultWidgets: { hpBar: true, stressBar: true } })).toBe(true);
+    expect(sameSystemRules(daggerheart.rules, { ...rules, resources: rules.resources.map((r) => ({ ...r, visibleToPlayers: true })) })).toBe(true);
+    expect(sameSystemRules(daggerheart.rules, { ...rules, resources: rules.resources.map((r) => ({ ...r, direction: 'fills' as const })) })).toBe(false);
+    expect(sameSystemRules(daggerheart.rules, { ...rules, defaultWidgets: { initiativeTracker: true } })).toBe(false);
   });
 
   it('gives a user preset saved before resources the bars its default widgets switched on', () => {
@@ -289,6 +291,17 @@ describe('parseUserPresets', () => {
   it('reads anything that is not a list as no presets', () => {
     expect(parseUserPresets(undefined)).toEqual([]);
     expect(parseUserPresets({})).toEqual([]);
+  });
+
+  it('keeps a preset whose distance per square a field can show and read back, and drops any other', () => {
+    // 1e999 is what a file's number too large to hold reads as: Infinity.
+    const distances = [0.5, 0.000001, 1_000_000, 0, -5, 0.0000001, 1e23, JSON.parse('1e999') as number, null, '5'];
+    const presets = distances.map((unitDistance, index) => ({
+      ...valid,
+      id: `p${index}`,
+      rules: { ...valid.rules, gridDefaults: { ...valid.rules.gridDefaults, unitDistance } },
+    }));
+    expect(parseUserPresets(presets).map(preset => preset.rules.gridDefaults.unitDistance)).toEqual([0.5, 0.000001, 1_000_000]);
   });
 });
 

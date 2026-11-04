@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MapHotkeyId } from '../../../../keyboard/mapHotkeys'
-import { isHideableToolbarControl, toolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import {
+  isHideableToolbarControl, isToolbarControlId, toolbarUnit, UNDO_BAR_ID, type ToolbarControlId, type ToolbarUnitId,
+} from '../../../../toolbar/toolbarCatalog'
 import { isDefaultToolbarLayout, withControlHidden, withControlShown, type StoredToolbarLayout, type ToolbarLayout } from '../../../../toolbar/toolbarLayout'
 import { useLayoutMotion, type ToolbarChangeCause, type ToolbarMotion } from '../useLayoutMotion'
 import type { ToolbarLayoutAccess } from '../useToolbarLayout'
 import {
-  enteredMessage, finishedMessage, hiddenMessage, movedMessage, positionMessage, refusedMessage, resetMessage, shownMessage,
+  enteredMessage, finishedMessage, fixedPlaceMessage, hiddenMessage, movedMessage, positionMessage, refusedMessage, resetMessage,
+  keyEffect, shownInPlaceMessage, shownMessage,
 } from './toolbarAnnouncements'
 import type { ToolbarEditApi, ToolbarFocusTarget, ToolbarHandleGroup } from './toolbarEditContext'
 import type { ToolbarAnnouncement } from './ToolbarLiveRegion'
@@ -95,8 +98,8 @@ export function useToolbarEditor({ access, store, items, available, hotkeyLabel,
   }, [stop])
 
   const barIds = controlsOf(layout, available, false)
-  const trayIds = controlsOf(layout, available, true)
-  const label = (id: ToolbarControlId): string => toolbarControl(id).label
+  const trayIds: ToolbarUnitId[] = [...(layout.hidden.has(UNDO_BAR_ID) ? [UNDO_BAR_ID] : []), ...controlsOf(layout, available, true)]
+  const label = (id: ToolbarUnitId): string => toolbarUnit(id).label
 
   const change = (cause: ToolbarChangeCause, update: (latest: ToolbarLayout) => ToolbarLayout, then: ToolbarFocusTarget | undefined): void => {
     focusRequest.current = then ?? null
@@ -105,7 +108,7 @@ export function useToolbarEditor({ access, store, items, available, hotkeyLabel,
     commit(update)
   }
 
-  const hide = (id: ToolbarControlId, then?: ToolbarFocusTarget): void => {
+  const hide = (id: ToolbarUnitId, then?: ToolbarFocusTarget): void => {
     if (!isHideableToolbarControl(id)) {
       announce(refusedMessage())
       return
@@ -113,18 +116,22 @@ export function useToolbarEditor({ access, store, items, available, hotkeyLabel,
     if (layout.hidden.has(id)) return
     change('hide', latest => withControlHidden(latest, id), then)
     flights.launch(id, 'bar')
-    announce(hiddenMessage(label(id), hotkeyLabel(toolbarControl(id).hotkey)))
+    announce(hiddenMessage(label(id), hotkeyLabel(toolbarUnit(id).hotkey), keyEffect(id)))
   }
 
-  const show = (id: ToolbarControlId, then?: ToolbarFocusTarget): void => {
+  const show = (id: ToolbarUnitId, then?: ToolbarFocusTarget): void => {
     if (!layout.hidden.has(id)) return
     const bar = controlsOf(withControlShown(layout, id), available, false)
     change('show', latest => withControlShown(latest, id), then)
     flights.launch(id, 'tray')
-    announce(shownMessage(label(id), bar.indexOf(id) + 1, bar.length))
+    announce(isToolbarControlId(id) ? shownMessage(label(id), bar.indexOf(id) + 1, bar.length) : shownInPlaceMessage(label(id)))
   }
 
-  const move = (id: ToolbarControlId, step: ToolbarMove, then?: ToolbarFocusTarget): void => {
+  const move = (id: ToolbarUnitId, step: ToolbarMove, then?: ToolbarFocusTarget): void => {
+    if (!isToolbarControlId(id)) {
+      announce(fixedPlaceMessage(label(id)))
+      return
+    }
     const moved = movedToolbarLayout(layout, barIds, id, step)
     if (!moved) {
       announce(positionMessage(label(id), barIds.indexOf(id) + 1, barIds.length))

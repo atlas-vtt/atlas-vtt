@@ -13,6 +13,7 @@ import {
 } from '../../utils/clockWidget';
 import { WidgetIconGlyph } from './WidgetIconGlyph';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
+import { t } from '../../i18n';
 
 interface ClockWidgetDisplayProps {
   widget: ClockWidget;
@@ -80,7 +81,7 @@ export function ClockWidgetDisplay({
       </div>
       <div className="atlas-widget-content">
         <div className="atlas-widget-value-row">
-          <LabelTooltip label="Clear a segment">
+          <LabelTooltip label={t('clock.clear')}>
             <button onClick={() => step(-1)} className="atlas-widget-btn">
               <Minus />
             </button>
@@ -105,7 +106,7 @@ export function ClockWidgetDisplay({
               </text>
             )}
           </svg>
-          <LabelTooltip label="Fill a segment">
+          <LabelTooltip label={t('clock.fill')}>
             <button onClick={() => step(1)} className="atlas-widget-btn">
               <Plus />
             </button>

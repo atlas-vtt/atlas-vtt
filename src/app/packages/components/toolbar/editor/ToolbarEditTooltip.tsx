@@ -2,7 +2,7 @@ import React, { useRef } from 'react'
 import { motion } from 'framer-motion'
 import { namesHotkey } from '../../../../keyboard/mapHotkeys'
 import { useHotkeyLabels } from '../../../../keyboard/useMapHotkeys'
-import { toolbarControl } from '../../../../toolbar/toolbarCatalog'
+import { toolbarUnit } from '../../../../toolbar/toolbarCatalog'
 import { useEditTooltip } from './useEditTooltip'
 
 interface ToolbarEditTooltipProps {
@@ -21,7 +21,7 @@ export function ToolbarEditTooltip({ active }: ToolbarEditTooltipProps): React.R
   const cardRef = useRef<HTMLDivElement>(null)
   const hotkeyLabel = useHotkeyLabels()
   const { content, image, motion: cardMotion } = useEditTooltip(cardRef, active)
-  const control = content ? toolbarControl(content.id) : null
+  const control = content ? toolbarUnit(content.id) : null
   const hotkey = control ? hotkeyLabel(control.hotkey) : ''
 
   return (

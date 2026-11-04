@@ -1,5 +1,6 @@
 import { App } from 'obsidian';
 import { DataFileMigration } from '../utils/dataFileMigration';
+import { LIBRARY_FILE } from '../services/library/libraryPaths';
 
 // `.atlas-data` is a dot folder, which the Vault API does not index, hence the adapter.
 const MIGRATION_FLAG_PATH = 'atlas-vtt/.atlas-data/migration-completed.json';
@@ -25,8 +26,14 @@ async function clearStaleMigrationFlag(app: App): Promise<void> {
   }
 }
 
-/** Moves plugin data files from their legacy locations into `atlas-vtt/.atlas-data`. */
+/**
+ * Moves plugin data files from their legacy locations into `atlas-vtt/.atlas-data`.
+ * A vault whose library is in its files was set up by this version: a device
+ * joining it (sync carries no `.atlas-data`, so no flag either) must not hide
+ * synced files, which sync would then delete on every other device.
+ */
 export async function runStartupMigration(app: App): Promise<void> {
+  if (await app.vault.adapter.exists(LIBRARY_FILE)) return;
   await clearStaleMigrationFlag(app);
 
   const migration = new DataFileMigration(app);

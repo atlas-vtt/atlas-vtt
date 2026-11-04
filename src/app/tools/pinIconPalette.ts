@@ -11,6 +11,7 @@ import type { PinLabelKind } from './pinLabels';
 import { setPinGlyph, setPinTone } from './pinIconDom';
 import { createPinPlaceFlyout } from './pinPlaceFlyout';
 import './pin-icon-palette.scss';
+import { t } from '../i18n';
 
 export interface PinIconPaletteOptions {
   /** Stored icon of the pin being edited or placed; legacy ids resolve to their current icon. */
@@ -30,7 +31,7 @@ export function createPinIconPalette(container: HTMLElement, options: PinIconPal
   let selected = resolvePinIcon(options.selected);
   const selectedPlace = (): PinIconId | null => (isPlacePinIcon(selected) ? selected : null);
 
-  const row = container.createDiv({ cls: 'pin-icon-row', attr: { role: 'radiogroup', 'aria-label': 'Pin icon' } });
+  const row = container.createDiv({ cls: 'pin-icon-row', attr: { role: 'radiogroup', 'aria-label': t('pin.iconGroup') } });
   const buttons: HTMLButtonElement[] = [];
 
   const showSelection = (): void => {

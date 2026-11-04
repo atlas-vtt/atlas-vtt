@@ -10,6 +10,7 @@ import {
   type WidgetRecord,
 } from '../utils/collectionWidgets';
 import { runUntracked } from '../stores/history';
+import { TimerSessions } from './widgetTimerSessions';
 import { AssetService } from './AssetService';
 import { CollectionWidgetStore } from './CollectionWidgetStore';
 import type { WidgetAnimationPayloads, WidgetAnimationState, WidgetAnimationType } from './widgetAnimationTypes';
@@ -49,12 +50,23 @@ export class WidgetSyncService {
   private stores: Map<string, ViewAtlasStore> = new Map();
   private unsubscribers: Map<string, () => void> = new Map();
   private shown = new WeakMap<ViewAtlasStore, ShownCollectionWidgets>();
+  private timers: TimerSessions;
   private isUpdating = false;
   private animationListeners: Map<string, Set<(state: WidgetAnimationState) => void>> = new Map();
   
   constructor(plugin: Plugin) {
     this.plugin = plugin;
     this.collectionWidgets = new CollectionWidgetStore(AssetService.getInstance(plugin.app));
+    this.timers = new TimerSessions({
+      stores: this.stores,
+      collectionFor: (mapPath) => this.collectionWidgets.collectionFor(mapPath),
+      library: (collectionId) => this.collectionWidgets.get(collectionId),
+      setLibrary: (collectionId, widgets) => this.collectionWidgets.set(collectionId, widgets),
+      editLibrary: (collectionId, edit) => this.editCollectionWidgets(collectionId, edit),
+      writeWidgets: (store, widgets) => this.writeQuietly(store, () => store.setState({
+        widgetSettings: { ...store.getState().widgetSettings, widgets },
+      })),
+    });
     WidgetSyncService.instances.set(plugin.app, this);
   }
 
@@ -109,7 +121,7 @@ export class WidgetSyncService {
     const unsubscribeLoading = store.subscribe(
       (state) => state.isMapLoading,
       (loading) => {
-        if (!loading) this.applyCollectionWidgets(store);
+        if (!loading) this.applyCollectionWidgets(viewId, store);
       }
     );
     // A scene moved to another collection while open, e.g. in the file explorer, swaps its collection widgets.
@@ -135,15 +147,30 @@ export class WidgetSyncService {
     this.unsubscribers.get(viewId)?.();
     this.unsubscribers.delete(viewId);
     this.stores.delete(viewId);
+    this.timers.forget(viewId);
     
     // Clean up animation listeners
     this.animationListeners.delete(viewId);
   }
 
+  /** Stops the scene's own timers only this view shows; call before the view leaves its scene. */
+  leaveScene(viewId: string): void {
+    this.timers.leaveScene(viewId);
+  }
+
+  /** Stops the timers only this view shows; call as the view closes, before its last save. */
+  closeView(viewId: string): void {
+    this.timers.closeView(viewId);
+  }
+
   /** Adds the collection-wide widgets to a store whose scene has just loaded. */
-  private applyCollectionWidgets(store: ViewAtlasStore): void {
+  private applyCollectionWidgets(viewId: string, store: ViewAtlasStore): void {
+    const left = this.timers.sceneLoaded(viewId, store);
     // The asset index loads once; waiting keeps a scene opened at startup from missing its widgets.
-    void AssetService.getInstance(this.plugin.app).initialize().then(() => this.showCollectionWidgets(store, true));
+    void AssetService.getInstance(this.plugin.app).initialize().then(() => {
+      this.timers.collectionLoaded(viewId, store, left);
+      this.showCollectionWidgets(store, true);
+    });
   }
 
   /** Adds the scene's widgets the library lacks, e.g. from older scenes or scenes moved in, to its collection. */
@@ -219,10 +246,15 @@ export class WidgetSyncService {
     const { widgets, widgetValues } = withCollectionWidgets(current, library);
     this.shown.set(store, { collectionId, widgets: pickLibraryWidgets({ widgets, widgetValues }) });
     if (sameWidgets(widgets, current.widgets) && shallow(widgetValues, current.widgetValues)) return;
+    this.writeQuietly(store, () => store.setState({ widgetSettings: { ...state.widgetSettings, widgets }, widgetValues }));
+  }
+
+  /** A write of the sync itself: never mirrored back to other views, never an undo step. */
+  private writeQuietly(store: ViewAtlasStore, write: () => void): void {
     const wasUpdating = this.isUpdating;
     this.isUpdating = true;
     try {
-      runUntracked(store, () => store.setState({ widgetSettings: { ...state.widgetSettings, widgets }, widgetValues }));
+      runUntracked(store, write);
     } finally {
       this.isUpdating = wasUpdating;
     }
@@ -294,6 +326,9 @@ export class WidgetSyncService {
    */
   destroy(): void {
     WidgetSyncService.instances.delete(this.plugin.app);
+    // Atlas unloads: every view closes, so no timer keeps running
+    for (const viewId of this.stores.keys()) this.closeView(viewId);
+    this.stores.forEach((store) => { void store.flushStorage(); });
     this.collectionWidgets.flush();
     this.unsubscribers.forEach((unsubscribe) => unsubscribe());
     this.unsubscribers.clear();

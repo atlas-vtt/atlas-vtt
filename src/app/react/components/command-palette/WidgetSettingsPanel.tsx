@@ -18,6 +18,7 @@ import { SettingToggleRow } from './SettingRows';
 import { WidgetEditorForm, type WidgetDraft } from './WidgetEditorForm';
 import { WidgetListItem } from './WidgetListItem';
 import { widgetRows, type WidgetRow } from './widgetRows';
+import { t } from '../../../i18n';
 
 interface WidgetSettingsPanelProps {
   widgetSettings: ViewAtlasState['widgetSettings'];
@@ -143,7 +144,7 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
   return (
     <div className="atlas-command-palette-panel">
       <div className="atlas-command-palette-panel-column">
-        <SettingToggleRow label="Show all widgets" value={globalVisible} onToggle={toggleGlobalVisible} />
+        <SettingToggleRow label={t('widgets.showAll')} value={globalVisible} onToggle={toggleGlobalVisible} />
 
         <div className="atlas-command-palette-collapsible">
           <button
@@ -154,7 +155,7 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
           >
             <span className="atlas-command-palette-collapsible-title">
               <Swords />
-              <span>Initiative tracker</span>
+              <span>{t('widgets.initiativeTracker')}</span>
             </span>
             <ChevronDown className={cn('atlas-command-palette-collapsible-chevron', initiativeExpanded && 'atlas-open')} />
           </button>
@@ -162,12 +163,12 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
           {initiativeExpanded && (
             <div className="atlas-command-palette-collapsible-content">
               <SettingToggleRow
-                label="Show initiative tracker"
+                label={t('widgets.showInitiative')}
                 value={initiativeTrackerOpen}
                 onToggle={() => setInitiativeTrackerOpen(!initiativeTrackerOpen)}
               />
               <SettingToggleRow
-                label="Auto-sort by initiative"
+                label={t('widgets.autoSort')}
                 value={autoSort}
                 onToggle={() => setInitiativeConfig({ autoSort: !autoSort })}
               />
@@ -179,12 +180,12 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
       <div className="atlas-command-palette-panel-column">
         {editorOpen ? (
           <div className="atlas-setting-group">
-            <span className="atlas-setting-label">{editingWidget ? 'Edit widget' : 'New widget'}</span>
+            <span className="atlas-setting-label">{editingWidget ? t('widgets.edit') : t('widgets.new')}</span>
             <WidgetEditorForm
               key={editingWidget?.id ?? 'new'}
               {...(editingWidget ? { initial: editingWidget } : {})}
               canShareWithCollection={collectionId !== null}
-              submitLabel={editingWidget ? 'Save' : 'Add widget'}
+              submitLabel={editingWidget ? t('common.save') : t('widgets.add')}
               onSubmit={handleSubmit}
               onCancel={closeEditor}
             />
@@ -192,8 +193,8 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
         ) : (
         <div className="atlas-setting-group">
           <div className="atlas-setting-group atlas-setting-group--row">
-            <span className="atlas-setting-label">Widgets</span>
-            <LabelTooltip label="Add widget">
+            <span className="atlas-setting-label">{t('widgets.heading')}</span>
+            <LabelTooltip label={t('widgets.add')}>
               <Button
                 variant="ghost"
                 size="icon"
@@ -205,7 +206,7 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
             </LabelTooltip>
           </div>
           {rows.length === 0 && (
-            <span className="atlas-setting-hint">No widgets yet. Add a counter, clock or timer with the plus button.</span>
+            <span className="atlas-setting-hint">{t('widgets.empty')}</span>
           )}
           <div className="atlas-command-palette-widget-list">
             {rows.map((row) => (

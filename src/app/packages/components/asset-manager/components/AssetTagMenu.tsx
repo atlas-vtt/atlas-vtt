@@ -7,6 +7,7 @@ import { useExclusiveDropdown } from '../../primitives/useExclusiveDropdown';
 import type { AnyAsset } from '../types';
 import { AssetTagPicker } from './AssetTagPicker';
 import { useAssetTagMenuActions } from './assetTagMenuContext';
+import { t } from '../../../../i18n';
 
 const stop = (event: React.SyntheticEvent): void => event.stopPropagation();
 
@@ -28,7 +29,7 @@ export const AssetTagMenu = memo(function AssetTagMenu({ asset }: { asset: AnyAs
 
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen} modal={false}>
-      <LabelTooltip label={count === 0 ? 'Add tags' : count === 1 ? '1 tag' : `${count} tags`}>
+      <LabelTooltip label={count === 0 ? t('am.tagMenu.add') : t('am.tagMenu.count', { count })}>
         <DropdownMenu.Trigger asChild>
           <button
             ref={setTrigger}

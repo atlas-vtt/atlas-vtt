@@ -1,10 +1,13 @@
 import type { CreatureFilterKind } from '../types/creatureFilterTypes';
 import type { IndexedCreature } from './CreatureIndex';
 import { formatRating, optionKey, parseOptions, parseRating } from './creatureValues';
+import { IGNORED_FIELDS } from './ignoredFields';
 
 /** A statblock field worth filtering by, as found in a collection's statblocks. */
 export interface DiscoveredField {
   field: string;
+  /** The name a role template gives the field; unset for a field found only in statblocks. */
+  label?: string;
   /** Statblocks with a value for it. */
   count: number;
   /** A scale when nearly every value is a number, otherwise categories. */
@@ -13,13 +16,7 @@ export interface DiscoveredField {
   samples: string[];
 }
 
-/** Fields that identify, place or render a statblock rather than describe the creature. */
-export const IGNORED_FIELDS: ReadonlySet<string> = new Set([
-  'name', 'image', 'token-image', 'token', 'statblock', 'statblock-link', 'layout', 'path', 'extends', 'bestiary',
-  'note', 'columns', 'mtime', 'monster', 'creature', 'aliases', 'cssclasses', 'cssclass', 'player', 'position',
-  // Marks a note as a statblock (`atlas-type: statblock`); says nothing about the creature.
-  'atlas-type',
-]);
+export { IGNORED_FIELDS };
 
 /** Values that are a rating and nothing else: "3", "1/4", "½", "Creature 3", "3+1*", "7 (2d6)", "+2". */
 const RATING_ONLY = /^\s*(?:\p{L}+\s+)?(?:[-−+]?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?|[½⅓⅔¼¾⅛⅜⅝⅞])(?:\s*[+\-−]\s*\d+)?\**(?:\s*\([^)]*\))?\s*$/u;

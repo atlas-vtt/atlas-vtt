@@ -1,0 +1,136 @@
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+// Atlas files embedded in notes and shown in link hover previews
+// (AtlasLinkEmbed.ts), in the look of a note pin's map preview
+// (map-link-preview.scss): the art edge to edge and its name over a shade
+// along the bottom. They render inside Obsidian's `.internal-embed`, outside
+// .atlas-vtt-plugin, hence the top-level classes.
+
+$embed-token-size: 56px;
+// Room the caption takes over the art: its padding and two lines of text
+$embed-caption-height: calc(2 * #{$spacing-m} + 2.6em);
+
+.atlas-link-embed {
+  display: block;
+  max-width: 420px;
+}
+
+.atlas-link-embed__card {
+  position: relative;
+  overflow: hidden;
+  border-radius: $radius-xl;
+  @include atlas-corner-shape;
+}
+
+.atlas-link-embed__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--background-secondary);
+}
+
+// A strip of tokens instead of a picture, kept clear of the caption below it
+.atlas-link-embed__art--tokens {
+  aspect-ratio: auto;
+  padding-bottom: $embed-caption-height;
+}
+
+.atlas-link-embed__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.atlas-link-embed__art-icon {
+  display: flex;
+  color: var(--text-faint);
+  --icon-size: 32px;
+}
+
+.atlas-link-embed__tokens {
+  display: flex;
+  align-items: center;
+  gap: $spacing-m;
+  padding: $spacing-m;
+}
+
+.atlas-link-embed__token {
+  flex: none;
+  width: $embed-token-size;
+}
+
+.atlas-link-embed__overflow {
+  color: var(--text-muted);
+  font-size: $font-ui-small;
+}
+
+// The name over a shade that keeps it readable on any art
+.atlas-link-embed__caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: $spacing-m;
+  padding: $spacing-m;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.35) 60%, transparent 100%);
+  color: #fff;
+}
+
+.atlas-link-embed__text {
+  flex: 1;
+  min-width: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.atlas-link-embed__title,
+.atlas-link-embed__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-link-embed__title {
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-link-embed__meta {
+  opacity: 0.75;
+  font-size: $font-ui-smaller;
+}
+
+// Shown while the pointer is over the card, or the button has keyboard focus
+.atlas-link-embed__action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  opacity: 0;
+  transition: opacity $transition-normal $transition-ease-out;
+
+  .atlas-link-embed__card:hover &,
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  // Touch has no hover: the button always shows
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
+// A menu of the other ways to hand the file to Atlas: the button's own height, square
+.atlas-link-embed__more {
+  justify-content: center;
+}
+
+.atlas-link-embed__action-icon {
+  display: flex;
+  --icon-size: var(--icon-s);
+}

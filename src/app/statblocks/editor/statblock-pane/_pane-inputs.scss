@@ -1,0 +1,293 @@
+// Values edited in place (§6.3): at rest no chrome, a hover wash that changes
+// no box; while editing, a borderless input in the value's own typographic
+// spot, and the selection ring around what is being typed: the card keeps its look.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  // A block with values to edit. The wash reaches past the block by a shadow, never a margin.
+  .atlas-sb-sheet .atlas-sb-item.atlas-sb-pane-value {
+    cursor: text;
+
+    border-radius: $radius-s;
+
+    // A Metric keeps its own box's corners, and the wash fills that box and reaches no further.
+    &[data-block='metric'] {
+      border-radius: $radius-l;
+    }
+
+    // A list that holds abilities washes the one pointed at (interaction.scss); a Table, as Obsidian's, washes nothing.
+    &:hover:not(:has([data-item-key], [data-table-live])) {
+      background-color: var(--background-modifier-hover);
+
+      &:not([data-block='metric']) {
+        box-shadow: 0 0 0 $spacing-xs var(--background-modifier-hover);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--background-modifier-border-focus);
+      outline-offset: $spacing-xs;
+    }
+  }
+
+  // Inputs take the font, size, weight and line of the text they stand in for.
+  :is(input, textarea).atlas-sb-pane-input {
+    appearance: none;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    line-height: inherit;
+    height: auto;
+    min-width: 2ch;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    field-sizing: content;
+    vertical-align: baseline;
+
+    // An empty value's prompt, as `.atlas-sb-prompt` draws it at rest.
+    &::placeholder {
+      color: var(--text-faint);
+      font-style: normal;
+      font-weight: $font-weight-normal;
+      opacity: 1;
+    }
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      border: none;
+      box-shadow: none;
+    }
+
+    &.has-problem {
+      box-shadow: 0 1px 0 var(--text-warning);
+    }
+  }
+
+  // Typed where the value stands: centred in a Metric's column.
+  .atlas-sb-metric .atlas-sb-pane-input {
+    text-align: center;
+  }
+
+  textarea.atlas-sb-pane-input {
+    display: block;
+    width: 100%;
+    resize: none;
+  }
+
+  // A block's values. At rest the slot takes no box. While they are edited they stay mounted under the
+  // inputs, hidden, in the same grid cell: the inputs never take less room than the value or prompt they
+  // stand in for, and take more only when what is typed needs it. The hidden values keep the line's baseline.
+  .atlas-sb-pane-slot,
+  .atlas-sb-pane-slot__rest {
+    display: contents;
+  }
+
+  .atlas-sb-pane-slot--editing {
+    display: inline-grid;
+    align-items: baseline;
+    max-width: 100%;
+    vertical-align: baseline;
+
+    > * {
+      grid-area: 1 / 1;
+      min-width: 0;
+    }
+
+    // Laid out as the values are at rest: each one a box of its own line height, side by side.
+    > .atlas-sb-pane-slot__rest {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    // Values that are blocks (paragraphs, a table, a list) span the block, as they do at rest; the input stands at their top.
+    &.atlas-sb-pane-slot--blocks {
+      display: grid;
+      align-items: start;
+
+      > .atlas-sb-pane-slot__rest {
+        display: block;
+      }
+    }
+  }
+
+  // The sheet spaces a spells block's parts as siblings (`> * + *`, _sheet-lists.scss); the slot's wrappers
+  // take no box at rest, so the spacing reaches through them to the values.
+  .atlas-sb-sheet .atlas-sb-spells-block {
+    > * + .atlas-sb-pane-slot:not(.atlas-sb-pane-slot--editing) > .atlas-sb-pane-slot__rest > :first-child,
+    .atlas-sb-pane-slot__rest > * + * {
+      margin-top: $spacing-s;
+    }
+  }
+
+  // The inputs take the value's own type (the editor is an `.atlas-sb-value`, as the values are).
+  .atlas-sb-pane-editor {
+    display: block;
+  }
+
+  // The value's own text is the field's least width: no floor of the input's own widens a short value,
+  // nor an empty list's, whose prompt it shows.
+  .atlas-sb-pane-editor > .atlas-sb-pane-field > input.atlas-sb-pane-input,
+  .atlas-sb-pane-editor > textarea.atlas-sb-pane-input,
+  .atlas-sb-pane-editor .atlas-sb-pane-chips > input.atlas-sb-pane-chips__input:only-child,
+  .atlas-sb-pane-editor .atlas-sb-pane-chips > .atlas-sb-pane-pick__add:only-child > input.atlas-sb-pane-chips__input {
+    min-width: 0;
+  }
+
+  // A lone field spans its slot, so all of the value's place takes the pointer.
+  .atlas-sb-pane-editor > .atlas-sb-pane-field:only-child {
+    display: flex;
+
+    > .atlas-sb-pane-input {
+      flex: 1 1 auto;
+    }
+  }
+
+  // The ring of what is being typed: a value's block (§6.3). An ability's fields and a Table's cell have their own.
+  .atlas-sb-sheet .atlas-sb-item.atlas-sb-pane-editing:not(.atlas-sb-pane-editing--list, .atlas-sb-pane-editing--table) {
+    border-radius: $radius-s;
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: $spacing-xs;
+
+    &[data-block='metric'] {
+      border-radius: $radius-l;
+    }
+  }
+
+  .atlas-sb-pane-field {
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    gap: $spacing-xs;
+    max-width: 100%;
+  }
+
+  .atlas-sb-pane-hint {
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-normal;
+    white-space: nowrap;
+  }
+
+  // A value kept as typed though it does not fit its type.
+  .atlas-sb-pane-warning {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-inline-start: $spacing-xs;
+    vertical-align: middle;
+    border-radius: $radius-full;
+    background: var(--text-warning);
+    @include atlas-focus-ring;
+  }
+
+  // A value the template works out while its own property is empty: drawn as the card draws it.
+  .atlas-sb-pane-derived {
+    cursor: help;
+  }
+
+  // "Changed in the note: 14 → 18", Keep mine, Use the note's.
+  .atlas-sb-pane-conflict {
+    @include atlas-flex-row($spacing-xs);
+    flex-wrap: wrap;
+    margin-inline-start: $spacing-s;
+    padding: 0 0 0 $spacing-s;
+    border-radius: $radius-full;
+    background: color-mix(in oklch, var(--text-warning) 14%, transparent);
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    font-style: normal;
+    font-weight: $font-weight-normal;
+
+    .btn--sm {
+      height: $button-height-s;
+      padding: 0 $spacing-s;
+      border-radius: $radius-full;
+      font-size: $font-ui-smaller;
+    }
+  }
+
+  // ── Choice ──────────────────────────────────────────────────────────────
+  // The options of a choice, under its input: a menu surface that grows in by opacity and scale.
+  .atlas-sb-pane-options {
+    @include atlas-flex-col(2px);
+    @include atlas-keep-in-view;
+    position: absolute;
+    top: calc(100% + #{$spacing-xs});
+    left: 0;
+    z-index: $z-popover;
+    min-width: 160px;
+    max-height: 300px;
+    padding: $spacing-xs;
+    overflow-y: auto;
+    background: var(--menu-background);
+    border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
+    border-radius: $radius-xl;
+    box-shadow: var(--menu-shadow, #{$shadow-md});
+    font-style: normal;
+    font-weight: $font-weight-normal;
+    transform-origin: top left;
+    transition: opacity 150ms $transition-ease-out, transform 150ms $transition-ease-out;
+
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  // The dropdown's mark: the list opens with the input, as a select's does.
+  .atlas-sb-pane-choice__chevron {
+    flex: none;
+    align-self: center;
+    width: $icon-xs;
+    height: $icon-xs;
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  // A lone dropdown hangs its mark past its end, so the value keeps its width. Where another value may
+  // follow at once (a stat over its label, values side by side) there is no room for it: the list that
+  // opens under the input is the mark there.
+  .atlas-sb-pane-editor > .atlas-sb-pane-choice:only-child > .atlas-sb-pane-choice__chevron,
+  .atlas-sb-pane-editor > .atlas-sb-pane-choice:only-child > .atlas-sb-pane-pick__add > .atlas-sb-pane-choice__chevron {
+    position: absolute;
+    top: 50%;
+    inset-inline-start: calc(100% + #{$spacing-xs});
+    translate: 0 -50%;
+  }
+
+  :is(.atlas-sb-labelled--stacked, .atlas-sb-row, .atlas-sb-metric) .atlas-sb-pane-editor > .atlas-sb-pane-choice:only-child .atlas-sb-pane-choice__chevron {
+    display: none;
+  }
+
+  // Rows of the context-menu look, without the select's `!important` resets: they are no buttons.
+  .atlas-sb-pane-option {
+    @include atlas-flex-row($spacing-s);
+    height: var(--input-height);
+    padding: 0 $spacing-s;
+    border-radius: $radius-m;
+    color: var(--text-normal);
+    font-size: $font-ui-small;
+    cursor: pointer;
+
+    &:hover,
+    &.is-active {
+      background-color: var(--background-modifier-hover);
+    }
+  }
+}

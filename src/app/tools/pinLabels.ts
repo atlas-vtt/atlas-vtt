@@ -7,17 +7,26 @@ export function isPinLabelKind(icon: string | undefined): icon is PinLabelKind {
   return icon === 'number' || icon === 'letter';
 }
 
+/** The number a label ends with ("12", "A12" of a keyed floor), or null for one that ends with none. */
+function trailingNumber(label: string): number | null {
+  const digits = /(\d+)$/.exec(label)?.[1];
+  return digits === undefined ? null : Number(digits);
+}
+
 /**
  * Next label of a sequence: one past the highest label in use, so a deleted
- * pin's label is never reissued and keyed notes ("Room 3") stay valid.
+ * pin's label is never reissued and keyed notes ("Room 3") stay valid. Number
+ * pins continue from the highest number a label ends with, so after a
+ * generated dungeon's "A1" … "B7" the next is "8"; letter pins count only
+ * labels of letters alone.
  */
 export function nextPinLabel(pins: Record<string, NotePin>, kind: PinLabelKind): string {
   const used = Object.values(pins).flatMap((pin) => (pin.icon === kind && pin.label ? [pin.label] : []));
 
   if (kind === 'number') {
-    return String(Math.max(0, ...used.map(Number)) + 1);
+    return String(Math.max(0, ...used.flatMap((label) => trailingNumber(label) ?? [])) + 1);
   }
-  return nextLetterLabel(used);
+  return nextLetterLabel(used.filter((label) => /^[A-Z]+$/.test(label)));
 }
 
 /**

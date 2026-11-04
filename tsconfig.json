@@ -35,6 +35,8 @@
     "*.mts",
     "*.cjs",
     "vite/**/*.mts",
-    "scripts/**/*.js"
+    "scripts/**/*.js",
+    "scripts/**/*.mjs",
+    "scripts/**/*.d.ts"
   ]
 }

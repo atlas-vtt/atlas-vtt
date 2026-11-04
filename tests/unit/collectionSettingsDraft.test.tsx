@@ -1,8 +1,10 @@
+// @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { draftResourceKey } from '../../src/app/resources/resourceDefinitions';
 import { useCollectionSettingsDraft } from '../../src/app/react/components/collection-settings/useCollectionSettingsDraft';
+import { draftRoleId } from '../../src/app/statblocks/roles/roleValidation';
 import type { AssetService } from '../../src/app/services/AssetService';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 import type { SystemPreset } from '../../src/app/types/systemPresetTypes';
@@ -198,4 +200,50 @@ it('follows the game system\'s initiative rules until the collection has its own
   act(() => result.current.setInitiative(own));
   act(() => result.current.clearSystem());
   expect(result.current.toSettings()).toHaveProperty('initiative', undefined);
+});
+
+describe('statblock roles', () => {
+  const hag = { id: 'hag', name: 'Hag', templateId: 'marsh-hag-k7m2qa' };
+  const { statblockRoles: _roles, ...withoutRoles } = structuredClone(dnd5e.rules);
+
+  it('loads the collection\'s own roles, without what cannot be used, and saves them with their folders', () => {
+    const { result } = draftFor({ ...withoutRoles, statblockRoles: [hag, { name: 'No id' }] as never, statblockRoleFolders: { hag: ' Bestiary/Hags ' }, systemPresetId: dnd5e.id });
+    expect(result.current.statblockRoles).toEqual([hag]);
+    expect(result.current.toSettings()).toMatchObject({ statblockRoles: [hag], statblockRoleFolders: { hag: 'Bestiary/Hags' } });
+  });
+
+  it('has none of its own in a collection that follows its preset, and saves none, explicitly', () => {
+    const { result } = draftFor({ ...withoutRoles, statblockRoles: [], systemPresetId: dnd5e.id });
+    expect(result.current.statblockRoles).toBeUndefined();
+    expect(result.current.toSettings()).toHaveProperty('statblockRoles', undefined);
+    expect(result.current.toSettings()).toHaveProperty('statblockRoleFolders', undefined);
+  });
+
+  it('gives a role added in the dialog its id from its name when saved', () => {
+    const { result } = draftFor({ ...withoutRoles, systemPresetId: dnd5e.id });
+    act(() => result.current.setStatblockRoles([...dnd5e.rules.statblockRoles!, { id: draftRoleId(), name: ' Lair ', templateId: 'builtin:generic-hazard' }]));
+    expect(result.current.toSettings().statblockRoles?.map((role) => [role.id, role.name])).toEqual([['monster', 'Monster'], ['npc', 'NPC'], ['lair', 'Lair']]);
+  });
+
+  it('drops its own roles but keeps their folders when a preset is applied', () => {
+    const { result } = draftFor({ ...withoutRoles, statblockRoles: [hag], statblockRoleFolders: { hag: 'Hags', monster: 'Monsters' }, systemPresetId: shadowdark.id });
+    act(() => result.current.applyPreset(dnd5e));
+    expect(result.current.toSettings()).toHaveProperty('statblockRoles', undefined);
+    expect(result.current.toSettings().statblockRoleFolders).toEqual({ hag: 'Hags', monster: 'Monsters' });
+  });
+
+  it('are cleared with the game system, and the folders stay', () => {
+    const { result } = draftFor({ ...withoutRoles, statblockRoles: [hag], statblockRoleFolders: { creature: 'Creatures' }, systemPresetId: dnd5e.id });
+    act(() => result.current.clearSystem());
+    expect(result.current.toSettings()).toHaveProperty('statblockRoles', undefined);
+    expect(result.current.toSettings().statblockRoleFolders).toEqual({ creature: 'Creatures' });
+  });
+
+  it('saves a folder chosen for an inherited role without storing the roles, and none once it is cleared', () => {
+    const { result } = draftFor({ ...withoutRoles, systemPresetId: dnd5e.id });
+    act(() => result.current.setStatblockRoleFolders({ monster: 'Bestiary' }));
+    expect(result.current.toSettings()).toMatchObject({ statblockRoles: undefined, statblockRoleFolders: { monster: 'Bestiary' } });
+    act(() => result.current.setStatblockRoleFolders({ monster: ' ' }));
+    expect(result.current.toSettings()).toHaveProperty('statblockRoleFolders', undefined);
+  });
 });

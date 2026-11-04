@@ -1,7 +1,8 @@
-import { parseYaml, TFile, type App } from 'obsidian';
+import { TFile, type App } from 'obsidian';
 import { baseViewNames, lootQueryConfig } from './lootBaseQuery';
 import { toLootItems, type LootItem } from './lootItem';
 import { LootBaseQuery, lootBasesAvailable } from './lootQueryView';
+import { parseNoteYaml } from '../services/noteYaml';
 
 /**
  * Where a view's items stand: `loading` until Obsidian first ran its query,
@@ -53,7 +54,7 @@ function sameItems(a: readonly LootItem[], b: readonly LootItem[]): boolean {
 /** The parsed base file, or null when it is no valid YAML. */
 export function readBase(text: string, path: string): unknown {
   try {
-    return parseYaml(text);
+    return parseNoteYaml(text);
   } catch (error) {
     console.warn(`[Atlas] Could not read the base ${path}:`, error);
     return null;

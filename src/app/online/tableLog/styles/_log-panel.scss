@@ -1,0 +1,241 @@
+// The panel: floating at the left edge where Atlas's dice log stands, or filling a sheet; its header,
+// the list's frame, the line between days, and the way down.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+.atlas-online-log {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+  box-sizing: border-box;
+  min-height: 0;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: $font-ui-small;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+// Place, size and motion of Atlas's dice log.
+.atlas-online-log--floating {
+  position: fixed;
+  left: $log-edge;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(#{$log-width}, calc(100vw - 2 * #{$log-edge}));
+  height: 80vh;
+  padding: $spacing-s;
+  z-index: $z-dropdown;
+  pointer-events: auto;
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+  animation: atlas-online-log-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+// In a sheet, which has the surface, the title and the close button. Its cards and the message
+// field take the radius of a panel's inner elements.
+.atlas-online-log--embedded {
+  --atlas-panel-inner-radius: calc(#{$radius-xl} + #{$spacing-s});
+  height: 100%;
+}
+
+.atlas-online-log {
+  // Reaches past the panel's padding to its top-right corner, where the close button belongs.
+  .atlas-online-log__header {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-s;
+    @include atlas-close-header(0);
+    margin: calc(-1 * #{$spacing-s}) calc(-1 * #{$spacing-s}) 0 0;
+  }
+
+  .atlas-online-log__title {
+    flex: 1;
+    padding-left: $spacing-xs;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .atlas-online-log__actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  // The same size as the close button beside them.
+  .atlas-online-log__action {
+    @include atlas-control-icon-button;
+
+    &.is-pinned {
+      color: var(--interactive-accent);
+    }
+  }
+
+  // Atlas's controls keep their size; fingers get a full target around each.
+  #{$log-coarse} & .atlas-online-log__header .btn {
+    @include log-wide-target;
+  }
+
+  // Far enough apart that the full targets of two neighbours do not lie over each other.
+  #{$log-coarse} & .atlas-online-log__header,
+  #{$log-coarse} & .atlas-online-log__actions {
+    gap: calc(#{$log-target} - var(--input-height));
+  }
+
+  // "Clear the log for everyone?", in the title's place.
+  .atlas-online-log__ask {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: $spacing-xs;
+    min-width: 0;
+    padding-left: $spacing-xs;
+  }
+
+  .atlas-online-log__ask-text {
+    flex: 1;
+    font-size: $font-ui-smaller;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__ask-button.btn {
+    flex: none;
+    padding: 0 $spacing-s;
+    color: var(--text-muted);
+
+    &:hover {
+      color: var(--text-normal);
+    }
+  }
+
+  .atlas-online-log__ask-button--danger.btn,
+  .atlas-online-log__ask-button--danger.btn:hover {
+    color: var(--text-error);
+  }
+
+  .atlas-online-log__body {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  // The scrollbar is hidden, as in the dice log; the list still scrolls.
+  .atlas-online-log__list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    outline: none;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // A short log stands on the message field, not under the header.
+  .atlas-online-log__rows {
+    display: flex;
+    flex-direction: column;
+    margin-top: auto;
+  }
+
+  .atlas-online-log__empty {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-s;
+    padding: $spacing-s;
+    color: var(--text-faint);
+    font-size: $font-ui-small;
+    text-align: center;
+
+    svg {
+      width: $icon-l;
+      height: $icon-l;
+      opacity: 0.4;
+    }
+  }
+
+  .atlas-online-log__day {
+    display: flex;
+    align-items: center;
+    gap: $spacing-s;
+    padding: $spacing-s $spacing-s 0;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: $border-width-s;
+      background: var(--background-modifier-border);
+    }
+  }
+
+  .atlas-online-log__item:first-child .atlas-online-log__day {
+    padding-top: 0;
+  }
+
+  // The way down: rises from the list's lower edge and sinks back.
+  .atlas-online-log__jump {
+    @include log-button;
+    position: absolute;
+    left: 50%;
+    bottom: $spacing-s;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    height: $button-height-m;
+    padding: 0 $spacing-m;
+    @include atlas-elevated-surface;
+    border-radius: $radius-full;
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translate(-50%, #{$spacing-s});
+    pointer-events: none;
+    transition: opacity 150ms ease-out, transform $transition-normal $transition-ease-out;
+    @include log-button-states(var(--background-primary), $shadow-md);
+
+    &.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+      pointer-events: auto;
+    }
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+      color: var(--interactive-accent);
+    }
+
+    #{$log-coarse} & {
+      height: $log-target;
+    }
+  }
+}

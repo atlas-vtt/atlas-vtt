@@ -10,6 +10,9 @@ import { filterStatblockEntries } from './statblock-link/statblockEntries';
 import { StatblockList } from './statblock-link/StatblockList';
 import { StatblockPreviewPane, type StatblockPreviewToken } from './statblock-link/StatblockPreviewPane';
 import { useStatblockEntries, type BestiaryStatus } from './statblock-link/useStatblockEntries';
+import { NewStatblockButton } from '../../../statblocks/editor/create/RoleMenu';
+import type { NewStatblockOption } from '../../../statblocks/editor/create/roleChoices';
+import { t } from '../../../i18n';
 
 interface StatblockLinkModalProps {
   isOpen: boolean;
@@ -18,10 +21,12 @@ interface StatblockLinkModalProps {
   asset: StatblockPreviewToken & { statblockPath?: string | undefined };
   onLink: (statblockPath: string | null) => void;
   app: App;
+  /** "New statblock…" at the dialog's end, made for this token; absent while the statblock editor is off. */
+  newStatblock?: NewStatblockOption | undefined;
 }
 
 const EMPTY_MESSAGES: Record<Exclude<BestiaryStatus, 'loading'>, React.ReactNode> = {
-  missing: 'Install and enable the Fantasy Statblocks plugin to link statblocks.',
+  missing: t('am.link.missing'),
   ready: (
     <>
       No statblock notes found. Add a statblock code block to a note (<code>monster: Goblin</code> is enough for a
@@ -32,7 +37,7 @@ const EMPTY_MESSAGES: Record<Exclude<BestiaryStatus, 'loading'>, React.ReactNode
 
 /** What the list says when it has no rows; nothing while the creatures are read, when placeholder rows stand in. */
 function emptyMessage(hasEntries: boolean, status: BestiaryStatus): React.ReactNode {
-  if (hasEntries) return 'No statblocks match your search.';
+  if (hasEntries) return t('sbImport.noMatch');
   return status === 'loading' ? null : EMPTY_MESSAGES[status];
 }
 
@@ -41,7 +46,7 @@ function emptyMessage(hasEntries: boolean, status: BestiaryStatus): React.ReactN
  * selected creature's statblock on the right. Arrow keys move through the
  * results, Enter or a double click links.
  */
-const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose, asset, onLink, app }) => {
+const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose, asset, onLink, app, newStatblock }) => {
   const { entries, status } = useStatblockEntries(app);
   const linkedPath = asset.statblockPath || null;
   const [query, setQuery] = useState('');
@@ -50,7 +55,9 @@ const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose
   const inputRef = useRef<HTMLInputElement>(null);
   const idPrefix = useId();
   const windowVariants = useDialogWindowVariants();
-  useDialogEscape(dialogRef, isOpen ? onClose : undefined);
+  // While the role menu is open, Escape closes the menu only.
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  useDialogEscape(dialogRef, isOpen && !roleMenuOpen ? onClose : undefined);
 
   const results = useMemo(() => filterStatblockEntries(entries, query), [entries, query]);
   // A selection the search hides gives way to the first result.
@@ -85,6 +92,12 @@ const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose
   if (!isOpen) return null;
 
   const hasEntries = entries.length > 0;
+  const unlinkButton = linkedPath && (
+    <Button variant="ghost" size="sm" className="atlas-statblock-link__unlink" onClick={() => link(null)}>
+      <Unlink />
+      {t('am.link.unlink')}
+    </Button>
+  );
 
   return (
     <motion.div {...dialogOverlayMotion} className="atlas-modal-overlay" onClick={onClose}>
@@ -99,7 +112,7 @@ const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose
       >
         <div className="atlas-modal-header">
           <div className="atlas-statblock-link__heading">
-            <h2 id={`${idPrefix}-title`}>Link Statblock</h2>
+            <h2 id={`${idPrefix}-title`}>{t('am.link.title')}</h2>
             <span className="atlas-statblock-link__subtitle">For {asset.name}</span>
           </div>
           <CloseButton onClick={onClose} />
@@ -110,7 +123,7 @@ const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose
             <div className="atlas-statblock-link__search">
               <Search aria-hidden />
               {/* Named without aria-label, which Obsidian shows as its own tooltip. */}
-              <span id={`${idPrefix}-search-label`} hidden>Search statblocks</span>
+              <span id={`${idPrefix}-search-label`} hidden>{t('am.link.search')}</span>
               <input
                 ref={inputRef}
                 type="text"
@@ -119,7 +132,7 @@ const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose
                 aria-controls={`${idPrefix}-list`}
                 aria-activedescendant={activeIndex >= 0 ? optionId(activeIndex) : undefined}
                 aria-labelledby={`${idPrefix}-search-label`}
-                placeholder="Search by name, type or CR…"
+                placeholder={t('am.link.searchPlaceholder')}
                 spellCheck={false}
                 autoComplete="off"
                 disabled={!hasEntries}
@@ -145,15 +158,23 @@ const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose
         </div>
 
         <div className="atlas-modal-footer">
-          {linkedPath && (
-            <Button variant="ghost" size="sm" className="atlas-statblock-link__unlink" onClick={() => link(null)}>
-              <Unlink />
-              Unlink
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+          {newStatblock ? (
+            <div className="atlas-statblock-link__start">
+              <NewStatblockButton
+                className="atlas-statblock-link__new"
+                choices={newStatblock.choices}
+                onMenuOpenChange={setRoleMenuOpen}
+                onChoose={(roleId) => {
+                  onClose();
+                  newStatblock.onChoose(roleId);
+                }}
+              />
+              {unlinkButton}
+            </div>
+          ) : unlinkButton}
+          <Button variant="outline" size="sm" onClick={onClose}>{t('common.cancel')}</Button>
           <Button size="sm" disabled={!activePath || activePath === linkedPath} onClick={() => { if (activePath) link(activePath); }}>
-            Link
+            {t('am.link.link')}
           </Button>
         </div>
       </motion.div>

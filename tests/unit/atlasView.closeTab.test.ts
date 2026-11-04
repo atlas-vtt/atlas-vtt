@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { WorkspaceLeaf, TFile } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
@@ -18,13 +19,14 @@ describe('Atlas scene tab closing', () => {
     const next = new TFile('maps/next.atlasmap');
     const nextId = tabMetaStore.getState().addTab(next.path, 'Next');
     const closingId = tabMetaStore.getState().addTab('maps/closing.atlasmap', 'Closing');
+    const nextCamera = { centerX: 300, centerY: 200, scale: 2 };
     const context = {
       tabMetaStore, sceneRequests: 0,
       store: { getState: () => ({ mapLoaded: true }) },
       flushPendingSaves: vi.fn().mockResolvedValue(undefined),
-      temporalCache: new Map(), viewportCache: new Map(),
+      temporalCache: new Map(), viewportCache: new Map([[nextId, nextCamera]]),
       saveTemporalState: vi.fn(), saveViewportState: vi.fn(),
-      restoreTemporalState: vi.fn(), restoreViewportState: vi.fn(),
+      restoreTemporalState: vi.fn(),
       performSceneLoad: vi.fn().mockResolvedValue(true),
       leaf: { detach: vi.fn() },
       app: { vault: { getAbstractFileByPath: () => next }, workspace: { requestSaveLayout: vi.fn() } },
@@ -32,9 +34,8 @@ describe('Atlas scene tab closing', () => {
     };
     Object.setPrototypeOf(context, AtlasView.prototype);
     await AtlasView.prototype.closeTab.call(context as unknown as AtlasView, closingId);
-    expect(context.performSceneLoad).toHaveBeenCalledWith(next);
+    expect(context.performSceneLoad).toHaveBeenCalledWith(next, nextCamera);
     expect(context.restoreTemporalState).toHaveBeenCalledWith(nextId);
-    expect(context.restoreViewportState).toHaveBeenCalledWith(nextId);
     expect(context.saveTemporalState).not.toHaveBeenCalled();
     expect(context.saveViewportState).not.toHaveBeenCalled();
     expect(context.leaf.detach).not.toHaveBeenCalled();

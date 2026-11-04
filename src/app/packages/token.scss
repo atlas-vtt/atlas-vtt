@@ -60,9 +60,6 @@ $accent-hsl: var(--accent-h) var(--accent-s) var(--accent-l);
       border-radius: inherit;
     }
   }
-
-  /* slight lift on hover */
-  &:hover:not(&--defeated) { transform: translateY(-2px); }
 }
 
 /* ---------- Avatar -------------------------------------------------------- */

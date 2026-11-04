@@ -4,7 +4,7 @@ import { isDiceDisplay, throwStyle } from '../../../src/app/dice3d/diceDisplay';
 import { sceneFromRolls } from '../../../src/app/dice3d/diceScene';
 import { closeAllRolls, closeRoll, dismissRoll, largeRollIndex, pushRoll, type StackedRoll } from '../../../src/app/react/components/dice3d/rollStackState';
 import { rollBreakdown, rollLabel } from '../../../src/app/react/components/dice3d/diceRollText';
-import type { DiceRollResult } from '../../../src/app/tools/DiceTool';
+import type { DiceRollResult } from '../../../src/app/types/diceTypes';
 
 function result(id: string, rolls: DiceRollResult['rolls'], modifiers = 0, source?: DiceRollResult['source']): DiceRollResult {
   const total = rolls.reduce((sum, roll) => sum + (roll.negative ? -roll.value : roll.value), 0) + modifiers;

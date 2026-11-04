@@ -4,32 +4,36 @@ import { cn } from '../../../../utils/cn';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
 import { SettingRow, SettingSliderRow, SettingToggleRow } from './SettingRows';
+import { MapUnitRow } from './MapUnitRow';
 import { SceneUnitDistanceRow } from './SceneUnitDistanceRow';
 import type { AtlasView } from '../../../atlas-view';
 import type { GridType } from '../../../grid/GridSystem';
 import { DEFAULT_CELL_NUMBER_OPACITY, isCellNumberFormat, type CellNumberFormat } from '../../../grid/cellNumbering';
 import { debounce } from '../../../../utils/debounce';
+import { useDetectGridOnNewScenes } from '../../hooks/useDetectGridOnNewScenes';
+import { t } from '../../../i18n';
+import { SettingsService } from '../../../services/SettingsService';
 
 /** `undefined` leaves the colour to the grid, which picks black or white from the map's brightness. */
 const GRID_COLORS: ReadonlyArray<{ value: string | undefined; label: string }> = [
-  { value: undefined, label: 'Auto' },
-  { value: '#FFFFFF', label: 'White' },
-  { value: '#000000', label: 'Black' },
-  { value: '#FF0000', label: 'Red' },
-  { value: '#00FF00', label: 'Green' },
-  { value: '#0000FF', label: 'Blue' },
-  { value: '#FFFF00', label: 'Yellow' },
-  { value: '#FF00FF', label: 'Magenta' },
-  { value: '#808080', label: 'Gray' },
-  { value: '#FFA500', label: 'Orange' },
-  { value: '#800080', label: 'Purple' },
-  { value: '#FFC0CB', label: 'Pink' },
+  { value: undefined, label: t('color.auto') },
+  { value: '#FFFFFF', label: t('color.white') },
+  { value: '#000000', label: t('color.black') },
+  { value: '#FF0000', label: t('color.red') },
+  { value: '#00FF00', label: t('color.green') },
+  { value: '#0000FF', label: t('color.blue') },
+  { value: '#FFFF00', label: t('color.yellow') },
+  { value: '#FF00FF', label: t('color.magenta') },
+  { value: '#808080', label: t('color.gray') },
+  { value: '#FFA500', label: t('color.orange') },
+  { value: '#800080', label: t('color.purple') },
+  { value: '#FFC0CB', label: t('color.pink') },
 ];
 
 const GRID_TYPE_OPTIONS = {
-  square: 'Square',
-  'hex-horizontal': 'Hex (Flat)',
-  'hex-vertical': 'Hex (Pointy)',
+  square: t('grid.type.square'),
+  'hex-horizontal': t('grid.type.hexFlat'),
+  'hex-vertical': t('grid.type.hexPointy'),
 };
 
 function isGridType(value: string): value is GridType {
@@ -37,16 +41,16 @@ function isGridType(value: string): value is GridType {
 }
 
 const HEX_NUMBER_OPTIONS: Record<CellNumberFormat | 'off', string> = {
-  off: 'Off',
-  'column-row': 'Column and row (0101)',
-  sequential: 'Sequential (1, 2, 3)',
+  off: t('grid.numbers.off'),
+  'column-row': t('grid.numbers.columnRow'),
+  sequential: t('grid.numbers.sequential'),
   'letter-number': 'Letters and numbers (A1)',
 };
 
 const LINE_STYLE_OPTIONS = {
-  solid: 'Solid',
-  dashed: 'Dashed',
-  dotted: 'Dotted',
+  solid: t('grid.line.solid'),
+  dashed: t('grid.line.dashed'),
+  dotted: t('grid.line.dotted'),
 };
 
 interface GridSettingsPanelProps {
@@ -77,12 +81,16 @@ export function GridSettingsPanel({
   debouncedLineWidthUpdate,
 }: GridSettingsPanelProps): React.ReactElement {
   const colourLabelId = React.useId();
+  const newScenes = useDetectGridOnNewScenes(view?.app);
   const currentGrid = view?.atlasStore?.getState()?.grid;
   const currentType: string = currentGrid?.type ?? 'square';
   const currentColor: string | undefined = currentGrid?.color;
   const currentLineType: string = currentGrid?.lineType ?? 'solid';
   // Held locally: the palette does not re-render when the store's grid changes
   const [hexNumbers, setHexNumbers] = React.useState<CellNumberFormat | undefined>(currentGrid?.cellNumbers);
+  const [tableTvTrueScale, setTableTvTrueScale] = React.useState(currentGrid?.tableTvTrueScale !== false);
+  // Only asked where the player view is a table TV at true scale (TrueScale)
+  const usesTrueScale = SettingsService.forApp(view?.app)?.getTableTvDevice().trueScale === true;
   const [hexNumberOpacity, setHexNumberOpacity] = React.useState(
     currentGrid?.cellNumberOpacity ?? DEFAULT_CELL_NUMBER_OPACITY,
   );
@@ -104,7 +112,7 @@ export function GridSettingsPanel({
     <div className="atlas-command-palette-panel">
       <div className="atlas-command-palette-panel-column">
       <SettingToggleRow
-        label="Show grid"
+        label={t('grid.show')}
         value={localGridVisible}
         onToggle={() => {
           const next = !localGridVisible;
@@ -114,8 +122,8 @@ export function GridSettingsPanel({
       />
 
       <SettingToggleRow
-        label="Snap to grid"
-        hint="Tokens, pins and measurements settle on cell centres"
+        label={t('grid.snap')}
+        hint={t('grid.snapHint')}
         value={localSnapToGrid}
         onToggle={() => {
           const next = !localSnapToGrid;
@@ -124,7 +132,18 @@ export function GridSettingsPanel({
         }}
       />
 
-      <SettingRow label="Grid type">
+      {usesTrueScale && <SettingToggleRow
+        label={t('grid.tableTvTrueScale')}
+        hint={t('grid.tableTvTrueScaleHint')}
+        value={tableTvTrueScale}
+        onToggle={() => {
+          const next = !tableTvTrueScale;
+          setTableTvTrueScale(next);
+          patchGrid({ tableTvTrueScale: next });
+        }}
+      />}
+
+      <SettingRow label={t('grid.type')}>
         <ObsidianMenuDropdown
           className="atlas-setting-dropdown"
           value={currentType}
@@ -137,9 +156,11 @@ export function GridSettingsPanel({
         />
       </SettingRow>
 
+      <MapUnitRow view={view} />
+
       <SceneUnitDistanceRow view={view} />
 
-      <SettingRow label="Cell numbers">
+      <SettingRow label={t('grid.hexNumbers')}>
         <ObsidianMenuDropdown
           className="atlas-setting-dropdown"
           value={hexNumbers ?? 'off'}
@@ -154,7 +175,7 @@ export function GridSettingsPanel({
 
       {hexNumbers && (
         <SettingSliderRow
-          label="Number opacity"
+          label={t('grid.numberOpacity')}
           value={hexNumberOpacity * 100}
           min={0}
           max={100}
@@ -168,7 +189,7 @@ export function GridSettingsPanel({
         />
       )}
 
-      <SettingRow label="Line style">
+      <SettingRow label={t('grid.lineStyle')}>
         <ObsidianMenuDropdown
           className="atlas-setting-dropdown"
           value={currentLineType}
@@ -178,7 +199,7 @@ export function GridSettingsPanel({
       </SettingRow>
 
       <SettingSliderRow
-        label="Opacity"
+        label={t('common.opacity')}
         value={localOpacity * 100}
         min={0}
         max={100}
@@ -192,7 +213,7 @@ export function GridSettingsPanel({
       />
 
       <SettingSliderRow
-        label="Line width"
+        label={t('grid.lineWidth')}
         value={localLineWidth}
         min={0.5}
         max={5}
@@ -207,7 +228,7 @@ export function GridSettingsPanel({
 
       <div className="atlas-command-palette-panel-column">
       <div className="atlas-setting-group">
-        <span id={colourLabelId} className="atlas-setting-label">Colour</span>
+        <span id={colourLabelId} className="atlas-setting-label">{t('common.colour')}</span>
         <div className="atlas-command-palette-swatches" role="radiogroup" aria-labelledby={colourLabelId}>
           {GRID_COLORS.map((color) => {
             const isActive = currentColor === color.value;
@@ -233,6 +254,14 @@ export function GridSettingsPanel({
           })}
         </div>
       </div>
+
+      {/* For every scene made from now on, where the rows above are this scene's. */}
+      <SettingToggleRow
+        label={t('grid.detectOnNewScenes')}
+        hint={t('grid.detectOnNewScenesHint')}
+        value={newScenes.detects}
+        onToggle={newScenes.toggle}
+      />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { Application } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { Texture, Sprite } from 'pixi.js';
 import { GridSystem } from '../../src/app/grid/GridSystem';
+import { mapImageViewOf } from '../helpers/fakeMapImageView';
 
 async function setup() {
   const app = new Application();
@@ -11,7 +12,7 @@ async function setup() {
   app.stage.addChild(viewport);
   const bg = new Sprite(Texture.WHITE);
   viewport.addChildAt(bg, 0);
-  const grid = new GridSystem(app, viewport, bg, { size:70 });
+  const grid = new GridSystem(app, viewport, mapImageViewOf(bg), { size:70, color: 0x000000 });
   const gridSprite = grid.getGridSprite()!;
   return { viewport, bg, gridSprite };
 }

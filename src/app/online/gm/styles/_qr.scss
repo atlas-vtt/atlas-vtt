@@ -1,0 +1,149 @@
+// The invite link as a QR code: its button at the end of "Copy invite link", and the card beside the
+// control (`inviteQr.ts`).
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'online' as *;
+
+// Dark on white in both themes: a camera reads an inverted code badly. The dark is the Atlas icon's own.
+$qr-dark: #1b1b1d;
+$qr-light: #fff;
+
+.atlas-online-dock {
+  // The row and its button are one component: the row copies, and lights under the pointer wherever
+  // on it the pointer is.
+  .atlas-online-invite-row {
+    position: relative;
+    display: flex;
+
+    @media (hover: hover) {
+      &:hover > .atlas-online-invite {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+  }
+
+  // Inside the row at its end, the row's inset from its edges and concentric with it. Its icon always
+  // shows, as the row's own does: a way to share must be found without looking for it. Only its
+  // highlight waits for the pointer.
+  .atlas-online-invite__qr {
+    position: absolute;
+    top: $online-inset;
+    right: $online-inset;
+
+    &.is-open {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
+  }
+
+  // The link's menu, left of the QR button: it waits for the pointer, the keyboard or its open menu.
+  .atlas-online-invite__more {
+    position: absolute;
+    top: $online-inset;
+    right: calc(#{$online-inset} + #{$online-control} + #{$spacing-xs});
+    @include online-on-row-hover;
+  }
+
+  .atlas-online-invite-row:hover .atlas-online-invite__more,
+  .atlas-online-invite-row:focus-within .atlas-online-invite__more {
+    opacity: 1;
+  }
+
+  // The card: a panel of its own to the right of the menu or panel it opened from, a bar's gap from
+  // it, their bottom edges level (`--atlas-online-wider`, dockSurface.ts). It hangs outside their
+  // flow and clear of the newcomers' cards.
+  .atlas-online-qr {
+    position: absolute;
+    left: calc(100% + var(--atlas-online-wider, 0px) + var(--atlas-online-dock-border, #{$border-width-m}) + #{$spacing-s});
+    bottom: calc(100% + #{$spacing-l} - #{$spacing-s});
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-s;
+    padding: $spacing-s;
+    transform-origin: bottom left;
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($radius-2xl);
+
+    // Over the control's end in a view too narrow to hold both: a press closes it.
+    &.is-over {
+      cursor: pointer;
+    }
+  }
+
+  // The white field with the standard's quiet zone, concentric with the card's corners.
+  .atlas-online-qr__plate {
+    flex: none;
+    width: var(--atlas-online-qr-side, 300px);
+    height: var(--atlas-online-qr-side, 300px);
+    overflow: hidden;
+    background: $qr-light;
+    @include atlas-panel-inset-radius($spacing-s);
+  }
+
+  .atlas-online-qr__code {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: $qr-dark;
+  }
+
+  // Under the plate, one row: the join code in its middle, the button that copies the picture at its
+  // end. What it says after a copy stands where the join code does, so the row never changes its size.
+  .atlas-online-qr__foot {
+    position: relative;
+    display: grid;
+    flex: none;
+    align-items: center;
+    height: $online-control;
+
+    > .atlas-online-qr__join,
+    > .atlas-online-qr__said {
+      grid-area: 1 / 1;
+      // Clear of the button on both sides, so the words stay in the card's middle.
+      margin: 0 $online-control;
+      text-align: center;
+      white-space: pre;
+    }
+
+    &.is-copied > .atlas-online-qr__join {
+      visibility: hidden;
+    }
+  }
+
+  // The join code, set to be read from where the code is scanned; its digits as wide as each other.
+  .atlas-online-qr__join {
+    color: var(--text-normal);
+    font-size: $font-ui-large;
+    font-weight: $font-weight-semibold;
+    font-variant-numeric: tabular-nums;
+    line-height: $online-control;
+  }
+
+  .atlas-online-qr__join-label {
+    color: var(--text-muted);
+    font-weight: $font-weight-medium;
+  }
+
+  // "Image copied", as the panel's copy rows say it.
+  .atlas-online-qr__said {
+    color: var(--color-green);
+    font-size: $font-ui-small;
+    font-weight: $font-weight-medium;
+  }
+
+  // In the card's corner, concentric with it, its icon always shown: the way to send the picture is
+  // found without looking for it. Only its highlight waits for the pointer.
+  .atlas-online-qr__copy {
+    position: absolute;
+    top: 0;
+    right: 0;
+    @include atlas-panel-inset-radius($spacing-s, bottom-right);
+  }
+
+  .atlas-online-qr__foot.is-copied > .atlas-online-qr__copy {
+    color: var(--color-green);
+  }
+}

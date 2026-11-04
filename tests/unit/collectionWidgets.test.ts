@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -67,6 +68,22 @@ describe('collection widget helpers', () => {
     // Removing a widget from a scene only switches it off there
     expect(withCollectionEdit(collection, { fear }, {})).toEqual(collection);
     expect(withCollectionEdit({}, {}, { fear })).toEqual({ fear });
+  });
+
+  it('keeps a scene timer\'s run in its scene and shares a collection timer\'s', () => {
+    const running = { since: 1000, remaining: 42 };
+    const lantern: TimerWidget = { ...clock, id: 'lantern', scope: 'scene', running };
+    const library = pickLibraryWidgets({ widgets: { clock: { ...clock, running }, lantern }, widgetValues: {} });
+    expect(library.clock?.type === 'timer' && library.clock.running).toBe(running);
+    expect(library.lantern).toEqual({ ...clock, id: 'lantern', scope: 'scene', value: 60 });
+
+    const merged = withCollectionWidgets(
+      { widgets: { lantern }, widgetValues: {} },
+      { lantern: { ...lantern, label: 'Lamp', value: 60, running: { since: 5, remaining: 60 } } },
+    );
+    expect(merged.widgets.lantern).toEqual({ ...lantern, label: 'Lamp' });
+    const paused = withCollectionWidgets({ widgets: { lantern: { ...lantern, running: undefined } }, widgetValues: {} }, library);
+    expect(paused.widgets.lantern && 'running' in paused.widgets.lantern).toBe(false);
   });
 
   it('leaves scenes without collection widgets untouched', () => {

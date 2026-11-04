@@ -5,6 +5,7 @@ import type { AnyAsset, Tag } from '../types';
 import { tagPickerOptions, toggleAssetTag } from '../utils/assetTags';
 import { useAssetTagMenuActions } from './assetTagMenuContext';
 import { STANDING_LIST } from '../../../../keyboard/tooltipEscape';
+import { t } from '../../../../i18n';
 
 interface AssetTagPickerProps {
   asset: AnyAsset;
@@ -77,7 +78,7 @@ export function AssetTagPicker({ asset }: AssetTagPickerProps): React.ReactEleme
       <div className="atlas-asset-tag-menu__search">
         <Search aria-hidden />
         {/* Named without aria-label, which Obsidian shows as its own tooltip. */}
-        <span id={`${idPrefix}-search-label`} hidden>Search or create tags</span>
+        <span id={`${idPrefix}-search-label`} hidden>{t('creator.searchTags')}</span>
         <span id={`${idPrefix}-list-label`} hidden>Tags of {asset.name}</span>
         <input
           ref={inputRef}
@@ -87,7 +88,7 @@ export function AssetTagPicker({ asset }: AssetTagPickerProps): React.ReactEleme
           aria-controls={`${idPrefix}-list`}
           aria-activedescendant={rowCount > 0 ? optionId(activeIndex) : undefined}
           aria-labelledby={`${idPrefix}-search-label`}
-          placeholder="Search or create…"
+          placeholder={t('am.tagPicker.placeholder')}
           spellCheck={false}
           autoComplete="off"
           value={query}
@@ -136,10 +137,10 @@ export function AssetTagPicker({ asset }: AssetTagPickerProps): React.ReactEleme
             onClick={() => { void create(); }}
           >
             <span className="atlas-asset-tag-menu__check"><Plus /></span>
-            <span className="atlas-asset-tag-menu__name">{isCreating ? 'Creating…' : `Create “${name}”`}</span>
+            <span className="atlas-asset-tag-menu__name">{isCreating ? t('am.create.creating') : t('am.tagPicker.create', { name })}</span>
           </div>
         )}
-        {rowCount === 0 && <div className="atlas-asset-tag-menu__empty">No tags yet. Type a name to create one.</div>}
+        {rowCount === 0 && <div className="atlas-asset-tag-menu__empty">{t('am.tagPicker.empty')}</div>}
       </div>
     </>
   );

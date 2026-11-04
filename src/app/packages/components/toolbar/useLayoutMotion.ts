@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react"
+import { UNDO_BAR_ID } from "../../../toolbar/toolbarCatalog"
 import type { ToolbarLayout } from "../../../toolbar/toolbarLayout"
 import { STAGGER_MS } from "./editor/editorMotion"
 
@@ -10,7 +11,7 @@ export interface ToolbarMotion {
   /** Bumped by every change of the stored layout and by nothing else, so a window resize never glides. */
   revision: number
   cause: ToolbarChangeCause
-  /** The controls whose hidden state the last change flipped, in layout order. */
+  /** The controls whose hidden state the last change flipped, in layout order, the undo/redo bar first. */
   flipped: readonly string[]
 }
 
@@ -30,7 +31,7 @@ export function slotChange(motion: ToolbarMotion, id: string, animate: boolean):
 }
 
 function flippedControls(previous: ToolbarLayout, next: ToolbarLayout): string[] {
-  return next.order.filter((id) => previous.hidden.has(id) !== next.hidden.has(id))
+  return [UNDO_BAR_ID, ...next.order].filter((id) => previous.hidden.has(id) !== next.hidden.has(id))
 }
 
 export interface LayoutMotion {

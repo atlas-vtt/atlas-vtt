@@ -175,3 +175,21 @@ describe('token settings in a file', () => {
   });
 });
 
+describe('unrelated saved fields', () => {
+  it('preserves old character values and an existing initiative icon through a scene round trip', () => {
+    const token = {
+      id: 'hero', kind: 'character', name: 'Hero', x: 0, y: 0, imagePath: 'hero.webp',
+      playerLinked: true, playerId: 'old-player', playerCharacterId: 'old-character',
+      hp: { current: 5, max: 12 },
+    };
+    const scene = {
+      objects: { tokens: { hero: token } },
+      initiative: { entries: [{ id: 'entry', tokenId: 'hero', isNPC: false }] },
+    };
+
+    const saved = sceneToFile(sceneFromFile(scene));
+
+    expect(saved.objects.tokens.hero).toEqual(token);
+    expect(saved.initiative.entries[0]?.isNPC).toBe(false);
+  });
+});

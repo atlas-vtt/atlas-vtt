@@ -1,3 +1,4 @@
+import { t } from '../../../i18n';
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Ellipsis } from "lucide-react"
 import { cn } from "src/utils/cn"
@@ -6,7 +7,7 @@ import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { useKeepInView } from "../primitives/useKeepInView"
 import type { ResponsiveToolbarItem } from "./toolbarTypes"
 
-const MENU_LABEL = "More tools"
+const MENU_LABEL = t('toolbar.moreTools')
 
 interface ToolbarOverflowMenuProps {
   /** The controls that did not fit into the bar, in bar order. */

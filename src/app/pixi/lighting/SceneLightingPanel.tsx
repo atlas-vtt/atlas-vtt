@@ -19,13 +19,14 @@ import {
 import type { DarkSightLook } from '../../types/lightingTypes';
 import type { SegmentedOption } from '../../packages/components/primitives/SegmentedControl';
 import { ChoiceField, ColorField, SliderField, TintField, ToggleField } from './lightingPanelFields';
+import { t } from '../../i18n';
 
 const MARGIN = 16;
 
 const DARK_SIGHT_LOOK_OPTIONS: readonly SegmentedOption<DarkSightLook>[] = [
-  { value: 'system', label: 'As the system says' },
-  { value: 'grey', label: 'Grey' },
-  { value: 'colour', label: 'In colour' },
+  { value: 'system', label: t('sceneLight.look.system') },
+  { value: 'grey', label: t('sceneLight.look.grey') },
+  { value: 'colour', label: t('sceneLight.look.colour') },
 ];
 
 /** First placement: the top right of the map, below the scene tabs, like the other map windows. */
@@ -66,53 +67,53 @@ function SceneLightingPanel(): React.ReactElement {
       initial="hidden"
       animate="visible"
       exit="exit"
-      aria-label="Lighting settings"
+      aria-label={t('sceneLight.settings')}
     >
       <header className="atlas-light-panel__header" onPointerDown={startDrag}>
         <GripHorizontal className="atlas-light-panel__grip" />
         <SlidersHorizontal className="atlas-light-panel__icon" />
-        <h2 className="atlas-light-panel__title">Lighting settings</h2>
-        <CloseButton onClick={() => setOpen(false)} aria-label="Close lighting settings" />
+        <h2 className="atlas-light-panel__title">{t('sceneLight.settings')}</h2>
+        <CloseButton onClick={() => setOpen(false)} aria-label={t('sceneLight.closeSettings')} />
       </header>
       <div className="atlas-light-panel__body">
         <ToggleField
-          label="Token vision"
+          label={t('sceneLight.tokenVision')}
           value={tokenVisionOn(lighting)}
-          tooltipOn="Players see only what their tokens see"
-          tooltipOff="Players see everything the light shows"
+          tooltipOn={t('sceneLight.tokenVisionOn')}
+          tooltipOff={t('sceneLight.tokenVisionOff')}
           onChange={(tokenVision) => setSceneLighting({ tokenVision })}
         />
         <ToggleField
-          label="Remember explored areas"
+          label={t('sceneLight.memory')}
           value={exploredMemoryOn(lighting)}
-          tooltipOn="What tokens saw stays on the players' map"
-          tooltipOff="Players see only what their tokens see now"
+          tooltipOn={t('sceneLight.memoryOn')}
+          tooltipOff={t('sceneLight.memoryOff')}
           onChange={(exploredMemory) => setSceneLighting({ exploredMemory })}
         />
         <ToggleField
-          label="Update sight when a token is dropped"
+          label={t('sceneLight.sightOnDrop')}
           value={sightOnDropOn(lighting)}
-          tooltipOn="Dragging a token shows the players nothing new until you drop it"
-          tooltipOff="Sight and light follow a token while you drag it"
+          tooltipOn={t('sceneLight.sightOnDropOn')}
+          tooltipOff={t('sceneLight.sightOnDropOff')}
           // Off is the default and is stored as no choice at all.
           onChange={(on) => setSceneLighting({ sightOnDrop: on ? true : undefined })}
         />
         <div className="atlas-light-panel__row atlas-light-panel__row--pair">
-          <ColorField label="Explored colour" value={lighting.exploredColor ?? DEFAULT_EXPLORED_COLOR}
+          <ColorField label={t('sceneLight.exploredColour')} value={lighting.exploredColor ?? DEFAULT_EXPLORED_COLOR}
             onChange={(exploredColor) => setSceneLighting({ exploredColor })} />
-          <ColorField label="Unexplored colour" value={lighting.unexploredColor ?? DEFAULT_UNEXPLORED_COLOR}
+          <ColorField label={t('sceneLight.unexploredColour')} value={lighting.unexploredColor ?? DEFAULT_UNEXPLORED_COLOR}
             onChange={(unexploredColor) => setSceneLighting({ unexploredColor })} />
         </div>
-        <SliderField label="Counts as lit from" value={threshold} min={0} max={100} step={1} display={`${threshold} %`}
+        <SliderField label={t('sceneLight.litFrom')} value={threshold} min={0} max={100} step={1} display={`${threshold} %`}
           onChange={setDragged}
           onCommit={(percent) => {
             setDragged(null);
             setSceneLighting({ litThreshold: percent / 100 });
           }} />
         {/* Only the picture of what senses without colour show; the system's look and no tint are stored as unset. */}
-        <ChoiceField label="Darkvision looks" value={darkSightLookOf(lighting)} options={DARK_SIGHT_LOOK_OPTIONS}
+        <ChoiceField label={t('sceneLight.darkSightLook')} value={darkSightLookOf(lighting)} options={DARK_SIGHT_LOOK_OPTIONS}
           onChange={(look) => setSceneLighting({ darkSightLook: look === 'system' ? undefined : look })} />
-        <TintField label="Darkvision tint" value={darkSightTintOf(lighting)} clearLabel="No tint"
+        <TintField label={t('sceneLight.darkSightTint')} value={darkSightTintOf(lighting)} clearLabel={t('sceneLight.noTint')}
           onChange={(tint) => setSceneLighting({ darkSightTint: tint ?? undefined })} />
       </div>
     </motion.section>

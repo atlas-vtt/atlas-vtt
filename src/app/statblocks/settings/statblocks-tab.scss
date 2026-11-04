@@ -1,0 +1,136 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Collection settings, Statblocks tab: the collection's roles
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported by StatblocksTab.tsx, so it is not inside the `.atlas-vtt-plugin` scope of
+// styles/main.scss: the rules take that scope themselves. A role row is a condition row of
+// the dialog (collection-settings-modal.scss): inset surface, padding and gap $spacing-s.
+
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+$folder-icon: $icon-xs;
+
+.atlas-vtt-plugin {
+  // "Roles", where they come from, and the way back to the system's.
+  .atlas-sb-roles__head {
+    @include atlas-flex-row($spacing-s);
+    min-height: $button-height-m;
+  }
+
+  .atlas-sb-roles__source {
+    font-size: $font-ui-smaller;
+    color: var(--text-faint);
+  }
+
+  // Beats `.atlas-csm-add-btn`, which sits at the start of a column.
+  .atlas-sb-roles__head .atlas-sb-roles__revert {
+    margin-inline-start: auto;
+    align-self: center;
+  }
+
+  .atlas-sb-role__template {
+    flex: 1.2;
+    min-width: 0;
+
+    .atlas-select-trigger {
+      height: $input-height-s;
+    }
+  }
+
+  .atlas-sb-role__edit {
+    flex-shrink: 0;
+    height: $button-height-s;
+    font-size: $font-ui-small;
+  }
+
+  // Shown, not removed, so the row keeps its shape; the tooltip says why.
+  .atlas-sb-role__edit[aria-disabled='true'],
+  .atlas-sb-role__remove[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  // ── Missing template ──────────────────────────────────────────────────────
+  // Fixed-height pill: horizontal padding only, so the text sits centred at any font size.
+  .atlas-sb-role__missing {
+    @include atlas-flex-row($spacing-xs);
+    @include atlas-focus-ring;
+    flex-shrink: 0;
+    height: $icon-m;
+    padding: 0 $spacing-s;
+    border-radius: $radius-s;
+    background: color-mix(in oklch, var(--text-warning) 14%, transparent);
+    color: var(--text-warning);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-medium;
+    white-space: nowrap;
+    cursor: help;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  // ── Folder field ──────────────────────────────────────────────────────────
+  .atlas-sb-folder-field {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+
+    &.atlas-open {
+      z-index: $z-popover;
+    }
+  }
+
+  .atlas-sb-folder-field__icon {
+    position: absolute;
+    inset-inline-start: $spacing-s;
+    top: 50%;
+    width: $folder-icon;
+    height: $folder-icon;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  .atlas-sb-folder-field .atlas-sb-folder-field__input {
+    width: 100%;
+    padding-inline-start: calc(#{$spacing-s} + #{$folder-icon} + #{$spacing-xs});
+  }
+
+  // The select's popover (a flex column), as the Select primitive's list.
+  .atlas-sb-folder-field__list {
+    gap: 2px;
+    padding: $spacing-xs;
+    @include atlas-select-popover;
+
+    // After the popover's own `overflow`, which hides.
+    & {
+      overflow-y: auto;
+    }
+  }
+
+  // A block, not a flex row: a long path ends in an ellipsis. Fixed height, padding inline only.
+  .atlas-sb-folder-field__option {
+    @include atlas-truncate;
+    flex-shrink: 0;
+    height: $input-height-s;
+    padding: 0 $spacing-s;
+    line-height: $input-height-s;
+    border-radius: $radius-m;
+    font-size: $font-ui-small;
+    color: var(--text-normal);
+    cursor: pointer;
+
+    &.atlas-active {
+      background-color: var(--background-modifier-hover);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-sb-folder-field__list {
+      transition: none;
+    }
+  }
+}

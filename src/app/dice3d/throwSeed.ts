@@ -1,15 +1,6 @@
 import { seededRandom } from './atlasCell';
 import type { Rng } from './dieTour';
-
-/** FNV-1a: the same text always gives the same 32-bit number. */
-function hash(text: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
+import { fnv1a32 } from '../utils/hashing';
 
 /**
  * The randomness of one throw, drawn from the roll's id: every window that
@@ -18,5 +9,5 @@ function hash(text: string): number {
  * die whose frames fall differently cannot shift the others.
  */
 export function throwRandom(rollId: string, stream: number): Rng {
-  return seededRandom(hash(`${rollId}#${stream}`));
+  return seededRandom(fnv1a32(`${rollId}#${stream}`));
 }

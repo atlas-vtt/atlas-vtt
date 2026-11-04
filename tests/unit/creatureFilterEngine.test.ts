@@ -19,11 +19,11 @@ const DEFINITIONS: CreatureFilterDefinition[] = [
 ];
 
 const CREATURES: Record<string, IndexedCreature> = {
-  goblin: { path: 'goblin', layout: 'Basic 5e', fields: { cr: '1/4', type: 'humanoid', trait_01: 'Goblinoid' } },
-  wolf: { path: 'wolf', layout: 'Basic 5e', fields: { cr: '1/4', type: 'Beast' } },
-  bear: { path: 'bear', layout: 'Basic 5e', fields: { cr: 1, type: 'beast' } },
-  dragon: { path: 'dragon', layout: 'Basic 5e', fields: { cr: 10, type: 'dragon', trait_01: 'Fire', trait_02: 'Evil' } },
-  burrower: { path: 'burrower', layout: 'Daggerheart Adversary', fields: { tier: 1, type: 'Solo' } },
+  goblin: { path: 'goblin', templateId: null, meanings: {}, lookName: 'Basic 5e', fields: { cr: '1/4', type: 'humanoid', trait_01: 'Goblinoid' } },
+  wolf: { path: 'wolf', templateId: null, meanings: {}, lookName: 'Basic 5e', fields: { cr: '1/4', type: 'Beast' } },
+  bear: { path: 'bear', templateId: null, meanings: {}, lookName: 'Basic 5e', fields: { cr: 1, type: 'beast' } },
+  dragon: { path: 'dragon', templateId: null, meanings: {}, lookName: 'Basic 5e', fields: { cr: 10, type: 'dragon', trait_01: 'Fire', trait_02: 'Evil' } },
+  burrower: { path: 'burrower', templateId: null, meanings: {}, lookName: 'Daggerheart Adversary', fields: { tier: 1, type: 'Solo' } },
 };
 
 const TOKENS: FilterableToken[] = [
@@ -137,7 +137,7 @@ describe('evaluateCreatureFilters', () => {
 
 describe('token facts', () => {
   it('rate a creature on the first scale its statblock has, so scales group together', () => {
-    const rating = (fields: Record<string, unknown>) => factsOf({ statblockPath: 'x' }, () => ({ path: 'x', layout: null, fields }), []).rating;
+    const rating = (fields: Record<string, unknown>) => factsOf({ statblockPath: 'x' }, () => ({ path: 'x', templateId: null, meanings: {}, lookName: null, fields }), []).rating;
     expect(rating({ cr: '1/2', level: 3 })).toEqual({ scale: 0, value: 0.5 });
     expect(rating({ level: 'Creature 3' })).toEqual({ scale: 1, value: 3 });
     expect(rating({ tier: 2 })).toEqual({ scale: 2, value: 2 });
@@ -187,10 +187,10 @@ describe('selection edits', () => {
 describe('alignment', () => {
   const alignment = CATALOG_CREATURE_FILTERS.find((filter) => filter.id === 'alignment')!;
   const creatures: Record<string, IndexedCreature> = {
-    orc: { path: 'orc', layout: null, fields: { alignment: 'chaotic evil' } },
-    devil: { path: 'devil', layout: null, fields: { alignment: 'lawful evil' } },
-    elf: { path: 'elf', layout: null, fields: { alignment: 'chaotic good' } },
-    wolf: { path: 'wolf', layout: null, fields: { alignment: 'unaligned' } },
+    orc: { path: 'orc', templateId: null, meanings: {}, lookName: null, fields: { alignment: 'chaotic evil' } },
+    devil: { path: 'devil', templateId: null, meanings: {}, lookName: null, fields: { alignment: 'lawful evil' } },
+    elf: { path: 'elf', templateId: null, meanings: {}, lookName: null, fields: { alignment: 'chaotic good' } },
+    wolf: { path: 'wolf', templateId: null, meanings: {}, lookName: null, fields: { alignment: 'unaligned' } },
   };
   const alignmentFacts = Object.keys(creatures).map((path) => factsOf({ statblockPath: path }, (p) => creatures[p] ?? null, [alignment]));
   const evaluate = (selection: CreatureFilterSelection) => evaluateCreatureFilters(alignmentFacts, [alignment], selection);

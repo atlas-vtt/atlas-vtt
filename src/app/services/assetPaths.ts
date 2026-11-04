@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 export const ATLAS_VTT_DIR = 'atlas-vtt';
 export const COLLECTIONS_DIR = `${ATLAS_VTT_DIR}/collections`;
 export const GLOBAL_ASSETS_DIR = `${ATLAS_VTT_DIR}/assets`;
@@ -30,9 +31,9 @@ export const INVALID_NAME_CHARACTERS = /[\\/:*?"<>|#^[\]]/;
  */
 export function collectionNameProblem(name: string): string | null {
   const trimmed = name.trim();
-  if (!trimmed) return 'Enter a name';
-  if (INVALID_NAME_CHARACTERS.test(trimmed)) return 'Collection names cannot contain \\ / : * ? " < > | # ^ [ or ]';
-  if (trimmed.startsWith('.')) return 'Collection names cannot start with a dot';
+  if (!trimmed) return t('names.enter');
+  if (INVALID_NAME_CHARACTERS.test(trimmed)) return t('names.invalidCollection');
+  if (trimmed.startsWith('.')) return t('names.collectionDot');
   return null;
 }
 

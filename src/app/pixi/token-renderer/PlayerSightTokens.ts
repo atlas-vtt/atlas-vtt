@@ -1,5 +1,7 @@
+import type { FogCoverage } from '../../fog/fogCoverage';
 import type { TokenEntity } from '../../types';
-import type { TokenPerception } from '../lighting/playerLightingLayers';
+import type { TokenSeen } from '../../vision/measureOrigin';
+import type { TokenPerception } from '../../vision/tokenPerception';
 import { hiddenTokenLayers, type HideableLayer, type LayerVisibility } from '../playerSafeFrame';
 import { SensedOutlines, type SensedToken } from './SensedOutlines';
 import type { TokenGroupContainer } from './types';
@@ -20,6 +22,14 @@ export interface PlayerSightHost {
 export class PlayerSightTokens {
   private readonly outlines = new SensedOutlines();
   private provider?: () => TokenPerception | undefined;
+  private active?: (() => boolean) | undefined;
+  private current?: (() => boolean) | undefined;
+  private fog?: () => FogCoverage | null;
+  /** Whether the roof of the level shown covers a point in the players' picture. */
+  private roof?: (point: { x: number; y: number }) => boolean;
+  private playerView?: () => boolean;
+  /** The immutable shape and displayed centre fully determine fog membership. */
+  private readonly membership = new WeakMap<object, { coverage: FogCoverage; x: number; y: number; covered: boolean }>();
 
   constructor(private readonly host: PlayerSightHost) {}
 
@@ -31,19 +41,89 @@ export class PlayerSightTokens {
   /**
    * `provider` answers how the players perceive each token while the canvas shows their view,
    * and nothing otherwise. Tokens they do not see are left out with their nameplates and bars,
-   * as in the player frame; those they only sense show as outlines.
+   * as in the player frame; those they only sense show as outlines. A provider that keeps sight
+   * of its own, worked out by its own store listener (the lighting), says through `current`
+   * whether that sight is of the scene the store holds.
    */
-  setProvider(provider: () => TokenPerception | undefined): void {
+  setProvider(provider: () => TokenPerception | undefined, active?: () => boolean, current?: () => boolean): void {
     this.provider = provider;
+    this.active = active;
+    this.current = current;
+  }
+
+  /** A lighting controller is attached, so on a lit scene the players see a token only where their sight finds it. */
+  hasLighting(): boolean {
+    return this.active !== undefined;
+  }
+
+  /** Committed fog remains available when the optional lighting controller is removed. */
+  setFogProvider(provider: () => FogCoverage | null, playerView: () => boolean): void {
+    this.fog = provider;
+    this.playerView = playerView;
+  }
+
+  /**
+   * The roof drawn over the players' picture (`ViewRoofs.covers`): a token whose centre it covers is
+   * not seen, as under committed fog, lit scene or not. `playerView` says when the canvas shows their view.
+   */
+  setRoofProvider(covers: (point: { x: number; y: number }) => boolean, playerView: () => boolean): void {
+    this.roof = covers;
+    this.playerView ??= playerView;
+  }
+
+  /** Whether the canvas shows the players' view: session view, or the peek of a lit scene. */
+  showsPlayers(): boolean {
+    return !!this.active?.() || !!this.playerView?.();
+  }
+
+  /**
+   * Whether the provider's sight is that of the scene the store holds. The lighting keeps the sight
+   * of the scene before from a scene switch until it has built the one that arrives, and the sight
+   * from before a lost graphics context until it has built on the restored one; sight read from the
+   * store when asked always is.
+   */
+  sightIsCurrent(): boolean {
+    return this.current?.() ?? true;
+  }
+
+  private fogActive(perception?: TokenPerception): boolean {
+    return !!perception || this.showsPlayers();
+  }
+
+  /** Whether the roof covers the token, at its displayed centre (the stored place before it has a sprite). */
+  private roofed(tokenId: string): boolean {
+    const point = this.host.sprites()[tokenId] ?? this.host.tokens()[tokenId];
+    return !!this.roof && !!point && this.roof({ x: point.x, y: point.y });
+  }
+
+  private covered(tokenId: string, coverage: FogCoverage | null): boolean {
+    const point = this.host.sprites()[tokenId] ?? this.host.tokens()[tokenId];
+    if (!coverage || !point) return true;
+    const known = this.membership.get(point);
+    if (known?.coverage === coverage && known.x === point.x && known.y === point.y) return known.covered;
+    const covered = coverage.covers(point);
+    this.membership.set(point, { coverage, x: point.x, y: point.y, covered });
+    return covered;
+  }
+
+  /** A frame always applies fog and the roof, including on an unlit scene and during a held gesture. */
+  framePerception(perception?: TokenPerception): TokenPerception | undefined {
+    const coverage = this.fog?.();
+    const fogged = !!this.fog && coverage?.shape.length !== 0;
+    if (!fogged && !this.roof) return perception;
+    return (id) => (fogged && this.covered(id, coverage ?? null)) || this.roofed(id) ? 'unseen' : (perception?.(id) ?? 'seen');
   }
 
   /** How the players perceive each token, while the canvas shows their view. */
   perception(): TokenPerception | undefined {
-    return this.provider?.();
+    const perception = this.provider?.();
+    return this.fogActive(perception) ? this.framePerception(perception) : perception;
   }
 
-  /** Whether the canvas leaves the token out by the players' sight. One the pointer holds stays until it is released. */
+  /** Fog excludes held tokens too; the held exception applies only to lighting. */
   hides(tokenId: string, perception = this.perception()): boolean {
+    if (this.fog && this.fogActive(perception) && this.covered(tokenId, this.fog())) return true;
+    if (this.fogActive(perception) && this.roofed(tokenId)) return true;
     return !!perception && perception(tokenId) !== 'seen' && !this.host.held().has(tokenId);
   }
 
@@ -53,15 +133,23 @@ export class PlayerSightTokens {
    * token itself stays under the pointer.
    */
   syncOutlines(perception = this.perception()): void {
-    const tokens = this.host.tokens();
-    const held = this.host.held();
-    const sensed: SensedToken[] = [];
-    for (const [id, sprite] of Object.entries(perception ? this.host.sprites() : {})) {
-      const token = tokens[id];
-      if (!token || !sprite || token.isHidden || perception?.(id) !== 'sensed') continue;
-      sensed.push({ id, x: sprite.x, y: sprite.y, size: sprite.tokenSize || 70, held: held.has(id) });
-    }
+    const sensed = Object.keys(perception ? this.host.sprites() : {}).flatMap((id) => {
+      const token = this.sensedToken(id, perception);
+      return token ? [token] : [];
+    });
     this.outlines.sync(sensed);
+  }
+
+  /** Position updates affect only the moved outline, not every token in the scene. */
+  syncOutline(id: string, perception = this.perception()): void {
+    this.outlines.syncOne(id, this.sensedToken(id, perception));
+  }
+
+  private sensedToken(id: string, perception: TokenPerception | undefined): SensedToken | null {
+    const token = this.host.tokens()[id];
+    const sprite = this.host.sprites()[id];
+    if (!token || !sprite || token.isHidden || perception?.(id) !== 'sensed') return null;
+    return { id, x: sprite.x, y: sprite.y, size: sprite.tokenSize || 70, held: this.host.held().has(id) };
   }
 
   /** What a players' frame changes about the tokens: those they do not see are left out, and the outlines of held ones show. */
@@ -84,3 +172,18 @@ export class PlayerSightTokens {
 export function seenTokens(perception: TokenPerception | undefined): ((tokenId: string) => boolean) | undefined {
   return perception && ((tokenId) => perception(tokenId) === 'seen');
 }
+
+/**
+ * Whether the players see a token, for what shows only with it: it exists, is not hidden, and
+ * `perception` (their sight with committed fog) sees it, or answers nothing (an unlit scene without
+ * fog). A token they only sense, do not see or that fog covers is not seen.
+ */
+export function seenByPlayers(tokens: Readonly<Record<string, { isHidden?: boolean }>>, perception: TokenPerception | undefined): TokenSeen {
+  return (tokenId) => {
+    const token = tokens[tokenId];
+    return !!token && !token.isHidden && (perception?.(tokenId) ?? 'seen') === 'seen';
+  };
+}
+
+/** Sees no token: what a players' frame answers while it cannot tell. */
+export const NOTHING_SEEN: TokenSeen = () => false;

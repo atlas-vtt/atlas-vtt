@@ -1,0 +1,126 @@
+// What hangs on a message: its reactions, the system's emoji glyphs, and the field a message is
+// edited in, in its place.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+.atlas-online-log {
+  // ── Reactions ───────────────────────────────────────────────────────────────
+  .atlas-online-log__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin-top: 2px;
+  }
+
+  .atlas-online-log__chip {
+    @include log-button;
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    height: $button-height-s;
+    padding: 0 $spacing-s;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-full;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+    font-weight: $font-weight-medium;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+    @include log-button-states(var(--background-secondary));
+
+    @media (hover: hover) {
+      &:hover {
+        border-color: var(--background-modifier-border-hover);
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+    &.is-mine,
+    &.is-mine:hover,
+    &.is-mine:focus {
+      border-color: color-mix(in oklch, var(--interactive-accent) 60%, transparent);
+      background: $log-accent-wash;
+      color: var(--text-normal);
+      font-weight: $font-weight-semibold;
+    }
+
+    &:active {
+      background: var(--background-modifier-active-hover);
+    }
+
+    #{$log-coarse} & {
+      height: $button-height-m;
+      padding: 0 $spacing-m;
+      @include log-wide-target;
+    }
+  }
+
+  // The system's glyph, as text.
+  .atlas-online-log__emoji {
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  // ── A message edited in its place ───────────────────────────────────────────
+  .atlas-online-log__edit {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  .atlas-online-log__edit-box {
+    display: flex;
+    padding: $spacing-xs $spacing-s;
+    border: $border-width-s solid var(--interactive-accent);
+    border-radius: $radius-m;
+    background: var(--background-modifier-form-field);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
+    @include atlas-corner-shape;
+  }
+
+  .atlas-online-log__edit-actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  .atlas-online-log__edit-hint {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-faint);
+    font-size: 11px;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__text-button {
+    @include log-button;
+    flex: none;
+    height: $button-height-s;
+    padding: 0 $spacing-s;
+    border-radius: $radius-s;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-medium;
+    transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+    @include log-button-states;
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+    #{$log-coarse} & {
+      @include log-wide-target;
+    }
+  }
+
+  .atlas-online-log__text-button--accent,
+  .atlas-online-log__text-button--accent:hover {
+    color: var(--text-accent);
+  }
+}

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { Text } from 'pixi.js';
@@ -37,7 +38,7 @@ describe('per-token nameplate preference', () => {
     const hidden = store.getState().addToken({ ...hero, showNameplate: false } as never);
 
     store.getState().updateToken(shown, STATBLOCK_UNLINK_UPDATES);
-    store.getState().updateToken(hidden, buildStatblockLinkUpdates({ name: 'Goblin', hp: 7 }, 'Hero', [HP_RESOURCE], undefined));
+    store.getState().updateToken(hidden, buildStatblockLinkUpdates({ fields: { name: 'Goblin', hp: 7 } }, 'Hero', [HP_RESOURCE], undefined));
 
     expect(store.getState().objects.tokens[shown]?.showNameplate).toBe(true);
     expect(store.getState().objects.tokens[hidden]?.showNameplate).toBe(false);

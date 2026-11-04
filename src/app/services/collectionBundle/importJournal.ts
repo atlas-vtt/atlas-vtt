@@ -1,5 +1,6 @@
 import { TFile, TFolder, type App } from 'obsidian';
-import { AtlasView, ATLAS_VIEW_TYPE } from '../../atlas-view';
+import type { AtlasView } from '../../atlas-view';
+import { ATLAS_VIEW_TYPE, isAtlasView } from '../../atlasViewType';
 import { ensureAdapterFolder, ensureFolder } from '../../plugin/vaultFolders';
 import { isHiddenVaultPath, readVaultBinary, removeEmptyHiddenFolders, trashHiddenPath } from '../../utils/hiddenVaultFiles';
 import { parentPath } from '../../utils/pathUtils';
@@ -21,7 +22,7 @@ function timestamp(date: Date): string {
  * Writes and removes vault files for an import so that it can be undone: every
  * file it replaces or deletes is first copied to a hidden backup folder, and
  * `rollback` restores those copies and removes the files it created. Files in
- * hidden folders (scene snapshots) are handled through the adapter.
+ * hidden folders (snapshots earlier versions installed) are handled through the adapter.
  */
 export class ImportJournal {
   private readonly entries: JournalEntry[] = [];
@@ -153,7 +154,7 @@ export class ImportJournal {
 async function forOpenMaps(app: App, matches: (file: string) => boolean, visit: (view: AtlasView, detach: () => void) => Promise<void>): Promise<void> {
   for (const leaf of app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)) {
     const file = leaf.view.getState().file;
-    if (typeof file === 'string' && matches(file) && leaf.view instanceof AtlasView) await visit(leaf.view, () => leaf.detach());
+    if (typeof file === 'string' && matches(file) && isAtlasView(leaf.view)) await visit(leaf.view, () => leaf.detach());
   }
 }
 

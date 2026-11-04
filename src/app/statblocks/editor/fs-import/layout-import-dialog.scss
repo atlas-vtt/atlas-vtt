@@ -1,0 +1,21 @@
+// The dialog after a Fantasy Statblocks import and the batch that moves its
+// statblocks (§6.2, §6.4). The window is `atlas-te-dialog`; its lists and
+// progress come from `batchParts.tsx`.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  .atlas-te-dialog.atlas-fs-import {
+    width: 480px;
+  }
+
+  .atlas-fs-import__lead {
+    color: var(--text-normal);
+  }
+
+  .atlas-fs-import__section {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+  }
+}

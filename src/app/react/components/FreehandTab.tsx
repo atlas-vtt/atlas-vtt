@@ -1,91 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { Hexagon, Square } from 'lucide-react';
-import type { GridType } from '../../grid/GridSystem';
+import React, { useEffect, useMemo, useState } from 'react';
 import { gridOffsetCenteredAt, normaliseGridOffset } from '../../grid/gridPlacement';
-import { isHexGridType } from '../../grid/hexGeometry';
-import { LabelTooltip } from '../../packages/components/primitives/tooltip';
-import { useArrowNudge, useCrosshairCursor } from '../hooks/useGridAlignmentEffects';
+import { NO_STRETCH, sameStretch } from '../../grid/mapStretch';
+import type { AlignmentResult } from '../../pixi/gridAlignmentMath';
+import { useAlignmentPreview, useCrosshairCursor } from '../hooks/useGridAlignmentEffects';
 import type { AlignmentTabProps } from '../hooks/useGridAlignmentEffects';
 import { useFreehandGridPlacement } from '../hooks/useFreehandGridPlacement';
 import type { FreehandPlacement } from '../hooks/useFreehandGridPlacement';
-
-const GRID_TYPE_CHOICES: ReadonlyArray<{ type: GridType; label: string; tooltip: string; icon: React.ReactElement }> = [
-  { type: 'square', label: 'Square', tooltip: 'Square grid', icon: <Square /> },
-  { type: 'hex-vertical', label: 'Pointy', tooltip: 'Hex grid, pointy-top hexes in rows', icon: <Hexagon /> },
-  { type: 'hex-horizontal', label: 'Flat', tooltip: 'Hex grid, flat-top hexes in columns', icon: <Hexagon className="atlas-grid-alignment-icon--flat" /> },
-];
+import { t } from '../../i18n';
 
 /**
- * Places a grid by eye on maps without one: a token in a small patch of grid
- * follows the pointer at a fixed size on screen, the map's zoom sets the cell
- * size, and a click puts the grid there.
+ * Places a grid by eye: a token in a small patch of grid follows the pointer at a
+ * fixed size on screen, the map's zoom sets the cell size, and a click puts the
+ * grid there. The grid stays exactly as it was placed: this is the way to a grid on a map that
+ * has none, and to one that differs from the lines a map has, so those lines are never asked.
  */
-export function FreehandTab({ controller, view, result, setResult, gridType: sceneGridType }: AlignmentTabProps): React.ReactElement {
-  const [gridType, setGridType] = useState<GridType>(sceneGridType);
+export function FreehandTab({ controller, view, setResult, gridType }: AlignmentTabProps): React.ReactElement | null {
   const [placement, setPlacement] = useState<FreehandPlacement | null>(null);
   const isPlaced = placement !== null;
 
   useCrosshairCursor(isPlaced, view);
-  const offsetAdjust = useArrowNudge(isPlaced);
-  const liveCellSize = useFreehandGridPlacement(view, gridType, !isPlaced, setPlacement);
+  useFreehandGridPlacement(view, gridType, !isPlaced, setPlacement);
+
+  const placed = useMemo((): AlignmentResult | null => {
+    if (!placement) return null;
+    const { cellSize, point, mapStretch } = placement;
+    const centred = gridOffsetCenteredAt(gridType, cellSize, point);
+    const offsets = normaliseGridOffset(gridType, cellSize, centred.offsetX, centred.offsetY);
+    return { cellSize, ...offsets, gridType, ...(sameStretch(mapStretch, NO_STRETCH) ? {} : { mapStretch }) };
+  }, [placement, gridType]);
+  useAlignmentPreview(placed, controller, setResult);
 
   // The scene's current grid would only distract while the new one is placed; leaving the tab restores it.
   useEffect(() => {
-    if (!controller) return;
-    if (!placement) {
-      controller.hidePreview();
-      setResult(null);
-      return;
-    }
-    const { cellSize, point } = placement;
-    const centred = gridOffsetCenteredAt(gridType, cellSize, point);
-    const { offsetX, offsetY } = normaliseGridOffset(gridType, cellSize, centred.offsetX + offsetAdjust.dx, centred.offsetY + offsetAdjust.dy);
-    setResult({ cellSize, offsetX, offsetY, gridType });
-    controller.showPreview(cellSize, offsetX, offsetY, gridType);
-  }, [controller, placement, gridType, offsetAdjust, setResult]);
+    if (!isPlaced) controller?.hidePreview();
+  }, [controller, isPlaced]);
 
   useEffect(() => () => view?.renderer?.cancelGridAlignment(), [view]);
 
-  const cell = isHexGridType(gridType) ? 'hex' : 'square';
-  const hint = isPlaced
-    ? 'Arrow keys nudge the grid (Shift for sub-pixel). Apply to keep it, or place it again.'
-    : `Zoom the map (mouse wheel or pinch) until each ${cell} of the preview covers one ${cell} of the map, then click to place the grid.`;
-  const cellSize = result?.cellSize ?? liveCellSize;
-
-  return (
-    <>
-      <div className="atlas-grid-alignment-tabs" role="radiogroup" aria-label="Grid type">
-        {GRID_TYPE_CHOICES.map(choice => (
-          <LabelTooltip key={choice.type} label={choice.tooltip} describe>
-            <button
-              role="radio"
-              aria-checked={gridType === choice.type}
-              className={`atlas-grid-alignment-tab${gridType === choice.type ? ' is-active' : ''}`}
-              onClick={() => setGridType(choice.type)}
-            >
-              {choice.icon}
-              {choice.label}
-            </button>
-          </LabelTooltip>
-        ))}
-      </div>
-
-      <p className="atlas-grid-alignment-hint">{hint}</p>
-
-      {cellSize !== null && (
-        <div className="atlas-grid-alignment-result">
-          <div>Cell size: {cellSize.toFixed(2)} px</div>
-        </div>
-      )}
-
-      {isPlaced && (
-        <button
-          className="atlas-grid-alignment-btn atlas-grid-alignment-btn--secondary atlas-grid-alignment-btn--wide"
-          onClick={() => setPlacement(null)}
-        >
-          Place again
-        </button>
-      )}
-    </>
-  );
+  return isPlaced ? null : <p className="atlas-grid-alignment-instruction">{t('align.freehandHint')}</p>;
 }

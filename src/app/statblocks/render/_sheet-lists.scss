@@ -1,0 +1,173 @@
+@use '../../../../styles/tokens' as *;
+
+// Lists in the native card: chips, bulleted and numbered words, entries ("Claws." run in before the text)
+// and spell lists.
+
+.atlas-sb-sheet {
+  // ── Chips ─────────────────────────────────────────────────────────────────
+  .atlas-sb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .atlas-sb-chip {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 $spacing-s;
+    border-radius: $radius-full;
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    white-space: nowrap;
+  }
+
+  // ── Bulleted and numbered words ───────────────────────────────────────────
+  .atlas-sb-word-list {
+    margin: 0;
+    padding-left: 20px;
+    font-size: $font-ui-small;
+    line-height: var(--line-height-normal);
+  }
+
+  .atlas-sb-word-list--bullets {
+    list-style: disc;
+  }
+
+  .atlas-sb-word-list--numbered {
+    list-style: decimal;
+  }
+
+  // ── Entries ───────────────────────────────────────────────────────────────
+  .atlas-sb-entries {
+    font-size: $font-ui-small;
+    line-height: var(--line-height-normal);
+
+    > * + * {
+      margin-top: $spacing-s;
+    }
+  }
+
+  .atlas-sb-trait--run-in .atlas-sb-trait-name {
+    margin-right: 0.3em;
+    font-style: italic;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-sb-trait--heading .atlas-sb-trait-name {
+    display: block;
+    margin: 0 0 2px;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-sb-entry-extras {
+    margin-right: 0.3em;
+  }
+
+  .atlas-sb-entry-extra + .atlas-sb-entry-extra {
+    margin-left: $spacing-s;
+  }
+
+  .atlas-sb-entry-extra-label {
+    color: var(--text-muted);
+    font-weight: $font-weight-semibold;
+  }
+
+  // ── Spells ────────────────────────────────────────────────────────────────
+  .atlas-sb-spells-block {
+    font-size: $font-ui-small;
+
+    > * + * {
+      margin-top: $spacing-s;
+    }
+  }
+
+  .atlas-sb-spell-list {
+    margin: $spacing-xs 0 0;
+    padding-left: 20px;
+    text-wrap: pretty;
+  }
+
+  .atlas-sb-spell-level {
+    font-weight: $font-weight-semibold;
+  }
+}
+
+// What starts a new ability while a list is edited (`AddEntryRow`), as quiet as an empty value's prompt:
+// a plus at the end of the list's heading, or a line under a list without heading.
+.atlas-vtt-plugin .atlas-sb-sheet button.atlas-sb-add-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  height: auto;
+  // The list's own gap: this rule's reset would otherwise put the line right under the last ability.
+  margin: $spacing-s 0 0;
+  padding: 0;
+  border: none;
+  border-radius: $radius-s;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+  font: inherit;
+  cursor: pointer;
+  transition: color $transition-fast $transition-ease;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover:not(:disabled) {
+    color: var(--text-normal);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: $spacing-xs;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+
+  // The plus at the end of a heading. Its margins take its box out of the heading's line, so the heading
+  // stands as on the card without it, and the plus itself ends where the heading's rule ends.
+  &.atlas-sb-add-entry--icon {
+    $size: 20px;
+    $inset: ($size - $icon-xs) * 0.5;
+
+    position: relative;
+    flex: none;
+    justify-content: center;
+    width: $size;
+    height: $size;
+    margin: (-$inset) (-$inset) (-$inset) 0;
+    transition-property: color, background-color, scale;
+    transition-duration: $transition-fast;
+    transition-timing-function: $transition-ease;
+
+    // A larger place to hit than the 20 px that show.
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -$spacing-xs;
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--background-modifier-hover);
+    }
+
+    &:active:not(:disabled) {
+      scale: 0.96;
+    }
+
+    &:focus-visible {
+      outline-offset: 0;
+    }
+  }
+}

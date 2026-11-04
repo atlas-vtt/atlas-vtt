@@ -22,6 +22,14 @@ describe('the zone under the pointer', () => {
     expect(zoneAt(ZONES, 300, 760 + ZONE_MARGIN)).toBe('bar');
   });
 
+  it('widens the bar\'s zone on each side by its own growth (the undo/redo bar\'s place on its left)', () => {
+    const growth = { left: 100, right: 0 };
+    expect(zoneAt(ZONES, 100 - ZONE_MARGIN - 100, 730, growth)).toBe('bar');
+    expect(zoneAt(ZONES, 100 - ZONE_MARGIN - 101, 730, growth)).toBeNull();
+    expect(zoneAt(ZONES, 500 + ZONE_MARGIN + 1, 730, growth)).toBeNull();
+    expect(zoneAt(ZONES, 500 + ZONE_MARGIN + 10, 730, 10)).toBe('bar');
+  });
+
   it('splits the gap between the tray and the bar at its midline', () => {
     expect(zoneAt(ZONES, 300, 695)).toBe('tray');
     expect(zoneAt(ZONES, 300, 696)).toBe('bar');

@@ -1,3 +1,4 @@
+import { EXPLODING_D10_DICE_SET_ID } from '../builtInDiceSets';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { HP_RESOURCE } from '../../resources/resourceDefinitions';
 import { CYBERPUNK_RED_SENSES } from '../senses/cyberpunkRed';
@@ -24,6 +25,7 @@ export const CYBERPUNK_RED: SystemPreset = {
     },
     // A 10 rolls one more d10 and adds it, a 1 rolls one more and subtracts it; neither goes on.
     dice: { defaultRoll: '1d10', crit: 'natural', explode: { dice: 'default', repeats: false, highFaces: 1, lowFaces: 1 } },
+    diceSetId: EXPLODING_D10_DICE_SET_ID,
     // Initiative is REF + 1d10, highest first.
     initiative: { mode: 'turn-order', roll: '1d10', firstSide: 'players' },
     conditions: conditionsOf('cyberpunkred', [
@@ -39,5 +41,6 @@ export const CYBERPUNK_RED: SystemPreset = {
     ]),
     resources: [{ ...HP_RESOURCE }],
     senses: CYBERPUNK_RED_SENSES,
+    statblockRoles: [{ id: 'npc', name: 'NPC', templateId: 'builtin:generic-npc' }],
   },
 };

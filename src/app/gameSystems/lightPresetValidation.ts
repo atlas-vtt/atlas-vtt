@@ -4,7 +4,7 @@
  */
 
 import { LIGHT_KINDS } from '../lighting/lightPresets';
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import type { LightPresetDefinition, LightPresetUnit } from '../types/lightPresetTypes';
 import type { LightAnimation } from '../types/lightingTypes';
 import type { SystemPreset } from '../types/systemPresetTypes';
@@ -12,7 +12,7 @@ import { isHexColor } from '../utils/hexColor';
 import { coneAngle } from '../vision/visionCone';
 import { collectionLightPresets } from './lightPresetRules';
 
-const ANIMATIONS: readonly LightAnimation[] = ['none', 'torch', 'candle', 'pulse', 'magic'];
+const ANIMATIONS: readonly LightAnimation[] = ['none', 'torch', 'candle', 'pulse', 'magic', 'smoulder'];
 const UNITS: readonly LightPresetUnit[] = ['feet', 'yards', 'meters', 'squares'];
 /** The ranges the light popover's sliders give intensity and softness. */
 const MAX_INTENSITY = 2;

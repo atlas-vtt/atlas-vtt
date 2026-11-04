@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { changelogSettingsSection } from '../../src/app/settings/changelogSettingsSection';
+import { App } from 'obsidian';
+import { memoryPluginData } from '../mocks/pluginData';
 
 describe('changelog settings integration', () => {
   it('enables announcements by default when loading settings from older Atlas versions', async () => {
-    const app = { vault: { adapter: { exists: async () => true, read: async () => JSON.stringify({ onboarding: { enabled: false } }) } } };
-    const settings = new SettingsService(app as any);
+    const settings = new SettingsService(new App(), undefined, memoryPluginData({ onboarding: { enabled: false } }));
     await settings.initialize();
     expect(settings.getSetting('showChangelogOnUpdate')).toBe(true);
     expect(settings.getSetting('changelogMajorUpdatesOnly')).toBe(false);
@@ -33,8 +34,8 @@ describe('changelog settings integration', () => {
       },
       onChange(callback: (value: boolean) => void) { changed = callback; return toggle; },
     };
-    const section = changelogSettingsSection(settings as any, { open: vi.fn() } as any, '0.1.6');
-    const cleanup = section.rows[1]!.render({ addToggle: (callback: (value: typeof toggle) => void) => callback(toggle) } as any);
+    const section = changelogSettingsSection(settings as any, { open: vi.fn() } as any, '0.1.6', { available: () => null, isChecking: () => false, onChange: () => () => undefined } as any);
+    const cleanup = section.rows[3]!.render({ addToggle: (callback: (value: typeof toggle) => void) => callback(toggle) } as any);
     settings.setSetting('showChangelogOnUpdate', false);
     expect(toggleValue).toBe(false);
     expect(settings.setSetting).toHaveBeenCalledOnce();

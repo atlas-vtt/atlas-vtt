@@ -1,11 +1,16 @@
 /**
  * Hex Grid Alignment Math
  *
- * Each measurement is one hex edge (two neighbouring corners). Unlike square
- * grids, corner-to-corner distances on a hex map vary, but a single edge fixes
- * the lattice completely: its length is the circumradius (size / sqrt(3)), its
- * angle reveals the orientation, and the two hexes sharing it sit one apothem
- * (size / 2) to either side of its midpoint.
+ * Each measurement is two corners of one hex. Meant is one hex edge (two
+ * neighbouring corners), which fixes the lattice completely: its length is the
+ * circumradius (size / sqrt(3)), its angle reveals the orientation, and the two
+ * hexes sharing it sit one apothem (size / 2) to either side of its midpoint.
+ * People also click the corners they see as "left and right": two corners with
+ * one between them, or two opposite corners. Those pairs lie at other angles and
+ * distances, so every way the pairs can be read is worked out
+ * (`hexAlignmentCandidates`): the grid type the GM chose is tried before the
+ * other orientation, and a hex edge before the other readings. The map's lines
+ * decide between them where they can (`snapGridToMapGray`); the first is the answer otherwise.
  *
  * Multiple edges are fused by assigning every clicked corner to a lattice vertex
  * and solving for size and origin by least squares. Because the first edge only
@@ -43,9 +48,26 @@ interface LatticeFit {
   maxResidual: number;
 }
 
+/**
+ * Which two corners of a hex a measurement names: the ends of one edge, two opposite corners, or two
+ * corners with one between them, whose hex lies to either side of the line through them.
+ */
+type PairReading = 'edge' | 'opposite' | 'across' | 'across-far';
+
+/** Flat-to-flat size of the hex as a multiple of the distance between the two corners. */
+const SIZE_PER_LENGTH: Record<PairReading, number> = { edge: SQRT3, opposite: SQRT3 / 2, across: 1, 'across-far': 1 };
+
+/** Edges of one orientation lie along the lines the corner-skipping pairs of the other do, so the angle names the readings. */
+const READINGS_ALONG_EDGES: PairReading[] = ['edge', 'opposite'];
+const READINGS_ACROSS: PairReading[] = ['across', 'across-far'];
+
+function pairLength(pair: MeasurementPair): number {
+  return Math.hypot(pair.b.x - pair.a.x, pair.b.y - pair.a.y);
+}
+
 /** Flat-to-flat size implied by one edge; edge length equals the circumradius. */
 export function hexSizeFromEdge(pair: MeasurementPair): number {
-  const length = Math.hypot(pair.b.x - pair.a.x, pair.b.y - pair.a.y);
+  const length = pairLength(pair);
   return length < 1 ? 0 : length * SQRT3;
 }
 
@@ -213,17 +235,22 @@ function fuseEdges(type: HexGridType, pairs: MeasurementPair[], seed: LatticeFit
   return beam[0]!;
 }
 
-/** Seed the lattice from the first edge: one adjacent hex centre sits an apothem from the midpoint. */
-function seedFromEdge(pair: MeasurementPair, size: number): LatticeFit {
+/**
+ * Seed the lattice from the first pair. Its hex's centre lies on the perpendicular through the
+ * pair's midpoint: an apothem away for an edge, on the midpoint for opposite corners, and half a
+ * circumradius away for corners with one between them.
+ */
+function seedFromPair(pair: MeasurementPair, size: number, reading: PairReading): LatticeFit {
   const dx = pair.b.x - pair.a.x;
   const dy = pair.b.y - pair.a.y;
   const length = Math.hypot(dx, dy);
-  const apothem = size / 2;
+  const halfRadius = size / SQRT3 / 2;
+  const distance = { edge: size / 2, opposite: 0, across: halfRadius, 'across-far': -halfRadius }[reading];
   return {
     size,
     center: {
-      x: (pair.a.x + pair.b.x) / 2 - (dy / length) * apothem,
-      y: (pair.a.y + pair.b.y) / 2 + (dx / length) * apothem,
+      x: (pair.a.x + pair.b.x) / 2 - (dy / length) * distance,
+      y: (pair.a.y + pair.b.y) / 2 + (dx / length) * distance,
     },
     maxResidual: 0,
   };
@@ -231,19 +258,11 @@ function seedFromEdge(pair: MeasurementPair, size: number): LatticeFit {
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
-/**
- * Compute hex grid alignment from 1–n edge measurements.
- * Orientation is detected from the edges; `fallbackType` is used only when ambiguous.
- */
-export function calculateHexAlignment(pairs: MeasurementPair[], fallbackType: HexGridType): AlignmentResult | null {
-  if (pairs.length === 0) return null;
-  const sizes = pairs.map(hexSizeFromEdge);
-  if (sizes.some((s) => s === 0)) return null;
+/** The lattice of `type` that the pairs give when each is read as `reading`. */
+function alignmentFor(pairs: MeasurementPair[], type: HexGridType, reading: PairReading): AlignmentResult {
+  const roughSize = (pairs.reduce((sum, pair) => sum + pairLength(pair), 0) / pairs.length) * SIZE_PER_LENGTH[reading];
 
-  const type = detectHexOrientation(pairs, fallbackType);
-  const roughSize = sizes.reduce((sum, s) => sum + s, 0) / sizes.length;
-
-  const best = fuseEdges(type, pairs, seedFromEdge(pairs[0]!, roughSize));
+  const best = fuseEdges(type, pairs, seedFromPair(pairs[0]!, roughSize, reading));
   // Polish: re-assign every corner under the fused lattice and fit once more.
   const polished = assign(type, best.fit, best.samples.map((s) => s.point));
   const fit = fitLattice(type, polished) ?? best.fit;
@@ -260,4 +279,28 @@ export function calculateHexAlignment(pairs: MeasurementPair[], fallbackType: He
     gridType: type,
     maxResidual: round2(fit.maxResidual),
   };
+}
+
+function otherOrientation(type: HexGridType): HexGridType {
+  return type === 'hex-vertical' ? 'hex-horizontal' : 'hex-vertical';
+}
+
+/**
+ * Every hex grid 1–n corner pairs can stand for, the likeliest first: grids of `type`, the one the
+ * GM chose, before the other orientation's, and within a type the reading whose lattice the clicked
+ * corners fit best, a hex edge before the others where they fit alike (a single pair fits all).
+ * The first is the answer where the map's lines cannot decide; none for a pair of one point.
+ */
+export function hexAlignmentCandidates(pairs: MeasurementPair[], type: HexGridType): AlignmentResult[] {
+  if (pairs.length === 0 || pairs.some((pair) => pairLength(pair) < 1)) return [];
+  const edgesOfType = detectHexOrientation(pairs, type) === type;
+  const byFit = (readings: PairReading[], gridType: HexGridType): AlignmentResult[] =>
+    readings
+      .map((reading) => alignmentFor(pairs, gridType, reading))
+      // Array.prototype.sort is stable: readings that fit alike keep their order.
+      .sort((a, b) => (a.maxResidual ?? 0) / a.cellSize - (b.maxResidual ?? 0) / b.cellSize);
+  return [
+    ...byFit(edgesOfType ? READINGS_ALONG_EDGES : READINGS_ACROSS, type),
+    ...byFit(edgesOfType ? READINGS_ACROSS : READINGS_ALONG_EDGES, otherOrientation(type)),
+  ];
 }

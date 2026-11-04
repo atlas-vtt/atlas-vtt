@@ -23,4 +23,27 @@ describe('moving a loot base in the vault', () => {
 
     expect(assets.getCollectionSettings(collectionId).lootBases).toEqual(['Reference/Gear.base', 'Loot/Rings.base']);
   });
+
+  it('keeps the collections that roll on a table note pointed at its new place, every field kept', async () => {
+    const { app } = createInMemoryApp({ files: { 'Adventures/Brew.md': '' } });
+    const assets = AssetService.getInstance(app);
+    await assets.initialize();
+    const collectionId = assets.getDefaultCollectionId();
+    await assets.updateCollectionSettings(collectionId, {
+      lootBases: ['Loot/Items.base'],
+      randomTables: [
+        { path: 'Adventures/Brew.md', table: 'Rumours', index: 1, kind: 'text', hiddenColumns: ['True?'] },
+        { path: 'Weather.md', index: 0, kind: 'text' },
+      ],
+    });
+
+    await new FileReferenceService(app).handleFilesMoved([{ from: 'Adventures/Brew.md', to: 'Archive/Brew.md' }]);
+
+    const settings = assets.getCollectionSettings(collectionId);
+    expect(settings.randomTables).toEqual([
+      { path: 'Archive/Brew.md', table: 'Rumours', index: 1, kind: 'text', hiddenColumns: ['True?'] },
+      { path: 'Weather.md', index: 0, kind: 'text' },
+    ]);
+    expect(settings.lootBases).toEqual(['Loot/Items.base']);
+  });
 });

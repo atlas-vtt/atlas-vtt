@@ -1,4 +1,5 @@
 import { Container, RenderTexture, Sprite, Texture, type Renderer } from 'pixi.js';
+import { getDomHost } from '../../host/dom';
 import type { ExploredShapes } from '../../vision/exploredShapes';
 import type { MapBounds } from '../../vision/visibility';
 import { destroyTree } from '../utils/destroyTree';
@@ -8,15 +9,19 @@ import type { TexelRegion } from './StampScratch';
 /** Longest side of the explored memory in texels; it is drawn dim and soft, so this is plenty. */
 const MAX_TEXELS = 2048;
 
+/** The memory's texels over a map of `bounds`: how many, and how many a world pixel is stamped at. */
+export function exploredGrid(bounds: MapBounds): { columns: number; rows: number; scale: number } {
+  const scale = Math.min(1, MAX_TEXELS / Math.max(bounds.width, bounds.height, 1));
+  return { columns: Math.max(1, Math.ceil(bounds.width * scale)), rows: Math.max(1, Math.ceil(bounds.height * scale)), scale };
+}
+
 /**
  * A smaller image of the memory at the memory's size, with its edges where they were: scaled up
  * its coverage is spread over a texel or two, and only what is more than half covered is kept
  * (none up to a half, all from three quarters).
  */
 function sharpened(image: HTMLImageElement, width: number, height: number): HTMLCanvasElement {
-  const canvas = createEl('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  const canvas = getDomHost().createCanvas(undefined, { width, height });
   const context = canvas.getContext('2d');
   if (!context) return canvas;
   context.drawImage(image, 0, 0, width, height);
@@ -43,11 +48,9 @@ export class ExploredTexture {
   private readonly mergeSprite = new Sprite();
 
   constructor(private readonly renderer: Renderer, bounds: MapBounds) {
-    this.scale = Math.min(1, MAX_TEXELS / Math.max(bounds.width, bounds.height, 1));
-    this.texture = RenderTexture.create({
-      width: Math.max(1, Math.ceil(bounds.width * this.scale)),
-      height: Math.max(1, Math.ceil(bounds.height * this.scale)),
-    });
+    const grid = exploredGrid(bounds);
+    this.scale = grid.scale;
+    this.texture = RenderTexture.create({ width: grid.columns, height: grid.rows });
     this.scratch = new StampScratch(renderer);
     this.mergeSprite.blendMode = 'max';
     this.merge.addChild(this.mergeSprite);
@@ -59,7 +62,7 @@ export class ExploredTexture {
     const region = stampRegion(shapes, this.scale, this.texture);
     if (!region) return;
     this.mergeSprite.alpha = level;
-    this.scratch.begin(shapes);
+    this.scratch.begin(shapes, this.scale);
     for (const tile of tilesOf(region)) {
       this.mergeSprite.texture = this.scratch.renderTile(this.scale, tile.x, tile.y);
       this.mergeSprite.position.set(tile.x, tile.y);
@@ -79,7 +82,8 @@ export class ExploredTexture {
    * at full size.
    */
   async decode(dataUrl: string): Promise<Texture> {
-    const image = createEl('img', { attr: { src: dataUrl } });
+    const image = new Image();
+    image.src = dataUrl;
     await image.decode();
     const { width, height } = this.texture;
     return Texture.from(image.naturalWidth < width || image.naturalHeight < height ? sharpened(image, width, height) : image);
@@ -87,11 +91,27 @@ export class ExploredTexture {
 
   /** Replaces the memory with a decoded image of it, which it then destroys with its source. */
   draw(image: Texture): void {
+    this.drawImage(image, true);
+  }
+
+  /**
+   * Adds a decoded image of a memory to this one, which it then destroys with its source: each
+   * texel keeps the larger coverage of the two (`max`), so what either has seen stays.
+   */
+  drawOver(image: Texture): void {
+    this.drawImage(image, false);
+  }
+
+  private drawImage(image: Texture, replace: boolean): void {
     const sprite = new Sprite(image);
     sprite.width = this.texture.width;
     sprite.height = this.texture.height;
-    this.renderer.render({ container: sprite, target: this.texture, clear: true, clearColor: [0, 0, 0, 0] });
-    destroyTree(sprite);
+    sprite.blendMode = replace ? 'normal' : 'max';
+    // A blend mode is read from a child: the container rendered is the group itself.
+    const container = new Container();
+    container.addChild(sprite);
+    this.renderer.render({ container, target: this.texture, clear: replace, clearColor: [0, 0, 0, 0] });
+    destroyTree(container);
     // The source is the decoded image and its upload, as large as the memory itself; a texture
     // destroyed without it leaves both behind for every scene loaded.
     image.destroy(true);
@@ -116,9 +136,7 @@ export class ExploredTexture {
       image.data[i + 2] = 255;
       image.data[i + 3] = pixels[i]!;
     }
-    const canvas = createEl('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    const canvas = getDomHost().createCanvas(undefined, { width, height });
     canvas.getContext('2d')?.putImageData(image, 0, 0);
     return canvas;
   }

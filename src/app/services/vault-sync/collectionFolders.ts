@@ -1,6 +1,6 @@
 import type { AssetMetadata } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
-import { createCollectionRecord, forgetCollection, moveCollectionRecord } from '../collectionRecords';
+import { derivedCollectionRecord, forgetCollection, moveCollectionRecord } from '../collectionRecords';
 import type { PathMove } from '../renamedPaths';
 import { ownedPaths } from './assetFiles';
 
@@ -93,7 +93,7 @@ export function followCollectionFolders(
     moves.push({ from: collectionFolderPath(from), to: collectionFolderPath(to) });
   }
   const added = [...folders].sort().filter((id) => !metadata.collections[id]);
-  for (const id of added) metadata.collections[id] = createCollectionRecord(id, now);
+  for (const id of added) metadata.collections[id] = derivedCollectionRecord(id);
   return { moves, added };
 }
 

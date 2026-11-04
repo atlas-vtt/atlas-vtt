@@ -1,10 +1,11 @@
+// @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { canRunMapHotkeys, matchesMapHotkey } from '../../src/app/keyboard/mapHotkeys';
 import { handle, renderToolbar, setUpToolbarTestDom, startEditing } from './toolbarEditorHarness';
 
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: {} }));
-vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTabInPlayerWindow: vi.fn() }));
+vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTab: vi.fn() }));
 vi.mock('../../src/app/utils/activeLeafGuard', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/app/utils/activeLeafGuard')>(),
   isShortcutScopeActive: () => true,
@@ -132,15 +133,32 @@ describe('note previews during a drag', () => {
 });
 
 describe('Lighting in the editor', () => {
-  it('is in the tray while hidden with dynamic lighting on, and leaves it when the switch goes off', () => {
+  it('is in the tray while hidden', () => {
     const harness = renderToolbar({ stored: { hidden: ['wall'] } });
-    act(() => harness.settings.setExperimental('dynamicLighting', true));
     startEditing(harness);
     expect(trayIds(harness.container)).toEqual(['wall']);
+  });
+});
 
-    act(() => harness.settings.setExperimental('dynamicLighting', false));
-    expect(trayIds(harness.container)).toEqual([]);
-    expect(harness.container.querySelector('.atlas-main-toolbar [data-toolbar-item="wall"]')).toBeNull();
+describe('a press outside the editor', () => {
+  it('ends edit mode with the left button, and not on the bars, the tray or with the right button', () => {
+    const harness = renderToolbar({ stored: { hidden: ['text'] }, undoBar: true });
+    startEditing(harness);
+    const outside = document.body.appendChild(document.createElement('div'));
+    const press = (target: Element, button = 0): void => {
+      const event = pointer('pointerdown', 10, 10);
+      Object.defineProperty(event, 'button', { value: button });
+      act(() => { target.dispatchEvent(event); });
+    };
+
+    press(handle(harness.container, 'fog'));
+    press(handle(harness.container, 'text', 'tray'));
+    press(handle(harness.container, 'undo'));
+    press(outside, 2);
     expect(harness.store.getState().isToolbarEditing).toBe(true);
+
+    press(outside);
+    expect(harness.store.getState().isToolbarEditing).toBe(false);
+    outside.remove();
   });
 });

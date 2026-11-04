@@ -1,4 +1,5 @@
 import { createDialogShell } from './dialogShell';
+import { t } from '../i18n';
 
 export interface ConfirmDialogOptions {
   title: string;
@@ -42,7 +43,7 @@ export function chooseAction<T>(options: ChoiceDialogOptions<T>): Promise<T | nu
     };
 
     const actions = dialog.createDiv({ cls: 'atlas-text-dialog__actions' });
-    actions.createEl('button', { text: 'Cancel' }).addEventListener('click', () => close(null));
+    actions.createEl('button', { text: t('common.cancel') }).addEventListener('click', () => close(null));
     const buttons = options.choices.map((choice) => {
       const button = actions.createEl('button', { text: choice.label });
       if (choice.style) button.addClass(`mod-${choice.style}`);

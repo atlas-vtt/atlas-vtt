@@ -2,6 +2,7 @@ import type { TutorialStep } from './Tutorial';
 import lootBaseImage from '../assets/tutorials/loot-base.webp';
 import lootItemNoteImage from '../assets/tutorials/loot-item-note.webp';
 import lootPlayerViewImage from '../assets/tutorials/loot-player-view.webp';
+import { t } from '../i18n';
 
 /**
  * The loot tours: the Loot tab of the collection settings, the loot roller the
@@ -9,27 +10,27 @@ import lootPlayerViewImage from '../assets/tutorials/loot-player-view.webp';
  * settings replay them.
  */
 
-export const LOOT_TUTORIAL_LABEL = 'Loot';
+export const LOOT_TUTORIAL_LABEL = t('tour.loot.label');
 
 export const LOOT_SETTINGS_STEPS: TutorialStep[] = [
   {
-    title: 'Loot lives in your notes',
-    body: 'Write each item as a note and gather the notes in an Obsidian base. Every view of the base, like Weapons or Tier 2, becomes a list the loot roller can draw from, with the view’s own filters.',
-    image: { src: lootBaseImage, alt: 'A base of item notes with a view per kind of item' },
+    title: t('tour.loot.notesTitle'),
+    body: t('tour.loot.notesBody'),
+    image: { src: lootBaseImage, alt: t('tour.loot.notesAlt') },
   },
   {
-    title: 'Properties Atlas reads',
-    body: 'Price, Rarity, Type and Description are picked up by name; Cost, Quality, Category and Effect work too. The view’s other columns show on the item’s card, under the names the base gives them.',
-    image: { src: lootItemNoteImage, alt: 'An item note with its type, rarity, price and feature properties' },
+    title: t('tour.loot.propsTitle'),
+    body: t('tour.loot.propsBody'),
+    image: { src: lootItemNoteImage, alt: t('tour.loot.propsAlt') },
   },
   {
-    title: 'Add your bases',
-    body: 'Add one base or several. Atlas shows how many views and items it found in each, and keeps track of a base you rename or move.',
+    title: t('tour.loot.basesTitle'),
+    body: t('tour.loot.basesBody'),
     selector: '.atlas-csm-loot-bases',
   },
   {
-    title: 'Name your currency',
-    body: 'Prices that are plain numbers read in this currency, like “500 gold”. Each roll keeps the currency it was made with.',
+    title: t('tour.loot.currencyTitle'),
+    body: t('tour.loot.currencyBody'),
     selector: '.atlas-csm-loot-currency',
   },
 ];
@@ -38,23 +39,23 @@ export const LOOT_SETTINGS_STEPS: TutorialStep[] = [
 export function lootRollerSteps(hotkey: string, hasRarities: boolean): TutorialStep[] {
   return [
     {
-      title: 'Pick what to roll from',
-      body: 'Tick whole bases, or open one and tick single views. Rolls draw only from ticked views, and an item in several of them counts once.',
+      title: t('tour.loot.pickTitle'),
+      body: t('tour.loot.pickBody'),
       selector: '.atlas-loot-roller__sidebar',
     },
     ...(hasRarities ? [{
-      title: 'Filter by rarity',
-      body: 'Each rarity shows how many of its items you can roll. Switch one off to leave its items out, say for a village market.',
+      title: t('tour.loot.rarityTitle'),
+      body: t('tour.loot.rarityBody'),
       selector: '.atlas-loot-rarities',
     }] : []),
     {
-      title: 'Roll',
-      body: `Choose how many items to draw and roll; every item left has the same chance. Press ${hotkey} to open and close this window on any map. Each map remembers where you left it.`,
+      title: t('tour.loot.rollTitle'),
+      body: t('tour.loot.rollBody', { hotkey }),
       selector: '.atlas-loot-rollbar__actions',
     },
     {
-      title: 'Latest roll and history',
-      body: 'Latest roll shows the last roll on this map. History keeps every roll in the collection, from all its maps, so you can look up what the party found last session.',
+      title: t('tour.loot.historyTitle'),
+      body: t('tour.loot.historyBody'),
       selector: '.atlas-loot-pane-tabs',
     },
   ];
@@ -62,19 +63,19 @@ export function lootRollerSteps(hotkey: string, hasRarities: boolean): TutorialS
 
 export const LOOT_RESULT_STEPS: TutorialStep[] = [
   {
-    title: 'Read an item',
-    body: 'Its colour shows the rarity: uncommon green, rare blue, epic purple, legendary orange; common items stay plain. Type and price come first, then the description and the view’s columns.',
+    title: t('tour.loot.readTitle'),
+    body: t('tour.loot.readBody'),
     selector: '.atlas-loot-list .atlas-loot-card',
   },
   {
-    title: 'Hand it to your players',
-    body: 'The eye shows the item in the player view, in a Loot received window large enough to read across the table. Show more and they stack; players close it with a click outside or Escape.',
+    title: t('tour.loot.handTitle'),
+    body: t('tour.loot.handBody'),
     selector: '.atlas-loot-list .atlas-loot-card__show',
-    image: { src: lootPlayerViewImage, alt: 'The Loot received window in the player view' },
+    image: { src: lootPlayerViewImage, alt: t('tour.loot.handAlt') },
   },
   {
-    title: 'Open the item',
-    body: 'Opens the item’s note to read or edit it. Changes reach future rolls; rolls already made keep what they drew.',
+    title: t('tour.loot.openTitle'),
+    body: t('tour.loot.openBody'),
     selector: '.atlas-loot-list .atlas-loot-card__source',
   },
 ];

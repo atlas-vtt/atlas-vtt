@@ -186,6 +186,9 @@ describe('LightingRenderer sight on drop', () => {
     for (const lighting of [{}, { sightOnDrop: false }]) {
       const h = await setup(lighting, HERO, false);
       drag(h);
+      // A drag's sight goes into the memory at most every 100 ms: the last waits for its turn.
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      h.tick();
       expect(h.lighting.currentSight().regions.map((region) => region.origin)).toEqual([END]);
       expect(h.redAt(RIGHT_CORNER.x, RIGHT_CORNER.y)).toBe(255);
       expect(watch!.findings).toEqual([]);

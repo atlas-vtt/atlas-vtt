@@ -3,16 +3,18 @@ import { useCallback, useContext, useEffect, useLayoutEffect, useRef } from 'rea
 import type { MapHotkeyId } from '../../../../keyboard/mapHotkeys'
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext'
 import { useViewStoreHook } from '../../../../react/ViewStoreContext'
-import { isHideableToolbarControl, toolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
-import { withControlAfter, withControlHidden, type ToolbarLayout } from '../../../../toolbar/toolbarLayout'
+import {
+  isHideableToolbarControl, isToolbarControlId, toolbarUnit, type ToolbarControlId, type ToolbarUnitId,
+} from '../../../../toolbar/toolbarCatalog'
+import { withControlAfter, withControlHidden, withControlShown, type ToolbarLayout } from '../../../../toolbar/toolbarLayout'
 import { ToolbarSpaceContext } from '../toolbarSpace'
 import type { ToolbarChangeCause } from '../useLayoutMotion'
 import type { ResponsiveToolbarItem } from '../toolbarTypes'
-import { cancelledMessage, hiddenMessage, movedMessage, refusedMessage, shownMessage } from './toolbarAnnouncements'
+import { cancelledMessage, hiddenMessage, keyEffect, movedMessage, refusedMessage, shownInPlaceMessage, shownMessage } from './toolbarAnnouncements'
 import { settledBar, shownBarIds, zonesOf } from './toolbarDragGeometry'
-import { dropIndex, leftNeighbour, zoneAt, type FrozenZones } from './toolbarDropIndex'
+import { dropIndex, leftNeighbour, zoneAt, type BarGrowth, type FrozenZones } from './toolbarDropIndex'
 import { editorRowOf, mainToolbarOf } from './toolbarEditDom'
-import { IDLE_TOOLBAR_EDIT, type ToolbarEditStore, type ToolbarPlace } from './toolbarEditStore'
+import { IDLE_TOOLBAR_EDIT, type ToolbarDrag, type ToolbarEditStore, type ToolbarPlace } from './toolbarEditStore'
 import { motionModeOf } from './editorMotion'
 import { ToolbarPointerSession, type ClientPoint } from './toolbarPointerSession'
 
@@ -31,7 +33,7 @@ interface ToolbarDragOptions {
 
 export interface ToolbarDragControls {
   /** A press on a handle, which may become a drag. */
-  press: (event: React.PointerEvent<HTMLElement>, id: ToolbarControlId, from: ToolbarPlace) => void
+  press: (event: React.PointerEvent<HTMLElement>, id: ToolbarUnitId, from: ToolbarPlace) => void
   /** Asked before a context menu opens on a handle: never during a drag. */
   allowContextMenu: () => boolean
 }
@@ -47,6 +49,25 @@ interface DragFrame {
 
 function barPositions(layout: ToolbarLayout, available: ReadonlySet<ToolbarControlId>): ToolbarControlId[] {
   return layout.order.filter(id => available.has(id) && !layout.hidden.has(id))
+}
+
+/**
+ * How far the bar's zone reaches past the bar for a drag: a tool from the
+ * tray widens the bar by itself and a gap; the undo/redo bar's own place lies
+ * left of the bar, which never grows for it.
+ */
+function barGrowthFor(drag: ToolbarDrag, gap: number): number | BarGrowth {
+  const width = (drag.barWidth ?? 0) + gap
+  if (!isToolbarControlId(drag.id)) return { left: width, right: 0 }
+  return drag.from === 'tray' ? width : 0
+}
+
+/** What a drop does: a tool or the undo/redo bar let go over the bar or the tray. */
+function dropChange(drag: ToolbarDrag): { cause: ToolbarChangeCause; update: (layout: ToolbarLayout) => ToolbarLayout } {
+  const { id, from, after } = drag
+  if (drag.zone === 'tray') return { cause: 'hide', update: layout => withControlHidden(layout, id) }
+  if (!isToolbarControlId(id)) return { cause: 'show', update: layout => withControlShown(layout, id) }
+  return { cause: from === 'bar' ? 'move' : 'show', update: layout => withControlAfter(layout, id, after) }
 }
 
 /**
@@ -94,7 +115,11 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
   const cancel = useCallback((): void => {
     const { drag } = store.state.getState()
     const { layout, available: offered, announce } = latest.current
-    if (drag) announce(cancelledMessage(toolbarControl(drag.id).label, drag.from === 'bar' ? barPositions(layout, offered).indexOf(drag.id) + 1 : null))
+    if (drag) {
+      const { id, from } = drag
+      const position = from === 'tray' ? null : isToolbarControlId(id) ? barPositions(layout, offered).indexOf(id) + 1 : 'own'
+      announce(cancelledMessage(toolbarUnit(id).label, position))
+    }
     settleBack(false)
   }, [store, settleBack])
 
@@ -106,20 +131,20 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
     if (!drag || !current) return
     store.pointer.x.set(point.x - current.rowLeft)
     store.pointer.y.set(point.y - current.rowTop)
-    const growth = drag.from === 'tray' ? (drag.barWidth ?? 0) + current.gap : 0
-    const zone = zoneAt(current.zones, point.x, point.y, growth)
+    const zone = zoneAt(current.zones, point.x, point.y, barGrowthFor(drag, current.gap))
     const refused = zone === 'tray' && !isHideableToolbarControl(drag.id)
     const bar = mainToolbarOf(current.row)
     // Entering the bar, the well opens where the pointer is; the bar reads its thresholds again once it has.
     // A tool from the bar that comes back from outside both zones (or from a refusal) still holds its slot
-    // there, so the bar does not grow.
-    if (zone === 'bar' && drag.zone !== 'bar' && bar && drag.barWidth !== null) {
+    // there, so the bar does not grow. The undo/redo bar opens no well there.
+    const control = isToolbarControlId(drag.id)
+    if (control && zone === 'bar' && drag.zone !== 'bar' && bar && drag.barWidth !== null) {
       const originHolds = drag.from === 'bar' && (drag.zone === null || drag.refused)
       frozenBar = settledBar(bar, drag.id, drag.barWidth, !originHolds)
       store.state.setState({ frozenBar })
     }
     let after = drag.after
-    if (zone === 'bar' && frozenBar) {
+    if (control && zone === 'bar' && frozenBar) {
       const { x, width } = store.ghost
       after = leftNeighbour(frozenBar.ids, dropIndex(frozenBar.thresholds, current.rowLeft + x.get() + width.get() / 2))
     }
@@ -128,7 +153,7 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
     }
   }, [store])
 
-  const pickUp = useCallback((id: ToolbarControlId, from: ToolbarPlace, row: Element, point: ClientPoint): void => {
+  const pickUp = useCallback((id: ToolbarUnitId, from: ToolbarPlace, row: Element, point: ClientPoint): void => {
     const zones = zonesOf(row)
     const bar = mainToolbarOf(row)
     if (!zones || !bar) return
@@ -140,7 +165,7 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
     store.ghost.x.set(point.x - rowBox.left)
     store.ghost.width.set(0)
     const shown = shownBarIds(row)
-    const originAfter = from === 'bar' ? leftNeighbour(shown.filter(other => other !== id), shown.indexOf(id)) : null
+    const originAfter = from === 'bar' && isToolbarControlId(id) ? leftNeighbour(shown.filter(other => other !== id), shown.indexOf(id)) : null
     const { layout, items } = latest.current
     serial.current += 1
     previews(true)
@@ -166,23 +191,22 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
     }
     const { layout, available: offered, change, announce, hotkeyLabel } = latest.current
     const { id, from, zone, after } = drag
-    const label = toolbarControl(id).label
+    const label = toolbarUnit(id).label
     if (zone === null || drag.refused || (zone === 'bar' && from === 'bar' && after === drag.originAfter)) {
       if (drag.refused) announce(refusedMessage())
       settleBack(drag.refused)
       return
     }
+    const { cause, update } = dropChange(drag)
     const before = barPositions(layout, offered)
-    if (zone === 'bar') {
-      const moved = withControlAfter(layout, id, after)
-      const now = barPositions(moved, offered)
-      change(from === 'bar' ? 'move' : 'show', latestLayout => withControlAfter(latestLayout, id, after))
-      announce(from === 'bar'
-        ? movedMessage(label, before.indexOf(id) + 1, now.indexOf(id) + 1)
-        : shownMessage(label, now.indexOf(id) + 1, now.length))
+    const now = barPositions(update(layout), offered)
+    change(cause, update)
+    if (zone === 'tray') {
+      if (from === 'bar') announce(hiddenMessage(label, hotkeyLabel(toolbarUnit(id).hotkey), keyEffect(id)))
+    } else if (!isToolbarControlId(id)) {
+      announce(shownInPlaceMessage(label))
     } else {
-      change('hide', latestLayout => withControlHidden(latestLayout, id))
-      if (from === 'bar') announce(hiddenMessage(label, hotkeyLabel(toolbarControl(id).hotkey)))
+      announce(from === 'bar' ? movedMessage(label, before.indexOf(id) + 1, now.indexOf(id) + 1) : shownMessage(label, now.indexOf(id) + 1, now.length))
     }
     frame.current = null
     previews(false)
@@ -192,7 +216,7 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
     })
   }, [store, move, settleBack, previews])
 
-  const press = useCallback((event: React.PointerEvent<HTMLElement>, id: ToolbarControlId, from: ToolbarPlace): void => {
+  const press = useCallback((event: React.PointerEvent<HTMLElement>, id: ToolbarUnitId, from: ToolbarPlace): void => {
     if (event.button !== 0 || session.current) return
     const row = editorRowOf(event.currentTarget)
     const bar = row && mainToolbarOf(row)
@@ -231,7 +255,7 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
   // The control the drag holds is gone (Lighting switched off).
   useEffect(() => {
     const dragged = store.state.getState().drag?.id
-    if (dragged !== undefined && !available.has(dragged)) session.current?.cancel()
+    if (dragged !== undefined && isToolbarControlId(dragged) && !available.has(dragged)) session.current?.cancel()
   }, [available, store])
 
   // The window was resized: the bar the drag measured is not there any more.

@@ -1,47 +1,47 @@
 import React from 'react';
-import { FileWarning } from 'lucide-react';
+import { FileWarning, FolderInput, Plus } from 'lucide-react';
 import { CoinIcon } from '../CoinIcon';
 import { Button } from '../../../packages/components/primitives/button';
-import { LoadingSpinner } from '../../../packages/components/primitives/LoadingSpinner';
+import { t } from '../../../i18n';
 
 interface LootEmptyStateProps {
   inCollection: boolean;
-  /** Obsidian's Bases core plugin is on. */
-  basesAvailable: boolean;
-  loaded: boolean;
-  baseCount: number;
-  /** Opens the collection's loot settings. */
-  onSetUp: () => void;
+  /** The collection's loot bases cannot be read: Obsidian's Bases core plugin is off. */
+  basesOff: boolean;
+  /** Writes a new table from pasted text; absent where the window offers none. */
+  onNewTable?: () => void;
+  /** Opens the collection's Random tables settings, to take tables from notes and bases. */
+  onUseNote: () => void;
 }
 
-/** What the loot roller shows before it has items to roll on, and how to give it some. */
-export function LootEmptyState({ inCollection, basesAvailable, loaded, baseCount, onSetUp }: LootEmptyStateProps): React.ReactElement {
-  if (inCollection && basesAvailable && !loaded) {
+/** What the Random tables window shows before the collection has a table to roll on, and how to give it one. */
+export function LootEmptyState({ inCollection, basesOff, onNewTable, onUseNote }: LootEmptyStateProps): React.ReactElement {
+  if (!inCollection || basesOff) {
     return (
       <div className="atlas-loot-empty">
-        <LoadingSpinner size={32} />
+        <span className="atlas-loot-empty__icon"><FileWarning /></span>
+        <p className="atlas-loot-empty__title">{t(inCollection ? 'loot.empty.basesOff' : 'loot.empty.noCollection')}</p>
+        <p className="atlas-loot-empty__body">{t(inCollection ? 'loot.empty.basesOffBody' : 'loot.empty.noCollectionBody')}</p>
       </div>
     );
   }
 
-  const [title, body] = !inCollection
-    ? ['This map is not in a collection', 'Loot comes from the bases of a collection. Move the map into one to roll loot on it.']
-    : !basesAvailable
-      ? ['Bases are turned off', 'The loot roller reads items from Obsidian Bases. Turn on the Bases core plugin in Obsidian’s settings, then reload Obsidian.']
-      : baseCount === 0
-        ? ['No loot bases yet', 'Gather your items as notes in an Obsidian base and add it to this collection. Every note its views list becomes loot you can roll.']
-        : ['No items in the loot bases', 'The views of the collection’s loot bases list no notes. Every note a view lists is an item the roller can draw.'];
-
   return (
     <div className="atlas-loot-empty">
-      <span className="atlas-loot-empty__icon">{baseCount > 0 || !basesAvailable ? <FileWarning /> : <CoinIcon />}</span>
-      <p className="atlas-loot-empty__title">{title}</p>
-      <p className="atlas-loot-empty__body">{body}</p>
-      {inCollection && basesAvailable && (
-        <Button variant={baseCount === 0 ? 'default' : 'outline'} className="atlas-loot-empty__action" onClick={onSetUp}>
-          {baseCount === 0 ? 'Set up loot' : 'Loot settings'}
+      <span className="atlas-loot-empty__icon"><CoinIcon /></span>
+      <p className="atlas-loot-empty__title">{t('tables.empty')}</p>
+      <div className="atlas-loot-empty__actions">
+        {onNewTable && (
+          <Button variant="default" onClick={onNewTable}>
+            <Plus />
+            {t('tables.newTable')}
+          </Button>
+        )}
+        <Button variant={onNewTable ? 'ghost' : 'default'} onClick={onUseNote}>
+          <FolderInput />
+          {t('tables.fromNote')}
         </Button>
-      )}
+      </div>
     </div>
   );
 }

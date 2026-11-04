@@ -3,15 +3,15 @@ import type { App } from 'obsidian';
 import { BUILT_IN_SENSES, GENERIC_SENSES } from '../../src/app/gameSystems/senses';
 import type { AssetService } from '../../src/app/services/AssetService';
 import { mapSenseRules, mapSenseRulesSource } from '../../src/app/services/mapSenseRules';
-import { SettingsService } from '../../src/app/services/SettingsService';
+import { SystemPresetFiles } from '../../src/app/services/systemPresets/SystemPresetFiles';
 import { SystemPresetService } from '../../src/app/services/SystemPresetService';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { parseSenses } from '../../src/app/creatures/parseSenses';
 import { resolveMeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { gameUnitsToWorld, unitScaleOf } from '../../src/app/lighting/lightingUnits';
 import * as validation from '../../src/app/gameSystems/presetValidation';
-import { memorySettings } from '../mocks/memorySettings';
-import type { GridState } from '../../src/app/services/MapPersistence';
+import { memoryPresets } from '../mocks/memoryPresets';
+import type { GridState } from '../../src/app/types/gridTypes';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 
 const app = {} as App;
@@ -65,13 +65,13 @@ describe('mapSenseRules', () => {
   });
 });
 
-/** Atlas' settings holding user presets made from the Pathfinder rules, as `SettingsService.forApp` gives them. */
-function userPresets(count: number): { settings: ReturnType<typeof memorySettings>; ids: string[] } {
-  const settings = memorySettings({ systemPresets: [] });
+/** User presets made from the Pathfinder rules, as `SystemPresetFiles.forApp` gives them. */
+function userPresets(count: number): { settings: ReturnType<typeof memoryPresets>; ids: string[] } {
+  const settings = memoryPresets();
   const service = new SystemPresetService(settings);
   const rules = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.id === 'builtin:pathfinder2e')!.rules;
   const ids = Array.from({ length: count }, (_, i) => service.create(`Homebrew ${i}`, rules).id);
-  vi.spyOn(SettingsService, 'forApp').mockReturnValue(settings as unknown as SettingsService);
+  vi.spyOn(SystemPresetFiles, 'forApp').mockReturnValue(settings as unknown as SystemPresetFiles);
   return { settings, ids };
 }
 
@@ -142,7 +142,7 @@ describe('mapSenseRulesSource', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('tells its listener when Atlas\' settings change, which holds the user presets', () => {
+  it('tells its listener when a user preset changes', () => {
     const { app: obsidian } = workspaceApp();
     const { settings, ids } = userPresets(1);
     const source = mapSenseRulesSource(obsidian, assets({ systemPresetId: ids[0]! }), () => ({ mapPath: MAP, grid: null }));

@@ -3,6 +3,7 @@ import { TFile, normalizePath, type App } from 'obsidian';
 import { AssetService, type TokenAsset } from './AssetService';
 import { AssetThumbnailService } from './AssetThumbnailService';
 import { AssetRegistrationUncertainError } from './assetRegistrationRecovery';
+import { t } from '../i18n';
 import { requireResolvedBestiary, statblockImportCandidate, statblockLookup, type StatblockImportCandidate, type StatblockLookup } from './statblockImportCandidates';
 import { discardAssetFiles, writeAssetImage } from './assetImageFiles';
 import { vaultImageFile } from '../packages/components/asset-manager/token-creator/vaultImageFile';
@@ -59,7 +60,7 @@ export class StatblockTokenImportService {
       } catch {
         // Only report recognized notes; unrelated unreadable files are not import candidates.
         if (lookup.creatures.has(file.path)) {
-          candidates.push({ path: file.path, name: file.basename, status: 'conflict', detail: 'Could not read this statblock. Try scanning again.' });
+          candidates.push({ path: file.path, name: file.basename, status: 'conflict', detail: t('sbToken.readFailed') });
         }
       }
     }
@@ -109,18 +110,18 @@ export class StatblockTokenImportService {
     let name = path.split('/').pop()?.replace(/\.md$/, '') ?? path;
     try {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof TFile)) return { item: { path, name, status: 'skipped', message: 'The statblock note no longer exists.' } };
+      if (!(file instanceof TFile)) return { item: { path, name, status: 'skipped', message: t('sbToken.noteGone') } };
       const row = await statblockImportCandidate(this.app, file, lookup);
-      if (!row || row.status !== 'ready' || !row.imagePath) return { item: { path, name: row?.name ?? name, status: 'skipped', message: row?.detail ?? 'No recognized statblock in this note.' } };
+      if (!row || row.status !== 'ready' || !row.imagePath) return { item: { path, name: row?.name ?? name, status: 'skipped', message: row?.detail ?? t('sbToken.unrecognized') } };
       name = row.name;
       const image = this.app.vault.getAbstractFileByPath(row.imagePath);
-      if (!(image instanceof TFile)) return { item: { path, name, status: 'skipped', message: 'The source image no longer exists.' } };
+      if (!(image instanceof TFile)) return { item: { path, name, status: 'skipped', message: t('sbToken.imageGone') } };
       const converted = convertTokenArt(await vaultImageFile(this.app, image), showRing, signal);
       // Failures surface when the note is registered; notes never reached must not raise unhandled rejections.
       converted.catch(() => undefined);
       return { path, name, showRing, converted };
     } catch (error) {
-      return { item: { path, name, status: 'failed', message: error instanceof Error ? error.message : 'Could not create this token.' } };
+      return { item: { path, name, status: 'failed', message: error instanceof Error ? error.message : t('sbToken.failed') } };
     }
   }
 
@@ -135,12 +136,12 @@ export class StatblockTokenImportService {
       const asset = await this.assets.addTokenAsset({
         name, imagePath, statblockPath: path, showRing, tags: [], collection, ...(thumbnailPath && { thumbnailPath }),
       });
-      return { path, name, status: 'created', message: 'Token created.', asset };
+      return { path, name, status: 'created', message: t('sbToken.created'), asset };
     } catch (error) {
       // An unconfirmed write may have committed. Never delete the image in this case.
       if (error instanceof AssetRegistrationUncertainError) return { path, name, status: 'failed', message: error.message, uncertain: true };
       await discardAssetFiles(this.app, [imagePath, thumbnailPath]);
-      return { path, name, status: 'failed', message: error instanceof Error ? error.message : 'Could not create this token.' };
+      return { path, name, status: 'failed', message: error instanceof Error ? error.message : t('sbToken.failed') };
     }
   }
 }

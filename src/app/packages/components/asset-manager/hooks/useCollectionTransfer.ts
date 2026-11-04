@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Notice, type App as ObsidianApp } from 'obsidian';
+import { type App as ObsidianApp } from 'obsidian';
 import type { AssetService } from '../../../../services/AssetService';
 import type { BundleProgress, BundleProgressListener } from '../../../../services/collectionBundle/bundleProgress';
 import { exportCollectionBundle, prepareCollectionExport, type ExportChoice, type ExportPreview } from '../../../../services/collectionBundle/collectionExport';
@@ -7,7 +7,8 @@ import { openCollectionImport, type CollectionImportResult, type ImportDecision,
 import type { BundleFileReader } from '../../../../services/collectionBundle/bundleReader';
 import type { ImportReview } from '../../../../services/collectionBundle/importReview';
 import { describeError } from '../../../../utils/errors';
-import { plural } from '../../../../utils/plural';
+import { t } from '../../../../i18n';
+import { showNotice } from '../../../../ui/notice';
 
 /** Where an export or import stands; the asset manager blocks while one is set. */
 export type CollectionTransfer =
@@ -33,16 +34,17 @@ interface Deps {
   onImported: (collectionId: string) => Promise<void>;
 }
 
-const EXPORTING = 'Exporting collection';
-const IMPORTING = 'Importing collection';
+const EXPORTING = t('bundle.exporting');
+const IMPORTING = t('bundle.importing');
 
 function describeImport(result: CollectionImportResult): string {
-  const name = `“${result.collectionName}” v${result.version}`;
-  if (result.created) return `Imported ${name}.`;
-  const parts = [`${plural(result.written, 'file')} written`, `${plural(result.removed, 'file')} removed`];
-  if (result.keptLocal > 0) parts.push(`${plural(result.keptLocal, 'item')} kept as you had them`);
-  const backup = result.backupCount > 0 ? ` Replaced files were backed up to ${result.backupFolder}.` : '';
-  return `Updated ${name}: ${parts.join(', ')}.${backup}`;
+  const name = t('bundle.nameVersion', { name: result.collectionName, version: result.version });
+  const switched = result.switchedNotes > 0 ? ` ${t('bundle.switchedNotes', { count: result.switchedNotes })}` : '';
+  if (result.created) return `${t('bundle.imported', { name })}${switched}`;
+  const parts = [t('bundle.filesWritten', { count: result.written }), t('bundle.filesRemoved', { count: result.removed })];
+  if (result.keptLocal > 0) parts.push(t('bundle.keptLocal', { count: result.keptLocal }));
+  const backup = result.backupCount > 0 ? t('bundle.backedUp', { folder: result.backupFolder }) : '';
+  return `${t('bundle.updated', { name, parts: parts.join(', '), backup })}${switched}`;
 }
 
 function downloadBlob(blob: Blob, fileName: string): void {
@@ -78,7 +80,7 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     session.current = null;
     // An update can close the map view hosting this asset manager; the result must still reach the user.
     if (!isMounted.current) {
-      new Notice(message);
+      showNotice(message);
       return;
     }
     setTransfer({ step: 'done', title, message });
@@ -86,12 +88,12 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
 
   const handleExportCollection = async (): Promise<void> => {
     if (!assetService || transfer) return;
-    setTransfer({ step: 'working', title: EXPORTING, progress: { message: 'Checking the collection…', fraction: 0 } });
+    setTransfer({ step: 'working', title: EXPORTING, progress: { message: t('bundle.checking'), fraction: 0 } });
     try {
       setTransfer({ step: 'export-options', preview: await prepareCollectionExport(app, assetService, selectedCollection) });
     } catch (error) {
       console.error('[useCollectionTransfer] Export preparation failed:', error);
-      finish('Export failed', describeError(error));
+      finish(t('bundle.exportFailed'), describeError(error));
     }
   };
 
@@ -99,55 +101,55 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     if (!assetService || transfer?.step !== 'export-options') return null;
     const { preview } = transfer;
     if (choice.kind === 'fork' && await assetService.isCollectionNameTaken(choice.name, preview.collection.id)) {
-      return `A collection named “${choice.name.trim()}” already exists.`;
+      return t('bundle.nameTaken', { name: choice.name.trim() });
     }
-    setTransfer({ step: 'working', title: EXPORTING, progress: { message: 'Preparing…', fraction: 0 } });
+    setTransfer({ step: 'working', title: EXPORTING, progress: { message: t('bundle.preparing'), fraction: 0 } });
     try {
       const bundle = await exportCollectionBundle(app, assetService, preview, choice, working(EXPORTING));
       downloadBlob(bundle.blob, bundle.fileName);
-      const packed = `Packed “${bundle.collectionName}” v${bundle.version} (${plural(bundle.assetCount, 'asset')}, ${plural(bundle.fileCount, 'file')}) into ${bundle.fileName}.`;
+      const packed = t('bundle.packed', { name: bundle.collectionName, version: bundle.version, assets: t('count.assets', { count: bundle.assetCount }), files: t('count.files', { count: bundle.fileCount }), file: bundle.fileName });
       try {
         await bundle.commit();
       } catch (error) {
         // The file is out already; only recording the release here failed.
         console.error('[useCollectionTransfer] Recording the release failed:', error);
-        finish('Collection exported', `${packed} This vault could not record the release (${describeError(error)}), so export it again before sharing another version.`);
+        finish(t('bundle.exported'), t('bundle.recordFailed', { packed, error: describeError(error) }));
         return null;
       }
-      finish('Collection exported', packed);
+      finish(t('bundle.exported'), packed);
       if (choice.kind === 'fork') await onImported(preview.collection.id);
     } catch (error) {
       console.error('[useCollectionTransfer] Export failed:', error);
-      finish('Export failed', describeError(error));
+      finish(t('bundle.exportFailed'), describeError(error));
     }
     return null;
   };
 
   const importFile = async (file: File): Promise<void> => {
     if (!assetService) return;
-    setTransfer({ step: 'working', title: IMPORTING, progress: { message: 'Reading bundle…', fraction: 0 } });
+    setTransfer({ step: 'working', title: IMPORTING, progress: { message: t('bundle.reading'), fraction: 0 } });
     try {
       session.current = await openCollectionImport(app, assetService, file, working(IMPORTING));
       setTransfer({ step: 'import-review', review: session.current.review, files: session.current.files });
     } catch (error) {
       console.error('[useCollectionTransfer] Reading the bundle failed:', error);
-      finish('Import failed', describeError(error));
+      finish(t('bundle.importFailed'), describeError(error));
     }
   };
 
   const confirmImport = async (decision: ImportDecision): Promise<void> => {
     const current = session.current;
     if (!current) return;
-    setTransfer({ step: 'working', title: IMPORTING, progress: { message: 'Writing…', fraction: 0 } });
+    setTransfer({ step: 'working', title: IMPORTING, progress: { message: t('bundle.writing'), fraction: 0 } });
     let result: CollectionImportResult;
     try {
       result = await current.apply(decision, working(IMPORTING));
     } catch (error) {
       console.error('[useCollectionTransfer] Import failed:', error);
-      finish('Import failed', describeError(error));
+      finish(t('bundle.importFailed'), describeError(error));
       return;
     }
-    finish(result.created ? 'Collection imported' : 'Collection updated', describeImport(result));
+    finish(result.created ? t('bundle.importedTitle') : t('bundle.updatedTitle'), describeImport(result));
     // The import is complete; a failed refresh must not report it as failed.
     try {
       await onImported(result.collectionId);

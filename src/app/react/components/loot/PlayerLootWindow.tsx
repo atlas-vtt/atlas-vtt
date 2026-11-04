@@ -3,8 +3,8 @@ import { CoinIcon } from '../CoinIcon';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
 import type { LootDraw } from '../../../loot/lootRoller';
 import { rarityTone } from '../../../loot/lootRarity';
-import { plural } from '../../../utils/plural';
 import { LootItemContent } from './LootItemContent';
+import { t } from '../../../i18n';
 
 interface PlayerLootWindowProps {
   items: readonly LootDraw[];
@@ -29,16 +29,16 @@ export function PlayerLootWindow({ items, onClose }: PlayerLootWindowProps): Rea
   return (
     <div className="atlas-player-loot">
       <div className="atlas-player-loot__scrim" onClick={onClose} />
-      <section className="atlas-player-loot__window" role="dialog" aria-label="Loot received">
+      <section className="atlas-player-loot__window" role="dialog" aria-label={t('loot.received')}>
         <header className="atlas-player-loot__header">
           <span className="atlas-player-loot__badge"><CoinIcon /></span>
-          <h2 className="atlas-player-loot__title">Loot received</h2>
-          <span className="atlas-player-loot__count">{plural(items.length, 'item')}</span>
-          <CloseButton onClick={onClose} aria-label="Close loot window" />
+          <h2 className="atlas-player-loot__title">{t('loot.received')}</h2>
+          <span className="atlas-player-loot__count">{t('loot.items', { count: items.length })}</span>
+          <CloseButton onClick={onClose} aria-label={t('loot.closeWindow')} />
         </header>
         <ol className="atlas-player-loot__items" ref={listRef}>
           {items.map((item) => (
-            <li key={item.id} className="atlas-loot-card atlas-loot-card--large" data-rarity={rarityTone(item.rarity)}>
+            <li key={item.id} className="atlas-loot-card atlas-loot-card--large" data-rarity={item.tone ?? rarityTone(item.rarity)}>
               <LootItemContent draw={item} />
             </li>
           ))}

@@ -1,0 +1,55 @@
+// What the dialogs that run a batch over notes share (`batchParts.tsx`): a
+// list folded open on demand, the batch's progress, a muted word per note.
+
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  .atlas-sb-batch__progress {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+  }
+
+  .atlas-sb-batch__disclosure {
+    @include atlas-flex-col($spacing-xs);
+    align-items: flex-start;
+  }
+
+  .atlas-sb-batch__toggle {
+    gap: $spacing-xs;
+    color: var(--text-muted);
+
+    &[aria-expanded='true'] .atlas-sb-batch__chevron {
+      transform: rotate(90deg);
+    }
+  }
+
+  .atlas-sb-batch__chevron {
+    width: $icon-xs;
+    height: $icon-xs;
+    transition: transform $transition-normal $transition-ease-out;
+  }
+
+  .atlas-sb-batch__list {
+    @include atlas-flex-col($spacing-xs);
+    @include atlas-scrollbar;
+    max-height: 160px;
+    margin: 0;
+    padding: 0;
+    padding-inline-start: $spacing-l;
+    overflow-y: auto;
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    overflow-wrap: anywhere;
+  }
+
+  .atlas-sb-batch__detail {
+    color: var(--text-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-sb-batch__chevron {
+      transition: none;
+    }
+  }
+}

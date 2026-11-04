@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +8,7 @@ import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { ResponsiveWidgetBar } from '../../src/app/react/components/ResponsiveWidgetBar';
 import { useMapHotkeys } from '../../src/app/keyboard/useMapHotkeys';
 import type { CounterWidget, TimerWidget } from '../../src/app/types/widgetTypes';
+import { timerShownSeconds } from '../../src/app/utils/timerWidget';
 
 const counter: CounterWidget = {
   id: 'fear', type: 'counter', label: 'Fear', icon: 'skull',
@@ -53,10 +55,29 @@ function renderBar(shortcuts: MapShortcuts = mapShortcuts()): ViewAtlasStore {
   return store;
 }
 
-const timerValue = (store: ViewAtlasStore): number | undefined => store.getState().widgetSettings.widgets.torch?.value;
+const timerValue = (store: ViewAtlasStore): number => timerShownSeconds(store.getState().widgetSettings.widgets.torch as TimerWidget, Date.now());
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { cleanup(); document.body.empty(); vi.useRealTimers(); });
+
+describe('the widget used last', () => {
+  const topLabel = (): string | null | undefined => document.querySelector('[data-stack-depth="0"] .atlas-widget-label-text')?.textContent;
+
+  it('is the one a held key steers', () => {
+    renderBar();
+    expect(topLabel()).toBe('Fear');
+    press('2', 'Digit2');
+    expect(topLabel()).toBe('Torch');
+    release('2', 'Digit2');
+    expect(topLabel()).toBe('Torch');
+  });
+
+  it('is the one a click landed on', () => {
+    renderBar();
+    act(() => { document.querySelectorAll<HTMLElement>('.atlas-widget')[1]!.click(); });
+    expect(topLabel()).toBe('Torch');
+  });
+});
 
 describe('held timer hotkeys', () => {
   it('starts, pauses and resets the timer at the held position', () => {

@@ -15,18 +15,6 @@ export interface RecordContext {
 const sceneName = (mapPath: string): string => baseName(mapPath).replace(/\.atlasmap$/, '');
 
 /**
- * Whether the token keeps its statblock link. A statblock note links to one
- * token, found by the artwork in its `image` field, so a token whose artwork
- * was copied only keeps the link when its note was copied along and now shows
- * the copy; otherwise the note stays with the original.
- */
-function keepsStatblockLink(asset: Asset, plan: TransferPlan): boolean {
-  if (asset.type !== 'token' || !asset.statblockPath) return true;
-  const artworkCopied = plan.steps.some((step) => step.op === 'copy' && step.file.vaultPath === asset.imagePath);
-  return !artworkCopied || plan.rewrites.has(asset.statblockPath);
-}
-
-/**
  * The record of `asset` as it is stored in the target collection: pointing at
  * its files there, with the new id and creation time of a copy. A scene named
  * after its map file takes the new file name when the map needed a free one.
@@ -46,7 +34,6 @@ export function transferredRecord(asset: Asset, { targetCollectionId, newIds, pl
     if (recordPath) record.filePath = recordPath;
     else delete record.filePath;
   }
-  if (record.type === 'token' && !keepsStatblockLink(asset, plan)) delete record.statblockPath;
   if (record.type === 'scene' && asset.type === 'scene') {
     const from = asset.data?.mapPath;
     const to = record.data?.mapPath;

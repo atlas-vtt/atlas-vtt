@@ -7,6 +7,7 @@ import type { SenseDefinition, SenseLook } from '../../../types/senseTypes';
 import { ambientLevel } from '../../../vision/lightLevels';
 import type { SeenSpot } from '../../../vision/perception';
 import type { AmbientLight, Sight, SightRegion } from '../../../vision/sight';
+import type { Polygon } from '../../../vision/visibility';
 import type { PierceShape } from './DarknessMap';
 
 /** What a sight mesh writes into the lighting layer: red, green, blue, alpha (see `compositeShader.ts`). */
@@ -148,4 +149,20 @@ export function pierceShapes(sight: Sight, spots: readonly SeenSpot[] = []): Pie
   }
   for (const spot of spots) shapes.push({ origin: spot, polygon: spot.polygon, level: 1 });
   return shapes;
+}
+
+/**
+ * What each token looks at the map through, once per polygon, as shapes the players see the veil
+ * in, unless the token stands in a darkness itself (`SceneMaps`): 1 where a sense perceives the
+ * dark, so the darkness swallows that sense's picture for this token, 0.5 where it has only eyes,
+ * for which it swallows only light. What another token's sense shows is no reason for a veil here.
+ */
+export function sightFromOutside(sight: Sight): PierceShape[] {
+  const shapes = new Map<Polygon, PierceShape>();
+  for (const { origin, polygon, sense } of sight.all ? [] : sight.regions) {
+    if (!polygon || !showsMap(sense)) continue;
+    const outside = perceivedLevel(sense, 'dark') !== null ? 1 : 0.5;
+    if (outside > (shapes.get(polygon)?.outside ?? 0)) shapes.set(polygon, { origin, polygon, level: 0, outside });
+  }
+  return [...shapes.values()];
 }

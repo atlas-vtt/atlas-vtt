@@ -12,6 +12,7 @@ import type { PreviewImage } from '../token-creator/types';
 import type { StatblockImportCandidate } from '../../../../services/statblockImportCandidates';
 import { StatblockList } from './StatblockList';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../primitives/Skeleton';
+import { t } from '../../../../i18n';
 
 const SCAN_SKELETON_ROWS = 6;
 
@@ -70,12 +71,12 @@ export function StatblockImportContent({ app, queuedPaths, onAdd, onClose, contr
       setLayout('');
       setSelected(new Set(next.filter(row => row.status === 'ready' && !queuedRef.current.has(row.path)).map(row => row.path)));
     }).catch((reason: unknown) => {
-      if (mounted) setError(reason instanceof Error ? reason.message : 'Could not scan statblocks.');
+      if (mounted) setError(reason instanceof Error ? reason.message : t('sbImport.scanFailed'));
     }).finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
   }, [app, importer, controller, scanVersion, clearScan, reportScan]);
 
-  const scopedRows = rows.filter(row => !layout || (row.layoutName ?? 'Unspecified') === layout);
+  const scopedRows = rows.filter(row => !layout || (row.layoutName ?? t('sbImport.unspecified')) === layout);
   const selectedRows = scopedRows.filter(row => selected.has(row.path) && !queued.has(row.path));
   const filtered = scopedRows.filter(row => `${row.name} ${row.path}`.toLowerCase().includes(query.toLowerCase()));
   const ready = scopedRows.filter(row => row.status === 'ready');
@@ -93,19 +94,19 @@ export function StatblockImportContent({ app, queuedPaths, onAdd, onClose, contr
       const images = await statblockPreviewImages(app, selectedRows, controller.signal, reportImages);
       if (!controller.signal.aborted) onAdd(images);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not load statblock images.');
+      setError(reason instanceof Error ? reason.message : t('sbImport.loadFailed'));
     } finally { setRunning(false); onRunningChange?.(false); }
   };
 
   return (
     <>
       <div ref={setScrollElement} className="atlas-token-creator__previews atlas-statblock-import">
-        <p className="atlas-statblock-import__intro">Choose a system or layout, then add creatures to your import. Edit their tags, crop and rings in the preview cards.</p>
+        <p className="atlas-statblock-import__intro">{t('sbImport.intro')}</p>
         {error && <p role="alert" className="atlas-statblock-import__error">{error}</p>}
         {loading ? (
           <>
             <div className="atlas-statblock-import__scanning">
-              <ProgressStatus task={{ label: 'Scanning notes', done: scanned?.done ?? 0, total: scanned?.total ?? 0 }} />
+              <ProgressStatus task={{ label: t('sbImport.scanningNotes'), done: scanned?.done ?? 0, total: scanned?.total ?? 0 }} />
             </div>
             <ScanSkeleton />
           </>
@@ -115,40 +116,40 @@ export function StatblockImportContent({ app, queuedPaths, onAdd, onClose, contr
               <strong>{ready.length} ready</strong><span>{scopedRows.filter(r => r.status === 'imported').length} already imported</span><span>{scopedRows.length - ready.length - scopedRows.filter(r => r.status === 'imported').length} need attention</span>
             </div>
             <div className="atlas-statblock-import__controls">
-              <label htmlFor={layoutId}>System / layout</label>
+              <label htmlFor={layoutId}>{t('sbImport.layout')}</label>
               <ObsidianMenuDropdown
                 id={layoutId}
                 value={layout}
                 onChange={setLayout}
                 disabled={disabled}
-                placeholder="All layouts"
+                placeholder={t('sbImport.allLayouts')}
                 options={Object.fromEntries<string>([
-                  ['', 'All layouts'] as const,
-                  ...[...new Set(rows.map(row => row.layoutName ?? 'Unspecified'))].sort().map(name => [name, name] as const),
+                  ['', t('sbImport.allLayouts')] as const,
+                  ...[...new Set(rows.map(row => row.layoutName ?? t('sbImport.unspecified')))].sort().map(name => [name, name] as const),
                 ])}
               />
             </div>
             <div className="atlas-statblock-import__controls">
-              <label className="atlas-statblock-import__search"><Search size={16} /><input type="search" aria-label="Search statblocks" placeholder="Search creatures or folders…" value={query} onChange={e => setQuery(e.target.value)} /></label>
+              <label className="atlas-statblock-import__search"><Search size={16} /><input type="search" aria-label={t('sbImport.search')} placeholder={t('sbImport.searchPlaceholder')} value={query} onChange={e => setQuery(e.target.value)} /></label>
             </div>
             <div className="atlas-statblock-import__selection">
-              <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setSelected(current => new Set([...current, ...filtered.filter(r => r.status === 'ready' && !queued.has(r.path)).map(r => r.path)]))}>Select all shown</Button>
-              <Button variant="ghost" size="sm" disabled={disabled || selectedRows.length === 0} onClick={() => setSelected(new Set())}>Clear selection</Button>
+              <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setSelected(current => new Set([...current, ...filtered.filter(r => r.status === 'ready' && !queued.has(r.path)).map(r => r.path)]))}>{t('sbImport.selectShown')}</Button>
+              <Button variant="ghost" size="sm" disabled={disabled || selectedRows.length === 0} onClick={() => setSelected(new Set())}>{t('dice.clearSelection')}</Button>
               <span>{selectedRows.length} selected</span>
             </div>
             {filtered.length > 0
               ? <StatblockList app={app} rows={filtered} selected={selected} queued={queued} disabled={disabled} scrollElement={scrollElement} onToggle={toggle} />
-              : <p>{query ? 'No statblocks match your search.' : 'No statblock notes found. Enable frontmatter parsing in Fantasy Statblocks, or add a statblock code block to a note.'}</p>}
+              : <p>{query ? t('sbImport.noMatch') : t('sbImport.noneFoundInVault')}</p>}
           </>
         )}
       </div>
       <footer className="atlas-token-creator__footer atlas-statblock-import__footer">
-        <ProgressStatus task={running ? { label: 'Loading images', done: loadedImages?.done ?? 0, total: loadedImages?.total ?? selectedRows.length } : null}>
-          <Button variant="ghost" disabled={disabled} onClick={() => setScanVersion(v => v + 1)}>Scan again</Button>
+        <ProgressStatus task={running ? { label: t('sbImport.loadingImagesStatus'), done: loadedImages?.done ?? 0, total: loadedImages?.total ?? selectedRows.length } : null}>
+          <Button variant="ghost" disabled={disabled} onClick={() => setScanVersion(v => v + 1)}>{t('sbImport.scanAgain')}</Button>
         </ProgressStatus>
         <div className="atlas-token-creator__actions">
-          <Button variant="outline" onClick={onClose}>Back to previews</Button>
-          <Button disabled={disabled || selectedRows.length === 0 || Boolean(error)} onClick={() => { void startImport(); }}>{running ? 'Loading images…' : `Add ${selectedRows.length} to import`}</Button>
+          <Button variant="outline" onClick={onClose}>{t('sbImport.back')}</Button>
+          <Button disabled={disabled || selectedRows.length === 0 || Boolean(error)} onClick={() => { void startImport(); }}>{running ? t('sbImport.loadingImages') : t('sbImport.addN', { count: selectedRows.length })}</Button>
         </div>
       </footer>
     </>

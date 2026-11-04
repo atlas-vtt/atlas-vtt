@@ -1,11 +1,16 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { App } from 'obsidian';
 import { SettingsService } from '../../src/app/services/SettingsService';
+import { memoryPluginData } from '../mocks/pluginData';
 
+/** Settings read from the plugin's data; `write` sees what is saved there. */
 async function settingsFrom(stored: unknown): Promise<{ settings: SettingsService; write: ReturnType<typeof vi.fn> }> {
-  const write = vi.fn(async (_path: string, _content: string) => undefined);
-  const app = { vault: { adapter: { exists: async () => true, read: async () => JSON.stringify(stored), write } } };
-  const settings = new SettingsService(app as never);
+  const data = memoryPluginData(stored);
+  const settings = new SettingsService(new App(), undefined, data);
   await settings.initialize();
+  const write = vi.fn((saved: unknown) => saved);
+  data.saveData = vi.fn(async (saved: unknown): Promise<void> => { write(saved); });
   return { settings, write };
 }
 
@@ -37,7 +42,7 @@ describe('SettingsService toolbar layout', () => {
 
     await vi.runAllTimersAsync();
     expect(write).toHaveBeenCalledOnce();
-    expect(JSON.parse(write.mock.calls[0]![1]).toolbar).toEqual({ hidden: ['fog'] });
+    expect((write.mock.calls[0]![0] as { toolbar: unknown }).toolbar).toEqual({ hidden: ['fog'] });
   });
 
   it('writes nothing for an unchanged layout', async () => {

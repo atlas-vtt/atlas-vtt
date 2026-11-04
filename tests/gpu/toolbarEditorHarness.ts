@@ -3,7 +3,6 @@ import React from 'react';
 import { act, render } from '@testing-library/react';
 import { frame } from 'framer-motion';
 import { expect, vi } from 'vitest';
-import { cdp } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import tooltipCss from '../../src/app/packages/components/primitives/tooltip.css?inline';
 import contextMenuCss from '../../src/app/react/components/context-menu/atlas-context-menu.scss?inline';
@@ -47,7 +46,7 @@ const UTILITIES = `
 `;
 const h = React.createElement;
 
-export const DEFAULT_BAR = ['move', 'fog', 'draw', 'text', 'measure', 'pin', 'dice', 'loot', 'assets', 'palette'];
+export const DEFAULT_BAR = ['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin', 'dice', 'loot', 'assets', 'palette'];
 /** Longer than any of the editor's springs. */
 export const SETTLE_FRAMES = 90;
 
@@ -115,8 +114,11 @@ export function expectSameBox(actual: Rect, expected: Rect): void {
   }
 }
 
-export const handle = (id: string, where: 'bar' | 'tray'): HTMLElement =>
-  query(`${where === 'bar' ? '.atlas-main-toolbar' : '.atlas-toolbar-tray'} .atlas-toolbar-handle[data-control="${id}"]`);
+/** A control's handle on the bar (the undo/redo bar's own for it), or in the tray. */
+export const handle = (id: string, where: 'bar' | 'tray'): HTMLElement => {
+  const scope = where === 'tray' ? '.atlas-toolbar-tray' : id === 'undo' ? '.atlas-undo-bar' : '.atlas-main-toolbar';
+  return query(`${scope} .atlas-toolbar-handle[data-control="${id}"]`);
+};
 
 /** The stylesheet the tests render with; returns its removal. */
 export function installToolbarStyles(): () => void {
@@ -178,32 +180,4 @@ export async function mountToolbar(stored: StoredToolbarLayout = {}): Promise<To
   };
 }
 
-/** Keys held with a mouse event, as the browser's input protocol counts them. */
-export const CTRL_KEY = 2;
-
-/**
- * The real mouse, through the browser: points are in this frame's client coordinates, which the
- * test runner shows scaled inside its own page, where the input lands.
- */
-export const mouse = {
-  async send(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased', x: number, y: number, pressed: boolean, modifiers = 0): Promise<void> {
-    const host = window.frameElement?.getBoundingClientRect() ?? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-    await cdp().send('Input.dispatchMouseEvent', {
-      type,
-      x: host.left + x * host.width / window.innerWidth,
-      y: host.top + y * host.height / window.innerHeight,
-      button: type === 'mouseMoved' && !pressed ? 'none' : 'left',
-      buttons: pressed ? 1 : 0,
-      clickCount: type === 'mouseMoved' ? 0 : 1,
-      modifiers,
-    });
-  },
-  down: (x: number, y: number): Promise<void> => mouse.send('mousePressed', x, y, true),
-  move: (x: number, y: number): Promise<void> => mouse.send('mouseMoved', x, y, true),
-  up: (x: number, y: number): Promise<void> => mouse.send('mouseReleased', x, y, false),
-};
-
-export function centreOf(element: Element): { x: number; y: number } {
-  const rect = element.getBoundingClientRect();
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-}
+export { CTRL_KEY, centreOf, mouse } from './realMouse';

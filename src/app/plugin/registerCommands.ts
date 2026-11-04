@@ -1,13 +1,23 @@
 import { TokenCreatorModal } from '../packages/components/asset-manager/token-creator/TokenCreatorModal';
-import { Notice, Plugin, TFile } from 'obsidian';
+import { Plugin, TFile } from 'obsidian';
 import { AtlasView } from '../atlas-view';
 import { DASHBOARD_VIEW_TYPE } from '../dashboard-view';
+import { showDungeonGenerator } from '../packages/components/dungeon-generator/openDungeonGenerator';
+import { t } from '../i18n';
 import type { GlobalAssetManagerService } from '../services/GlobalAssetManagerService';
 import type { ImageDisplayService } from '../services/ImageDisplayService';
-import { presentActiveTabInPlayerWindow } from '../services/PlayerWindowPresenter';
+import { openPlayerWindow, presentActiveTab } from '../services/PlayerWindowPresenter';
+import { PlayerWindowService } from '../services/PlayerWindowService';
+import { fullScreenAvailable, isPlayerWindowFullScreen, refreshPlayerWindowDisplay, setPlayerWindowFullScreen } from '../services/playerWindowDisplay';
+import { playerWindowStore } from '../stores/playerWindowStore';
 import { hasBestiaryFrontmatter } from '../services/statblockNoteSource';
 import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
 import { cleanupMissingAssets } from './cleanupMissingAssets';
+import { registerStatblockEditorCommands } from '../statblocks/editor/create/statblockCommands';
+import { openTemplateGallery } from '../statblocks/editor/gallery/openTemplateGallery';
+import { experimentalFeatureOn } from '../experimental/experimentalFeatures';
+import { runInBackground } from '../utils/backgroundTask';
+import { showNotice } from '../ui/notice';
 
 export interface CommandDependencies {
   imageDisplay: ImageDisplayService;
@@ -27,7 +37,7 @@ async function openDashboard(plugin: Plugin): Promise<void> {
     plugin.app.workspace.setActiveLeaf(leaf);
   } catch (error) {
     console.error('[Atlas] Error opening dashboard:', error);
-    new Notice('Error opening the dashboard');
+    showNotice(t('notice.dashboardOpenFailed'));
   }
 }
 
@@ -36,7 +46,7 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
 
   plugin.addCommand({
     id: 'display-image-on-player-view',
-    name: 'Display image on player view',
+    name: t('command.displayImageOnPlayerView'),
     checkCallback: (checking) => {
       const file = workspace.getActiveFile();
       if (!file || !isImageFile(file)) return false;
@@ -47,7 +57,7 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
 
   plugin.addCommand({
     id: 'dismiss-image-from-player-view',
-    name: 'Dismiss image from player view',
+    name: t('command.dismissImageFromPlayerView'),
     checkCallback: (checking) => {
       if (!imageDisplay.isImageDisplayed()) return false;
       if (!checking) imageDisplay.closeImageDisplay();
@@ -57,16 +67,53 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
 
   plugin.addCommand({
     id: 'send-map-to-player-view',
-    name: 'Send current map to player view',
-    callback: () => void presentActiveTabInPlayerWindow(plugin.app),
+    name: t('command.sendMapToPlayerView'),
+    callback: () => void presentActiveTab(plugin.app),
   });
 
-  plugin.addRibbonIcon('monitor', 'Display image on player view', () => {
+  plugin.addCommand({
+    id: 'show-map-in-player-window',
+    name: t('command.showMapInPlayerWindow'),
+    callback: () => void presentActiveTab(plugin.app, { openWindow: true }),
+  });
+
+  plugin.addCommand({
+    id: 'open-player-window',
+    name: t('command.openPlayerWindow'),
+    callback: () => void openPlayerWindow(plugin.app),
+  });
+
+  plugin.addCommand({
+    id: 'toggle-player-window-full-screen',
+    name: t('player.toggleFullScreen'),
+    checkCallback: (checking) => {
+      if (!fullScreenAvailable()) return false;
+      refreshPlayerWindowDisplay();
+      const fullScreen = isPlayerWindowFullScreen();
+      // Full screen on the GM's only display would cover Obsidian; leaving it is always offered
+      if (!fullScreen && !playerWindowStore.getState().secondDisplay) return false;
+      if (!checking) void setPlayerWindowFullScreen(!fullScreen);
+      return true;
+    },
+  });
+
+  plugin.addCommand({
+    id: 'toggle-player-window-curtain',
+    name: t('playerBar.toggleCurtain'),
+    checkCallback: (checking) => {
+      const service = PlayerWindowService.getInstance();
+      if (!service?.isWindowOpen()) return false;
+      if (!checking) service.setCurtain(!service.isCurtained());
+      return true;
+    },
+  });
+
+  plugin.addRibbonIcon('monitor', t('command.displayImageOnPlayerView'), () => {
     const file = workspace.getActiveFile();
     if (file && isImageFile(file)) {
       void imageDisplay.displayImageOnPlayerView(file);
     } else {
-      new Notice('Please open an image file first');
+      showNotice(t('notice.openImageFirst'));
     }
   });
 }
@@ -76,19 +123,25 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
 
   plugin.addCommand({
     id: 'open-dashboard',
-    name: 'Open dashboard',
+    name: t('command.openDashboard'),
     callback: () => void openDashboard(plugin),
   });
 
   plugin.addCommand({
+    id: 'generate-dungeon',
+    name: t('command.generateDungeon'),
+    callback: () => runInBackground(showDungeonGenerator(plugin.app), 'Opening the dungeon generator'),
+  });
+
+  plugin.addCommand({
     id: 'open-scene-browser',
-    name: 'Open scene browser',
+    name: t('command.openSceneBrowser'),
     callback: () => deps.assetManager.open('scenes'),
   });
 
   plugin.addCommand({
     id: 'toggle-initiative-tracker',
-    name: 'Toggle initiative tracker',
+    name: t('command.toggleInitiativeTracker'),
     checkCallback: (checking) => {
       const view = app.workspace.getActiveViewOfType(AtlasView);
       if (!view) return false;
@@ -102,7 +155,7 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
 
   plugin.addCommand({
     id: 'toggle-loot-roller',
-    name: 'Toggle loot roller',
+    name: t('command.toggleLootRoller'),
     checkCallback: (checking) => {
       const view = app.workspace.getActiveViewOfType(AtlasView);
       if (!view) return false;
@@ -116,7 +169,7 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
 
   plugin.addCommand({
     id: 'toggle-dice-log',
-    name: 'Toggle dice log',
+    name: t('command.toggleDiceLog'),
     checkCallback: (checking) => {
       const view = app.workspace.getActiveViewOfType(AtlasView);
       if (!view) return false;
@@ -130,7 +183,7 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
 
   plugin.addCommand({
     id: 'clean-up-missing-assets',
-    name: 'Clean up missing assets in current map',
+    name: t('command.cleanUpMissingAssets'),
     checkCallback: (checking) => {
       const view = app.workspace.getActiveViewOfType(AtlasView);
       if (!view) return false;
@@ -145,19 +198,31 @@ function registerStatblockCommands(plugin: Plugin): void {
 
   plugin.addCommand({
     id: 'import-statblock-tokens',
-    name: 'Import tokens from Fantasy Statblocks',
+    name: t('command.importStatblockTokens'),
     callback: () => new TokenCreatorModal(app).open(),
   });
 
   plugin.addCommand({
     id: 'create-token-from-statblock',
-    name: 'Create token from statblock image',
+    name: t('command.createTokenFromStatblock'),
     checkCallback: (checking) => {
       const file = app.workspace.getActiveFile();
       if (!file || !hasBestiaryFrontmatter(app, file)) return false;
       if (!checking) {
         void TokenStatblockLinkService.getInstance(app).createTokenFromStatblockImage(file.path);
       }
+      return true;
+    },
+  });
+
+  registerStatblockEditorCommands(plugin);
+
+  plugin.addCommand({
+    id: 'new-statblock-template',
+    name: 'New statblock template…',
+    checkCallback: (checking) => {
+      if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
+      if (!checking) runInBackground(openTemplateGallery(app), 'Opening the template gallery');
       return true;
     },
   });

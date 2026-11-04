@@ -1,5 +1,7 @@
+import { PLAYER_SIGHT_POLICY, type SightPolicy } from './tokenSightPolicy';
 import { perceivedLevel, showsMap } from '../gameSystems/senseRules';
-import { movedWhileHeld, type HeldTokens } from '../lighting/sightOnDrop';
+import { movedWhileHeld } from '../lighting/sightOnDrop';
+import type { HeldTokens } from '../types/viewUIState';
 import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
 import type { TokenEntity } from '../types';
 import type { ConditionDefinition, ConditionEffect } from '../types/collectionSettingsTypes';
@@ -107,6 +109,8 @@ export interface PerceptionOptions {
   conditions?: readonly ConditionDefinition[];
   /** The tokens the pointer holds while sight waits for the drop, with the places they were taken from. */
   held?: HeldTokens;
+  /** Which tokens the picture always shows; unset, the players'. */
+  policy?: SightPolicy;
 }
 
 /** The footprint of a token that is shown where the map around it is not, in world pixels. */
@@ -122,9 +126,9 @@ export interface SeenSpot {
 }
 
 /**
- * The tokens the players see where no sense shows them the map, so that the picture is dark
+ * The tokens the picture shows where no sense shows the map, so that the picture is dark
  * there: each is shown within its own footprint.
- * - A token with vision: the players always see their party, also one standing in darkness or
+ * - A token the policy always shows (the players': a vision token), also one standing in darkness or
  *   blinded. One the pointer has moved beyond the sight that stayed behind is not shown until
  *   the drop (`held`, as in `tokenPerception`).
  * - A token a precise sense that shows no map sees (echolocation).
@@ -139,14 +143,14 @@ export function seenSpots(
   tokens: Record<string, TokenEntity>,
   cellSize: number,
   walls: readonly WallSegment[],
-  { conditions = [], held = {} }: PerceptionOptions = {},
+  { conditions = [], held = {}, policy = PLAYER_SIGHT_POLICY }: PerceptionOptions = {},
 ): SeenSpot[] {
   if (sight.all) return [];
   const withMap: Sight = { all: false, regions: sight.regions.filter(({ sense }) => showsMap(sense)) };
   const seesCreatures = sight.regions.some(({ sense }) => sense.precise && !showsMap(sense));
   const spots: SeenSpot[] = [];
   for (const token of Object.values(tokens)) {
-    const party = !!token.vision?.enabled;
+    const party = policy.alwaysSeen(token);
     if (token.isHidden || (!party && !seesCreatures)) continue;
     const at = { x: token.x, y: token.y };
     const level = lightLevelAt(at, ambient, lights);

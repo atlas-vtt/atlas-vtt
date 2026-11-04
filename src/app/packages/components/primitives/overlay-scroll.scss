@@ -1,0 +1,70 @@
+@use '../../../../../styles/tokens' as *;
+
+// OverlayScroll: the scrollbar lies over the inline-end padding of the area and
+// takes no room, so a list keeps equal padding on both sides. It shows while
+// the pointer is over the area, while it scrolls and while the thumb is dragged.
+
+.atlas-overlay-scroll {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.atlas-overlay-scroll__area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.atlas-overlay-scroll__track {
+  position: absolute;
+  inset-block: $spacing-xs;
+  inset-inline-end: 0;
+  width: $spacing-s;
+  pointer-events: none;
+}
+
+.atlas-overlay-scroll__thumb {
+  // The grab area fills the padding; the transparent border leaves a slimmer thumb.
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: $radius-full;
+  background: var(--scrollbar-thumb-bg);
+  background-clip: padding-box;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity $transition-slow $transition-ease;
+
+  .atlas-overlay-scroll__track[data-scrollable] & {
+    pointer-events: auto;
+  }
+
+  &:hover,
+  .atlas-overlay-scroll__track[data-dragging] & {
+    background-color: var(--scrollbar-active-thumb-bg);
+  }
+}
+
+.atlas-overlay-scroll:hover,
+.atlas-overlay-scroll:has(> [data-scrolling]) {
+  > .atlas-overlay-scroll__track[data-scrollable] > .atlas-overlay-scroll__thumb {
+    opacity: 1;
+    transition-duration: $transition-fast;
+  }
+}
+
+.atlas-overlay-scroll__track[data-dragging] > .atlas-overlay-scroll__thumb {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-overlay-scroll__thumb {
+    transition: none;
+  }
+}

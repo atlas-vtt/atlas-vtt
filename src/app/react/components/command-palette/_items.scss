@@ -5,11 +5,9 @@
 // Rows never animate in: the list re-renders on every keystroke and every
 // open, so motion here would only add latency.
 
-.atlas-command-palette-options {
-  @include atlas-scrollbar;
+// The scrollbar lies over the rows' inline-end padding (OverlayScroll).
+.atlas-command-palette-options-frame {
   flex: 1;
-  min-height: 0;
-  overflow-y: auto;
 }
 
 .atlas-command-palette-options-inner {

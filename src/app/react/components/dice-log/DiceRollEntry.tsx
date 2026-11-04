@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, RotateCw } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import { useDiceAvatar } from '../dice/useDiceAvatar';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
-import { dieLabel } from '../../../tools/diceLabels';
+import { dieLabel, dieStates, droppedAny, rollLine } from '../../../tools/diceLabels';
+import { AdvantageTag, listsDice, RolledDiceLine } from '../dice/RolledDiceLine';
+import { t } from '../../../i18n';
 
 interface DiceRollEntryProps {
   result: DiceRollResult;
@@ -34,11 +36,12 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
     return () => window.clearInterval(interval);
   }, [result.timestamp]);
 
+  const dropping = droppedAny(result.rolls);
   const isCritSuccess = result.crit === 'high';
   const isCritFail = result.crit === 'low';
 
   const source = result.source;
-  const sourceTokenName = source?.tokenName ?? 'Unknown';
+  const sourceTokenName = source?.tokenName ?? t('dice.unknown');
   const avatar = useDiceAvatar(source);
 
   const hasSource = source?.type === 'statblock' && source.tokenName;
@@ -82,10 +85,13 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
         {source?.abilityName && (
           <span className="dice-log-entry__ability-name">{source.abilityName}</span>
         )}
+        <AdvantageTag side={result.advantage} />
 
         {/* Summary: formula = total */}
         <div className="dice-log-entry__summary">
-          <span className="dice-log-entry__formula">{result.formula}</span>
+          {listsDice(result)
+            ? <RolledDiceLine result={result} className="dice-log-entry__formula" />
+            : <span className="dice-log-entry__formula">{rollLine(result)}</span>}
           <span className="dice-log-entry__eq">=</span>
           <span className="dice-log-entry__total">{result.total}</span>
         </div>
@@ -94,9 +100,9 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
         <div className="dice-log-entry__footer">
           <div className={cn('dice-log-entry__callout', isExpanded && 'dice-log-entry__callout--open')}>
             <ChevronDown className={cn('dice-log-entry__chevron', isExpanded && 'dice-log-entry__chevron--open')} />
-            <span className="dice-log-entry__callout-label">Details</span>
+            <span className="dice-log-entry__callout-label">{t('dice.details')}</span>
           </div>
-          <LabelTooltip label="Roll again">
+          <LabelTooltip label={t('dice.rollAgain')}>
             <button
               className="btn btn--ghost btn--icon dice-log-entry__repeat"
               onClick={(e) => { e.stopPropagation(); onRepeat(); }}
@@ -114,9 +120,11 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
                 key={i}
                 className={cn(
                   'dice-log-entry__badge',
-                  roll.value === roll.max && 'dice-log-entry__badge--max',
-                  roll.value === 1 && 'dice-log-entry__badge--min',
+                  dieStates(roll).map((state) => `dice-log-entry__badge--${state}`),
+                  roll.colour && 'atlas-die-badge--coloured',
+                  dropping && !roll.dropped && !roll.rerolled && 'atlas-die-badge--kept',
                 )}
+                style={roll.colour ? { '--atlas-die-colour': roll.colour } as React.CSSProperties : undefined}
               >
                 {dieLabel(result.rolls, i)}
               </span>

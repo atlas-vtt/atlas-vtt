@@ -1,25 +1,28 @@
 import React, { useId } from 'react'
-import { isHideableToolbarControl, toolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import { isHideableToolbarControl, isToolbarControlId, toolbarUnit, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
+import { t } from '../../../../i18n'
 import { useToolbarEdit, type ToolbarHandleGroup } from './toolbarEditContext'
 import { useToolbarEditMenu } from './useToolbarEditMenu'
 import { useToolbarKeyboard } from './useToolbarKeyboard'
 
-function keyHint(id: ToolbarControlId, group: ToolbarHandleGroup): string {
-  if (group === 'tray') return 'Enter puts it back on the toolbar.'
-  return isHideableToolbarControl(id) ? 'Alt with the arrow keys moves it, Delete hides it.' : 'Alt with the arrow keys moves it.'
+function keyHint(id: ToolbarUnitId, group: ToolbarHandleGroup): string {
+  if (group === 'tray') return t('toolbarEdit.hint.tray')
+  // The undo/redo bar keeps its own place.
+  if (!isToolbarControlId(id)) return t('toolbarEdit.hint.undoBar')
+  return isHideableToolbarControl(id) ? t('toolbarEdit.hint.movable') : t('toolbarEdit.hint.fixed')
 }
 
 interface ToolbarItemHandleProps {
-  id: ToolbarControlId
+  id: ToolbarUnitId
   group: ToolbarHandleGroup
   /** 0 for the handle that holds its group's Tab stop, else -1. */
   tabIndex: number
 }
 
 /**
- * What the pointer and the keyboard reach of a tool while the toolbar editor
- * is open: a button laid under the tool's inert content, named after the
- * catalog. A press may become a drag; right-click opens the editor's menu
+ * What the pointer and the keyboard reach of a tool (or of the undo/redo
+ * bar) while the toolbar editor is open: a button laid under the tool's inert
+ * content (over the undo/redo bar), named after the catalog. A press may become a drag; right-click opens the editor's menu
  * (never during a drag); a plain click does nothing.
  */
 export function ToolbarItemHandle({ id, group, tabIndex }: ToolbarItemHandleProps): React.ReactElement {
@@ -28,7 +31,7 @@ export function ToolbarItemHandle({ id, group, tabIndex }: ToolbarItemHandleProp
   const onKeyDown = useToolbarKeyboard(id, group)
   const labelId = useId()
   const descriptionId = useId()
-  const control = toolbarControl(id)
+  const control = toolbarUnit(id)
 
   return (
     <button

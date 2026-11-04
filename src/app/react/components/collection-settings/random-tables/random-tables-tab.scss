@@ -1,0 +1,312 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Collection settings — Random tables: the tables a collection rolls on, grouped
+// by their note, how each is used, and the words its items name rarity with
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss, after
+// collection-settings-modal.scss and random-tables.scss (its chips and facts).
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$rt-row-height: $button-height-m;
+
+// ── A note and its tables ──────────────────────────────────────────────────
+.atlas-rt-note {
+  @include atlas-flex-col(1px);
+
+  & + & {
+    margin-top: $spacing-s;
+  }
+}
+
+.atlas-rt-note__head {
+  @include atlas-flex-row($spacing-s);
+  min-width: 0;
+  margin: 0;
+  padding: 0 $spacing-s;
+  min-height: $button-height-s;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+    flex-shrink: 0;
+    color: var(--text-faint);
+  }
+}
+
+.atlas-rt-note__name {
+  @include atlas-truncate;
+  color: var(--text-normal);
+}
+
+.atlas-rt-note__folder {
+  @include atlas-truncate;
+  min-width: 0;
+  color: var(--text-faint);
+  font-weight: $font-weight-normal;
+}
+
+// ── A table: no fill at rest, the hover's fill on hover ────────────────────
+.atlas-rt-row {
+  border-radius: $radius-m;
+  @include atlas-corner-shape;
+  transition: background-color $transition-fast $transition-ease;
+
+  &:hover,
+  &.is-open {
+    background: var(--background-modifier-hover);
+  }
+}
+
+.atlas-rt-row__head {
+  @include atlas-flex-row($spacing-s);
+  min-height: $rt-row-height;
+  padding-right: $spacing-xs;
+}
+
+.atlas-rt-row__toggle {
+  @include atlas-flex-row($spacing-s);
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  min-height: $rt-row-height;
+  padding: 0 $spacing-s;
+  border: none;
+  border-radius: $radius-m;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: transparent;
+  }
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+
+  > svg {
+    width: $icon-xs;
+    height: $icon-xs;
+    flex-shrink: 0;
+    color: var(--text-faint);
+    transition: transform $transition-normal $transition-ease-out;
+  }
+
+  &[aria-expanded='true'] > svg {
+    transform: rotate(90deg);
+  }
+
+  // A base has nothing to open: its name lines up with the tables' names past their chevron.
+  &--static {
+    padding-left: calc(#{$spacing-s} * 2 + #{$icon-xs});
+    cursor: default;
+  }
+}
+
+.atlas-rt-row__name {
+  @include atlas-truncate;
+  // The name keeps up to half the row; its problems chip gives up its end first.
+  flex: 0 0 auto;
+  max-width: 50%;
+}
+
+.atlas-rt-row__toggle .atlas-tables-row__fact {
+  margin-left: auto;
+}
+
+.atlas-rt-row__toggle .atlas-tables-chip {
+  @include atlas-truncate;
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  line-height: $button-height-s;
+
+  svg {
+    vertical-align: -2px;
+    margin-right: $spacing-xs;
+  }
+}
+
+// What a table gives: a small two-way switch, as tall as a row's controls.
+.atlas-rt-row .atlas-segmented {
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 2px;
+  border-radius: $radius-m;
+}
+
+.atlas-rt-row .atlas-segmented__option {
+  height: calc(#{$button-height-s} - 4px);
+  padding: 0 $spacing-s;
+  border-radius: calc(#{$radius-m} - 2px);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-rt-row__kind {
+  flex-shrink: 0;
+  padding: 0 $spacing-s;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-rt-row__remove.btn--icon {
+  width: $button-height-s;
+  height: $button-height-s;
+  flex-shrink: 0;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity $transition-fast $transition-ease;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover {
+    color: var(--text-error);
+  }
+
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+.atlas-rt-row:hover .atlas-rt-row__remove.btn--icon,
+.atlas-rt-row.is-open .atlas-rt-row__remove.btn--icon,
+.atlas-rt-rarity:hover .atlas-rt-row__remove.btn--icon {
+  opacity: 1;
+}
+
+.atlas-rt-row__options {
+  @include atlas-flex-col(0);
+  padding: 0 $spacing-s $spacing-xs calc(#{$spacing-s} * 2 + #{$icon-xs});
+}
+
+.atlas-rt-row__option {
+  @include atlas-flex-row($spacing-m);
+  justify-content: space-between;
+  min-height: $rt-row-height;
+}
+
+.atlas-rt-row__label {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-rt-row__name-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 280px;
+}
+
+// ── Hidden columns: a chip per column, ringed while players never see it ───
+.atlas-rt-columns {
+  @include atlas-flex-row($spacing-xs);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.atlas-rt-column {
+  @include atlas-flex-row($spacing-xs);
+  height: $button-height-s;
+  padding: 0 $spacing-s;
+  border: none;
+  border-radius: $radius-full;
+  box-shadow: inset 0 0 0 $border-width-s var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  cursor: pointer;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  &:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+
+  &.is-hidden {
+    box-shadow: inset 0 0 0 $border-width-m var(--interactive-accent);
+    color: var(--text-normal);
+  }
+}
+
+// ── Adding ─────────────────────────────────────────────────────────────────
+.atlas-rt-add {
+  @include atlas-flex-row($spacing-s);
+  margin-top: $spacing-xs;
+}
+
+.atlas-rt-picker {
+  @include atlas-inset-surface;
+  @include atlas-flex-col($spacing-s);
+  padding: $spacing-s;
+}
+
+.atlas-rt-picker__note {
+  @include atlas-truncate;
+  padding: 0 $spacing-xs;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+}
+
+.atlas-rt-picker__tables {
+  @include atlas-flex-col(1px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-rt-picker__table {
+  @include atlas-flex-row($spacing-s);
+  min-height: $rt-row-height;
+  padding: 0 $spacing-xs;
+  border-radius: $radius-m;
+  font-size: $font-ui-small;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  &.is-listed {
+    color: var(--text-faint);
+    cursor: default;
+  }
+
+  input[type='checkbox'] {
+    flex-shrink: 0;
+    margin: 0;
+  }
+}
+
+.atlas-rt-picker__name {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+}
+
+.atlas-rt-picker__actions {
+  @include atlas-flex-row($spacing-s);
+  justify-content: flex-end;
+}
+
+// ── Currency ───────────────────────────────────────────────────────────────
+.atlas-rt-currency .atlas-csm-input {
+  max-width: 240px;
+}

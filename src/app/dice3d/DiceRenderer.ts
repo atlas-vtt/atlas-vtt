@@ -23,7 +23,9 @@ import * as THREE from 'three';
 
 import type { DiceGpu } from './DiceGpu';
 import type { DieSides } from './dieGeometry';
+import { releaseColoured, retainColoured, type ColourableAssets } from './dieColours';
 import { dieAssets } from './dieMesh';
+import { DroppedDice } from './droppedDice';
 import type { DieAnim } from './dieMotion';
 import { FLOOR_Y } from './dieTour';
 import { chainLengthFor, GhostTrail } from './ghostTrail';
@@ -66,6 +68,13 @@ export function stagePixelRatio(win: Window): number {
   return Math.min(2, win.devicePixelRatio || 1);
 }
 
+/** A die on the stage: its body, its colour where a dice set gives it one, and whether the roll dropped it. */
+export interface PlannedBody {
+  sides: DieSides;
+  colour?: string | undefined;
+  dropped?: boolean | undefined;
+}
+
 export class DiceRenderer {
   private readonly scene = new THREE.Scene();
   private readonly view = new StageCamera();
@@ -73,8 +82,11 @@ export class DiceRenderer {
   /** Where the frames are shown; null where the document has no 2D canvas. */
   private readonly output: CanvasRenderingContext2D | null;
   private meshes: THREE.Mesh[] = [];
+  /** The coloured dice of the plan, held while it is on the stage. */
+  private coloured: ColourableAssets[] = [];
   private readonly trails: GhostTrail;
   private readonly sparks: Sparks;
+  private readonly dropped = new DroppedDice();
   /** Who has landed already: the landing fires only once. */
   private landed: boolean[] = [];
   private lastTime: number | null = null;
@@ -93,25 +105,32 @@ export class DiceRenderer {
   }
 
   /**
-   * One mesh per planned die; dice of the same kind share geometry and
-   * material. Each gets a chain of ghosts, shorter the more dice there are
+   * One mesh per planned die; dice of the same kind and colour share geometry
+   * and material, and a die without a colour has the dice look of the
+   * settings. Each gets a chain of ghosts, shorter the more dice there are
    * (`chainLengthFor`).
    */
-  setPlan(sides: DieSides[]): void {
+  setPlan(dice: readonly PlannedBody[]): void {
+    this.dropped.clear();
     for (const mesh of this.meshes) this.scene.remove(mesh);
     this.trails.clear();
-    this.landed = sides.map(() => false);
+    this.landed = dice.map(() => false);
     this.shadow.bodiesChanged();
 
-    const chainLength = chainLengthFor(sides.length);
+    const chainLength = chainLengthFor(dice.length);
+    const coloured = dice.flatMap((die) => (die.colour === undefined ? [] : [dieAssets(die.sides, die.colour)]));
+    retainColoured(coloured);
+    releaseColoured(this.coloured);
+    this.coloured = coloured;
 
-    this.meshes = sides.map((s) => {
-      const assets = dieAssets(s);
+    this.meshes = dice.map((die) => {
+      const assets = dieAssets(die.sides, die.colour);
       const mesh = new THREE.Mesh(assets.geometry, assets.material);
       mesh.castShadow = true;
       mesh.visible = false;
       this.scene.add(mesh);
       this.trails.addChain(assets, chainLength);
+      if (die.dropped) this.dropped.take(mesh);
       return mesh;
     });
   }
@@ -176,8 +195,8 @@ export class DiceRenderer {
     this.sparks.setViewport(height * this.buffer.dpr, STAGE_FOV);
   }
 
-  /** One frame: take the poses from the simulation and draw. */
-  render(dice: StageDie[], emphasis: number, crit: Crit = null): void {
+  /** One frame: take the poses from the simulation and draw. `dim` fades the dropped dice, 0 to 1. */
+  render(dice: StageDie[], emphasis: number, crit: Crit = null, dim = 0): void {
     const now = performance.now() / 1000;
     const dt = this.lastTime === null ? 0 : Math.min(0.05, now - this.lastTime);
     this.lastTime = now;
@@ -210,6 +229,7 @@ export class DiceRenderer {
     }
 
     this.shadow.update(dice, emphasis, moved);
+    this.dropped.dim(dim);
 
     this.placeCamera(dice, dt);
     this.sparks.step(dt);

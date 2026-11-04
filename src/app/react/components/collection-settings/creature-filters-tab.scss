@@ -64,6 +64,16 @@
   color: var(--text-normal);
 }
 
+// A role template's name for the field, over the key the filter reads
+.atlas-csm-creature-field__label {
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+}
+
+.atlas-csm-creature-field__label + .atlas-csm-creature-field__name {
+  color: var(--text-muted);
+}
+
 .atlas-csm-creature-field__count {
   flex-shrink: 0;
   font-size: $font-ui-smaller;

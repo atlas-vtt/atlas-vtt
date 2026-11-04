@@ -1,14 +1,12 @@
 import React from 'react';
 
-/** Ring radii in the -100…100 view box; the dashed ones alternate with solid ones. */
-const RINGS: readonly { r: number; width: number; dashed?: true }[] = [
+/** Ring radii in the -100…100 view box. */
+const RINGS: readonly { r: number; width: number }[] = [
   { r: 14.4, width: 1.1 },
   { r: 18.4, width: 0.8 },
-  { r: 48, width: 0.8, dashed: true },
   { r: 73.6, width: 1.1 },
   { r: 89.6, width: 0.8 },
   { r: 118, width: 1.1 },
-  { r: 152, width: 0.8, dashed: true },
 ];
 const RAYS = 24;
 
@@ -22,9 +20,7 @@ export function DiceRollEngraving(): React.ReactElement {
   return (
     <svg className="atlas-dice-roll__engraving" aria-hidden="true" viewBox="-100 -100 200 200" preserveAspectRatio="xMidYMid slice">
       <g fill="none" stroke="currentColor">
-        {RINGS.map(({ r, width, dashed }) => (
-          <circle key={r} r={r} strokeWidth={width} strokeDasharray={dashed ? '4 5.6' : undefined} />
-        ))}
+        {RINGS.map(({ r, width }) => <circle key={r} r={r} strokeWidth={width} />)}
         {Array.from({ length: RAYS }, (_, i) => {
           const angle = (i * Math.PI) / 12;
           const reach = i % 2 === 0 ? 148 : 86.4;

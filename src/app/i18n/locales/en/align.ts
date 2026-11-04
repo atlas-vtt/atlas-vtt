@@ -1,0 +1,27 @@
+import type { Message } from '../../types';
+
+export const align = {
+  'align.analysing': 'Looking at the map…',
+  'align.checking': 'Found {type}. Checking the cell size…',
+  'align.waitingForTiles': 'Waiting for the map\'s tiles · {percent}%',
+  'align.cornerFirst': 'Click a corner of a cell.',
+  'align.cornerNext': 'Now the next corner to the right.',
+  'align.find': 'Auto detect',
+  'align.flat': 'Flat',
+  'align.flatHexes': 'flat-top hexes',
+  'align.freehandHint': 'Zoom until a preview cell covers one cell of the map, then click.',
+  'align.gridType': 'Grid type',
+  'align.hexCornerFirst': 'Click a corner of a hex.',
+  'align.hexCornerNext': 'Now a neighbouring corner of the same hex.',
+  'align.measureCount': 'Measurement {done} of {total}',
+  'align.measureMore': 'The map\'s lines did not settle it. Measure one more cell.',
+  'align.noGrid': 'No grid found in the map image. Align manually instead.',
+  'align.orByHand': 'Or align it yourself',
+  'align.pointy': 'Pointy',
+  'align.pointyHexes': 'pointy-top hexes',
+  'align.square': 'Square',
+  'align.squares': 'squares',
+  'align.tab.freehand': 'Freehand',
+  'align.tab.intersections': 'Measure',
+  'align.title': 'Grid Alignment',
+} as const satisfies Record<string, Message>;

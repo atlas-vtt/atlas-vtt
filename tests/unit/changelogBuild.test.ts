@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -49,7 +48,7 @@ describe('bundled changelog', () => {
     expect(notes).toContain('# Atlas VTT 0.2.0-beta.1');
     expect(notes).toContain('ahead of 0.2.0');
     expect(notes).toContain('- Future feature.');
-    fs.writeFileSync(pending, '## Validation\n\n- 500 tests passed.');
+    fs.writeFileSync(pending, '### Validation\n\n- 500 tests passed.');
     expect(() => readPendingNotes(root)).toThrow(/heading/i);
   });
   it('bundles pending notes as the beta build itself and keeps them out of the published history', () => {
@@ -75,8 +74,10 @@ describe('bundled changelog', () => {
     fs.copyFileSync(path.join(root, 'changelog/0.1.10.md'), path.join(root, 'changelog/copy.md'));
     expect(() => readReleases(root, '0.1.10')).toThrow(/filename|duplicate/i);
   });
-  it('rejects unsupported headings and empty release bodies', () => {
-    const root = fixture(); note(root, '0.1.10', undefined, '## Validation\n\n- 500 tests passed.');
+  it('rejects headings deeper than categories, empty headings and empty release bodies', () => {
+    const root = fixture(); note(root, '0.1.10', undefined, '### Validation\n\n- 500 tests passed.');
+    expect(() => readReleases(root, '0.1.10')).toThrow(/heading/i);
+    note(root, '0.1.10', undefined, '## \n\n- 500 tests passed.');
     expect(() => readReleases(root, '0.1.10')).toThrow(/heading/i);
     note(root, '0.1.10', undefined, '');
     expect(() => readReleases(root, '0.1.10')).toThrow(/empty/i);
@@ -118,5 +119,17 @@ describe('bundled changelog', () => {
     note(root, '0.1.10', undefined, '## New\n\n- A new capability.');
     generateChangelog(root);
     expect(() => validateBuild(root)).toThrow(/stale build/i);
+  });
+  it('nests group and category headings under each release in the history and the release body', () => {
+    const root = fixture();
+    note(root, '0.1.9', '2026-09-19');
+    note(root, '0.1.10', undefined, "# What's New\n## New Feature: Online Play\n- Tables.\n# What's Fixed / Improved\n\n- Fog.");
+    const bundle = generateChangelog(root);
+    const history = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
+    expect(history).toContain("### What's New\n#### New Feature: Online Play\n- Tables.\n### What's Fixed / Improved");
+    expect(history).toContain('### Fixed\n\n- Saved scenes keep their changes.');
+    expect(formatRelease(bundle.releases[0])).toContain("\n## What's New\n### New Feature: Online Play\n");
+    expect(formatRelease(bundle.releases[1])).toContain('\n## Fixed\n');
+    expect(formatPrerelease('0.2.0-beta.1', "# What's New\n\n- Tables.")).toContain("\n## What's New\n");
   });
 });

@@ -5,20 +5,22 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { ExternalLink, FileText, Replace } from 'lucide-react';
 import { useAtlasStore } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
-import { TokenEntity } from '../../types';
 import { App, TFile, Component, WorkspaceLeaf } from 'obsidian';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../../utils/embeddedLeafFocus';
-import FantasyStatblock from './FantasyStatblock';
+import { LinkedStatblock } from '../../statblocks/render/LinkedStatblock';
+import { StatblockFeedMenu } from '../../statblocks/editor/create/StatblockFeedMenu';
 import LinkedNotePicker from './LinkedNotePicker';
 import { StatblockFeeds } from './dm-screen/StatblockFeeds';
 import { Button } from '../../packages/components/primitives/button';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { addTokenHighlight, zoomToTokenWithHighlight } from '../../pixi/utils/tokenHighlight';
+import { isOffMap } from '../../tokens/offMap';
 import { toTokenVitals } from '../../services/statblockVitalsSync';
 import { useMapResources } from '../../resources/useMapResources';
-import { findCreatureForNotePath } from '../../services/FantasyStatblocksService';
-import { resolveStatblockNote } from '../../services/statblockNoteSource';
+import { useDMScreenStatblocks } from './dm-screen/useDMScreenStatblocks';
+import { useFightStatblocks } from './dm-screen/useFightStatblocks';
 import { runInBackground } from '../../utils/backgroundTask';
+import { t } from '../../i18n';
 
 interface DMScreenProps {
   isOpen: boolean;
@@ -102,18 +104,21 @@ const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus }) => 
         // Suppress setActiveLeaf during leaf creation so Obsidian never
         // switches away from the atlas canvas view (prevents flash).
         restoreActiveLeaf = suppressActiveLeaf(ws);
-        leafRef.current = app.workspace.getLeaf(true);
+        try {
+          leafRef.current = app.workspace.getLeaf(true);
 
-        if (leafRef.current) {
-          leafRef.current.containerEl.setAttribute('data-dm-screen-preview', 'true');
-          leafRef.current.tabHeaderEl?.setAttribute('data-dm-screen-preview', 'true');
+          if (leafRef.current) {
+            leafRef.current.containerEl.setAttribute('data-dm-screen-preview', 'true');
+            leafRef.current.tabHeaderEl?.setAttribute('data-dm-screen-preview', 'true');
 
-          leafRef.current.detach();
+            leafRef.current.detach();
+          }
+        } finally {
+          // Restore setActiveLeaf immediately after detach, before any async work,
+          // and also when the workspace could not make the leaf.
+          restoreActiveLeaf();
         }
 
-        // Restore setActiveLeaf and re-activate the original leaf immediately
-        // after detach, before any async work.
-        restoreActiveLeaf();
         if (originalActiveLeaf && originalActiveLeaf !== leafRef.current) {
           app.workspace.setActiveLeaf(originalActiveLeaf, { focus: false });
         }
@@ -212,25 +217,19 @@ const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus }) => 
   );
 };
 
-interface LoadedStatblock {
-  path: string;
-  tokens: TokenEntity[];
-}
-
-function getStatblockPath(token: TokenEntity): string | undefined {
-  return token.kind === 'character' ? token.statblockPath : undefined;
-}
-
 export default function DMScreen({ isOpen, onClose }: DMScreenProps) {
   const tokens = useAtlasStore((state) => state.objects?.tokens || {});
+  const mapPath = useAtlasStore((state) => state.mapPath);
+  const mapLoaded = useAtlasStore((state) => state.mapLoaded);
+  const isMapLoading = useAtlasStore((state) => state.isMapLoading);
   const linkedNotePath = useAtlasStore((state) => state.dmNotePath);
   const setLinkedNotePath = useAtlasStore((state) => state.setDMNotePath);
   const linkedNoteName = linkedNotePath?.split('/').pop()?.replace(/\.md$/, '');
   const { app, view } = useAtlasUI();
   const updateToken = useAtlasStore((state) => state.updateToken);
   const definitions = useMapResources();
-  const [statblocks, setStatblocks] = useState<Map<string, LoadedStatblock>>(new Map());
-  const [loading, setLoading] = useState(true);
+  const { statblocks, loading } = useDMScreenStatblocks(isOpen, app, { viewId: view?.viewId, mapPath, mapLoaded, isMapLoading, tokens });
+  const { shown: shownStatblocks, scopeSwitch } = useFightStatblocks(statblocks, tokens);
   const [contentReady, setContentReady] = useState(false);
   const [closing, setClosing] = useState(false);
   const [isNoteFocused, setIsNoteFocused] = useState(false);
@@ -245,81 +244,6 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps) {
       onClose();
     }, 200); // matches CSS animation duration
   }, [closing, onClose]);
-
-  // Get unique statblocks from tokens on the map
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let cancelled = false;
-    const loadStatblocks = async () => {
-      setLoading(true);
-      const tokensArray = Object.values(tokens);
-
-      // Extract just the statblock paths from tokens to check if we need to reload
-      const currentStatblockPaths = new Set<string>();
-      tokensArray.forEach((token) => {
-        const path = getStatblockPath(token);
-        if (path) currentStatblockPaths.add(path);
-      });
-
-      // Check if statblock paths have changed
-      const existingPaths = new Set(statblocks.keys());
-      const pathsChanged = currentStatblockPaths.size !== existingPaths.size ||
-        [...currentStatblockPaths].some(path => !existingPaths.has(path));
-
-      if (!pathsChanged && statblocks.size > 0) {
-        // Just update the tokens for existing statblocks without recreating the Map
-        setStatblocks(prev => {
-          const updatedMap = new Map([...prev].map(([path, statblock]) => [path, { ...statblock, tokens: [] as TokenEntity[] }]));
-
-          // Redistribute tokens
-          tokensArray.forEach((token) => {
-            const path = getStatblockPath(token);
-            if (path) updatedMap.get(path)?.tokens.push(token);
-          });
-
-          return updatedMap;
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Only recreate the Map if statblock paths have actually changed
-      const uniqueStatblocks = new Map<string, LoadedStatblock>();
-
-      // Group tokens by statblock path
-      const tokensByStatblock = new Map<string, TokenEntity[]>();
-      tokensArray.forEach((token) => {
-        const path = getStatblockPath(token);
-        if (!path) return;
-        const existing = tokensByStatblock.get(path) || [];
-        existing.push(token);
-        tokensByStatblock.set(path, existing);
-      });
-
-      // Old Atlas notes can still be linked to tokens, but are not Fantasy
-      // Statblocks creatures. Only allocate cards for supported note sources.
-      for (const [path, pathTokens] of tokensByStatblock.entries()) {
-        const file = app.vault.getAbstractFileByPath(path);
-        if (
-          file instanceof TFile &&
-          (findCreatureForNotePath(path) || await resolveStatblockNote(app, file))
-        ) {
-          uniqueStatblocks.set(path, {
-            path,
-            tokens: pathTokens
-          });
-        }
-      }
-
-      if (cancelled) return;
-      setStatblocks(uniqueStatblocks);
-      setLoading(false);
-    };
-
-    runInBackground(loadStatblocks(), 'Loading DM screen statblocks');
-    return () => { cancelled = true; };
-  }, [tokens, isOpen, app]);
 
   // Reveal the DM screen once statblocks finish loading (prevents layout shift)
   useEffect(() => {
@@ -336,10 +260,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps) {
 
   // Handle DM screen close/cleanup
   useEffect(() => {
-    if (!isOpen) {
-      setIsNoteFocused(false);
-      setLoading(true);
-    }
+    if (!isOpen) setIsNoteFocused(false);
   }, [isOpen]);
 
   // Handle note focus with keyboard event capture (same pattern as NotePreviewWindow)
@@ -464,29 +385,34 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps) {
           {/* Left side - Statblocks (50% height) */}
           <div className="atlas-dm-statblocks-section">
             {loading ? (
-              <div className="atlas-dm-loading">Loading statblocks...</div>
+              <div className="atlas-dm-loading">{t('dashboard.loading')}</div>
             ) : (
               <div className="atlas-dm-statblocks-grid">
-                {statblocks.size > 0 && (
+                {scopeSwitch}
+                {shownStatblocks.length > 0 && (
                   <StatblockFeeds>
-                    {Array.from(statblocks.entries(), ([path, statblock]) => (
-                      <FantasyStatblock
-                        key={path}
-                        notePath={path}
-                        app={app}
-                        tokens={statblock.tokens.map(toTokenVitals)}
-                        tokenActions={{
-                          definitions,
-                          onUpdateToken: (id, updates) => updateToken(id, updates),
-                          onHoverToken: (id) => addTokenHighlight(view, id, { highlightDuration: 800 }),
-                          onLocateToken: (id) => {
-                            const token = tokens[id];
-                            if (!token) return;
-                            zoomToTokenWithHighlight(view, id, { x: token.x, y: token.y });
-                            handleClose();
-                          },
-                        }}
-                      />
+                    {shownStatblocks.map(([path, statblock]) => (
+                      <StatblockFeedMenu key={path} app={app} path={path} onOpened={handleClose}>
+                        <LinkedStatblock
+                          app={app}
+                          path={path}
+                          variant="feed"
+                          tokens={statblock.tokens.map(toTokenVitals)}
+                          originContext={statblock.originContext}
+                          tokenActions={{
+                            definitions,
+                            onUpdateToken: (id, updates) => updateToken(id, updates),
+                            onHoverToken: (id) => addTokenHighlight(view, id, { highlightDuration: 800 }),
+                            onLocateToken: (id) => {
+                              const token = tokens[id];
+                              // A combatant kept beside the map has no place on it to show
+                              if (!token || isOffMap(token)) return;
+                              zoomToTokenWithHighlight(view, id, { x: token.x, y: token.y });
+                              handleClose();
+                            },
+                          }}
+                        />
+                      </StatblockFeedMenu>
                     ))}
                   </StatblockFeeds>
                 )}
@@ -499,23 +425,23 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps) {
             <div className="atlas-linked-note-header">
               <FileText className="atlas-linked-note-header-icon" />
               <div className="atlas-linked-note-header-text">
-                <h3>{linkedNoteName ?? 'Link a note to this map'}</h3>
-                <p>{linkedNotePath ?? 'Pick a note to keep beside the map'}</p>
+                <h3>{linkedNoteName ?? t('dashboard.linkNote')}</h3>
+                <p>{linkedNotePath ?? t('dashboard.pickNote')}</p>
               </div>
               {linkedNotePath && (
                 <div className="atlas-linked-note-actions">
-                  <LabelTooltip label="Open note in new tab">
+                  <LabelTooltip label={t('dashboard.openNote')}>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       className="atlas-linked-note-action"
-                      onClick={() => runInBackground(app.workspace.openLinkText('', linkedNotePath, true), `Opening ${linkedNotePath}`, 'Could not open the note')}
+                      onClick={() => runInBackground(app.workspace.openLinkText('', linkedNotePath, true), `Opening ${linkedNotePath}`, t('loot.openFailed'))}
                     >
                       <ExternalLink />
                     </Button>
                   </LabelTooltip>
-                  <LabelTooltip label="Link a different note">
+                  <LabelTooltip label={t('dashboard.linkOther')}>
                     <Button
                       type="button"
                       variant="ghost"

@@ -10,6 +10,7 @@ import {
 } from 'obsidian';
 import { LOOT_QUERY_VIEW } from './lootBaseQuery';
 import { roleProperties, type LootQueryEntry, type LootQuerySnapshot } from './lootItem';
+import { t } from '../i18n';
 
 /** What a running query hears from the view Obsidian made for it. */
 export interface LootQueryListener {
@@ -87,7 +88,7 @@ function tryRegister(): boolean {
         if (!this.route) {
           containerEl.createDiv({
             cls: 'atlas-loot-query-note',
-            text: 'Atlas reads this view for its loot roller. Open the loot roller on a map to roll on it.',
+            text: t('loot.query.note'),
           });
         }
       }
@@ -112,7 +113,7 @@ function tryRegister(): boolean {
     }
 
     basesAvailable = owner.registerBasesView(LOOT_QUERY_VIEW, {
-      name: 'Atlas loot',
+      name: t('loot.query.name'),
       icon: 'coins',
       factory: (controller, containerEl) => new LootQueryView(controller, containerEl),
     });

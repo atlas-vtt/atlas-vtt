@@ -40,6 +40,26 @@ export function SettingToggleRow({ label, hint, value, onToggle }: SettingToggle
   );
 }
 
+interface SettingChoiceRowProps {
+  label: string;
+  hint?: string | undefined;
+  /** The choice, a `SegmentedControl` as wide as the row. */
+  children: React.ReactNode;
+}
+
+/** Name and hint above a full-width choice: for a segmented control whose options would squeeze a hint beside them. */
+export function SettingChoiceRow({ label, hint, children }: SettingChoiceRowProps): React.ReactElement {
+  return (
+    <div className="atlas-setting-group">
+      <div className="atlas-setting-row-info">
+        <span className="atlas-setting-label">{label}</span>
+        {hint && <span className="atlas-setting-hint">{hint}</span>}
+      </div>
+      <div className="atlas-setting-choice">{children}</div>
+    </div>
+  );
+}
+
 interface SettingSliderRowProps {
   label: string;
   hint?: string | undefined;

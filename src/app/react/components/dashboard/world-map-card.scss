@@ -1,0 +1,234 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'dashboard-mixins' as *;
+@use 'campaign-controls' as *;
+
+// The world map card of a campaign's page (WorldMapCard.tsx): the map large, pressed to open it
+// for its pins, its name with Change and Remove below it. Without a world map the whole card
+// offers to choose one. The card is a panel: its controls sit `$spacing-s` inside the border,
+// concentric with its corners.
+
+$world-map-inset: $spacing-s;
+
+.world-map-card {
+  @include atlas-flex-col($spacing-s);
+  align-items: stretch;
+}
+
+.world-map-card__frame {
+  --atlas-skeleton-surface: var(--background-secondary);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--background-secondary);
+  border: $border-width-s solid var(--background-modifier-border);
+  @include atlas-panel-radius($radius-2xl, $border-width-s);
+}
+
+.world-map-card__art {
+  @include dashboard-art-well;
+  aspect-ratio: 4 / 3;
+
+  // Across a narrow pane the card spans the column: wider, so less tall.
+  @container atlas-dashboard (max-width: 820px) {
+    aspect-ratio: 16 / 9;
+  }
+
+  border-start-start-radius: var(--atlas-panel-inner-radius);
+  border-start-end-radius: var(--atlas-panel-inner-radius);
+  @include atlas-corner-shape;
+}
+
+.world-map-card__emblem {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+
+  svg {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+// ── The map, pressed to place pins ──────────────────────────────────────────
+
+.world-map-card__open {
+  @include dashboard-button-reset;
+  // The whole world map shows: no overscan.
+  @include dashboard-art-zoom('.world-map-card__art', 1);
+  position: relative;
+  display: block;
+  border-start-start-radius: var(--atlas-panel-inner-radius);
+  border-start-end-radius: var(--atlas-panel-inner-radius);
+  @include atlas-corner-shape;
+  transition: transform $transition-press $transition-ease-out;
+
+  // The accent ring over the picture: a hairline on hover, firm on press and on keyboard focus.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 0 transparent;
+    transition: box-shadow $transition-fast $transition-ease;
+    pointer-events: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled)::after {
+      box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 70%, transparent);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: scale($dashboard-press-scale);
+  }
+
+  &:active:not(:disabled)::after,
+  &:focus-visible::after {
+    box-shadow: inset 0 0 0 3px var(--interactive-accent);
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+// What a press does, on the picture: frosted at rest, the accent on hover.
+.world-map-card__action {
+  position: absolute;
+  inset-inline-start: $world-map-inset;
+  inset-block-end: $world-map-inset;
+  @include atlas-flex-row($spacing-xs);
+  height: var(--input-height);
+  box-sizing: border-box;
+  padding: 0 $spacing-m 0 $spacing-s;
+  border-radius: $radius-m;
+  @include atlas-corner-shape;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  color: var(--text-normal);
+  background: color-mix(in oklch, var(--background-primary) 80%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 22%);
+  transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.world-map-card__open:hover:not(:disabled) .world-map-card__action,
+.world-map-card__open:focus-visible .world-map-card__action {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+
+// ── Its name, Change and Remove ─────────────────────────────────────────────
+
+.world-map-card__footer {
+  @include atlas-flex-row($world-map-inset);
+  min-height: calc(var(--input-height) + 2 * #{$world-map-inset});
+  box-sizing: border-box;
+  padding: $world-map-inset;
+}
+
+.world-map-card__name {
+  @include atlas-flex-col(2px);
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  // The name's text starts where a ghost button's would.
+  padding-inline-start: $spacing-xs;
+}
+
+.world-map-card__title {
+  @include atlas-truncate;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+  color: var(--text-normal);
+}
+
+.world-map-card__kind {
+  @include atlas-truncate;
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
+}
+
+// The picker's root grows by default; here it is only as wide as Change.
+.world-map-card__footer .world-map-card__change-picker {
+  flex: none;
+}
+
+// Change is the picker's own button, Remove a `Button`: both ghost controls of one height.
+.world-map-card__change {
+  @include campaign-ghost-control;
+  padding: 0 $spacing-m;
+  border: none;
+  box-shadow: none;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+}
+
+.world-map-card__remove.btn {
+  @include campaign-ghost-control;
+  width: var(--input-height);
+  padding: 0;
+  @include atlas-panel-inset-radius($world-map-inset, bottom-right);
+}
+
+// ── No world map: the whole card chooses one ────────────────────────────────
+
+.world-map-card__picker {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.world-map-card__choose {
+  @include dashboard-button-reset;
+  @include dashboard-card-surface;
+  @include atlas-panel-radius($radius-2xl, $border-width-s);
+  overflow: hidden;
+  width: 100%;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) .world-map-card__emblem {
+      color: var(--text-accent);
+    }
+  }
+}
+
+.world-map-card__art--empty {
+  // A map's squares, faint, around the glyph.
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--text-normal) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--text-normal) 6%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: center;
+
+  .world-map-card__emblem {
+    transition: color $transition-fast $transition-ease;
+  }
+}
+
+.world-map-card__choose-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--input-height) + 2 * #{$world-map-inset});
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  color: var(--text-muted);
+}
+
+.world-map-card__choose:hover:not(:disabled) .world-map-card__choose-label {
+  color: var(--text-normal);
+}

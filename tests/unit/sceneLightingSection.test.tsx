@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -84,15 +85,14 @@ describe('SceneLightingSection', () => {
     expect(screen.getAllByRole('switch')).toHaveLength(1);
   });
 
-  it('keeps its actions in a section of their own, as rows like every other menu\'s', () => {
-    renderSection();
-    const controls = screen.getByRole('switch').closest('.atlas-dropdown-section');
+  it('keeps its actions in a section of their own, as rows like every other menu\'s, and the switch last', () => {
+    const { container } = render(<SceneLightingSection lighting={DEFAULT_SCENE_LIGHTING} onChange={vi.fn()} onResetExplored={vi.fn()} onOpenSettings={vi.fn()} />);
+    const sections = [...container.querySelectorAll('.atlas-dropdown-section')];
+    const controls = screen.getByRole('radiogroup', { name: 'Time of day' }).closest('.atlas-dropdown-section');
     const actions = screen.getByText('Forget explored areas').closest('.atlas-dropdown-section');
-    expect(controls).not.toBeNull();
-    expect(actions).not.toBeNull();
-    expect(actions).not.toBe(controls);
+    const toggle = screen.getByRole('switch').closest('.atlas-dropdown-section');
+    expect(sections).toEqual([controls, actions, toggle]);
     expect(screen.getByText('Lighting settings…').closest('.atlas-dropdown-section')).toBe(actions);
-    expect(screen.getByRole('radiogroup', { name: 'Time of day' }).closest('.atlas-dropdown-section')).toBe(controls);
     expect(screen.getByText('Forget explored areas').closest('button')?.classList.contains('atlas-dropdown-menu-item')).toBe(true);
   });
 
@@ -107,7 +107,7 @@ describe('SceneLightingSection', () => {
     };
     const off = shape(DEFAULT_SCENE_LIGHTING);
     expect(off).toEqual(shape({ ...DEFAULT_SCENE_LIGHTING, enabled: true }));
-    expect(off.map((rows) => rows.length)).toEqual([3, 2]);
+    expect(off.map((rows) => rows.length)).toEqual([2, 2, 1]);
   });
 
   it('tints the ambient light with the colour beside its slider', () => {

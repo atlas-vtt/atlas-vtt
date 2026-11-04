@@ -1,10 +1,16 @@
 import type { Asset, CollectionMetadata } from '../AssetService';
-import { isRecord } from '../assetMetadataGuards';
-import { SNAPSHOTS_DIR } from '../../snapshots/snapshotPaths';
+import { isLibraryOwnFile } from '../library/libraryPaths';
+import { isRecord } from '../../utils/guards';
+import { LEGACY_SNAPSHOTS_DIR } from '../../snapshots/snapshotPaths';
 import { STATBLOCK_IMAGE_KEYS, type StatblockImageKey } from '../statblockImageKeys';
+import { t } from '../../i18n';
 
-/** Bumped when the zip layout or manifest shape changes. */
-export const BUNDLE_FORMAT = 6;
+/** Bumped when the zip layout or manifest shape changes: the newest format this version reads and writes. */
+export const BUNDLE_FORMAT = 9;
+/** What a bundle with a user preset and none of format 9's files says, so Atlas versions that stop at format 8 still import it. */
+const FORMAT_WITH_PRESETS = 8;
+/** What a bundle without any of those says, so Atlas versions that stop at format 6 still import it. */
+const FORMAT_WITHOUT_PRESETS = 6;
 /** Oldest format this version still imports. */
 const OLDEST_BUNDLE_FORMAT = 2;
 export const BUNDLE_MANIFEST = 'manifest.json';
@@ -16,13 +22,48 @@ export const BUNDLE_FILES_DIR = 'files';
  * `linked-note` is a note a scene's pins or characters open, or one such a note links to, however far along;
  * `note-attachment` is an image or PDF one of those notes shows (format 5); `cover` is the collection's cover image (format 4).
  * `loot-base` is a `.base` file the collection's settings pick as a loot source and `loot-item` a file the base
- * holds (format 6).
+ * holds (format 6). `system-preset` is the user game system preset the collection's settings name (format 8): it is
+ * matched by its preset id and placed in the presets folder, never at its path.
+ * Format 9 brings `statblock-template` (a statblock template the collection's roles or its notes
+ * name: placed by its template id in the library folder), `statblock-template-body` (the note
+ * beside a carried template that new statblocks of it start with, placed beside the template
+ * wherever the template goes) and `dice-set` (a dice set the collection, its preset or a carried
+ * template rolls with: matched by its set id and placed in the dice sets folder). Development
+ * builds wrote templates as format 7, which this version still reads.
  */
 const BUNDLE_FILE_ROLES = [
   'asset-file', 'thumbnail', 'scene-map', 'scene-thumbnail', 'scene-snapshot', 'scene-snapshot-thumbnail', 'background', 'token-image', 'statblock-note', 'statblock-image',
-  'linked-note', 'note-attachment', 'cover', 'loot-base', 'loot-item',
+  'linked-note', 'note-attachment', 'cover', 'loot-base', 'loot-item', 'statblock-template', 'system-preset',
+  'statblock-template-body', 'dice-set',
 ] as const;
 export type BundleFileRole = typeof BUNDLE_FILE_ROLES[number];
+
+/** Markdown notes, whatever brought them along: any of them may be a native statblock naming its template. */
+export const NOTE_FILE_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['statblock-note', 'linked-note', 'loot-item']);
+
+/** Statblock templates, which are matched by their template id and not by their path. */
+export const TEMPLATE_ROLE = 'statblock-template' satisfies BundleFileRole;
+
+/** The note beside a carried template, which goes wherever its template goes (`linkedFrom` names the template). */
+export const TEMPLATE_BODY_ROLE = 'statblock-template-body' satisfies BundleFileRole;
+
+/** A user game system preset, which is matched by its preset id and not by its path. */
+export const PRESET_ROLE = 'system-preset' satisfies BundleFileRole;
+
+/** A dice set of the vault's library, which is matched by its set id and not by its path. */
+export const DICE_SET_ROLE = 'dice-set' satisfies BundleFileRole;
+
+/** Files an import places by the id inside them or the file they go with, never as files at a path. */
+export const ID_MATCHED_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>([TEMPLATE_ROLE, TEMPLATE_BODY_ROLE, PRESET_ROLE, DICE_SET_ROLE]);
+
+/** Roles Atlas versions that stop at format 8 do not know. */
+const FORMAT_9_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>([TEMPLATE_ROLE, TEMPLATE_BODY_ROLE, DICE_SET_ROLE]);
+
+/** The format a manifest says: 9 when the bundle packs a template or a dice set, 8 when a user preset, 6 otherwise. */
+export function bundleFormatFor(files: readonly BundleFile[]): number {
+  if (files.some((file) => FORMAT_9_ROLES.has(file.role))) return BUNDLE_FORMAT;
+  return files.some((file) => file.role === PRESET_ROLE) ? FORMAT_WITH_PRESETS : FORMAT_WITHOUT_PRESETS;
+}
 
 /** Statblock notes and their artwork: files an importing vault may already have, and then reuses in place. */
 export const REUSABLE_FILE_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['statblock-note', 'statblock-image']);
@@ -71,21 +112,31 @@ const SAFE_ID = /^[^/\\.][^/\\]{0,127}$/;
 const RESERVED_IDS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
 const isSafeId = (id: unknown): boolean => typeof id === 'string' && SAFE_ID.test(id) && !RESERVED_IDS.has(id);
 
-/** Scene snapshots live in `<folder>/.snapshots/<scene>/`, the only hidden folder a bundle may name. */
-const SNAPSHOT_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['scene-snapshot', 'scene-snapshot-thumbnail']);
+/** A scene's snapshot files, which travel with the scene and are placed by its id. */
+export const SNAPSHOT_FILE_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['scene-snapshot', 'scene-snapshot-thumbnail']);
 
 /**
  * Whether a bundled vault path is safe to plan an import for: relative, and
- * without `.`/`..` segments or hidden folders such as `.obsidian`. Snapshot
- * files may sit in their scene's `.snapshots` folder.
+ * without `.`/`..` segments or hidden folders such as `.obsidian`.
  */
-export function isSafeBundlePath(path: string, role?: BundleFileRole): boolean {
+export function isSafeBundlePath(path: string): boolean {
   if (!path || path.length > 1024 || path.startsWith('/') || path.includes('\\')) return false;
   if ([...path].some((character) => character.charCodeAt(0) < 0x20)) return false;
-  const segments = path.split('/');
-  const snapshotsIndex = role && SNAPSHOT_ROLES.has(role) ? segments.length - 3 : -1;
-  return segments.every((segment, index) => segment !== ''
-    && (!segment.startsWith('.') || (index === snapshotsIndex && segment === SNAPSHOTS_DIR)));
+  return path.split('/').every((segment) => segment !== '' && !segment.startsWith('.'));
+}
+
+/**
+ * Whether the file is a snapshot as bundles of earlier versions name it, in
+ * the hidden folder beside its scene's map (`scenes/.snapshots/Cave/<id>.json`).
+ * Such a path is never written: the import places the file by the scene that
+ * owns it (`sceneOfSnapshot`).
+ */
+export function isLegacySnapshotFile(file: Pick<BundleFile, 'vaultPath' | 'role'>): boolean {
+  if (!SNAPSHOT_FILE_ROLES.has(file.role)) return false;
+  const segments = file.vaultPath.split('/');
+  const hidden = segments.length - 3;
+  return hidden >= 0 && segments[hidden] === LEGACY_SNAPSHOTS_DIR
+    && isSafeBundlePath(segments.filter((_, index) => index !== hidden).join('/'));
 }
 
 const isStatblockImage = (value: unknown): boolean =>
@@ -110,9 +161,9 @@ const isBundleRelease = (value: unknown): value is BundleRelease =>
 
 /** Why a bundle cannot be imported, or null when its manifest is sound. */
 export function manifestProblem(value: unknown): string | null {
-  if (!isRecord(value) || typeof value.format !== 'number') return 'This file is not an Atlas collection export.';
-  if (value.format > BUNDLE_FORMAT) return 'This collection was exported by a newer version of Atlas. Update Atlas to import it.';
-  if (value.format < OLDEST_BUNDLE_FORMAT) return 'This collection export is too old to import.';
+  if (!isRecord(value) || typeof value.format !== 'number') return t('bundle.notExport');
+  if (value.format > BUNDLE_FORMAT) return t('bundle.tooNew');
+  if (value.format < OLDEST_BUNDLE_FORMAT) return t('bundle.tooOld');
   const { collection, assets, files, release } = value;
   const isSound = typeof value.exportedAt === 'number'
     && isRecord(collection)
@@ -127,10 +178,16 @@ export function manifestProblem(value: unknown): string | null {
       && (asset.tags === undefined || (Array.isArray(asset.tags) && asset.tags.every((tag) => typeof tag === 'string'))))
     && Array.isArray(files)
     && files.every(isBundleFile);
-  if (!isSound) return 'This collection export is damaged.';
+  if (!isSound) return t('bundle.damaged');
   const { coverPath } = collection;
-  if (coverPath !== undefined && !files.some((file) => file.role === 'cover' && file.vaultPath === coverPath)) return 'This collection export is damaged.';
-  const unsafe = files.find((file) => !isSafeBundlePath(file.vaultPath, file.role) || (file.statblockImage && !isSafeBundlePath(file.statblockImage.path)));
-  if (unsafe) return `This collection export contains a file Atlas will not write: ${unsafe.vaultPath}`;
+  if (coverPath !== undefined && !files.some((file) => file.role === 'cover' && file.vaultPath === coverPath)) return t('bundle.damaged');
+  const sceneIds = new Set(assets.flatMap((asset) => (isRecord(asset) && asset.type === 'scene' && typeof asset.id === 'string' ? [asset.id] : [])));
+  // An earlier version's snapshot is placed by its scene, so it must name one of the bundle's scenes.
+  const isPlaceable = (file: BundleFile): boolean => isSafeBundlePath(file.vaultPath)
+    || (isLegacySnapshotFile(file) && (file.owners ?? []).some((owner) => sceneIds.has(owner)));
+  const unsafe = files.find((file) => !isPlaceable(file)
+    || isLibraryOwnFile(file.vaultPath)
+    || (file.statblockImage && !isSafeBundlePath(file.statblockImage.path)));
+  if (unsafe) return t('bundle.unsafe', { path: unsafe.vaultPath });
   return null;
 }

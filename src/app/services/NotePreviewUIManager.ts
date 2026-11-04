@@ -2,17 +2,28 @@ import { App, WorkspaceLeaf, TFile, EventRef } from 'obsidian';
 import { EventEmitter } from 'events';
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { NotePin } from '../types';
-import type { TokenVitals } from './statblockVitalsSync';
+import { toTokenVitals, type TokenVitals } from './statblockVitalsSync';
 import { NotePreviewWindow } from './NotePreviewWindow';
 import { StatblockPreviewWindow } from './StatblockPreviewWindow';
-import { findCreatureForNotePath } from './FantasyStatblocksService';
+import { isStatblockNote, statblockNoteKnown, unparsedFrontmatterStatblock } from '../statblocks/resolve/statblockNote';
 import { MapLinkPreview } from './MapLinkPreview';
+import { EncounterFolderPreview } from './EncounterFolderPreview';
+import { isEncounterFolderLink } from '../links/atlasLinkTargets';
+import { linkedEncounterFolder } from '../encounters/encounterFolders';
+import { encountersInFolder, placeEncounter, rollEncounterFolder } from '../encounters/encounterFolderRoll';
+import { atlasViewOfStore } from '../plugin/atlasLeaves';
+import type { AtlasView } from '../atlas-view';
 import { linkedFilePath, linkedMapPath, linkedSceneFile } from './sceneLinks';
 import { runInBackground } from '../utils/backgroundTask';
+import { t } from '../i18n';
 import { findAtlasLeafByViewId } from '../utils/atlasLeafLookup';
 import { readPinnedNotePreviews } from '../stores/pinnedNotePreviewSlice';
 import { isModHeld } from '../keyboard/modKey';
 import type { ViewAtlasStore } from '../storeFactory';
+import type { TokenRollContext } from '../types/diceRollOrigin';
+import { captureRollContext } from '../tools/diceRollOrigins';
+import { mapTokens } from '../tokens/offMap';
+import { shallow } from 'zustand/vanilla/shallow';
 
 /**
  * A hovered token presented to the preview system like a pin on its linked
@@ -63,19 +74,28 @@ export class NotePreviewUIManager {
   private mapUnloading = false;
   private activePreviews: Map<string, IPreviewWindow> = new Map();
   private isModifierKeyDown = false;
+  /** Counts `hideAllUnpinnedPreviews`, so a preview decided after a read knows it was hidden or replaced meanwhile. */
+  private hideCount = 0;
   private lastHoveredPinId: string | null = null;
-  /** Element under the pointer, kept until it leaves; replayed on each CMD/Ctrl press. */
+  /**
+   * Element under the pointer, kept until it leaves; replayed on each CMD/Ctrl press. A
+   * hovered token keeps the scene it was hovered in, which rolls from its statblock name.
+   */
   private currentHover: {
     pin: PreviewAnchor;
     screenX: number;
     screenY: number;
     sourceLeaf: WorkspaceLeaf | null;
+    originContext: TokenRollContext | undefined;
   } | null = null;
   private boundHideAllUnpinnedPreviewsOnBlur!: () => void;
   private boundHandleKeyDown!: (e: KeyboardEvent) => void;
   private boundHandleKeyUp!: (e: KeyboardEvent) => void;
   private boundHandleFocus!: () => void;
+  /** The map view's container, once `setViewElement` was called. */
+  private viewEl: HTMLElement | null = null;
   private activeLeafChangeRef: EventRef | null = null;
+  private layoutChangeRef: EventRef | null = null;
   private zIndexCounter = 5; // stay below asset manager (50) and Obsidian overlays (~1000)
 
   constructor(app: App, eventBus: EventEmitter, store: ViewAtlasStore, viewId: string) {
@@ -108,7 +128,12 @@ export class NotePreviewUIManager {
       
       // Hover events only fire when the hovered element changes, so remember
       // the hover: every later modifier press replays it.
-      this.currentHover = { pin: data.pin, screenX: data.screenX, screenY: data.screenY, sourceLeaf: data.sourceLeaf ?? null };
+      this.currentHover = {
+        pin: data.pin, screenX: data.screenX, screenY: data.screenY, sourceLeaf: data.sourceLeaf ?? null,
+        originContext: 'type' in data.pin && data.pin.type === 'token'
+          ? captureRollContext(this.viewId, this.store.getState(), [data.pin.id])
+          : undefined,
+      };
       if (modifierKeyDown) {
         this.showPreviewFor(this.currentHover);
       }
@@ -138,7 +163,6 @@ export class NotePreviewUIManager {
     document.addEventListener('keydown', this.boundHandleKeyDown);
     document.addEventListener('keyup', this.boundHandleKeyUp);
     window.addEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
-    
     // Reset modifier key state when window gains focus to avoid stuck state
     window.addEventListener('focus', this.boundHandleFocus);
 
@@ -172,7 +196,25 @@ export class NotePreviewUIManager {
       if (viewType !== 'atlas-vtt' && viewType !== 'atlas-vtt-player') {
         this.hideAllUnpinnedPreviews();
       }
+      this.showStatblocksWithMap();
     });
+    // A closed or moved tab can show or hide the map without another leaf becoming active
+    this.layoutChangeRef = this.app.workspace.on('layout-change', () => this.showStatblocksWithMap());
+  }
+
+  /**
+   * Statblock previews hang in the document, not in the map's leaf, so a pinned
+   * one shows only while its map does, as a pinned note in the leaf would.
+   */
+  private showStatblocksWithMap(): void {
+    const statblocks = [...this.activePreviews.values()].filter((preview) => preview instanceof StatblockPreviewWindow);
+    if (statblocks.length === 0) return;
+    const mapShown = !this.suspended
+      && findAtlasLeafByViewId(this.app.workspace, this.viewId)?.view.containerEl.isShown() === true;
+    for (const preview of statblocks) {
+      if (mapShown) preview.element?.show();
+      else preview.element?.hide();
+    }
   }
 
   /**
@@ -241,7 +283,7 @@ export class NotePreviewUIManager {
 
   private showPreviewFor(hover: NonNullable<typeof this.currentHover>): void {
     runInBackground(
-      this.showOrCreatePreview(hover.pin, hover.screenX, hover.screenY, hover.sourceLeaf),
+      this.showOrCreatePreview(hover.pin, hover.screenX, hover.screenY, hover.sourceLeaf, hover.originContext),
       'Showing note preview',
     );
   }
@@ -281,6 +323,8 @@ export class NotePreviewUIManager {
     screenX: number,
     screenY: number,
     sourceLeaf?: WorkspaceLeaf | null,
+    /** The scene a hovered token was hovered in; a statblock opened for it rolls for that scene. */
+    originContext?: TokenRollContext,
   ): Promise<void> {
 
     // First, check if we already have a preview for this exact pin
@@ -303,10 +347,15 @@ export class NotePreviewUIManager {
     // Hide all unpinned previews before creating a new one
     this.hideAllUnpinnedPreviews();
     
+    if (isEncounterFolderLink(pin.notePath)) {
+      await this.showEncounterFolderPreview(pin, screenX, screenY, sourceLeaf);
+      return;
+    }
+
     // Scene links → lightweight tooltip with thumbnail + "Open Map" button; nothing for a scene not in this collection
     if (linkedMapPath(pin.notePath)) {
       const scene = linkedSceneFile(this.app, this.store.getState().mapPath, pin.notePath);
-      const mapPreview = scene ? new MapLinkPreview(this.app, scene, pin, this, { x: screenX, y: screenY }) : null;
+      const mapPreview = scene ? new MapLinkPreview(this.app, scene, pin, this, { x: screenX, y: screenY }, this.previewDocument(sourceLeaf)) : null;
       if (mapPreview?.element) {
         this.activePreviews.set(`${pin.notePath}::${pin.id}`, mapPreview);
         this.raiseZIndex(mapPreview);
@@ -314,23 +363,39 @@ export class NotePreviewUIManager {
       return;
     }
 
-    // Check file type for specialized previews
+    // A token whose note is a statblock gets the statblock preview
     const file = this.app.vault.getAbstractFileByPath(linkedFilePath(pin.notePath));
-    if (file instanceof TFile) {
+    if (file instanceof TFile && 'type' in pin && pin.type === 'token') {
+      // Only a note whose statblock is in a fence is read; a hide or another hover meanwhile wins.
+      // A frontmatter statblock Fantasy Statblocks has not parsed shows as the note, where the plugin draws any fence it holds.
+      const hides = this.hideCount;
+      const isStatblock = !unparsedFrontmatterStatblock(this.app, file)
+        && (statblockNoteKnown(this.app, file) || await isStatblockNote(this.app, file));
+      if (hides !== this.hideCount) return;
 
-      // Notes backed by a Fantasy Statblocks creature → rich statblock preview for tokens
-      const isStatblock = findCreatureForNotePath(file.path) !== null;
-
-      if (isStatblock && 'type' in pin && pin.type === 'token') {
+      if (isStatblock) {
         const statblockPreview = new StatblockPreviewWindow(
           this.app, 
           pin.notePath, 
           pin,
           this, 
-          { x: screenX, y: screenY }
+          { x: screenX, y: screenY },
+          undefined,
+          this.viewId,
+          originContext,
+          this.previewDocument(sourceLeaf),
         );
         
         if (statblockPreview.element) {
+          // A pinned preview stays open while the token changes on the map; a move changes nothing it shows.
+          statblockPreview.followVitals((show) => this.store.subscribe(
+            (state) => {
+              const token = mapTokens(state.objects)[pin.id];
+              return token ? toTokenVitals(token) : null;
+            },
+            show,
+            { equalityFn: shallow },
+          ));
           const previewKey = `${pin.notePath}::${pin.id}`;
           this.activePreviews.set(previewKey, statblockPreview);
           this.raiseZIndex(statblockPreview);
@@ -351,6 +416,28 @@ export class NotePreviewUIManager {
       { x: screenX, y: screenY },
       sourceLeaf ?? null,
     ));
+  }
+
+  /** The card of a pin that rolls encounters; nothing for a pin on a scene outside every collection. */
+  private async showEncounterFolderPreview(pin: PreviewAnchor, screenX: number, screenY: number, sourceLeaf?: WorkspaceLeaf | null): Promise<void> {
+    const folder = linkedEncounterFolder(this.store.getState().mapPath, pin.notePath);
+    if (!folder) return;
+    const hides = this.hideCount;
+    const encounters = await encountersInFolder(this.app, folder);
+    // A hide or another hover while the encounters were read wins
+    if (hides !== this.hideCount) return;
+    const view = (): AtlasView | null => atlasViewOfStore(this.app, this.store);
+    const preview = new EncounterFolderPreview({
+      folder,
+      encounters,
+      pin,
+      position: { x: screenX, y: screenY },
+      doc: this.previewDocument(sourceLeaf),
+      roll: () => runInBackground(rollEncounterFolder(this.app, view(), folder), `Rolling an encounter from ${folder}`, t('pin.encounters.failed')),
+      place: (encounter) => runInBackground(placeEncounter(this.app, view(), encounter), `Placing ${encounter.name}`, t('pin.encounters.failed')),
+      onClosed: (closed) => this.handlePreviewClosed(closed),
+    });
+    this.activePreviews.set(`${pin.notePath}::${pin.id}`, preview);
   }
 
   private trackNotePreview(preview: NotePreviewWindow): void {
@@ -394,6 +481,7 @@ export class NotePreviewUIManager {
   }
 
   public hideAllUnpinnedPreviews(excludeNotePath?: string | null): void {
+    this.hideCount++;
     this.activePreviews.forEach((preview) => {
       if (preview.notePath === excludeNotePath && this.isModifierKeyDown) return; // Don't hide if it's the current hover target & mod down
       if (!preview.getIsPinned()) {
@@ -422,6 +510,22 @@ export class NotePreviewUIManager {
   public resumePreviews(): void {
     this.suspended = false;
     this.activePreviews.forEach((preview) => preview.element?.show());
+    this.showStatblocksWithMap();
+  }
+
+  /** Gives the manager the map view's element, which pinned statblock previews keep within. */
+  public setViewElement(containerEl: HTMLElement): void {
+    this.viewEl = containerEl;
+  }
+
+  /** The map view's element, once the view has given it (`setViewElement`). */
+  public mapViewElement(): HTMLElement | null {
+    return this.viewEl;
+  }
+
+  /** The document a preview opens in: that of the leaf it was hovered in (a note in a popout has its own), else the map view's. */
+  private previewDocument(sourceLeaf: WorkspaceLeaf | null | undefined): Document {
+    return (sourceLeaf?.view.containerEl ?? this.viewEl)?.doc ?? document;
   }
 
   public destroy(): void {
@@ -432,6 +536,10 @@ export class NotePreviewUIManager {
     if (this.activeLeafChangeRef) {
       this.app.workspace.offref(this.activeLeafChangeRef);
       this.activeLeafChangeRef = null;
+    }
+    if (this.layoutChangeRef) {
+      this.app.workspace.offref(this.layoutChangeRef);
+      this.layoutChangeRef = null;
     }
     this.closeAllPreviews();
   }

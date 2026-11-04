@@ -1,4 +1,5 @@
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
+import { t } from '../i18n';
 
 /** The token fields that hold its conditions. */
 export interface TokenConditionState {
@@ -13,7 +14,7 @@ export function conditionValue(token: TokenConditionState, conditionId: string):
 
 /** "Frightened 2" for a valued condition, the plain name otherwise. */
 export function conditionLabel(definition: Pick<ConditionDefinition, 'name' | 'valued'>, value: number): string {
-  const name = definition.name.trim() || 'Unnamed condition';
+  const name = definition.name.trim() || t('menu.unnamedCondition');
   return definition.valued ? `${name} ${value}` : name;
 }
 

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { App } from 'obsidian';
-import { SettingsService } from '../../services/SettingsService';
 import { SystemPresetService } from '../../services/SystemPresetService';
+import { SystemPresetFiles } from '../../services/systemPresets/SystemPresetFiles';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 
 interface SystemPresets {
-  /** Null while Atlas' settings are unavailable. */
+  /** Null while the preset files are not open (no plugin). */
   service: SystemPresetService | null;
   presets: SystemPreset[];
 }
@@ -13,8 +13,8 @@ interface SystemPresets {
 /** The vault's game system presets, kept current as they are saved, renamed or deleted. */
 export function useSystemPresets(app: App | undefined): SystemPresets {
   const service = useMemo(() => {
-    const settings = SettingsService.forApp(app);
-    return settings ? new SystemPresetService(settings) : null;
+    const files = SystemPresetFiles.forApp(app);
+    return files ? new SystemPresetService(files) : null;
   }, [app]);
   const [presets, setPresets] = useState<SystemPreset[]>(() => service?.list() ?? []);
 

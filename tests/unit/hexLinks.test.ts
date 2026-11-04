@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { Texture, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
@@ -9,7 +10,7 @@ import { HexLinkRenderer } from '../../src/app/pixi/hexLinks/HexLinkRenderer';
 import { PinRenderer } from '../../src/app/pixi/PinRenderer';
 import { NotePinTool } from '../../src/app/tools/NotePinTool';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
-import type { GridState } from '../../src/app/services/MapPersistence';
+import type { GridState } from '../../src/app/types/gridTypes';
 import type { NotePin } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_ZONE_CORNERS, lightZoneList, zoneHandlePoint } from '../../src/app/lighting/lightZones';
+import { MAX_ZONE_CORNERS, lightZoneList } from '../../src/app/lighting/lightZones';
+import { areaHandlePoint as zoneHandlePoint } from '../../src/app/vision/polygonArea';
 import { migrateMapFile } from '../../src/app/services/MapPersistence';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';

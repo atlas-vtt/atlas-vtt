@@ -5,6 +5,8 @@ import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 import { MainToolbar } from '../../src/app/packages/components/MainToolbar';
 import { ToolbarSpaceContext } from '../../src/app/packages/components/toolbar/toolbarSpace';
+import { BottomToolbarRow } from '../../src/app/react/components/BottomToolbarRow';
+import { UndoRedoControls } from '../../src/app/react/components/UndoRedoControls';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { ContextMenuProvider } from '../../src/app/react/root/ContextMenuContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
@@ -34,12 +36,14 @@ export interface ToolbarHarnessOptions {
   space?: number | null;
   /** The view's note previews, which a drag suspends. */
   notePreviews?: { suspendPreviews: () => void; resumePreviews: () => void };
+  /** The bottom row as UIRoot lays it out, the undo/redo bar in its start slot; the row then gives the bar no room limit. */
+  undoBar?: boolean;
 }
 
 // jsdom lays nothing out: every control of the bar is 40px wide where the bar has room to measure.
 const CONTROL_WIDTH = 40;
 
-export function renderToolbar({ player = false, stored = {}, space = null, notePreviews }: ToolbarHarnessOptions = {}): ToolbarHarness {
+export function renderToolbar({ player = false, stored = {}, space = null, notePreviews, undoBar = false }: ToolbarHarnessOptions = {}): ToolbarHarness {
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
   // The palette's first-run tutorial would cover it and take its keys.
@@ -61,9 +65,15 @@ export function renderToolbar({ player = false, stored = {}, space = null, noteP
     <AtlasUIContext.Provider value={ui}>
       <ViewStoreProvider store={store}>
         <ContextMenuProvider>
-          <ToolbarSpaceContext.Provider value={space}>
-            <MainToolbar viewId="view-1" />
-          </ToolbarSpaceContext.Provider>
+          {undoBar ? (
+            <BottomToolbarRow start={!player && <UndoRedoControls viewId="view-1" />}>
+              <MainToolbar viewId="view-1" />
+            </BottomToolbarRow>
+          ) : (
+            <ToolbarSpaceContext.Provider value={space}>
+              <MainToolbar viewId="view-1" />
+            </ToolbarSpaceContext.Provider>
+          )}
         </ContextMenuProvider>
       </ViewStoreProvider>
     </AtlasUIContext.Provider>,
@@ -75,9 +85,9 @@ export function startEditing({ store }: ToolbarHarness): void {
   act(() => store.getState().setToolbarEditing(true));
 }
 
-/** The handle of a control on the bar, or in the tray. */
+/** The handle of a control on the bar (the undo/redo bar's own for it), or in the tray. */
 export const handle = (container: HTMLElement, id: string, where: 'bar' | 'tray' = 'bar'): HTMLElement => {
-  const scope = where === 'bar' ? '.atlas-main-toolbar' : '.atlas-toolbar-tray';
+  const scope = where === 'tray' ? '.atlas-toolbar-tray' : id === 'undo' ? '.atlas-undo-bar' : '.atlas-main-toolbar';
   const element = container.querySelector<HTMLElement>(`${scope} .atlas-toolbar-handle[data-control="${id}"]`);
   if (!element) throw new Error(`No ${where} handle for ${id}`);
   return element;

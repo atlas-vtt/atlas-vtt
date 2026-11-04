@@ -5,12 +5,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Asset Manager – Header toolbar
 // ═══════════════════════════════════════════════════════════════════════════
-// One row: [navigation + selection] [asset type] [search · sort · folder · create].
+// One row: [navigation] [asset type] [search · create].
+// The asset type follows the navigation; the room left over lies between it
+// and the search. As room runs short the search narrows first.
 // No column is narrower than its controls, so they can not slide over each
 // other: columns that are too wide leave the toolbar, which `useHeaderCompaction`
 // measures. It then sets `data-compact` step by step until they fit: first the
-// tabs fold into a menu, then the search into a button, then the sort into a
-// menu, and at last the groups wrap onto rows. No width is written down here.
+// tabs fold into a menu, then the search into a button, and at last the groups
+// wrap onto rows. No width is written down here.
 
 .atlas-asset-manager-header {
   position: relative;
@@ -24,7 +26,7 @@
 
 .atlas-am-toolbar {
   display: grid;
-  grid-template-columns: minmax(max-content, 1fr) max-content minmax(max-content, 1fr);
+  grid-template-columns: max-content minmax(max-content, 1fr) auto;
   align-items: center;
   gap: $spacing-m;
 
@@ -49,69 +51,29 @@
   }
 }
 
-.atlas-am-toolbar-left,
-.atlas-am-toolbar-right {
+.atlas-am-toolbar-left {
   @include atlas-flex-row($gap: $spacing-xs);
 }
 
+// A grid, not a flex row: the search's track is as wide as the search wants
+// (its max-content) yet as narrow as its minimum when room runs short (its
+// min-content), which a flex item with a width can not tell the toolbar.
 .atlas-am-toolbar-right {
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: minmax(140px, 240px);
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  // The search's border and the filled create button sit closer to the eye than ghost buttons.
+  column-gap: $spacing-s;
+  justify-content: end;
+}
+
+// The search is a button there, which needs no track of its own.
+.atlas-am-toolbar[data-compact~='search'] .atlas-am-toolbar-right {
+  grid-template-columns: none;
 }
 
 .atlas-am-toolbar-center {
-  justify-self: center;
-}
-
-.atlas-am-toolbar-divider {
-  width: 1px;
-  height: $icon-s;
-  background: var(--divider-color);
-  margin: 0 $spacing-xs;
-  flex-shrink: 0;
-}
-
-// ── Selection pill ──────────────────────────────────────────────────────────
-
-.atlas-selection-info {
-  @include atlas-flex-row($gap: $spacing-xs);
-  height: $control-height;
-  padding: 0 $spacing-xs 0 $spacing-s;
-  background: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
-  color: var(--text-accent);
-  border-radius: $radius-m;
-  font-size: $font-ui-small;
-  font-weight: $font-weight-medium;
-  white-space: nowrap;
-  opacity: 1;
-  transform: translateX(0);
-  transition: opacity 150ms $transition-ease-out, transform 150ms $transition-ease-out;
-
-  @starting-style {
-    opacity: 0;
-    transform: translateX(-4px);
-  }
-
-  .atlas-clear-selection-btn {
-    &.btn,
-    &.btn--icon {
-      width: 20px;
-      height: 20px;
-      border-radius: $radius-s;
-      color: var(--text-accent);
-    }
-
-    svg {
-      width: 12px;
-      height: 12px;
-    }
-
-    &:hover {
-      background: color-mix(in oklch, var(--interactive-accent) 20%, transparent);
-      color: var(--text-accent);
-    }
-  }
-}
-
-.atlas-am-toolbar[data-compact~='sort'] .atlas-selection-label {
-  display: none;
+  justify-self: start;
 }

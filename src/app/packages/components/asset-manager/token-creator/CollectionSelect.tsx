@@ -2,6 +2,7 @@ import type { CollectionMetadata } from '../../../../services/AssetService';
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Folder, Search } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
+import { t } from '../../../../i18n';
 
 interface CollectionSelectProps {
   value: string;
@@ -61,7 +62,7 @@ export function CollectionSelect({ value, options, onChange }: CollectionSelectP
             <input
               ref={searchRef}
               type="text"
-              placeholder="Search collections…"
+              placeholder={t('creator.searchCollections')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}
@@ -86,7 +87,7 @@ export function CollectionSelect({ value, options, onChange }: CollectionSelectP
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="atlas-collection-no-results">No collections found</div>
+              <div className="atlas-collection-no-results">{t('creator.noCollections')}</div>
             )}
           </div>
         </div>

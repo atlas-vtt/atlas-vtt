@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { MAX_LIGHT_ZONES } from '../../src/app/lighting/lightZones';
 import { corners, setup, tearDown } from './lightZoneEditorHarness';

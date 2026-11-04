@@ -1,7 +1,9 @@
+// @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Notice, type App } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { fakeMapRenderer } from '../helpers/fakeMapRenderer';
 
 vi.mock('obsidian', async (importOriginal) => ({ ...(await importOriginal<typeof import('obsidian')>()), Notice: vi.fn() }));
 vi.mock('../../src/app/lighting/exploredMaskCodec', async (importOriginal) => {
@@ -46,10 +48,7 @@ function setup(content: string): Harness {
   const store = createViewAtlasStore(app, 'unloadable-file-test');
   const eventBus = new EventEmitter();
   eventBus.on('wait-for-tokens-loaded', (done: () => void) => done());
-  const renderer = {
-    setBackgroundSprite: vi.fn(), clearBackgroundSprite: vi.fn(), getGridSystem: () => null, initGrid: vi.fn(),
-    getViewportInstance: () => null, getBackgroundSprite: () => null,
-  };
+  const renderer = fakeMapRenderer();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
@@ -100,8 +99,8 @@ describe('a scene file that exists but does not load', () => {
     ['holds a version that is not a number', JSON.stringify({ version: '4', state: sceneState() }), STRUCTURE],
     ['holds no state', '{}', STRUCTURE],
     ['holds a bare map without the saved state around it', JSON.stringify(sceneState()), STRUCTURE],
-    ['was saved by a newer Atlas', JSON.stringify({ version: 5, state: sceneState(5) }), NEWER],
-    ['holds a state of a newer Atlas', JSON.stringify({ version: 4, state: sceneState(5) }), NEWER],
+    ['was saved by a newer Atlas', JSON.stringify({ version: 6, state: sceneState(6) }), NEWER],
+    ['holds a state of a newer Atlas', JSON.stringify({ version: 4, state: sceneState(6) }), NEWER],
   ])('fails the load and keeps the file when it %s', async (_label, content, reason) => {
     await expectLoadRefused(setup(content), content, reason);
   });

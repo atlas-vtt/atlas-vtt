@@ -12,6 +12,7 @@ import { clampImagePosition, cropReset } from './cropMath';
 import type { ImageAspect } from './cropMath';
 import { clampZoom, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './types';
 import type { CreatorMode, ImagePosition, TokenPreview, TokenPreviewPatch } from './types';
+import { t } from '../../../../i18n';
 
 interface TokenPreviewCardProps {
   preview: TokenPreview;
@@ -70,14 +71,14 @@ function ConversionBadge({ preview, mode }: Pick<TokenPreviewCardProps, 'preview
   const { scaledDown, compressionRatio } = preview;
   if (mode === 'map' && scaledDown) {
     return (
-      <LabelTooltip label={`Scaled down from ${pixels(scaledDown.from)} px to the largest size a map can have`}>
+      <LabelTooltip label={t('creator.scaledDown', { from: pixels(scaledDown.from) })}>
         <div className="atlas-token-card__badge atlas-token-card__badge--scaled">{pixels(scaledDown.to)} px</div>
       </LabelTooltip>
     );
   }
   if (compressionRatio === undefined || compressionRatio <= 0) return null;
   return (
-    <LabelTooltip label="Size reduction from optimization">
+    <LabelTooltip label={t('creator.reduction')}>
       <div className="atlas-token-card__badge">−{compressionRatio}%</div>
     </LabelTooltip>
   );
@@ -183,9 +184,10 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
       />
       {/* The card never shows the upload itself: its place is held until the converted image is there. */}
       {preview.isOptimizing && <Skeleton className="atlas-token-card__pending" live />}
+      {preview.refused !== undefined && <p className="atlas-token-card__refused" role="alert">{preview.refused}</p>}
       {isCropEditable && <><div className="atlas-token-card__mask" /><img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" /></>}
 
-      <LabelTooltip label={`Select ${preview.name}`}>
+      <LabelTooltip label={t('creator.select', { name: preview.name })}>
         <button
           type="button"
           className={cn('atlas-token-card__check', preview.isSelected && 'atlas-checked')}
@@ -196,7 +198,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
           <Check />
         </button>
       </LabelTooltip>
-      <LabelTooltip label="Remove">
+      <LabelTooltip label={t('common.remove')}>
         <Button
           variant="ghost"
           size="icon"
@@ -216,32 +218,32 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
       className={cn('atlas-token-card', `atlas-token-card--${mode}`, preview.isSelected && 'atlas-selected', !isCropEditable && 'atlas-token-card--unframed', entrance === null && 'atlas-token-card--settled')}
       style={{ '--atlas-enter-index': Math.min(entrance ?? 0, ENTER_STAGGER_CAP) } as React.CSSProperties}
     >
-      {isCropEditable ? <LabelTooltip label="Drag to reposition · Scroll to zoom · Double-click to reset">{art}</LabelTooltip> : art}
+      {isCropEditable ? <LabelTooltip label={t('creator.cropHint')}>{art}</LabelTooltip> : art}
 
-      <span id={nameLabelId} hidden>{`${mode === 'map' ? 'Map' : 'Token'} name`}</span>
+      <span id={nameLabelId} hidden>{t(`creator.${mode}.name`)}</span>
       <input
         type="text"
         value={preview.name}
         onChange={(e) => onChange({ name: e.target.value })}
         className="atlas-token-card__name"
-        placeholder={`${mode === 'map' ? 'Map' : 'Token'} name`}
+        placeholder={t(`creator.${mode}.name`)}
         spellCheck={false}
         aria-labelledby={nameLabelId}
       />
 
       {preview.tags && preview.tags.length > 0 && <div className="atlas-token-card__tags">{preview.tags.join(' · ')}</div>}
       {mode === 'token' && <>
-        <TokenRingToggle label={`Toggle token ring for ${preview.name}`} value={preview.showRing !== false} onChange={showRing => onChange({ showRing })} />
+        <TokenRingToggle label={t('creator.toggleRingFor', { name: preview.name })} value={preview.showRing !== false} onChange={showRing => onChange({ showRing })} />
         <TokenSizeSelect className="atlas-setting-dropdown" value={preview.size} onChange={size => onChange({ size })} />
       </>}
       {isCropEditable && (
         <div className="atlas-token-card__zoom">
-          <LabelTooltip label="Zoom out">
+          <LabelTooltip label={t('creator.zoomOut')}>
             <Button variant="ghost" size="icon" className="atlas-token-card__zoom-btn" onClick={() => setScale(preview.imageScale - ZOOM_STEP)} disabled={preview.imageScale <= ZOOM_MIN}>
               <ZoomOut />
             </Button>
           </LabelTooltip>
-          <LabelTooltip label="Zoom">
+          <LabelTooltip label={t('creator.zoom')}>
             <Slider
               value={[preview.imageScale]}
               min={ZOOM_MIN}
@@ -250,12 +252,12 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
               onValueChange={(v) => setScale(v[0] ?? preview.imageScale)}
             />
           </LabelTooltip>
-          <LabelTooltip label="Zoom in">
+          <LabelTooltip label={t('creator.zoomIn')}>
             <Button variant="ghost" size="icon" className="atlas-token-card__zoom-btn" onClick={() => setScale(preview.imageScale + ZOOM_STEP)} disabled={preview.imageScale >= ZOOM_MAX}>
               <ZoomIn />
             </Button>
           </LabelTooltip>
-          <LabelTooltip label={`Reset zoom to ${Math.round(initialCrop.imageScale * 100)}%`}>
+          <LabelTooltip label={t('creator.resetZoom', { percent: Math.round(initialCrop.imageScale * 100) })}>
             <button
               type="button"
               className="atlas-token-card__zoom-value"

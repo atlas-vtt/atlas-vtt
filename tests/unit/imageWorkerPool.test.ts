@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ImageDecodeError, ImageWorkerPool } from '../../src/app/imageProcessing/ImageWorkerPool';
 import type { ImageJob, ImageJobRequest, ImageJobResponse, ImageJobResult } from '../../src/app/imageProcessing/imageJob';

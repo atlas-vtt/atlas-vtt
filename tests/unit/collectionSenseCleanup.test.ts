@@ -3,9 +3,10 @@ import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPreset
 import { newSense } from '../../src/app/gameSystems/senseEditing';
 import { senseWithRole } from '../../src/app/gameSystems/senseRules';
 import { GENERIC_SENSES } from '../../src/app/gameSystems/senses/generic';
+import { ATLAS_VIEW_TYPE } from '../../src/app/atlasViewType';
 import { AssetService } from '../../src/app/services/AssetService';
 import { dropUnknownSenses, dropUnknownSensesFromJson, removeUndefinedSenses } from '../../src/app/services/collectionSenseCleanup';
-import { snapshotFolderFor } from '../../src/app/snapshots/snapshotPaths';
+import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { TokenEntity } from '../../src/app/types';
@@ -15,7 +16,7 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 const SCENE = 'atlas-vtt/collections/heist/scenes/Vault.atlasmap';
 const OTHER_COLLECTION_SCENE = 'atlas-vtt/collections/other/scenes/Inn.atlasmap';
-const SNAPSHOT = `${snapshotFolderFor(SCENE)}/s1.json`;
+const SNAPSHOT = `${sceneSnapshotFolder('heist', 'scene-vault')}/s1.json`;
 
 const dnd5e = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!;
 const darkvision = senseWithRole(dnd5e.rules.senses!, 'darkvision').id;
@@ -129,8 +130,7 @@ describe('removeUndefinedSenses', () => {
     const history = getHistoryStore(store)!;
     history.getState().clear();
     const saveMap = vi.fn(async () => undefined);
-    const { AtlasView } = await import('../../src/app/atlas-view');
-    const view = Object.assign(Object.create(AtlasView.prototype) as object, { getStore: () => store, saveMap });
+    const view = { getViewType: () => ATLAS_VIEW_TYPE, atlasStore: store, getStore: () => store, saveMap };
     const { app } = vault({ systemPresetId: dnd5e.id }, [{ view }]);
     const before = store.getState().objects.tokens.b;
 

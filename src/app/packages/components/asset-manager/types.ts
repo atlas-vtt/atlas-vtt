@@ -2,17 +2,19 @@ import { App as ObsidianApp, Modal } from 'obsidian';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { CollectionMetadata, EncounterAsset as StoredEncounterAsset } from '../../../services/AssetService';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../../../ui/nativeModal';
+import { t } from '../../../i18n';
 
 // ─── Tab / View Constants ───────────────────────────────────────────
 
-export const tabs = ['scenes', 'maps', 'encounters', 'tokens'] as const;
+export const tabs = ['scenes', 'maps', 'encounters', 'tokens', 'party'] as const;
 export type Tab = (typeof tabs)[number];
 
 const tabDisplayNames: Record<Tab, string> = {
-  scenes: 'Scenes',
-  maps: 'Maps',
-  encounters: 'Encounters',
-  tokens: 'Characters',
+  scenes: t('am.tab.scenes'),
+  maps: t('am.tab.maps'),
+  encounters: t('am.tab.encounters'),
+  tokens: t('am.tab.tokens'),
+  party: t('am.tab.party'),
 };
 
 export const getTabDisplayName = (tab: Tab): string => tabDisplayNames[tab];
@@ -24,8 +26,9 @@ export type SortOrder = 'asc' | 'desc';
 // ─── Asset Types ────────────────────────────────────────────────────
 //
 // View models of the records stored by AssetService (the source of truth),
-// produced by `formatServiceAsset`: `type` is the tab the asset is shown on and
-// the `*Url` fields are resolved vault resource URLs.
+// produced by `formatServiceAsset`: `type` is the tab the asset is shown on
+// (tokens are `tokens` on the Player characters tab too) and the `*Url` fields
+// are resolved vault resource URLs.
 
 export interface Asset {
   id: string;
@@ -49,6 +52,8 @@ export interface TokenAsset extends Asset {
   imagePath?: string;
   size?: number;
   statblockPath?: string;
+  /** One of the players' characters, listed on the Player characters tab (`characters/playerCharacters.ts`). */
+  playerCharacter?: true;
 }
 
 export interface MapAsset extends Asset {
@@ -56,10 +61,14 @@ export interface MapAsset extends Asset {
   imageUrl: string;
   /** Vault path of the map image. */
   mapFilePath: string;
+  /** An animated map: its video plays over its first frame, which its card shows. */
+  animated?: true;
 }
 
 export interface SceneAsset extends Asset {
   type: 'scenes';
+  /** Vault path of the scene's .atlasmap file. */
+  scenePath?: string;
 }
 
 export interface EncounterTokenPreview {
@@ -152,7 +161,7 @@ export async function showConfirmationModal(
         const buttonContainer = contentEl.createDiv('modal-button-container');
 
         const confirmBtn = buttonContainer.createEl('button', {
-          text: 'Continue',
+          text: t('common.continue'),
           cls: 'mod-cta',
         });
         confirmBtn.addEventListener('click', () => {
@@ -161,7 +170,7 @@ export async function showConfirmationModal(
         });
 
         const cancelBtn = buttonContainer.createEl('button', {
-          text: 'Cancel',
+          text: t('common.cancel'),
         });
         cancelBtn.addEventListener('click', () => {
           resolve(false);

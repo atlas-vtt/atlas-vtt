@@ -1,11 +1,13 @@
 import type { CreatureRating } from '../../../../creatures/creatureFacts';
 import type { AnyAsset, EncounterAsset, SortOption, SortOrder, Tab } from '../types';
+import { t } from '../../../../i18n';
+import { isCharacterTab } from './tabKinds';
 
 export const SORT_LABELS: Record<SortOption, string> = {
-  name: 'Name',
-  date: 'Date modified',
-  type: 'Type',
-  rating: 'Rating',
+  name: t('sort.name'),
+  date: t('sort.date'),
+  type: t('sort.type'),
+  rating: t('sort.rating'),
 };
 
 const ASSET_SORT_OPTIONS: readonly SortOption[] = ['name', 'date', 'type'];
@@ -17,7 +19,7 @@ const SCENE_SORT_OPTIONS: readonly SortOption[] = ['name', 'date'];
 /** The sort options that order the assets of a tab, in the order the sort button cycles through them. */
 export function sortOptionsFor(tab: Tab): readonly SortOption[] {
   if (tab === 'scenes') return SCENE_SORT_OPTIONS;
-  return tab === 'tokens' ? CHARACTER_SORT_OPTIONS : ASSET_SORT_OPTIONS;
+  return isCharacterTab(tab) ? CHARACTER_SORT_OPTIONS : ASSET_SORT_OPTIONS;
 }
 
 /** The chosen sort option, or name where the option means nothing on the tab. */

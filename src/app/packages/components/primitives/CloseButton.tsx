@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { Button, type ButtonProps } from './button';
 import { LabelTooltip } from './tooltip';
 import { cn } from '../../../../utils/cn';
+import { t } from '../../../i18n';
 
 export type CloseButtonProps = Omit<ButtonProps, 'variant' | 'size' | 'children'> & {
   /**
@@ -19,7 +20,7 @@ export type CloseButtonProps = Omit<ButtonProps, 'variant' | 'size' | 'children'
  * concentric with the panel's.
  */
 export const CloseButton = React.forwardRef<HTMLButtonElement, CloseButtonProps>(
-  ({ className, placement = 'panel', 'aria-label': ariaLabel = 'Close', title, ...props }, ref) => (
+  ({ className, placement = 'panel', 'aria-label': ariaLabel = t('common.close'), title, ...props }, ref) => (
     <LabelTooltip label={title ?? ariaLabel}>
       <Button
         ref={ref}

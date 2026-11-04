@@ -16,6 +16,11 @@ describe('statblock resource sync', () => {
     const token = { resources: { hp: { current: 3, max: 20 }, ammo: { current: 2, max: 6 } }, overriddenMax: ['hp'] };
     expect(syncedResources(token, { hp: 8 }, [HP_RESOURCE])).toEqual({ hp: { current: 3, max: 20 }, ammo: { current: 2, max: 6 } });
   });
+
+  it('follows a static value down to 0', () => {
+    const ac = { ...STR, key: 'ac', name: 'AC', field: 'ac', direction: 'static' as const };
+    expect(syncedResources({ resources: { ac: { current: 2, max: 2 } } }, { ac: 0 }, [ac])).toEqual({ ac: { current: 0, max: 0 } });
+  });
 });
 
 describe('fillMissingResources', () => {
@@ -23,7 +28,7 @@ describe('fillMissingResources', () => {
   const statblocks: Record<string, Record<string, unknown>> = { 'Troll.md': { hp: 14, stats: [15, 12, 7] }, 'Rat.md': { hp: 2 } };
   const run = async (tokens: Record<string, object>, definitions = [HP_RESOURCE, STR]) => {
     const apply = vi.fn();
-    const read = vi.fn(async (path: string) => statblocks[path] ?? null);
+    const read = vi.fn(async (path: string) => (statblocks[path] ? { fields: statblocks[path] } : null));
     await fillMissingResources({ tokens: () => tokens as never, apply }, definitions, read);
     return { apply, read };
   };

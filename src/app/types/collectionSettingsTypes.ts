@@ -8,10 +8,12 @@
 import type { ResourceDefinition } from '../resources/resourceTypes';
 import type { CreatureFilterDefinition } from './creatureFilterTypes';
 import type { DiceRules } from './diceRulesTypes';
+import type { RandomTableSource, RarityOption } from './randomTableTypes';
 import type { InitiativeRules } from './initiativeRulesTypes';
 import type { LightPresetDefinition } from './lightPresetTypes';
 import type { TokenVisionDefaults } from './lightingTypes';
 import type { SenseDefinition } from './senseTypes';
+import type { StatblockRole, StatblockRoleFolders } from '../statblocks/model/roleTypes';
 import type { AnyWidget } from './widgetTypes';
 import type { WidgetIcon } from './widgetIcons';
 
@@ -59,6 +61,12 @@ export type GridUnitType = 'feet' | 'yards' | 'meters' | 'units' | 'custom';
  */
 export type DiagonalRule = 'equidistant' | 'alternating' | 'euclidean';
 
+/**
+ * What a cell of difficult terrain (a map feature marked so) costs the movement ruler: `double`
+ * counts it twice, as 5e, Pathfinder and Draw Steel do; `none` like any other cell.
+ */
+export type DifficultTerrainRule = 'double' | 'none';
+
 export interface CollectionGridDefaults {
   unitType: GridUnitType;
   unitDistance: number;
@@ -66,6 +74,8 @@ export interface CollectionGridDefaults {
   abstractRangeBands?: RangeBand[];
   /** Unset means `equidistant`. */
   diagonalRule?: DiagonalRule;
+  /** Unset reads its built-in system's rule, else `none` (`collectionDifficultTerrain`). */
+  difficultTerrain?: DifficultTerrainRule;
   /** Full opening of the cone measurement in degrees. Unset means 90. */
   coneAngle?: number;
 }
@@ -90,8 +100,17 @@ export interface CollectionSettings {
   lightPresets?: readonly LightPresetDefinition[] | undefined;
   /** The game system preset the rules were last taken from or saved to; they may have been edited since. */
   systemPresetId?: string | undefined;
-  /** Default roll and critical rule. Read with `collectionDiceRules`. */
-  dice?: DiceRules;
+  /**
+   * Default roll and critical rule of a collection that picked no dice set, as versions before
+   * dice sets wrote them. Removed once the collection picks a set (`diceSetId`), which is then
+   * its dice. Read the collection's dice with `collectionDiceSet`.
+   */
+  dice?: DiceRules | undefined;
+  /**
+   * The dice set from the vault's library a bare bonus rolls with. Unset for a collection
+   * saved before sets existed: it rolls `dice`, else its game system's.
+   */
+  diceSetId?: string | undefined;
   /**
    * How the initiative tracker runs a fight, stored only once the collection has rules of its
    * own. Unset while it takes those of its preset; read with `collectionInitiativeRules`.
@@ -103,8 +122,28 @@ export interface CollectionSettings {
   customCreatureFilters?: CreatureFilterDefinition[];
   /** Ids of Atlas' own creature filters (`CATALOG_CREATURE_FILTERS`) switched off for the collection. */
   hiddenCreatureFilters?: string[];
+  /**
+   * The kinds of statblock the collection makes, stored only once the collection has its own.
+   * Unset while it takes those of its preset; read with `collectionStatblockRoles`.
+   */
+  statblockRoles?: readonly StatblockRole[] | undefined;
+  /**
+   * Folder for new statblocks per role id; the collection's own, never a preset's, so choosing
+   * one leaves the roles inherited. Unset: Obsidian's location for new notes. Read with `roleFolder`.
+   */
+  statblockRoleFolders?: StatblockRoleFolders | undefined;
   /** Vault paths of the `.base` files whose views the loot roller rolls on. */
   lootBases?: string[];
   /** Named after plain-number item prices, e.g. "gold" or "thorns". */
   lootCurrency?: string | undefined;
+  /**
+   * Tables in Markdown notes the collection rolls on, beside the bases of `lootBases`. Arrives
+   * unchecked: read with `readRandomTables`, write with `withRandomTable`.
+   */
+  randomTables?: RandomTableSource[] | undefined;
+  /**
+   * The words items name their rarity with, stored only once the collection has its own. Unset while
+   * it takes those of its preset; read with `collectionItemRarities`.
+   */
+  itemRarities?: readonly RarityOption[] | undefined;
 }

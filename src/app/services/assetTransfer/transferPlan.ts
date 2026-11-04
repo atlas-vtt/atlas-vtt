@@ -3,7 +3,7 @@ import { collectionFolderPath } from '../assetPaths';
 import type { BundleFile } from '../collectionBundle/bundleFormat';
 import { besideMap, freePathIn, sceneMapOf, type PathMap } from '../collectionBundle/pathRemap';
 import { JSON_FOLDERS } from '../vault-sync/assetFiles';
-import { snapshotFolderFor } from '../../snapshots/snapshotPaths';
+import { sceneSnapshotFolder, snapshotOwnerOf } from '../../snapshots/snapshotPaths';
 import { baseName, parentPath } from '../../utils/pathUtils';
 
 export type TransferMode = 'move' | 'copy';
@@ -31,8 +31,6 @@ export interface TransferPlanInput {
   ownedBySource: ReadonlySet<string>;
   /** Whether a file exists at `path` in the vault. */
   existsInVault(path: string): boolean;
-  /** Hidden folders holding files in the target collection, which the vault does not list: a leftover snapshot folder takes its scene's name. */
-  hiddenFolders: ReadonlySet<string>;
 }
 
 export interface TransferPlan {
@@ -55,7 +53,9 @@ export function tokenArtwork(assets: readonly Asset[]): Set<string> {
 }
 
 /** Files an asset owns: they go wherever the asset goes. Everything else it only refers to. */
-type FileKind = 'record' | 'scene' | 'artwork' | 'reference';
+type FileKind = 'record' | 'scene' | 'snapshot' | 'artwork' | 'reference';
+
+const SNAPSHOT_ROLES: ReadonlySet<BundleFile['role']> = new Set<BundleFile['role']>(['scene-snapshot', 'scene-snapshot-thumbnail']);
 
 /**
  * Decides what happens to each file when `assets` go from one collection to
@@ -83,18 +83,17 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
   const kindOf = (file: BundleFile): FileKind => {
     if (file.role === 'asset-file') return 'record';
     if (file.role === 'scene-map') return 'scene';
+    if (SNAPSHOT_ROLES.has(file.role)) return 'snapshot';
     return artwork.has(file.vaultPath) ? 'artwork' : 'reference';
   };
 
   const claimed = new Set<string>();
   const isTaken = (path: string): boolean => claimed.has(path) || input.existsInVault(path);
-  const isMapTaken = (path: string): boolean => isTaken(path) || input.hiddenFolders.has(snapshotFolderFor(path));
   const steps: TransferStep[] = [];
   const rewrites = new Map<string, string>(newIds);
   const recordPaths = new Map<string, string>();
   const place = (file: BundleFile, wanted: string, op: TransferMode): string => {
-    const taken = file.role === 'scene-map' ? isMapTaken : isTaken;
-    const to = taken(wanted) ? freePathIn(parentPath(wanted), baseName(wanted), taken) : wanted;
+    const to = isTaken(wanted) ? freePathIn(parentPath(wanted), baseName(wanted), isTaken) : wanted;
     claimed.add(to);
     steps.push({ file, to, op });
     rewrites.set(file.vaultPath, to);
@@ -118,6 +117,12 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
       }
       case 'scene':
         return { to: inTarget ?? `${targetPrefix}scenes/${baseName(path)}`, op: mode };
+      case 'snapshot': {
+        // A scene's snapshots are found by its id, so a copy's go to the folder of its new id.
+        const sceneId = snapshotOwnerOf(path)?.sceneId ?? file.owners?.[0];
+        if (!sceneId) return null;
+        return { to: `${sceneSnapshotFolder(input.targetCollectionId, newIds.get(sceneId) ?? sceneId)}/${baseName(path)}`, op: mode };
+      }
       case 'artwork':
         if (!inTarget) return mode === 'copy' ? { to: path, op: 'copy' } : null;
         // Art a token staying behind also shows remains that token's; the leaving token gets a copy.
@@ -128,7 +133,7 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
     }
   };
 
-  // A scene's thumbnail and snapshots take whatever name its map gets, so they are placed after the maps.
+  // A scene's thumbnail takes whatever name its map gets, so it is placed after the maps.
   const mapPaths = files.filter((file) => file.role === 'scene-map').map((file) => file.vaultPath);
   const besideMaps: Array<{ file: BundleFile; map: string }> = [];
   for (const file of files) {
@@ -143,10 +148,8 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
     if (file.role === 'asset-file' && file.owners?.[0]) recordPaths.set(file.owners[0], to);
   }
   for (const { file, map } of besideMaps) {
-    // A moved map takes its snapshot folder along as a whole.
-    if (mode === 'move' && file.role !== 'scene-thumbnail') continue;
     const mapTarget = rewrites.get(map);
-    if (mapTarget) place(file, besideMap(file, mapTarget), mode);
+    if (mapTarget) place(file, besideMap(mapTarget), mode);
   }
   return { steps, rewrites, recordPaths };
 }

@@ -8,11 +8,11 @@ import { Button } from '../../../packages/components/primitives/button';
 import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { CONDITION_EFFECTS, type ConditionDefinition, type ConditionEffect } from '../../../types/collectionSettingsTypes';
-import { useExperimentalFeature } from '../../hooks/useExperimentalFeature';
 import { conditionEffect, withConditionEffect } from '../../../gameSystems/conditionEffects';
 import { conditionGlyph } from '../../../utils/conditionGlyph';
 import { WidgetIconPicker } from '../WidgetIconPicker';
 import { ConditionBadgePreview } from './ConditionBadgePreview';
+import { t } from '../../../i18n';
 
 interface ConditionsTabProps {
   conditions: ConditionDefinition[];
@@ -22,14 +22,14 @@ interface ConditionsTabProps {
 type EffectChoice = ConditionEffect | 'none';
 
 const EFFECT_LABELS: Record<ConditionEffect, string> = {
-  blinded: 'Blinded',
-  invisible: 'Invisible',
-  airborne: 'Airborne',
-  undetected: 'Undetected',
+  blinded: t('csm.conditions.effect.blinded'),
+  invisible: t('csm.conditions.effect.invisible'),
+  airborne: t('csm.conditions.effect.airborne'),
+  undetected: t('csm.conditions.effect.undetected'),
 };
 
 const EFFECT_OPTIONS: SelectOption<EffectChoice>[] = [
-  { value: 'none', label: 'None' },
+  { value: 'none', label: t('common.none') },
   ...CONDITION_EFFECTS.map((effect) => ({ value: effect, label: EFFECT_LABELS[effect] })),
 ];
 
@@ -47,8 +47,6 @@ export function ConditionsTab({
 }: ConditionsTabProps): React.ReactElement {
   const [iconPickerId, setIconPickerId] = useState<string | null>(null);
   const effectLabel = useId();
-  // A condition's effect on sight is part of dynamic lighting.
-  const sightEffects = useExperimentalFeature('dynamicLighting');
 
   const updateCondition = (
     index: number,
@@ -93,31 +91,20 @@ export function ConditionsTab({
   return (
     <>
       <p className="atlas-csm-hint">
-        Define conditions that can be toggled on tokens. Each one shows as a badge
-        on the token&apos;s edge, and hovering the token lists them by name. Click a
-        badge to give it an icon, and turn on # for conditions that carry a number,
-        like Frightened 2.
+        {t('csm.conditions.intro')}
       </p>
-      {sightEffects && (
-        <p className="atlas-csm-hint">
-          Effects on sight: Blinded takes a token&apos;s sight; Invisible hides it from
-          sight that cannot see the invisible; Airborne hides it from tremorsense;
-          Undetected hides it from the players.
-        </p>
-      )}
+      <p className="atlas-csm-hint">{t('csm.conditions.effectsHint')}</p>
 
       {conditions.length > 0 ? (
         <div className="atlas-csm-condition-list">
-          {sightEffects && (
-            <div className="atlas-csm-condition-head" aria-hidden="true">
-              <span>Condition</span>
-              <span>Effect on sight</span>
-            </div>
-          )}
+          <div className="atlas-csm-condition-head" aria-hidden="true">
+            <span>{t('csm.conditions.column')}</span>
+            <span>{t('csm.conditions.effect')}</span>
+          </div>
           {conditions.map((cond, i) => (
             <div key={cond.id} className="atlas-csm-condition">
               <div className="atlas-csm-condition-row">
-                <LabelTooltip label="Choose icon">
+                <LabelTooltip label={t('csm.conditions.chooseIcon')}>
                   <button
                     type="button"
                     className="atlas-csm-condition-badge-button"
@@ -130,26 +117,24 @@ export function ConditionsTab({
                 <input
                   type="text"
                   className="atlas-csm-input"
-                  placeholder="Condition name"
+                  placeholder={t('csm.conditions.name')}
                   value={cond.name}
                   onChange={(e) => updateCondition(i, { name: e.target.value })}
                 />
-                {sightEffects && (
-                  <div className={`atlas-csm-condition-effect${conditionEffect(cond) ? '' : ' atlas-csm-condition-effect--none'}`}>
-                    <span id={`${effectLabel}-${cond.id}`} hidden>Effect on sight of {cond.name.trim() || 'this condition'}</span>
-                    <Select
-                      value={conditionEffect(cond) ?? 'none'}
-                      options={EFFECT_OPTIONS}
-                      labelledBy={`${effectLabel}-${cond.id}`}
-                      onChange={(effect) => onChange(conditions.map((c, index) => (index === i ? withConditionEffect(c, effect) : c)))}
-                    />
-                  </div>
-                )}
+                <div className={`atlas-csm-condition-effect${conditionEffect(cond) ? '' : ' atlas-csm-condition-effect--none'}`}>
+                  <span id={`${effectLabel}-${cond.id}`} hidden>{cond.name.trim() ? t('csm.conditions.effectOf', { name: cond.name.trim() }) : t('csm.conditions.effectOfThis')}</span>
+                  <Select
+                    value={conditionEffect(cond) ?? 'none'}
+                    options={EFFECT_OPTIONS}
+                    labelledBy={`${effectLabel}-${cond.id}`}
+                    onChange={(effect) => onChange(conditions.map((c, index) => (index === i ? withConditionEffect(c, effect) : c)))}
+                  />
+                </div>
                 <div
                   className="atlas-csm-color-swatch"
                   style={{ backgroundColor: cond.color }}
                 >
-                  <LabelTooltip label="Pick condition colour">
+                  <LabelTooltip label={t('csm.conditions.pickColour')}>
                     <input
                       type="color"
                       value={cond.color}
@@ -157,7 +142,7 @@ export function ConditionsTab({
                     />
                   </LabelTooltip>
                 </div>
-                <LabelTooltip label={cond.valued ? 'Carries a number, like Frightened 2' : 'Give it a number, like Frightened 2'}>
+                <LabelTooltip label={cond.valued ? t('csm.conditions.valued') : t('csm.conditions.makeValued')}>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -168,7 +153,7 @@ export function ConditionsTab({
                     <Hash />
                   </Button>
                 </LabelTooltip>
-                <LabelTooltip label="Remove condition">
+                <LabelTooltip label={t('csm.conditions.remove')}>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -181,12 +166,12 @@ export function ConditionsTab({
               </div>
               {iconPickerId === cond.id && (
                 <WidgetIconPicker
-                  label="Condition icon"
+                  label={t('csm.conditions.icon')}
                   value={cond.icon}
                   color={cond.color}
                   onChange={(icon) => updateCondition(i, { icon })}
                   noIcon={{
-                    label: 'Initial',
+                    label: t('csm.conditions.initial'),
                     content: <span className="atlas-csm-condition-initial">{glyphInitial(cond)}</span>,
                     onSelect: () => clearIcon(i),
                   }}
@@ -196,12 +181,12 @@ export function ConditionsTab({
           ))}
         </div>
       ) : (
-        <div className="atlas-csm-empty">No conditions defined</div>
+        <div className="atlas-csm-empty">{t('csm.conditions.empty')}</div>
       )}
 
       <Button variant="ghost" className="atlas-csm-add-btn" onClick={addCondition}>
         <Plus />
-        Add Condition
+        {t('csm.conditions.add')}
       </Button>
     </>
   );

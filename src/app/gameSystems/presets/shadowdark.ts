@@ -1,3 +1,4 @@
+import { D20_DICE_SET_ID } from '../builtInDiceSets';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { SHADOWDARK_LIGHTS } from '../lightPresets/shadowdark';
 import type { TimerWidget } from '../../types/widgetTypes';
@@ -47,6 +48,7 @@ export const SHADOWDARK: SystemPreset = {
       ],
     },
     dice: { defaultRoll: '1d20', crit: 'natural' },
+    diceSetId: D20_DICE_SET_ID,
     conditions: conditionsOf('shadowdark', [
       { name: 'Dying', color: '#991b1b', icon: 'skull', valued: true },
       { name: 'Unconscious', color: '#1e3a8a', icon: 'sleepy' },
@@ -63,5 +65,6 @@ export const SHADOWDARK: SystemPreset = {
     lightPresets: SHADOWDARK_LIGHTS,
     widgets: [SHADOWDARK_TORCH],
     resources: [{ ...HP_RESOURCE }],
+    statblockRoles: [{ id: 'monster', name: 'Monster', templateId: 'builtin:bx-creature' }],
   },
 };

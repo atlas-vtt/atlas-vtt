@@ -1,0 +1,14 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+/// A ghost control at Obsidian's control height: no fill until hovered. Shared by the campaign
+/// pages' buttons (campaigns.scss, quests/).
+@mixin campaign-ghost-control {
+  @include atlas-ghost-button;
+  @include atlas-focus-ring;
+  flex-shrink: 0;
+  height: var(--input-height);
+  padding: 0 $spacing-s;
+  gap: $spacing-xs;
+  border-radius: $radius-m;
+}

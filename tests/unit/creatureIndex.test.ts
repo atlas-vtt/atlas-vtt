@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { CreatureIndex } from '../../src/app/creatures/CreatureIndex';
@@ -22,7 +23,7 @@ describe('CreatureIndex', () => {
     expect(index.isPending()).toBe(true);
     await settled(index);
 
-    expect(index.get('Bestiary/Goblin.md')).toMatchObject({ fields: { cr: '1/4', name: 'Goblin' }, layout: 'Basic 5e Layout' });
+    expect(index.get('Bestiary/Goblin.md')).toMatchObject({ fields: { cr: '1/4', name: 'Goblin' }, lookName: 'Basic 5e Layout', templateId: null });
     expect(index.get('Bestiary/Orc.md')?.fields).toMatchObject({ name: 'Orc', cr: '1/2' });
     expect(index.get('Notes/Plain.md')).toBeNull();
     expect(index.get('Gone.md')).toBeNull();

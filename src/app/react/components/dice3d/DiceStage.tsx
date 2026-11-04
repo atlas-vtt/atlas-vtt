@@ -9,6 +9,7 @@ import { layoutDice, type DiceScene, type RestingFrame } from '../../../dice3d/d
 import { loadDiceArtwork } from '../../../dice3d/dieArtwork';
 import { stagePixelRatio, type DiceRenderer, type StageDie } from '../../../dice3d/DiceRenderer';
 import { borrowStage, returnStage } from '../../../dice3d/stagePool';
+import { getDomHost } from '../../../host/dom';
 import { bank, burst, rattle, rollEnd, rollStart } from '../../../dice3d/audio/diceSounds';
 import type { DiceCrit } from '../../../tools/diceCrit';
 import type { ThrowStyle } from '../../../dice3d/diceDisplay';
@@ -49,6 +50,9 @@ interface DiceStageProps {
 
 /** How long the light takes to swell once the dice lie. */
 const GLEAM = 0.28;
+/** Dropped dice start to fade this long after the roll lies, and are faded this much later. */
+const DIM_AFTER = 0.18;
+const DIM_FOR = 0.36;
 
 /**
  * The longest the loop runs on after the dice came to rest: longer than the
@@ -89,6 +93,7 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   });
 
   const { offsets, radius } = useMemo(() => layoutDice(scene.plan.length), [scene]);
+  const drops = useMemo(() => scene.plan.some((die) => die.dropped), [scene]);
 
   // The canvas belongs to the pool, not to this panel: a canvas whose context
   // was lost never gives a live one again, so contexts are lent and returned.
@@ -96,7 +101,7 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   useEffect(() => {
     const holder = holderRef.current;
     if (!holder) return;
-    const lease = borrowStage(holder.doc);
+    const lease = borrowStage(holder.ownerDocument);
     holder.appendChild(lease.canvas);
     rendererRef.current = lease.renderer;
     return (): void => {
@@ -114,18 +119,20 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
       burst: burstOf(scene.plan, i),
     }));
     stepRandoms.current = scene.plan.map((_, i) => throwRandom(seed, 1000 + i));
-    rendererRef.current?.setPlan(scene.plan.map((die) => die.sides));
+    rendererRef.current?.setPlan(scene.plan);
   }, [scene, offsets, radius, seed]);
 
   const paint = useCallback((): void => {
     const renderer = rendererRef.current;
     if (!renderer) return;
     const resting = diceRef.current.filter((die) => die.anim.phase === 'rest');
-    const emphasis = resting.length === diceRef.current.length && resting.length > 0
-      ? Math.min(1, Math.min(...resting.map((die) => die.anim.restFor)) / (GLEAM * speed))
-      : 0;
-    renderer.render(diceRef.current, emphasis, crit);
-  }, [crit, speed]);
+    const lying = resting.length === diceRef.current.length && resting.length > 0;
+    const rested = lying ? Math.min(...resting.map((die) => die.anim.restFor)) : 0;
+    const emphasis = lying ? Math.min(1, rested / (GLEAM * speed)) : 0;
+    // Reduced motion lays the dice down at once: what they show, faded included, is there at once.
+    const dim = !lying ? 0 : reduced ? 1 : Math.max(0, Math.min(1, (rested / speed - DIM_AFTER) / DIM_FOR));
+    renderer.render(diceRef.current, emphasis, crit, dim);
+  }, [crit, speed, reduced]);
 
   /** One frame on. Returns whether anything is left to do. */
   const advance = useCallback((dt: number): boolean => {
@@ -159,11 +166,13 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
     if (!allResting) return true;
     const rested = Math.min(...diceRef.current.map((die) => die.anim.restFor));
     if (rested < GLEAM * speed) return true;
+    if (drops && rested < (DIM_AFTER + DIM_FOR) * speed) return true;
     return rested < AFTERGLOW * speed && rendererRef.current?.isStill() !== true;
-  }, [muted, speed]);
+  }, [muted, speed, drops]);
 
   const start = useCallback((): void => {
-    const win = holderRef.current?.win;
+    const holder = holderRef.current;
+    const win = holder ? getDomHost().ownerWindow(holder) : undefined;
     if (!win || frameRef.current !== null) return;
     lastRef.current = 0;
     const tick = (now: number): void => {
@@ -203,7 +212,7 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   useEffect(() => {
     const holder = holderRef.current;
     if (!holder) return;
-    const win = holder.win;
+    const win = getDomHost().ownerWindow(holder);
 
     const measure = (): void => {
       // The holder's size: the canvas is at least as large and is clipped to
@@ -278,7 +287,8 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   }, [scene, reduced, muted, speed, maxWallHits, seed, start, paint]);
 
   useEffect(() => (): void => {
-    const win = holderRef.current?.win;
+    const holder = holderRef.current;
+    const win = holder ? getDomHost().ownerWindow(holder) : undefined;
     if (frameRef.current !== null) win?.cancelAnimationFrame(frameRef.current);
     frameRef.current = null;
     // A panel closing mid-throw silences the wheel at once.

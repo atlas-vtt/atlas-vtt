@@ -26,6 +26,7 @@ function fogTool(): { tool: FogToolHarness; viewport: { pause: boolean }; addFog
     fogSprites: new Map(),
     previewSprite: {},
     renderPreviewFromStore: vi.fn(),
+    refreshBounds: vi.fn(),
     rectPreviewGraphics: { clear: vi.fn(), rect: vi.fn(), stroke: vi.fn().mockReturnThis(), fill: vi.fn() },
   }) as unknown as FogToolHarness;
   return { tool, viewport, addFogOperation };

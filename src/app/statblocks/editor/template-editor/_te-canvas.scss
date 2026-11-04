@@ -1,0 +1,260 @@
+// The canvas (§7.4, §7.6): the runtime card and the chrome around its blocks.
+// Chrome never touches layout: outlines are CSS outlines, everything else
+// floats in `.atlas-te-chrome` over the card. Nothing here may change a box.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The selection outline and hover outline stand this far off the block.
+$chrome-offset: 4px;
+$gap-hit: 12px;
+$plus-size: 20px;
+$tag-height: 18px;
+$part-remove-size: 16px;
+
+.atlas-vtt-plugin {
+  .atlas-te-stage {
+    position: relative;
+    width: 100%;
+    margin-inline: auto;
+    border-radius: $radius-xl;
+    outline: none;
+
+    &:focus-visible {
+      outline: 2px solid var(--background-modifier-border-focus);
+      outline-offset: $chrome-offset;
+    }
+  }
+
+  // ── Block chrome on the card ────────────────────────────────────────────
+  .atlas-te-stage .atlas-sb-item[data-block-id] {
+    // Only the outline follows this corner; the block paints no background.
+    border-radius: $radius-l;
+    outline: 0 solid transparent;
+    outline-offset: $chrome-offset;
+    cursor: default;
+
+    &[data-sb-hover] {
+      outline: $border-width-s solid var(--background-modifier-border-hover);
+    }
+
+    // What the hovered handle's menu would act on (§3.5): accent, with a faint wash.
+    &[data-sb-menu-target]:not([data-te-selected]) {
+      outline: $border-width-s solid var(--interactive-accent);
+      background-color: color-mix(in oklch, var(--interactive-accent) 6%, transparent);
+    }
+
+    // Shown at once, never faded in.
+    &[data-te-selected] {
+      outline: $border-width-l solid var(--interactive-accent);
+    }
+  }
+
+  // The label under the label input hides while it is edited; its place stays.
+  .atlas-te-stage [data-te-label-editing] {
+    visibility: hidden;
+  }
+
+  // ── Floating chrome ─────────────────────────────────────────────────────
+  .atlas-te-chrome {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .atlas-te-chrome-control {
+    pointer-events: auto;
+  }
+
+  // "Row", "Section · Defenses": on the outline's top edge, at its start.
+  .atlas-te-chrome .atlas-te-tag {
+    position: absolute;
+    left: calc(var(--atlas-te-x) - #{$chrome-offset});
+    top: calc(var(--atlas-te-y) - #{$chrome-offset} - #{$tag-height * 0.5});
+    height: $tag-height;
+    padding: 0 $spacing-xs;
+    border: $border-width-s solid var(--background-modifier-border-hover);
+    border-radius: $radius-full;
+    background: var(--background-primary);
+    box-shadow: none;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &[data-selected] {
+      border-color: var(--interactive-accent);
+      background: var(--interactive-accent);
+      color: var(--text-on-accent);
+    }
+  }
+
+  // The `+` line: a hit area along the gap, drawn as a 2 px accent line.
+  .atlas-te-chrome .atlas-te-gap {
+    position: absolute;
+    left: var(--atlas-te-x);
+    top: var(--atlas-te-y);
+    width: var(--atlas-te-w);
+    height: var(--atlas-te-h);
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    overflow: visible;
+    cursor: pointer;
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+    }
+
+    &[data-orientation='horizontal'] {
+      &::before { inset: (-$gap-hit * 0.5) 0; }
+      &::after { inset: -1px 0; background: var(--interactive-accent); border-radius: $radius-full; }
+    }
+
+    &[data-orientation='vertical'] {
+      &::before { inset: 0 (-$gap-hit * 0.5); }
+      &::after { inset: 0 -1px; background: var(--interactive-accent); border-radius: $radius-full; }
+    }
+  }
+
+  // In the gutter before the line's start, so it covers no text.
+  .atlas-te-gap__plus {
+    position: absolute;
+    z-index: 1;
+    left: -$plus-size - $chrome-offset;
+    top: -$plus-size * 0.5;
+    display: grid;
+    place-items: center;
+    width: $plus-size;
+    height: $plus-size;
+    border-radius: $radius-full;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  .atlas-te-gap[data-orientation='vertical'] .atlas-te-gap__plus {
+    left: -$plus-size * 0.5;
+    top: -$plus-size - $chrome-offset;
+  }
+
+  .atlas-te-wash {
+    position: absolute;
+    left: var(--atlas-te-x);
+    top: var(--atlas-te-y);
+    width: var(--atlas-te-w);
+    height: var(--atlas-te-h);
+  }
+
+  .atlas-te-wash__fill {
+    position: absolute;
+    inset: -$chrome-offset;
+    border-radius: $radius-l;
+    background: color-mix(in oklch, var(--interactive-accent) 18%, transparent);
+  }
+
+  // The × of a Metric's number or a Table's column: a small disc centred on its top right corner, where a Metric's rule to the next number starts.
+  .atlas-te-chrome button.atlas-te-part-remove {
+    position: absolute;
+    left: calc(var(--atlas-te-x) - #{$part-remove-size * 0.5});
+    top: calc(var(--atlas-te-y) - #{$part-remove-size * 0.5});
+    display: grid;
+    place-items: center;
+    width: $part-remove-size;
+    height: $part-remove-size;
+    padding: 0;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-full;
+    // A disc: Obsidian's superellipse would square it.
+    corner-shape: round;
+    background: var(--background-primary);
+    box-shadow: none;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    &:hover {
+      border-color: var(--text-error);
+      color: var(--text-error);
+    }
+  }
+
+  // Exactly over the label's text, in its font; it grows with what is typed.
+  .atlas-te-stage input.atlas-te-label-input {
+    position: absolute;
+    left: var(--atlas-te-label-x);
+    top: var(--atlas-te-label-y);
+    box-sizing: content-box;
+    field-sizing: content;
+    min-width: var(--atlas-te-label-width);
+    height: var(--atlas-te-label-height);
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-bottom: $border-width-s solid var(--interactive-accent);
+    border-radius: 0;
+    background: var(--background-primary);
+    box-shadow: none;
+    outline: none;
+    color: var(--text-normal);
+    font-family: var(--atlas-te-label-font);
+    font-size: var(--atlas-te-label-size);
+    font-weight: var(--atlas-te-label-weight);
+    font-style: var(--atlas-te-label-style);
+    letter-spacing: var(--atlas-te-label-tracking);
+    text-transform: var(--atlas-te-label-transform);
+    line-height: var(--atlas-te-label-height);
+  }
+
+  // ── Blank template: a ghost card under the header ──────────────────────
+  .atlas-te-blank {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+    margin-top: $spacing-s;
+    padding: $spacing-l;
+    border: $border-width-m solid transparent;
+    border-radius: $radius-xl;
+  }
+
+  .atlas-te-stage button.atlas-te-blank__row {
+    @include atlas-flex-row($spacing-s);
+    @include atlas-corner-shape;
+    justify-content: flex-start;
+    height: var(--input-height);
+    padding: 0 $spacing-s;
+    border: $border-width-s solid transparent;
+    border-radius: $radius-l;
+    background: var(--background-modifier-hover);
+    box-shadow: none;
+    color: var(--text-faint);
+    font-size: $font-ui-small;
+    cursor: pointer;
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      background: var(--background-modifier-active-hover);
+      color: var(--text-accent);
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+    }
+  }
+}

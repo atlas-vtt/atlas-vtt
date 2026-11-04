@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { RenderTexture } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { DARKNESS, sealTolerance, wallBand, wallCore, worldTexel } from '../../../../lighting/lightingConstants';
+import { DARKNESS, lightFade, sealTolerance, wallBand, wallCore, worldTexel } from '../../../../lighting/lightingConstants';
 import { sealWalls } from '../../../../lighting/sealWalls';
 import type { WallSegment } from '../../../../types/wallTypes';
 import { crossedByHand, grazes, turningPoints } from '../../../../vision/__tests__/byHand';
@@ -14,6 +14,7 @@ import { distSqToSegment } from '../../../../vision/visionGeometry';
 import { ExploredTexture } from '../../ExploredTexture';
 import { LightingEngine } from '../LightingEngine';
 import type { EngineLight, EngineScene } from '../types';
+import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY, type LightingQuality } from '../../../../lighting/lightingQuality';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
 import { distToOutline, fuzzRooms, insidePolygon, rng, roomOutline, type P } from './fuzzRooms';
 import { NO_SIGHT, footprints, inPenumbra, renderView } from './leakFuzzScene';
@@ -59,6 +60,8 @@ interface FuzzOptions {
   open?: boolean;
   bounds?: MapBounds;
   resolution?: number;
+  /** The lighting quality the engine draws at; the walls are sealed as the rules seal them, at the map's own texel. */
+  quality?: LightingQuality;
 }
 
 const sum = (pixels: Uint8ClampedArray, o: number): number => pixels[o]! + pixels[o + 1]! + pixels[o + 2]!;
@@ -79,10 +82,10 @@ const sum = (pixels: Uint8ClampedArray, o: number): number => pixels[o]! + pixel
  * every solid wall by a band, the picture is lit; where it counts a point as seen or unseen,
  * away from the edges of sight and the soft edges of its shadows, the picture agrees.
  */
-async function fuzz({ seed, trials, open = false, bounds = { width: 2048, height: 2048 }, resolution = 1 }: FuzzOptions): Promise<Report> {
+async function fuzz({ seed, trials, open = false, bounds = { width: 2048, height: 2048 }, resolution = 1, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   vi.stubGlobal('createEl', (tag: string): HTMLElement => document.createElement(tag));
   const renderer = await createTestRenderer(SIZE, resolution);
-  const engine = new LightingEngine(renderer);
+  const engine = new LightingEngine(renderer, quality);
   const target = RenderTexture.create({ width: SIZE, height: SIZE, resolution });
   const memory = new ExploredTexture(renderer, bounds);
   const blank = new ExploredTexture(renderer, bounds);
@@ -94,7 +97,8 @@ async function fuzz({ seed, trials, open = false, bounds = { width: 2048, height
     const rand = rng(seed + 7);
     const report: Report = { rooms: 0, hedged: 0, walled: 0, closed: 0, checked: 0, oneHedge: 0, lightLeaks: 0, sightLeaks: 0, senseLeaks: 0, spotLeaks: 0, memoryLeaks: 0, darkLeaks: 0, litBetween: 0, seenBetween: 0, ruleLit: 0, lightWrong: 0, ruleSight: 0, sightWrong: 0 };
     for (const room of fuzzRooms(seed, trials)) {
-      const texel = worldTexel(bounds);
+      // The rules seal at the map's texel; the picture is held to the texel the engine draws at.
+      const texel = worldTexel(bounds, quality.maxTexels);
       const inner = roomOutline(room);
       // The ring is the room's outline grown about its centre, which three corners need not surround.
       if (!room.lights.every((p) => insidePolygon(p, inner)) || !insidePolygon(room.centre, room.outline)) continue;
@@ -106,8 +110,8 @@ async function fuzz({ seed, trials, open = false, bounds = { width: 2048, height
       report.rooms++;
       report[hedged ? 'hedged' : 'walled']++;
       const drawn = [...room.walls.map((wall): WallSegment => ({ ...wall, limited: true })), ...ringWalls];
-      const walls = sealWalls(drawn, sealTolerance(texel));
-      const shown = open ? sealWalls(drawn.slice(0, room.walls.length), sealTolerance(texel)) : walls;
+      const walls = sealWalls(drawn, sealTolerance(worldTexel(bounds)));
+      const shown = open ? sealWalls(drawn.slice(0, room.walls.length), sealTolerance(worldTexel(bounds))) : walls;
       const outer = ringWalls.flatMap((wall): P[] => [[wall.p1.x, wall.p1.y], [wall.p2.x, wall.p2.y]]);
       const lights: EngineLight[] = room.lights.map(([lx, ly], i) => {
         const dim = 250 + rand() * 600;
@@ -162,7 +166,8 @@ async function fuzz({ seed, trials, open = false, bounds = { width: 2048, height
 
       const reaches = lights.map((light) => lightReach({ x: light.x, y: light.y }, light.dim, walls, light.bright));
       // A solid wall is a line to the rule and a capsule to the picture; a limited wall is a line to both.
-      const widelyLit = (point: { x: number; y: number }, reach: LightReach, clear: number): boolean => Math.hypot(point.x - reach.origin.x, point.y - reach.origin.y) <= reach.dim && pointInPolygon(point, reach.polygon)
+      // Lit by the picture: within the dim radius where the light's fade leaves at least a fifth of it.
+      const widelyLit = (point: { x: number; y: number }, reach: LightReach, clear: number): boolean => lightFade(reach.bright, reach.dim, Math.hypot(point.x - reach.origin.x, point.y - reach.origin.y)) >= 0.2 && pointInPolygon(point, reach.polygon)
         && walls.every((wall) => wall.limited || !blocksFrom(wall, reach.origin, 'light') || Math.min(distSqToSegment(wall.p1, reach.origin, point), distSqToSegment(wall.p2, reach.origin, point), distSqToSegment(reach.origin, wall.p1, wall.p2), distSqToSegment(point, wall.p1, wall.p2)) > clear * clear);
       const edges = sight.regions.map((region) => region.polygon!.map((q): P => [q.x, q.y]));
       const filter = 1.5 / scale + 0.01;
@@ -260,6 +265,20 @@ describe('leak fuzz: limited walls', () => {
     console.info(`leak fuzz (limited walls, 12000 px map): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
     expect(report.checked).toBeGreaterThan(SIDE_TRIALS * 500);
     expect(report).toMatchObject(CLEAN);
+  });
+
+  // A coarser texel moves a flame further from a hedge it stands at (`placeLight`), and behind a
+  // hedge the light is the rule's reach from where the flame stands: a pixel or two at the edge of
+  // a hedge's hard shadow may stay dark where the rule counts light from the light's own place,
+  // never lit where it does not. The polygon picture (saver) lights from the light's own place, but
+  // fades every shadow's edge in over a texel and a half of its light map (`SHADOW_EDGE_TEXELS`), so
+  // there a point the rule counts lit may show nothing (5 of 40,287 at 60 trials).
+  it.each(['balanced', 'saver'] as const)('holds at the %s lighting quality on a map whose texels it coarsens', { timeout: 3_600_000 }, async (level) => {
+    const report = await fuzz({ seed: 7, trials: SIDE_TRIALS, bounds: { width: 8192, height: 8192 }, quality: LIGHTING_QUALITY[level] });
+    console.info(`leak fuzz (limited walls, ${level}): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
+    expect(report.checked).toBeGreaterThan(SIDE_TRIALS * 500);
+    expect(report.lightWrong).toBeLessThanOrEqual(report.ruleLit / (level === 'saver' ? 2_000 : 10_000));
+    expect(report).toMatchObject({ ...CLEAN, lightWrong: report.lightWrong });
   });
 
   it('holds at renderer resolution 2', { timeout: 3_600_000 }, async () => {

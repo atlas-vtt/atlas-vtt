@@ -34,7 +34,7 @@ describe('captureWithLayerVisibility with a player camera', () => {
       expect(viewport.scale.x).toBe(0.5);
       expect(viewport.x).toBe(400 - 500 * 0.5);
       expect(viewport.y).toBe(300 - 400 * 0.5);
-    }, { target: viewport, camera });
+    }, { target: viewport, camera, screen: { width: 800, height: 600 } });
 
     expect(renders).toEqual([{ x: 150, y: 100, scale: 0.5 }, { x: -100, y: -50, scale: 2 }]);
     expect(viewport.scale.y).toBe(2);
@@ -42,13 +42,13 @@ describe('captureWithLayerVisibility with a player camera', () => {
 });
 
 describe('SelectionManager.getPlayerViewLayers', () => {
-  it('hides the selection overlay and marquee for the player frame', () => {
+  it('hides the selection overlay, marquee and group rotate button for the player frame', () => {
     const viewport = new Container();
     const store = createStore(() => ({ selectedIds: [], activeTool: 'select', selectionMode: 'box', objects: { tokens: {}, drawings: {} } }));
     const manager = new SelectionManager(viewport as never, () => ({}), () => ({}), store as never, new EventEmitter());
     const layers = manager.getPlayerViewLayers();
 
-    expect(layers).toHaveLength(2);
+    expect(layers).toHaveLength(3);
     expect(layers.every(entry => !entry.visible && viewport.children.includes(entry.layer as Container))).toBe(true);
   });
 });

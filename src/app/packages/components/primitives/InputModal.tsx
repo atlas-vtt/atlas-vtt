@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { CloseButton } from './CloseButton';
 import { Button } from './button';
 import { dialogOverlayMotion, useDialogWindowVariants } from './dialogMotion';
+import { t } from '../../../i18n';
 
 interface InputModalProps {
   isOpen: boolean;
@@ -117,8 +118,8 @@ const InputModal: React.FC<InputModalProps> = ({
             </div>
 
             <div className="atlas-modal-footer">
-              <Button variant="outline" size="sm" onClick={handleCancel}>Cancel</Button>
-              <Button variant="default" size="sm" onClick={handleConfirm}>Confirm</Button>
+              <Button variant="outline" size="sm" onClick={handleCancel}>{t('common.cancel')}</Button>
+              <Button variant="default" size="sm" onClick={handleConfirm}>{t('common.confirm')}</Button>
             </div>
           </motion.div>
         </motion.div>

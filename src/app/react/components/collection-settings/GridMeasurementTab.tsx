@@ -3,52 +3,63 @@
  * for collection settings.
  */
 
-import React from 'react';
+import React, { useId } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { SegmentedControl, type SegmentedOption } from '../../../packages/components/primitives/SegmentedControl';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
+import { UnitDistanceField } from './UnitDistanceField';
 import { areRangeBandsValid, DEFAULT_CONE_ANGLE, isValidConeAngle, isValidRangeBandThreshold } from '../../../grid/measurementFormat';
+import { isUnitDistance } from '../../../grid/unitDistance';
 import type {
   CollectionGridDefaults,
   DiagonalRule,
+  DifficultTerrainRule,
   GridUnitType,
   MeasurementMode,
   RangeBand,
 } from '../../../types/collectionSettingsTypes';
+import { t } from '../../../i18n';
 
 const MEASUREMENT_MODES: readonly SegmentedOption<MeasurementMode>[] = [
-  { value: 'metric', label: 'Metric' },
-  { value: 'abstract', label: 'Abstract' },
+  { value: 'metric', label: t('csm.grid.metric') },
+  { value: 'abstract', label: t('csm.grid.abstract') },
 ];
 
 interface GridMeasurementTabProps {
   gridDefaults: CollectionGridDefaults;
   /** The angle the collection measures cones with, its system's while it has none of its own. Defaults to its own. */
   coneAngle?: number;
+  /** What difficult terrain costs the collection's movement, its system's while it has no rule of its own. Defaults to its own. */
+  difficultTerrain?: DifficultTerrainRule;
   onChange: (gridDefaults: CollectionGridDefaults) => void;
 }
 
-const UNIT_OPTIONS: Record<GridUnitType, string> = {
-  feet: 'Feet',
-  yards: 'Yards',
-  meters: 'Meters',
-  units: 'Units',
-  custom: 'Custom',
+/** The units a measurement can name, as the settings label them. */
+export const UNIT_OPTIONS: Record<GridUnitType, string> = {
+  feet: t('csm.grid.unit.feet'),
+  yards: t('csm.grid.unit.yards'),
+  meters: t('csm.grid.unit.meters'),
+  units: t('csm.grid.unit.units'),
+  custom: t('csm.grid.unit.custom'),
 };
 
 const DIAGONAL_OPTIONS: Record<DiagonalRule, string> = {
-  equidistant: 'Every diagonal counts 1 (5e)',
-  alternating: 'Alternate 1 and 2 (5/10/5)',
-  euclidean: 'Exact distance',
+  equidistant: t('csm.grid.diagonal.equidistant'),
+  alternating: t('csm.grid.diagonal.alternating'),
+  euclidean: t('csm.grid.diagonal.euclidean'),
 };
 
 export function GridMeasurementTab({
   gridDefaults,
   coneAngle,
+  difficultTerrain,
   onChange,
 }: GridMeasurementTabProps): React.ReactElement {
+  const difficultLabelId = useId();
+  const difficultDoubles = (difficultTerrain ?? gridDefaults.difficultTerrain ?? 'none') === 'double';
   const updateField = <K extends keyof CollectionGridDefaults>(
     key: K,
     value: CollectionGridDefaults[K],
@@ -79,7 +90,7 @@ export function GridMeasurementTab({
     <>
       {/* Unit type */}
       <div className="atlas-csm-field">
-        <label className="atlas-csm-label">Unit Type</label>
+        <label className="atlas-csm-label">{t('csm.grid.unitType')}</label>
         <ObsidianMenuDropdown
           className="atlas-setting-dropdown atlas-csm-dropdown"
           value={gridDefaults.unitType}
@@ -90,27 +101,36 @@ export function GridMeasurementTab({
 
       {/* Distance per square */}
       <div className="atlas-csm-field">
-        <label className="atlas-csm-label">Distance per Square</label>
-        <input
-          type="number"
-          className="atlas-csm-input atlas-csm-input--number"
-          min={1}
-          value={gridDefaults.unitDistance}
-          onChange={(e) => {
-            const val = Number(e.target.value);
-            if (!Number.isNaN(val)) updateField('unitDistance', Math.max(1, val));
-          }}
-        />
+        <label className="atlas-csm-label">{t('csm.grid.distance')}</label>
+        <UnitDistanceField value={gridDefaults.unitDistance} onChange={(distance) => updateField('unitDistance', distance)} />
+        {!isUnitDistance(gridDefaults.unitDistance) && (
+          <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
+            {t('csm.grid.distanceInvalid')}
+          </p>
+        )}
       </div>
 
       {/* Diagonal rule (square grids; hex grids always count hex steps) */}
       <div className="atlas-csm-field">
-        <label className="atlas-csm-label">Diagonal Movement</label>
+        <label className="atlas-csm-label">{t('csm.grid.diagonal')}</label>
         <ObsidianMenuDropdown
           className="atlas-setting-dropdown atlas-csm-dropdown"
           value={gridDefaults.diagonalRule ?? 'equidistant'}
           options={DIAGONAL_OPTIONS}
           onChange={(value) => updateField('diagonalRule', value as DiagonalRule)}
+        />
+      </div>
+
+      {/* Difficult terrain: what the token drag ruler counts for a cell in a map feature marked so */}
+      <div className="atlas-csm-toggle-row">
+        <div>
+          <div id={difficultLabelId} className="atlas-csm-toggle-label">{t('csm.grid.difficultTerrain')}</div>
+          <div className="atlas-csm-hint">{t('csm.grid.difficultTerrainHint')}</div>
+        </div>
+        <ToggleSwitch
+          value={difficultDoubles}
+          labelledBy={difficultLabelId}
+          onChange={() => updateField('difficultTerrain', difficultDoubles ? 'none' : 'double')}
         />
       </div>
 
@@ -132,9 +152,9 @@ export function GridMeasurementTab({
 
       {/* Measurement mode */}
       <div className="atlas-csm-field">
-        <label className="atlas-csm-label">Measurement Mode</label>
+        <label className="atlas-csm-label">{t('csm.grid.mode')}</label>
         <SegmentedControl
-          ariaLabel="Measurement mode"
+          ariaLabel={t('csm.grid.modeAria')}
           value={gridDefaults.measurementMode}
           options={MEASUREMENT_MODES}
           onChange={(mode) => updateField('measurementMode', mode)}
@@ -144,7 +164,7 @@ export function GridMeasurementTab({
       {/* Range Bands — only visible in abstract mode */}
       {gridDefaults.measurementMode === 'abstract' && (
         <div className="atlas-csm-field">
-          <label className="atlas-csm-label">Range Bands</label>
+          <label className="atlas-csm-label">{t('csm.grid.bands')}</label>
           {bands.length > 0 ? (
             <div className="atlas-csm-band-list">
               {bands.map((band, i) => {
@@ -154,7 +174,7 @@ export function GridMeasurementTab({
                     <input
                       type="text"
                       className="atlas-csm-input"
-                      placeholder="Band name"
+                      placeholder={t('csm.grid.bandName')}
                       value={band.name}
                       onChange={(e) => updateBand(i, { name: e.target.value })}
                     />
@@ -163,7 +183,7 @@ export function GridMeasurementTab({
                       className="atlas-csm-input atlas-csm-input--number"
                       min={1}
                       step={1}
-                      placeholder="Max"
+                      placeholder={t('csm.grid.max')}
                       aria-invalid={!thresholdValid || undefined}
                       value={Number.isNaN(band.maxSquares) ? '' : band.maxSquares}
                       onChange={(e) => {
@@ -172,7 +192,7 @@ export function GridMeasurementTab({
                         updateBand(i, { maxSquares: raw === '' ? NaN : Number(raw) });
                       }}
                     />
-                    <LabelTooltip label="Remove band">
+                    <LabelTooltip label={t('csm.grid.removeBand')}>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -187,16 +207,16 @@ export function GridMeasurementTab({
               })}
             </div>
           ) : (
-            <div className="atlas-csm-empty">No range bands defined</div>
+            <div className="atlas-csm-empty">{t('csm.grid.noBands')}</div>
           )}
           {!bandsValid && (
             <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
-              Every band needs a whole number of squares, 1 or more.
+              {t('csm.grid.bandsInvalid')}
             </p>
           )}
           <Button variant="ghost" className="atlas-csm-add-btn" onClick={addBand}>
             <Plus />
-            Add Band
+            {t('csm.grid.addBand')}
           </Button>
         </div>
       )}

@@ -1,5 +1,7 @@
-import type { BundleFile, BundleFileRole } from './bundleFormat';
+import { NOTE_FILE_ROLES, type BundleFile, type BundleFileRole } from './bundleFormat';
 import { movedFolders, remapPaths, type PathMap } from './pathRemap';
+import { NO_TEMPLATE_IDS, rewriteNoteTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
+import { sha256 } from '../../utils/hashing';
 
 /** JSON files carry vault paths and asset ids that must follow the files and records they point at. */
 const JSON_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['asset-file', 'scene-map', 'scene-snapshot']);
@@ -82,13 +84,16 @@ export function rewriteText(file: BundleFile, text: string, rewrites: PathMap): 
 /**
  * `raw` with the paths and ids it refers to rewritten: JSON files follow moved
  * files and renamed records, statblock notes follow their artwork, loot bases
- * the folders of their items. Returns `raw` itself when nothing changes, so
- * unchanged files keep their exact bytes.
+ * the folders of their items, and notes name the templates they use by their id
+ * here (`templateIds`, the bundle's own notes only: callers pass none for notes
+ * the vault keeps). Returns `raw` itself when nothing changes, so unchanged files
+ * keep their exact bytes.
  */
-export function rewriteContent(file: BundleFile, raw: ArrayBuffer, rewrites: PathMap): ArrayBuffer {
-  if (!mayRewrite(file, rewrites)) return raw;
+export function rewriteContent(file: BundleFile, raw: ArrayBuffer, rewrites: PathMap, templateIds: TemplateIdMap = NO_TEMPLATE_IDS): ArrayBuffer {
+  if (!mayRewrite(file, rewrites, templateIds)) return raw;
   const text = decoder.decode(raw);
-  const rewritten = rewriteText(file, text, rewrites);
+  const relinked = refersToFiles(file) ? rewriteText(file, text, rewrites) : text;
+  const rewritten = namesTemplates(file) ? rewriteNoteTemplate(relinked, templateIds) : relinked;
   return rewritten === text ? raw : toBuffer(rewritten);
 }
 
@@ -96,5 +101,24 @@ export function rewriteContent(file: BundleFile, raw: ArrayBuffer, rewrites: Pat
 export const refersToFiles = (file: BundleFile): boolean =>
   JSON_ROLES.has(file.role) || file.role === 'loot-base' || (file.role === 'statblock-note' && file.statblockImage !== undefined);
 
+/** Whether the file is a Markdown note, which may name a statblock template; a loot item may be any file. */
+const namesTemplates = (file: BundleFile): boolean => NOTE_FILE_ROLES.has(file.role) && file.vaultPath.toLowerCase().endsWith('.md');
+
 /** Whether `rewriteContent` may change the file's bytes, so they must be read to know the result. */
-export const mayRewrite = (file: BundleFile, rewrites: PathMap): boolean => rewrites.size > 0 && refersToFiles(file);
+export const mayRewrite = (file: BundleFile, rewrites: PathMap, templateIds: TemplateIdMap = NO_TEMPLATE_IDS): boolean =>
+  (rewrites.size > 0 && refersToFiles(file)) || (templateIds.size > 0 && namesTemplates(file));
+
+const NO_PATHS: PathMap = new Map();
+
+/**
+ * Fingerprint of a bundle file as it reads in this vault: `hash` (the file's bytes), unless the
+ * file is a note naming a template that comes in under another id (`templateIds`), which then
+ * reads as naming that id. So a note follows its template into a copy though the bundle did
+ * not change the note.
+ */
+export async function hashHere(file: BundleFile, hash: string, raw: () => Promise<ArrayBuffer>, templateIds: TemplateIdMap): Promise<string> {
+  if (!mayRewrite(file, NO_PATHS, templateIds)) return hash;
+  const content = await raw();
+  const here = rewriteContent(file, content, NO_PATHS, templateIds);
+  return here === content ? hash : sha256(here);
+}

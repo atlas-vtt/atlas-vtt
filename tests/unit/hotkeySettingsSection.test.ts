@@ -1,16 +1,12 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
-import { Setting } from 'obsidian';
+import { App, Setting } from 'obsidian';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { hotkeySettingsSection } from '../../src/app/settings/hotkeySettingsSection';
+import { memoryPluginData } from '../mocks/pluginData';
 
 async function renderSection(stored?: object): Promise<{ settings: SettingsService; row: (name: string) => HTMLElement }> {
-  const files = new Map<string, string>();
-  if (stored) files.set('atlas-vtt/.atlas-data/settings.json', JSON.stringify(stored));
-  const app = { vault: { adapter: {
-    exists: async (path: string) => files.has(path), mkdir: async () => {},
-    read: async (path: string) => files.get(path)!, write: async (path: string, data: string) => { files.set(path, data); },
-  } } } as never;
-  const settings = new SettingsService(app);
+  const settings = new SettingsService(new App(), undefined, memoryPluginData(stored ?? null));
   await settings.initialize();
   const container = document.body.createDiv();
   for (const { name, desc, render } of hotkeySettingsSection(settings).rows) {

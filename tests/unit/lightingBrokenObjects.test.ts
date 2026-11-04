@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { EventSystem } from 'pixi.js';
@@ -7,7 +8,7 @@ import { sealedWalls } from '../../src/app/lighting/sealWalls';
 import { DoorIcons } from '../../src/app/pixi/lighting/DoorIcons';
 import { LightMarkers } from '../../src/app/pixi/lighting/LightMarkers';
 import { LightRangeRings } from '../../src/app/pixi/lighting/LightRangeRings';
-import { SceneModelBuilder } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder } from '../../src/app/vision/sceneModel';
 import { WallEditor } from '../../src/app/pixi/lighting/WallEditor';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';

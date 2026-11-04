@@ -5,6 +5,7 @@ import type { ViewAtlasState } from '../../../storeFactory';
 import type { ConditionDefinition } from '../../../types/collectionSettingsTypes';
 import { conditionValue } from '../../../utils/conditionValues';
 import { ConditionBadgePreview } from '../collection-settings/ConditionBadgePreview';
+import { t } from '../../../i18n';
 
 const BADGE_SIZE = 16;
 
@@ -26,7 +27,7 @@ export function conditionsSubmenu(
       const holders = tokenIds.filter((id) => tokens[id]?.conditions?.includes(condition.id));
       const count = holders.length;
       const hasAll = count === tokenIds.length;
-      const name = condition.name.trim() || 'Unnamed condition';
+      const name = condition.name.trim() || t('menu.unnamedCondition');
       return {
         type: 'item',
         label: count > 0 && !hasAll ? `${name} (${count}/${tokenIds.length})` : name,
@@ -45,7 +46,7 @@ export function conditionsSubmenu(
     store.subscribe((state, previous) => {
       if (state.objects.tokens !== previous.objects.tokens) onChange();
     });
-  const label = tokenIds.length > 1 ? `Conditions (${tokenIds.length} tokens)` : 'Conditions';
+  const label = tokenIds.length > 1 ? t('menu.conditionsFor', { count: tokenIds.length }) : t('menu.conditions');
   return { type: 'submenu', label, icon: 'palette', children, subscribe };
 }
 

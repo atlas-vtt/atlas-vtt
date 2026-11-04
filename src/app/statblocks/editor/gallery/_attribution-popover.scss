@@ -1,0 +1,48 @@
+// The full credit of a licensed template (§10.5), in a popover from its
+// gallery card's info button.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  .atlas-te-attribution {
+    @include atlas-keep-in-view;
+    position: absolute;
+    left: var(--atlas-te-attribution-x);
+    top: var(--atlas-te-attribution-y);
+    z-index: 1;
+    margin-top: $spacing-xs;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  .atlas-te-attribution__panel {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($radius-2xl);
+    @include atlas-flex-col($spacing-m);
+    align-items: stretch;
+    width: 340px;
+    padding: $spacing-m;
+    box-shadow: $shadow-md;
+    transform-origin: top left;
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-attribution__heading {
+    margin: 0;
+    font-size: $font-ui-small;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-te-attribution__text {
+    margin: 0;
+    color: var(--text-muted);
+    user-select: text;
+  }
+
+  .atlas-te-attribution__link {
+    align-self: flex-start;
+  }
+}

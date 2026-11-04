@@ -7,17 +7,18 @@ import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { textToolFace } from "./toolFaces"
 import { useEmitViewEvent } from "./useEmitViewEvent"
+import { t } from '../../../i18n'
 
 /** Preset text colours: high-contrast neutrals plus map-legible accents. */
 const TEXT_COLOR_SWATCHES = [
-  { value: '#ffffff', label: 'White' },
-  { value: '#000000', label: 'Black' },
-  { value: '#e93147', label: 'Red' },
-  { value: '#ec7500', label: 'Orange' },
-  { value: '#e0ac00', label: 'Yellow' },
-  { value: '#08b94e', label: 'Green' },
-  { value: '#086ddd', label: 'Blue' },
-  { value: '#7852ee', label: 'Purple' },
+  { value: '#ffffff', label: t('color.white') },
+  { value: '#000000', label: t('color.black') },
+  { value: '#e93147', label: t('color.red') },
+  { value: '#ec7500', label: t('color.orange') },
+  { value: '#e0ac00', label: t('color.yellow') },
+  { value: '#08b94e', label: t('color.green') },
+  { value: '#086ddd', label: t('color.blue') },
+  { value: '#7852ee', label: t('color.purple') },
 ] as const;
 
 type TextSettings = { color: string; fontSize: number; bold: boolean }
@@ -52,14 +53,14 @@ export function TextToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
     <ToolGroup
       face={face}
       shortcut={hotkeyLabel('text')}
-      menuLabel="Text Options"
+      menuLabel={t('toolbar.textOptions')}
       menuOpen={menuOpen}
       onSelect={() => selectTool(face.tool)}
       onMenuToggle={toggleMenu}
     >
       <div className="atlas-dropdown-section">
         <DropdownSwatchGrid
-          label="Colour"
+          label={t('toolbar.colour')}
           swatches={TEXT_COLOR_SWATCHES}
           value={textColor}
           onChange={(value) => { setTextColor(value); applyTextSetting({ color: value }); }}
@@ -69,7 +70,7 @@ export function TextToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
       <div className="atlas-dropdown-section">
         <div className="space-y-3">
           <DropdownSliderRow
-            label="Size"
+            label={t('toolbar.size')}
             value={textSize}
             min={10}
             max={96}
@@ -77,7 +78,7 @@ export function TextToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
           />
 
           <DropdownToggleRow
-            label="Bold"
+            label={t('toolbar.bold')}
             value={textBold}
             onChange={() => {
               const bold = !textBold;

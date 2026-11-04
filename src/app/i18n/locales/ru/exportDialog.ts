@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const exportDialog: Translation = {
+  'exportDialog.author': 'Автор',
+  'exportDialog.authorPlaceholder': 'Видно тем, кто её установит',
+  'exportDialog.closeHint': 'Закрыть без экспорта',
+  'exportDialog.enterName': 'Введите название коллекции.',
+  'exportDialog.exportCollection': 'Экспорт коллекции',
+  'exportDialog.exportNamed': 'Экспорт «{name}»',
+  'exportDialog.exportVersion': 'Экспорт v{version}',
+  'exportDialog.forkIntro': 'Вы установили эту коллекцию{from}. Публикация превратит вашу копию со всеми изменениями в собственную коллекцию, начиная с v1. Обновления оригинала она больше получать не будет.',
+  'exportDialog.fromAuthor': ' от {author}',
+  'exportDialog.includeHint': 'Включите хотя бы один элемент',
+  'exportDialog.includeOne': 'Включите хотя бы один элемент.',
+  'exportDialog.missing': { one: 'Нет {count} нужного файла, он не войдёт в архив:', few: 'Нет {count} нужных файлов, они не войдут в архив:', many: 'Нет {count} нужных файлов, они не войдут в архив:', other: 'Нет {count} нужного файла, они не войдут в архив:' },
+  'exportDialog.name': 'Название',
+  'exportDialog.notes': 'Описание выпуска',
+  'exportDialog.notesPlaceholder': 'Что нового в этой версии',
+  'exportDialog.publish': 'Опубликовать',
+  'exportDialog.publishNamed': 'Опубликовать «{name}» как свою',
+  'exportDialog.publishOwn': 'Опубликовать как свою',
+  'exportDialog.sameVersion': 'Как в прошлом выпуске. Установившие v{version} увидят изменённую копию.',
+  'exportDialog.version': 'Версия',
+  'exportDialog.versionInvalid': 'Версия должна быть целым числом не меньше {min}.',
+  'exportDialog.zipHint': 'Сохранить коллекцию в .zip, чтобы поделиться',
+};

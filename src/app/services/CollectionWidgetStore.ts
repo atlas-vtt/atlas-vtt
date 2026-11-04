@@ -1,7 +1,7 @@
 import type { AssetService } from './AssetService';
 import { sameWidgets, type WidgetRecord } from '../utils/collectionWidgets';
 
-/** Counters change on every click and timers every second, so writes wait for a pause. */
+/** Counters change on every click, so writes wait for a pause. */
 const SAVE_DELAY_MS = 1000;
 
 /** Shared fallback, so a collection without widgets always reads as the same record. */

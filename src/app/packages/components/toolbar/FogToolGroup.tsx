@@ -8,6 +8,7 @@ import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { fogToolFace } from "./toolFaces"
 import { useEmitViewEvent } from "./useEmitViewEvent"
+import { t } from '../../../i18n'
 
 type FogMode = 'brush' | 'lasso' | 'rectangle'
 
@@ -29,7 +30,7 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
     <ToolGroup
       face={face}
       shortcut={hotkeyLabel('fog')}
-      menuLabel="Fog Tool Options"
+      menuLabel={t('toolbar.fogOptions')}
       menuOpen={menuOpen}
       onSelect={() => selectTool(face.tool)}
       onMenuToggle={toggleMenu}
@@ -37,14 +38,14 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
       <div className="atlas-dropdown-section">
         <DropdownMenuItem
           icon={Cloud}
-          label="Fog Tool"
+          label={t('toolbar.fogTool')}
           shortcut={hotkeyLabel('fog')}
           isActive={activeTool === "fog"}
           onClick={() => selectTool("fog")}
         />
         <DropdownMenuItem
           icon={Eraser}
-          label="Fog Eraser"
+          label={t('toolbar.fogEraser')}
           shortcut={hotkeyLabel('fog')}
           isActive={activeTool === "eraser"}
           onClick={() => selectTool("eraser")}
@@ -56,9 +57,9 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
           <DropdownModeSelector
             value={fogMode}
             options={[
-              { value: 'brush' as const, icon: Paintbrush, label: 'Brush' },
-              { value: 'lasso' as const, icon: Lasso, label: 'Lasso' },
-              { value: 'rectangle' as const, icon: Square, label: 'Rectangle' },
+              { value: 'brush' as const, icon: Paintbrush, label: t('toolbar.brush') },
+              { value: 'lasso' as const, icon: Lasso, label: t('toolbar.lasso') },
+              { value: 'rectangle' as const, icon: Square, label: t('toolbar.rectangle') },
             ]}
             onChange={(mode) => {
               setFogMode(mode);
@@ -67,7 +68,7 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
           />
 
           <DropdownSliderRow
-            label="Brush Size"
+            label={t('toolbar.brushSize')}
             value={brushSize}
             min={10}
             max={200}
@@ -82,7 +83,7 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
       <div className="atlas-dropdown-section">
         <DropdownMenuItem
           icon={Trash2}
-          label="Delete All Fog"
+          label={t('toolbar.deleteFog')}
           destructive
           onClick={() => {
             view?.clearAllFog();

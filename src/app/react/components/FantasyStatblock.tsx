@@ -1,27 +1,29 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { TFile, type App } from 'obsidian';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { App } from 'obsidian';
 import {
-  findCreatureForNotePath,
   getFantasyStatblocksApi,
   layoutForCreature,
   resolveCreatureFromFence,
   resolveLayout,
   type FantasyStatblocksCreature,
 } from '../../services/FantasyStatblocksService';
-import { resolveStatblockNote, statblockSourceFromText } from '../../services/statblockNoteSource';
+import { frontmatterOfText, statblockSourceFromText } from '../../statblocks/notes/statblockSource';
+import { bestiaryLookup, frontmatterCreature, resolveLinkedCreature } from '../../creatures/linkedCreature';
+import { boundedStatblock } from '../../creatures/statblockValues';
 import { syncStatblockVitals, type TokenVitals } from '../../services/statblockVitalsSync';
-import { attachDiceRolling } from '../../services/statblockDiceLinks';
-import { rollHitPoints } from '../../services/statblockHitPoints';
-import { StatblockRenderer, type StatblockPortrait } from './statblock/StatblockRenderer';
-import { TokenPickerModal } from '../../packages/components/token-picker/TokenPickerModal';
-import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
+import { StatblockRenderer } from './statblock/StatblockRenderer';
+import { useStatblockDiceRolling } from '../../statblocks/render/shared/useStatblockDiceRolling';
+import { useTokenPortrait } from '../../statblocks/render/shared/tokenPortrait';
 import { StatblockTokenResources, type StatblockTokenActions } from './statblock/StatblockTokenResources';
-import type { StatblockEditApi } from './statblock/statblockEditContext';
-import { isEditableNote, writeStatblockValue } from '../../services/statblockEditing';
 import { useBestiaryRevision } from '../hooks/useBestiaryRevision';
 import { StatblockSkeleton } from './statblock/StatblockSkeleton';
+import { t } from '../../i18n';
+import { AtlasUIContext } from '../root/AtlasUIContext';
+import type { TokenRollContext } from '../../types/diceRollOrigin';
 
 interface FantasyStatblockProps {
+  /** Owning map when this block renders in a separate React root. */
+  viewId?: string | undefined;
   /** Vault path of the note backing the Fantasy Statblocks creature */
   notePath: string;
   /** The note's text when it is not in the vault, e.g. inside a collection being imported; `notePath` then names it. */
@@ -30,8 +32,8 @@ interface FantasyStatblockProps {
   app: App;
   /** Tokens whose resources drive the statblock's vitals — one block per token */
   tokens?: TokenVitals[];
-  /** Allows values to be edited in place, writing back to the note's frontmatter */
-  editable?: boolean;
+  /** The view, scene and tokens the statblock was opened for, taken with `tokens`; rolls for them name it. */
+  originContext?: TokenRollContext | undefined;
   className?: string;
   tokenActions?: StatblockTokenActions;
 }
@@ -49,13 +51,17 @@ export function FantasyStatblock({
   noteContent,
   app,
   tokens = [],
-  editable = false,
   className,
   tokenActions,
+  viewId: suppliedViewId,
+  originContext,
 }: FantasyStatblockProps): React.JSX.Element {
+  const context = useContext(AtlasUIContext);
+  const viewId = suppliedViewId ?? context?.view?.viewId;
   const ref = useRef<HTMLDivElement>(null);
-  const tokensRef = useRef<TokenVitals[]>(tokens);
-  tokensRef.current = tokens;
+  // The tokens and the scene they were taken from stay together for the click that reads them.
+  const rollsRef = useRef({ tokens, originContext });
+  rollsRef.current = { tokens, originContext };
 
   const key = useMemo(() => vitalsKey(tokens), [tokens]);
 
@@ -64,15 +70,17 @@ export function FantasyStatblock({
 
   // A note outside the vault is read from its own text; the bestiary knows only vault notes.
   const bestiaryCreature = useMemo(
-    () => (noteContent === undefined ? findCreatureForNotePath(notePath) : null),
+    () => (noteContent === undefined ? bestiaryLookup().byPath.get(notePath) ?? null : null),
     // `revision` is not read by the lookup; it re-runs it when the bestiary changes.
     [notePath, noteContent, revision],
   );
 
-  // Notes that define their statblock in a ```statblock fence never enter the
-  // bestiary, so resolve those from the fence itself.
+  // A note the bestiary has not parsed is read from the note itself: its frontmatter (the
+  // bestiary may still be parsing the vault) or its ```statblock fence, which never enters it.
+  // A note with neither shows the bestiary creature of its name.
   const [noteCreature, setNoteCreature] = useState<FantasyStatblocksCreature | null>(null);
-  // The note whose own statblock has been looked for: until then "no creature" is not known yet.
+  // The note whose statblock has been looked for with the whole bestiary to look in: until
+  // then "no creature" is not known yet.
   const [readNote, setReadNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,25 +93,19 @@ export function FantasyStatblock({
     const readNoteCreature = async (): Promise<void> => {
       if (noteContent !== undefined) {
         const source = statblockSourceFromText(noteContent);
-        const basename = notePath.split('/').pop()?.replace(/\.md$/, '') ?? '';
-        const resolved = source?.kind === 'frontmatter'
-          ? { name: basename, ...source.frontmatter } as FantasyStatblocksCreature
-          : source ? await resolveCreatureFromFence(app, source.params, notePath) : null;
+        const resolved = source?.kind === 'fs-fence'
+          ? await resolveCreatureFromFence(app, source.params, notePath)
+          : source ? frontmatterCreature(frontmatterOfText(noteContent) ?? {}, notePath) : null;
         if (!cancelled) setNoteCreature(resolved);
         return;
       }
 
-      const file = app.vault.getAbstractFileByPath(notePath);
-      if (!(file instanceof TFile)) return;
-
-      const source = await resolveStatblockNote(app, file);
-      if (cancelled || source?.kind !== 'codeblock') return;
-
-      const resolved = await resolveCreatureFromFence(app, source.params, notePath);
+      const resolved = await resolveLinkedCreature(app, notePath);
       if (!cancelled) setNoteCreature(resolved);
     };
+    const bestiaryResolved = Boolean(getFantasyStatblocksApi()?.isResolved?.());
     void readNoteCreature().finally(() => {
-      if (!cancelled) setReadNote(notePath);
+      if (!cancelled) setReadNote(bestiaryResolved ? notePath : null);
     });
 
     return () => {
@@ -117,87 +119,41 @@ export function FantasyStatblock({
     [app, creature],
   );
 
-  const portraitToken = tokens.find((token) => token.imagePath);
-  const portraitPath = portraitToken?.imagePath;
-  const portraitRingColor = portraitToken?.ringColor;
-  const portraitShowRing = portraitToken?.showRing;
-  const portrait = useMemo((): StatblockPortrait | undefined => {
-    if (!portraitPath) return undefined;
-    const file = app.vault.getAbstractFileByPath(portraitPath);
-    if (!(file instanceof TFile)) return undefined;
-    return { src: app.vault.getResourcePath(file), ringColor: portraitRingColor, showRing: portraitShowRing };
-  }, [app, portraitPath, portraitRingColor, portraitShowRing]);
+  const portrait = useTokenPortrait(app, tokens);
 
   // One block per token, matching the vitals sync. The token portrait replaces
   // the layout's own image block, so the artwork never shows twice.
+  // Read within the limits every statblock value is read in, whatever its note holds.
   const monster = useMemo(
     () =>
       creature
-        ? {
+        ? boundedStatblock({
             ...creature,
             ...(tokens.length ? { qty: tokens.length } : {}),
             ...(portrait ? { image: undefined } : {}),
-          }
+          })
         : null,
     [creature, tokens.length, portrait],
   );
 
-  const commit = useCallback(
-    (path: Array<string | number>, value: string): void => {
-      void writeStatblockValue(app, notePath, path, value);
-    },
-    [app, notePath],
-  );
-
-  const edit = useMemo(
-    (): StatblockEditApi => ({
-      // Edits write to the note's frontmatter, so they only apply to creatures
-      // parsed from it. Fence-defined creatures live in the code block instead.
-      editable: editable && Boolean(bestiaryCreature) && isEditableNote(app, notePath),
-      commit,
-    }),
-    [editable, bestiaryCreature, app, notePath, commit],
-  );
-
-  /**
-   * Assigning a token also becomes the statblock's image: the link service
-   * writes the chosen token's art into the note's `image` frontmatter, so the
-   * pair stays in lockstep.
-   */
-  const assignToken = useCallback((): void => {
-    const file = app.vault.getAbstractFileByPath(notePath);
-    if (!(file instanceof TFile)) return;
-
-    new TokenPickerModal(app, file, (tokenPath: string) => {
-      void TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(tokenPath, notePath);
-    }).open();
-  }, [app, notePath]);
-
   // Click-to-roll dice, applied to whatever the renderer produced.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !monster) return;
-
-    return attachDiceRolling(
-      el,
-      app,
-      () => {
-        const [token] = tokensRef.current;
-        return {
-          tokenId: token?.id,
-          statblockPath: notePath,
-          tokenName: token?.name ?? (monster.name),
-          tokenImagePath: token?.imagePath,
-        };
-      },
-      (formula, abilityName) => rollHitPoints(app, formula, notePath, tokensRef.current, abilityName),
-    );
-  }, [app, monster, notePath]);
+  const [diceRef, rollMenu] = useStatblockDiceRolling({
+    app,
+    notePath,
+    tokens,
+    name: typeof monster?.name === 'string' ? monster.name : undefined,
+    viewId,
+    originContext,
+  });
+  const containerRef = useCallback((el: HTMLDivElement | null): (() => void) | undefined => {
+    ref.current = el;
+    return diceRef(el);
+  }, [diceRef]);
 
   // Mirror the tokens' resources into any vitals track the layout renders.
   useEffect(() => {
     if (ref.current && !tokenActions) {
-      syncStatblockVitals(ref.current, tokensRef.current);
+      syncStatblockVitals(ref.current, rollsRef.current.tokens);
     }
   }, [key, monster, tokenActions]);
 
@@ -206,7 +162,7 @@ export function FantasyStatblock({
   if (!api) {
     return (
       <div className="atlas-statblock-missing-hint">
-        Install and enable the Fantasy Statblocks plugin to preview statblocks.
+        {t('statblock.pluginMissing')}
       </div>
     );
   }
@@ -228,21 +184,20 @@ export function FantasyStatblock({
   }
 
   return (
-    <div ref={ref} className={`atlas-fantasy-statblock ${className ?? ''}`}>
+    <div ref={containerRef} className={`atlas-fantasy-statblock ${className ?? ''}`}>
       <StatblockRenderer
         monster={monster}
         layout={layout}
         resolveLayout={(id) => resolveLayout(app, id)}
         app={app}
         sourcePath={notePath}
-        edit={edit}
         portrait={portrait}
         replaceVitals={Boolean(tokenActions)}
         footer={tokenActions && tokens.length > 0 ? (
           <StatblockTokenResources monster={monster} layout={layout} tokens={tokens} {...tokenActions} />
         ) : undefined}
-        {...(editable ? { onAssignToken: assignToken } : {})}
       />
+      {rollMenu}
     </div>
   );
 }

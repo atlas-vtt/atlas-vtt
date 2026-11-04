@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -66,6 +67,22 @@ describe('import review', () => {
       name: undefined, restore: false,
       resolutions: new Map([['asset:cave', 'theirs'], ['asset:goblin', 'mine']]),
     });
+  });
+
+  it('names the templates that come in as copies and switches the statblocks the vault had only when asked', () => {
+    const onConfirm = vi.fn();
+    const templates = {
+      copies: [{ name: 'Marsh creature', copyName: 'Marsh creature (Fen)' }],
+      reusedNotes: [{ path: 'Bestiary/Hag.md', name: 'Hag', from: 'marsh-creature-k7m2qa', to: 'marsh-creature-c0py01' }],
+    };
+    render(<ImportReviewDialog media={media} review={review({ templates })} onConfirm={onConfirm} onCancel={vi.fn()} />);
+    expect(screen.getByText('Marsh creature → Marsh creature (Fen)')).toBeTruthy();
+    const choice = screen.getByRole('checkbox', { name: 'Switch 1 statblock you already had to the copies: Hag' });
+    expect((choice as HTMLInputElement).checked).toBe(false);
+
+    fireEvent.click(choice);
+    fireEvent.click(screen.getByRole('button', { name: 'Update' }));
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ switchReusedNotes: true }));
   });
 
   it('asks for another name when the vault already has a different collection with this one', () => {

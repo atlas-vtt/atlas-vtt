@@ -8,6 +8,7 @@ import { numberText } from '../../utils/numberInput';
 import { LightEmissionFields } from '../lighting/LightEmissionFields';
 import { EditTokenSection, SwitchRow } from './EditTokenSections';
 import { NumberOverrideField } from './NumberOverrideField';
+import { t } from '../../i18n';
 
 /** What the map and its collection say about vision and light, for the token being edited. */
 export interface TokenLightingContext {
@@ -34,7 +35,7 @@ export interface TokenLightingContext {
  */
 function sightRangePlaceholder(inherited: InheritedSenses | null | undefined, fallback: string): string {
   if (!inherited?.blindBeyond) return fallback;
-  return `${inherited.blindBeyondRange === undefined ? 'None' : numberText(inherited.blindBeyondRange)}, from statblock`;
+  return inherited.blindBeyondRange === undefined ? t('vision.noneFromStatblock') : t('vision.rangeFromStatblock', { range: numberText(inherited.blindBeyondRange) });
 }
 
 interface TokenVisionSectionProps {
@@ -47,10 +48,10 @@ interface TokenVisionSectionProps {
 export function TokenVisionSection({ vision, onChange, context }: TokenVisionSectionProps): React.ReactElement {
   const { unit, inherited } = context;
   return (
-    <EditTokenSection title="Vision">
+    <EditTokenSection title={t('vision.toggle')}>
       <SwitchRow
-        label="Vision (party member)"
-        hint="The players see the map through this token. The token itself is always visible to them."
+        label={t('vision.partyMember')}
+        hint={t('vision.partyMemberHint')}
         value={vision.enabled}
         onChange={(enabled) => onChange({ ...vision, enabled })}
       />
@@ -76,7 +77,7 @@ export function TokenVisionSection({ vision, onChange, context }: TokenVisionSec
             onChange={(next) => onChange({ ...vision, senses: next })}
             definitions={context.senses}
             unit={unit}
-            emptyText="Sees by light only."
+            emptyText={t('senses.emptyToken')}
             {...(inherited && { inheritedSenses: inherited.senses, notRecognised: inherited.notRecognised })}
           />
         </>
@@ -94,10 +95,10 @@ interface TokenLightSectionProps {
 /** The Edit Token dialog's section for the light the token carries, with the light popover's fields while it carries one. */
 export function TokenLightSection({ light, onChange, context }: TokenLightSectionProps): React.ReactElement {
   return (
-    <EditTokenSection title="Carried light">
+    <EditTokenSection title={t('vision.carriedLight')}>
       <SwitchRow
-        label="Carries a light"
-        hint="A torch or a lantern: its light moves with the token."
+        label={t('vision.carriesLight')}
+        hint={t('vision.carriesLightHint')}
         value={light.on}
         onChange={(on) => onChange({ ...light, on })}
       />

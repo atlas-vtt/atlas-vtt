@@ -11,6 +11,10 @@ export interface InMemoryApp {
   app: App;
   files: Map<string, string>;
   folders: Set<string>;
+  /** What `app.saveLocalStorage` stored: per device, never synced. */
+  localStorage: Map<string, unknown>;
+  /** Calls the vault event handlers registered for `name`, as Obsidian does when a file changes. */
+  emit(name: string, ...args: unknown[]): void;
 }
 
 const ALREADY_EXISTS = 'File already exists.';
@@ -49,20 +53,37 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   const assertFree = (path: string): void => {
     if (files.has(path) || folders.has(path)) throw new Error(ALREADY_EXISTS);
   };
+  /** A modification time per file that every write moves on, as a disk's would. */
+  const mtimes = new Map<string, number>();
+  let clock = 0;
+  const touch = (path: string): void => { mtimes.set(path, ++clock); };
+  const setFile = (path: string, content: string): void => {
+    files.set(path, content);
+    touch(path);
+  };
   const writeFile = (path: string, content: string): void => {
     addParentFolders(path);
-    files.set(path, content);
+    setFile(path, content);
+  };
+  /** A file handle with the stat Obsidian keeps: size and modification time. */
+  const fileAt = (path: string): TFile => {
+    const file = new TFile(path);
+    file.stat = { ctime: 0, mtime: mtimes.get(path) ?? 0, size: (files.get(path) ?? '').length };
+    return file;
   };
   const moveFile = async (file: TAbstractFile, newPath: string): Promise<void> => move(file.path, newPath);
 
-  for (const path of files.keys()) addParentFolders(path);
+  for (const path of files.keys()) {
+    addParentFolders(path);
+    touch(path);
+  }
   /** A folder handle whose `children` list what lies directly inside it, as Obsidian's does. */
   const folderAt = (path: string): TFolder => {
     const folder = new TFolder(path);
     const inside = (candidate: string): boolean => parentOf(candidate) === path;
     folder.children = [
-      ...[...folders].filter(inside).map((child) => new TFolder(child)),
-      ...[...files.keys()].filter(inside).map((child) => new TFile(child)),
+      ...[...folders].filter(inside).map(folderAt),
+      ...[...files.keys()].filter(inside).map(fileAt),
     ];
     return folder;
   };
@@ -78,7 +99,9 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     const moved = (path: string): string => to + path.slice(from.length);
     const within = (path: string): boolean => path === from || path.startsWith(`${from}/`);
     for (const path of [...files.keys()].filter(within)) {
-      writeFile(moved(path), files.get(path) ?? '');
+      addParentFolders(moved(path));
+      files.set(moved(path), files.get(path) ?? '');
+      mtimes.set(moved(path), mtimes.get(path) ?? ++clock);
       files.delete(path);
     }
     for (const path of [...folders].filter(within)) {
@@ -89,6 +112,16 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   };
 
   const app = new App();
+  const localStorage = new Map<string, unknown>();
+  Object.assign(app, {
+    loadLocalStorage: vi.fn((key: string) => localStorage.get(key) ?? null),
+    // As Obsidian does: any falsy value (`false`, `0`, `''`, null) clears the key instead of storing it
+    saveLocalStorage: vi.fn((key: string, value: unknown) => {
+      if (!value) localStorage.delete(key);
+      else localStorage.set(key, value);
+    }),
+  });
+  const handlers = new Set<{ name: string; callback: (...args: unknown[]) => void }>();
 
   app.vault = {
     adapter: {
@@ -109,7 +142,11 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
       })),
       rename: vi.fn(async (from: string, to: string) => move(from, to)),
       copy: vi.fn(async (from: string, to: string) => writeFile(to, files.get(from) ?? '')),
-      rmdir: vi.fn(async (path: string) => { folders.delete(path); }),
+      // As Obsidian's desktop adapter: `fs.rm`, which refuses any folder unless recursive.
+      rmdir: vi.fn(async (path: string, recursive: boolean) => {
+        if (!recursive) throw new Error(`EISDIR: rm refuses a folder without recursive: ${path}`);
+        removeWithin(path);
+      }),
       trashSystem: vi.fn(async (path: string) => { removeWithin(path); return true; }),
       trashLocal: vi.fn(async (path: string) => removeWithin(path)),
       getResourcePath: vi.fn((path: string) => `app://local/${path}`),
@@ -118,17 +155,26 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
         return folders.has(path) ? { type: 'folder', size: 0, ctime: 0, mtime: 0 } : null;
       }),
     },
-    on: vi.fn(() => ({})),
-    offref: vi.fn(),
-    getFiles: vi.fn(() => Array.from(files.keys()).filter((path) => !isHiddenPath(path)).map((path) => new TFile(path))),
+    on: vi.fn((name: string, callback: (...args: unknown[]) => void) => {
+      const ref = { name, callback };
+      handlers.add(ref);
+      return ref;
+    }),
+    offref: vi.fn((ref: { name: string; callback: (...args: unknown[]) => void }) => { handlers.delete(ref); }),
+    getFiles: vi.fn(() => Array.from(files.keys()).filter((path) => !isHiddenPath(path)).map(fileAt)),
+    getMarkdownFiles: vi.fn(() => Array.from(files.keys()).filter((path) => path.endsWith('.md') && !isHiddenPath(path)).map(fileAt)),
     getAbstractFileByPath: vi.fn((path: string): TAbstractFile | null => {
       if (isHiddenPath(path)) return null;
-      if (files.has(path)) return new TFile(path);
+      if (files.has(path)) return fileAt(path);
       if (folders.has(path)) return folderAt(path);
       return null;
     }),
-    getFileByPath: vi.fn((path: string): TFile | null => (files.has(path) && !isHiddenPath(path) ? new TFile(path) : null)),
+    getFileByPath: vi.fn((path: string): TFile | null => (files.has(path) && !isHiddenPath(path) ? fileAt(path) : null)),
     getFolderByPath: vi.fn((path: string): TFolder | null => (folders.has(path) && !isHiddenPath(path) ? folderAt(path) : null)),
+    getAllFolders: vi.fn((includeRoot = false): TFolder[] => [
+      ...(includeRoot ? [new TFolder('/')] : []),
+      ...[...folders].filter((path) => !isHiddenPath(path)).map(folderAt),
+    ]),
     rename: vi.fn(moveFile),
     createFolder: vi.fn(async (path: string) => {
       assertFree(path);
@@ -137,9 +183,12 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     create: vi.fn(async (path: string, content: string) => {
       assertFree(path);
       writeFile(path, content);
+      return fileAt(path);
     }),
     process: vi.fn(async (file: TFile, fn: (data: string) => string) => {
-      files.set(file.path, fn(files.get(file.path) ?? ''));
+      const content = fn(files.get(file.path) ?? '');
+      setFile(file.path, content);
+      return content;
     }),
     read: vi.fn(async (file: TFile) => files.get(file.path) ?? ''),
     cachedRead: vi.fn(async (file: TFile) => files.get(file.path) ?? ''),
@@ -148,10 +197,10 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     createBinary: vi.fn(async (path: string, content: ArrayBuffer) => {
       assertFree(path);
       writeFile(path, new TextDecoder().decode(content));
-      return new TFile(path);
+      return fileAt(path);
     }),
     modifyBinary: vi.fn(async (file: TFile, content: ArrayBuffer) => {
-      files.set(file.path, new TextDecoder().decode(content));
+      setFile(file.path, new TextDecoder().decode(content));
     }),
   };
 
@@ -164,7 +213,7 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
       fn(frontmatter);
       const body = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
       const yaml = Object.entries(frontmatter).map(([key, value]) => `${key}: ${String(value)}`).join('\n');
-      files.set(file.path, `---\n${yaml}\n---\n${body}`);
+      setFile(file.path, `---\n${yaml}\n---\n${body}`);
     }),
   };
 
@@ -172,6 +221,7 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     layoutReady: true,
     onLayoutReady: vi.fn((callback: () => void) => callback()),
     getLeavesOfType: vi.fn(() => []),
+    iterateAllLeaves: vi.fn(),
     on: vi.fn(() => ({})),
     offref: vi.fn(),
     trigger: vi.fn(),
@@ -204,7 +254,10 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     },
   };
 
-  return { app, files, folders };
+  const emit = (name: string, ...args: unknown[]): void => {
+    for (const handler of [...handlers]) if (handler.name === name) handler.callback(...args);
+  };
+  return { app, files, folders, localStorage, emit };
 }
 
 type VaultWrite = (path: string, content: unknown) => Promise<unknown>;

@@ -16,6 +16,8 @@ $portrait-size: 72px;
 
 .atlas-statblock {
   @include atlas-elevated-surface;
+  // A card that sits in its pane or feed barely lifts; the floating preview keeps the elevated shadow.
+  box-shadow: $shadow-sm;
   overflow: hidden;
   color: var(--text-normal);
   font-family: var(--font-interface);
@@ -267,11 +269,17 @@ $portrait-size: 72px;
   // Comfortably above the 40px minimum hit area.
   min-width: 96px;
   min-height: 96px;
-  border: $border-width-s dashed var(--background-modifier-border);
+  border: $border-width-s solid transparent;
   border-radius: $radius-l;
+  background: var(--background-modifier-hover);
   color: var(--text-muted);
   font-size: $font-ui-smaller;
   line-height: var(--line-height-normal);
+  transition: background-color $transition-fast $transition-ease;
+
+  .atlas-sb-image-button:hover & {
+    background: var(--background-modifier-active-hover);
+  }
 }
 
 // Shown in place of a statblock when the plugin or creature is unavailable.

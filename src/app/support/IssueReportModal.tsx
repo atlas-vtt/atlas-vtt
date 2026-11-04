@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { Modal, Notice, Setting, type App } from 'obsidian';
+import { Modal, Setting, type App } from 'obsidian';
 import { Select, type SelectOption } from '../packages/components/primitives/Select';
 import { runInBackground } from '../utils/backgroundTask';
 import { formatDiagnostics, type IssueDiagnostics } from './diagnostics';
@@ -8,6 +8,8 @@ import { formatErrors, type LoggedError } from './errorLog';
 import { ISSUE_AREAS, ISSUE_TYPES, type IssueArea, type IssueType } from './issueCategories';
 import { formatReportMarkdown, issueForm, type IssueForm, type IssueReport } from './issueReport';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
+import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 export interface IssueReportPreset {
   type?: IssueType;
@@ -57,11 +59,11 @@ export class IssueReportModal extends Modal {
   }
 
   onOpen(): void {
-    this.setTitle(this.form.title);
+    this.setTitle(this.wording.title);
     this.modalEl.addClass(...ATLAS_NATIVE_MODAL_CLASSES, 'atlas-issue-report-modal');
     this.contentEl.createEl('p', {
       cls: 'atlas-issue-report-intro',
-      text: 'Submit your report directly from Atlas. Your report and included diagnostics will be posted publicly on GitHub. No GitHub account is needed.',
+      text: t('issue.intro'),
     });
     this.renderChoices();
     this.renderText();
@@ -85,10 +87,20 @@ export class IssueReportModal extends Modal {
     return issueForm(this.type);
   }
 
+  /** The form's wording in Atlas' language; the report itself keeps the English headings of the GitHub forms. */
+  private get wording(): { title: string; description: { label: string; hint: string }; steps: { label: string; hint: string } } {
+    const kind = this.type === 'feature' ? 'feature' : 'bug';
+    return {
+      title: t(`issue.${kind}.title`),
+      description: { label: t(`issue.${kind}.descriptionLabel`), hint: t(`issue.${kind}.descriptionHint`) },
+      steps: { label: t(`issue.${kind}.stepsLabel`), hint: t(`issue.${kind}.stepsHint`) },
+    };
+  }
+
   private renderChoices(): void {
     const choices = this.contentEl.createDiv({ cls: 'atlas-issue-report-choices' });
-    this.typeRoot = createRoot(this.choiceField(choices, 'Issue type', TYPE_LABEL_ID));
-    this.areaRoot = createRoot(this.choiceField(choices, 'Area', AREA_LABEL_ID));
+    this.typeRoot = createRoot(this.choiceField(choices, t('issue.typeLabel'), TYPE_LABEL_ID));
+    this.areaRoot = createRoot(this.choiceField(choices, t('issue.areaLabel'), AREA_LABEL_ID));
     this.renderSelects();
   }
 
@@ -101,21 +113,21 @@ export class IssueReportModal extends Modal {
 
   /** Both selects are controlled from the modal's state, so every change re-renders them. */
   private renderSelects(): void {
-    this.typeRoot?.render(<Select labelledBy={TYPE_LABEL_ID} value={this.type} options={selectOptions(ISSUE_TYPES)} onChange={value => {
+    this.typeRoot?.render(<Select labelledBy={TYPE_LABEL_ID} value={this.type} options={selectOptions(ISSUE_TYPES).map(option => ({ ...option, label: t(`issue.type.${option.value}`) }))} onChange={value => {
       this.type = value;
       this.applyWording();
       this.renderSelects();
     }} />);
-    this.areaRoot?.render(<Select labelledBy={AREA_LABEL_ID} value={this.area} options={selectOptions(ISSUE_AREAS)} onChange={value => {
+    this.areaRoot?.render(<Select labelledBy={AREA_LABEL_ID} value={this.area} options={selectOptions(ISSUE_AREAS).map(option => ({ ...option, label: t(`issue.area.${option.value}`) }))} onChange={value => {
       this.area = value;
       this.renderSelects();
     }} />);
   }
 
   private renderText(): void {
-    const { description, steps } = this.form.wording;
-    new Setting(this.contentEl).setName('Title').setClass('atlas-issue-report-field').addText(text => {
-      text.setPlaceholder('One line that summarises the problem').onChange(value => { this.title = value; });
+    const { description, steps } = this.wording;
+    new Setting(this.contentEl).setName(t('issue.titleLabel')).setClass('atlas-issue-report-field').addText(text => {
+      text.setPlaceholder(t('issue.titlePlaceholder')).onChange(value => { this.title = value; });
       text.inputEl.setAttribute('maxlength', '120');
     });
     this.descriptionSetting = new Setting(this.contentEl).setName(description.label).setDesc(description.hint)
@@ -132,22 +144,22 @@ export class IssueReportModal extends Modal {
 
   private renderIncludes(): void {
     new Setting(this.contentEl)
-      .setName('Include enabled community plugins')
-      .setDesc('Plugin names and versions only. Helps with conflicts and compatibility reports.')
+      .setName(t('issue.plugins'))
+      .setDesc(t('issue.pluginsDesc'))
       .addToggle(toggle => toggle.setValue(this.includePlugins).onChange(value => {
         this.includePlugins = value;
         this.renderEnvironmentText();
       }));
     const count = this.options.errors.length;
     new Setting(this.contentEl)
-      .setName('Include recent Atlas errors')
-      .setDesc(count ? `${count} error message${count === 1 ? '' : 's'} from this session, without file paths or note content.` : 'No Atlas errors were recorded in this session.')
+      .setName(t('issue.errors'))
+      .setDesc(count ? t('issue.errorsDesc', { count }) : t('issue.noErrors'))
       .addToggle(toggle => toggle.setValue(this.includeErrors).setDisabled(count === 0).onChange(value => { this.includeErrors = value; }));
   }
 
   private renderEnvironment(): void {
     const details = this.contentEl.createEl('details', { cls: 'atlas-issue-report-environment' });
-    details.createEl('summary', { text: 'Environment details that will be included' });
+    details.createEl('summary', { text: t('issue.environment') });
     this.environmentEl = details.createEl('pre');
     this.renderEnvironmentText();
   }
@@ -162,17 +174,17 @@ export class IssueReportModal extends Modal {
     this.statusEl.setAttribute('role', 'alert');
     const actions = this.contentEl.createDiv({ cls: 'atlas-issue-report-actions' });
     new Setting(actions)
-      .addButton(button => button.setButtonText('Copy report')
-        .onClick(() => runInBackground(this.copyReport(), 'Copying the issue report', 'Could not access the clipboard.')))
+      .addButton(button => button.setButtonText(t('issue.copy'))
+        .onClick(() => runInBackground(this.copyReport(), 'Copying the issue report', t('issue.clipboardFailed'))))
       .addButton(button => {
         this.submitButton = button.buttonEl;
-        button.setButtonText('Submit report').setCta()
+        button.setButtonText(t('issue.submit')).setCta()
           .onClick(() => { void this.submit(); });
       });
   }
 
   private applyWording(): void {
-    const { title, wording } = this.form;
+    const { title, ...wording } = this.wording;
     this.setTitle(title);
     this.descriptionSetting?.setName(wording.description.label).setDesc(wording.description.hint);
     this.stepsSetting?.setName(wording.steps.label).setDesc(wording.steps.hint);
@@ -184,7 +196,7 @@ export class IssueReportModal extends Modal {
 
   private validate(): IssueReport | null {
     if (!this.title.trim() || !this.description.trim()) {
-      new Notice('Add a title and a description first.');
+      showNotice(t('issue.missing'));
       return null;
     }
     return {
@@ -202,7 +214,7 @@ export class IssueReportModal extends Modal {
     const report = this.validate();
     if (!report) return;
     await this.options.copyText(formatReportMarkdown(report));
-    new Notice('Report copied. Paste it into a new issue on GitHub.');
+    showNotice(t('issue.copied'));
   }
 
   private async submit(): Promise<void> {
@@ -220,26 +232,26 @@ export class IssueReportModal extends Modal {
     this.statusEl?.setText('');
     if (this.submitButton) {
       this.submitButton.disabled = true;
-      this.submitButton.textContent = 'Submitting…';
+      this.submitButton.textContent = t('issue.submitting');
     }
     try {
       const receipt = await this.options.submitReport(report, this.submission.id);
       this.clearContent();
-      this.setTitle('Report submitted');
-      this.contentEl.createEl('p', { text: `Report submitted as #${receipt.number}. Thank you for helping improve Atlas.` });
+      this.setTitle(t('issue.submitted'));
+      this.contentEl.createEl('p', { text: t('issue.submittedAs', { number: String(receipt.number) }) });
       new Setting(this.contentEl)
-        .addButton(button => button.setButtonText('View issue')
+        .addButton(button => button.setButtonText(t('issue.view'))
           .onClick(() => this.options.openExternal(receipt.url)))
-        .addButton(button => button.setButtonText('Close').setCta().onClick(() => this.close()));
+        .addButton(button => button.setButtonText(t('common.close')).setCta().onClick(() => this.close()));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not send your report.';
-      this.statusEl?.setText(`${message} Your report is still here. Try again or copy it to save it.`);
+      const message = error instanceof Error ? error.message : t('issue.sendFailed');
+      this.statusEl?.setText(t('issue.stillHere', { message }));
     } finally {
       this.submitting = false;
       controls.forEach((control, index) => { control.disabled = disabled[index]!; });
       if (this.submitButton) {
         this.submitButton.disabled = false;
-        this.submitButton.textContent = 'Submit report';
+        this.submitButton.textContent = t('issue.submit');
       }
     }
   }

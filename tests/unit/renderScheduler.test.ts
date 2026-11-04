@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { RenderScheduler, hasPendingChanges, rendersOnChange, requestRender, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
+import { BEFORE_RENDER_ORDER, RenderScheduler, addBeforeRender, hasPendingChanges, rendersOnChange, requestRender, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
 import { fakeApp, fakeGroup, type GroupState } from '../mocks/schedulerApp';
 
 describe('hasPendingChanges', () => {
@@ -46,6 +46,38 @@ describe('RenderScheduler', () => {
     ticker.update(32);
     ticker.update(48);
 
+    expect(render).toHaveBeenCalledTimes(1);
+    scheduler.destroy();
+  });
+
+  it('renders at once on renderNow, after the before-render hook, and not again on the next tick', () => {
+    const { app, render, ticker } = fakeApp(fakeGroup());
+    const scheduler = new RenderScheduler(app);
+    ticker.update(16);
+    vi.mocked(render).mockClear();
+    const hook = vi.fn();
+    setBeforeRender(app, hook);
+    ticker.started = true;
+
+    scheduler.renderNow();
+    expect(hook).toHaveBeenCalledTimes(1);
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(hook.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(render).mock.invocationCallOrder[0]!);
+
+    ticker.update(32);
+    expect(render).toHaveBeenCalledTimes(1);
+    scheduler.destroy();
+  });
+
+  it('leaves renderNow to the next tick while the ticker is stopped', () => {
+    const { app, render, ticker } = fakeApp(fakeGroup());
+    const scheduler = new RenderScheduler(app);
+    ticker.update(16);
+    vi.mocked(render).mockClear();
+
+    scheduler.renderNow();
+    expect(render).not.toHaveBeenCalled();
+    ticker.update(32);
     expect(render).toHaveBeenCalledTimes(1);
     scheduler.destroy();
   });
@@ -122,6 +154,26 @@ describe('before-render hook', () => {
     ticker.update(32);
 
     expect(render).toHaveBeenCalledTimes(2);
+    expect(error).toHaveBeenCalledTimes(1);
+    error.mockRestore();
+    scheduler.destroy();
+  });
+
+  it('runs ordered hooks after the player frame\'s, by their order, and keeps on after one that throws', () => {
+    const events: string[] = [];
+    const { app, ticker } = fakeApp(fakeGroup(), () => events.push('render'));
+    const scheduler = new RenderScheduler(app);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const removeBelow = addBeforeRender(app, () => events.push('levels below'), BEFORE_RENDER_ORDER.levelsBelow);
+    addBeforeRender(app, () => { throw new Error('broken'); }, BEFORE_RENDER_ORDER.levelsBelow);
+    setBeforeRender(app, () => events.push('player frame'));
+
+    ticker.update(16);
+    removeBelow();
+    requestRender(app);
+    ticker.update(32);
+
+    expect(events).toEqual(['player frame', 'levels below', 'render', 'player frame', 'render']);
     expect(error).toHaveBeenCalledTimes(1);
     error.mockRestore();
     scheduler.destroy();

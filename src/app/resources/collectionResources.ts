@@ -1,4 +1,5 @@
 import { BUILT_IN_SYSTEM_PRESETS } from '../gameSystems/builtInPresets';
+import { rulesForMap, type RulesLookup } from '../gameSystems/mapRules';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import type { SystemPreset } from '../types/systemPresetTypes';
 import { HP_RESOURCE, withLegacyBars } from './resourceDefinitions';
@@ -31,23 +32,14 @@ export function legacyCollectionResources(
   return withLegacyBars(resources, settings.defaultWidgets, usedInScenes);
 }
 
-/** The part of the asset service that tells a map's collection and its settings. */
-export interface CollectionLookup {
-  getCollectionForMap(mapPath: string): string | null;
-  getCollectionSettings(collectionId: string): CollectionSettings;
-}
-
-/** How `AssetService.getCollectionForMap` recognises a map that lies in a collection's folder. */
-const COLLECTION_FOLDER = /collections\/[^/]+\//;
-
 /**
- * The resources tokens on a map track: its collection's. A map outside every collection
- * keeps the two bars every map had, each shown by the map's own switch. A map in a
- * collection the index does not know (yet) tracks HP.
+ * The resources tokens on a map track: those of its rules (the played campaign's system, else its
+ * collection's). A map outside every collection keeps the two bars every map had, each shown by the
+ * map's own switch. A map in a collection the index does not know (yet) tracks HP.
  */
-export function mapResources(assets: CollectionLookup, mapPath: string | null | undefined): ResourceDefinition[] {
-  const collectionId = mapPath ? assets.getCollectionForMap(mapPath) : null;
-  if (collectionId) return collectionResources(assets.getCollectionSettings(collectionId));
-  const outsideCollections = !mapPath || !COLLECTION_FOLDER.test(mapPath);
+export function mapResources(lookup: RulesLookup, mapPath: string | null | undefined): ResourceDefinition[] {
+  const { source, settings } = rulesForMap(lookup, mapPath);
+  if (settings) return collectionResources(settings);
+  const outsideCollections = source.kind === 'none' && source.outsideCollections;
   return outsideCollections ? withLegacyBars([{ ...HP_RESOURCE }], undefined, true) : [{ ...HP_RESOURCE }];
 }

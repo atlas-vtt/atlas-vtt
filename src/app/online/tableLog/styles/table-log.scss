@@ -1,0 +1,68 @@
+// The table's log: the panel, its rows, their tools, rolls and the message field, on Atlas's tokens
+// and mixins.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+@use 'log-panel';
+@use 'log-tab';
+@use 'log-rows';
+@use 'log-chips';
+@use 'log-tools';
+@use 'log-roll';
+@use 'log-speech';
+@use 'log-shown';
+@use 'log-thread';
+@use 'log-composer';
+@use 'log-composer-tools';
+
+// For screen readers only; also used by the unread tab, outside the panel.
+.atlas-online-log__sr {
+  @include atlas-visually-hidden;
+}
+
+@keyframes atlas-online-log-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+// The unread tab comes in from the scene tabs above it.
+@keyframes atlas-online-log-tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(-#{$spacing-s});
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+// The tools fade in where they stand: nothing about a row rises or grows.
+@keyframes atlas-online-log-tools-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-online-log,
+  .atlas-online-log *,
+  .atlas-online-log-tab,
+  .atlas-online-log-tab * {
+    animation: none !important;
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+  }
+}

@@ -1,0 +1,245 @@
+// How a message is said: a token speaking in character, an emote, a whisper, the rolls written into
+// a text, and the line a private roll leaves for those not shown it.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+$log-whisper-tint: color-mix(in oklch, var(--interactive-accent) 7%, transparent);
+$log-whisper-edge: color-mix(in oklch, var(--interactive-accent) 45%, transparent);
+
+.atlas-online-log {
+  // ── A token speaking ────────────────────────────────────────────────────────
+  .atlas-online-log__portrait {
+    flex: none;
+  }
+
+  .atlas-online-log__portrait--row {
+    width: $log-disc;
+    height: $log-disc;
+  }
+
+  .atlas-online-log__portrait--roll {
+    width: $log-roll-disc;
+    height: $log-roll-disc;
+  }
+
+  .atlas-online-log__portrait--chip,
+  .atlas-online-log__disc--chip {
+    width: $log-chip-face;
+    height: $log-chip-face;
+  }
+
+  .atlas-online-log__disc--chip {
+    font-size: 11px;
+  }
+
+  // The token's name in the heading face the Atlas theme gives what a roll is for; the author small after it.
+  .atlas-online-log__speaker {
+    min-width: 0;
+    color: var(--text-normal);
+    font-family: var(--atlas-theme-heading-font, inherit);
+    font-size: calc(#{$font-ui-small} * 1.1);
+    font-weight: $font-weight-semibold;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__author {
+    flex: none;
+    max-width: 40%;
+    color: color-mix(in oklch, var(--atlas-online-log-tone) 75%, var(--text-normal));
+    font-size: 11px;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__emote {
+    color: var(--text-normal);
+    font-style: italic;
+  }
+
+  .atlas-online-log__emote-name {
+    color: color-mix(in oklch, var(--atlas-online-log-tone, var(--text-normal)) 75%, var(--text-normal));
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-online-log__row--emote .atlas-online-log__time {
+    font-style: normal;
+  }
+
+  // ── A whisper: tinted, framed in dashes, and saying whom it is for ─────────
+  .atlas-online-log__row--whisper {
+    --atlas-online-log-row-top: #{$spacing-xs};
+    padding-bottom: $spacing-xs;
+    background: $log-whisper-tint;
+    outline: $border-width-s dashed $log-whisper-edge;
+    outline-offset: calc(-1 * #{$border-width-s});
+
+    &.is-active {
+      background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    }
+
+    &.is-highlighted {
+      background: $log-accent-wash;
+    }
+
+    // Each whisper keeps its own frame: continued ones stand a little apart.
+    &.atlas-online-log__row--continued {
+      margin-top: $spacing-xs;
+    }
+  }
+
+  .atlas-online-log__whisper-line {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    min-width: 0;
+    margin-bottom: $spacing-xs;
+    color: color-mix(in oklch, var(--interactive-accent) 70%, var(--text-muted));
+    font-size: 11px;
+    font-weight: $font-weight-medium;
+    line-height: var(--line-height-tight);
+
+    svg {
+      flex: none;
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  // ── Rolls in a text ─────────────────────────────────────────────────────────
+  .atlas-online-log__inline-roll {
+    @include log-button;
+    display: inline-flex;
+    align-items: center;
+    min-width: 24px;
+    height: 1.35em;
+    margin: 0 1px;
+    padding: 0 $spacing-xs;
+    border: $border-width-s solid $log-hairline;
+    border-radius: $radius-s;
+    color: var(--text-normal);
+    font-family: var(--font-monospace);
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    vertical-align: baseline;
+    justify-content: center;
+    transition: background-color $transition-fast $transition-ease;
+    @include log-button-states(var(--background-secondary));
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+      }
+    }
+
+    &[aria-expanded='true'] {
+      border-color: var(--interactive-accent);
+    }
+  }
+
+  .atlas-online-log__inline-roll--crit-success {
+    border-color: color-mix(in oklch, var(--color-green) 50%, transparent);
+    color: var(--color-green);
+  }
+
+  .atlas-online-log__inline-roll--crit-fail {
+    border-color: color-mix(in oklch, var(--color-red) 50%, transparent);
+    color: var(--color-red);
+  }
+
+  .atlas-online-log__text + .atlas-online-log__roll-dice {
+    margin-top: $spacing-xs;
+  }
+
+  .atlas-online-log__roll-button {
+    @include log-button;
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    max-width: 100%;
+    margin: 1px 0;
+    padding: 2px $spacing-s;
+    border: $border-width-s solid color-mix(in oklch, var(--interactive-accent) 40%, transparent);
+    border-radius: $radius-m;
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    font-style: normal;
+    font-weight: $font-weight-semibold;
+    line-height: var(--line-height-tight);
+    vertical-align: baseline;
+    transition: background-color $transition-fast $transition-ease;
+    @include log-button-states($log-accent-wash);
+
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        background: color-mix(in oklch, var(--interactive-accent) 26%, transparent);
+      }
+    }
+
+    &:active:not(:disabled) {
+      background: color-mix(in oklch, var(--interactive-accent) 34%, transparent);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.55;
+    }
+
+    svg {
+      flex: none;
+      width: $icon-xs;
+      height: $icon-xs;
+      color: var(--interactive-accent);
+    }
+
+    #{$log-coarse} & {
+      @include log-wide-target;
+    }
+  }
+
+  .atlas-online-log__roll-button-label {
+    min-width: 0;
+    @include atlas-truncate;
+  }
+
+  // Who sees a private roll, on the roll and on a roll button.
+  .atlas-online-log__mode-badge {
+    flex: none;
+    padding: 0 $spacing-xs;
+    border-radius: $radius-full;
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: $font-weight-semibold;
+    letter-spacing: 0.04em;
+    line-height: 16px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  // ── A private roll the viewer is not shown ─────────────────────────────────
+  .atlas-online-log__secret {
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-xs;
+    margin-top: $spacing-s;
+    padding: 0 $spacing-s;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    line-height: var(--line-height-tight);
+
+    svg {
+      flex: none;
+      align-self: center;
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  .atlas-online-log__secret-text {
+    flex: 1;
+    min-width: 0;
+    font-style: italic;
+    overflow-wrap: anywhere;
+  }
+}

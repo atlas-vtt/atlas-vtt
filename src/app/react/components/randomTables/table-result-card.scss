@@ -1,0 +1,142 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Table result card — one rolled result of a Text table, in the loot card's frame
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss, after
+// loot-card.scss: the card takes `.atlas-loot-card`'s frame, corner and head.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The number the table's die rolled, the row it chose.
+.atlas-table-card__roll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: $button-height-s;
+  height: $button-height-s;
+  padding: 0 $spacing-xs;
+  border-radius: $radius-s;
+  @include atlas-corner-shape;
+  background: color-mix(in oklch, var(--interactive-accent) 16%, transparent);
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+}
+
+.atlas-table-card__text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  // Centred on the roll chip and the copy button while it is one line.
+  padding-top: 3px;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+// A number dice in the text rolled: their formula on hover.
+.atlas-table-card__rolled {
+  font-weight: $font-weight-semibold;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: help;
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+}
+
+.atlas-table-card__fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: $spacing-xs $spacing-m;
+  margin: 0;
+  font-size: $font-ui-smaller;
+  line-height: 1.4;
+}
+
+.atlas-table-card__field {
+  display: contents;
+
+  dt {
+    @include atlas-flex-row($spacing-xs);
+    color: var(--text-faint);
+    font-weight: $font-weight-medium;
+  }
+
+  dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &.is-hidden dd {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+}
+
+.atlas-table-card__only-you {
+  display: inline-flex;
+  color: var(--text-faint);
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+}
+
+// ── Generators ─────────────────────────────────────────────────────────────
+// A generator's parts take a third column: the part's lock and its own reroll.
+.atlas-table-card__fields--parts {
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.atlas-table-card__part-controls {
+  @include atlas-flex-row(2px);
+}
+
+.atlas-table-card__part-action.btn--icon {
+  width: $button-height-s;
+  height: $button-height-s;
+  margin: 0;
+  color: var(--text-faint);
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover {
+    color: var(--text-normal);
+  }
+
+  &.is-locked {
+    color: var(--interactive-accent);
+    background: color-mix(in oklch, var(--interactive-accent) 16%, transparent);
+  }
+}
+
+.atlas-table-card__reroll.atlas-loot-text-button {
+  @include atlas-flex-row($spacing-xs);
+  flex-shrink: 0;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}

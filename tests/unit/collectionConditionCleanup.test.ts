@@ -5,12 +5,12 @@ import {
   dropUnknownConditionsFromJson,
   removeUndefinedConditions,
 } from '../../src/app/services/collectionConditionCleanup';
-import { snapshotFolderFor } from '../../src/app/snapshots/snapshotPaths';
+import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 const SCENE = 'atlas-vtt/collections/heist/scenes/Vault.atlasmap';
 const OTHER_COLLECTION_SCENE = 'atlas-vtt/collections/other/scenes/Inn.atlasmap';
-const SNAPSHOT = `${snapshotFolderFor(SCENE)}/s1.json`;
+const SNAPSHOT = `${sceneSnapshotFolder('heist', 'scene-vault')}/s1.json`;
 
 const envelope = (conditions: Record<string, string[] | undefined>): Record<string, unknown> => ({
   version: 4,

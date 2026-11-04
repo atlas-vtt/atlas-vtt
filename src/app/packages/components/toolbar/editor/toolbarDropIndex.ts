@@ -26,18 +26,26 @@ function within(box: ClientBox, x: number, y: number): boolean {
   return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
 }
 
+/** How far the bar's zone reaches past each side of the bar, besides `ZONE_MARGIN`. */
+export interface BarGrowth {
+  left: number
+  right: number
+}
+
 /**
  * The zone under the pointer. Each zone reaches `ZONE_MARGIN` beyond its
  * sides, the tray also above itself and the bar below itself (towards the
  * window's edge), and the gap between the tray and the bar is split at its
- * midline. `barGrowth` widens the bar's zone on both sides: a tool dragged
- * from the tray makes the bar wider by its own width and a gap.
+ * midline. `barGrowth` widens the bar's zone: a number on both sides (a tool
+ * dragged from the tray makes the bar wider by its own width and a gap), or
+ * each side by its own (the undo/redo bar's place left of the bar).
  */
-export function zoneAt(zones: FrozenZones, x: number, y: number, barGrowth = 0): ToolbarZone | null {
+export function zoneAt(zones: FrozenZones, x: number, y: number, barGrowth: number | BarGrowth = 0): ToolbarZone | null {
   const { bar, tray } = zones
   const midline = tray ? (tray.bottom + bar.top) / 2 : bar.top - ZONE_MARGIN
-  const barSide = ZONE_MARGIN + barGrowth
-  if (within({ left: bar.left - barSide, right: bar.right + barSide, top: midline, bottom: bar.bottom + ZONE_MARGIN }, x, y)) return 'bar'
+  const growth = typeof barGrowth === 'number' ? { left: barGrowth, right: barGrowth } : barGrowth
+  const barZone = { left: bar.left - ZONE_MARGIN - growth.left, right: bar.right + ZONE_MARGIN + growth.right, top: midline, bottom: bar.bottom + ZONE_MARGIN }
+  if (within(barZone, x, y)) return 'bar'
   if (tray && within({ left: tray.left - ZONE_MARGIN, right: tray.right + ZONE_MARGIN, top: tray.top - ZONE_MARGIN, bottom: midline }, x, y)) return 'tray'
   return null
 }

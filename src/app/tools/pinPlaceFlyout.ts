@@ -1,5 +1,6 @@
 import { PIN_PLACE_GROUPS, getPinIconDefinition, type PinIconId } from '../types/pinIcons';
 import { setPinGlyph, setPinTone } from './pinIconDom';
+import { t } from '../i18n';
 
 /** Hover must rest this long before the flyout opens, so sweeping along the palette never flashes it. */
 const OPEN_DELAY_MS = 150;
@@ -40,7 +41,7 @@ export function createPinPlaceFlyout(container: HTMLElement, options: PinPlaceFl
   let openTimer: number | null = null;
   let closeTimer: number | null = null;
 
-  const flyout = container.createDiv({ cls: 'pin-place-flyout', attr: { role: 'group', 'aria-label': 'Places' } });
+  const flyout = container.createDiv({ cls: 'pin-place-flyout', attr: { role: 'group', 'aria-label': t('pin.places') } });
   const caption = flyout.createDiv({ cls: 'pin-place-caption', attr: { 'aria-hidden': 'true' } });
   const captionGlyph = caption.createSpan({ cls: 'pin-place-caption-glyph' });
   const captionName = caption.createSpan({ cls: 'pin-place-caption-name' });
@@ -48,10 +49,10 @@ export function createPinPlaceFlyout(container: HTMLElement, options: PinPlaceFl
   const buttons: HTMLButtonElement[] = [];
   // Rows as laid out on screen: a group's last row may be short, so up and down cannot step by COLUMNS
   const rows: HTMLButtonElement[][] = [];
-  for (const group of PIN_PLACE_GROUPS) {
+  for (const [groupIndex, group] of PIN_PLACE_GROUPS.entries()) {
     const section = flyout.createDiv({ cls: 'pin-place-group' });
     const heading = section.createDiv({ cls: 'pin-place-group-name', text: group.name });
-    heading.id = `atlas-pin-places-${group.name.toLowerCase()}`;
+    heading.id = `atlas-pin-places-${groupIndex}`;
     const grid = section.createDiv({ cls: 'pin-place-grid', attr: { role: 'radiogroup', 'aria-labelledby': heading.id } });
 
     for (const place of group.places) {

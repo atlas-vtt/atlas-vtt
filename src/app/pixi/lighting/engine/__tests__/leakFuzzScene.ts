@@ -8,7 +8,7 @@ import type { SeenSpot } from '../../../../vision/perception';
 import type { SenseSource, Sight } from '../../../../vision/sight';
 import { sightWedges } from '../../../../vision/sightWedges';
 import { blocksFrom, type MapBounds } from '../../../../vision/visibility';
-import { SceneSpots, type SceneModel } from '../../sceneModel';
+import { SceneSpots, type SceneModel } from '../../../../vision/sceneModel';
 import type { LightingEngine } from '../LightingEngine';
 import { readRgba } from './gpuTestUtils';
 import { distToOutline, insidePolygon, type FuzzRoom, type P } from './fuzzRooms';
@@ -124,6 +124,9 @@ export interface Report {
   beamRooms: number;
   beamInside: number;
   beamLeaks: number;
+  /** The pixels inside the room the same lights lit as moving lights (`EngineLight.moving`: coarse, quick tiles), and the lit ones past its walls. */
+  movingInside: number;
+  movingLeaks: number;
 }
 
 /** A white map under the lighting layer, seen through a camera at `scale` offset by (x, y). */

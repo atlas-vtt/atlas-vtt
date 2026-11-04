@@ -30,4 +30,9 @@ describe('seeded throws', () => {
   it('throw different rolls differently', () => {
     expect(throwAt('roll_1', 50).track).not.toEqual(throwAt('roll_2', 50).track);
   });
+
+  it('draw the numbers they drew before for the same roll', () => {
+    const rng = throwRandom('roll', 0);
+    expect([rng(), rng(), rng()]).toEqual([0.23346852883696556, 0.4390303229447454, 0.1843675752170384]);
+  });
 });

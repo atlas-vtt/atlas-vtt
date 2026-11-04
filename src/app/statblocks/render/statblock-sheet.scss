@@ -1,0 +1,97 @@
+@use '../../../../styles/tokens' as *;
+@use 'sheet-text';
+@use 'sheet-lists';
+@use 'sheet-numbers';
+@use 'sheet-counters';
+@use 'sheet-table';
+@use 'sheet-metric';
+@use 'sheet-media';
+@use 'sheet-tabs';
+@use 'sheet-header';
+@use 'sheet-arm';
+
+// The native statblock card (`StatblockSheet`). It shares the card, the
+// heading classes and the companion theme's hooks with the Fantasy Statblocks
+// renderer (react/components/statblock/statblock.scss), and sets everything
+// of its own under `.atlas-sb-sheet`.
+//
+// The two share `.atlas-sb-item` and `data-type`, so the spacing rules there
+// would reach these blocks too; every distance between blocks is therefore set
+// here, at a higher specificity (an attribute or class more), rather than
+// left to the order the two stylesheets load in.
+//
+// No element here is a size container (`container-type`): the hover preview
+// takes its width from its content, and a container gives itself the width of
+// an empty box.
+
+.atlas-sb-sheet {
+  // Top-level blocks flow into as many columns as fit, up to the template's
+  // most; nothing measures. Padding equals the gap: $spacing-l.
+  .atlas-sb-columns {
+    columns: var(--atlas-sb-column-width, 22em) var(--atlas-sb-max-columns, 2);
+    column-gap: $spacing-l;
+  }
+
+  .atlas-sb-columns > .atlas-sb-item {
+    break-inside: avoid;
+  }
+
+  // Chrome (the template editor's outlines and handles) sits in an overlay
+  // positioned against the frame; positioning changes no box.
+  .atlas-sb-item {
+    position: relative;
+  }
+}
+
+// ── Rhythm ──────────────────────────────────────────────────────────────────
+// A reset at a specificity above the shared adjacency rules, then the sheet's
+// own distances above that.
+.atlas-statblock.atlas-sb-sheet .atlas-sb-item[data-block][data-block-id] {
+  margin-top: 0;
+}
+
+.atlas-sb-sheet .atlas-sb-columns > .atlas-sb-item[data-block] + .atlas-sb-item[data-block] {
+  margin-top: $spacing-l;
+}
+
+.atlas-sb-sheet .atlas-sb-stack > .atlas-sb-item[data-block] + .atlas-sb-item[data-block] {
+  margin-top: $spacing-s;
+}
+
+// A divider stands $spacing-m from the blocks on either side.
+.atlas-sb-sheet :is(.atlas-sb-columns, .atlas-sb-stack) > .atlas-sb-item[data-block] + .atlas-sb-item[data-block='divider'],
+.atlas-sb-sheet :is(.atlas-sb-columns, .atlas-sb-stack) > .atlas-sb-item[data-block='divider'] + .atlas-sb-item[data-block] {
+  margin-top: $spacing-m;
+}
+
+// Consecutive labelled lines (run-in Stats, Pairs, comma Tags) read as one list.
+.atlas-sb-sheet :is(.atlas-sb-columns, .atlas-sb-stack) > .atlas-sb-item.atlas-sb-item--line[data-block] + .atlas-sb-item.atlas-sb-item--line[data-block] {
+  margin-top: 2px;
+}
+
+// ── Row ─────────────────────────────────────────────────────────────────────
+.atlas-sb-sheet .atlas-sb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: $spacing-l;
+
+  &[data-align='center'] {
+    align-items: center;
+  }
+
+  &[data-align='spread'] {
+    justify-content: space-between;
+  }
+
+  > .atlas-sb-item--fill {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+
+  // A value too long for the row wraps on a line of its own instead of running past the card
+  > .atlas-sb-item--fit {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+}

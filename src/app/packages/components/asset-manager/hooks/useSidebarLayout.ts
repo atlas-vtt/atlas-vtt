@@ -1,6 +1,7 @@
 import type * as React from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useSidebarHover } from './useSidebarHover';
+import { t } from '../../../../i18n';
 
 /** Below this window width the sidebar floats over the content instead of taking a column. */
 const DOCK_MIN_WIDTH = 1000;
@@ -107,7 +108,7 @@ export function useSidebarLayout(containerRef: React.RefObject<HTMLElement | nul
   }, [isNarrow]);
 
   const isShown = isNarrow ? isPeeking : !isHidden;
-  const toggleLabel = isShown ? 'Hide sidebar' : 'Show sidebar';
+  const toggleLabel = isShown ? t('am.hideSidebar') : t('am.showSidebar');
 
   return { isFloating, isPeeking, isNearEdge, toggleLabel, toggle, panelRef };
 }

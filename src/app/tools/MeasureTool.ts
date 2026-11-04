@@ -1,4 +1,4 @@
-export type MeasureShape = 'line' | 'cone' | 'circle' | 'sphere';
+import type { MeasureShape } from '../pixi/utils/measureDrawing';
 
 export interface MeasureSettings {
   shape: MeasureShape;
