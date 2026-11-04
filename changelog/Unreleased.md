@@ -5,3 +5,4 @@
 ## Fixed
 
 - The DM screen's text is sharp on screens without high resolution
+- Settings opened from the command palette stay open instead of closing again right after a quick click
