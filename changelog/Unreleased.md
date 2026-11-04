@@ -4,6 +4,7 @@
 
 ## Fixed
 
+- Statblocks: emptying a linked statblock's hit points (or any other resource field), or setting them to 0, now removes the bar from tokens already on the map
 - Deleting a map now also removes its image and thumbnail, unless another map or a scene still uses them.
 - Renamed statblock notes no longer show up a second time under their old name when you link a statblock to a token
 - Hit points a statblock template keeps under another name (such as `pv`) are no longer counted twice, as the hit points and as a tracked number of their own, so the DM screen, rests and the player sheet keep one value with its maximum
