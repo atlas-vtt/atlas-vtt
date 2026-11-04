@@ -737,54 +737,53 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Close on click outside
   useEffect(() => {
-    const handleMouseDown = (e: MouseEvent): void => {
-      // Don't handle outside clicks when temporarily hidden
-      if (isTemporarilyHidden) {
-        return;
+    if (!isOpen || isTemporarilyHidden) return;
+
+    const isOutsidePress = (target: Element | null): boolean => {
+      if (target?.closest?.('.atlas-onboarding-overlay')) return false;
+      // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
+      if (target?.closest?.('.atlas-text-dialog-backdrop')) return false;
+
+      // Don't close if clicking on Obsidian menu elements
+      if (target?.closest?.('.menu') ||
+          target?.closest?.('.obsidian-menu') ||
+          target?.closest?.('[class*="menu"]') ||
+          target?.classList?.contains('menu-item') ||
+          target?.classList?.contains('clickable-icon') ||
+          // Check if target is within any dropdown that might be open
+          target?.closest?.('.atlas-obsidian-menu-dropdown')) {
+        return false;
       }
 
-      // Add a small delay to allow dropdown menus to properly handle their events first
-      window.setTimeout(() => {
-        const target = e.target as Element;
-        if (target?.closest?.('.atlas-onboarding-overlay')) return;
-        // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
-        if (target?.closest?.('.atlas-text-dialog-backdrop')) return;
+      // Allow interaction with grid settings without closing
+      if (activeSubmenu === 'grid-settings' &&
+          (target?.closest?.('.atlas-command-palette-grid-settings') ||
+           target?.closest?.('[role="slider"]') ||
+           target?.closest?.('.atlas-command-palette-custom-content'))) {
+        return false;
+      }
 
-        // Don't close if clicking on Obsidian menu elements
-        if (target?.closest?.('.menu') ||
-            target?.closest?.('.obsidian-menu') ||
-            target?.closest?.('[class*="menu"]') ||
-            target?.classList?.contains('menu-item') ||
-            target?.classList?.contains('clickable-icon') ||
-            // Check if target is within any dropdown that might be open
-            target?.closest?.('.atlas-obsidian-menu-dropdown')) {
-          return;
-        }
-
-        // Also don't close if we're in grid settings and clicking on grid setting controls
-        if (activeSubmenu === 'grid-settings') {
-          // Allow interaction with grid settings without closing
-          if (target?.closest?.('.atlas-command-palette-grid-settings') ||
-              target?.closest?.('[role="slider"]') ||
-              target?.closest?.('.atlas-command-palette-custom-content')) {
-            return;
-          }
-        }
-
-        if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-          if (toolbarRef?.current && !toolbarRef.current.contains(e.target as Node)) {
-            onClose();
-          }
-        }
-      }, 10); // Small delay to allow menu events to complete
+      return !!containerRef.current && !containerRef.current.contains(target) &&
+        !!toolbarRef?.current && !toolbarRef.current.contains(target);
     };
 
-    if (isOpen && !isTemporarilyHidden) {
-      document.addEventListener("mousedown", handleMouseDown);
-    }
+    const timers = new Set<number>();
+    const handleMouseDown = (e: MouseEvent): void => {
+      // Decided at the press: by the time the close runs, the click may already have
+      // replaced the pressed entry (one that opens a page), which then lies in no container.
+      if (!isOutsidePress(e.target as Element | null)) return;
+      // A small delay lets dropdown menus handle their events first.
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        onClose();
+      }, 10);
+      timers.add(timer);
+    };
 
+    document.addEventListener("mousedown", handleMouseDown);
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
+      timers.forEach(timer => window.clearTimeout(timer));
     };
   }, [isOpen, isTemporarilyHidden, onClose, toolbarRef, activeSubmenu]);
 

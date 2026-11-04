@@ -5,3 +5,4 @@
 ## Fixed
 
 - Statblocks: emptying a linked statblock's hit points (or any other resource field), or setting them to 0, now removes the bar from tokens already on the map
+- Settings opened from the command palette stay open instead of closing again right after a quick click
