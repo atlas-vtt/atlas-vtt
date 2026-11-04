@@ -11,6 +11,26 @@ import { Q_SCALE } from '../../types/shapeTypes';
 export const FOG_COLOR = 'rgba(0, 0, 0, 1)';
 
 /**
+ * Draws `area` of `source` onto `ctx`, whose canvas is `source` grown by `pad` on every side, in its
+ * place there, with the area's outermost pixels repeated out to `ctx`'s edges.
+ */
+export function drawWithSpreadEdges(ctx: CanvasRenderingContext2D, source: HTMLCanvasElement, area: FogBounds, pad: number): void {
+  const { x, y, width, height } = area;
+  const { width: fullWidth, height: fullHeight } = ctx.canvas;
+  const left = x + pad;
+  const top = y + pad;
+  const right = left + width;
+  const bottom = top + height;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, x, y, width, height, left, top, width, height);
+  ctx.drawImage(source, x, y, 1, height, 0, top, left, height);
+  ctx.drawImage(source, x + width - 1, y, 1, height, right, top, fullWidth - right, height);
+  // The rows above and below repeat what is drawn so far, the corners with them
+  ctx.drawImage(ctx.canvas, 0, top, fullWidth, 1, 0, 0, fullWidth, top);
+  ctx.drawImage(ctx.canvas, 0, bottom - 1, fullWidth, 1, 0, bottom, fullWidth, fullHeight - bottom);
+}
+
+/**
  * Render a brush stroke as one stroked path with round caps and joins: the area
  * within the brush radius of the polyline, the shape `fogOperationShape` commits.
  * Stamping a disc per step instead left a lattice of half-covered pixels inside
