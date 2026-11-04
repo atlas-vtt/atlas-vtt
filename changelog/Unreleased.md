@@ -4,4 +4,5 @@
 
 ## Fixed
 
+- An enlarged text box can be rotated again: its rotate handle stays above the text, and both its handles follow it while you resize, rotate or undo.
 - Settings opened from the command palette stay open instead of closing again right after a quick click
