@@ -1,4 +1,5 @@
 import type { BaseToken } from '../../types';
+import { t } from '../../i18n';
 
 /**
  * A nameplate shows when the map shows every nameplate or the token opts in
@@ -16,4 +17,13 @@ export function isNameplateVisible(token: Pick<BaseToken, 'showNameplate'>, mapS
  */
 export function nameplateShownToPlayers(token: Pick<BaseToken, 'showNameplate'>, mapShowsNameplates: boolean, playersSeeNameplates: boolean): boolean {
   return playersSeeNameplates && isNameplateVisible(token, mapShowsNameplates);
+}
+
+/**
+ * The name players read for a token in their lists, banners and rolls: none while the player view shows
+ * no names, `name` where they see the token's nameplate, else a neutral placeholder.
+ */
+export function nameShownToPlayers(name: string | null, token: Pick<BaseToken, 'showNameplate'>, mapShowsNameplates: boolean, playersSeeNameplates: boolean): string | null {
+  if (!playersSeeNameplates) return null;
+  return nameplateShownToPlayers(token, mapShowsNameplates, playersSeeNameplates) ? name : t('token.unknownCreature');
 }

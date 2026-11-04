@@ -7,7 +7,7 @@ import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeStat
 
 const ALLIES = { id: 'side-allies', name: 'Allies' };
 const THREE: InitiativeRules = { mode: 'sides', roll: '1d20', firstSide: 'players', sides: [{ id: 'players' }, ALLIES, { id: 'opponents' }] };
-const LOOK = { showNames: true, portraitSrc: (): null => null };
+const LOOK = { showNames: true, mapShowsNameplates: true, portraitSrc: (): null => null };
 
 const token = (id: string, extra: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'token', x: 0, y: 0, imagePath: '', ...extra } as TokenEntity);
 const entry = (tokenId: string, order: number, extra: Partial<InitiativeEntry> = {}): InitiativeEntry => ({

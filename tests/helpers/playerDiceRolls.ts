@@ -35,7 +35,7 @@ export const SCENE_B_TOKENS: SceneTokens = {
 
 /** The store of a view holding `mapPath`, loaded. */
 export function sceneState(mapPath: string, tokens: SceneTokens): Partial<ViewAtlasState> {
-  return { mapPath, mapLoaded: true, isMapLoading: false, objects: { tokens } } as unknown as Partial<ViewAtlasState>;
+  return { mapPath, mapLoaded: true, isMapLoading: false, objects: { tokens }, tokenSettings: { showNameplates: true } } as unknown as Partial<ViewAtlasState>;
 }
 
 export interface PlayerDiceHarness {
