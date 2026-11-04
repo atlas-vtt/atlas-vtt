@@ -41,7 +41,8 @@ export function withLinkedFiles(app: App, files: readonly BundleFile[]): BundleF
     for (const { path, role } of linkedFiles(app, note)) {
       const file = known.get(path);
       if (file) {
-        (file.linkedFrom ??= []).push(note);
+        // A file that travels with the collection itself (a random table's note) keeps travelling whatever links to it.
+        if (file.owners || file.linkedFrom) (file.linkedFrom ??= []).push(note);
         continue;
       }
       known.set(path, { vaultPath: path, role, linkedFrom: [note] });

@@ -96,7 +96,7 @@ function showPlayers({ names = false, fromTurn = true, dock = 'right', sides = f
     { mode: sides ? 'sides' : 'turn-order', roll: '1d20', firstSide: 'players' },
     true,
   );
-  renderPlayerInitiative(host, list, { showNames: names, portraitSrc: (src) => src, fromTurn, dock });
+  renderPlayerInitiative(host, list, { showNames: names, mapShowsNameplates: true, portraitSrc: (src) => src, fromTurn, dock });
   return host.querySelector<HTMLElement>('.atlas-player-initiative')!;
 }
 

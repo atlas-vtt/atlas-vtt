@@ -116,15 +116,27 @@ describe("the players' initiative list", () => {
   it('draws the turn, the round and names only where they are shown', () => {
     const container = createDiv();
     const list = playerInitiativeList({ entries, isActive: true, round: 2 }, tokenOf, TURN_ORDER, true);
-    renderPlayerInitiative(container, list, { showNames: false, portraitSrc: () => null });
+    renderPlayerInitiative(container, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
     expect(container.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(2);
     expect(container.querySelector('.atlas-player-initiative__card--active')?.textContent).toContain('18');
     expect(container.querySelector('.atlas-player-initiative__name')).toBeNull();
     expect(container.querySelector('.atlas-player-initiative__round')?.textContent).toContain('2');
     expect(container.querySelector('progress')?.getAttribute('value')).toBe('4');
     const empty = createDiv();
-    renderPlayerInitiative(empty, { ...list, combatants: [] }, { showNames: true, portraitSrc: () => null });
+    renderPlayerInitiative(empty, { ...list, combatants: [] }, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null });
     expect(empty.childElementCount).toBe(0);
+  });
+
+  it('names only the combatants whose nameplate the GM\'s map shows, a placeholder standing for the rest', () => {
+    const own = { ...tokens, ogre: { ...tokens.ogre!, showNameplate: true } };
+    const ownOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
+      (listedForPlayers(own[listed.tokenId]) ? entryTokenOf(own[listed.tokenId], []) : null);
+    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, ownOf, TURN_ORDER, false);
+    const container = createDiv();
+    renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: false, portraitSrc: () => 'art.png' });
+    const names = [...container.querySelectorAll('.atlas-player-initiative__name')].map((name) => name.textContent);
+    expect(names).toEqual(['Unknown Creature', 'ogre']);
+    expect(container.textContent).not.toContain('hero');
   });
 
   it('marks defeated combatants and keeps delayed ones below the order, listing both', () => {
@@ -136,7 +148,7 @@ describe("the players' initiative list", () => {
     expect(list.combatants.map(({ token }) => token.defeated)).toEqual([false, true]);
 
     const container = createDiv();
-    renderPlayerInitiative(container, list, { showNames: true, portraitSrc: () => 'art.png' });
+    renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => 'art.png' });
     const cards = [...container.querySelectorAll('.atlas-player-initiative__card')];
     expect(cards.map((card) => card.textContent)).toEqual(['12ogre', '18hero']);
     expect(cards[0]!.classList.contains('atlas-player-initiative__card--defeated')).toBe(true);
