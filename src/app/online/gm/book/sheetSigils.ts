@@ -1,5 +1,6 @@
 import { isResourceKey, MAX_BOOK_TITLE, type SheetNode, type SheetSigils, type SheetValue } from '../../protocol/index.ts';
-import { isHitPointsKey } from '../../../resources/resourceFields';
+import { readsTemplateField } from '../../../resources/trackedResources';
+import { meaningsOf } from '../../../statblocks/resolve/fieldMeanings';
 import { shownHeaderParts, type HeaderPart } from '../../../statblocks/model/templateHeader';
 import type { FieldKey, TemplateBlock } from '../../../statblocks/model/templateTypes';
 import type { BlockDisplay } from '../../../statblocks/render/blockDisplay';
@@ -23,7 +24,8 @@ export interface SheetHead {
 
 /** The character's resource whose maximum is the hit points the header shows, where the token holds it. */
 function hitPointsResource(build: SheetBuild, key: FieldKey): string | undefined {
-  const definition = build.definitions.find((each) => each.field === key || (isHitPointsKey(each.field) && isHitPointsKey(key)));
+  const meanings = meaningsOf(build.template.fields);
+  const definition = build.definitions.find((each) => readsTemplateField(each, key, meanings));
   return definition && isResourceKey(definition.key) && build.resources[definition.key] ? definition.key : undefined;
 }
 

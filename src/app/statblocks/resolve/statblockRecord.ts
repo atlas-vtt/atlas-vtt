@@ -22,6 +22,12 @@ export interface StatblockRecord {
   labels: FieldLabels;
   /** A statblock Fantasy Statblocks defines (frontmatter or fence), not an Atlas template. */
   fantasy: boolean;
+  /**
+   * The fields of a native statblock's template its note holds no value of: the note panel
+   * deletes a value it clears, so there a missing field is an empty one. None for any other
+   * statblock, whose record may lack a field it has (a base creature not read yet).
+   */
+  emptyFields: readonly string[];
 }
 
 const NO_LABELS: FieldLabels = Object.freeze({});
@@ -56,11 +62,13 @@ export async function readStatblockRecord(app: App, statblockPath: string, whole
   // The resolver names a creature found by the note's name a fence too: only the note itself says whether it holds one
   const inFence = statblock?.source.kind === 'fs-fence' && (await statblockSourceOf(app, file))?.kind === 'fs-fence';
   const native = statblock?.source.kind === 'atlas';
+  // A native statblock's numbers as its card shows them (`hp: 10 + @con.mod` is a number), its note's frontmatter being its fields
+  const record = native ? { ...frontmatter, ...shownFieldsOf(statblock) } : recordOf(statblock?.fields, frontmatter, inFence);
   return {
-    // A native statblock's numbers as its card shows them (`hp: 10 + @con.mod` is a number), its note's frontmatter being its fields
-    record: native ? { ...frontmatter, ...shownFieldsOf(statblock) } : recordOf(statblock?.fields, frontmatter, inFence),
+    record,
     meanings: statblock?.meanings ?? NO_MEANINGS,
     labels: statblock?.template && statblock.source.kind === 'atlas' ? labelsOf(statblock.template.fields) : NO_LABELS,
     fantasy: statblock !== null && statblock.source.kind !== 'atlas',
+    emptyFields: native && statblock.template ? statblock.template.fields.map((field) => field.key).filter((key) => !(key in record)) : [],
   };
 }
