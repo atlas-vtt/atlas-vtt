@@ -72,8 +72,8 @@ export class TextRenderer {
     this.hoverOutline = new OutlineFilter({ thickness: 2, color: 0x00FFFF, quality: 0.5 });
     
     // Initialize UI components
-    this.rotationUI = new TextRotationUI(viewport, store);
-    this.resizeUI = new TextResizeUI(viewport, store);
+    this.rotationUI = new TextRotationUI(viewport, store, (text) => this.resizeUI.refresh(text));
+    this.resizeUI = new TextResizeUI(viewport, store, (text) => this.rotationUI.refresh(text));
     
     // Subscribe to store changes
     this.subscribeToStore();
@@ -138,7 +138,11 @@ export class TextRenderer {
 
   private updateText(textElement: TextElement): void {
     const container = this.textElements[textElement.id];
-    if (container) updateTextElementView(container, textElement);
+    if (!container) return;
+    updateTextElementView(container, textElement);
+    this.rotationUI.refresh(textElement);
+    this.resizeUI.refresh(textElement);
+    this.updateUIControlsPosition();
   }
 
   private removeText(id: string): void {
