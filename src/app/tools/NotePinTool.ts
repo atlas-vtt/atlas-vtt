@@ -97,7 +97,10 @@ export class NotePinTool {
         runInBackground(this.linkHexAt(e.worldX, e.worldY, hexLayout), 'Linking a note to a hex', 'Could not link the note to the hex');
         return;
       }
-      runInBackground(this.placePinAt(e.worldX, e.worldY), 'Placing a note pin', 'Could not place the note pin');
+      // On a square grid Shift puts a plain pin in the centre of the square: square grids link no cells
+      const centre = e.shiftKey ? this.preview.cellCentre({ x: e.worldX, y: e.worldY }) : null;
+      if (centre) this.preview.showCell(centre);
+      runInBackground(this.placePinAt(centre?.x ?? e.worldX, centre?.y ?? e.worldY), 'Placing a note pin', 'Could not place the note pin');
     });
     
     // Listen for pin action events from the PixiRenderer
@@ -355,7 +358,7 @@ export class NotePinTool {
   private async linkHexAt(worldX: number, worldY: number, layout: HexLayout): Promise<void> {
     const center = nearestHexCenter(layout, { x: worldX, y: worldY });
     this.preview.hold();
-    this.preview.showLinkedHex(center);
+    this.preview.showCell(center);
 
     const existing = hexLinkAt(levelObjects(this.store.getState()).pins, layout, center);
     if (existing) {

@@ -10,7 +10,7 @@ import { snapTokenCenter } from './gridPlacement';
 import type { CellLattice, CellNumberStyle } from './cellNumbering';
 import { hexLattice } from './hexLattice';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../pixi/utils/colorUtils';
-import { squareLattice } from './squareLattice';
+import { squareCellCentre, squareLattice } from './squareLattice';
 import { CellNumberLabels, type CellNumberView, type WorldRect } from './cellNumberLabels';
 import { destroyTree } from '../pixi/utils/destroyTree';
 import { applyGridMark, createMarkBacking, type GridMarkColor, type UnlitGrid } from './gridLightingMark';
@@ -444,12 +444,7 @@ export class GridSystem implements UnlitGrid {
     }
 
     const { size, offsetX = 0, offsetY = 0 } = this.options;
-    const col = Math.floor((x - offsetX) / size);
-    const row = Math.floor((y - offsetY) / size);
-    return {
-      x: col * size + offsetX + size / 2,
-      y: row * size + offsetY + size / 2,
-    };
+    return squareCellCentre({ size, offsetX, offsetY }, { x, y });
   }
 
   /** Snap a token's centre: a cell centre, or where cells meet for an even footprint (`tokenCenterShift`) */
