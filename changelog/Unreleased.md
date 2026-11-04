@@ -5,3 +5,4 @@
 ## Fixed
 
 - Settings opened from the command palette stay open instead of closing again right after a quick click
+- With Show nameplates on in the player view, players see only the names your map shows
