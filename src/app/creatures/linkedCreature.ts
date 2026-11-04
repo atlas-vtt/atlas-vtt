@@ -18,14 +18,28 @@ export interface BestiaryLookup {
   byPath: ReadonlyMap<string, FantasyStatblocksCreature>;
 }
 
-/** Fantasy Statblocks' note-backed creatures by note path; empty while the plugin is missing. */
-export function bestiaryLookup(): BestiaryLookup {
-  const api = getFantasyStatblocksApi();
+/**
+ * Note-backed creatures by note path, without the entries Fantasy Statblocks keeps after a rename: one
+ * whose note is gone is dropped, and of two on one note the one named like the note wins (else the later).
+ */
+export function creaturesByNote(
+  creatures: readonly FantasyStatblocksCreature[],
+  isNote: (path: string) => boolean,
+): Map<string, FantasyStatblocksCreature> {
   const byPath = new Map<string, FantasyStatblocksCreature>();
-  for (const creature of api?.getBestiaryCreatures() ?? []) {
-    if (creature.path) byPath.set(creature.path, creature);
+  for (const creature of creatures) {
+    const { path } = creature;
+    if (!path || !isNote(path)) continue;
+    const keepsNoteName = byPath.get(path)?.name === noteBasename(path);
+    if (!keepsNoteName) byPath.set(path, creature);
   }
-  return { api, byPath };
+  return byPath;
+}
+
+/** Fantasy Statblocks' creatures of the vault's notes by note path; empty while the plugin is missing. */
+export function bestiaryLookup(app: App): BestiaryLookup {
+  const api = getFantasyStatblocksApi();
+  return { api, byPath: creaturesByNote(api?.getBestiaryCreatures() ?? [], (path) => markdownFile(app, path) !== null) };
 }
 
 /** A bestiary creature with its `extends` applied, which only the plugin's name lookup does. */
@@ -108,7 +122,7 @@ async function linkedCreatureAsGiven(
 export async function resolveLinkedCreature(
   app: App,
   notePath: string,
-  bestiary: BestiaryLookup = bestiaryLookup(),
+  bestiary: BestiaryLookup = bestiaryLookup(app),
 ): Promise<FantasyStatblocksCreature | null> {
   const file = markdownFile(app, notePath);
   return linkedCreatureFor(app, notePath, file ? await statblockSourceOf(app, file) : null, bestiary);
