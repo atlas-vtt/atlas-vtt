@@ -85,15 +85,23 @@ function isUnset(value: FieldValue | undefined): boolean {
 const sameRowName = (a: CounterRow, b: CounterRow): boolean => a.name.trim().toLowerCase() === b.name.trim().toLowerCase();
 
 /**
- * The rows the card shows: the note's, then the template's preset rows it does not hold by name (a note keeps the
- * list of its first press, so rows the template gained since would never show), none used until a change stores
- * them; a preset row without uses adds nothing. Null where the note's value is no list of counters.
+ * The rows the card shows: the note's, then the template's preset rows it does not hold (a note keeps the list of
+ * its first press, so rows the template gained since would never show), none used until a change stores them; a
+ * preset row without uses adds nothing. The note holds a preset row by name, or by place where the template
+ * renamed it: its row at the preset's place answers to no preset by name. Null where the note's value is no
+ * list of counters.
  */
 export function shownCounterRows(field: Pick<TemplateField, 'counterRows'>, value: FieldValue | undefined): CounterRow[] | null {
   if (isUnset(value)) return presetCounterRows(field);
   const own = readCounterRows(value);
   if (!own) return null;
-  const gained = presetCounterRows(field).filter((preset) => isDrawnCounter(preset) && !own.some((row) => sameRowName(row, preset)));
+  const presets = presetCounterRows(field);
+  const namesAPreset = (row: CounterRow): boolean => presets.some((preset) => sameRowName(row, preset));
+  const holds = (preset: CounterRow, index: number): boolean => {
+    const atPlace = own[index];
+    return own.some((row) => sameRowName(row, preset)) || (atPlace !== undefined && !namesAPreset(atPlace));
+  };
+  const gained = presets.filter((preset, index) => isDrawnCounter(preset) && !holds(preset, index));
   return gained.length > 0 ? [...own, ...gained] : own;
 }
 
