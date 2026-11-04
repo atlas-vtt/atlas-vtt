@@ -63,3 +63,27 @@ it.each([
   expect(vault.files.has(IMAGE)).toBe(true);
   expect(vault.files.has(THUMB)).toBe(false);
 });
+
+it('keeps the image while a scene\'s map cannot be read, as it may use it', async () => {
+  await vault.app.vault.create(SCENE_MAP, '{ half written');
+  await assets.addAsset({ type: 'scene', name: 'Cave', collection: AssetService.defaultCollectionId(), tags: [], data: { mapPath: SCENE_MAP } });
+  const map = await addMap(THUMB);
+  await assets.deleteAsset(map.id);
+  expect(vault.files.has(IMAGE)).toBe(true);
+  expect(vault.files.has(THUMB)).toBe(true);
+});
+
+it('keeps an image a note links to', async () => {
+  await vault.app.vault.create('Notes/Region.md', '![[region.webp]]');
+  const map = await addMap(THUMB);
+  await assets.deleteAsset(map.id);
+  expect(vault.files.has(IMAGE)).toBe(true);
+  expect(vault.files.has(THUMB)).toBe(false);
+});
+
+it('never trashes an image outside Atlas\'s folder that a map record names', async () => {
+  await vault.app.vault.create('Art/my-map.png', 'PNG');
+  const map = await assets.addAsset({ type: 'map', name: 'Mine', collection: AssetService.defaultCollectionId(), tags: [], mapFilePath: 'Art/my-map.png' });
+  await assets.deleteAsset(map.id);
+  expect(vault.files.has('Art/my-map.png')).toBe(true);
+});
