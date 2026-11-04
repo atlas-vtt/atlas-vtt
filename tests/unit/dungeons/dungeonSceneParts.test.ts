@@ -103,8 +103,8 @@ describe('a dungeon of several floors as one scene', () => {
     expect(headings).toEqual(parts.rooms.map(room => room.heading));
     for (const pin of Object.values(roomPins(parts.rooms, 'n.md'))) expect(headings).toContain(pin.notePath.slice('n.md#'.length));
     // A cave's ways between floors are pitches and scree slopes.
-    expect(note).toMatch(/(A pitch drops|A scree slope leads down) to floor B\./);
-    expect(note).toMatch(/(An aven rises|A scree slope leads up) to floor A\./);
+    expect(note).toMatch(/(A (?:pitch|chimney|vertical squeeze) drops \d+ ft|A scree slope leads down) to floor B\./);
+    expect(note).toMatch(/((?:An aven|A chimney|A vertical squeeze) rises \d+ ft|A scree slope leads up) to floor A\./);
   });
 
   it('names every terrain piece, piece of furniture and column a map feature on its floor\'s level', () => {
@@ -336,9 +336,11 @@ describe('the outlines of tall objects', () => {
       const model = generateDungeon({ seed, theme: seed % 2 ? 'fortress' : undefined, tags: seed % 2 ? ['colonnades'] : ['large'], floors: 1 + (seed % 2) });
       const { parts, image } = partsOf(model);
       const tolerance = sealTolerance(worldTexel(image));
-      for (const level of parts.levelIds ?? [undefined]) {
+      for (const [index, level] of (parts.levelIds ?? [undefined]).entries()) {
         const walls = wallsOn(parts, level);
         const objects = walls.filter(w => w.id.includes('_shadow_'));
+        // A forest's walls are its trees: they stop tokens and light, and a token sees through them.
+        const own = model.floors[index]!.forest ? ['light'] : [undefined, 'movement'];
         outlines += new Set(objects.map(w => w.chainId)).size;
         // Shadows, not cover: light alone, one-way from inside so the top is lit.
         for (const wall of objects) {
@@ -346,7 +348,7 @@ describe('the outlines of tall objects', () => {
           expect(wall.direction).toBeDefined();
         }
         // A house's windows stop a token alone and its garden's hedges sight alone; every other wall stops both.
-        for (const wall of walls.filter(w => !w.id.includes('_shadow_'))) expect(wall.id.includes('_grounds_') ? [undefined, 'sight'] : [undefined, 'movement']).toContain(wall.blocks);
+        for (const wall of walls.filter(w => !w.id.includes('_shadow_'))) expect(wall.id.includes('_grounds_') ? [undefined, 'sight'] : own).toContain(wall.blocks);
         const owner = (id: string): string => (id.includes('_shadow_') ? id.replace(/_\d+$/, '') : 'walls');
         for (const bridge of sealWalls(walls, tolerance).slice(walls.length)) {
           const named = bridge.id.split(':').filter(part => part.startsWith('wall_'));
@@ -436,12 +438,12 @@ describe('a cavern\'s note', () => {
         for (const room of floor.rooms) {
           const facts = roomFacts(visible, room, DEFAULT_VIEW);
           expect(facts, `seed ${model.seed}`).not.toMatch(/\bdoors?\b|\bopenings?\b|\bsteps\b|\bstairs\b/i);
-          if (/A pitch drops to floor/.test(facts)) pitches++;
-          if (/An aven rises to floor/.test(facts)) avens++;
+          if (/A (?:pitch|chimney|vertical squeeze) drops \d+ ft to floor/.test(facts)) pitches++;
+          if (/(?:An aven|A chimney|A vertical squeeze) rises \d+ ft to floor/.test(facts)) avens++;
         }
         for (const stair of floor.stairs.filter((s) => s.way === 'pitch')) {
           const room = floor.rooms.find((r) => r.kind === 'room' && cellsOfStair(stair).every((c) => holdsCell(r, c.x, c.y)));
-          if (room) expect(roomFacts(visible, room, DEFAULT_VIEW)).toMatch(stair.to > index ? /A pitch drops to floor/ : /An aven rises to floor/);
+          if (room) expect(roomFacts(visible, room, DEFAULT_VIEW)).toMatch(stair.to > index ? /A (?:pitch|chimney|vertical squeeze) drops \d+ ft to floor/ : /(?:An aven|A chimney|A vertical squeeze) rises \d+ ft to floor/);
         }
       });
     }

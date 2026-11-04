@@ -49,14 +49,17 @@ export class SharedLiquids {
     const polygon = flat(surface.polygon);
     if (!isLiquidArea(polygon)) return null;
     const holes = (surface.holes ?? []).map(flat).filter(isLiquidArea);
+    const course = surface.flow !== undefined && surface.course !== undefined ? flat(surface.course) : undefined;
     return {
       id: this.alias(this.aliases, surface.id),
       liquid: surface.liquid,
       polygon,
       ...(holes.length > 0 && { holes }),
       ...(surface.flow !== undefined && { flow: { x: surface.flow.x, y: surface.flow.y } }),
+      ...(course !== undefined && { course }),
+      ...(surface.openEdges !== undefined && { openEdges: [...surface.openEdges] }),
       colours: { surface: surface.colors.surface, deep: surface.colors.deep, glint: surface.colors.glint },
-      ...(surface.art === 'engraved' && { art: 'engraved' as const }),
+      ...(surface.art !== undefined && { art: surface.art }),
       ...(surface.liquid === 'lava' && surface.lavaLight !== undefined && { glow: this.alias(this.glows, surface.lavaLight) }),
     };
   }

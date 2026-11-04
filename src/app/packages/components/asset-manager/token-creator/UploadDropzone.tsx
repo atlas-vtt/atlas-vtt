@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Upload } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 import { UVTT_ACCEPT } from '../../../../import/uvtt/uvttFileNames';
-import { VIDEO_MAP_ACCEPT } from '../../../../pixi/mapImage/video/videoMapFiles';
+import { VIDEO_MAP_ACCEPT } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
 
 interface UploadDropzoneProps {
   title: string;

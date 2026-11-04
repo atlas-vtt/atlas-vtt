@@ -3,10 +3,12 @@
  * the tags each cannot take, and the programme it types its rooms by.
  */
 
+import type { CaveVariant } from '../caveModel';
 import { pick, stream } from '../rng';
 import type { DungeonTag } from '../tags';
 import { fortressParams } from '../layout/fortressParams';
 import { CAVERN } from './cavern';
+import { FOREST } from './forest';
 import { FORTRESS } from './fortress';
 import { houseFacts } from './houseFacts';
 import { MANSION } from './mansion';
@@ -22,6 +24,7 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDefinition>> = {
   mansion: { id: 'mansion', built: true, rise: 'up', stairsFromEntrance: true, architectureOnly: true, layout: 'house', facts: houseFacts,
     ignores: [...LAYOUT_TAGS, 'secret'], refuses: [...NO_MOLTEN, { tag: 'flooded' }], programme: MANSION },
   cavern: CAVERN,
+  forest: FOREST,
 };
 
 export function themeOf(id: ThemeId): ThemeDefinition {
@@ -60,9 +63,9 @@ export function readThemeChoice(value: unknown): ThemeChoice {
   return value === 'any' || (THEME_IDS as readonly unknown[]).includes(value) ? (value as ThemeChoice) : 'any';
 }
 
-/** The programme a theme types its rooms by for these tags. */
-export function programmeOf(definition: ThemeDefinition, tags: ReadonlySet<DungeonTag>): RoomProgramme {
-  return definition.programmeFor?.(tags) ?? definition.programme;
+/** The programme a theme types its rooms by for these tags and, in a Cavern, its formation. */
+export function programmeOf(definition: ThemeDefinition, tags: ReadonlySet<DungeonTag>, variant?: CaveVariant): RoomProgramme {
+  return definition.programmeFor?.(tags, variant) ?? definition.programme;
 }
 
 /** A theme that knows nothing of its rooms beyond the layout: allows everything, scores nothing, vetoes nothing. */

@@ -16,6 +16,8 @@ export interface LiveSharePorts extends PacerClock {
   drawnPlaces?(tokenIds: readonly string[]): ReadonlyMap<string, Place>;
   /** The rulers of the drags under way (`dragRulerPaths`); without it players see none. */
   rulers?(): RulerPaths;
+  /** Whose pointer holds a token, by GM token id, while players see each other's cursors; undefined otherwise. */
+  holder?(tokenId: string): string | undefined;
 }
 
 /** The token list players were last sent: its scene and the id they know a token by. */
@@ -25,8 +27,8 @@ export interface ListedTokens {
 }
 
 type Place = { readonly x: number; readonly y: number };
-/** A place as players were sent it, with its ruler written out to compare, and the token's GM id. */
-type SentPlace = Place & { readonly path?: readonly MarkPoint[]; readonly ruler: string; readonly tokenId: string };
+/** A place as players were sent it, with its ruler written out to compare, whose pointer holds it, and the token's GM id. */
+type SentPlace = Place & { readonly path?: readonly MarkPoint[]; readonly ruler: string; readonly by?: string; readonly tokenId: string };
 
 /**
  * How long after the lane last told of a held token the token list still keeps it where it was
@@ -57,7 +59,8 @@ function sharedPath(points: readonly Place[] | undefined): MarkPoint[] | undefin
  * drag that rests is told again every `CARRY_MS` all the same, so a page whose list is held up behind
  * other messages (artwork, a join) never gives it up. Each token carries its drag's ruler while it measures
  * something, as Atlas's player window shows it: whenever the token is in the message, so only while
- * the players see it, and never a ruler of a token they do not see.
+ * the players see it, and never a ruler of a token they do not see. While players see each other's
+ * cursors, each token also names whose pointer holds it (`holder`), so pages draw it with that cursor.
  */
 export class LiveShare {
   private readonly store: SceneStore;
@@ -142,7 +145,8 @@ export class LiveShare {
       const place = (drawnCounts ? drawn?.get(id) : undefined) ?? token;
       if (!onMap(place.x) || !onMap(place.y)) continue;
       const path = sharedPath(rulers.get(id));
-      places.set(alias, { x: roundPlace(place.x), y: roundPlace(place.y), ...(path !== undefined && { path }), ruler: JSON.stringify(path ?? null), tokenId: id });
+      const by = this.ports.holder?.(id);
+      places.set(alias, { x: roundPlace(place.x), y: roundPlace(place.y), ...(path !== undefined && { path }), ruler: JSON.stringify(path ?? null), ...(by !== undefined && { by }), tokenId: id });
     }
     const moved = [...places].some(([id, place]) => {
       const last = this.sent.get(id);
@@ -154,9 +158,10 @@ export class LiveShare {
     this.keepAliveDue = false;
     if (!moved && !ending && !resting) return;
     // Every held token is in every message, so a newer one may replace a waiting one and lose nothing.
-    const tokens: LivePlace[] = [...places].map(([id, { x, y, path }]) => ({ id, x, y, ...(path !== undefined && { path }) }));
+    const tokens: LivePlace[] = [...places].map(([id, { x, y, path, by }]) => ({ id, x, y, ...(path !== undefined && { path }), ...(by !== undefined && { by }) }));
     const dropped = this.droppedPlaces(ends.map(([, place]) => place.tokenId));
-    for (const [id, place] of ends) tokens.push({ id, ...(dropped.get(place.tokenId) ?? { x: place.x, y: place.y }), end: true });
+    // An end names who held the token, so pages play the drop out with that cursor.
+    for (const [id, place] of ends) tokens.push({ id, ...(dropped.get(place.tokenId) ?? { x: place.x, y: place.y }), end: true, ...(place.by !== undefined && { by: place.by }) });
     const now = this.ports.now();
     this.sent = places;
     // Telling a drag that rests again keeps it on the pages, not in the list's way: the list lands it.

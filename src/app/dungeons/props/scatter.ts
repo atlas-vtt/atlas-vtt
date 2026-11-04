@@ -21,8 +21,28 @@ function stone(rng: Rng, at: CellPoint): DungeonRubble {
 /** A cave's outline may wander into a floor cell (`outlineGuard.ts`): its stones keep that and their own size off a cell's edge. */
 const CAVE_STONE_MARGIN = 0.4;
 
+/** How much farther an obstacle may lie from the floor's box and still be asked: rounding never drops one a stone lands in. */
+const NEAR_SLACK = 1;
+
+/**
+ * The obstacles a stone on the room's floor may land in: a cave floor keeps off every piece of
+ * terrain on it, so most are far from the room, and each try at a stone would ask them all. Only
+ * a point on the floor is asked (`onFloor`), and every such point lies in the box round the floor.
+ */
+function obstaclesNear(frame: RoomFrame, obstacles: readonly Taken[]): Taken[] {
+  const { room, centre } = frame;
+  const cells = room.cells ?? [];
+  const half = room.rotunda ? { x: rotundaRadius(room), y: rotundaRadius(room) } : { x: room.w / 2, y: room.h / 2 };
+  const [x0, x1, y0, y1] = cells.length
+    ? [Math.min(...cells.map((c) => c.x)), Math.max(...cells.map((c) => c.x)) + 1, Math.min(...cells.map((c) => c.y)), Math.max(...cells.map((c) => c.y)) + 1]
+    : [centre.x - half.x, centre.x + half.x, centre.y - half.y, centre.y + half.y];
+  const gap = (v: number, lo: number, hi: number): number => Math.max(lo - v, v - hi, 0);
+  return obstacles.filter((o) => Math.hypot(gap(o.x, x0, x1), gap(o.y, y0, y1)) < o.radius + NEAR_SLACK);
+}
+
 /** About one stone per `areaPerStone` floor cells, at random; `extra` more where the plan marks rubble. */
-export function rubbleIn(rng: Rng, frame: RoomFrame, areaPerStone: number, extra: number, obstacles: readonly Taken[]): DungeonRubble[] {
+export function rubbleIn(rng: Rng, frame: RoomFrame, areaPerStone: number, extra: number, everywhere: readonly Taken[]): DungeonRubble[] {
+  const obstacles = obstaclesNear(frame, everywhere);
   const area = roomArea(frame.room);
   const count = Math.floor(rng() * (1 + area / areaPerStone)) + extra;
   const out: DungeonRubble[] = [];

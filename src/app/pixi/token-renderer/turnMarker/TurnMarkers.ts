@@ -38,8 +38,6 @@ export interface TurnMarkerDeps {
   reducedMotion(): boolean;
   /** The entry ids of the defeated combatants, which hold no turn of their side; none without. */
   defeated?(state: TurnMarkerState): ReadonlySet<string>;
-  /** Whether the renderer has alpha masks to keep the spotlight off the art (PIXI's Canvas renderer has none); yes without. */
-  canMask?(): boolean;
   /** The time in milliseconds; `performance.now` without. */
   now?(): number;
 }
@@ -174,7 +172,6 @@ export class TurnMarkers {
         ? size
         : (sprite.getChildByLabel('tokenRing')?.width || getTokenRingOuterDiameter(size, computeTokenStrokeWidth(gridSize)));
       marker.draw(outer / 2, restingTokenUIScale(gridSize), this.deps.parent.scale.x || 1);
-      marker.keepOffArt(this.deps.canMask?.() ?? true);
     }
     marker.follow(sprite);
   }

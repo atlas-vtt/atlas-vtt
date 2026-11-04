@@ -44,7 +44,7 @@ const POPOVER_GAP = 6;
 const VIEWPORT_MARGIN = 8;
 
 /**
- * Opens the popover in the anchor's own window (a map in a popout has its own document), and
+ * Opens the popover in the anchor's own window, and
  * closes it when its content commits, Escape is pressed or `close` is called.
  */
 export function openValuePopover({ anchorEl, anchor, label, className, build, onClose }: ValuePopoverOptions): ValuePopover {

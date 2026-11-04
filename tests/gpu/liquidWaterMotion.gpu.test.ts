@@ -49,7 +49,7 @@ describe('water over long sessions', () => {
     const renderer = await createTestRenderer(256);
     const target = RenderTexture.create({ width: 256, height: 256 });
     try {
-      for (const art of [undefined, 'engraved'] as const) for (const flowing of [false, true]) {
+      for (const art of [undefined, 'engraved', 'crayon'] as const) for (const flowing of [false, true]) {
         const surface = new LiquidMesh({ id: 'wrap-water', kind: 'liquid', liquid: 'water', ...(art && { art }),
           polygon: [{ x: -200, y: -200 }, { x: 500, y: -200 }, { x: 500, y: 500 }, { x: -200, y: 500 }],
           colors: { surface: '#789695', deep: '#344746', glint: '#c8dad9' }, ...(flowing && { flow: { x: 0.6, y: 0.8 } }),
@@ -64,7 +64,8 @@ describe('water over long sessions', () => {
           };
           // The water's ordinary steps, away from every wrap (they vary with the drips and glints alive): a wrap may move it no more.
           const step = Math.max(...[1000.37, 2000.71, 3100.13].map(t => meanChange(picture(t - 1 / 60), picture(t + 1 / 60))));
-          for (const time of [1600, 64 / 0.028, 64 / 0.055, 4096, 1e7]) {
+          // 64 / 0.28: a channel's ripples (and Crayon's strokes riding them) wrap by a tile.
+          for (const time of [1600, 64 / 0.028, 64 / 0.055, 64 / 0.28, 4096, 1e7]) {
             const before = picture(time - 1 / 60);
             const after = picture(time + 1 / 60);
             expect(meanChange(before, after), `${art ?? 'painted'}, flow ${flowing}, time ${time}`).toBeLessThan(step * 1.5 + 0.1);

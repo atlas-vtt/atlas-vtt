@@ -30,3 +30,8 @@ export function playerName(value: unknown): string | null {
   const name = value.replace(UNSHOWN, ' ').replace(UNSEEN, '').replace(/\s+/g, ' ').trim();
   return SHOWN.test(name) && [...name].length <= MAX_PLAYER_NAME ? name : null;
 }
+
+/** Whether two shown names (`playerName`) read as one name: case and the Unicode form of their characters do not tell players apart. */
+export function samePlayerName(a: string, b: string): boolean {
+  return a.normalize('NFKC').toLowerCase() === b.normalize('NFKC').toLowerCase();
+}

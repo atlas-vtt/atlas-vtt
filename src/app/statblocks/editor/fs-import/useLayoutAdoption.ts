@@ -3,6 +3,7 @@ import type { App } from 'obsidian';
 import { statblockCount, type LayoutStatblocks } from '../../fs/fsLayoutStatblocks';
 import type { TemplateId } from '../../model/templateTypes';
 import { moveStatblocks, type StatblockMoveResult } from './statblockMove';
+import { t } from '../../../i18n';
 
 export type AdoptionPhase =
   | { kind: 'ready' }
@@ -47,7 +48,7 @@ export function useLayoutAdoption(app: App, statblocks: LayoutStatblocks, templa
       (result) => show({ kind: 'finished', result, problem: null }),
       (error: unknown) => {
         console.error('[Atlas] Moving statblocks to Atlas failed:', error);
-        show({ kind: 'finished', result: null, problem: `Couldn't finish: ${error instanceof Error ? error.message : String(error)}` });
+        show({ kind: 'finished', result: null, problem: t('statblockEditor.fs.unfinished', { problem: error instanceof Error ? error.message : String(error) }) });
       },
     );
   }, []);

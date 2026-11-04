@@ -46,7 +46,6 @@ import { changelogSettingsSection } from './src/app/settings/changelogSettingsSe
 import { hotkeySettingsSection, onboardingSettingsSection } from './src/app/settings/hotkeySettingsSection';
 import { navigationSettingsSection } from './src/app/settings/navigationSettingsSection';
 import { diceSettingsSection } from './src/app/settings/diceSettingsSection';
-import { lightingSettingsSection } from './src/app/settings/lightingSettingsSection';
 import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
@@ -78,15 +77,18 @@ import { migrateSettingsToPluginData } from './src/app/plugin/settingsMigration'
 import { SystemPresetFiles } from './src/app/services/systemPresets/SystemPresetFiles';
 import { DiceSetFiles } from './src/app/services/diceSets/DiceSetFiles';
 import { registerStatusBarVisibility } from './src/app/plugin/statusBarVisibility';
+import { registerObsidianSyncNotice } from './src/app/plugin/obsidianSyncNotice';
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
-import { TileDecoderClient } from './src/app/pixi/mapImage/TileDecoderClient';
+import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
+import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
-import { MapImageService } from './src/app/pixi/mapImage/MapImageService';
+import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -167,7 +169,9 @@ export default class AtlasVTTPlugin extends Plugin {
     // Before the views: a restored map may start Atlas's first check of the vault,
     // whose folder renames reach map files only through these vault events.
     registerVaultSync(this);
+    registerObsidianSyncNotice(this);
     registerDiceStageRelease(this);
+    registerMapProcessingStatus(this);
     registerAccentColorSync(this);
     // Views first, so workspace restore can resolve persisted Atlas tabs
     // before the slower startup path finishes.
@@ -206,8 +210,7 @@ export default class AtlasVTTPlugin extends Plugin {
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
       mapsSettingsSection(this.settingsService),
-      lightingSettingsSection(this.settingsService),
-      mapImageCacheSettingsSection(() => TileDecoderClient.forApp(this.app)),
+      mapImageCacheSettingsSection(() => TesseraDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version, updateWatch),
@@ -280,9 +283,10 @@ export default class AtlasVTTPlugin extends Plugin {
     releaseMapPictures(this.app);
     CreatureIndex.release(this.app);
     TemplateLibrary.release(this.app);
-    TileDecoderClient.release(this.app);
+    MapProcessing.release(this.app);
+    TesseraDecoderClient.release(this.app);
     DungeonWorkerClient.release(this.app);
-    MapImageService.release(this.app);
+    MosaicCanvasService.release(this.app);
     disposeImageProcessing();
     disposeSpectralEngine();
   }

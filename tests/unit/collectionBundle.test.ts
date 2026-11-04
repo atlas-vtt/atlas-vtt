@@ -1499,5 +1499,23 @@ describe('random tables and encounter folders', () => {
     await importInto(fan, await exportFrom(creator), { name: 'source (2)' });
     const installed = JSON.parse(fan.vault.files.get('atlas-vtt/collections/source (2)/scenes/Cave.atlasmap')!) as { state: { objects: { pins: Record<string, { notePath: string }> } } };
     expect(installed.state.objects.pins.p1!.notePath).toBe('atlas-vtt/collections/source (2)/encounters');
+    });
+  });
+});
+
+describe('the level a scene was last shown on', () => {
+  it('goes with the scene to whoever imports the collection', async () => {
+    const creator = await creatorVault();
+    const levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: BACKGROUND },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: BACKGROUND },
+    ];
+    const file = JSON.parse(mapFile());
+    creator.vault.files.set(MAP_PATH, JSON.stringify({ version: 5, state: { ...file.state, version: 5, levels, viewedLevel: 'upper' } }));
+
+    const target = await emptyVault();
+    await importInto(target, await exportFrom(creator));
+
+    expect(JSON.parse(target.vault.files.get(MAP_PATH)!).state.viewedLevel).toBe('upper');
   });
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_LIQUID_COLORS, liquidList, liquidMovedWithMap, MAX_LIQUID_CORNERS, MAX_LIQUIDS, readFlow } from '../../../src/app/liquids/liquids';
+import { DEFAULT_LIQUID_COLORS, liquidList, liquidMovedWithMap, MAX_COURSE_POINTS, MAX_LIQUID_CORNERS, MAX_LIQUIDS, readFlow } from '../../../src/app/liquids/liquids';
 import { levelObjects } from '../../../src/app/levels/levelObjects';
 import { withLevelDeleted } from '../../../src/app/levels/levelEdits';
 import { objectsMovedWithMap } from '../../../src/app/grid/mapStretchObjects';
@@ -62,6 +62,28 @@ describe('reading liquid surfaces', () => {
     const [none] = liquidList({ c: { ...pool('c'), colors: undefined } as unknown as LiquidSurface });
     expect(none!.colors).toEqual(DEFAULT_LIQUID_COLORS.water);
     expect(readFlow({ x: Infinity, y: 1 })).toBeUndefined();
+  });
+});
+
+describe('the course and open edges of a liquid surface', () => {
+  it('reads a course only on flowing water, of two points at least and at most the cap, and open edges as indices of its outline', () => {
+    const course = [{ x: 0, y: 50 }, { x: 100, y: 50 }];
+    const [read] = liquidList({ a: pool('a', { flow: { x: 1, y: 0 }, course, openEdges: [3, 1, 1, 9, -1, 0.5] as number[] }) });
+    expect(read!.course).toEqual(course);
+    expect(read!.openEdges).toEqual([1, 3]);
+    const unread = liquidList({
+      still: pool('still', { course }),
+      one: pool('one', { flow: { x: 1, y: 0 }, course: [{ x: 0, y: 0 }] }),
+      same: pool('same', { flow: { x: 1, y: 0 }, course: [{ x: 1, y: 1 }, { x: 1, y: 1 }] }),
+      long: pool('long', { flow: { x: 1, y: 0 }, course: Array.from({ length: MAX_COURSE_POINTS + 1 }, (_, k) => ({ x: k, y: 0 })) }),
+      broken: pool('broken', { flow: { x: 1, y: 0 }, course: [{ x: 0, y: 0 }, { x: Number.NaN, y: 1 }] }),
+    });
+    for (const surface of unread) expect(surface.course).toBeUndefined();
+  });
+
+  it('moves its course with the map', () => {
+    const moved = liquidMovedWithMap(pool('a', { flow: { x: 1, y: 0 }, course: [{ x: 0, y: 50 }, { x: 100, y: 50 }] }), (point) => ({ x: point.x * 2, y: point.y + 10 }));
+    expect(moved.course).toEqual([{ x: 0, y: 60 }, { x: 200, y: 60 }]);
   });
 });
 

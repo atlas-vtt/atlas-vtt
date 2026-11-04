@@ -5,7 +5,7 @@ import { placeLight } from '../../../../lighting/lightPlacement';
 import { sealWalls } from '../../../../lighting/sealWalls';
 import { allSegments, splitBlocking } from '../../../../lighting/segments';
 import type { VisionCone } from '../../../../vision/visionCone';
-import { LightingWorld } from '../LightingWorld';
+import { createEngineWorld } from '../engineWorld';
 import type { EngineLight } from '../types';
 import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY, type LightingQuality } from '../../../../lighting/lightingQuality';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
@@ -53,7 +53,7 @@ interface FuzzOptions {
  */
 async function fuzz({ seed, trials, allAround = false, turned = false, bounds = BOUNDS, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   const renderer = await createTestRenderer(64);
-  const world = new LightingWorld(renderer, bounds, quality);
+  const world = createEngineWorld(renderer, bounds, quality, false);
   const texel = worldTexel(bounds, quality.maxTexels);
   try {
     const rand = rng(seed + 3);
@@ -76,7 +76,8 @@ async function fuzz({ seed, trials, allAround = false, turned = false, bounds = 
       const all = read(lights.map(({ cone: _cone, edge: _edge, ...light }) => light));
       const beamed = allAround ? all : read(lights.map((light) => (turned ? { ...light, cone: { ...light.cone!, facing: light.cone!.facing + Math.PI / 2 } } : light)));
       const placed = lights.flatMap((light) => {
-        const at = placeLight(light.x, light.y, light.flame, allSegments(splitBlocking(walls)), texel);
+        // The traced picture lights from where the light is placed clear of the walls; the polygon picture is the rule's, from the light itself.
+        const at = world.picture === 'polygons' ? { x: light.x, y: light.y } : placeLight(light.x, light.y, light.flame, allSegments(splitBlocking(walls)), texel);
         return at ? [{ at, cone: light.cone!, dim: light.dim, edge: light.edge!, reach: light.dim * LIGHT_REACH }] : [];
       });
       const width = world.lightMap.texture.source.pixelWidth;

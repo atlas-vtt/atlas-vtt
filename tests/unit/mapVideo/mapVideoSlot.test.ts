@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { TFile } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MapVideoSlot, type MapVideoDeps, type MapVideoProblem } from '../../../src/app/pixi/mapImage/video/MapVideoSlot';
-import type { OpenedVideo } from '../../../src/app/pixi/mapImage/video/videoElement';
+import { MapVideoSlot, type MapVideoDeps, type MapVideoProblem } from '../../../src/app/pixi/mosaicCanvas/video/MapVideoSlot';
+import type { OpenedVideo } from '../../../src/app/pixi/mosaicCanvas/video/videoElement';
 
 const SIZE = { width: 128, height: 64 };
 

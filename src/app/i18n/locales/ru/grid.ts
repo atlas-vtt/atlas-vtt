@@ -25,4 +25,8 @@ export const grid: Translation = {
   'grid.type.hexFlat': 'Гексы (плоские)',
   'grid.type.hexPointy': 'Гексы (острые)',
   'grid.type.square': 'Квадратная',
+  'grid.unit': 'Единица измерения',
+  'grid.unitOfCampaign': 'Для всех карт, пока идёт кампания',
+  'grid.unitOfCollection': 'Для всех сцен коллекции',
+  'grid.unitOfScene': 'Для этой сцены',
 };

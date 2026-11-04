@@ -19,7 +19,8 @@ export interface UISlice extends ViewUIState {
   setDiceLogOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
   closeAssetManager: () => void;
-  setCommandPaletteOpen: (open: boolean) => void;
+  /** Opens or closes the palette; `page` names the page it opens on. */
+  setCommandPaletteOpen: (open: boolean, page?: string) => void;
   setDiceTrayOpen: (open: boolean) => void;
   openLightPopover: (lightId: string) => void;
   closeLightPopover: () => void;
@@ -51,6 +52,7 @@ export function createInitialUIState(): Pick<
   | 'isAssetManagerOpen'
   | 'assetManagerInitialTab'
   | 'isCommandPaletteOpen'
+  | 'commandPalettePage'
   | 'isDiceTrayOpen'
   | 'lightPopover'
   | 'lightZonePopover'
@@ -71,6 +73,7 @@ export function createInitialUIState(): Pick<
     isAssetManagerOpen: false,
     assetManagerInitialTab: undefined,
     isCommandPaletteOpen: false,
+    commandPalettePage: null,
     isDiceTrayOpen: false,
     lightPopover: null,
     lightZonePopover: null,
@@ -129,8 +132,9 @@ export function createUIActions(
       draft.isAssetManagerOpen = false;
       draft.assetManagerInitialTab = undefined;
     }),
-    setCommandPaletteOpen: (open) => set((draft) => {
+    setCommandPaletteOpen: (open, page) => set((draft) => {
       draft.isCommandPaletteOpen = open;
+      draft.commandPalettePage = open ? page ?? null : null;
       if (open) draft.isToolbarEditing = false;
     }),
     setDiceTrayOpen: (open) => set((draft) => {

@@ -20,6 +20,7 @@ import { labelTargetIn } from './labelTargets';
 import { focusAfterDelete, inSiblingOrder, type BlockSelection } from './selection';
 import { applyEdit, applyTree, chainTree, outcomeOf, readOnlyMessage, refusalMessage, type EditOutcome } from './sessionEdit';
 import type { EditorSession } from './sessionTypes';
+import { t } from '../../../i18n';
 
 /** What an insert puts in: its blocks, top to bottom, and the fields they bring. */
 export interface InsertParts {
@@ -77,8 +78,8 @@ export function insertParts(
   if (result === null) return { announce: readOnlyMessage(snapshot) ?? undefined };
   if ('refused' in result) return { announce: result.refused ? refusalMessage(result.refused) ?? undefined : undefined };
   const inserted = findBlock(snapshot.template.layout.blocks, result.inserted);
-  const said = name ?? (inserted ? blockName(inserted.block, snapshot.template.fields) : 'a block');
-  return { select: [result.inserted], inserted: result.inserted, announce: `Added ${said}.` };
+  const said = name ?? (inserted ? blockName(inserted.block, snapshot.template.fields) : t('templateEditor.aBlock'));
+  return { select: [result.inserted], inserted: result.inserted, announce: t('templateEditor.added', { name: said }) };
 }
 
 /** Fields a new block shows from the start: a Title the name, an Image the art. */
@@ -134,7 +135,7 @@ export function duplicateSelection(session: EditorSession, selection: BlockSelec
     }));
   });
   const snapshot = session.getSnapshot();
-  return outcomeOf(edit, snapshot, () => ({ select: [...copies], announce: copies.length > 1 ? `Duplicated ${copies.length} blocks.` : 'Duplicated.' }));
+  return outcomeOf(edit, snapshot, () => ({ select: [...copies], announce: copies.length > 1 ? t('templateEditor.duplicatedBlocks', { count: copies.length }) : t('templateEditor.duplicated') }));
 }
 
 /** Delete: the selected tiles go (never a part of the header), focus moves to the next one, else the one before. */
@@ -152,7 +153,7 @@ export function deleteSelection(session: EditorSession, selection: BlockSelectio
     return chainTree(layout, doomed.map((id) => (current: TemplateLayout) => removeBlock(current, id)));
   });
   return outcomeOf(edit, session.getSnapshot(), () => {
-    const what = names.length === 1 ? names[0] ?? 'the block' : `${names.length} blocks`;
+    const what = names.length === 1 ? names[0] ?? t('templateEditor.theBlock') : t('templateEditor.blocks', { count: names.length });
     return { select: after.focus ? [after.focus] : [], announce: removedMessage(what), deleted: what };
   });
 }
@@ -161,7 +162,7 @@ export function deleteSelection(session: EditorSession, selection: BlockSelectio
 export function toggleHeaderPartHidden(session: EditorSession, blockId: string): EditOutcome {
   const part = headerPartOf(session.getSnapshot().template, blockId);
   if (!part) return {};
-  if (!part.hideable) return { announce: `Every statblock shows its ${part.label.toLowerCase()}.` };
+  if (!part.hideable) return { announce: t('templateEditor.partAlwaysShown', { name: part.label.toLowerCase() }) };
   const hide = !part.hidden;
   const changed = applyEdit(session, (template) => {
     const next = setHeaderPartHidden(template, part.id, hide);
@@ -170,6 +171,6 @@ export function toggleHeaderPartHidden(session: EditorSession, blockId: string):
   if (changed === null) return { announce: readOnlyMessage(session.getSnapshot()) ?? undefined };
   return {
     select: hide ? [] : [blockId],
-    announce: hide ? `${part.label} hidden. It stays in the template, off the card.` : `${part.label} shown on the card.`,
+    announce: hide ? t('templateEditor.partHidden', { name: part.label }) : t('templateEditor.partShown', { name: part.label }),
   };
 }

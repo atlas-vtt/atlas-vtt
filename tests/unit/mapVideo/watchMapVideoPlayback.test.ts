@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import type { Renderer } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { MapVideoMode } from '../../../src/app/pixi/mapImage/video/mapVideoPlayback';
-import { watchMapVideoPlayback } from '../../../src/app/pixi/mapImage/video/watchMapVideoPlayback';
+import type { MapVideoMode } from '../../../src/app/pixi/mosaicCanvas/video/mapVideoPlayback';
+import { watchMapVideoPlayback } from '../../../src/app/pixi/mosaicCanvas/video/watchMapVideoPlayback';
 
 type Listener = () => void;
 

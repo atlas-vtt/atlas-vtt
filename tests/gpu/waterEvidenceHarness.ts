@@ -19,17 +19,22 @@ export const WATER_PHASE = String(import.meta.env.VITE_WATER_PHASE ?? 'check');
 export const WATER_CAPTURE = import.meta.env.VITE_WATER_CAPTURE === '1';
 
 /** Real generator → scene writer → reader → LiquidLayer; no substituted outlines or colours. */
-export async function waterScene(look: DungeonStyleId, monochrome: boolean, channel = false): Promise<{
+/** Where the water comes from: a cave's pools, a generated channel, or a Forest's river, which flows along its course. */
+export type WaterSource = 'pool' | 'channel' | 'river';
+
+export async function waterScene(look: DungeonStyleId, monochrome: boolean, source: WaterSource = 'pool'): Promise<{
   world: Container; layer: LiquidLayer; map: Sprite; target: RenderTexture;
   step: (seconds: number) => void; quality: (detail: LiquidDetail) => void; destroy: () => void;
 }> {
   const view = { ...DEFAULT_VIEW, monochrome };
-  const model = channel ? channelDungeon() : generateDungeon({ seed: 909, theme: 'cavern', tags: ['small', 'wet'], floors: 1 });
+  const model = source === 'channel' ? channelDungeon()
+    : source === 'river' ? generateDungeon({ seed: 404, theme: 'forest', tags: ['medium'], floors: 1 })
+    : generateDungeon({ seed: 909, theme: 'cavern', tags: ['small', 'wet'], floors: 1 });
   const style = dungeonStyle(look);
   const layout = mapLayout(model, WATER_CELL, view);
   const scene = dungeonScene(model, style, view, { originCell: layout.originCell, pxPerCell: WATER_CELL }, { width: layout.widthPx, height: layout.heightPx }, { unitType: 'feet', ruleDistance: 5 })!.scene;
   const water = Object.fromEntries(Object.entries(scene.liquids ?? {}).filter(([, s]) => s.liquid === 'water'));
-  const largest = Object.values(water).filter(s => !channel || s.flow).sort((a, b) => area(b.polygon) - area(a.polygon))[0];
+  const largest = Object.values(water).filter(s => source === 'pool' || s.flow).sort((a, b) => area(b.polygon) - area(a.polygon))[0];
   if (!largest) throw new Error(`Seed ${model.seed} has no water`);
   const centre = deepPoint(largest.polygon, WATER_CELL);
   // Render a real window of the map at scene resolution, keeping the generator's world origin.

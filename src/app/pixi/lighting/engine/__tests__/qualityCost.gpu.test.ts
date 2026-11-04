@@ -2,12 +2,9 @@
 import { Container, Matrix, RenderTexture, Sprite, Texture, type TextureSource, type WebGLRenderer } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { LIGHTING_QUALITY, LIGHTING_QUALITY_LEVELS, type LightingQuality, type LightingQualityLevel } from '../../../../lighting/lightingQuality';
-import type { WallSegment } from '../../../../types/wallTypes';
-import { SEES_ALL } from '../../../../vision/sight';
 import type { MapBounds } from '../../../../vision/visibility';
 import { LightingEngine } from '../LightingEngine';
-import type { EngineLight, EngineScene } from '../types';
-import { rng } from './fuzzRooms';
+import { costScene } from './costScene';
 import { createTestRenderer } from './gpuTestUtils';
 
 const STRICT = import.meta.env.VITE_PERF_STRICT === '1';
@@ -72,24 +69,6 @@ function median(values: (number | null)[]): number | null {
   return kept.length > 0 ? Math.round(kept[Math.floor(kept.length / 2)]! * 100) / 100 : null;
 }
 
-/** 1,000 walls in chains and 40 lights over `bounds`, ten of them torches. */
-function scene(bounds: MapBounds, seed: number): EngineScene {
-  const rand = rng(seed);
-  const walls: WallSegment[] = [];
-  while (walls.length < 1000) {
-    let x = rand() * bounds.width, y = rand() * bounds.height;
-    for (let z = 0; z < 8; z++) {
-      const a = rand() * Math.PI * 2, l = 40 + rand() * 150;
-      walls.push({ id: `w${walls.length}`, kind: 'wall', type: 'solid', p1: { x, y }, p2: { x: x + Math.cos(a) * l, y: y + Math.sin(a) * l } });
-      x += Math.cos(a) * l;
-      y += Math.sin(a) * l;
-    }
-  }
-  const px = 73.89 / 5;
-  const lights: EngineLight[] = Array.from({ length: 40 }, (_, i) => ({ key: `l${i}`, x: rand() * bounds.width, y: rand() * bounds.height, bright: 20 * px, dim: 40 * px, flame: 40 * px * 0.12, color: [1, 0.6, 0.3], intensity: 1, animation: i < 10 ? 'torch' : 'none' }));
-  return { bounds, albedo: null, walls, lights, sight: SEES_ALL, sightRadius: 37, ambient: 0.1 };
-}
-
 interface Cost {
   level: LightingQualityLevel;
   map: string;
@@ -134,7 +113,7 @@ async function measure(renderer: WebGLRenderer, ext: TimerExt | null, level: Lig
   const engine = new LightingEngine(renderer, LIGHTING_QUALITY[level]);
   const target = RenderTexture.create(SCREEN);
   const retina = RenderTexture.create({ ...SCREEN, resolution: 2 });
-  const lit = scene(bounds, 3);
+  const lit = costScene(bounds, 3);
   try {
     engine.setEnabled(true);
     engine.setMode('player');
@@ -169,7 +148,7 @@ async function measure(renderer: WebGLRenderer, ext: TimerExt | null, level: Lig
     const texel = Math.max(2, Math.max(bounds.width, bounds.height) / LIGHTING_QUALITY[level].maxTexels);
     return {
       level, map: `${bounds.width}x${bounds.height}`, texel: Math.round(texel * 100) / 100, worldMb: Math.round(worldBytes / 1e5) / 10, memoryMb: Math.round(bytes / 1e5) / 10,
-      build: median([build]), bounce: median([bounce]), frameFit: median(fits), frameClose: median(closes), flicker: LIGHTING_QUALITY[level].flickerMs === null ? 0 : median(flickers),
+      build: median([build]), bounce: median([bounce]), frameFit: median(fits), frameClose: median(closes), flicker: quality.picture === 'polygons' ? 0 : median(flickers),
       retinaClose: median(reduced)!, retinaCloseEveryPixel: median(every),
     };
   } finally {

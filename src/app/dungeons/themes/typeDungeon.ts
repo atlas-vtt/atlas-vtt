@@ -6,6 +6,7 @@
 
 import { floorAbove, floorStack } from '../floors/floorStack';
 import type { PlannedFloor } from '../floors/planFloors';
+import type { CaveModel } from '../model';
 import type { DungeonTag } from '../tags';
 import { type TypedRoom, depthRanks } from '../terrain/typeTerrain';
 import { assignRoomTypes, type RoomTypes } from './assign/assignRoomTypes';
@@ -22,12 +23,14 @@ export interface ThemedFloors {
   rooms: ReadonlyMap<number, TypedRoom>[];
 }
 
-export function typeDungeon(seed: number, id: ThemeId, tags: ReadonlySet<DungeonTag>, floors: readonly PlannedFloor[], below = 0): ThemedFloors {
+/** `cave` is a Cavern's formation and character (`CaveModel`), which its programme and facts read. */
+export function typeDungeon(seed: number, id: ThemeId, tags: ReadonlySet<DungeonTag>, floors: readonly PlannedFloor[], below = 0, cave?: Pick<CaveModel, 'variant' | 'character'>): ThemedFloors {
   const definition = themeOf(id);
   const ruined = tags.has('ruined');
-  const facts = definition.facts?.({ seed, tags, floors }) ?? NO_FACTS;
+  const character = cave?.character;
+  const facts = definition.facts?.({ seed, tags, floors, ...(cave && { variant: cave.variant }), ...(character && { character }) }) ?? NO_FACTS;
   const theme: ThemeContext = { definition, ruined, facts };
-  const programme = programmeOf(definition, tags);
+  const programme = programmeOf(definition, tags, cave?.variant);
   const stack = floorStack(definition.rise, floors.length, below);
   // A house's planner typed every room where it stands; any other theme's rooms are typed here.
   const typed = definition.layout === 'house' ? pinnedTypes(seed, floors, programme, facts, ruined) : assignRoomTypes({ seed, programme, floors, ruined, facts, above: (floor) => floorAbove(stack, floor) });

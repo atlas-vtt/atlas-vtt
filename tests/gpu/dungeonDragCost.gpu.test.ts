@@ -68,10 +68,13 @@ interface Paced {
   lightBehind: number;
 }
 
-/** Whether a light tile is still being built after the frame: the light map then shows that light's old tile, where it stood before. */
+/**
+ * Whether a light tile is still being built after the frame: the light map then shows that light's old tile, where it stood before.
+ * The polygon picture (Saver) has no tiles: it draws every light where it stands in the update that moved it.
+ */
 function tileBehind(ctx: DungeonView): boolean {
-  const host = ctx.view.controller.renderer as unknown as { view: { engine?: { world: { tiles: { busy(): boolean } } | null } } };
-  return host.view.engine?.world?.tiles.busy() ?? false;
+  const host = ctx.view.controller.renderer as unknown as { view: { engine?: { world: { tiles?: { busy(): boolean } } | null } } };
+  return host.view.engine?.world?.tiles?.busy() ?? false;
 }
 
 function summary(steps: readonly StepCost[]): Summary {

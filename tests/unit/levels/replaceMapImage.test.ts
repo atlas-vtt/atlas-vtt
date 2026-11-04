@@ -10,7 +10,7 @@ import type { GridState } from '../../../src/app/types/gridTypes';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 
 const sizes = vi.hoisted(() => new Map<string, { width: number; height: number }>());
-vi.mock('../../../src/app/pixi/mapImage/mapImageSize', () => ({ mapImageSize: async (_app: unknown, path: string) => sizes.get(path) ?? null }));
+vi.mock('../../../src/app/pixi/mosaicCanvas/mosaicCanvasSize', () => ({ mosaicCanvasSize: async (_app: unknown, path: string) => sizes.get(path) ?? null }));
 const notices = vi.hoisted(() => [] as string[]);
 vi.mock('../../../src/app/ui/notice', () => ({ showNotice: (text: string) => notices.push(text) }));
 

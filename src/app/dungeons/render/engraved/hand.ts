@@ -5,7 +5,8 @@ import { SHADOW_DIR, shadeEdges } from '../art/light';
 import { pathBounds, polysPath, runsPath, type PathFn } from '../art/paths';
 import { hatchFill } from './hatch';
 import type { Pens } from './pens';
-import { paintMolten, paintWater } from './water';
+import { paintMolten } from './molten';
+import { paintWater } from './water';
 import { depthField } from '../art/pools';
 
 /** Line weights of Engraved, in cells. */
@@ -81,7 +82,7 @@ export function engravedHand(scene: ArtScene, pens: Pens): Hand {
       });
     },
     water: (pools, depth, deep) => paintWater(scene, pens, polysPath(pools), pools, depth, deep),
-    lava: (pools, tint) => paintMolten(scene, pens, polysPath(pools), pools, depthField(scene, polysPath(pools), pools.flat()), tint),
+    lava: (pools, tint, flow) => paintMolten(scene, pens, polysPath(pools), pools, depthField(scene, polysPath(pools), pools.flat()), tint, flow),
     paint: () => ({ fill: pens.floor, ink: pens.ink }),
     weight: weight => WEIGHTS[weight],
   };

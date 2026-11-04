@@ -36,7 +36,6 @@ export class TurnMarker {
   private outerRadius = 0;
   private poolDrawn = '';
   private rimDrawn = '';
-  private masked = false;
   private started = 0;
   /** How strongly the flash shows now, 0 to 1. */
   private shown = 0;
@@ -46,7 +45,8 @@ export class TurnMarker {
     this.rim.addChild(this.ink);
     this.spot.addChild(this.pool, this.rim);
     this.view.addChild(this.figure, this.spot);
-    this.keepOffArt(true);
+    // The spotlight stays off the art: the figure masks it out.
+    this.spot.setMask({ mask: this.figure, inverse: true, channel: 'alpha' });
     this.restart(now);
   }
 
@@ -71,18 +71,6 @@ export class TurnMarker {
     this.ink.clear()
       .circle(0, 0, radius).stroke({ width: TURN_LOOK.keylineWidth, color: 0x000000, alpha: TURN_LOOK.keylineAlpha })
       .circle(0, 0, radius).stroke({ width: TURN_LOOK.rimWidth, color: TURN_LOOK.gold, alpha: TURN_LOOK.rimAlpha });
-  }
-
-  /**
-   * Whether the renderer keeps the spotlight off the art. PIXI's Canvas renderer has no alpha
-   * masks and would draw the pool over the figure, so there the marker is its rim alone.
-   */
-  keepOffArt(canMask: boolean): void {
-    if (canMask === this.masked) return;
-    this.masked = canMask;
-    this.pool.visible = canMask;
-    if (canMask) this.spot.setMask({ mask: this.figure, inverse: true, channel: 'alpha' });
-    else this.spot.mask = null;
   }
 
   /** Flashes again from the start: the turn began anew. */

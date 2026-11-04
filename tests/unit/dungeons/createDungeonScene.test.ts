@@ -6,7 +6,7 @@ import { DEFAULT_VIEW } from '../../../src/app/dungeons/style';
 import { dungeonStyle } from '../../../src/app/dungeons/styleCatalog';
 import type { DungeonJob, DungeonRendered } from '../../../src/app/dungeons/worker/dungeonJob';
 import type { ProcessedImage } from '../../../src/app/imageProcessing/imageProcessing';
-import { prebuildMapImageAt } from '../../../src/app/pixi/mapImage/prebuildMapImage';
+import { prebuildMosaicCanvasAt } from '../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas';
 import { AssetService, type Asset } from '../../../src/app/services/AssetService';
 import { AssetThumbnailService } from '../../../src/app/services/AssetThumbnailService';
 import type { WallSegment } from '../../../src/app/types/wallTypes';
@@ -17,7 +17,7 @@ import { smallDungeon } from '../../fixtures/dungeonModels';
 import { fakeBitmap, pngHeader, pngOfBitmap } from '../../fixtures/uvttFiles';
 import { createInMemoryApp, interceptWrites, type InMemoryApp } from '../../mocks/inMemoryVault';
 
-vi.mock('../../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
+vi.mock('../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', () => ({ prebuildMosaicCanvasAt: vi.fn() }));
 
 const COLLECTION = 'Dungeons';
 const SCENES = `atlas-vtt/collections/${COLLECTION}/scenes`;
@@ -93,7 +93,7 @@ const recordsOf = ({ assets }: Bench): Promise<Asset[]> => assets.getAssets(COLL
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  vi.mocked(prebuildMapImageAt).mockClear();
+  vi.mocked(prebuildMosaicCanvasAt).mockClear();
 });
 afterEach(() => { vi.restoreAllMocks(); AssetService.resetInstance(); });
 
@@ -105,13 +105,13 @@ describe('creating a dungeon scene', () => {
 
     expect(result).toEqual({ ok: true, name: TITLE, scenePath: `${SCENES}/${TITLE}.atlasmap` });
     expect(b.jobs.map(job => job.output)).toEqual([
-      { kind: 'map', ...SIZE, bitmap: true },
+      { kind: 'map', ...SIZE, bitmap: true, treeLine: true },
     ]);
     const records = await recordsOf(b);
     expect(records.map(r => r.type).sort()).toEqual(['map', 'scene']);
     const map = records.find(r => r.type === 'map');
     if (map?.type !== 'map') throw new Error('No map record');
-    expect(prebuildMapImageAt).toHaveBeenCalledWith(b.vault.app, map.mapFilePath);
+    expect(prebuildMosaicCanvasAt).toHaveBeenCalledWith(b.vault.app, map.mapFilePath);
 
     const state = sceneState(b, result.scenePath);
     expect(sceneFile(b, result.scenePath).version).toBe(4);
@@ -137,7 +137,7 @@ describe('creating a dungeon scene', () => {
     const result = created(await createDungeonSceneWith(b.deps, options(model)));
 
     expect(b.jobs.map(job => job.output)).toEqual([
-      { kind: 'map', ...SIZE, bitmap: true },
+      { kind: 'map', ...SIZE, bitmap: true, treeLine: true },
       { kind: 'map', ...SIZE, bitmap: true, floor: 1 },
       { kind: 'map', ...SIZE, bitmap: true, floor: 2 },
     ]);
@@ -165,7 +165,8 @@ describe('creating a dungeon scene', () => {
     const notePath = `atlas-vtt/collections/${COLLECTION}/notes/${TITLE}.md`;
     const note = b.vault.files.get(notePath)!;
     // A room's heading names its key, then what it was built for where its theme typed it.
-    expect(note).toMatch(new RegExp(`^# ${TITLE}\\n\\n## A1( · [^\\n]+)?\\n`));
+    // A cave's character opens the note, before its first room.
+    expect(note).toMatch(new RegExp(`^# ${TITLE}\\n\\n([^#\\n][^\\n]*\\n\\n)?## A1( · [^\\n]+)?\\n`));
     const pins = Object.values(objects.pins ?? {});
     expect(pins.length).toBeGreaterThan(5);
     for (const pin of pins) {

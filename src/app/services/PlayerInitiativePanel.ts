@@ -3,7 +3,7 @@ import { rulesLookup } from './mapRules';
 import type { App } from 'obsidian';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
-import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerInstanceBadges';
+import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
 import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, sideIdsOf, type EntryToken } from './playerInitiativeList';
 import { mapInitiativeRules } from './mapInitiativeRules';
 import { mapConditions } from '../gameSystems/mapRules';
@@ -27,9 +27,9 @@ interface InitiativeScene {
 /**
  * Read-only initiative projection; never mounts the DM tracker or its controls. It lists the
  * GM's combatants without those whose token is hidden, in turn order or by sides as the fight runs.
- * Look-alikes carry the number their badge shows the players (`PlayerBadgeNumbers`), which may
- * differ from the GM's: the list is drawn anew once the players' frame numbered them anew. It
- * follows the GM's layout: the edge it stands at and whether it starts at the turn.
+ * Look-alikes carry the GM's number where the players see their token (`PlayerBadgeNumbers`): the
+ * list is drawn anew once the players' frame shows another set. It follows the GM's layout: the
+ * edge it stands at and whether it starts at the turn.
  */
 export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
   private badgeNumbers: PlayerBadgeNumbers | undefined;
@@ -68,7 +68,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     super.hold();
   }
 
-  /** The players' frame numbers its badges while it renders: the list is drawn once that render is done. */
+  /** The players' frame takes its badge numbers while it renders: the list is drawn once that render is done. */
   private redrawSoon(): void {
     if (this.redrawQueued) return;
     this.redrawQueued = true;

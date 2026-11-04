@@ -1,4 +1,4 @@
-import { CanvasRenderer, Container, RenderTexture, Sprite, Texture, TexturePool, uid, WebGLRenderer, type Renderer } from 'pixi.js';
+import { Container, RenderTexture, Sprite, Texture, TexturePool, uid, WebGLRenderer, type Renderer } from 'pixi.js';
 import type { FramePiece, PlayerFrame, Size } from '../types/playerFrame';
 import { contextLost } from './lighting/engine/gpu';
 
@@ -81,12 +81,6 @@ export class PlayerFrameTexture {
     // A lost context draws nothing: its canvas would hand out pieces without a picture
     if (!this.canRender()) return;
     const { pixelWidth: width, pixelHeight: height } = texture.source;
-    if (renderer instanceof CanvasRenderer) {
-      // A Canvas 2D render texture is a canvas of its own
-      const { canvas } = renderer.renderTarget.getGpuRenderTarget(renderer.renderTarget.getRenderTarget(texture));
-      if (canvas instanceof HTMLCanvasElement) copy({ image: canvas, x: 0, y: 0, width, height, left: 0, top: 0 });
-      return;
-    }
     const { canvas, resolution } = renderer;
     // A canvas without pixels has no piece to offer, and one too small for the frame would offer too many
     if (canvas.width < 1 || canvas.height < 1) return;

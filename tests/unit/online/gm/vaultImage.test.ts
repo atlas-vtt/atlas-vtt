@@ -4,7 +4,7 @@ import { readVaultImage } from '../../../../src/app/online/gm/vaultImage';
 import { createInMemoryApp } from '../../../mocks/inMemoryVault';
 
 const poster = vi.hoisted(() => vi.fn(async (_bytes: BlobPart, mime: string): Promise<Blob> => new Blob([`POSTER of ${mime}`], { type: 'image/png' })));
-vi.mock('../../../../src/app/pixi/mapImage/video/videoPoster', () => ({ videoPosterBlob: poster }));
+vi.mock('../../../../src/app/pixi/mosaicCanvas/video/videoPoster', () => ({ videoPosterBlob: poster }));
 
 function vault(files: Record<string, string>) {
   const memory = createInMemoryApp({ files });

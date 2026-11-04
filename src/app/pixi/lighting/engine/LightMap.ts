@@ -6,7 +6,7 @@ import type { MapBounds } from '../../../vision/visibility';
 import { destroyTree } from '../../utils/destroyTree';
 import { ENGINE_SHADERS } from './engineShaders';
 import { createDarknessMesh, destroyDarknessMesh, setDarknessMesh, type DarknessMesh, type DrawnDarkness } from './DarknessMap';
-import { createPlaceholder, createQuad, createShader, createTarget, destroyQuad, quadGeometry, renderInto, type Quad } from './gpu';
+import { addKeepMaxBlend, createPlaceholder, createQuad, createShader, createTarget, destroyQuad, quadGeometry, renderInto, type Quad } from './gpu';
 import type { Tile } from './TileCache';
 import type { ReflectionTile } from './ReflectionTiles';
 
@@ -45,7 +45,8 @@ const ALL_AROUND = [1, 0, 2 * Math.PI, 0] as const;
 
 /**
  * Every light's direct light over the map in world space (`rgba16float`, HDR): independent of
- * any camera, so the GM view and the player window read the same texture. Lights add up; a
+ * any camera, so the GM view and the player window read the same texture. Lights add up, and
+ * alpha keeps the brightest light's (`addKeepMaxBlend`), so the composite tells one from several; a
  * darkness source erases what was drawn before it within its area, so the order of `draw`'s
  * list is the order of priority: a light listed after a darkness shines in it.
  */
@@ -73,9 +74,12 @@ export class LightMap {
     const dark = lights.filter(isDarkness);
     while (this.slots.length < shining.length) this.slots.push(this.createSlot());
     while (this.darkSlots.length < dark.length) this.darkSlots.push(this.createDarkSlot());
+    // The renderer's table of blends is built anew with every context: the light's blend is added again if it went.
+    const blend = addKeepMaxBlend(this.renderer);
     this.slots.forEach((slot, i) => {
       const light = shining[i];
       slot.mesh.visible = !!light;
+      slot.mesh.blendMode = blend;
       if (!light) return;
       const u = slot.uniforms.uniforms;
       const { reflection } = light;
@@ -160,7 +164,7 @@ export class LightMap {
     });
     const shader = createShader(ENGINE_SHADERS.lightMap, { lightUniforms: uniforms, uTile: this.placeholder.source, uDistance: this.placeholder.source, uReflection: this.placeholder.source });
     const mesh = new Mesh({ geometry: this.geometry, shader });
-    mesh.blendMode = 'add';
+    mesh.blendMode = addKeepMaxBlend(this.renderer);
     this.scene.addChild(mesh);
     return { mesh, uniforms, rect, tileOrigin, reflectOrigin, light, color, cone };
   }

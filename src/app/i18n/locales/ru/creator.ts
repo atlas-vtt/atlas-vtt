@@ -79,4 +79,5 @@ export const creator: Translation = {
   'creator.optimizingImages': 'Оптимизация изображений',
   'creator.savePreviewsFailed': 'Не удалось сохранить превью.',
   'creator.scaledDown': 'Уменьшено с {from} px до наибольшего размера карты',
+  'creator.statblockNotes': 'Заметки статблоков',
 };

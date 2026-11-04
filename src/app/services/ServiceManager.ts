@@ -1,3 +1,4 @@
+import { MapController } from '../MapController';
 import { App } from 'obsidian';
 import { watchLevelsToRefit } from '../react/components/levels/levelRefitNotice';
 import { followHistoryAcrossLevels } from '../react/components/levels/levelHistoryFollow';
@@ -19,7 +20,7 @@ import { SoundEffectService } from './SoundEffectService';
 import { DiceToastObserver } from './DiceToastObserver';
 import type { ViewAtlasStore } from '../storeFactory';
 import { PartySync } from '../campaigns/partyValues/PartySync';
-import { pictureView } from '../pixi/mapImage/levelOfDetail';
+import { pictureView } from '../pixi/mosaicCanvas/levelOfDetail';
 
 /** How long a snapshot waits for the map image's detail before it renders what is drawn. */
 const THUMBNAIL_DETAIL_WAIT_MS = 500;
@@ -84,6 +85,7 @@ export class ServiceManager {
     this.stopHistoryFollow = followHistoryAcrossLevels(store);
     this.sceneThumbnails = new SceneThumbnailUpdater(store, {
       render: () => this.renderMapThumbnail(),
+      levelShown: () => MapController.showsViewedLevel(this.rendererService.getRenderer()?.getMapImage() ?? null, store.getState()),
       save: (mapPath, bytes) => this.mapThumbnailService.saveThumbnail(mapPath, bytes),
       hasThumbnail: (mapPath) => this.mapThumbnailService.hasThumbnail(mapPath),
     });
@@ -261,10 +263,11 @@ export class ServiceManager {
     this.diceToastObserver.destroy();
     this.soundEffectService.destroy();
     this.toolController.destroy();
+    // Ends a load, a grid detection and a new dungeon's reveal, which still hold the renderer's ticker
+    this.mapService.destroy();
     this.rendererService.destroy();
     this.layerGraph.destroy();
     this.uiOverlay.unmount();
-    this.mapService.destroy();
     this.notePreviewUIManager.destroy();
 
     // Remove all event listeners

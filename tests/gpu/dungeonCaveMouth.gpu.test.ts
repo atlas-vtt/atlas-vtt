@@ -3,6 +3,7 @@ import { generateDungeon } from '../../src/app/dungeons/generate';
 import type { DungeonModel, DungeonRequest } from '../../src/app/dungeons/model';
 import { groundDistance, wayCentre, wayPoint, type WayOut } from '../../src/app/dungeons/render/cave/mouth/wayOut';
 import type { Vec } from '../../src/app/dungeons/render/geometry';
+import { mapLayout } from '../../src/app/dungeons/render/layoutSize';
 import { paletteOf, parseHex } from '../../src/app/dungeons/render/palette';
 import { renderMap } from '../../src/app/dungeons/render/renderMap';
 import { visibleDungeon } from '../../src/app/dungeons/render/visibleDungeon';
@@ -61,6 +62,19 @@ const toneOf = (picture: Picture, pixels: readonly Vec[]): number =>
 
 const inkShare = (mask: Uint8Array, picture: Picture, pixels: readonly Vec[]): number => pixels.filter(({ x, y }) => mask[y * picture.width + x]).length / pixels.length;
 
+/**
+ * How far out the way's middle runs before the map ends, in cells: the map keeps 0.4 cells or more
+ * of paper past a way's end (`WAY_INSIDE_MARGIN`), not always the 0.6 the strips beyond it read,
+ * and the window shows black beyond the map, which is no paper.
+ */
+function mapEnd(model: DungeonModel, way: WayOut): number {
+  const { originCell, cellsWide, cellsHigh } = mapLayout(model, PX);
+  const inside = (p: Vec): boolean => p.x > originCell.x && p.y > originCell.y && p.x < originCell.x + cellsWide && p.y < originCell.y + cellsHigh;
+  let u = way.length;
+  while (u < way.length + 1 && inside(wayPoint(way, u + 0.01, wayCentre(way, u + 0.01)))) u += 0.01;
+  return u - 0.05;
+}
+
 let toned = 0;
 
 describe('a cave\'s way out as drawn', () => {
@@ -83,23 +97,24 @@ describe('a cave\'s way out as drawn', () => {
           const mask = inkMask(picture, parseHex(palette.ink));
           const where = `${look}, the way out at ${way.mouth.at.x}, ${way.mouth.at.y}`;
           const half = way.mouth.width / 2;
-          const paper = toneOf(picture, strip(way, origin, way.length + 0.3, way.length + 0.6, 0.25 * half));
+          const end = mapEnd(model, way);
+          const paper = toneOf(picture, strip(way, origin, Math.min(way.length + 0.3, end - 0.3), Math.min(way.length + 0.6, end), 0.25 * half));
           const floorness = (from: number, to: number): number => (toneOf(picture, strip(way, origin, from, to, 0.25 * half)) - paper) / (floor - paper);
           if (Math.abs(floor - paper) > 8) {
             const near = floorness(0.15, 0.45);
             const middle = floorness(way.length * 0.55, way.length * 0.65);
-            const end = floorness(way.length * 0.95, way.length * 1.05);
+            const last = floorness(way.length * 0.95, way.length * 1.05);
             expect(near, `${where}: the floor's tone beyond the mouth`).toBeGreaterThan(0.75);
             expect(middle, `${where}: fading halfway`).toBeLessThan(near);
-            expect(end, `${where}: gone by its end`).toBeLessThan(0.12);
-            expect(end, `${where}: fading towards its end`).toBeLessThan(middle);
+            expect(last, `${where}: gone by its end`).toBeLessThan(0.12);
+            expect(last, `${where}: fading towards its end`).toBeLessThan(middle);
             toned++;
           }
           if (style.direction === 'engraved') {
             const stipple = inkShare(mask, picture, strip(way, origin, way.length * 0.35, way.length * 0.95, half + 0.2));
             expect(stipple, `${where}: stipple on the fading ground`).toBeGreaterThan(0.002);
             expect(inkShare(mask, picture, strip(way, origin, 0.1, 0.4, 0.3 * half)), `${where}: ink on the ground at the mouth`).toBeLessThan(stipple / 4);
-            expect(inkShare(mask, picture, strip(way, origin, way.length + 0.1, way.length + 0.5, 0.3 * half)), `${where}: ink past the way's end`).toBe(0);
+            expect(inkShare(mask, picture, strip(way, origin, way.length + 0.1, Math.min(way.length + 0.5, end), 0.3 * half)), `${where}: ink past the way's end`).toBe(0);
           }
         }
       }

@@ -1,6 +1,6 @@
-import { GM_AUTHOR, MAX_ASSET_BYTES, MAX_SPEAKER_NAME, shownLine, type AssetRef } from '../protocol/index.ts';
+import { GM_AUTHOR, MAX_SPEAKER_NAME, shownLine, type AssetRef } from '../protocol/index.ts';
 import type { TokenEntity } from '../../types';
-import { sha256Hex } from './assetServe.ts';
+import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 import { tokenLabel } from './atlasView.ts';
 import type { SpokenAs } from './log/TableLog.ts';
 import { ringColour } from './scenePicture.ts';
@@ -23,12 +23,12 @@ const MAX_ART_PATH = 1000;
  * The tokens authors speak as in the log. The GM may speak as any token of the shared scene (an NPC
  * players do not see too: a whisper as it is the GM's choice), by its id; a player only as a token of
  * theirs in the list they were sent, not hidden now, by the id players know it by. A speaker is named
- * as the token's nameplate reads, and carries its artwork by hash, read and hashed once per path.
+ * as the token's nameplate reads, and carries its artwork by its stored id, read and hashed once per path.
  */
 export class LogSpeakers {
   private readonly art = new Map<string, Promise<AssetRef | null>>();
 
-  constructor(private readonly readImage: (path: string) => Promise<VaultImage | null>) {}
+  constructor(private readonly readImage: (path: string) => Promise<VaultImage | null>, private readonly stored?: AssetStoring) {}
 
   async speaker(who: string, key: string, scene: SpeakerScene): Promise<SpokenAs | null> {
     const tokenId = who === GM_AUTHOR ? (Object.hasOwn(scene.tokens, key) ? key : undefined) : scene.listedToken(key);
@@ -53,10 +53,7 @@ export class LogSpeakers {
   private refOf(path: string): Promise<AssetRef | null> {
     let ref = this.art.get(path);
     if (ref === undefined) {
-      ref = this.readImage(path).then(async (image) => {
-        if (image === null || image.bytes.length > MAX_ASSET_BYTES) return null;
-        return { hash: await sha256Hex(image.bytes), size: image.bytes.length, mime: image.mime };
-      }).catch(() => null);
+      ref = this.readImage(path).then((image) => (image === null || this.stored === undefined ? null : this.stored.refOf(image.bytes, image.mime, ASSET_USES.art, path))).catch(() => null);
       this.art.set(path, ref);
     }
     return ref;

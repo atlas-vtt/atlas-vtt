@@ -14,7 +14,7 @@ import type { LevelLink, SceneLevel } from '../../src/app/types/sceneLevelTypes'
 import { createInMemoryApp, interceptWrites } from '../mocks/inMemoryVault';
 import { inkMask, type Picture } from './dungeonFidelityChecks';
 
-vi.mock('../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
+vi.mock('../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', () => ({ prebuildMosaicCanvasAt: vi.fn() }));
 
 /**
  * A dungeon of three floors made into a scene with the real renderer and image workers: one map

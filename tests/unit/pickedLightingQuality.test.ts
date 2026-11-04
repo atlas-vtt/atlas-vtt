@@ -3,7 +3,7 @@ import { App } from 'obsidian';
 import type { GpuFacts } from '../../src/app/lighting/deviceTier';
 import { LIGHTING_QUALITY_STORAGE_KEY, PICKED_LIGHTING_QUALITY_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { lightingSettingsSection } from '../../src/app/settings/lightingSettingsSection';
+import { lightingQualityChoices } from '../../src/app/lighting/lightingQualityChoices';
 import { memoryPluginData } from '../mocks/pluginData';
 
 const gpu = vi.hoisted(() => ({ facts: null as GpuFacts | null, reads: 0 }));
@@ -66,13 +66,17 @@ describe('the lighting quality Atlas picks for a device', () => {
     expect(settings.getLightingQuality()).toBe('saver');
   });
 
-  it('is shown in the settings with a word that Atlas picked it', async () => {
+  it('reads as picked until the GM chooses on the Graphics page, and again once the page is reset', async () => {
     const app = new App();
     gpu.facts = INTEGRATED;
     const settings = await reloaded(app);
-    const row = lightingSettingsSection(settings).rows[0]!;
-    expect(row.desc).toContain('picked this level');
-    settings.setLightingQuality('saver');
-    expect(lightingSettingsSection(settings).rows[0]!.desc).not.toContain('picked this level');
+    expect(settings.isLightingQualityPicked()).toBe(true);
+    expect(settings.getGraphics()).toEqual({ preset: 'balanced', overrides: {} });
+    settings.setGraphics({ preset: 'balanced', overrides: { liquids: 30 } });
+    expect(settings.isLightingQualityPicked()).toBe(false);
+    expect(settings.getGraphicsQuality().liquidFps).toBe(30);
+    settings.resetGraphics();
+    expect(settings.isLightingQualityPicked()).toBe(true);
+    expect(settings.getGraphicsQuality().liquidFps).toBe(15);
   });
 });

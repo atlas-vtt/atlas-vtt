@@ -4,6 +4,7 @@ import { buildArtScene } from '../../../src/app/dungeons/render/art/artScene';
 import { drawGlyph } from '../../../src/app/dungeons/render/art/glyph';
 import { CAVE_WAYS } from '../../../src/app/dungeons/render/cave/ways';
 import type { CaveWayPart } from '../../../src/app/dungeons/render/cave/caveArt';
+import type { CaveWay } from '../../../src/app/dungeons/caveModel';
 import { engravedHand } from '../../../src/app/dungeons/render/engraved/hand';
 import { pensOf } from '../../../src/app/dungeons/render/engraved/pens';
 import { glyphFit } from '../../../src/app/dungeons/render/propShapes';
@@ -22,6 +23,7 @@ import { offMonochrome, pathCount, type CellWindow, type Drawn } from '../glyphS
 import type { DungeonModel, DungeonStair } from '../../../src/app/dungeons/model';
 import { cellsOf } from '../../../src/app/dungeons/geometry';
 import { addDoor, addRoom, emptyFloor, emptyModel } from '../../fixtures/dungeonModelBuilder';
+import { caveVeinWaysModel } from '../caveVeinWays';
 import { SPECIMEN as REFERENCE } from './reference';
 import type { GlyphSpecimen } from './types';
 
@@ -66,7 +68,11 @@ export const SPECIMEN: GlyphSpecimen = {
   family: 'caveWays',
   pieces: REFERENCE.pieces,
   crowded: REFERENCE.crowded,
-  scenes: [0, 1].map(floor => ({ name: floor ? 'lower' : 'upper', model: caveWaysModel, floor, window: { x: -0.5, y: 0, cells: 14, rows: 13.5 } })),
+  scenes: [
+    ...[0, 1].map(floor => ({ name: floor ? 'lower' : 'upper', model: caveWaysModel, floor, window: { x: -0.5, y: 0, cells: 14, rows: 13.5 } })),
+    // A door of every way a cave's exit roll gives, an aven and a squeeze leading on.
+    { name: 'veins', model: caveVeinWaysModel, floor: 0, window: { x: -1, y: -1, cells: 19, rows: 19 } },
+  ],
 };
 
 
@@ -134,7 +140,7 @@ describe.skipIf(Boolean(import.meta.env.VITE_GLYPH_FAMILY) && import.meta.env.VI
       }
       const limit = Math.max(...reference.values()) * 2;
       for (const [kind, ms] of reference) rows.push(`${look}\t${kind}\t${ms.toFixed(2)}\treference`);
-      for (const part of ['narrows', 'crawl', 'pitch', 'aven', 'scree'] as const) {
+      for (const part of ['narrows', 'crawl', 'pitch', 'aven', 'scree', 'lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay'] as const) {
         const { hand, ctx } = costHand(look, part);
         CAVE_WAYS[part]!(hand);
         // Since the organic outline, an engraved look's wider ink covers the narrows' shoulders in this small model: timed all the same (open, see the context note).
@@ -151,6 +157,9 @@ describe.skipIf(Boolean(import.meta.env.VITE_GLYPH_FAMILY) && import.meta.env.VI
   });
 });
 
+/** The way a door names for each part a door's way draws. */
+const DOOR_WAYS: Partial<Record<CaveWayPart, CaveWay>> = { lowWay: 'crawl', squeeze: 'squeeze', letterbox: 'letterbox', sumpWay: 'sump', traverseWay: 'traverse', breakdownWay: 'breakdown' };
+
 function costHand(look: string, part?: CaveWayPart): { hand: ReturnType<typeof stoneHand>; ctx: OffscreenCanvasRenderingContext2D } {
   const model = emptyModel(412);
   model.floors.push(emptyFloor());
@@ -163,6 +172,8 @@ function costHand(look: string, part?: CaveWayPart): { hand: ReturnType<typeof s
   } else addRoom(floor, { x: 0, y: 0, w: 5, h: 5 });
   floor.cave = { lane: [], heights: [0], faults: [], streams: [], basins: [], dams: [] };
   if (part === 'narrows' || part === 'crawl') addDoor(floor, 2, 2, { x: 1, y: 0 }, part === 'crawl' ? 'secret' : 'opening', 0, part === 'narrows' ? 1 : 0);
+  const way = part ? DOOR_WAYS[part] : undefined;
+  if (way) addDoor(floor, 2, 2, { x: 1, y: 0 }, 'opening', 0, 0).way = way;
   if (part === 'pitch' || part === 'aven' || part === 'scree') floor.stairs = [{ x: 1, y: 1, w: 2, h: 3, down: { x: 0, y: 1 }, way: part === 'scree' ? 'scree' : 'pitch', to: 1 - index, link: 0 }];
   const ctx = new OffscreenCanvas(750, 750).getContext('2d')!;
   ctx.scale(150, 150);

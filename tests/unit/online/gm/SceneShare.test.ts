@@ -1,20 +1,21 @@
-import { ASSET_CHUNK_BYTES, MARKS_INTERVAL_MS } from '../../../../src/app/online/protocol/index.ts';
+import { MARKS_INTERVAL_MS } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
-import { imageMimeType, LIGHTING_REFUSAL, REPEAT_REQUEST_MS } from '../../../../src/app/online/gm/SceneShare.ts';
+import { imageMimeType, LIGHTING_REFUSAL } from '../../../../src/app/online/gm/SceneShare.ts';
+import { fakeStoring, storedRef } from './fakeStoring.ts';
 import { GENERIC_SOURCE } from './gmLighting.ts';
 import { scenes, sceneState as state, shareHarness, type ShareHarness } from './shareHarness.ts';
 
-const MAP = new Uint8Array(ASSET_CHUNK_BYTES * 2 + 5).map((_, index) => index % 251);
+const MAP = new Uint8Array(4000).map((_, index) => index % 251);
 
 const harness = (initial = state()): ShareHarness => shareHarness(initial, new Map([['maps/cave.webp', MAP]]));
 
 describe('the shared scene', () => {
-  it('goes to all players with the map named by its hash, size and type', async () => {
+  it('goes to all players with the map named by its hash, size, type and the id the store keeps it under', async () => {
     const table = harness();
     table.share.start();
     await table.set(state());
-    expect(scenes(table.sent)).toEqual([{ id: '000000000000000000000001', map: { hash: await sha256Hex(MAP), size: MAP.length, mime: 'image/webp' }, lit: false }]);
+    expect(scenes(table.sent)).toEqual([{ id: '000000000000000000000001', map: await storedRef(MAP, 'image/webp'), lit: false }]);
     expect(table.sent[0]?.to).toBeUndefined();
   });
 
@@ -28,14 +29,14 @@ describe('the shared scene', () => {
     table.presented = 'upper';
     table.share.start();
     await table.set(state({ levels, viewedLevel: 'upper' }));
-    expect(scenes(table.sent).at(-1)).toMatchObject({ map: { hash: await sha256Hex(UPPER) }, floor: { level: 1, name: 'Upper' } });
+    expect(scenes(table.sent).at(-1)).toMatchObject({ map: { hash: await sha256Hex(UPPER) }, floor: { level: 1 } });
 
     const sent = table.sent.length;
     await table.set(state({ levels, viewedLevel: 'ground' }));
     expect(scenes(table.sent.slice(sent))).toEqual([]);
     table.presented = 'ground';
     await table.advance(1000);
-    expect(scenes(table.sent).at(-1)).toMatchObject({ map: { hash: await sha256Hex(MAP) }, floor: { level: 0, name: 'Ground' } });
+    expect(scenes(table.sent).at(-1)).toMatchObject({ map: { hash: await sha256Hex(MAP) }, floor: { level: 0 } });
   });
 
   it('is held while a scene loads and goes out once it has loaded', async () => {
@@ -86,6 +87,14 @@ describe('the shared scene', () => {
     expect(table.sent.slice(switched).filter(({ body }) => body.t === 'marks' && body.scene === first?.id)).toEqual([]);
   });
 
+  it('goes without its map where the store does not keep it', async () => {
+    const table = shareHarness(state(), new Map([['maps/cave.webp', MAP]]), undefined, undefined, fakeStoring(() => true));
+    table.share.start();
+    await table.set(state());
+    expect(scenes(table.sent)).toEqual([{ id: '000000000000000000000001', map: null, lit: false }]);
+    expect(table.notices).toEqual([]);
+  });
+
   it('withdraws an image players cannot be sent, such as an SVG', async () => {
     const table = harness(state({ background: 'maps/cave.svg' }));
     table.share.start();
@@ -93,70 +102,5 @@ describe('the shared scene', () => {
     expect(scenes(table.sent)).toEqual([null]);
     expect(imageMimeType('maps/cave.svg')).toBeNull();
     expect(imageMimeType('maps/Cave.JPG')).toBe('image/jpeg');
-  });
-});
-
-describe('assets', () => {
-  it('go only to the player who asked, in chunks, only for the map of the current picture', async () => {
-    const table = harness();
-    table.share.start();
-    await table.set(state());
-    const hash = await sha256Hex(MAP);
-    table.sent.length = 0;
-    table.share.receive('alice', { t: 'asset-request', hash });
-    table.share.receive('bob', { t: 'asset-request', hash: 'f'.repeat(64) });
-    const chunks = table.sent.filter(({ body }) => body.t === 'asset-chunk');
-    expect(chunks.map(({ to }) => to)).toEqual(['alice', 'alice', 'alice']);
-    expect(chunks.every(({ body }) => body.t === 'asset-chunk' && body.data.length <= (ASSET_CHUNK_BYTES / 3) * 4)).toBe(true);
-    expect(table.sent.filter(({ body }) => body.t === 'asset-refused')).toEqual([{ body: { t: 'asset-refused', hash: 'f'.repeat(64) }, to: 'bob' }]);
-  });
-
-  it('are refused once the scene is withdrawn, and a repeated request is ignored for a while', async () => {
-    const table = harness();
-    table.share.start();
-    await table.set(state());
-    const hash = await sha256Hex(MAP);
-    table.share.receive('alice', { t: 'asset-request', hash });
-    const count = table.sent.length;
-    table.share.receive('alice', { t: 'asset-request', hash });
-    expect(table.sent.length).toBe(count);
-    await table.advance(REPEAT_REQUEST_MS);
-    table.share.receive('alice', { t: 'asset-request', hash });
-    expect(table.sent.length).toBe(count + 3);
-    table.lighting = null;
-    await table.set(state({ lighting: { enabled: true, ambient: 1 } }));
-    table.sent.length = 0;
-    table.share.receive('alice', { t: 'asset-request', hash });
-    expect(table.sent).toEqual([{ body: { t: 'asset-refused', hash }, to: 'alice' }]);
-  });
-
-  it('continue a download from the chunk asked for, and a player who left may ask again at once', async () => {
-    const table = harness();
-    table.share.start();
-    await table.set(state());
-    const hash = await sha256Hex(MAP);
-    table.sent.length = 0;
-    table.share.receive('alice', { t: 'asset-request', hash });
-    const whole = table.sent.map(({ body }) => (body.t === 'asset-chunk' ? body.index : -1));
-    expect(whole).toEqual([0, 1, 2]);
-    table.sent.length = 0;
-    table.share.receive('alice', { t: 'asset-request', hash, from: 2 });
-    expect(table.sent.map(({ body, to }) => [body.t === 'asset-chunk' ? body.index : -1, to])).toEqual([[2, 'alice']]);
-    table.sent.length = 0;
-    table.share.receive('alice', { t: 'asset-request', hash, from: 2 });
-    expect(table.sent).toEqual([]);
-    table.share.playerLeft('alice');
-    table.share.receive('alice', { t: 'asset-request', hash, from: 2 });
-    expect(table.sent.map(({ body }) => (body.t === 'asset-chunk' ? body.index : -1))).toEqual([2]);
-  });
-
-  it('ignore malformed requests', async () => {
-    const table = harness();
-    table.share.start();
-    await table.set(state());
-    table.sent.length = 0;
-    table.share.receive('alice', { t: 'asset-request', hash: '../../secret' });
-    table.share.receive('alice', 'nonsense');
-    expect(table.sent).toEqual([]);
   });
 });

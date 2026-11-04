@@ -3,7 +3,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { liquidList } from '../../liquids/liquids';
 import type { LiquidSurface } from '../../types/liquidTypes';
 import type { ViewState } from '../../types/viewState';
-import type { MapVideoMode } from '../mapImage/video/mapVideoPlayback';
+import type { MapVideoMode } from '../mosaicCanvas/video/mapVideoPlayback';
 import { destroyTree } from '../utils/destroyTree';
 import { frameTime } from '../utils/animationFrames';
 import { LIQUID_FPS, liquidFrameDue } from './liquidMotion';

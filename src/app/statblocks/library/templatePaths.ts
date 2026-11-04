@@ -6,6 +6,7 @@
 import { normalizePath, type App } from 'obsidian';
 import { ATLAS_VTT_DIR, INVALID_NAME_CHARACTERS } from '../../services/assetPaths';
 import { TEMPLATE_EXTENSION } from './templateFiles';
+import { t } from '../../i18n';
 
 /** New templates are written here; the library reads `.atlastemplate` files anywhere. */
 export const TEMPLATE_FOLDER = `${ATLAS_VTT_DIR}/statblock-templates`;
@@ -15,9 +16,9 @@ const FALLBACK_NAME = 'New template';
 /** Why `name` cannot name a template file, in plain words, or null when it can. */
 export function templateNameProblem(name: string): string | null {
   const trimmed = name.trim();
-  if (!trimmed) return 'Give the template a name.';
-  if (INVALID_NAME_CHARACTERS.test(trimmed)) return 'A name can\'t hold \\ / : * ? " < > | # ^ [ or ].';
-  if (trimmed.startsWith('.')) return 'A name can\'t start with a dot.';
+  if (!trimmed) return t('templateEditor.name.empty');
+  if (INVALID_NAME_CHARACTERS.test(trimmed)) return t('templateEditor.name.characters');
+  if (trimmed.startsWith('.')) return t('templateEditor.name.dot');
   return null;
 }
 

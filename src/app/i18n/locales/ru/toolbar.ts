@@ -54,4 +54,7 @@ export const toolbar: Translation = {
   'toolbar.placeLights': 'Ставить свет',
   'toolbar.freehand': 'От руки',
   'toolbar.moreTools': 'Другие инструменты',
+  'toolbar.pinOptions': 'Настройки пинов',
+  'toolbar.stairs': 'Лестницы',
+  'toolbar.stairsNeedLevels': 'Лестницы соединяют уровни сцены. Сначала добавьте уровень на странице «Уровни сцены» в палитре команд.',
 };

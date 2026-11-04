@@ -6,7 +6,7 @@ import { optimizeImage } from '../../imageProcessing/imageProcessing';
 import { baseName } from '../../utils/pathUtils';
 import { sceneThumbnailPath } from './collectionReferences';
 import { asNamedWebp } from './webpNamedFiles';
-import { isVideoMapPath } from '../../pixi/mapImage/video/videoMapFiles';
+import { isVideoMapPath } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 
 /** Artwork of a map or scene that the collection's cover can be made from. */
 export interface CoverCandidate {

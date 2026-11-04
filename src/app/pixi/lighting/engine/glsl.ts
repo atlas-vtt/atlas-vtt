@@ -70,14 +70,19 @@ vec3 toSrgb(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.
  * How the lighting turns light into colour, shared by the composite and the roofs, so a roof and the
  * floor beneath it are lit alike: Khronos PBR Neutral (colours stay as painted up to ~0.8, highlights
  * roll off to white), and the cool grey low light takes on by `night` (the share it is dim, Purkinje).
+ * Its toe, which takes up to 0.04 off every channel, deepens the dark by the ambient light's
+ * luminance at the pixel (`ambient`): whole up to 0.35, where night ends, so dark scenes and their
+ * lights look as they always did, and gone in daylight (1), so a map lit by the day shows as
+ * painted. Taken whole in daylight too, it turned dark maps far darker and gaudy (0.10.1): a
+ * near-grey floor's channels lost one offset, which left mostly their difference.
  */
 export const TONEMAP_GLSL = `
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
-vec3 neutral(vec3 color) {
+vec3 neutral(vec3 color, float ambient) {
   const float start = 0.8 - 0.04;
   const float desaturation = 0.15;
   float x = min(color.r, min(color.g, color.b));
-  float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
+  float offset = (x < 0.08 ? x - 6.25 * x * x : 0.04) * (1.0 - smoothstep(0.35, 1.0, ambient));
   color -= offset;
   float peak = max(color.r, max(color.g, color.b));
   if (peak < start) return color;

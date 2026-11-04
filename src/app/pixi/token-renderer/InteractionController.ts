@@ -40,7 +40,8 @@ import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLeve
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
-import { selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
+import { applySelectionResourceChange, selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
+import { selectionResources, type SelectionResource } from '../../resources/selectionResourceChange';
 import { SelectionResourceEditing } from '../selectionResourceEditor';
 import { placedPlayerCharacterEntry } from '../../react/components/context-menu/playerCharacterMenu';
 import { holdTokens } from '../../lighting/sightOnDrop';
@@ -564,14 +565,17 @@ export class InteractionController implements ITokenInteractionController {
       entries.push(conditionsSubmenu(this.store, conditionDefs, this.contextMenuTargets(token.id)));
     }
 
-    // Size
+    // Size of the selection in one undo step; the clicked token's is ticked
+    const sizeTargets = this.contextMenuTargets(token.id);
     entries.push(tokenSizeSubmenu(token.size, size => {
       const state = this.store.getState();
-      const { grid, updateToken } = state;
-      const current = mapTokens(levelObjects(state))[token.id];
-      if (!current) return;
-      const center = resizedTokenCenter(current, current.size || 1, size, grid);
-      updateToken(token.id, { size, x: center.x, y: center.y });
+      const tokens = mapTokens(levelObjects(state));
+      state.updateTokens(sizeTargets.flatMap((id) => {
+        const current = tokens[id];
+        if (!current) return [];
+        const center = resizedTokenCenter(current, current.size || 1, size, state.grid);
+        return [{ id, changes: { size, x: center.x, y: center.y } }];
+      }));
     }));
 
     // Move to another level of the scene, the selection in one undo step
@@ -743,20 +747,18 @@ export class InteractionController implements ITokenInteractionController {
     // One change of a resource for every selected token that holds it (an area's damage), DM only
     const selectionChange = this.isPlayerView ? null : selectionResourceEntry(
       this.store, this.contextMenuTargets(token.id), this.resourceDefsProvider(),
-      (definition, count, apply) => {
-        this.selectionEditing ??= new SelectionResourceEditing(this.viewport.options.events.domElement);
-        this.selectionEditing.open({ at: { x: e.clientX, y: e.clientY }, resourceName: definition.name, count, onCommit: apply });
-      },
+      (definition, count, apply) => this.openSelectionEditor({ x: e.clientX, y: e.clientY }, definition.name, count, apply),
     );
     if (selectionChange) entries.push(selectionChange);
 
-    // Reset (only if the token tracks resources)
-    if (this.hasResources(character)) {
+    // Reset the selection (only if one of its tokens tracks resources)
+    const shownTargets = this.contextMenuTargets(token.id);
+    if (this.anyTracksResources(shownTargets)) {
       entries.push({
         type: 'item',
         label: resetLabel(this.resourceDefsProvider()),
         icon: 'rotate-ccw',
-        onClick: () => this.store.getState().resetTokens([token.id], this.resourceDefsProvider()),
+        onClick: () => this.store.getState().resetTokens(shownTargets, this.resourceDefsProvider()),
       });
     }
 
@@ -764,7 +766,7 @@ export class InteractionController implements ITokenInteractionController {
     // Destructive actions row (Kill + Delete side by side)
     entries.push({
       type: 'custom',
-      render: () => this.renderDestructiveRow(token),
+      render: () => this.renderDestructiveRow(shownTargets),
     });
 
     openContextMenuGlobal(entries, { x: e.clientX, y: e.clientY });
@@ -844,15 +846,60 @@ export class InteractionController implements ITokenInteractionController {
     };
   }
 
-  private hasResources(character: Character | undefined): boolean {
-    return character !== undefined && visibleResources(character, this.resourceDefsProvider(), 'dm').length > 0;
+  /** What a press on the bar of resource `key` changes: the selected tokens, two or more, and that resource. */
+  private selectionOffer(key: string): SelectionResource & { targets: string[] } | null {
+    if (this.isPlayerView) return null;
+    const state = this.store.getState();
+    const tokens = mapTokens(levelObjects(state));
+    const targets = state.selectedIds.filter((id) => tokens[id] !== undefined);
+    if (targets.length < 2) return null;
+    const offered = selectionResources(tokens, targets, this.resourceDefsProvider()).find(({ definition }) => definition.key === key);
+    return offered ? { targets, ...offered } : null;
   }
 
-  private renderDestructiveRow(token: TokenEntity): React.ReactNode {
+  /** Whether a press on the bar of resource `key` would change it for the selection. */
+  public offersSelectionResource(key: string): boolean {
+    return this.selectionOffer(key) !== null;
+  }
+
+  /**
+   * A press on the bar of resource `key` of a token in a selection of two or more: the popover of
+   * one change for every selected token that holds it. False where the press means nothing here.
+   */
+  public pressSelectionResource(key: string, at: { x: number; y: number }, onClose?: () => void): boolean {
+    const offer = this.selectionOffer(key);
+    if (!offer) return false;
+    this.openSelectionEditor(at, offer.definition.name, offer.count, (amount) => (
+      applySelectionResourceChange(this.store, offer.targets, this.resourceDefsProvider(), key, amount)
+    ), onClose);
+    return true;
+  }
+
+  private openSelectionEditor(
+    at: { x: number; y: number }, resourceName: string, count: number, onCommit: (amount: number) => void, onClose?: () => void,
+  ): void {
+    this.selectionEditing ??= new SelectionResourceEditing(this.viewport.options.events.domElement);
+    this.selectionEditing.open({ at, resourceName, count, onCommit, ...(onClose && { onClose }) });
+  }
+
+  /** The characters among the tokens `ids`, as the store holds them now. */
+  private charactersOf(ids: string[]): Character[] {
+    const tokens = mapTokens(levelObjects(this.store.getState()));
+    return ids.flatMap((id) => {
+      const shown = tokens[id];
+      return shown?.kind === 'character' ? [shown] : [];
+    });
+  }
+
+  private anyTracksResources(ids: string[]): boolean {
+    return this.charactersOf(ids).some((character) => visibleResources(character, this.resourceDefsProvider(), 'dm').length > 0);
+  }
+
+  private renderDestructiveRow(tokenIds: string[]): React.ReactNode {
     return React.createElement(DestructiveActionRow, {
-      tokenId: token.id,
+      tokenIds,
       store: this.store,
-      canKill: token.kind === 'character' && isKillable(token, this.resourceDefsProvider()),
+      canKill: this.charactersOf(tokenIds).some((character) => isKillable(character, this.resourceDefsProvider())),
       definitions: this.resourceDefsProvider(),
       onClose: () => closeContextMenuGlobal(),
     });
@@ -882,7 +929,8 @@ export class InteractionController implements ITokenInteractionController {
   }
 
   private showEditTokenModal(token: TokenEntity): void {
-    openEditTokenModal(token, this.store, this.obsApp, this.resourceDefsProvider());
+    const canvas = this.viewport.options?.events?.domElement;
+    openEditTokenModal(token, this.store, this.obsApp, this.resourceDefsProvider(), canvas?.ownerDocument);
   }
 
   destroyAll(): void {

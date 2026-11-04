@@ -39,6 +39,7 @@ export const dungeon = {
   'dungeon.theme.fortress': 'Fortress',
   'dungeon.theme.mansion': 'Haunted Mansion',
   'dungeon.theme.cavern': 'Cavern',
+  'dungeon.theme.forest': 'Forest',
   'dungeon.theme.refused.beside': 'Not available with {tag}',
   'dungeon.tags': 'Tags',
 
@@ -60,6 +61,7 @@ export const dungeon = {
   'dungeon.room.showHidden': 'Show hidden secret rooms',
 
   'dungeon.style': 'Style',
+  'dungeon.style.crayon': 'Crayon',
   'dungeon.style.parchment': 'Scriptorium',
   'dungeon.style.masonry': 'Keep',
   'dungeon.style.print': 'Ink',
@@ -163,6 +165,15 @@ export const dungeon = {
   'dungeon.tag.ruined': 'Long abandoned: rubble, broken floors and fallen walls',
   'dungeon.tag.inhabited': 'Someone lives here: a few fires burn',
 
+  // A cave's ways that are no walk, as the GM's hover label over their door names them.
+  'dungeon.way.crawl': 'Crawl',
+  'dungeon.way.squeeze': 'Squeeze',
+  'dungeon.way.letterbox': 'Letterbox squeeze',
+  'dungeon.way.sump': 'Sump',
+  'dungeon.way.traverse': 'Traverse',
+  'dungeon.way.breakdown': 'Breakdown choke',
+  'dungeon.way.climb': 'Climb, {depth} ft',
+
   // Terrain: what the GM's hover label and the room's note name a piece (`DungeonTerrain.name`).
   'dungeon.terrain.lowWall': 'Low wall',
   'dungeon.terrain.rubbleHeap': 'Rubble heap',
@@ -198,6 +209,12 @@ export const dungeon = {
   'dungeon.terrain.shaftFloor': 'Foot of a shaft',
   'dungeon.terrain.chasm': 'Chasm',
   'dungeon.terrain.shaft': 'Shaft',
+  'dungeon.terrain.aven': 'Aven',
+  // A cave's way up or down on hover: how it is passed, and how far it rises or drops in feet.
+  'dungeon.terrain.depth.shaft': 'Shaft, {depth} ft',
+  'dungeon.terrain.depth.aven': 'Aven, {depth} ft',
+  'dungeon.terrain.depth.chimney': 'Chimney, {depth} ft',
+  'dungeon.terrain.depth.squeeze': 'Vertical squeeze, {depth} ft',
   'dungeon.terrain.lavaChannel': 'Lava channel',
   'dungeon.terrain.acidChannel': 'Acid channel',
   'dungeon.terrain.waterChannel': 'Water channel',

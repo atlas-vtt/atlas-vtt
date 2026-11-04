@@ -1,24 +1,23 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type { RenderLayer } from 'pixi.js';
-import { drawSquareGrid } from './squareGridDrawer';
-import { drawHexGrid } from './hexGridDrawer';
 import { gridMarkerArmLength } from './gridLineStyle';
 import type { GridBounds, GridLineType } from './gridLineStyle';
-import { GridLines } from './gridLines';
 import { createHexLayout, hexCellExtent, isHexGridType, nearestHexCenter } from './hexGeometry';
 import type { HexLayout } from './hexGeometry';
 import { contrastColorForPixels } from './gridContrastColor';
 import { snapTokenCenter } from './gridPlacement';
-import { numberCells, type CellLattice, type CellNumberStyle } from './cellNumbering';
+import type { CellLattice, CellNumberStyle } from './cellNumbering';
 import { hexLattice } from './hexLattice';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../pixi/utils/colorUtils';
 import { squareLattice } from './squareLattice';
-import { CellNumberLabels, type CellNumberView } from './cellNumberLabels';
+import { CellNumberLabels, type CellNumberView, type WorldRect } from './cellNumberLabels';
 import { destroyTree } from '../pixi/utils/destroyTree';
 import { applyGridMark, createMarkBacking, type GridMarkColor, type UnlitGrid } from './gridLightingMark';
-import type { MapImageView } from '../pixi/mapImage/mapImageView';
-import type { PixelRect } from '../pixi/mapImage/pyramid';
+import { GridMesh } from './shader/GridMesh';
+import type { GridShaderLook } from './shader/gridShader';
+import type { MosaicCanvasView } from '../pixi/mosaicCanvas/mosaicCanvasView';
+import type { PixelRect } from '../pixi/mosaicCanvas/pyramid';
 
 export type GridType = 'square' | 'hex-horizontal' | 'hex-vertical';
 
@@ -73,8 +72,14 @@ export class GridSystem implements UnlitGrid {
   private readonly onViewportZoomed = (): void => {
     this.cellNumberLabels?.setView(this.numberView());
   };
+  /** The lines: one quad with the grid shader. */
+  private mesh: GridMesh | null = null;
+  /** Every frame the cell numbers follow the view (the lines need nothing: the shader reads each render's own camera). */
+  private readonly followView = (): void => {
+    if (!this.isDestroying && this.options.enabled) this.cellNumberLabels?.setView(this.numberView());
+  };
   /** The map the grid overlays: its world rect bounds the grid, and the grid lies just above its layer. */
-  private map: MapImageView;
+  private map: MosaicCanvasView;
   private stopFollowingMap: () => void;
   /** Counts the images shown, so a colour read from one is never applied to the next. */
   private mapGeneration = 0;
@@ -105,7 +110,7 @@ export class GridSystem implements UnlitGrid {
   constructor(
     app: Application,
     viewport: Viewport,
-    map: MapImageView,
+    map: MosaicCanvasView,
     options: GridOptions,
   ) {
     this.app = app;
@@ -126,7 +131,15 @@ export class GridSystem implements UnlitGrid {
     };
 
     this.viewport.on('zoomed', this.onViewportZoomed);
+    this.app.ticker?.add(this.followView);
     this.createGrid();
+  }
+
+  /** What the viewport shows, in world units; null for a viewport that cannot say (a test's). */
+  private visibleWorld(): WorldRect | null {
+    if (typeof this.viewport.getVisibleBounds !== 'function') return null;
+    const { x, y, width, height } = this.viewport.getVisibleBounds();
+    return width > 0 && height > 0 ? { x, y, width, height } : null;
   }
 
   private createGrid(): void {
@@ -165,29 +178,18 @@ export class GridSystem implements UnlitGrid {
       maxX: mapX + mapWidth + padding,
       maxY: mapY + mapHeight + padding,
     };
-
-    const lines = new GridLines({
-      lineType,
-      lineWidth: lineWidth!,
-      color: gridColor,
-      alpha: isAligning ? Math.min(alpha! * 1.5, 1) : alpha!,
-      markerArm: gridMarkerArmLength(size),
-      trace: (path, thickness, arm) => {
-        if (hexLayout) drawHexGrid(path, bounds, hexLayout, lineType, thickness, arm);
-        else drawSquareGrid(path, bounds, size, offsetX, offsetY, lineType, thickness, arm);
-      },
-    });
+    const look = { lineType, lineWidth: lineWidth!, color: gridColor, alpha: isAligning ? Math.min(alpha! * 1.5, 1) : alpha!, markerArm: gridMarkerArmLength(size) };
 
     const grid = new Container({ label: 'grid', eventMode: 'none', interactiveChildren: false });
-    grid.addChild(lines.graphics);
+    grid.addChild(this.createLines(bounds, look));
     grid.position.set(bounds.minX, bounds.minY);
 
+    // Labels for the cells in and around the view alone, which `followView` keeps up with.
     const cellNumbers = this.options.cellNumbers;
     if (cellNumbers) {
       const lattice: CellLattice = hexLayout ? hexLattice(hexLayout) : squareLattice(size, offsetX, offsetY);
       this.cellNumberLabels = new CellNumberLabels(
-        numberCells(lattice, mapRect, cellNumbers.format),
-        lattice.size,
+        { lattice, map: mapRect, format: cellNumbers.format },
         { x: bounds.minX, y: bounds.minY },
         { color: gridColor, opacity: cellNumbers.opacity },
         this.numberView(),
@@ -235,8 +237,21 @@ export class GridSystem implements UnlitGrid {
     this.viewport.dirty = true;
   }
 
+  /**
+   * The lines, in coordinates local to the grid container at `bounds.minX/minY`: one quad drawn by
+   * the grid shader, whatever the map's size or the cell's.
+   */
+  private createLines(bounds: GridBounds, look: Omit<GridShaderLook, 'kind' | 'cell' | 'offsetX' | 'offsetY'>): Container {
+    const { size, offsetX = 0, offsetY = 0, type = 'square' } = this.options;
+    this.mesh = new GridMesh(
+      { minX: 0, minY: 0, maxX: bounds.maxX - bounds.minX, maxY: bounds.maxY - bounds.minY },
+      { ...look, kind: type, cell: size, offsetX: offsetX - bounds.minX, offsetY: offsetY - bounds.minY },
+    );
+    return this.mesh.view;
+  }
+
   private numberView(): CellNumberView {
-    return { zoom: this.viewport.scale.x, pixelRatio: this.app.renderer.resolution };
+    return { zoom: this.viewport.scale.x, pixelRatio: this.app.renderer.resolution, world: this.visibleWorld() };
   }
 
   /**
@@ -267,7 +282,7 @@ export class GridSystem implements UnlitGrid {
   }
 
   /** Follows `map` to every image it shows; returns the function that stops. */
-  private follow(map: MapImageView): () => void {
+  private follow(map: MosaicCanvasView): () => void {
     return map.onChange((change) => {
       if (change === 'image') this.mapImageChanged();
     });
@@ -283,8 +298,11 @@ export class GridSystem implements UnlitGrid {
 
   /** Clean up grid-only resources */
   private destroyGridResources(): void {
+    const labels = this.cellNumberLabels;
     this.cellNumberLabels = null;
     this.markBacking = null;
+    const mesh = this.mesh;
+    this.mesh = null;
     if (!this.gridSprite) return;
 
     this.gridSprite.visible = false;
@@ -315,6 +333,8 @@ export class GridSystem implements UnlitGrid {
         if (!spriteToDestroy.destroyed) {
           destroyTree(spriteToDestroy);
         }
+        mesh?.destroy();
+        labels?.destroy();
       } catch {
         // Silently ignore destruction errors
       }
@@ -376,16 +396,22 @@ export class GridSystem implements UnlitGrid {
     return this.gridSprite;
   }
 
+  /** The texts of the cell numbers shown. */
+  public cellLabels(): readonly string[] {
+    return this.cellNumberLabels?.labels ?? [];
+  }
+
   /** Completely destroy */
   public destroy(): void {
     this.isDestroying = true;
     this.stopFollowingMap();
     this.viewport.off('zoomed', this.onViewportZoomed);
+    this.app.ticker?.remove(this.followView);
     this.destroyGridResources();
   }
 
   /** Draws over another map image from now on, as when the view's map image was replaced. */
-  public setMapImage(map: MapImageView): void {
+  public setMapImage(map: MosaicCanvasView): void {
     if (map === this.map) return;
     this.stopFollowingMap();
     this.map = map;

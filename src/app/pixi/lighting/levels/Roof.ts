@@ -1,5 +1,5 @@
 import type { Matrix } from 'pixi.js';
-import { sameStretch, type MapStretch } from '../../../grid/mapStretch';
+import { imageWorldRect, sameStretch, type MapStretch } from '../../../grid/mapStretch';
 import { ambientLevelOn, ambientRaster, type AmbientRaster } from '../../../lighting/ambientRaster';
 import { stackGrid } from '../../../levels/levelStack';
 import { levelImagePlacement, type AlignedScene } from '../../../levels/levelAlignment';
@@ -12,7 +12,7 @@ import { ambientLevel } from '../../../vision/lightLevels';
 import { roofSeenAt, roofViewers, type RoofViewers } from '../../../vision/roofSight';
 import type { AmbientZone, Sight } from '../../../vision/sight';
 import type { MapBounds } from '../../../vision/visibility';
-import type { TileView } from '../../mapImage/levelOfDetail';
+import type { TesseraView } from '../../mosaicCanvas/levelOfDetail';
 import type { BelowMapImage } from './BelowLevel';
 import { RoofLayer, type RoofMode } from './RoofLayer';
 import type { SnapshotView } from './belowSnapshot';
@@ -66,7 +66,7 @@ export interface RoofDeps {
   onReady: () => void;
   /** How long a piece takes to fade; 0 at once. */
   fadeMs: number;
-  /** The camera the roof image reads its tiles through, where not the view's (a level below's snapshot). */
+  /** The camera the roof image reads its tesserae through, where not the view's (a level below's snapshot). */
   camera?: SnapshotView;
 }
 
@@ -162,12 +162,12 @@ export class Roof {
     if (this.layer.animate(now)) this.deps.requestRender();
   }
 
-  /** Draws the roof's tiles of `view` for one render; returns what puts the view's own back. */
-  drawFor(view: TileView): () => void {
+  /** Draws the roof's tesserae of `view` for one render; returns what puts the view's own back. */
+  drawFor(view: TesseraView): () => void {
     return this.image.drawFor(view);
   }
 
-  addDemandRegion(view: TileView): () => void {
+  addDemandRegion(view: TesseraView): () => void {
     return this.image.addDemandRegion(view);
   }
 
@@ -210,6 +210,7 @@ export class Roof {
     const first = !this.placement;
     this.placement = placement;
     this.transform = piecesTransform(read.pieces, read, placement);
+    this.layer.setArea(imageWorldRect(read, placement));
     if (first) {
       void this.image.load(this.wanted, scene.gridSize, placement).then(() => this.deps.requestRender());
       this.layer.setPieces(read.pieces, this.transform);

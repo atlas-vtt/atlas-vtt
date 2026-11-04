@@ -1,8 +1,8 @@
 import type { Container, Renderer } from 'pixi.js';
 import type { MapStretch } from '../../../grid/mapStretch';
 import type { LightingQuality } from '../../../lighting/lightingQuality';
-import type { PixelRect } from '../../mapImage/pyramid';
-import type { TileView } from '../../mapImage/levelOfDetail';
+import type { PixelRect } from '../../mosaicCanvas/pyramid';
+import type { TesseraView } from '../../mosaicCanvas/levelOfDetail';
 import type { LightingMode } from '../engine/compositeFilter';
 import type { LightingStore } from '../LightingRenderer';
 import type { SnapshotView } from './belowSnapshot';
@@ -11,7 +11,7 @@ import type { RoofHost } from './Roof';
 
 /** What a level below (`BelowLevel`) is made with, and what its snapshots are drawn at. */
 
-/** What a level below needs of its map image: a `MapImage` the view's host loads its backgrounds into. */
+/** What a level below needs of its map image: a `MosaicCanvas` the view's host loads its backgrounds into. */
 export interface BelowMapImage {
   readonly layer: Container;
   readonly worldRect: PixelRect | null;
@@ -21,9 +21,9 @@ export interface BelowMapImage {
   /** Shows the level's `background` (a map file's path; null, none), placed by `stretch`. */
   load(background: string | null, gridSize: number | undefined, stretch?: MapStretch): Promise<void>;
   setStretch(stretch: MapStretch): void;
-  /** Draws the tiles of `view` for one render (the view's roof in the player window's frame); returns what puts its own back. */
-  drawFor(view: TileView): () => void;
-  addDemandRegion(view: TileView): () => void;
+  /** Draws the tesserae of `view` for one render (the view's roof in the player window's frame); returns what puts its own back. */
+  drawFor(view: TesseraView): () => void;
+  addDemandRegion(view: TesseraView): () => void;
   destroy(): void;
 }
 

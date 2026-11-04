@@ -61,6 +61,7 @@ export function openSelectionResourceEditor({ anchorEl, at, resourceName, count,
 export class SelectionResourceEditing {
   private popover: ValuePopover | null = null;
   private pending: number | null = null;
+  private onPendingClosed: (() => void) | undefined;
 
   constructor(private readonly anchorEl: HTMLElement) {}
 
@@ -68,22 +69,31 @@ export class SelectionResourceEditing {
    * Opens the popover in a task of its own: it is chosen inside the menu, whose focus trap takes
    * focus back from anything focused while the menu is still open, so the field would lose it.
    */
-  open(options: Omit<SelectionResourceEditorOptions, 'anchorEl' | 'onClose'>): void {
+  open(options: Omit<SelectionResourceEditorOptions, 'anchorEl'>): void {
     this.close();
+    this.onPendingClosed = options.onClose;
     this.pending = this.anchorEl.win.setTimeout(() => {
       this.pending = null;
+      this.onPendingClosed = undefined;
       const popover = openSelectionResourceEditor({
         ...options,
         anchorEl: this.anchorEl,
-        onClose: () => { if (this.popover === popover) this.popover = null; },
+        onClose: () => {
+          if (this.popover === popover) this.popover = null;
+          options.onClose?.();
+        },
       });
       this.popover = popover;
     }, 0);
   }
 
   close(): void {
-    if (this.pending !== null) this.anchorEl.win.clearTimeout(this.pending);
+    if (this.pending !== null) {
+      this.anchorEl.win.clearTimeout(this.pending);
+      this.onPendingClosed?.();
+    }
     this.pending = null;
+    this.onPendingClosed = undefined;
     const popover = this.popover;
     this.popover = null;
     popover?.close();

@@ -14,7 +14,8 @@ describe('cave sites', () => {
         const landing = floor.stairs.filter((s) => s.to === i).sort((a, b) => a.link - b.link)[0]!;
         const above = model.floors[i]!.stairs.find((s) => s.link === landing.link)!;
         const room = (f: typeof floor, s: typeof landing): number => f.rooms.find((r) => r.kind === 'room' && s.x >= r.x && s.x + s.w <= r.x + r.w && s.y >= r.y && s.y + s.h <= r.y + r.h)!.id;
-        expect(sites[i + 1]!.hopsFromMouth[room(floor, landing)]).toBe((sites[i]!.hopsFromMouth[room(model.floors[i]!, above)] ?? 0) + 1);
+        // One hop past the room above, or fewer where a second stairwell between the floors leads there sooner.
+        expect(sites[i + 1]!.hopsFromMouth[room(floor, landing)]).toBeLessThanOrEqual((sites[i]!.hopsFromMouth[room(model.floors[i]!, above)] ?? 0) + 1);
       });
     }
   });
@@ -35,7 +36,7 @@ describe('cave sites', () => {
     expect(found).toBeGreaterThan(20);
   });
 
-  it('call deep the deepest floor of several, and the last third by hops of one', () => {
+  it('call deep the deepest floor of several, and of one its last third by hops and its boss room', () => {
     for (const model of models) {
       const sites = caveSites(model.floors);
       model.floors.forEach((floor, f) => {
@@ -44,7 +45,7 @@ describe('cave sites', () => {
         const far = Math.max(...hops);
         for (const room of floor.rooms) {
           const h = site.hopsFromMouth[room.id] ?? Infinity;
-          const expected = model.floors.length > 1 ? f === model.floors.length - 1 : Number.isFinite(h) && h >= (far * 2) / 3;
+          const expected = model.floors.length > 1 ? f === model.floors.length - 1 : room.boss || (Number.isFinite(h) && h >= (far * 2) / 3);
           expect(site.deep(room.id)).toBe(expected);
         }
       });

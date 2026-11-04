@@ -19,8 +19,6 @@ const MOST_STACKS = 7;
 /** The most fireplaces on one floor, and the fewest on the entrance floor. */
 const MOST_FIREPLACES = 10;
 const FEWEST_FIREPLACES = 2;
-/** Of the fireplaces whose stack has a heated room on its far face, the share with a fireplace there too, at least. */
-export const BACK_TO_BACK = 0.7;
 
 const hearthsOf = (floor: DungeonFloor): DungeonProp[] => floor.props.filter((p) => p.kind === 'hearth');
 

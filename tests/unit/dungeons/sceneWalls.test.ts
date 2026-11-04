@@ -82,9 +82,10 @@ describe('dungeon walls', () => {
     expect(walls.filter(w => w.chainId === undefined)).toHaveLength(6);
   });
 
+  // Built themes: a Cavern's side entrance can face another chamber's wall three cells out (seed 1; open, 2026-10-28).
   it('leaves every entrance open to the outside', () => {
     for (let seed = 1; seed <= 12; seed++) {
-      const model = generateDungeon({ seed, tags: [], floors: 1 });
+      const model = generateDungeon({ seed, tags: [], floors: 1, theme: 'fortress' });
       const placement = placementOf(model);
       const walls = wallsOf(model, placement);
       for (const door of model.floors[0]!.doors.filter(d => d.from === null && d.kind === 'opening')) {

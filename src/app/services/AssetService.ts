@@ -682,7 +682,7 @@ export class AssetService {
   /** Deletes the given encounters if their token list is now empty. */
   private async deleteEmptiedGroups(groups: GroupAsset[]): Promise<void> {
     for (const group of groups) {
-      if (groupTokenRefs(group).length === 0) await this.deleteAsset(group.id);
+      if (groupTokenRefs(group).length === 0) await this.removeAsset(group.id);
     }
   }
 
@@ -1093,7 +1093,16 @@ export class AssetService {
     return { path, content: serializeRecord(asset) };
   }
 
-  async deleteAsset(id: string): Promise<void> {
+  /**
+   * Deletes an asset with its files. Holds the index while it does, so the vault check never
+   * meets a half-deleted asset: a scene whose record file is gone while its map is still there
+   * would be taken in again as a scene of its own.
+   */
+  deleteAsset(id: string): Promise<void> {
+    return this.runExclusive(() => this.removeAsset(id));
+  }
+
+  private async removeAsset(id: string): Promise<void> {
     await this.ensureLoaded();
 
     const asset = this.metadata!.assets[id];
@@ -1624,19 +1633,22 @@ export class AssetService {
       .filter((asset) => asset.collection === collectionId && tagGroupOf(asset.type) === group);
   }
 
-  /**
-   * Update asset tags
-   */
-  async updateAssetTags(assetId: string, tags: string[]): Promise<void> {
+  /** Replaces the tags of several assets in one save of the index; changes nothing when one of them is gone. */
+  async updateTagsOfAssets(changes: readonly { id: string; tags: string[] }[]): Promise<void> {
     await this.ensureLoaded();
-    if (!this.metadata) throw new Error('Metadata not loaded');
-    
-    const asset = this.metadata.assets[assetId];
-    if (!asset) throw new Error(`Asset ${assetId} not found`);
-    
-    asset.tags = tags;
-    asset.modifiedAt = Date.now();
-    
+    const metadata = this.metadata;
+    if (!metadata) throw new Error('Metadata not loaded');
+
+    for (const { id } of changes) {
+      if (!metadata.assets[id]) throw new Error(`Asset ${id} not found`);
+    }
+    const now = Date.now();
+    for (const { id, tags } of changes) {
+      const asset = metadata.assets[id]!;
+      asset.tags = tags;
+      asset.modifiedAt = now;
+    }
+
     await this.saveMetadata();
   }
 

@@ -2,14 +2,13 @@ import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { DiceSource } from './atlasDice.ts';
 import type { AtlasPlayerSettings, LightingSource } from './atlasLighting.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
-import type { ScaleImage } from './assetVariants.ts';
 import type { GmRuler } from './dragRulers.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
 import type { MarkSharePorts } from './MarkShare.ts';
 import type { RemoteDrag } from '../marks/index.ts';
 import type { RulesSharePorts } from './RulesShare.ts';
 import type { SeatSource } from './seatSource.ts';
-import type { TokenSharePorts, VaultImage } from './TokenShare.ts';
+import type { TokenSharePorts } from './TokenShare.ts';
 
 /** What the shared scene of an Atlas tab reads of the tab and the table, and how it reaches players. */
 export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'nameOf'> {
@@ -32,14 +31,8 @@ export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<
   dice?(): DiceSource | null;
   /** The shared tab's grid, doors, sensed tokens and collection; without it players get none of the map's layers. */
   mapLayers?(): MapLayerSource | null;
-  /** Scales an image for a player who asks for a longest side; without it players get originals only. */
-  scaleImage?: ScaleImage;
-  /** An animated map's video as players may be sent it beside its poster (`readVaultVideo`); without it players get the poster only. */
-  readVideo?: ((path: string) => Promise<VaultImage | null>) | undefined;
   /** Takes a roll of the shared tab into the table's log. */
   logRoll?(roll: LoggedRoll): void;
-  /** The vault path of a speaker's artwork the log shows, by hash. */
-  logArt?(hash: string): string | undefined;
   /** The roll button of the log a player's roll answers, as they may roll it. */
   rollRequest?(from: string, answer: RollRequestAnswer): RollRequest | null;
   /** The log entry that tells who found a readable pin of a map, or null while nobody has. */

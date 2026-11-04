@@ -86,7 +86,7 @@ const FOG: Record<string, FogOperation> = {
   cover: { id: 'cover', kind: 'fog', timestamp: 1, isErasing: false, type: 'rectangle', x: FOGGED.x, y: FOGGED.y, width: FOGGED.size, height: FOGGED.size },
 };
 
-const traffic = (sent: readonly Sent[]): string => sent.filter(({ body }) => body.t !== 'asset-refused').map(({ body }) => JSON.stringify(body)).join('\n');
+const traffic = (sent: readonly Sent[]): string => sent.map(({ body }) => JSON.stringify(body)).join('\n');
 
 describe('what players are sent of fog and lighting', () => {
   it(`never holds a hidden token or its light, nor anything but sight and light of a token under fog (${TRIALS} generated scenes)`, async () => {
@@ -111,8 +111,6 @@ describe('what players are sent of fog and lighting', () => {
         table.perception = sees;
         await table.set(next);
         await table.advance(INPUT_INTERVAL_MS);
-        for (const hash of hashes.values()) table.share.receive('alice', { t: 'asset-request', hash });
-        await table.settle();
         const listed = tokenLists(table.sent).at(-1)?.tokens.map((entry) => entry.name) ?? [];
         const expected = generated.filter((entry) => entry.role === 'free' && sees(entry.id) === 'seen').map((entry) => entry.name);
         expect(listed.sort(), `trial ${trial} step ${step}: the players' tokens`).toEqual(expected.sort());

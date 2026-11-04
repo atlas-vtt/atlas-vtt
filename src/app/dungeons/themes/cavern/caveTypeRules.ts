@@ -8,7 +8,7 @@ import { floorRect, intersection, roomArea } from '../../geometry';
 import type { CaveSites } from '../../layout/cavern/caveSites';
 import { caveVariant } from '../../layout/cavern/caveParams';
 import { nearFault } from '../../layout/cavern/faults';
-import type { CaveVariant, DungeonFloor } from '../../model';
+import type { CaveCharacter, CaveVariant, DungeonFloor } from '../../model';
 import { neighbours } from '../../roomGraph';
 import type { DungeonTag } from '../../tags';
 import type { RoomTypeId } from '../roomTypes';
@@ -23,11 +23,13 @@ export interface CaveFacts {
   floors: readonly Pick<DungeonFloor, 'rooms' | 'doors' | 'stairs' | 'cave'>[];
   /** The directions the cave's faults run in. */
   faults: readonly number[];
+  /** The cave's character, where it has one. */
+  character?: CaveCharacter;
 }
 
 export function caveFacts(input: ThemeFactsInput, sites: readonly CaveSites[]): CaveFacts {
   const faults = [...new Set(input.floors.flatMap((floor) => floor.cave?.faults.map((f) => f.angle) ?? []))];
-  return { sites: [...sites], variant: caveVariant(input.tags), inhabited: isInhabited(input.tags, sites), tags: input.tags, floors: input.floors, faults };
+  return { sites: [...sites], variant: input.variant ?? caveVariant(input.tags) ?? 'limestone', inhabited: isInhabited(input.tags, sites), tags: input.tags, floors: input.floors, faults, ...(input.character && { character: input.character }) };
 }
 
 /** A lava flow or an acid spring needs this much floor: room beside the way through for it and a bank to stand on. */
@@ -107,7 +109,8 @@ export function allowsType(facts: CaveFacts, type: RoomTypeId, ref: RoomRef): bo
     case 'collapse-chamber':
       return doors(facts, ref) >= 3 || underPitch(facts, ref);
     case 'fungus-grove':
-      return site.nearWater(ref.room, 1);
+      // Fungus made a fungal cave, and grows wherever it opened the rock.
+      return facts.variant === 'fungal' || site.nearWater(ref.room, 1);
     case 'crystal-grotto':
       return basin || (neighbours(floor.rooms.length, floor.doors)[ref.room] ?? []).some((n) => cave?.basins.includes(n));
     case 'lava-tube':

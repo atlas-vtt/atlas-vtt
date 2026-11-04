@@ -17,4 +17,7 @@ export const atlasLinks: Translation = {
   'atlasLinks.snapshotOf': 'Снимок сцены «{scene}»',
   'atlasLinks.tokenCount': { one: '{count} токен', few: '{count} токена', many: '{count} токенов', other: '{count} токена' },
   'atlasLinks.tokenRange': { one: '{range} токен', few: '{range} токена', many: '{range} токенов', other: '{range} токена' },
+  'atlasLinks.more': 'Ещё',
+  'atlasLinks.startFight': 'Начать бой',
+  'atlasLinks.addBeside': 'Добавить в инициативу, не ставя на карту',
 };

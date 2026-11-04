@@ -16,7 +16,7 @@ const NAMED_FOR_HAZARD: ReadonlySet<RoomTypeId> = new Set<RoomTypeId>(['chasm-ha
 /** The room's type now that its hazard was not laid: a passage chamber where its type was named for it, else as it was. */
 export function withoutItsHazard(work: TerrainWork, room: DungeonRoom, typed: TypedRoom): TypedRoom {
   if (!work.cave || room.boss || !NAMED_FOR_HAZARD.has(typed.spec.id)) return typed;
-  const spec = programmeOf(work.theme.definition, work.tags).rooms.find((s) => s.id === 'passage-chamber');
+  const spec = programmeOf(work.theme.definition, work.tags, work.cave?.variant).rooms.find((s) => s.id === 'passage-chamber');
   if (!spec) return typed;
   room.type = spec.id;
   return { spec, context: typed.context };

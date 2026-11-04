@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Folder } from 'lucide-react';
 import { normalizePath, type App, type TFolder } from 'obsidian';
 import { cn } from '../../../utils/cn';
+import { t } from '../../i18n';
 
 /** At most this many folders are suggested; typing narrows the list. */
 const MAX_SUGGESTIONS = 50;
@@ -55,7 +56,7 @@ interface FolderFieldProps {
  * not exist yet may be typed. The suggestions are the field's own list: arrow keys move through
  * them, Enter picks, Escape closes them.
  */
-export function FolderField({ app, value, onChange, label, placeholder = 'Default location for new notes' }: FolderFieldProps): React.JSX.Element {
+export function FolderField({ app, value, onChange, label, placeholder = t('statblockEditor.folderDefault') }: FolderFieldProps): React.JSX.Element {
   const listId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -127,7 +128,7 @@ export function FolderField({ app, value, onChange, label, placeholder = 'Defaul
       />
       {showing && (
         // Pressing a folder keeps the focus in the field, so it is picked before the field is left.
-        <div ref={listRef} id={listId} role="listbox" aria-label="Folders" className="atlas-sb-folder-field__list" onMouseDown={(event) => event.preventDefault()}>
+        <div ref={listRef} id={listId} role="listbox" aria-label={t('statblockEditor.folders')} className="atlas-sb-folder-field__list" onMouseDown={(event) => event.preventDefault()}>
           {suggestions.map((path, index) => (
             <div
               key={path}

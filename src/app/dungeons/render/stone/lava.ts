@@ -1,7 +1,7 @@
 import type { Vec } from '../geometry';
 import { parseHex, withAlpha } from '../palette';
 import type { ArtScene } from '../art/artScene';
-import { GLOW, moltenAt, type Molten } from '../art/lavaField';
+import { GLOW, moltenAt, moltenHeat, type Molten } from '../art/lavaField';
 import { lavaDuotone } from '../art/lavaPalette';
 import { clipFloors } from '../art/outline';
 import type { PathFn } from '../art/paths';
@@ -12,14 +12,16 @@ import type { StoneColours } from './colours';
 import { drawAcidDetail } from './acid';
 
 /**
- * Molten rock or acid within `trace`: its surface from shore to middle, its glow spilling onto the
- * floor round it, its shore inked; acid bubbles and stains the floor (`drawAcidDetail`).
+ * Molten rock or acid within `trace`: its surface from a cooled crust at the shore to its bright
+ * core, cooling down its `flow`, its glow spilling onto the floor round it, its shore inked; acid
+ * bubbles and stains the floor (`drawAcidDetail`).
  */
-export function drawLava(scene: ArtScene, c: StoneColours, outlines: readonly Vec[][], trace: PathFn, kind: Molten = 'lava'): void {
+export function drawLava(scene: ArtScene, c: StoneColours, outlines: readonly Vec[][], trace: PathFn, kind: Molten = 'lava', flow?: Vec): void {
   const { ctx } = scene.env;
   const points = outlines.flat();
   if (!points.length) return;
   const depth = depthField(scene, trace, points);
+  const heat = moltenHeat(outlines, depth, flow);
   if (scene.raster) {
     const b = pointsBounds(points);
     const res = Math.min(40, Math.max(8, scene.frame.pxPerCell / 5));
@@ -30,7 +32,7 @@ export function drawLava(scene: ArtScene, c: StoneColours, outlines: readonly Ve
     const hot = parseHex(duotone.glint);
     const molten = pixelCanvas(grid, (k, out, o) => {
       const p = cellOf(grid, k % grid.w, Math.floor(k / grid.w));
-      moltenAt(kind, p.x, p.y, depth(p.x, p.y), out, o);
+      moltenAt(kind, p.x, p.y, depth(p.x, p.y), out, o, heat);
       if (monoLava) {
         const heat = Math.max(0, Math.min(1, (out[o]! - 112) / 128));
         for (let channel = 0; channel < 3; channel++) out[o + channel] = cold[channel]! + (hot[channel]! - cold[channel]!) * (0.18 + heat * 0.68);

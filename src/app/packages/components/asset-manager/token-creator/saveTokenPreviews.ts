@@ -5,13 +5,14 @@ import { requireResolvedBestiary, statblockImportCandidate, statblockLookup, typ
 import { AssetService, type NewAsset } from '../../../../services/AssetService';
 import { AssetThumbnailService } from '../../../../services/AssetThumbnailService';
 import { t } from '../../../../i18n';
-import { discardAssetFiles, writeAssetImage } from '../../../../services/assetImageFiles';
+import { discardAssetFiles, writeAssetFile, writeAssetImage } from '../../../../services/assetImageFiles';
+import { isVideoMapPath, videoMapExtension } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { prepareSaveImages, type SaveImageContext } from './prepareSaveImages';
 import { saveEditedPreview } from './saveEditedPreview';
 import type { EditTokenInput, TokenPreview } from './types';
 import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing';
 import type { SavedToken } from './tokenStatblocks';
-import { prebuildMapImageAt } from '../../../../pixi/mapImage/prebuildMapImage';
+import { prebuildMosaicCanvasAt } from '../../../../pixi/mosaicCanvas/prebuildMosaicCanvas';
 import { showNotice } from '../../../../ui/notice';
 
 export interface SaveTokenPreviewsOptions extends SaveImageContext {
@@ -39,7 +40,7 @@ const REGISTER_BATCH = 100;
 interface WrittenPreview {
   id: string;
   asset: NewAsset;
-  /** What to trash if the batch cannot be registered: a token's image and thumbnail, a map's thumbnail. */
+  /** What to trash if the batch cannot be registered: a token's image and thumbnail, a video map's file and thumbnail, a map's thumbnail. */
   discard: (string | undefined)[];
 }
 
@@ -100,7 +101,7 @@ async function savePreviews(options: SaveTokenPreviewsOptions): Promise<number> 
     }
     saved += written.length;
     for (const { asset } of written) {
-      if (asset.type === 'map') prebuildMapImageAt(app, asset.mapFilePath);
+      if (asset.type === 'map') prebuildMosaicCanvasAt(app, asset.mapFilePath);
     }
     options.onSaved?.(written.map(w => w.id));
     options.onTokensSaved?.(written.flatMap(({ asset }) => (asset.type === 'token' ? [{ name: asset.name, imagePath: asset.imagePath, statblockPath: asset.statblockPath }] : [])));
@@ -110,12 +111,16 @@ async function savePreviews(options: SaveTokenPreviewsOptions): Promise<number> 
   const write = async (preview: TokenPreview, pending: Promise<ProcessedImage>): Promise<WrittenPreview | null> => {
     let imagePath: string | undefined;
     let thumbnailPath: string | undefined;
+    const video = mode === 'map' && preview.file !== null && isVideoMapPath(preview.file.name) ? preview.file : null;
+    const written = (): (string | undefined)[] => (mode === 'token' || video ? [imagePath, thumbnailPath] : [thumbnailPath]);
     try {
       await checkStatblock(app, preview, lookup);
       const { image, thumbnail } = await pending;
       if (options.signal?.aborted) return null;
-      imagePath = await writeAssetImage(app, preview.name, await image.arrayBuffer());
-      thumbnailPath = await thumbnails.tryThumbnailForImage(imagePath, thumbnail);
+      const bytes = await image.arrayBuffer();
+      imagePath = video ? await writeAssetFile(app, preview.name, bytes, videoMapExtension(video.name)) : await writeAssetImage(app, preview.name, bytes);
+      // A video without one is left to the background pass: reading it again now would only wait.
+      if (thumbnail || !video) thumbnailPath = await thumbnails.tryThumbnailForImage(imagePath, thumbnail);
       const metadata = { collection: destination.id, tags: preview.tags ?? tags, ...(thumbnailPath && { thumbnailPath }) };
       const asset: NewAsset = mode === 'map'
         ? { type: 'map', name: preview.name, mapFilePath: imagePath, ...metadata }
@@ -125,9 +130,9 @@ async function savePreviews(options: SaveTokenPreviewsOptions): Promise<number> 
           ...(preview.statblockPath ? { statblockPath: preview.statblockPath } : {}),
           ...(options.playerCharacters && { playerCharacter: true as const }), ...metadata,
         };
-      return { id: preview.id, asset, discard: mode === 'token' ? [imagePath, thumbnailPath] : [thumbnailPath] };
+      return { id: preview.id, asset, discard: written() };
     } catch (error) {
-      await discardAssetFiles(app, mode === 'token' ? [imagePath, thumbnailPath] : [thumbnailPath]);
+      await discardAssetFiles(app, written());
       showNotice(`${preview.name}: ${error instanceof Error ? error.message : t('creator.saveFailed')}`);
       return null;
     } finally {

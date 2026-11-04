@@ -51,7 +51,7 @@ export function shapedFloors(wanted: number, onChamber: (floor: ShapedFloor, cha
       floor.rooms
         .filter((room) => room.kind === 'room')
         .forEach((room, n) => {
-          const seeds = chamberSeeds(grid, room, laneKeys);
+          const { seeds } = chamberSeeds(grid, room, laneKeys);
           const rng = rngFrom(seed + room.id);
           const fill = shaping.fill[0] + rng() * (shaping.fill[1] - shaping.fill[0]);
           const gamma = shaping.gamma[0] + rng() * (shaping.gamma[1] - shaping.gamma[0]);

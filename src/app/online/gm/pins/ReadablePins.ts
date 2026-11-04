@@ -25,8 +25,11 @@ export interface PinSight {
 
 const onMap = (point: Point): boolean => [point.x, point.y].every((value) => Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE);
 
-/** A pin that may be offered to players: readable, not the GM's own, linking a note. */
-const isOffered = (pin: NotePin): boolean => pin.readable === true && pin.gmOnly !== true && linksReadableNote(pin);
+/**
+ * A pin that may be offered to players: one the GM made readable (the pin menu's switch, which wins
+ * over `gmOnly`, the mark the dungeon generator gives its room pins and no menu shows), linking a note.
+ */
+const isOffered = (pin: NotePin): boolean => pin.readable === true && linksReadableNote(pin);
 
 /**
  * The readable pins of the shared scene, as players may know them: only where their picture shows

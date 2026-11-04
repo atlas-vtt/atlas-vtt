@@ -8,6 +8,7 @@ import { removedMessage } from './announcements';
 import { ConflictChip } from './ConflictChip';
 import { usePaneEdit } from './paneEditContext';
 import { fieldPatches } from './valuePatches';
+import { t } from '../../../i18n';
 
 /** Typed text as the value it stands for: a number stays a number, a switch a switch; anything else is text. */
 export function rawValue(text: string, old: FieldValue | undefined): FieldValue | undefined {
@@ -87,7 +88,7 @@ export function TrayValueRow({ field }: TrayValueRowProps): React.JSX.Element {
               pane.announce(removedMessage(field.key, 'Removed'));
             }}
           >
-            Remove from note
+            {t('statblockEditor.removeFromNote')}
           </Button>
         )}
       </span>

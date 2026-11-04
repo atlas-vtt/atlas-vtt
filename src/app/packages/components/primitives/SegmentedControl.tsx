@@ -1,12 +1,14 @@
 import React, { useId, useRef } from 'react';
 import { Button } from './button';
-import { LabelTooltip } from './tooltip';
+import { LabelTooltip, TooltipProvider } from './tooltip';
 
 export interface SegmentedOption<T extends string> {
   value: T;
   label: string;
   /** Drawn before the label. */
   icon?: React.ReactNode;
+  /** Names an option whose icon stands alone (an empty `label`) for assistive technology. */
+  ariaLabel?: string;
   /** Shown and focusable, but not to be chosen; `hint` says why. */
   disabled?: boolean;
   hint?: string;
@@ -48,7 +50,7 @@ export function SegmentedControl<T extends string>({ value, options, onChange, a
     all[next]?.focus();
   };
 
-  return (
+  const control = (
     <div
       ref={ref}
       className={`atlas-segmented${className ? ` ${className}` : ''}`}
@@ -67,6 +69,7 @@ export function SegmentedControl<T extends string>({ value, options, onChange, a
             variant="ghost"
             role="radio"
             aria-checked={chosen}
+            aria-label={option.ariaLabel}
             disabled={disabled}
             aria-disabled={option.disabled || undefined}
             tabIndex={roving && !chosen ? -1 : undefined}
@@ -77,8 +80,11 @@ export function SegmentedControl<T extends string>({ value, options, onChange, a
             {option.label}
           </Button>
         );
-        return option.hint ? <LabelTooltip key={option.value} label={option.hint} describe>{button}</LabelTooltip> : button;
+        return option.hint ? <LabelTooltip key={option.value} label={option.hint} describe multiline>{button}</LabelTooltip> : button;
       })}
     </div>
   );
+  // Hinted options share one provider: moving from one to the next opens its hint at once instead of
+  // after each option's own delay, which showed a hint only where the pointer rested.
+  return options.some((option) => option.hint) ? <TooltipProvider delayDuration={300} skipDelayDuration={600}>{control}</TooltipProvider> : control;
 }

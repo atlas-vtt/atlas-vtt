@@ -1,7 +1,8 @@
 /**
  * Deepens rooms after the tree is grown, a mirror group at a time so twins stay alike. A group
  * stops at random (the deeper and narrower, the sooner), at the deepest size, or when a member
- * would run into another room. The room around a landing keeps its size.
+ * would run into another room. The room around a landing keeps its size, and so does a cave
+ * chamber drawn at a size tier: its tier gave it its depth.
  */
 
 import { type KeyedRng, type Rng, chance } from '../rng';
@@ -13,7 +14,7 @@ const MAX_DEPTH = 10;
 function groupsOf(layout: WorkLayout): WorkRoom[][] {
   const groups = new Map<number, WorkRoom[]>();
   liveRooms(layout)
-    .filter((room) => isNormal(room) && !room.fixed)
+    .filter((room) => isNormal(room) && !room.fixed && room.tier === undefined)
     .forEach((room) => {
       const members = groups.get(room.group) ?? [];
       members.push(room);

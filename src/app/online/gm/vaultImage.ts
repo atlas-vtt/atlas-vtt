@@ -1,9 +1,8 @@
 import { normalizePath, type App } from 'obsidian';
-import { MAX_ASSET_BYTES } from '../protocol/index.ts';
 import { imageMimeType } from './assetServe.ts';
 import type { VaultImage } from './TokenShare.ts';
-import { isVideoMapPath, videoMimeType } from '../../pixi/mapImage/video/videoMapFiles';
-import { videoPosterBlob } from '../../pixi/mapImage/video/videoPoster';
+import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
+import { videoPosterBlob } from '../../pixi/mosaicCanvas/video/videoPoster';
 
 /**
  * An image of the vault as players may be sent it: its bytes and its type by its extension; null
@@ -26,15 +25,4 @@ async function videoStill(bytes: ArrayBuffer, mime: string): Promise<VaultImage 
     console.error('[Atlas Online] Could not take the still of an animated map', error);
     return null;
   }
-}
-
-/**
- * An animated map's video as players may be sent it beside its poster: its bytes and type; null for a
- * file that is no video map, is missing, or is larger than an asset may be (players keep the poster).
- */
-export async function readVaultVideo(app: App, path: string): Promise<VaultImage | null> {
-  if (!isVideoMapPath(path)) return null;
-  const file = app.vault.getFileByPath(normalizePath(path));
-  if (file === null || file.stat.size > MAX_ASSET_BYTES) return null;
-  return { bytes: new Uint8Array(await app.vault.readBinary(file)), mime: videoMimeType(path) };
 }

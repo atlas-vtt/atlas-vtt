@@ -2,58 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { stackOf } from '../../../src/app/dungeons/floors/floorStack';
 import { generateDungeon } from '../../../src/app/dungeons/generate';
 import type { DungeonModel } from '../../../src/app/dungeons/model';
-import type { ThemeId } from '../../../src/app/dungeons/themes/themeTypes';
 import { doorProblems, floorProblems, independentLoops, loopProblems, normals, rotundaProblems, secretProblems, unreachableRooms } from './dungeonInvariants';
 import { connectionProblems, entranceProblems, riseProblems, stairProblems, storeyProblems, withinShare } from './floorsInvariants';
 import { physicsProblems } from './themeTerrainInvariants';
 import { holeProblems } from './holeInvariants';
 import { blockedCells, bridgeProblems, cellProblems, clearanceProblems, isHazard, routeProblems, stairClearanceProblems } from './terrainInvariants';
 import { coverProblems } from './coverInvariants';
-import { timeBound } from '../../helpers/timeBound';
+import { shareBound } from '../../helpers/dungeonSeeds';
+import { INVARIANT_THEMES, invariantRequests } from './invariantRequests';
 
 /**
- * Every rule of the generator, held over many dungeons of one floor count: 1,000 seeds, each with
- * two of the tag sets below, so each floor count meets every set over two hundred seeds. Runs
- * rotate the theme over Fortress and Cavern; a Haunted Mansion is a house, held by the house rules.
+ * Every rule of the generator, held over many dungeons of one floor count: `INVARIANT_SEEDS` seeds
+ * (1,000 with `VITE_DUNGEON_SEEDS=full`, 250 otherwise), each with two tag sets, so each floor count
+ * meets every set over fifty seeds or more. Runs rotate the theme over Fortress and Cavern; a Haunted
+ * Mansion is a house, held by the house rules. How long a dungeon takes is the perf project's
+ * (`tests/perf/dungeons/generation.perf.test.ts`).
  */
 
-const SEEDS = 1000;
-const TAG_SETS: readonly string[][] = [
-  [],
-  ['small'],
-  ['large'],
-  ['medium', 'ordered', 'colonnades', 'overgrown'],
-  ['chaotic', 'winding', 'wet'],
-  ['string', 'deep', 'flooded'],
-  ['secret', 'round', 'overgrown'],
-  ['no-secrets', 'square', 'flat', 'dry', 'compact'],
-  ['cramped', 'crumbling', 'large'],
-];
-// A Haunted Mansion is a house, held by its own rules (`house/houseInvariants.test.ts`).
-const THEMES: readonly ThemeId[] = ['fortress', 'cavern'];
 const RANGES: Record<string, [number, number]> = { small: [3, 6], medium: [6, 12], large: [12, 25], '': [6, 15] };
 
 export interface Run {
   seed: number;
   tags: string[];
   model: DungeonModel;
-  ms: number;
 }
 
 function runsOf(floors: number): Run[] {
-  const out: Run[] = [];
-  for (let k = 1; k <= SEEDS; k++) {
-    const seed = k * 7919 + floors;
-    for (const offset of [0, 4]) {
-      const tags = TAG_SETS[(k + offset) % TAG_SETS.length] ?? [];
-      // The theme turns once per round of tag sets, so every theme meets every set.
-      const theme = THEMES[Math.floor((k + offset) / TAG_SETS.length) % THEMES.length];
-      const start = performance.now();
-      const model = generateDungeon({ seed, tags, floors, theme });
-      out.push({ seed, tags, model, ms: performance.now() - start });
-    }
-  }
-  return out;
+  return invariantRequests(floors).map((request) => ({ seed: request.seed, tags: request.tags, model: generateDungeon(request) }));
 }
 
 export function describeInvariants(floors: number): void {
@@ -118,7 +93,7 @@ export function describeInvariants(floors: number): void {
 
     it("keep every later floor within the earlier floor's walls plus two cells where it can", () => {
       if (floors === 1) return;
-      for (const theme of THEMES) expect(withinShare(runs.filter((run) => run.model.theme === theme).map((run) => run.model)), theme).toBeGreaterThan(0.8);
+      for (const theme of INVARIANT_THEMES) expect(withinShare(runs.filter((run) => run.model.theme === theme).map((run) => run.model)), theme).toBeGreaterThan(0.8);
     });
 
     it('join floors by two stairwells far apart where both have six rooms or more', () => {
@@ -175,8 +150,9 @@ export function describeInvariants(floors: number): void {
         const mean = others.reduce((sum, room) => sum + room.w * room.h, 0) / Math.max(1, others.length);
         return boss.w * boss.h > mean;
       });
-      // Measured 0.8475 over four floors once Fortresses and Mansions rise (their upper floors grow from the other stair end).
-      expect(bosses.filter(Boolean).length / bosses.length).toBeGreaterThan(0.84);
+      // Measured at 2,000 runs: 0.951, 0.896, 0.857 and 0.8385 over one to four floors (0.82 for caverns alone);
+      // the expected share is four floors' 0.84.
+      expect(bosses.filter(Boolean).length / bosses.length).toBeGreaterThan(shareBound(0.84, bosses.length));
       const without = generateDungeon({ seed: 5, tags: [], floors, bossRoom: false });
       expect(without.floors.some((floor) => floor.rooms.some((room) => room.boss))).toBe(false);
     });
@@ -224,7 +200,7 @@ export function describeInvariants(floors: number): void {
       expect(failures(eachFloor((run, i) => stairClearanceProblems(run.model.floors[i]!, i, stackOf(run.model))))).toEqual([]);
     });
 
-    // Walking every floor of a thousand dungeons takes a while beside the whole suite.
+    // Walking every floor of a thousand dungeons (with full seeds) takes a while beside the whole suite.
     it('keep a way through every floor that steps into no hazard, cover or hole, and bridge what they lay across a room', () => {
       expect(failures(eachFloor((run, i) => [...routeProblems(run.model.floors[i]!), ...bridgeProblems(run.model.floors[i]!)]))).toEqual([]);
     }, 60_000);
@@ -244,24 +220,14 @@ export function describeInvariants(floors: number): void {
     it('look down from a gallery into the great hall or entrance hall below', () => {
       if (floors === 1) return;
       // Only a room built to overlook the hall holds one (a gallery, stair hall or solar; a landing or portrait
-      // gallery): measured 0.020–0.037 over 400 seeds of each theme and floor count; pinned at half.
+      // gallery): measured 0.049, 0.069 and 0.087 over 1,000 Fortresses of two to four floors.
       const rising = runs.filter((run) => run.model.theme !== 'cavern');
       const share = rising.filter((run) => run.model.floors.some((f) => f.terrain.some((p) => p.kind === 'gallery'))).length / rising.length;
-      expect(share).toBeGreaterThan(0.01);
+      expect(share).toBeGreaterThan(shareBound(0.049, rising.length));
     });
 
     it('keep their theme\'s rule of cover', () => {
       expect(failures((run) => coverProblems(run.model))).toEqual([]);
-    });
-
-    it('generate within the time budget', () => {
-      const p95 = (list: readonly Run[]): number => {
-        const times = list.map((run) => run.ms).sort((a, b) => a - b);
-        return times[Math.floor(times.length * 0.95)] ?? 0;
-      };
-      expect(p95(runs.filter((run) => run.model.theme !== 'cavern'))).toBeLessThan(timeBound(25 * floors));
-      // A cave also shapes its chambers and tunnels, and grows a floor anew until its main path fits two cells wide.
-      expect(p95(caverns)).toBeLessThan(timeBound(75 * floors));
     });
   });
 }

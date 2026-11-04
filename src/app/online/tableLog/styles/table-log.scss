@@ -32,6 +32,19 @@
   }
 }
 
+// The unread tab comes in from the scene tabs above it.
+@keyframes atlas-online-log-tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(-#{$spacing-s});
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 // The tools fade in where they stand: nothing about a row rises or grows.
 @keyframes atlas-online-log-tools-in {
   from {

@@ -3,7 +3,7 @@ import { t } from '../../../i18n';
 import { LEVEL_HEIGHT, levelBackground, newLevelId, withLevelChanged } from '../../../levels/levelEdits';
 import { replacementFit, type ImageSize } from '../../../levels/levelImageReplace';
 import { firstLevelId, isLevelOf } from '../../../levels/sceneLevels';
-import { mapImageSize } from '../../../pixi/mapImage/mapImageSize';
+import { mosaicCanvasSize } from '../../../pixi/mosaicCanvas/mosaicCanvasSize';
 import type { ViewAtlasStore } from '../../../storeFactory';
 import { getHistoryStore, runHistoryTransaction, runUntracked } from '../../../stores/history';
 import type { LevelAlignment } from '../../../types/sceneLevelTypes';
@@ -14,7 +14,7 @@ import { changeLevelBackground } from './levelEditing';
 /** The size of a map image, or the sentence that says why it cannot be read. */
 async function sizeOf(app: App, path: string): Promise<ImageSize | null | string> {
   try {
-    return await mapImageSize(app, path);
+    return await mosaicCanvasSize(app, path);
   } catch (error) {
     return describeError(error);
   }

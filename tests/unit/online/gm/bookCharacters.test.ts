@@ -218,7 +218,7 @@ describe('a character\'s statblock note', () => {
 
 describe('a character\'s sheet', () => {
   const shown: ShownRollToken = { name: '  Sir\u00a0Brannoch  ', imagePath: 'art/b.png', showRing: false, ringColor: '#fff' };
-  const art = { hash: 'a'.repeat(64), size: 10, mime: 'image/png' };
+  const art = { hash: 'a'.repeat(64), size: 10, mime: 'image/png', id: 'b'.repeat(64) };
 
   it('holds the resources its token has, by name and in their order, and nothing of the others', () => {
     const sheet = sheetOf(shown, { resources: { hp: { current: 3, max: 9 }, ac: { current: 14, max: 14 }, luck: { current: 1, max: 0 }, doom: { current: 5, max: 6 }, odd: { current: Number.NaN, max: 4 } } }, [

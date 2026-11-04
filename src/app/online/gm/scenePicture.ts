@@ -23,7 +23,7 @@ export interface PictureInputs {
   alias(tokenId: string): string;
   /** The map's resource and condition definitions, by which bars and condition badges are drawn. */
   readonly rules: TokenRules;
-  /** The number of a token's instance badge as players number what they see, or null without one. */
+  /** The GM's number on a token's instance badge, or null where players are shown none. */
   badge(tokenId: string): number | null;
   /** The tokens players are told hold the turn (`sharedTurnTokens`); none without. */
   readonly turn?: ReadonlySet<string>;

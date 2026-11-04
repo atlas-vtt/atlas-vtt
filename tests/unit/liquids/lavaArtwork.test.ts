@@ -26,6 +26,7 @@ describe('lava follows the printed artwork', () => {
         const lava = liquidList(result.liquids).filter(s => s.liquid === 'lava');
         expect(lava.length).toBeGreaterThan(0);
         for (const surface of lava) {
+          if (style.direction === 'crayon') expect(surface).toHaveProperty('art', 'crayon');
           if (style.direction === 'engraved') {
             expect(surface).toHaveProperty('art', 'engraved');
             expect(surface.colors.deep).toBe(palette.ink);

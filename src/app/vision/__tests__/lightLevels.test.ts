@@ -88,6 +88,15 @@ describe('lightLevelAt', () => {
     }
   });
 
+  it('ends at the dim radius where snapped centres miss it by a rounding error', () => {
+    // Cells of 72.7 px from an offset of 12.3: the next cell's centre lies a hair inside the radius.
+    const centre = (cell: number): number => 12.3 + (cell + 0.5) * 72.7;
+    const lamp = lightReach({ x: centre(5), y: centre(5) }, 72.7, []);
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+      expect(lightLevelAt({ x: centre(5 + dx), y: centre(5 + dy) }, dark, [lamp])).toBe('dark');
+    }
+  });
+
   it('never reports magical darkness, which only darkness sources will make', () => {
     for (const ambient of [0, 0.5, 1]) {
       for (const y of [100, 180, 500]) expect(lightLevelAt({ x: 100, y }, { ambient }, [torch])).not.toBe('magical-dark');
@@ -157,6 +166,14 @@ describe('magical darkness', () => {
     for (const side of [{ x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 }]) {
       expect(lightLevelAt({ x: 500 + side.x * 70, y: 500 + side.y * 70 }, day, [source])).toBe('bright');
       expect(lightLevelAt({ x: 500 + side.x * 69, y: 500 + side.y * 69 }, day, [source])).toBe('magical-dark');
+    }
+  });
+
+  it('ends at its radius where snapped centres miss it by a rounding error', () => {
+    const centre = (cell: number): number => 12.3 + (cell + 0.5) * 72.7;
+    const source = lightReach({ x: centre(5), y: centre(5) }, 72.7, [], 0, { darkness: true });
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+      expect(lightLevelAt({ x: centre(5 + dx), y: centre(5 + dy) }, day, [source])).toBe('bright');
     }
   });
 

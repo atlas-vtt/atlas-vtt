@@ -3,6 +3,7 @@ import { sheetOf } from '../../../../src/app/online/gm/book/bookSheet.ts';
 import type { BookScene } from '../../../../src/app/online/gm/book/bookScene.ts';
 import type { PlayedCharacter } from '../../../../src/app/online/gm/book/characters.ts';
 import { checkResourceEdit, editableValue } from '../../../../src/app/online/gm/book/resourceEdit.ts';
+import { sentFields } from '../../../../src/app/online/gm/book/statblockChecks.ts';
 import { statblockSheet } from '../../../../src/app/online/gm/book/statblockSheet.ts';
 import { trackedSheetValues } from '../../../../src/app/online/gm/book/trackedSheet.ts';
 import type { SheetNode } from '../../../../src/app/online/protocol/index.ts';
@@ -55,6 +56,18 @@ describe('tracked numbers on a player\'s sheet', () => {
     expect(trackedSheetValues(RESOLVED, [HP, stress], HELD).map(({ definition }) => definition.key)).toEqual(['luck']);
     const statblock = statblockSheet({ resolved: RESOLVED, definitions: [HP, stress], resources: { ...HELD, stress: { current: 3, max: 4 } } })!;
     expect(statblock.blocks.find((node) => node.k === 'track')).toMatchObject({ resource: null, current: 0, max: 4 });
+  });
+
+  it('never let the boxes of a Track write the field that holds its maximum (#522)', () => {
+    // The Track's field is the maximum Stress reads: ticking three boxes wrote 3 there, and Stress became 3 / 3
+    const stress = { ...HP, key: 'stress', name: 'Stress', field: 'Stress', direction: 'fills' as const };
+    const statblock = statblockSheet({ resolved: RESOLVED, definitions: [HP, stress], resources: { ...HELD, stress: { current: 3, max: 4 } } })!;
+    expect(statblock.blocks.find((node) => node.k === 'track')).toMatchObject({ field: null });
+    expect(sentFields(statblock).map((field) => field.key)).not.toContain('stress');
+    // A Track bound to a resource the collection does not define is drawn where it starts, and writes nothing either
+    const unknown: StatblockTemplate = { ...TEMPLATE, layout: { ...TEMPLATE.layout, blocks: [{ id: 'track001', type: 'track', field: 'stress', look: 'boxes', counts: 'up', resource: 'strain' }] } };
+    const bound = statblockSheet({ resolved: resolvedOf(unknown, { name: 'Ana', stress: 4 }), definitions: [HP], resources: HELD })!;
+    expect(bound.blocks.find((node) => node.k === 'track')).toMatchObject({ resource: null, current: 0, max: 4, field: null });
   });
 
   it('may be stepped only where the template lets the player change the field', () => {

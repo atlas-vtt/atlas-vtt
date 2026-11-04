@@ -3,8 +3,8 @@ import { AssetService, type MapAsset, type TokenAsset } from './AssetService';
 import { ensureFolder } from '../plugin/vaultFolders';
 import { renderThumbnail, type ThumbnailSpec } from '../imageProcessing/imageProcessing';
 import { fnv1a32 } from '../utils/hashing';
-import { isVideoMapPath, videoMimeType } from '../pixi/mapImage/video/videoMapFiles';
-import { videoPosterBlob } from '../pixi/mapImage/video/videoPoster';
+import { isVideoMapPath, videoMimeType } from '../pixi/mosaicCanvas/video/videoMapFiles';
+import { videoPosterBlob } from '../pixi/mosaicCanvas/video/videoPoster';
 
 export const THUMBNAIL_DIR = 'atlas-vtt/assets/thumbnails';
 /** Longer side of a thumbnail; asset cards are about half this size on a 2x display. */

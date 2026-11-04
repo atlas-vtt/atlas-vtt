@@ -4,7 +4,7 @@ import { MAX_DRAWING_POINTS, parseGmMessage, type GmMessage } from '../../../../
 const HASH = 'b'.repeat(64);
 const GRID = { type: 'hex-vertical', size: 70, offsetX: 3, offsetY: -2, colour: '#112233', alpha: 0.5, lineWidth: 2, lineType: 'dashed', numbers: { format: 'letter-number', opacity: 0.8 } };
 const TEXT = { x: 1, y: 2, text: 'Tavern', fontSize: 24, fontFamily: 'Georgia, "Times New Roman", serif', colour: '#ffffff', background: null, padding: 8, radius: 0, opacity: 1, align: 'center', bold: false, italic: true, rotation: 45, scale: 1 };
-const COMBATANT = { initiative: 18, name: 'Ogre', turn: true, sitsOut: false, art: { hash: HASH, size: 10, mime: 'image/webp' }, ring: { colour: null }, side: 'opponents', hp: { current: 3, max: 10 } };
+const COMBATANT = { initiative: 18, name: 'Ogre', turn: true, sitsOut: false, art: { hash: HASH, size: 10, mime: 'image/webp', id: 'e'.repeat(64) }, ring: { colour: null }, side: 'opponents', hp: { current: 3, max: 10 } };
 const INITIATIVE = { isActive: true, round: 2, bySides: false, firstSide: 'players', activeSide: null, combatants: [COMBATANT] };
 
 const valid: GmMessage[] = [

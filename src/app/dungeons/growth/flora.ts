@@ -54,6 +54,13 @@ const THEMES: Readonly<Record<ThemeId, Theme>> = {
     undergrowth: [['tangled-roots', 3], ['brambles', 1]],
     columns: [['creeper', 2], ['ivy', 2]],
   },
+  // A Forest's floors below are caves; its entry floor keeps no growth (`forestFloor`).
+  forest: {
+    climbers: [['moss', 4], ['roots', 2], ['fern', 1]],
+    patches: [['moss', 3], ['fern', 3], ['fungi', 2]],
+    undergrowth: [['tangled-roots', 2], ['thicket', 1]],
+    columns: [['creeper', 1]],
+  },
   cavern: {
     climbers: [['moss', 4], ['roots', 2], ['fern', 1]],
     patches: [['moss', 3], ['fern', 3], ['fungi', 2]],

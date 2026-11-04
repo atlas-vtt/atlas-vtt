@@ -77,6 +77,15 @@ export const SENSE_FADE = 0.4;
  */
 export const LIGHT_LEVELS = { bright: 1.25, dim: 0.4 } as const;
 export const EXPOSURE = 0.9;
+/**
+ * How bright lights may make a floor together. They add up in the light map, as light does, but an
+ * eye adapts: four torches held together do not make a floor four times as bright, and their sum
+ * (bounce included) whitened the picture without end. So the composite takes the brightest light
+ * at a point whole, as it would show alone (halo and all), and lets what the others add ease
+ * towards `reach` of it: two equal lights together about a quarter brighter than one, any number
+ * never more than a third.
+ */
+export const LIGHT_CEILING = { reach: 0.35 } as const;
 /** Light colours are mixed this far towards white, so tinted light keeps the map readable. */
 export const TINT_TO_WHITE = 0.5;
 /** Smallest flame, as a share of the dim radius, so shadow edges never look cut out. */

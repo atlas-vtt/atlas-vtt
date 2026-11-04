@@ -91,11 +91,27 @@ export class ExploredTexture {
 
   /** Replaces the memory with a decoded image of it, which it then destroys with its source. */
   draw(image: Texture): void {
+    this.drawImage(image, true);
+  }
+
+  /**
+   * Adds a decoded image of a memory to this one, which it then destroys with its source: each
+   * texel keeps the larger coverage of the two (`max`), so what either has seen stays.
+   */
+  drawOver(image: Texture): void {
+    this.drawImage(image, false);
+  }
+
+  private drawImage(image: Texture, replace: boolean): void {
     const sprite = new Sprite(image);
     sprite.width = this.texture.width;
     sprite.height = this.texture.height;
-    this.renderer.render({ container: sprite, target: this.texture, clear: true, clearColor: [0, 0, 0, 0] });
-    destroyTree(sprite);
+    sprite.blendMode = replace ? 'normal' : 'max';
+    // A blend mode is read from a child: the container rendered is the group itself.
+    const container = new Container();
+    container.addChild(sprite);
+    this.renderer.render({ container, target: this.texture, clear: replace, clearColor: [0, 0, 0, 0] });
+    destroyTree(container);
     // The source is the decoded image and its upload, as large as the memory itself; a texture
     // destroyed without it leaves both behind for every scene loaded.
     image.destroy(true);

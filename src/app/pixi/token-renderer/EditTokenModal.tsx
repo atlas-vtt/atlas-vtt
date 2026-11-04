@@ -30,6 +30,7 @@ import { numberText } from '../../utils/numberInput';
 import { t } from '../../i18n';
 import { sceneTokens } from '../../tokens/offMap';
 import { everyLevelObjects } from '../../levels/levelObjects';
+import { getDomHost } from '../../host/dom';
 
 interface EditTokenValues {
   name: string;
@@ -68,6 +69,7 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
   const [vision, setVision] = useState(initial.vision);
   const [light, setLight] = useState(initial.light);
   const inputRef = useRef<HTMLInputElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const context = { ...lighting, inherited };
 
   useEffect(() => {
@@ -100,12 +102,14 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
         handleSave();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // The window the dialog is in
+    const win = overlayRef.current?.ownerDocument.defaultView ?? window;
+    win.addEventListener('keydown', handleKeyDown);
+    return () => win.removeEventListener('keydown', handleKeyDown);
   });
 
   return (
-    <div className="atlas-modal-overlay" onClick={onClose}>
+    <div ref={overlayRef} className="atlas-modal-overlay" onClick={onClose}>
       <div className="atlas-modal atlas-edit-token-modal" onClick={(e) => e.stopPropagation()}>
         <div className="atlas-modal-header">
           <h3>{t('editToken.title')}</h3>
@@ -162,19 +166,21 @@ function lightingContext(state: ViewAtlasState, app: App, rules: SenseRules): To
 /**
  * Imperatively opens an Edit Token modal by mounting a React root.
  * Call from non-React code (e.g. InteractionController).
+ * @param doc The document of the map the token is on.
  */
 export function openEditTokenModal(
   token: TokenEntity,
   store: StoreApi<ViewAtlasState>,
   app: App,
   definitions: readonly ResourceDefinition[],
+  doc: Document = activeDocument,
 ): void {
   const character = token.kind === 'character' ? token : undefined;
   // The senses of the map's rules and what they measure in, as its statblocks are read with.
   const rules = mapSenseRules(app, AssetService.getInstance(app), store.getState());
   const lighting = lightingContext(store.getState(), app, rules);
   const statblock = character?.statblockPath ? { app, path: character.statblockPath, rules } : null;
-  const container = document.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
+  const container = getDomHost().createDiv(doc.body, 'atlas-vtt-plugin atlas-vtt-root');
   const root = createRoot(container);
 
   const cleanup = (): void => {

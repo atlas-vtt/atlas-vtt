@@ -1,7 +1,7 @@
 import { newPlayerCode, newPlayerId, withoutPlayer, withPlayerFields, type CampaignPlayer, type StoredPlayers } from '../../campaigns/players/playersFile';
 import { playerName, type CampaignSeat, type PlayerInfo, type YourCodeMessage } from '../protocol/index.ts';
 import { showNotice } from '../../ui/notice';
-import { admitNewcomer, NEWER_PLAYERS_TEXT, refusalText, type TableSeats } from './campaignSeats.ts';
+import { admitNewcomer, nameTakenText, NEWER_PLAYERS_TEXT, refusalText, type TableSeats } from './campaignSeats.ts';
 
 /** Where the relay and the players are told: the table's connection. */
 export interface RosterLink {
@@ -96,7 +96,12 @@ export class TableRoster {
 
   rename(playerId: string, name: string): void {
     const shown = playerName(name);
-    if (shown !== null && this.seats.codeOf(playerId) !== null) this.write((stored) => withPlayerFields(stored, playerId, { name: shown }));
+    if (shown === null || this.seats.codeOf(playerId) === null) return;
+    if (this.seats.nameTaken(shown, playerId)) {
+      showNotice(nameTakenText(shown));
+      return;
+    }
+    this.write((stored) => withPlayerFields(stored, playerId, { name: shown }));
   }
 
   /** Gives a player a new code: the old one stops working at once, and a connected player stays and is told the new one. */

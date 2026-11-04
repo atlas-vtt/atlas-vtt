@@ -12,7 +12,7 @@ export interface PlayedCharacter {
   readonly collection: string;
   /** The character: its library token's id, else `token:` and its token's id. It names the book and is never sent. */
   readonly key: string;
-  /** The artwork its token is shown with: what the character's picture is served from. It is never sent. */
+  /** The artwork its token is shown with: what the character's picture is read from. It is never sent. */
   readonly imagePath: string;
   /** The token the character was read from. */
   readonly tokenId: string;

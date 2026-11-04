@@ -9,6 +9,7 @@ import { blockFrame } from './editorChrome';
 import type { Box } from './gapGeometry';
 import type { ChromeStyle } from './LabelEditor';
 import { tilePartsOf } from './tileParts';
+import { t } from '../../../i18n';
 
 export interface PartRemoveButtonsProps {
   stage: HTMLElement;
@@ -80,7 +81,7 @@ export function PartRemoveButtons({ stage, template, blockIds, revision, onRemov
       {boxes.map(({ blockId, index, box }) => {
         const name = tilePartsOf(template, blockId)?.names[index];
         if (name === undefined) return null;
-        const label = `Remove ${name}`;
+        const label = t('templateEditor.removeNamed', { name });
         return (
           <LabelTooltip key={`${blockId}:${index}`} label={label}>
             <button

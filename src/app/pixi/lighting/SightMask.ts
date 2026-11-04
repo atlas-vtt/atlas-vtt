@@ -81,7 +81,7 @@ function assertLive(context: CanvasRenderingContext2D): void {
 
 /**
  * The black that hides what the players do not see, composed on a Canvas 2D context and shown
- * as one sprite, on PIXI's Canvas renderer and on WebGL alike.
+ * as one sprite.
  *
  * Nothing works the hidden area out: the canvas is filled black and every shown polygon is
  * erased from it, so a place no polygon covers stays black whatever the polygons' corners do.

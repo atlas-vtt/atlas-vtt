@@ -4,6 +4,7 @@ import type { FieldValue } from '../../../statblocks/model/templateTypes';
 import { deepEqual } from '../../../statblocks/notes/listIdentity';
 import { readField, type FieldRead, type KeyedField } from '../../../statblocks/values/fieldValues';
 import { drawnStatblock, type DrawnStatblock } from './statblockSheet.ts';
+import type { AssetStoring } from '../assets/assetUses.ts';
 
 /**
  * A value this GM side wrote into a note: the key it stands under now, the keys it was taken from,
@@ -23,6 +24,8 @@ export interface StatblockSheetPorts {
   now(): number;
   /** The width of the GM's statblock panel, which the cards are laid out at; unset, a default. */
   panelWidth?(): number | undefined;
+  /** How players are handed the whole texts a statblock names; without it they get each text's opening alone. */
+  readonly stored?: AssetStoring | undefined;
   /** The note at `path` was read or its statblock drawn anew: the books of its characters are looked at again. */
   changed(path: string): void;
 }
@@ -99,7 +102,7 @@ export class StatblockSheets {
     const asked: Drawing = { source, inputs };
     entry.asked = asked;
     entry.drawn = undefined;
-    void drawnStatblock({ resolved: source, definitions, resources, ...(panelWidth !== undefined && { panelWidth }) }).then((drawn) => {
+    void drawnStatblock({ resolved: source, definitions, resources, ...(panelWidth !== undefined && { panelWidth }) }, this.ports.stored).then((drawn) => {
       if (entry.asked !== asked || this.entries.get(path) !== entry) return;
       entry.drawn = drawn;
       this.ports.changed(path);

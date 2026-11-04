@@ -10,7 +10,7 @@ const MIRA = 'a'.repeat(20);
 const TOM = 'b'.repeat(20);
 const ANA = 'd'.repeat(20);
 const NAMES: Readonly<Record<string, string>> = { [MIRA]: 'Mira', [TOM]: 'Tom', [ANA]: 'Ana' };
-const ART = { hash: 'f'.repeat(64), size: 10, mime: 'image/png' };
+const ART = { hash: 'f'.repeat(64), size: 10, mime: 'image/png', id: 'e'.repeat(64) };
 const GOBLIN: SpokenAs = { speaker: { name: 'Goblin', token: null, art: ART, ring: '#ff0000' }, art: 'art/goblin.png' };
 const KARA: SpokenAs = { speaker: { name: 'Kara', token: 'cccccccccccccccccccccccc', art: null, ring: null }, art: null };
 
@@ -157,7 +157,7 @@ describe('speakers', () => {
     expect(sent.filter((item) => item.body.t === 'chat-refused')).toEqual([{ body: { t: 'chat-refused', reason: 'speaker' }, to: TOM }]);
   });
 
-  it('the GM whispers as an NPC with its portrait; its art may be served while the log shows it', async () => {
+  it('the GM whispers as an NPC with its portrait, whose file the GM\'s log keeps to itself', async () => {
     const { log, to } = table();
     await log.say({ text: 'Give me the key', speaker: 'goblin', style: 'ic', to: [ANA] });
     const entry = last(log);

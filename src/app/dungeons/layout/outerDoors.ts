@@ -5,7 +5,7 @@
  */
 
 import type { CellDir, CellPoint } from '../model';
-import { cellKey, dir, inRect, rectsTouch } from '../geometry';
+import { dir, inRect, rectsTouch } from '../geometry';
 import { type WorkLayout, type WorkRoom, localCell, roomRect } from './workLayout';
 
 export interface OuterCell {
@@ -14,48 +14,72 @@ export interface OuterCell {
   out: CellDir;
 }
 
-function covered(layout: WorkLayout, cell: CellPoint, except: number): boolean {
-  return layout.rooms.some((room) => !room.removed && room.id !== except && inRect(roomRect(room), cell.x, cell.y));
+
+/** The open ground round a dungeon: whether a cell lies on it, how many rooms' rectangles cover a cell, and whether a door stands on it or beside it. */
+export interface OpenGround {
+  has(x: number, y: number): boolean;
+  covers(x: number, y: number): number;
+  byDoor(x: number, y: number): boolean;
 }
 
-function isDoorCell(layout: WorkLayout, cell: CellPoint): boolean {
-  return layout.doors.some((door) => door.x === cell.x && door.y === cell.y);
-}
-
-function nearDoor(layout: WorkLayout, cell: CellPoint): boolean {
-  return layout.doors.some((door) => Math.abs(door.x - cell.x) + Math.abs(door.y - cell.y) <= 1);
-}
-
-/** The cells outside every room that reach past the dungeon's bounds: the open ground around it. */
-export function openGround(layout: WorkLayout): ReadonlySet<string> {
+/**
+ * The cells outside every room that reach past the dungeon's bounds: the open ground around it.
+ * Flooded over a grid of the dungeon's box, not a set of cell keys: every attempt at an entry
+ * floor asks it, and a cave's box holds thousands of cells.
+ */
+export function openGround(layout: WorkLayout): OpenGround {
   const rects = layout.rooms.filter((room) => !room.removed).map(roomRect);
   const x0 = Math.min(...rects.map((r) => r.x0)) - 1;
   const y0 = Math.min(...rects.map((r) => r.y0)) - 1;
   const x1 = Math.max(...rects.map((r) => r.x1)) + 1;
   const y1 = Math.max(...rects.map((r) => r.y1)) + 1;
-  const covered = new Set<string>();
-  for (const r of rects) for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) covered.add(cellKey(x, y));
-  const open = new Set([cellKey(x0, y0)]);
-  const queue: CellPoint[] = [{ x: x0, y: y0 }];
-  for (let head = 0; head < queue.length; head++) {
-    const at = queue[head] as CellPoint;
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-      const next = { x: at.x + dx, y: at.y + dy };
-      const key = cellKey(next.x, next.y);
-      if (next.x < x0 || next.x > x1 || next.y < y0 || next.y > y1 || covered.has(key) || open.has(key)) continue;
-      open.add(key);
-      queue.push(next);
+  const width = x1 - x0 + 1;
+  const height = y1 - y0 + 1;
+  // 1 covered by a room, 2 open ground.
+  const cells = new Uint8Array(width * height);
+  const cover = new Uint16Array(width * height);
+  for (const r of rects) {
+    for (let y = r.y0; y <= r.y1; y++) {
+      for (let at = (y - y0) * width + (r.x0 - x0), end = at + r.x1 - r.x0; at <= end; at++) {
+        cells[at] = 1;
+        cover[at] = (cover[at] ?? 0) + 1;
+      }
     }
   }
-  return open;
+  const queue = new Int32Array(width * height);
+  let tail = 0;
+  const visit = (at: number): void => {
+    if (cells[at] !== 0) return;
+    cells[at] = 2;
+    queue[tail++] = at;
+  };
+  visit(0);
+  for (let head = 0; head < tail; head++) {
+    const at = queue[head] as number;
+    const x = at % width;
+    if (x > 0) visit(at - 1);
+    if (x < width - 1) visit(at + 1);
+    if (at >= width) visit(at - width);
+    if (at < width * (height - 1)) visit(at + width);
+  }
+  const doorKeys = new Set(layout.doors.map((door) => `${door.x},${door.y}`));
+  const inside = (x: number, y: number): boolean => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+  return {
+    byDoor: (x, y) => doorKeys.has(`${x},${y}`) || doorKeys.has(`${x + 1},${y}`) || doorKeys.has(`${x - 1},${y}`) || doorKeys.has(`${x},${y + 1}`) || doorKeys.has(`${x},${y - 1}`),
+    has: (x, y) => inside(x, y) && cells[(y - y0) * width + (x - x0)] === 2,
+    covers: (x, y) => (inside(x, y) ? (cover[(y - y0) * width + (x - x0)] ?? 0) : 0),
+  };
 }
 
-function isFreeOuterCell(layout: WorkLayout, room: WorkRoom, cell: CellPoint, out: CellDir, ground: ReadonlySet<string>): boolean {
+function isFreeOuterCell(layout: WorkLayout, room: WorkRoom, cell: CellPoint, out: CellDir, ground: OpenGround): boolean {
   const outside = { x: cell.x + out.x, y: cell.y + out.y };
-  if (!ground.has(cellKey(outside.x, outside.y))) return false;
+  // Open ground lies outside every room, so only the ground before the first entrance is left to keep clear of.
+  if (!ground.has(outside.x, outside.y)) return false;
   const outsideRect = { x0: outside.x, y0: outside.y, x1: outside.x, y1: outside.y };
-  if ((layout.reserved && rectsTouch(outsideRect, layout.reserved)) || covered(layout, outside, -1)) return false;
-  return !covered(layout, cell, room.id) && !isDoorCell(layout, cell) && !nearDoor(layout, cell);
+  if (layout.reserved && rectsTouch(outsideRect, layout.reserved)) return false;
+  // Covered by a room besides this one: a wall it shares.
+  const others = ground.covers(cell.x, cell.y) - (inRect(roomRect(room), cell.x, cell.y) ? 1 : 0);
+  return others === 0 && !ground.byDoor(cell.x, cell.y);
 }
 
 /** Every wall cell of the room, corners left out, with the way out of the room there. */
@@ -78,6 +102,6 @@ function wallCells(room: WorkRoom): OuterCell[] {
 }
 
 /** The room's wall cells a door to the open ground around the dungeon may stand in (`openGround`). */
-export function freeOuterCells(layout: WorkLayout, room: WorkRoom, ground: ReadonlySet<string>): OuterCell[] {
+export function freeOuterCells(layout: WorkLayout, room: WorkRoom, ground: OpenGround): OuterCell[] {
   return wallCells(room).filter(({ cell, out }) => isFreeOuterCell(layout, room, cell, out, ground));
 }

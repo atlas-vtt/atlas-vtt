@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { commands } from 'vitest/browser';
-import { DUNGEON_STYLES } from '../../src/app/dungeons/styleCatalog';
+import { DUNGEON_STYLES, type DungeonStyleId } from '../../src/app/dungeons/styleCatalog';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
-import { meanChange, WATER_CAPTURE, WATER_OUT, WATER_PHASE, waterGpuCost, waterPicture, waterPng, waterScene } from './waterEvidenceHarness';
+import { meanChange, WATER_CAPTURE, WATER_OUT, WATER_PHASE, waterGpuCost, waterPicture, waterPng, waterScene, type WaterSource } from './waterEvidenceHarness';
 
 /** VITE_WATER_PHASE=before|after VITE_WATER_CAPTURE=1 saves 90 deterministic frames per look. */
 describe('water belongs to the generated map artwork', () => {
@@ -10,12 +10,13 @@ describe('water belongs to the generated map artwork', () => {
   beforeAll(async () => { renderer = await createTestRenderer(960); });
   afterAll(() => renderer.destroy());
 
-  const cases = DUNGEON_STYLES.flatMap(({ id }) => [false, true].map(mono => ({ id, mono, channel: false })));
-  cases.push({ id: 'parchment', mono: false, channel: true }, { id: 'print', mono: false, channel: true });
-  for (const { id, mono, channel } of cases) {
-    const name = `${id}${mono ? '-mono' : ''}${channel ? '-channel' : ''}`;
+  const cases: { id: DungeonStyleId; mono: boolean; source: WaterSource }[] = DUNGEON_STYLES.flatMap(({ id }) => [false, true].map(mono => ({ id, mono, source: 'pool' as const })));
+  cases.push({ id: 'parchment', mono: false, source: 'channel' }, { id: 'print', mono: false, source: 'channel' }, { id: 'crayon', mono: false, source: 'channel' });
+  cases.push({ id: 'parchment', mono: false, source: 'river' }, { id: 'contrast', mono: false, source: 'river' }, { id: 'crayon', mono: false, source: 'river' });
+  for (const { id, mono, source } of cases) {
+    const name = `${id}${mono ? '-mono' : ''}${source === 'pool' ? '' : `-${source}`}`;
     it(`renders still art and calm, visibly moving water in ${name}`, async () => {
-      const scene = await waterScene(id, mono, channel);
+      const scene = await waterScene(id, mono, source);
       try {
         scene.layer.container.visible = false;
         const art = waterPicture(renderer, scene);

@@ -1,4 +1,9 @@
+@use '../../../styles/tokens' as *;
+
 // Popout window that shows the presented scene to players.
+
+// Distance of the widgets from the player view's edges, as `widget-bar.scss` places them
+$player-widget-offset: $spacing-s;
 // Scoped to the popout body, which PlayerWindowService marks with this class.
 body.atlas-player-window {
   margin: 0;
@@ -13,16 +18,19 @@ body.atlas-player-window {
   -webkit-user-select: none;
   user-select: none;
 
+  // Turned about the window's centre by the TV's rotation (TrueScale, PlayerWindowService); a
+  // quarter turn swaps its sides, so its box is the window as the players see it
   #atlas-player-canvas {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    left: 50%;
+    top: 50%;
+    width: 100vw;
+    height: 100vh;
+    transform: translate(-50%, -50%) rotate(var(--atlas-tv-rotation, 0deg));
     display: block;
-    // A live frame has the window's own shape, so nothing is fitted; one with fewer pixels than
-    // the window (its pixel budget) is scaled up smoothly. A frame held while the DM is on
-    // another scene tab keeps the shape it was taken with: it covers the window.
+    // A live frame has the window's own shape, as the players see it, so nothing is fitted; one
+    // with fewer pixels than the window (its pixel budget) is scaled up smoothly. A frame held
+    // while the DM is on another scene tab keeps the shape it was taken with: it covers the window.
     object-fit: cover;
     object-position: center;
     -webkit-app-region: drag;
@@ -34,10 +42,30 @@ body.atlas-player-window {
     text-align: center;
   }
 
-  // The outgoing map during a scene crossfade must sit exactly on the canvas
-  .atlas-scene-transition-snapshot {
-    object-fit: cover;
-    object-position: center;
+  // What players see over the map, turned with it; a transformed box also contains the overlays' fixed children
+  .atlas-player-overlays {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 100vw;
+    height: 100vh;
+    transform: translate(-50%, -50%) rotate(var(--atlas-tv-rotation, 0deg));
+
+    &.atlas-player-overlays--sideways {
+      width: 100vh;
+      height: 100vw;
+    }
+
+    // The widgets keep inside the TV's edges, top right, where `widget-bar.scss` puts them
+    #atlas-player-widgets .atlas-widget-bar {
+      max-width: calc(100% - 2 * #{$player-widget-offset});
+    }
+  }
+
+  &[data-tv-rotation='90'] #atlas-player-canvas,
+  &[data-tv-rotation='270'] #atlas-player-canvas {
+    width: 100vh;
+    height: 100vw;
   }
 
   // Only the loading message shows until the first frame is mirrored.
@@ -122,6 +150,30 @@ body.atlas-player-window {
   .status-bar,
   .titlebar {
     display: none !important;
+  }
+
+  // The curtain (PlayerWindowService.setCurtain): black over everything players see, the image
+  // display (z 10000) and the loot handout (z 10001) included. The canvas is blacked as well. The
+  // rule below says where it rests; `showPlayerCurtain` fades it there.
+  .atlas-player-curtain {
+    position: fixed;
+    inset: 0;
+    z-index: 10002;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+
+    // Obsidian makes all that follows its app container no-drag (`body.is-frameless > .app-container ~ *`,
+    // doubled here to win whatever the stylesheets' order), and a box's region counts whatever its
+    // opacity or pointer-events: as no-drag this sheet, lifted too, takes the whole window's drag away
+    &.atlas-player-curtain {
+      -webkit-app-region: initial;
+    }
+  }
+
+  &.atlas-player-window--curtain .atlas-player-curtain {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   // Top left: the widgets hold the top right corner.

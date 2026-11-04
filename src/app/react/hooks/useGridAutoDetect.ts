@@ -11,6 +11,7 @@ import type { AlignmentResult } from '../../pixi/gridAlignmentMath';
 import { NO_GRID } from '../../pixi/spectralEngine/detectionJob';
 import type { DetectionEvent, DetectionOutcome } from '../../pixi/spectralEngine/detectionJob';
 import { detectGridOfMap } from '../../pixi/spectralEngine/spectralEngineService';
+import { MapProcessing, processingPercent } from '../../pixi/mosaicCanvas/mapProcessing';
 import { describeGridType } from './useGridAlignmentEffects';
 import { t } from '../../i18n';
 
@@ -40,7 +41,7 @@ export function useGridAutoDetect(view: AtlasView | null, controller: RefObject<
 
   useEffect(() => {
     const mapImage = view?.renderer?.getMapImage?.();
-    if (!detecting || !mapImage) return undefined;
+    if (!detecting || !view || !mapImage) return undefined;
     const scanned = controller.current;
     const asked = new AbortController();
 
@@ -58,7 +59,8 @@ export function useGridAutoDetect(view: AtlasView | null, controller: RefObject<
       heard.current.status(t('align.checking', { type: describeGridType(event.fit.gridType) }));
     };
 
-    void detectGridOfMap(mapImage, { onEvent, signal: asked.signal }).catch((error: unknown): DetectionOutcome => {
+    const sayWaiting = (percent: number): void => heard.current.status(t('align.waitingForTiles', { percent }));
+    void tilesReady(view, asked.signal, sayWaiting).then(() => detectGridOfMap(mapImage, { onEvent, signal: asked.signal })).catch((error: unknown): DetectionOutcome => {
       if (!asked.signal.aborted) console.error('[GridAlignment] Auto-detect failed', error);
       return NO_GRID;
     }).then((outcome) => {
@@ -74,4 +76,22 @@ export function useGridAutoDetect(view: AtlasView | null, controller: RefObject<
     });
     return () => asked.abort();
   }, [detecting, view, controller]);
+}
+
+/**
+ * Resolves once the view's map image has all its tesserae, saying how far they are meanwhile: a
+ * window of a map still being cut waits for the build to reach its rows, the finest level's last.
+ */
+function tilesReady(view: AtlasView, signal: AbortSignal, say: (percent: number) => void): Promise<void> {
+  const processing = MapProcessing.existing(view.app);
+  if (!processing) return Promise.resolve();
+  const path = view.atlasStore.getState().background;
+  if (!path || processing.stateOf(path) === null) return Promise.resolve();
+  const tell = (): void => {
+    const state = processing.stateOf(path);
+    if (state) say(processingPercent(state));
+  };
+  tell();
+  const stop = processing.subscribe(tell);
+  return processing.whenDone(path, signal).finally(stop);
 }

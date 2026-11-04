@@ -1,5 +1,5 @@
 import { Container } from 'pixi.js';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';
 import { NOTHING_SEEN, PlayerSightTokens, seenByPlayers } from '../../src/app/pixi/token-renderer/PlayerSightTokens';
 import type { TokenGroupContainer } from '../../src/app/pixi/token-renderer/types';
@@ -59,21 +59,6 @@ describe('PlayerSightTokens.showsPlayers', () => {
   });
 });
 
-describe('PlayerSightTokens.sharesFrameSight', () => {
-  it('holds while the lighting shows the players\' view on the canvas or none is wired, not while the canvas leaves it out', () => {
-    const players = { active: false, playerView: true };
-    const sight = sightOf({}, () => null, players);
-    // The command palette's player mode: the canvas shows the players' view without their lighting.
-    expect(sight.sharesFrameSight()).toBe(false);
-    players.active = true;
-    expect(sight.sharesFrameSight()).toBe(true);
-    players.active = false;
-    // No lighting wired (the player view's tab).
-    sight.setProvider(() => undefined);
-    expect(sight.sharesFrameSight()).toBe(true);
-  });
-});
-
 describe('PlayerSightTokens.sightIsCurrent', () => {
   it('follows the provider that keeps sight of its own, and holds where sight is read when asked', () => {
     const sight = sightOf({}, () => null);
@@ -85,39 +70,6 @@ describe('PlayerSightTokens.sightIsCurrent', () => {
     expect(sight.sightIsCurrent()).toBe(true);
     sight.setProvider(() => undefined);
     expect(sight.sightIsCurrent()).toBe(true);
-  });
-});
-
-describe('PlayerSightTokens.whenSettled', () => {
-  it('runs at once where sight is read when asked', () => {
-    const sight = sightOf({}, () => null);
-    const runs: string[] = [];
-    sight.whenSettled(() => runs.push('now'));
-    expect(runs).toEqual(['now']);
-  });
-
-  it('waits for the store\'s other listeners where the provider keeps sight of its own, and runs the last work once', async () => {
-    const sight = sightOf({}, () => null);
-    sight.setProvider(() => undefined, () => true, () => true);
-    const runs: string[] = [];
-    sight.whenSettled(() => runs.push('first'));
-    sight.whenSettled(() => runs.push('second'));
-    expect(runs).toEqual([]);
-    await Promise.resolve();
-    expect(runs).toEqual(['second']);
-    sight.whenSettled(() => runs.push('third'));
-    await Promise.resolve();
-    expect(runs).toEqual(['second', 'third']);
-  });
-
-  it('runs nothing once destroyed', async () => {
-    const sight = sightOf({}, () => null);
-    sight.setProvider(() => undefined, () => true, () => true);
-    const work = vi.fn();
-    sight.whenSettled(work);
-    sight.destroy();
-    await Promise.resolve();
-    expect(work).not.toHaveBeenCalled();
   });
 });
 

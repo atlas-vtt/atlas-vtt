@@ -16,6 +16,7 @@ import { libraryLoaded } from '../resolve/readStatblock';
 import { applyFrontmatterPatches } from './frontmatterPatch';
 import type { NotePatch } from './patchTypes';
 import { TEMPLATE_KEY } from './statblockSource';
+import { t } from '../../i18n';
 
 export interface NewStatblockNote {
   name: string;
@@ -36,7 +37,7 @@ export interface CreatedStatblockNote {
   linked: boolean;
 }
 
-const FALLBACK_NAME = 'New statblock';
+const FALLBACK_NAME = t('statblockEditor.newStatblock');
 
 /** Creates the note and links the token to it. Throws when the note cannot be created. */
 export async function createStatblockNote(app: App, note: NewStatblockNote): Promise<CreatedStatblockNote> {

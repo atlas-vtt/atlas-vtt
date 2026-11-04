@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 /**
- * Waiting for the companion's reads that run on no timer: hashes (`crypto.subtle.digest`) and image
+ * Waiting for the companion's reads that run on no timer: hashes and asset ids (`crypto.subtle`) and image
  * headers (`Blob.arrayBuffer`). Both are wrapped once per test worker to note the work they start, so
  * `settled` waits until all of it and what follows from it is done, however loaded the machine is,
  * instead of guessing how long it takes.
@@ -27,6 +27,11 @@ function watch(): Set<Promise<unknown>> {
   const subtle = globalThis.crypto.subtle;
   const digest = subtle.digest.bind(subtle);
   subtle.digest = (...args: Parameters<SubtleCrypto['digest']>): Promise<ArrayBuffer> => watched(digest(...args));
+  // Asset ids are HMACs: a key imported, then a signature.
+  const sign = subtle.sign.bind(subtle);
+  subtle.sign = (...args: Parameters<SubtleCrypto['sign']>): Promise<ArrayBuffer> => watched(sign(...args));
+  const importKey = subtle.importKey.bind(subtle) as (...args: unknown[]) => Promise<CryptoKey>;
+  (subtle as { importKey: unknown }).importKey = (...args: unknown[]): Promise<CryptoKey> => watched(importKey(...args));
   const read = Object.getOwnPropertyDescriptor(Blob.prototype, 'arrayBuffer')?.value as ((this: Blob) => Promise<ArrayBuffer>) | undefined;
   if (read !== undefined) {
     Blob.prototype.arrayBuffer = function (this: Blob): Promise<ArrayBuffer> {

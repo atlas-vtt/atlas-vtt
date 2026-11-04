@@ -103,6 +103,14 @@ export function engravedFloor(scene: ArtScene, pens: Pens): void {
   traceRings(ctx, scene.floorRings);
   ctx.fillStyle = pens.floor;
   ctx.fill();
+  ctx.restore();
+  engravedFractures(scene, pens);
+}
+
+/** The faults of a cave's floor as short burin strokes, over whatever its floor is. */
+export function engravedFractures(scene: ArtScene, pens: Pens): void {
+  const { ctx } = scene.env;
+  ctx.save();
   clipFloors(scene);
   ctx.beginPath();
   // Short burin strokes suggest the same faults without cutting closed paving joints.

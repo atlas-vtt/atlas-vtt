@@ -75,11 +75,11 @@ const tiles = new Map<string, OffscreenCanvas>();
 const TILE_LIMIT = 6;
 
 /** A tile's grain as a canvas for a surface of `paper`, made once per tile and colour. */
-function tileFor(spec: TileSpec, paper: string): OffscreenCanvas {
-  return boundedCached(tiles, `${spec.kind}:${paper}`, TILE_LIMIT, () => grainTile(spec, paper));
+function tileFor(spec: TileSpec, paper: string, contrast: number): OffscreenCanvas {
+  return boundedCached(tiles, `${spec.kind}:${paper}:${contrast}`, TILE_LIMIT, () => grainTile(spec, paper, contrast));
 }
 
-function grainTile(spec: TileSpec, paper: string): OffscreenCanvas {
+function grainTile(spec: TileSpec, paper: string, contrast: number): OffscreenCanvas {
   let deviation = deviations.get(spec.kind);
   if (!deviation) {
     deviation = spec.kind === 'clouds' ? cloudTile(spec.px, SKIN_SEED) : poreTile(spec.px, SKIN_SEED + 1);
@@ -87,7 +87,7 @@ function grainTile(spec: TileSpec, paper: string): OffscreenCanvas {
   }
   const surface = luminance(parseHex(paper)) / 255;
   const tile = new OffscreenCanvas(spec.px, spec.px);
-  tile.getContext('2d')!.putImageData(new ImageData(deviationPixels(deviation, Math.min(surface, BRIGHTEST), Math.max(surface, GRAIN_FLOOR) * GRAIN), spec.px), 0, 0);
+  tile.getContext('2d')!.putImageData(new ImageData(deviationPixels(deviation, Math.min(surface, BRIGHTEST), Math.max(surface, GRAIN_FLOOR) * GRAIN * contrast), spec.px), 0, 0);
   return tile;
 }
 
@@ -97,10 +97,11 @@ function paints(ctx: Canvas2D): boolean {
 }
 
 /**
- * Fills the map's `layout` with the vellum, its grain at `grain` (smooth paper below 1). Monochrome, and a context without gradients (the SVG
+ * Fills the map's `layout` with the vellum, its grain at `grain` (smooth paper below 1) and `contrast` times as strong (a dark tint shows little of it), its pores only where `pores` says so
+ * (they are a single pixel's grain, which a lossless image cannot compress). Monochrome, and a context without gradients (the SVG
  * export), get the plain paper; a context outside a browser gets the colours without the grain.
  */
-export function drawVellum(ctx: Canvas2D, paper: string, layout: MapLayout, seed: number, plain: boolean, grain = 1): void {
+export function drawVellum(ctx: Canvas2D, paper: string, layout: MapLayout, seed: number, plain: boolean, grain = 1, pores = grain >= 1, contrast = 1): void {
   const { widthPx: w, heightPx: h, pxPerCell } = layout;
   ctx.save();
   ctx.fillStyle = paper;
@@ -119,13 +120,14 @@ export function drawVellum(ctx: Canvas2D, paper: string, layout: MapLayout, seed
   ctx.fillRect(0, 0, w, h);
   if (typeof OffscreenCanvas !== 'undefined') {
     const rng = stream(seed, 'render', 'vellum');
-    // Smooth paper (a grain under 1) has no pores.
-    for (const spec of TILES.filter(t => grain >= 1 || t.kind === 'clouds')) {
-      const pattern = ctx.createPattern(tileFor(spec, paper), 'repeat');
-      if (!pattern) continue;
-      const scale = (spec.cells * pxPerCell) / spec.px;
+    for (const spec of TILES) {
+      // Both tiles take their offsets, so a part of the skin drawn again lies on the skin.
       const ox = -rng() * spec.px;
       const oy = -rng() * spec.px;
+      if (spec.kind === 'pores' && !pores) continue;
+      const pattern = ctx.createPattern(tileFor(spec, paper, contrast), 'repeat');
+      if (!pattern) continue;
+      const scale = (spec.cells * pxPerCell) / spec.px;
       ctx.save();
       ctx.scale(scale, scale);
       ctx.translate(ox, oy);

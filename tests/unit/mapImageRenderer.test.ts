@@ -5,21 +5,21 @@ import { Container, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
-import { MapImage } from '../../src/app/pixi/mapImage/MapImage';
-import type { MapImageOpener } from '../../src/app/pixi/mapImage/mapImageTypes';
+import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
+import type { MosaicCanvasOpener } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 
 interface Harness {
   renderer: PixiRendererOrchestrator;
   store: ViewAtlasStore;
-  mapImage: MapImage;
+  mapImage: MosaicCanvas;
   viewport: Container;
   events: EventEmitter;
 }
 
 const renderers: PixiRendererOrchestrator[] = [];
 
-/** A renderer without a GPU over a view whose map image is a world rect of `size` (no tiles). */
+/** A renderer without a GPU over a view whose map image is a world rect of `size` (no tesserae). */
 async function showScene(size = 1400): Promise<Harness> {
   // jsdom has no canvas; the token and text renderers built with the grid only need it for icons
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
@@ -48,15 +48,15 @@ async function showScene(size = 1400): Promise<Harness> {
   await renderer.init(document.createElement('div'));
   renderers.push(renderer);
 
-  const opener: MapImageOpener = {
+  const opener: MosaicCanvasOpener = {
     open: vi.fn(),
-    tile: vi.fn(),
+    tessera: vi.fn(),
     overview: vi.fn(),
     close: vi.fn(),
     reportUnshown: vi.fn(),
     onRestart: vi.fn(() => () => undefined),
   };
-  const mapImage = new MapImage({ service: opener, viewport, ticker: new Ticker(), renderer: null, requestRender: vi.fn() });
+  const mapImage = new MosaicCanvas({ service: opener, viewport, ticker: new Ticker(), renderer: null, requestRender: vi.fn() });
   await mapImage.load({ kind: 'none', width: size, height: size });
   renderer.initGrid({ size: 70, color: 0xffffff, enabled: true }, mapImage);
   return { renderer, store, mapImage, viewport, events };

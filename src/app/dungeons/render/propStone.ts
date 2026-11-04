@@ -1,4 +1,5 @@
 import type { PropKind } from '../model';
+import { glyphPainterOf } from '../style';
 import { circlePath, polygonPath, roundedRect, type GlyphPen } from './glyphPen';
 import { STONE_ENGRAVED, STONE_STONE, statueFigure } from './propClassicStone';
 import { WATER_ENGRAVED, WATER_STONE } from './propClassicWater';
@@ -64,7 +65,7 @@ export const STONE_AND_WATER = {
 
 /** The same overhead carving used on a separate terrain plinth. */
 export function drawStatueFigure(pen: GlyphPen): void {
-  statueFigure(pen, pen.hand.scene.env.style.direction === 'engraved');
+  statueFigure(pen, glyphPainterOf(pen.hand.scene.env.style.direction) === 'engraved');
 }
 
 const FIGURE = 1.25;

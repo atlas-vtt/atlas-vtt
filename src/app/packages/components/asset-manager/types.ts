@@ -67,6 +67,8 @@ export interface MapAsset extends Asset {
 
 export interface SceneAsset extends Asset {
   type: 'scenes';
+  /** Vault path of the scene's .atlasmap file. */
+  scenePath?: string;
 }
 
 export interface EncounterTokenPreview {

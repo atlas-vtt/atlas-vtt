@@ -6,14 +6,14 @@ import { drawHexGrid } from '../../src/app/grid/hexGridDrawer';
 import { drawSquareGrid } from '../../src/app/grid/squareGridDrawer';
 import { detectGridFromMapImage, detectGridInMapGray, MAX_ANALYSIS_SIDE } from '../../src/app/pixi/spectralEngine/detectGrid';
 import { grayFromCanvasSource } from '../../src/app/pixi/spectralEngine/grayImage';
-import { tileDatabaseName } from '../../src/app/pixi/mapImage/indexedDbTileBackend';
-import { decoderTiles } from '../../src/app/pixi/mapImage/mapImageTiles';
-import { TileDecoderClient } from '../../src/app/pixi/mapImage/TileDecoderClient';
-import { workerPort } from '../../src/app/pixi/mapImage/tilePorts';
-import TileWorker from '../../src/app/pixi/mapImage/tileWorker?worker&inline';
+import { tesseraDatabaseName } from '../../src/app/pixi/mosaicCanvas/indexedDbTesseraBackend';
+import { decoderTesserae } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTesserae';
+import { TesseraDecoderClient } from '../../src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { workerPort } from '../../src/app/pixi/mosaicCanvas/tesseraPorts';
+import TileWorker from '../../src/app/pixi/mosaicCanvas/tesseraWorker?worker&inline';
 
 /**
- * Grid auto-detect reads the map through `MapImage.overview`, composed in the tile worker from the
+ * Grid auto-detect reads the map through `MosaicCanvas.overview`, composed in the tessera worker from the
  * cached pyramid, where it once drew the whole texture into a canvas. Both must find the same grid.
  */
 
@@ -80,7 +80,7 @@ function deleteDatabase(name: string): Promise<void> {
 }
 
 describe('grid auto-detect through the map image overview', () => {
-  const client = new TileDecoderClient({
+  const client = new TesseraDecoderClient({
     appId: APP_ID,
     worker: workerPort(() => new TileWorker({ name: 'grid detect overview test' })),
     inThread: () => {
@@ -90,7 +90,7 @@ describe('grid auto-detect through the map image overview', () => {
 
   afterAll(async () => {
     client.dispose();
-    await deleteDatabase(tileDatabaseName(APP_ID));
+    await deleteDatabase(tesseraDatabaseName(APP_ID));
   });
 
   const cases: GridCase[] = [
@@ -107,7 +107,7 @@ describe('grid auto-detect through the map image overview', () => {
       const source = drawMap(grid);
       const imageSize = { width: grid.width, height: grid.height };
 
-      // The way detection read a map before tiles: the whole image drawn into a canvas.
+      // The way detection read a map before tesserae: the whole image drawn into a canvas.
       const direct = grayFromCanvasSource(source, grid.width, grid.height, MAX_ANALYSIS_SIDE)!;
       const before = detectGridInMapGray(direct, imageSize);
 
@@ -116,25 +116,25 @@ describe('grid auto-detect through the map image overview', () => {
       const complete = new Promise<void>((resolve) => client.onPyramidComplete(() => resolve()));
       const opened = await client.open(() => Promise.resolve(png.slice(0)), identity);
       await complete;
-      const tiles = decoderTiles(client, opened);
+      const tesserae = decoderTesserae(client, opened);
       const sizes: Array<[number, number]> = [];
       const after = await detectGridFromMapImage({
         worldRect: { x: 0, y: 0, ...imageSize },
         imageSize,
         overview: async (maxSide) => {
-          const bitmap = await tiles.overview(maxSide);
+          const bitmap = await tesserae.overview(maxSide);
           sizes.push([bitmap.width, bitmap.height]);
           return bitmap;
         },
       });
-      tiles.close();
+      tesserae.close();
 
       expect(sizes).toEqual([[direct.width, direct.height]]);
       const aspect = grid.aspect ?? 1;
       expect(before).toMatchObject({ gridType: grid.type, cellSize: expect.closeTo(grid.size * aspect, 0) });
       if (grid.aspect) expect(before!.mapStretch).toEqual({ x: expect.closeTo(aspect, 3), y: 1 });
       else expect(before).not.toHaveProperty('mapStretch');
-      // Cached tiles are WebP at quality 0.9, so a map read at its own size may move an offset by a few hundredths.
+      // Cached tesserae are WebP at quality 0.9, so a map read at its own size may move an offset by a few hundredths.
       expect({ ...after, offsetX: 0, offsetY: 0 }).toEqual({ ...before, offsetX: 0, offsetY: 0 });
       expect(Math.abs(after!.offsetX - before!.offsetX)).toBeLessThanOrEqual(0.1);
       expect(Math.abs(after!.offsetY - before!.offsetY)).toBeLessThanOrEqual(0.1);

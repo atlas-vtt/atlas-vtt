@@ -5,6 +5,7 @@ import type { FieldKey, FieldType } from '../../../model/templateTypes';
 import { useTemplateEditor } from '../editorContext';
 import { fieldChoiceGroups, type FieldChoice } from './fieldChoices';
 import { choiceId, FieldChoiceList } from './FieldChoiceList';
+import { t } from '../../../../i18n';
 
 export interface FieldPickerProps {
   /** The visible label that names the picker. */
@@ -26,7 +27,7 @@ export interface FieldPickerProps {
  * statblocks use, and New field “Speed”. Enter picks, Escape closes and puts
  * the label back.
  */
-export function FieldPicker({ labelledBy, value, accepts, allowNew, disabled, placeholder = 'Choose a property', onPick }: FieldPickerProps): React.JSX.Element {
+export function FieldPicker({ labelledBy, value, accepts, allowNew, disabled, placeholder = t('templateEditor.chooseProperty'), onPick }: FieldPickerProps): React.JSX.Element {
   const { snapshot, collectionKeys } = useTemplateEditor();
   const { template } = snapshot;
   const [query, setQuery] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export function FieldPicker({ labelledBy, value, accepts, allowNew, disabled, pl
       {open && (
         <FieldChoiceList
           id={listId}
-          label="Properties"
+          label={t('templateEditor.properties')}
           groups={groups}
           active={highlighted}
           onHover={(choice) => setActive(choices.indexOf(choice))}

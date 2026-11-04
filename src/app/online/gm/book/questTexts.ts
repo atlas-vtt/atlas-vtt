@@ -1,10 +1,11 @@
-import { bookText, MAX_ASSET_BYTES, MAX_QUEST_BODY, questEmbeds, TEXT_MIME_TYPE, type AssetRef, type QuestEmbed } from '../../protocol/index.ts';
+import { ASSET_CAPS, bookText, MAX_QUEST_BODY, questEmbeds, TEXT_MIME_TYPE, type QuestEmbed } from '../../protocol/index.ts';
+import type { HashedRef } from '../assets/assetUses.ts';
 import { sha256Hex } from '../assetServe.ts';
 import { openingOf } from './bookTexts.ts';
 
-/** A quest's whole text as players fetch it: its reference, and the bytes it is served as. */
+/** A quest's whole text as it is stored for players: its reference by hash, and its bytes. */
 export interface QuestTextAsset {
-  readonly ref: AssetRef;
+  readonly ref: HashedRef;
   readonly bytes: Uint8Array<ArrayBuffer>;
 }
 
@@ -19,17 +20,17 @@ export interface QuestTextParts {
 /**
  * A quest's text (`questBody`, the GM's comments already taken out) as players are sent it: cleaned
  * as a book's text (`bookText`), its opening within `MAX_QUEST_BODY`, and, where that is not all of
- * it, the whole text as UTF-8 Markdown by hash. A text of more than `MAX_ASSET_BYTES` bytes is sent
+ * it, the whole text as UTF-8 Markdown by hash. A text of more than `ASSET_CAPS.text` bytes is sent
  * as its opening alone. The embeds are those of what players get.
  */
 export async function questTextParts(body: string): Promise<QuestTextParts> {
-  const tooLong = body.length > MAX_ASSET_BYTES;
-  const text = bookText(tooLong ? body.slice(0, MAX_ASSET_BYTES).replace(/[\ud800-\udbff]$/, '') : body, MAX_ASSET_BYTES) ?? '';
+  const tooLong = body.length > ASSET_CAPS.text;
+  const text = bookText(tooLong ? body.slice(0, ASSET_CAPS.text).replace(/[\ud800-\udbff]$/, '') : body, ASSET_CAPS.text) ?? '';
   const opening = openingOf(text, MAX_QUEST_BODY);
   if (opening === text) return { opening, whole: null, embeds: questEmbeds(opening) };
   // A copy the hash can take: `encode` names no particular buffer type.
   const bytes = new TextEncoder().encode(text).slice();
-  if (tooLong || bytes.length > MAX_ASSET_BYTES) return { opening, whole: null, embeds: questEmbeds(opening) };
+  if (tooLong || bytes.length > ASSET_CAPS.text) return { opening, whole: null, embeds: questEmbeds(opening) };
   const ref = { hash: await sha256Hex(bytes), size: bytes.length, mime: TEXT_MIME_TYPE };
   return { opening, whole: { ref, bytes }, embeds: questEmbeds(text) };
 }

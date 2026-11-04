@@ -223,9 +223,13 @@ export function fillPockets(grid: CaveGrid): void {
   }
 }
 
-/** Bends every room of the shaped floor, in turn. */
+/** Bends every room of the shaped floor but a narrow route, in turn. */
 export function warpCave(rng: Rng, grid: CaveGrid, floor: Floorish, faults: readonly number[]): void {
   const isFloor = floorOf(grid, floor.doors);
   const noise = floorNoise(rng);
-  for (const room of floor.rooms) warpRoom(grid, floor, room, noise, isFloor, room.kind === 'room' ? chamberLobes(rng, room, faults) : undefined);
+  for (const room of floor.rooms) {
+    // A narrow route keeps its one cell: bent, it would swell like any passage.
+    if (room.narrow) continue;
+    warpRoom(grid, floor, room, noise, isFloor, room.kind === 'room' ? chamberLobes(rng, room, faults) : undefined);
+  }
 }

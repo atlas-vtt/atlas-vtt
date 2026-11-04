@@ -1,4 +1,5 @@
 import type { AccessRefusal, AccountAnswer, AccountInfo, HostAccess } from './relayAccount.ts';
+import { t } from '../../../i18n';
 
 /**
  * What the dock and the settings show of the GM's account, as pure rules. The GM signs in with an
@@ -38,39 +39,38 @@ export function accountView(facts: AccountFacts): AccountView {
 }
 
 const ACCESS_TEXT: Readonly<Record<AccessRefusal, string>> = {
-  'no-access': 'Online play is in early access. Redeem an invite key on your account page.',
-  'access-ended': 'Your access to online play has ended. See your account page.',
-  'access-revoked': 'Your access to online play was withdrawn. See your account page.',
-  'account-restricted': 'Your account is restricted and cannot host online tables. See your account page.',
-  'terms-not-accepted': 'Accept the current Terms on your account page to host online tables.',
+  'no-access': t('online.access.none'),
+  'access-ended': t('online.access.ended'),
+  'access-revoked': t('online.access.revoked'),
+  'account-restricted': t('online.access.restricted'),
+  'terms-not-accepted': t('online.access.terms'),
 };
 
 /** What is said of an account that may not host, whatever the reason. */
-export const NO_HOSTING_TEXT = 'This account may not host online tables now.';
+export const NO_HOSTING_TEXT = t('online.access.noHosting');
 
 /** Why the relay says the account may not host, and where the way on is: the account page. */
-export const accessText = (reason: AccessRefusal | null): string => (reason === null ? `${NO_HOSTING_TEXT} See your account page.` : ACCESS_TEXT[reason]);
+export const accessText = (reason: AccessRefusal | null): string => (reason === null ? t('online.access.noHostingSee', { reason: NO_HOSTING_TEXT }) : ACCESS_TEXT[reason]);
 
-export const UNREACHABLE_TEXT = 'Can’t reach Atlas sign-in right now.';
-export const SERVER_SIGNED_OUT_TEXT = 'You were signed out. Running tables keep going.';
+export const UNREACHABLE_TEXT = t('online.account.unreachable');
+export const SERVER_SIGNED_OUT_TEXT = t('online.account.serverSignedOut');
 
 /** The line under the sign-in button that says how the last sign-in ended. */
 export function noticeText(notice: SignedOutNotice): string | null {
   switch (notice) {
-    case 'timed-out': return 'Sign-in timed out.';
-    case 'declined': return 'Sign-in was declined.';
+    case 'timed-out': return t('online.account.timedOut');
+    case 'declined': return t('online.account.declined');
     case 'server': return SERVER_SIGNED_OUT_TEXT;
     case 'unreachable': return UNREACHABLE_TEXT;
     default: return null;
   }
 }
 
-const PLAN_NAMES: Readonly<Record<string, string>> = { beta: 'Early access', free: 'Free', host: 'Host', staff: 'Staff' };
+const PLAN_NAMES: Readonly<Record<string, string>> = { beta: t('online.plan.beta'), free: t('online.plan.free'), host: t('online.plan.host'), staff: t('online.plan.staff') };
 
 /** The plan in words: "Early access · up to 12 players". */
 export function planText(access: HostAccess): string {
-  const players = access.maxPlayers === 1 ? '1 player' : `${access.maxPlayers} players`;
-  return `${PLAN_NAMES[access.plan] ?? access.plan} · up to ${players}`;
+  return t('online.plan.upTo', { plan: PLAN_NAMES[access.plan] ?? access.plan, count: access.maxPlayers });
 }
 
 /** "Mara (@mara)", or the handle alone where the name is the handle. */

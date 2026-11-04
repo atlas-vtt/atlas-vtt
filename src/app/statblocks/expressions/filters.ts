@@ -17,6 +17,7 @@ import { formatSigned, numericValue, parseRatingText } from '../values/numberTex
 import { quoted, valueText } from '../values/valueText';
 import { refError, syntaxError, type ExpressionError } from './errors';
 import type { PatternFilter, PatternFilterName } from './patternTypes';
+import { t } from '../../i18n';
 
 /** The template's lookup tables: name, then row, then the row's text. */
 export type Lookups = Readonly<Record<string, Readonly<Record<string, string>>>>;
@@ -49,7 +50,7 @@ export function parseFilter(source: string, at: number): PatternFilter | Express
     return argument === null ? { name } : syntaxError(`${name} takes nothing after ${quoted(':')}.`, at);
   }
   if (name === '') return syntaxError(`A filter is missing after ${quoted('|')}.`, at);
-  return syntaxError(`There is no filter called ${quoted(name)}. There are ${ALL_FILTERS}.`, at);
+  return syntaxError(t('statblockEditor.expr.noFilter', { name: quoted(name), filters: ALL_FILTERS }), at);
 }
 
 /** A table's row for a value: as written, then in any case, then as the same rating ("½" finds "1/2"). */
@@ -76,7 +77,7 @@ function present(items: FieldValue[]): FilterStep {
 
 function lookUp(items: readonly FieldValue[], tableName: string, lookups: Lookups | undefined): FilterStep {
   const table = lookups && Object.hasOwn(lookups, tableName) ? lookups[tableName] : undefined;
-  if (!table) return { items: [], problem: refError('unbound', tableName, `There is no lookup table called ${quoted(tableName)}.`) };
+  if (!table) return { items: [], problem: refError('unbound', tableName, t('statblockEditor.expr.noTable', { name: quoted(tableName) })) };
   return present(items.map((item) => lookupRow(table, valueText(item)) ?? null));
 }
 

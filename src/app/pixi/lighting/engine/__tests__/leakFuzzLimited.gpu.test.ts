@@ -270,12 +270,14 @@ describe('leak fuzz: limited walls', () => {
   // A coarser texel moves a flame further from a hedge it stands at (`placeLight`), and behind a
   // hedge the light is the rule's reach from where the flame stands: a pixel or two at the edge of
   // a hedge's hard shadow may stay dark where the rule counts light from the light's own place,
-  // never lit where it does not.
+  // never lit where it does not. The polygon picture (saver) lights from the light's own place, but
+  // fades every shadow's edge in over a texel and a half of its light map (`SHADOW_EDGE_TEXELS`), so
+  // there a point the rule counts lit may show nothing (5 of 40,287 at 60 trials).
   it.each(['balanced', 'saver'] as const)('holds at the %s lighting quality on a map whose texels it coarsens', { timeout: 3_600_000 }, async (level) => {
     const report = await fuzz({ seed: 7, trials: SIDE_TRIALS, bounds: { width: 8192, height: 8192 }, quality: LIGHTING_QUALITY[level] });
     console.info(`leak fuzz (limited walls, ${level}): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
     expect(report.checked).toBeGreaterThan(SIDE_TRIALS * 500);
-    expect(report.lightWrong).toBeLessThanOrEqual(report.ruleLit / 10_000);
+    expect(report.lightWrong).toBeLessThanOrEqual(report.ruleLit / (level === 'saver' ? 2_000 : 10_000));
     expect(report).toMatchObject({ ...CLEAN, lightWrong: report.lightWrong });
   });
 

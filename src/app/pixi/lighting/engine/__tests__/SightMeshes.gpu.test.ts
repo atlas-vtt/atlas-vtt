@@ -206,10 +206,15 @@ describe('SightMeshes', () => {
       expect(kept.every((mesh) => meshes.view.children.includes(mesh))).toBe(true);
       expect(at(plain, 230, 128)).toEqual([255, 0, 0, 0]);
 
-      // Another footprint radius softens every edge anew.
+      // Another footprint radius draws every area anew, into the same meshes, filled again.
+      const before = [...meshes.view.children];
       meshes.draw(computeSight([still, mover(200, [])], NO_WALLS, cache), 35, NO_FADE);
       expect(meshes.view.children).toHaveLength(3);
-      expect(meshes.view.children.some((mesh) => kept.includes(mesh))).toBe(false);
+      expect(meshes.view.children.every((mesh) => before.includes(mesh))).toBe(true);
+      renderer.render({ container: stage, target, clear: true, clearColor: [0, 0, 0, 0] });
+      const refilled = readRgba(renderer, target);
+      expect(at(refilled, 230, 128)).toEqual([255, 0, 0, 0]);
+      expect(at(refilled, 60, 128)).toEqual([255, 255, 0, 0]);
     } finally {
       meshes.destroy();
       target.destroy(true);

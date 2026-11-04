@@ -18,7 +18,8 @@ import { traceShape, type Clump, type Crown } from './crowns';
 /** The hatching's direction: the burin's lines up to the right, as the cast shadows are cut. */
 const HATCH = { x: Math.SQRT1_2, y: -Math.SQRT1_2 };
 
-export function cutCrown(hand: Hand, pens: Pens, crown: Crown): void {
+/** `colour` lays a mass's colour on its paper before it is inked (Crayon's); Engraved leaves it paper. */
+export function cutCrown(hand: Hand, pens: Pens, crown: Crown, colour?: (clump: Clump) => void): void {
   const { ctx } = hand.scene.env;
   const scalloped = crown.species === 'broadleaf';
   const fine = hand.weight('fine');
@@ -37,6 +38,7 @@ export function cutCrown(hand: Hand, pens: Pens, crown: Crown): void {
     traceShape(ctx, clump.shape);
     ctx.fillStyle = pens.floor;
     ctx.fill();
+    colour?.(clump);
     // The body's face is all but hidden by the masses on it: its outline is enough.
     if (!clump.body) shadeClump(ctx, pens, clump, fine, scalloped, clump.height < 0.6);
     // The rim's masses are outlined whole; a higher mass only where it overhangs the ones below, on its shaded side.

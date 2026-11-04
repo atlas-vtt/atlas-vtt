@@ -15,5 +15,6 @@ export const map: Translation = {
   'map.finalizing': '正在完成...',
   'map.noGridFound': '这张地图上没有找到网格，因此不显示网格。',
   'map.openFailed': 'Atlas VTT 无法打开场景 {name}（{reason}）。',
+  'map.syncLeavesOutFiles': 'Obsidian Sync 在此设备上不会同步 Atlas 的场景和地图。请在每台设备的“设置 → 同步”中开启“同步所有其他类型文件”。',
   'map.imageUnshown': 'Atlas VTT 无法显示地图图片 {file}。{reason}',
 };

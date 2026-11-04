@@ -48,6 +48,8 @@ interface View {
   map?: number;
   sight?: Sight;
   floor?: number;
+  /** How many of the light stand at the middle together. */
+  count?: number;
 }
 
 function hex(colour: number): string {
@@ -93,7 +95,7 @@ describe('light falloff as the players see it', () => {
     while (cleanup.length) cleanup.pop()!();
   });
 
-  async function profileOf(emission: LightEmission, { map = 1024, sight = SEES_ALL, floor = FLOOR }: View = {}): Promise<Profile> {
+  async function profileOf(emission: LightEmission, { map = 1024, sight = SEES_ALL, floor = FLOOR, count = 1 }: View = {}): Promise<Profile> {
     const renderer = await createTestRenderer(SIZE);
     cleanup.push(() => renderer.destroy());
     const engine = new LightingEngine(renderer);
@@ -104,7 +106,8 @@ describe('light falloff as the players see it', () => {
     const light = { ...engineLight({ key: 'l', x: map / 2, y: map / 2, emission }, SCALE), animation: 'none' as const };
     engine.setEnabled(true);
     engine.setMode('player');
-    engine.update({ bounds: { width: map, height: map }, albedo, walls: [], lights: [light], sight, sightRadius: 20, ambient: 0 });
+    const lights = Array.from({ length: count }, (_, i) => ({ ...light, key: `l${i}` }));
+    engine.update({ bounds: { width: map, height: map }, albedo, walls: [], lights, sight, sightRadius: 20, ambient: 0 });
     engine.flush();
     const pixel = renderThroughEngine(engine, renderer, { size: SIZE, scale: SIZE / map, x: 0, y: 0, tint: floor, map });
     const centre = SIZE / 2;
@@ -176,6 +179,22 @@ describe('light falloff as the players see it', () => {
       measured++;
     }
     expect(measured).toBeGreaterThan(3);
+  });
+
+  // Fabian, 2026-10-28: four torches held together whitened the floor, a little more with each.
+  it.each(FLOORS)('lets torches held together light floor %s little more than one', async (floor) => {
+    const one = await profileOf(LIGHT_PRESETS.torch.emission, { floor });
+    const two = await profileOf(LIGHT_PRESETS.torch.emission, { floor, count: 2 });
+    const four = await profileOf(LIGHT_PRESETS.torch.emission, { floor, count: 4 });
+    const [a, b, c] = [one, two, four].map((profile) => profile.at(profile.bright / 2));
+    console.info(`${hex(floor)}: two torches ${(b! / a! * 100).toFixed(1)}%, four ${(c! / a! * 100).toFixed(1)}% of one`);
+    // A second light adds, a third and fourth barely: the eye's ceiling (`LIGHT_CEILING`), never whiter and whiter.
+    expect(b).toBeGreaterThan(a!);
+    expect(c).toBeGreaterThan(b!);
+    expect(c! / a!).toBeLessThan(1.45);
+    expect(c! / b!).toBeLessThan(1.1);
+    // Still coloured by its flames, not bleached.
+    expect(four.saturationAt(four.bright / 2)).toBeGreaterThan(0.6 * one.saturationAt(one.bright / 2));
   });
 
   it('shows nothing of the light past its dim radius', async () => {

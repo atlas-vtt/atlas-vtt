@@ -6,9 +6,10 @@ import type { ViewAtlasState } from '../../storeFactory';
 import { t } from '../../i18n';
 
 interface DestructiveActionRowProps {
-  tokenId: string;
+  /** The tokens the row acts on, in one undo step. */
+  tokenIds: string[];
   store: StoreApi<ViewAtlasState>;
-  /** The token has a resource that defeats it when spent. */
+  /** One of them has a resource that defeats it when spent. */
   canKill: boolean;
   definitions: readonly ResourceDefinition[];
   onClose: () => void;
@@ -25,7 +26,7 @@ function IconSpan({ name }: { name: string }): React.ReactElement {
   return <span ref={ref} className="atlas-ctx-icon" />;
 }
 
-export function DestructiveActionRow({ tokenId, store, canKill, definitions, onClose }: DestructiveActionRowProps): React.ReactElement {
+export function DestructiveActionRow({ tokenIds, store, canKill, definitions, onClose }: DestructiveActionRowProps): React.ReactElement {
   return (
     <div className="atlas-ctx-destructive-row">
       {canKill && (
@@ -35,7 +36,7 @@ export function DestructiveActionRow({ tokenId, store, canKill, definitions, onC
           className="atlas-ctx-destructive-btn"
           onClick={(e) => {
             e.stopPropagation();
-            store.getState().killTokens([tokenId], definitions);
+            store.getState().killTokens(tokenIds, definitions);
             onClose();
           }}
         >
@@ -49,7 +50,7 @@ export function DestructiveActionRow({ tokenId, store, canKill, definitions, onC
         className="atlas-ctx-destructive-btn"
         onClick={(e) => {
           e.stopPropagation();
-          store.getState().deleteTokens([tokenId]);
+          store.getState().deleteTokens(tokenIds);
           onClose();
         }}
       >

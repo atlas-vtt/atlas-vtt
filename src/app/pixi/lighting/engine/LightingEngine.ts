@@ -6,11 +6,10 @@ import { destroyTree } from '../../utils/destroyTree';
 import { BackBufferHold } from './backBuffer';
 import { createCompositeFilter, NO_BELOW, type BelowPictures, type CompositeFilter, type CompositeStack, type LightingMode } from './compositeFilter';
 import { contextLost, glOf } from './gpu';
-import { LightingWorld } from './LightingWorld';
+import { createEngineWorld, type EngineWorld } from './engineWorld';
 import { ambientLift, darkLooks } from './senseDrawing';
 import { describeShaderFailures, failedEngineShaders } from './shaderCheck';
 import { SceneSightLayers } from './SceneSightLayers';
-import type { BoundFields } from './WallFields';
 import type { EngineScene, SceneFrame } from './types';
 import type { Box } from '../../../vision/polygonBounds';
 
@@ -36,9 +35,10 @@ export interface BelowShown {
 const NOTHING_BELOW: BelowShown = { pictures: NO_BELOW, dim: 1 };
 
 /**
- * Scene lighting, independent of the store: world-space caches (`LightingWorld`), sight meshes
- * and a bounds rectangle in one layer, lit by the composite filter. The world exists only while
- * lighting is enabled.
+ * Scene lighting, independent of the store: world-space caches (`EngineWorld`: traced on the
+ * graphics device, or drawn from the rule's polygons, as the quality says), sight meshes and a
+ * bounds rectangle in one layer, lit by the composite filter of that picture. The world exists
+ * only while lighting is enabled.
  *
  * The engine never takes its caller down. Before it draws on a context it asks the driver
  * whether its shaders link (`failedEngineShaders`); it draws nothing while the context is lost;
@@ -50,9 +50,10 @@ export class LightingEngine {
   readonly layer = new Container({ label: 'lighting' });
   private readonly boundsRect = new Graphics();
   private readonly sightLayers = new SceneSightLayers();
-  private world: LightingWorld | null = null;
+  private world: EngineWorld | null = null;
   private composite: CompositeFilter | null = null;
-  private boundFields: BoundFields | null = null;
+  /** What the composite has bound of the world (`EngineWorld.binding`). */
+  private bound: object | null = null;
   private explored: Texture = Texture.EMPTY;
   /** The level stack of the view's openings, and the pictures of the levels below for the render about to be drawn. */
   private stack: CompositeStack | null = null;
@@ -117,14 +118,14 @@ export class LightingEngine {
   }
 
   /**
-   * A new quality takes effect at once: flicker on the world as it is, a texel, bounce or tile
-   * rays of its own in a world built anew from the last scene (the old one's textures go once the
-   * composite has the new ones).
+   * A new quality takes effect at once: flicker on the world as it is, a texel, bounce, tile rays
+   * or a picture of its own in a world built anew from the last scene (the old one's textures go
+   * once the composite has the new ones).
    */
   setQuality(quality: LightingQuality): void {
     this.quality = quality;
     this.composite?.setPixelRatio(this.pixelRatio());
-    this.world?.setFlicker(quality.flickerMs);
+    if (this.world?.picture === 'traced' && quality.picture !== 'polygons') this.world.setFlicker(quality.flickerMs);
     const { scene } = this;
     if (scene && this.world && !this.world.fits(quality, scene.cellSize)) this.attempt(() => this.build(scene));
   }
@@ -132,15 +133,15 @@ export class LightingEngine {
   private build(scene: EngineScene): void {
     const { bounds } = scene;
     if (!this.world || this.world.bounds.width !== bounds.width || this.world.bounds.height !== bounds.height || !this.world.fits(this.quality, scene.cellSize)) {
-      this.replaceWorld(new LightingWorld(this.renderer, bounds, this.quality, this.paced, scene.cellSize));
+      this.replaceWorld(createEngineWorld(this.renderer, bounds, this.quality, this.paced, scene.cellSize));
     }
     const world = this.world!;
     const composite = this.composite!;
     this.sightLayers.update(scene);
     const frame = this.sightLayers.select(this.viewHeld ? 'gm' : this.mode)!;
     world.update(scene.walls, scene.lights, scene.albedo, frame.pierce);
-    if (world.fields.bound() !== this.boundFields) {
-      this.boundFields = world.fields.bound();
+    if (world.binding() !== this.bound) {
+      this.bound = world.binding();
       composite.setWorld(world);
     }
     world.setZones(scene.zones, scene);
@@ -312,6 +313,8 @@ export class LightingEngine {
   /**
    * Whether the context is there and links the engine's shaders. After a restored context the
    * world goes (its textures are blank) and the shaders are checked again on the new one.
+   * Another renderer than WebGL (PIXI's Canvas or WebGPU renderer, which a browser without
+   * WebGL gets) has no pipe for the engine's meshes: the engine stops before it draws anything.
    */
   private ready(): boolean {
     if (contextLost(this.renderer)) return false;
@@ -324,7 +327,12 @@ export class LightingEngine {
     }
     if (this.verified) return true;
     const gl = glOf(this.renderer);
-    const failures = gl ? failedEngineShaders(gl) : [];
+    if (!gl) {
+      console.error(`Atlas: dynamic lighting needs WebGL, and this view draws with PIXI's ${this.renderer.name} renderer`);
+      this.stop();
+      return false;
+    }
+    const failures = failedEngineShaders(gl);
     // Lost while compiling: the logs say nothing about the device. Wait for the restore.
     if (contextLost(this.renderer)) return false;
     if (failures.length > 0) {
@@ -346,7 +354,7 @@ export class LightingEngine {
   }
 
   /** The world, rebuilt from the last scene when a restored context took it. */
-  private currentWorld(): LightingWorld | null {
+  private currentWorld(): EngineWorld | null {
     if (!this.world && this.scene) this.build(this.scene);
     return this.world;
   }
@@ -367,21 +375,29 @@ export class LightingEngine {
   /** The composite goes with the world, so it never holds the world's destroyed textures. */
   private dropWorld(): void {
     this.grid?.setMarking(false);
-    this.layer.filters = null;
-    this.composite?.filter.destroy();
-    this.composite = null;
-    this.boundFields = null;
+    this.dropComposite();
+    this.bound = null;
     this.world?.destroy();
     this.world = null;
     this.scene = null;
     this.sightLayers.clear();
   }
 
-  /** The composite moves to the new world before the old one's textures are destroyed. */
-  private replaceWorld(world: LightingWorld): void {
+  private dropComposite(): void {
+    this.layer.filters = null;
+    this.composite?.filter.destroy();
+    this.composite = null;
+  }
+
+  /**
+   * The composite moves to the new world before the old one's textures are destroyed; a world of
+   * the other picture gets a composite of its own.
+   */
+  private replaceWorld(world: EngineWorld): void {
     const previous = this.world;
     this.world = world;
-    this.boundFields = world.fields.bound();
+    this.bound = world.binding();
+    if (this.composite && this.composite.picture !== world.picture) this.dropComposite();
     if (this.composite) {
       // The darkness map and the zone map are the old world's: nothing of them may stay bound when that world goes.
       this.composite.setMaps(null, null);

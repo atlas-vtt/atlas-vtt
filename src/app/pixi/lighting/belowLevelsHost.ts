@@ -5,10 +5,10 @@ import { mapImageSourceFor } from '../../MapLoader';
 import { everyLevelObjects } from '../../levels/levelObjects';
 import { MISSING_ASSET_SIZE } from '../../services/AssetValidationService';
 import type { LevelArt } from '../../levels/artRaster';
-import { MapImage } from '../mapImage/MapImage';
-import { MapImageService } from '../mapImage/MapImageService';
-import type { MapImageViewport } from '../mapImage/mapImageTypes';
-import type { PixelRect } from '../mapImage/pyramid';
+import { MosaicCanvas } from '../mosaicCanvas/MosaicCanvas';
+import { MosaicCanvasService } from '../mosaicCanvas/MosaicCanvasService';
+import type { MosaicCanvasViewport } from '../mosaicCanvas/mosaicCanvasTypes';
+import type { PixelRect } from '../mosaicCanvas/pyramid';
 import type { MapStretch } from '../../grid/mapStretch';
 import { requestRender } from '../RenderScheduler';
 import { TextureCache } from '../token-renderer/TextureCache';
@@ -37,10 +37,10 @@ export interface BelowLevelsHostDeps {
 }
 
 /**
- * The view's camera for a map image of a level below: it reads where the view looks, so its tiles
+ * The view's camera for a map image of a level below: it reads where the view looks, so its tesserae
  * follow the view's, and keeps the world size it sets to itself, which is the view's own image's.
  */
-function viewCamera(viewport: Viewport): MapImageViewport {
+function viewCamera(viewport: Viewport): MosaicCanvasViewport {
   return {
     get left(): number { return viewport.left; },
     get top(): number { return viewport.top; },
@@ -53,7 +53,7 @@ function viewCamera(viewport: Viewport): MapImageViewport {
 }
 
 /** `image` as a level below reads it: backgrounds are loaded from the vault. A video map shows its poster, as a picture of the scene does. */
-function belowMapImage(obsApp: App, image: MapImage): BelowMapImage {
+function belowMapImage(obsApp: App, image: MosaicCanvas): BelowMapImage {
   return {
     layer: image.layer,
     get worldRect(): PixelRect | null { return image.worldRect; },
@@ -71,7 +71,7 @@ function belowMapImage(obsApp: App, image: MapImage): BelowMapImage {
 const CLEAR = { width: 1, height: 1, opaque: new Uint8Array(1) };
 
 /**
- * A level's map as the level stack reads it, of the image a `MapImage` shows for `background`: a
+ * A level's map as the level stack reads it, of the image a `MosaicCanvas` shows for `background`: a
  * level without one holds no art; a missing or unreadable image shows the placeholder, whose
  * transparency is not known, which holds art everywhere.
  */
@@ -81,7 +81,7 @@ async function readLevelArt(obsApp: App, background: string | null, gridSize: nu
   const placeholder = { width: MISSING_ASSET_SIZE, height: MISSING_ASSET_SIZE, alpha: null };
   if (source.kind === 'placeholder') return placeholder;
   try {
-    return await MapImageService.forApp(obsApp).levelArt(source.file);
+    return await MosaicCanvasService.forApp(obsApp).levelArt(source.file);
   } catch (error) {
     console.warn(`[Atlas] The transparent parts of ${source.file.path} could not be read:`, error);
     return placeholder;
@@ -91,11 +91,11 @@ async function readLevelArt(obsApp: App, background: string | null, gridSize: nu
 /**
  * A map image drawn through the view's camera, never changing the view's own (the view's roof);
  * through `camera` instead where given (a level below's map or roof, drawn into its snapshot),
- * whose tiles appear at once: a fade would draw the snapshot anew on every frame of it.
+ * whose tesserae appear at once: a fade would draw the snapshot anew on every frame of it.
  */
-function createViewMapImage(obsApp: App, app: Application, viewport: Viewport, camera?: MapImageViewport): BelowMapImage {
-  return belowMapImage(obsApp, new MapImage({
-    service: MapImageService.forApp(obsApp),
+function createViewMapImage(obsApp: App, app: Application, viewport: Viewport, camera?: MosaicCanvasViewport): BelowMapImage {
+  return belowMapImage(obsApp, new MosaicCanvas({
+    service: MosaicCanvasService.forApp(obsApp),
     viewport: camera ?? viewCamera(viewport),
     ticker: Ticker.shared,
     renderer: app.renderer,
@@ -118,11 +118,11 @@ function createLevelLiquids(app: Application, store: LiquidStore, level: string,
   return { container: layer.container, destroy: () => layer.destroy() };
 }
 
-/** A roof image's size and pieces (`roofPieces`), read in the tile worker; rejects where it is no image of the vault. */
+/** A roof image's size and pieces (`roofPieces`), read in the tessera worker; rejects where it is no image of the vault. */
 async function readRoofImage(obsApp: App, path: string): Promise<RoofImageRead> {
   const source = mapImageSourceFor(obsApp, path, undefined);
   if (source.kind !== 'file' && source.kind !== 'video') throw new Error(`No image at ${path}`);
-  return MapImageService.forApp(obsApp).roofPieces(source.file);
+  return MosaicCanvasService.forApp(obsApp).roofPieces(source.file);
 }
 
 /** What a map view gives its roofs: map images through its camera, and the pieces of a roof image. */

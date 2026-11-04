@@ -38,12 +38,13 @@ export class SoundEffectService extends EventEmitter {
         return sound;
     }
 
-    playDiceResult(crit: DiceCrit): void {
-        if (!this.enabled) {
+    /** `diceVolume` is the user's dice volume, 0 to 1, on top of the effects volume. */
+    playDiceResult(crit: DiceCrit, diceVolume = 1): void {
+        if (!this.enabled || diceVolume <= 0) {
             return;
         }
 
-        playDiceReveal(crit, this.volume).catch((error) => {
+        playDiceReveal(crit, this.volume * diceVolume).catch((error) => {
             console.error('[SoundEffectService] Error playing dice result sound:', error);
         });
     }

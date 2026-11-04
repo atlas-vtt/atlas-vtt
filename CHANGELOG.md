@@ -2,6 +2,146 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.12.1 — TrueScale fixes, levels and multi-token actions
+
+2026-11-02
+
+### Improved
+- TrueScale: better tooltips for various buttons
+- TrueScale: the chips on the map have a cleaner look
+- TrueScale: the frame players see no longer tints the map inside it
+- Player window: better animation when switching between saved frames and when showing/hiding the map to players
+- Tokens: The context menu options "Kill, Delete, Reset" now work with multiple tokens selected
+- Tokens: Clicking on a HP bar with multiple tokens selected now allows adjusting for all selected tokens
+
+### Fixed
+- Scenes with several levels open on the level they were last shown on
+- Fixed bug where player window couldn't be dragged
+- TrueScale: saved frames can be shown and removed every time
+- TrueScale: a moved Bring players here frame goes back to its place when a drag is cancelled, and no longer carries its position over to the next map
+- Editing a value in the statblock beside a note no longer jumps away from what you are editing
+- Picking or resetting a game system now correctly updates token resource widgets
+- The confirmation for deleting a collection no longer opens behind the asset manager
+- Tags in a selection of several assets: a tag only some of them have now goes to all of them when pressed, and from all of them when pressed again
+- Statblocks: a backslash keeps a comma in a label or word (`Fire\, cold: 3` shows as Fire, cold)
+- Statblocks: rows added to a Counter block in a template now show on notes that already had some of its rows
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Andrew, Anna B. Meyer, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, Markus Baumann, Michael Breuer, Pau Benazet Montobbio, Pavel Zinoviev, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.12.0 — TrueScale and the player window bar
+
+2026-11-01
+
+### New
+
+**New Feature: TrueScale**
+- For a TV lying on the table: the players' zoom locks so a grid cell measures an inch, or 25 or 30 mm, on the glass, on every map
+- Set up without typing a number: lay a bank card on the TV and turn one dial until the outline hugs it. Atlas remembers the set-up for that screen
+- The players' screen is a frame on your map that you can slide and pin, snapping to the grid
+- Saved frames: bookmark a frame on the scene and send the players back to it with a click
+- Contributions by ThatMattLatt
+
+**New Feature: Player Window Bar**
+- Opening the local player view now reveals a toolbar
+- Full screen on the TV with one click
+- Hide the map: the player window goes black until you reveal it, also across scenes and restarts
+- Choose what players see: widgets, initiative, dice rolls, resource bars and nameplates
+- Take back a handout with one click
+
+**General**
+- Improved Cave map generation with more varied rooms
+- Walls on forest maps follow the edge of the trees, and roads and rivers stay open
+- Render the player view up to 4K, in the command palette's player view settings, for a 4K TV or an ultrawide screen
+
+### Fixed
+- Bright dots no longer flash on the floor at the Saver lighting quality while a light moves
+- Magical darkness no longer shows a room's shape to players when a token stands in a companion's light that outshines it
+- A note pin on a repeated heading opens the one you picked, and the heading list shows the sections around it
+- Roofs stay on the map at every zoom and pan
+- The Roofs switch hides roofs from your GM view at every zoom, and is disabled in session view
+- Animated maps and water keep moving on the player view while the Obsidian window is hidden or minimised
+- On Windows and Linux the mouse wheel scrolls a note or statblock opened with Ctrl held, and no longer resizes the toolbar
+- Fixed issue where Asset Manager would bug out on Mac
+### Atlas Online
+- A campaign can no longer hold two players with the same name
+- Notes and pins a player sets on the world map stay when you present another scene
+- The online table menu closes when you click outside it
+- Improved tooltip panel UI for abilities and inventory
+
+## 0.11.0 — Mosaic Canvas, procedural forest maps and new crayon style
+
+2026-10-30
+
+### New
+
+**New Feature: Mosaic Canvas**
+- Maps of up to 1,000 megapixels and 65,535 pixels a side, up to 20 million squares in one scene. Atlas now works with maps roughly seven times the largest maps other virtual tabletops take
+- No megabyte limit: a 200 MB map or a 2 GB one imports as it is, and every pixel is kept
+- How it works: Atlas reads the map once and cuts it into tesserae using pyramid tiling, small lossless tiles laid in a pyramid from a thumbnail of the whole map down to every pixel of the original. The scene opens within seconds and sharpens as the finer tesserae are cut
+-  Processing indicator shown in the asset manager
+
+**New Feature: Forests**
+- The dungeon generator makes forests: clearings joined by glades, lone trees for cover, brooks, rivers, lakes and roads
+- Multi-level forest maps use caves as underground levels
+
+**New Feature: Crayon Style**
+- New default style for all generated map types: pencil lines and hatching on vellum, coloured in with wax crayon
+
+**General**
+- Graphics settings page in the command palette: three quality presets as tabs
+- Dice volume in Atlas' settings; slide it down to turn dice sounds off. Contributed by ISorokaI
+
+### Improved
+- Optimised grid drawing with Mosaic Canvas
+- Saver lighting quality runs smoother on low-power machines
+- Improvements to Dynamic Lighting performance and visuals
+- Russian translation of online play, native statblocks, the template editor, random tables, campaigns, the dungeon generator, scene levels and the dice lab. Contributed by ISorokaI
+
+### Fixed
+- Widgets that do not fit beside the scene tabs stack in the map's corner instead of covering the initiative tracker
+- Create scenes from several selected maps at once
+- Fixed a bug where a deleted scene would re-appear
+- The number badge on look-alike tokens no longer grows past the token on a very fine grid
+- Menus in Edit Token open at their button. Contributed by ISorokaI
+- A pinned statblock scrolled down can be moved up again. Contributed by ISorokaI
+
+### Atlas Online
+- Room pins of a generated dungeon readable by players show on the players' page
+- Players see the resource wheels shown to them, not only the bars
+- Explored areas no longer black out while players move on
+- Fixed bug where values typed into a table on the character sheet would disappear
+- Several improvements to mobile UI
+
+### Important changes
+- Atlas draws with WebGL only. Where it cannot start, a new notice will display why
+
+
+Thanks to my Patreon supporters Aaron, Andrew, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, Markus Baumann, Michael Breuer, Pavel Zinoviev, s g, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.10.2 — Token numbers, dark maps and the main window
+
+2026-10-28
+
+### Atlas Online
+- Players see animated maps move, and the water, lava and acid of generated dungeons
+- Maps whose grid alignment stretched or turned them now line up correctly for players
+- Players can remove items from their inventory
+- Ticking the boxes of a Track on a player's sheet no longer overwrites the resource's maximum
+
+### Important changes
+- Atlas runs in your main Obsidian window: moved into another window, it moves back. To use two screens, move your notes into a new window
+- Players see the same token numbers as the GM in the player view and Atlas Online, and hidden tokens still count
+
+### Fixed
+- "Kill" no longer disappears from the token menu after switching an HP resource to static and back
+- Dark maps no longer look darker and purple with dynamic lighting in daylight
+- A small light that outshines magical darkness no longer gives the token next to it sight on some grids
+
 ## 0.10.1 — Lit maps on Windows
 
 2026-10-26

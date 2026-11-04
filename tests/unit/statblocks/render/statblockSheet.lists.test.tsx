@@ -34,6 +34,15 @@ describe('StatblockSheet: lists and rows', () => {
     expect(blockEl(container, 'saves000')!.querySelector('.atlas-sb-label')?.textContent).toBe('Saving Throws');
   });
 
+  it('shows an escaped comma of a line kept as typed without its backslash', () => {
+    const pairs = renderSheet(TEMPLATE, { saves: 'Fire\\, cold' });
+    expect(valueOf(pairs.container, 'saves000')).toBe('Fire, cold');
+    pairs.unmount();
+
+    const line = renderSheet(TEMPLATE, { languages: 'Fire\\, cold, Ice' });
+    expect(valueOf(line.container, 'langs000')).toBe('Fire, cold, Ice');
+  });
+
   it('runs a list in after its label, whether the note holds a list or a line of text', () => {
     const list = renderSheet(TEMPLATE, { languages: ['Common', 'Elvish'] });
     expect(valueOf(list.container, 'langs000')).toBe('Common, Elvish');

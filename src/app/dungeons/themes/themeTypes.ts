@@ -9,17 +9,17 @@
 import type { FloorRise } from '../floors/floorStack';
 import type { PlannedFloor } from '../floors/planFloors';
 import type { DungeonParams } from '../params';
-import type { CellPoint, FiveRoomStage, TerrainKind } from '../model';
+import type { CaveCharacter, CaveVariant, CellPoint, FiveRoomStage, TerrainKind } from '../model';
 import type { PropKind } from '../props/propKinds';
 import type { DungeonTag } from '../tags';
 import type { HazardChoice } from '../terrain/hazards';
 import type { FeatureReason } from './features';
 import type { RoomTypeId } from './roomTypes';
 
-export type ThemeId = 'fortress' | 'mansion' | 'cavern';
+export type ThemeId = 'fortress' | 'mansion' | 'cavern' | 'forest';
 /** What a GM picks: a theme, or Any, which the seed decides. */
 export type ThemeChoice = ThemeId | 'any';
-export const THEME_IDS: readonly ThemeId[] = ['fortress', 'mansion', 'cavern'];
+export const THEME_IDS: readonly ThemeId[] = ['fortress', 'mansion', 'cavern', 'forest'];
 
 /**
  * How a piece finds its place: before the back wall, against a wall, in a row, in the middle, as a
@@ -190,10 +190,15 @@ export interface ThemeFactsInput {
   seed: number;
   tags: ReadonlySet<DungeonTag>;
   floors: readonly PlannedFloor[];
+  /** A Cavern's character (`CaveModel.character`), where it has one. */
+  character?: CaveCharacter;
+  /** A Cavern's formation (`CaveModel.variant`); unset, the one its tags name, else the river's cave. */
+  variant?: CaveVariant;
 }
 
 /**
- * `programmeFor` gives a variant of the programme by the tags (Cavern's lava tube and Underdark);
+ * `programmeFor` gives a variant of the programme by the tags or a Cavern's formation (its lava
+ * tube, Underdark, fault, sulphuric, fungal and burrow caves);
  * without it, `programme`. `facts` is built once per dungeon, after the layout; without it,
  * nothing beyond the traits counts.
  */
@@ -234,6 +239,6 @@ export interface ThemeDefinition {
   programme: RoomProgramme;
   /** What the theme changes in the layout's params (a Cavern's chambers, a Fortress's passages and towers); unset, nothing. */
   params?: (params: DungeonParams) => DungeonParams;
-  programmeFor?: (tags: ReadonlySet<DungeonTag>) => RoomProgramme;
+  programmeFor?: (tags: ReadonlySet<DungeonTag>, variant?: CaveVariant) => RoomProgramme;
   facts?: (input: ThemeFactsInput) => ThemeFacts;
 }

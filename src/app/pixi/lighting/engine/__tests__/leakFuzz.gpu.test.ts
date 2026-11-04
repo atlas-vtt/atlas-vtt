@@ -244,7 +244,7 @@ describe('leak fuzz', () => {
   const QUALITIES: [string, LightingQuality, number][] = [
     ['balanced', LIGHTING_QUALITY.balanced, 9],
     ['saver', LIGHTING_QUALITY.saver, 7],
-    ['coarse with bounce', { maxTexels: 1024, bounceMaxSide: Infinity, flickerMs: null, tileRays: 8, liquidFps: 10 }, 7],
+    ['coarse with bounce', { maxTexels: 1024, bounceMaxSide: Infinity, flickerMs: 66, tileRays: 8, liquidFps: 10 }, 7],
   ];
   for (const [name, quality, seed] of QUALITIES) {
     it(`holds at the ${name} lighting quality on a map whose texels it coarsens`, { timeout: 600_000 }, async () => {
@@ -255,7 +255,7 @@ describe('leak fuzz', () => {
       expect(Math.min(report.doors, report.oneWay, report.twoLights)).toBeGreaterThan(0);
       expect(report.checked).toBeGreaterThan(8000);
       expect(report.litInside).toBeGreaterThan(800);
-      if (quality.bounceMaxSide >= bounds.width) expect(report.bounceInside).toBeGreaterThan(80);
+      if (quality.picture !== 'polygons' && quality.bounceMaxSide >= bounds.width) expect(report.bounceInside).toBeGreaterThan(80);
       expect(report.senseInside).toBeGreaterThan(800);
       expect(report.spotInside).toBeGreaterThan(400);
       expect(report.darkInside).toBeGreaterThan(50);

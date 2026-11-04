@@ -13,7 +13,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it('builds a cell-numbers container with one label per cell on a square grid', async () => {
+it('builds a cell-numbers container drawing the labels of a square grid as one mesh', async () => {
   restoreGraphics = stubJsdomGraphics();
   const viewport = new Container();
   const map = fakeMapImageView(200, 200);
@@ -29,6 +29,7 @@ it('builds a cell-numbers container with one label per cell on a square grid', a
     const sprite = grid.getGridSprite();
     const numbers = sprite!.children.find((child) => child.label === 'cell-numbers');
     expect(numbers).toBeDefined();
-    expect(numbers!.children).toHaveLength(4);
+    expect(numbers!.children).toHaveLength(1);
+    expect(grid.cellLabels()).toHaveLength(4);
   } finally { grid.destroy(); }
 });

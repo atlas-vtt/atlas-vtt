@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { CaveWay } from '../../../../src/app/dungeons/caveModel';
 import type { CellDir, DungeonDoor, DungeonModel, DungeonStair } from '../../../../src/app/dungeons/model';
 import { buildArtScene } from '../../../../src/app/dungeons/render/art/artScene';
 import type { Canvas2D } from '../../../../src/app/dungeons/render/geometry';
@@ -18,6 +19,8 @@ import { dungeonStyle } from '../../../../src/app/dungeons/styleCatalog';
 import { addRoom, emptyFloor, emptyModel } from '../../../fixtures/dungeonModelBuilder';
 
 const PARTS: CaveWayPart[] = ['narrows', 'crawl', 'pitch', 'aven', 'scree'];
+/** The parts a door's way draws, by the way it names. */
+const WAY_PARTS: [CaveWayPart, CaveWay][] = [['lowWay', 'crawl'], ['squeeze', 'squeeze'], ['letterbox', 'letterbox'], ['sumpWay', 'sump'], ['traverseWay', 'traverse'], ['breakdownWay', 'breakdown'], ['climbWay', 'climb']];
 const DIRS: CellDir[] = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }];
 const STAIR: DungeonStair = { x: 2, y: 2, w: 2, h: 3, down: { x: 0, y: 1 }, to: 1, link: 0, way: 'pitch' };
 
@@ -30,6 +33,24 @@ function modelWith(doors: DungeonDoor[] = [], stairs: DungeonStair[] = []): Dung
     floor.cave = { lane: [], heights: [0], faults: [], basins: [], streams: [], dams: [] };
     floor.doors = doors;
     floor.stairs = stairs;
+  }
+  return model;
+}
+
+/**
+ * Two chambers either side of a door at (3, 3) the way `dir` runs, the rock beside the door cell:
+ * a narrow way's marks hang from walls, and nothing is drawn across open floor.
+ */
+function neckWith(door: Omit<DungeonDoor, 'from' | 'to'>): DungeonModel {
+  const model = emptyModel(412);
+  model.theme = 'cavern';
+  model.floors.push(emptyFloor());
+  const across = door.dir.x !== 0;
+  for (const floor of model.floors) {
+    addRoom(floor, across ? { x: 0, y: 0, w: 3, h: 7 } : { x: 0, y: 0, w: 7, h: 3 });
+    addRoom(floor, across ? { x: 4, y: 0, w: 3, h: 7 } : { x: 0, y: 4, w: 7, h: 3 });
+    floor.cave = { lane: [], heights: [0, 0], faults: [], basins: [], streams: [], dams: [] };
+    floor.doors = [{ ...door, from: 0, to: 1 }];
   }
   return model;
 }
@@ -47,8 +68,10 @@ function draw(part: CaveWayPart, hand: Hand): void {
   CAVE_WAYS[part]!(hand);
 }
 
+/** What a drawing did: the hand's calls, and the paths it laid on the picture itself (dashes, ropes, bands). */
 function operations(hand: Hand): number {
-  return [hand.surface, hand.grain, hand.line, hand.edges, hand.solid, hand.tone].reduce((n, fn) => n + vi.mocked(fn).mock.calls.length, 0);
+  const calls = [hand.surface, hand.grain, hand.line, hand.edges, hand.solid, hand.tone].reduce((n, fn) => n + vi.mocked(fn).mock.calls.length, 0);
+  return calls + ((hand.scene.env.ctx as unknown as SvgCanvas).toSvg().match(/<path\b/g)?.length ?? 0);
 }
 
 /** Sample every recorded path segment, including closure, with its widest ink allowance. */
@@ -71,7 +94,7 @@ function pathPoints(path: PathFn): { x: number; y: number }[] {
 
 describe('cave ways', () => {
   it('draws every way kind it is given and nothing else', () => {
-    expect(Object.keys(CAVE_WAYS).sort()).toEqual([...PARTS].sort());
+    expect(Object.keys(CAVE_WAYS).sort()).toEqual([...PARTS, ...WAY_PARTS.map(([part]) => part)].sort());
     for (const part of PARTS) {
       const empty = record(modelWith());
       draw(part, empty);
@@ -155,22 +178,85 @@ describe('cave ways', () => {
     for (const part of PARTS) expect(caveWay(part, built.scene.env)).toBeUndefined();
   });
 
-  it('draws scree on both floors and darkens it towards down or descends', () => {
+  it('draws scree on both floors, its largest stones at the foot, down the way it descends', () => {
     for (const dir of DIRS) for (const descends of [true, undefined] as const) {
       const hand = record(modelWith([{ x: 3, y: 3, dir, kind: 'steps', from: 0, to: 0, ...(descends && { descends }) }]));
       draw('scree', hand);
+      // Gravity sorts the stones: the blocks large enough to be modelled rolled past the door's cell.
       const solids = vi.mocked(hand.solid).mock.calls;
       expect(solids.length).toBeGreaterThan(0);
       const sign = descends ? 1 : -1;
-      for (const [, centre, , strength] of solids) {
+      for (const [, centre] of solids) {
         const downhill = (centre.x - 3.5) * dir.x * sign + (centre.y - 3.5) * dir.y * sign;
-        expect(strength).toBeCloseTo(0.5 + downhill);
+        expect(downhill).toBeGreaterThan(0.4);
       }
     }
     for (const floor of [0, 1]) {
       const hand = record(modelWith([], [{ ...STAIR, to: 1 - floor, way: 'scree' }]), floor);
       draw('scree', hand);
       expect(operations(hand)).toBeGreaterThan(0);
+    }
+  });
+
+  it('draws each way a door names on that door alone, and the narrows only where the way keeps them', () => {
+    for (const look of ['parchment', 'print']) for (const [part, way] of WAY_PARTS) for (const dir of DIRS) {
+      const door: DungeonDoor = { x: 3, y: 3, dir, kind: 'opening', from: 0, to: 1, way };
+      const empty = record(modelWith());
+      draw(part, empty);
+      expect(operations(empty), `${part}: empty floor`).toBe(0);
+      const hand = record(neckWith(door));
+      hand.scene.env.style = dungeonStyle(look);
+      draw(part, hand);
+      expect(operations(hand), `${look} ${part}`).toBeGreaterThan(0);
+      for (const [other] of WAY_PARTS.filter(([p]) => p !== part)) {
+        const wrong = record(neckWith(door));
+        draw(other, wrong);
+        expect(operations(wrong), `${other} drawing ${part}`).toBe(0);
+      }
+      const narrows = record(neckWith(door));
+      draw('narrows', narrows);
+      expect(operations(narrows) > 0, `narrows beside ${way}`).toBe(way !== 'crawl' && way !== 'squeeze' && way !== 'letterbox');
+      const secret = record(neckWith({ ...door, kind: 'secret' }));
+      draw(part, secret);
+      expect(operations(secret), `${part} on a hidden crawl`).toBe(0);
+    }
+  });
+
+  it('keeps the middle of a crawl, a squeeze and a letterbox clear and their ink within the door cell', () => {
+    for (const [part, way, gap] of [['lowWay', 'crawl', 0.12], ['squeeze', 'squeeze', 0.12], ['letterbox', 'letterbox', 0.09]] as const) for (const dir of DIRS) {
+      const hand = record(neckWith({ x: 3, y: 3, dir, kind: 'opening', way }));
+      draw(part, hand);
+      const points = [...vi.mocked(hand.edges).mock.calls.flatMap(([poly]) => poly), ...vi.mocked(hand.line).mock.calls.flatMap(([runs]) => runs.flat())];
+      expect(points.length).toBeGreaterThan(0);
+      for (const p of points) {
+        const u = (p.x - 3.5) * -dir.y + (p.y - 3.5) * dir.x;
+        const v = (p.x - 3.5) * dir.x + (p.y - 3.5) * dir.y;
+        expect(Math.abs(u), `${part}: the way stays open`).toBeGreaterThan(gap);
+        expect(Math.abs(v)).toBeLessThanOrEqual(0.5);
+      }
+    }
+  });
+
+  it('marks a narrow route along its whole passage: a crawl a pair of ticks every other cell, a squeeze its zig-zag on every straight cell', () => {
+    for (const [part, way] of [['lowWay', 'crawl'], ['squeeze', 'squeeze']] as const) {
+      const model = emptyModel(412);
+      model.theme = 'cavern';
+      const floor = model.floors[0]!;
+      addRoom(floor, { x: 0, y: 0, w: 3, h: 5 });
+      const passage = addRoom(floor, { x: 4, y: 2, w: 6, h: 1, parent: 0, axis: { x: 1, y: 0 }, narrow: way });
+      addRoom(floor, { x: 11, y: 0, w: 3, h: 5 });
+      floor.cave = { lane: [], heights: [0, 0, 0], faults: [], basins: [], streams: [], dams: [] };
+      floor.doors = [
+        { x: 3, y: 2, dir: { x: 1, y: 0 }, kind: 'opening', from: 0, to: passage.id, way },
+        { x: 10, y: 2, dir: { x: 1, y: 0 }, kind: 'opening', from: passage.id, to: 2, way },
+      ];
+      const hand = record(model);
+      draw(part, hand);
+      const runs = vi.mocked(hand.line).mock.calls.flatMap(([marks]) => marks);
+      const cells = new Set(runs.flat().map((p) => Math.floor(p.x)));
+      // Two doors and six cells: a crawl marks the doors and every other cell, a squeeze every cell.
+      expect(cells.size, part).toBeGreaterThanOrEqual(part === 'lowWay' ? 5 : 8);
+      for (const p of runs.flat()) expect(Math.abs(p.y - 2.5), `${part}: the way stays open`).toBeGreaterThan(0.12);
     }
   });
 });

@@ -24,9 +24,6 @@ export class PlayerSightTokens {
   private provider?: () => TokenPerception | undefined;
   private active?: (() => boolean) | undefined;
   private current?: (() => boolean) | undefined;
-  /** The work `whenSettled` holds until the store's write has reached every listener. */
-  private settling: (() => void) | null = null;
-  private destroyed = false;
   private fog?: () => FogCoverage | null;
   /** Whether the roof of the level shown covers a point in the players' picture. */
   private roof?: (point: { x: number; y: number }) => boolean;
@@ -80,15 +77,6 @@ export class PlayerSightTokens {
   }
 
   /**
-   * Whether the canvas, while it shows the players' view, sees the tokens as a players' frame does:
-   * the lighting shows their view on it (session view, the peek), or no lighting is wired. The command
-   * palette's player mode leaves the lighting out on the canvas, which a frame applies.
-   */
-  sharesFrameSight(): boolean {
-    return this.active?.() ?? true;
-  }
-
-  /**
    * Whether the provider's sight is that of the scene the store holds. The lighting keeps the sight
    * of the scene before from a scene switch until it has built the one that arrives, and the sight
    * from before a lost graphics context until it has built on the restored one; sight read from the
@@ -96,27 +84,6 @@ export class PlayerSightTokens {
    */
   sightIsCurrent(): boolean {
     return this.current?.() ?? true;
-  }
-
-  /**
-   * Runs `work` once the provider's sight has taken in the store's latest write: at once where sight
-   * is read from the store when asked, and once the write has reached every listener where the
-   * provider keeps sight of its own, since its listener may come after the token renderer's. Calls
-   * made meanwhile run the last `work` once.
-   */
-  whenSettled(work: () => void): void {
-    if (!this.current) {
-      work();
-      return;
-    }
-    const scheduled = this.settling !== null;
-    this.settling = work;
-    if (scheduled) return;
-    queueMicrotask(() => {
-      const pending = this.settling;
-      this.settling = null;
-      if (!this.destroyed) pending?.();
-    });
   }
 
   private fogActive(perception?: TokenPerception): boolean {
@@ -197,7 +164,6 @@ export class PlayerSightTokens {
   }
 
   destroy(): void {
-    this.destroyed = true;
     this.outlines.destroy();
   }
 }

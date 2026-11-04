@@ -45,6 +45,11 @@ export class CursorOverlay {
     this.wake();
   }
 
+  /** How far `who`'s cursor is drawn behind its messages now, in ms, or null while it shows none. */
+  lagOf(who: string): number | null {
+    return this.cursors?.lagOf(who, performance.now()) ?? null;
+  }
+
   /** Nobody's cursor shows; what is drawn fades away. */
   clear(): void {
     if (this.host !== null) this.cursors?.update([], performance.now());

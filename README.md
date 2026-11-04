@@ -27,7 +27,6 @@ Documentation at: [atlas-vtt.dev](https://atlas-vtt.dev/)
 - **Fog and player view:** Reveal the map as your players explore. Show a separate player window on a second screen while keeping GM information hidden.
 - **Drawing and notes:** Sketch, add text, measure distances, and pin Markdown notes or other Atlas maps to locations.
 - **Dice and initiative:** Roll dice, review the roll log, track turns, and keep counters and timers close at hand.
-- **Music and controls:** Play audio from your vault, customise map hotkeys, and undo or redo map edits.
 - **Online play (closed beta):** Host a table that your players join from their web browsers. It is off until you turn it on, and hosting needs an Atlas account with closed beta access.
 
 ## Your notes, right on the map

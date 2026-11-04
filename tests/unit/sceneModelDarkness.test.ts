@@ -49,12 +49,13 @@ describe('a light inside magical darkness', () => {
     expect(lightLevelAt({ x: 650, y: 600 }, { ambient: 0 }, outside.reaches)).toBe('magical-dark');
   });
 
-  it('hands the engine the areas the rule counts, of the darkness and of the lights it may swallow: the reaches\' own polygons', () => {
+  it('hands the engine the areas the rule counts, of the darkness and of every light: the reaches\' own polygons', () => {
     const model = build(state({ dark: DARK, torch: light('torch', 800, torch) }));
     expect(model.lights.map((engine) => engine.area)).toEqual(model.reaches.map((reach) => reach.polygon));
     model.lights.forEach((engine, i) => expect(engine.area).toBe(model.reaches[i]!.polygon));
-    // A scene without a darkness hands none on: its lights are as they always were.
-    expect(build(state({ torch: light('torch', 800, torch) })).lights[0]).not.toHaveProperty('area');
+    // A scene without a darkness hands them on too: the polygon picture draws every light as its reach.
+    const plain = build(state({ torch: light('torch', 800, torch) }));
+    expect(plain.lights[0]!.area).toBe(plain.reaches[0]!.polygon);
   });
 
   it('is put out when a token carries it into the darkness, and a darkness is never put out by another', () => {

@@ -1,15 +1,15 @@
-import { bookText, MAX_ASSET_BYTES, MAX_SHEET_TEXT, TEXT_MIME_TYPE, type AssetRef, type SheetText } from '../../protocol/index.ts';
-import { sha256Hex } from '../assetServe.ts';
+import { ASSET_CAPS, bookText, MAX_SHEET_TEXT, TEXT_MIME_TYPE, type AssetRef, type SheetText } from '../../protocol/index.ts';
+import { ASSET_USES, type AssetStoring } from '../assets/assetUses.ts';
 import { openingOf } from './bookTexts.ts';
 
-/** A text of a sheet as players fetch it whole: its reference, and the bytes it is served as. */
+/** A text of a sheet as players fetch it whole: its reference, and the bytes it is stored as. */
 export interface SheetTextAsset {
   readonly ref: AssetRef;
   readonly bytes: Uint8Array<ArrayBuffer>;
 }
 
 /** A text cut to what one asset holds, never inside a character of two units. */
-const withinAsset = (text: string): string => (text.length > MAX_ASSET_BYTES ? text.slice(0, MAX_ASSET_BYTES).replace(/[\ud800-\udbff]$/, '') : text);
+const withinAsset = (text: string): string => (text.length > ASSET_CAPS.text ? text.slice(0, ASSET_CAPS.text).replace(/[\ud800-\udbff]$/, '') : text);
 
 /**
  * The whole texts a drawn statblock names by hash. Hashing takes a promise, so a statblock is drawn
@@ -24,7 +24,7 @@ export class SheetTexts {
 
   /** A text as the sheet carries it: cleaned as a book's text, its opening cut at a word, and the whole text by hash where it is longer. */
   of(value: string): SheetText {
-    const text = bookText(withinAsset(value), MAX_ASSET_BYTES) ?? '';
+    const text = bookText(withinAsset(value), ASSET_CAPS.text) ?? '';
     const opening = openingOf(text, MAX_SHEET_TEXT);
     if (opening === text) return { opening };
     this.wanted.add(text);
@@ -32,14 +32,16 @@ export class SheetTexts {
     return whole === undefined ? { opening } : { opening, whole };
   }
 
-  /** The texts this drawing wanted whole, each hashed and ready to serve, by text; one of more than an asset holds is left out. */
-  async hashed(): Promise<Map<string, SheetTextAsset>> {
+  /** The texts this drawing wanted whole, each hashed and ready to serve (with its stored id where `stored` keeps it), by text; one of more than an asset holds is left out. */
+  async hashed(stored?: AssetStoring): Promise<Map<string, SheetTextAsset>> {
     const assets = new Map<string, SheetTextAsset>();
     for (const text of this.wanted) {
       // A copy the hash can take: `encode` names no particular buffer type.
       const bytes = new TextEncoder().encode(text).slice();
-      if (bytes.length > MAX_ASSET_BYTES) continue;
-      assets.set(text, { ref: { hash: await sha256Hex(bytes), size: bytes.length, mime: TEXT_MIME_TYPE }, bytes });
+      if (bytes.length > ASSET_CAPS.text) continue;
+      const ref = (await stored?.refOf(bytes, TEXT_MIME_TYPE, ASSET_USES.text)) ?? null;
+      // A text the store does not keep goes as its opening alone.
+      if (ref !== null) assets.set(text, { ref, bytes });
     }
     return assets;
   }

@@ -73,7 +73,7 @@ function fillPockets(env: RenderEnv): void {
 }
 
 /** Keeps drawing out of the open ground before each entrance (`VisibleDungeon.open`). */
-function clipLanes(env: RenderEnv, open: readonly Vec[][]): void {
+export function clipLanes(env: RenderEnv, open: readonly Vec[][]): void {
   if (open.length === 0) return;
   const { ctx, dungeon } = env;
   const b = dungeon.bounds;

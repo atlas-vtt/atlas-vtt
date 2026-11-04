@@ -74,9 +74,17 @@ describe('Counters in the statblock pane', () => {
     }]);
   });
 
+  it('makes a row the template gained after the note stored its own pressable, and writes it with the first press', async () => {
+    const harness = await pane({ slots: [{ name: 'Ki', max: 2, used: 2 }] });
+    await press(within(block(harness)).getByRole('button', { name: '1st level 2 of 2' }));
+    expect(harness.writer.patches()).toEqual([{
+      op: 'set', path: ['slots'], base: [{ name: 'Ki', max: 2, used: 2 }], next: [{ name: 'Ki', max: 2, used: 2 }, { name: '1st level', max: 2, used: 1 }],
+    }]);
+  });
+
   it('steps a row of many uses with − and +', async () => {
     const harness = await pane({ slots: [{ name: 'Sorcery points', max: 10, used: 3 }] });
     await press(within(block(harness)).getByRole('button', { name: 'Decrease Sorcery points' }));
-    expect(harness.writer.patches().at(-1)).toMatchObject({ next: [{ name: 'Sorcery points', max: 10, used: 4 }] });
+    expect(harness.writer.patches().at(-1)).toMatchObject({ next: [{ name: 'Sorcery points', max: 10, used: 4 }, { name: '1st level', max: 2, used: 0 }] });
   });
 });

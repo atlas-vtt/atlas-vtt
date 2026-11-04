@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { prefersReducedMotion } from '../../utils/motion';
 
 /** Pixels per line for wheels that report their delta in lines. */
-const WHEEL_LINE_PX = 16;
+export const WHEEL_LINE_PX = 16;
 
 export interface TabStripOverflow {
   /** The tabs are wider than the strip, so it scrolls. */

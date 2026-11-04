@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import React, { useState } from 'react';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssetService } from '../../src/app/services/AssetService';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { useAssetData } from '../../src/app/packages/components/asset-manager/hooks/useAssetData';
 import { useFollowSelectedCollection } from '../../src/app/packages/components/asset-manager/hooks/useFollowSelectedCollection';
 import { useTagsAndCollections } from '../../src/app/packages/components/asset-manager/hooks/useTagsAndCollections';
+import type { AssetTagChange } from '../../src/app/packages/components/asset-manager/utils/assetTags';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 let app: ReturnType<typeof createInMemoryApp>['app'];
@@ -59,6 +60,40 @@ it('renames the default collection with its folder and keeps showing it, also af
   const reloaded = mountManager('5E');
   await waitFor(() => expect(shownTokens(reloaded.result)).toEqual(['Goblin']));
   expect(reloaded.result.current.data.collections.find((c) => c.id === reloaded.result.current.selected)?.name).toBe('5E');
+});
+
+describe('tags of several assets', () => {
+  async function mountTwoTokens(): Promise<{ result: { current: ReturnType<typeof useManager> }; changes: AssetTagChange[] }> {
+    await service.addTokenAsset({ name: 'Ghoul', imagePath: 'wolf.webp', collection: 'Default', tags: ['Boss'] });
+    const { result } = mountManager();
+    await waitFor(() => expect(shownTokens(result)).toHaveLength(2));
+    const changes = result.current.data.assets.map((asset) => ({ asset, tags: [...(asset.tags ?? []), 'Undead'] }));
+    return { result, changes };
+  }
+  const shownTags = (result: { current: ReturnType<typeof useManager> }): Record<string, string[] | undefined> =>
+    Object.fromEntries(result.current.data.assets.map((asset) => [asset.name, asset.tags]));
+
+  it('saves them in one write of the index', async () => {
+    const { result, changes } = await mountTwoTokens();
+    const saves = vi.spyOn(service as unknown as { saveMetadata(): Promise<void> }, 'saveMetadata');
+
+    await act(() => result.current.manage.setTagsOfAssets(changes));
+
+    expect(saves).toHaveBeenCalledOnce();
+    expect(shownTags(result)).toEqual({ Goblin: ['Undead'], Ghoul: ['Boss', 'Undead'] });
+    const saved = await service.getAssets('Default', 'token');
+    expect(Object.fromEntries(saved.map((asset) => [asset.name, asset.tags]))).toEqual({ Goblin: ['Undead'], Ghoul: ['Boss', 'Undead'] });
+  });
+
+  it('shows the tags they held when saving fails', async () => {
+    const { result, changes } = await mountTwoTokens();
+    vi.spyOn(service, 'updateTagsOfAssets').mockRejectedValueOnce(new Error('disk full'));
+    vi.spyOn(console, 'error').mockImplementationOnce(() => {});
+
+    await act(() => result.current.manage.setTagsOfAssets(changes));
+
+    expect(shownTags(result)).toEqual({ Goblin: [], Ghoul: ['Boss'] });
+  });
 });
 
 it('shows a renamed non-default collection and deletes it by id', async () => {

@@ -11,7 +11,7 @@ import { polysPath, type PathFn } from '../art/paths';
 import type { Vec } from '../geometry';
 import type { Pens } from '../engraved/pens';
 import { cutCrown } from './engravedCrown';
-import { scatter, withClip, type GroundsPaint } from './paint';
+import { scatter, tracePebbles, withClip, type GroundsPaint } from './paint';
 
 const SHADE_ANGLE = Math.atan2(SHADOW_DIR.y, SHADOW_DIR.x);
 
@@ -75,11 +75,7 @@ export function engravedGroundsPaint(hand: Hand, pens: Pens): GroundsPaint {
       paper(path, () => {
         // Raked gravel reads paler than the lawn: open paper with a few pebbles, each a small ring.
         ctx.beginPath();
-        for (const p of scatter(cells, 10, seed + 13)) {
-          const r = 0.012 + 0.012 * p.t;
-          ctx.moveTo(p.x + r, p.y);
-          ctx.ellipse(p.x, p.y, r, r * 0.75, p.t * 3, 0, Math.PI * 2);
-        }
+        tracePebbles(ctx, scatter(cells, 10, seed + 13), 0.012);
         ctx.lineWidth = fine * 0.7;
         ctx.stroke();
         stipple(cells, 8, 14, 0.005);

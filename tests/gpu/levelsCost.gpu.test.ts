@@ -7,9 +7,9 @@ import { levelStack, shownAt, stackGrid } from '../../src/app/levels/levelStack'
 import { artCells, OPEN_ALPHA_BYTE, type ArtAlpha } from '../../src/app/levels/artRaster';
 import { NO_STRETCH } from '../../src/app/grid/mapStretch';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
-import { TileDecoderClient } from '../../src/app/pixi/mapImage/TileDecoderClient';
-import { workerPort } from '../../src/app/pixi/mapImage/tilePorts';
-import TileWorker from '../../src/app/pixi/mapImage/tileWorker?worker&inline';
+import { TesseraDecoderClient } from '../../src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { workerPort } from '../../src/app/pixi/mosaicCanvas/tesseraPorts';
+import TileWorker from '../../src/app/pixi/mosaicCanvas/tesseraWorker?worker&inline';
 import { stampClip } from '../../src/app/levels/stackClip';
 import type { TokenEntity } from '../../src/app/types';
 import type { LightSource } from '../../src/app/types/lightingTypes';
@@ -282,7 +282,7 @@ describe('the cost of levels below (budgets asserted with VITE_PERF_STRICT)', ()
     }
   });
 
-  it('lays a map\'s transparent parts on the stack\'s grid quickly, and the tile worker reads them from an 8,192 px map', async () => {
+  it('lays a map\'s transparent parts on the stack\'s grid quickly, and the tessera worker reads them from an 8,192 px map', async () => {
     const side = 2048;
     const rand = rng(13);
     const holes = Array.from({ length: 40 }, () => ({ x: rand() * side, y: rand() * side, r: 20 + rand() * 200 }));
@@ -312,7 +312,7 @@ describe('the cost of levels below (budgets asserted with VITE_PERF_STRICT)', ()
       context.restore();
     }
     const png = await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer();
-    const client = new TileDecoderClient({ appId: null, worker: workerPort(() => new TileWorker({ name: 'levels cost worker' })) });
+    const client = new TesseraDecoderClient({ appId: null, worker: workerPort(() => new TileWorker({ name: 'levels cost worker' })) });
     try {
       const opened = await client.open(() => Promise.resolve(png.slice(0)), { path: 'maps/cost.png', size: png.byteLength, mtime: 1 });
       const start = performance.now();

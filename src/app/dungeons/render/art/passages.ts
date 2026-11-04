@@ -39,10 +39,17 @@ function doorSpan(door: DungeonDoor, dungeon: VisibleFloor): [number, number] {
 
 export function drawPassages(hand: Hand): void {
   const { env } = hand.scene;
+  // A Forest's clearings open into each other as the woods leave them: no narrows, crawls or doors; only its ways down.
+  if (env.dungeon.floor.forest) {
+    for (const part of ['pitch', 'aven', 'scree'] as const) caveWay(part, env)?.(hand);
+    return;
+  }
   // A cave's ways each by its registered drawing (`cave/caveArt.ts`); a part not drawn yet as below.
   const way = (part: CaveWayPart): CaveWayDraw | undefined => caveWay(part, env);
   const drawn = (part: CaveWayPart): boolean => way(part) !== undefined;
   for (const part of ['narrows', 'crawl', 'scree', 'pitch', 'aven'] as const) way(part)?.(hand);
+  // What a door's way adds to the narrows (or puts in their place), and the squeezes that lead on from leaf chambers.
+  for (const part of ['lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay', 'climbWay'] as const) way(part)?.(hand);
   for (const door of env.dungeon.doors) {
     if (door.kind === 'door' && !drawn('narrows')) drawDoor(hand, door);
     else if (door.kind === 'steps' && !drawn('scree')) drawFlight(hand, { x: door.x, y: door.y, w: 1, h: 1 }, door.descends ? door.dir : flip(door.dir), 0, 0.22);

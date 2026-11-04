@@ -52,6 +52,14 @@ export function approachCells(spot: StairSpot, end: StairEnd): CellPoint[] {
   return cellsOf({ x0: r.x0, y0: y, x1: r.x1, y1: y });
 }
 
+/**
+ * Every stairwell's cells, by key: floor a token walks onto only across its ground end, so no way
+ * between other floor may pass through it (its sides are closed on both floors).
+ */
+export function stairwellCells(stairs: readonly StairSpot[]): Set<string> {
+  return new Set(stairs.flatMap((s) => cellsOf(spotRect(s))).map((c) => cellKey(c.x, c.y)));
+}
+
 /** Every stairwell, the rows it is reached from at either end and the cells round them, by key: what nothing low may crowd. */
 export function stairsAndAround(stairs: readonly StairSpot[]): string[] {
   const cells = stairs.flatMap((s) => [...cellsOf(spotRect(s)), ...approachCells(s, 'upper'), ...approachCells(s, 'lower')]);
@@ -100,29 +108,40 @@ function touchesWall(r: CellRect, floor: CellRect, open: CellDir): boolean {
 
 /** Whether a stairwell end may stand at `spot` in `room` of the floor `space` describes. */
 export function spotFits(room: StairRoom, space: FloorSpace, spot: StairSpot, end: StairEnd): boolean {
-  if (room.kind !== 'room' || room.rotunda) return false;
+  return spotFitter(room, space, end)(spot);
+}
+
+/**
+ * `spotFits` for many spots in one room: what the room and the floor's doors and stairs ask of
+ * every spot is worked out once, since a large cave chamber has hundreds of spots to try.
+ */
+export function spotFitter(room: StairRoom, space: FloorSpace, end: StairEnd): (spot: StairSpot) => boolean {
+  if (room.kind !== 'room' || room.rotunda) return () => false;
   const floor = floorRect(room);
-  const rect = spotRect(spot);
-  const cells = cellsOf(rect);
-  if (!cells.every((c) => inRect(floor, c.x, c.y))) return false;
-  const open = end === 'upper' ? dir(-spot.down.x, -spot.down.y) : spot.down;
-  if (!touchesWall(rect, floor, open)) return false;
   const inFloor = (c: CellPoint): boolean => inRect(floor, c.x, c.y);
-  const taken = new Set(space.stairs.flatMap((s) => cellsOf(spotRect(s))).map((c) => cellKey(c.x, c.y)));
-  const own = new Set(cells.map((c) => cellKey(c.x, c.y)));
-  const approach = approachCells(spot, end);
-  const needed = [
-    ...doorApproaches(room, space.doors),
-    ...space.stairs.flatMap((s, k) => approachCells(s, space.ends[k] ?? 'upper')).filter(inFloor),
-    ...approach,
-  ];
-  if (!approach.every(inFloor) || cells.some((c) => taken.has(cellKey(c.x, c.y)))) return false;
-  if (needed.some((c) => own.has(cellKey(c.x, c.y)) || taken.has(cellKey(c.x, c.y)))) return false;
+  const taken = stairwellCells(space.stairs);
+  const kept = [...doorApproaches(room, space.doors), ...space.stairs.flatMap((s, k) => approachCells(s, space.ends[k] ?? 'upper')).filter(inFloor)];
+  const keptKeys = new Set(kept.map((c) => cellKey(c.x, c.y)));
+  // A stairwell already standing on what the room keeps leaves no spot.
+  if ([...keptKeys].some((key) => taken.has(key))) return () => false;
   // A rectangle less one rectangle stays one piece unless the cut runs wall to wall through its middle.
-  if (!space.stairs.some((s) => intersection(spotRect(s), floor))) return !splits(floor, rect);
-  const floorCells = cellsOf(floor);
-  const free = new Set(floorCells.map((c) => cellKey(c.x, c.y)).filter((key) => !taken.has(key) && !own.has(key)));
-  return connected(free, floorCells);
+  const stairsInside = space.stairs.some((s) => intersection(spotRect(s), floor));
+  const floorCells = stairsInside ? cellsOf(floor) : [];
+  return (spot) => {
+    const rect = spotRect(spot);
+    const cells = cellsOf(rect);
+    if (!cells.every(inFloor)) return false;
+    const open = end === 'upper' ? dir(-spot.down.x, -spot.down.y) : spot.down;
+    if (!touchesWall(rect, floor, open)) return false;
+    const own = new Set(cells.map((c) => cellKey(c.x, c.y)));
+    const approach = approachCells(spot, end);
+    if (!approach.every(inFloor) || cells.some((c) => taken.has(cellKey(c.x, c.y)))) return false;
+    if ([...own].some((key) => keptKeys.has(key))) return false;
+    if (approach.some((c) => own.has(cellKey(c.x, c.y)) || taken.has(cellKey(c.x, c.y)))) return false;
+    if (!stairsInside) return !splits(floor, rect);
+    const free = new Set(floorCells.map((c) => cellKey(c.x, c.y)).filter((key) => !taken.has(key) && !own.has(key)));
+    return connected(free, floorCells);
+  };
 }
 
 /** Every stairwell rectangle that lies inside `rect`, in every direction and shape at least `least` cells across. */

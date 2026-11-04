@@ -12,7 +12,7 @@ import { folderIdOf } from './assetFolders';
 import { ENCOUNTER_PREVIEW_COUNT } from './encounterPreviewLayout';
 import { mapThumbnailPath } from '../../../../utils/dataFileMigration';
 import { isPlayerCharacter } from '../../../../characters/playerCharacters';
-import { isVideoMapPath } from '../../../../pixi/mapImage/video/videoMapFiles';
+import { isVideoMapPath } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
 
 /** The stored asset types the asset manager shows, one per tab. */
 export type TabServiceAsset = AssetOfType<'token' | 'map' | 'scene' | 'encounter'>;
@@ -212,7 +212,12 @@ export function formatServiceAsset(
       };
     }
     case 'scene':
-      return { ...base, type: 'scenes', thumbnailUrl: sceneThumbnailUrl(app, asset.data?.mapPath) };
+      return {
+        ...base,
+        type: 'scenes',
+        thumbnailUrl: sceneThumbnailUrl(app, asset.data?.mapPath),
+        ...(asset.data?.mapPath && { scenePath: asset.data.mapPath }),
+      };
     case 'encounter': {
       // Older encounters keep these only inside their JSON payload.
       const description = asset.data?.description;

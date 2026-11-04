@@ -146,8 +146,8 @@ export interface LevelsViewOptions {
   /** The level the view shows, and how its map is drawn; the store must place it alike. */
   viewedLevel?: string;
   viewedPlacement?: MapStretch;
-  /** The viewed level's roof is drawn (`ViewRoofs`) from its `foreground`, its pieces fading at once. */
-  roofs?: boolean;
+  /** The viewed level's roof is drawn (`ViewRoofs`) from its `foreground`, its pieces fading at once; `vault`: by the real map image, from the view's `obsApp` vault through the tessera worker. */
+  roofs?: boolean | 'vault';
 }
 
 export interface LevelsView {
@@ -256,7 +256,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
   const made: { controller?: LightingController } = {};
   roofs = withRoofs ? new ViewRoofs({
     app, viewport, store, obsApp, mapSize: () => floorImage.imageSize, bounds, lighting: () => made.controller?.renderer,
-    host: { createMapImage: () => fakeMapImage(maps, Promise.resolve(), 'roof-image'), readRoof }, fadeMs: 0,
+    ...(withRoofs !== 'vault' && { host: { createMapImage: () => fakeMapImage(maps, Promise.resolve(), 'roof-image'), readRoof } }), fadeMs: 0,
   }) : null;
   const controller = new LightingController({
     viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'levels-view',

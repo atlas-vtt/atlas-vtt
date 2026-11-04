@@ -47,17 +47,6 @@ function holdScene(store: ViewAtlasStore, mapPath: string, changes: object = {})
 /** The roll context the last statblock preview was opened with. */
 const lastContext = (): unknown => statblockProps[statblockProps.length - 1]?.originContext;
 
-/** A popout: jsdom gives an iframe a window and document of its own, here with Obsidian's DOM helpers. */
-function popoutDocument(): Document {
-  const win = document.body.createEl('iframe').contentWindow!;
-  for (const [ours, theirs] of [[Node.prototype, win.Node.prototype], [Element.prototype, win.Element.prototype]] as const) {
-    for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(ours))) {
-      if (!(name in theirs)) Object.defineProperty(theirs, name, descriptor);
-    }
-  }
-  return win.document;
-}
-
 function openWindows(): number {
   return document.querySelectorAll('.atlas-statblock-preview-window').length;
 }
@@ -135,14 +124,6 @@ describe('NotePreviewUIManager statblock previews', () => {
     act(() => { vi.runOnlyPendingTimers(); });
     expect(statblockProps).not.toHaveLength(0);
     expect(lastContext()).toBeUndefined();
-  });
-
-  it('opens the statblock in the window of the map view, not the focused one', () => {
-    const popout = popoutDocument();
-    manager.followView(popout.body.createDiv());
-    act(() => { hoverToken(eventBus); });
-    expect(openWindows()).toBe(0);
-    expect(popout.querySelectorAll('.atlas-statblock-preview-window')).toHaveLength(1);
   });
 
   it('opens a statblock from a list without a scene', () => {

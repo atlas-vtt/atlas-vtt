@@ -68,4 +68,5 @@ export const levels = {
   'levels.roofs': 'Roofs',
   'levels.roofsHide': 'Hide the roofs from your view; players still see theirs',
   'levels.roofsShow': 'Show the roofs in your view',
+  'levels.roofsInSession': 'Players always see their roofs; switch to GM view to hide them from yours',
 } as const satisfies Record<string, Message>;

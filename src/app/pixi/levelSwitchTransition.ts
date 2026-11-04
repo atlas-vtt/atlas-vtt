@@ -1,13 +1,13 @@
 import { animate, type AnimationOptions } from 'framer-motion';
 import { UPDATE_PRIORITY, type Application } from 'pixi.js';
 import type { ViewAtlasStore, ViewAtlasState } from '../storeFactory';
-import type { MapImage } from './mapImage/MapImage';
+import type { MosaicCanvas } from './mosaicCanvas/MosaicCanvas';
 import { MapController } from '../MapController';
 import { viewedLevelId } from '../levels/sceneLevels';
 import { prefersReducedMotion } from '../utils/motion';
 import { captureSceneTransition, type FrameMotion, type SceneTransition } from './sceneTransition';
 
-/** How long a switch may hold the last frame for the new level's image and the tiles in view. */
+/** How long a switch may hold the last frame for the new level's image and the tesserae in view. */
 const LEVEL_READY_MS = 800;
 /**
  * How far a floor moves in depth: going up, the floor left behind sinks away while the one above
@@ -22,12 +22,12 @@ const MOVE: AnimationOptions = { type: 'spring', duration: 0.5, bounce: 0 };
 /** What the hold needs of the view's renderer, read when a switch happens (the app exists once a map is loaded). */
 export interface LevelPictureSource {
   getAppInstance(): Application;
-  getMapImage(): MapImage | null;
+  getMapImage(): MosaicCanvas | null;
 }
 
 /**
  * Keeps the last frame of the level the view showed while the next one is put together (its
- * image, the tiles in view), then moves from one floor to the other in depth. Bind it before the
+ * image, the tesserae in view), then moves from one floor to the other in depth. Bind it before the
  * view's renderers subscribe to the store: the frame is captured in the listener, before they
  * have drawn anything of the new level. A load holds its own frame (`bindMapLoadingFrameHold`).
  *
@@ -137,8 +137,8 @@ function floorMotion(way: Direction): FrameMotion {
   };
 }
 
-/** Resolves once the map image shows the viewed level's background and the tiles in view are drawn, or after `timeoutMs`. */
-async function whenLevelDrawn(store: ViewAtlasStore, mapImage: MapImage | null, timeoutMs: number): Promise<void> {
+/** Resolves once the map image shows the viewed level's background and the tesserae in view are drawn, or after `timeoutMs`. */
+async function whenLevelDrawn(store: ViewAtlasStore, mapImage: MosaicCanvas | null, timeoutMs: number): Promise<void> {
   if (!mapImage) return;
   const deadline = performance.now() + timeoutMs;
   await whenImageShown(store, mapImage, timeoutMs);
@@ -146,7 +146,7 @@ async function whenLevelDrawn(store: ViewAtlasStore, mapImage: MapImage | null, 
   if (left > 0) await mapImage.whenCameraReady(left);
 }
 
-function whenImageShown(store: ViewAtlasStore, mapImage: MapImage, timeoutMs: number): Promise<void> {
+function whenImageShown(store: ViewAtlasStore, mapImage: MosaicCanvas, timeoutMs: number): Promise<void> {
   return new Promise((resolve) => {
     const shown = (): boolean => MapController.showsViewedLevel(mapImage, store.getState());
     if (shown()) {

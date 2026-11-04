@@ -76,13 +76,16 @@ export function dungeonTags(seed: number, requested: readonly string[]): Dungeon
   }, readTags(requested));
 }
 
-const DEFAULT_SIZES: readonly SizeStyle[] = [0, 0, 0, 1, 2, 3, 3];
+/** The sizes of a dungeon whose tags choose none. */
+export const DEFAULT_SIZES: readonly SizeStyle[] = [0, 0, 0, 1, 2, 3, 3];
+/** Passages and junctions more than rooms: what `winding` gives, and a fungal cave the tags chose no sizes for. */
+export const WINDING_SIZES: readonly SizeStyle[] = [0, 0, 1, 2, 2, 3, 3, 3, 3];
 /** More large rooms: what `spacious` gives, and the Underdark. */
 export const SPACIOUS_SIZES: readonly SizeStyle[] = [0, 0, 1, 1, 2, 3];
 
 function sizeStyles(has: (tag: DungeonTag) => boolean): readonly SizeStyle[] {
   if (has('compact')) return [0, 0, 0, 1];
-  if (has('winding')) return [0, 0, 1, 2, 2, 3, 3, 3, 3];
+  if (has('winding')) return WINDING_SIZES;
   if (has('cramped')) return [0, 0, 0, 2, 3, 3];
   if (has('spacious')) return SPACIOUS_SIZES;
   return DEFAULT_SIZES;

@@ -26,9 +26,13 @@ const GALLERY_BONUS = 16;
 /** How much of a boss room's floor must lie under such a room's for a gallery. */
 const GALLERY_CELLS = 4;
 
-/** The largest size the room may grow to: it has no doors but the one it grew through, in its near wall's middle. */
+/**
+ * The largest size the room may grow to: it has no doors but the one it grew through, in its near
+ * wall's middle. A room already past the largest a boss room grows to (a cave's hall) keeps its size.
+ */
 function largest(layout: WorkLayout, room: WorkRoom): RoomSize {
-  const options = MORE_WIDTH.flatMap((w) => MORE_DEPTH.map((d) => ({ width: Math.min(MAX_WIDTH, room.width + w), depth: Math.min(MAX_DEPTH, room.depth + d) })));
+  const grown = (size: number, more: number, most: number): number => Math.max(size, Math.min(most, size + more));
+  const options = MORE_WIDTH.flatMap((w) => MORE_DEPTH.map((d) => ({ width: grown(room.width, w, MAX_WIDTH), depth: grown(room.depth, d, MAX_DEPTH) })));
   options.sort((a, b) => b.width * b.depth - a.width * a.depth);
   return options.find((size) => roomFits(layout, roomRect({ ...room, ...size }), new Set([room.id]), false)) ?? room;
 }

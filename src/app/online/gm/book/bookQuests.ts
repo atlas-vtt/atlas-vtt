@@ -1,4 +1,6 @@
-import { MAX_BOOK_QUESTS, MAX_MAP_TITLE, MAX_QUEST_REWARDS, MAX_TOKEN_VALUE, type AssetRef, type BookQuest, type QuestImage } from '../../protocol/index.ts';
+import { MAX_BOOK_QUESTS, MAX_MAP_TITLE, MAX_QUEST_REWARDS, MAX_TOKEN_VALUE } from '../../protocol/index.ts';
+import type { HashedRef } from '../assets/assetUses.ts';
+import type { HandedImage, HandedQuest } from './questGate.ts';
 import { isQuestOver, type Quest } from '../../../campaigns/quests/questTypes';
 import { questKind } from '../../../campaigns/quests/questProperties';
 import { clippedLine } from './bookTexts.ts';
@@ -6,8 +8,8 @@ import { clippedLine } from './bookTexts.ts';
 /** A quest's text as players are sent it: its opening, the whole text by hash where the opening is not all of it, and the images it embeds. */
 export interface BookQuestText {
   readonly opening: string;
-  readonly text?: AssetRef | undefined;
-  readonly images: readonly QuestImage[];
+  readonly text?: HashedRef | undefined;
+  readonly images: readonly HandedImage[];
 }
 
 /**
@@ -15,7 +17,7 @@ export interface BookQuestText {
  * properties, each within the book's limits (longer titles are cut, rewards past the limit left
  * out). Null for a quest whose title shows nothing.
  */
-export function bookQuestOf(quest: Quest, id: string, text: BookQuestText): BookQuest | null {
+export function bookQuestOf(quest: Quest, id: string, text: BookQuestText): HandedQuest | null {
   const title = clippedLine(quest.title, MAX_MAP_TITLE);
   if (title === null) return null;
   const rewards = quest.rewards.flatMap((reward) => clippedLine(reward, MAX_MAP_TITLE) ?? []).slice(0, MAX_QUEST_REWARDS);

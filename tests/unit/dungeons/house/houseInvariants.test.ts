@@ -14,33 +14,27 @@ import { bridgeProblems, cellProblems, clearanceProblems, routeProblems, stairCl
 import { groundsRules } from './groundsRules';
 import { allReached, doorsOnEdges, hallAtTheFront, nestedFloors, onCorridors, oneBackStair, stacksRise, stairsLineUp, wallsAlign } from './houseRules';
 import { mainRoomsLit, windowsOverWindows } from './houseWindowRules';
+import { houseRequests } from '../invariantRequests';
 import { baizeDoor, mirrored, receptionApart, roomSizes, stacksWarm, structureOnly, zones } from './houseZoneRules';
 
 /**
- * The 24 believability rules of a house (research §5.10) over many Haunted Mansions: 300 seeds,
- * each with one to four floors and one of the tag sets below, every rule checked apart from the
- * planner; with the terrain rules every dungeon keeps.
+ * The 24 believability rules of a house (research §5.10) over many Haunted Mansions: `HOUSE_SEEDS`
+ * seeds (300 with `VITE_DUNGEON_SEEDS=full`, 100 otherwise), each with one to four floors and one tag
+ * set, every rule checked apart from the planner; with the terrain rules every dungeon keeps. How long
+ * a house takes is the perf project's (`tests/perf/dungeons/generation.perf.test.ts`).
  */
-
-const SEEDS = 300;
-const TAG_SETS: readonly string[][] = [[], ['small'], ['medium'], ['large'], ['ruined'], ['overgrown', 'inhabited'], ['large', 'ruined', 'overgrown']];
 
 interface Run {
   label: string;
   tags: string[];
   model: DungeonModel;
-  ms: number;
 }
 
-const RUNS: Run[] = [];
-for (let k = 1; k <= SEEDS; k++) {
-  const tags = TAG_SETS[k % TAG_SETS.length] ?? [];
-  const floors = 1 + (k % 4);
-  const seed = k * 6131 + floors;
-  const start = performance.now();
-  const model = generateDungeon({ seed, theme: 'mansion', tags, floors });
-  RUNS.push({ label: `seed ${seed} [${tags.join(',')}] ${floors}f`, tags, model, ms: performance.now() - start });
-}
+const RUNS: Run[] = houseRequests().map((request) => ({
+  label: `seed ${request.seed} [${request.tags.join(',')}] ${request.floors}f`,
+  tags: request.tags,
+  model: generateDungeon(request),
+}));
 
 const RULES: Record<string, (m: DungeonModel) => string[]> = {
   '1 storeys stand on the floor below': nestedFloors,
@@ -78,9 +72,7 @@ describe('Haunted Mansions as houses', () => {
     expect(RUNS.filter(({ model }) => mirrored(model)).length / RUNS.length).toBeGreaterThan(0.4);
   });
 
-  it('keep rule 23: the same request gives the same house, and a house of four floors is quick', () => {
+  it('keep rule 23: the same request gives the same house', () => {
     for (const { model, tags } of RUNS.slice(0, 40)) expect(generateDungeon({ seed: model.seed, theme: 'mansion', tags, floors: model.floors.length })).toEqual(model);
-    const times = RUNS.filter(({ model }) => model.floors.length === 4).map((r) => r.ms).sort((a, b) => a - b);
-    expect(times[Math.floor(times.length * 0.95)]).toBeLessThan(120);
   });
 });

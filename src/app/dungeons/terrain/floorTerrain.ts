@@ -33,6 +33,9 @@ export class FloorTerrain {
   /** The rooms' pieces, placed once the floor's water and undergrowth lie. */
   private readonly pieceJobs: (() => void)[] = [];
   private readonly cells = new Map<number, RoomCells>();
+  /** A cave's passages (corridors and junctions) that took terrain, made as they are first asked for (`passage`). */
+  private readonly passages = new Map<number, RoomCells>();
+  private readonly endOf: (stair: DungeonStair) => StairEnd;
   /** A Cavern floor's lane, by key. */
   readonly lane: ReadonlySet<string>;
 
@@ -42,11 +45,28 @@ export class FloorTerrain {
     stack: FloorStack,
   ) {
     const endOf = (stair: DungeonStair): StairEnd => stairEnd(stack, index, stair.to);
+    this.endOf = endOf;
     this.lane = new Set((plan.cave?.lane ?? []).map((c) => cellKey(c.x, c.y)));
     for (const room of plan.rooms) {
       if (room.kind !== 'room') continue;
       this.cells.set(room.id, new RoomCells(room, plan.doors, plan.stairs, endOf, plan.columns, this.lane));
     }
+  }
+
+  /**
+   * The cells of a cave's passage (a corridor or junction), where only the way it is passed by lays
+   * terrain (a sump's water, a traverse's drop, a breakdown's boulders); undefined off a cave floor
+   * and for normal rooms. Made the first time it is asked for, so a floor nobody asks keeps none.
+   */
+  passage(id: number): RoomCells | undefined {
+    const room = this.plan.rooms[id];
+    if (!this.plan.cave || !room || room.kind === 'room') return undefined;
+    let rc = this.passages.get(id);
+    if (!rc) {
+      rc = new RoomCells(room, this.plan.doors, this.plan.stairs, this.endOf, this.plan.columns, this.lane);
+      this.passages.set(id, rc);
+    }
+    return rc;
   }
 
   /** The cells of a normal room; undefined for corridors and junctions, which take no terrain. */
@@ -65,7 +85,7 @@ export class FloorTerrain {
 
   /** Places `piece` if its kind is offered and its room allows it; a bridge's cells on the hole it crosses stay walkable. Its id, or null. */
   place(piece: TerrainDraft, bridges: readonly CellPoint[] = []): number | null {
-    const rc = this.cells.get(piece.room);
+    const rc = this.cells.get(piece.room) ?? this.passages.get(piece.room);
     if (!rc || !(this.plan.offeredTerrain ?? DRAWN_TERRAIN_KINDS).has(piece.kind) || !rc.allows(piece.cells, footingOf(piece.kind), bridges)) return null;
     rc.take(piece.cells, footingOf(piece.kind));
     return this.push(piece);

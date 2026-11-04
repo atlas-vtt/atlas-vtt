@@ -110,15 +110,15 @@ export async function lightingPictures(scene: PictureScene, resolution: number):
   }
 }
 
-/** The players' view of the scene through the line-of-sight fallback, on WebGL or on PIXI's Canvas renderer; null when that renderer cannot start. */
-export async function fallbackPictures(scene: PictureScene, preference: 'webgl' | 'canvas'): Promise<Uint8ClampedArray[] | null> {
+/** The players' view of the scene through the line-of-sight fallback; null when the renderer cannot start. */
+export async function fallbackPictures(scene: PictureScene): Promise<Uint8ClampedArray[] | null> {
   let renderer: Renderer;
   try {
-    renderer = await autoDetectRenderer({ preference, width: VIEW, height: VIEW, antialias: false, backgroundAlpha: 1, backgroundColor: 0x8899aa });
+    renderer = await autoDetectRenderer({ preference: 'webgl', width: VIEW, height: VIEW, antialias: false, backgroundAlpha: 1, backgroundColor: 0x8899aa });
   } catch {
     return null;
   }
-  if (renderer.name !== preference) {
+  if (renderer.name !== 'webgl') {
     renderer.destroy();
     return null;
   }

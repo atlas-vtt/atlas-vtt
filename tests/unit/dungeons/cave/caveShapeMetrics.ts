@@ -2,11 +2,13 @@
  * How natural a cave reads from above, measured apart from the generator: the longest straight
  * stretches of its drawn walls, how much of its smallest bounding rectangle a chamber fills, and
  * how the drawn passages' width and course vary. Each measure is what the eye reads, not the fine
- * grain: walls are judged after grain finer than about a third of a cell is smoothed away.
+ * grain: walls are judged after grain finer than about a third of a cell is smoothed away. A narrow
+ * way (a crawl, a squeeze, a letterbox, one cell wide and straight by nature) is left out of both
+ * the wall runs and the passages: what is measured is the chambers and the walks.
  */
 
 import { spotRect } from '../../../../src/app/dungeons/floors/stairSpots';
-import { doorCells } from '../../../../src/app/dungeons/geometry';
+import { cellKey, doorCells, floorCellsOf } from '../../../../src/app/dungeons/geometry';
 import type { CellPoint, DungeonFloor, DungeonModel, DungeonRoom } from '../../../../src/app/dungeons/model';
 import type { Vec } from '../../../../src/app/dungeons/render/geometry';
 import { PolyField } from '../../../../src/app/dungeons/render/cave/polyField';
@@ -68,10 +70,23 @@ function pinnedOn(floor: DungeonFloor): (p: Vec) => boolean {
     });
 }
 
-/** The lengths, in cells, of every straight run of the floor's drawn walls, stairwell and doorway edges aside. */
+const NARROW_WAYS = new Set(['crawl', 'squeeze', 'letterbox']);
+
+/** Whether a point lies on a narrow way's cells (its doors' and its passage's), or within a sixth of a cell of them. */
+function onNarrowWay(floor: DungeonFloor): (p: Vec) => boolean {
+  const cells = new Set([
+    ...floor.rooms.filter((room) => room.narrow).flatMap(floorCellsOf),
+    ...floor.doors.filter((door) => door.kind === 'opening' && door.from !== null && door.to !== null && NARROW_WAYS.has(door.way ?? 'walk')).flatMap(doorCells),
+  ].map((c) => cellKey(c.x, c.y)));
+  const near = 0.15;
+  return (p) => [-near, near].some((dx) => [-near, near].some((dy) => cells.has(cellKey(Math.floor(p.x + dx), Math.floor(p.y + dy)))));
+}
+
+/** The lengths, in cells, of every straight run of the floor's drawn walls, stairwell and doorway edges and narrow ways aside. */
 export function straightRuns(model: DungeonModel, index: number): number[] {
   const floor = model.floors[index]!;
   const pinned = pinnedOn(floor);
+  const narrow = onNarrowWay(floor);
   const out: number[] = [];
   for (const shape of visibleFloor(model, DEFAULT_VIEW, index).floors) {
     if (shape.kind !== 'poly') continue;
@@ -93,6 +108,12 @@ export function straightRuns(model: DungeonModel, index: number): number[] {
         let d = heading[i]! - heading[(i - 1 + n) % n]!;
         d = Math.atan2(Math.sin(d), Math.cos(d));
         unwrapped += d;
+        if (narrow(points[i]!)) {
+          if (start < n && k > start) out.push((k - start) * STEP);
+          start = k + 1;
+          lo = hi = unwrapped;
+          continue;
+        }
         const breaks = pinned(points[i]!);
         if (breaks || Math.max(hi, unwrapped) - Math.min(lo, unwrapped) >= STRAIGHT_TURN) {
           if (start < n) out.push((k - start) * STEP);
@@ -165,9 +186,13 @@ export interface PassageProfile {
   centre: Vec[];
 }
 
-/** A passage: a tunnel, or a chamber whose rectangle is three cells across at most and at least four long. */
+/**
+ * A passage: a tunnel four cells long or more, but a narrow route, or a chamber whose rectangle is
+ * three cells across at most and at least five long. A chamber of 3 × 4 is the book's smallest cave, a room, not a gallery.
+ */
 function isPassage(room: DungeonRoom): boolean {
-  return Math.max(room.w, room.h) >= 4 && (room.kind !== 'room' || Math.min(room.w, room.h) <= 3);
+  if (room.narrow) return false;
+  return room.kind !== 'room' ? Math.max(room.w, room.h) >= 4 : Math.min(room.w, room.h) <= 3 && Math.max(room.w, room.h) >= 5;
 }
 
 /** Samples along a passage per cell, and the step across it the drawn floor is read with, in cells. */

@@ -1,19 +1,18 @@
 import { useEffect, useRef } from 'react';
 import { type App } from 'obsidian';
 import { runUvttGroupImport, type ChooseFloors } from '../../../../import/uvtt/runUvttGroupImport';
+import { formatList, t } from '../../../../i18n';
 import { isUvttFileName } from '../../../../import/uvtt/uvttFileNames';
 import { openCreatedScene } from '../../../../import/openCreatedScene';
-import { runVideoMapImport } from '../../../../import/videoMaps/runVideoMapImport';
-import { isVideoMapPath } from '../../../../pixi/mapImage/video/videoMapFiles';
+import { isVideoMapPath } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 import type { AssetService } from '../../../../services/AssetService';
 import { showNotice } from '../../../../ui/notice';
 
 /**
- * Imports map files into a collection: videos become animated maps, and Universal VTT files
- * scenes (several files that share a grid, the floors of one if the GM chooses), of which the
- * last that arrived opens, as a new scene is opened. Where `stay` says so
- * once they arrived, the scenes are only added.
+ * Imports Universal VTT files into a collection as scenes (several files that share a grid, the
+ * floors of one if the GM chooses), of which the last that arrived opens, as a new scene is opened.
+ * Where `stay` says so once they arrived, the scenes are only added.
  */
 export type ImportMaps = (files: readonly File[], collectionId: string, stay?: () => boolean) => Promise<void>;
 
@@ -27,6 +26,8 @@ export interface UvttImportOptions {
   isBusy: boolean;
   /** Where a map file dropped on the asset manager goes. */
   collectionId: string;
+  /** Takes videos dropped on the asset manager's window: animated maps are named and tagged in the map creator, as images are. */
+  onVideos: (files: File[]) => void;
   /** Runs once an imported scene is open: the asset manager closes then, as after a new scene. */
   onSceneOpened: () => void;
   /** Asks how files that can be the floors of one scene are imported; without it each file is a scene. */
@@ -58,15 +59,13 @@ function overManager(event: DragEvent): DataTransfer | null {
 }
 
 function sayNotMaps(files: readonly File[]): void {
-  const names = files.map((file) => file.name);
-  const last = names.pop();
-  const which = names.length > 0 ? `${names.join(', ')} and ${last} are not maps` : `${last} is not a map`;
-  showNotice(`${which} Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file, or a WebM or MP4 video.`);
+  showNotice(t('uvtt.notMaps', { count: files.length, files: formatList(files.map((file) => file.name)) }));
 }
 
 /**
- * The asset manager's import of map files (Universal VTT maps and videos): the function its map
- * creator calls, and map files dropped anywhere on its window, a folder tile included. The scene of an import opens
+ * The asset manager's import of map files: the function its map creator calls for Universal VTT
+ * maps, and map files dropped anywhere on its window, a folder tessera included, of which videos go
+ * to the map creator. The scene of an import opens
  * only for the asset manager that started it, while it is still open and nothing else is open
  * in it that the scene would close: an import takes seconds, and the GM may have moved on.
  */
@@ -85,11 +84,7 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
     const manager = managerOpenings.current;
     const creator = latest.current.isMapCreatorOpen ? creatorOpenings.current : null;
 
-    const videos = files.filter((file) => isVideoMapPath(file.name));
-    if (videos.length > 0) await runVideoMapImport(app, assetService, videos, collectionId);
-    const uvttFiles = files.filter((file) => isUvttFileName(file.name));
-    if (uvttFiles.length === 0) return;
-    const imported = await runUvttGroupImport(app, assetService, uvttFiles, collectionId, latest.current.chooseFloors);
+    const imported = await runUvttGroupImport(app, assetService, files, collectionId, latest.current.chooseFloors);
     const last = imported[imported.length - 1];
     const now = latest.current;
     if (!last || !now.isOpen || managerOpenings.current !== manager || now.isBusy) return;
@@ -99,7 +94,7 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
     if (await openCreatedScene(app, last.scenePath, last.name)) now.onSceneOpened();
   });
 
-  // Listened for on the document, ahead of the manager's own handlers: a folder tile takes
+  // Listened for on the document, ahead of the manager's own handlers: a folder tessera takes
   // every drop on it for itself.
   useEffect(() => {
     if (!options.isOpen) return;
@@ -120,7 +115,10 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
       event.preventDefault();
       event.stopPropagation();
       if (lookalikes.length > 0) sayNotMaps(lookalikes);
-      if (maps.length > 0) void importMaps(maps, latest.current.collectionId);
+      const videos = maps.filter((file) => isVideoMapPath(file.name));
+      if (videos.length > 0) latest.current.onVideos(videos);
+      const uvttFiles = maps.filter((file) => !videos.includes(file));
+      if (uvttFiles.length > 0) void importMaps(uvttFiles, latest.current.collectionId);
     };
     document.addEventListener('dragover', onDragOver, true);
     document.addEventListener('drop', onDrop, true);

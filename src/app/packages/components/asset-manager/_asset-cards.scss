@@ -212,6 +212,38 @@
   @include atlas-statblock-badge(22px);
 }
 
+// A map image still being cut into tiles: a quiet pill on the artwork's bottom-right corner,
+// a ring in the accent that fills as tiles land (`ProcessingRing`) and the word beside it. The map works meanwhile.
+.atlas-asset-processing {
+  position: absolute;
+  inset: 0;
+  // Under the checkbox, the tag menu and the badges, which keep their place and the pointer.
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  // A wash greys the artwork under it; the card's controls above it still take the pointer.
+  background: color-mix(in oklch, var(--background-primary) 55%, transparent);
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  font-weight: var(--font-semibold);
+  line-height: 1;
+  pointer-events: none;
+
+  .atlas-processing-ring {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.atlas-asset-processing__label {
+  max-width: 100%;
+  @include atlas-truncate;
+}
+
 .atlas-asset-spawn-badge {
   position: absolute;
   top: $spacing-s;

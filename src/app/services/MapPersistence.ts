@@ -26,6 +26,7 @@ import type { LevelLink, LevelSurface, SceneLevel } from '../types/sceneLevelTyp
 import { LEVELS_FILE_VERSION, readSceneLevels, sceneFileVersion } from '../levels/levelFile';
 
 import type { FogOperation } from '../types/fogTypes';
+import type { SavedPlayerFrame } from '../stores/playerFramesSlice';
 
 // Placeholder types until properly defined elsewhere
 export type FogPatch = FogOperation;
@@ -49,6 +50,8 @@ export interface MapFile {
   /** Human-readable map name, written when the map is created (absent in older files) */
   name?: string;
   background: string | null;
+  /** The level the scene was last shown on, which it opens on again; unset is the first. */
+  viewedLevel?: string | null;
   /** The scene's levels, bottom first; absent for a scene with one level. The first level's background is `background`. */
   levels?: SceneLevel[] | undefined;
   grid: GridState | null;
@@ -72,6 +75,8 @@ export interface MapFile {
     liquids?: Record<string, LiquidSurface>;
   };
   camera: CameraState;
+  /** Frames the GM saved for the players' TV; absent in older files and until a scene has one. Read with `readPlayerFrames`. */
+  playerFrames?: SavedPlayerFrame[];
 }
 
 /** A token as found in older map files, where conditions were still called `statuses`. */
@@ -212,6 +217,7 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       if (!mapFile) {
         return null;
       }
+      writer.fileSeen(mapPath);
 
       let content: string;
       try {

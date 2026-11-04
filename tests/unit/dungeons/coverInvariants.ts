@@ -65,7 +65,7 @@ const COVER_PIECES: ReadonlySet<TerrainKind> = new Set<TerrainKind>(['rubble-hea
  * have it, and a ruin may have fallen stone.
  */
 function unreasonedCover(model: DungeonModel): string[] {
-  const programme = programmeOf(themeOf(model.theme), new Set(model.tags as DungeonTag[]));
+  const programme = programmeOf(themeOf(model.theme), new Set(model.tags as DungeonTag[]), model.cave?.variant);
   const allowed = new Map(programme.rooms.map((spec) => [spec.id as string, new Set<string>(spec.terrain.allows ?? [])]));
   const ruined = model.tags.includes('ruined');
   return model.floors.flatMap((floor, f) => floor.terrain.flatMap((p) => {

@@ -13,15 +13,16 @@ import { stairApproaches, stairCells } from './terrainInvariants';
  * feature has a reason"): what each room type, hazard and liquid needs of the cave around it.
  */
 
-/** Rule 8: a roost lies within a hop of the mouth, a fungus grove within a hop of water or a roost, the den deep. */
+/** Rule 8: a roost lies within a hop of the mouth, a fungus grove within a hop of water or a roost (anywhere in a cave fungus made), the den deep. */
 export function lifeProblems(model: DungeonModel): string[] {
   const sites = caveSites(model.floors);
+  const fungal = model.cave?.variant === 'fungal';
   return model.floors.flatMap((floor, f) => {
     const site = sites[f]!;
     const near = neighbours(floor.rooms.length, floor.doors);
     return floor.rooms.flatMap((room) => {
       if (room.type === 'roost' && (site.hopsFromMouth[room.id] ?? Infinity) > 1) return [`floor ${f}: a roost ${site.hopsFromMouth[room.id]} hops from the mouth`];
-      if (room.type === 'fungus-grove' && !site.nearWater(room.id, 1) && !(near[room.id] ?? []).some((n) => floor.rooms[n]?.type === 'roost')) return [`floor ${f}: a fungus grove far from water and roosts`];
+      if (room.type === 'fungus-grove' && !fungal && !site.nearWater(room.id, 1) && !(near[room.id] ?? []).some((n) => floor.rooms[n]?.type === 'roost')) return [`floor ${f}: a fungus grove far from water and roosts`];
       if (room.type === 'den' && !site.deep(room.id)) return [`floor ${f}: a den that is not deep`];
       return [];
     });
@@ -55,6 +56,15 @@ export function liquidProblems(floor: DungeonFloor): string[] {
 
 const keyOf = (c: CellPoint): string => `${c.x},${c.y}`;
 const within = (a: CellPoint, cells: readonly CellPoint[], d: number): boolean => cells.some((b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= d);
+
+/** How far from its door the ground of a special way may reach: a passage's few cells, or a long drop's ledge. */
+const ROUTE_REACH = 6;
+
+/** Whether a piece is the ground of a way of `way` behind a door of its room: a sump's water, a traverse's drop, a breakdown's boulders. */
+function ofWay(floor: DungeonFloor, piece: DungeonFloor['terrain'][number], way: string): boolean {
+  const doors = floor.doors.filter((d) => d.way === way && (d.from === piece.room || d.to === piece.room));
+  return piece.cells.every((c) => doors.some((d) => within(c, [{ x: d.x, y: d.y }], ROUTE_REACH)));
+}
 
 /** The direction cells run along, in [0, π), and how many times longer than wide they lie; worked out apart from the generator. */
 function runOf(cells: readonly CellPoint[]): { angle: number; ratio: number } {
@@ -92,18 +102,34 @@ export function geologyProblems(model: DungeonModel, crust: boolean): string[] {
         if (!floor.terrain.some((p) => p.room === piece.room && p.kind === 'ledge')) out.push(`floor ${f}: lava in room ${piece.room} without a ledge`);
       }
       if (piece.traits.hazard === 'acid') {
-        if (!tags.has('acid')) out.push(`floor ${f}: acid without the acid tag`);
+        if (!tags.has('acid') && model.cave?.variant !== 'sulphuric') out.push(`floor ${f}: acid without the acid tag or a sulphuric cave`);
         if (!site.deep(piece.room) || !site.faultOf(piece.room)) out.push(`floor ${f}: acid in room ${piece.room}, not deep on a fault`);
         if (crust && !floor.terrain.some((p) => p.room === piece.room && p.kind === 'sulphur-crust')) out.push(`floor ${f}: acid in room ${piece.room} without its crust`);
       }
       if (piece.kind === 'sulphur-crust' && !floor.terrain.some((p) => p.traits.hazard === 'acid' && piece.cells.every((c) => within(c, p.cells, 1)))) out.push(`floor ${f}: sulphur crust away from acid`);
-      if (piece.kind === 'chasm' && piece.cells.length >= 4) {
+      if (piece.kind === 'chasm' && piece.facing && !piece.under) out.push(...abyssProblems(floor, f, piece));
+      else if (piece.kind === 'chasm' && piece.cells.length >= 4 && !ofWay(floor, piece, 'traverse')) {
         const { angle } = runOf(piece.cells);
         if (!faults.some((fault) => lineGap(angle, fault) <= Math.PI / 12)) out.push(`floor ${f}: chasm ${piece.id} runs at ${Math.round((angle * 180) / Math.PI)}°, along no fault`);
       }
     }
     return out;
   });
+}
+
+/**
+ * An abyss at a great chamber's edge (the one chasm that follows no fault, so it says which side it
+ * falls towards): a hall's or a gargantuan cave's, reaching that side's wall, taking at most a third
+ * of the chamber.
+ */
+function abyssProblems(floor: DungeonFloor, f: number, piece: DungeonFloor['terrain'][number]): string[] {
+  const room = floor.rooms[piece.room]!;
+  const own = new Set(floorCellsOf(room).map(keyOf));
+  const out: string[] = [];
+  if (room.tier !== 'hall' && room.tier !== 'gargantuan') out.push(`floor ${f}: an abyss in room ${room.id}, a ${room.tier ?? 'no'} chamber`);
+  if (!piece.cells.some((c) => !own.has(keyOf({ x: c.x + piece.facing!.x, y: c.y + piece.facing!.y })))) out.push(`floor ${f}: abyss ${piece.id} reaches no wall`);
+  if (piece.cells.length > own.size / 3 + 1) out.push(`floor ${f}: abyss ${piece.id} takes ${piece.cells.length} of ${own.size} cells`);
+  return out;
 }
 
 const BREAKDOWN = new Set(['rubble-heap', 'rubble-field']);
@@ -141,7 +167,7 @@ export function breakdownProblems(model: DungeonModel): { problems: string[]; sp
     for (const choke of floor.terrain.filter((p) => p.kind === 'boulder-choke')) {
       const room = floor.rooms[choke.room];
       const doors = floor.doors.filter((d) => d.from === choke.room || d.to === choke.room);
-      if (room?.type !== 'collapse-chamber') out.push(`floor ${f}: a boulder choke in a ${room?.type}`);
+      if (room?.type !== 'collapse-chamber' && !ofWay(floor, choke, 'breakdown')) out.push(`floor ${f}: a boulder choke in a ${room?.type}`);
       if (!choke.cells.every((c) => doors.some((d) => Math.abs(d.x - c.x) + Math.abs(d.y - c.y) <= 3))) out.push(`floor ${f}: a boulder choke away from its door`);
       if (!choke.traits.difficult || choke.traits.cover || choke.traits.hazard) out.push(`floor ${f}: a boulder choke that is not walked`);
     }
@@ -179,6 +205,13 @@ export function laneProblems(floor: DungeonFloor): string[] {
 
 const WATER_TYPES = new Set(['lake-cavern', 'stream-passage', 'sump']);
 
+/** Whether a piece lies beside, or on, deep water of its own room. */
+function besideDeep(floor: DungeonFloor, piece: DungeonFloor['terrain'][number]): boolean {
+  const room = floor.rooms[piece.room]!;
+  const deep = floor.terrain.filter((p) => p.room === piece.room && p.traits.hazard === 'deep-water').flatMap((p) => p.cells);
+  return piece.cells.some((c) => deep.some((d) => holdsCell(room, d.x, d.y) && Math.abs(d.x - c.x) + Math.abs(d.y - c.y) <= 1));
+}
+
 /** Rule 1: water stands only where it gathers, runs only downhill, never on raised rock; a dry cave has none. */
 export function waterProblems(model: DungeonModel): string[] {
   const dry = model.tags.includes('dry');
@@ -189,12 +222,15 @@ export function waterProblems(model: DungeonModel): string[] {
     const standing = new Set([...(cave?.basins ?? []), ...(boss?.type === 'lake-cavern' ? [boss.id] : [])]);
     const running = new Set((cave?.streams ?? []).flat());
     const roomOf = (c: CellPoint): number | undefined => floor.rooms.find((r) => holdsCell(r, c.x, c.y))?.id;
+    // The pools behind rimstone dams that border a sump's or a lake's deep water are that water.
+    const dammed = new Set(floor.terrain.filter((p) => p.kind === 'rimstone' && besideDeep(floor, p)).flatMap((p) => p.cells.map(keyOf)));
     for (const c of floor.waterCells) {
       const room = roomOf(c);
+      if (dammed.has(keyOf(c))) continue;
       if (room === undefined || (!standing.has(room) && !running.has(room))) out.push(`floor ${f}: water at ${keyOf(c)} in room ${room}, where none gathers`);
     }
     for (const piece of floor.terrain) {
-      if (piece.traits.hazard === 'deep-water' && piece.kind !== 'channel' && !standing.has(piece.room)) out.push(`floor ${f}: deep water in room ${piece.room}, no basin`);
+      if (piece.traits.hazard === 'deep-water' && piece.kind !== 'channel' && !standing.has(piece.room) && !ofWay(floor, piece, 'sump')) out.push(`floor ${f}: deep water in room ${piece.room}, no basin`);
       if (piece.kind === 'channel' && piece.traits.hazard === 'deep-water') {
         const chain = cave?.streams.find((s) => s.slice(0, -1).includes(piece.room));
         const next = chain ? floor.rooms[chain[chain.indexOf(piece.room) + 1]!] : undefined;
@@ -249,8 +285,9 @@ const DRIPSTONE = new Set(['stalagmites', 'column-formation']);
 /** What dripping and flowing water builds where there is air: crystals grow under water and are left out. */
 const DRIPPED = new Set(['stalagmites', 'column-formation', 'flowstone', 'curtain']);
 
-/** Rule 5: formations where drips, flow and air make them. */
+/** Rule 5: formations where drips, flow and air make them; none of calcite in a fault or a burrow, no dripstone in a sulphuric cave. */
 export function formationProblems(model: DungeonModel): string[] {
+  const variant = model.cave?.variant;
   return model.floors.flatMap((floor, f) => {
     const out: string[] = [];
     const cave = floor.cave;
@@ -263,6 +300,8 @@ export function formationProblems(model: DungeonModel): string[] {
     const stalagmites = floor.props.filter((p) => p.kind === 'stalagmites');
     for (const prop of floor.props) {
       if (!CALCITE.has(prop.kind)) continue;
+      if (variant === 'fault' || variant === 'burrow') out.push(`floor ${f}: ${prop.kind} in a ${variant} cave`);
+      if (variant === 'sulphuric' && DRIPSTONE.has(prop.kind)) out.push(`floor ${f}: ${prop.kind} in a sulphuric cave`);
       const type = floor.rooms[prop.room]?.type;
       if (DRIPSTONE.has(prop.kind) && (streams.has(prop.room) || basins.has(prop.room))) out.push(`floor ${f}: ${prop.kind} in a ${streams.has(prop.room) ? 'stream' : 'flooded'} room`);
       if (prop.kind === 'column-formation' && !stalagmites.some((s) => s.room === prop.room && Math.hypot(s.x - prop.x, s.y - prop.y) <= 2.5)) out.push(`floor ${f}: a column outside a stalagmite cluster`);
@@ -295,9 +334,10 @@ export function formationDensity(model: DungeonModel): { mouth: number[]; dryDea
 
 const UNDERGROWTH = new Set(['brambles', 'thicket', 'tangled-roots']);
 
-/** Rule 8: green growth only by the mouth, fungi only by water or a roost, nothing where lava runs. */
+/** Rule 8: green growth only by the mouth, fungi only by water or a roost (anywhere in a cave fungus made), nothing where lava runs. */
 export function lifeZoneProblems(model: DungeonModel): string[] {
   const sites = caveSites(model.floors);
+  const fungal = model.cave?.variant === 'fungal';
   return model.floors.flatMap((floor, f) => {
     const site = sites[f]!;
     const near = neighbours(floor.rooms.length, floor.doors);
@@ -307,7 +347,7 @@ export function lifeZoneProblems(model: DungeonModel): string[] {
     const living = [...floor.growth.map((g) => ({ kind: g.kind as string, room: g.room })), ...floor.terrain.filter((p) => UNDERGROWTH.has(p.kind)).map((p) => ({ kind: p.kind as string, room: p.room }))];
     return living.flatMap(({ kind, room }) => {
       if (lava.has(room)) return [`floor ${f}: ${kind} where lava runs`];
-      if (kind === 'fungi') return site.nearWater(room, 1) || roost(room) || (near[room] ?? []).some(roost) ? [] : [`floor ${f}: fungi far from water and roosts`];
+      if (kind === 'fungi') return fungal || site.nearWater(room, 1) || roost(room) || (near[room] ?? []).some(roost) ? [] : [`floor ${f}: fungi far from water and roosts`];
       return daylight(room) ? [] : [`floor ${f}: ${kind} in room ${room}, out of the daylight`];
     });
   });

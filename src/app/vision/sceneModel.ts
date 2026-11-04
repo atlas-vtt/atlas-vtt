@@ -151,10 +151,8 @@ export class SceneModelBuilder {
     const everyReach = this.lightReaches.sync(shining, walls, sampling, reflection);
     // A light whose flame stands in magical darkness it does not outshine gives nothing: the picture and the rule both leave it out.
     const out = shining.map((light) => !light.darkness && quenched(light, light.priority ?? 0, everyReach));
-    // A darkness is drawn as the polygon the rule counts, and veils the light it swallows where the
-    // rule counts that light: the reaches' polygons, handed on rather than traced again.
-    const dark = shining.some((light) => light.darkness);
-    const lights = shining.flatMap((light, i) => (out[i] ? [] : [withRule(moving.has(light.key) ? { ...light, moving: true } : light, everyReach[i]!, dark)]));
+    // What the rule counts for each light, handed on rather than traced again (`withRule`).
+    const lights = shining.flatMap((light, i) => (out[i] ? [] : [withRule(moving.has(light.key) ? { ...light, moving: true } : light, everyReach[i]!)]));
     const reaches = everyReach.filter((_, i) => !out[i]);
     const sources = sourcesInDarkness(sightSources(tokens, scale, reach, rules, GM_SIGHT_POLICY), ambient, reaches);
     this.sightCache.retain(new Set(sources.map(source => source.tokenId)));
@@ -169,14 +167,13 @@ export class SceneModelBuilder {
 const NO_ZONES: readonly EngineZone[] = [];
 
 /**
- * A light with what the rule counts for it that the picture draws as the rule has it: its
- * reflection, and in a scene with a darkness, for the darkness map, its reach's polygon and an
- * area light's parts beyond its area.
+ * A light with what the rule counts for it, which the picture draws as the rule has it: its
+ * reach's polygon and an area light's parts beyond its area (a darkness is drawn as its area, the
+ * polygon picture draws every light so, and a darkness veils the light it swallows there), and
+ * its reflection. Each stays the same object while the rule's reach stays (`LightReaches`).
  */
-function withRule(light: EngineLight, reach: LightReach, dark: boolean): EngineLight {
-  const reflected = reach.reflection?.length ? { reflection: reach.reflection } : null;
-  if (dark) return { ...light, area: reach.polygon, ...(reach.parts && { parts: reach.parts }), ...reflected };
-  return reflected ? { ...light, ...reflected } : light;
+function withRule(light: EngineLight, reach: LightReach): EngineLight {
+  return { ...light, area: reach.polygon, ...(reach.parts && { parts: reach.parts }), ...(reach.reflection?.length && { reflection: reach.reflection }) };
 }
 
 /** Whether a light that follows the ambient light wakes or falls asleep between two ambient lights. */

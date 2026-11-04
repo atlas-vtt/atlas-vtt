@@ -24,7 +24,7 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { levelObjects } from '../../src/app/levels/levelObjects';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
-vi.mock('../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
+vi.mock('../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', () => ({ prebuildMosaicCanvasAt: vi.fn() }));
 
 const SAMPLES = process.env.ATLAS_UVTT_SAMPLES;
 const COLLECTION = 'Exports';

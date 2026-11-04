@@ -1,4 +1,5 @@
 import { glyphEdges, glyphTone } from '../../art/glyphLight';
+import { glyphPainterOf } from '../../../style';
 import type { Hand, Material } from '../../art/hand';
 import { polyPath, type PathFn } from '../../art/paths';
 import { fineLines, inkDot, type GlyphPen } from '../../glyphPen';
@@ -87,7 +88,7 @@ export function coldFuel(pen: GlyphPen, b: Part): void {
   const at = (x: number, y: number): Vec => inBox(b, x, y);
   surface(pen, polyPath([at(-0.39, -0.31), at(-0.12, -0.4), at(0.05, -0.34), at(0.37, -0.36), at(0.4, 0.16), at(0.15, 0.25), at(-0.32, 0.15)]), 'dressed');
   // Stone's final silhouette grain covers the fuel too; Engraved needs the wood cuts here.
-  surface(pen, logsIn(b).logs, 'wood', pen.hand.scene.env.style.direction === 'engraved');
+  surface(pen, logsIn(b).logs, 'wood', glyphPainterOf(pen.hand.scene.env.style.direction) === 'engraved');
   fineLines(pen, logGrain(b));
   for (const [x, y] of ASH_DOTS) {
     const p = at(x, y);

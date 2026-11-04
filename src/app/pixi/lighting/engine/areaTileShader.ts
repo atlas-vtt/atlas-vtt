@@ -11,7 +11,7 @@ export const AREA_CORNER_VECTORS = MAX_AREA_CORNERS / 2;
  * from a point to it: the corner, the nearest point and whether the point lies inside (even-odd,
  * as `pointInPolygon` counts).
  */
-const AREA_OUTLINE_GLSL = `
+export const AREA_OUTLINE_GLSL = `
 uniform vec4 uCorners[${AREA_CORNER_VECTORS}];
 uniform int uCount;
 vec2 corner(int i) {

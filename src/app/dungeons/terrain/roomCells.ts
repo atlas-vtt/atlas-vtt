@@ -13,12 +13,8 @@ import type { CellDir, CellPoint, DungeonColumn, DungeonDoor, DungeonRoom, Dunge
 import { cellKey, cellsOf, dir, doorSide, floorCellsOf, holdsCell } from '../geometry';
 import { type StairEnd, approachCells, doorApproaches, spotRect } from '../floors/stairSpots';
 import type { Footing } from './catalog';
-
-const STEPS: readonly CellDir[] = [dir(1, 0), dir(-1, 0), dir(0, 1), dir(0, -1)];
-
-/** A side of the room in its own frame: the far wall, the wall it was entered by, and the two across. */
-export type WallSide = 'back' | 'left' | 'right' | 'near';
-export const WALL_SIDES: readonly WallSide[] = ['back', 'left', 'right', 'near'];
+import { FloorGraph } from './floorGraph';
+import { type WallSide, edgeSlot, insideRound, sideBeyond, touches } from './roomFrame';
 
 export class RoomCells {
   readonly depth: number;
@@ -43,6 +39,7 @@ export class RoomCells {
   private readonly edgeDoors: Set<string>;
   /** The main path's way through a cave, by key: nothing that blocks stands on it. */
   private readonly lane: ReadonlySet<string>;
+  private floorGraph: FloorGraph | null = null;
 
   constructor(
     readonly room: DungeonRoom,
@@ -72,10 +69,10 @@ export class RoomCells {
     const stairway = stairs.flatMap((s) => [...cellsOf(spotRect(s)), ...approachCells(s, endOf(s))]);
     for (const c of stairway) for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) this.byStairs.add(cellKey(c.x + dx, c.y + dy));
     for (const c of floorCellsOf(room)) {
-      if (!this.inside(c, [0.5], 0)) continue;
+      if (!insideRound(room, c, [0.5], 0)) continue;
       const key = cellKey(c.x, c.y);
       this.floor.add(key);
-      if (this.inside(c, [0, 1], 0.05) && !this.clear.has(key) && !columns.some((col) => touches(col, c))) this.open.add(key);
+      if (insideRound(room, c, [0, 1], 0.05) && !this.clear.has(key) && !columns.some((col) => touches(col, c))) this.open.add(key);
     }
   }
 
@@ -159,14 +156,31 @@ export class RoomCells {
 
   /**
    * Whether, with `cells` blocked (but `over`), one more free cell could still take cover and
-   * leave the room whole: a hazard never takes the last place for cover.
+   * leave the room whole: a hazard never takes the last place for cover. One walk of the room finds
+   * every cell whose loss would split it, so a chamber of hundreds of cells costs no flood fill per cell.
    */
   keepsCover(cells: readonly CellPoint[], over: readonly CellPoint[] = []): boolean {
+    if (!cells.every((c) => this.isFree(c)) || cells.some((c) => this.inLane(c))) return false;
     const own = new Set(cells.map((c) => cellKey(c.x, c.y)));
+    const spared = new Set(over.map((c) => cellKey(c.x, c.y)));
+    const graph = this.graph();
+    const walkable = this.walkable(new Set([...own].filter((key) => !spared.has(key))));
+    if (!this.needed.every((c) => walkable[graph.numberOf(c) ?? -1] === 1)) return false;
+    const { of, sizes } = graph.pieces(walkable);
+    let cut: Uint8Array | null = null;
+    // With the room in one piece, any cell but one it hangs together by; in two, only a lone cell that is the second.
+    const takes = (c: CellPoint): boolean => {
+      if (spared.has(cellKey(c.x, c.y))) return sizes.length === 1;
+      const v = graph.numberOf(c) as number;
+      if (sizes.length === 2) return sizes[of[v] as number] === 1;
+      if (sizes.length !== 1 || (sizes[0] as number) < 2) return false;
+      cut ??= graph.cutCells(walkable, v);
+      return cut[v] === 0;
+    };
     for (let i = 0; i < this.depth; i++) {
       for (let j = 0; j < this.width; j++) {
         const c = this.cell(i, j);
-        if (!own.has(cellKey(c.x, c.y)) && this.isFree(c) && this.allows([...cells, c], 'block', over)) return true;
+        if (!own.has(cellKey(c.x, c.y)) && this.isFree(c) && !this.inLane(c) && takes(c)) return true;
       }
     }
     return false;
@@ -203,17 +217,7 @@ export class RoomCells {
 
   /** The way out of the room through `side`. */
   beyond(side: WallSide): CellDir {
-    const { axis, across } = this;
-    switch (side) {
-      case 'back':
-        return axis;
-      case 'near':
-        return dir(-axis.x, -axis.y);
-      case 'right':
-        return across;
-      case 'left':
-        return dir(-across.x, -across.y);
-    }
+    return sideBeyond(this.axis, this.across, side);
   }
 
   /** The way along the wall of `side`, the order its wall cells come in. */
@@ -256,44 +260,24 @@ export class RoomCells {
 
   /** Whether every walkable floor cell, with `extra` blocked too, reaches every other. */
   private whole(extra: ReadonlySet<string>): boolean {
-    const walkable = (key: string): boolean => this.floor.has(key) && this.taken.get(key) !== 'block' && !extra.has(key);
-    const start = [...this.floor].find(walkable);
-    if (start === undefined) return false;
-    const seen = new Set([start]);
-    const queue = [start];
-    for (let head = 0; head < queue.length; head++) {
-      const [x, y] = (queue[head] as string).split(',').map(Number) as [number, number];
-      for (const d of STEPS) {
-        const key = cellKey(x + d.x, y + d.y);
-        if (seen.has(key) || !walkable(key)) continue;
-        seen.add(key);
-        queue.push(key);
-      }
-    }
-    let count = 0;
-    for (const key of this.floor) if (walkable(key)) count++;
-    return seen.size === count && this.needed.every((c) => seen.has(cellKey(c.x, c.y)));
+    const graph = this.graph();
+    const walkable = this.walkable(extra);
+    return graph.pieces(walkable).sizes.length === 1 && this.needed.every((c) => walkable[graph.numberOf(c) ?? -1] === 1);
   }
 
-  /** Whether the points of the cell at `at` (0 a corner, 0.5 its middle) lie `margin` inside the circle of a round room. */
-  private inside(c: CellPoint, at: readonly number[], margin: number): boolean {
-    const { room } = this;
-    if (!room.rotunda) return true;
-    const cx = room.x + room.w / 2;
-    const cy = room.y + room.h / 2;
-    const r = Math.sqrt(room.w * room.w + 1) / 2 - margin;
-    return at.every((dx) => at.every((dy) => Math.hypot(c.x + dx - cx, c.y + dy - cy) <= r));
+  /** Which floor cells can be walked with `extra` blocked too, by the graph's numbers. */
+  private walkable(extra: ReadonlySet<string>): Uint8Array {
+    const { keys } = this.graph();
+    const out = new Uint8Array(keys.length);
+    keys.forEach((key, v) => {
+      out[v] = this.taken.get(key) !== 'block' && !extra.has(key) ? 1 : 0;
+    });
+    return out;
   }
-}
 
-/** Whether a column stands on or touches the cell. */
-function touches(column: DungeonColumn, c: CellPoint): boolean {
-  const dx = Math.max(c.x - column.x, 0, column.x - (c.x + 1));
-  const dy = Math.max(c.y - column.y, 0, column.y - (c.y + 1));
-  return Math.hypot(dx, dy) < column.radius + 0.05;
-}
-
-/** The edge of cell `c` towards `d`, as a key. */
-function edgeSlot(c: CellPoint, d: CellPoint): string {
-  return `${cellKey(c.x, c.y)}>${d.x},${d.y}`;
+  /** The floor as a graph, numbered once the first time it is asked for. */
+  private graph(): FloorGraph {
+    this.floorGraph ??= new FloorGraph([...this.floor].map((key) => key.split(',').map(Number) as [number, number]).map(([x, y]) => ({ x, y })));
+    return this.floorGraph;
+  }
 }

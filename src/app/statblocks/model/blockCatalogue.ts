@@ -1,5 +1,6 @@
 import type { BlockIdSource } from './templateIds';
 import type { BlockType, FieldKey, FieldType, TemplateBlock } from './templateTypes';
+import { t } from '../../i18n';
 
 /** Blocks an author can insert; `script` and `opaque` only ever come from a file. */
 export type AuthorableBlockType = Exclude<BlockType, 'script' | 'opaque'>;
@@ -18,10 +19,10 @@ export type BlockIcon =
 export type PaletteGroup = 'basics' | 'lists' | 'layout' | 'media';
 
 export const PALETTE_GROUPS: ReadonlyArray<{ id: PaletteGroup; label: string }> = [
-  { id: 'basics', label: 'Text and values' },
-  { id: 'lists', label: 'Lists and tables' },
-  { id: 'layout', label: 'Layout' },
-  { id: 'media', label: 'Pictures' },
+  { id: 'basics', label: t('templateEditor.group.basics') },
+  { id: 'lists', label: t('templateEditor.group.lists') },
+  { id: 'layout', label: t('templateEditor.group.layout') },
+  { id: 'media', label: t('templateEditor.group.media') },
 ];
 
 /**
@@ -57,20 +58,20 @@ function primitive(
 
 /** Every primitive, in the order the Add panel and Turn into list them. */
 export const PRIMITIVES: Readonly<Record<PrimitiveId, PrimitiveSpec>> = {
-  heading: primitive('heading', 'Heading', 'heading', 'basics', ['heading', 'title'], 'heading', 'Text'),
-  text: primitive('text', 'Text', 'text', 'basics', ['text']),
-  value: primitive('value', 'Value', 'hash', 'basics', ['stat']),
-  metric: primitive('metric', 'Metric', 'square-split-horizontal', 'basics', ['metric']),
-  line: primitive('line', 'Line', 'subtitles', 'basics', ['line']),
-  list: primitive('list', 'List', 'list', 'lists', ['tags', 'pairs', 'entries', 'spells'], 'entries', 'Each item is'),
-  table: primitive('table', 'Table', 'table', 'lists', ['scores']),
-  track: primitive('track', 'Track', 'gauge', 'lists', ['track']),
-  counters: primitive('counters', 'Counters', 'list-checks', 'lists', ['counters']),
-  section: primitive('section', 'Section', 'square-stack', 'layout', ['section']),
-  'side-by-side': primitive('side-by-side', 'Side by side', 'columns-3', 'layout', ['row']),
-  tabs: primitive('tabs', 'Tabs', 'panel-top', 'layout', ['tabs']),
-  divider: primitive('divider', 'Divider', 'minus', 'layout', ['divider']),
-  picture: primitive('picture', 'Picture', 'image', 'media', ['image']),
+  heading: primitive('heading', t('templateEditor.primitive.heading'), 'heading', 'basics', ['heading', 'title'], 'heading', t('templateEditor.kindSetting.heading')),
+  text: primitive('text', t('templateEditor.primitive.text'), 'text', 'basics', ['text']),
+  value: primitive('value', t('templateEditor.primitive.value'), 'hash', 'basics', ['stat']),
+  metric: primitive('metric', t('templateEditor.primitive.metric'), 'square-split-horizontal', 'basics', ['metric']),
+  line: primitive('line', t('templateEditor.primitive.line'), 'subtitles', 'basics', ['line']),
+  list: primitive('list', t('templateEditor.primitive.list'), 'list', 'lists', ['tags', 'pairs', 'entries', 'spells'], 'entries', t('templateEditor.kindSetting.list')),
+  table: primitive('table', t('templateEditor.primitive.table'), 'table', 'lists', ['scores']),
+  track: primitive('track', t('templateEditor.primitive.track'), 'gauge', 'lists', ['track']),
+  counters: primitive('counters', t('templateEditor.primitive.counters'), 'list-checks', 'lists', ['counters']),
+  section: primitive('section', t('templateEditor.primitive.section'), 'square-stack', 'layout', ['section']),
+  'side-by-side': primitive('side-by-side', t('templateEditor.primitive.sideBySide'), 'columns-3', 'layout', ['row']),
+  tabs: primitive('tabs', t('templateEditor.primitive.tabs'), 'panel-top', 'layout', ['tabs']),
+  divider: primitive('divider', t('templateEditor.primitive.divider'), 'minus', 'layout', ['divider']),
+  picture: primitive('picture', t('templateEditor.primitive.picture'), 'image', 'media', ['image']),
 };
 
 export const PRIMITIVE_IDS: readonly PrimitiveId[] = Object.keys(PRIMITIVES) as PrimitiveId[];
@@ -110,24 +111,24 @@ export const BLOCK_CATALOGUE: Readonly<Record<BlockType, BlockSpec>> = {
   section: spec('section', 'section', [], 'group', 'fill'),
   row: spec('row', 'side-by-side', [], 'inline', 'fill'),
   tabs: spec('tabs', 'tabs', [], 'group', 'fill'),
-  title: spec('title', 'heading', ['text'], 'heading', 'fill', 'From a property'),
+  title: spec('title', 'heading', ['text'], 'heading', 'fill', t('templateEditor.kind.title')),
   line: spec('line', 'line', SCALAR_FIELDS, 'subheading', 'fill'),
   stat: spec('stat', 'value', SCALAR_FIELDS, 'property', 'fit'),
   // Labels over values, as Fantasy Statblocks draws a table of ability scores.
   metric: spec('metric', 'metric', SCALAR_FIELDS, 'table', 'fill'),
   scores: spec('scores', 'table', ['scores'], 'table', 'fill'),
-  tags: spec('tags', 'list', ['list'], 'property', 'fill', 'A word'),
+  tags: spec('tags', 'list', ['list'], 'property', 'fill', t('templateEditor.kind.tags')),
   text: spec('text', 'text', ['markdown'], 'text', 'fill'),
-  entries: spec('entries', 'list', ['entries'], 'traits', 'fill', 'A name and text'),
-  pairs: spec('pairs', 'list', ['pairs'], 'saves', 'fill', 'A label and a value'),
+  entries: spec('entries', 'list', ['entries'], 'traits', 'fill', t('templateEditor.kind.entries')),
+  pairs: spec('pairs', 'list', ['pairs'], 'saves', 'fill', t('templateEditor.kind.pairs')),
   track: spec('track', 'track', ['number'], 'property', 'fit'),
   counters: spec('counters', 'counters', ['counters'], 'property', 'fill'),
   image: spec('image', 'picture', ['image'], 'image', 'fit'),
-  spells: spec('spells', 'list', ['spells'], 'spells', 'fill', 'A group with items'),
-  heading: spec('heading', 'heading', [], 'text', 'fill', 'Typed'),
+  spells: spec('spells', 'list', ['spells'], 'spells', 'fill', t('templateEditor.kind.spells')),
+  heading: spec('heading', 'heading', [], 'text', 'fill', t('templateEditor.kind.heading')),
   divider: spec('divider', 'divider', [], null, 'fill'),
-  script: fileOnly('script', 'Kept from Fantasy Statblocks', 'code', 'javascript'),
-  opaque: fileOnly('opaque', 'From a newer Atlas', 'circle-help', null),
+  script: fileOnly('script', t('templateEditor.kind.script'), 'code', 'javascript'),
+  opaque: fileOnly('opaque', t('templateEditor.newerAtlas'), 'circle-help', null),
 };
 
 export const BLOCK_TYPES: readonly BlockType[] = Object.keys(BLOCK_CATALOGUE) as BlockType[];
