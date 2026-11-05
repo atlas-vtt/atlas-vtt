@@ -12,7 +12,11 @@ export interface FogEdge {
   width: number;
 }
 
-export const DEFAULT_FOG_EDGE: FogEdge = { style: 'soft', width: 0 };
+/** The edge every GM starts with: crackled, reaching 15 map pixels to either side. */
+export const DEFAULT_FOG_EDGE: FogEdge = { style: 'crackle', width: 15 };
+
+/** The edge the fog draws until it is given one: hard. */
+export const HARD_FOG_EDGE: FogEdge = { style: 'soft', width: 0 };
 
 /**
  * The blur's standard deviation, in world pixels, for an edge that reaches `width`: a blurred edge
@@ -26,12 +30,12 @@ export function sameFogEdge(a: FogEdge, b: FogEdge): boolean {
   return a.style === b.style && a.width === b.width;
 }
 
-/** The edge as stored; what Atlas cannot use reads as the default's: a hard edge, soft where it is given a width. */
+/** The edge as stored; a style or width Atlas cannot use reads as the default's. */
 export function readFogEdge(stored: unknown): FogEdge {
   if (!isRecord(stored)) return DEFAULT_FOG_EDGE;
   const { style, width } = stored;
   return {
-    style: style === 'crackle' ? 'crackle' : DEFAULT_FOG_EDGE.style,
+    style: style === 'soft' || style === 'crackle' ? style : DEFAULT_FOG_EDGE.style,
     width: typeof width === 'number' && width >= 0 && width <= MAX_FOG_EDGE_WIDTH ? width : DEFAULT_FOG_EDGE.width,
   };
 }

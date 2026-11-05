@@ -1,4 +1,4 @@
-import { DEFAULT_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
+import { HARD_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
 import { createSceneSource } from './plugin/host/sceneSource';
 import { canRunMapHotkeys, matchesMapHotkey } from './keyboard/mapHotkeys';
 import { SettingsService, type AtlasSettings } from './services/SettingsService';
@@ -702,11 +702,11 @@ export class PixiRendererOrchestrator { // Renamed class
     return { view: { left: rect.x, top: rect.y, right: rect.x + rect.width, bottom: rect.y + rect.height }, scale: frame.scale };
   }
 
-  /** Gives the fog the edge the GM set, now and when it changes; the default asks for nothing. */
+  /** Gives the fog the edge the GM set, now and when it changes; a hard edge, which the fog starts with, asks for nothing. */
   private followFogEdge(): void {
     const settings = SettingsService.forApp(this.obsApp);
     if (!settings) return;
-    let edge = DEFAULT_FOG_EDGE;
+    let edge = HARD_FOG_EDGE;
     const follow = (): void => {
       const next = settings.getFogEdge();
       if (sameFogEdge(next, edge)) return;
