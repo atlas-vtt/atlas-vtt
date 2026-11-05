@@ -7,9 +7,8 @@ const WIRE_SILENCE_DB = -120;
 const wireDb = (db: number): number => (Number.isFinite(db) ? Math.max(db, WIRE_SILENCE_DB) : db > 0 ? 0 : WIRE_SILENCE_DB);
 
 /**
- * What a state's sound is told by: its key on the wire and its reference where the store keeps it.
- * The protocol still carries an optional credit line for older pages; Atlas sends none, as rights to
- * a sound are the GM's to know (owner, 2026-11-03).
+ * What a state's sound is told by: its key on the wire and its reference where the store keeps it. No
+ * credit goes with it: rights to a sound, and whose it is, are the GM's to know (owner, 2026-11-04).
  */
 export interface WireSound {
   readonly key: string;

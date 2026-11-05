@@ -109,24 +109,26 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
   item.addClass('atlas-sound-status');
   item.hide();
   const label = item.createSpan({ cls: 'atlas-sound-status__name' });
-  const silence = item.createEl('button', { cls: 'atlas-sound-status__silence clickable-icon' });
-  silence.addEventListener('click', () => director.desk.toggleSilence());
-  let shownSilenced: boolean | null = null;
+  const stopAll = item.createEl('button', { cls: 'atlas-sound-status__stop-all clickable-icon' });
+  stopAll.addEventListener('click', () => director.desk.toggleSilence());
+  let shownStopped: boolean | null = null;
   const render = (): void => {
     const { mix } = director.snapshot();
     const now = director.now();
     const mood = mix.mood && moods.mood(mix.mood.id);
-    const name = isPlaying(mix.table, now) && (mix.table.music || mix.table.layers.length > 0) ? whatPlays(mix.table, mood, director.shelf, now) : null;
+    // Music held by Stop all is still what the table plays: Bring back stays at hand here.
+    const table = mix.table.silenced && mix.paused ? { ...mix.table, music: mix.paused.play } : mix.table;
+    const name = isPlaying(table, now) && (table.music || table.layers.length > 0) ? whatPlays(table, mood, director.shelf, now) : null;
     if (name === null) {
       item.hide();
       return;
     }
     if (label.getText() !== name) label.setText(name);
-    if (shownSilenced !== mix.table.silenced) {
-      shownSilenced = mix.table.silenced;
-      silence.empty();
-      setIcon(silence, mix.table.silenced ? 'volume-2' : 'volume-x');
-      silence.setAttribute('aria-label', mix.table.silenced ? t('audio.bringBack') : t('audio.silence'));
+    if (shownStopped !== mix.table.silenced) {
+      shownStopped = mix.table.silenced;
+      stopAll.empty();
+      setIcon(stopAll, mix.table.silenced ? 'play' : 'square');
+      stopAll.setAttribute('aria-label', mix.table.silenced ? t('audio.bringBack') : t('audio.stopAll'));
     }
     item.show();
   };

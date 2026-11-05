@@ -3,12 +3,13 @@
 @use './sound-look' as *;
 
 // The music card: what plays, what comes next, the waveform, and a fader of its own.
+// It takes the room the strips leave, so Master never stands far from them.
 .atlas-sound-music {
-  flex: 0 1 500px;
-  min-width: 340px;
+  flex: 1 1 500px;
+  min-width: 348px;
   display: flex;
   gap: $spacing-m;
-  padding: 14px $spacing-s $spacing-m $spacing-l;
+  padding: $spacing-m;
 
   @container atlas-dm-screen (min-width: 1700px) {
     min-width: 380px;
@@ -32,8 +33,7 @@
   @include atlas-truncate;
   grid-column: 1 / -1;
   min-height: 28px;
-  margin-top: 2px;
-  font-size: 21px;
+  font-size: $font-ui-large;
   font-weight: $font-weight-semibold;
   letter-spacing: -0.01em;
   color: var(--mono-100);
@@ -43,8 +43,8 @@
   @include atlas-truncate;
   grid-column: 1 / -1;
   min-height: 18px;
-  margin-top: 2px;
-  color: var(--text-muted);
+  margin-top: $spacing-xs;
+  color: var(--atlas-sound-muted);
 }
 
 .atlas-sound-music__wave {
@@ -57,7 +57,6 @@
   color: var(--interactive-accent);
   cursor: pointer;
   touch-action: none;
-  @include focus-ring;
 
   &[hidden] {
     display: none;
@@ -79,28 +78,39 @@
 
   .atlas-sound-music__actions {
     gap: 0;
+    padding-inline-end: 0;
 
     .atlas-sound-icon {
       width: 28px;
+    }
+
+    // Side by side here, their boxes would overlap: the plain 28 px buttons (the wide rule comes later in the
+    // file, so this one outranks it).
+    .atlas-sound-icon.atlas-sound-music__transport {
+      width: 28px;
+      height: 32px;
+      margin: 0;
+      padding: 0;
+      border-radius: $control-radius;
     }
   }
 }
 
 .atlas-sound-music__unplayed {
-  color: var(--mono-100);
-  opacity: 0.18;
+  color: $control-line;
 }
 
 .atlas-sound-music__clock {
   grid-row: 4;
   margin-top: $spacing-s;
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
   font-variant-numeric: tabular-nums;
+  // "1:56 / 2:30" is one reading: it never breaks at the slash.
+  white-space: nowrap;
 }
 
 .atlas-sound-music__total {
-  margin-inline-start: $spacing-s;
-  opacity: 0.6;
+  margin-inline-start: $spacing-xs;
 }
 
 .atlas-sound-music__actions {
@@ -109,6 +119,28 @@
   display: flex;
   gap: $spacing-xs;
   margin-top: $spacing-s;
+  // Skip's press area ends inside the card.
+  padding-inline-end: $spacing-xs;
+}
+
+// How the list goes on is the card's secondary row: a step narrower than the transport.
+.atlas-sound-music__actions .atlas-sound-music__quiet {
+  width: 28px;
+}
+
+// Back, Pause and Skip are the card's primary controls: each button is a 44 px box (what a press and an audit
+// meet), drawn as its 36 px middle (`background-clip`, the radius grown by the padding), and set into the row by
+// a negative margin of the same step, so every distance stays on the 4 px scale and no box reaches another control.
+$transport-pad: $spacing-xs;
+
+.atlas-sound-music__actions .atlas-sound-music__transport {
+  width: 36px + 2 * $transport-pad;
+  height: 36px + 2 * $transport-pad;
+  margin: (-$transport-pad) 0;
+  padding: $transport-pad;
+  // Drawn at 12 (the panels' step, these are the card's largest buttons), so the box rounds at the cards' 16.
+  border-radius: calc(#{$radius-xl} + #{$transport-pad});
+  background-clip: content-box;
 }
 
 // The list open: the waveform stays to seek on, shorter, and the list takes what is left of the card.
@@ -172,13 +204,47 @@
   z-index: 1;
   justify-content: space-between;
   background: var(--background-primary-alt);
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
   font-size: $font-ui-smaller;
   font-variant-numeric: tabular-nums;
 
   .atlas-sound-icon {
     width: 24px;
     height: 24px;
+  }
+}
+
+// Stop after this track, a word toggle beside what is left: pressed, it carries a tick.
+.atlas-sound-queue__stop {
+  @include bare-button;
+  height: 24px;
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: 0 $spacing-s;
+  border-radius: $control-radius;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  &:hover:not(:disabled) {
+    background: $hairline;
+    color: var(--text-normal);
+  }
+
+  &[aria-pressed='true'] {
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    color: var(--text-normal);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 }
 
@@ -202,13 +268,15 @@
   .atlas-sound-track__waiting {
     flex: 0 0 auto;
     padding-inline: $spacing-xs;
-    color: var(--text-faint);
-    font-size: $font-ui-smaller;
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
   }
 
+  // The tint and the mark say which; the words stay the normal text's, which reads on the tint.
   &[data-current] {
     background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
-    color: var(--text-accent);
+    color: var(--text-normal);
+    font-weight: $font-weight-semibold;
 
     .atlas-sound-track__length {
       color: inherit;
@@ -228,8 +296,8 @@
 
 .atlas-sound-track__length {
   flex-shrink: 0;
-  color: var(--text-faint);
-  font-size: $font-ui-smaller;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
   font-variant-numeric: tabular-nums;
 }
 
@@ -256,33 +324,36 @@
 }
 
 .atlas-sound-track__grip,
+.atlas-sound-track__menu,
 .atlas-sound-track__remove {
   opacity: 0;
   transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
 }
 
 .atlas-sound-track:hover .atlas-sound-track__grip,
+.atlas-sound-track:hover .atlas-sound-track__menu,
 .atlas-sound-track:hover .atlas-sound-track__remove,
 .atlas-sound-track:focus-within .atlas-sound-track__grip,
+.atlas-sound-track:focus-within .atlas-sound-track__menu,
 .atlas-sound-track:focus-within .atlas-sound-track__remove {
   opacity: 1;
 }
 
 .atlas-sound-played__toggle {
   @include bare-button;
-  @include focus-ring;
+  min-height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
   gap: $spacing-xs;
   margin-top: $spacing-xs;
   border-radius: $radius-s;
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
   font-size: $font-ui-smaller;
 
   svg {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     transition: transform $transition-fast $press-ease;
   }
 

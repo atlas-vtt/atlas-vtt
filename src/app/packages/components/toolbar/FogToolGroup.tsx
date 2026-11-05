@@ -53,7 +53,7 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
       </div>
 
       <div className="atlas-dropdown-section">
-        <div className="space-y-3">
+        <div className="atlas-dropdown-stack atlas-dropdown-stack--loose">
           <DropdownModeSelector
             value={fogMode}
             options={[

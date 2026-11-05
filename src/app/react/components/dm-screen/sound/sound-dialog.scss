@@ -5,7 +5,9 @@
 // The mood popover under its tile, its tone and crest, and the list of sounds in the library view.
 $tone-size: 22px;
 
-.atlas-sound-popover-layer {
+// The layer is itself the `.atlas-vtt-plugin` element its portal renders, and main.scss nests this file in that class:
+// as a descendant rule it matched nothing, and the popover stacked only by where its layer lay in <body>.
+&.atlas-sound-popover-layer {
   position: fixed;
   inset: 0;
   z-index: $z-atlas-dropdown;
@@ -14,6 +16,7 @@ $tone-size: 22px;
 
 .atlas-sound-popover {
   @include atlas-elevated-surface;
+  @include sound-muted-text;
   @include atlas-panel-radius($radius-2xl);
   @include atlas-flex-col($spacing-m);
   position: absolute;
@@ -64,15 +67,16 @@ $tone-size: 22px;
   font-weight: var(--font-semibold);
 }
 
-.atlas-sound-popover__save {
+.atlas-sound-popover .atlas-sound-popover__save {
   @include atlas-panel-inset-radius($spacing-m);
+  @include solid-accent;
   width: 100%;
 }
 
 .atlas-sound-field {
   @include atlas-flex-col($spacing-xs);
   align-items: stretch;
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
   font-size: $font-ui-smaller;
 }
 
@@ -98,7 +102,6 @@ $tone-size: 22px;
 
 .atlas-sound-look__tone {
   @include bare-button;
-  @include focus-ring;
   --atlas-sound-tone: var(--atlas-sound-tone-light);
   flex: none;
   width: $tone-size;
@@ -137,7 +140,7 @@ $tone-size: 22px;
 }
 
 .atlas-sound-look__group-label {
-  color: var(--text-faint);
+  color: var(--atlas-sound-muted);
   font-size: $font-ui-smaller;
 }
 
@@ -149,13 +152,12 @@ $tone-size: 22px;
 
 .atlas-sound-look__crest {
   @include bare-button;
-  @include focus-ring;
   height: 36px;
   min-width: 0;
   display: grid;
   place-items: center;
   border-radius: $control-radius;
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
   transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease;
 
   svg {
@@ -172,5 +174,12 @@ $tone-size: 22px;
     color: var(--atlas-sound-tone);
     background: color-mix(in oklch, var(--atlas-sound-tone) 16%, transparent);
     box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--atlas-sound-tone) 55%, transparent);
+  }
+}
+
+// The space and music choices: on the popover's raised track a dark theme's muted grey reads at Lc 59.
+.atlas-sound-popover .atlas-segmented__option:not(.atlas-active) {
+  .theme-dark & {
+    color: color-mix(in srgb, var(--text-muted) 60%, var(--text-normal));
   }
 }

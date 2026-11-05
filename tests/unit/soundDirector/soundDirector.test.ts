@@ -533,11 +533,30 @@ describe('the sound director', () => {
     });
   });
 
+  it('Stop all holds the music where it is, and Bring back starts it there, with nothing else in the mix', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.press(mood('song only', [], { tracks: ['song'], shuffle: false }));
+    await vi.advanceTimersByTimeAsync(5000);
+    rig.director.desk.toggleSilence();
+    const stopped = rig.director.snapshot().mix;
+    expect(stopped.table.silenced).toBe(true);
+    expect(stopped.paused?.byStop).toBe(true);
+    // Long after the fade nothing sounds, and Bring back still brings it back.
+    await vi.advanceTimersByTimeAsync(60_000);
+    rig.director.desk.toggleSilence();
+    const back = rig.director.snapshot().mix;
+    expect(back.table.silenced).toBe(false);
+    expect(back.paused).toBeUndefined();
+    expect(back.table.music!.startAt).toBe(stopped.paused!.play.startAt + (rig.director.now() - stopped.paused!.at));
+  });
+
   it('the audience line is a seam', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    rig.director.useAudience({ line: () => '3 of 5 hearing', onChange: () => () => undefined });
+    rig.director.useAudience({ line: () => '3 of 5 hearing', detail: () => 'Hearing: Kara.', onChange: () => () => undefined });
     expect(rig.director.snapshot().audience).toBe('3 of 5 hearing');
+    expect(rig.director.snapshot().audienceDetail).toBe('Hearing: Kara.');
   });
 
   it('moves every context to the chosen output, and says once when it is gone', async () => {

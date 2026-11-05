@@ -2,6 +2,7 @@
 import React from 'react';
 import { act, cleanup, createEvent, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Platform } from 'obsidian';
 import { SoundPane } from '../../../src/app/react/components/dm-screen/sound/SoundPane';
 import type { Mood } from '../../../src/app/sound/soundTypes';
 import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
@@ -82,6 +83,13 @@ describe('rows of the library dropped on the desk', () => {
     expect(strips().dataset.dropTarget).toBeUndefined();
   });
 
+  it('says, while nothing plays, what to press and where a track lands', async () => {
+    await waitFor(() => expect(strips().querySelector('.atlas-sound-desk__idle')?.textContent).toContain('Play a track or drop one here'));
+    moodIn(rig);
+    await waitFor(() => expect(strips().querySelector('.atlas-sound-desk__idle')?.textContent).toContain('Press a mood or drop a track here'));
+    expect([...strips().querySelectorAll('.atlas-sound-desk__key')].map((key) => key.textContent)).toEqual(['1Moods', '/Search']);
+  });
+
   it('files from outside do not light the desk', () => {
     fireEvent.dragOver(desk(), { dataTransfer: filesDrag('new.mp3') });
     expect(strips().dataset.dropTarget).toBeUndefined();
@@ -142,7 +150,31 @@ describe('the keys of the page', () => {
     expect(reachedMap).not.toHaveBeenCalled();
   });
 
-  it('make Backspace Silence, also from a row, unless a field has focus; the arrows stay the library\'s', () => {
+  it('make Mod+→ the next track, Space the music\'s pause and / the search, leaving Space to the library', async () => {
+    const skip = vi.spyOn(rig.director.desk, 'skip').mockImplementation(() => undefined);
+    const next = vi.spyOn(rig.director, 'pressNext').mockImplementation(() => undefined);
+    const pause = vi.spyOn(rig.director.desk, 'togglePause').mockImplementation(() => undefined);
+    await waitFor(() => expect(host.querySelector('.atlas-sound-lib__row')).not.toBeNull());
+    fireEvent.keyDown(document.body, { key: 'Enter', code: 'Enter', shiftKey: true });
+    expect(skip).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    // No longer the page's: it goes on to whoever wants it.
+    reachedMap.mockClear();
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight', metaKey: Platform.isMacOS, ctrlKey: !Platform.isMacOS });
+    expect(skip).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(host.querySelector<HTMLElement>('.atlas-sound-lib__search input')!, { key: 'ArrowRight', code: 'ArrowRight', metaKey: Platform.isMacOS, ctrlKey: !Platform.isMacOS });
+    expect(skip).toHaveBeenCalledTimes(1);
+    rows().focus();
+    fireEvent.keyDown(rows(), { key: ' ', code: 'Space' });
+    expect(pause).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.body, { key: ' ', code: 'Space' });
+    expect(pause).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(document.body, { key: '/', code: 'Slash' });
+    expect(document.activeElement).toBe(host.querySelector('.atlas-sound-lib__search input'));
+    expect(reachedMap).not.toHaveBeenCalled();
+  });
+
+  it('make Backspace Stop all, also from a row, unless a field has focus; the arrows stay the library\'s', () => {
     const silence = vi.spyOn(rig.director.desk, 'toggleSilence').mockImplementation(() => undefined);
     fireEvent.keyDown(rows(), { key: 'Backspace', code: 'Backspace' });
     expect(silence).toHaveBeenCalledTimes(1);

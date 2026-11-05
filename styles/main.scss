@@ -16,6 +16,8 @@
 @use '../src/app/online/tableLog/styles/table-log';
 @use './native-tooltips';
 @use './notices';
+@use './scroll-lock';
+@use './portal-host';
 
 // Registered so `atlas-scrollbar-while-scrolling` can fade the thumb. At-rules
 // must stay at the root: inside the scope block below they would be invalid.
@@ -114,6 +116,7 @@
   @import '../src/app/react/components/dm-screen/sound/sound-desk.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-music.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-strips.scss';
+  @import '../src/app/react/components/dm-screen/sound/sound-knob.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library-head.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library-rows.scss';
@@ -176,7 +179,7 @@
     border-radius: $radius-l;
   }
 
-  // Popover under a selected token's HP/stress bar; mounted on document.body
+  // Popover under a selected token's HP/stress bar; mounted in Atlas' host under document.body
   &.atlas-token-value-editor {
     @include atlas-elevated-surface;
     position: fixed;
@@ -737,21 +740,11 @@
 
   // Variants
   .btn--default {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-
-    &:hover {
-      background: var(--interactive-accent-hover);
-    }
+    @include atlas-accent-fill;
   }
 
   .btn--destructive {
-    background: var(--background-modifier-error);
-    color: var(--text-on-accent);
-
-    &:hover {
-      background: var(--background-modifier-error-hover);
-    }
+    @include atlas-danger-fill;
   }
 
   .btn--outline {
@@ -851,6 +844,14 @@
       font-family: inherit;
       font-size: 0.9rem;
       
+      &.mod-cta {
+        @include atlas-accent-fill;
+      }
+
+      &.mod-warning {
+        @include atlas-danger-fill;
+      }
+
       &:not(.mod-cta) {
         background: var(--background-secondary);
         color: var(--text-normal);
@@ -896,7 +897,7 @@
 
 // The Sound page in a tab of its own. The page's rules measure the DM screen by name; here the tab is what it fills.
 .view-content.atlas-sound-view {
-  --atlas-dm-screen-inset: #{$dm-screen-inset};
+  @include atlas-dm-screen-inset;
   container: atlas-dm-screen / size;
   display: flex;
   padding: 0;

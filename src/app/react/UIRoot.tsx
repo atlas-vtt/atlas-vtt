@@ -15,7 +15,7 @@ import { useViewStoreHook, useAtlasStore } from './ViewStoreContext';
 import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
-import DMScreen from './components/DMScreen';
+import { DMScreenFromStore } from './components/DMScreen';
 import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
 import { DiceRollLog } from './components/dice-log/DiceRollLog';
@@ -65,8 +65,6 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   // Per-view UI visibility — driven by the store, not local state
   const isGridSettingsOpen = useAtlasStore(s => s.isGridSettingsOpen);
   const setGridSettingsOpen = useAtlasStore(s => s.setGridSettingsOpen);
-  const isDMScreenOpen = useAtlasStore(s => s.isDMScreenOpen);
-  const setDMScreenOpen = useAtlasStore(s => s.setDMScreenOpen);
   const isGridAlignmentOpen = useAtlasStore(s => s.isGridAlignmentOpen);
   const setGridAlignmentOpen = useAtlasStore(s => s.setGridAlignmentOpen);
   const isDiceLogOpen = useAtlasStore(s => s.isDiceLogOpen);
@@ -237,13 +235,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {/* DM screen - only for DM view */}
           {!isPlayerView && (
             <PanelBoundary name="the DM screen">
-              <DMScreen
-                isOpen={isDMScreenOpen}
-                onClose={() => {
-                  // Give CodeMirror time to clean up before closing
-                  window.setTimeout(() => setDMScreenOpen(false), 0);
-                }}
-              />
+              <DMScreenFromStore />
             </PanelBoundary>
           )}
 

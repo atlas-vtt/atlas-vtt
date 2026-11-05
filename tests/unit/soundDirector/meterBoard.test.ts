@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { faderPosition } from '@/app/react/components/dm-screen/sound/faderScale';
 import { MeterBoard, meterShare } from '@/app/react/components/dm-screen/sound/meterBoard';
 
 const levels = (values: Record<string, number>) => (into: Map<string, number>): void => {
@@ -12,7 +13,8 @@ const scale = (element: HTMLElement): number => Number(/scaleY\(([\d.]+)\)/.exec
 describe('drawing levels', () => {
   it('reads a level on the fader\'s own scale', () => {
     expect(meterShare(0)).toBe(0);
-    expect(meterShare(1)).toBeCloseTo(60 / 66, 5);
+    // 0 dB stands where a fader's thumb at 0 dB does (`faderScale`).
+    expect(meterShare(1)).toBeCloseTo(faderPosition(0), 5);
     expect(meterShare(1e-5)).toBe(0);
     expect(meterShare(10)).toBe(1);
   });
@@ -22,9 +24,9 @@ describe('drawing levels', () => {
     const fill = document.createElement('i');
     board.add(fill, 'music');
     board.draw(levels({ music: 1 }), 0.016);
-    expect(scale(fill)).toBeCloseTo(60 / 66, 2);
+    expect(scale(fill)).toBeCloseTo(faderPosition(0), 2);
     board.draw(levels({ music: 0 }), 0.2);
-    expect(scale(fill)).toBeCloseTo(60 / 66 - 0.1, 2);
+    expect(scale(fill)).toBeCloseTo(faderPosition(0) - 0.1, 2);
     fill.style.transform = 'marked';
     board.draw(levels({ music: 1e-9 }), 0);
     expect(fill.style.transform).toBe('marked');

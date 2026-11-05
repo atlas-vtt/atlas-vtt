@@ -24,6 +24,7 @@ import { isEncounterFolderLink } from '../links/atlasLinkTargets';
 import { linkedEncounterFolder } from '../encounters/encounterFolders';
 import { rollEncounterFolder } from '../encounters/encounterFolderRoll';
 import { atlasViewOfStore } from '../plugin/atlasLeaves';
+import { portalHost } from '../ui/portalHost';
 
 interface NotePinDropdownResult {
   accepted: boolean;
@@ -199,7 +200,7 @@ export class NotePinTool {
       });
 
       // ── Position & mount ──
-      document.body.appendChild(dropdown);
+      portalHost().appendChild(dropdown);
       this.pinDropdown = dropdown;
 
       const viewportEvent = new CustomEvent('get-viewport-position', {

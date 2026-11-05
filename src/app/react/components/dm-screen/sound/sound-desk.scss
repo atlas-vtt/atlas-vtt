@@ -8,6 +8,8 @@
   height: 336px;
   display: flex;
   flex-direction: column;
+  gap: $card-inset;
+  padding: $card-inset;
   background: var(--atlas-sound-well);
   box-shadow: inset 0 1px 0 $hairline, inset 0 12px 24px -16px color-mix(in oklch, black 60%, transparent);
 
@@ -26,11 +28,12 @@
 
 .atlas-sound-desk__head {
   flex-shrink: 0;
-  height: 48px;
+  height: $button-height-m;
   display: flex;
   align-items: center;
   gap: $spacing-m;
-  padding: 0 $spacing-l;
+  // Its words start where the cards' do below it.
+  padding-inline: $spacing-m;
 }
 
 .atlas-sound-desk__mix {
@@ -43,32 +46,34 @@
 
 .atlas-sound-desk__state {
   flex-shrink: 0;
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
 }
 
 .atlas-sound-desk__end {
+  // Who hears and the output are never cut: the mood's name gives way first.
+  flex-shrink: 0;
   min-width: 0;
   margin-inline-start: auto;
   display: flex;
   align-items: center;
-  gap: 14px;
-  color: var(--text-muted);
+  gap: $spacing-m;
+  color: var(--atlas-sound-muted);
 }
 
 .atlas-sound-who,
 .atlas-sound-output {
   @include bare-button;
-  @include focus-ring;
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  border-radius: $radius-s;
+  height: $button-height-m;
+  border-radius: $control-radius;
   white-space: nowrap;
   cursor: default;
 }
 
 .atlas-sound-who {
-  gap: 6px;
+  gap: $spacing-s;
 
   span {
     @include atlas-truncate;
@@ -82,14 +87,16 @@
     background: var(--color-green, var(--text-success));
   }
 
-  &[data-off] i {
+  // Not sent, or stopped: no live green beside words that say nothing is heard.
+  &[data-off] i,
+  &[data-stopped] i {
     background: var(--text-faint);
   }
 }
 
 button.atlas-sound-who,
 .atlas-sound-output {
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
   cursor: pointer;
   transition: color $transition-normal $press-ease;
 
@@ -100,7 +107,7 @@ button.atlas-sound-who,
 
 .atlas-sound-output {
   flex-shrink: 0;
-  gap: 6px;
+  gap: $spacing-s;
 
   svg {
     width: 16px;
@@ -114,15 +121,15 @@ button.atlas-sound-who,
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: $spacing-s;
-  padding: 0 $spacing-l $spacing-l;
+  gap: $card-inset;
 
   // Library rows held over the desk: the row they land in.
   &::after {
     content: '';
     position: absolute;
-    inset: (-$spacing-xs) ($spacing-l - $spacing-xs) ($spacing-l - $spacing-xs);
-    border-radius: $radius-xl;
+    inset: 0;
+    border-radius: $card-radius;
+    @include atlas-corner-shape;
     background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
     box-shadow: inset 0 0 0 $border-width-m var(--interactive-accent);
     opacity: 0;
@@ -132,6 +139,51 @@ button.atlas-sound-who,
 
   &[data-drop-target]::after {
     opacity: 1;
+  }
+}
+
+// The strips' row and the buttons that name what lies past its edges (`MoreStrips`).
+.atlas-sound-strips__view {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+// A slim tile at the edge strips lie past: beside the row, never over a fader, as tall as the strips.
+.atlas-sound-more-strips {
+  @include bare-button;
+  @include hairline-tile;
+  flex-shrink: 0;
+  width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+  background: var(--background-primary-alt);
+  color: var(--text-normal);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: center;
+  transition: background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+  @include pressable(0.98);
+
+  &[data-side='start'] {
+    margin-inline-end: $card-inset;
+  }
+
+  &[data-side='end'] {
+    margin-inline-start: $card-inset;
+  }
+
+  &:hover {
+    background: var(--background-secondary);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
   }
 }
 
@@ -145,9 +197,9 @@ button.atlas-sound-who,
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: $spacing-s;
-  margin-bottom: -$spacing-m;
-  padding-bottom: max(0px, #{$spacing-m} - var(--atlas-strips-bar, 0px));
+  gap: $card-inset;
+  margin-bottom: -$card-inset;
+  padding-bottom: max(0px, #{$card-inset} - var(--atlas-strips-bar, 0px));
   overflow: auto hidden;
 
   &[data-more-start] {
@@ -164,25 +216,64 @@ button.atlas-sound-who,
   }
 }
 
+.atlas-sound-desk__idle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-m;
+  padding: $spacing-m;
+  border: $border-width-m dashed color-mix(in oklch, var(--mono-100) 16%, transparent);
+  border-radius: $card-radius;
+  color: var(--atlas-sound-muted);
+  text-align: center;
+  @include atlas-corner-shape;
+
+  p {
+    margin: 0;
+    color: var(--text-normal);
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-medium;
+    text-wrap: balance;
+  }
+}
+
+.atlas-sound-desk__keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $spacing-m;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-sound-desk__key {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-s;
+}
+
 .atlas-sound-card {
   @include hairline-tile;
   background: var(--background-primary-alt);
 }
 
-.atlas-sound-silence {
+.atlas-sound-stop-all {
   @include bare-button;
   @include hairline-tile;
-  @include focus-ring;
   flex-shrink: 0;
   width: 132px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: $spacing-s;
   background: var(--background-primary-alt);
   color: var(--text-normal);
-  font-size: 15px;
+  font-size: $font-ui-medium;
   font-weight: $font-weight-semibold;
   transition: background-color $transition-normal $press-ease, color $transition-normal $press-ease, transform $press-ms $press-ease;
   @include pressable(0.98);
@@ -198,8 +289,7 @@ button.atlas-sound-who,
   }
 
   &[aria-pressed='true'] {
-    background: color-mix(in oklch, var(--interactive-accent) 82%, black);
-    color: var(--text-on-accent);
+    @include solid-accent;
 
     .atlas-sound-cap {
       color: var(--text-on-accent);
@@ -225,5 +315,29 @@ button.atlas-sound-who,
   .atlas-sound-desk__state {
     @include atlas-truncate;
     flex-shrink: 1;
+  }
+}
+
+// A coarse pointer (DECISIONS #24): the header's controls and the strips' mutes take 44 px, as the library's rows do.
+@media (pointer: coarse) {
+  .atlas-sound-desk__head {
+    height: 44px;
+
+    .atlas-sound-button,
+    .atlas-sound-icon,
+    .atlas-sound-who,
+    .atlas-sound-output {
+      min-width: 44px;
+      height: 44px;
+    }
+  }
+
+  .atlas-sound-strip__top {
+    height: 44px;
+
+    .atlas-sound-icon:not(.atlas-sound-strip__remove) {
+      width: 44px;
+      height: 44px;
+    }
   }
 }

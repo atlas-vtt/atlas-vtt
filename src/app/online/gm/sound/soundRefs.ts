@@ -37,6 +37,8 @@ export class SoundRefs {
   private readonly hashes = new Map<string, Promise<{ readonly hash: string; readonly size: number }>>();
   private readonly refs = new Map<string, AssetRef | null>();
   private readonly standIns = new Map<string, string>();
+  /** Keys whose reference players were handed: a sound only staged ahead is offered again when it is, so its progress reaches them. */
+  private readonly handedKeys = new Set<string>();
   /** The segments of each long sound, made once while the table runs: from its copy as it is made, else from the stored copy. */
   private readonly segments = new Map<string, Promise<LiveSegments>>();
   private queue: Promise<unknown> = Promise.resolve();
@@ -46,6 +48,11 @@ export class SoundRefs {
   /** The reference last made of a key: undefined before there was one, null where the store will not keep it. */
   known(key: string): AssetRef | null | undefined {
     return this.refs.get(key);
+  }
+
+  /** Whether players were handed the reference of a key; one only staged ahead was not. */
+  handed(key: string): boolean {
+    return this.handedKeys.has(key);
   }
 
   keys(): string[] {
@@ -77,19 +84,23 @@ export class SoundRefs {
       const segments = await this.segmentsOf(key);
       if (segments !== null) {
         const ref = await this.ports.segmentsRef(key, CODEC_VERSION, segments, { ...use, kind: 'segments' }, handed);
-        if (handed || ref === null || !this.refs.get(key)) this.refs.set(key, ref);
-        return ref;
+        return this.noted(key, ref, handed);
       }
       const { hash, size } = await this.hashOf(key);
       const ref = await this.ports.copyRef({ hash, size, mime: AUDIO_MIME_TYPE }, () => this.ports.bytes(key).then(whole), use, handed);
-      if (handed || ref === null || !this.refs.get(key)) this.refs.set(key, ref);
-      return ref;
+      return this.noted(key, ref, handed);
     } catch (error) {
       this.hashes.delete(key);
       console.error('[Atlas] Could not read a sound for players', error);
       this.refs.set(key, null);
       return null;
     }
+  }
+
+  private noted(key: string, ref: AssetRef | null, handed: boolean): AssetRef | null {
+    if (handed || ref === null || !this.refs.get(key)) this.refs.set(key, ref);
+    if (handed && ref !== null) this.handedKeys.add(key);
+    return ref;
   }
 
   /** The segments a key goes up in, or null where its stored copy is small enough to go whole. */

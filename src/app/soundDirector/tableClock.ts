@@ -10,6 +10,8 @@ export interface TableClock {
 /** One line that says who hears the table; online fills it, offline shows the output device. */
 export interface AudienceLine {
   line(): string | null;
+  /** Who each player is in it, for the line's tooltip: who hears, and why someone does not. */
+  detail(): string | null;
   onChange(listener: () => void): () => void;
 }
 

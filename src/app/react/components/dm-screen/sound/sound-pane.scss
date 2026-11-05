@@ -5,7 +5,11 @@
 // The DM screen's Sound page: one surface, the library and the moods side by side above a recessed desk.
 .atlas-sound-pane {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  // The surface's stroke as a ring just outside its box, not a border inside it: the box's own corner (24) is then
+  // what the cards are concentric with, and one $spacing-s in they round at a whole 16 (not 24 − 1.5 − 8 = 14.5).
+  @include atlas-panel-radius($radius-2xl, 0px);
+  border: none;
+  box-shadow: 0 0 0 $border-width-m color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent), $shadow-elevated;
   // How deep the desk and a fader's slot lie: darkening is all that reads as lower, on any theme.
   --atlas-sound-well: color-mix(in oklch, var(--background-primary) 93%, black);
   --atlas-sound-slot: color-mix(in oklch, black 10%, transparent);
@@ -22,6 +26,14 @@
   font-size: $font-ui-small;
   line-height: 1.35;
   -webkit-font-smoothing: antialiased;
+
+  // Accent text on a tint: a light theme's accent is too pale to be read at this size.
+  --atlas-sound-accent-text: var(--text-accent);
+  @include sound-muted-text;
+
+  .theme-light & {
+    --atlas-sound-accent-text: color-mix(in oklch, var(--text-accent) 85%, black);
+  }
 
   .theme-dark & {
     --atlas-sound-well: color-mix(in srgb, var(--background-primary) 72%, black);
@@ -54,7 +66,7 @@
 
 .atlas-sound-moods {
   @include atlas-scrollbar;
-  @include atlas-scroll-padding($spacing-l);
+  @include atlas-scroll-padding($card-inset);
   flex: 42 1 0;
   min-width: 0;
   min-height: 0;
@@ -77,26 +89,25 @@
 
   @container atlas-dm-screen (min-width: #{$breakpoint-m + 1}) {
     justify-content: flex-start;
-    padding-top: calc(12cqh - #{$spacing-l});
+    padding-top: calc(12cqh - #{$card-inset});
   }
 
   h2 {
     margin: 0;
-    font: 400 23px/1.12 var(--h3-font, inherit);
+    font: 400 #{$font-ui-large}/1.12 var(--h3-font, inherit);
     color: var(--mono-100);
     text-wrap: balance;
   }
 
   p {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--atlas-sound-muted);
     text-wrap: balance;
   }
 }
 
 .atlas-sound-icon {
   @include bare-button;
-  @include focus-ring;
   position: relative;
   flex-shrink: 0;
   width: 32px;
@@ -104,13 +115,13 @@
   display: grid;
   place-items: center;
   border-radius: $control-radius;
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
   transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease, transform $press-ms $press-ease;
   @include pressable;
 
   svg {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
     stroke-width: 1.6;
   }
 
@@ -132,9 +143,8 @@
 
 .atlas-sound-button {
   @include bare-button;
-  @include focus-ring;
   flex-shrink: 0;
-  height: 30px;
+  height: $button-height-m;
   display: inline-flex;
   align-items: center;
   gap: $spacing-xs;
@@ -148,8 +158,8 @@
   @include pressable;
 
   svg {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
   }
 
   &:hover {
@@ -160,7 +170,7 @@
 .atlas-sound-button--quiet {
   background: none;
   box-shadow: none;
-  color: var(--text-muted);
+  color: var(--atlas-sound-muted);
 
   &:hover {
     background: $hairline;
@@ -174,12 +184,12 @@
   height: 20px;
   display: inline-grid;
   place-items: center;
-  padding: 0 5px;
+  padding: 0 $spacing-xs;
   border-radius: $cap-radius;
   background: var(--atlas-sound-cap);
   box-shadow: inset 0 0 0 $border-width-s $hairline, 0 1px 0 var(--atlas-sound-cap-edge);
-  color: var(--text-muted);
-  font-size: 11px;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
   font-weight: $font-weight-semibold;
   font-variant-numeric: tabular-nums;
   @include atlas-corner-shape;
@@ -198,7 +208,7 @@
     gap: $spacing-xs;
   }
 
-  .atlas-sound-status__silence svg {
+  .atlas-sound-status__stop-all svg {
     width: $icon-xs;
     height: $icon-xs;
   }
@@ -206,7 +216,33 @@
 
 // The page plays like a game, by pointer, digits and the page keys: no control shows a focus ring
 // (owner, 2026-11-03). The arrows move no focus here either (`useSoundKeys`).
-.atlas-sound-pane :focus-visible {
+.atlas-sound-pane :focus-visible,
+.atlas-sound-popover :focus-visible {
   outline: none !important;
+}
+
+// A ring is a box-shadow on most of them; a tile's own hairline and playing ring are box-shadows too, and stay.
+.atlas-sound-pane :focus-visible:not(.atlas-sound-mood__press),
+.atlas-sound-popover :focus-visible {
   box-shadow: none !important;
+}
+
+// Where no pointer hovers (Obsidian on a tablet), what hover shows stays shown; right-click is no road there.
+@media (hover: none) {
+  .atlas-sound-pane {
+    .atlas-sound-music__quiet,
+    .atlas-sound-track__grip,
+    .atlas-sound-track__menu,
+    .atlas-sound-track__remove,
+    .atlas-sound-strip__remove,
+    .atlas-sound-mood__menu,
+    .atlas-sound-lib .atlas-sound-lib__more {
+      opacity: 1;
+    }
+  }
+}
+
+// Words for a screen reader alone, where the page shows a mark and a count instead (a tile's compact problem).
+.atlas-sound-sr {
+  @include atlas-visually-hidden;
 }

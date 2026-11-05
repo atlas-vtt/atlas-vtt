@@ -1,4 +1,4 @@
-import { CHANNEL_DB_RANGE } from '../../../../services/soundSettings';
+import { faderPosition } from './faderScale';
 
 /** How fast a meter falls, in shares of its height per second. A rise is at once. */
 const FALL_PER_SECOND = 0.5;
@@ -12,8 +12,7 @@ const BARS = [{ height: 1.1, fall: 0.5 }, { height: 1.6, fall: 0.8 }, { height: 
 /** A linear level as a share of a fader's scale, so a meter's top and a thumb read alike. */
 export function meterShare(level: number): number {
   if (level <= 0) return 0;
-  const { min, max } = CHANNEL_DB_RANGE;
-  return Math.max(0, Math.min(1, (20 * Math.log10(level) - min) / (max - min)));
+  return faderPosition(20 * Math.log10(level));
 }
 
 interface Fill {

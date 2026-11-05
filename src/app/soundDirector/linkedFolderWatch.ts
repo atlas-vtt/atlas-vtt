@@ -8,7 +8,7 @@ import type { SoundDirector } from './SoundDirector';
 
 const KINDS: readonly SoundKind[] = ['music', 'ambience'];
 /** A folder copied in arrives as many changes: they are taken together once it has gone quiet this long. */
-const SETTLE_MS = 1500;
+export const SETTLE_MS = 1500;
 
 export interface LinkedFolderDeps {
   records: RecordsSeam;

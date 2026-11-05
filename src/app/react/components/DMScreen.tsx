@@ -27,6 +27,29 @@ const PAGES: readonly SegmentedOption<DMScreenPage>[] = [
   { value: 'sound', label: t('audio.screen.sound') },
 ];
 
+/**
+ * True from the first render that shows the page until the screen closes: a page is mounted the first time it
+ * is shown and then kept while the screen stays open.
+ */
+function usePageOpened(shown: boolean, isOpen: boolean): boolean {
+  const [opened, setOpened] = useState(false);
+  if (shown && isOpen && !opened) setOpened(true);
+  if (!isOpen && opened) setOpened(false);
+  return opened;
+}
+
+/**
+ * The DM screen as the view's store opens and closes it. It reads the open state itself, so opening the screen
+ * renders the screen alone and not the map's whole interface (the toolbar would measure itself again).
+ */
+export function DMScreenFromStore(): React.JSX.Element | null {
+  const isOpen = useAtlasStore((state) => state.isDMScreenOpen);
+  const setOpen = useAtlasStore((state) => state.setDMScreenOpen);
+  // Give CodeMirror time to clean up before closing.
+  const close = useCallback((): void => { window.setTimeout(() => setOpen(false), 0); }, [setOpen]);
+  return <DMScreen isOpen={isOpen} onClose={close} />;
+}
+
 export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.Element | null {
   const tokens = useAtlasStore((state) => state.objects?.tokens || {});
   const mapPath = useAtlasStore((state) => state.mapPath);
@@ -44,9 +67,9 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   const screenRef = useRef<HTMLDivElement>(null);
   const [isNoteFocused, setIsNoteFocused] = useNoteFocus(isOpen, screenRef);
   // Mounted on first open, and kept: what it shows lives in the sound's owner anyway.
-  const [soundOpened, setSoundOpened] = useState(false);
-  if (page === 'sound' && isOpen && !soundOpened) setSoundOpened(true);
-  if (!isOpen && soundOpened) setSoundOpened(false);
+  const soundOpened = usePageOpened(page === 'sound', isOpen);
+  // The note beside the statblocks (an editor, or the picker that reads every note) waits until its page shows.
+  const statblocksOpened = usePageOpened(page === 'statblocks', isOpen);
   const leaving = usePageTurn(page, isOpen);
   /** A page at rest is shown or hidden; while pages turn, the one left slides out to its side and the one chosen in from its own. */
   const pageProps = (of: DMScreenPage): React.ComponentProps<'div'> & { 'data-page': string; 'data-from': string | undefined } => ({
@@ -138,7 +161,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
           {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
           <div className="atlas-dm-screen-content atlas-dm-page" {...pageProps('statblocks')}>
             <DMStatblocksPane app={app} shown={shown} scopeSwitch={scopeSwitch} loading={loading} onClose={handleClose} />
-            <DMNotePane app={app} onNoteFocus={() => setIsNoteFocused(true)} />
+            <DMNotePane app={app} shown={statblocksOpened} onNoteFocus={() => setIsNoteFocused(true)} />
           </div>
           {soundOn && soundOpened && (
             <div className="atlas-dm-sound-page atlas-dm-page" {...pageProps('sound')}>

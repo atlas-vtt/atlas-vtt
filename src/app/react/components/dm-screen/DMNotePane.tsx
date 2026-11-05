@@ -11,11 +11,13 @@ import { NoteContent } from './NoteContent';
 
 interface DMNotePaneProps {
   app: App;
+  /** Its page has been shown: until then neither the note nor the picker is mounted. */
+  shown: boolean;
   onNoteFocus: () => void;
 }
 
 /** Right side of the DM screen's first page: the note linked to this map. */
-export function DMNotePane({ app, onNoteFocus }: DMNotePaneProps): React.JSX.Element {
+export function DMNotePane({ app, shown, onNoteFocus }: DMNotePaneProps): React.JSX.Element {
   const linkedNotePath = useAtlasStore((state) => state.dmNotePath);
   const setLinkedNotePath = useAtlasStore((state) => state.setDMNotePath);
   const linkedNoteName = linkedNotePath?.split('/').pop()?.replace(/\.md$/, '');
@@ -49,7 +51,7 @@ export function DMNotePane({ app, onNoteFocus }: DMNotePaneProps): React.JSX.Ele
         )}
       </div>
       <div className="atlas-dm-notes-content">
-        {linkedNotePath ? <NoteContent notePath={linkedNotePath} app={app} onFocus={onNoteFocus} /> : <LinkedNotePicker app={app} onSelect={setLinkedNotePath} />}
+        {shown && (linkedNotePath ? <NoteContent notePath={linkedNotePath} app={app} onFocus={onNoteFocus} /> : <LinkedNotePicker app={app} onSelect={setLinkedNotePath} />)}
       </div>
     </div>
   );

@@ -12,8 +12,22 @@ export const CROSSFADE_SECONDS = 0.04;
 /** Decoded audio kept ahead: about 8 MB per voice. */
 const AHEAD_SECONDS = 20;
 const WINDOW_FRAMES = 5 * SOUND_RATE;
-/** What a late window aims past now, the time it takes to read and decode one. */
+/**
+ * A run's first window is short: a press waits for its decode, which grows with the window, and the windows
+ * after it are decoded while it sounds. Two seconds outlast a tick slowed to once a second (a tab in the back).
+ */
+export const FIRST_WINDOW_FRAMES = 2 * SOUND_RATE;
+/**
+ * What a late window aims past now once the run sounds, the time it takes to read and decode one, so the
+ * windows after it still land on their exact frames.
+ */
 const JOIN_LEAD_SECONDS = 0.15;
+/**
+ * What a late FIRST window aims past now: only the start margin. Nothing sounds yet that a gap could break, and
+ * a window that arrives later than this starts that much into itself, faded up, as any late start does: a press
+ * is heard as soon as its window is decoded, not a fixed 150 ms on.
+ */
+export const FIRST_JOIN_LEAD_SECONDS = START_MARGIN_SECONDS;
 const RETRY_SECONDS = 5;
 
 export interface RunDeps {
@@ -243,11 +257,12 @@ export class WindowRun extends RunBase {
     if (this.ctxFrameOf(this.next) > this.nowFrame(AHEAD_SECONDS)) return;
     // Late: what was to come is gone, so go on from where the table is now.
     const earliest = this.nowFrame();
-    if (this.ctxFrameOf(this.next) < earliest) this.next = Math.max(this.next, this.playFrameOf(this.nowFrame(JOIN_LEAD_SECONDS)));
+    const lead = this.placed ? JOIN_LEAD_SECONDS : FIRST_JOIN_LEAD_SECONDS;
+    if (this.ctxFrameOf(this.next) < earliest) this.next = Math.max(this.next, this.playFrameOf(this.nowFrame(lead)));
     if (span.endPlayFrame !== null && this.next >= span.endPlayFrame) return;
     const frame = frameInSpan(span, this.next);
     const toEnd = span.endPlayFrame === null ? Infinity : span.endPlayFrame - this.next;
-    const count = Math.min(WINDOW_FRAMES, framesToWrap(span, frame), toEnd);
+    const count = Math.min(this.placed ? WINDOW_FRAMES : FIRST_WINDOW_FRAMES, framesToWrap(span, frame), toEnd);
     const playFrame = this.next;
     this.busy = true;
     const generation = this.generation;

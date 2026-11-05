@@ -18,6 +18,9 @@ import { defaultSoundKind, type SoundChanges, type StoredSound } from '../../../
 import { SoundRecordStore } from '../../../../../soundLibrary/SoundRecordStore';
 import { addTag, cleanTag, removeTag, renameTag, tagsOfFiles, toggleTag, tracksHolding, type TrackTags } from '../../../../../soundLibrary/soundTags';
 import { confirmAction } from '../../../../../ui/confirmDialog';
+import { mayRelink, relinkSound, type MissingSound } from './relinkSound';
+import { stemOf } from '../../../../../soundLibrary/soundPaths';
+import { baseName } from '../../../../../utils/pathUtils';
 import { promptForText } from '../../../../../ui/textInputDialog';
 import { showNotice } from '../../../../../ui/notice';
 import { runInBackground } from '../../../../../utils/backgroundTask';
@@ -50,6 +53,9 @@ export interface LibraryActions {
   move: (entries: readonly LibraryEntry[], kind: SoundKind) => void;
   remove: (entries: readonly LibraryEntry[]) => void;
   forget: (sound: StoredSound) => void;
+  /** A sound whose file is not found, pointed at a file of its root the GM picks. */
+  relink: (sound: MissingSound) => void;
+  mayRelink: (kind: SoundKind) => boolean;
   edit: (files: readonly LibraryFile[], changes: SoundChanges) => void;
   /** Files' tags as the records stand at this moment, for a menu that stays open through its own changes. */
   tagsOf: (files: readonly LibraryFile[]) => TrackTags[];
@@ -132,17 +138,19 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
       remove: (entries) => {
         const task = usesOf(context, MoodStore.forApp(app), entries).then(async (uses) => {
           const sure = await confirmAction({
-            title: t('audio.library.deleteTitle', { count: entries.length }),
+            title: entries.length === 1 && entries[0] ? t('audio.library.deleteOneTitle', { name: stemOf(baseName(entries[0].path)) }) : t('audio.library.deleteTitle', { count: entries.length }),
             message: uses.moods > 0 ? [t('audio.library.deleteUses', { count: uses.moods })] : [],
-            confirmLabel: t('audio.mood.delete'),
+            confirmLabel: t('audio.library.moveToTrash'),
             destructive: true,
           });
           if (sure) await trashEntries(context, entries, uses.sounds);
         });
         run(task, 'Deleting in the library');
       },
+      relink: (sound) => relinkSound(app, library, records, sound),
+      mayRelink: (kind) => mayRelink(library, kind),
       forget: (sound) => {
-        run(confirmAction({ title: t('audio.library.forgetTitle', { name: sound.name }), message: [], confirmLabel: t('audio.mood.delete'), destructive: true }).then(async (sure) => {
+        run(confirmAction({ title: t('audio.library.forgetTitle', { name: sound.name }), message: [t('audio.library.forgetMessage')], confirmLabel: t('audio.library.forget'), destructive: true }).then(async (sure) => {
           if (sure) records.remove(sound.id);
         }), 'Forgetting a sound');
       },

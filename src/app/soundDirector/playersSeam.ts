@@ -21,10 +21,10 @@ export class PlayersSeam {
     this.changed();
   }
 
-  useAudience(audience: AudienceLine | null, show: (line: string | null) => void): void {
+  useAudience(audience: AudienceLine | null, show: (line: string | null, detail: string | null) => void): void {
     this.dropAudience?.();
-    this.dropAudience = audience?.onChange(() => show(audience.line())) ?? null;
-    show(audience?.line() ?? null);
+    this.dropAudience = audience?.onChange(() => show(audience.line(), audience.detail())) ?? null;
+    show(audience?.line() ?? null, audience?.detail() ?? null);
   }
 
   moods(): readonly Mood[] {

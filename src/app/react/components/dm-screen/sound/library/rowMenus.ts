@@ -52,7 +52,13 @@ function recordEntries(context: RowMenuContext, files: readonly LibraryFile[]): 
 /** A row's menu, the same from its ⋯, a right press and Shift+F10. */
 export function rowMenu(row: LibraryRow, context: RowMenuContext): ContextMenuEntry[] {
   const { actions, entries, moveTo, rows } = context;
-  if (row.type === 'waiting') return [{ type: 'item', label: t('audio.mood.delete'), icon: 'trash-2', destructive: true, onClick: () => actions.forget(row.sound) }];
+  if (row.type === 'waiting') {
+    return [
+      { type: 'item', label: t('audio.library.relink'), icon: 'file-search', disabled: !actions.mayRelink(row.sound.kind), onClick: () => actions.relink(row.sound) },
+      MENU_SEPARATOR,
+      { type: 'item', label: t('audio.library.forget'), icon: 'trash-2', destructive: true, onClick: () => actions.forget(row.sound) },
+    ];
+  }
   const files = filesOfRows(rows);
   return [
     { type: 'item', label: t('audio.library.preview'), icon: 'headphones', onClick: () => actions.preview(row.file) },
@@ -62,6 +68,6 @@ export function rowMenu(row: LibraryRow, context: RowMenuContext): ContextMenuEn
     tagsSubmenu(actions, files, context.rootTags),
     ...recordEntries(context, files),
     MENU_SEPARATOR,
-    { type: 'item', label: t('audio.mood.delete'), icon: 'trash-2', destructive: true, onClick: () => actions.remove(entries) },
+    { type: 'item', label: t('audio.library.moveToTrash'), icon: 'trash-2', destructive: true, onClick: () => actions.remove(entries) },
   ];
 }

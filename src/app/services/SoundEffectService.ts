@@ -22,6 +22,9 @@ export class SoundEffectService extends EventEmitter {
 
     constructor() {
         super();
+        // Howler's unlock for mobile browsers puts key and touch listeners on the document that only a
+        // press removes, and they would keep a reloaded Atlas in memory; Obsidian plays without a press.
+        Howler.autoUnlock = false;
         this.timerDingSound = this.loadSound('timerDing', timerDingSoundUrl, 'wav');
         // Howler's one context, which exists once a sound is loaded; a build without Web Audio has none.
         if (Howler.ctx) followOutputDevice(Howler.ctx);

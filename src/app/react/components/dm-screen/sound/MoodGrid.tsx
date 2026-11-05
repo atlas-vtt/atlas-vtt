@@ -7,7 +7,11 @@ import { moodProblems, type MoodProblem } from '../../../../soundDirector/moodRe
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { confirmAction } from '../../../../ui/confirmDialog';
-import { useContextMenu } from '../../../root/ContextMenuContext';
+import { useContextMenu, type ContextMenuEntry } from '../../../root/ContextMenuContext';
+import { SoundLibrary } from '../../../../soundLibrary/SoundLibrary';
+import { SoundRecordStore } from '../../../../soundLibrary/SoundRecordStore';
+import { relinkSound, type MissingSound } from './library/relinkSound';
+import { useLibraryVersion, useSoundingKey } from './library/useLibrary';
 import { useOptionalAtlasStore } from '../../../ViewStoreContext';
 import { MoodCard } from './MoodCard';
 import { MoodEditPopover } from './MoodEditPopover';
@@ -15,6 +19,8 @@ import { moodForPlayers } from './PlayersRow';
 import { useMoodDrag } from './useMoodDrag';
 import { useMoodScenes } from './useMoodScenes';
 import { useSoundValue } from './useSound';
+import { holdWord, useSoundHold } from './soundHold';
+import { SOUND_KEYS } from './useSoundKeys';
 
 interface MoodGridProps {
   app: App;
@@ -41,7 +47,13 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
   const activeId = useSoundValue(director, (snapshot) => snapshot.mix.mood?.id ?? null);
   const shelfRevision = useSoundValue(director, (snapshot) => snapshot.shelfRevision);
   const playersRevision = useSoundValue(director, (snapshot) => snapshot.playersRevision);
-  const silenced = useSoundValue(director, ({ mix }) => mix.table.silenced);
+  const hold = useSoundHold(director);
+  const ambiencePlays = useSoundValue(director, ({ mix }) => mix.table.layers.length > 0);
+  // Paused music under ambience that plays on: the tile says which part is held.
+  const stateWord = hold === 'paused' && ambiencePlays ? t('audio.musicPaused') : holdWord(hold);
+  // The playing tile names what plays now, which a track pressed in the library may have replaced.
+  const soundingKey = useSoundingKey(director);
+  const soundingName = soundingKey === null ? null : (director.shelf.recordOfKey(soundingKey)?.name ?? null);
 
   const closeEditor = useCallback((): void => setEditing(null), []);
   const canMove = useCallback((mood: Mood) => !store.isReadOnly(mood.id), [store]);
@@ -51,30 +63,47 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
     if (!consumeClick()) director.press(mood);
   }, [consumeClick, director]);
 
+  // A file gone from disk changes the library, not the shelf: both are read again for it.
+  const libraryVersion = useLibraryVersion(SoundLibrary.forApp(app));
+  const problems = useMemo(() => new Map(moods.map((mood) => [mood.id, moodProblems(mood, director.shelf)])), [director, moods, shelfRevision, libraryVersion]);
+
   const openMenu = useCallback((mood: Mood, anchor: HTMLElement): void => {
     const box = anchor.getBoundingClientRect();
+    const at = moods.findIndex((one) => one.id === mood.id);
     const readOnly = store.isReadOnly(mood.id);
     menu.open([
       { type: 'item', label: t('audio.mood.edit'), disabled: readOnly, ...(readOnly && { description: t('audio.mood.readOnly') }), onClick: () => setEditing({ mood, tile: anchor.closest<HTMLElement>('.atlas-sound-mood') ?? anchor }) },
       { type: 'item', label: t('audio.mood.duplicate'), onClick: () => store.createMood({ ...moodMix(mood), name: t('audio.mood.copyName', { name: mood.name }) }) },
+      // The order is the keys' 1–9 and 0: earlier and later without a drag, as Alt with the arrows does on a tile.
+      { type: 'item', label: t('audio.mood.moveEarlier'), detail: SOUND_KEYS.moodEarlier, disabled: !canMove(mood) || at <= 0, onClick: () => moveMood(mood, at - 1) },
+      { type: 'item', label: t('audio.mood.moveLater'), detail: SOUND_KEYS.moodLater, disabled: !canMove(mood) || at < 0 || at >= moods.length - 1, onClick: () => moveMood(mood, at + 1) },
       { type: 'item', label: t('audio.mood.linkScene'), checked: sceneSound?.mood === mood.id, disabled: !hasScene, onClick: () => setSceneSound?.(withLink(sceneSound, 'mood', mood.id)) },
       { type: 'item', label: t('audio.mood.linkCombat'), checked: sceneSound?.combatMood === mood.id, disabled: !hasScene, onClick: () => setSceneSound?.(withLink(sceneSound, 'combatMood', mood.id)) },
+      ...relinkEntries(problems.get(mood.id) ?? NO_PROBLEMS, (record) => relinkSound(app, SoundLibrary.forApp(app), SoundRecordStore.forApp(app), record)),
       { type: 'item', label: t('audio.mood.delete'), destructive: true, disabled: readOnly, onClick: () => void confirmDelete(store, mood) },
-    ], { x: box.left, y: box.bottom }, { returnFocus: anchor });
-  }, [hasScene, menu, sceneSound, setSceneSound, store]);
+    ], { x: box.left, y: box.bottom }, { returnFocus: anchor, label: t('audio.moodMenu', { name: mood.name }) });
+  }, [app, canMove, hasScene, menu, moods, moveMood, problems, sceneSound, setSceneSound, store]);
 
   // Copies a mood names are made before anyone presses it.
   useEffect(() => {
     director.shelf.request(moods.flatMap((mood) => director.shelf.recordsOf(mood)));
   }, [director, moods, shelfRevision]);
 
-  const problems = useMemo(() => new Map(moods.map((mood) => [mood.id, moodProblems(mood, director.shelf)])), [director, moods, shelfRevision]);
   const forPlayers = useMemo(() => new Map(moods.map((mood) => [mood.id, moodForPlayers(mood, director)])), [director, moods, shelfRevision, playersRevision]);
   const musicNames = useMemo(() => new Map(moods.map((mood) => [mood.id, firstTrackName(mood, director)])), [director, moods, shelfRevision]);
   const activeAt = shown.findIndex((mood) => mood.id === activeId);
   const nextId = shown.length > 1 ? shown[(activeAt + 1) % shown.length]?.id : undefined;
 
   return (
+    <>
+    {/* A heading for the region, with what adds to it: no half tile peeking under the fold. */}
+    <div className="atlas-sound-moods__head">
+      <h2 className="atlas-sound-section">{t('audio.mood.title')}</h2>
+      <button type="button" className="atlas-sound-button atlas-sound-button--quiet" onClick={onNewMood}>
+        <Plus aria-hidden="true" />
+        {t('audio.mood.new')}
+      </button>
+    </div>
     <div className="atlas-sound-moods__grid" ref={gridRef}>
       {shown.map((mood, index) => (
         <MoodCard
@@ -82,8 +111,9 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
           mood={mood}
           number={index + 1}
           playing={mood.id === activeId}
-          silenced={silenced}
-          musicName={musicNames.get(mood.id) ?? null}
+          stateWord={stateWord}
+          still={hold !== null}
+          musicName={(mood.id === activeId ? soundingName : null) ?? musicNames.get(mood.id) ?? null}
           next={mood.id === nextId}
           dragging={mood.id === draggingId}
           problems={problems.get(mood.id) ?? NO_PROBLEMS}
@@ -96,20 +126,24 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
           onDragStart={start}
         />
       ))}
-      <button type="button" className="atlas-sound-ghost" onClick={onNewMood}>
-        <Plus aria-hidden="true" />
-        {t('audio.mood.new')}
-      </button>
       {editing && <MoodEditPopover mood={editing.mood} anchor={editing.tile} onClose={closeEditor} onSave={(changed) => {
         store.saveMood(changed);
         // The mood that plays takes its new space at once, as pressing it again would.
         if (changed.id === activeId && changed.room) director.desk.setRoom(changed.room);
       }} />}
     </div>
+    </>
   );
 }
 
 const moodMix = ({ id: _id, order: _order, ...mix }: Mood): Omit<Mood, 'id' | 'order'> => mix;
+
+/** A Relink for each track of the mood whose file is not found, where the mood's own menu is. */
+function relinkEntries(problems: readonly MoodProblem[], relink: (sound: MissingSound) => void): ContextMenuEntry[] {
+  return problems.flatMap((problem): ContextMenuEntry[] => (problem.kind === 'missing'
+    ? [{ type: 'item', label: t('audio.mood.relink', { name: problem.name }), icon: 'file-search', onClick: () => relink(problem.record) }]
+    : []));
+}
 
 function firstTrackName(mood: Mood, director: SoundDirector): string | null {
   const first = typeof mood.music === 'object' ? mood.music.tracks[0] : undefined;

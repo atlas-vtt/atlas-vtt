@@ -115,6 +115,7 @@ export class OnlineTable {
       send: (body, to) => this.connection.send(body, to),
       sendTime: (t1) => this.connection.sendTime(t1),
       connected: () => [...this.connection.connected],
+      nameOf: (player) => ownership.nameOf(player),
     });
     this.openScenes = this.assets === null ? null : new OpenScenes(app, this.assets.storing);
     const stored = this.assets?.storing;

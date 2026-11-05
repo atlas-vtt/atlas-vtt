@@ -53,7 +53,7 @@ describe('what keeps a mood from sounding whole', () => {
     const asked = mood('m', 1, { layers: [{ sound: 'rain', levelDb: 0 }, { sound: 'gone', levelDb: 0 }] });
     expect(moodProblems(asked, shelf)).toEqual([{ kind: 'deleted' }]);
     states.hasFile = false;
-    expect(moodProblems(asked, shelf)[0]).toEqual({ kind: 'missing', name: 'Rain' });
+    expect(moodProblems(asked, shelf)[0]).toMatchObject({ kind: 'missing', name: 'Rain' });
     states.hasFile = true;
     expect(moodProblems(asked, { ...shelf, stateOf: () => ({ state: 'refused', reason: 'empty' }) })[0]).toEqual({ kind: 'refused', name: 'Rain', reason: 'empty' });
     expect(moodProblems(asked, { ...shelf, stateOf: () => ({ state: 'converting', progress: 0.5 }) })[0]).toEqual({ kind: 'converting', name: 'Rain' });
@@ -95,7 +95,7 @@ describe('the keys', () => {
     expect(arrowDirection('ArrowUp')).toBe('up');
   });
 
-  it('next mood and Silence show only while sound is switched on, and only to the GM', () => {
+  it('next mood and Stop all show only while sound is switched on, and only to the GM', () => {
     const ids = (player: boolean, on: boolean): string[] => availableHotkeys(player, () => on).map(({ id }) => id);
     expect(ids(false, false)).not.toContain('nextMood');
     expect(ids(false, true)).toEqual(expect.arrayContaining(['nextMood', 'silence']));

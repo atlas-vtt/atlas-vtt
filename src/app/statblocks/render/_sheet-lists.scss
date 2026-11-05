@@ -47,7 +47,9 @@
     font-size: $font-ui-small;
     line-height: var(--line-height-normal);
 
-    > * + * {
+    // Not `> * + *`: a sibling combinator after a bare `*` restyles the whole window whenever an element is put
+    // at the start of <body> (a menu's focus guard). `:where()` keeps the specificity of `* + *`.
+    > :where(:not(:first-child)) {
       margin-top: $spacing-s;
     }
   }
@@ -81,7 +83,7 @@
   .atlas-sb-spells-block {
     font-size: $font-ui-small;
 
-    > * + * {
+    > :where(:not(:first-child)) {
       margin-top: $spacing-s;
     }
   }

@@ -313,14 +313,14 @@ describe('editing tags', () => {
       expect(titles()).toEqual(['a', 'b', 'c', 'd']);
     });
 
-    it('Play all plays what is listed; Play these only what the tags leave', async () => {
+    it('Play all plays what is listed, and Play tagged what the tags leave', async () => {
       const list = vi.spyOn(rig.director.desk, 'playList').mockImplementation(() => undefined);
       vi.spyOn(rig.director, 'tap').mockImplementation(() => undefined);
       pressButton('Play all');
       await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
       expect(list.mock.calls[0]?.[0].map((sound) => sound.name)).toEqual(['a', 'b', 'c', 'd']);
       fireEvent.click(tagRow('Bosses'));
-      pressButton('Play these');
+      pressButton('Play tagged');
       await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
       expect(list.mock.calls[1]?.[0].map((sound) => sound.name)).toEqual(['d']);
     });

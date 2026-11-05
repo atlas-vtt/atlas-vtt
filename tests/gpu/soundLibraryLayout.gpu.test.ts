@@ -63,7 +63,7 @@ async function withMoods(opened: LibraryRig): Promise<void> {
 function expectTilesRead(columns: number): void {
   const tiles = [...document.querySelectorAll('.atlas-sound-mood')].map((tile) => tile.getBoundingClientRect());
   expect(tiles.filter((tile) => tile.top === tiles[0]?.top)).toHaveLength(columns);
-  expect(new Set(tiles.map((tile) => Math.round(tile.height)))).toEqual(new Set([116]));
+  expect(new Set(tiles.map((tile) => Math.round(tile.height)))).toEqual(new Set([104]));
   for (const tile of document.querySelectorAll<HTMLElement>('.atlas-sound-mood')) {
     // The crest is a watermark: the lines run over it, to the tile's padding.
     const press = box('.atlas-sound-mood__press', tile);
@@ -107,7 +107,7 @@ describe('the sound library', () => {
     await open();
     await pressTag('Battle');
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(14);
-    expect(box('.atlas-sound-lib__rail').width).toBeGreaterThanOrEqual(208);
+    expect(box('.atlas-sound-lib__rail').width).toBeGreaterThanOrEqual(192);
     expect(box('.atlas-sound-lib__rail').width).toBeLessThanOrEqual(232);
     // 58 % up to 860 px: past it the moods take the room.
     expect(box('.atlas-sound-lib').width).toBeCloseTo(860, 0);
@@ -118,7 +118,7 @@ describe('the sound library', () => {
     expect(box('.atlas-sound-lib__row').height).toBe(38);
     // The rail names what is shown, so the head has no heading: the search starts at its left.
     expect(document.querySelector('.atlas-sound-lib__crumb')).toBeNull();
-    expect(box('.atlas-sound-lib__search').left - box('.atlas-sound-lib__main').left).toBe(16);
+    expect(box('.atlas-sound-lib__search').left - box('.atlas-sound-lib__main').left).toBe(8);
     const row = rowNamed('The last gate');
     const action = row.querySelector<HTMLElement>('.atlas-sound-lib__act')!;
     expect(getComputedStyle(action).opacity).toBe('0');
@@ -150,11 +150,11 @@ describe('the sound library', () => {
     await page.screenshot({ path: `${SHOTS}/library-1800.png`, element: LIBRARY_SHOT(frame!.host) });
   });
 
-  it('keeps name, state and length readable at 1280, the action over the state, and what does not fit in the head in a menu', async () => {
+  it('keeps name, state and length readable at 1280, the action over the length, and what does not fit in the head in a menu', async () => {
     await open(ATLAS_DARK, 1280, 800);
     await pressTag('Battle');
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBeGreaterThan(4);
-    expect(box('.atlas-sound-lib__rail').width).toBe(208);
+    expect(box('.atlas-sound-lib__rail').width).toBe(192);
     expect(box('.atlas-sound-lib').width / 1280).toBeCloseTo(0.58, 1);
     expectNoOverflow();
     const row = rowNamed('Riders at the treeline');
@@ -162,8 +162,14 @@ describe('the sound library', () => {
     expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
     await userEvent.hover(row);
     await expect.poll(() => getComputedStyle(row.querySelector('.atlas-sound-lib__act')!).opacity).toBe('1');
-    expect(box('.atlas-sound-lib__act', row).left).toBeGreaterThan(box('.atlas-sound-lib__title', row).left);
-    expect(box('.atlas-sound-lib__act', row).right).toBeLessThanOrEqual(box('.atlas-sound-lib__length', row).left + 1);
+    // A glyph in the length's place: the name keeps its room while the row is pointed at.
+    const act = box('.atlas-sound-lib__act', row);
+    const length = box('.atlas-sound-lib__length', row);
+    expect(act.left).toBeGreaterThanOrEqual(length.left - 1);
+    expect(act.right).toBeLessThanOrEqual(length.right + 1);
+    expect(act.width).toBe(28);
+    expect(getComputedStyle(row.querySelector('.atlas-sound-lib__length')!).visibility).toBe('hidden');
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
     expect(getComputedStyle(document.querySelector('.atlas-sound-lib__btn--folds')!).display).toBe('none');
     await withMoods(rig!);
     expectTilesRead(2);
@@ -211,8 +217,8 @@ describe('the sound library', () => {
     await expect.poll(() => getComputedStyle(selected).color).toBe('rgb(229, 113, 113)');
     // A flex button whose content starts at its edge says so itself: Obsidian centres what a button holds.
     expect(getComputedStyle(selected).justifyContent).toBe('flex-start');
-    expect(selected.getBoundingClientRect().height).toBe(30);
-    expect(selected.querySelector('.atlas-sound-lib__glyph')!.getBoundingClientRect().left - selected.getBoundingClientRect().left).toBe(26);
+    expect(selected.getBoundingClientRect().height).toBe(28);
+    expect(selected.querySelector('.atlas-sound-lib__glyph')!.getBoundingClientRect().left - selected.getBoundingClientRect().left).toBe(24);
     expect(selected.querySelector('small')!.getBoundingClientRect().right).toBeCloseTo(selected.getBoundingClientRect().right - 8, 0);
 
     await page.screenshot({ path: `${SHOTS}/library-tags.png`, element: LIBRARY_SHOT(frame!.host) });
@@ -286,9 +292,10 @@ describe('the sound library', () => {
     await pressTag('Battle');
     await userEvent.hover(rowNamed('The last gate'));
     await settled();
-    const solid = getComputedStyle(document.querySelector('.atlas-sound-lib__btn--solid')!);
-    expect(solid.backgroundColor).toBe('rgb(112, 93, 207)');
-    expect(solid.color).toBe('rgb(255, 255, 255)');
+    // Play is a quiet button (the moods lead the page), and says what it plays: here what the tag leaves.
+    const play = [...document.querySelectorAll<HTMLElement>('.atlas-sound-lib__head .atlas-sound-lib__btn')].find((button) => button.textContent === 'Play tagged')!;
+    expect(play.classList.contains('atlas-sound-lib__btn--solid')).toBe(false);
+    expect(getComputedStyle(play).color).not.toBe('rgb(255, 255, 255)');
     await page.screenshot({ path: `${SHOTS}/library-light.png`, element: LIBRARY_SHOT(frame!.host) });
   });
 
@@ -431,7 +438,7 @@ describe('the sound library', () => {
     rig.mount(frame.host, PAGE);
     await settled();
     expect(document.querySelector('.atlas-sound-lib__where')?.textContent).toBe('Not linked on this device');
-    await expect.poll(() => rowNamed('Road to Wolfhaven').querySelector('.atlas-sound-lib__state')?.textContent).toBe('Waiting for the file');
+    await expect.poll(() => rowNamed('Road to Wolfhaven').querySelector('.atlas-sound-lib__state')?.textContent).toBe('Not on this device');
     await page.screenshot({ path: `${SHOTS}/library-not-linked.png`, element: LIBRARY_SHOT(frame.host) });
   });
 

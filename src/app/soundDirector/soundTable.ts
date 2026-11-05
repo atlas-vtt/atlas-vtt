@@ -3,6 +3,7 @@ import type { TableSound } from '../sound/soundTypes';
 import { soundingTrack } from './musicList';
 import { notePlayed } from './playedTracks';
 import { EMPTY_MIX, withStopStillMeant, type MixTiming, type SoundMix } from './soundMix';
+import { pauseOnShiftedClock, withPauseStillMeant } from './musicPause';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
 import { applyDueListChange } from './trackEnd';
@@ -71,8 +72,10 @@ export class SoundTable {
 
   /** The clock itself jumped by this much: its first answer from the table, on a machine whose own clock is off. */
   clockStepped(deltaMs: number): void {
-    const { table } = this.current;
-    if (table.silenced || table.music || table.layers.length > 0 || table.outgoing.length > 0 || table.outgoingLayers.length > 0) this.commit({ ...this.current, table: onShiftedClock(table, deltaMs) });
+    const { table, paused } = this.current;
+    if (table.silenced || table.music || table.layers.length > 0 || table.outgoing.length > 0 || table.outgoingLayers.length > 0 || paused) {
+      this.commit({ ...this.current, table: onShiftedClock(table, deltaMs), ...(paused && { paused: pauseOnShiftedClock(paused, deltaMs) }) });
+    }
   }
 
   timing(): MixTiming {
@@ -80,7 +83,7 @@ export class SoundTable {
   }
 
   commit(asked: SoundMix): void {
-    const next = withStopStillMeant(asked, this.now());
+    const next = withPauseStillMeant(withStopStillMeant(asked, this.now()));
     if (next === this.current) return;
     const tableChanged = next.table !== this.current.table;
     this.current = next;
@@ -88,7 +91,10 @@ export class SoundTable {
       // A press holds what it opened; anything else that begins to sound opens it here.
       if (!this.output.isOpen && isPlaying(next.table, this.now())) this.output.ensureRunning();
       this.output.setState(next.table);
-      this.shelf.pinOnly(keysOf(next.table));
+      // A paused list keeps its copies: it resumes from them.
+      const pinned = keysOf(next.table);
+      for (const track of next.paused?.play.tracks ?? []) pinned.add(track.key);
+      this.shelf.pinOnly(pinned);
     }
     if (this.isBusy()) this.keepPulsing();
     this.host.onMix(next, tableChanged);

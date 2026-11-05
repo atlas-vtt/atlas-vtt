@@ -1,0 +1,95 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
+
+// ---- Reverb send ----
+// A desk's send knob above the fader: a ring open at the bottom, filling in the accent with the amount.
+// Strips without one keep the row empty, so every fader starts at the same height.
+.atlas-sound-strip__send {
+  flex-shrink: 0;
+  height: 32px;
+  // Clear of the fader's thumb, which stands half above its track at full level.
+  margin-bottom: 4px;
+  display: grid;
+  place-items: center;
+}
+
+.atlas-sound-knob {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: $radius-full;
+  color: var(--atlas-sound-muted);
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  transition: color 150ms $press-ease;
+
+  > svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    // The arc's start, at the bottom left, turning clockwise.
+    rotate: 135deg;
+    overflow: visible;
+  }
+
+  circle {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  &[aria-disabled] {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:not([aria-disabled]):hover {
+      color: var(--text-normal);
+    }
+  }
+}
+
+.atlas-sound-knob__track {
+  stroke: color-mix(in oklch, var(--mono-100) 45%, transparent);
+}
+
+.atlas-sound-knob__fill {
+  stroke: var(--interactive-accent);
+  transition: stroke-dasharray 120ms $press-ease;
+
+  // While held it follows the pointer, which a transition would only lag.
+  [data-held] > svg > & {
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.atlas-sound-knob__value {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+
+  svg {
+    position: static;
+    width: 12px;
+    height: 12px;
+    rotate: none;
+  }
+
+  [data-wet] > & {
+    color: var(--text-normal);
+  }
+}

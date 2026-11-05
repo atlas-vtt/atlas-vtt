@@ -10,9 +10,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: $spacing-s 6px 10px;
-  transition: opacity 400ms $press-ease;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  transition: opacity $transition-normal $press-ease;
 
   &[data-muted] {
     opacity: 0.55;
@@ -35,10 +35,10 @@
   }
 }
 
-// In the music card, whose padding is another: the margins bring its fader level with the others'.
+// In the music card, whose padding is a step wider: the margins bring its fader level with the others'.
 .atlas-sound-strip--music {
   width: 64px;
-  margin-block: -6px -2px;
+  margin-block: -($spacing-m - $spacing-s);
   padding: 0;
 }
 
@@ -57,7 +57,7 @@
     &:not(.atlas-sound-strip__remove)::after {
       content: '';
       position: absolute;
-      inset: -6px;
+      inset: -$spacing-xs;
     }
   }
 }
@@ -110,6 +110,9 @@
   justify-content: center;
   cursor: pointer;
   touch-action: none;
+  // The thumb's press area reaches past the rail's ends by half the thumb, never onto the knob or the level.
+  overflow: clip;
+  overflow-clip-margin: 8px;
 }
 
 .atlas-sound-meter {
@@ -118,7 +121,7 @@
   overflow: hidden;
   border-radius: $radius-full;
   background: var(--atlas-sound-slot);
-  box-shadow: inset 0 0 0 $border-width-s $hairline;
+  box-shadow: inset 0 0 0 $border-width-s $control-line;
 
   i {
     position: absolute;
@@ -153,13 +156,13 @@
 
 .atlas-sound-fader__thumb {
   position: absolute;
-  top: -7px;
+  top: -8px;
   left: 50%;
   z-index: 1;
-  width: 30px;
-  height: 14px;
-  margin-inline-start: -15px;
-  border-radius: calc(#{$radius-s} + 1px);
+  width: 32px;
+  height: 16px;
+  margin-inline-start: -16px;
+  border-radius: $cap-radius;
   background: linear-gradient(
     color-mix(in oklch, var(--mono-100) 20%, var(--background-secondary)),
     color-mix(in oklch, var(--mono-100) 6%, var(--background-secondary))
@@ -172,8 +175,9 @@
   &::after {
     content: '';
     position: absolute;
-    inset: 6.5px 7px auto;
-    height: 1px;
+    inset: 7px $spacing-s auto;
+    height: 2px;
+    border-radius: $radius-full;
     background: var(--interactive-accent);
   }
 
@@ -181,14 +185,11 @@
     cursor: grabbing;
   }
 
-  &:focus-visible {
-    outline: $border-width-l solid var(--background-modifier-border-focus);
-    outline-offset: 1px;
-    box-shadow: none;
-  }
-
-  &:focus {
-    outline-offset: 1px;
+  // The cap is drawn 16 px high; it takes a press 44 px high (the rail's clip keeps it on the rail).
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -14px (-$spacing-s);
   }
 }
 
@@ -198,25 +199,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: $spacing-xs;
 }
 
-// Takes no room until the strip is hovered: then the level moves aside for it.
+// The reset always keeps its room beside the level; until the strip is hovered the level stands half that
+// room aside, so it is centred, and the reset waits unseen. Only transforms move.
+$reset-shift: calc((16px + #{$spacing-xs}) / 2);
+
+.atlas-sound-fader__foot .atlas-sound-fader__value,
+.atlas-sound-fader__foot .atlas-sound-fader__reset {
+  transition: transform $press-ms $press-ease, opacity $transition-fast $press-ease, color $transition-normal $press-ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity $transition-fast $press-ease;
+  }
+}
+
+.atlas-sound-fader__foot .atlas-sound-fader__value {
+  transform: translateX($reset-shift);
+}
+
 .atlas-sound-fader__foot .atlas-sound-fader__reset {
   position: relative;
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin-inline-start: -16px;
+  // 24 px to press, in the 16 px the foot gives it: it reaches into the gaps above and below, never the rail.
+  width: 24px;
+  height: 24px;
+  margin: -$spacing-xs;
   opacity: 0;
   transform: scale(0.6);
   pointer-events: none;
-  transition: opacity $transition-fast $press-ease, transform $press-ms $press-ease, margin-inline-start $press-ms $press-ease, color $transition-normal $press-ease;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: -6px;
-  }
 
   svg {
     width: 12px;
@@ -231,135 +243,47 @@
       transform: rotate(-45deg);
     }
   }
+}
 
-  @media (hover: none) {
-    margin-inline-start: $spacing-xs;
-    opacity: 1;
+.atlas-sound-strip:hover .atlas-sound-fader__foot,
+.atlas-sound-strip:focus-within .atlas-sound-fader__foot {
+  .atlas-sound-fader__value,
+  .atlas-sound-fader__reset {
     transform: none;
-    pointer-events: auto;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
+  .atlas-sound-fader__reset {
+    opacity: 1;
+    pointer-events: auto;
+
+    &:active:not(:disabled) svg {
+      transform: scale(0.85);
+    }
+
+    &:disabled {
+      opacity: 0.35;
+    }
   }
 }
 
-.atlas-sound-strip:hover .atlas-sound-fader__foot .atlas-sound-fader__reset,
-.atlas-sound-strip:focus-within .atlas-sound-fader__foot .atlas-sound-fader__reset {
-  margin-inline-start: $spacing-xs;
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
+@media (hover: none) {
+  .atlas-sound-fader__foot {
+    .atlas-sound-fader__value,
+    .atlas-sound-fader__reset {
+      transform: none;
+    }
 
-  &:active:not(:disabled) {
-    transform: scale(0.85);
-  }
-
-  &:disabled {
-    opacity: 0.35;
+    .atlas-sound-fader__reset {
+      opacity: 1;
+      pointer-events: auto;
+    }
   }
 }
 
 .atlas-sound-fader__value {
   flex-shrink: 0;
-  color: var(--text-muted);
-  font-size: 11px;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-// ---- Reverb send ----
-// A desk's send knob above the fader: a ring open at the bottom, filling in the accent with the amount.
-// Strips without one keep the row empty, so every fader starts at the same height.
-.atlas-sound-strip__send {
-  flex-shrink: 0;
-  height: 32px;
-  // Clear of the fader's thumb, which stands half above its track at full level.
-  margin-bottom: 4px;
-  display: grid;
-  place-items: center;
-}
-
-.atlas-sound-knob {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: $radius-full;
-  color: var(--text-faint);
-  cursor: ns-resize;
-  touch-action: none;
-  user-select: none;
-  transition: color 150ms $press-ease;
-
-  > svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    // The arc's start, at the bottom left, turning clockwise.
-    rotate: 135deg;
-    overflow: visible;
-  }
-
-  circle {
-    fill: none;
-    stroke-width: 3;
-    stroke-linecap: round;
-  }
-
-  &[aria-disabled] {
-    opacity: 0.4;
-    cursor: default;
-  }
-
-  &:focus-visible {
-    outline: $border-width-l solid var(--background-modifier-border-focus);
-    outline-offset: 1px;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    &:not([aria-disabled]):hover {
-      color: var(--text-muted);
-    }
-  }
-}
-
-.atlas-sound-knob__track {
-  stroke: color-mix(in oklch, var(--mono-100) 14%, transparent);
-}
-
-.atlas-sound-knob__fill {
-  stroke: var(--interactive-accent);
-  transition: stroke-dasharray 120ms $press-ease;
-
-  // While held it follows the pointer, which a transition would only lag.
-  [data-held] > svg > & {
-    transition: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-}
-
-.atlas-sound-knob__value {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 10px;
-  font-weight: $font-weight-semibold;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-
-  svg {
-    position: static;
-    width: 12px;
-    height: 12px;
-    rotate: none;
-  }
-
-  [data-wet] > & {
-    color: var(--text-normal);
-  }
 }

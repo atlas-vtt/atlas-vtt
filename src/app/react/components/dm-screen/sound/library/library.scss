@@ -31,11 +31,6 @@
     @include atlas-corner-shape;
   }
 
-  :focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
-  }
-
   // Black would make a grey well of a white page.
   @at-root .theme-light #{&} {
     --atlas-sound-lib-well: var(--background-secondary);
@@ -54,20 +49,20 @@
 }
 
 .atlas-sound-lib__triangle {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   fill: currentColor;
 }
 
 // ---- Rail ----
 
 .atlas-sound-lib__rail {
-  width: clamp(208px, 24cqi, 232px);
+  width: clamp(192px, 24cqi, 232px);
   flex-shrink: 0;
   padding: $spacing-s;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: $spacing-s;
   overflow: auto;
   box-shadow: inset -1px 0 0 var(--atlas-sound-lib-hairline);
 }
@@ -76,7 +71,7 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  gap: 2px;
+  gap: $spacing-xs;
 
   > * {
     flex-shrink: 0;
@@ -90,13 +85,12 @@
   // Its middle on the head's, 56 px high, from one inset down.
   height: 40px;
   padding-right: $spacing-s;
-  border-radius: 9px;
+  border-radius: $radius-m;
   transition: background-color 120ms var(--atlas-sound-lib-press);
 
   small {
-    margin-left: auto;
-    color: var(--text-faint);
-    font-size: 11px;
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
     font-variant-numeric: tabular-nums;
     transition: opacity 120ms var(--atlas-sound-lib-press);
   }
@@ -148,8 +142,8 @@
 
 .atlas-sound-lib__where {
   padding: 0 $spacing-s $spacing-s 32px;
-  color: var(--text-faint);
-  font-size: 11px;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -158,9 +152,9 @@
 .atlas-sound-lib .atlas-sound-lib__link {
   align-self: flex-start;
   margin-left: 32px;
-  height: 26px;
-  padding: 0 10px;
-  border-radius: 8px;
+  height: 28px;
+  padding: 0 $spacing-s;
+  border-radius: $radius-m;
   background: var(--background-secondary);
   box-shadow: inset 0 0 0 1px var(--atlas-sound-lib-hairline);
   font-weight: $font-weight-medium;
@@ -172,14 +166,48 @@
 
   small {
     margin-left: $spacing-s;
-    color: var(--text-muted);
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
     font-weight: $font-weight-normal;
   }
 
   &:disabled {
     cursor: progress;
     opacity: 1;
-    color: var(--text-muted);
+    color: var(--atlas-sound-muted);
+  }
+}
+
+// A failed download says so on two lines: what happened (and that a press tries again), then what to check.
+.atlas-sound-lib .atlas-sound-lib__starter[data-failed] {
+  max-width: 100%;
+  height: auto;
+  // Its two lines wrap inside the rail rather than widen it.
+  white-space: normal;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-xs;
+  padding-block: $spacing-xs;
+  text-align: start;
+
+  small {
+    display: block;
+    margin-left: 0;
+    font-size: $font-ui-smaller;
+  }
+}
+
+.atlas-sound-lib__starter-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+
+  svg {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    color: var(--text-warning);
   }
 }
 
@@ -201,8 +229,8 @@
 
   .atlas-sound-lib__more {
     position: absolute;
-    top: 1px;
-    right: 1px;
+    top: 0;
+    right: 0;
   }
 
   &:hover .atlas-sound-lib__more,
@@ -222,11 +250,12 @@
   justify-content: flex-start;
   gap: $spacing-s;
   width: 100%;
-  height: 30px;
+  height: 28px;
   // Under the root's name, as what belongs to it.
-  padding: 0 $spacing-s 0 26px;
-  border-radius: 8px;
-  color: var(--text-muted);
+  padding: 0 $spacing-s 0 $spacing-l + $spacing-s;
+  border-radius: $radius-m;
+  // A tag's name reads in the normal text colour; under its root by indent and weight, its count muted.
+  color: var(--text-normal);
   text-align: left;
   transition: background-color 120ms var(--atlas-sound-lib-press), color 120ms var(--atlas-sound-lib-press);
 
@@ -235,7 +264,9 @@
     color: var(--text-normal);
   }
 
+  // The name takes the room, so the count stands at the end with no auto margin.
   span {
+    flex: 1;
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -243,16 +274,15 @@
   }
 
   small {
-    margin-left: auto;
-    color: var(--text-faint);
-    font-size: 11px;
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
     font-variant-numeric: tabular-nums;
   }
 }
 
 .atlas-sound-lib .atlas-sound-lib__tag--selected {
   background: var(--background-secondary);
-  color: var(--text-accent);
+  color: var(--atlas-sound-accent-text);
 }
 
 // ---- Nothing linked ----
@@ -276,7 +306,7 @@
   h2 {
     margin: 0;
     font-family: var(--h3-font, var(--font-interface));
-    font-size: 23px;
+    font-size: $font-ui-large;
     font-weight: 400;
     line-height: 1.12;
     color: var(--mono-100);
@@ -286,15 +316,37 @@
   p {
     margin: 0;
     max-width: 46ch;
-    color: var(--text-muted);
+    color: var(--atlas-sound-muted);
     text-wrap: balance;
   }
 }
 
 .atlas-sound-lib__nolink-actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: $spacing-s;
   margin-top: $spacing-s;
+}
+
+.atlas-sound-lib__nolink-row {
+  display: flex;
+  justify-content: center;
+  gap: $spacing-s;
+}
+
+// Where nothing hovers, a root's and a tag's ⋯ stand shown: their counts step aside for them.
+@media (hover: none) {
+  .atlas-sound-lib__root small,
+  .atlas-sound-lib__tag-line small {
+    margin-inline-end: 32px;
+  }
+
+  // On the row's middle, whatever height a coarse pointer gives the button.
+  .atlas-sound-lib__root .atlas-sound-lib__more,
+  .atlas-sound-lib__tag-line .atlas-sound-lib__more {
+    top: 50%;
+    opacity: 1;
+    transform: translateY(-50%);
+  }
 }

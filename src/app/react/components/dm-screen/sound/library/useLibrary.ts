@@ -18,11 +18,13 @@ export function useHeldInMix(director: SoundDirector): ReadonlyMap<string, HeldI
 
 const SOUNDING_POLL_MS = 250;
 
-/** The track the music is on: a list goes on by itself, so this reads the clock too. */
+/** The track the music is on: a list goes on by itself, so this reads the clock too. Paused music (by the GM or by Stop all) stays on its track. */
 export function useSoundingKey(director: SoundDirector): string | null {
   const read = useCallback((): string | null => {
-    const play = director.snapshot().mix.table.music;
-    return (play && musicPosition(play, director.now())?.track.key) ?? null;
+    const { table, paused } = director.snapshot().mix;
+    const held = table.music ? null : (paused ?? null);
+    const play = held?.play ?? table.music;
+    return (play && musicPosition(play, held?.at ?? director.now())?.track.key) ?? null;
   }, [director]);
   const [key, setKey] = useState(read);
   useEffect(() => {

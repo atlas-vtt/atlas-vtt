@@ -16,6 +16,7 @@ import { showNotice } from '../../../../../ui/notice';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { useSoundValue } from '../useSound';
 import { useSoundingKey } from './useLibrary';
+import { useSoundHold } from '../soundHold';
 import { LibraryRow, type RowHandlers } from './LibraryRow';
 import { entryOfRow, filesOfRows, selectionAfter, type LibraryRow as Row, type RootShelf } from './rowModel';
 import { useRowKeys } from './useRowKeys';
@@ -23,14 +24,33 @@ import { rowMenu } from './rowMenus';
 import type { LibraryActions } from './useLibraryActions';
 
 const ROW_HEIGHT = 38;
+/** Under a coarse pointer a row's controls take 44 px (DECISIONS #24), and so does the row. */
+const TOUCH_ROW_HEIGHT = 44;
+const COARSE = '(pointer: coarse)';
+
+/** The rows' height for the pointer there is, followed when it changes (a tablet's keyboard cover). */
+function useRowHeight(): number {
+  const [coarse, setCoarse] = useState(() => window.matchMedia(COARSE).matches);
+  useEffect(() => {
+    const query = window.matchMedia(COARSE);
+    const follow = (): void => setCoarse(query.matches);
+    query.addEventListener('change', follow);
+    return () => query.removeEventListener('change', follow);
+  }, []);
+  return coarse ? TOUCH_ROW_HEIGHT : ROW_HEIGHT;
+}
 const OVERSCAN = 12;
 const SKELETON_ROWS = 9;
 
 interface LibraryRowsProps {
   rows: readonly Row[];
   loading: boolean;
+  /** A folder was just linked: rows not yet converted say they are being prepared. */
+  preparing: boolean;
   /** The one line shown when there are no rows. */
   emptyText: string;
+  /** Offered beside the empty text while a search finds nothing. */
+  onClearSearch?: (() => void) | undefined;
   library: SoundLibrary;
   director: SoundDirector;
   actions: LibraryActions;
@@ -58,7 +78,7 @@ function RowsSkeleton(): React.JSX.Element {
 }
 
 /** What the library lists, or a search's hits: only those in view are mounted, so thousands scroll like ten. */
-export function LibraryRows({ rows, loading, emptyText, library, director, actions, soundsByPath, shelves, held, onDropFiles }: LibraryRowsProps): React.JSX.Element {
+export function LibraryRows({ rows, loading, preparing, emptyText, onClearSearch, library, director, actions, soundsByPath, shelves, held, onDropFiles }: LibraryRowsProps): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   useScrollbarGutter(scrollElement);
@@ -69,16 +89,21 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
   const menu = useContextMenu();
   const previewing = useSoundValue(director, (snapshot) => snapshot.previewing);
   const soundingKey = useSoundingKey(director);
+  const hold = useSoundHold(director);
+  // Paused music is in no list the mix holds: its track keeps its mark by its id.
+  const heldTrack = hold !== null && soundingKey !== null ? director.shelf.idOfKey(soundingKey) : null;
   useSoundValue(director, (snapshot) => snapshot.shelfRevision);
 
+  const rowHeight = useRowHeight();
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scroller.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => rowHeight,
     overscan: OVERSCAN,
     // Rows on the first frame, not after a measure: no list opens empty.
-    initialRect: { width: 0, height: ROW_HEIGHT * SKELETON_ROWS },
+    initialRect: { width: 0, height: rowHeight * SKELETON_ROWS },
   });
+  useEffect(() => virtualizer.measure(), [virtualizer, rowHeight]);
 
   // What is selected belongs to what shows; a change of the rows keeps what is still there.
   useEffect(() => {
@@ -122,7 +147,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       rootTags: shelves[kind].tags,
       moveTo: library.locationOf(other) ? other : null,
       beginRename: (target) => setRenaming(target.id),
-    }), at, { returnFocus: anchorElement ?? scroller.current });
+    }), at, { returnFocus: anchorElement ?? scroller.current, label: t('audio.moodMenu', { name: acting.length > 1 ? t('audio.library.selectedCount', { count: acting.length }) : row.name }) });
   }, [actions, inHand, library, menu, recordOfRow, selected, shelves]);
 
   const heldOf = useCallback((row: Row): HeldInMix | undefined => {
@@ -136,6 +161,10 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
   }, [actions, inHand]);
 
   const primary = useCallback((row: Row): void => {
+    if (row.type === 'waiting') {
+      if (actions.mayRelink(row.sound.kind)) actions.relink(row.sound);
+      return;
+    }
     const inMix = heldOf(row);
     if (inMix) actions.takeOut(inMix);
     else sendToMix(row, 'next');
@@ -160,6 +189,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       if (row.type === 'file') actions.preview(row.file);
     },
     onMenu: openMenu,
+    mayRelink: actions.mayRelink,
     onDragStart: (row, event) => writeSoundDrag(event.dataTransfer, { files: filesOfRows(inHand(row)) }),
     onRename: (row, name) => {
       setRenaming(null);
@@ -186,6 +216,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       }}
       className="atlas-sound-lib__rows"
       role="grid"
+      aria-label={t('audio.library.rowsLabel')}
       aria-multiselectable="true"
       aria-rowcount={rows.length}
       aria-activedescendant={activeId === undefined ? undefined : `atlas-sound-row-${activeId}`}
@@ -202,7 +233,12 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       }}
     >
       {loading && <RowsSkeleton />}
-      {!loading && rows.length === 0 && <p className="atlas-sound-lib__none">{emptyText}</p>}
+      {!loading && rows.length === 0 && (
+        <div className="atlas-sound-lib__none">
+          <p>{emptyText}</p>
+          {onClearSearch && <button type="button" className="atlas-sound-lib__btn" onClick={onClearSearch}>{t('audio.library.clearSearch')}</button>}
+        </div>
+      )}
       {!loading && rows.length > 0 && (
         <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
           {virtualizer.getVirtualItems().map((item) => {
@@ -220,7 +256,9 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
                 active={item.index === activeIndex}
                 renaming={renaming === row.id}
                 held={path === null ? undefined : held.get(path)}
-                sounding={path !== null && soundsNow(held.get(path), soundingKey)}
+                sounding={(path !== null && soundsNow(held.get(path), soundingKey)) || (heldTrack !== null && sound?.id === heldTrack)}
+                hold={hold === 'paused' && sound?.id !== heldTrack ? null : hold}
+                preparing={preparing}
                 previewing={previewing !== null && previewing === sound?.id}
                 conversion={sound && director.shelf.stateOf(sound)}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${item.start}px)` }}

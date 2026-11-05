@@ -15,6 +15,7 @@ import { viewFrame } from '../packages/components/primitives/useKeepInView';
 import { observeResize } from '../utils/observeResize';
 import { scrollOnCtrlWheel } from './previewWheel';
 import { t } from '../i18n';
+import { portalHost } from '../ui/portalHost';
 
 /** The card's top, which moves a map's preview: the name and title row of an Atlas statblock or a Fantasy Statblocks layout. */
 const CARD_HEADER = '.atlas-sb-header, .atlas-sb-heading-row';
@@ -90,7 +91,7 @@ export class StatblockPreviewWindow {
     this.manager = manager;
     this.initialPos = initialPos;
 
-    this.element = doc.body.createDiv({ cls: 'atlas-statblock-preview-window' });
+    this.element = portalHost(doc).createDiv({ cls: 'atlas-statblock-preview-window' });
     this.element.setAttribute('tabindex', '-1');
     scrollOnCtrlWheel(this.element);
     // Only a map's preview, which its manager keeps, can stay open.

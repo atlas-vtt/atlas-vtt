@@ -55,9 +55,9 @@ describe('the desk’s strips at a narrow width', () => {
     return row;
   }
 
-  it('scrolls sideways, fades the side with more to come, and keeps Master and Silence in place', async () => {
+  it('scrolls sideways, fades the side with more to come, and keeps Master and Stop all in place', async () => {
     const row = await openWithLayers(720);
-    const silence = box('.atlas-sound-silence');
+    const silence = box('.atlas-sound-stop-all');
     const master = box('.atlas-sound-strip--master');
     const strips = box('.atlas-sound-strips');
 
@@ -84,9 +84,9 @@ describe('the desk’s strips at a narrow width', () => {
     expect(end.right).toBeLessThanOrEqual(box('.atlas-sound-strips__mix').right + 1);
 
     // Scrolling moved none of what stays.
-    expect(box('.atlas-sound-silence').left).toBe(silence.left);
+    expect(box('.atlas-sound-stop-all').left).toBe(silence.left);
     expect(box('.atlas-sound-strip--master').left).toBe(master.left);
-    expect(box('.atlas-sound-silence').right).toBeLessThanOrEqual(strips.right);
+    expect(box('.atlas-sound-stop-all').right).toBeLessThanOrEqual(strips.right);
 
     row.scrollLeft = 0;
     await expect.poll(() => fades(row)).toEqual({ start: '0px', end: '40px', masked: true });

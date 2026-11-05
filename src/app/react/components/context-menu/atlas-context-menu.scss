@@ -84,10 +84,21 @@ $ctx-inset: $spacing-xs;
   }
 
   &--destructive {
-    color: var(--text-error);
+    --atlas-ctx-error: var(--text-error);
+    color: var(--atlas-ctx-error);
 
     .atlas-ctx-icon svg {
-      color: var(--text-error);
+      color: var(--atlas-ctx-error);
+    }
+
+    // Obsidian's red is a step too pale on a light menu (4.2:1 on white) and too dark on a dark one
+    // (APCA Lc 39): it is moved towards the menu's opposite until the word reads (5.2:1, Lc 64).
+    .theme-light & {
+      --atlas-ctx-error: color-mix(in srgb, var(--text-error) 88%, black);
+    }
+
+    .theme-dark & {
+      --atlas-ctx-error: color-mix(in srgb, var(--text-error) 50%, white);
     }
   }
 
@@ -159,9 +170,9 @@ $ctx-inset: $spacing-xs;
   display: flex;
   align-items: center;
   justify-content: center;
-  // No taller than a row's badge, so valued rows keep the height of the others
-  width: $icon-xs + $spacing-xs * 2;
-  height: $icon-s;
+  // A press target of 24 px, which still fits inside a row, so valued rows keep the height of the others
+  width: $button-height-s;
+  height: $button-height-s;
   padding: 0;
   border: none;
   border-radius: $radius-s;

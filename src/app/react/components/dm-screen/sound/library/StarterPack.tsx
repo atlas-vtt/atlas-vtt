@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { t } from '../../../../../i18n';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { hasStarterPack, installStarterPack, mayInstallStarterPack, STARTER_BYTES, STARTER_FOLDER, STARTER_SOUND_COUNT } from '../../../../../soundLibrary/starterPack';
@@ -7,9 +8,8 @@ import { cn } from '../../../../../../utils/cn';
 import { useLibraryVersion } from './useLibrary';
 import type { LibraryActions } from './useLibraryActions';
 
-const FAILED_NOTICE_MS = 12_000;
-
-type Download = { phase: 'idle' } | { phase: 'downloading'; share: number };
+/** A failed download: said on its own button, which offers it again. */
+type Download = { phase: 'idle' } | { phase: 'downloading'; share: number } | { phase: 'failed' };
 
 interface DownloadState {
   current: Download;
@@ -47,8 +47,7 @@ function startDownload(library: SoundLibrary, actions: LibraryActions): void {
     },
     (error: unknown) => {
       console.error('[Atlas] Could not download the starter ambience', error);
-      announce(state, { phase: 'idle' });
-      showNotice(t('audio.library.starterFailed'), FAILED_NOTICE_MS);
+      announce(state, { phase: 'failed' });
     },
   );
 }
@@ -84,20 +83,24 @@ export function StarterPackButton({ library, actions, className }: { library: So
   const download = useDownload(library);
   const present = usePackPresent(library, download);
   const downloading = download.phase === 'downloading';
+  const failed = download.phase === 'failed';
   if (!downloading && (present !== false || !mayInstallStarterPack(library))) return null;
   const size = Math.round(STARTER_BYTES / 1_000_000);
+  let content: React.ReactNode = <>{t('audio.library.starter')}<small>{t('audio.library.starterSize', { size })}</small></>;
+  if (downloading) content = t('audio.library.starterDownloading', { percent: Math.floor(download.share * 100) });
+  // The failure stays where it happened, as a row says "File not found": the button reads it and offers it again.
+  if (failed) content = <><span className="atlas-sound-lib__starter-failed"><AlertTriangle aria-hidden="true" />{t('audio.library.starterFailedButton')}</span><small>{t('audio.library.starterFailedHint')}</small></>;
   return (
     <button
       type="button"
       className={cn('atlas-sound-lib__starter', className)}
+      data-failed={failed || undefined}
       disabled={downloading}
       aria-busy={downloading}
-      aria-label={downloading ? undefined : t('audio.library.starterLabel', { count: STARTER_SOUND_COUNT, size })}
+      aria-label={downloading || failed ? undefined : t('audio.library.starterLabel', { count: STARTER_SOUND_COUNT, size })}
       onClick={() => startDownload(library, actions)}
     >
-      {downloading
-        ? t('audio.library.starterDownloading', { percent: Math.floor(download.share * 100) })
-        : <>{t('audio.library.starter')}<small>{t('audio.library.starterSize', { size })}</small></>}
+      {content}
     </button>
   );
 }

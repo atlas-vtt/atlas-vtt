@@ -11,8 +11,6 @@ export const MAX_SOUND_OUTGOING = 8;
 export const MAX_PREPARED_SOUNDS = 32;
 /** Sounds a page names as still waiting. */
 export const MAX_SOUND_WAITING = 16;
-/** Characters of a credit line. */
-export const MAX_SOUND_CREDIT = 200;
 
 /** Frames of the longest sound there can be: past six hours by far, within what a number holds exactly. */
 const MAX_FRAMES = 2 ** 40;
@@ -32,7 +30,8 @@ export type SharedRoomId = (typeof SHARED_ROOMS)[number];
 /**
  * A sound as a page plays it. `key` is the id it is stored under and nothing else: it says neither the
  * sound's name nor the source's hash. `asset` is how it is fetched; without one the GM's Atlas could not
- * store it, and its place in a list stays silent. `credit` only where its licence asks for attribution.
+ * store it, and its place in a list stays silent. No credit reaches a page: what the GM plays, and whose it
+ * is, is the GM's to know (owner, 2026-11-04); a `credit` an older Atlas sends is dropped on reading.
  */
 export interface SharedSoundInfo {
   readonly key: string;
@@ -40,7 +39,6 @@ export interface SharedSoundInfo {
   readonly gainDb: number;
   readonly loop?: { readonly startFrame: number; readonly endFrame: number };
   readonly asset?: AssetRef;
-  readonly credit?: string;
   /** Its copy is still being made: `frames` and `gainDb` are what can be told so far, and the GM sends the real ones. */
   readonly growing?: true;
 }
@@ -137,8 +135,7 @@ function parseInfo(value: unknown): SharedSoundInfo | null {
   const asset = value.asset === undefined ? undefined : parseAudioAsset(value.asset);
   if (asset === null || (asset !== undefined && asset.id !== value.key)) return null;
   const loop = parseLoop(value.loop, value.frames);
-  const credit = typeof value.credit === 'string' && value.credit !== '' ? value.credit.slice(0, MAX_SOUND_CREDIT) : undefined;
-  return { key: value.key, frames: value.frames, gainDb, ...(loop && { loop }), ...(asset && { asset }), ...(credit !== undefined && { credit }), ...(value.growing === true && { growing: true as const }) };
+  return { key: value.key, frames: value.frames, gainDb, ...(loop && { loop }), ...(asset && { asset }), ...(value.growing === true && { growing: true as const }) };
 }
 
 /** What a list and a layer have in common. */

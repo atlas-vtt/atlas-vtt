@@ -3,7 +3,8 @@ import type { SoundConversion } from '../soundLibrary/soundConversion';
 
 export type MoodProblem =
   | { kind: 'deleted' }
-  | { kind: 'missing' | 'converting' | 'notConverted'; name: string }
+  | { kind: 'missing'; name: string; record: SoundRecord }
+  | { kind: 'converting' | 'notConverted'; name: string }
   | { kind: 'refused'; name: string; reason: Extract<SoundConversion, { state: 'refused' }>['reason'] };
 
 export interface ShelfReader {
@@ -18,7 +19,7 @@ export function moodProblems(mood: Pick<Mood, 'music' | 'layers'>, shelf: ShelfR
   return ids.flatMap((id): MoodProblem[] => {
     const record = shelf.recordOf(id);
     if (!record) return [{ kind: 'deleted' }];
-    if (!shelf.hasFile(record)) return [{ kind: 'missing', name: record.name }];
+    if (!shelf.hasFile(record)) return [{ kind: 'missing', name: record.name, record }];
     const state = shelf.stateOf(record);
     if (state.state === 'ready') return [];
     if (state.state === 'refused') return [{ kind: 'refused', name: record.name, reason: state.reason }];

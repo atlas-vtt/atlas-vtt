@@ -27,6 +27,7 @@ import { registerStatblockFileMenu } from './src/app/statblocks/editor/create/st
 import { registerStatblockInitiativeMenu } from './src/app/initiative/statblockCombatant';
 import { disposeImageProcessing } from './src/app/imageProcessing/imageProcessing';
 import { disposeSpectralEngine } from './src/app/pixi/spectralEngine/spectralEngineService';
+import { releaseAssetWorkers } from './src/app/pixi/utils/assetLifecycle';
 import { registerLootQueryView } from './src/app/loot/lootQueryView';
 import { registerBaseGiveButtons } from './src/app/loot/baseGiveButtons';
 import { GlobalAssetManagerService } from './src/app/services/GlobalAssetManagerService';
@@ -52,6 +53,8 @@ import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSe
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { registerPageListenerRelease } from './src/app/plugin/pageListenerRelease';
+import { releasePortalHosts } from './src/app/ui/portalHost';
 import { supportSettingsSection } from './src/app/settings/supportSettingsSection';
 import { registerAtlasLeafSync } from './src/app/plugin/atlasLeaves';
 import { EXTENSION_ATLASMAP } from './src/app/utils/sceneFiles';
@@ -131,6 +134,8 @@ export default class AtlasVTTPlugin extends Plugin {
   private unloaded = false;
 
   async onload(): Promise<void> {
+    // Before anything of Atlas renders: what React and framer-motion put on the page goes with Atlas.
+    registerPageListenerRelease(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());
@@ -305,6 +310,9 @@ export default class AtlasVTTPlugin extends Plugin {
     MosaicCanvasService.release(this.app);
     disposeImageProcessing();
     disposeSpectralEngine();
+    releaseAssetWorkers();
+    // Last: what is still mounted in the hosts goes with them.
+    releasePortalHosts();
   }
 
   /** The statblock beside every native statblock note, in every window, while the statblock editor is switched on. */

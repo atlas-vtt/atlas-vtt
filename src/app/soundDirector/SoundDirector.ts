@@ -52,7 +52,7 @@ export class SoundDirector {
   private readonly output: SoundOutput;
   private readonly table: SoundTable;
   private readonly fights: TableFights;
-  private current: SoundSnapshot = { mix: EMPTY_MIX, levels: { musicDb: 0, ambienceDb: 0, masterDb: 0 }, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], played: [], shelfRevision: 0, playersRevision: 0 };
+  private current: SoundSnapshot = { mix: EMPTY_MIX, levels: { musicDb: 0, ambienceDb: 0, masterDb: 0 }, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, audienceDetail: null, waitingKeys: [], played: [], shelfRevision: 0, playersRevision: 0 };
   private readonly listeners = new Set<() => void>();
   private readonly stateListeners = new Set<(state: TableSound) => void>();
   private stops: Array<() => void> = [];
@@ -73,7 +73,7 @@ export class SoundDirector {
       onLifecycle: (lifecycle) => this.publish({ lifecycle }),
       wait: (ms) => new Promise((resolve) => { window.setTimeout(resolve, ms); }),
     });
-    this.shelf = new SoundShelf(deps, (record, reason) => deps.notify(t('audio.refusedNotice', { name: record.name, reason: t(`audio.refused.${reason}`) })), (key) => this.output.forgetSource(key));
+    this.shelf = new SoundShelf(deps, (record, reason) => deps.notify(t('audio.refusedNotice', { name: record.name, reason: t(`audio.refused.${reason}`), next: t(`audio.refusedNext.${reason}`) })), (key) => this.output.forgetSource(key));
     this.table = new SoundTable(this.output, this.shelf, {
       fadeMs: () => this.fadeSeconds() * 1000,
       crossfadeMs: () => this.crossfadeMs(),
@@ -125,7 +125,7 @@ export class SoundDirector {
 
   /** Seam for a table online: who hears it, in one line. */
   useAudience(audience: AudienceLine | null): void {
-    this.players.useAudience(audience, (line) => this.publish({ audience: line }));
+    this.players.useAudience(audience, (line, detail) => this.publish({ audience: line, audienceDetail: detail }));
   }
 
   now(): number { return this.table.now(); }

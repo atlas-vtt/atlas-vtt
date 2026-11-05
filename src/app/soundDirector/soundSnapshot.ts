@@ -15,6 +15,8 @@ export interface SoundSnapshot {
   previewing: string | null;
   output: StoredOutput | null;
   audience: string | null;
+  /** Who hears it, player by player, for the audience line's tooltip. */
+  audienceDetail: string | null;
   /** Keys whose bytes a voice waits for. */
   waitingKeys: readonly string[];
   /** Keys of what played this session, the latest first. In memory on this side alone. */

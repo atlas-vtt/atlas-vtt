@@ -8,6 +8,7 @@ import { isModHeld, isModKey } from '../../keyboard/modKey';
 import { previewEdgeGaps, type PreviewEdgeGaps } from './statblock/previewEdgeGap';
 import { scrollOnCtrlWheel } from '../../services/previewWheel';
 import './statblock-hover-preview.scss';
+import { portalHost } from '../../ui/portalHost';
 
 export interface StatblockHoverPreviewProps {
   /** Vault path of the linked statblock note */
@@ -191,7 +192,7 @@ export function StatblockHoverPreview({
         <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} />
       )}
     </div>,
-    document.body
+    portalHost()
   );
 }
 

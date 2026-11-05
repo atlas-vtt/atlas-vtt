@@ -6,6 +6,7 @@ import { moodTransition } from './moodTransition';
 import { changeOf, sameOrder } from './listPlace';
 import { musicPosition, playTrack, soundingMusic, type ListChange } from './musicList';
 import type { SoonestTracks } from './libraryMix';
+import type { PausedMusic } from './musicPause';
 import { EMPTY_TABLE_SOUND, withReverb, type MoodMix, type ReadySounds } from './tableSound';
 
 export interface ActiveMood {
@@ -36,6 +37,8 @@ export interface SoundMix {
   stopAfter: string | null;
   /** Tracks, of `waitingMusic` or waiting for their turn behind it, the GM wants sooner than the end of the list. */
   soonest?: SoonestTracks;
+  /** The music the GM paused, never on the wire (`musicPause`). */
+  paused?: PausedMusic;
 }
 
 export const EMPTY_MIX: SoundMix = { table: EMPTY_TABLE_SOUND, mood: null, waitingMusic: null, waitingLayers: [], listChange: null, stopAfter: null };
@@ -192,7 +195,8 @@ export const dropWaitingTrack = (mix: SoundMix, soundId: string): SoundMix => {
  * no music is `none`, so pressing the mood later makes the room sound as it does now.
  */
 export function mixAsMood(mix: SoundMix, idOf: (key: string) => string | null, fadeSeconds: number, now: number): MoodMix {
-  const play = soundingMusic(mix.table, now);
+  // Paused music is still the mix's music: a mood saved meanwhile keeps it.
+  const play = soundingMusic(mix.table, now) ?? mix.paused?.play ?? null;
   const list = mix.listChange ?? play;
   const tracks = [...(list?.tracks ?? []).flatMap((track) => idOf(track.key) ?? []), ...(mix.waitingMusic?.tracks ?? [])];
   const repeat = list ? list.repeat : mix.waitingMusic?.repeat;

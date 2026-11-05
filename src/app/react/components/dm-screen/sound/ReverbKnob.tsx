@@ -94,7 +94,7 @@ export const ReverbKnob = React.memo(function ReverbKnob({ name, room, value, on
 
   const filled = ARC * shown;
   return (
-    <LabelTooltip label={t('audio.reverb.tooltip', { room })} describe suppressed={held !== null}>
+    <LabelTooltip label={t('audio.reverb.tooltip', { room, value: percent(shown) })} describe suppressed={held !== null}>
       <div
         className="atlas-sound-knob"
         role="slider"
@@ -103,7 +103,7 @@ export const ReverbKnob = React.memo(function ReverbKnob({ name, room, value, on
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent(shown)}
-        aria-valuetext={t('audio.reverb.value', { value: percent(shown) })}
+        aria-valuetext={t('audio.reverb.valueIn', { room, value: percent(shown) })}
         aria-disabled={disabled || undefined}
         data-held={held !== null || undefined}
         data-wet={shown > 0 || undefined}

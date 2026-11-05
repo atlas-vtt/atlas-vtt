@@ -1,5 +1,5 @@
 import { Pacer } from '../../marks/index.ts';
-import { parsePlayerSoundState, isRecord, type GmMessage } from '../../protocol/index.ts';
+import { parsePlayerSoundState, isRecord, type GmMessage, type PlayerSoundState } from '../../protocol/index.ts';
 import { SOFT_DRIFT_MS } from '../../../sound/engine/soundVoice';
 import { JOIN_SAMPLES, TableClockSync } from '../../../sound/engine/tableClockSync';
 import type { GrowingCopy } from '../../../sound/codec/growingCopy';
@@ -58,6 +58,8 @@ export interface SoundSharePorts extends Pick<SoundRefsPorts, 'copyRef' | 'segme
   /** One time exchange past the queue; false where it cannot go. */
   sendTime(t1: number): boolean;
   connected(): readonly string[];
+  /** A player's name at the table, for the audience's tooltip; null where none is known. */
+  nameOf?(player: string): string | null;
   copyState(id: string): CopyState;
   presentedPath(): string | null;
   onPresentedChange(listener: () => void): () => void;
@@ -66,6 +68,9 @@ export interface SoundSharePorts extends Pick<SoundRefsPorts, 'copyRef' | 'segme
   saveSending(on: boolean): void;
   /** The first upload of this device was just noticed; the owner of the note decides whether it says it. */
   uploadsBegan(): void;
+  /** What pages last told, as `rememberHeard` kept it before a reload of the plugin; none where nothing was kept. */
+  recallHeard?(): ReadonlyArray<readonly [string, PlayerSoundState]>;
+  rememberHeard?(pages: ReadonlyArray<readonly [string, PlayerSoundState]>): void;
 }
 
 /**
@@ -90,6 +95,8 @@ export class TableSoundShare implements PlayersSounds {
   private moodId: string | null = null;
   private lastSent: GmMessage | null = null;
   private lastKey = '';
+  /** How many sounds the audience line last counted, and whether stopped: it is told again when that changes, not only when a page tells. */
+  private audienceCounted = '';
 
   constructor(private readonly ports: SoundSharePorts) {
     this.on = ports.loadSending();
@@ -116,7 +123,9 @@ export class TableSoundShare implements PlayersSounds {
       connected: () => ports.connected(),
       soundsPlaying: () => (isPlaying(this.table(), this.clock.now()) ? keysOfState(this.table()).length : 0),
       uploading: () => this.uploading(),
-    });
+      stopped: () => this.table().silenced,
+      nameOf: (player) => ports.nameOf?.(player) ?? null,
+    }, ports.recallHeard?.() ?? [], (pages) => ports.rememberHeard?.([...pages]));
     this.pacer = new Pacer(timers, SOUND_SEND_MS, () => this.flush());
     this.copiesPacer = new Pacer(timers, COPIES_SHOWN_MS, () => {
       if (this.uploading() > 0) ports.uploadsBegan();
@@ -137,6 +146,8 @@ export class TableSoundShare implements PlayersSounds {
   }
 
   stop(): void {
+    // Kept fresh as the share goes, so a reload finds it however long ago a page last told anything.
+    this.audience.keep();
     for (const stop of this.stops) stop();
     this.stops = [];
     this.detach(false);
@@ -255,6 +266,11 @@ export class TableSoundShare implements PlayersSounds {
       void this.offers.refresh();
     }
     this.clock.setPlaying(isPlaying(mix.table, this.clock.now()));
+    const counted = `${isPlaying(mix.table, this.clock.now()) ? keysOfState(mix.table).length : 0}|${mix.table.silenced}`;
+    if (counted !== this.audienceCounted) {
+      this.audienceCounted = counted;
+      this.audience.changed();
+    }
   }
 
   private attach(): void {
@@ -286,7 +302,8 @@ export class TableSoundShare implements PlayersSounds {
   private flush(): void {
     if (!this.attached) return;
     const table = this.table();
-    const missing = keysOfState(table).filter((key) => this.refs.known(key) === undefined);
+    // A sound only staged ahead has a reference players were never handed: offered again as handed, or its progress never reaches them.
+    const missing = keysOfState(table).filter((key) => this.refs.known(key) === undefined || (this.refs.known(key) !== null && !this.refs.handed(key)));
     if (missing.length > 0) {
       // The state goes as soon as what it names has a reference: it holds its own start, so a page joins it in its place.
       void Promise.all(missing.map((key) => this.refs.ensure(key, ASSET_USES.audio, true))).then(() => this.pacer.request());

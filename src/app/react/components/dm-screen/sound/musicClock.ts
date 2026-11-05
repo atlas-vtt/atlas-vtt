@@ -12,3 +12,5 @@ export function writeText(element: HTMLElement | null, text: string): void {
 
 /** How often what follows the clock reads it. */
 export const POSITION_MS = 250;
+/** Under reduced motion: a step a second, as the clock's seconds go. */
+export const REDUCED_POSITION_MS = 1000;

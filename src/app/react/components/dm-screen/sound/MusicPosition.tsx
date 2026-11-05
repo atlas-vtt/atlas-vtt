@@ -4,9 +4,11 @@ import { SOUND_RATE } from '../../../../sound/engine/soundMath';
 import { musicPosition, soundingMusic } from '../../../../soundDirector/musicList';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { observeResize } from '../../../../utils/observeResize';
+import { prefersReducedMotion } from '../../../../utils/motion';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
-import { clock, POSITION_MS, writeText } from './musicClock';
+import { clock, POSITION_MS, REDUCED_POSITION_MS, writeText } from './musicClock';
 import { MusicWave } from './musicWave';
+import { CutTooltip } from './CutTooltip';
 import { useWaveSeek } from './useWaveSeek';
 
 /**
@@ -32,16 +34,19 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
     const wave = new MusicWave(unplayed, played);
     const write = (): void => {
       if (!titleRef.current || titleRef.current.offsetParent === null) return;
-      const now = director.now();
       const { mix } = director.snapshot();
-      const play = soundingMusic(mix.table, now);
+      // Paused music stands where it stopped.
+      const now = mix.paused?.at ?? director.now();
+      const play = mix.paused?.play ?? soundingMusic(mix.table, now);
       const position = play && musicPosition(play, now);
       const waiting = position ? null : mix.waitingMusic?.tracks[0];
       writeText(titleRef.current, position ? (director.shelf.recordOfKey(position.track.key)?.name ?? '') : (waiting && director.shelf.recordOf(waiting)?.name) ?? '');
-      const next = director.desk.nextTrack();
+      const next = mix.paused ? null : director.desk.nextTrack();
       // What goes round on itself has nothing to name, as a list of one never had.
       const following = position && next && next.key !== position.track.key ? t('audio.thenTrack', { name: director.shelf.recordOfKey(next.key)?.name ?? '' }) : '';
-      writeText(nextRef.current, position ? following : waiting ? t('audio.waiting') : '');
+      const standing = mix.table.silenced ? t('audio.stopped') : mix.paused ? t('audio.paused') : null;
+      const stops = position !== null && mix.stopAfter === position.track.key;
+      writeText(nextRef.current, standing ?? (stops ? t('audio.stopsAfter') : position ? following : waiting ? t('audio.waiting') : ''));
       const frames = position?.frames ?? 0;
       const frame = position ? (held.current === null ? position.frame : Math.round(held.current * frames)) : 0;
       writeText(timeRef.current, position ? clock(frame) : '');
@@ -49,11 +54,13 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
       wave.show(position ? director.shelf.peaksOfKey(position.track.key) : null, frame / Math.max(1, frames));
       waveRef.current?.setAttribute('aria-valuemax', String(Math.floor(frames / SOUND_RATE)));
       waveRef.current?.setAttribute('aria-valuenow', String(Math.floor(frame / SOUND_RATE)));
-      waveRef.current?.setAttribute('aria-valuetext', clock(frame));
+      waveRef.current?.setAttribute('aria-valuetext', t('audio.positionOf', { at: clock(frame), length: clock(frames) }));
     };
     writeNow.current = write;
-    write();
-    const timer = window.setInterval(write, POSITION_MS);
+    // Under reduced motion the played part moves once a second, with the clock's seconds, not four times.
+    const timer = window.setInterval(write, prefersReducedMotion(unplayed) ? REDUCED_POSITION_MS : POSITION_MS);
+    // The observer answers once the wave has its size, after layout and before paint, so the first write waits
+    // for it: written here, it laid the desk out in the middle of a press and painted the wave twice.
     const stopObserving = observeResize([unplayed], () => {
       wave.repaint();
       write();
@@ -68,7 +75,7 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
 
   return (
     <>
-      <div className="atlas-sound-music__track" ref={titleRef} />
+      <CutTooltip><div className="atlas-sound-music__track" ref={titleRef} /></CutTooltip>
       <div className="atlas-sound-music__next" ref={nextRef} />
       <div ref={waveRef} className="atlas-sound-music__wave" role="slider" tabIndex={0} aria-label={t('audio.seek')} aria-valuemin={0} {...handlers}>
         <canvas className="atlas-sound-music__unplayed" ref={unplayedRef} />

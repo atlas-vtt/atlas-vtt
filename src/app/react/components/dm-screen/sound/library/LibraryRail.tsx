@@ -18,8 +18,8 @@ interface RailProps {
   library: SoundLibrary;
   actions: LibraryActions;
   shelves: Readonly<Record<SoundKind, RootShelf>>;
-  /** The root shown. */
-  kind: SoundKind;
+  /** The root shown; none while a search spans every root. */
+  kind: SoundKind | null;
   /** The keys of the tags selected in it. */
   selected: ReadonlySet<string>;
   onRoot: (kind: SoundKind) => void;
@@ -73,7 +73,7 @@ const RailTag = memo(function RailTag({ actions, kind, name, count, selected, on
     if (drag) actions.tag(drag.files, name);
   });
   const openMenu = (at: { x: number; y: number }, returnFocus: HTMLElement | null): void => {
-    menu.open(tagRowMenu(actions, name), at, { returnFocus });
+    menu.open(tagRowMenu(actions, name), at, { returnFocus, label: t('audio.library.tagMenu', { name }) });
   };
   return (
     <div
@@ -149,7 +149,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
                 { type: 'item', label: t('audio.library.prepareAll'), icon: 'hard-drive-download', disabled: library.locationOf(kind) === null, onClick: () => actions.prepare(kind) },
                 { type: 'item', label: t('audio.library.changeFolder'), icon: 'folder-open', onClick: () => actions.link(kind, win) },
                 { type: 'item', label: t('audio.library.unlink'), icon: 'unlink', onClick: () => actions.unlink(kind) },
-              ], { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget });
+              ], { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label: t('audio.library.rootMenu', { name: label }) });
             }}
           >
             <MoreHorizontal aria-hidden="true" />

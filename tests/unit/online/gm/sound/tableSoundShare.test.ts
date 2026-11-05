@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ALL_PLAYERS, parseGmMessage, type AssetRef, type GmMessage } from '@/app/online/protocol/index.ts';
+import { ALL_PLAYERS, parseGmMessage, type AssetRef, type GmMessage, type PlayerSoundState } from '@/app/online/protocol/index.ts';
 import { SOUND_SEND_MS, TableSoundShare, type ShareDirector, type SoundSharePorts } from '@/app/online/gm/sound/TableSoundShare.ts';
 import type { CopyState } from '@/app/online/gm/assets/uploadQueue.ts';
 import type { Mood, SoundInfo, SoundRecord, TableSound } from '@/app/sound/soundTypes';
@@ -38,7 +38,7 @@ class Rig {
   players: string[] = ['p1', 'p2', 'p3'];
   on = true;
   noted = 0;
-  snapshot: SoundSnapshot = { mix: { ...EMPTY_MIX }, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], shelfRevision: 0, playersRevision: 0 };
+  snapshot: SoundSnapshot = { mix: { ...EMPTY_MIX }, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, audienceDetail: null, waitingKeys: [], shelfRevision: 0, playersRevision: 0 };
   clock: TableClock | null = null;
   clockSteps: number[] = [];
   audience: AudienceLine | null = null;
@@ -48,6 +48,9 @@ class Rig {
   private readonly listeners = new Set<() => void>();
   private readonly seam: PlayersSeam;
   share: TableSoundShare;
+  /** What this device keeps of what pages told it, as the plugin's local storage would across a reload. */
+  heard: ReadonlyArray<readonly [string, PlayerSoundState]> = [];
+  private readonly ports: SoundSharePorts;
 
   constructor(public sending = true) {
     const moods = { moods: () => this.moods, mood: (id: string) => this.moods.find((mood) => mood.id === id) ?? null };
@@ -88,8 +91,17 @@ class Rig {
       loadSending: () => this.sending,
       saveSending: (on) => void (this.sending = on),
       uploadsBegan: () => void this.noted++,
+      recallHeard: () => this.heard,
+      rememberHeard: (pages) => void (this.heard = pages),
     };
+    this.ports = ports;
     this.share = new TableSoundShare(ports);
+  }
+
+  /** The plugin reloaded on this device: a new share on the same ports, the table and its pages as they were. */
+  reload(): void {
+    this.share.stop();
+    this.share = new TableSoundShare(this.ports);
   }
 
   /** The director has another state. */
@@ -148,7 +160,7 @@ describe('a table\'s sound for players', () => {
     rig.play(tableWith(['a', 'b']));
     await rig.advance(1000);
     const message = rig.sounds().at(-1);
-    expect(message?.t === 'sound' && message.state.layers.map((layer) => layer.sound.credit ?? null)).toEqual([null, null]);
+    expect(message?.t === 'sound' && message.state.layers.map((layer) => 'credit' in layer.sound)).toEqual([false, false]);
     expect(JSON.stringify(message)).not.toContain('Kevin');
   });
 
@@ -260,11 +272,11 @@ describe('a table\'s sound for players', () => {
     const uploading = rig.sounds().at(-1);
     const id = uploading?.t === 'sound' ? uploading.state.layers[0]?.sound.key ?? '' : '';
     rig.copies.set(id, { state: 'uploading', share: 0.4 });
-    expect(rig.audience?.line()).toBe('1 of 3 players hearing · 1 track still uploading');
+    expect(rig.audience?.line()).toBe('1 of 3 players hearing · 1 track still on its way');
     expect(rig.share.copyOf(record('a'))).toEqual({ state: 'uploading', share: 0.4 });
     rig.share.playerLeft('p1');
     rig.players = ['p2', 'p3'];
-    expect(rig.audience?.line()).toBe('0 of 2 players hearing · 1 track still uploading');
+    expect(rig.audience?.line()).toBe('0 of 2 players hearing · 1 track still on its way');
     rig.share.storeChanged();
     await rig.advance(1000);
     expect(rig.noted).toBeGreaterThan(0);
@@ -288,5 +300,53 @@ describe('a table\'s sound for players', () => {
     (rig.share as PlayersSounds).prepare([record('a')]);
     await rig.advance(100);
     expect(rig.offered.length).toBe(1);
+  });
+
+  it('hands players a sound only staged ahead once it plays, so its progress reaches them', async () => {
+    rig = new Rig();
+    rig.moods = [{ id: 'linked', name: SECRET_NAME, order: 1, fadeSeconds: 2, music: 'none', layers: [{ sound: 'a', levelDb: 0 }] }, { id: 'other', name: SECRET_NAME, order: 2, fadeSeconds: 2, music: 'none', layers: [{ sound: 'b', levelDb: 0 }] }];
+    rig.share.start();
+    await rig.advance(1000);
+    (rig.share as PlayersSounds).prepare([record('b')]);
+    await rig.advance(100);
+    expect(rig.offered.at(-1)).toMatchObject({ handed: false });
+    rig.offered.length = 0;
+    rig.play(tableWith(['b']));
+    await rig.advance(SOUND_SEND_MS * 2);
+    expect(rig.offered).toEqual([expect.objectContaining({ handed: true })]);
+    expect(rig.sounds().at(-1)).toMatchObject({ state: { layers: [{ sound: { asset: { hash: rig.offered[0]?.hash } } }] } });
+    rig.offered.length = 0;
+    rig.play(tableWith(['b'], 2));
+    await rig.advance(SOUND_SEND_MS * 2);
+    expect(rig.offered).toEqual([]);
+  });
+
+  it('still knows who hears after the plugin reloads, though pages tell only what changed', async () => {
+    rig = new Rig();
+    rig.players = ['p1'];
+    rig.share.start();
+    rig.play(tableWith(['a']));
+    await rig.advance(1000);
+    rig.share.receive('p1', { t: 'sound-state', state: 'playing', waiting: [] });
+    expect(rig.audience?.line()).toBe('1 of 1 player hearing');
+    // A reload: the page keeps playing and tells nothing, since nothing changed on its side.
+    rig.reload();
+    rig.share.start();
+    rig.play(tableWith(['a'], 2));
+    await rig.advance(1000);
+    expect(rig.audience?.line()).toBe('1 of 1 player hearing');
+  });
+
+  it('counts who hears again when a mood starts, though no page told anything new', async () => {
+    rig = new Rig();
+    rig.players = ['p1'];
+    rig.share.start();
+    rig.share.receive('p1', { t: 'sound-state', state: 'playing', waiting: [] });
+    expect(rig.audience?.line()).toBeNull();
+    const lines: (string | null)[] = [];
+    rig.audience?.onChange(() => lines.push(rig.audience?.line() ?? null));
+    rig.play(tableWith(['a']));
+    await rig.advance(1000);
+    expect(lines.at(-1)).toBe('1 of 1 player hearing');
   });
 });

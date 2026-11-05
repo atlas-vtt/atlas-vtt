@@ -16,6 +16,7 @@ import { LibraryView } from './library/LibraryView';
 import { MeterBoard } from './meterBoard';
 import { MoodGrid } from './MoodGrid';
 import { SoundDesk } from './SoundDesk';
+import { announceSound, SoundLiveRegion } from './SoundLiveRegion';
 import { useMoods, useSoundValue, useStoredSounds } from './useSound';
 import { useMeterLoop } from './useMeterLoop';
 import { useSoundKeys } from './useSoundKeys';
@@ -23,6 +24,21 @@ import { MeterBoardContext } from './VerticalFader';
 
 interface SoundPaneProps {
   active: boolean;
+}
+
+/**
+ * False for the page's first frame, true from the next: the library (its virtual list measures itself, the
+ * page's largest part) mounts a frame after the moods and the desk, so opening the screen does not ask for all of
+ * it in one frame. The screen fades in over that frame, so nothing is seen missing.
+ */
+function useSecondFrame(rootRef: React.RefObject<HTMLElement | null>): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const view = rootRef.current?.ownerDocument.defaultView ?? window;
+    const frame = view.requestAnimationFrame(() => setReady(true));
+    return () => view.cancelAnimationFrame(frame);
+  }, [rootRef]);
+  return ready;
 }
 
 /**
@@ -50,6 +66,7 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
   const nameNewMood = useCallback(() => setNamingMood(true), []);
 
   useSoundKeys({ active, rootRef, viewId: view?.viewId, director, moods, moveMood });
+  const libraryShown = useSecondFrame(rootRef);
   useMeterLoop(board, director, rootRef, active && sounding);
 
   useEffect(() => () => director.preview(null), [director]);
@@ -76,7 +93,7 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
         onDrop={drop}
       >
         <div className="atlas-sound-stage">
-          <LibraryView />
+          {libraryShown ? <LibraryView /> : <div className="atlas-sound-lib" aria-busy="true" />}
           <div className="atlas-sound-moods" ref={setMoodsSide}>
             {moods.length > 0 && <MoodGrid app={app} director={director} moods={moods} moveMood={moveMood} onNewMood={nameNewMood} />}
             {moods.length === 0 && moodsRead && (
@@ -88,13 +105,17 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
           </div>
         </div>
         <SoundDesk app={app} director={director} moods={moods} onSaveAs={nameNewMood} />
+        <SoundLiveRegion director={director} />
         <InputModal
           isOpen={namingMood}
           onClose={() => setNamingMood(false)}
           title={t('audio.saveAsTitle')}
+          label={t('audio.mood.name')}
+          confirmLabel={t('audio.saveMood')}
           validation={(value) => (value.trim() === '' ? t('audio.nameEmpty') : null)}
           onConfirm={(name) => {
             director.desk.saveAsMood(name.trim());
+            announceSound(t('audio.announce.savedNew', { name: name.trim() }));
             setNamingMood(false);
           }}
         />
