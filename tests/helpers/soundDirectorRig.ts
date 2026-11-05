@@ -166,7 +166,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       }),
       dispose: () => undefined,
     }),
-    prepareSource: async (buffer) => ({ hash: await sha256(buffer), source: new Blob([buffer]) }),
+    prepareSource: async (buffer) => ({ hash: await hashing(sha256(buffer)), source: new Blob([buffer]) }),
     readPeaks: () => Promise.resolve(Uint8Array.of(10, 200, 30)),
     createContext: () => {
       const context = new FakeOutputContext();
@@ -213,7 +213,26 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
   return rig;
 }
 
-/** Lets promises settle, hashing included, which runs outside the fake timers. */
+/** Hashes under way: Web Crypto answers outside the event loop, sooner or later as the machine is loaded. */
+const hashes = new Set<Promise<string>>();
+
+function hashing(hash: Promise<string>): Promise<string> {
+  hashes.add(hash);
+  void hash.finally(() => hashes.delete(hash)).catch(() => undefined);
+  return hash;
+}
+
+/**
+ * Lets promises settle, hashing included, which runs outside the fake timers: a number of turns of the
+ * event loop, and again after every hash under way has answered, so a slow machine sees what a fast one does.
+ */
 export async function settle(): Promise<void> {
-  for (let i = 0; i < 12; i++) await new Promise((resolve) => setImmediate(resolve));
+  const turns = async (): Promise<void> => {
+    for (let i = 0; i < 12; i++) await new Promise((resolve) => setImmediate(resolve));
+  };
+  await turns();
+  for (let round = 0; round < 20 && hashes.size > 0; round++) {
+    await Promise.allSettled([...hashes]);
+    await turns();
+  }
 }

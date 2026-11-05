@@ -110,6 +110,7 @@ describe('the context a press opens', () => {
     await rig.director.shelf.refresh();
     rig.director.desk.addSound(song);
     await vi.advanceTimersByTimeAsync(1000);
+    await settle();
     rig.conversions.shift()?.finish();
     await vi.advanceTimersByTimeAsync(1000);
     await settle();
