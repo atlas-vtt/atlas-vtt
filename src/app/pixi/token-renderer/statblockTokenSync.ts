@@ -40,7 +40,7 @@ export function statblockTokenChanges(
     if (token.kind !== 'character' || token.statblockPath !== statblockPath) continue;
     const changes: TokenUpdates = {};
     if (name !== null && name !== token.name) changes.name = name;
-    const resources = syncedResources(token, statblock.fields, definitions, meanings);
+    const resources = syncedResources(token, statblock.fields, definitions, meanings, statblock.emptyFields);
     if (JSON.stringify(resources) !== JSON.stringify(token.resources ?? {})) changes.resources = resources;
     if (difficulty !== undefined && difficulty !== token.difficulty) changes.difficulty = difficulty;
     if (image && token.imagePath !== image) changes.imagePath = image;

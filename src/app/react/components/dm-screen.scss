@@ -50,11 +50,13 @@ $page-shift: clamp(24px, 3cqi, 56px);
   to { opacity: 0; }
 }
 
+// Centred by its margins and at rest without a transform: a resting `translate(-50%, -50%)`
+// composited the layer on half pixels in views of odd size, which blurred its text at device
+// pixel ratio 1. The enter animation fills backwards only, so it leaves no transform behind.
 .atlas-dm-screen {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.97);
+  inset: 0;
+  margin: auto;
   width: 98%;
   height: 88%;
   max-height: 900px;
@@ -64,7 +66,8 @@ $page-shift: clamp(24px, 3cqi, 56px);
   opacity: 0;
 
   &.is-visible {
-    animation: atlas-dm-screen-enter 0.25s ease-out both;
+    opacity: 1;
+    animation: atlas-dm-screen-enter 0.25s ease-out backwards;
   }
 
   &.is-closing {
@@ -107,22 +110,22 @@ $page-shift: clamp(24px, 3cqi, 56px);
 @keyframes atlas-dm-screen-enter {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.97);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 }
 
 @keyframes atlas-dm-screen-exit {
   from {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
   to {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.97);
+    transform: scale(0.97);
   }
 }
 

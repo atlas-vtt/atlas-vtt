@@ -1188,6 +1188,12 @@ export class AssetService {
       await this.trashFileIfPresent(asset.thumbnailPath);
     }
     if (asset.type === 'encounter') await this.trashEncounterThumbnail(asset);
+    if (asset.type === 'map') {
+      // Loaded when needed: the reference collector reaches into statblocks and scenes, which import this service.
+      const { unusedMapFiles } = await import('./mapAssetFiles');
+      const unused = await unusedMapFiles(this.app, this, asset, Object.values(this.metadata!.assets));
+      for (const path of unused) await this.trashFileIfPresent(path);
+    }
 
     // Remove from metadata
     delete this.metadata!.assets[id];

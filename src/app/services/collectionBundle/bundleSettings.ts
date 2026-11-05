@@ -7,6 +7,7 @@ import type { CollectionSettings } from '../../types/collectionSettingsTypes';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import type { CollectionMetadata } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
+import { withPlacedTableNotes } from '../../randomTables/tableSettings';
 
 /**
  * A collection's settings as bundles compare them. Resources that only restate what the
@@ -34,6 +35,11 @@ export function comparableSettings(
 export function withLootBases(settings: CollectionSettings, pathOf: (path: string) => string | undefined): CollectionSettings {
   const { lootBases } = settings;
   return lootBases ? { ...settings, lootBases: lootBases.flatMap((path) => pathOf(path) ?? []) } : settings;
+}
+
+/** `settings` with each random table's note and save folder where `paths` puts them; a table whose note has no place is left out. */
+function withTableNotes(settings: CollectionSettings, paths: BundledPaths): CollectionSettings {
+  return settings.randomTables ? { ...settings, randomTables: withPlacedTableNotes(settings, paths.file, paths.folder) } : settings;
 }
 
 /**
@@ -83,14 +89,13 @@ export interface BundledPaths {
 }
 
 /**
- * The settings an export carries: only the loot bases that travel, roles read from a user preset
- * written out (`withPresetRoles`), and role folders
- * inside the collection's folder.
- * A role folder outside it is left out: the recipient's vault may not have it, and new
- * statblocks of that role then go where Obsidian puts new notes.
+ * The settings an export carries: only the loot bases and random tables that travel, roles read
+ * from a user preset written out (`withPresetRoles`), and role and save folders inside the
+ * collection's folder. A folder outside it is left out: the recipient's vault may not have it,
+ * and new notes then go where Obsidian puts new notes.
  */
 export function exportedSettings(settings: CollectionSettings, presets: readonly SystemPreset[], paths: BundledPaths): CollectionSettings {
-  return withRoleFolders(withPresetRoles(withLootBases(settings, paths.file), presets), paths.folder);
+  return withTableNotes(withRoleFolders(withPresetRoles(withLootBases(settings, paths.file), presets), paths.folder), paths);
 }
 
 /** Where an import puts what the bundle's settings point at. */
@@ -124,14 +129,16 @@ export function withRecordIds<T extends { systemPresetId?: string | undefined; d
 }
 
 /**
- * The bundle's settings as the import stores them: its loot bases at the paths they get in this
- * vault, its roles on the templates' ids here, its game system and dice set the ids
+ * The bundle's settings as the import stores them: its loot bases and random tables at the paths
+ * they get in this vault, its roles on the templates' ids here, its game system and dice set the ids
  * the preset and the set have here, its role folders in the collection's folder here (a folder
  * outside the collection is left out).
  */
 export function importedSettings(collection: CollectionMetadata, places: ImportedPlaces): CollectionSettings {
-  const withPaths = withRecordIds(withLootBases(collection.settings, (path) => places.paths.get(path) ?? path), places);
-  const from = collectionFolderPath(collection.id);
-  const to = collectionFolderPath(places.collectionId);
-  return withRoleFolders(withSettingsTemplates(withPaths, places.templateIds), (folder) => folderBelow(folder, from, to));
+  const paths: BundledPaths = {
+    file: (path) => places.paths.get(path) ?? path,
+    folder: (folder) => folderBelow(folder, collectionFolderPath(collection.id), collectionFolderPath(places.collectionId)),
+  };
+  const withPaths = withRecordIds(withTableNotes(withLootBases(collection.settings, paths.file), paths), places);
+  return withRoleFolders(withSettingsTemplates(withPaths, places.templateIds), paths.folder);
 }

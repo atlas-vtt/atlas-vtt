@@ -7,7 +7,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { barDimensions } from '../styles/designTokens';
 import { TokenConditionsUI, type TokenConditionsLayout } from './token-renderer/TokenConditionsUI';
-import { isNameplateVisible } from './token-renderer/nameplateVisibility';
+import { isNameplateVisible, nameplateShownToPlayers } from './token-renderer/nameplateVisibility';
 import { tokenDisplayName } from './token-renderer/tokenDisplayName';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
@@ -331,7 +331,8 @@ export class TokenUIRenderer {
 
     const resourcesKey = shown.map(({ definition, value, slot }) =>
       `${definition.key}:${slot}:${definition.name}:${definition.color}:${value.current}/${value.max}`).join('|');
-    const showNameplate = playerSettings ? playerSettings.showTokenNameplates : isNameplateVisible(token, tokenSettings?.showNameplates ?? false);
+    const mapShowsNameplates = tokenSettings?.showNameplates ?? false;
+    const showNameplate = playerSettings ? nameplateShownToPlayers(token, mapShowsNameplates, playerSettings.showTokenNameplates) : isNameplateVisible(token, mapShowsNameplates);
     const conditionsKey = `${token.conditions?.join(',') ?? ''}${JSON.stringify(token.conditionValues ?? {})}`;
     const defeated = isDefeated(token, definitions);
     // The ring's size setting moves the resize buttons, and with them the wheels

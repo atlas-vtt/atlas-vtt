@@ -8,10 +8,12 @@ import type { StoreApi } from 'zustand';
 import type { EventEmitter } from 'events';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { FogBounds, FogOperation } from '../../types/fogTypes';
+import type { FogEdge } from '../../fog/fogEdge';
 import { validateFogOperation } from '../../fog/fogOperationShape';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import { FogCanvasCompositor } from './FogCanvasCompositor';
+import { FogEdgeMesh } from './fogEdgeMesh';
 import { FogCursorPreview } from './FogCursorPreview';
 import { FogOperationCanvas } from './FogOperationCanvas';
 import { calculateOperationBounds } from './fogRenderUtils';
@@ -48,6 +50,8 @@ export class FogOfWarRenderer {
   // PIXI display objects
   private container: PIXI.Container;
   private previewSprite: PIXI.Sprite;
+  /** Draws the fog's edge; there only while the fog has one. */
+  private edgeMesh: FogEdgeMesh | null = null;
   private previewTexture: PIXI.Texture;
   private lassoGraphics: PIXI.Graphics;
   private rectPreviewGraphics: PIXI.Graphics;
@@ -157,6 +161,20 @@ export class FogOfWarRenderer {
   // ═══════════════════════════════════════════════════════════════════
   // Public API
   // ═══════════════════════════════════════════════════════════════════
+
+  /** How the fog's edge looks, in every picture of the map. */
+  setEdge(edge: FogEdge): void {
+    this.compositor.setEdgeWidth(edge.width, this.mapRect);
+    // The mesh's shader needs WebGL: elsewhere the sprite draws the canvas' blur, and every edge is soft
+    if (edge.width > 0 && this._pixiApp.renderer.name === 'webgl') {
+      if (this.edgeMesh) this.edgeMesh.setEdge(edge);
+      else this.edgeMesh = new FogEdgeMesh(this.previewSprite, edge);
+    } else {
+      this.edgeMesh?.destroy();
+      this.edgeMesh = null;
+    }
+    this.renderPreviewFromStore();
+  }
 
   getContainer(): PIXI.Container {
     return this.container;
@@ -283,6 +301,7 @@ export class FogOfWarRenderer {
 
   destroy(): void {
     this.unsubscribe?.();
+    this.edgeMesh?.destroy();
 
     this.viewport.off('pointerdown', this.pointerDownHandler);
     this.viewport.off('pointermove', this.pointerMoveHandler);
@@ -588,6 +607,7 @@ export class FogOfWarRenderer {
 
   private eraseConnectedVisibleRegionAt(worldX: number, worldY: number): boolean {
     const eraseRects = this.computeComponentEraseRects(worldX, worldY);
+    this.renderPreviewFromStore();
     if (eraseRects.length === 0) {
       return false;
     }
@@ -607,8 +627,8 @@ export class FogOfWarRenderer {
     width: number;
     height: number;
   }> {
-    // Ensure compositor reflects the current fog state before sampling.
-    this.renderPreviewFromStore();
+    // The current fog as its shapes are: a faded edge would join pieces and reach past them.
+    this.renderPreviewFromStore(false);
 
     const canvas = this.compositor.getCanvas();
     const bounds = this.compositor.getBounds();
@@ -771,9 +791,9 @@ export class FogOfWarRenderer {
     drawStrokeArea(this.stroke.mode === 'lasso' ? this.lassoGraphics : this.rectPreviewGraphics, this.stroke, erasing ? STROKE_COLORS.erase : STROKE_COLORS.paint);
   }
 
-  private renderPreviewFromStore(): boolean {
+  private renderPreviewFromStore(fadeEdge = true): boolean {
     const ops = levelObjects(this.store.getState())?.fog ?? EMPTY_FOG;
-    const rendered = this.compositor.composite(ops);
+    const rendered = this.compositor.composite(ops, undefined, fadeEdge);
     this.updatePreviewTexture();
     return rendered;
   }

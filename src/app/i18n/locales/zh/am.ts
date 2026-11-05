@@ -40,6 +40,8 @@ export const am: Translation = {
   'am.menu.renameSceneFailed': '无法重命名场景',
   'am.menu.renameTitle': '重命名「{name}」',
   'am.menu.saveAsEncounter': { other: '把 {count} 个棋子存为遭遇' },
+  'am.menu.openScene': '打开场景',
+  'am.menu.openSceneFailed': '无法打开场景',
   'am.menu.createScene': '创建场景',
   'am.menu.createScenes': { other: '创建 {count} 个场景' },
   'am.menu.sortBy': '排序',

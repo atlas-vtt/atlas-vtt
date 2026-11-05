@@ -13,7 +13,7 @@ export const grid: Translation = {
   'grid.numbers.sequential': '顺序编号（1、2、3）',
   'grid.show': '显示网格',
   'grid.snap': '吸附网格',
-  'grid.snapHint': '棋子、图钉和测量会落到格子中心',
+  'grid.snapHint': '棋子和测量会落到格子中心',
   'grid.type': '网格类型',
   'grid.type.hexFlat': '六角格（平顶）',
   'grid.type.hexPointy': '六角格（尖顶）',

@@ -13,7 +13,7 @@ export const grid = {
   'grid.numbers.sequential': 'Sequential (1, 2, 3)',
   'grid.show': 'Show grid',
   'grid.snap': 'Snap to grid',
-  'grid.snapHint': 'Tokens, pins and measurements settle on cell centres',
+  'grid.snapHint': 'Tokens and measurements settle on cell centres',
   'grid.detectOnNewScenes': 'Detect grid on new scenes',
   'grid.detectOnNewScenesHint': 'Off for games without a grid: new scenes have no grid and nothing snaps until you align one',
   'grid.distancePerCell': 'Distance per cell',

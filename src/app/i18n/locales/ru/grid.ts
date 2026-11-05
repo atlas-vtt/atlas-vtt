@@ -13,7 +13,7 @@ export const grid: Translation = {
   'grid.numbers.sequential': 'По порядку (1, 2, 3)',
   'grid.show': 'Показывать сетку',
   'grid.snap': 'Привязка к сетке',
-  'grid.snapHint': 'Токены, пины и измерения встают в центры клеток',
+  'grid.snapHint': 'Токены и измерения встают в центры клеток',
   'grid.detectOnNewScenes': 'Определять сетку в новых сценах',
   'grid.detectOnNewScenesHint': 'Выключите для игр без сетки: в новых сценах нет сетки и привязки, пока вы её не выровняете',
   'grid.type': 'Тип сетки',

@@ -14,6 +14,7 @@ import type { ViewFrame } from '../packages/components/primitives/popoverFit';
 import { viewFrame } from '../packages/components/primitives/useKeepInView';
 import { observeResize } from '../utils/observeResize';
 import { scrollOnCtrlWheel } from './previewWheel';
+import { holdPreviewShown } from '../react/components/statblock/previewShown';
 import { t } from '../i18n';
 import { portalHost } from '../ui/portalHost';
 
@@ -68,6 +69,7 @@ export class StatblockPreviewWindow {
   /** The statblock's props but its tokens, which `followVitals` replaces. */
   private statblockProps: Omit<LinkedStatblockProps, 'tokens'>;
   private stopFollowing: (() => void) | null = null;
+  private releaseShown: (() => void) | null = null;
   private stopDrag: (() => void) | null = null;
   private reach: PreviewWindowReach | null = null;
   private stopFollowingFrame: (() => void) | null = null;
@@ -92,6 +94,7 @@ export class StatblockPreviewWindow {
     this.initialPos = initialPos;
 
     this.element = portalHost(doc).createDiv({ cls: 'atlas-statblock-preview-window' });
+    this.releaseShown = holdPreviewShown(doc);
     this.element.setAttribute('tabindex', '-1');
     scrollOnCtrlWheel(this.element);
     // Only a map's preview, which its manager keeps, can stay open.
@@ -275,6 +278,8 @@ export class StatblockPreviewWindow {
     this.stopDrag = null;
     this.stopFollowingFrame?.();
     this.stopFollowingFrame = null;
+    this.releaseShown?.();
+    this.releaseShown = null;
 
     // Unmount asynchronously: React forbids unmounting while it is rendering,
     // which happens when destroy() runs from inside an effect.

@@ -23,6 +23,9 @@ const initiativeRules = vi.hoisted(() => ({ value: undefined as InitiativeRules 
 vi.mock('../../src/app/services/mapInitiativeRules', () => ({ mapInitiativeRules: () => initiativeRules.value ?? TURN_ORDER }));
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.useRealTimers(); vi.restoreAllMocks(); collection.hpVisibleToPlayers = false; initiativeRules.value = undefined; scrolls.calls.length = 0; });
 
+/** The map shows every nameplate, so the player view's switch alone decides. */
+const MAP_NAMES = { showNameplates: true, hiddenResources: [], showInstanceBadges: false, tokenRingSize: 1 };
+
 function scene(name = 'Hero', initiativeTrackerOpen = true): StoreApi<ViewAtlasState> {
   const token: TokenEntity = { id: 'hero', kind: 'character', name, x: 0, y: 0, imagePath: '', resources: { hp: { current: 8, max: 10 } } };
   const entry: InitiativeEntry = {
@@ -31,7 +34,7 @@ function scene(name = 'Hero', initiativeTrackerOpen = true): StoreApi<ViewAtlasS
   };
   return createStore(() => ({
     initiative: { ...createDefaultInitiativeState(), entries: [entry], isActive: true, round: 1 },
-    objects: { tokens: { hero: token } }, initiativeTrackerOpen,
+    objects: { tokens: { hero: token } }, initiativeTrackerOpen, tokenSettings: MAP_NAMES,
   })) as StoreApi<ViewAtlasState>;
 }
 
@@ -93,6 +96,12 @@ describe('player initiative panel', () => {
     expect(panel()?.textContent).not.toContain('Hero');
     expect(panel()?.querySelector('progress')).toBeNull();
     settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
+    expect(panel()?.textContent).toContain('Hero');
+    // A token the GM's map does not name goes unnamed for players too
+    store.setState({ tokenSettings: { ...MAP_NAMES, showNameplates: false } });
+    expect(panel()?.textContent).not.toContain('Hero');
+    expect(panel()?.textContent).toContain('Unknown Creature');
+    store.setState({ tokenSettings: MAP_NAMES });
     expect(panel()?.textContent).toContain('Hero');
     // HP stays hidden until the collection lets players see it
     expect(panel()?.querySelector('progress')).toBeNull();
@@ -265,7 +274,7 @@ describe('player initiative panel of a collection that fights by sides', () => {
     const store = createStore(() => ({
       initiative: { ...createDefaultInitiativeState(), entries: [entry('goblin', 0), entry('hero', 1), entry('rat', 2, { sitsOut: true }), entry('cleric', 3)], ...initiative },
       objects: { tokens: { goblin: token('goblin'), hero: token('hero', { vision: { enabled: true } }), rat: token('rat'), cleric: token('cleric', { side: 'players' }) } },
-      initiativeTrackerOpen: true,
+      initiativeTrackerOpen: true, tokenSettings: MAP_NAMES,
     })) as StoreApi<ViewAtlasState>;
     const service = new PlayerWindowService(app, store, settings);
     return { doc: attachFakePlayerWindow(service, { canvas: createEl('canvas'), withPlayerSafeFrame: vi.fn(), store }), store };

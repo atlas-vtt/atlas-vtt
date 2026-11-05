@@ -35,7 +35,7 @@ function table(owners: Readonly<Record<string, string>>): Table {
     read: (tokens, unseen = [], collection = 'Cairn') => {
       const scene: BookScene = {
         mapPath: 'map', collection, resources: [], tokens: Object.fromEntries(tokens.map((entry) => [entry.id, entry])),
-        shown: (ids) => new Map(tokens.filter((entry) => ids.includes(entry.id) && !unseen.includes(entry.id)).map((entry): [string, ShownRollToken] => [entry.id, { name: entry.id, imagePath: entry.imagePath, showRing: true, ringColor: undefined }])),
+        shown: (ids) => new Map(tokens.filter((entry) => ids.includes(entry.id) && !unseen.includes(entry.id)).map((entry): [string, ShownRollToken] => [entry.id, { name: entry.id, imagePath: entry.imagePath, showRing: true, ringColor: undefined, mapShowsNameplates: false }])),
         listedToken: () => undefined,
       };
       characters.update(scene, {
@@ -217,7 +217,7 @@ describe('a character\'s statblock note', () => {
 });
 
 describe('a character\'s sheet', () => {
-  const shown: ShownRollToken = { name: '  Sir\u00a0Brannoch  ', imagePath: 'art/b.png', showRing: false, ringColor: '#fff' };
+  const shown: ShownRollToken = { name: '  Sir\u00a0Brannoch  ', imagePath: 'art/b.png', showRing: false, ringColor: '#fff', mapShowsNameplates: false };
   const art = { hash: 'a'.repeat(64), size: 10, mime: 'image/png', id: 'b'.repeat(64) };
 
   it('holds the resources its token has, by name and in their order, and nothing of the others', () => {
@@ -251,6 +251,6 @@ describe('a character\'s sheet', () => {
   });
 
   it('has a ring where the token has one, white where it names no colour, and an empty name where the token has none', () => {
-    expect(sheetOf({ name: null, imagePath: undefined, showRing: true, ringColor: undefined }, {}, [], () => art)).toEqual({ name: '', art: null, ring: '#ffffff', resources: [] });
+    expect(sheetOf({ name: null, imagePath: undefined, showRing: true, ringColor: undefined, mapShowsNameplates: false }, {}, [], () => art)).toEqual({ name: '', art: null, ring: '#ffffff', resources: [] });
   });
 });

@@ -58,23 +58,25 @@ describe("the grid: Atlas's player window shows it as the GM sets it", () => {
   });
 });
 
-describe("token nameplates: Atlas's player window shows them by the player view's Show nameplates alone", () => {
-  it("leaves players' tokens alone when the GM shows the map's nameplates or one token's own, and follows Show nameplates, without a store write", async () => {
+describe("token nameplates: Atlas's player window shows the names the GM's map shows, while Show nameplates is on", () => {
+  it("names a token for players only where the map names it, and none while Show nameplates is off, without a store write", async () => {
     const { store, table, settle, tokens } = await gm(createViewAtlasStore);
     expect(tokens().get('ogre')).toMatchObject({ name: null, ui: { nameplate: false } });
+    table.settings = { ...table.settings, showNames: true };
+    await settle(TOKEN_POLL_MS);
+    for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: null, ui: { nameplate: false } });
     const before = table.sent.length;
-    const list = JSON.stringify([...tokens()]);
-    store.getState().setTokenSettings({ ...store.getState().tokenSettings, showNameplates: true });
     store.getState().updateTokens([{ id: 'ogre', changes: { showNameplate: true } }]);
     await settle(TOKEN_POLL_MS);
-    expect(JSON.stringify([...tokens()])).toBe(list);
-    expect(sentSince(table, before)).not.toContain('Name-of-');
-    table.settings = { ...table.settings, showNames: true };
+    expect(tokens().get('ogre')).toMatchObject({ name: 'Name-of-ogre', ui: { nameplate: true } });
+    expect(tokens().get('bear')).toMatchObject({ name: null, ui: { nameplate: false } });
+    expect(sentSince(table, before)).not.toContain('Name-of-bear');
+    store.getState().setTokenSettings({ ...store.getState().tokenSettings, showNameplates: true });
     await settle(TOKEN_POLL_MS);
     for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: `Name-of-${id}`, ui: { nameplate: true } });
     table.settings = { ...table.settings, showNames: false };
     await settle(TOKEN_POLL_MS);
-    expect(tokens().get('bear')).toMatchObject({ name: null, ui: { nameplate: false } });
+    for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: null, ui: { nameplate: false } });
   });
 });
 
@@ -152,12 +154,12 @@ describe("Atlas's player window rules, read from its source at the pin", () => {
     expect(grid).toMatch(/public setEnabled\(enabled: boolean\): void \{\s*this\.options\.enabled = enabled;\s*if \(enabled\) \{\s*this\.createGrid\(\);\s*\} else if \(this\.gridSprite\) \{\s*this\.gridSprite\.visible = false;\s*\}/);
   });
 
-  it("draws players' nameplates by Show nameplates alone and their bars by the resources they may see, never the map's hidden ones", () => {
+  it("draws players' nameplates where the map shows them while Show nameplates is on, and their bars by the resources they may see, never the map's hidden ones", () => {
     const ui = vendor('pixi/TokenUIRenderer.ts');
     expect(ui).toContain('const forPlayers = playerSettings !== undefined || this.playersView;');
     expect(ui).toContain("const viewer: ResourceViewer = forPlayers ? 'player' : 'dm';");
     expect(ui).toContain('const hidden = forPlayers ? [] : tokenSettings?.hiddenResources ?? [];');
-    expect(ui).toContain('const showNameplate = playerSettings ? playerSettings.showTokenNameplates : isNameplateVisible(');
+    expect(ui).toContain('const showNameplate = playerSettings ? nameplateShownToPlayers(token, mapShowsNameplates, playerSettings.showTokenNameplates) : isNameplateVisible(token, mapShowsNameplates);');
     expect(vendor('pixi/token-renderer/UIManager.ts')).toContain('ui.update(token, sprite.tokenSize || 70, settings);');
   });
 });

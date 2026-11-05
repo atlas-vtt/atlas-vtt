@@ -1,3 +1,4 @@
+import { DEFAULT_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
 import { createSceneSource } from './plugin/host/sceneSource';
 import { canRunMapHotkeys, matchesMapHotkey } from './keyboard/mapHotkeys';
 import { SettingsService, type AtlasSettings } from './services/SettingsService';
@@ -437,6 +438,7 @@ export class PixiRendererOrchestrator { // Renamed class
 
     // Initialize FogOfWarRenderer after pins so it can be on top when active
     this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getMapRect());
+    this.followFogEdge();
     
     // Add fog layer to viewport - it should be on top for interaction when the fog tool is active
     const fogContainer = this.fogRenderer.getContainer();
@@ -698,6 +700,21 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!frame) return null;
     const { rect } = frameView(frame);
     return { view: { left: rect.x, top: rect.y, right: rect.x + rect.width, bottom: rect.y + rect.height }, scale: frame.scale };
+  }
+
+  /** Gives the fog the edge the GM set, now and when it changes; the default asks for nothing. */
+  private followFogEdge(): void {
+    const settings = SettingsService.forApp(this.obsApp);
+    if (!settings) return;
+    let edge = DEFAULT_FOG_EDGE;
+    const follow = (): void => {
+      const next = settings.getFogEdge();
+      if (sameFogEdge(next, edge)) return;
+      edge = next;
+      this.fogRenderer?.setEdge(next);
+    };
+    follow();
+    this.eventBusUnsubscribers.push(settings.onChange(follow));
   }
 
   /** Plays the map image's animated map and the liquids on it while someone sees them; returns the function that stops. */

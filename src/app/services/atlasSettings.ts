@@ -10,6 +10,7 @@ import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } fro
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
 import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
+import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 
 /**
  * How wheel events drive the map viewport.
@@ -49,6 +50,8 @@ export interface AtlasSettings {
   soundRoots?: SharedSoundRoots;
   /** Whether a new scene looks for the grid of its map. Off for tables that play without one. Read with `detectsGridOnNewScenes`. */
   detectGridOnNewScenes: boolean;
+  /** How the fog's edge looks, on the GM's map and the players'. Read with `getFogEdge`. */
+  fogEdge: FogEdge;
   /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
@@ -104,6 +107,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   diceVolume: 1,
   sound: DEFAULT_SOUND_SETTINGS,
   detectGridOnNewScenes: true,
+  fogEdge: DEFAULT_FOG_EDGE,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
   initiativeNames: false,

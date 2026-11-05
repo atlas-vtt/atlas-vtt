@@ -41,6 +41,8 @@ export const am = {
   'am.menu.renameSceneFailed': 'Could not rename the scene',
   'am.menu.renameTitle': 'Rename "{name}"',
   'am.menu.saveAsEncounter': { one: 'Save {count} Token as Encounter', other: 'Save {count} Tokens as Encounter' },
+  'am.menu.openScene': 'Open Scene',
+  'am.menu.openSceneFailed': 'Could not open the scene',
   'am.menu.createScene': 'Create Scene',
   'am.menu.createScenes': { one: 'Create {count} Scene', other: 'Create {count} Scenes' },
   'am.menu.sortBy': 'Sort by',

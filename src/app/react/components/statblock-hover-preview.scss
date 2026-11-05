@@ -1,3 +1,4 @@
+@use '../../../../styles/tokens' as *;
 @use './statblock/statblock-preview-surface' as *;
 
 // CMD+hover statblock preview shared by token hover on the map and the
@@ -9,4 +10,11 @@
 
 .statblock-hover-preview--closing {
   @include atlas-statblock-preview-closing;
+}
+
+// Obsidian's note hover popover (`--layer-popover`, 30), opened from a link in a statblock
+// preview (a spell, a condition), stands above every preview while one is shown
+// (`previewShown.ts`), the window over a modal too. Other popovers keep Obsidian's layer.
+body.atlas-statblock-preview-shown > .popover.hover-popover {
+  z-index: $z-atlas-modal + 2;
 }

@@ -828,7 +828,7 @@ SOFTWARE.
 
 Licence: MIT
 
-### @tanstack/react-virtual@3.14.21
+### @tanstack/react-virtual@3.14.24
 
 Licence: MIT
 
@@ -856,7 +856,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @tanstack/virtual-core@3.19.6
+### @tanstack/virtual-core@3.19.9
 
 Licence: MIT (same text as @tanstack/react-virtual)
 
@@ -1226,7 +1226,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### immer@11.1.21
+### immer@11.2.9
 
 Licence: MIT
 
@@ -2547,7 +2547,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### three@0.186.1
+### three@0.187.0
 
 Licence: MIT
 
