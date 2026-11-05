@@ -3,7 +3,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { renderEntries, type ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { useExclusiveDropdown } from '../../../packages/components/primitives/useExclusiveDropdown';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 interface CardMenuButtonProps {
   /** What the button shows. */

@@ -11,7 +11,7 @@ import type { LightPresetDefinition } from '../../types/lightPresetTypes';
 import type { LightEmission, LightKind } from '../../types/lightingTypes';
 import { lightMarkerLook, lightMarkerTheme } from './lightMarker';
 import { t } from '../../i18n';
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 
 const AT_REST = { hovered: false, selected: false, dragging: false };
 

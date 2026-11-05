@@ -42,7 +42,8 @@ describe('the options of a choice', () => {
     const input = screen.getByRole('combobox', { name: 'Habitat' });
     act(() => { input.focus(); });
     const list = screen.getByRole('listbox', { name: 'Habitat' });
-    expect(list.parentElement).toBe(document.body);
+    expect(list.parentElement?.classList.contains('atlas-portal-host')).toBe(true);
+    expect(list.parentElement?.parentElement).toBe(document.body);
     expect(host.querySelector('.atlas-statblock')!.contains(list)).toBe(false);
     expect(list.getAttribute('data-atlas-owner')).toBe('pane-1');
     // The panel's key scope and focus rules count the list as the panel's.
@@ -94,7 +95,7 @@ describe('the options of a choice', () => {
     const input = popout.querySelector<HTMLInputElement>('input')!;
     act(() => { input.focus(); });
     const list = popout.querySelector('[role="listbox"]');
-    expect(list?.parentElement).toBe(popout.body);
+    expect(list?.parentElement?.parentElement).toBe(popout.body);
     expect(document.querySelector('[role="listbox"]')).toBeNull();
   });
 });

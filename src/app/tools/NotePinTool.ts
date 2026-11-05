@@ -24,7 +24,7 @@ import { isEncounterFolderLink } from '../links/atlasLinkTargets';
 import { linkedEncounterFolder } from '../encounters/encounterFolders';
 import { rollEncounterFolder } from '../encounters/encounterFolderRoll';
 import { atlasViewOfStore } from '../plugin/atlasLeaves';
-import { portalHost } from '../ui/portalHost';
+import { portalHost } from '../host/portalHost';
 
 interface NotePinDropdownResult {
   accepted: boolean;

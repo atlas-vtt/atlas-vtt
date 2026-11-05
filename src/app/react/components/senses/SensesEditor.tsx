@@ -10,7 +10,7 @@ import { useExclusiveDropdown } from '../../../packages/components/primitives/us
 import type { SenseDefinition, TokenSense } from '../../../types/senseTypes';
 import { numberText } from '../../../utils/numberInput';
 import { InheritedSenseRow, SenseRowFields } from './SenseRows';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 interface SensesEditorProps {
   /** The senses being edited; null while the token has none of its own. */

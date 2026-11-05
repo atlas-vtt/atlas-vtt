@@ -9,7 +9,7 @@ import { placeHoverCard } from './hoverCardPlacement';
 import { scrollOnCtrlWheel } from './previewWheel';
 import { t } from '../i18n';
 import './encounter-folder-preview.scss';
-import { portalHost } from '../ui/portalHost';
+import { portalHost } from '../host/portalHost';
 
 /** Token portraits a row shows of its encounter, overlapping. */
 const ROW_PORTRAITS = 3;

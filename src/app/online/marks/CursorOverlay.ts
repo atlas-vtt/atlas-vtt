@@ -2,7 +2,7 @@ import { MARKS_INTERVAL_MS, type SharedCursor } from '../protocol/index.ts';
 import { getDomHost } from '../../host/dom';
 import type { OverlayHost } from './MarkOverlay.ts';
 import { RemoteCursors } from './RemoteCursors.ts';
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 
 /** The class of the marks overlay's canvas, which the cursors lie above. */
 const MARKS_CANVAS = 'atlas-online-marks';

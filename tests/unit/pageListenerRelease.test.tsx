@@ -5,7 +5,7 @@ import { createPortal, flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it } from 'vitest';
 import { registerPageListenerRelease } from '../../src/app/plugin/pageListenerRelease';
-import { portalHost, releasePortalHosts } from '../../src/app/ui/portalHost';
+import { portalHost, releasePortalHosts } from '../../src/app/host/portalHost';
 
 type Listener = EventListenerOrEventListenerObject;
 

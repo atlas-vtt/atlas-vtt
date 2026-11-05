@@ -5,7 +5,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
 import { cn } from "../../../../utils/cn"
 import { noteTooltipDismissal } from "../../../keyboard/tooltipEscape"
-import { portalHost } from "../../../ui/portalHost"
+import { portalHost } from "../../../host/portalHost"
 import "./tooltip.css"
 
 const ProviderMounted = React.createContext(false)

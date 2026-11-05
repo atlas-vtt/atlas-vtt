@@ -4,7 +4,7 @@ import { renderEntries, type ContextMenuEntry } from '../../../react/components/
 import { Button } from '../primitives/button';
 import { useExclusiveDropdown } from '../primitives/useExclusiveDropdown';
 import { t } from '../../../i18n';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 interface ObsidianMenuDropdownProps {
   id?: string;

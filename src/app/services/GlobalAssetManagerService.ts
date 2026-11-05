@@ -5,7 +5,7 @@ import AssetManager from '../packages/components/asset-manager/AssetManager';
 import { AtlasUIContext } from '../react/root/AtlasUIContext';
 import { ContextMenuProvider } from '../react/root/ContextMenuContext';
 import type { Tab } from '../packages/components/asset-manager/types';
-import { portalHost } from '../ui/portalHost';
+import { portalHost } from '../host/portalHost';
 
 export class GlobalAssetManagerService {
   private app: App;

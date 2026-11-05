@@ -8,7 +8,7 @@ import { DEFAULT_ROOM, ROOM_IDS, type Mood, type RoomId } from '../../../../soun
 import { roomName } from './useRoomName';
 import { MoodLookPicker } from './MoodLookPicker';
 import { placeUnderTile, type PopoverPlace } from './moodPopoverPlacement';
-import { portalHost } from '../../../../ui/portalHost';
+import { portalHost } from '../../../../host/portalHost';
 
 type MusicChoice = 'list' | 'keep' | 'none';
 

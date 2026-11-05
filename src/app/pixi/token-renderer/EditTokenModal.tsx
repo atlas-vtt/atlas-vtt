@@ -31,7 +31,7 @@ import { t } from '../../i18n';
 import { sceneTokens } from '../../tokens/offMap';
 import { everyLevelObjects } from '../../levels/levelObjects';
 import { getDomHost } from '../../host/dom';
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 
 interface EditTokenValues {
   name: string;

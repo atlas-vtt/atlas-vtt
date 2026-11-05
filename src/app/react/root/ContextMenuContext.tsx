@@ -7,7 +7,7 @@ import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
 import { observeResize } from '../../utils/observeResize';
 import { useMenuFit } from '../components/context-menu/useMenuFit';
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 
 // Re-export the entry type so consumers only import from this file
 export type { ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';

@@ -124,7 +124,7 @@
 }
 
 /* A confirmation holds no tooltips: one left open by the control whose menu opened it would stand over its question. */
-body:has(.atlas-text-dialog-backdrop) .tooltip-content {
+.atlas-portal-host:has(> .atlas-text-dialog-backdrop) .tooltip-content {
   display: none;
 }
 

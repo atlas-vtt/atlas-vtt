@@ -225,7 +225,7 @@ button.atlas-sound-who,
   justify-content: center;
   gap: $spacing-m;
   padding: $spacing-m;
-  border: $border-width-m dashed color-mix(in oklch, var(--mono-100) 16%, transparent);
+  border: $border-width-m solid color-mix(in oklch, var(--mono-100) 16%, transparent);
   border-radius: $card-radius;
   color: var(--atlas-sound-muted);
   text-align: center;

@@ -15,7 +15,7 @@ import { useSocketDismiss } from './useSocketDismiss';
 import { useSocketPlacement } from './useSocketPlacement';
 import { t } from '../../../i18n';
 import './token-socket.scss';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 export interface TokenSocketProps {
   block: ImageBlock;

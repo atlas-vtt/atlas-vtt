@@ -7,7 +7,7 @@ import { mapThumbnailPath } from '../utils/dataFileMigration';
 import { showPinnedLevel } from '../links/openAtlasLink';
 import { placeHoverCard } from './hoverCardPlacement';
 import { scrollOnCtrlWheel } from './previewWheel';
-import { portalHost } from '../ui/portalHost';
+import { portalHost } from '../host/portalHost';
 
 /**
  * Lightweight tooltip-style preview for .atlasmap files linked via note pins.

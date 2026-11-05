@@ -11,7 +11,7 @@
 import { prefersReducedMotion } from '../../../utils/motion';
 import type { Box, DropLine } from './dropGeometry';
 import type { Shift } from './siblingShifts';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 /** Marks the ability being moved: it stays in place, dimmed. */
 export const LIST_DRAGGING_ATTRIBUTE = 'data-sb-dragging';

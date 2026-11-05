@@ -1,6 +1,6 @@
 import type { HoverText } from './mapFeatureText';
 import './map-feature-label.scss';
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 
 /** Hovering this long on a new thing shows its label, as Atlas's tooltips do. */
 const HOVER_DELAY_MS = 300;

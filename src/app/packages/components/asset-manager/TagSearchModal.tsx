@@ -8,7 +8,7 @@ import type { AnyAsset, Tag } from './types';
 import { hasAssetTag } from '../../../services/tagGroups';
 import { tagChangesForAssets, type AssetTagChange } from './utils/assetTags';
 import { t } from '../../../i18n';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 interface TagSearchModalProps {
   selectedAssets: AnyAsset[];

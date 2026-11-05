@@ -6,7 +6,7 @@ import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { useMenuFit } from './useMenuFit';
 import './atlas-context-menu.scss';
 import { t } from '../../../i18n';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 // ── Entry descriptor (declarative menu definition) ──────────────────────────
 

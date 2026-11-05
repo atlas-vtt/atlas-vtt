@@ -5,7 +5,7 @@ import { renderEntries, type ContextMenuEntry } from '../../../react/components/
 import { Button } from '../primitives/button';
 import { LabelTooltip } from '../primitives/tooltip';
 import { useExclusiveDropdown } from '../primitives/useExclusiveDropdown';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 interface ActionsMenuButtonProps {
   /** Tooltip and accessible name of the trigger. */

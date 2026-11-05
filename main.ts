@@ -54,7 +54,7 @@ import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
 import { registerPageListenerRelease } from './src/app/plugin/pageListenerRelease';
-import { releasePortalHosts } from './src/app/ui/portalHost';
+import { releasePortalHosts } from './src/app/host/portalHost';
 import { supportSettingsSection } from './src/app/settings/supportSettingsSection';
 import { registerAtlasLeafSync } from './src/app/plugin/atlasLeaves';
 import { EXTENSION_ATLASMAP } from './src/app/utils/sceneFiles';

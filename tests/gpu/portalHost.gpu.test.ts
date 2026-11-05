@@ -1,7 +1,7 @@
 import '../setup/obsidianDom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import css from '../../styles/_portal-host.scss?inline';
-import { portalHost, releasePortalHosts } from '../../src/app/ui/portalHost';
+import { portalHost, releasePortalHosts } from '../../src/app/host/portalHost';
 
 /** Obsidian's own rule (app.css): whatever follows its app container in the body takes no drag. */
 const OBSIDIAN_RULE = 'body.is-frameless > .app-container ~ * { -webkit-app-region: no-drag; }';

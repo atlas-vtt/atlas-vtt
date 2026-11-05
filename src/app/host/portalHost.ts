@@ -1,4 +1,4 @@
-import { getDomHost } from '../host/dom';
+import { getDomHost } from './dom';
 
 const HOST_CLASS = 'atlas-portal-host';
 

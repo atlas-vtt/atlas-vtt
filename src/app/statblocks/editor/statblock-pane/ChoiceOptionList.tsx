@@ -7,7 +7,7 @@ import { OWNER_ATTRIBUTE } from '../interaction/chrome';
 import type { TemplateField } from '../../model/templateTypes';
 import { quoted } from '../../values/valueText';
 import { t } from '../../../i18n';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 export interface ChoiceOption {
   value: string;

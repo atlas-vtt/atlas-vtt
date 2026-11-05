@@ -6,7 +6,7 @@ import { useAtlasSettings } from './useMapHotkeys';
 import { availableHotkeys, DEFAULT_MAP_HOTKEYS, formatHotkey } from './mapHotkeys';
 import { useDialogFocus } from '../onboarding/useDialogFocus';
 import { t } from '../i18n';
-import { portalHost } from '../ui/portalHost';
+import { portalHost } from '../host/portalHost';
 
 export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }: { settings?: SettingsService | undefined; onClose: () => void; isPlayerView?: boolean }): React.JSX.Element {
   const settings = useAtlasSettings(explicit);

@@ -16,7 +16,7 @@ import { observeResize } from '../utils/observeResize';
 import { scrollOnCtrlWheel } from './previewWheel';
 import { holdPreviewShown } from '../react/components/statblock/previewShown';
 import { t } from '../i18n';
-import { portalHost } from '../ui/portalHost';
+import { portalHost } from '../host/portalHost';
 
 /** The card's top, which moves a map's preview: the name and title row of an Atlas statblock or a Fantasy Statblocks layout. */
 const CARD_HEADER = '.atlas-sb-header, .atlas-sb-heading-row';

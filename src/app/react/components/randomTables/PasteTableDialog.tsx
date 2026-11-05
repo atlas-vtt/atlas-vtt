@@ -17,7 +17,7 @@ import { FileTableImport } from './FileTableImport';
 import type { ImportedTableNote, ImportSaveJournal } from '../../../randomTables/import/saveImportedTables';
 import { IMPORT_LIMITS, validateImportTable } from '../../../randomTables/import/importModel';
 import { t } from '../../../i18n';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 const KINDS = [
   { value: 'text', label: t('tables.kind.text') },

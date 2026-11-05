@@ -13,7 +13,7 @@ import { StatblockSheet } from '../../render/StatblockSheet';
 import type { FieldRecord } from '../../values/fieldValues';
 import { templateGroups, unshownKeys } from './templateChoices';
 import { t } from '../../../i18n';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 export interface ChangeTemplateDialogProps {
   app: App;

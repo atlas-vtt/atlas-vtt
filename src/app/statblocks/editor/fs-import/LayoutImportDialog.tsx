@@ -14,7 +14,7 @@ import { AdoptionSection, ImportSummary } from './LayoutImportParts';
 import { useLayoutAdoption } from './useLayoutAdoption';
 import { t } from '../../../i18n';
 import './layout-import-dialog.scss';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 export interface LayoutImportDialogProps {
   app: App;

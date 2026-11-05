@@ -1,4 +1,4 @@
-// Atlas' floating UI renders into one host under <body> per document (`src/app/ui/portalHost.ts`). It adds no box,
+// Atlas' floating UI renders into one host under <body> per document (`src/app/host/portalHost.ts`). It adds no box,
 // so what it holds lays out and stacks as a child of <body> would.
 .atlas-portal-host {
   display: contents;

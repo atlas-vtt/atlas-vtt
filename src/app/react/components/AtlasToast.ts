@@ -1,4 +1,4 @@
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 /** Show a temporary toast notification styled to match Atlas VTT. */
 export function showAtlasToast(message: string, duration = 3000): void {
   const container =

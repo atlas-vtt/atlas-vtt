@@ -4,7 +4,7 @@ import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { initiativeEdit, modifierText } from '../../initiative/initiativeEdit';
 import { hasInitiative } from '../../initiative/awaitingInitiative';
 import { EditInitiativePopup } from './EditInitiativePopup';
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 
 interface OpenPopup {
   entry: InitiativeEntry;

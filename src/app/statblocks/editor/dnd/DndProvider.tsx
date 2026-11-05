@@ -23,7 +23,7 @@ import { cardTileWidth, DragPreview } from './DragPreview';
 import { DropIndicator } from './DropIndicator';
 import { ViewKeyboardSensor, type KeyboardStepper, type ViewKeyboardOptions } from './keyboardSensor';
 import './dnd.scss';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 /** How long the copy under the pointer takes to settle where the block landed (§7.6). */
 export const SETTLE_MS = 180;

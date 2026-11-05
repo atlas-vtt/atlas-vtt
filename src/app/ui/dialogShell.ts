@@ -1,4 +1,4 @@
-import { portalHost } from './portalHost';
+import { portalHost } from '../host/portalHost';
 export interface DialogShell {
   /** Backdrop covering the window; removing it closes the dialog. */
   root: HTMLElement;

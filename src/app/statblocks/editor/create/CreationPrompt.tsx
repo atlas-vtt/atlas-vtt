@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AnimatePresence } from 'framer-motion';
 import { NewStatblockPopover } from './NewStatblockPopover';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 /** The name step alone, for a template chosen in the modal (§12.2): resolves with the name, or null. */
 export function promptStatblockName(doc: Document, at: { x: number; y: number }, templateName: string): Promise<string | null> {

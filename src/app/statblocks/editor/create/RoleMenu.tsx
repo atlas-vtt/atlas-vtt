@@ -8,7 +8,7 @@ import { cn } from '../../../../utils/cn';
 import type { RoleChoice } from './roleChoices';
 import { t } from '../../../i18n';
 import './create-statblock.scss';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 export const CREATE_STATBLOCK_LABEL = t('statblockEditor.createStatblock');
 /** Obsidian's icon for the entries that make a statblock. */

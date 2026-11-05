@@ -28,7 +28,7 @@ import { noteValues, statblockNoteChoices, statblockTemplate } from './statblock
 import { BLANK_ITEM, TemplateGrid, templateItem } from './TemplateGrid';
 import { t } from '../../../i18n';
 import './template-gallery.scss';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 export interface TemplateGalleryProps {
   app: App;

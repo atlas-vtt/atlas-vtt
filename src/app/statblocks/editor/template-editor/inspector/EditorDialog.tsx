@@ -5,7 +5,7 @@ import { cn } from '../../../../../utils/cn';
 import { handledByAnotherControl } from '../../../../keyboard/tooltipEscape';
 import { CloseButton } from '../../../../packages/components/primitives/CloseButton';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../../../packages/components/primitives/dialogMotion';
-import { portalHost } from '../../../../ui/portalHost';
+import { portalHost } from '../../../../host/portalHost';
 
 export interface EditorDialogProps {
   /** An element of the editor: the dialog opens in its window. */

@@ -7,7 +7,7 @@ import { CloseButton } from '../../../packages/components/primitives/CloseButton
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../../packages/components/primitives/dialogMotion';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { t } from '../../../i18n';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 interface SettingsDialogProps {
   /** The heading; what follows it on its line, such as a release, goes in `subtitle`. */

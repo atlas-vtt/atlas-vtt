@@ -12,7 +12,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AnimatePresence } from 'framer-motion';
 import type { Plugin } from 'obsidian';
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 
 interface HostedRoot {
   doc: Document;

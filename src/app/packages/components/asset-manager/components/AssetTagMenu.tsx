@@ -8,7 +8,7 @@ import type { AnyAsset } from '../types';
 import { AssetTagPicker } from './AssetTagPicker';
 import { useAssetTagMenuActions } from './assetTagMenuContext';
 import { t } from '../../../../i18n';
-import { portalHost } from '../../../../ui/portalHost';
+import { portalHost } from '../../../../host/portalHost';
 
 const stop = (event: React.SyntheticEvent): void => event.stopPropagation();
 

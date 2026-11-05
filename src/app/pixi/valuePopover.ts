@@ -1,4 +1,4 @@
-import { portalHost } from '../ui/portalHost';
+import { portalHost } from '../host/portalHost';
 /**
  * The small popover in which a GM types a token's numbers over the map: it hangs below a point of
  * the canvas (above where there is no room), Enter or a press outside applies a valid value,

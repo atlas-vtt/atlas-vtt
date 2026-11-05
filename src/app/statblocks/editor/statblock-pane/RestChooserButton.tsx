@@ -12,7 +12,7 @@ import { useSocketPlacement } from '../token-socket/useSocketPlacement';
 import { paneAllies, type PaneAllies } from './paneAllies';
 import { restOfferNow, type PaneRestContext } from './paneRest';
 import { RestChooserPanel } from './RestChooserPanel';
-import { portalHost } from '../../../ui/portalHost';
+import { portalHost } from '../../../host/portalHost';
 
 interface RestChooserButtonProps {
   button: RecoveryButton;

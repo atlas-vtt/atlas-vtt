@@ -9,7 +9,7 @@ import { previewEdgeGaps, type PreviewEdgeGaps } from './statblock/previewEdgeGa
 import { scrollOnCtrlWheel } from '../../services/previewWheel';
 import { holdPreviewShown } from './statblock/previewShown';
 import './statblock-hover-preview.scss';
-import { portalHost } from '../../ui/portalHost';
+import { portalHost } from '../../host/portalHost';
 
 export interface StatblockHoverPreviewProps {
   /** Vault path of the linked statblock note */
