@@ -35,7 +35,7 @@ const RAW: DiceRollResult = {
   },
 };
 const ORIGIN: DiceRollOrigin = { viewId: 'view-1', mapPath: MAP, tokenId: 'canary-token' };
-const MAP_ART: ShownRollToken = { name: 'Canary Name', imagePath: 'tokens/map-art.webp', showRing: true, ringColor: '#aa0000' };
+const MAP_ART: ShownRollToken = { name: 'Canary Name', imagePath: 'tokens/map-art.webp', showRing: true, ringColor: '#aa0000', mapShowsNameplates: true };
 
 interface Display {
   host: HTMLElement;

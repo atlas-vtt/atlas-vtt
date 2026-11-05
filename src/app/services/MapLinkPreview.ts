@@ -7,6 +7,7 @@ import { mapThumbnailPath } from '../utils/dataFileMigration';
 import { showPinnedLevel } from '../links/openAtlasLink';
 import { placeHoverCard } from './hoverCardPlacement';
 import { scrollOnCtrlWheel } from './previewWheel';
+import { portalHost } from '../host/portalHost';
 
 /**
  * Lightweight tooltip-style preview for .atlasmap files linked via note pins.
@@ -85,7 +86,7 @@ export class MapLinkPreview {
 
   private render(position: { x: number; y: number }): void {
     // Outer wrapper for SCSS scoping (all styles are nested under .atlas-vtt-plugin)
-    this.wrapperEl = this.doc.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
+    this.wrapperEl = portalHost(this.doc).createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
 
     // Inner card — carries the actual visual styles
     this.cardEl = this.wrapperEl.createDiv({ cls: 'atlas-map-link-preview' });

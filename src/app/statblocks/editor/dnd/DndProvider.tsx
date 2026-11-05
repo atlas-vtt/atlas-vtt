@@ -23,6 +23,7 @@ import { cardTileWidth, DragPreview } from './DragPreview';
 import { DropIndicator } from './DropIndicator';
 import { ViewKeyboardSensor, type KeyboardStepper, type ViewKeyboardOptions } from './keyboardSensor';
 import './dnd.scss';
+import { portalHost } from '../../../host/portalHost';
 
 /** How long the copy under the pointer takes to settle where the block landed (§7.6). */
 export const SETTLE_MS = 180;
@@ -117,7 +118,7 @@ export function TemplateDragAndDrop(props: TemplateDragAndDropProps): React.JSX.
     drag.start();
     rootRef.current?.setAttribute(DRAGGING_ATTRIBUTE, '');
     setStage(stage);
-    setHost(stage.doc.body);
+    setHost(portalHost(stage.doc));
     setTileWidth(picked.kind === 'item' ? cardTileWidth(stage) : null);
     setSource(picked);
     announce(pickedUpText(name, keyboard));

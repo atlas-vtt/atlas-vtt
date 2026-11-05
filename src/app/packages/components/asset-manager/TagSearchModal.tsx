@@ -8,6 +8,7 @@ import type { AnyAsset, Tag } from './types';
 import { hasAssetTag } from '../../../services/tagGroups';
 import { tagChangesForAssets, type AssetTagChange } from './utils/assetTags';
 import { t } from '../../../i18n';
+import { portalHost } from '../../../host/portalHost';
 
 interface TagSearchModalProps {
   selectedAssets: AnyAsset[];
@@ -188,7 +189,7 @@ export class TagSearchModal {
   }
 
   open(): void {
-    this.container = document.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
+    this.container = portalHost().createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
 
     this.root = createRoot(this.container);
     this.root.render(

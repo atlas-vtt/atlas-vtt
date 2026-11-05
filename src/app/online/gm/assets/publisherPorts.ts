@@ -7,8 +7,8 @@ import type { PyramidSource } from './pyramidPublishing.ts';
 import type { AssetStoreClient } from './storeClient.ts';
 
 /** What a table's publisher (`AssetPublisher`) reads of the account, the vault, the socket and the clock. */
-export interface AssetPublisherPorts extends Pick<ProgressPorts, 'sendLive' | 'send' | 'connected'> {
-  readonly client: UploadClient & Pick<AssetStoreClient, 'offer' | 'putTiles'> & Partial<Pick<AssetStoreClient, 'remove'>>;
+export interface AssetPublisherPorts extends Pick<ProgressPorts, 'sendLive' | 'send' | 'connected' | 'shareChanged'> {
+  readonly client: UploadClient & Pick<AssetStoreClient, 'offer' | 'putTiles' | 'putSegments'> & Partial<Pick<AssetStoreClient, 'remove'>>;
   /** This device's map pyramids; without them maps go as images. */
   readonly pyramids?: PyramidSource | undefined;
   readonly salt: Pick<AssetSalt, 'soon'>;

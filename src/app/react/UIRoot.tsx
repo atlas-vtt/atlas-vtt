@@ -15,7 +15,7 @@ import { useViewStoreHook, useAtlasStore } from './ViewStoreContext';
 import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
-import DMScreen from './components/DMScreen';
+import { DMScreenFromStore } from './components/DMScreen';
 import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
 import { DiceRollLog } from './components/dice-log/DiceRollLog';
@@ -38,6 +38,7 @@ import { defeatedOnMap } from '../initiative/defeatedOnMap';
 // Import the new context and hook
 import { AtlasUIContext, AtlasUIContextValue } from './root/AtlasUIContext';
 import { ContextMenuProvider } from './root/ContextMenuContext';
+import { SoundDirector } from '../soundDirector/SoundDirector';
 import { PanelBoundary } from './root/PanelBoundary';
 import { useMapNavigationHotkeys } from './useMapNavigationHotkeys';
 import type { AtlasView } from '../atlas-view';
@@ -64,8 +65,6 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   // Per-view UI visibility — driven by the store, not local state
   const isGridSettingsOpen = useAtlasStore(s => s.isGridSettingsOpen);
   const setGridSettingsOpen = useAtlasStore(s => s.setGridSettingsOpen);
-  const isDMScreenOpen = useAtlasStore(s => s.isDMScreenOpen);
-  const setDMScreenOpen = useAtlasStore(s => s.setDMScreenOpen);
   const isGridAlignmentOpen = useAtlasStore(s => s.isGridAlignmentOpen);
   const setGridAlignmentOpen = useAtlasStore(s => s.setGridAlignmentOpen);
   const isDiceLogOpen = useAtlasStore(s => s.isDiceLogOpen);
@@ -126,6 +125,19 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
         e.preventDefault();
         store.getState().setDMScreenOpen(!store.getState().isDMScreenOpen);
         return;
+      }
+
+      if (!isPlayerView && settings?.isExperimentalOn('sound')) {
+        if (matchesMapHotkey(e, 'nextMood', settings)) {
+          e.preventDefault();
+          SoundDirector.forApp(app).pressNext();
+          return;
+        }
+        if (matchesMapHotkey(e, 'silence', settings)) {
+          e.preventDefault();
+          SoundDirector.forApp(app).desk.toggleSilence();
+          return;
+        }
       }
 
       // Arrow Up/Down: Navigate initiative order (DM view, tracker open, combat active)
@@ -223,13 +235,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {/* DM screen - only for DM view */}
           {!isPlayerView && (
             <PanelBoundary name="the DM screen">
-              <DMScreen
-                isOpen={isDMScreenOpen}
-                onClose={() => {
-                  // Give CodeMirror time to clean up before closing
-                  window.setTimeout(() => setDMScreenOpen(false), 0);
-                }}
-              />
+              <DMScreenFromStore />
             </PanelBoundary>
           )}
 

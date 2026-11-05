@@ -10,6 +10,9 @@ export const RECORD_FORMAT = 1;
 
 const ASSET_TYPES: ReadonlySet<string> = new Set(['token', 'map', 'note', 'statblock', 'character', 'scene', 'encounter', 'player']);
 
+/** Whether this version has a place for records of a type. */
+export const isKnownAssetType = (type: unknown): boolean => typeof type === 'string' && ASSET_TYPES.has(type);
+
 /** Types whose payload is `data`, written at the top level of their JSON as older versions expect. */
 const PAYLOAD_TYPES: ReadonlySet<string> = new Set(['scene', 'encounter', 'player', 'character', 'statblock']);
 

@@ -14,6 +14,9 @@ export const MAX_JOBS = 4;
 /** An asset at least this large holds its bytes in memory while it goes up: one such at a time. */
 export const LARGE_BYTES = 32 * 1024 * 1024;
 
+/** Pyramids and sounds in segments go up piece by piece and wait between batches: they take no whole asset's turn. */
+const isPiecewise = (entry: QueueEntry): boolean => entry.kind === 'tiles' || entry.kind === 'segments';
+
 export interface RunnerDeps extends Pick<JobDeps, 'client' | 'readFile' | 'blobs' | 'unchanged'> {
   readonly queue: UploadQueue;
   readonly timers: Timers;
@@ -23,6 +26,10 @@ export interface RunnerDeps extends Pick<JobDeps, 'client' | 'readFile' | 'blobs
   mayUpload(): boolean;
   /** An upload's share so far. */
   progress(entry: QueueEntry, share: number): void;
+  /** Of a sound in segments: how many, from the first, the store holds. */
+  parts(entry: QueueEntry, count: number): void;
+  /** Of a sound in segments whose copy is whole: its true size and pieces offered. */
+  settle(entry: QueueEntry): Promise<void>;
   /** An upload ended. */
   ended(entry: QueueEntry, end: JobEnd): void;
   /** The queue's look again: offers what waits, else `pump`s. */
@@ -72,10 +79,10 @@ export class UploadRunner {
     this.slots.drain();
     const now = this.deps.timers.now();
     while (this.deps.mayUpload()) {
-      const whole = [...this.running].filter((entry) => entry.kind !== 'tiles');
+      const whole = [...this.running].filter((entry) => !isPiecewise(entry));
       const full = whole.length >= MAX_JOBS;
       const large = whole.some((entry) => entry.size >= LARGE_BYTES);
-      const next = this.deps.queue.next(now, (entry) => entry.kind === 'tiles' || (!full && (!large || entry.size < LARGE_BYTES)));
+      const next = this.deps.queue.next(now, (entry) => isPiecewise(entry) || (!full && (!large || entry.size < LARGE_BYTES)));
       if (next === undefined) break;
       void this.run(next);
     }
@@ -116,6 +123,8 @@ export class UploadRunner {
         slot: () => this.slots.take(() => ({ rank: entry.rank, stamp: entry.stamp })),
         signal,
         progress: (share) => this.deps.progress(entry, share),
+        parts: (count) => this.deps.parts(entry, count),
+        settle: () => this.deps.settle(entry),
       });
     } catch {
       end = 'retry';

@@ -59,6 +59,8 @@ export interface ContentPaneProps {
   scrollMemory: ScrollMemory;
   /** Set while filters narrow the list; the empty state offers to clear them. */
   onClearFilters?: () => void;
+  /** What the empty state offers to add, unless filters made it empty (the starter tokens); it is given the hint to show once it has nothing to offer. */
+  emptyOffer?: (hint: React.ReactNode) => React.ReactNode;
 }
 
 const NO_IDS: ReadonlySet<string> = new Set();
@@ -124,6 +126,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   const endDrag = (): void => { setDraggedItems(null); setDropTarget(null); };
 
   const isEmpty = assets.length === 0 && folders.length === 0;
+  const withOffer = (hint: React.ReactNode): React.ReactNode => (props.emptyOffer ? props.emptyOffer(hint) : hint);
   // The first section's header carries the selection, under the sort.
   const selection = (
     <SelectionInfo count={selectedAssetIds.length + selectedFolderIds.length} onClear={onClearSelection} />
@@ -144,7 +147,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
             {props.onClearFilters ? (
               <Button variant="outline" className="atlas-empty-action" onClick={props.onClearFilters}>{t('am.empty.clearFilters')}</Button>
             ) : (
-              <p>{t(activeTab === 'party' ? 'am.empty.partyHint' : 'am.empty.hint')}</p>
+              withOffer(<p>{t(activeTab === 'party' ? 'am.empty.partyHint' : 'am.empty.hint')}</p>)
             )}
           </motion.div>
         ) : (

@@ -20,11 +20,14 @@ const entry = (tokenId: string, order: number, extra: Partial<InitiativeEntry> =
   id: tokenId, tokenId, name: tokenId, initiative: 10 - order, initiativeModifier: 0, imagePath: '', isActive: false, isNPC: true, order, ...extra,
 });
 
+const MAP_NAMES = { showNameplates: true, hiddenResources: [], showInstanceBadges: false, tokenRingSize: 1 };
+
 function listOf(fromTurn: boolean | undefined): ReturnType<typeof sharedInitiative> {
   return sharedInitiative({
     state: {
       initiativeTrackerOpen: true,
       mapPath: 'map.atlasmap',
+      tokenSettings: MAP_NAMES,
       initiative: { ...createDefaultInitiativeState(), isActive: true, round: 3, entries: [entry('ogre', 0), entry('rat', 1, { isActive: true }), entry('hero', 2)] },
       objects: { tokens: { ogre: token('ogre', { conditions: ['frightened', 'prone'], conditionValues: { frightened: 2 } }), rat: token('rat'), hero: token('hero') } },
     },
@@ -41,6 +44,18 @@ describe('the online players\' list as the GM lays it out', () => {
     const list = listOf(true);
     expect(list?.fromTurn).toBe(true);
     expect(list?.combatants.map((combatant) => [combatant.name, combatant.nextRound])).toEqual([['ogre', true], ['rat', undefined], ['hero', undefined]]);
+  });
+
+  it('sends no name for a combatant whose nameplate the GM\'s map does not show', () => {
+    const list = sharedInitiative({
+      state: {
+        initiativeTrackerOpen: true, mapPath: 'map.atlasmap', tokenSettings: { ...MAP_NAMES, showNameplates: false },
+        initiative: { ...createDefaultInitiativeState(), isActive: true, round: 1, entries: [entry('ogre', 0, { isActive: true }), entry('hero', 1)] },
+        objects: { tokens: { ogre: token('ogre'), hero: token('hero', { showNameplate: true }) } },
+      },
+      shown: true, showNames: true, rules: {} as RulesLookup, art: () => null,
+    });
+    expect(list?.combatants.map((combatant) => combatant.name)).toEqual([null, 'hero']);
   });
 
   it('sends the list in turn order and nothing more where the GM keeps it so', () => {

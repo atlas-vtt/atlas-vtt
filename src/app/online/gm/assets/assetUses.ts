@@ -3,11 +3,11 @@ import type { AssetKind, AssetRef } from '../../protocol/index.ts';
 /**
  * The order uploads go in (lower first), a first picture for everyone before polish for anyone: the
  * presented floor's map (its pyramid's manifest and overview level), the art of tokens players see,
- * the overviews of the floors a player stands on, the presented map's finer levels, those floors'
+ * the sounds that play or are named next, the overviews of the floors a player stands on, the presented map's finer levels, those floors'
  * finer levels, then the shared scene's other floors (overview, finer), then the video, handouts and
  * texts, then the scenes open beside it.
  */
-export const ASSET_RANKS = { map: 0, art: 1, floorMap: 2, mapLevels: 3, floorLevels: 4, restMap: 5, restLevels: 6, video: 7, extra: 8, staged: 9 } as const;
+export const ASSET_RANKS = { map: 0, art: 1, sound: 1.5, floorMap: 2, mapLevels: 3, floorLevels: 4, restMap: 5, restLevels: 6, video: 7, extra: 8, staged: 9 } as const;
 
 /**
  * Who looks at a map: players on the presented floor, players standing on another floor, nobody (a
@@ -54,6 +54,10 @@ export const ASSET_USES = {
   image: { kind: 'image', rank: ASSET_RANKS.extra },
   /** A quest's, a sheet's or a found note's whole text. */
   text: { kind: 'text', rank: ASSET_RANKS.extra },
+  /** A sound that plays or is named as next: as soon as the map and the art players see have gone. */
+  audio: { kind: 'audio', rank: ASSET_RANKS.sound },
+  /** A sound of a mood nobody asked for yet: after everything else. */
+  stagedAudio: { kind: 'audio', rank: ASSET_RANKS.staged },
 } as const satisfies Record<string, AssetUse>;
 
 /** An asset named by its content before it is stored: its hash, size and type, without the id players fetch it by. */

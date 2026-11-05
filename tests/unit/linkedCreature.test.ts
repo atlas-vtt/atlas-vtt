@@ -148,6 +148,7 @@ describe('linked creatures while Fantasy Statblocks parses the vault', () => {
   });
 
   it('gives a parsed creature that extends another as it was parsed, and extended after the parse', async () => {
+    current.files.set('Bestiary/Boss.md', '');
     bestiary.creatures.push({ name: 'Goblin Boss', path: 'Bestiary/Boss.md', extends: 'Goblin', hp: 21 });
 
     const parsing = await resolveLinkedCreature(current.app, 'Bestiary/Boss.md');

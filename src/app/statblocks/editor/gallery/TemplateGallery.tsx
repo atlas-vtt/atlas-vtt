@@ -28,6 +28,7 @@ import { noteValues, statblockNoteChoices, statblockTemplate } from './statblock
 import { BLANK_ITEM, TemplateGrid, templateItem } from './TemplateGrid';
 import { t } from '../../../i18n';
 import './template-gallery.scss';
+import { portalHost } from '../../../host/portalHost';
 
 export interface TemplateGalleryProps {
   app: App;
@@ -199,6 +200,6 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onUse, onC
         </div>
       </motion.div>
     </motion.div>,
-    doc.body,
+    portalHost(doc),
   );
 }

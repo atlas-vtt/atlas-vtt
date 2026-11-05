@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { renderEntries, type ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';
@@ -7,6 +7,7 @@ import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
 import { observeResize } from '../../utils/observeResize';
 import { useMenuFit } from '../components/context-menu/useMenuFit';
+import { portalHost } from '../../host/portalHost';
 
 // Re-export the entry type so consumers only import from this file
 export type { ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';
@@ -22,6 +23,8 @@ export interface ContextMenuOptions {
   returnFocus?: HTMLElement | null;
   /** Called once the menu closes, however it closed. */
   onClose?: (() => void) | undefined;
+  /** The menu's name for assistive tech, e.g. "Options of Shieldwall": a menu without one is announced as just "menu". */
+  label?: string | undefined;
 }
 
 export interface ContextMenuController {
@@ -90,6 +93,7 @@ interface MenuState {
   position: { x: number; y: number };
   returnFocus: HTMLElement | null;
   collisionBoundary: Element | null;
+  label: string | undefined;
 }
 
 /** The provider's own pane, only where the point lies in it: a menu opened over a body-level overlay belongs to no pane. */
@@ -112,6 +116,7 @@ function returnFocusTo(element: HTMLElement | null, event: Event): void {
 interface FittedMenuProps {
   pane: Element | null;
   ownerId: string | undefined;
+  label: string | undefined;
   onCloseAutoFocus: (event: Event) => void;
   children: React.ReactNode;
 }
@@ -120,13 +125,14 @@ interface FittedMenuProps {
  * The open menu, beside the point it opened at as an operating system's menus are: to that side it
  * slides up along the point to stay in its room, where below the point it could only scroll.
  */
-function FittedMenu({ pane, ownerId, onCloseAutoFocus, children }: FittedMenuProps): React.ReactElement {
+function FittedMenu({ pane, ownerId, label, onCloseAutoFocus, children }: FittedMenuProps): React.ReactElement {
   const menu = useRef<HTMLDivElement>(null);
   const boundary = useMenuFit(menu, pane);
   return (
     <DropdownMenu.Content
       ref={menu}
       className="atlas-ctx-menu"
+      aria-label={label}
       data-atlas-owner={ownerId}
       side="right"
       align="start"
@@ -156,12 +162,12 @@ interface ContextMenuProviderProps {
 
 export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ children, ownerId, local = false }) => {
   const [menuState, setMenuState] = useState<MenuState | null>(null);
-  // The body of the document the provider renders in: a provider in a popout opens its menus there.
+  // Atlas' host in the document the provider renders in: a provider in a popout opens its menus there.
   const [body, setBody] = useState<HTMLElement | null>(null);
   const anchorElement = useRef<HTMLSpanElement | null>(null);
   const anchor = useCallback((node: HTMLSpanElement | null): void => {
     anchorElement.current = node;
-    setBody(node?.ownerDocument.body ?? null);
+    setBody(node ? portalHost(node.ownerDocument) : null);
   }, []);
   const bodyRef = useRef<HTMLElement | null>(null);
   bodyRef.current = body;
@@ -187,7 +193,7 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
     const collisionBoundary = options?.returnFocus?.closest('.workspace-leaf')
       ?? doc?.elementFromPoint?.(position.x, position.y)?.closest('.workspace-leaf')
       ?? leafHolding(anchorElement.current, position);
-    setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null, collisionBoundary });
+    setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null, collisionBoundary, label: options?.label });
   }, [told]);
 
   useEffect(() => {
@@ -217,9 +223,12 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
   }, [body, menuState, close]);
 
   const pos = menuState?.position ?? { x: 0, y: 0 };
+  // One object for the provider's life: a new one each time a menu opens or closes re-rendered every component that
+  // opens menus (the toolbar, a library's rows, a grid of moods) in the frame the menu appears in.
+  const controller = useMemo<ContextMenuController>(() => ({ open, close }), [open, close]);
 
   return (
-    <ContextMenuCtx.Provider value={{ open, close }}>
+    <ContextMenuCtx.Provider value={controller}>
       {children}
       <span ref={anchor} hidden />
       {body && createPortal(
@@ -246,6 +255,7 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
               <FittedMenu
                 pane={menuState.collisionBoundary}
                 ownerId={ownerId}
+                label={menuState.label}
                 onCloseAutoFocus={(e) => returnFocusTo(menuState.returnFocus, e)}
               >
                 {renderEntries(menuState.entries, close, { collisionBoundary: menuState.collisionBoundary, container: body })}

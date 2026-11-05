@@ -23,6 +23,7 @@ import { pausedTimers } from '../utils/timerWidget';
 import { preserveDamagedSceneFile, SceneFileError } from './sceneFileProblems';
 import { SceneFileWriter } from './sceneFileWriter';
 import type { LevelLink, LevelSurface, SceneLevel } from '../types/sceneLevelTypes';
+import type { SceneSound } from '../sound/soundTypes';
 import { LEVELS_FILE_VERSION, readSceneLevels, sceneFileVersion } from '../levels/levelFile';
 
 import type { FogOperation } from '../types/fogTypes';
@@ -77,6 +78,8 @@ export interface MapFile {
   camera: CameraState;
   /** Frames the GM saved for the players' TV; absent in older files and until a scene has one. Read with `readPlayerFrames`. */
   playerFrames?: SavedPlayerFrame[];
+  /** The moods the scene links to; older versions ignore it and files of scenes without leave it out. Read with `readSceneSound`. */
+  sound?: SceneSound;
 }
 
 /** A token as found in older map files, where conditions were still called `statuses`. */

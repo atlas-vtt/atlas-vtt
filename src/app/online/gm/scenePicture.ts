@@ -1,5 +1,6 @@
 import { COLOUR_PATTERN, MAX_COORDINATE, MAX_NAME, MAX_TOKEN_CELLS, MAX_TOKEN_SIZE, MAX_TOKENS, type AssetRef, type Claim, type SharedToken, type SnapGrid } from '../protocol/index.ts';
 import { getTokenRingOuterDiameter } from '../../pixi/token-renderer/tokenRingMetrics';
+import { nameplateShownToPlayers } from '../../pixi/token-renderer/nameplateVisibility';
 import { computeTokenPixelSize, computeTokenStrokeWidth } from '../../pixi/token-renderer/tokenSizing';
 import type { ShownRollToken } from '../../services/playerRollSource';
 import type { TokenEntity } from '../../types';
@@ -15,6 +16,8 @@ export interface PictureInputs {
   readonly gridSize: number;
   /** Whether players see token names (Atlas's nameplate setting for the player view); without, only player tokens' names are sent. */
   readonly showNames: boolean;
+  /** The scene's Show nameplates: with `showNames`, players see the names the GM's map shows (`nameplateShownToPlayers`). */
+  readonly mapShowsNameplates: boolean;
   /** What players may know of a token: a player token, or the GM's. */
   claimOf(tokenId: string, token: TokenEntity): Claim;
   /** The artwork at a vault path as players are sent it, or null while it is unknown or cannot be sent. */
@@ -47,9 +50,9 @@ export function ringColour(colour: string | undefined): string {
 
 /**
  * Whether players are sent a token's name: always for a player token or a token a player has (they pick
- * theirs by name), else only while Atlas shows players nameplates.
+ * theirs by name), else only while Atlas shows players its nameplate.
  */
-export const nameSent = (claim: Claim, showNames: boolean): boolean => claim !== null || showNames;
+export const nameSent = (claim: Claim, nameplate: boolean): boolean => claim !== null || nameplate;
 
 /** A place as players are sent it: to a hundredth of a world pixel, finer than any screen shows; more digits only cost bytes. */
 export const roundPlace = (value: number): number => Math.round(value * 100) / 100;
@@ -73,7 +76,8 @@ export function sharedTokens(inputs: PictureInputs): SharedToken[] {
     const size = computeTokenPixelSize(inputs.gridSize, cells);
     if (!(size > 0 && size <= MAX_TOKEN_SIZE && cells > 0 && cells <= MAX_TOKEN_CELLS)) continue;
     const claim = inputs.claimOf(id, token);
-    const name = shown.name === null || !nameSent(claim, inputs.showNames) ? null : shown.name.slice(0, MAX_NAME);
+    const nameplate = nameplateShownToPlayers(token, inputs.mapShowsNameplates, inputs.showNames);
+    const name = shown.name === null || !nameSent(claim, nameplate) ? null : shown.name.slice(0, MAX_NAME);
     shared.push({
       layer: finiteOr(token.layer, 0),
       token: {
@@ -88,8 +92,8 @@ export function sharedTokens(inputs: PictureInputs): SharedToken[] {
         ring: shown.showRing ? { colour: ringColour(shown.ringColor), size: getTokenRingOuterDiameter(size, stroke) } : null,
         claim,
         badge: inputs.badge(id),
-        // Atlas's player window shows nameplates by its own setting alone, player tokens included.
-        ui: tokenUIOf(token, inputs.rules, inputs.showNames && name !== null),
+        // Atlas's player window shows the nameplates the GM's map shows while its own setting is on, player tokens included.
+        ui: tokenUIOf(token, inputs.rules, nameplate && name !== null),
         ...(inputs.turn?.has(id) ? { turn: true as const } : {}),
         ...(inputs.held?.has(id) ? { held: true as const } : {}),
       },

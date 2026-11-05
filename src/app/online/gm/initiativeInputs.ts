@@ -11,13 +11,14 @@ import type { InitiativeRules } from '../../types/initiativeRulesTypes';
 import type { ViewState } from '../../types/viewState';
 import { ringColour } from './scenePicture.ts';
 import { hasInitiative } from '../../initiative/awaitingInitiative';
+import { nameplateShownToPlayers } from '../../pixi/token-renderer/nameplateVisibility';
 
 /** What the players' initiative list is made of. */
 export interface InitiativeInputs {
-  readonly state: Partial<Pick<ViewState, 'initiative' | 'initiativeTrackerOpen'>> & { readonly mapPath: string | null; readonly objects: { readonly tokens: Readonly<Record<string, TokenEntity>> } };
+  readonly state: Partial<Pick<ViewState, 'initiative' | 'initiativeTrackerOpen' | 'tokenSettings'>> & { readonly mapPath: string | null; readonly objects: { readonly tokens: Readonly<Record<string, TokenEntity>> } };
   /** The player view's initiative switch (`showInitiative`). */
   readonly shown: boolean;
-  /** The player view's nameplate switch: without it no name is sent. */
+  /** The player view's nameplate switch: without it no name is sent, with it the names the GM's map shows (`nameplateShownToPlayers`). */
   readonly showNames: boolean;
   /** The GM's choice that the lists start at the turn during a fight; off unless said. */
   readonly fromTurn?: boolean;
@@ -82,7 +83,7 @@ function initiativeRulesOf(rules: RulesLookup | null, mapPath: string | null): I
 /**
  * The players' initiative list as Atlas's player window shows it (`PlayerInitiativePanel`): only
  * while the GM's tracker is open and the player view shows it; every entry whose token is on the
- * map and not hidden, in turn order or by sides; names only with nameplates, hit points only where
+ * map and not hidden, in turn order or by sides; names only where players see the nameplate, hit points only where
  * the map's rules show them to players. Nothing of a hidden token's entry is read.
  */
 export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | null {
@@ -109,11 +110,12 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
   // Who acts in the next round, where the list starts at the turn
   const fromTurn = inputs.fromTurn === true;
   const nextRound = new Set(playerSegments(list, fromTurn).flatMap((segment) => (segment.kind === 'group' && segment.key === 'next' ? segment.items : [])));
+  const mapShowsNameplates = state.tokenSettings?.showNameplates ?? false;
   const combatants = list.combatants.slice(0, MAX_COMBATANTS).map((combatant): SharedCombatant => {
     const { entry, token } = combatant;
     return {
       initiative: shownNumber(entry),
-      name: inputs.showNames && typeof entry.name === 'string' ? entry.name.slice(0, MAX_NAME) : null,
+      name: nameplateShownToPlayers(token, mapShowsNameplates, inputs.showNames) && typeof entry.name === 'string' ? entry.name.slice(0, MAX_NAME) : null,
       turn: list.isActive && !list.bySides && entry.isActive === true,
       sitsOut: entry.sitsOut === true,
       ...(entry.delayed === true ? { delayed: true } : {}),

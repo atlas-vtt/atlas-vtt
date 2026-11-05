@@ -10,6 +10,7 @@ import { formatList, t } from '../../../i18n';
 import type { TemplateUsage } from '../../library/templateUsage';
 import type { LibraryTemplate } from '../../model/resolvedTypes';
 import type { TemplateId } from '../../model/templateTypes';
+import { portalHost } from '../../../host/portalHost';
 
 /** The Select's value for leaving the statblocks and roles as they are. */
 const KEEP = '';
@@ -110,6 +111,6 @@ export function DeleteTemplateDialog(props: DeleteTemplateDialogProps): React.JS
         </div>
       </motion.div>
     </motion.div>,
-    anchor.doc.body,
+    portalHost(anchor.doc),
   );
 }

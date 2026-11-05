@@ -1,9 +1,13 @@
-import React, { useId, useRef, useState } from 'react';
+import React, { useCallback, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../../../utils/cn';
+import { useListPlacement } from '../../../packages/components/primitives/selectListPlacement';
 import { useKeepInView } from '../../../packages/components/primitives/useKeepInView';
+import { OWNER_ATTRIBUTE } from '../interaction/chrome';
 import type { TemplateField } from '../../model/templateTypes';
 import { quoted } from '../../values/valueText';
 import { t } from '../../../i18n';
+import { portalHost } from '../../../host/portalHost';
 
 export interface ChoiceOption {
   value: string;
@@ -35,21 +39,32 @@ export interface OptionList {
   show: () => void;
   /** Typing highlights the first option that matches, which Enter takes. */
   restart: () => void;
+  /** The box the list hangs from: its field. */
+  anchorRef: (node: HTMLElement | null) => void;
   list: React.ReactNode;
 }
 
 /**
  * The options of a choice, hanging under its input like a menu (§7.6). Focus
- * stays in the input throughout, so picking never blurs what was typed.
+ * stays in the input throughout, so picking never blurs what was typed. The
+ * list floats in its document's body, placed by its field as a select's list
+ * is, so the card, which clips its content, never cuts it; it carries the
+ * surface's id, so the panel counts it as its own.
  */
 export function useOptionList(label: string, options: readonly ChoiceOption[], onPick: (value: string) => void): OptionList {
   const listRef = useRef<HTMLDivElement>(null);
+  const anchor = useRef<HTMLElement | null>(null);
+  const [body, setBody] = useState<HTMLElement | null>(null);
+  const [owner, setOwner] = useState<string | null>(null);
   const listId = useId();
   const [open, setOpen] = useState(false);
   // -1 while nothing is highlighted: the list opened with its input, and nothing was typed or stepped to yet.
   const [active, setActive] = useState(-1);
   const shown = open && options.length > 0;
-  const keepInView = useKeepInView(listRef, shown, 'bottom');
+  const placement = useListPlacement(shown, anchor, listRef, body, options.length);
+  const { width: _width, ...placed } = placement.style;
+  // Placed below or above its field and as long as the room there; the shift keeps a list wider than its field in the window.
+  const keepInView = useKeepInView(listRef, shown, placement.fit.up ? 'top' : 'bottom', `${placed.left}/${placed.top}/${placed.bottom}`);
   const current = active < 0 ? -1 : Math.min(active, options.length - 1);
 
   const pick = (value: string): void => {
@@ -81,14 +96,24 @@ export function useOptionList(label: string, options: readonly ChoiceOption[], o
     return false;
   };
 
-  const list = shown ? (
+  // The body of the field's own document: a popout's lists open there.
+  const anchorRef = useCallback((node: HTMLElement | null): void => {
+    anchor.current = node;
+    setBody(node?.ownerDocument.body ?? null);
+    setOwner(node?.closest('[data-atlas-surface]')?.getAttribute('data-atlas-surface') ?? null);
+  }, []);
+
+  const list = shown && body ? createPortal(
     <div
       ref={listRef}
       id={listId}
       role="listbox"
       aria-label={label}
-      className={cn('atlas-sb-pane-options', keepInView.capped && 'atlas-keep-in-view--capped')}
-      style={keepInView.style}
+      {...(owner !== null && { [OWNER_ATTRIBUTE]: owner })}
+      className={cn('atlas-vtt-plugin atlas-sb-pane-options', keepInView.capped && 'atlas-keep-in-view--capped')}
+      style={{ ...placed, ...keepInView.style }}
+      // A press on the list's own padding or scrollbar keeps focus in the input too.
+      onMouseDown={(event) => event.preventDefault()}
     >
       {options.map((option, index) => (
         <div
@@ -97,14 +122,13 @@ export function useOptionList(label: string, options: readonly ChoiceOption[], o
           role="option"
           aria-selected={index === current}
           className={cn('atlas-sb-pane-option', index === current && 'is-active')}
-          // Keeps focus in the input, so picking never blurs (and commits) what was typed.
-          onMouseDown={(event) => event.preventDefault()}
           onClick={() => pick(option.value)}
         >
           {option.label}
         </div>
       ))}
-    </div>
+    </div>,
+    portalHost(body.ownerDocument),
   ) : null;
 
   return {
@@ -126,6 +150,7 @@ export function useOptionList(label: string, options: readonly ChoiceOption[], o
       setActive(0);
       setOpen(true);
     },
+    anchorRef,
     list,
   };
 }

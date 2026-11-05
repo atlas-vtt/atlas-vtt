@@ -5,6 +5,7 @@ import AssetManager from '../packages/components/asset-manager/AssetManager';
 import { AtlasUIContext } from '../react/root/AtlasUIContext';
 import { ContextMenuProvider } from '../react/root/ContextMenuContext';
 import type { Tab } from '../packages/components/asset-manager/types';
+import { portalHost } from '../host/portalHost';
 
 export class GlobalAssetManagerService {
   private app: App;
@@ -31,7 +32,7 @@ export class GlobalAssetManagerService {
     this.isOpen = true;
 
     // Create container
-    this.container = document.body.createDiv();
+    this.container = portalHost().createDiv();
     this.container.addClasses(['atlas-vtt-plugin', 'atlas-global-asset-manager-container']);
 
     this.root = createRoot(this.container);

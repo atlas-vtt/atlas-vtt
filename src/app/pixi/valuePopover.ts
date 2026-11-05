@@ -1,3 +1,4 @@
+import { portalHost } from '../host/portalHost';
 /**
  * The small popover in which a GM types a token's numbers over the map: it hangs below a point of
  * the canvas (above where there is no room), Enter or a press outside applies a valid value,
@@ -49,7 +50,7 @@ const VIEWPORT_MARGIN = 8;
  */
 export function openValuePopover({ anchorEl, anchor, label, className, build, onClose }: ValuePopoverOptions): ValuePopover {
   const { doc, win } = anchorEl;
-  const root = doc.body.createDiv({
+  const root = portalHost(doc).createDiv({
     cls: ['atlas-vtt-plugin', 'atlas-token-value-editor', ...(className ? [className] : [])],
     attr: { role: 'dialog', 'aria-label': label },
   });

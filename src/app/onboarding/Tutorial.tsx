@@ -6,6 +6,7 @@ import type { SettingsService, TutorialId } from '../services/SettingsService';
 import { useDialogFocus } from './useDialogFocus';
 import { placeTutorialCard } from './tutorialPlacement';
 import { t } from '../i18n';
+import { portalHost } from '../host/portalHost';
 
 /** A screenshot shown above a step's text, for what the user cannot see yet. */
 export interface TutorialImage { src: string; alt: string }
@@ -70,6 +71,6 @@ function TutorialCard({ settings, id, steps, label = t('tour.label'), action }: 
           </div>
         </div>
       </div>
-    </div>, document.body,
+    </div>, portalHost(),
   );
 }

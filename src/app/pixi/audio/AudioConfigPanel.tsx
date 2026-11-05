@@ -14,6 +14,7 @@ import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { unitLabelFor } from '../../grid/measurementFormat';
 import { t } from '../../i18n';
 import { levelObjects } from '../../levels/levelObjects';
+import { portalHost } from '../../host/portalHost';
 
 /** Convert game units (feet/meters) to world pixels. */
 function unitsToPixels(units: number, gridSize: number, unitDistance: number): number {
@@ -249,7 +250,7 @@ export function openAudioConfigPanel(
   const audio = levelObjects(store.getState()).audios[audioId];
   if (!audio) return;
 
-  const container = document.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
+  const container = portalHost().createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
 
   const root = createRoot(container);
 

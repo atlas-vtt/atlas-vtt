@@ -28,6 +28,7 @@ import type { Tool } from "./toolbar/toolFaces"
 import type { ToolbarContext, ToolMenu } from "./toolbar/toolbarContext"
 import type { ResponsiveToolbarItem } from "./toolbar/toolbarTypes"
 import { t } from '../../i18n';
+import { portalHost } from '../../host/portalHost';
 
 interface MainToolbarProps {
   viewId?: string;
@@ -222,7 +223,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
             {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
           />
         </div>,
-        document.body,
+        portalHost(),
       )}
       {isDiceTrayOpen && !diceTool && (
         <div style={{

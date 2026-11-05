@@ -9,6 +9,7 @@ import { placeHoverCard } from './hoverCardPlacement';
 import { scrollOnCtrlWheel } from './previewWheel';
 import { t } from '../i18n';
 import './encounter-folder-preview.scss';
+import { portalHost } from '../host/portalHost';
 
 /** Token portraits a row shows of its encounter, overlapping. */
 const ROW_PORTRAITS = 3;
@@ -42,7 +43,7 @@ export class EncounterFolderPreview implements IPreviewWindow {
     this.notePath = options.folder;
     this.originatingPin = options.pin;
     // Atlas styles are scoped to `.atlas-vtt-plugin`.
-    this.wrapper = options.doc.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
+    this.wrapper = portalHost(options.doc).createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
     this.card = this.wrapper.createDiv({ cls: 'atlas-encounter-folder-preview', attr: { role: 'dialog', 'aria-label': encounterFolderName(options.folder) } });
     scrollOnCtrlWheel(this.card);
     this.build(this.card);

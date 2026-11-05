@@ -230,6 +230,17 @@
   }
 }
 
+/* Parts stacked inside a section (a label over its control, rows of controls). Every part but the first takes
+   the space: a sibling combinator after a bare `*` (Tailwind's `space-y`) restyles the whole window whenever an
+   element is put at the start of <body>, as a menu's focus guard is. */
+.atlas-dropdown-stack > :not(:first-child) {
+  margin-top: $spacing-s;
+}
+
+.atlas-dropdown-stack--loose > :not(:first-child) {
+  margin-top: $spacing-m;
+}
+
 /* When a separator already provides the visual break, remove the section's own border */
 .atlas-dropdown-separator + .atlas-dropdown-section {
   border-top: none;

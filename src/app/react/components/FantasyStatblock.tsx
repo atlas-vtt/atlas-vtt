@@ -70,9 +70,9 @@ export function FantasyStatblock({
 
   // A note outside the vault is read from its own text; the bestiary knows only vault notes.
   const bestiaryCreature = useMemo(
-    () => (noteContent === undefined ? bestiaryLookup().byPath.get(notePath) ?? null : null),
+    () => (noteContent === undefined ? bestiaryLookup(app).byPath.get(notePath) ?? null : null),
     // `revision` is not read by the lookup; it re-runs it when the bestiary changes.
-    [notePath, noteContent, revision],
+    [app, notePath, noteContent, revision],
   );
 
   // A note the bestiary has not parsed is read from the note itself: its frontmatter (the

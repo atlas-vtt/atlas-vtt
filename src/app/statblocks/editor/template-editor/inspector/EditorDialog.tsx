@@ -5,6 +5,7 @@ import { cn } from '../../../../../utils/cn';
 import { handledByAnotherControl } from '../../../../keyboard/tooltipEscape';
 import { CloseButton } from '../../../../packages/components/primitives/CloseButton';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../../../packages/components/primitives/dialogMotion';
+import { portalHost } from '../../../../host/portalHost';
 
 export interface EditorDialogProps {
   /** An element of the editor: the dialog opens in its window. */
@@ -63,6 +64,6 @@ export function EditorDialog({ anchor, title, onClose, children, footer, initial
         <div className="atlas-te-dialog__footer">{footer}</div>
       </motion.div>
     </motion.div>,
-    anchor.doc.body,
+    portalHost(anchor.doc),
   );
 }

@@ -11,6 +11,7 @@ import type { LightPresetDefinition } from '../../types/lightPresetTypes';
 import type { LightEmission, LightKind } from '../../types/lightingTypes';
 import { lightMarkerLook, lightMarkerTheme } from './lightMarker';
 import { t } from '../../i18n';
+import { portalHost } from '../../host/portalHost';
 
 const AT_REST = { hovered: false, selected: false, dragging: false };
 
@@ -103,7 +104,7 @@ function MoreLights({ more, current, onPick, onCustom }: MoreLightsProps): React
         </DropdownMenu.Trigger>
       </LabelTooltip>
       {/* Inside the panel that holds the chips: the menu stacks above it, and a press in the menu is a press in that panel. */}
-      <DropdownMenu.Portal container={trigger?.closest<HTMLElement>('.atlas-light-popover, .atlas-modal') ?? trigger?.ownerDocument.body}>
+      <DropdownMenu.Portal container={trigger?.closest<HTMLElement>('.atlas-light-popover, .atlas-modal') ?? portalHost(trigger?.ownerDocument)}>
         <DropdownMenu.Content
           className="atlas-ctx-menu atlas-ctx-menu--dropdown atlas-light-more"
           side="bottom"

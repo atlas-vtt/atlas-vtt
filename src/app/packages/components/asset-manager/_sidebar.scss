@@ -143,3 +143,38 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
     height: $icon-xs;
   }
 }
+
+// ── Bestiary tokens offer, above Manage ──
+
+.atlas-bestiary-offer--sidebar {
+  &.btn {
+    border-radius: $radius-m;
+    color: var(--text-normal);
+  }
+
+  small {
+    color: var(--text-faint);
+    font-weight: $font-weight-normal;
+    white-space: nowrap;
+  }
+
+  &.btn:disabled {
+    cursor: progress;
+    opacity: 1;
+    color: var(--text-muted);
+  }
+}
+
+// The offer and its progress, close to Manage below it: the two are the sidebar's foot.
+.atlas-bestiary-offer-block--sidebar {
+  @include atlas-flex-col($gap: $spacing-xs);
+  margin-bottom: calc(#{$spacing-xs} - #{$spacing-l});
+
+  // The sidebar is narrower than the popover elsewhere: here it takes the button's width.
+  .atlas-starter-choice {
+    left: 0;
+    width: 100%;
+    min-width: 0;
+    transform: none;
+  }
+}

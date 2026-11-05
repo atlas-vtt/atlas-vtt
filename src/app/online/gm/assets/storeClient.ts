@@ -80,6 +80,13 @@ export class AssetStoreClient {
     return progress !== null ? { ok: true, value: progress } : failed(response.status === 200 ? 'retry' : troubleOf(response.status));
   }
 
+  /** One batch of a sound's segments as a `multipart/form-data` body, in order; the first carries the manifest. */
+  async putSegments(id: string, body: ArrayBuffer, contentType: string): Promise<StoreResult<TilesProgress>> {
+    const response = await this.call({ path: ASSET_ROUTES.segments(id), method: 'PUT', body, contentType });
+    const progress = response.status === 200 ? tilesProgressOf(response.json) : null;
+    return progress !== null ? { ok: true, value: progress } : failed(response.status === 200 ? 'retry' : troubleOf(response.status));
+  }
+
   /** Takes an asset out of the store (a pyramid given up), releasing what was kept for it. */
   async remove(id: string): Promise<StoreResult<null>> {
     const response = await this.call({ path: ASSET_ROUTES.whole(id), method: 'DELETE' });

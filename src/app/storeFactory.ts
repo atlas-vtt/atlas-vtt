@@ -53,6 +53,8 @@ import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/le
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
+import { readSceneSound } from './soundLibrary/sceneSound';
+import type { SceneSound } from './sound/soundTypes';
 import { levelsForFile, readExploredMasks, readSceneLevels } from './levels/levelFile';
 import { levelAlignmentsOf, movesWithFrame, withoutAlignments } from './levels/levelAlignment';
 import { levelsCarriedWithGrid, type CarriedLevels, type GridCarryScene } from './levels/levelGridCarry';
@@ -240,6 +242,9 @@ export interface ViewAtlasState extends ViewState {
   // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
   addLiquids: LiquidsSlice['addLiquids'];
   deleteLiquid: LiquidsSlice['deleteLiquid'];
+  /** Links the scene to its moods; nothing to link clears the field. Written with the map, never an undo step. */
+  setSceneSound: (sound: SceneSound | null) => void;
+
   // Frames saved for the players' TV (from playerFramesSlice.ts)
   addPlayerFrame: PlayerFramesSlice['addPlayerFrame'];
   movePlayerFrame: PlayerFramesSlice['movePlayerFrame'];
@@ -305,6 +310,7 @@ export interface ViewAtlasState extends ViewState {
   setRoofsHidden: UISlice['setRoofsHidden'];
   setGridSettingsOpen: UISlice['setGridSettingsOpen'];
   setDMScreenOpen: UISlice['setDMScreenOpen'];
+  setDMScreenPage: UISlice['setDMScreenPage'];
   setGridAlignmentOpen: UISlice['setGridAlignmentOpen'];
   setDiceLogOpen: UISlice['setDiceLogOpen'];
   openAssetManager: UISlice['openAssetManager'];
@@ -335,9 +341,10 @@ export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewAtlasState['tokenSettings']> =
   tokenRingSize: 1,
 };
 
-const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'playerFrames'> => ({
+const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'playerFrames' | 'sound'> => ({
   lighting: { ...DEFAULT_SCENE_LIGHTING },
   playerFrames: [],
+  sound: null,
   exploredMask: null,
   exploredEdits: 0,
   partyValues: {},
@@ -1395,6 +1402,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.lootRoller = createInitialLootRollerState();
             draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
             draft.playerFrames = [];
+            draft.sound = null;
             draft.exploredMask = null;
             draft.exploredMasks = undefined;
             draft.exploredEdits = 0;
@@ -1520,6 +1528,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createMapFeaturesActions(set),
           ...createLiquidsActions(set),
           ...createPlayerFramesActions(set),
+          setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),
 
           // --- Per-view UI visibility (from uiSlice.ts) ---
           ...createInitialUIState(),
@@ -1576,6 +1585,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               exploredMasks: state.exploredMasks,
               // Left out until the GM saves one, so files of scenes without stay as they were
               ...(state.playerFrames.length > 0 && { playerFrames: state.playerFrames }),
+              ...(state.sound && { sound: state.sound }),
             };
           },
           
@@ -1595,6 +1605,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               lootRoller: readLootRollerState(saved.lootRoller),
               lighting: readSceneLighting(saved.lighting),
               playerFrames: readPlayerFrames(saved.playerFrames),
+              sound: readSceneSound(saved.sound),
               exploredMask: readExploredMask(saved.exploredMask),
               // Counted per session: a file never brings one.
               exploredEdits: current.exploredEdits,

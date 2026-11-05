@@ -22,6 +22,8 @@ interface InitiativeScene {
   mapPath: string | null;
   /** What the list shows of every initiative token (`EntryToken`), in entry order, as a key that changes when one of them does. */
   tokens: string;
+  /** The scene's Show nameplates, which says with each token's own whom the list names. */
+  mapShowsNameplates: boolean;
 }
 
 /**
@@ -84,7 +86,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.badgeNumbers = undefined;
   }
 
-  protected select({ initiative, initiativeTrackerOpen, objects, mapPath }: ViewAtlasState): InitiativeScene {
+  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings }: ViewAtlasState): InitiativeScene {
     const tokens = objects?.tokens;
     const entries = initiative?.entries ?? [];
     // Who is defeated follows the map's resources, as on the GM's cards
@@ -99,7 +101,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     // A token's side counts where the fight or the rules know it
     const sides = entries.length > 0 && initiative ? sideIdsOf(initiative, mapInitiativeRules(this.app, mapPath ?? null)) : undefined;
     const entryTokens = JSON.stringify(entries.map((entry): EntryToken => entryTokenOf(tokens?.[entry.tokenId], definitions, conditions, sides)));
-    return { initiative, initiativeTrackerOpen, visibleTokenIds, mapPath: mapPath ?? null, tokens: entryTokens };
+    return { initiative, initiativeTrackerOpen, visibleTokenIds, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false };
   }
 
   protected render(container: HTMLElement, scene: InitiativeScene, settings: PlayerSettings): void {
@@ -126,6 +128,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     const { fromTurn, dock } = this.settings.initiativeLayout();
     renderPlayerInitiative(container, list, {
       showNames: settings.showTokenNameplates,
+      mapShowsNameplates: scene.mapShowsNameplates,
       fromTurn,
       dock,
       badgeNumber: (tokenId) => shown.get(tokenId) ?? null,

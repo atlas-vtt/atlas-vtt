@@ -3,6 +3,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { renderEntries, type ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { useExclusiveDropdown } from '../../../packages/components/primitives/useExclusiveDropdown';
+import { portalHost } from '../../../host/portalHost';
 
 interface CardMenuButtonProps {
   /** What the button shows. */
@@ -37,7 +38,7 @@ export function CardMenuButton({ children, className, label, disabled, entries, 
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={open} modal={false}>
       {label === undefined ? triggerButton : <LabelTooltip label={label}>{triggerButton}</LabelTooltip>}
-      <DropdownMenu.Portal container={trigger?.ownerDocument.body}>
+      <DropdownMenu.Portal container={portalHost(trigger?.ownerDocument)}>
         <DropdownMenu.Content
           className="atlas-ctx-menu atlas-ctx-menu--dropdown"
           side="bottom"

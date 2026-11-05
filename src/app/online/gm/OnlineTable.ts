@@ -28,6 +28,8 @@ import { readVaultImage } from './vaultImage.ts';
 import { LOST_NOTICES, type OnlineTableEvents } from './tableEvents.ts';
 import type { AssetPublisher } from './assets/AssetPublisher.ts';
 import { OpenScenes, tablePublisher, viewFocus, type TableAssets } from './assets/tableAssets.ts';
+import type { TableSoundShare } from './sound/TableSoundShare.ts';
+import { tableSoundShare } from './sound/tableSoundPorts.ts';
 
 export type { OnlineTableEvents };
 import { FoundShare } from './pins/FoundShare.ts';
@@ -75,6 +77,8 @@ export class OnlineTable {
   private readonly assets: AssetPublisher | null;
   /** The scenes open in Atlas's tabs, offered to the store ahead of their turn. */
   private readonly openScenes: OpenScenes | null;
+  /** The table's sound for its players; null where nothing can be stored for them. */
+  private readonly sound: TableSoundShare | null;
   /** The join link players open. */
   readonly link: string;
   private readonly stopOwnership: () => void;
@@ -104,6 +108,14 @@ export class OnlineTable {
       connected: () => [...this.connection.connected],
       withdrawn: () => this.refreshAssets(),
       focus: () => viewFocus(this.watch.current?.renderer),
+      storeChanged: () => this.sound?.storeChanged(),
+    });
+    this.sound = this.assets === null ? null : tableSoundShare({
+      app, publisher: this.assets, timers,
+      send: (body, to) => this.connection.send(body, to),
+      sendTime: (t1) => this.connection.sendTime(t1),
+      connected: () => [...this.connection.connected],
+      nameOf: (player) => ownership.nameOf(player),
     });
     this.openScenes = this.assets === null ? null : new OpenScenes(app, this.assets.storing);
     const stored = this.assets?.storing;
@@ -185,6 +197,7 @@ export class OnlineTable {
         // Pages say again with the books that follow whether theirs covers the map.
         this.covers.reset();
         this.assets?.welcome();
+        this.sound?.welcome();
         this.resend();
         ownership.welcome(players);
       },
@@ -200,12 +213,14 @@ export class OnlineTable {
         this.bound()?.share.playerLeft(player);
         this.books.share.playerLeft(player);
         this.assets?.playerLeft(player);
+        this.sound?.playerLeft(player);
         ownership.left(player);
         this.log.left(player);
       },
       // The log, the found pins and the books are the table's, so they hear players while no scene is shared too.
-      message: (from, body) => void (this.bound()?.share.heard(from, body), this.covers.receive(from, body) || this.log.receive(from, body) || this.found.receive(from, body) || this.books.share.receive(from, body) || this.bound()?.share.receive(from, body)),
+      message: (from, body) => void (this.bound()?.share.heard(from, body), this.covers.receive(from, body) || this.log.receive(from, body) || this.sound?.receive(from, body) || this.found.receive(from, body) || this.books.share.receive(from, body) || this.bound()?.share.receive(from, body)),
       access: (closesAt) => this.setClosing(closesAt),
+      time: (t1, t2) => this.sound?.heardTime(t1, t2),
     }, this.gate);
     // Each player hears only how far the assets they were sent references of have come.
     this.connection.onSent = (text, to) => this.assets?.sent(text, to);
@@ -276,6 +291,7 @@ export class OnlineTable {
     this.connection.start();
     this.books.start();
     this.found.start();
+    this.sound?.start();
     // Every rest that reaches a character of this table the GM's Atlas takes while it runs is logged: approved requests and the GM's own.
     this.stopLoggingRests = gatedRests.onRested((rest) => {
       const players = this.playersOfCharacter(rest.characterId);
@@ -301,6 +317,7 @@ export class OnlineTable {
   /** The GM signed in again: what waits for the store is offered again. */
   signedIn(): void {
     this.assets?.signedIn();
+    this.sound?.refreshAssets();
   }
 
   /** Ends the table on the server and stops sharing. */
@@ -323,6 +340,7 @@ export class OnlineTable {
 
   private setStatus(status: TableStatus): void {
     this.currentStatus = status;
+    if (status !== 'online') this.sound?.linkLost();
     if (status === 'stopped') this.finish('stopped');
     else if (status === 'refused') {
       const end = tableEndOf(this.connection.closeCode);
@@ -369,9 +387,11 @@ export class OnlineTable {
     void this.image.refreshAssets();
     this.books.refreshAssets();
     this.found.refreshAssets();
+    this.sound?.refreshAssets();
   }
 
   private stopWatch(): void {
+    this.sound?.stop();
     this.assets?.stop();
     this.stopLoggingRests();
     this.found.stop();
@@ -394,6 +414,7 @@ export class OnlineTable {
     this.log.resend(to);
     this.image.resend(to);
     this.books.share.resend(to);
+    this.sound?.resend(to);
     this.assets?.resend(to);
   }
 

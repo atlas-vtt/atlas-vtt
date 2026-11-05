@@ -3,10 +3,12 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { nearestHexCenter, type HexLayout, type Point } from '../grid/hexGeometry';
 import { hexLayoutOfGrid } from '../grid/hexLinks';
+import { squareCellCentre, squareGridOf } from '../grid/squareLattice';
 
 /**
- * The note pin tool's preview under the pointer: a pin, or, while Shift is held
- * on a hex grid, the pin in the centre of the highlighted hex it would link.
+ * The note pin tool's preview under the pointer: a pin, or, while Shift is held,
+ * the pin in the centre of the highlighted cell: the hex it would link on a hex
+ * grid, the square it would sit in on a square grid.
  */
 export class NotePinPreview {
   private active = false;
@@ -59,6 +61,14 @@ export class NotePinPreview {
     return hexLayoutOfGrid(this.store.getState().grid);
   }
 
+  /** Where a Shift-click puts the pin: the centre of the hex or square under `point`; null on a map without a grid. */
+  cellCentre(point: Point): Point | null {
+    const layout = this.hexLayout();
+    if (layout) return nearestHexCenter(layout, point);
+    const square = squareGridOf(this.store.getState().grid);
+    return square ? squareCellCentre(square, point) : null;
+  }
+
   /** Keeps the preview where it is while the note picker is open. */
   hold(): void {
     this.held = true;
@@ -70,17 +80,17 @@ export class NotePinPreview {
     this.update();
   }
 
-  /** Lights up the hex being linked, with the pin in its centre, while its note picker is open. */
-  showLinkedHex(center: Point): void {
+  /** Lights up the cell the pin goes to, with the pin in its centre, while its note picker is open. */
+  showCell(center: Point): void {
     this.eventBus.emit('hex-link-preview', center);
     this.eventBus.emit('pin-preview-update', { ...center, icon: this.icon() });
   }
 
   private update(): void {
     if (!this.active || this.held) return;
-    const layout = this.shiftDown ? this.hexLayout() : null;
-    if (layout) {
-      if (this.pointer) this.showLinkedHex(nearestHexCenter(layout, this.pointer));
+    const centre = this.shiftDown && this.pointer ? this.cellCentre(this.pointer) : null;
+    if (centre) {
+      this.showCell(centre);
       return;
     }
     this.eventBus.emit('hex-link-preview-hide');

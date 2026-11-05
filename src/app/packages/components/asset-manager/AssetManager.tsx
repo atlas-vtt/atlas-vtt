@@ -8,6 +8,7 @@ import type { AnyAsset, AssetManagerProps, Tab } from './types';
 
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
+import { BestiaryTokensOffer } from './components/BestiaryTokensOffer';
 import { Content } from './components/Content';
 import { LocationBar } from './components/LocationBar';
 import { ModalLayer } from './components/ModalLayer';
@@ -177,6 +178,12 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
 
   const anyModalOpen = crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isMapCreatorOpen;
 
+  // The empty Tokens tab offers the starter tokens in place of its hint.
+  const offerService = data.assetService;
+  const emptyOffer = shown.tab === 'tokens' && offerService
+    ? (hint: React.ReactNode): React.ReactNode => <BestiaryTokensOffer app={data.app} assets={offerService} collection={selectedCollection} variant="empty" fallback={hint} />
+    : null;
+
   return (
     <>
       {/* Stays mounted while closed so the window can animate out. */}
@@ -228,6 +235,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onEditCollectionSettings={crud.setSettingsModalCollectionId}
                   onExportCollection={() => { void crud.handleExportCollection(); }}
                   onImportCollection={crud.handleImportCollection}
+                  footer={activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" /> : null}
                   layout={sidebar}
                 />
                 <Header
@@ -296,6 +304,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                         onDrop={crud.handleDrop}
                         view={data.view}
                         app={data.app}
+                        {...(emptyOffer && { emptyOffer })}
                         assetService={data.assetService}
                         spawnCounts={sel.spawnCounts}
                         onSpawnCountChange={sel.handleSpawnCountChange}

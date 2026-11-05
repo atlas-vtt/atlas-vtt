@@ -22,7 +22,7 @@ export function fakeTokenSource(state: () => SceneState, perception: () => ((tok
       for (const id of ids ?? Object.keys(tokens)) {
         const token: TokenEntity | undefined = tokens[id];
         if (token === undefined || token.isHidden === true || (sees?.(id) ?? 'seen') !== 'seen') continue;
-        shown.set(id, { name: token.kind === 'character' ? token.name || null : null, imagePath: token.imagePath || undefined, showRing: token.showRing !== false, ringColor: token.ringColor });
+        shown.set(id, { name: token.kind === 'character' ? token.name || null : null, imagePath: token.imagePath || undefined, showRing: token.showRing !== false, ringColor: token.ringColor, mapShowsNameplates: false });
       }
       return shown;
     },

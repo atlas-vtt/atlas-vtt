@@ -27,8 +27,8 @@ import { encounterThumbnailFile } from '../encounters/encounterThumbnailFile';
 import { LibrarySync } from './library/LibrarySync';
 import type { LibraryMergeResult } from './library/mergeLibraryChanges';
 import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libraryPaths';
-import { isPayloadUnread, serializeRecord } from './library/recordFile';
-import { libraryClock, parseLibraryState } from './library/libraryState';
+import { isKnownAssetType, isPayloadUnread, serializeRecord } from './library/recordFile';
+import { assetKey, libraryClock, parseLibraryState } from './library/libraryState';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { showNotice } from '../ui/notice';
 
@@ -414,7 +414,14 @@ export class AssetService {
   /** The cached index without the library bookkeeping stored beside it, which the library sync takes. */
   private withoutBookkeeping(stored: AssetMetadata): AssetMetadata {
     const fields: Record<string, unknown> = { ...stored };
-    this.library.restore(parseLibraryState(fields[LIBRARY_STATE_KEY]));
+    const state = parseLibraryState(fields[LIBRARY_STATE_KEY]);
+    // A cache entry of a type this version has no place for is no record here, and its file is left alone.
+    for (const [id, asset] of Object.entries(stored.assets ?? {})) {
+      if (isKnownAssetType(asset.type)) continue;
+      Reflect.deleteProperty(stored.assets, id);
+      for (const [path, stamp] of Object.entries(state.files)) if (stamp.key === assetKey(id)) Reflect.deleteProperty(state.files, path);
+    }
+    this.library.restore(state);
     Reflect.deleteProperty(stored, LIBRARY_STATE_KEY);
     return stored;
   }
@@ -1181,6 +1188,12 @@ export class AssetService {
       await this.trashFileIfPresent(asset.thumbnailPath);
     }
     if (asset.type === 'encounter') await this.trashEncounterThumbnail(asset);
+    if (asset.type === 'map') {
+      // Loaded when needed: the reference collector reaches into statblocks and scenes, which import this service.
+      const { unusedMapFiles } = await import('./mapAssetFiles');
+      const unused = await unusedMapFiles(this.app, this, asset, Object.values(this.metadata!.assets));
+      for (const path of unused) await this.trashFileIfPresent(path);
+    }
 
     // Remove from metadata
     delete this.metadata!.assets[id];
@@ -1431,6 +1444,14 @@ export class AssetService {
   ): Promise<TokenAsset> {
     const identity = this.createAssetIdentity('token');
     return this.registerAsset<TokenAsset>({ ...asset, type: 'token', ...identity, id: id ?? identity.id }, userImport);
+  }
+
+  /** Tokens Atlas adds under ids of their own (a pack every device names alike), with one save of the index. */
+  async addTokenAssets(tokens: readonly (Omit<TokenAsset, 'createdAt' | 'modifiedAt' | 'type'>)[]): Promise<TokenAsset[]> {
+    const now = Date.now();
+    const assets = tokens.map((token): TokenAsset => ({ ...token, type: 'token', createdAt: now, modifiedAt: now }));
+    await this.registerAssets(assets, false);
+    return assets;
   }
 
   async getTokenAssets(): Promise<TokenAsset[]> {
