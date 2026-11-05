@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Mood } from '@/app/sound/soundTypes';
 import type { SoundDirector } from '@/app/soundDirector/SoundDirector';
-import { moodsMatching } from '@/app/react/components/dm-screen/sound/library/MoodMatches';
+import { moodsMatching } from '@/app/react/components/dm-screen/sound/moodSearch';
 
 const mood = (id: string, name: string, sounds: string[]): Mood => ({ id, name, layers: sounds.map((sound) => ({ sound, levelDb: 0 })), music: 'keep', fadeSeconds: 4 } as unknown as Mood);
 const NAMES: Record<string, string> = { a: 'Raiders at Dawn', b: 'Steady Rain', c: 'Dark Cave' };

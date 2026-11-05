@@ -1,4 +1,4 @@
-import React, { act } from 'react';
+import React, { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { App } from 'obsidian';
 import { TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
@@ -62,6 +62,12 @@ export function fakeLibrary(app: App, options: LibraryRigOptions = {}): Pick<Lib
   return { library, roots, locations, local };
 }
 
+/** The library as the Sound page holds it: the page keeps the search, which narrows its moods too. */
+function SearchedLibrary(): React.JSX.Element | null {
+  const [query, setQuery] = useState('');
+  return <LibraryView query={query} onQuery={setQuery} />;
+}
+
 /** The real view, director and records over roots held in memory: all that is missing is the disk. */
 export async function libraryRig(options: LibraryRigOptions = {}): Promise<LibraryRig> {
   const { app } = createInMemoryApp({ folders: ['atlas-vtt/collections'] });
@@ -87,7 +93,7 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
             <ViewStoreProvider store={store}>
               <TooltipProvider>
                 <ContextMenuProvider>
-                  {page ?? <LibraryView />}
+                  {page ?? <SearchedLibrary />}
                 </ContextMenuProvider>
               </TooltipProvider>
             </ViewStoreProvider>

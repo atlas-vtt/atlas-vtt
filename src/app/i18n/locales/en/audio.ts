@@ -70,6 +70,7 @@ export const audio = {
   'audio.problem.refused': '{name}: {reason}. {next}',
 
   'audio.mood.none': 'No moods yet',
+  'audio.mood.noneFound': 'No moods found',
   'audio.mood.noneHint': 'Make a mix below, then save it as a mood.',
   'audio.mood.new': 'New mood',
   'audio.mood.title': 'Moods',
@@ -302,7 +303,6 @@ export const audio = {
   'audio.library.preview': 'Preview',
   'audio.library.relink': 'Relink',
   'audio.library.playFirst': 'Enter starts {name}',
-  'audio.library.moodMatches': 'Moods found',
   'audio.library.rowsLabel': 'Sounds',
   'audio.library.nameWithTag': '{name} · {tag}',
   'audio.library.selectedCount': { one: '{count} sound', other: '{count} sounds' },

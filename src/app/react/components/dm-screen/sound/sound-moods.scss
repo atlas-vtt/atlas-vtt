@@ -14,6 +14,14 @@
   padding-inline-start: $spacing-m;
 }
 
+// A search that finds no mood says so where the tiles would stand.
+.atlas-sound-moods__none {
+  margin: 0;
+  padding-inline-start: $spacing-m;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
+}
+
 // The regions' heading step: the moods', as the rail's roots and the desk's mix name are theirs.
 .atlas-sound-section {
   margin: 0;

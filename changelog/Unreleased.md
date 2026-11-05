@@ -8,7 +8,7 @@
 - Get starter ambience: six free ambient loops (forest, campfire, thunderstorm, beach, night marsh, cave) to play before you add your own
 - Filter the library by tags: your folder names count as tags already, and a track can carry as many more as it needs
 - Moods: press one and the room crossfades to it, what both moods share keeps playing, and a mood is saved from whatever you have playing
-- Search finds moods as well as tracks (press / to search), and moods can be dragged into the order you want
+- Search (press /) narrows the moods beside the library as well as the tracks, and moods can be dragged into the order you want
 - Up to 8 ambience layers beside the music, each with its own fader, and every track evened out in loudness
 - Reverb on every layer and the music, from a knob above its fader, and each mood rings in its own space: a room, a hall, a cave or a cathedral
 - Loops without a gap or a click, and Stop all to fade it all out and bring it back

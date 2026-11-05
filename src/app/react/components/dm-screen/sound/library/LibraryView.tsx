@@ -12,7 +12,7 @@ import { tagKey, toggledTag } from '../../../../../soundLibrary/soundTags';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
 import { useMoods, useSoundValue, useStoredSounds, useStoreValue } from '../useSound';
-import { MoodMatches, moodsMatching } from './MoodMatches';
+import { moodsMatching } from '../moodSearch';
 import { LibraryHead } from './LibraryHead';
 import { LibraryRail } from './LibraryRail';
 import { rowsWithTags, searchRows, shelfOf, type LibraryRow, type RootShelf } from './rowModel';
@@ -63,8 +63,14 @@ function useJustLinked(rootsKey: string): boolean {
   return just;
 }
 
+interface LibraryViewProps {
+  /** The search as typed. The page holds it, since it narrows the moods beside the library too. */
+  query: string;
+  onQuery: (query: string) => void;
+}
+
 /** The sound library: the folders linked as music and ambience, all that lies in them, narrowed by tags. */
-export function LibraryView(): React.JSX.Element | null {
+export function LibraryView({ query, onQuery: setQuery }: LibraryViewProps): React.JSX.Element | null {
   const { app } = useAtlasUI();
   const library = SoundLibrary.forApp(app);
   const director = SoundDirector.forApp(app);
@@ -75,7 +81,6 @@ export function LibraryView(): React.JSX.Element | null {
   const shuffle = useSoundValue(director, ({ mix }) => mix.table.music?.shuffle ?? false);
   const moods = useMoods(app);
   const actions = useLibraryActions(app, library, director);
-  const [query, setQuery] = useState('');
   const searching = useDeferredValue(query.trim());
   const root = useRef<HTMLDivElement>(null);
 
@@ -115,7 +120,7 @@ export function LibraryView(): React.JSX.Element | null {
   const selectedKeys = useMemo(() => new Set(selected.map((tag) => tag.key)), [selected]);
   const listed = useMemo(() => rowsWithTags(shelf.rows, [...selectedKeys]), [selectedKeys, shelf.rows]);
   const found = useMemo<readonly LibraryRow[] | null>(() => (searching === '' ? null : searchRows(library.search(searching), (kind) => t(kind === 'music' ? 'audio.music' : 'audio.ambience'))), [library, searching, version]);
-  // The one search finds moods too (by name, or by a sound they hold), shown first.
+  // The one search narrows the moods beside the library too (by name, or by a sound they hold).
   const foundMoods = useMemo(() => moodsMatching(moods, searching, director), [moods, searching, director, version]);
   // Enter starts the first result: a mood where one matches, else what the first file row's Play would play.
   const firstFound = found?.find((row) => row.type === 'file');
@@ -132,12 +137,12 @@ export function LibraryView(): React.JSX.Element | null {
   const showRoot = useCallback((kind: SoundKind): void => {
     setQuery('');
     library.place.show(kind);
-  }, [library]);
+  }, [library, setQuery]);
 
   const pressTag = useCallback((kind: SoundKind, tag: string): void => {
     setQuery('');
     library.place.show(kind, kind === place.kind ? toggledTag(selected.map(({ name }) => name), tag) : [tag]);
-  }, [library, place.kind, selected]);
+  }, [library, place.kind, selected, setQuery]);
 
   const noRoots = library.rootOf('music').status === 'unlinked' && library.rootOf('ambience').status === 'unlinked';
   const keep = (event: React.KeyboardEvent): void => {
@@ -177,7 +182,6 @@ export function LibraryView(): React.JSX.Element | null {
       <LibraryRail library={library} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />
       <div className="atlas-sound-lib__main">
         <LibraryHead library={library} actions={actions} kind={place.kind} rows={found ?? listed} scope={found ? 'results' : selected.length > 0 ? 'tagged' : 'all'} query={query} onQuery={setQuery} shuffle={shuffle} first={playFirst} />
-        {searching !== '' && <MoodMatches moods={foundMoods} director={director} />}
         <LibraryRows
           rows={rows}
           preparing={preparing}

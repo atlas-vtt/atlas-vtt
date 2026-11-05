@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react';
 import { formatList, t } from '../../../../i18n';
 import InputModal from '../../../../packages/components/primitives/InputModal';
 import type { Mood } from '../../../../sound/soundTypes';
@@ -54,6 +54,9 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
   const rootRef = useRef<HTMLDivElement>(null);
   const [board] = useState(() => new MeterBoard());
   const [namingMood, setNamingMood] = useState(false);
+  // The library's search narrows the moods too: one field finds tracks on the left and moods on the right.
+  const [query, setQuery] = useState('');
+  const searching = useDeferredValue(query.trim());
   const [moodsSide, setMoodsSide] = useState<HTMLElement | null>(null);
   useScrollbarGutter(moodsSide);
   const sounding = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0);
@@ -93,9 +96,9 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
         onDrop={drop}
       >
         <div className="atlas-sound-stage">
-          {libraryShown ? <LibraryView /> : <div className="atlas-sound-lib" aria-busy="true" />}
+          {libraryShown ? <LibraryView query={query} onQuery={setQuery} /> : <div className="atlas-sound-lib" aria-busy="true" />}
           <div className="atlas-sound-moods" ref={setMoodsSide}>
-            {moods.length > 0 && <MoodGrid app={app} director={director} moods={moods} moveMood={moveMood} onNewMood={nameNewMood} />}
+            {moods.length > 0 && <MoodGrid app={app} director={director} moods={moods} search={searching} moveMood={moveMood} onNewMood={nameNewMood} />}
             {moods.length === 0 && moodsRead && (
               <div className="atlas-sound-no-moods">
                 <h2>{t('audio.mood.none')}</h2>

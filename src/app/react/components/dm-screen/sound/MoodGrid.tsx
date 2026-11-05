@@ -16,6 +16,7 @@ import { useOptionalAtlasStore } from '../../../ViewStoreContext';
 import { MoodCard } from './MoodCard';
 import { MoodEditPopover } from './MoodEditPopover';
 import { moodForPlayers } from './PlayersRow';
+import { moodsMatching } from './moodSearch';
 import { useMoodDrag } from './useMoodDrag';
 import { useMoodScenes } from './useMoodScenes';
 import { useSoundValue } from './useSound';
@@ -26,6 +27,8 @@ interface MoodGridProps {
   app: App;
   director: SoundDirector;
   moods: readonly Mood[];
+  /** The library's search, trimmed: while it holds text, only the moods it finds are shown. */
+  search: string;
   moveMood: (mood: Mood, index: number) => void;
   onNewMood: () => void;
 }
@@ -33,7 +36,7 @@ interface MoodGridProps {
 const NO_PROBLEMS: readonly MoodProblem[] = [];
 
 /** The moods in their fixed places, numbered as the keys that press them. */
-export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGridProps): React.JSX.Element {
+export function MoodGrid({ app, director, moods, search, moveMood, onNewMood }: MoodGridProps): React.JSX.Element {
   const store = MoodStore.forApp(app);
   const gridRef = useRef<HTMLDivElement>(null);
   const menu = useContextMenu();
@@ -57,7 +60,9 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
 
   const closeEditor = useCallback((): void => setEditing(null), []);
   const canMove = useCallback((mood: Mood) => !store.isReadOnly(mood.id), [store]);
-  const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canMove, moveMood);
+  // A search shows a part of the moods, where a drop's place would not be the place in the whole order.
+  const canDrag = useCallback((mood: Mood) => search === '' && canMove(mood), [canMove, search]);
+  const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canDrag, moveMood);
 
   const press = useCallback((mood: Mood): void => {
     if (!consumeClick()) director.press(mood);
@@ -93,6 +98,9 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
   const musicNames = useMemo(() => new Map(moods.map((mood) => [mood.id, firstTrackName(mood, director)])), [director, moods, shelfRevision]);
   const activeAt = shown.findIndex((mood) => mood.id === activeId);
   const nextId = shown.length > 1 ? shown[(activeAt + 1) % shown.length]?.id : undefined;
+  // Each tile keeps its number in the whole order, which is the key that presses it.
+  const found = useMemo(() => (search === '' ? null : new Set(moodsMatching(moods, search, director).map((mood) => mood.id))), [director, moods, search, shelfRevision]);
+  const tiles = shown.map((mood, index) => ({ mood, number: index + 1 })).filter(({ mood }) => found === null || found.has(mood.id));
 
   return (
     <>
@@ -104,12 +112,13 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
         {t('audio.mood.new')}
       </button>
     </div>
+    {tiles.length === 0 && <p className="atlas-sound-moods__none">{t('audio.mood.noneFound')}</p>}
     <div className="atlas-sound-moods__grid" ref={gridRef}>
-      {shown.map((mood, index) => (
+      {tiles.map(({ mood, number }) => (
         <MoodCard
           key={mood.id}
           mood={mood}
-          number={index + 1}
+          number={number}
           playing={mood.id === activeId}
           stateWord={stateWord}
           still={hold !== null}
