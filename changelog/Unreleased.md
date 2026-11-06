@@ -1,8 +1,17 @@
 ## Improved
 
-- Open scene tabs can be dragged into a new order: the other tabs slide aside to show where it lands, and Alt+Left/Right Arrow moves a focused tab. Contributed by bbell-sys
-- TrueScale: dragging the frame on the map players see no longer moves them. Set it up where you want it, then press play on the frame and their view glides there. The cross puts it back on what players see
+- Drag open scene tabs into a new order
+- TrueScale: dragging the frame on the map no longer moves your players. Set it up, then press play on the frame and their view glides there
 
 ## Fixed
 
-- The player view keeps following the map while other windows cover it or it is being streamed (Discord, OBS), instead of freezing on its last picture
+- Token names are readable in the light theme again
+
+## Atlas Online
+
+- Fixed issue where sometimes when playing sounds in Atlas Online the client play state would desync from the DM's host machine
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, LittleBlueShyGuy, Markus Baumann, Michael Breuer, Pau Benazet Montobbio, Pavel Zinoviev, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
