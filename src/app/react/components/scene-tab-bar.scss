@@ -62,6 +62,8 @@ $tab-fade: 24px;
   > .atlas-scene-tab {
     flex: 0 1 auto;
     min-width: $tab-min-width;
+    // Where a drag has moved the tab from its place (useTabReorderDrag).
+    transform: translateX(var(--atlas-tab-shift, 0px));
   }
 }
 
@@ -84,6 +86,8 @@ $tab-fade: 24px;
   text-overflow: ellipsis;
   max-width: 160px;
   position: relative;
+  // A press that turns into a drag must not select the tab's name.
+  user-select: none;
 
   &:hover {
     background: var(--background-modifier-hover);
@@ -163,6 +167,32 @@ $tab-fade: 24px;
   &:hover .atlas-scene-tab__action,
   &:focus-within .atlas-scene-tab__action {
     visibility: visible;
+  }
+}
+
+// Drag to reorder (useTabReorderDrag): while tabs slide, each glides to where its transform
+// points; the dragged tab follows the pointer without delay, lifted above its neighbours.
+.atlas-scene-tab-bar__strip[data-reordering] > .atlas-scene-tab {
+  transition: transform $transition-normal $transition-ease-out, background $transition-fast, opacity $transition-fast;
+
+  &[data-reorder] {
+    z-index: 1;
+  }
+
+  &[data-reorder='dragging'] {
+    transition: background $transition-fast, opacity $transition-fast;
+    background: var(--background-modifier-active-hover);
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover);
+    opacity: 1;
+
+    &,
+    * {
+      cursor: grabbing;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: background $transition-fast, opacity $transition-fast;
   }
 }
 

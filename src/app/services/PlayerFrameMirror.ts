@@ -18,8 +18,10 @@ const MIRROR_INTERVAL_MS = 1000 / PLAYER_MIRROR_FPS;
 /** A display frame may come this much early for its slot, so frames a full interval apart are never just short of it. */
 const FRAME_TIME_SLACK_MS = 1;
 /**
- * A hidden player window is mirrored nothing; for a hidden DM window, whose requested renders do
- * not come, the mirror renders the frame itself, and its clocks run on the player window's frames (`keepTime`).
+ * A player window without display frames is mirrored nothing (one covered by other windows or
+ * minimised keeps its frames: `keepPlayerWindowAwake`); for a hidden DM window, whose requested
+ * renders do not come, the mirror renders the frame itself, and its clocks run on the player
+ * window's frames (`keepTime`).
  */
 const ASLEEP_AFTER_MS = WINDOW_ASLEEP_AFTER_MS;
 
@@ -125,8 +127,8 @@ export interface MirrorInputs {
  * A view that renders on change is captured right before its own renders: the players' frame
  * is rendered and copied, and the DM's render that follows in the same task puts the DM's
  * frame back on its canvas, so the DM never sees anything of the players' frame and a mirrored
- * frame costs one extra render. Frames skipped by the cap, or while the player window is
- * hidden, leave the mirror stale; `frame`, run on every display frame of the player window,
+ * frame costs one extra render. Frames skipped by the cap, or while the player window has no
+ * display frames, leave the mirror stale; `frame`, run on every display frame of the player window,
  * then asks the view for a render once one is due, so players always end on the DM's latest
  * state and an idle map is never rendered. A player window that changed size, or moved to a
  * screen with another pixel ratio, is stale too.

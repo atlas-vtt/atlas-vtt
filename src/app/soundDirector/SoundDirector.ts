@@ -283,10 +283,11 @@ export class SoundDirector {
     return { mood: this.table.mix.mood, mix: this.desk.mixNow(this.fadeSeconds()) };
   }
 
+  /** Publishes before telling state listeners: a table online reads the snapshot, and sent the change before this one otherwise. */
   private onMix(mix: SoundMix, tableChanged: boolean): void {
-    if (tableChanged) for (const listener of [...this.stateListeners]) listener(mix.table);
     this.lastMix.schedule();
     this.publish({ mix });
+    if (tableChanged) for (const listener of [...this.stateListeners]) listener(mix.table);
   }
 
   private publish(change: Partial<SoundSnapshot>): void {

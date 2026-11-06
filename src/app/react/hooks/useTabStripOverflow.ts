@@ -28,15 +28,20 @@ export function useTabStripOverflow(strip: HTMLElement | null, activeTabId: stri
 
   useEffect(() => {
     if (!strip) return undefined;
+    // A tab moved by a drag (useTabReorderDrag) widens the scroll width without being any wider,
+    // so while tabs are reordered the strip keeps the extent it had before.
+    let restingMaxScroll = 0;
     const measure = (): void => {
-      const maxScroll = strip.scrollWidth - strip.clientWidth;
-      setOverflows(maxScroll > 1);
+      if (strip.dataset.reordering === undefined) {
+        restingMaxScroll = strip.scrollWidth - strip.clientWidth;
+        setOverflows(restingMaxScroll > 1);
+      }
       setHiddenBefore(strip.scrollLeft > 1);
-      setHiddenAfter(strip.scrollLeft < maxScroll - 1);
+      setHiddenAfter(strip.scrollLeft < restingMaxScroll - 1);
     };
     const scrollWithWheel = (event: WheelEvent): void => {
       const isVertical = Math.abs(event.deltaY) > Math.abs(event.deltaX);
-      if (!isVertical || strip.scrollWidth <= strip.clientWidth) return;
+      if (!isVertical || restingMaxScroll <= 1) return;
       event.preventDefault();
       strip.scrollLeft += event.deltaMode === event.DOM_DELTA_LINE ? event.deltaY * WHEEL_LINE_PX : event.deltaY;
     };
@@ -53,7 +58,8 @@ export function useTabStripOverflow(strip: HTMLElement | null, activeTabId: stri
       measure();
     });
     observeTabs();
-    tabChanges.observe(strip, { childList: true });
+    // `data-reordering` going away puts every tab back in its place: the strip is measured again then.
+    tabChanges.observe(strip, { childList: true, attributes: true, attributeFilter: ['data-reordering'] });
     measure();
     strip.addEventListener('scroll', measure, { passive: true });
     strip.addEventListener('wheel', scrollWithWheel, { passive: false });

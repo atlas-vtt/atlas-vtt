@@ -181,6 +181,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                   <SceneTabBar
                     onSwitchTab={switchTab}
                     onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
+                    onMoveTab={(tabId, toIndex) => view?.moveTab(tabId, toIndex)}
                     onAddTab={() => view?.openSceneBrowser()}
                     onPresentTab={presentTab}
                     presentedTabId={presentedScene?.tabId ?? null}

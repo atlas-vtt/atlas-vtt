@@ -92,6 +92,17 @@ describe('the sound director', () => {
     expect(states).toHaveLength(1);
   });
 
+  it('tells a new state only once the snapshot holds it, so a table online that reads the snapshot sends this change and not the last', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    const seen: Array<[TableSound, TableSound]> = [];
+    rig.director.onStateChanged((state) => seen.push([state, rig.director.snapshot().mix.table]));
+    rig.director.press(mood('tavern', ['rain']));
+    rig.director.stop();
+    expect(seen.length).toBeGreaterThanOrEqual(2);
+    for (const [told, snapshot] of seen) expect(snapshot).toBe(told);
+  });
+
   it('closes every context when the plugin unloads', async () => {
     rig = directorRig(ALL);
     await ready(rig);

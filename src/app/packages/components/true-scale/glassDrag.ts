@@ -1,4 +1,5 @@
 import { getDomHost } from '../../../host/dom';
+import { swallowNextClick } from '../../../utils/swallowClick';
 
 /** How far the pointer moves, in screen px, before a press on the chip is a drag and no click. */
 export const GLASS_DRAG_THRESHOLD = 4;
@@ -52,7 +53,7 @@ export function trackGlassDrag(element: HTMLElement, down: PointerEvent, steps: 
     if (event.pointerId !== down.pointerId) return;
     stop();
     if (!dragging) return;
-    swallowClick(win);
+    swallowNextClick(win);
     steps.end();
   };
   const onCancel = (): void => {
@@ -77,14 +78,4 @@ export function trackGlassDrag(element: HTMLElement, down: PointerEvent, steps: 
     stop();
     if (wasDragging) steps.cancel();
   };
-}
-
-/** The click a browser sends after the release of a drag would press the button it began on. */
-function swallowClick(win: Window): void {
-  const swallow = (event: MouseEvent): void => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-  win.addEventListener('click', swallow, { capture: true, once: true });
-  win.setTimeout(() => win.removeEventListener('click', swallow, true), 0);
 }
