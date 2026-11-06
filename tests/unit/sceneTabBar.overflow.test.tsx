@@ -104,3 +104,83 @@ it('keeps the player view and close buttons at opposite ends of a tab, with the 
   expect(show!.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(name.compareDocumentPosition(close!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
+
+function dropAt(tab: HTMLElement, clientX: number): void {
+  const event = new Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clientX', { value: clientX });
+  fireEvent(tab, event);
+}
+
+it('drops a dragged scene after the target without changing the active scene or tab data', async () => {
+  const { ids, tabMetaStore } = setup();
+  const original = tabMetaStore.getState().tabs[0]!;
+  const [source, , target] = screen.getAllByRole('tab');
+  vi.spyOn(target!, 'getBoundingClientRect').mockReturnValue({ left: 100, width: 100 } as DOMRect);
+
+  await act(async () => {
+    fireEvent.dragStart(source!.querySelector('.atlas-scene-tab__name')!, { dataTransfer: { setData: vi.fn() } });
+    fireEvent.dragOver(target!, { clientX: 175, dataTransfer: { dropEffect: 'none' } });
+    dropAt(target!, 175);
+  });
+
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[1], ids[2], ids[0]]);
+  expect(tabMetaStore.getState().tabs[2]).toBe(original);
+  expect(tabMetaStore.getState().activeTabId).toBe(ids[0]);
+});
+
+it('drops before the target and ignores a source tab closed during the drag', async () => {
+  const { ids, tabMetaStore } = setup();
+  const [target, , source] = screen.getAllByRole('tab');
+  vi.spyOn(target!, 'getBoundingClientRect').mockReturnValue({ left: 100, width: 100 } as DOMRect);
+
+  await act(async () => {
+    fireEvent.dragStart(source!.querySelector('.atlas-scene-tab__name')!, { dataTransfer: { setData: vi.fn() } });
+    dropAt(target!, 125);
+  });
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[2], ids[0], ids[1]]);
+
+  act(() => { fireEvent.dragStart(source!.querySelector('.atlas-scene-tab__name')!, { dataTransfer: { setData: vi.fn() } }); });
+  act(() => { tabMetaStore.getState().removeTab(ids[2]!); });
+  act(() => { dropAt(target!, 125); });
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[0], ids[1]]);
+});
+
+it('moves a focused scene with Alt+ArrowRight while keeping focus', () => {
+  const { ids, tabMetaStore } = setup();
+  const tab = screen.getAllByRole('tab')[0]!;
+  tab.focus();
+
+  act(() => { fireEvent.keyDown(tab, { key: 'ArrowRight', altKey: true }); });
+
+  expect(tabMetaStore.getState().tabs.map(entry => entry.id)).toEqual([ids[1], ids[0], ids[2]]);
+  expect(document.activeElement).toBe(tab);
+  expect(tabMetaStore.getState().activeTabId).toBe(ids[0]);
+});
+
+it('moves a focused scene left and leaves the first tab in place at the boundary', () => {
+  const { ids, tabMetaStore } = setup();
+  const tab = screen.getAllByRole('tab')[1]!;
+  tab.focus();
+
+  act(() => { fireEvent.keyDown(tab, { key: 'ArrowLeft', altKey: true }); });
+  expect(tabMetaStore.getState().tabs.map(entry => entry.id)).toEqual([ids[1], ids[0], ids[2]]);
+
+  const tabs = tabMetaStore.getState().tabs;
+  act(() => { fireEvent.keyDown(tab, { key: 'ArrowLeft', altKey: true }); });
+  expect(tabMetaStore.getState().tabs).toBe(tabs);
+  expect(document.activeElement).toBe(tab);
+});
+
+it('reveals a focused scene after keyboard reordering in an overflowing strip', () => {
+  const { layOut } = setup();
+  layOut(600, 300);
+  const tab = screen.getAllByRole('tab')[1]!;
+  const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
+  scrollIntoView.mockClear();
+  tab.focus();
+
+  act(() => { fireEvent.keyDown(tab, { key: 'ArrowRight', altKey: true }); });
+
+  expect(scrollIntoView.mock.contexts.at(-1)).toBe(tab);
+  expect(scrollIntoView).toHaveBeenLastCalledWith(expect.objectContaining({ inline: 'nearest' }));
+});

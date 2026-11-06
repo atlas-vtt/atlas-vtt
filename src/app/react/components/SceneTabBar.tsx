@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, Eye, Plus, X } from 'lucide-react';
 import { useStore } from 'zustand';
 import { cn } from '../../../utils/cn';
@@ -56,7 +56,26 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
   const tabs = useStore(store, (s) => s.tabs);
   const activeTabId = useStore(store, (s) => s.activeTabId);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
+  const draggingId = useRef<string | null>(null);
+  const pendingReveal = useRef<HTMLElement | null>(null);
   const { overflows, hiddenBefore, hiddenAfter } = useTabStripOverflow(strip, activeTabId);
+
+  useLayoutEffect(() => {
+    pendingReveal.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    pendingReveal.current = null;
+  }, [tabs]);
+
+  const moveTab = (sourceId: string, targetId: string, after: boolean): boolean => {
+    const state = store.getState();
+    const source = state.tabs.find((tab) => tab.id === sourceId);
+    if (!source || sourceId === targetId || !state.tabs.some((tab) => tab.id === targetId)) return false;
+    const next = state.tabs.filter((tab) => tab !== source);
+    const index = next.findIndex((tab) => tab.id === targetId);
+    next.splice(index + (after ? 1 : 0), 0, source);
+    if (next.every((tab, position) => tab === state.tabs[position])) return false;
+    state.setTabs(next, state.activeTabId);
+    return true;
+  };
 
   if (tabs.length === 0) return null;
 
@@ -87,10 +106,37 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
                 key={tab.id}
                 role="tab"
                 aria-selected={isActive}
+                aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
                 tabIndex={0}
                 className={`atlas-scene-tab ${stateClass}`}
+                onDragOver={(e) => {
+                  if (draggingId.current) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }
+                }}
+                onDrop={(e) => {
+                  const sourceId = draggingId.current;
+                  if (!sourceId) return;
+                  draggingId.current = null;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const { left, width } = e.currentTarget.getBoundingClientRect();
+                  moveTab(sourceId, tab.id, e.clientX >= left + width / 2);
+                }}
                 onClick={() => onSwitchTab(tab.id)}
                 onKeyDown={(e) => {
+                  if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const index = tabs.findIndex((entry) => entry.id === tab.id);
+                    const target = tabs[index + (e.key === 'ArrowLeft' ? -1 : 1)];
+                    if (target) {
+                      pendingReveal.current = e.currentTarget;
+                      if (!moveTab(tab.id, target.id, e.key === 'ArrowRight')) pendingReveal.current = null;
+                    }
+                    return;
+                  }
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     onSwitchTab(tab.id);
@@ -111,7 +157,16 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
                   onClick={() => onPresentTab(tab.id)}
                 />
                 <LabelTooltip side="bottom" label={tab.filePath}>
-                  <span className="atlas-scene-tab__name">{tab.displayName}</span>
+                  <span
+                    className="atlas-scene-tab__name"
+                    draggable
+                    onDragStart={(e) => {
+                      draggingId.current = tab.id;
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('application/x-atlas-scene-tab', tab.id);
+                    }}
+                    onDragEnd={() => { draggingId.current = null; }}
+                  >{tab.displayName}</span>
                 </LabelTooltip>
                 <SceneTabProcessing scenePath={tab.filePath} />
                 {tab.isDirty && <span className="atlas-scene-tab__dirty" />}
