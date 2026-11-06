@@ -195,46 +195,6 @@ it('puts everything back on Escape, without the release switching scenes, and wh
   expect(shiftOf(second!)).toBe('');
 });
 
-it('moves a focused scene with Alt+ArrowRight while keeping focus', () => {
-  const { ids, tabMetaStore } = setup();
-  const tab = screen.getAllByRole('tab')[0]!;
-  tab.focus();
-
-  act(() => { fireEvent.keyDown(tab, { key: 'ArrowRight', altKey: true }); });
-
-  expect(tabMetaStore.getState().tabs.map(entry => entry.id)).toEqual([ids[1], ids[0], ids[2]]);
-  expect(document.activeElement).toBe(tab);
-  expect(tabMetaStore.getState().activeTabId).toBe(ids[0]);
-});
-
-it('moves a focused scene left and leaves the first tab in place at the boundary', () => {
-  const { ids, tabMetaStore } = setup();
-  const tab = screen.getAllByRole('tab')[1]!;
-  tab.focus();
-
-  act(() => { fireEvent.keyDown(tab, { key: 'ArrowLeft', altKey: true }); });
-  expect(tabMetaStore.getState().tabs.map(entry => entry.id)).toEqual([ids[1], ids[0], ids[2]]);
-
-  const tabs = tabMetaStore.getState().tabs;
-  act(() => { fireEvent.keyDown(tab, { key: 'ArrowLeft', altKey: true }); });
-  expect(tabMetaStore.getState().tabs).toBe(tabs);
-  expect(document.activeElement).toBe(tab);
-});
-
-it('reveals a focused scene after keyboard reordering in an overflowing strip', () => {
-  const { layOut } = setup();
-  layOut(600, 300);
-  const tab = screen.getAllByRole('tab')[1]!;
-  const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
-  scrollIntoView.mockClear();
-  tab.focus();
-
-  act(() => { fireEvent.keyDown(tab, { key: 'ArrowRight', altKey: true }); });
-
-  expect(scrollIntoView.mock.contexts.at(-1)).toBe(tab);
-  expect(scrollIntoView).toHaveBeenLastCalledWith(expect.objectContaining({ inline: 'nearest' }));
-});
-
 it('keeps dragging while a tab only finishes loading, and ends a press whose release was lost', () => {
   const { ids, tabMetaStore, onSwitchTab } = setup();
   const [first, second] = layOutTabs();
@@ -256,4 +216,28 @@ it('keeps dragging while a tab only finishes loading, and ends a press whose rel
   expect(shiftOf(second!)).toBe('');
   fireEvent.click(second!);
   expect(onSwitchTab).toHaveBeenCalledOnce();
+});
+
+it('does not take a tab dragged past the end for tabs that overflow, and measures the strip again once the tabs rest', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    const { strip, layOut } = setup();
+    layOut(300, 300);
+    const [first] = layOutTabs();
+
+    pointer(first!, 'pointerdown', 50);
+    pointer(window, 'pointermove', 400);
+    // The dragged tab's shift widens the scroll width; the tabs are no wider.
+    layOut(380, 300);
+    expect(screen.queryByRole('button', { name: 'All open maps' })).toBeNull();
+    expect(strip.className).not.toMatch(/hidden-(before|after)/);
+
+    pointer(first!, 'pointerup', 400);
+    Object.defineProperty(strip, 'scrollWidth', { configurable: true, value: 600 });
+    await act(async () => { vi.runAllTimers(); });
+    expect(strip.dataset.reordering).toBeUndefined();
+    expect(screen.getByRole('button', { name: 'All open maps' })).toBeTruthy();
+  } finally {
+    vi.useRealTimers();
+  }
 });

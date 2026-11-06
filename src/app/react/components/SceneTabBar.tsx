@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, Eye, Plus, X } from 'lucide-react';
 import { useStore } from 'zustand';
 import { cn } from '../../../utils/cn';
@@ -16,7 +16,7 @@ interface SceneTabBarProps {
   onCloseTab: (tabId: string) => void;
   onAddTab: () => void;
   onPresentTab: (tabId: string) => void;
-  /** Moves a tab to another place in the bar, by drag or with Alt+Left/Right Arrow. */
+  /** Moves a tab to another place in the bar, by drag. */
   onMoveTab: (tabId: string, toIndex: number) => void;
   /** The tab players are shown, whether or not the player window is open; null while none is. */
   presentedTabId?: string | null;
@@ -60,13 +60,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
   const tabs = useStore(store, (s) => s.tabs);
   const activeTabId = useStore(store, (s) => s.activeTabId);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
-  const pendingReveal = useRef<HTMLElement | null>(null);
   const { overflows, hiddenBefore, hiddenAfter } = useTabStripOverflow(strip, activeTabId);
-
-  useLayoutEffect(() => {
-    pendingReveal.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    pendingReveal.current = null;
-  }, [tabs]);
 
   const startDrag = useTabReorderDrag(strip, tabs.map((tab) => tab.id).join('\n'), onMoveTab);
 
@@ -100,23 +94,11 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
                 data-tab-id={tab.id}
                 role="tab"
                 aria-selected={isActive}
-                aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
                 tabIndex={0}
                 className={`atlas-scene-tab ${stateClass}`}
                 onPointerDown={(e) => startDrag(e, tab.id)}
                 onClick={() => onSwitchTab(tab.id)}
                 onKeyDown={(e) => {
-                  if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Keyboard moves are instant: no glide for something pressed in quick succession.
-                    const to = tabs.findIndex((entry) => entry.id === tab.id) + (e.key === 'ArrowLeft' ? -1 : 1);
-                    if (to >= 0 && to < tabs.length) {
-                      pendingReveal.current = e.currentTarget;
-                      onMoveTab(tab.id, to);
-                    }
-                    return;
-                  }
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     onSwitchTab(tab.id);
