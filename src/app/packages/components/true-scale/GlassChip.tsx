@@ -15,7 +15,7 @@ import "./glass.scss"
  * edge of what players see on this map, as small as it can be since it stands over the map at any
  * zoom, so it holds words only on a ghost. Dragging it stages a frame, snapped to the grid's cells
  * (Alt frees it), while players stay where they are, dotted; its play button glides them there and
- * its cross forgets it. Its pin keeps players where they are or lets them follow the GM, and its
+ * its bookmark saves it on the scene, and its cross forgets it. Its pin keeps players where they are or lets them follow the GM, and its
  * bookmark saves the frame on the scene, and is lit while they see a saved frame, which it then
  * takes back. On a map players do not see, it stands on a dimmer ghost of their frame and brings
  * them here. Frames saved on the map have a chip of their own (`SavedFrameChip`).
@@ -39,6 +39,15 @@ function OpenGlassChip({ view }: { view: AtlasView }): React.ReactElement {
   const ghost = shown?.look === "ghost"
   const staged = shown?.staged ?? false
   const label = chipLabel(shown)
+  const saveButton = (
+    <ToolButton
+      icon={Bookmark}
+      label={shown?.saved ? t("glass.unsave") : t("glass.save")}
+      isActive={shown?.saved ?? false}
+      onClick={save}
+      tooltipSide="bottom"
+    />
+  )
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -59,19 +68,14 @@ function OpenGlassChip({ view }: { view: AtlasView }): React.ReactElement {
         {staged ? (
           <>
             <ToolButton icon={Play} label={t("glass.glideHint")} isActive={false} onClick={bring} tooltipSide="bottom" />
+            {saveButton}
             <ToolButton icon={X} label={t("glass.discard")} isActive={false} onClick={discard} tooltipSide="bottom" />
           </>
         ) : ghost ? (
           <ToolButton icon={Play} label={t("glass.bringHint")} isActive={false} onClick={bring} tooltipSide="bottom" />
         ) : (
           <>
-            <ToolButton
-              icon={Bookmark}
-              label={shown?.saved ? t("glass.unsave") : t("glass.save")}
-              isActive={shown?.saved ?? false}
-              onClick={save}
-              tooltipSide="bottom"
-            />
+            {saveButton}
             <ToolButton
               icon={shown?.pinned ? Pin : PinOff}
               label={shown?.pinned ? t("glass.unpin") : t("glass.pin")}

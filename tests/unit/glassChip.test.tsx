@@ -191,7 +191,21 @@ describe('the glass chip', () => {
     expect(outline.setGlass).toHaveBeenLastCalledWith({ centerX: 200, centerY: 200, width: 200, height: 100 }, 'ghost');
     expect(outline.setOrigin).toHaveBeenLastCalledWith({ centerX: 100, centerY: 100, width: 200, height: 100 });
     expect(screen.getByRole('group', { name: 'Show players here' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Save this frame' })).toBeNull();
+  });
+
+  it('saves the staged frame where it stands, while players stay where they are and the frame stays staged', async () => {
+    const view = fakeView();
+    render(<GlassChip view={view} />);
+    drag([{ x: 190, y: 130 }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.click(screen.getByRole('button', { name: 'Save this frame' }));
+
+    const frames = (view.atlasStore as unknown as { getState(): FakeMapState }).getState().playerFrames;
+    expect(frames).toEqual([{ centerX: 200, centerY: 200, width: 200, height: 100, scale: 1 }]);
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
+    expect(fakes.outlines[0]!.setOrigin).toHaveBeenLastCalledWith({ centerX: 100, centerY: 100, width: 200, height: 100 });
+    expect(screen.getByRole('group', { name: 'Show players here' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Remove this saved frame' }).className).toContain('is-active');
   });
 
   it('moves players to the staged frame only from its play button, and is the live glass again', async () => {

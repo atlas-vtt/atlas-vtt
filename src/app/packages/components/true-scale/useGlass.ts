@@ -39,7 +39,7 @@ export interface GlassControls {
   shown: GlassShown | null;
   /** Pins players where the glass is, or lets them follow the GM again. */
   togglePin: () => void;
-  /** Saves the frame players see as one of the scene's frames, or takes back the saved frame they see. */
+  /** Saves the frame players see, or the frame staged, as one of the scene's frames, or takes that saved frame back. */
   save: () => void;
   /** Shows players this map framed where the ghost stands, or glides them to the staged frame. */
   bring: () => void;
@@ -127,7 +127,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       outline.setGlass(glass?.frame ?? null, glass?.look);
       outline.setOrigin(glass?.players ?? null);
       const next = glass
-        ? { look: glass.look, pinned: service.isFrozen(), saved: glass.look === 'live' && saved.indexOf(glass.frame) >= 0, staged: !!glass.players }
+        ? { look: glass.look, pinned: service.isFrozen(), saved: (glass.look === 'live' || !!glass.players) && saved.indexOf(glass.frame) >= 0, staged: !!glass.players }
         : null;
       setShown((now) => (now?.look === next?.look && now?.pinned === next?.pinned && now?.saved === next?.saved && now?.staged === next?.staged ? now : next));
       place();
@@ -181,7 +181,8 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       },
       save: () => {
         const id = tabId();
-        const frame = id ? service.glassOf(id) : null;
+        // A staged frame is saved where it stands, and players stay where they are
+        const frame = glass?.players ? glass.frame : id ? service.glassOf(id) : null;
         const camera = frame ? service.playerCameraAt(frame.centerX, frame.centerY) : null;
         if (!frame || !camera) return;
         const map = view.atlasStore.getState();
