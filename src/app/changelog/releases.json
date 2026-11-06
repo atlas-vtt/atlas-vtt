@@ -2,6 +2,11 @@
   "version": "0.13.1-beta.0",
   "releases": [
     {
+      "version": "0.13.1-beta.0",
+      "title": "Coming in 0.13.1",
+      "markdown": "## Improved\n\n- Drag an open scene tab by its name to change its position, or move a focused tab with Alt+Left/Right Arrow."
+    },
+    {
       "version": "0.13.0",
       "date": "2026-11-05",
       "title": "Sound, free starter tokens and fog edges",

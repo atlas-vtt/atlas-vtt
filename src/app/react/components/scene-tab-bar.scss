@@ -107,6 +107,7 @@ $tab-fade: 24px;
   &__name {
     // Absorbs the tab's free space so the close button is pushed to its right
     // end, opposite the show button; min-width: 0 lets the ellipsis apply.
+    cursor: grab;
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
