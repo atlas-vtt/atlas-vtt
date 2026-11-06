@@ -66,13 +66,12 @@ function fakeService() {
     isWindowOpen: () => true,
     glassOf: (tabId: string) => (playerWindowStore.getState().shownTabId === tabId ? glass : null),
     isFrozen: () => state.frozen,
-    dragPlayersTo: vi.fn((_tabId: string, x: number, y: number) => {
+    framePlayersOn: vi.fn((_tabId: string, x: number, y: number) => {
       state.frozen = true;
       glass = { ...glass, centerX: x, centerY: y };
       changed();
       return true;
     }),
-    framePlayersOn: vi.fn(() => true),
     playersToCamera: vi.fn((tabId: string) => playerWindowStore.getState().shownTabId === tabId),
     isTrueScale: () => false,
     playerCameraAt: vi.fn((x: number, y: number) => ({ centerX: x, centerY: y, scale: 1 })),
@@ -150,7 +149,7 @@ afterEach(async () => {
 
 /** Presses the chip at (100, 50), drags it through `to` and lets go, or keeps holding with `release: false`. */
 function drag(to: { x: number; y: number; altKey?: boolean }[], release = true): void {
-  const chip = screen.getByRole('group', { name: /Players|Bring players here/ });
+  const chip = screen.getByRole('group', { name: /Players|Bring players here|Show players here/ });
   fireEvent.pointerDown(chip, { pointerId: 1, button: 0, clientX: 100, clientY: 50 });
   for (const { x, y, altKey = false } of to) fireEvent.pointerMove(window, { pointerId: 1, clientX: x, clientY: y, altKey });
   if (release) fireEvent.pointerUp(window, { pointerId: 1, clientX: to.at(-1)!.x, clientY: to.at(-1)!.y });
@@ -180,28 +179,70 @@ describe('the glass chip', () => {
     expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
   });
 
-  it('drags the players with it, their top-left corner on the nearest grid intersection, and keeps the frame on release', () => {
+  it('stages a frame where it is dragged, its top-left corner on the nearest grid intersection, while players stay where they are', () => {
     render(<GlassChip view={fakeView()} />);
     const outline = fakes.outlines[0]!;
     drag([{ x: 163, y: 72 }, { x: 190, y: 130 }]);
 
-    // Grabbed 50 above its centre: (163, 122) puts the corner at (63, 72), which lands on (50, 50); (190, 180) on (100, 150)
-    expect(service.dragPlayersTo.mock.calls).toEqual([['tab-a', 150, 100], ['tab-a', 200, 200]]);
-    expect(service.framePlayersOn).toHaveBeenCalledWith('tab-a', 200, 200);
-    expect(outline.setOrigin).toHaveBeenNthCalledWith(1, { centerX: 100, centerY: 100, width: 200, height: 100 });
+    // Grabbed 50 above its centre: (190, 180) puts the corner at (90, 130), which lands on (100, 150)
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
+    expect(service.freezeCamera).not.toHaveBeenCalled();
+    expect(service.state.frozen).toBe(false);
+    expect(outline.setGlass).toHaveBeenLastCalledWith({ centerX: 200, centerY: 200, width: 200, height: 100 }, 'ghost');
+    expect(outline.setOrigin).toHaveBeenLastCalledWith({ centerX: 100, centerY: 100, width: 200, height: 100 });
+    expect(screen.getByRole('group', { name: 'Show players here' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Save this frame' })).toBeNull();
+  });
+
+  it('moves players to the staged frame only from its play button, and is the live glass again', async () => {
+    render(<GlassChip view={fakeView()} />);
+    const outline = fakes.outlines[0]!;
+    drag([{ x: 190, y: 130 }]);
+    // The click a browser sends right after the drag's release is swallowed; a later press is not
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.click(screen.getByRole('button', { name: 'Move the players here' }));
+
+    expect(service.framePlayersOn).toHaveBeenCalledExactlyOnceWith('tab-a', 200, 200);
+    expect(outline.setGlass).toHaveBeenLastCalledWith({ centerX: 200, centerY: 200, width: 200, height: 100 }, 'live');
     expect(outline.setOrigin).toHaveBeenLastCalledWith(null);
     expect(screen.getByRole('group', { name: 'Players' })).toBeTruthy();
+  });
+
+  it('forgets the staged frame from its cross, leaving players where they are', async () => {
+    render(<GlassChip view={fakeView()} />);
+    drag([{ x: 190, y: 130 }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave the players where they are' }));
+
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
+    expect(fakes.outlines[0]!.setGlass).toHaveBeenLastCalledWith({ centerX: 100, centerY: 100, width: 200, height: 100 }, 'live');
+    expect(fakes.outlines[0]!.setOrigin).toHaveBeenLastCalledWith(null);
+    expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
+  });
+
+  it('keeps the staged frame where it is while players move, and forgets it when they see another map', () => {
+    render(<GlassChip view={fakeView()} />);
+    const outline = fakes.outlines[0]!;
+    drag([{ x: 190, y: 130 }]);
+    act(() => { service.framePlayersOn('tab-a', 400, 300); });
+    expect(outline.setGlass).toHaveBeenLastCalledWith({ centerX: 200, centerY: 200, width: 200, height: 100 }, 'ghost');
+    expect(outline.setOrigin).toHaveBeenLastCalledWith({ centerX: 400, centerY: 300, width: 200, height: 100 });
+
+    act(() => { playerWindowStore.setState({ shownTabId: 'tab-b' }); });
+    act(() => { playerWindowStore.setState({ shownTabId: 'tab-a' }); });
+    expect(outline.setGlass).toHaveBeenLastCalledWith({ centerX: 400, centerY: 300, width: 200, height: 100 }, 'live');
+    expect(outline.setOrigin).toHaveBeenLastCalledWith(null);
   });
 
   it('leaves the glass where it is dragged with Alt held, and on a hex grid', () => {
     render(<GlassChip view={fakeView()} />);
     drag([{ x: 163, y: 72, altKey: true }]);
-    expect(service.framePlayersOn).toHaveBeenLastCalledWith('tab-a', 163, 122);
+    expect(fakes.outlines[0]!.setGlass).toHaveBeenLastCalledWith({ centerX: 163, centerY: 122, width: 200, height: 100 }, 'ghost');
     cleanup();
 
     render(<GlassChip view={fakeView({ ...SQUARE, type: 'hex-vertical' })} />);
     drag([{ x: 163, y: 72 }]);
-    expect(service.framePlayersOn).toHaveBeenLastCalledWith('tab-a', 163 + 63, 122 + 22);
+    expect(fakes.outlines.at(-1)!.setGlass).toHaveBeenLastCalledWith({ centerX: 163, centerY: 122, width: 200, height: 100 }, 'ghost');
   });
 
   it('says on its icon what a drag does and that Alt frees it', () => {
@@ -214,28 +255,25 @@ describe('the glass chip', () => {
   it('does not drag below the threshold, so a press stays a click', () => {
     render(<GlassChip view={fakeView()} />);
     drag([{ x: 102, y: 51 }]);
-    expect(service.dragPlayersTo).not.toHaveBeenCalled();
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
     expect(service.framePlayersOn).not.toHaveBeenCalled();
   });
 
-  it('puts players back on Escape: following again, or pinned where they were', () => {
+  it('goes back on Escape: to the live glass, or to the frame staged before', () => {
     render(<GlassChip view={fakeView()} />);
+    const outline = fakes.outlines[0]!;
     drag([{ x: 163, y: 72 }], false);
-    expect(service.state.frozen).toBe(true);
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(service.unfreezeCamera).toHaveBeenCalledOnce();
-    expect(service.toggleCameraFreeze).not.toHaveBeenCalled();
-    expect(service.state.frozen).toBe(false);
     fireEvent.pointerUp(window, { pointerId: 1 });
-    expect(service.framePlayersOn).not.toHaveBeenCalled();
-    expect(fakes.outlines[0]!.setOrigin).toHaveBeenLastCalledWith(null);
+    expect(outline.setGlass).toHaveBeenLastCalledWith({ centerX: 100, centerY: 100, width: 200, height: 100 }, 'live');
+    expect(outline.setOrigin).toHaveBeenLastCalledWith(null);
 
-    // The cancelled drag left the glass at (150, 100), where players are pinned now
-    act(() => { service.freezeCamera(); });
+    drag([{ x: 190, y: 130 }]);
     drag([{ x: 163, y: 72 }], false);
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(service.freezeCamera).toHaveBeenLastCalledWith({ centerX: 150, centerY: 100, scale: 1 });
+    expect(outline.setGlass).toHaveBeenLastCalledWith({ centerX: 200, centerY: 200, width: 200, height: 100 }, 'ghost');
     expect(service.framePlayersOn).not.toHaveBeenCalled();
+    expect(service.state.frozen).toBe(false);
   });
 
   describe('on a map players do not see', () => {
@@ -256,7 +294,6 @@ describe('the glass chip', () => {
       render(<GlassChip view={fakeView()} />);
       drag([{ x: 163, y: 72 }]);
       // Grabbed at (100, 50), 400 left of and 350 above its centre: (563, 422) puts the corner at (463, 372), which lands on (450, 350)
-      expect(service.dragPlayersTo).not.toHaveBeenCalled();
       expect(fakes.outlines[0]!.setGlass).toHaveBeenLastCalledWith({ centerX: 550, centerY: 400, width: 200, height: 100 }, 'ghost');
       expect(fakes.presentTab).not.toHaveBeenCalled();
 
@@ -272,7 +309,6 @@ describe('the glass chip', () => {
     const tabs = (view: AtlasView) => view.tabMetaStore as unknown as { setState(state: { activeTabId: string }): void };
     const expectNothingSent = (): void => {
       expect(fakes.presentTab).not.toHaveBeenCalled();
-      expect(service.dragPlayersTo).not.toHaveBeenCalled();
       expect(service.framePlayersOn).not.toHaveBeenCalled();
       expect(service.playersToCamera).not.toHaveBeenCalled();
       expect(service.freezeCamera).not.toHaveBeenCalled();
@@ -589,7 +625,7 @@ describe('saved frames', () => {
     expect(map(view).getState().playerFrames[0]).toEqual(FRAME);
     fireEvent.pointerUp(window, { pointerId: 1, clientX: 262, clientY: 281 });
     expect(map(view).getState().playerFrames).toEqual([{ ...FRAME, centerX: 350 }]);
-    expect(service.dragPlayersTo).not.toHaveBeenCalled();
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
   });
 
   it('shows players nothing while it is dragged, on the map they see or another', () => {
@@ -603,7 +639,6 @@ describe('saved frames', () => {
       fireEvent.pointerUp(window, { pointerId: 1, clientX: 262, clientY: 281 });
       expect(fakes.presentTab).not.toHaveBeenCalled();
       expect(service.playersToCamera).not.toHaveBeenCalled();
-      expect(service.dragPlayersTo).not.toHaveBeenCalled();
       expect(service.framePlayersOn).not.toHaveBeenCalled();
       expect(playerWindowStore.getState().shownTabId).toBe(shownTabId);
       cleanup();

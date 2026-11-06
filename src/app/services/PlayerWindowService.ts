@@ -159,18 +159,6 @@ export class PlayerWindowService {
     return !!tv?.trueScale && tv.setup !== null;
   }
 
-  /**
-   * Moves players to the world point (x, y) of the scene shown in `tabId` at once, pinned there:
-   * each step of the glass being dragged. The step is neither remembered nor written to the
-   * window's session; the drop (`framePlayersOn`) does both. False where players see another scene.
-   */
-  public dragPlayersTo(tabId: string, x: number, y: number): boolean {
-    const camera = this.framingCamera(tabId);
-    if (!camera) return false;
-    this.setFrozenCamera({ ...camera, centerX: x, centerY: y }, false);
-    return true;
-  }
-
   /** The glass on the map of `tabId`: what players see of it, pinned or following; null where they see another scene. */
   public glassOf(tabId: string): WorldFrame | null {
     return this.framingCamera(tabId) ? glassFrame(this.playerViewFrame(tabId), this.frozenCamera) : null;

@@ -7,6 +7,8 @@ import type { Size, WorldFrame } from '../../../types/playerFrame';
 export interface Glass {
   look: GlassLook;
   frame: WorldFrame;
+  /** On a glass the GM staged on the map players see: where they are now, until it is shown to them. */
+  players?: WorldFrame;
 }
 
 /** Where the ghost stands: where the GM placed it, else the middle of the GM's view, at the TV's size on this map. */
@@ -18,11 +20,13 @@ export interface GhostPlace {
 /**
  * The glass on the map of `tabId`: `live` where players see it (pinned or following), `ghost`
  * where the window shows another map, and none while the window is closed or players are held
- * on a frame of this very tab (another level, a scene still loading).
+ * on a frame of this very tab (another level, a scene still loading). Where the GM `staged` a
+ * frame on the map players see, the glass stands there as a ghost and remembers where they are.
  */
-export function readGlass(service: PlayerWindowService | null, tabId: string | null, ghost: GhostPlace): Glass | null {
+export function readGlass(service: PlayerWindowService | null, tabId: string | null, ghost: GhostPlace, staged: { x: number; y: number } | null = null): Glass | null {
   if (!service?.isWindowOpen() || !tabId) return null;
   const live = service.glassOf(tabId);
+  if (live && staged) return { look: 'ghost', frame: { ...live, centerX: staged.x, centerY: staged.y }, players: live };
   if (live) return { look: 'live', frame: live };
   if (playerWindowStore.getState().shownTabId === tabId) return null;
   const size = ghost.size();

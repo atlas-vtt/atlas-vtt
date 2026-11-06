@@ -11,6 +11,8 @@ export const glass = {
   'glass.unsave': 'Remove this saved frame',
   'glass.frameSaved': 'Frame {number} saved',
   'glass.show': 'Show players here',
+  'glass.glideHint': 'Move the players here',
+  'glass.discard': 'Leave the players where they are',
   'glass.remove': 'Remove',
   'glass.frameNumber': 'Frame {number}',
 };

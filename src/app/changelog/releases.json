@@ -2,6 +2,11 @@
   "version": "0.13.1-beta.0",
   "releases": [
     {
+      "version": "0.13.1-beta.0",
+      "title": "Coming in 0.13.1",
+      "markdown": "## Improved\n\n- TrueScale: dragging the frame on the map players see no longer moves them. Set it up where you want it, then press play on the frame and their view glides there. The cross puts it back on what players see"
+    },
+    {
       "version": "0.13.0",
       "date": "2026-11-05",
       "title": "Sound, free starter tokens and fog edges",

@@ -441,30 +441,6 @@ describe('player camera freeze', () => {
   });
 
   describe('the glass', () => {
-    it('drags players to a point at once, pinned, without remembering it or writing the session', () => {
-      const { service, session, setDmCamera, nextFrame, lastFrame } = setup();
-      setDmCamera({ centerX: 10, centerY: 20, scale: 1.5 });
-      nextFrame();
-      const saved = { ...session.camera };
-      expect(service.dragPlayersTo('scene-b', 300, 400)).toBe(false);
-      expect(service.isFrozen()).toBe(false);
-
-      // A following glass is pinned by the drag, and with the default glide still lands at once
-      expect(service.dragPlayersTo('scene-a', 300, 400)).toBe(true);
-      expect(service.isFrozen()).toBe(true);
-      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 300, centerY: 400 });
-      expect(service.dragPlayersTo('scene-a', 320, 410)).toBe(true);
-      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 320, centerY: 410 });
-      expect(session.camera).toEqual(saved);
-      expect(session.frames).toBeUndefined();
-      nextFrame();
-      expect(lastFrame()).toMatchObject({ centerX: 320, centerY: 410, scale: lastFrame().scale });
-
-      // The drop remembers the frame
-      expect(service.framePlayersOn('scene-a', 320, 410)).toBe(true);
-      expect(session.frames?.['scene-a.atlasmap']).toMatchObject({ centerX: 320, centerY: 410 });
-    });
-
     it('lets players follow the GM again without a notice, and does nothing while they follow', () => {
       const { service, session, setDmCamera, nextFrame, lastFrame } = setup();
       nextFrame();
