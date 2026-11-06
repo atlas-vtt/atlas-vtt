@@ -25,9 +25,11 @@ function setup() {
   const ids = ['Tavern', 'Crystal Caves', 'Cave Entrance'].map(name => tabMetaStore.getState().addTab(`${name}.atlasmap`, name));
   tabMetaStore.getState().setActiveTab(ids[0]!);
   const onShowAllTabs = vi.fn();
+  const onSwitchTab = vi.fn();
+  const onMoveTab = (tabId: string, toIndex: number): void => { tabMetaStore.getState().moveTab(tabId, toIndex); };
   const value = { app: {}, view: { viewId: 'map', tabMetaStore }, pixiApp: null, renderer: null } as never;
   render(<AtlasUIContext.Provider value={value}>
-    <SceneTabBar onSwitchTab={vi.fn()} onCloseTab={vi.fn()} onAddTab={vi.fn()} onPresentTab={vi.fn()} onShowAllTabs={onShowAllTabs} />
+    <SceneTabBar onSwitchTab={onSwitchTab} onMoveTab={onMoveTab} onCloseTab={vi.fn()} onAddTab={vi.fn()} onPresentTab={vi.fn()} onShowAllTabs={onShowAllTabs} />
   </AtlasUIContext.Provider>);
   const strip = screen.getByRole('tablist');
   /** Gives the strip the layout jsdom lacks and lets the bar measure it. */
@@ -38,7 +40,7 @@ function setup() {
     Object.defineProperty(strip, 'scrollLeft', { configurable: true, get: () => left, set: (next: number) => { left = next; } });
     act(() => { fireEvent.scroll(strip); });
   };
-  return { ids, strip, tabMetaStore, onShowAllTabs, layOut };
+  return { ids, strip, tabMetaStore, onShowAllTabs, onSwitchTab, layOut };
 }
 
 it('offers the list of open maps and fades the cut-off edges only while the tabs overflow', () => {
@@ -103,4 +105,155 @@ it('keeps the player view and close buttons at opposite ends of a tab, with the 
   const name = tab.querySelector('.atlas-scene-tab__name')!;
   expect(show!.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(name.compareDocumentPosition(close!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+/** Lays the tabs out 116 px wide with 4 px gaps, the layout jsdom lacks, and makes frames wait. */
+function layOutTabs(): HTMLElement[] {
+  const tabs = screen.getAllByRole('tab');
+  tabs.forEach((tab, index) => {
+    Object.defineProperty(tab, 'offsetLeft', { configurable: true, value: index * 120 });
+    Object.defineProperty(tab, 'offsetWidth', { configurable: true, value: 116 });
+    let captured = false;
+    tab.setPointerCapture = vi.fn(() => { captured = true; });
+    tab.hasPointerCapture = vi.fn(() => captured);
+    tab.releasePointerCapture = vi.fn(() => { captured = false; });
+  });
+  vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  return tabs;
+}
+
+function shiftOf(tab: HTMLElement): string {
+  return tab.style.getPropertyValue('--atlas-tab-shift');
+}
+
+function pointer(target: EventTarget, type: string, clientX: number): void {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, button: 0, buttons: type === 'pointerup' ? 0 : 1 });
+  Object.defineProperty(event, 'pointerId', { value: 1 });
+  Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+  act(() => { target.dispatchEvent(event); });
+}
+
+it('drags a tab past its neighbours, which slide aside, and drops it in their place without switching to it', () => {
+  const { ids, tabMetaStore, onSwitchTab } = setup();
+  const original = tabMetaStore.getState().tabs[0]!;
+  const [first, second, third] = layOutTabs();
+
+  pointer(first!, 'pointerdown', 50);
+  pointer(window, 'pointermove', 52);
+  expect(shiftOf(first!)).toBe('');
+  pointer(window, 'pointermove', 200);
+  expect(shiftOf(first!)).toBe('150px');
+  expect(shiftOf(second!)).toBe('-120px');
+  expect(shiftOf(third!)).toBe('');
+  pointer(window, 'pointermove', 300);
+  expect(shiftOf(third!)).toBe('-120px');
+
+  pointer(first!, 'pointerup', 300);
+  act(() => { fireEvent.click(first!); });
+
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[1], ids[2], ids[0]]);
+  expect(tabMetaStore.getState().tabs[2]).toBe(original);
+  expect(tabMetaStore.getState().activeTabId).toBe(ids[0]);
+  expect(onSwitchTab).not.toHaveBeenCalled();
+  expect(shiftOf(second!)).toBe('');
+});
+
+it('keeps a press that barely moves a click', () => {
+  const { ids, tabMetaStore, onSwitchTab } = setup();
+  const [, second] = layOutTabs();
+
+  pointer(second!, 'pointerdown', 150);
+  pointer(window, 'pointermove', 153);
+  pointer(second!, 'pointerup', 153);
+  fireEvent.click(second!);
+
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual(ids);
+  expect(onSwitchTab).toHaveBeenCalledWith(ids[1]);
+});
+
+it('puts everything back on Escape, without the release switching scenes, and when the dragged tab is closed', () => {
+  const { ids, tabMetaStore, onSwitchTab } = setup();
+  const [first, second] = layOutTabs();
+
+  pointer(first!, 'pointerdown', 50);
+  pointer(window, 'pointermove', 200);
+  act(() => { fireEvent.keyDown(window, { key: 'Escape' }); });
+  expect(first!.releasePointerCapture).toHaveBeenCalled();
+  pointer(first!, 'pointerup', 200);
+  act(() => { fireEvent.click(first!); });
+  expect(onSwitchTab).not.toHaveBeenCalled();
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual(ids);
+  expect(shiftOf(first!)).toBe('');
+  expect(shiftOf(second!)).toBe('');
+
+  pointer(first!, 'pointerdown', 50);
+  pointer(window, 'pointermove', 200);
+  act(() => { tabMetaStore.getState().removeTab(ids[0]!); });
+  pointer(window, 'pointerup', 200);
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[1], ids[2]]);
+  expect(shiftOf(second!)).toBe('');
+});
+
+it('moves a focused scene with Alt+ArrowRight while keeping focus', () => {
+  const { ids, tabMetaStore } = setup();
+  const tab = screen.getAllByRole('tab')[0]!;
+  tab.focus();
+
+  act(() => { fireEvent.keyDown(tab, { key: 'ArrowRight', altKey: true }); });
+
+  expect(tabMetaStore.getState().tabs.map(entry => entry.id)).toEqual([ids[1], ids[0], ids[2]]);
+  expect(document.activeElement).toBe(tab);
+  expect(tabMetaStore.getState().activeTabId).toBe(ids[0]);
+});
+
+it('moves a focused scene left and leaves the first tab in place at the boundary', () => {
+  const { ids, tabMetaStore } = setup();
+  const tab = screen.getAllByRole('tab')[1]!;
+  tab.focus();
+
+  act(() => { fireEvent.keyDown(tab, { key: 'ArrowLeft', altKey: true }); });
+  expect(tabMetaStore.getState().tabs.map(entry => entry.id)).toEqual([ids[1], ids[0], ids[2]]);
+
+  const tabs = tabMetaStore.getState().tabs;
+  act(() => { fireEvent.keyDown(tab, { key: 'ArrowLeft', altKey: true }); });
+  expect(tabMetaStore.getState().tabs).toBe(tabs);
+  expect(document.activeElement).toBe(tab);
+});
+
+it('reveals a focused scene after keyboard reordering in an overflowing strip', () => {
+  const { layOut } = setup();
+  layOut(600, 300);
+  const tab = screen.getAllByRole('tab')[1]!;
+  const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
+  scrollIntoView.mockClear();
+  tab.focus();
+
+  act(() => { fireEvent.keyDown(tab, { key: 'ArrowRight', altKey: true }); });
+
+  expect(scrollIntoView.mock.contexts.at(-1)).toBe(tab);
+  expect(scrollIntoView).toHaveBeenLastCalledWith(expect.objectContaining({ inline: 'nearest' }));
+});
+
+it('keeps dragging while a tab only finishes loading, and ends a press whose release was lost', () => {
+  const { ids, tabMetaStore, onSwitchTab } = setup();
+  const [first, second] = layOutTabs();
+
+  pointer(first!, 'pointerdown', 50);
+  pointer(window, 'pointermove', 200);
+  act(() => { tabMetaStore.getState().markTabLoaded(ids[1]!); });
+  expect(shiftOf(second!)).toBe('-120px');
+  pointer(first!, 'pointerup', 200);
+  act(() => { fireEvent.click(first!); });
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[1], ids[0], ids[2]]);
+  expect(onSwitchTab).not.toHaveBeenCalled();
+
+  pointer(second!, 'pointerdown', 150);
+  const buttonless = new MouseEvent('pointermove', { bubbles: true, clientX: 400, buttons: 0 });
+  Object.defineProperty(buttonless, 'pointerId', { value: 1 });
+  act(() => { window.dispatchEvent(buttonless); });
+  pointer(window, 'pointermove', 400);
+  expect(shiftOf(second!)).toBe('');
+  fireEvent.click(second!);
+  expect(onSwitchTab).toHaveBeenCalledOnce();
 });
