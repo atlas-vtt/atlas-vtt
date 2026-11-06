@@ -18,6 +18,7 @@ import type { ResourceDefsProvider, ResourceViewer, VisibleResource } from '../r
 import { isDefeated, isSpent } from '../resources/resourceValues';
 import { shapeOf, visibleResources } from '../resources/visibleResources';
 import { destroyTree } from './utils/destroyTree';
+import { canvasBadgeColors, isDarkTheme } from './utils/canvasBadgeColors';
 import { computeTokenStrokeWidth, NAMEPLATE_HEIGHT, NAMEPLATE_TEXT, restingTokenUIScale, selectedTokenUIScale, TOKEN_TEXT_RESOLUTION, tokenTextResolution } from './token-renderer/tokenSizing';
 import { getTokenRingCenterRadius } from './token-renderer/tokenRingMetrics';
 import { ValueTransition } from './utils/ValueTransition';
@@ -394,11 +395,9 @@ export class TokenUIRenderer {
 
     // Only show nameplate if enabled AND we have a name to display
     if (showNameplate && displayName) {
-      // Get theme colors
-      const isDarkMode = document.body.classList.contains('theme-dark');
-      const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
-      const strokeColor = isDarkMode ? 0xffffff : 0x000000;
-      
+      const isDarkMode = isDarkTheme();
+      const { background: bgColor, stroke: strokeColor } = canvasBadgeColors();
+      if (this.nameText.style.fill !== strokeColor) this.nameText.style.fill = strokeColor;
       this.nameText.text = displayName;
       // In PIXI v8, text updates automatically when setting the text property
       const textBounds = this.nameText.getLocalBounds();
@@ -863,10 +862,8 @@ export class TokenUIRenderer {
     
     // Function to update both badge size and cursor position
     const updateNameBadgeAndCursor = () => {
-      // Get theme colors (same as normal badge)
-      const isDarkMode = document.body.classList.contains('theme-dark');
-      const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
-      const strokeColor = isDarkMode ? 0xffffff : 0x000000;
+      const isDarkMode = isDarkTheme();
+      const { background: bgColor, stroke: strokeColor } = canvasBadgeColors();
       
       // Get current text bounds
       const textBounds = this.nameText.getLocalBounds();
