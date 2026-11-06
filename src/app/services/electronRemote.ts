@@ -39,6 +39,12 @@ export interface ElectronBrowserWindow {
   setSimpleFullScreen(flag: boolean): void;
 }
 
+/** The page a `BrowserWindow` shows. */
+export interface ElectronWebContents {
+  /** Whether the page is throttled, and reported hidden, while its window is covered or minimised. */
+  setBackgroundThrottling(allowed: boolean): void;
+}
+
 /** One window's view of Electron: the screens, and the window it was asked from. */
 export interface ElectronWindowHandle {
   screen: ElectronScreen;
@@ -72,6 +78,17 @@ export function electronWindowOf(win: Window): ElectronWindowHandle | null {
     if (!hasMethods(window, WINDOW_METHODS)) return null;
     // Checked above: both answer every method the interfaces name
     return { screen: screen as unknown as ElectronScreen, window: window as unknown as ElectronBrowserWindow };
+  } catch {
+    return null;
+  }
+}
+
+/** The page `window` shows; null where its `webContents` does not have what Atlas uses. */
+export function webContentsOf(window: ElectronBrowserWindow): ElectronWebContents | null {
+  try {
+    const contents: unknown = Reflect.get(window, 'webContents');
+    // Checked: it answers the one method the interface names
+    return hasMethods(contents, ['setBackgroundThrottling']) ? contents as unknown as ElectronWebContents : null;
   } catch {
     return null;
   }

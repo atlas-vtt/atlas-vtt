@@ -25,6 +25,7 @@ import { glassFrame, PlayerGlass, sameCamera, withSetupScreen } from './playerGl
 import { CURTAIN_DOWN_MS, removePlayerCurtain, showPlayerCurtain } from './playerCurtain';
 import { PlayerSceneFade } from './playerSceneFade';
 import { watchPlayerWindowDisplay } from './playerWindowDisplay';
+import { keepPlayerWindowAwake } from './playerWindowThrottling';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
 const PLAYER_WINDOW_BODY_CLASS = 'atlas-player-window';
@@ -91,6 +92,8 @@ export class PlayerWindowService {
   }, () => this.curtained);
   /** Stops keeping the store's `fullScreen` and `secondDisplay` current for the open popout. */
   private stopDisplayWatch: (() => void) | null = null;
+  /** Lets the popout be throttled again once it is no longer the player window (`keepPlayerWindowAwake`). */
+  private stopKeepingAwake: (() => void) | null = null;
 
   constructor(app: App, store: StoreApi<ViewAtlasState>, settingsService: SettingsService) {
     this.app = app;
@@ -631,6 +634,8 @@ export class PlayerWindowService {
       this.startMirroring();
       this.stopDisplayWatch?.();
       this.stopDisplayWatch = watchPlayerWindowDisplay(this.playerWindow, window);
+      this.stopKeepingAwake?.();
+      this.stopKeepingAwake = keepPlayerWindowAwake(this.playerWindow);
       playerWindowStore.setState({ isOpen: true });
 
       // Cleanup on close
@@ -765,6 +770,8 @@ export class PlayerWindowService {
     this.curtained = false;
     this.stopDisplayWatch?.();
     this.stopDisplayWatch = null;
+    this.stopKeepingAwake?.();
+    this.stopKeepingAwake = null;
     
     if (closeWindow && this.playerWindow && !this.playerWindow.closed) {
       this.playerWindow.close();
