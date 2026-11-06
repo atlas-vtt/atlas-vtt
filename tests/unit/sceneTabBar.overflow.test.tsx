@@ -25,9 +25,11 @@ function setup() {
   const ids = ['Tavern', 'Crystal Caves', 'Cave Entrance'].map(name => tabMetaStore.getState().addTab(`${name}.atlasmap`, name));
   tabMetaStore.getState().setActiveTab(ids[0]!);
   const onShowAllTabs = vi.fn();
+  const onSwitchTab = vi.fn();
+  const onMoveTab = (tabId: string, toIndex: number): void => { tabMetaStore.getState().moveTab(tabId, toIndex); };
   const value = { app: {}, view: { viewId: 'map', tabMetaStore }, pixiApp: null, renderer: null } as never;
   render(<AtlasUIContext.Provider value={value}>
-    <SceneTabBar onSwitchTab={vi.fn()} onCloseTab={vi.fn()} onAddTab={vi.fn()} onPresentTab={vi.fn()} onShowAllTabs={onShowAllTabs} />
+    <SceneTabBar onSwitchTab={onSwitchTab} onMoveTab={onMoveTab} onCloseTab={vi.fn()} onAddTab={vi.fn()} onPresentTab={vi.fn()} onShowAllTabs={onShowAllTabs} />
   </AtlasUIContext.Provider>);
   const strip = screen.getByRole('tablist');
   /** Gives the strip the layout jsdom lacks and lets the bar measure it. */
@@ -38,7 +40,7 @@ function setup() {
     Object.defineProperty(strip, 'scrollLeft', { configurable: true, get: () => left, set: (next: number) => { left = next; } });
     act(() => { fireEvent.scroll(strip); });
   };
-  return { ids, strip, tabMetaStore, onShowAllTabs, layOut };
+  return { ids, strip, tabMetaStore, onShowAllTabs, onSwitchTab, layOut };
 }
 
 it('offers the list of open maps and fades the cut-off edges only while the tabs overflow', () => {
@@ -105,44 +107,86 @@ it('keeps the player view and close buttons at opposite ends of a tab, with the 
   expect(name.compareDocumentPosition(close!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
-function dropAt(tab: HTMLElement, clientX: number): void {
-  const event = new Event('drop', { bubbles: true, cancelable: true });
-  Object.defineProperty(event, 'clientX', { value: clientX });
-  fireEvent(tab, event);
+/** Lays the tabs out 116 px wide with 4 px gaps, the layout jsdom lacks, and makes frames wait. */
+function layOutTabs(): HTMLElement[] {
+  const tabs = screen.getAllByRole('tab');
+  tabs.forEach((tab, index) => {
+    Object.defineProperty(tab, 'offsetLeft', { configurable: true, value: index * 120 });
+    Object.defineProperty(tab, 'offsetWidth', { configurable: true, value: 116 });
+    tab.setPointerCapture = vi.fn();
+  });
+  vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  return tabs;
 }
 
-it('drops a dragged scene after the target without changing the active scene or tab data', async () => {
-  const { ids, tabMetaStore } = setup();
-  const original = tabMetaStore.getState().tabs[0]!;
-  const [source, , target] = screen.getAllByRole('tab');
-  vi.spyOn(target!, 'getBoundingClientRect').mockReturnValue({ left: 100, width: 100 } as DOMRect);
+function shiftOf(tab: HTMLElement): string {
+  return tab.style.getPropertyValue('--atlas-tab-shift');
+}
 
-  await act(async () => {
-    fireEvent.dragStart(source!.querySelector('.atlas-scene-tab__name')!, { dataTransfer: { setData: vi.fn() } });
-    fireEvent.dragOver(target!, { clientX: 175, dataTransfer: { dropEffect: 'none' } });
-    dropAt(target!, 175);
-  });
+function pointer(target: EventTarget, type: string, clientX: number): void {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, button: 0 });
+  Object.defineProperty(event, 'pointerId', { value: 1 });
+  Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+  act(() => { target.dispatchEvent(event); });
+}
+
+it('drags a tab past its neighbours, which slide aside, and drops it in their place without switching to it', () => {
+  const { ids, tabMetaStore, onSwitchTab } = setup();
+  const original = tabMetaStore.getState().tabs[0]!;
+  const [first, second, third] = layOutTabs();
+
+  pointer(first!, 'pointerdown', 50);
+  pointer(window, 'pointermove', 52);
+  expect(shiftOf(first!)).toBe('');
+  pointer(window, 'pointermove', 200);
+  expect(shiftOf(first!)).toBe('150px');
+  expect(shiftOf(second!)).toBe('-120px');
+  expect(shiftOf(third!)).toBe('');
+  pointer(window, 'pointermove', 300);
+  expect(shiftOf(third!)).toBe('-120px');
+
+  pointer(first!, 'pointerup', 300);
+  act(() => { fireEvent.click(first!); });
 
   expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[1], ids[2], ids[0]]);
   expect(tabMetaStore.getState().tabs[2]).toBe(original);
   expect(tabMetaStore.getState().activeTabId).toBe(ids[0]);
+  expect(onSwitchTab).not.toHaveBeenCalled();
+  expect(shiftOf(second!)).toBe('');
 });
 
-it('drops before the target and ignores a source tab closed during the drag', async () => {
+it('keeps a press that barely moves a click', () => {
+  const { ids, tabMetaStore, onSwitchTab } = setup();
+  const [, second] = layOutTabs();
+
+  pointer(second!, 'pointerdown', 150);
+  pointer(window, 'pointermove', 153);
+  pointer(second!, 'pointerup', 153);
+  fireEvent.click(second!);
+
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual(ids);
+  expect(onSwitchTab).toHaveBeenCalledWith(ids[1]);
+});
+
+it('puts everything back on Escape and when the dragged tab is closed', () => {
   const { ids, tabMetaStore } = setup();
-  const [target, , source] = screen.getAllByRole('tab');
-  vi.spyOn(target!, 'getBoundingClientRect').mockReturnValue({ left: 100, width: 100 } as DOMRect);
+  const [first, second] = layOutTabs();
 
-  await act(async () => {
-    fireEvent.dragStart(source!.querySelector('.atlas-scene-tab__name')!, { dataTransfer: { setData: vi.fn() } });
-    dropAt(target!, 125);
-  });
-  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[2], ids[0], ids[1]]);
+  pointer(first!, 'pointerdown', 50);
+  pointer(window, 'pointermove', 200);
+  act(() => { fireEvent.keyDown(window, { key: 'Escape' }); });
+  pointer(first!, 'pointerup', 200);
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual(ids);
+  expect(shiftOf(first!)).toBe('');
+  expect(shiftOf(second!)).toBe('');
 
-  act(() => { fireEvent.dragStart(source!.querySelector('.atlas-scene-tab__name')!, { dataTransfer: { setData: vi.fn() } }); });
-  act(() => { tabMetaStore.getState().removeTab(ids[2]!); });
-  act(() => { dropAt(target!, 125); });
-  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[0], ids[1]]);
+  pointer(first!, 'pointerdown', 50);
+  pointer(window, 'pointermove', 200);
+  act(() => { tabMetaStore.getState().removeTab(ids[0]!); });
+  pointer(window, 'pointerup', 200);
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[1], ids[2]]);
+  expect(shiftOf(second!)).toBe('');
 });
 
 it('moves a focused scene with Alt+ArrowRight while keeping focus', () => {

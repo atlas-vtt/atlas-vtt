@@ -4,6 +4,7 @@ import { useStore } from 'zustand';
 import { cn } from '../../../utils/cn';
 import { useSceneTabStore } from '../hooks/useSceneTabStore';
 import { useTabStripOverflow } from '../hooks/useTabStripOverflow';
+import { useTabReorderDrag } from '../hooks/useTabReorderDrag';
 import type { SceneTab } from '../../types/sceneTabTypes';
 import { LabelTooltip, TooltipProvider } from '../../packages/components/primitives/tooltip';
 import { SceneTabProcessing } from './SceneTabProcessing';
@@ -15,6 +16,8 @@ interface SceneTabBarProps {
   onCloseTab: (tabId: string) => void;
   onAddTab: () => void;
   onPresentTab: (tabId: string) => void;
+  /** Moves a tab to another place in the bar, by drag or with Alt+Left/Right Arrow. */
+  onMoveTab: (tabId: string, toIndex: number) => void;
   /** The tab players are shown, whether or not the player window is open; null while none is. */
   presentedTabId?: string | null;
   /** Lists every open map; offered while the tabs do not fit the bar. */
@@ -41,6 +44,7 @@ function TabActionButton({ icon: Icon, label, isActive, onClick }: TabActionButt
           onClick();
         }}
         onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         aria-pressed={isActive}
       >
@@ -50,13 +54,12 @@ function TabActionButton({ icon: Icon, label, isActive, onClick }: TabActionButt
   );
 }
 
-export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
+export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, onMoveTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
   const store = useSceneTabStore();
 
   const tabs = useStore(store, (s) => s.tabs);
   const activeTabId = useStore(store, (s) => s.activeTabId);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
-  const draggingId = useRef<string | null>(null);
   const pendingReveal = useRef<HTMLElement | null>(null);
   const { overflows, hiddenBefore, hiddenAfter } = useTabStripOverflow(strip, activeTabId);
 
@@ -65,17 +68,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
     pendingReveal.current = null;
   }, [tabs]);
 
-  const moveTab = (sourceId: string, targetId: string, after: boolean): boolean => {
-    const state = store.getState();
-    const source = state.tabs.find((tab) => tab.id === sourceId);
-    if (!source || sourceId === targetId || !state.tabs.some((tab) => tab.id === targetId)) return false;
-    const next = state.tabs.filter((tab) => tab !== source);
-    const index = next.findIndex((tab) => tab.id === targetId);
-    next.splice(index + (after ? 1 : 0), 0, source);
-    if (next.every((tab, position) => tab === state.tabs[position])) return false;
-    state.setTabs(next, state.activeTabId);
-    return true;
-  };
+  const startDrag = useTabReorderDrag(strip, tabs, onMoveTab);
 
   if (tabs.length === 0) return null;
 
@@ -104,36 +97,23 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
             return (
               <div
                 key={tab.id}
+                data-tab-id={tab.id}
                 role="tab"
                 aria-selected={isActive}
                 aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
                 tabIndex={0}
                 className={`atlas-scene-tab ${stateClass}`}
-                onDragOver={(e) => {
-                  if (draggingId.current) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                  }
-                }}
-                onDrop={(e) => {
-                  const sourceId = draggingId.current;
-                  if (!sourceId) return;
-                  draggingId.current = null;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const { left, width } = e.currentTarget.getBoundingClientRect();
-                  moveTab(sourceId, tab.id, e.clientX >= left + width / 2);
-                }}
+                onPointerDown={(e) => startDrag(e, tab.id)}
                 onClick={() => onSwitchTab(tab.id)}
                 onKeyDown={(e) => {
                   if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
                     e.preventDefault();
                     e.stopPropagation();
-                    const index = tabs.findIndex((entry) => entry.id === tab.id);
-                    const target = tabs[index + (e.key === 'ArrowLeft' ? -1 : 1)];
-                    if (target) {
+                    // Keyboard moves are instant: no glide for something pressed in quick succession.
+                    const to = tabs.findIndex((entry) => entry.id === tab.id) + (e.key === 'ArrowLeft' ? -1 : 1);
+                    if (to >= 0 && to < tabs.length) {
                       pendingReveal.current = e.currentTarget;
-                      if (!moveTab(tab.id, target.id, e.key === 'ArrowRight')) pendingReveal.current = null;
+                      onMoveTab(tab.id, to);
                     }
                     return;
                   }
@@ -157,16 +137,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
                   onClick={() => onPresentTab(tab.id)}
                 />
                 <LabelTooltip side="bottom" label={tab.filePath}>
-                  <span
-                    className="atlas-scene-tab__name"
-                    draggable
-                    onDragStart={(e) => {
-                      draggingId.current = tab.id;
-                      e.dataTransfer.effectAllowed = 'move';
-                      e.dataTransfer.setData('application/x-atlas-scene-tab', tab.id);
-                    }}
-                    onDragEnd={() => { draggingId.current = null; }}
-                  >{tab.displayName}</span>
+                  <span className="atlas-scene-tab__name">{tab.displayName}</span>
                 </LabelTooltip>
                 <SceneTabProcessing scenePath={tab.filePath} />
                 {tab.isDirty && <span className="atlas-scene-tab__dirty" />}
