@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import type React from 'react';
 import { MOTION_NORMAL_MS } from '../../utils/motion';
+import { swallowClickAfterRelease, swallowNextClick } from '../../utils/swallowClick';
 
 /** How far the pointer travels before a press on a tab becomes a drag, so a click stays a click. */
 const DRAG_THRESHOLD_PX = 4;
@@ -30,6 +31,8 @@ interface Drag {
   win: Window;
   startX: number;
   startScroll: number;
+  /** How far the strip scrolls without the drag's own shifts, which widen it. */
+  maxScroll: number;
   clientX: number;
   active: boolean;
   /** Every tab's resting place when the drag began, in order. */
@@ -42,10 +45,13 @@ interface Drag {
   detach: () => void;
 }
 
-/** Moves a tab sideways from its place in the strip (`--atlas-tab-shift`, scene-tab-bar.scss); 0 puts it back. */
+/** Shifts a tab sideways off its place in the strip (`--atlas-tab-shift`, read by scene-tab-bar.scss); 0 puts it back. */
 function shift(tab: HTMLElement, px: number): void {
   tab.setCssProps({ [TAB_SHIFT]: px ? `${px}px` : '' });
 }
+
+/** How a drag ends: released over the strip, cancelled with the button still held, or its pointer lost. */
+type DragEnd = 'drop' | 'cancel' | 'lost';
 
 function tabElements(strip: HTMLElement): HTMLElement[] {
   return Array.from(strip.querySelectorAll<HTMLElement>(':scope > [data-tab-id]'));
@@ -61,7 +67,8 @@ function tabElements(strip: HTMLElement): HTMLElement[] {
  */
 export function useTabReorderDrag(
   strip: HTMLElement | null,
-  tabs: readonly unknown[],
+  /** The tabs' ids in order, joined: a change other than the drop's own (a tab closed or opened) ends a drag. */
+  order: string,
   onMove: (tabId: string, toIndex: number) => void,
 ): (event: React.PointerEvent<HTMLElement>, tabId: string) => void {
   const drag = useRef<Drag | null>(null);
@@ -118,23 +125,17 @@ export function useTabReorderDrag(
     d.to = to;
   }, [strip]);
 
-  const end = useCallback((commit: boolean): void => {
+  const end = useCallback((how: DragEnd): void => {
     const d = drag.current;
     if (!d) return;
     drag.current = null;
     d.detach();
     d.win.cancelAnimationFrame(d.frame);
     if (!d.active) return;
-    if (commit) {
-      // The click that follows the release would switch to the tab; a drag is no click.
-      const swallow = (event: MouseEvent): void => {
-        event.stopPropagation();
-        event.preventDefault();
-      };
-      d.win.addEventListener('click', swallow, { capture: true, once: true });
-      d.win.setTimeout(() => d.win.removeEventListener('click', swallow, { capture: true }), 0);
-    }
-    if (commit && d.to !== d.from) {
+    if (d.el.hasPointerCapture(d.pointerId)) d.el.releasePointerCapture(d.pointerId);
+    if (how === 'drop') swallowNextClick(d.win);
+    else if (how === 'cancel') swallowClickAfterRelease(d.win, d.pointerId);
+    if (how === 'drop' && d.to !== d.from) {
       drop.current = { id: d.id, left: d.el.getBoundingClientRect().left };
       onMoveRef.current(d.id, d.to);
       // The new order renders before the next frame; if none came (the move was refused), glide back.
@@ -154,6 +155,9 @@ export function useTabReorderDrag(
     d.from = els.indexOf(d.el);
     if (d.from === -1 || els.length < 2) return;
     clearSettle(d.win);
+    // Pressing a cut-off tab focuses it, which may scroll it into view: the drag starts from here.
+    d.startScroll = strip.scrollLeft;
+    d.maxScroll = strip.scrollWidth - strip.clientWidth;
     d.slots = els.map((el) => ({ el, left: el.offsetLeft, width: el.offsetWidth }));
     const self = d.slots[d.from]!;
     const after = d.slots[d.from + 1];
@@ -172,10 +176,11 @@ export function useTabReorderDrag(
       const after = Math.max(0, right - d.clientX);
       const pull = before < EDGE_SCROLL_ZONE_PX ? before / EDGE_SCROLL_ZONE_PX - 1
         : after < EDGE_SCROLL_ZONE_PX ? 1 - after / EDGE_SCROLL_ZONE_PX : 0;
-      if (pull !== 0) {
-        const scrolled = strip.scrollLeft;
-        strip.scrollLeft += pull * EDGE_SCROLL_MAX_PX;
-        if (strip.scrollLeft !== scrolled) place(d);
+      const scrolled = strip.scrollLeft;
+      const next = Math.max(0, Math.min(d.maxScroll, scrolled + pull * EDGE_SCROLL_MAX_PX));
+      if (next !== scrolled) {
+        strip.scrollLeft = next;
+        place(d);
       }
       d.frame = d.win.requestAnimationFrame(scrollAtEdge);
     };
@@ -190,6 +195,11 @@ export function useTabReorderDrag(
     const onPointerMove = (e: PointerEvent): void => {
       const d = drag.current;
       if (!d || e.pointerId !== d.pointerId) return;
+      if ((e.buttons & 1) === 0) {
+        // The release never reached this window: a move without the button ends the press.
+        end('lost');
+        return;
+      }
       d.clientX = e.clientX;
       if (!d.active) {
         if (Math.abs(d.clientX - d.startX) < DRAG_THRESHOLD_PX) return;
@@ -199,18 +209,18 @@ export function useTabReorderDrag(
       place(d);
     };
     const onPointerUp = (e: PointerEvent): void => {
-      if (e.pointerId === drag.current?.pointerId) end(true);
+      if (e.pointerId === drag.current?.pointerId) end('drop');
     };
     const onPointerCancel = (e: PointerEvent): void => {
-      if (e.pointerId === drag.current?.pointerId) end(false);
+      if (e.pointerId === drag.current?.pointerId) end('lost');
     };
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape' || !drag.current?.active) return;
       e.preventDefault();
       e.stopPropagation();
-      end(false);
+      end('cancel');
     };
-    const onBlur = (): void => end(false);
+    const onBlur = (): void => end('lost');
     win.addEventListener('pointermove', onPointerMove);
     win.addEventListener('pointerup', onPointerUp);
     win.addEventListener('pointercancel', onPointerCancel);
@@ -222,7 +232,8 @@ export function useTabReorderDrag(
       el,
       win,
       startX: event.clientX,
-      startScroll: strip?.scrollLeft ?? 0,
+      startScroll: 0,
+      maxScroll: 0,
       clientX: event.clientX,
       active: false,
       slots: [],
@@ -242,13 +253,14 @@ export function useTabReorderDrag(
 
   // After a drop the tabs stand in their new order. The neighbours already show their new
   // places, so they lose their transforms at once; the dropped tab starts where it was let go
-  // and glides into its slot (FLIP). Tabs that change under a drag (one closed) end it.
+  // and glides into its slot (FLIP). A tab opened or closed under a drag ends it; a tab that
+  // only loads or is renamed does not.
   useLayoutEffect(() => {
     const dropped = drop.current;
     drop.current = null;
     if (!strip) return;
     if (drag.current?.active) {
-      end(false);
+      end('cancel');
       return;
     }
     if (!dropped) return;
@@ -265,7 +277,7 @@ export function useTabReorderDrag(
     // Reading the layout commits that starting point before the transition comes back.
     el.getBoundingClientRect();
     settle(el, win);
-  }, [tabs, strip, end, settle, clearSettle]);
+  }, [order, strip, end, settle, clearSettle]);
 
   useEffect(() => () => {
     const d = drag.current;

@@ -68,7 +68,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
     pendingReveal.current = null;
   }, [tabs]);
 
-  const startDrag = useTabReorderDrag(strip, tabs, onMoveTab);
+  const startDrag = useTabReorderDrag(strip, tabs.map((tab) => tab.id).join('\n'), onMoveTab);
 
   if (tabs.length === 0) return null;
 

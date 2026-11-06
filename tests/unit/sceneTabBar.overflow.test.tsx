@@ -113,7 +113,10 @@ function layOutTabs(): HTMLElement[] {
   tabs.forEach((tab, index) => {
     Object.defineProperty(tab, 'offsetLeft', { configurable: true, value: index * 120 });
     Object.defineProperty(tab, 'offsetWidth', { configurable: true, value: 116 });
-    tab.setPointerCapture = vi.fn();
+    let captured = false;
+    tab.setPointerCapture = vi.fn(() => { captured = true; });
+    tab.hasPointerCapture = vi.fn(() => captured);
+    tab.releasePointerCapture = vi.fn(() => { captured = false; });
   });
   vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
@@ -125,7 +128,7 @@ function shiftOf(tab: HTMLElement): string {
 }
 
 function pointer(target: EventTarget, type: string, clientX: number): void {
-  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, button: 0 });
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, button: 0, buttons: type === 'pointerup' ? 0 : 1 });
   Object.defineProperty(event, 'pointerId', { value: 1 });
   Object.defineProperty(event, 'pointerType', { value: 'mouse' });
   act(() => { target.dispatchEvent(event); });
@@ -169,14 +172,17 @@ it('keeps a press that barely moves a click', () => {
   expect(onSwitchTab).toHaveBeenCalledWith(ids[1]);
 });
 
-it('puts everything back on Escape and when the dragged tab is closed', () => {
-  const { ids, tabMetaStore } = setup();
+it('puts everything back on Escape, without the release switching scenes, and when the dragged tab is closed', () => {
+  const { ids, tabMetaStore, onSwitchTab } = setup();
   const [first, second] = layOutTabs();
 
   pointer(first!, 'pointerdown', 50);
   pointer(window, 'pointermove', 200);
   act(() => { fireEvent.keyDown(window, { key: 'Escape' }); });
+  expect(first!.releasePointerCapture).toHaveBeenCalled();
   pointer(first!, 'pointerup', 200);
+  act(() => { fireEvent.click(first!); });
+  expect(onSwitchTab).not.toHaveBeenCalled();
   expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual(ids);
   expect(shiftOf(first!)).toBe('');
   expect(shiftOf(second!)).toBe('');
@@ -227,4 +233,27 @@ it('reveals a focused scene after keyboard reordering in an overflowing strip', 
 
   expect(scrollIntoView.mock.contexts.at(-1)).toBe(tab);
   expect(scrollIntoView).toHaveBeenLastCalledWith(expect.objectContaining({ inline: 'nearest' }));
+});
+
+it('keeps dragging while a tab only finishes loading, and ends a press whose release was lost', () => {
+  const { ids, tabMetaStore, onSwitchTab } = setup();
+  const [first, second] = layOutTabs();
+
+  pointer(first!, 'pointerdown', 50);
+  pointer(window, 'pointermove', 200);
+  act(() => { tabMetaStore.getState().markTabLoaded(ids[1]!); });
+  expect(shiftOf(second!)).toBe('-120px');
+  pointer(first!, 'pointerup', 200);
+  act(() => { fireEvent.click(first!); });
+  expect(tabMetaStore.getState().tabs.map(tab => tab.id)).toEqual([ids[1], ids[0], ids[2]]);
+  expect(onSwitchTab).not.toHaveBeenCalled();
+
+  pointer(second!, 'pointerdown', 150);
+  const buttonless = new MouseEvent('pointermove', { bubbles: true, clientX: 400, buttons: 0 });
+  Object.defineProperty(buttonless, 'pointerId', { value: 1 });
+  act(() => { window.dispatchEvent(buttonless); });
+  pointer(window, 'pointermove', 400);
+  expect(shiftOf(second!)).toBe('');
+  fireEvent.click(second!);
+  expect(onSwitchTab).toHaveBeenCalledOnce();
 });
