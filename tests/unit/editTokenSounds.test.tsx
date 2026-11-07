@@ -8,7 +8,7 @@ import { TokenSoundPlayer } from '../../src/app/audio/TokenSoundPlayer';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import type { TokenSound } from '../../src/app/types/audioTypes';
-import { FakeAudioContext } from '../mocks/fakeAudioContext';
+import { FakeTokenSoundContext } from '../helpers/fakeTokenSoundContext';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { withSound } from '../mocks/experimentalFeatures';
 
@@ -63,8 +63,8 @@ function addSound(app: App, path: string): void {
 const volumeOf = (name: string): string | null => screen.getByRole('slider', { name: `Volume of ${name}` }).getAttribute('aria-valuenow');
 
 beforeEach(() => {
-  FakeAudioContext.reset();
-  vi.stubGlobal('AudioContext', FakeAudioContext);
+  FakeTokenSoundContext.reset();
+  vi.stubGlobal('AudioContext', FakeTokenSoundContext);
   showNotice.mockClear();
 });
 
@@ -178,9 +178,9 @@ describe('the Sounds of Edit Token', () => {
     fireEvent.keyDown(screen.getByRole('slider', { name: 'Volume of wings' }), { key: 'ArrowRight' });
 
     await act(async () => screen.getByRole('button', { name: 'Play wings' }).click());
-    await vi.waitFor(() => expect(FakeAudioContext.instances.at(-1)?.playing()).toHaveLength(1));
+    await vi.waitFor(() => expect(FakeTokenSoundContext.instances.at(-1)?.playing()).toHaveLength(1));
 
-    const context = FakeAudioContext.instances.at(-1)!;
+    const context = FakeTokenSoundContext.instances.at(-1)!;
     expect(context.route(context.playing()[0]!).gain).toBe(0.05);
     expect(saved().sounds).toEqual([{ path: 'Sounds/wings.ogg', volume: 1 }]);
   });

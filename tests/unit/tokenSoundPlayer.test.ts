@@ -2,30 +2,35 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { TokenSoundPlayer } from '../../src/app/audio/TokenSoundPlayer';
-import { FakeAudioContext } from '../mocks/fakeAudioContext';
+import { followOutputDevice, forgetOutputFollower } from '../../src/app/sound/engine/outputDevice';
+import { FakeTokenSoundContext } from '../helpers/fakeTokenSoundContext';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+
+vi.mock('../../src/app/sound/engine/outputDevice', () => ({ followOutputDevice: vi.fn(), forgetOutputFollower: vi.fn() }));
 
 const MB = 1024 * 1024;
 
-function setup(files: Record<string, string> = {}): { app: App; player: TokenSoundPlayer; context: () => FakeAudioContext } {
+function setup(files: Record<string, string> = {}): { app: App; player: TokenSoundPlayer; context: () => FakeTokenSoundContext } {
   const { app } = createInMemoryApp({
     files: { 'Sounds/roar.mp3': 'audio:48000', 'Sounds/wings.ogg': 'audio:24000', ...files },
   });
   const player = TokenSoundPlayer.forApp(app);
-  const context = (): FakeAudioContext => {
-    const made = FakeAudioContext.instances.at(-1);
+  const context = (): FakeTokenSoundContext => {
+    const made = FakeTokenSoundContext.instances.at(-1);
     if (!made) throw new Error('no audio context was made');
     return made;
   };
   return { app, player, context };
 }
 
-/** Lets the `ended` events of stopped sources arrive, as the browser sends them a moment later. */
-const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+/** The last event of the gain a source plays through: how it is being moved. */
+const lastGainEvent = (context: FakeTokenSoundContext, index: number): string | undefined => context.gains[index]?.events.at(-1)?.kind;
 
 beforeEach(() => {
-  FakeAudioContext.reset();
-  vi.stubGlobal('AudioContext', FakeAudioContext);
+  FakeTokenSoundContext.reset();
+  vi.stubGlobal('AudioContext', FakeTokenSoundContext);
+  vi.mocked(followOutputDevice).mockClear();
+  vi.mocked(forgetOutputFollower).mockClear();
 });
 
 afterEach(() => {
@@ -40,21 +45,31 @@ describe('TokenSoundPlayer', () => {
 
     const [source] = context().playing();
     expect(context().playing()).toHaveLength(1);
-    expect(source!.buffer?.decodedFrom).toBe('audio:48000');
+    expect(source!.buffer?.length).toBe(48000);
     expect(context().route(source!)).toEqual({ gain: 0.6, audible: true });
+  });
+
+  it('puts its context on the chosen output when it makes it', async () => {
+    const { player } = setup();
+    expect(followOutputDevice).not.toHaveBeenCalled();
+
+    await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+    await player.play({ path: 'Sounds/wings.ogg', volume: 1 });
+
+    expect(followOutputDevice).toHaveBeenCalledOnce();
+    expect(followOutputDevice).toHaveBeenCalledWith(FakeTokenSoundContext.instances[0]);
   });
 
   it('starts a sound again from the beginning when it is played while still playing', async () => {
     const { player, context } = setup();
 
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
-    const first = context().playing()[0];
+    const first = context().unstopped()[0];
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
-    await settle();
 
-    expect(first!.stopped).toBe(true);
-    expect(context().playing()).toHaveLength(1);
-    expect(context().playing()[0]).not.toBe(first);
+    expect(first!.stoppedAt).not.toBeNull();
+    expect(context().unstopped()).toHaveLength(1);
+    expect(context().unstopped()[0]).not.toBe(first);
     expect(player.isPlaying()).toBe(true);
   });
 
@@ -64,7 +79,7 @@ describe('TokenSoundPlayer', () => {
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
     await player.play({ path: 'Sounds/wings.ogg', volume: 1 });
 
-    expect(context().playing().map((source) => source.buffer?.decodedFrom)).toEqual(['audio:48000', 'audio:24000']);
+    expect(context().playing().map((source) => source.buffer?.length)).toEqual([48000, 24000]);
   });
 
   it('is playing until its last sound has ended', async () => {
@@ -74,9 +89,9 @@ describe('TokenSoundPlayer', () => {
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
     await player.play({ path: 'Sounds/wings.ogg', volume: 1 });
     const [roar, wings] = context().playing();
-    roar!.finish();
+    roar!.onended?.(new Event('ended'));
     expect(player.isPlaying()).toBe(true);
-    wings!.finish();
+    wings!.onended?.(new Event('ended'));
 
     expect(player.isPlaying()).toBe(false);
     expect(context().route(roar!).audible).toBe(false);
@@ -88,9 +103,46 @@ describe('TokenSoundPlayer', () => {
     await player.play({ path: 'Sounds/wings.ogg', volume: 1 });
 
     player.stopAll();
-    await settle();
 
-    expect(context().playing()).toEqual([]);
+    expect(context().unstopped()).toEqual([]);
+    expect(player.isPlaying()).toBe(false);
+  });
+
+  it('fades stopped sounds out over the seconds asked for', async () => {
+    const { player, context } = setup();
+    await player.play({ path: 'Sounds/roar.mp3', volume: 0.8 });
+    context().currentTime = 3;
+
+    player.stopAll(1.5);
+
+    expect(context().sources[0]!.stoppedAt).toBe(3 + 1.5);
+    expect(lastGainEvent(context(), 0)).toBe('curve');
+    expect(player.isPlaying()).toBe(false);
+  });
+
+  it('cuts with a short fade when no length is asked for', async () => {
+    const { player, context } = setup();
+    await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+    context().currentTime = 2;
+
+    player.stopAll();
+
+    expect(context().sources[0]!.stoppedAt).toBeCloseTo(2 + 0.03, 6);
+    expect(lastGainEvent(context(), 0)).toBe('curve');
+  });
+
+  it('stops the sounds of a player that exists, and makes none where none was made', async () => {
+    const { app: fresh } = createInMemoryApp({ files: {} });
+    TokenSoundPlayer.stopAllFor(fresh, 2);
+    expect(FakeTokenSoundContext.instances).toEqual([]);
+
+    const { app, player, context } = setup();
+    await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+    context().currentTime = 5;
+
+    TokenSoundPlayer.stopAllFor(app, 2);
+
+    expect(context().sources[0]!.stoppedAt).toBe(5 + 2);
     expect(player.isPlaying()).toBe(false);
   });
 
@@ -101,7 +153,7 @@ describe('TokenSoundPlayer', () => {
     player.stopAll();
 
     expect(await playing).toBe('stopped');
-    expect(context().playing()).toEqual([]);
+    expect(context().sources).toEqual([]);
   });
 
   it('refuses a file larger than 20 MB without decoding it, and plays one of exactly 20 MB', async () => {
@@ -109,7 +161,7 @@ describe('TokenSoundPlayer', () => {
     const { player, context } = setup({ 'Sounds/album.mp3': pad(20 * MB + 1), 'Sounds/long.mp3': pad(20 * MB) });
 
     expect(await player.play({ path: 'Sounds/album.mp3', volume: 1 })).toBe('too-large');
-    expect(FakeAudioContext.instances.every((made) => made.decodeCount === 0)).toBe(true);
+    expect(FakeTokenSoundContext.instances.every((made) => made.decodeCalls === 0)).toBe(true);
     expect(await player.play({ path: 'Sounds/long.mp3', volume: 1 })).toBe('played');
     expect(context().playing()).toHaveLength(1);
   });
@@ -123,7 +175,7 @@ describe('TokenSoundPlayer', () => {
     const { player, context } = setup({ 'Sounds/notes.mp3': 'not a sound' });
 
     expect(await player.play({ path: 'Sounds/notes.mp3', volume: 1 })).toBe('unreadable');
-    expect(context().playing()).toEqual([]);
+    expect(context().sources).toEqual([]);
   });
 
   it('decodes a file once while it is unchanged, and again once it changed', async () => {
@@ -131,13 +183,13 @@ describe('TokenSoundPlayer', () => {
 
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
-    expect(context().decodeCount).toBe(1);
+    expect(context().decodeCalls).toBe(1);
 
     await app.vault.process(app.vault.getFileByPath('Sounds/roar.mp3')!, () => 'audio:96000');
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
 
-    expect(context().decodeCount).toBe(2);
-    expect(context().playing()[0]!.buffer?.decodedFrom).toBe('audio:96000');
+    expect(context().decodeCalls).toBe(2);
+    expect(context().unstopped()[0]!.buffer?.length).toBe(96000);
   });
 
   it('keeps no more decoded sound than its memory budget, dropping the one played longest ago', async () => {
@@ -147,14 +199,14 @@ describe('TokenSoundPlayer', () => {
     await player.play({ path: 'Sounds/a.mp3', volume: 1 });
     await player.play({ path: 'Sounds/b.mp3', volume: 1 });
     await player.play({ path: 'Sounds/b.mp3', volume: 1 });
-    expect(context().decodeCount).toBe(2);
+    expect(context().decodeCalls).toBe(2);
 
     await player.play({ path: 'Sounds/a.mp3', volume: 1 });
-    expect(context().decodeCount).toBe(3);
+    expect(context().decodeCalls).toBe(3);
   });
 
   it('wakes an audio context the browser started suspended', async () => {
-    FakeAudioContext.initialState = 'suspended';
+    FakeTokenSoundContext.initialState = 'suspended';
     const { player, context } = setup();
 
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
@@ -179,5 +231,16 @@ describe('TokenSoundPlayer', () => {
 
     expect(context().state).toBe('closed');
     expect(TokenSoundPlayer.forApp(app)).not.toBe(player);
+  });
+
+  it('closes its context and leaves the output when released, even while a sound fades', async () => {
+    const { app, player, context } = setup();
+    await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+    player.stopAll(2);
+
+    TokenSoundPlayer.release(app);
+
+    expect(forgetOutputFollower).toHaveBeenCalledWith(context());
+    expect(context().close).toHaveBeenCalledOnce();
   });
 });

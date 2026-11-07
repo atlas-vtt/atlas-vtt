@@ -47,7 +47,7 @@ export const audio = {
   'audio.outputNumbered': 'Output {n}',
   'audio.output': 'Output',
   'audio.outputNamed': '{device}, output of this device',
-  'audio.outputHint': 'Where music, ambience and dice play on this device.',
+  'audio.outputHint': 'Where music, ambience, dice and token sounds play on this device.',
 
   'audio.screen.pages': 'DM screen page',
   'audio.screen.statblocks': 'Statblocks',

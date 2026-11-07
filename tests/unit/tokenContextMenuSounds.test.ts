@@ -11,7 +11,7 @@ import { TokenSoundPlayer } from '../../src/app/audio/TokenSoundPlayer';
 import type { ContextMenuEntry } from '../../src/app/react/components/context-menu/AtlasContextMenu';
 import type { Token } from '../../src/app/types';
 import type { TokenSound } from '../../src/app/types/audioTypes';
-import { FakeAudioContext } from '../mocks/fakeAudioContext';
+import { FakeTokenSoundContext } from '../helpers/fakeTokenSoundContext';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { withSound } from '../mocks/experimentalFeatures';
 
@@ -63,12 +63,13 @@ async function choose(label: string): Promise<void> {
   await row.onClick();
 }
 
-const playing = (): (string | undefined)[] =>
-  (FakeAudioContext.instances.at(-1)?.playing() ?? []).map((source) => source.buffer?.decodedFrom);
+/** The frames of each sound still to be heard: a stopped sound fades out and is not counted. */
+const playing = (): (number | undefined)[] =>
+  (FakeTokenSoundContext.instances.at(-1)?.unstopped() ?? []).map((source) => source.buffer?.length);
 
 beforeEach(() => {
-  FakeAudioContext.reset();
-  vi.stubGlobal('AudioContext', FakeAudioContext);
+  FakeTokenSoundContext.reset();
+  vi.stubGlobal('AudioContext', FakeTokenSoundContext);
   showNotice.mockClear();
   opened.entries = [];
 });
@@ -106,8 +107,8 @@ describe('token context menu sounds', () => {
 
     await choose('wings');
 
-    const context = FakeAudioContext.instances.at(-1)!;
-    expect(playing()).toEqual(['audio:24000']);
+    const context = FakeTokenSoundContext.instances.at(-1)!;
+    expect(playing()).toEqual([24000]);
     expect(context.route(context.playing()[0]!).gain).toBe(0.5);
   });
 
