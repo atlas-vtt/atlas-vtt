@@ -160,9 +160,9 @@ export function houseCells(floor: { rooms: readonly Pick<DungeonRoom, 'x' | 'y' 
   return keys;
 }
 
-/** Where a door's own frame is centred: its first cell's middle, or the middle of the edge a house's door stands on. */
+/** Where a door's own frame is centred: the middle of its doorway. */
 export function doorAnchor(door: Pick<DungeonDoor, 'x' | 'y' | 'dir' | 'wide' | 'edge'>): CellPoint {
-  return door.edge ? doorMiddle(door) : { x: door.x + 0.5, y: door.y + 0.5 };
+  return doorMiddle(door);
 }
 
 /** A room's floor in cells: its cave cells where it has them, else its rectangle. */

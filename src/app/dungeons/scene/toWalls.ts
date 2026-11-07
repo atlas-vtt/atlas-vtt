@@ -154,7 +154,7 @@ export function dungeonWalls(
     const wall = kinds[door.kind];
     if (!wall) continue;
     // The side walls lie half a cell and half a wall from the door's middle
-    const reach = (door.edge ? doorCells(door).length / 2 : 0.5) + half + 1 / STEPS;
+    const reach = doorCells(door).length / 2 + half + 1 / STEPS;
     const ends = doorEnds(rings, doorLine(door, wall.v(door, half)), reach) ?? doorEnds(rings, doorLine(door, 0), reach);
     if (ends) placed.push({ door, wall, ends });
     else unplaced++;

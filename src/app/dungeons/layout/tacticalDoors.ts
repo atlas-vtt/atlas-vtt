@@ -7,7 +7,7 @@ export function widenEncounterDoors(layout: CompactLayout): CompactLayout {
   const owner = new Map(layout.rooms.flatMap(room => floorCellsOf(room).map(c => [cellKey(c.x, c.y), room.id] as const)));
   const occupied = new Set(layout.doors.flatMap(door => doorCells(door).map(c => cellKey(c.x, c.y))));
   const doors = layout.doors.map(door => {
-    if (door.wide || door.kind === 'secret' || door.kind === 'steps' || door.from === null || door.to === null) return door;
+    if (door.wide || door.kind !== 'door' || door.from === null || door.to === null) return door;
     const side = perpendicular(door.dir);
     const sides: CellDir[] = [side, { x: -side.x as CellDir['x'], y: -side.y as CellDir['y'] }];
     const wide = sides.find(offset => {

@@ -43,6 +43,14 @@ describe('Tactical room scale', () => {
     expect(doors.length).toBeGreaterThan(0);
     expect(doors.every(door => door.wide !== undefined)).toBe(true);
     expect(floor.doors.filter(door => door.kind === 'secret').every(door => !door.wide)).toBe(true);
+    const openings = Array.from({ length: 12 }, (_, seed) => generateDungeon({ ...request('fortress', seed + 1), fiveRoom: false }).floors[0]!)
+      .flatMap(floor => {
+        const roomIds = new Set(floor.rooms.filter(room => room.kind === 'room').map(room => room.id));
+        return floor.doors.filter(door => door.kind === 'opening' && door.from !== null && door.to !== null
+          && (roomIds.has(door.from) || roomIds.has(door.to)));
+      });
+    expect(openings.length).toBeGreaterThan(0);
+    expect(openings.every(door => !door.wide)).toBe(true);
   });
 
   it('reserves a broad path through the center before terrain or props are placed', () => {
