@@ -65,8 +65,7 @@ export function placeBossRoom(layout: WorkLayout, galleries: readonly CellRect[]
   if (!best && keepSmaller && scale === 'tactical') {
     // Upper storeys cannot exceed the footprint below. Keep their largest available encounter
     // as the boss while reporting the missed arena target, so the planner still tries again.
-    const available = leaves.length ? leaves : liveRooms(layout).filter(isNormal);
-    const smaller = available.map(room => ({ room, size: room })).sort(rank)[0];
+    const smaller = leaves.map(room => ({ room, size: room })).sort(rank)[0];
     if (smaller) smaller.room.boss = true;
     return false;
   }

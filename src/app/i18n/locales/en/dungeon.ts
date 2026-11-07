@@ -37,7 +37,7 @@ export const dungeon = {
   'dungeon.roomScale.standard': 'Standard',
   'dungeon.roomScale.standard.hint': 'The original room sizes',
   'dungeon.roomScale.tactical': 'Tactical',
-  'dungeon.roomScale.tactical.hint': 'Larger encounter rooms and arenas, with clear lanes for movement. Room count stays separate.',
+  'dungeon.roomScale.tactical.hint': 'Larger Fortress encounters, clear movement lanes and wider eligible doors. Room count stays separate.',
   'dungeon.theme.label': 'Theme',
   'dungeon.theme.any': 'Surprise me',
   'dungeon.theme.anyPicked': 'This time: {theme}',

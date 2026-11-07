@@ -6,7 +6,6 @@
 
 import { type Rng, int, weighted } from '../../rng';
 import type { DungeonTag } from '../../tags';
-import type { RoomScale } from '../../roomScale';
 
 export type HouseSize = 'small' | 'medium' | 'large';
 
@@ -53,7 +52,7 @@ const SPANS: Record<HouseSize, { band: [number, number]; hall: [number, number];
   large: { band: [5, 6], hall: [6, 6], west: [8, 12], dining: [5, 6], service: [9, 12], wing: [8, 12] },
 };
 
-export function houseParams(rng: Rng, size: HouseSize, floors: number, scale?: RoomScale): HouseParams {
+export function houseParams(rng: Rng, size: HouseSize, floors: number): HouseParams {
   const s = SPANS[size];
   const style = weighted(rng, STYLES[size]);
   const back = int(rng, s.band[0], s.band[1]);
@@ -62,7 +61,7 @@ export function houseParams(rng: Rng, size: HouseSize, floors: number, scale?: R
   const hall = int(rng, s.hall[0], s.hall[1]);
   // A house of several floors (a cellar counts) keeps a stair hall of five cells for its back stair on the service side.
   const service = Math.max(int(rng, s.service[0], s.service[1]), floors > 1 ? 5 + (style === 'block' ? 4 : 0) : 0);
-  const params: HouseParams = {
+  return {
     size,
     style,
     back,
@@ -74,6 +73,4 @@ export function houseParams(rng: Rng, size: HouseSize, floors: number, scale?: R
     wingLength: int(rng, s.wing[0], s.wing[1]),
     wingBand: s.band[0] + (size === 'large' ? 1 : 0),
   };
-  if (scale !== 'tactical') return params;
-  return { ...params, back: Math.max(10, back * 2), front: Math.max(10, front * 2), hall: hall * 2, west: params.west * 2, dining: params.dining * 2, service: service * 2, wingLength: params.wingLength * 2, wingBand: Math.max(10, params.wingBand * 2) };
 }

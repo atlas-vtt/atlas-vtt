@@ -110,11 +110,9 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const theme = pickTheme(seed, request.theme ?? 'any', asked);
   const tags = dungeonTags(seed, themedTags(theme, asked));
   const definition = themeOf(theme);
-  const plain = { ...dungeonParams(tags), ...(request.roomScale === 'tactical' && { roomScale: request.roomScale }) };
+  const plain = { ...dungeonParams(tags), ...(request.theme === 'fortress' && request.roomScale === 'tactical' && { roomScale: request.roomScale }) };
   const base = definition.params?.(plain) ?? plain;
   const sized = fiveRoom ? fiveRoomParams(base) : base;
-  // The five-stage preset must not hide a Tactical Forest's reward behind a secret wall.
-  if (theme === 'forest' && sized.roomScale === 'tactical') sized.secretReward = 0;
   // A Cavern follows the book's cave rules, its character drawn once; a Forest's glades keep their own.
   // Its formation comes from the tags, else from a stream of its own, so every other roll stays.
   const params = theme === 'cavern' ? withVeins(sized, stream(seed, 'cave', 'character'), stream(seed, 'cave', 'formation')) : sized;
@@ -125,7 +123,7 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const count = requestedFloors(request);
   const boss = fiveRoom || request.bossRoom !== false;
   const { rise } = definition;
-  const house = definition.layout === 'house' ? planHouse(seed, params.tags, count, boss, fiveRoom, params.roomScale) : null;
+  const house = definition.layout === 'house' ? planHouse(seed, params.tags, count, boss, fiveRoom) : null;
   const laid = house?.floors ?? planFloors(seed, params, count, boss, fiveRoom, definition);
   const below = house?.below ?? 0;
   const stack = floorStack(rise, laid.length, below);

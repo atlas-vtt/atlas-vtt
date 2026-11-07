@@ -1,7 +1,7 @@
 import type { DoorKind } from '../model';
 import type { DungeonParams, SizeStyle } from '../params';
 import { type Rng, chance, int, pick, weighted } from '../rng';
-import { type ChamberTier, type TierDraw, drawTier, tierIndex, tierSize } from './cavern/veins/caveSizes';
+import { type ChamberTier, type TierDraw, drawTier, tierSize } from './cavern/veins/caveSizes';
 import { ROUTE_WALLS, routeSegments, routeTurns } from './cavern/veins/routeLength';
 import type { PassageKind } from './workLayout';
 
@@ -65,9 +65,7 @@ export function drawSize(rng: Rng, params: DungeonParams, cave: TierDraw = { gar
   const style = pick(rng, params.sizeStyles);
   const veins = params.cave?.veins;
   if (veins && (style <= 1 || cave.chamber)) {
-    const drawn = drawTier(rng, veins.tiers, cave);
-    // Keep the tier and its exits consistent with the larger chamber; halls remain halls.
-    const tier = params.roomScale === 'tactical' && tierIndex(drawn) < tierIndex('house') ? 'house' : drawn;
+    const tier = drawTier(rng, veins.tiers, cave);
     const size = tierSize(rng, tier);
     // A round cave's chambers come out square half the time, as long as they are wide: every tier's floor allows it.
     return { ...size, ...(params.squareRooms && chance(rng, 0.5) && { depth: size.width }), tier };

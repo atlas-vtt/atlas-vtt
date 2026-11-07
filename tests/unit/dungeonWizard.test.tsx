@@ -100,6 +100,23 @@ describe('the dungeon wizard', () => {
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Room scale' })).getByRole('radio', { name: 'Standard' }));
     await waitFor(() => expect(lastJob().request).toMatchObject({ roomScale: 'standard', fiveRoom: true }));
   });
+  it('hides Tactical outside Fortress and resets the saved choice when leaving Fortress', async () => {
+    settings.setDungeonGenerator({ theme: 'fortress', roomScale: 'tactical' });
+    renderPanel(vi.fn(), 'Fortress test', 'Layout');
+    expect(within(screen.getByRole('radiogroup', { name: 'Room scale' })).getByRole('radio', { name: 'Tactical' }).getAttribute('aria-checked')).toBe('true');
+
+    goTo('Theme');
+    fireEvent.click(screen.getByRole('radio', { name: /^Forest/ }));
+    await waitFor(() => expect(lastJob().request).toMatchObject({ theme: 'forest', roomScale: 'standard' }));
+    expect(settings.getDungeonGenerator().roomScale).toBe('standard');
+    goTo('Layout');
+    expect(screen.queryByRole('radiogroup', { name: 'Room scale' })).toBeNull();
+
+    goTo('Theme');
+    fireEvent.click(screen.getByRole('radio', { name: /^Fortress/ }));
+    goTo('Layout');
+    expect(within(screen.getByRole('radiogroup', { name: 'Room scale' })).getByRole('radio', { name: 'Standard' }).getAttribute('aria-checked')).toBe('true');
+  });
   it('draws the map fitted into the card beside the panel, off the main thread', async () => {
     renderPanel();
     await waitFor(() => expect(worker.preview).toHaveBeenCalled());

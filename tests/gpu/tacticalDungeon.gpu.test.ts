@@ -13,7 +13,8 @@ const client = new DungeonWorkerClient({ createWorker: () => new DungeonWorker({
 afterAll(() => client.dispose());
 
 it('renders Tactical maps through the real worker with valid walls and bounded image sizes', async () => {
-  for (const fiveRoom of [true, false]) for (const theme of ['fortress', 'mansion', 'cavern', 'forest'] as const) {
+  for (const fiveRoom of [true, false]) {
+    const theme = 'fortress';
     const style = dungeonStyle('parchment');
     const result = await client.render({
       request: { seed: 6271, theme, tags: ['large', fiveRoom ? 'dry' : 'wet', 'flat'], floors: fiveRoom ? 1 : 2, fiveRoom, roomScale: 'tactical' },

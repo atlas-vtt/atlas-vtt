@@ -1,3 +1,3 @@
 ## New
 
-- Dungeon generator: choose **Layout ? Room scale ? Tactical** for larger encounters in Fortress, Mansion, Cavern and Forest maps, with more room to move around cover. The choice is remembered; Standard remains the default.
+- Dungeon generator: choose **Layout → Room scale → Tactical** for larger Fortress encounters with clear movement lanes and wider eligible doors. Standard remains the default.

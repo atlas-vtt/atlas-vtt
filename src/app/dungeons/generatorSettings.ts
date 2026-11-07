@@ -65,14 +65,15 @@ export function readDungeonView(value: unknown, base: DungeonView = DEFAULT_VIEW
  */
 export function readDungeonGeneratorSettings(stored: unknown): DungeonGeneratorSettings {
   const record = isRecord(stored) ? stored : {};
+  const theme = readThemeChoice(record.theme);
   return {
     style: isDungeonStyleId(record.style) ? record.style : DEFAULT_STYLE_ID,
     view: readDungeonView(record.view),
-    theme: readThemeChoice(record.theme),
+    theme,
     tags: Array.isArray(record.tags) ? readTags(record.tags.filter((tag): tag is string => typeof tag === 'string')) : [],
     floors: floorCount(record.floors),
     bossRoom: flag(record.bossRoom, true),
     fiveRoom: flag(record.fiveRoom, false),
-    roomScale: readRoomScale(record.roomScale),
+    roomScale: theme === 'fortress' ? readRoomScale(record.roomScale) : 'standard',
   };
 }

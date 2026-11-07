@@ -11,7 +11,6 @@ import { type Rng, int } from '../../rng';
 import { type Box, alongOf, inBox, sliceOf, spanOf } from './houseGrid';
 import type { BandSlot, HouseFrame, WingId, Zone } from './houseFrame';
 import type { HouseSize } from './houseParams';
-import type { RoomScale } from '../../roomScale';
 
 export interface BandRoom {
   box: Box;
@@ -44,13 +43,12 @@ function lengths(rng: Rng, length: number, [min, max]: [number, number]): number
   return out;
 }
 
-function cutBand(rng: Rng, band: BandSlot, size: HouseSize, scale?: RoomScale): BandRoom[] {
+function cutBand(rng: Rng, band: BandSlot, size: HouseSize): BandRoom[] {
   const along = alongOf(band.toCorridor);
   const [start, length] = spanOf(band.box, along);
   const out: BandRoom[] = [];
   let at = start;
-  const range: [number, number] = scale === 'tactical' ? (band.zone === 'family' ? [10, 14] : [6, 10]) : WIDTHS[band.zone][size];
-  for (const l of lengths(rng, length, range)) {
+  for (const l of lengths(rng, length, WIDTHS[band.zone][size])) {
     out.push({ box: sliceOf(band.box, along, at, l), zone: band.zone, wing: band.wing, toCorridor: band.toCorridor });
     at += l;
   }
@@ -135,8 +133,8 @@ function record(cut: CutBands, room: number, stack: Box): void {
 }
 
 /** The house's band rooms in order (the main range's back band, its front band, then each wing) and its stacks. */
-export function cutBands(rng: Rng, frame: HouseFrame, size: HouseSize, scale?: RoomScale): CutBands {
-  const rooms = frame.bands.flatMap((band) => cutBand(rng, band, size, scale));
+export function cutBands(rng: Rng, frame: HouseFrame, size: HouseSize): CutBands {
+  const rooms = frame.bands.flatMap((band) => cutBand(rng, band, size));
   const cut: CutBands = { rooms, notches: rooms.map(() => null), stacks: [] };
   const inHouse = (x: number, y: number): boolean => frame.wings.some((w) => inBox(w.box, x, y));
   const roomUnits = (wing: WingId, toCorridor: CellDir): Unit[] =>

@@ -30,8 +30,6 @@ import { type Facade, entranceEdges, facadePeriod, houseFacade } from './houseFa
 import { WindowFloor } from './houseWindows';
 import { type TypedRoom, typeStorey } from './houseZones';
 import { approachCells } from '../../floors/stairSpots';
-import type { RoomScale } from '../../roomScale';
-import { widenEncounterDoors } from '../tacticalDoors';
 
 /** How often a house of two floors or more has one of them as a cellar. */
 export const CELLAR_CHANCE = 0.4;
@@ -102,15 +100,15 @@ function blockedBy(stairs: readonly HouseStair[], level: number): Set<string> {
   return keys;
 }
 
-export function planHouse(seed: number, tags: ReadonlySet<DungeonTag>, count: number, boss: boolean, fiveRoom = false, scale?: RoomScale): HousePlan {
+export function planHouse(seed: number, tags: ReadonlySet<DungeonTag>, count: number, boss: boolean, fiveRoom = false): HousePlan {
   const rng = stream(seed, 'layout', 'house');
-  if (fiveRoom) return planFiveRoom(seed, rng, houseSize(tags), scale);
+  if (fiveRoom) return planFiveRoom(seed, rng, houseSize(tags));
   const cellar = count > 1 && chance(rng, CELLAR_CHANCE);
   const storeys = count - (cellar ? 1 : 0);
   const size = houseSize(tags);
-  const frame = houseFrame(houseParams(rng, size, count, scale), storeys, cellar);
+  const frame = houseFrame(houseParams(rng, size, count), storeys, cellar);
   const ruined = tags.has('ruined') ? ruinWing(rng, frame) : null;
-  const cut = cutBands(stream(seed, 'layout', 'house:bands'), frame, size, scale);
+  const cut = cutBands(stream(seed, 'layout', 'house:bands'), frame, size);
   const levels = [...Array.from({ length: storeys }, (_, k) => k), ...(cellar ? [-1] : [])];
   const indexOf = (level: number): number => (level < 0 ? count - 1 : level);
   const climaxLevel = !boss ? null : cellar && chance(rng, 0.5) ? -1 : storeys - 1;
@@ -154,10 +152,6 @@ export function planHouse(seed: number, tags: ReadonlySet<DungeonTag>, count: nu
     windows.place();
     lit.set(level, windows);
     floors[indexOf(level)] = { rooms: rooms.map(toRoom), doors, stairs: own, house: { walls: 'edges', windows: windows.windows, stacks: storey.stacks.map((s) => ({ ...s })) } };
-    if (scale === 'tactical') {
-      const floor = floors[indexOf(level)]!;
-      floor.doors = widenEncounterDoors(floor).doors;
-    }
     // A window the floor below lacks stands over a window there too, down the house, where the room below takes it.
     for (const window of windows.windows) {
       if (window.size === 'tall') continue;
@@ -213,8 +207,8 @@ function groundFacade(frame: Pick<HouseFrame, 'width' | 'symmetric'>, rooms: rea
 }
 
 /** A five-room dungeon as a house of one floor (`houseFiveRoom.ts`). */
-function planFiveRoom(seed: number, rng: Rng, size: HouseSize, scale?: RoomScale): HousePlan {
-  const house = fiveRoomHouse(rng, scale);
+function planFiveRoom(seed: number, rng: Rng, size: HouseSize): HousePlan {
+  const house = fiveRoomHouse(rng);
   const inHouse = inBoxes(house.rooms.map((r) => r.box));
   const frame = { width: house.width, symmetric: false };
   const windows = new WindowFloor({ frame, facade: groundFacade(frame, house.rooms, house.doors, inHouse, facadePeriod(rng)), kind: 'ground', rooms: house.rooms, doors: house.doors, inHouse, lined: new Set() });

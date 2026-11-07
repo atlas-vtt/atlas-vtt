@@ -17,7 +17,12 @@ describe('reading the generator settings', () => {
   it('defaults old or invalid room scales safely and remembers Tactical', () => {
     expect(readDungeonGeneratorSettings({})).toHaveProperty('roomScale', 'standard');
     expect(readDungeonGeneratorSettings({ roomScale: 'huge' })).toHaveProperty('roomScale', 'standard');
-    expect(readDungeonGeneratorSettings({ roomScale: 'tactical' })).toHaveProperty('roomScale', 'tactical');
+    expect(readDungeonGeneratorSettings({ theme: 'fortress', roomScale: 'tactical' })).toHaveProperty('roomScale', 'tactical');
+  });
+  it('reads a Tactical preference as Standard when Fortress is not selected', () => {
+    for (const theme of ['any', 'mansion', 'cavern', 'forest']) {
+      expect(readDungeonGeneratorSettings({ theme, roomScale: 'tactical' }).roomScale, theme).toBe('standard');
+    }
   });
   it('gives the defaults for nothing stored', () => {
     expect(readDungeonGeneratorSettings(undefined)).toEqual(DEFAULT_DUNGEON_GENERATOR_SETTINGS);

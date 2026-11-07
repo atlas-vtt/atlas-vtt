@@ -16,35 +16,26 @@ const request = (theme: DungeonRequest['theme'], seed = 6271): ScaleRequest => (
 });
 
 describe('Tactical room scale', () => {
-  for (const theme of ['fortress', 'mansion', 'cavern', 'forest'] as const) {
-    it(`keeps five connected stages with more movement space in ${theme}`, () => {
-      for (const seed of [6271, 12542, 18813, 25084, 31355, 37626]) {
-        const model = generateDungeon(request(theme, seed));
-        expect(model.floors).toHaveLength(1);
-        const floor = model.floors[0]!;
-        const rooms = FIVE_ROOM_STAGES.map(stage => floor.rooms.find(room => room.stage === stage)!);
-        expect(rooms.every(Boolean), `seed ${seed}`).toBe(true);
-        expect(floor.rooms.filter(room => room.kind === 'room')).toHaveLength(5);
-        expect(unreachableRooms(floor)).toEqual([]);
-        if (theme === 'fortress') expect(doorProblems(floor, true)).toEqual([]);
-        // Caves shape a playable irregular chamber inside and around a larger envelope.
-        if (theme === 'fortress' || theme === 'mansion') {
-          for (const room of rooms.slice(0, 3)) {
-            expect(Math.min(room.w, room.h), `seed ${seed} ${room.stage}`).toBeGreaterThanOrEqual(10);
-            expect(Math.max(room.w, room.h)).toBeLessThanOrEqual(14);
-          }
-          expect(Math.min(rooms[3]!.w, rooms[3]!.h)).toBeGreaterThanOrEqual(16);
-          expect(Math.max(rooms[3]!.w, rooms[3]!.h)).toBeLessThanOrEqual(20);
-          expect(Math.min(rooms[4]!.w, rooms[4]!.h)).toBeGreaterThanOrEqual(6);
-          expect(Math.max(rooms[4]!.w, rooms[4]!.h)).toBeLessThanOrEqual(8);
-        } else {
-          const standard = generateDungeon({ ...request(theme, seed), roomScale: 'standard' } as ScaleRequest);
-          const area = (m: typeof model): number => m.floors[0]!.rooms.reduce((sum, room) => sum + (room.cells?.length ?? room.w * room.h), 0);
-          expect(area(model)).toBeGreaterThan(area(standard));
-        }
+  it('keeps five connected Fortress stages with more movement space', () => {
+    for (const seed of [6271, 12542, 18813, 25084, 31355, 37626]) {
+      const model = generateDungeon(request('fortress', seed));
+      expect(model.floors).toHaveLength(1);
+      const floor = model.floors[0]!;
+      const rooms = FIVE_ROOM_STAGES.map(stage => floor.rooms.find(room => room.stage === stage)!);
+      expect(rooms.every(Boolean), `seed ${seed}`).toBe(true);
+      expect(floor.rooms.filter(room => room.kind === 'room')).toHaveLength(5);
+      expect(unreachableRooms(floor)).toEqual([]);
+      expect(doorProblems(floor, true)).toEqual([]);
+      for (const room of rooms.slice(0, 3)) {
+        expect(Math.min(room.w, room.h), `seed ${seed} ${room.stage}`).toBeGreaterThanOrEqual(10);
+        expect(Math.max(room.w, room.h)).toBeLessThanOrEqual(14);
       }
-    }, 30_000);
-  }
+      expect(Math.min(rooms[3]!.w, rooms[3]!.h)).toBeGreaterThanOrEqual(16);
+      expect(Math.max(rooms[3]!.w, rooms[3]!.h)).toBeLessThanOrEqual(20);
+      expect(Math.min(rooms[4]!.w, rooms[4]!.h)).toBeGreaterThanOrEqual(6);
+      expect(Math.max(rooms[4]!.w, rooms[4]!.h)).toBeLessThanOrEqual(8);
+    }
+  }, 30_000);
 
   it('widens ordinary Fortress encounter doors without widening secret doors', () => {
     const floor = generateDungeon(request('fortress')).floors[0]!;
@@ -75,14 +66,25 @@ describe('Tactical room scale', () => {
     expect(generateDungeon(asked)).toEqual(generateDungeon(asked));
   });
 
+  it('uses Standard generation for every theme outside Fortress, including Surprise me', () => {
+    for (const theme of ['mansion', 'cavern', 'forest', 'any'] as const) {
+      const asked = request(theme);
+      expect(generateDungeon(asked), theme).toEqual(generateDungeon({ ...asked, roomScale: 'standard' }));
+    }
+  });
+
   it('keeps a requested boss on a small upper floor even when a full tactical arena cannot fit', () => {
-    for (const seed of [911, 4555, 5466, 7288]) {
+    for (const seed of [...Array.from({ length: 100 }, (_, index) => index + 1), 911, 4555, 5466, 7288]) {
       const model = generateDungeon({ seed, theme: 'fortress', roomScale: 'tactical', floors: 4, tags: ['small', 'dry', 'flat'] });
+      expect(model.floors, `seed ${seed}: keep the requested floor count`).toHaveLength(4);
       const bosses = model.floors.flatMap((floor, index) => floor.rooms.filter(room => room.boss).map(room => ({ room, index })));
       expect(bosses, `seed ${seed}`).toHaveLength(1);
       expect(bosses[0]!.index).toBe(model.floors.length - 1);
+      expect(bosses[0]!.room.id, `seed ${seed}: boss must follow the stair landing`).not.toBe(0);
+      expect(model.floors.at(-1)!.rooms.length, `seed ${seed}: upper floor needs an encounter route`).toBeGreaterThan(1);
+      expect(unreachableRooms(model.floors.at(-1)!), `seed ${seed}`).toEqual([]);
     }
-  }, 30_000);
+  }, 60_000);
 
   it('leaves the climax route clear of structural columns as well as new furnishings', () => {
     const floor = generateDungeon({ ...request('fortress', 1), tags: ['large', 'dry', 'flat', 'colonnades'] }).floors[0]!;
@@ -98,13 +100,13 @@ describe('Tactical room scale', () => {
     expect(floor.columns.length).toBeGreaterThan(0);
   });
 
-  it('keeps ordinary multi-floor maps connected and within image budgets across themes and tags', () => {
-    for (const theme of ['fortress', 'mansion', 'cavern', 'forest'] as const) for (let k = 0; k < 12; k++) {
-      const asked: ScaleRequest = { ...request(theme, 911 * (k + 1)), floors: 1 + k % 4, fiveRoom: false, tags: k % 2 ? ['large', 'dry', 'flat'] : ['medium', 'wet', 'colonnades', 'round'] };
+  it('keeps ordinary multi-floor Fortress maps connected and within image budgets across tags', () => {
+    for (let k = 0; k < 12; k++) {
+      const asked: ScaleRequest = { ...request('fortress', 911 * (k + 1)), floors: 1 + k % 4, fiveRoom: false, tags: k % 2 ? ['large', 'dry', 'flat'] : ['medium', 'wet', 'colonnades', 'round'] };
       const model = generateDungeon(asked);
-      const context = `${theme} seed ${asked.seed}, ${asked.floors} floors`;
+      const context = `Fortress seed ${asked.seed}, ${asked.floors} floors`;
       expect(model.floors.length, context).toBe(asked.floors);
-      const stack = floorStack(theme === 'cavern' || theme === 'forest' ? 'down' : 'up', model.floors.length, model.below ?? 0);
+      const stack = floorStack('up', model.floors.length, model.below ?? 0);
       for (const [index, floor] of model.floors.entries()) {
         expect(unreachableRooms(floor), context).toEqual([]);
         expect(cellProblems(floor), context).toEqual([]);

@@ -166,9 +166,20 @@ interface NextFloor {
   landing: DungeonStair;
 }
 
+function hasBossBeyondLanding(next: NextFloor): boolean {
+  return next.layout.rooms.some((room) => room.boss && room.id !== 0);
+}
+
+function betterTacticalBoss(a: NextFloor, b: NextFloor): boolean {
+  return (Number(a.linked) - Number(b.linked)
+    || Number(hasBossBeyondLanding(a)) - Number(hasBossBeyondLanding(b))
+    || normalRooms(a.layout) - normalRooms(b.layout)) > 0;
+}
+
 /**
  * Floor `index` and stairwell `link` to it from the floor before. A storey tries other places for
- * its stairs until one lets it keep every rule, else takes the first it found.
+ * its stairs until one lets it keep every rule, else takes the best linked Tactical boss fallback
+ * or the first it found.
  */
 function nextAcross(seed: number, params: DungeonParams, earlier: PlannedFloor, index: number, last: boolean, boss: boolean, stack: FloorStack, link: number, fromEntrance: boolean, passOver: number): NextFloor | null {
   let first: NextFloor | null = null;
@@ -180,7 +191,9 @@ function nextAcross(seed: number, params: DungeonParams, earlier: PlannedFloor, 
     const built = nextFloor(seed, params, { ...earlier, stairs: [...earlier.stairs, from] }, index, last, landing, boss, stack, passOver);
     const next = built && { layout: built.layout, sound: built.sound, linked: built.linked, from, landing };
     if (next?.sound) return next;
-    first ??= next;
+    if (next && params.roomScale === 'tactical' && boss && last) {
+      if (!first || betterTacticalBoss(next, first)) first = next;
+    } else first ??= next;
   }
   return first;
 }
@@ -223,13 +236,17 @@ export function planFloors(seed: number, params: DungeonParams, count: number, b
   const passOver = new Map<number, number>();
   let regrown = 0;
   const failsAt = new Map<number, number>();
+  let bestBossFallback: { progress: Progress; next: NextFloor } | null = null;
   for (let index = 1; index < count; index++) {
     before[index] = { floors: [...floors], link };
     const earlier = floors[index - 1] as PlannedFloor;
     const last = index === count - 1;
-    const next = nextAcross(seed, params, earlier, index, last, boss, stack, link++, index === 1 && fromEntrance, passOver.get(index) ?? 0);
-    if (!next) break;
-    if (!next.sound && (isStorey(stack, index) || params.cave !== undefined) && regrown < MOST_REGROWN) {
+    let next = nextAcross(seed, params, earlier, index, last, boss, stack, link++, index === 1 && fromEntrance, passOver.get(index) ?? 0);
+    if (next?.linked && params.roomScale === 'tactical' && boss && last && hasBossBeyondLanding(next)
+      && (!bestBossFallback || betterTacticalBoss(next, bestBossFallback.next))) {
+      bestBossFallback = { progress: { floors: [...floors], link }, next };
+    }
+    if (next && !next.sound && (isStorey(stack, index) || params.cave !== undefined) && regrown < MOST_REGROWN) {
       // A storey that cannot keep every rule on the floor below has that floor grown anew, and then the one under it;
       // so has a cave floor that keeps any rule short: one that breaks the rules between floors (a way whose row its
       // chamber cannot join round it, `caveFits`), or one that finds no boss room under a floor whose long galleries
@@ -244,12 +261,18 @@ export function planFloors(seed: number, params: DungeonParams, count: number, b
       index = Math.max(below, 1) - 1;
       continue;
     }
+    if (last && bestBossFallback && (!next || (!next.sound && betterTacticalBoss(bestBossFallback.next, next)))) {
+      ({ floors, link } = bestBossFallback.progress);
+      next = bestBossFallback.next;
+    }
+    if (!next) break;
     const { layout, from, landing } = next;
-    const earlierWithStairs = { ...earlier, stairs: [...earlier.stairs, from] };
+    const restoredEarlier = floors[index - 1] as PlannedFloor;
+    const earlierWithStairs = { ...restoredEarlier, stairs: [...restoredEarlier.stairs, from] };
     const furtherFits = params.cave ? furtherStairFits(earlierWithStairs, index - 1, stairEnd(stack, index - 1, index)) : (): boolean => true;
     const extra = linkFloor(seed, earlierWithStairs, { ...layout, stairs: [landing] }, index, last, stack, across, furtherFits)?.extra ?? [];
     const pairs = extra.map((spot) => stairPair(spot, index - 1, link++));
-    floors[index - 1] = { ...earlier, stairs: [...earlierWithStairs.stairs, ...pairs.map(([e]) => e)] };
+    floors[index - 1] = { ...restoredEarlier, stairs: [...earlierWithStairs.stairs, ...pairs.map(([e]) => e)] };
     floors.push(withStairs(layout, [landing, ...pairs.map(([, l]) => l)]));
   }
   return floors;

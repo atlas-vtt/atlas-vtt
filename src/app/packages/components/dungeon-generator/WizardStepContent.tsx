@@ -97,7 +97,7 @@ function LayoutStep({ state }: { state: DungeonState }): React.JSX.Element {
         onChange={state.setBossRoom}
       />
       <SwitchRow label={t('dungeon.fiveRoom')} hint={t('dungeon.fiveRoom.hint')} value={fiveRoom} onChange={state.setFiveRoom} />
-      <div className="atlas-dungeon-field atlas-dungeon-field--stacked">
+      {request.theme === 'fortress' && <div className="atlas-dungeon-field atlas-dungeon-field--stacked">
         <span className="atlas-dungeon-field__label">{t('dungeon.roomScale')}</span>
         <SegmentedControl<RoomScale>
           ariaLabel={t('dungeon.roomScale')}
@@ -109,7 +109,7 @@ function LayoutStep({ state }: { state: DungeonState }): React.JSX.Element {
             { value: 'tactical', label: t('dungeon.roomScale.tactical'), hint: t('dungeon.roomScale.tactical.hint') },
           ]}
         />
-      </div>
+      </div>}
     </div>
   );
 }

@@ -144,8 +144,9 @@ export function useDungeonState(app: App, initialName = ''): DungeonState {
       persist({ floors: floorCount(floors) });
     }, [changeRequest, persist]),
     setTheme: useCallback((theme) => {
-      changeRequest((current) => (current.theme === theme ? current : { ...current, theme }));
-      persist({ theme });
+      const roomScale = theme === 'fortress' ? requestRef.current.roomScale ?? 'standard' : 'standard';
+      changeRequest((current) => (current.theme === theme && current.roomScale === roomScale ? current : { ...current, theme, roomScale }));
+      persist({ theme, roomScale });
     }, [changeRequest, persist]),
     setBossRoom: useCallback((on) => {
       changeRequest((current) => (current.bossRoom === on ? current : { ...current, bossRoom: on }));
@@ -156,6 +157,7 @@ export function useDungeonState(app: App, initialName = ''): DungeonState {
       persist({ fiveRoom: on });
     }, [changeRequest, persist]),
     setRoomScale: useCallback((roomScale) => {
+      roomScale = requestRef.current.theme === 'fortress' ? roomScale : 'standard';
       changeRequest((current) => (current.roomScale === roomScale ? current : { ...current, roomScale }));
       persist({ roomScale });
     }, [changeRequest, persist]),
