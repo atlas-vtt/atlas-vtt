@@ -4,7 +4,7 @@
     {
       "version": "0.13.2-beta.0",
       "title": "Coming in 0.13.2",
-      "markdown": "## Fixed\n\n- A defeated token no longer gives its players sight under dynamic lighting, and sees again once revived"
+      "markdown": "## Fixed\n\n- A defeated token no longer gives its players sight under dynamic lighting, and sees again once revived\n- \"New statblock…\" in the Link Statblock dialog opens its menu in front of the dialog, so its choices can be picked"
     },
     {
       "version": "0.13.1",
