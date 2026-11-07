@@ -9,6 +9,10 @@ import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
 import { runInBackground } from '../utils/backgroundTask';
+import { TokenSoundPlayer } from '../audio/TokenSoundPlayer';
+import { fadeTokenSoundsWithTable } from '../audio/tokenSoundStops';
+import { SettingsService } from '../services/SettingsService';
+import { DEFAULT_SOUND_SETTINGS } from '../services/soundSettings';
 
 const STATUS_REFRESH_MS = 5000;
 
@@ -151,6 +155,9 @@ export function registerSoundDirector(plugin: Plugin): SoundDirector {
   });
   registerSoundCommands(plugin, director);
   plugin.register(registerMoodCommands(plugin, director));
+  // Token sounds fade with the mix on Stop all and when Sound is switched off.
+  const fadeSeconds = (): number => SettingsService.forApp(plugin.app)?.getSoundSettings().fadeSeconds ?? DEFAULT_SOUND_SETTINGS.fadeSeconds;
+  plugin.register(fadeTokenSoundsWithTable(director, (seconds) => TokenSoundPlayer.stopAllFor(plugin.app, seconds), fadeSeconds));
   plugin.register(registerSoundStatusBar(plugin, director));
   return director;
 }
