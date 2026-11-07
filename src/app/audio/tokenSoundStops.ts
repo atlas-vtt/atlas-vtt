@@ -5,21 +5,24 @@ import { stopFade } from '../soundDirector/tableSound';
 type TableQuiet = Pick<SoundDirector, 'isOn' | 'snapshot' | 'subscribe'>;
 
 /**
- * Fades token sounds out with the table's mix: when Stop all silences it ("Fade out all sound"),
- * and when Sound is switched off. Bring back does not start them again, since they play once, and
- * "Stop music and ambience" leaves them alone, as its name says. A token sound pressed while the
- * silence holds plays: it is a new press. `stopTokenSounds` gets the mix's own stop fade, in
- * seconds, from the GM's fade (`fadeSeconds`). Returns what stops listening.
+ * Fades token sounds out with the table's mix, over the fade the mix itself takes: when Stop all
+ * silences it ("Fade out all sound"), over the silence's own fade, and when Sound is switched off,
+ * over the GM's fade as the switch-off takes it (`fadeSeconds`, at most `stopFade`). Bring back
+ * does not start them again, since they play once, and "Stop music and ambience" leaves them alone,
+ * as its name says. A token sound pressed while the silence holds plays: it is a new press.
+ * `stopTokenSounds` gets the fade in seconds. Returns what stops listening.
  */
 export function fadeTokenSoundsWithTable(director: TableQuiet, stopTokenSounds: (fadeSeconds: number) => void, fadeSeconds: () => number): () => void {
   let silenced = director.snapshot().mix.table.silenced;
   let on = director.isOn;
   return director.subscribe(() => {
-    const nowSilenced = director.snapshot().mix.table.silenced;
+    const { table } = director.snapshot().mix;
     const nowOn = director.isOn;
-    const quieted = (nowSilenced && !silenced) || (on && !nowOn);
-    silenced = nowSilenced;
+    const switchedOff = on && !nowOn;
+    const silencedNow = table.silenced && !silenced;
+    silenced = table.silenced;
     on = nowOn;
-    if (quieted) stopTokenSounds(stopFade(fadeSeconds() * 1000) / 1000);
+    if (switchedOff) stopTokenSounds(stopFade(fadeSeconds() * 1000) / 1000);
+    else if (silencedNow) stopTokenSounds(table.silenceFade.ms / 1000);
   });
 }

@@ -185,12 +185,24 @@ describe('the Sounds of Edit Token', () => {
   it('offers the sound picked last at the top of the picker the next time, and not a refused one', async () => {
     open();
     await addSound('Sounds/wings.ogg');
+    // Larger than 20 MB, and of a length that cannot be read: refused.
+    seconds.value = null;
     await addSound('Sounds/album.mp3');
     expect(offered(openPicker())).toEqual(['Sounds/wings.ogg', 'Sounds/album.mp3', 'Sounds/dragon-roar.mp3']);
   });
 
-  it('refuses a file larger than 20 MB, saying so, and adds nothing', async () => {
+  it('takes a short sound larger than 20 MB whose length is known', async () => {
     const { saved } = open();
+    seconds.value = 36;
+    await addSound('Sounds/album.mp3');
+    expect(showNotice).not.toHaveBeenCalled();
+    save();
+    expect(saved().sounds).toEqual([{ path: 'Sounds/album.mp3', volume: 1 }]);
+  });
+
+  it('refuses a file larger than 20 MB whose length cannot be read, saying so, and adds nothing', async () => {
+    const { saved } = open();
+    seconds.value = null;
     await addSound('Sounds/album.mp3');
     expect(showNotice).toHaveBeenCalledOnce();
     expect(showNotice.mock.calls[0]![0]).toContain('album');

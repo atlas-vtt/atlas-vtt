@@ -6,8 +6,8 @@ import { showNotice } from '../ui/notice';
 import { runInBackground } from '../utils/backgroundTask';
 import { parentPath } from '../utils/pathUtils';
 import { t } from '../i18n';
-import { MAX_TOKEN_SOUND_BYTES, soundName } from './tokenSounds';
-import { isTooLong, tokenSoundSeconds } from './tokenSoundLength';
+import { soundName } from './tokenSounds';
+import { tokenSoundProblem, tokenSoundSeconds } from './tokenSoundLength';
 import { orderSoundFiles } from './soundFileOrder';
 import { recentSounds, rememberSound } from './recentSounds';
 
@@ -27,16 +27,10 @@ export function tokenSoundChoices(files: readonly TFile[], recent: readonly stri
 
 /** Whether a picked file may become a token's sound; says why not where it may not. */
 async function mayTake(app: App, file: TFile): Promise<boolean> {
-  const name = soundName(file.path);
-  if (file.stat.size > MAX_TOKEN_SOUND_BYTES) {
-    showNotice(t('tokenSound.tooLarge', { name }));
-    return false;
-  }
-  if (isTooLong(await tokenSoundSeconds(app.vault, file))) {
-    showNotice(t('tokenSound.tooLong', { name }));
-    return false;
-  }
-  return true;
+  const problem = tokenSoundProblem(await tokenSoundSeconds(app.vault, file), file.stat.size);
+  if (!problem) return true;
+  showNotice(t(problem === 'too-long' ? 'tokenSound.tooLong' : 'tokenSound.tooLarge', { name: soundName(file.path) }));
+  return false;
 }
 
 /**

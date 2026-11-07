@@ -3,8 +3,7 @@ import type { TokenSound } from '../types/audioTypes';
 import type { SoundBuffer, SoundContext, SoundGainNode, SoundSourceNode } from '../sound/engine/audioNodes';
 import { GainTrack } from '../sound/engine/gainTrack';
 import { followOutputDevice, forgetOutputFollower } from '../sound/engine/outputDevice';
-import { MAX_TOKEN_SOUND_BYTES } from './tokenSounds';
-import { isTooLong, tokenSoundSeconds } from './tokenSoundLength';
+import { tokenSoundProblem, tokenSoundSeconds } from './tokenSoundLength';
 
 /** What became of a sound asked for: it played, or why it did not. */
 export type PlayOutcome = 'played' | 'stopped' | 'missing' | 'too-large' | 'too-long' | 'unreadable' | 'unavailable';
@@ -105,11 +104,13 @@ export class TokenSoundPlayer {
     if (!context) return 'unavailable';
     const file = this.deps.vault.getFileByPath(path);
     if (!file) return 'missing';
-    if (file.stat.size > MAX_TOKEN_SOUND_BYTES) return 'too-large';
 
     const stops = this.stops;
     // A file held decoded as it is now was measured before it was decoded.
-    if (!this.holds(file) && isTooLong(await this.deps.readSeconds(file))) return 'too-long';
+    if (!this.holds(file)) {
+      const problem = tokenSoundProblem(await this.deps.readSeconds(file), file.stat.size);
+      if (problem) return problem;
+    }
     if (stops !== this.stops) return 'stopped';
     let buffer: SoundBuffer;
     try {

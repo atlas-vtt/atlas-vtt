@@ -162,9 +162,18 @@ describe('TokenSoundPlayer', () => {
     expect(context().sources).toEqual([]);
   });
 
-  it('refuses a file larger than 20 MB without decoding it, and plays one of exactly 20 MB', async () => {
+  it('plays a short sound larger than 20 MB whose length is known', async () => {
+    const { player, context } = setup({ 'Sounds/hi-res.wav': 'audio:100'.padEnd(20 * MB + 1, ' ') });
+    seconds.value = 36;
+
+    expect(await player.play({ path: 'Sounds/hi-res.wav', volume: 1 })).toBe('played');
+    expect(context().playing()).toHaveLength(1);
+  });
+
+  it('refuses a file larger than 20 MB whose length cannot be read, without decoding it, and plays one of exactly 20 MB', async () => {
     const pad = (size: number): string => 'audio:100'.padEnd(size, ' ');
     const { player, context } = setup({ 'Sounds/album.mp3': pad(20 * MB + 1), 'Sounds/long.mp3': pad(20 * MB) });
+    seconds.value = null;
 
     expect(await player.play({ path: 'Sounds/album.mp3', volume: 1 })).toBe('too-large');
     expect(FakeTokenSoundContext.instances.every((made) => made.decodeCalls === 0)).toBe(true);

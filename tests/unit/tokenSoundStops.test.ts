@@ -35,18 +35,20 @@ describe('token sounds and the table', () => {
 
     rig.director.desk.toggleSilence();
 
+    // Stop all fades the mix over its own silence fade, whatever the GM's fade: token sounds take the same.
+    expect(rig.director.snapshot().mix.table.silenceFade.ms).toBe(1500);
     expect(wired.stop).toHaveBeenCalledOnce();
-    expect(wired.stop).toHaveBeenCalledWith(2);
+    expect(wired.stop).toHaveBeenCalledWith(1.5);
   });
 
-  it('fades over the GM\'s fade when it is shorter', async () => {
+  it('fades with Stop all\'s own fade, not the GM\'s fade', async () => {
     const wired = await playingRig();
     rig = wired.rig;
     rig.settings.fadeSeconds = 1;
 
     rig.director.desk.toggleSilence();
 
-    expect(wired.stop).toHaveBeenCalledWith(1);
+    expect(wired.stop).toHaveBeenCalledWith(1.5);
   });
 
   it('leaves token sounds alone when Bring back starts the mix again', async () => {
@@ -87,8 +89,21 @@ describe('token sounds and the table', () => {
     rig.settings.on = false;
     rig.fireSettings();
 
+    // Switching off fades the mix over the GM's fade, at most two seconds: token sounds take the same.
     expect(rig.director.isOn).toBe(false);
     expect(wired.stop).toHaveBeenCalledOnce();
+    expect(wired.stop).toHaveBeenCalledWith(2);
+  });
+
+  it('fades over the GM\'s fade when Sound is switched off and that fade is shorter', async () => {
+    const wired = await playingRig();
+    rig = wired.rig;
+    rig.settings.fadeSeconds = 1;
+
+    rig.settings.on = false;
+    rig.fireSettings();
+
+    expect(wired.stop).toHaveBeenCalledWith(1);
   });
 
   it('listens no more once released', async () => {
