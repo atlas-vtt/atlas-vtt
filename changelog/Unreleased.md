@@ -9,3 +9,4 @@
 - Tokens on an open map take the new maximum when a resource is pointed at another statblock field in the collection's settings
 - Counters such as spell slots can now be ticked off in a statblock's hover preview and in the DM screen, not only beside the note
 - Snapshots that were saved but no longer showed in a scene's snapshot tray appear there again
+- The player window shows the map live again when you reopen the scene it was showing, instead of staying frozen on its last picture
