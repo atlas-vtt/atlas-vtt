@@ -3,11 +3,12 @@
  * for collection settings.
  */
 
-import React from 'react';
+import React, { useId } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { SegmentedControl, type SegmentedOption } from '../../../packages/components/primitives/SegmentedControl';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
 import { UnitDistanceField } from './UnitDistanceField';
 import { areRangeBandsValid, DEFAULT_CONE_ANGLE, isValidConeAngle, isValidRangeBandThreshold } from '../../../grid/measurementFormat';
@@ -15,6 +16,7 @@ import { isUnitDistance } from '../../../grid/unitDistance';
 import type {
   CollectionGridDefaults,
   DiagonalRule,
+  DifficultTerrainRule,
   GridUnitType,
   MeasurementMode,
   RangeBand,
@@ -30,6 +32,8 @@ interface GridMeasurementTabProps {
   gridDefaults: CollectionGridDefaults;
   /** The angle the collection measures cones with, its system's while it has none of its own. Defaults to its own. */
   coneAngle?: number;
+  /** What difficult terrain costs the collection's movement, its system's while it has no rule of its own. Defaults to its own. */
+  difficultTerrain?: DifficultTerrainRule;
   onChange: (gridDefaults: CollectionGridDefaults) => void;
 }
 
@@ -51,8 +55,11 @@ const DIAGONAL_OPTIONS: Record<DiagonalRule, string> = {
 export function GridMeasurementTab({
   gridDefaults,
   coneAngle,
+  difficultTerrain,
   onChange,
 }: GridMeasurementTabProps): React.ReactElement {
+  const difficultLabelId = useId();
+  const difficultDoubles = (difficultTerrain ?? gridDefaults.difficultTerrain ?? 'none') === 'double';
   const updateField = <K extends keyof CollectionGridDefaults>(
     key: K,
     value: CollectionGridDefaults[K],
@@ -111,6 +118,19 @@ export function GridMeasurementTab({
           value={gridDefaults.diagonalRule ?? 'equidistant'}
           options={DIAGONAL_OPTIONS}
           onChange={(value) => updateField('diagonalRule', value as DiagonalRule)}
+        />
+      </div>
+
+      {/* Difficult terrain: what the token drag ruler counts for a cell in a map feature marked so */}
+      <div className="atlas-csm-toggle-row">
+        <div>
+          <div id={difficultLabelId} className="atlas-csm-toggle-label">{t('csm.grid.difficultTerrain')}</div>
+          <div className="atlas-csm-hint">{t('csm.grid.difficultTerrainHint')}</div>
+        </div>
+        <ToggleSwitch
+          value={difficultDoubles}
+          labelledBy={difficultLabelId}
+          onChange={() => updateField('difficultTerrain', difficultDoubles ? 'none' : 'double')}
         />
       </div>
 

@@ -30,15 +30,21 @@ import { initiative } from './initiative';
 import { initRules } from './initRules';
 import { loot } from './loot';
 import { tables } from './tables';
+import { templateEditor } from './templateEditor';
 import { lpv } from './lpv';
 import { map } from './map';
+import { mapFeature } from './mapFeature';
 import { menu } from './menu';
 import { notice } from './notice';
+import { online } from './online';
 import { palette } from './palette';
 import { picker } from './picker';
 import { settings } from './settings';
 import { snapshots } from './snapshots';
+import { levels } from './levels';
+import { openings } from './openings';
 import { statblock } from './statblock';
+import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
 import { tabs } from './tabs';
 import { timer } from './timer';
@@ -52,6 +58,8 @@ import { filters } from './filters';
 import { search } from './search';
 import { senses } from './senses';
 import { sort } from './sort';
+import { tableTv } from './tableTv';
+import { glass } from './glass';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
@@ -60,6 +68,9 @@ import { laser } from './laser';
 import { text } from './text';
 import { audio } from './audio';
 import { drawing } from './drawing';
+import { dungeon } from './dungeon';
+import { dungeonProp } from './dungeonProp';
+import { dungeonScene } from './dungeonScene';
 import { editToken } from './editToken';
 import { hex } from './hex';
 import { light } from './light';
@@ -73,6 +84,7 @@ import { mapPreview } from './mapPreview';
 import { names } from './names';
 import { player } from './player';
 import { playerInit } from './playerInit';
+import { playerBar } from './playerBar';
 import { present } from './present';
 import { preview } from './preview';
 import { recovery } from './recovery';
@@ -90,7 +102,11 @@ import { encounter } from './encounter';
 import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
+import { graphics } from './graphics';
 import { vision } from './vision';
+import { videoMap } from './videoMap';
+import { uvttFloors } from './uvttFloors';
+import { uvtt } from './uvtt';
 
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
@@ -126,15 +142,21 @@ export const en = {
   ...initRules,
   ...loot,
   ...tables,
+  ...templateEditor,
   ...lpv,
   ...map,
+  ...mapFeature,
   ...menu,
   ...notice,
+  ...online,
   ...palette,
   ...picker,
   ...settings,
   ...snapshots,
+  ...levels,
+  ...openings,
   ...statblock,
+  ...statblockEditor,
   ...switcher,
   ...tabs,
   ...timer,
@@ -148,6 +170,8 @@ export const en = {
   ...search,
   ...senses,
   ...sort,
+  ...tableTv,
+  ...glass,
   ...toolbar,
   ...toolbarEdit,
   ...hotkey,
@@ -156,6 +180,9 @@ export const en = {
   ...text,
   ...audio,
   ...drawing,
+  ...dungeon,
+  ...dungeonProp,
+  ...dungeonScene,
   ...editToken,
   ...hex,
   ...light,
@@ -171,6 +198,7 @@ export const en = {
   ...names,
   ...player,
   ...playerInit,
+  ...playerBar,
   ...present,
   ...preview,
   ...recovery,
@@ -188,5 +216,9 @@ export const en = {
   ...migration,
   ...wall,
   ...sceneLight,
+  ...graphics,
   ...vision,
+  ...videoMap,
+  ...uvttFloors,
+  ...uvtt,
 } as const;

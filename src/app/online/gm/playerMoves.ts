@@ -74,6 +74,11 @@ export class PlayerMoves {
     return this.drags.starts();
   }
 
+  /** The player whose drag holds a token (by GM token id), or undefined while no player drags it. */
+  draggerOf(tokenId: string): string | undefined {
+    return this.drags.draggerOf(tokenId);
+  }
+
   /** The player let go of a drag without a drop: the token goes back, with no undo step. */
   dragCancel(from: string, cancel: PlayerDragCancel): void {
     this.drags.cancel(from, cancel);
@@ -145,8 +150,9 @@ export class PlayerMoves {
   private apply(from: string, tokenId: string, move: PlayerMove): void {
     const state = this.store.getState();
     const token = mapTokens(state.objects)[tokenId];
-    const at = token === undefined ? move : landing(this.context(state), token, move);
+    const at = token === undefined ? move : landing(this.context(state), state, tokenId, token, move);
     const stopped = at.x !== move.x || at.y !== move.y;
+    // A token put down on stairs goes to the level they lead to, and its player's picture follows it there
     if (!stopped || at.x !== token?.x || at.y !== token.y) this.store.setState((draft) => placeTokens(draft, [{ id: tokenId, x: at.x, y: at.y }]));
     if (stopped) this.refuse(from, move);
   }

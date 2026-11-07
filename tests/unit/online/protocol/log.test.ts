@@ -161,7 +161,7 @@ describe('the table chat\'s fields', () => {
   const MIRA = 'a'.repeat(20);
   const base = { id: ID, at: 1, who: 'gm', name: 'GM' };
   const ROLLED = { id: 'r1', timestamp: 1, formula: '1d20', modifiers: 0, total: 7, rolls: [{ die: 'd20', value: 7, max: 20 }] };
-  const SPEAKER = { name: 'Goblin', token: null, art: { hash: 'f'.repeat(64), size: 3, mime: 'image/png' }, ring: '#ff0000' };
+  const SPEAKER = { name: 'Goblin', token: null, art: { hash: 'f'.repeat(64), size: 3, mime: 'image/png', id: 'e'.repeat(64) }, ring: '#ff0000' };
 
   it('reads whispers, speakers, styles and the rolls a text rolled', () => {
     const entry = { ...base, kind: 'chat', text: 'Hit [[1d20]] then [[/br 1d20+2]]{Perception}', style: 'ic', speaker: SPEAKER, to: [MIRA], inline: [ROLLED] };

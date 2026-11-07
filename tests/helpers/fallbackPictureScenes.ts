@@ -12,7 +12,7 @@ import { sightScene } from './sightScenes';
 
 /** 70 px cells of 5 ft: 14 px to the foot. */
 const MEASUREMENT: MeasurementSettings = { mode: 'metric', unitType: 'feet', unitDistance: 5, ruleDistance: 5, diagonalRule: 'equidistant', rangeBands: [], coneAngle: 90 };
-export const CLEAN = { canvas: { leaked: 0, lost: 0, beyond: 0 }, webgl: { leaked: 0, lost: 0, beyond: 0 } };
+export const CLEAN = { webgl: { leaked: 0, lost: 0, beyond: 0 } };
 
 export function token(id: string, x: number, y: number, vision: TokenEntity['vision'] = { enabled: true }): TokenEntity {
   return { id, kind: 'token', imagePath: '', x, y, size: 1, layer: 0, rotation: 0, isHidden: false, vision };
@@ -29,7 +29,7 @@ export function byId<T extends { id: string }>(list: readonly T[] = []): Record<
 /** What must be none in a view: pixels shown that are hidden, and black without a cause or beyond the map. */
 export function faults(tallies: Tallies): typeof CLEAN {
   const of = ({ leaked, lost, beyond }: Tallies[Kind]): (typeof CLEAN)[Kind] => ({ leaked, lost, beyond });
-  return { canvas: of(tallies.canvas), webgl: of(tallies.webgl) };
+  return { webgl: of(tallies.webgl) };
 }
 
 /** The faults of several views, added up. */

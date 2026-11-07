@@ -1,4 +1,12 @@
 @use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+// Turning pages: how long, how fast the page left fades, when the one chosen starts to show, and how far each
+// slides (`usePageTurn.ts` keeps `PAGE_TURN_MS` in step).
+$page-turn: 340ms;
+$page-leave: 120ms;
+$page-arrive: 80ms;
+$page-shift: clamp(24px, 3cqi, 56px);
 
 // DM screen styles
 //
@@ -42,11 +50,13 @@
   to { opacity: 0; }
 }
 
+// Centred by its margins and at rest without a transform: a resting `translate(-50%, -50%)`
+// composited the layer on half pixels in views of odd size, which blurred its text at device
+// pixel ratio 1. The enter animation fills backwards only, so it leaves no transform behind.
 .atlas-dm-screen {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.97);
+  inset: 0;
+  margin: auto;
   width: 98%;
   height: 88%;
   max-height: 900px;
@@ -56,7 +66,8 @@
   opacity: 0;
 
   &.is-visible {
-    animation: atlas-dm-screen-enter 0.25s ease-out both;
+    opacity: 1;
+    animation: atlas-dm-screen-enter 0.25s ease-out backwards;
   }
 
   &.is-closing {
@@ -87,25 +98,34 @@
   }
 }
 
+// With pages it fills the view, and what it holds keeps one inset from all four edges: the map's top bar lies blurred
+// under the backdrop, nothing to clear. The panes' shadows need the room inside the screen, so the inset is padding of the rows.
+.atlas-dm-screen.atlas-dm-screen--pages {
+  @include atlas-dm-screen-inset;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
 @keyframes atlas-dm-screen-enter {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.97);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 }
 
 @keyframes atlas-dm-screen-exit {
   from {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
   to {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.97);
+    transform: scale(0.97);
   }
 }
 
@@ -124,10 +144,195 @@
     padding-top: 75px;
   }
 
+  &[hidden] {
+    display: none;
+  }
+
   // Narrow views stack the panes
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
     flex-direction: column;
     gap: 12px;
+  }
+}
+
+// A selector of its own: every sheet is imported inside `.atlas-vtt-plugin`, so `.x ~ &` would read `.x ~ .atlas-vtt-plugin …`.
+.atlas-dm-screen-header ~ .atlas-dm-screen-stage > .atlas-dm-screen-content {
+  padding: $spacing-l var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset);
+}
+
+// The page control stands centred near the top, closer to it than the panes are to the sides (owner, 2026-11-03).
+.atlas-dm-screen-header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: $spacing-s;
+  padding: $spacing-l var(--atlas-dm-screen-inset) 0;
+
+  .atlas-segmented {
+    flex-shrink: 0;
+    gap: 2px;
+    padding: 4px;
+    border-radius: $radius-xl;
+    background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 9%, transparent);
+  }
+
+  .atlas-segmented__option {
+    flex: 0 0 auto;
+    min-width: 128px;
+    height: 36px;
+    padding: 0 $spacing-xl;
+    border-radius: calc(#{$radius-xl} - 4px);
+    font-size: $font-ui-medium;
+    box-shadow: none;
+    color: var(--text-muted);
+    transition: color $transition-normal, background-color $transition-normal;
+
+    position: relative;
+    z-index: 1;
+
+    &.atlas-active {
+      color: var(--text-normal);
+      background: transparent !important;
+      box-shadow: none;
+    }
+  }
+
+  // One thumb under the chosen page, gliding with the turn: the options share one width, so it moves by its own.
+  .atlas-dm-screen-pages {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 4px auto 4px 4px;
+      width: calc((100% - 10px) / 2);
+      border-radius: calc(#{$radius-xl} - 4px);
+      background: var(--background-primary);
+      box-shadow: 0 1px 2px color-mix(in oklch, black 40%, transparent);
+      transition: transform $page-turn $transition-ease-out;
+      @include atlas-corner-shape;
+    }
+
+    &:has(.atlas-segmented__option:nth-of-type(2).atlas-active)::before {
+      transform: translateX(calc(100% + 2px));
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &::before {
+        transition: none;
+      }
+    }
+  }
+}
+
+// The keys that change pages, beside the control as a game shows its shoulder buttons: a keycap
+// with depth, as tall as the control's options.
+.atlas-dm-screen-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 $spacing-s;
+  border: $border-width-s solid color-mix(in oklch, var(--mono-100) 14%, transparent);
+  border-bottom-width: 3px;
+  border-radius: $radius-l;
+  background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.atlas-dm-sound-page {
+  min-height: 0;
+  display: flex;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// ---- Turning pages ----
+// The pages lie in one cell and move along one axis together: the one left slides out to its side and is gone
+// within `$page-leave`, the one chosen slides in from its own and shows from `$page-arrive`, settling with a slight
+// growth, so the two never read as one picture.
+// Transitions, not keyframes: a second ← → mid-turn takes both from where they are. `usePageTurn` keeps
+// the page left drawn for `$page-turn`, then hides it.
+
+.atlas-dm-screen-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+
+  // Only while turning: at rest nothing of a page is clipped, its shadows and popovers least of all.
+  &[data-turning] {
+    overflow: clip;
+  }
+}
+
+.atlas-dm-page {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition:
+    transform $page-turn $transition-ease-out,
+    opacity ($page-turn - $page-arrive) $transition-ease-out $page-arrive;
+
+  &[data-page='before'],
+  &[data-page='after'] {
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform $page-turn $transition-ease-out,
+      opacity $page-leave $transition-ease-out;
+  }
+
+  &[data-page='before'] {
+    transform: translateX(calc(-1 * #{$page-shift})) scale(0.985);
+  }
+
+  &[data-page='after'] {
+    transform: translateX($page-shift) scale(0.985);
+  }
+
+  // A page that was hidden has no style to start from: it starts where its side says.
+  &[data-page='current'][data-from='before'] {
+    @starting-style {
+      opacity: 0;
+      transform: translateX(calc(-1 * #{$page-shift})) scale(0.985);
+    }
+  }
+
+  &[data-page='current'][data-from='after'] {
+    @starting-style {
+      opacity: 0;
+      transform: translateX($page-shift) scale(0.985);
+    }
+  }
+
+  // Fewer and gentler: the pages cross-fade where they are.
+  @media (prefers-reduced-motion: reduce) {
+    &[data-page],
+    &[data-page='before'],
+    &[data-page='after'] {
+      transform: none;
+      transition: opacity $transition-normal $transition-ease;
+    }
+
+    &[data-page='current'][data-from] {
+      @starting-style {
+        transform: none;
+      }
+    }
   }
 }
 

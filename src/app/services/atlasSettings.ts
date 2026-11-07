@@ -6,6 +6,11 @@ import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures
 import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import type { InitiativeDock } from '../initiative/initiativeLayout';
+import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
+import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
+import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
+import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 
 /**
  * How wheel events drive the map viewport.
@@ -37,8 +42,16 @@ export interface AtlasSettings {
   laserPointer: LaserPointerSettings;
   /** How rolls show: a result card, or 3D dice at double or normal speed. Read with `getDiceDisplay`. */
   diceDisplay: DiceDisplay;
+  /** Loudness of dice sounds, 0 (silent) to 1. Read with `getDiceVolume`. */
+  diceVolume: number;
+  /** Levels, default fade and following scenes for music and ambience. Read with `getSoundSettings`. */
+  sound: SoundSettings;
+  /** The sound library's linked folders, as far as devices share them. Read with `getSoundRoots`. */
+  soundRoots?: SharedSoundRoots;
   /** Whether a new scene looks for the grid of its map. Off for tables that play without one. Read with `detectsGridOnNewScenes`. */
   detectGridOnNewScenes: boolean;
+  /** How the fog's edge looks, on the GM's map and the players'. Read with `getFogEdge`. */
+  fogEdge: FogEdge;
   /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
@@ -59,6 +72,8 @@ export interface AtlasSettings {
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
   /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
   toolbar: StoredToolbarLayout;
+  /** The dungeon generator's style, view and last tags. Read with `getDungeonGenerator`. */
+  dungeonGenerator: DungeonGeneratorSettings;
   localPlayerView: {
     // UI element visibility toggles
     showToolbar: boolean;
@@ -72,6 +87,8 @@ export interface AtlasSettings {
     /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
     showCursors: boolean;
   };
+  /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
+  tableTv: TableTvSettings;
 }
 
 /** The input mode a device starts with: Macs mostly have a trackpad, other computers a mouse. */
@@ -87,7 +104,10 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   navigation: { inputMode: defaultInputMode() },
   laserPointer: DEFAULT_LASER_POINTER_SETTINGS,
   diceDisplay: 'full',
+  diceVolume: 1,
+  sound: DEFAULT_SOUND_SETTINGS,
   detectGridOnNewScenes: true,
+  fogEdge: DEFAULT_FOG_EDGE,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
   initiativeNames: false,
@@ -98,6 +118,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   initiativeMovesOnTurn: false,
   experimental: {},
   toolbar: {},
+  dungeonGenerator: DEFAULT_DUNGEON_GENERATOR_SETTINGS,
   localPlayerView: {
     // UI element visibility defaults
     showToolbar: false, // Hide toolbar by default in player view
@@ -109,6 +130,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showCommandPalette: false, // Hide command palette
     showCursors: false,
   },
+  tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };
 
 /**
@@ -154,6 +176,7 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       navigation: { inputMode },
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
+      tableTv: readTableTvSettings(record.tableTv),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),

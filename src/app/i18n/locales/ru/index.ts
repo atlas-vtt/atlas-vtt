@@ -31,11 +31,13 @@ import { lpv } from './lpv';
 import { map } from './map';
 import { menu } from './menu';
 import { notice } from './notice';
+import { online } from './online';
 import { palette } from './palette';
 import { picker } from './picker';
 import { settings } from './settings';
 import { snapshots } from './snapshots';
 import { statblock } from './statblock';
+import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
 import { tabs } from './tabs';
 import { timer } from './timer';
@@ -58,6 +60,13 @@ import { text } from './text';
 import { audio } from './audio';
 import { drawing } from './drawing';
 import { editToken } from './editToken';
+import { templateEditor } from './templateEditor';
+import { tables } from './tables';
+import { campaign } from './campaign';
+import { quest } from './quest';
+import { rest } from './rest';
+import { initRules } from './initRules';
+import { recoveryEditor } from './recoveryEditor';
 import { hex } from './hex';
 import { light } from './light';
 import { mapIcon } from './mapIcon';
@@ -86,6 +95,15 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { vision } from './vision';
+import { dungeon } from './dungeon';
+import { dungeonProp } from './dungeonProp';
+import { dungeonScene } from './dungeonScene';
+import { levels } from './levels';
+import { mapFeature } from './mapFeature';
+import { openings } from './openings';
+import { uvtt } from './uvtt';
+import { uvttFloors } from './uvttFloors';
+import { videoMap } from './videoMap';
 
 export const ru: Translation = {
   ...align,
@@ -120,11 +138,13 @@ export const ru: Translation = {
   ...map,
   ...menu,
   ...notice,
+  ...online,
   ...palette,
   ...picker,
   ...settings,
   ...snapshots,
   ...statblock,
+  ...statblockEditor,
   ...switcher,
   ...tabs,
   ...timer,
@@ -177,4 +197,20 @@ export const ru: Translation = {
   ...wall,
   ...sceneLight,
   ...vision,
+  ...templateEditor,
+  ...tables,
+  ...campaign,
+  ...quest,
+  ...rest,
+  ...initRules,
+  ...recoveryEditor,
+  ...dungeon,
+  ...dungeonProp,
+  ...dungeonScene,
+  ...levels,
+  ...mapFeature,
+  ...openings,
+  ...uvtt,
+  ...uvttFloors,
+  ...videoMap,
 };

@@ -1,3 +1,4 @@
+import { readFogEdge, type FogEdge } from '../fog/fogEdge';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import type { App, Plugin } from 'obsidian';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
@@ -19,10 +20,21 @@ import {
   type TutorialId,
   TUTORIAL_IDS,
 } from './atlasSettings';
-import { loadInitiativeCollapsed, loadInputMode, loadLightingQuality, saveInitiativeCollapsed, saveInputMode, saveLightingQuality } from './deviceSettings';
+import {
+  loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
+  saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
+} from './deviceSettings';
+import { readGpuFacts } from './gpuFacts';
+import { pickLightingQuality } from '../lighting/deviceTier';
 import { readDock, type InitiativeLayout } from '../initiative/initiativeLayout';
 import type { InitiativeTurnOptions } from '../initiative/turnOptions';
-import type { LightingQualityLevel } from '../lighting/lightingQuality';
+import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
+import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
+import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import { readSoundSettings, type SoundSettings } from './soundSettings';
+import { readSharedSoundRoots, type SharedSoundRoots } from '../soundLibrary/soundRootsStore';
+import type { TableTvSettings } from './tableTvSettings';
+import { loadTableTvDevice, saveTableTvDevice, type TableTvDevice, type TvScreenRecord, type TvScreenSetup } from './tableTvDevice';
 
 export { TUTORIAL_IDS } from './atlasSettings';
 export type { AtlasSettings, NavigationInputMode, NavigationSettings, TutorialId } from './atlasSettings';
@@ -34,7 +46,7 @@ type SettingsListener = (settings: AtlasSettings) => void;
 
 /**
  * The GM's Atlas preferences, kept in the plugin's data (`data.json`), except the input mode,
- * the lighting quality and the collapsed initiative tracker, which belong to the device (`deviceSettings.ts`). Without a data store (tests, a view
+ * the lighting quality, whether maps animate and the collapsed initiative tracker, which belong to the device (`deviceSettings.ts`). Without a data store (tests, a view
  * without the plugin) the settings live in memory only.
  */
 export class SettingsService {
@@ -165,7 +177,7 @@ export class SettingsService {
 
   setHotkey(id: MapHotkeyId, key: string): void {
     const bindings = this.getHotkeys();
-    const conflict = key && availableHotkeys().find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
+    const conflict = key && availableHotkeys(false, (feature) => this.isExperimentalOn(feature)).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
     if (conflict) throw new Error(`Already assigned to ${conflict.label}. Clear that shortcut first.`);
     this.settings.hotkeys = withHotkey(this.settings.hotkeys, id, key);
     this.commit();
@@ -213,15 +225,85 @@ export class SettingsService {
     this.notify();
   }
 
-  /** How much the lighting may ask of this device's graphics; `high` until chosen. */
+  /** How much the lighting may ask of this device's graphics: the GM's choice, else the level Atlas picked for the device. */
+  /** The preset this device's graphics follow: the Graphics page's, else a level chosen before the page, else the one Atlas picked. */
   getLightingQuality(): LightingQualityLevel {
-    return loadLightingQuality(this.app) ?? 'high';
+    return this.getGraphics().preset;
   }
 
-  /** The lighting quality is this device's: it goes to local storage, not into the synced settings. */
+  /** Whether the level in effect is Atlas' pick for this device's graphics, nothing chosen yet. */
+  isLightingQualityPicked(): boolean {
+    return loadGraphicsChoice(this.app) === null && loadLightingQuality(this.app) === null;
+  }
+
+  /** Chooses a preset whole, every knob its own. */
   setLightingQuality(level: LightingQualityLevel): void {
-    if (this.getLightingQuality() === level) return;
-    saveLightingQuality(this.app, level);
+    this.setGraphics({ preset: level, overrides: {} });
+  }
+
+  /** The Graphics page's choice: a preset and the knobs set away from it (`GraphicsChoice`). */
+  getGraphics(): GraphicsChoice {
+    const stored = loadGraphicsChoice(this.app);
+    if (stored) return stored;
+    const level = loadLightingQuality(this.app);
+    return { preset: level ?? this.pickedLightingQuality(), overrides: {} };
+  }
+
+  /** The graphics are this device's: they go to local storage, not into the synced settings. Listeners hear only of a change in effect. */
+  setGraphics(choice: GraphicsChoice): void {
+    const shown = this.getGraphicsQuality();
+    saveGraphicsChoice(this.app, choice);
+    if (JSON.stringify(shown) !== JSON.stringify(this.getGraphicsQuality())) this.notify();
+  }
+
+  /** Forgets the choice: the level Atlas picked for the device holds again. */
+  resetGraphics(): void {
+    const shown = this.getGraphicsQuality();
+    saveGraphicsChoice(this.app, null);
+    if (JSON.stringify(shown) !== JSON.stringify(this.getGraphicsQuality())) this.notify();
+  }
+
+  /** What the lighting, the liquids and the composite read: the quality the choice describes (`qualityOf`). */
+  getGraphicsQuality(): LightingQuality {
+    return qualityOf(knobsOf(this.getGraphics()));
+  }
+
+  /**
+   * The level picked for this device's graphics (`pickLightingQuality`) the first time it is
+   * asked, then stored, so it never changes by itself. `high` where the graphics cannot be read,
+   * which is asked again next time.
+   */
+  private pickedLightingQuality(): LightingQualityLevel {
+    const stored = loadPickedLightingQuality(this.app);
+    if (stored) return stored;
+    const facts = readGpuFacts();
+    if (!facts) return 'high';
+    const level = pickLightingQuality(facts);
+    savePickedLightingQuality(this.app, level);
+    return level;
+  }
+
+  /** Whether animated maps play on this device as chosen, or null when never chosen (`animateMapsOn` decides then). */
+  getAnimateMaps(): boolean | null {
+    return loadAnimateMaps(this.app);
+  }
+
+  /** Animating maps is this device's choice: it goes to local storage, not into the synced settings. */
+  setAnimateMaps(on: boolean): void {
+    if (this.getAnimateMaps() === on) return;
+    saveAnimateMaps(this.app, on);
+    this.notify();
+  }
+
+  /** Whether this device renders the player view with up to 4K pixels instead of 1440p. */
+  isPlayerView4k(): boolean {
+    return loadPlayerView4k(this.app);
+  }
+
+  /** The player view's resolution is this device's, as its graphics card pays for it: local storage, not the synced settings. */
+  setPlayerView4k(on: boolean): void {
+    if (this.isPlayerView4k() === on) return;
+    savePlayerView4k(this.app, on);
     this.notify();
   }
 
@@ -232,6 +314,17 @@ export class SettingsService {
   setLaserPointerSettings(settings: Partial<LaserPointerSettings>): void {
     // Spread over the stored record, so fields a newer Atlas added survive.
     this.settings.laserPointer = { ...this.settings.laserPointer, ...resolveLaserPointerSettings({ ...this.settings.laserPointer, ...settings }) };
+    this.commit();
+  }
+
+  /** The dungeon generator's preferences, each field checked. */
+  getDungeonGenerator(): DungeonGeneratorSettings {
+    return readDungeonGeneratorSettings(this.settings.dungeonGenerator);
+  }
+
+  setDungeonGenerator(changes: Partial<DungeonGeneratorSettings>): void {
+    // Spread over the stored record, so fields a newer Atlas added survive.
+    this.settings.dungeonGenerator = { ...this.settings.dungeonGenerator, ...changes };
     this.commit();
   }
 
@@ -299,6 +392,42 @@ export class SettingsService {
     this.commit();
   }
 
+  /** The stored dice volume, 0 to 1; full volume when the file holds something else. */
+  getDiceVolume(): number {
+    const volume = this.settings.diceVolume;
+    return typeof volume === 'number' && volume >= 0 && volume <= 1 ? volume : 1;
+  }
+
+  setDiceVolume(volume: number): void {
+    const next = Math.min(1, Math.max(0, volume));
+    if (this.settings.diceVolume === next) return;
+    this.settings.diceVolume = next;
+    this.commit();
+  }
+
+  /** Levels, default fade and following scenes for music and ambience; the default for whatever the file does not hold. */
+  getSoundSettings(): SoundSettings {
+    return readSoundSettings(this.settings.sound);
+  }
+
+  setSoundSettings(changes: Partial<SoundSettings>): void {
+    const current = this.getSoundSettings();
+    const next = readSoundSettings({ ...current, ...changes });
+    if (JSON.stringify(next) === JSON.stringify(current)) return;
+    this.settings.sound = { ...this.settings.sound, ...next };
+    this.commit();
+  }
+
+  /** The sound library's linked folders, as far as devices share them. */
+  getSoundRoots(): SharedSoundRoots {
+    return readSharedSoundRoots(this.settings.soundRoots);
+  }
+
+  setSoundRoots(roots: SharedSoundRoots): void {
+    this.settings.soundRoots = roots;
+    this.commit();
+  }
+
   /** Whether a new scene looks for the grid of its map: on unless the file says `false`. */
   detectsGridOnNewScenes(): boolean {
     return this.settings.detectGridOnNewScenes !== false;
@@ -307,6 +436,15 @@ export class SettingsService {
   setDetectGridOnNewScenes(on: boolean): void {
     if (this.detectsGridOnNewScenes() === on) return;
     this.settings.detectGridOnNewScenes = on;
+    this.commit();
+  }
+
+  getFogEdge(): FogEdge {
+    return readFogEdge(this.settings.fogEdge);
+  }
+
+  setFogEdge(changes: Partial<FogEdge>): void {
+    this.settings.fogEdge = { ...this.getFogEdge(), ...changes };
     this.commit();
   }
 
@@ -368,6 +506,38 @@ export class SettingsService {
     const stored: Record<string, unknown> = this.settings.localPlayerView;
     stored.tokenBarsCarriedOver = true;
     this.scheduleSave();
+  }
+
+  getTableTvSettings(): TableTvSettings {
+    return { ...this.settings.tableTv };
+  }
+
+  setTableTvSettings(changes: Partial<TableTvSettings>): void {
+    this.settings.tableTv = { ...this.settings.tableTv, ...changes };
+    this.commit();
+  }
+
+  /** TrueScale's facts about this device's TVs: local storage, since a TV belongs to the computer it is plugged into. */
+  getTableTvDevice(): TableTvDevice {
+    return loadTableTvDevice(this.app);
+  }
+
+  setTableTvDevice(patch: Partial<TableTvDevice>): void {
+    saveTableTvDevice(this.app, { ...this.getTableTvDevice(), ...patch });
+    this.notify();
+  }
+
+  /**
+   * Changes what this device keeps of the screen `key`. A screen is stored from its first
+   * change: turned at once (rotation 0 until one is given), set up only once it holds a
+   * positive `pxPerMm` (`setupOf`); a `pxPerMm` that is none leaves the one it had.
+   */
+  setTvScreenSetup(key: string, patch: Partial<TvScreenSetup>): void {
+    const device = this.getTableTvDevice();
+    const { pxPerMm, ...rest } = patch;
+    const screen: TvScreenRecord = { rotation: 0, ...device.screens[key], ...rest };
+    if (pxPerMm !== undefined && Number.isFinite(pxPerMm) && pxPerMm > 0) screen.pxPerMm = pxPerMm;
+    this.setTableTvDevice({ screens: { ...device.screens, [key]: screen } });
   }
 
   getLocalPlayerViewSettings(): AtlasSettings['localPlayerView'] {

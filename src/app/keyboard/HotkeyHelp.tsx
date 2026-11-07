@@ -6,6 +6,7 @@ import { useAtlasSettings } from './useMapHotkeys';
 import { availableHotkeys, DEFAULT_MAP_HOTKEYS, formatHotkey } from './mapHotkeys';
 import { useDialogFocus } from '../onboarding/useDialogFocus';
 import { t } from '../i18n';
+import { portalHost } from '../host/portalHost';
 
 export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }: { settings?: SettingsService | undefined; onClose: () => void; isPlayerView?: boolean }): React.JSX.Element {
   const settings = useAtlasSettings(explicit);
@@ -13,7 +14,7 @@ export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useDialogFocus(ref, onClose);
-  const actions = availableHotkeys(isPlayerView);
+  const actions = availableHotkeys(isPlayerView, (feature) => settings?.isExperimentalOn(feature) ?? false);
   return createPortal(<div className="atlas-vtt-plugin atlas-vtt-root atlas-hotkey-help" onClick={onClose}>
     <div ref={ref} className="atlas-hotkey-help-card" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={e => e.stopPropagation()}>
       <div className="atlas-hotkey-help-header">
@@ -41,5 +42,5 @@ export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }
         </section>
       </div>
     </div>
-  </div>, document.body);
+  </div>, portalHost());
 }

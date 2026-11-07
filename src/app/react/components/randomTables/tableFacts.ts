@@ -1,5 +1,6 @@
 import type { CollectionTable } from '../../../randomTables/TableNoteReader';
 import type { RandomTable, TableProblem } from '../../../randomTables/tableModel';
+import { generatorShape } from '../../../randomTables/generatorParts';
 import { t } from '../../../i18n';
 
 /** How a table is rolled, as short as the sidebar shows it: its die, else "Weighted", else its number of rows. */
@@ -14,6 +15,20 @@ export function rollFactLong(table: RandomTable): string {
   if (table.die && table.hasRollColumn) return t('tables.die', { die: table.die.label });
   if (table.weighted) return t('tables.weightedLong', { count: table.rows.length });
   return t('tables.even', { count: table.rows.length });
+}
+
+/** How a listed table is rolled, short: a generator's number of parts, else as `rollFact` says. */
+export function tableFact(found: CollectionTable): string {
+  if (!found.table) return '';
+  return found.source.kind === 'generator' ? String(generatorShape(found.table).parts.length) : rollFact(found.table);
+}
+
+/** How a listed table is rolled, as a sentence: a generator's parts, else as `rollFactLong` says. */
+export function tableFactLong(found: CollectionTable): string {
+  if (!found.table) return '';
+  return found.source.kind === 'generator'
+    ? t('tables.generator.parts', { count: generatorShape(found.table).parts.length })
+    : rollFactLong(found.table);
 }
 
 /** Each kind of problem once, counted: "2 gaps", "1 overlap". */

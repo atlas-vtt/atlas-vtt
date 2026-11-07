@@ -16,11 +16,6 @@
   width: var(--atlas-spinner-size);
   height: var(--atlas-spinner-size);
 
-  *,
-  & {
-    animation-play-state: var(--atlas-spinner-play-state, running);
-  }
-
   // A white-hot head reads as fading out on light backgrounds; keep it saturated there
   .theme-light & {
     --atlas-spinner-highlight: var(--interactive-accent);
@@ -71,6 +66,13 @@
 
 .atlas-spinner__comet {
   animation: atlas-spinner-rotate 1.3s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+}
+
+// After the parts' `animation` shorthands, which reset the play state: at equal specificity an earlier rule lost to
+// them, and a hidden spinner went on animating every frame.
+.atlas-spinner,
+.atlas-spinner * {
+  animation-play-state: var(--atlas-spinner-play-state, running);
 }
 
 // Head sits at 12 o'clock (360deg); the tail trails counter-clockwise and fades out

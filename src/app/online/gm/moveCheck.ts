@@ -3,8 +3,9 @@ import { MAX_COORDINATE, type PlayerMove } from '../protocol/index.ts';
 import type { TokenEntity } from '../../types';
 import type { WallSegment } from '../../types/wallTypes';
 import { wallList } from '../../vision/wallList';
+import { stairSides, withStairSides, type StairsOfTokens } from './stairSides.ts';
 
-/** The map's size in world pixels: the image lies at (0, 0) at its natural size. */
+/** The map's size in world pixels, from (0, 0): its image's own size, or the box Atlas draws it into turned, stretched and placed (`floorWorldSize`). */
 export interface MapSize {
   readonly width: number;
   readonly height: number;
@@ -61,11 +62,13 @@ export function sceneWalls(walls: Record<string, WallSegment>, lit: boolean, map
 }
 
 /**
- * Where a player's token moving from `from` towards `to` comes to rest: at `to`, or on a lit scene
- * just before the first wall in its way, slid along it (`stopAtWalls`).
+ * Where a player's token `tokenId` moving from `from` towards `to` comes to rest: at `to`, or just
+ * before the first wall in its way (on a lit scene) or side of walked stairs on its level (on any
+ * scene: `stairSides`, so it steps on and off stairs only at their ground end), slid along it (`stopAtWalls`).
  */
-export function landing(context: Pick<MoveContext, 'walls'>, from: Point, to: Point): Point {
-  return context.walls === null ? to : stopAtWalls(context.walls, from, to);
+export function landing(context: Pick<MoveContext, 'walls' | 'map'>, state: StairsOfTokens, tokenId: string, from: Point, to: Point): Point {
+  const walls = withStairSides(context.walls, stairSides(state, tokenId, context.map));
+  return walls === null ? to : stopAtWalls(walls, from, to);
 }
 
 /** Moves a player may make: a burst of `MOVE_BURST`, then `MOVES_PER_SECOND` (a held movement key steps 5 times a second). */

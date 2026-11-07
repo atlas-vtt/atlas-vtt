@@ -4,10 +4,12 @@ import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { TemplateField } from '../../model/templateTypes';
 import type { FieldRead } from '../../values/fieldValues';
+import { unescapeCommas } from '../../values/listText';
 import { valueText } from '../../values/valueText';
 import { usePaneEdit, type PaneEditController } from './paneEditContext';
 import type { ValueInputProps } from './TextValueInput';
 import { addItemPatches, listItems, removeItemPatches } from './valuePatches';
+import { t } from '../../../i18n';
 
 export interface ChipsEditorProps {
   field: TemplateField;
@@ -48,7 +50,7 @@ export function ChipsEditor({ field, read, write, autoFocus, placeholder, onLeav
     const item = typedRef.current.trim();
     if (!item) return;
     type('');
-    void write(field, addItemPatches(read, field.key, item));
+    void write(field, addItemPatches(read, field.key, unescapeCommas(item)));
   };
   addRef.current = add;
   const remove = (index: number): void => {
@@ -79,7 +81,7 @@ export function ChipsEditor({ field, read, write, autoFocus, placeholder, onLeav
       {items.map((item, index) => (
         <span key={`${item}-${index}`} className="atlas-sb-pane-chip">
           <span className="atlas-sb-pane-chip__text">{item}</span>
-          <LabelTooltip label={`Remove ${item}`}>
+          <LabelTooltip label={t('statblockEditor.removeNamed', { name: item })}>
             <button type="button" className="atlas-sb-pane-chip__remove" onClick={() => remove(index)}>
               <X aria-hidden="true" />
             </button>
@@ -92,7 +94,7 @@ export function ChipsEditor({ field, read, write, autoFocus, placeholder, onLeav
         className="atlas-sb-pane-input atlas-sb-pane-chips__input"
         value={typed}
         placeholder={items.length ? '' : placeholder ?? (field.prompt?.trim() || field.label)}
-        aria-label={`Add to ${field.label}`}
+        aria-label={t('statblockEditor.addTo', { name: field.label })}
         onChange={(event) => type(event.target.value)}
         onKeyDown={onKeyDown}
         onBlur={add}

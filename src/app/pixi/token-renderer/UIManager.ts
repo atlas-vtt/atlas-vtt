@@ -20,6 +20,7 @@ import { TokenResizeUI } from '../TokenResizeUI';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import { destroyTree } from '../utils/destroyTree';
 import { restingTokenUIScale } from './tokenSizing';
+import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
 export class UIManager implements ITokenUIManager {
@@ -36,6 +37,7 @@ export class UIManager implements ITokenUIManager {
   /** The canvas shows the players' view (session view, the peek): token UIs draw what players see. */
   private playersView = false;
   private tokenControlsUI?: TokenControlsUI;
+  private readonly selectionBar: { hovered: string | null; active: string | null } = { hovered: null, active: null };
   /** The token whose bars show their +/- buttons, whose wheels make room for them. */
   private barButtonsTokenId: string | null = null;
   private tokenRotationUI?: TokenRotationUI;
@@ -174,6 +176,7 @@ export class UIManager implements ITokenUIManager {
   }
 
   updateSelectionUI(selectedTokenIds: string[]): void {
+    this.markSelectionBars();
     // Update TokenControlsUI based on selection
     if (this.tokenControlsUI) {
       if (selectedTokenIds.length === 1) {
@@ -352,7 +355,7 @@ export class UIManager implements ITokenUIManager {
   syncUIScale(tokenId: string, tokenSize: number): void {
     const ui = this.tokenUIs[tokenId];
     if (ui) {
-      const token = mapTokens(this.store.getState().objects)[tokenId];
+      const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
       if (token && token.kind === 'character') {
         ui.update(token, tokenSize);
       }
@@ -422,6 +425,37 @@ export class UIManager implements ITokenUIManager {
   }
 
   /** Viewport-driven hover state update. Pass null to clear all hover. */
+  /** The resource the pointer is on in a selection of two or more; lights it on every selected token. */
+  public hoverSelectionBar(key: string | null): void {
+    if (this.selectionBar.hovered === key) return;
+    this.selectionBar.hovered = key;
+    this.markSelectionBars();
+  }
+
+  /** The resource whose change for the selection is open; it stays lit until it closes. */
+  public setSelectionBarActive(key: string | null): void {
+    this.selectionBar.active = key;
+    this.markSelectionBars();
+  }
+
+  private markSelectionBars(): void {
+    const { selectedIds } = this.store.getState();
+    const lit = new Set(selectedIds.length > 1 ? selectedIds : []);
+    const key = this.selectionBar.active ?? this.selectionBar.hovered;
+    for (const [tokenId, ui] of Object.entries(this.tokenUIs)) {
+      ui.markResource(lit.has(tokenId) ? key : null, this.selectionBar.active !== null);
+    }
+  }
+
+  /** The key of the resource one of `tokenIds` draws at `point` on the screen, or null. */
+  public resourceAt(tokenIds: readonly string[], point: { x: number; y: number }): string | null {
+    for (const tokenId of tokenIds) {
+      const key = this.tokenUIs[tokenId]?.resourceAt(point);
+      if (key) return key;
+    }
+    return null;
+  }
+
   public setHoverState(tokenId: string | null, modifierKeyDown = false): void {
     const changed = tokenId !== this._prevHoverId;
     const modChanged = modifierKeyDown !== this._prevModifier;
@@ -468,7 +502,7 @@ export class UIManager implements ITokenUIManager {
     // Update all token UIs when settings change
     for (const tokenId in this.tokenUIs) {
       const ui = this.tokenUIs[tokenId];
-      const token = mapTokens(this.store.getState().objects)[tokenId];
+      const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
       if (ui && token && token.kind === 'character') {
         this.updateTokenUI(tokenId, token);
       }
@@ -512,7 +546,7 @@ export class UIManager implements ITokenUIManager {
     }
     const state = this.store.getState();
     for (const tokenId of Object.keys(this.tokenUIs)) {
-      const token = mapTokens(state.objects)[tokenId];
+      const token = mapTokens(levelObjects(state))[tokenId];
       const sprite = this.getTokenSprite(tokenId);
       if (!token || token.kind !== 'character' || !sprite) continue;
       let ui = this.playerTokenUIs[tokenId];

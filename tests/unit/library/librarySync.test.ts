@@ -247,6 +247,32 @@ describe('a second device', () => {
     expect((await b.assets.getAssets('Fen', 'token')).map((token) => [token.id, token.name])).toEqual([['token-1', 'Bog hag']]);
     expect(b.files.has(copy)).toBe(true);
   });
+
+  it('takes the copy along when the user deletes the record, so no device brings it back', async () => {
+    const first = await device(olderVault());
+    const copy = `${FEN}/tokens/token-1 (conflict).json`;
+    await first.app.vault.adapter.write(copy, first.files.get(TOKEN_RECORD)!);
+    await first.assets.reconcileWithVault();
+    expect(first.files.has(copy)).toBe(true);
+
+    await first.assets.deleteAsset('token-1');
+    expect(first.files.has(TOKEN_RECORD)).toBe(false);
+    expect(first.files.has(copy)).toBe(false);
+    const fresh = await device(syncedFiles(first));
+    expect(await fresh.assets.getAssetById('token-1')).toBeNull();
+  });
+
+  it('keeps a copy whose text changed since, which is another device\'s edit to take in', async () => {
+    const first = await device(olderVault());
+    const copy = `${FEN}/tokens/token-1 (conflict).json`;
+    const text = first.files.get(TOKEN_RECORD)!;
+    await first.app.vault.adapter.write(copy, text);
+    await first.assets.reconcileWithVault();
+    first.files.set(copy, text.replace('Bog hag', 'Bog witch'));
+
+    await first.assets.deleteAsset('token-1');
+    expect(first.files.has(copy)).toBe(true);
+  });
 });
 
 describe('a device whose older version adopted art another device has a record for', () => {
@@ -325,5 +351,26 @@ describe('collection folders', () => {
     } finally {
       libraryClock.now = realClock;
     }
+  });
+});
+
+describe('a cached index of another version', () => {
+  it('holds no record of a type this version has no place for, and leaves its file alone', async () => {
+    const a = await device(olderVault());
+    const index = 'atlas-vtt/.atlas-data/assets-metadata.json';
+    const cached = JSON.parse(a.files.get(index)!) as { assets: Record<string, unknown>; libraryState: { files: Record<string, unknown> } };
+    const stray = `${FEN}/strays/stray-1.json`;
+    cached.assets['stray-1'] = { id: 'stray-1', type: 'stray', name: 'Stray', tags: [], collection: 'Fen', createdAt: 1, modifiedAt: 1 };
+    cached.libraryState.files[stray] = { key: 'asset:stray-1', hash: 'x', size: 2, mtime: 1 };
+    a.assets.cancelScheduledChecks();
+
+    AssetService.resetInstance();
+    const b = await device({ ...Object.fromEntries(a.files), [index]: JSON.stringify(cached), [stray]: '{}' });
+    expect((await b.assets.getAssets()).map((asset) => asset.id)).not.toContain('stray-1');
+    await b.assets.reconcileWithVault();
+    await b.assets.createCollection('Hills');
+    expect(b.files.get(stray)).toBe('{}');
+    expect([...b.files.keys()].filter((path) => path.includes('undefined'))).toEqual([]);
+    b.assets.cancelScheduledChecks();
   });
 });

@@ -12,6 +12,7 @@ import { scrollNearEdge } from './autoScroll';
 import type { Box, Point } from './dropGeometry';
 import { ListDragView } from './listDragView';
 import { clampToList, fragmentsOf, gapAt, gapLineOf, isNoMove, slidesFor, type Fragment, type ListItemBoxes } from './listDragGeometry';
+import { swallowNextClick } from '../../../utils/swallowClick';
 
 /** A press becomes a drag after this many pixels (mouse, pen, trackpad). */
 export const DRAG_THRESHOLD = 4;
@@ -208,19 +209,9 @@ export class ListDrag {
       } catch {
         // Already released with the pointer.
       }
-      this.swallowClick();
+      swallowNextClick(this.win);
     }
     if (drop && this.active && this.gap !== null) this.host.onDrop(this.from, this.gap);
     else this.host.onCancel(this.active);
-  }
-
-  /** The click that follows a drag's release on the captured handle is not a click on it: it opens no menu. */
-  private swallowClick(): void {
-    const stop = (event: MouseEvent): void => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
-    this.doc.addEventListener('click', stop, { capture: true, once: true });
-    this.win.setTimeout(() => this.doc.removeEventListener('click', stop, { capture: true }), 0);
   }
 }

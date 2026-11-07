@@ -3,6 +3,7 @@ import { copyRow, textButton } from './controls.ts';
 import { copyText } from './dockDom.ts';
 import type { MenuEntry } from './dockMenu.ts';
 import type { AddedPlayer } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /**
  * A question or a field the GM answers before anything happens: in place of the player's row where it
@@ -77,19 +78,19 @@ export const codePrompt = (player: AddedPlayer): Prompt => ({ kind: 'code', play
 /** "Add player": a name, then the new player's code, shown once. A question not about a player (Stop, a new link) stands here instead. */
 export function addPlayerRow(layer: HTMLElement, actions: AddPlayerActions, redraw: () => void): void {
   if (renderPrompt(layer, redraw)) return;
-  const ask = (): void => openPrompt(layer, namePrompt('add-player', 'Add a player', 'Add', '', (name) => {
+  const ask = (): void => openPrompt(layer, namePrompt('add-player', t('online.addAPlayer'), t('online.add'), '', (name) => {
     const added = actions.addPlayer(name);
     if (added !== null) openPrompt(layer, codePrompt(added), redraw);
     return false;
   }), redraw);
   const row = layer.createDiv({ cls: 'atlas-online-add-player' });
-  textButton(row, 'Add player', ask, 'ghost').dataset.focusKey = 'add-player';
+  textButton(row, t('online.addPlayer'), ask, 'ghost').dataset.focusKey = 'add-player';
 }
 
 /** The "New link" row of a link's menu: it asks first, since the old link stops working. */
 export function linkEntries(layer: HTMLElement, actions: LinkActions, redraw: () => void): MenuEntry[] {
-  const ask = (): void => openPrompt(layer, confirmPrompt('new-link', 'New link', 'The old link stops working. Players need the new one.', 'New link', () => actions.newLink()), redraw);
-  return [{ title: 'New link', icon: 'link', run: ask }];
+  const ask = (): void => openPrompt(layer, confirmPrompt('new-link', t('online.newLink'), t('online.newLinkAsk'), t('online.newLink'), () => actions.newLink()), redraw);
+  return [{ title: t('online.newLink'), icon: 'link', run: ask }];
 }
 
 const playerOf = (prompt: Prompt): string | null => (prompt.kind === 'code' ? null : prompt.playerId);
@@ -139,7 +140,7 @@ function confirmRow(parent: HTMLElement, prompt: ConfirmPrompt, close: () => voi
   text.appendText(before ?? '');
   if (prompt.name !== null) text.createEl('bdi', { text: prompt.name });
   text.appendText(after ?? '');
-  textButton(row, 'Cancel', close, 'ghost').dataset.focusKey = `${prompt.key}-cancel`;
+  textButton(row, t('online.cancel'), close, 'ghost').dataset.focusKey = `${prompt.key}-cancel`;
   const answer = textButton(row, prompt.confirm, () => {
     close();
     prompt.run();
@@ -150,9 +151,9 @@ function confirmRow(parent: HTMLElement, prompt: ConfirmPrompt, close: () => voi
 
 function nameRow(parent: HTMLElement, prompt: NamePrompt, close: () => void, inRow: boolean): void {
   const row = promptRow(parent, 'atlas-online-prompt', prompt.label, inRow);
-  const field = row.createEl('input', { cls: 'atlas-online-prompt__input', attr: { type: 'text', 'aria-label': 'Name', 'data-focus-key': `${prompt.key}-name` } });
+  const field = row.createEl('input', { cls: 'atlas-online-prompt__input', attr: { type: 'text', 'aria-label': t('online.name'), 'data-focus-key': `${prompt.key}-name` } });
   field.value = prompt.draft;
-  textButton(row, 'Cancel', close, 'ghost').dataset.focusKey = `${prompt.key}-cancel`;
+  textButton(row, t('online.cancel'), close, 'ghost').dataset.focusKey = `${prompt.key}-cancel`;
   const submit = (): void => {
     const name = playerName(field.value);
     if (name !== null && prompt.run(name)) close();
@@ -172,13 +173,15 @@ function nameRow(parent: HTMLElement, prompt: NamePrompt, close: () => void, inR
 
 /** A new player's code, shown once, with the way to copy it. */
 function codeRows(layer: HTMLElement, player: AddedPlayer, close: () => void): void {
-  const block = layer.createDiv({ cls: 'atlas-online-prompt atlas-online-prompt--code', attr: { role: 'group', 'aria-label': 'Code of the new player' } });
+  const block = layer.createDiv({ cls: 'atlas-online-prompt atlas-online-prompt--code', attr: { role: 'group', 'aria-label': t('online.newPlayerCode') } });
   const label = block.createDiv({ cls: 'atlas-online-group-label' });
+  const [before = '', after = ''] = t('online.joinsWith', { name: '{name}' }).split('{name}');
+  label.appendText(before);
   label.createEl('bdi', { text: player.name });
-  label.appendText(' joins with');
+  label.appendText(after);
   const shown = shownJoinCode(player.code);
-  copyRow(block, { icon: 'key-round', text: `Code ${shown}`, copied: 'Code copied', focusKey: 'prompt-copy' }, () => copyText(layer, shown)).addClass('atlas-online-code-row');
-  const done = textButton(block, 'Done', close, 'cta');
+  copyRow(block, { icon: 'key-round', text: t('online.codeShown', { code: shown }), copied: t('online.codeCopied'), focusKey: 'prompt-copy' }, () => copyText(layer, shown)).addClass('atlas-online-code-row');
+  const done = textButton(block, t('online.done'), close, 'cta');
   done.dataset.focusKey = 'prompt-done';
   done.addClass('atlas-online-corner-button');
 }

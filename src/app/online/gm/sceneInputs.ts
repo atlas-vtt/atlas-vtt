@@ -11,11 +11,14 @@ import { heldForSight } from '../../lighting/sightOnDrop';
 import type { TokenEntity } from '../../types';
 import type { FogOperation } from '../../types/fogTypes';
 import type { WallSegment } from '../../types/wallTypes';
+import type { LightEmission } from '../../types/lightingTypes';
 import { tokenEffects, type SightRules } from '../../vision/sightRules';
 import { tokenSenses } from '../../vision/tokenSenses';
 import { wallList } from '../../vision/wallList';
 import type { SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
+import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
+import { sceneHasVision } from '../../vision/tokenSightPolicy';
 import { mapTokens } from '../../tokens/offMap';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
@@ -56,7 +59,7 @@ export function sharedWall(wall: WallSegment): SharedWall {
   const door = wall.type === 'door' || (wall.type === 'secret-door' && !closed) ? { door: closed ? 'closed' as const : 'open' as const } : {};
   return {
     p: [wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y], ...door,
-    ...(wall.direction && { direction: wall.direction }), ...(wall.blocks && { blocks: wall.blocks }), ...(wall.limited === true && { limited: true as const }),
+    ...(wall.direction && { direction: wall.direction }), ...((wall.blocks === 'sight' || wall.blocks === 'light') && { blocks: wall.blocks }), ...(wall.limited === true && { limited: true as const }),
   };
 }
 
@@ -66,8 +69,9 @@ export function sharedLightingScene(state: SceneState, rules: SightRules, measur
   return {
     cellSize,
     unitDistance,
-    walls: wallList(state.objects.walls).map(sharedWall),
-    zones: lightZoneList(state.objects.lightZones).map((zone) => ({
+    // A window stops a token and nothing players see by, so their lighting never gets it.
+    walls: wallList(levelObjects(state).walls).filter((wall) => wall.blocks !== 'movement').map(sharedWall),
+    zones: lightZoneList(levelObjects(state).lightZones).map((zone) => ({
       polygon: zone.polygon.flatMap((corner) => [corner.x, corner.y]), ambient: zone.ambient, ...(zone.ambientColor && { colour: zone.ambientColor }),
     })),
     senses: rules.definitions.map((definition): JsonRecord => ({ ...definition })),
@@ -114,15 +118,25 @@ function sightToken(token: TokenEntity, inputs: SightInputs): SightToken | null 
     size: finite(token.size) && token.size > 0 ? token.size : 1,
     ...(finite(token.rotation) && { rotation: token.rotation }),
     ...(vision && { vision: sharedVision({ ...token, vision }, inputs.rules) }),
-    ...(light && { light: { ...light } }),
+    ...(light && { light: sharedEmission(light) }),
     ...(effects.length > 0 && { effects }),
   };
+}
+
+/**
+ * A light's emission as players get it, a slow smoulder as a pulse, which every player page draws
+ * (one that does not know an animation stops on it). The players' page knows no area lights yet:
+ * a placed area light goes out as a light at its middle, its area left out.
+ */
+// ponytail: share `area` once the players' page draws area lights; until then lava lights its room from its middle there.
+function sharedEmission(emission: LightEmission): JsonRecord {
+  return emission.animation === 'smoulder' ? { ...emission, animation: 'pulse' } : { ...emission };
 }
 
 /** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on, its tokens and the held ones. */
 export function sharedSight(inputs: SightInputs): SharedSight {
   const { state } = inputs;
-  const every = Object.values(mapTokens(state.objects)).flatMap((token) => {
+  const every = Object.values(mapTokens(levelObjects(state))).flatMap((token) => {
     const entry = sightToken(token, inputs);
     return entry === null ? [] : [{ entry, id: token.id }];
   });
@@ -132,13 +146,14 @@ export function sharedSight(inputs: SightInputs): SharedSight {
   const held = Object.entries(heldForSight(state)).flatMap(([id, at]) => (sent.has(id) && finite(at.x) && finite(at.y) ? [{ id: inputs.tokenAlias(id), x: roundPlace(at.x), y: roundPlace(at.y) }] : []));
   return {
     lighting: { ...state.lighting },
-    lights: lightList(state.objects.lights).filter((light) => light.hidden !== true).map((light) => ({
-      id: inputs.lightAlias(light.id), x: light.x, y: light.y, emission: { ...light.emission },
+    lights: lightList(levelObjects(state).lights).filter((light) => light.hidden !== true).map((light) => ({
+      id: inputs.lightAlias(light.id), x: light.x, y: light.y, emission: sharedEmission(light.emission),
       ...(finite(light.rotation) && { rotation: light.rotation }), ...(finite(light.activeBelowAmbient) && { activeBelowAmbient: light.activeBelowAmbient }),
     })),
     tokens: tokens.map(({ entry }) => entry),
     held,
-    // Every vision token hidden: the players' sight is none, not all (`selectSight`).
-    ...(!every.some(({ entry }) => entry.vision) && Object.values(mapTokens(state.objects)).some((token) => token.vision?.enabled === true) && { blind: true as const }),
+    // No vision token players get while the scene has one (every one hidden, or on another floor): the players'
+    // sight is none, not all (`selectSight`, `computeSight`).
+    ...(!every.some(({ entry }) => entry.vision) && sceneHasVision(mapTokens(everyLevelObjects(state))) && { blind: true as const }),
   };
 }

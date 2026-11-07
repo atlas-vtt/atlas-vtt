@@ -19,6 +19,8 @@ export interface TableEvents {
   message(from: string, body: unknown): void;
   /** The table closes at `closesAt` (the relay's clock) because its account may no longer host; null: it does not, said by the relay or by a welcome. */
   access(closesAt: number | null): void;
+  /** The table's answer to a time exchange. */
+  time?(t1: number, t2: number): void;
 }
 
 /** The table's gates as the connection needs them: what the relay is told, and what it says back. */
@@ -91,6 +93,8 @@ export class TableConnection {
   private readonly players = new Set<string>();
   /** Whether the relay said in its last welcome that it takes `sends` frames. */
   private batching = false;
+  /** Whether the relay said in its last welcome that it answers time exchanges. */
+  private clockOffered = false;
   /** The campaign's players the relay is told on every welcome, as JSON; null while the table names none. */
   private roster: string | null = null;
 
@@ -148,13 +152,30 @@ export class TableConnection {
     return this.lastClose;
   }
 
+  /** Hears every game message that goes out (not the live lane's), as JSON, with whom it goes to: what was handed to whom. */
+  onSent: ((text: string, to: string) => void) | null = null;
+
   /** Sends a game message to one player, or to all. */
   send(body: GmMessage, to: string = ALL_PLAYERS): void {
     if (this.isGone(to)) return;
-    for (const part of messageParts(body, partId)) {
+    const parts = messageParts(body, partId);
+    for (const part of parts) {
       const entry = JSON.stringify({ to, body: part });
       this.queue.push(sendFrame(entry), to, entry);
+      if (parts.length === 1) this.onSent?.(entry, to);
     }
+    // A message in parts carries its JSON in base64: it is heard as it was written.
+    if (parts.length > 1) this.onSent?.(JSON.stringify(body), to);
+  }
+
+  /**
+   * Sends one time exchange, past the queue, so nothing it waits behind counts as the network's; false
+   * where it cannot go, or where the relay would not understand it.
+   */
+  sendTime(t1: number): boolean {
+    if (!this.clockOffered || this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN) return false;
+    this.socket.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'time', t1 }));
+    return true;
   }
 
   /** Whether the relay takes `sends` frames, as its last welcome said. */
@@ -269,6 +290,7 @@ export class TableConnection {
       if (this.gate !== null) socket.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'gate', ...this.gate.frame() }));
       if (this.roster !== null) socket.send(this.playersFrame(this.roster));
       this.batching = frame.batch === true;
+      this.clockOffered = frame.clock === true;
       this.queue.attach(this.pulse.start(socket), this.batching);
       this.setStatus('online');
       // A table that still closes for want of access says so again after its welcome.
@@ -279,6 +301,7 @@ export class TableConnection {
     else if (frame.t === 'knock-gone') this.gate?.gone(frame.id, frame.full === true);
     else if (frame.t === 'gate-paused') this.gate?.paused(frame.until);
     else if (frame.t === 'access') this.events.access(frame.closesAt);
+    else if (frame.t === 'time') this.events.time?.(frame.t1, frame.t2);
     else if (frame.t === 'player-joined') {
       this.players.add(frame.id);
       this.events.joined({ id: frame.id, name: frame.name });

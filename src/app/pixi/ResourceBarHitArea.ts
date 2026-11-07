@@ -34,7 +34,7 @@ export class ResourceBarHitArea extends Graphics {
     this.active = false;
   }
 
-  private setHovered(hovered: boolean): void {
+  setHovered(hovered: boolean): void {
     this.hovered = hovered;
     this.redraw();
   }

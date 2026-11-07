@@ -1,0 +1,241 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Dungeon generator – the layer over the map and the wizard's panel
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Fills the Atlas view: Obsidian gives every `.workspace-leaf` `contain: strict`, which makes the
+// leaf the box of `position: fixed`. The map's UI layer lets presses through to the canvas
+// (`pointer-events: none`), so the layer takes them back: a press beside the wizard closes it.
+.atlas-dungeon-generator-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: auto;
+  outline: none;
+}
+
+.atlas-dungeon-generator-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.14);
+}
+
+// Placed by `wizardLayout` (left and top inline).
+$wizard-height: 600px;
+
+.atlas-dungeon-wizard {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  // One height for every step, so the panel never changes size on the way; never taller than the
+  // view (WIZARD_MARGIN on either side). A step taller than the body scrolls inside it.
+  height: min(#{$wizard-height}, calc(100% - 32px));
+  overflow: hidden;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  outline: none;
+}
+
+// The steps as marks, where the wizard is, and the close button $close-button-gap from the corner.
+.atlas-dungeon-wizard__header {
+  display: flex;
+  flex-shrink: 0;
+  gap: $spacing-s;
+  @include atlas-close-header($spacing-l);
+}
+
+.atlas-dungeon-wizard__progress {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  > li {
+    display: flex;
+  }
+}
+
+// A dot per step, the current one stretched into a short bar; a press goes to that step.
+.atlas-dungeon-wizard__mark {
+  position: relative;
+  width: 8px;
+  min-width: 0;
+  height: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: $radius-full;
+  background: var(--background-modifier-border-hover);
+  box-shadow: none;
+  cursor: pointer;
+  transition: width $transition-normal $transition-ease-out, background-color $transition-normal $transition-ease;
+
+  // A wider target than the dot.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -6px -3px;
+  }
+
+  &:hover {
+    background: var(--text-faint);
+  }
+
+  &.is-done {
+    background: color-mix(in oklch, var(--interactive-accent) 50%, transparent);
+  }
+
+  &.is-current {
+    width: 22px;
+    background: var(--interactive-accent);
+  }
+
+  @include atlas-focus-ring;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.atlas-dungeon-wizard__count {
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+// Fills what header and footer leave; a step taller than it scrolls, under a scrollbar that takes
+// no room (`OverlayScroll`, over the inline-end padding) and shows only while it scrolls.
+.atlas-dungeon-wizard__body {
+  flex: 1;
+}
+
+.atlas-dungeon-wizard__scroll {
+  // The steps slide across inside it; the one leaving is laid over the one coming.
+  position: relative;
+  padding-inline: $spacing-l;
+  overflow-x: hidden;
+}
+
+.atlas-dungeon-wizard__body:hover:not(:has(> [data-scrolling])) > .atlas-overlay-scroll__track:not([data-dragging]) > .atlas-overlay-scroll__thumb:not(:hover) {
+  opacity: 0;
+}
+
+.atlas-dungeon-wizard__step {
+  @include atlas-flex-col($gap: $spacing-m);
+  // The focus rings of the controls at its edges stay in sight.
+  padding-block: $spacing-xs;
+}
+
+.atlas-dungeon-wizard__title {
+  margin: 0;
+  font-size: calc(#{$font-ui-medium} + 2px);
+  font-weight: $font-weight-semibold;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.atlas-dungeon-wizard__footer {
+  @include atlas-flex-col($gap: $spacing-s);
+  flex-shrink: 0;
+  padding: $spacing-l;
+}
+
+.atlas-dungeon-wizard__problem {
+  margin: 0;
+  color: var(--text-error);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-dungeon-wizard__nav {
+  @include atlas-flex-row($gap: $spacing-s);
+  justify-content: space-between;
+
+  > .btn {
+    gap: $spacing-xs;
+  }
+
+  // Next and Create scene sit in the panel's corner: concentric with it.
+  > .btn:last-child {
+    @include atlas-panel-inset-radius($spacing-l, bottom-right);
+  }
+}
+
+// Back keeps its place on the first step, so Next never moves.
+.atlas-dungeon-wizard__back--hidden {
+  visibility: hidden;
+}
+
+.atlas-dungeon-wizard .atlas-spin {
+  animation: atlas-spin 700ms linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 1.4s;
+  }
+}
+
+// ── Theme ───────────────────────────────────────────────────────────────────
+// Two picture cards a row (`_cards.scss`), each the dungeon in its theme, drawn by the worker at the
+// art's device pixels (`useThemePreviews`).
+
+.atlas-dungeon-themes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $spacing-s;
+}
+
+// The map fills its card; Surprise me's three share one, each a slice from its middle.
+.atlas-dungeon-theme__picture {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+
+  > canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  > canvas[hidden] {
+    display: none;
+  }
+}
+
+.atlas-dungeon-theme__skeleton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+// Which theme Surprise me picked, on its picture's top.
+.atlas-dungeon-theme__picked {
+  position: absolute;
+  top: $spacing-s;
+  left: $spacing-s;
+  z-index: 1;
+  @include atlas-truncate;
+  max-width: calc(100% - 2 * #{$spacing-s});
+  padding: 2px $spacing-s;
+  border-radius: $radius-full;
+  background: color-mix(in oklch, var(--background-primary) 85%, transparent);
+  box-shadow: $shadow-md;
+  color: var(--text-normal);
+  font-size: $font-ui-smaller;
+  white-space: nowrap;
+}
+
+// ── Style ───────────────────────────────────────────────────────────────────
+
+.atlas-dungeon-wizard__style {
+  @include atlas-flex-col($gap: $spacing-m);
+}

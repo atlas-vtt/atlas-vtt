@@ -9,6 +9,7 @@ import type { TreeEdit, TreeRefusal } from '../../model/treeEdit';
 import type { StatblockTemplate, TemplateLayout } from '../../model/templateTypes';
 import type { BlockSelection } from './selection';
 import type { EditorSession, SessionSnapshot } from './sessionTypes';
+import { t } from '../../../i18n';
 
 /** What an editor action leaves behind: the selection, and what to say about it. */
 export interface EditOutcome {
@@ -25,21 +26,21 @@ export const NOTHING: EditOutcome = {};
 /** Why a template cannot be changed (one from a newer Atlas), in the words the editor says it; null for an editable one. */
 export function readOnlyMessage(snapshot: Pick<SessionSnapshot, 'readOnly'>): string | null {
   if (!snapshot.readOnly) return null;
-  return 'Update Atlas to edit this template.';
+  return t('templateEditor.updateToEdit');
 }
 
 /** Why a part of the header stays where it is. */
-export const HEADER_MESSAGE = 'The header stays as it is: rename its parts, or hide the ones your system has no use for.';
+export const HEADER_MESSAGE = t('templateEditor.headerStays');
 
 /** A refused edit in plain words, where the refusal is one the user can act on. */
 export function refusalMessage(reason: TreeRefusal): string | null {
   switch (reason) {
-    case 'not-allowed-here': return "That block can't go there.";
+    case 'not-allowed-here': return t('templateEditor.edit.notHere');
     case 'header': return HEADER_MESSAGE;
-    case 'not-siblings': return 'Select blocks that stand in the same place.';
-    case 'not-adjacent': return 'Select blocks that stand next to each other.';
-    case 'cannot-turn-into': return "This block can't turn into that.";
-    case 'not-a-container': return 'Select a section or row first.';
+    case 'not-siblings': return t('templateEditor.edit.notSiblings');
+    case 'not-adjacent': return t('templateEditor.edit.notAdjacent');
+    case 'cannot-turn-into': return t('templateEditor.edit.cannotTurn');
+    case 'not-a-container': return t('templateEditor.edit.notContainer');
     default: return null;
   }
 }

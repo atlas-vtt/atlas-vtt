@@ -12,4 +12,10 @@ export const vision: Translation = {
   'vision.carriedLight': 'Носимый свет',
   'vision.carryLight': 'Нести свет',
   'vision.defaultsIntro': 'Новые токены получают эти значения; само зрение остаётся выключенным, пока вы не включите его у токена.',
+  'vision.partyMember': 'Зрение (член отряда)',
+  'vision.partyMemberHint': 'Игроки видят карту через этот токен. Сам токен им всегда виден.',
+  'vision.carriesLight': 'Несёт свет',
+  'vision.carriesLightHint': 'Факел или фонарь: свет движется вместе с токеном.',
+  'vision.noneFromStatblock': 'Нет, из статблока',
+  'vision.rangeFromStatblock': '{range}, из статблока',
 };

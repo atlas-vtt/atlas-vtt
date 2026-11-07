@@ -9,8 +9,9 @@ import type { TokenEntity } from '../../types';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import type { TokenPerception } from '../../vision/tokenPerception';
+import { MapController } from '../../MapController';
 import { field } from './atlasLighting.ts';
-import { call } from './atlasView.ts';
+import { call, type SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
 
 /** Atlas's default token diameter, which the players' outlines take for a sprite that names none. */
@@ -104,4 +105,17 @@ export function rulesLookupOf(view: unknown): RulesLookup | null {
     getCollectionSettings: (collectionId) => collections.getCollectionSettings(collectionId),
     playedSystem: () => (typeof app === 'object' && app !== null ? PlayedRules.forApp(app)?.played() ?? null : null),
   };
+}
+
+/**
+ * Whether the renderer's picture is of the level its view shows now: that level's map image has
+ * loaded and its lighting's sight is the scene's (`sightIsCurrent`). After the GM switches levels both
+ * take a moment; until then the players' picture of that level is worked out without the renderer.
+ */
+export function showsViewedLevel(renderer: unknown, state: SceneState): boolean {
+  const lighting = field(field(renderer, 'lighting'), 'renderer');
+  const current = field(lighting, 'sightIsCurrent');
+  if (typeof current === 'function' && (current as () => boolean).call(lighting) !== true) return false;
+  const mapImage = call(renderer, 'getMapImage');
+  return MapController.showsViewedLevel((mapImage ?? null) as Parameters<typeof MapController.showsViewedLevel>[0], state);
 }

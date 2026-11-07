@@ -4,6 +4,7 @@ import type { EntryExtraShape } from '../../model/templateTypes';
 import { choiceText, newPick, optionsLeft, readChoice, type ChoiceShape } from '../../values/choicePicks';
 import { useOptionList, type ChoiceOption } from './ChoiceOptionList';
 import { ChipRemove, UnreadChip } from './PaneChips';
+import { t } from '../../../i18n';
 
 /** Marks the input of each part, which Enter steps through after the name. */
 export const ENTRY_PART_CONTROL = 'data-entry-control';
@@ -87,7 +88,7 @@ function PartChoiceInput({ extra, labelId, text, onChange }: PartInputProps): Re
   const options = [NONE, ...(extra.options ?? []).map((option) => ({ value: option, label: option }))];
   const { list, inputRef, inputProps, boxProps } = usePartList(extra.label, options, onChange);
   return (
-    <span className="atlas-sb-pane-field atlas-sb-pane-choice atlas-sb-pane-entry__control" {...boxProps}>
+    <span ref={list.anchorRef} className="atlas-sb-pane-field atlas-sb-pane-choice atlas-sb-pane-entry__control" {...boxProps}>
       <input
         {...CONTROL}
         ref={inputRef}
@@ -127,13 +128,13 @@ function PartPicksInput({ extra, labelId, text, onChange }: PartInputProps): Rea
       {read.picks.map((pick, index) => (
         <span key={`${pick.option}-${index}`} className="atlas-sb-pane-chip atlas-sb-pane-pick">
           <span className="atlas-sb-pane-chip__text">{pick.option}</span>
-          <ChipRemove label={`Remove ${pick.option}`} onRemove={() => removePick(index)} />
+          <ChipRemove label={t('statblockEditor.removeNamed', { name: pick.option })} onRemove={() => removePick(index)} />
         </span>
       ))}
       {read.unread.map((part, index) => (
         <UnreadChip key={`unread-${part}-${index}`} part={part} onRemove={() => removeUnread(index)} />
       ))}
-      <span className="atlas-sb-pane-pick__add">
+      <span ref={list.anchorRef} className="atlas-sb-pane-pick__add">
         <input
           {...CONTROL}
           ref={inputRef}

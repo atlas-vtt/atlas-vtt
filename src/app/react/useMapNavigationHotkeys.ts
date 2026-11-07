@@ -8,16 +8,27 @@ import { addTokenHighlight } from '../pixi/utils/tokenHighlight';
 import type { SettingsService } from '../services/SettingsService';
 import type { ViewAtlasStore } from '../storeFactory';
 import { mapTokens } from '../tokens/offMap';
-import { useViewWindow } from './useViewWindow';
+import { viewedLevelId } from '../levels/sceneLevels';
+import { levelObjects } from '../levels/levelObjects';
+
+/** Shows the level `step` places above (1) or below (-1) the one shown; nothing past the top or bottom floor. */
+function stepLevel(store: ViewAtlasStore, step: 1 | -1): void {
+  const state = store.getState();
+  const levels = state.levels ?? [];
+  const next = levels[levels.findIndex((level) => level.id === viewedLevelId(state)) + step];
+  if (levels.length > 1 && next) state.setViewedLevel(next.id);
+}
 
 /** Map navigation keyboard shortcuts (Shift+1: fit map, Shift+2: zoom to selected token). */
 export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlasStore, settings: SettingsService | undefined): void {
-  const win = useViewWindow(view?.containerEl);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (!canRunMapHotkeys(e, view?.viewId)) return;
 
-      if (matchesMapHotkey(e, 'fitMap', settings)) {
+      if (!store.getState().isPlayerView && (matchesMapHotkey(e, 'levelUp', settings) || matchesMapHotkey(e, 'levelDown', settings))) {
+        e.preventDefault();
+        stepLevel(store, matchesMapHotkey(e, 'levelUp', settings) ? 1 : -1);
+      } else if (matchesMapHotkey(e, 'fitMap', settings)) {
         // Shift+1: Fit entire map in view with smooth animation
         e.preventDefault();
         const vp = view?.renderer?.getViewportInstance?.();
@@ -36,11 +47,12 @@ export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlas
       } else if (matchesMapHotkey(e, 'fitToken', settings)) {
         // Shift+2: Zoom to selected token with smooth animation
         e.preventDefault();
-        const { selectedIds, objects, grid } = store.getState();
-        const tokenId = selectedIds[0];
+        const state = store.getState();
+        const tokenId = state.selectedIds[0];
         if (tokenId === undefined) return;
 
-        const token = mapTokens(objects)[tokenId];
+        const token = mapTokens(levelObjects(state))[tokenId];
+        const { grid } = state;
         if (!token || !view) return;
 
         const vp = view?.renderer?.getViewportInstance?.();
@@ -53,7 +65,7 @@ export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlas
       }
     };
 
-    win.addEventListener('keydown', handleKeyDown);
-    return () => win.removeEventListener('keydown', handleKeyDown);
-  }, [view, store, settings, win]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [view, store, settings]);
 }

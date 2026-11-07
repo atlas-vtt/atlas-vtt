@@ -184,6 +184,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
       />
       {/* The card never shows the upload itself: its place is held until the converted image is there. */}
       {preview.isOptimizing && <Skeleton className="atlas-token-card__pending" live />}
+      {preview.refused !== undefined && <p className="atlas-token-card__refused" role="alert">{preview.refused}</p>}
       {isCropEditable && <><div className="atlas-token-card__mask" /><img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" /></>}
 
       <LabelTooltip label={t('creator.select', { name: preview.name })}>

@@ -42,24 +42,32 @@ async function shared(state: State, dock: 'left' | 'right' = 'right'): Promise<{
 }
 
 describe('the look-alike numbers on the online players\' list', () => {
-  it('are the numbers the players\' own picture gives the tokens they see', async () => {
+  it('are the GM\'s numbers of the tokens they see', async () => {
     const { list, badges } = await shared(fight({ g1: goblin('g1', 1), g2: goblin('g2', 2) }));
     expect(list.combatants.map((combatant) => combatant.instance)).toEqual([1, 2]);
     expect(badges).toEqual([1, 2]);
   });
 
-  it('never let a hidden look-alike take or give away a number', async () => {
-    // The GM numbers them 1, 2, 3; players see the first and the third and number them 1 and 2
+  it('keep the GM\'s number on a token whose look-alike is hidden, which shows them none', async () => {
+    // The GM numbers them 1, 2, 3; players see the first and the third, numbered as the GM numbers them
     const { list, badges } = await shared(fight({ g1: goblin('g1', 1), g2: goblin('g2', 2, { isHidden: true }), g3: goblin('g3', 3) }));
-    expect(list.combatants.map((combatant) => [combatant.name, combatant.instance])).toEqual([['g1', 1], ['g3', 2]]);
-    expect(badges).toEqual([1, 2]);
-    // Alone in their view a look-alike shows no badge at all
+    expect(list.combatants.map((combatant) => [combatant.name, combatant.instance])).toEqual([['g1', 1], ['g3', 3]]);
+    expect(badges).toEqual([1, 3]);
+    // Alone in their view a look-alike still shows the GM's number
     const alone = await shared(fight({ g1: goblin('g1', 1), g2: goblin('g2', 2, { isHidden: true }) }));
-    expect(alone.list.combatants.map((combatant) => combatant.instance)).toEqual([undefined]);
-    expect(alone.badges).toEqual([null]);
+    expect(alone.list.combatants.map((combatant) => combatant.instance)).toEqual([1]);
+    expect(alone.badges).toEqual([1]);
   });
 
-  it('count a combatant beside the map the players\' list shows, as Atlas\'s player window does', async () => {
+  it('show none where the GM\'s map shows none: one token of its art, or badges off', async () => {
+    const single = await shared(fight({ g1: goblin('g1', 1) }));
+    expect(single.badges).toEqual([null]);
+    const off = fight({ g1: goblin('g1', 1), g2: goblin('g2', 2) });
+    const { badges } = await shared({ ...off, tokenSettings: { showInstanceBadges: false } } as State);
+    expect(badges).toEqual([null, null]);
+  });
+
+  it('give a combatant beside the map the players\' list shows the GM\'s number, as Atlas\'s player window does', async () => {
     const { list, badges } = await shared(fight({ g1: goblin('g1', 1), g2: goblin('g2', 2, { offMap: true } as Partial<TokenEntity>) }));
     expect(list.combatants.map((combatant) => combatant.instance)).toEqual([1, 2]);
     expect(badges).toEqual([1]);

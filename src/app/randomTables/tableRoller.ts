@@ -2,7 +2,8 @@
  * Rolling on a table: its die looked up in its rows' ranges, or a pick by the
  * rows' weights where it has no die. Several draws may repeat a row, or not:
  * without repeats a drawn row is out of the table, and the die is rolled again
- * on its numbers, until the table is spent. Pure.
+ * on its numbers, until the table is spent. Rows can be out of the table from the
+ * start (a row that rolls its own table again). Pure.
  */
 
 import { dieOdds, drawFromOdds, rollDie } from './dieOdds';
@@ -20,6 +21,8 @@ export interface TableRollOptions {
   count: number;
   /** Never the same row twice; stops when every row has come up. */
   noRepeats?: boolean;
+  /** Rows that never come up, their numbers rolled again as drawn rows' are without repeats. */
+  exclude?: ReadonlySet<TableRow>;
   random?: () => number;
 }
 
@@ -70,9 +73,9 @@ function pickByWeight(rows: readonly TableRow[], drawn: ReadonlySet<TableRow>, r
 }
 
 /** `count` draws from the table, fewer when it is spent without repeats. */
-export function rollTable(table: RandomTable, { count, noRepeats = false, random = Math.random }: TableRollOptions): TableDraw[] {
+export function rollTable(table: RandomTable, { count, noRepeats = false, exclude, random = Math.random }: TableRollOptions): TableDraw[] {
   const draws: TableDraw[] = [];
-  const drawn = new Set<TableRow>();
+  const drawn = new Set<TableRow>(exclude);
   const die = table.hasRollColumn ? table.die : null;
   for (let i = 0; i < Math.min(count, TABLE_LIMITS.results); i++) {
     const draw = die ? rollWithDie(table, die, drawn, random) : (() => {

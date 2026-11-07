@@ -2,10 +2,14 @@ import { TokenCreatorModal } from '../packages/components/asset-manager/token-cr
 import { Plugin, TFile } from 'obsidian';
 import { AtlasView } from '../atlas-view';
 import { DASHBOARD_VIEW_TYPE } from '../dashboard-view';
+import { showDungeonGenerator } from '../packages/components/dungeon-generator/openDungeonGenerator';
 import { t } from '../i18n';
 import type { GlobalAssetManagerService } from '../services/GlobalAssetManagerService';
 import type { ImageDisplayService } from '../services/ImageDisplayService';
 import { openPlayerWindow, presentActiveTab } from '../services/PlayerWindowPresenter';
+import { PlayerWindowService } from '../services/PlayerWindowService';
+import { fullScreenAvailable, isPlayerWindowFullScreen, refreshPlayerWindowDisplay, setPlayerWindowFullScreen } from '../services/playerWindowDisplay';
+import { playerWindowStore } from '../stores/playerWindowStore';
 import { hasBestiaryFrontmatter } from '../services/statblockNoteSource';
 import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
 import { cleanupMissingAssets } from './cleanupMissingAssets';
@@ -79,6 +83,31 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
     callback: () => void openPlayerWindow(plugin.app),
   });
 
+  plugin.addCommand({
+    id: 'toggle-player-window-full-screen',
+    name: t('player.toggleFullScreen'),
+    checkCallback: (checking) => {
+      if (!fullScreenAvailable()) return false;
+      refreshPlayerWindowDisplay();
+      const fullScreen = isPlayerWindowFullScreen();
+      // Full screen on the GM's only display would cover Obsidian; leaving it is always offered
+      if (!fullScreen && !playerWindowStore.getState().secondDisplay) return false;
+      if (!checking) void setPlayerWindowFullScreen(!fullScreen);
+      return true;
+    },
+  });
+
+  plugin.addCommand({
+    id: 'toggle-player-window-curtain',
+    name: t('playerBar.toggleCurtain'),
+    checkCallback: (checking) => {
+      const service = PlayerWindowService.getInstance();
+      if (!service?.isWindowOpen()) return false;
+      if (!checking) service.setCurtain(!service.isCurtained());
+      return true;
+    },
+  });
+
   plugin.addRibbonIcon('monitor', t('command.displayImageOnPlayerView'), () => {
     const file = workspace.getActiveFile();
     if (file && isImageFile(file)) {
@@ -96,6 +125,12 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     id: 'open-dashboard',
     name: t('command.openDashboard'),
     callback: () => void openDashboard(plugin),
+  });
+
+  plugin.addCommand({
+    id: 'generate-dungeon',
+    name: t('command.generateDungeon'),
+    callback: () => runInBackground(showDungeonGenerator(plugin.app), 'Opening the dungeon generator'),
   });
 
   plugin.addCommand({

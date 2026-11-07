@@ -3,12 +3,17 @@ import type { MapFile } from './services/MapPersistence';
 import { migrateMapFile, parseSceneFile } from './services/MapPersistence';
 import { SceneFileError } from './services/sceneFileProblems';
 import { AssetValidationService, type MissingAsset } from './services/AssetValidationService';
-import type { MapImageSource } from './pixi/mapImage/mapImageTypes';
+import type { MosaicCanvasSource } from './pixi/mosaicCanvas/mosaicCanvasTypes';
+import { resolveLevel } from './levels/sceneLevels';
+import { levelBackground } from './levels/levelEdits';
+import { isVideoMapPath } from './pixi/mosaicCanvas/video/videoMapFiles';
 
 export interface LoadedMap {
   mapData: MapFile;
-  /** What the scene shows under its tokens; nothing of it is decoded yet. */
-  image: MapImageSource;
+  /** What the scene shows under its tokens on `level`; nothing of it is decoded yet. */
+  image: MosaicCanvasSource;
+  /** The level shown: the one asked for where the scene has it, else the first; null for a scene without levels. */
+  level: string | null;
   missingAssets?: MissingAsset[]; // Track missing assets for reporting
 }
 
@@ -16,17 +21,17 @@ export interface LoadedMap {
 const EMPTY_MAP_CELLS = 20;
 
 /**
- * What a scene whose background is `background` shows: the image file, the
- * missing-image placeholder when the file is gone, or an empty world of 20 × 20
+ * What a scene whose background is `background` shows: the image file, the video
+ * of an animated map, the missing-image placeholder when the file is gone, or an empty world of 20 × 20
  * cells without a background.
  */
-export function mapImageSourceFor(app: App, background: string | null | undefined, gridSize: number | undefined): MapImageSource {
+export function mapImageSourceFor(app: App, background: string | null | undefined, gridSize: number | undefined): MosaicCanvasSource {
   if (!background) {
     const side = (gridSize || 70) * EMPTY_MAP_CELLS;
     return { kind: 'none', width: side, height: side };
   }
   const file = app.vault.getAbstractFileByPath(normalizePath(background));
-  if (file instanceof TFile) return { kind: 'file', file };
+  if (file instanceof TFile) return isVideoMapPath(file.path) ? { kind: 'video', file } : { kind: 'file', file };
   console.error(`[MapLoader] Background image not found: ${background}`);
   return { kind: 'placeholder' };
 }
@@ -36,7 +41,8 @@ export function mapImageSourceFor(app: App, background: string | null | undefine
  * All vault / IO logic lives here so AtlasView remains an orchestrator only.
  */
 export class MapLoader {
-  static async load(app: App, mapFilePath: string): Promise<LoadedMap> {
+  /** Reads the scene at `mapFilePath` and finds the map image of `level` (unset: the first). */
+  static async load(app: App, mapFilePath: string, level?: string): Promise<LoadedMap> {
     const assetValidationService = new AssetValidationService({ app });
     // Read and parse the map JSON file from the vault
     const file = app.vault.getAbstractFileByPath(normalizePath(mapFilePath));
@@ -60,9 +66,11 @@ export class MapLoader {
       assetValidationService.showMissingAssetsNotice(validationResult.missingAssets);
     }
 
+    const shownLevel = resolveLevel(mapData.levels, level ?? mapData.viewedLevel);
     return {
       mapData,
-      image: mapImageSourceFor(app, mapData.background, mapData.grid?.size),
+      level: shownLevel,
+      image: mapImageSourceFor(app, levelBackground(mapData, shownLevel), mapData.grid?.size),
       missingAssets: validationResult.missingAssets,
     };
   }

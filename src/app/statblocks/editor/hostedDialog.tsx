@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AnimatePresence } from 'framer-motion';
 import type { Plugin } from 'obsidian';
+import { portalHost } from '../../host/portalHost';
 
 interface HostedRoot {
   doc: Document;
@@ -32,7 +33,7 @@ function DialogHost({ render, onGone }: { render: HostedDialogRender; onGone: ()
 /** Shows a dialog in `doc` inside a container of class `cls`; focus goes back where it was once it has left. */
 export function showHostedDialog(doc: Document, cls: string, render: HostedDialogRender): void {
   const previous = doc.activeElement;
-  const container = doc.body.createDiv({ cls });
+  const container = portalHost(doc).createDiv({ cls });
   const root = createRoot(container);
   const entry: HostedRoot = {
     doc,

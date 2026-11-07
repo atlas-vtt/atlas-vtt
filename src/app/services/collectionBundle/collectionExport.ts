@@ -14,6 +14,7 @@ import { sha256 } from '../../utils/hashing';
 import { readInstallRecord } from './installRecord';
 import { withLinkedFiles } from './noteLinks';
 import { remapPaths } from './pathRemap';
+import { tableNotePaths } from '../../randomTables/tableSettings';
 import { originNames, recordRelease } from './releaseRecord';
 import { systemPresetsOf } from '../mapCollectionRules';
 import { storeNamedWebps } from './webpNamedFiles';
@@ -27,8 +28,8 @@ import { t } from '../../i18n';
  */
 const EXPORTED_TYPES: ReadonlySet<Asset['type']> = new Set<Asset['type']>(['token', 'map', 'scene', 'encounter']);
 
-/** Images and audio are already compressed; deflating them only costs time. */
-const STORED_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|mp3|ogg|wav|m4a|zip)$/i;
+/** Images, audio and video are already compressed; deflating them only costs time. */
+const STORED_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|mp3|ogg|wav|m4a|webm|mp4|m4v|zip)$/i;
 
 /** What an export would pack, shown before the user decides how to export. */
 export interface ExportPreview {
@@ -92,7 +93,8 @@ export async function prepareCollectionExport(app: App, assets: AssetService, co
   const collection = await assets.getCollection(collectionId);
   if (!collection) throw new Error(`Collection ${collectionId} not found`);
   const collectionAssets = (await assets.getAssets(collectionId)).filter((asset) => EXPORTED_TYPES.has(asset.type));
-  const { files: referenced, missing } = await new CollectionReferenceCollector(app, assets).collect(collectionAssets, collection.settings.lootBases);
+  const { files: referenced, missing } = await new CollectionReferenceCollector(app, assets)
+    .collect(collectionAssets, collection.settings.lootBases, tableNotePaths(collection.settings));
   const withTemplates = await withStatblockTemplates(app, withLinkedFiles(app, referenced), collection.settings);
   const files = await withDiceSetFiles(app, withSystemPresetFile(app, withTemplates, collection.settings), collection.settings);
   const fileSizes = new Map<string, number>();

@@ -1,3 +1,5 @@
+import { ResourceBarHitArea } from './ResourceBarHitArea';
+import { colorNumber } from './token-renderer/resources/ResourceBarView';
 import type { AtlasSettings } from '../services/SettingsService';
 import { Container, Graphics, Text, TextStyle, type Ticker } from 'pixi.js';
 import type { Character, BaseToken } from '../types';
@@ -5,7 +7,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { barDimensions } from '../styles/designTokens';
 import { TokenConditionsUI, type TokenConditionsLayout } from './token-renderer/TokenConditionsUI';
-import { isNameplateVisible } from './token-renderer/nameplateVisibility';
+import { isNameplateVisible, nameplateShownToPlayers } from './token-renderer/nameplateVisibility';
 import { tokenDisplayName } from './token-renderer/tokenDisplayName';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
@@ -16,11 +18,15 @@ import type { ResourceDefsProvider, ResourceViewer, VisibleResource } from '../r
 import { isDefeated, isSpent } from '../resources/resourceValues';
 import { shapeOf, visibleResources } from '../resources/visibleResources';
 import { destroyTree } from './utils/destroyTree';
+import { canvasBadgeColors, isDarkTheme } from './utils/canvasBadgeColors';
 import { computeTokenStrokeWidth, NAMEPLATE_HEIGHT, NAMEPLATE_TEXT, restingTokenUIScale, selectedTokenUIScale, TOKEN_TEXT_RESOLUTION, tokenTextResolution } from './token-renderer/tokenSizing';
 import { getTokenRingCenterRadius } from './token-renderer/tokenRingMetrics';
 import { ValueTransition } from './utils/ValueTransition';
 import { MOTION_SLOW_MS, prefersReducedMotion } from '../utils/motion';
 import { t } from '../i18n';
+
+/** Above the bars, whose views stand at 10. */
+const RESOURCE_MARK_Z_INDEX = 11;
 
 /**
  * Every token's UI lies in one layer. A selected token's lies above the others,
@@ -34,6 +40,8 @@ export class TokenUIRenderer {
   /** `update` found a bar, nameplate or condition to show. */
   private hasContent = true;
   private hiddenWithToken = false;
+  /** The light on a resource of a selection (`markResource`), made when first shown. */
+  private resourceMark: { key: string; area: ResourceBarHitArea } | null = null;
   /** Bars and nameplate, anchored at the token's bottom edge and scaled with the token. */
   private belowToken: Container;
   /** Eases the UI between its resting scale (0) and a selected token's on-screen size (1). */
@@ -324,7 +332,8 @@ export class TokenUIRenderer {
 
     const resourcesKey = shown.map(({ definition, value, slot }) =>
       `${definition.key}:${slot}:${definition.name}:${definition.color}:${value.current}/${value.max}`).join('|');
-    const showNameplate = playerSettings ? playerSettings.showTokenNameplates : isNameplateVisible(token, tokenSettings?.showNameplates ?? false);
+    const mapShowsNameplates = tokenSettings?.showNameplates ?? false;
+    const showNameplate = playerSettings ? nameplateShownToPlayers(token, mapShowsNameplates, playerSettings.showTokenNameplates) : isNameplateVisible(token, mapShowsNameplates);
     const conditionsKey = `${token.conditions?.join(',') ?? ''}${JSON.stringify(token.conditionValues ?? {})}`;
     const defeated = isDefeated(token, definitions);
     // The ring's size setting moves the resize buttons, and with them the wheels
@@ -386,11 +395,9 @@ export class TokenUIRenderer {
 
     // Only show nameplate if enabled AND we have a name to display
     if (showNameplate && displayName) {
-      // Get theme colors
-      const isDarkMode = document.body.classList.contains('theme-dark');
-      const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
-      const strokeColor = isDarkMode ? 0xffffff : 0x000000;
-      
+      const isDarkMode = isDarkTheme();
+      const { background: bgColor, stroke: strokeColor } = canvasBadgeColors();
+      if (this.nameText.style.fill !== strokeColor) this.nameText.style.fill = strokeColor;
       this.nameText.text = displayName;
       // In PIXI v8, text updates automatically when setting the text property
       const textBounds = this.nameText.getLocalBounds();
@@ -472,6 +479,42 @@ export class TokenUIRenderer {
   /** Where the lowest bar ends below the token's bottom edge, in UI units; 0 without bars. */
   private barsBottom(): number {
     return Math.max(0, ...this.resources.layout().map((slot) => slot.top + slot.height));
+  }
+
+  /**
+   * Lights resource `key` as its own overlay does for a single selected token (`TokenControlsUI`):
+   * as hovered, or as `active` while its editor is open; null takes the light away. This is the
+   * GM's UI: players' pictures draw renderers of their own.
+   */
+  public markResource(key: string | null, active: boolean): void {
+    const slot = key === null ? undefined : this.getResourceSlots().find((candidate) => candidate.key === key);
+    if (!slot) {
+      this.resourceMark?.area.hide();
+      return;
+    }
+    if (this.resourceMark?.key !== slot.key) {
+      if (this.resourceMark) destroyTree(this.resourceMark.area);
+      const color = this.resourceDefsProvider().find((definition) => definition.key === slot.key)?.color;
+      const area = new ResourceBarHitArea(color ? colorNumber(color) : 0xffffff);
+      area.eventMode = 'none';
+      area.zIndex = RESOURCE_MARK_Z_INDEX;
+      this.resourceMark = { key: slot.key, area };
+    }
+    const { area } = this.resourceMark;
+    ({ bar: this.belowToken, wheel: this.besideToken, 'wheel-left': this.leftOfToken })[slot.kind].addChild(area);
+    area.layout(slot);
+    area.setHovered(!active);
+    area.setActive(active);
+  }
+
+  /** The key of the resource drawn at `point` on the screen, or null. */
+  public resourceAt(point: { x: number; y: number }): string | null {
+    const anchors = { bar: this.belowToken, wheel: this.besideToken, 'wheel-left': this.leftOfToken };
+    for (const slot of this.getResourceSlots()) {
+      const { x, y } = anchors[slot.kind].toLocal(point);
+      if (x >= slot.left && x <= slot.left + slot.width && y >= slot.top && y <= slot.top + slot.height) return slot.key;
+    }
+    return null;
   }
 
   /** Where the right wheels' column hangs from, in world units from the token's centre; the left one is its mirror. */
@@ -819,10 +862,8 @@ export class TokenUIRenderer {
     
     // Function to update both badge size and cursor position
     const updateNameBadgeAndCursor = () => {
-      // Get theme colors (same as normal badge)
-      const isDarkMode = document.body.classList.contains('theme-dark');
-      const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
-      const strokeColor = isDarkMode ? 0xffffff : 0x000000;
+      const isDarkMode = isDarkTheme();
+      const { background: bgColor, stroke: strokeColor } = canvasBadgeColors();
       
       // Get current text bounds
       const textBounds = this.nameText.getLocalBounds();

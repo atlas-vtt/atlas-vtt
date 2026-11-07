@@ -9,10 +9,14 @@ import './statblock-preview-window.scss';
 import { previewEdgeGaps } from '../react/components/statblock/previewEdgeGap';
 import type { TokenRollContext } from '../types/diceRollOrigin';
 import { createPinButton, keepPreviewReachable, showPinState, startPreviewWindowDrag, type PreviewWindowReach } from './previewWindowControls';
-import { previewReach } from './previewWindowLayout';
+import { previewReach, visiblePart } from './previewWindowLayout';
+import type { ViewFrame } from '../packages/components/primitives/popoverFit';
 import { viewFrame } from '../packages/components/primitives/useKeepInView';
 import { observeResize } from '../utils/observeResize';
+import { scrollOnCtrlWheel } from './previewWheel';
+import { holdPreviewShown } from '../react/components/statblock/previewShown';
 import { t } from '../i18n';
+import { portalHost } from '../host/portalHost';
 
 /** The card's top, which moves a map's preview: the name and title row of an Atlas statblock or a Fantasy Statblocks layout. */
 const CARD_HEADER = '.atlas-sb-header, .atlas-sb-heading-row';
@@ -31,6 +35,18 @@ export interface OutsideNote {
  * with null once the token is gone, and returns how to stop.
  */
 export type FollowVitals = (show: (vitals: TokenVitals | null) => void) => () => void;
+
+/**
+ * The part of the card's header that shows: the header scrolls with the statblock, and the part
+ * scrolled out of the card, or the whole of it, must not be kept in view. Null where none shows.
+ */
+function shownHeader(element: HTMLElement): ViewFrame | null {
+  const header = element.querySelector(CARD_HEADER);
+  if (!header) return null;
+  const clips: DOMRect[] = [];
+  for (let box = header.parentElement; box; box = box === element ? null : box.parentElement) clips.push(box.getBoundingClientRect());
+  return visiblePart(header.getBoundingClientRect(), clips);
+}
 
 /**
  * Floating CMD+hover preview window for token statblocks: of a token placed on
@@ -53,6 +69,7 @@ export class StatblockPreviewWindow {
   /** The statblock's props but its tokens, which `followVitals` replaces. */
   private statblockProps: Omit<LinkedStatblockProps, 'tokens'>;
   private stopFollowing: (() => void) | null = null;
+  private releaseShown: (() => void) | null = null;
   private stopDrag: (() => void) | null = null;
   private reach: PreviewWindowReach | null = null;
   private stopFollowingFrame: (() => void) | null = null;
@@ -76,8 +93,10 @@ export class StatblockPreviewWindow {
     this.manager = manager;
     this.initialPos = initialPos;
 
-    this.element = doc.body.createDiv({ cls: 'atlas-statblock-preview-window' });
+    this.element = portalHost(doc).createDiv({ cls: 'atlas-statblock-preview-window' });
+    this.releaseShown = holdPreviewShown(doc);
     this.element.setAttribute('tabindex', '-1');
+    scrollOnCtrlWheel(this.element);
     // Only a map's preview, which its manager keeps, can stay open.
     if (manager) this.addControls(this.element, manager);
 
@@ -135,10 +154,7 @@ export class StatblockPreviewWindow {
     const mapView = manager.mapViewElement();
     const frameEl = mapView?.ownerDocument === element.ownerDocument ? mapView : null;
     const reach: PreviewWindowReach = {
-      reach: () => previewReach(
-        controls.getBoundingClientRect(),
-        element.querySelector(CARD_HEADER)?.getBoundingClientRect() ?? null,
-      ),
+      reach: () => previewReach(controls.getBoundingClientRect(), shownHeader(element)),
       frame: () => viewFrame(frameEl ?? element),
     };
     this.reach = reach;
@@ -262,6 +278,8 @@ export class StatblockPreviewWindow {
     this.stopDrag = null;
     this.stopFollowingFrame?.();
     this.stopFollowingFrame = null;
+    this.releaseShown?.();
+    this.releaseShown = null;
 
     // Unmount asynchronously: React forbids unmounting while it is rendering,
     // which happens when destroy() runs from inside an effect.

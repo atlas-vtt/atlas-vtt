@@ -1,9 +1,9 @@
 import { TFile, type App, type EventRef, type TAbstractFile } from 'obsidian';
 import type { FoundNote } from '../../protocol/index.ts';
 import { QuestImages } from '../../../plugin/questImages';
-import type { QuestAsset } from '../book/questGate.ts';
 import type { FoundPin, GmLogEntry } from '../log/logEntries.ts';
 import type { TableLog } from '../log/TableLog.ts';
+import type { AssetStoring } from '../assets/assetUses.ts';
 import { foundHandout, readPinNote, type FoundHandout, type NoteReading } from './foundNotes.ts';
 
 type FoundEntry = Extract<GmLogEntry, { readonly kind: 'found' }>;
@@ -25,8 +25,8 @@ const isFound = (entry: GmLogEntry): entry is FoundEntry => entry.kind === 'foun
 
 /**
  * The notes players found, kept current: each found note's entry follows its note as the GM edits it
- * (the vault's metadata for the note, its images' files for what it embeds), and its whole text and
- * images are served by hash while its entry is in the log. Where the note or its heading is gone, the
+ * (the vault's metadata for the note, its images' files for what it embeds), its whole text and images
+ * stored for players and named by id. Where the note or its heading is gone, the
  * entry keeps the text it last had. After a reload the notes of the log's entries are read again.
  */
 export class FoundTexts {
@@ -35,7 +35,7 @@ export class FoundTexts {
   private readonly reads = new Map<string, number>();
   private refs: { readonly vault: EventRef[]; readonly meta: EventRef[] } = { vault: [], meta: [] };
 
-  constructor(private readonly app: App, private readonly log: TableLog) {
+  constructor(private readonly app: App, private readonly log: TableLog, private readonly stored?: AssetStoring) {
     this.images = new QuestImages(app);
   }
 
@@ -54,10 +54,15 @@ export class FoundTexts {
   /** What players would read of a pin's note now, from the map it is on; null where it cannot be read. */
   async read(link: string, map: string): Promise<FoundRead | null> {
     const reading = await readPinNote(this.app, link, map).catch(() => null);
-    return reading === null ? null : { reading, handout: await foundHandout(reading, this.images) };
+    return reading === null ? null : { reading, handout: await foundHandout(reading, this.images, this.stored) };
   }
 
-  /** Keeps the note of a new entry current and its assets served. */
+  /** Reads every kept note again: its references may go another way now (the store refused ids). */
+  refreshAll(): void {
+    for (const [id, kept] of this.kept) void this.refresh(id, kept.path + headingPart(kept.pin.link), kept.pin);
+  }
+
+  /** Keeps the note of a new entry current and its assets stored. */
   keep(id: string, read: FoundRead, pin: FoundPin): void {
     this.kept.set(id, { path: read.reading.path, pin, handout: read.handout });
     this.listen();
@@ -77,17 +82,6 @@ export class FoundTexts {
     };
   }
 
-  /** What an asset of a found note still in the log is served from: its whole text, or an image of it. */
-  asset(hash: string): QuestAsset | undefined {
-    const logged = new Set(this.log.entries().map((entry) => entry.id));
-    for (const [id, kept] of this.kept) {
-      if (!logged.has(id)) continue;
-      if (kept.handout.text?.ref.hash === hash) return { bytes: kept.handout.text.bytes };
-      const path = kept.handout.images.get(hash);
-      if (path !== undefined) return { path };
-    }
-    return undefined;
-  }
 
   private noteChanged(path: string): void {
     for (const [id, kept] of this.kept) if (kept.path === path) void this.refresh(id, path + headingPart(kept.pin.link), kept.pin);
@@ -114,7 +108,7 @@ export class FoundTexts {
     this.reads.delete(id);
     if (read === null) return;
     this.keep(id, read, pin);
-    this.images.retain(new Set([...this.kept.values()].flatMap((kept) => [...kept.handout.images.values()])));
+    this.images.retain(new Set([...this.kept.values()].flatMap((kept) => [...kept.handout.images])));
     const note = read.handout.note;
     if (noteKey(note) === noteKey(entry)) return;
     const { text: _text, images: _images, title: _title, body: _body, ...rest } = entry;

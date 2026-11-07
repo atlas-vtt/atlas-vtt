@@ -3,6 +3,7 @@ import { Dice5, Dices, Eye, Gauge, Grid3X3, LayoutGrid, ListFilter, ScrollText, 
 import { CoinIcon } from '../CoinIcon';
 import { Button } from '../../../packages/components/primitives/button';
 import { collectionConeAngle } from '../../../gameSystems/coneAngle';
+import { collectionDifficultTerrain } from '../../../gameSystems/difficultTerrain';
 import { isSameAsTyped, type RulesView } from '../../../gameSystems/rulesView';
 import { editedSenses } from '../../../gameSystems/senseEditing';
 import type { SystemPresetService } from '../../../services/SystemPresetService';
@@ -99,6 +100,7 @@ export function RulesSettingsTabs({
           <GridMeasurementTab
             gridDefaults={draft.gridDefaults}
             coneAngle={collectionConeAngle(draft.gridDefaults, draft.systemPresetId)}
+            difficultTerrain={collectionDifficultTerrain(draft.gridDefaults, draft.systemPresetId)}
             onChange={draft.setGridDefaults}
           />
         );

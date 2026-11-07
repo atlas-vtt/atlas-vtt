@@ -15,6 +15,7 @@ import type { SheetState } from './sheetState';
 import { trackedShown } from './values/trackedShown';
 import { blockText, isPatternBlock } from './values/blockText';
 import { hasText, shownPattern, type ShownText } from './values/shownText';
+import { t } from '../../i18n';
 
 export type BlockDisplay =
   /** The block's own values; `text` is what a Title, Line or Stat writes. */
@@ -48,7 +49,7 @@ export function valuePrompt(field: Pick<TemplateField, 'label' | 'prompt'> | und
   const prompt = field?.prompt?.trim() || own;
   if (prompt) return prompt;
   const label = field?.label?.trim();
-  return label ? `Add ${inPrompt(label)}` : unnamed;
+  return label ? t('statblockEditor.addValuePrompt', { name: inPrompt(label) }) : unnamed;
 }
 
 /** The field a block's pattern works its value out of (XP from a challenge rating), where it writes none as it is. */
@@ -64,7 +65,7 @@ function workedOutFrom(block: TemplateBlock): FieldKey | undefined {
  */
 function promptFor(block: TemplateBlock, sheet: SheetState): string {
   const source = workedOutFrom(block);
-  if (source) return `From ${sheet.fields.get(source)?.label?.trim() || source}`;
+  if (source) return t('statblockEditor.fromField', { name: sheet.fields.get(source)?.label?.trim() || source });
   const key = boundField(block);
   const field = key ? sheet.fields.get(key) : sheet.provisional;
   return valuePrompt(field, kindName(block), block.type === 'entries' ? block.addLabel?.trim() : undefined);

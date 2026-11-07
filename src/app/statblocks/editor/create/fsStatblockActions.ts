@@ -25,9 +25,10 @@ import { openStatblockEditor } from '../openStatblockEditor';
 import { templateKeyPatch } from '../statblock-pane/templateKeyPatch';
 import { copyFenceIntoStatblock, fenceValues } from '../statblock-pane/fenceCopy';
 import { chosenRole, roleChoicesFor, roleTemplateId } from './collectionRoles';
+import { t } from '../../../i18n';
 
-export const EDIT_WITH_TEMPLATE = 'Edit with an Atlas template…';
-export const COPY_INTO_STATBLOCK = 'Copy into a new statblock';
+export const EDIT_WITH_TEMPLATE = t('statblockEditor.editWithTemplate');
+export const COPY_INTO_STATBLOCK = t('statblockEditor.copyIntoStatblock');
 
 /** One row of the menu the action opens. */
 export interface StatblockChoice {
@@ -88,12 +89,12 @@ function layoutRow(
 ): StatblockChoice | null {
   const layout = noteLayout(app, record);
   const imported = layout ? findImportedTemplate(TemplateLibrary.forApp(app).list(), layout) : null;
-  if (imported) return { title: imported.name, hint: 'From its layout', run: () => use(imported.template.id) };
+  if (imported) return { title: imported.name, hint: t('statblockEditor.fromLayout'), run: () => use(imported.template.id) };
   const fsLayout = noteFsLayout(app, record);
   if (!fsLayout) return null;
   return {
     title: fsLayout.name,
-    hint: 'Imports its layout',
+    hint: t('statblockEditor.importsLayout'),
     run: async () => {
       const made = await importFsLayout(app, fsLayout);
       await use(made.id);
@@ -112,7 +113,7 @@ export function adoptionChoices(app: App, notePath: string, record: FrontmatterR
     const outcome = await NoteFieldWriter.forApp(app).write(notePath, [templateKeyPatch(record, templateId)]);
     const problem = outcome.conflicts.length ? 'the note\'s template changed meanwhile.' : outcome.problem;
     if (problem) {
-      showNotice(`Couldn't change the statblock: ${problem}`);
+      showNotice(t('statblockEditor.changeFailedWhy', { problem }));
       return;
     }
     await openStatblockEditor(app, { notePath, collectionId, from: 'command' });
@@ -124,7 +125,7 @@ export function adoptionChoices(app: App, notePath: string, record: FrontmatterR
     if (chosen) await adopt(await roleTemplateId(app, chosen.role));
   }));
   if (!isFantasyStatblocksAvailable()) {
-    choices.push({ title: 'New template from this statblock', run: () => saveStatblockAsTemplate(app, notePath, record, collectionId) });
+    choices.push({ title: t('statblockEditor.templateFromStatblock'), run: () => saveStatblockAsTemplate(app, notePath, record, collectionId) });
   }
   return choices;
 }
@@ -164,17 +165,17 @@ export async function offerFsAdoption(app: App, file: TFile, place: MenuPlace): 
   const record = cachedFrontmatter(app, file) ?? {};
   const [{ collectionId }] = await Promise.all([resolveCollectionContext(app, file.path, null), libraryLoaded(TemplateLibrary.forApp(app))]);
   const choices = adoptionChoices(app, file.path, record, collectionId, place.doc);
-  offerChoices(choices, place, `Giving ${file.path} an Atlas template`, "Couldn't change the statblock.");
+  offerChoices(choices, place, `Giving ${file.path} an Atlas template`, t('statblockEditor.changeFailed'));
 }
 
 /** "Copy into a new statblock" for a note's ```statblock fence. */
 export async function offerFenceCopy(app: App, file: TFile, place: MenuPlace): Promise<void> {
   const fence = (await statblockSourceOf(app, file))?.kind === 'fs-fence' ? await fenceValues(app, file.path) : null;
   if (!fence) {
-    showNotice('This note holds no statblock block to copy.');
+    showNotice(t('statblockEditor.noFence'));
     return;
   }
   const [{ collectionId }] = await Promise.all([resolveCollectionContext(app, file.path, null), libraryLoaded(TemplateLibrary.forApp(app))]);
   const choices = fenceCopyChoices(app, file.path, fence.layout, collectionId, place.doc);
-  offerChoices(choices, place, `Copying the statblock of ${file.path}`, "Couldn't copy the statblock.");
+  offerChoices(choices, place, `Copying the statblock of ${file.path}`, t('statblockEditor.copyFailed'));
 }

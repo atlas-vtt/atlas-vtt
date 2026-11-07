@@ -1,16 +1,13 @@
-// The tab a host shows while the log is closed and something in it is unread, where the panel stands.
+// The tab a host shows while the log is closed and something in it is unread. It stands where the
+// host puts it: on the GM's map, in the top bar row directly below the scene tabs (main.scss).
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 @use 'log-base' as *;
 
 .atlas-online-log-tab {
-  position: fixed;
-  left: $log-edge;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: $z-dropdown;
+  display: flex;
   pointer-events: auto;
-  animation: atlas-online-log-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: atlas-online-log-tab-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   .atlas-online-log-tab__button {
     @include log-button;

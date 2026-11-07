@@ -16,8 +16,8 @@ export function openUpdate(): void {
   window.open(PLUGIN_PAGE_URL);
 }
 
-/** Says that `version` is out, with Update and What's new; it stays until it is clicked. */
-export function announceUpdate(version: string): void {
+/** Says that `version` is out, with Update and What's new; it stays until it is clicked, and `acted` hears that it was. */
+export function announceUpdate(version: string, acted: () => void = () => undefined): void {
   const message = createFragment();
   const card = message.createDiv({ cls: 'atlas-vtt-plugin atlas-update-notice' });
   card.createEl('img', { cls: 'atlas-update-notice__icon', attr: { src: atlasIconUrl, alt: '' } });
@@ -30,12 +30,17 @@ export function announceUpdate(version: string): void {
   const close = card.createEl('button', { cls: 'btn btn--ghost btn--icon atlas-close-btn atlas-update-notice__close', attr: { 'aria-label': t('common.close') } });
   setIcon(close, 'x');
   const notice = showNotice(message, 0);
-  close.addEventListener('click', () => notice.hide());
+  close.addEventListener('click', () => {
+    acted();
+    notice.hide();
+  });
   update.addEventListener('click', () => {
+    acted();
     notice.hide();
     openUpdate();
   });
   notes.addEventListener('click', () => {
+    acted();
     notice.hide();
     window.open(releaseNotesUrl(version));
   });

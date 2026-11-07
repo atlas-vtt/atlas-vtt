@@ -47,3 +47,37 @@ describe('DropdownMenu outside click behavior', () => {
     expect(screen.queryByText('Option A')).not.toBeNull();
   });
 });
+
+describe('DropdownMenu in a map of its own window', () => {
+  /** A map in a popout renders its menus into the popout's document; the main document hears none of its presses. */
+  function openInPopout(): { popout: Document; unmount: () => void } {
+    // jsdom gives an iframe a window and document of its own, as a popout has.
+    const popout = document.body.appendChild(document.createElement('iframe')).contentDocument as Document;
+    const container = popout.body.appendChild(popout.createElement('div'));
+    const { unmount } = render(<Harness />, { container, baseElement: popout.body });
+    fireEvent.click(popout.querySelector('[data-testid="toggle"]') as HTMLElement);
+    expect(popout.body.textContent).toContain('Option A');
+    return { popout, unmount };
+  }
+
+  it('closes on a press outside it in its own window', () => {
+    const { popout, unmount } = openInPopout();
+    fireEvent.mouseDown(popout.querySelector('[data-testid="outside"]') as HTMLElement);
+    expect(popout.body.textContent).not.toContain('Option A');
+    unmount();
+  });
+
+  it('closes on Escape in its own window', () => {
+    const { popout, unmount } = openInPopout();
+    fireEvent.keyDown(popout.body, { key: 'Escape' });
+    expect(popout.body.textContent).not.toContain('Option A');
+    unmount();
+  });
+
+  it('stays open for a press in another window', () => {
+    const { popout, unmount } = openInPopout();
+    fireEvent.mouseDown(document.body);
+    expect(popout.body.textContent).toContain('Option A');
+    unmount();
+  });
+});

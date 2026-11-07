@@ -1,0 +1,180 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// TrueScale's panel, hanging from the player window bar below the scene tabs (PlayerWindowBar.tsx)
+.atlas-true-scale__panel {
+  width: 340px;
+  // The top bar row takes no pointer events
+  pointer-events: auto;
+}
+
+// Whether this screen is set up: a dot and a line, on the menu's text edge
+.atlas-true-scale__status {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  min-height: 28px;
+  padding-inline: var(--atlas-menu-text-inset, 0px);
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+}
+
+.atlas-true-scale__dot {
+  flex-shrink: 0;
+  width: $spacing-s;
+  height: $spacing-s;
+  border-radius: $radius-full;
+  background: var(--text-faint);
+
+  [data-status='setUp'] > & {
+    background: var(--interactive-accent);
+  }
+
+  [data-status='otherMap'] > & {
+    background: var(--color-orange);
+  }
+}
+
+// The set-up's buttons, at the panel's end
+.atlas-true-scale__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-s;
+}
+
+// The card fit's dial: − / track / +
+.atlas-true-scale__dial-row {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+}
+
+// The track and thumb of the menus' sliders (slider.css), on a native range. Obsidian's rules for a
+// range's thumb outrank ours while it is hovered or pressed, so it is set through the variables
+// they read; each `-active` is its own, since Obsidian's was worked out on the body.
+.atlas-true-scale__dial.atlas-true-scale__dial {
+  --slider-thumb-width: #{$spacing-l};
+  --slider-thumb-height: #{$spacing-l};
+  --slider-thumb-width-active: #{$spacing-l};
+  --slider-thumb-height-active: #{$spacing-l};
+  --slider-thumb-y: -5px; // Half of what the thumb is taller than the 6 px track
+  --slider-thumb-y-active: -5px;
+  --slider-thumb-opacity-active: 1;
+  --slider-thumb-border-width: 0;
+  --slider-thumb-radius: #{$radius-full};
+  --slider-thumb-background: var(--interactive-accent);
+  --slider-thumb-background-hover: var(--interactive-accent);
+  flex: 1;
+  min-width: 0;
+  height: $spacing-l;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+
+  &::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: $radius-full;
+    background: var(--background-modifier-border);
+  }
+
+  &:focus-visible {
+    outline: none;
+
+    &::-webkit-slider-thumb {
+      outline: 2px solid var(--interactive-accent);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// On the TV: a picture of the TV as players see it, with its places and the two chips
+.atlas-true-scale__on-tv {
+  @include atlas-flex-col($spacing-s);
+}
+
+.atlas-true-scale__tv {
+  position: relative;
+  align-self: center;
+  height: 168px;
+  max-width: 100%;
+  background: var(--background-secondary);
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-l;
+  @include atlas-corner-shape;
+  touch-action: none;
+}
+
+// Where the places lie: the TV inset by the panel's spacing, so a corner's chip keeps clear of the TV's edge
+.atlas-true-scale__tv-area {
+  position: absolute;
+  inset: $spacing-s;
+}
+
+.atlas-true-scale__slot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  translate: -50% -50%;
+  border-radius: $radius-full;
+  background: var(--background-modifier-border);
+}
+
+.atlas-true-scale__chip.atlas-true-scale__chip {
+  @include atlas-elevated-surface;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  padding: $spacing-xs;
+  border-radius: $radius-l;
+  @include atlas-corner-shape;
+  box-shadow: $shadow-sm;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  @include atlas-focus-ring;
+}
+
+// The image lies under the widgets, as on the TV
+.atlas-true-scale__chip--image.atlas-true-scale__chip {
+  background: color-mix(in oklch, var(--background-primary) 80%, transparent);
+}
+
+.atlas-true-scale__chip-label {
+  @include atlas-truncate;
+}
+
+// Drags the chip's size, on its corner that faces the TV's middle
+.atlas-true-scale__handle {
+  position: absolute;
+  width: $spacing-s;
+  height: $spacing-s;
+  border-radius: $radius-full;
+  background: var(--interactive-accent);
+
+  &--top-left,
+  &--bottom-right {
+    cursor: nwse-resize;
+  }
+
+  &--top-right,
+  &--bottom-left {
+    cursor: nesw-resize;
+  }
+
+  &--top-left { top: -$spacing-xs; left: -$spacing-xs; }
+  &--top-right { top: -$spacing-xs; right: -$spacing-xs; }
+  &--bottom-left { bottom: -$spacing-xs; left: -$spacing-xs; }
+  &--bottom-right { bottom: -$spacing-xs; right: -$spacing-xs; }
+}

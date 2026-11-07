@@ -1,5 +1,5 @@
 import React from "react"
-import { Command, Dices, ImageIcon, MapPin, Volume2 } from "lucide-react"
+import { Command, Dices, ImageIcon, Volume2 } from "lucide-react"
 import { CoinIcon } from "../../../react/components/CoinIcon"
 import { DiceDropdownMenu } from "../../../react/components/dice/DiceDropdownMenu"
 import type { ToolbarControlId } from "../../../toolbar/toolbarCatalog"
@@ -9,8 +9,9 @@ import { FogToolGroup } from "./FogToolGroup"
 import { LightingToolGroup } from "./LightingToolGroup"
 import { MeasureToolGroup } from "./MeasureToolGroup"
 import { MoveToolGroup } from "./MoveToolGroup"
+import { PinToolGroup } from "./PinToolGroup"
 import { TextToolGroup } from "./TextToolGroup"
-import { drawToolFace, fogToolFace, lightingToolFace, measureToolFace, moveToolFace, textToolFace, type Tool, type ToolFace } from "./toolFaces"
+import { drawToolFace, fogToolFace, lightingToolFace, measureToolFace, moveToolFace, pinToolFace, textToolFace, type Tool, type ToolFace } from "./toolFaces"
 import { buttonItem, toolGroupItem, type ToolbarItemBody } from "./toolbarItems"
 import type { ToolbarContext } from "./toolbarContext"
 import { t } from "../../../i18n"
@@ -29,7 +30,7 @@ export const TOOLBAR_CONTROL_ITEMS = {
   text: ctx => toolGroupItem(ctx, 'text', textToolFace(ctx.activeTool), <TextToolGroup {...ctx.groupControls('text')} />),
   measure: ctx => toolGroupItem(ctx, 'measure', measureToolFace(ctx.activeTool), <MeasureToolGroup {...ctx.groupControls('measure')} />),
   wall: ctx => toolGroupItem(ctx, 'wall', lightingToolFace(ctx.activeTool), <LightingToolGroup {...ctx.groupControls('wall')} />),
-  pin: ctx => toolButtonItem(ctx, "note-pin", MapPin, t('toolbar.notePin'), ctx.hotkeyLabel('pin')),
+  pin: ctx => toolGroupItem(ctx, 'pin', pinToolFace(ctx.activeTool), <PinToolGroup {...ctx.groupControls('pin')} />),
   audio: ctx => toolButtonItem(ctx, "audio", Volume2, t('toolbar.ambientSound'), ctx.hotkeyLabel('audio')),
   dice: ({ dice, hotkeyLabel }) => ({
     kind: 'button',

@@ -228,3 +228,63 @@ describe('PointerTrack', () => {
     expect(seen).toEqual(new Set([null, 900]));
   });
 });
+
+describe('a track of what a pointer moves (a token it drags)', () => {
+  /**
+   * A hand moving along x at `SPEED` for `ms`, seen by a receiver 20 ms of network away: its cursor
+   * sent every 100 ms with the samples of each frame and their span, its token's place every 33 ms.
+   * Returns the cursor and token drawn on every frame.
+   */
+  function hand(token: PointerTrack, cursor: PointerTrack, ms: number): { now: number; cursor: number; token: number }[] {
+    const frames: { now: number; cursor: number; token: number }[] = [];
+    const cursorInterval = 100;
+    let cursorSent = 0;
+    let tokenSent = 0;
+    let sampled = 0;
+    let waiting: TrackPoint[] = [];
+    for (let now = 0; now <= ms; now += FRAME) {
+      const hand = now - 20;
+      if (hand >= 0) {
+        waiting.push({ x: hand * SPEED, y: 0 });
+        if (hand - cursorSent >= cursorInterval) {
+          cursor.push(waiting, Math.round(hand - sampled), now);
+          sampled = hand;
+          cursorSent = hand;
+          waiting = [];
+        }
+        if (hand - tokenSent >= INTERVAL) {
+          token.push([{ x: hand * SPEED, y: 0 }], undefined, now);
+          tokenSent = hand;
+        }
+      }
+      const c = cursor.at(now);
+      const t = token.at(now);
+      if (c !== null && t !== null) frames.push({ now, cursor: c.x, token: t.x });
+    }
+    return frames;
+  }
+
+  it('is drawn at the moment of the pointer that moves it, so the two go as one', () => {
+    const cursor = new PointerTrack({ interval: 100 });
+    const token = new PointerTrack({ interval: INTERVAL, least: (now) => cursor.lag(now) });
+    const frames = hand(token, cursor, 4000).filter((frame) => frame.now > 1000);
+    expect(frames.length).toBeGreaterThan(300);
+    for (const frame of frames) expect(Math.abs(frame.token - frame.cursor)).toBeLessThan(SPEED * FRAME);
+  });
+
+  it('runs ahead of the pointer that moves it without it: its own places come three times as often', () => {
+    const cursor = new PointerTrack({ interval: 100 });
+    const frames = hand(new PointerTrack({ interval: INTERVAL }), cursor, 4000).filter((frame) => frame.now > 1000);
+    const ahead = frames.map((frame) => frame.token - frame.cursor);
+    expect(Math.min(...ahead)).toBeGreaterThan(60 * SPEED);
+  });
+
+  it('tells how far behind its messages the pointer is drawn: its delay at rest, its playhead while it plays', () => {
+    const track = new PointerTrack({ interval: 100 });
+    expect(track.lag(0)).toBe(100);
+    track.push([{ x: 0, y: 0 }], undefined, 0);
+    track.push([{ x: 100, y: 0 }], 100, 100);
+    expect(track.lag(150)).toBeCloseTo(100, 5);
+    expect(track.lag(2000)).toBe(track.delay);
+  });
+});

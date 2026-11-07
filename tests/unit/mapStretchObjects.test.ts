@@ -42,6 +42,21 @@ describe('objects on a map that is drawn another way', () => {
     expect(store.getState().objects.tokens[token]).toMatchObject({ x: 100, y: 200 });
   });
 
+  it('moves an area light\'s area with its middle, and undoes both in one step', () => {
+    const s = store.getState();
+    const area = [{ x: 200, y: 200 }, { x: 400, y: 200 }, { x: 400, y: 400 }];
+    const light = s.addLight({ x: 300, y: 300, area, emission: { bright: 10, dim: 20, color: '#ff7a2a', intensity: 1, animation: 'smoulder' } } as Parameters<typeof s.addLight>[0]);
+
+    const moved = objectsMovedWithMap(store.getState().objects, WIDER);
+    expect(moved.lights[light]).toMatchObject({ x: 330, y: 300 });
+    expect(moved.lights[light]!.area!.map((p) => p.x)).toEqual([220, 440, 440].map((x) => expect.closeTo(x, 9)));
+
+    store.getState().alignGrid({ ...GRID, mapStretch: { x: 1.1, y: 1 } }, WIDER);
+    expect(store.getState().objects.lights[light]!.area![1]!.x).toBeCloseTo(440, 9);
+    store.temporal.getState().undo();
+    expect(store.getState().objects.lights[light]).toMatchObject({ x: 300, area });
+  });
+
   it('leaves a scene without light zones without them', () => {
     expect('lightZones' in objectsMovedWithMap(store.getState().objects, WIDER)).toBe(false);
   });

@@ -1,0 +1,159 @@
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+// ── Encounter folder card ─────────────────────────────────────────────────
+// The hover card of a pin that rolls encounters. One inset ($spacing-s) for its
+// padding and every gap; what sits in its corners runs concentric with them.
+
+$row-height: 40px;
+$face-size: 26px;
+
+.atlas-encounter-folder-preview {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+  @include atlas-flex-col($spacing-s);
+  position: fixed;
+  z-index: $z-popover;
+  width: 300px;
+  padding: $spacing-s;
+}
+
+.atlas-encounter-folder-preview__header {
+  @include atlas-flex-row($spacing-s);
+}
+
+.atlas-encounter-folder-preview__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $row-height;
+  height: $row-height;
+  border-radius: $radius-l;
+  @include atlas-panel-inset-radius($spacing-s, top-left);
+  color: var(--color-orange);
+  background: color-mix(in oklch, var(--color-orange) 14%, transparent);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-encounter-folder-preview__titles {
+  @include atlas-flex-col(2px);
+  min-width: 0;
+}
+
+.atlas-encounter-folder-preview__name {
+  @include atlas-truncate;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-encounter-folder-preview__meta {
+  @include atlas-truncate;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-encounter-folder-preview__list {
+  @include atlas-flex-col(0);
+  @include atlas-scrollbar;
+  // Five and a half rows, so a longer list shows it scrolls
+  max-height: $row-height * 5.5;
+  overflow-y: auto;
+}
+
+.atlas-encounter-folder-preview button.atlas-encounter-folder-preview__row {
+  @include atlas-flex-row($spacing-s);
+  flex-shrink: 0;
+  width: 100%;
+  height: $row-height;
+  padding: 0 $spacing-s;
+  border: none;
+  border-radius: $radius-l;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color $transition-fast $transition-ease;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--background-modifier-hover);
+  }
+
+  // Inside, since the list clips what lies past its edge
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+  }
+}
+
+// Up to three faces of the encounter, overlapping like a hand of tokens
+.atlas-encounter-folder-preview__faces {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  width: $face-size * 2;
+  color: var(--text-faint);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-encounter-folder-preview__face {
+  flex: none;
+  width: $face-size;
+
+  & + & {
+    margin-inline-start: -$face-size * 0.55;
+  }
+}
+
+.atlas-encounter-folder-preview__row-name {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+}
+
+.atlas-encounter-folder-preview__row-count {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-encounter-folder-preview__empty {
+  padding: $spacing-s;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  text-align: center;
+}
+
+.atlas-encounter-folder-preview button.atlas-encounter-folder-preview__roll {
+  @include atlas-confirm-btn;
+  flex-shrink: 0;
+  gap: $spacing-s;
+  width: 100%;
+  height: $row-height;
+  border-radius: $radius-l;
+  font-weight: $font-weight-semibold;
+  @include atlas-panel-inset-radius($spacing-s, bottom-left, bottom-right);
+}
+
+.atlas-encounter-folder-preview__roll-icon {
+  display: flex;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}

@@ -26,7 +26,7 @@ function setup() {
   const getTool = (): DiceTool => tool;
   const history = renderHook(() => useDiceHistory(getTool, actions, bus));
   const sound = { playDiceResult: vi.fn() };
-  observers.push(new DiceToastObserver(sound, { getDiceDisplay: () => 'card' }, bus));
+  observers.push(new DiceToastObserver(sound, { getDiceDisplay: () => 'card', getDiceVolume: () => 1 }, bus));
   return { bus, tool, actions, history, sound };
 }
 

@@ -73,6 +73,25 @@ describe('scene snapshot format', () => {
     });
   });
 
+  it('restores the floors a snapshot holds, and a scene of one floor from a snapshot taken before there were more', () => {
+    const levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: encounterReady.background },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'atlas-vtt/assets/upper.webm' },
+    ];
+    const withFloors = { version: 5, state: { ...encounterReady, levels, exploredMasks: { upper: 'data:image/png;base64,AAAA' } } };
+    const oneFloor = createSnapshot({ version: 4, state: { ...encounterReady } }, 's1', 'Before the tower', 1000);
+
+    const restored = restoreSnapshot(withFloors, oneFloor, MAP_PATH);
+    expect(restored.version).toBe(4);
+    expect(restored.state).not.toHaveProperty('levels');
+    expect(restored.state).not.toHaveProperty('exploredMasks');
+
+    const floors = createSnapshot(withFloors, 's2', 'Tower', 2000);
+    const back = restoreSnapshot(restored, floors, MAP_PATH);
+    expect(back.version).toBe(5);
+    expect(back.state).toMatchObject({ levels, exploredMasks: { upper: 'data:image/png;base64,AAAA' } });
+  });
+
   it('rejects files that are not snapshots', () => {
     expect(isSceneSnapshot({ version: 4, state: {} })).toBe(false);
     expect(isSceneSnapshot({ format: 1, id: 'a', name: 'b', createdAt: 1, state: { objects: 'broken' } })).toBe(false);

@@ -61,6 +61,12 @@ export type GridUnitType = 'feet' | 'yards' | 'meters' | 'units' | 'custom';
  */
 export type DiagonalRule = 'equidistant' | 'alternating' | 'euclidean';
 
+/**
+ * What a cell of difficult terrain (a map feature marked so) costs the movement ruler: `double`
+ * counts it twice, as 5e, Pathfinder and Draw Steel do; `none` like any other cell.
+ */
+export type DifficultTerrainRule = 'double' | 'none';
+
 export interface CollectionGridDefaults {
   unitType: GridUnitType;
   unitDistance: number;
@@ -68,6 +74,8 @@ export interface CollectionGridDefaults {
   abstractRangeBands?: RangeBand[];
   /** Unset means `equidistant`. */
   diagonalRule?: DiagonalRule;
+  /** Unset reads its built-in system's rule, else `none` (`collectionDifficultTerrain`). */
+  difficultTerrain?: DifficultTerrainRule;
   /** Full opening of the cone measurement in degrees. Unset means 90. */
   coneAngle?: number;
 }

@@ -17,6 +17,8 @@ function seeded(seed: number): () => number {
 const TRIALS = 60;
 const STEPS = 80;
 const HASH = (n: number): string => n.toString(16).padStart(64, '0');
+/** One of a few artworks, by the id the store keeps each under. */
+const artOf = (n: number): NonNullable<SharedToken['art']> => ({ hash: HASH(n), size: 100, mime: 'image/webp', id: HASH(n + 100) });
 const aliasOf = (n: number): string => n.toString(16).padStart(24, '0');
 
 /** What players read of a message: through JSON and the parser, as a browser gets it. */
@@ -26,7 +28,7 @@ function sharedToken(random: () => number, id: string): SharedToken {
   const claims = ['open', 'taken', null] as const;
   return {
     id, x: Math.round(random() * 4e5) / 100, y: Math.round(random() * 4e5) / 100, size: 70 * (1 + Math.floor(random() * 3)), cells: 1 + Math.floor(random() * 3),
-    rotation: Math.floor(random() * 360), art: random() < 0.8 ? { hash: HASH(Math.floor(random() * 5)), size: 100, mime: 'image/webp' } : null,
+    rotation: Math.floor(random() * 360), art: random() < 0.8 ? artOf(Math.floor(random() * 5)) : null,
     name: random() < 0.7 ? `Name ${Math.floor(random() * 9)}` : null, ring: random() < 0.6 ? { colour: '#d4a017', size: 80 } : null, claim: claims[Math.floor(random() * 3)] ?? null,
     badge: random() < 0.3 ? 1 + Math.floor(random() * 3) : null,
     ui: random() < 0.5 ? null : {

@@ -13,6 +13,7 @@ import { TemplateLibrary } from '../library/TemplateLibrary';
 import { TemplateSession, type RoleOnSave } from '../library/TemplateSession';
 import { isBuiltInTemplateId, type StatblockTemplate, type TemplateId } from '../model/templateTypes';
 import { TEMPLATE_EDITOR_VIEW_TYPE, readTemplateEditorState, type TemplateEditorEphemeral } from './templateEditorState';
+import { t } from '../../i18n';
 
 export interface OpenTemplateEditorOptions {
   templateId: TemplateId;
@@ -59,7 +60,7 @@ export async function openTemplateEditor(app: App, options: OpenTemplateEditorOp
   const unsaved = options.unsaved === true;
   const path = isBuiltInTemplateId(id) || unsaved ? null : options.path ?? TemplateLibrary.forApp(app).get(id)?.path ?? null;
   if (!isBuiltInTemplateId(id) && !unsaved && !path) {
-    showNotice("Couldn't find that template.");
+    showNotice(t('statblockEditor.templateNotFoundNotice'));
     return null;
   }
   const leaf = options.leaf ?? editorLeafFor(app, id, path) ?? app.workspace.getLeaf('tab');

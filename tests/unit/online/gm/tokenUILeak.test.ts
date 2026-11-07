@@ -1,7 +1,6 @@
 import { parseGmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { slottedResources } from '../../../../src/app/resources/resourceSlots';
 import type { ResourceDefinition, ResourceValue } from '../../../../src/app/resources/resourceTypes';
-import { shapeOf } from '../../../../src/app/resources/visibleResources';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { ConditionDefinition } from '../../../../src/app/types/collectionSettingsTypes';
 import { describe, expect, it } from 'vitest';
@@ -31,7 +30,7 @@ const openColour = (n: number): string => `#10${n.toString(16).padStart(4, '0')}
 
 interface Rules {
   readonly resources: ResourceDefinition[];
-  /** The keys of resources players never see on a token: not theirs to see, or in a wheel's socket. */
+  /** The keys of resources players never see on a token: not theirs to see, bar or wheel alike. */
   readonly secret: ReadonlySet<string>;
   readonly conditions: ConditionDefinition[];
   /** The ids of conditions only hidden or unseen tokens carry. */
@@ -47,8 +46,7 @@ function generateRules(random: () => number): Rules {
       ...(random() < 0.5 && { slot: Math.floor(random() * 6) }),
     };
   });
-  const secret = new Set(slottedResources(resources).flatMap(({ definition, slot }) => (definition.visibleToPlayers && shapeOf(slot) === 'bar' ? [] : [definition.key])));
-  // A visible resource in a wheel's socket must not leave its colour either.
+  const secret = new Set(slottedResources(resources).flatMap(({ definition }) => (definition.visibleToPlayers ? [] : [definition.key])));
   const recoloured = resources.map((definition, index) => (secret.has(definition.key) ? { ...definition, color: secretColour(index) } : definition));
   const conditions = Array.from({ length: 6 }, (_, index): ConditionDefinition => ({
     id: `cond${index}`, name: `Condition ${index}`, color: index < 3 ? openColour(100 + index) : secretColour(100 + index), ...(random() < 0.5 && { valued: true }),
@@ -62,7 +60,7 @@ const secretValue = (n: number): number => 700_000 + n + 0.25;
 type Role = 'free' | 'hidden' | 'unseen';
 
 describe('what players are sent of the tokens\' bars, conditions and names', () => {
-  it(`never holds a resource players may not see, a wheel, a condition of a token they do not see, an undefined condition, or a name the nameplate rule withholds (${TRIALS} generated scenes)`, async () => {
+  it(`never holds a resource players may not see, bar or wheel, a condition of a token they do not see, an undefined condition, or a name the nameplate rule withholds (${TRIALS} generated scenes)`, async () => {
     for (let trial = 1; trial <= TRIALS; trial += 1) {
       const random = seeded(trial * 7919);
       const rules = generateRules(random);

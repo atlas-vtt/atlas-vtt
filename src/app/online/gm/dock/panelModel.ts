@@ -7,6 +7,7 @@ import { gateRowsOf, type GateRows } from './gateRows.ts';
 import type { OnlineControl } from '../OnlineControl.ts';
 import { closingText, type LostTable } from '../tableEnd.ts';
 import type { CampaignPick } from './campaignPicker.ts';
+import { t } from '../../../i18n';
 
 /**
  * What the control on the map reads of online play, and what it shows from that. The control reads
@@ -226,19 +227,19 @@ export function badgeOf(snapshot: OnlineSnapshot, alert: boolean): Badge {
 export function seatsNoteOf(snapshot: OnlineSnapshot): string | null {
   const { seats } = snapshot;
   if (seats === null || snapshot.status !== 'online' || onlineCount(snapshot) < seats) return null;
-  return `Table full · ${seats === 1 ? '1 seat' : `${seats} seats`}`;
+  return t('online.tableFull', { count: seats });
 }
 
-const playersText = (count: number): string => (count === 1 ? '1 player' : `${count} players`);
+const playersText = (count: number): string => t('online.players', { count });
 
 /** The line of a table that closes because its account may no longer host; null while it does not. */
 export const closingOf = (snapshot: OnlineSnapshot): string | null => (snapshot.closesAt === undefined ? null : closingText(snapshot.closesAt));
 
 /** The button's tooltip. */
 export function tooltipOf(snapshot: OnlineSnapshot): string {
-  if (!isRunning(snapshot.status)) return 'Online play';
+  if (!isRunning(snapshot.status)) return t('online.play');
   const count = onlineCount(snapshot);
-  return count === 0 ? 'Online table · waiting for players' : `Online table · ${playersText(count)}`;
+  return count === 0 ? t('online.tableWaiting') : t('online.tablePlayers', { players: playersText(count) });
 }
 
 export type Tone = 'amber' | 'green' | 'red' | 'muted';
@@ -246,12 +247,12 @@ export type Tone = 'amber' | 'green' | 'red' | 'muted';
 /** The table's status in words, and its colour. */
 export function statusOf(snapshot: OnlineSnapshot): { readonly text: string; readonly tone: Tone } {
   switch (snapshot.status) {
-    case 'starting': return { text: 'Starting…', tone: 'amber' };
-    case 'connecting': return { text: 'Connecting…', tone: 'amber' };
-    case 'reconnecting': return { text: 'Reconnecting…', tone: 'amber' };
-    case 'online': return onlineCount(snapshot) === 0 ? { text: 'Online, waiting for players', tone: 'green' } : { text: `Online · ${playersText(onlineCount(snapshot))}`, tone: 'green' };
-    case 'refused': return { text: 'The server closed the table', tone: 'red' };
-    default: return { text: 'Not started', tone: 'muted' };
+    case 'starting': return { text: t('online.status.starting'), tone: 'amber' };
+    case 'connecting': return { text: t('online.status.connecting'), tone: 'amber' };
+    case 'reconnecting': return { text: t('online.status.reconnecting'), tone: 'amber' };
+    case 'online': return onlineCount(snapshot) === 0 ? { text: t('online.status.waiting'), tone: 'green' } : { text: t('online.status.online', { players: playersText(onlineCount(snapshot)) }), tone: 'green' };
+    case 'refused': return { text: t('online.status.refused'), tone: 'red' };
+    default: return { text: t('online.status.notStarted'), tone: 'muted' };
   }
 }
 
@@ -282,7 +283,7 @@ export const NO_CAMPAIGNS: CampaignPick = { list: null, chosen: null, query: '' 
 
 /** What a running table's surface is titled: the name of the campaign it plays, where it is known. */
 export function tableTitle(snapshot: OnlineSnapshot, campaigns: CampaignPick): string {
-  return campaigns.list?.find((campaign) => campaign.id === snapshot.campaignId)?.name ?? 'Online table';
+  return campaigns.list?.find((campaign) => campaign.id === snapshot.campaignId)?.name ?? t('online.table');
 }
 
 /**

@@ -9,6 +9,7 @@ import { ChipRemove, UnreadChip } from './PaneChips';
 import { usePaneEdit } from './paneEditContext';
 import type { ValueInputProps } from './TextValueInput';
 import { fieldPatches } from './valuePatches';
+import { t } from '../../../i18n';
 
 interface PickNumberProps {
   pick: ChoicePick;
@@ -147,20 +148,20 @@ export function ChoicePicksInput({ field, autoFocus, placeholder }: ValueInputPr
               {pick.unit && <span className="atlas-sb-pane-pick__unit">{pick.unit}</span>}
             </>
           )}
-          <ChipRemove label={`Remove ${pick.option}`} onRemove={() => removePick(index)} />
+          <ChipRemove label={t('statblockEditor.removeNamed', { name: pick.option })} onRemove={() => removePick(index)} />
         </span>
       ))}
       {read.unread.map((part, index) => (
         <UnreadChip key={`unread-${part}-${index}`} part={part} onRemove={() => removeUnread(index)} />
       ))}
-      <span className="atlas-sb-pane-pick__add">
+      <span ref={list.anchorRef} className="atlas-sb-pane-pick__add">
         <input
           ref={inputRef}
           type="text"
           className="atlas-sb-pane-input atlas-sb-pane-chips__input"
           value={typed}
           placeholder={empty ? placeholder ?? (field.prompt?.trim() || field.label) : ''}
-          aria-label={field.several ? `Add to ${field.label}` : field.label}
+          aria-label={field.several ? t('statblockEditor.addTo', { name: field.label }) : field.label}
           {...list.inputProps}
           onChange={(event) => {
             setTyped(event.target.value);

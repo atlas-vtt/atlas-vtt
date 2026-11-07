@@ -9,9 +9,11 @@ const DM_SCREEN = `
       <div class="atlas-dm-screen-wrapper">
         <div class="atlas-dm-screen-backdrop"></div>
         <div class="atlas-dm-screen">
-          <div class="atlas-dm-screen-content">
-            <div class="atlas-dm-statblocks-section"><div class="atlas-dm-statblocks-grid"></div></div>
-            <div class="atlas-dm-notes-section"><div class="atlas-dm-notes-content"></div></div>
+          <div class="atlas-dm-screen-stage">
+            <div class="atlas-dm-screen-content atlas-dm-page" data-page="current">
+              <div class="atlas-dm-statblocks-section"><div class="atlas-dm-statblocks-grid"></div></div>
+              <div class="atlas-dm-notes-section"><div class="atlas-dm-notes-content"></div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -53,6 +55,31 @@ describe('the DM screen beside open sidebars', () => {
     style.remove();
   });
 
+  it('with pages, keeps the panes one inset from three edges, under the page control centred near the top', async () => {
+    await openIn({ width: 2400, height: 1800 }, { left: 0, width: 2400 });
+    const screen = document.querySelector<HTMLElement>('.atlas-dm-screen')!;
+    screen.classList.add('atlas-dm-screen--pages');
+    // As it stands once its entrance has run.
+    screen.style.transform = 'translate(-50%, -50%)';
+    const header = document.createElement('div');
+    header.className = 'atlas-dm-screen-header';
+    header.innerHTML = '<div class="atlas-segmented" style="height: 38px; width: 200px"></div>';
+    screen.prepend(header);
+    const view = leaf.getBoundingClientRect();
+    const control = boxOf('.atlas-segmented');
+    const statblocks = boxOf('.atlas-dm-statblocks-section');
+
+    const notes = boxOf('.atlas-dm-notes-section');
+    const inset = statblocks.left - view.left;
+
+    expect(inset).toBeGreaterThan(30);
+    expect(control.top - view.top).toBeCloseTo(16, 0);
+    expect((control.left + control.right) / 2).toBeCloseTo((view.left + view.right) / 2, 0);
+    expect(view.right - notes.right).toBeCloseTo(inset, 0);
+    expect(view.bottom - statblocks.bottom).toBeCloseTo(inset, 0);
+    expect(statblocks.top - control.bottom).toBeCloseTo(16, 0);
+  });
+
   it('keeps the panes side by side within a pane narrowed by sidebars', async () => {
     await openIn({ width: 1600, height: 1000 }, { left: 300, width: 1000 });
     const view = leaf.getBoundingClientRect();
@@ -83,5 +110,21 @@ describe('the DM screen beside open sidebars', () => {
     const scale = (selector: string): number => parseFloat(getComputedStyle(document.querySelector(selector)!).fontSize);
 
     expect(scale('.atlas-dm-screen')).toBe(scale('.atlas-ui'));
+  });
+
+  it('rests without a transform, so its text is not composited on half pixels', async () => {
+    // A view whose centre lies on a half pixel: a `translate(-50%, -50%)` left the DM screen's layer
+    // there after opening, which blurs its text on screens of device pixel ratio 1 (#573).
+    await openIn({ width: 1600, height: 1000 }, { left: 300, width: 1051 });
+    const screen = document.querySelector<HTMLElement>('.atlas-dm-screen')!;
+    screen.classList.add('is-visible');
+    await Promise.all(screen.getAnimations().map((animation) => animation.finished));
+
+    expect(getComputedStyle(screen).transform).toBe('none');
+    expect(getComputedStyle(screen).opacity).toBe('1');
+    const view = leaf.getBoundingClientRect();
+    const box = screen.getBoundingClientRect();
+    expect(box.left - view.left).toBeCloseTo(view.right - box.right, 1);
+    expect(box.top - view.top).toBeCloseTo(view.bottom - box.bottom, 1);
   });
 });

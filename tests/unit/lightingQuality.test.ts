@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { App, Setting } from 'obsidian';
+import { App } from 'obsidian';
 import { LIGHTING_QUALITY, bouncesOn, isLightingQualityLevel } from '../../src/app/lighting/lightingQuality';
 import { TILE_RAYS, worldTexel } from '../../src/app/lighting/lightingConstants';
 import { LIGHTING_QUALITY_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { lightingSettingsSection } from '../../src/app/settings/lightingSettingsSection';
+import { lightingQualityChoices } from '../../src/app/lighting/lightingQualityChoices';
 import { memoryPluginData } from '../mocks/pluginData';
 
 async function settingsOn(app: App, stored: unknown = {}): Promise<{ settings: SettingsService; write: ReturnType<typeof vi.fn> }> {
@@ -27,18 +27,18 @@ describe('lighting quality levels', () => {
     expect(large.width / worldTexel(large, LIGHTING_QUALITY.saver.maxTexels)).toBe(1024);
   });
 
-  it('bounce light everywhere at high, on maps up to 6,144 px when balanced, nowhere on saver', () => {
+  it('bounce light everywhere at high and on maps up to 6,144 px when balanced', () => {
     const map = (side: number): { width: number; height: number } => ({ width: side, height: side / 2 });
     expect(bouncesOn(LIGHTING_QUALITY.high, map(12_000))).toBe(true);
     expect(bouncesOn(LIGHTING_QUALITY.balanced, map(6144))).toBe(true);
     expect(bouncesOn(LIGHTING_QUALITY.balanced, map(8192))).toBe(false);
-    expect(bouncesOn(LIGHTING_QUALITY.saver, map(512))).toBe(false);
   });
 
-  it('trace every ray at high and fewer across a flame at the lower levels', () => {
+  it('trace every ray at high and fewer across a flame when balanced; saver draws the rule\'s polygons and traces none', () => {
     expect(LIGHTING_QUALITY.high.tileRays).toBe(TILE_RAYS);
     expect(LIGHTING_QUALITY.balanced.tileRays).toBe(16);
-    expect(LIGHTING_QUALITY.saver.tileRays).toBe(8);
+    expect(LIGHTING_QUALITY.saver.picture).toBe('polygons');
+    expect([LIGHTING_QUALITY.high.picture, LIGHTING_QUALITY.balanced.picture]).toEqual([undefined, undefined]);
   });
 
   it('reads only the levels it knows', () => {
@@ -75,11 +75,10 @@ describe('the lighting quality setting', () => {
     expect((await settingsOn(app)).settings.getLightingQuality()).toBe('high');
   });
 
-  it('is offered in Atlas\' settings', async () => {
-    const { settings } = await settingsOn(new App());
-    const section = lightingSettingsSection(settings);
-    expect(section.rows.map((row) => row.name)).toEqual(['Lighting quality']);
-    expect(section.rows[0]!.desc).toContain('Full detail');
-    expect(() => section.rows[0]!.render(new Setting(document.createElement('div')))).not.toThrow();
+  it('is offered on the Graphics page as three presets, each telling what it draws', async () => {
+    const choices = lightingQualityChoices();
+    expect(choices.map(({ label }) => label)).toEqual(['Saver', 'Balanced', 'High']);
+    expect(choices[2]!.hint).toContain('ray-traced');
+    expect(choices[0]!.hint).toContain('Classic lighting');
   });
 });

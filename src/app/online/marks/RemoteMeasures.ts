@@ -2,6 +2,7 @@ import type { MarkPoint, MeasureState, SharedMeasure } from '../protocol/index.t
 import { Container } from 'pixi.js';
 import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
+import type { DifficultCells } from '../../grid/movementCost';
 import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
 import { drawMeasurement, measureLabelTarget, type MeasureRecord } from '../../pixi/utils/measureDrawing';
 import { MeasureInk, MeasureInkLayer } from '../../pixi/utils/measureInk';
@@ -16,6 +17,8 @@ export type RemoteMeasure = { readonly who: string } & MeasureState;
 export interface MeasureRules {
   readonly grid: GridGeometry;
   readonly measurement: MeasurementSettings;
+  /** Where the scene's difficult terrain lies, which drags pay for by the measurement's rule; null or unset where it has none. */
+  readonly difficult?: DifficultCells | null;
 }
 
 /** A measurement being drawn: as its sender last told it, and its end as it is drawn, a moment behind. */

@@ -1,5 +1,6 @@
 import type { TokenAsset, AnyAsset, EncounterAsset } from '../types';
 import { placeFormation, type FormationSlot } from '../../../../encounters/encounterFormation';
+import { refQuantity, rolledRefs } from '../../../../encounters/encounterQuantity';
 import type { TokenInput } from '../../../../types/viewState';
 import { tokenFromFile } from '../../../../resources/resourceFileFormat';
 import { addOffMapCombatants, joinInitiative } from '../../../../initiative/offMapCombatants';
@@ -19,11 +20,16 @@ export type { SpawnContext } from './spawnTarget';
  */
 export type SpawnPlacement = 'map' | 'fight' | 'beside';
 
-/** Formation slots for an encounter, or null if any token lacks captured layout data. */
+/**
+ * Formation slots for an encounter, or null if any token lacks captured layout data or its number is
+ * rolled: rolled copies have no places of their own, so they are laid out in the grid instead.
+ */
 function encounterSlots(encounter: EncounterAsset): FormationSlot[] | null {
   if (!encounter.formation) return null;
+  const refs = encounter.tokens ?? [];
+  if (refs.some((ref) => typeof refQuantity(ref) === 'string')) return null;
   const slots: FormationSlot[] = [];
-  for (const token of encounter.tokens ?? []) {
+  for (const token of refs) {
     if (!token.cell || !token.offset) return null;
     slots.push({ cell: token.cell, offset: token.offset });
   }
@@ -119,7 +125,8 @@ export async function spawnEncounterTokens(
   const { viewport, grid, pitch } = target;
   const gridSystem = grid ? target.gridSystem : null;
   const center = getViewportCenter(viewport);
-  const tokensToSpawn = encounter.tokens || [];
+  // Dice quantities roll anew on every spawn.
+  const tokensToSpawn = rolledRefs(encounter.tokens || []);
 
   const slots = encounterSlots(encounter);
   const formationPositions = slots && encounter.formation
@@ -137,7 +144,7 @@ export async function spawnEncounterTokens(
     const formationPos = formationPositions?.[i];
     if (formationPos) {
       pos = formationPos;
-    } else if (token.x !== undefined && token.y !== undefined) {
+    } else if (token.x !== undefined && token.y !== undefined && token.quantity === undefined) {
       let x = center.x + token.x;
       let y = center.y + token.y;
       if (gridSystem) {

@@ -1,5 +1,6 @@
 import type { EmbedContext, TFile } from 'obsidian';
 import { AssetService } from '../services/AssetService';
+import { tokenCountText } from '../encounters/encounterTokenCount';
 import { addArtIcon, AtlasLinkEmbed, type EmbedCardContent } from './AtlasLinkEmbed';
 import { encounterOfFile } from './atlasLinkAssets';
 import { placeEncounterFile } from './openAtlasLink';
@@ -49,7 +50,7 @@ export class EncounterEmbed extends AtlasLinkEmbed {
     return {
       title: encounter?.name ?? this.file.basename,
       meta: encounter
-        ? `${t('atlasLinks.tokenCount', { count: tokenCount })} · ${encounter.collection}`
+        ? `${tokenCountText(encounter.tokens)} · ${encounter.collection}`
         : t('atlasLinks.encounterMissing'),
       art: (artEl) => addTokenRow(artEl, tokens?.tokenPreviews ?? [], tokenCount),
       action: {

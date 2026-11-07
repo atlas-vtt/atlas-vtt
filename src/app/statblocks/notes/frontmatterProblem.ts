@@ -6,6 +6,7 @@
 import { isMap, parseNoteYamlDocument } from '../../services/noteYaml';
 import { frontmatterBounds, readersAgree } from './frontmatterBounds';
 import { readFrontmatterDoc } from './yamlDocument';
+import { t } from '../../i18n';
 
 export interface NoteProblem {
   /** The note's line (1-based) the problem is on, where it can be told. */
@@ -19,7 +20,7 @@ export function frontmatterProblem(text: string): NoteProblem | null {
   if (!readersAgree(text, bounds)) {
     return {
       line: closingLine(text),
-      message: 'Obsidian reads the end of this note\'s properties in two ways. Make the line that closes them exactly ---.',
+      message: t('statblockEditor.fm.twoEnds'),
     };
   }
   if (!bounds.exists) return null;
@@ -28,7 +29,7 @@ export function frontmatterProblem(text: string): NoteProblem | null {
   if (readFrontmatterDoc(yaml)) return null;
   const doc = parseNoteYamlDocument(yaml);
   if (!doc) {
-    return { line: lineOf(text, bounds.from), message: 'The note\'s properties are too long, or repeat too much through YAML aliases, for Atlas to read.' };
+    return { line: lineOf(text, bounds.from), message: t('statblockEditor.fm.tooLong') };
   }
   const error = doc.errors[0];
   if (error) {
@@ -36,12 +37,12 @@ export function frontmatterProblem(text: string): NoteProblem | null {
     const at = error.linePos?.[0].line;
     const lastLine = Math.max(1, yaml.split('\n').length - (yaml.endsWith('\n') ? 1 : 0));
     const line = at === undefined ? null : lineOf(text, bounds.from) + Math.min(at, lastLine) - 1;
-    return { line, message: line === null ? 'The note\'s properties have a YAML error.' : `The note's properties have a YAML error on line ${line}.` };
+    return { line, message: line === null ? t('statblockEditor.fm.yaml') : t('statblockEditor.fm.yamlLine', { line }) };
   }
   if (doc.contents !== null && !(isMap(doc.contents) && doc.contents.srcToken?.type === 'block-map')) {
-    return { line: lineOf(text, bounds.from), message: 'The note\'s properties are not written as one key per line.' };
+    return { line: lineOf(text, bounds.from), message: t('statblockEditor.fm.oneKey') };
   }
-  return { line: null, message: 'Atlas can\'t change these properties safely.' };
+  return { line: null, message: t('statblockEditor.fm.unsafe') };
 }
 
 /** The line (1-based) an offset of the text lies on. */

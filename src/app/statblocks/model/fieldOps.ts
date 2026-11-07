@@ -15,6 +15,7 @@ import {
   isContainerBlock,
   type Condition, type FieldKey, type ScoreColumn, type StatblockTemplate, type TemplateBlock, type TemplateField,
 } from './templateTypes';
+import { t } from '../../i18n';
 
 type OptionalFieldKeys = { [K in keyof TemplateField]-?: Record<never, never> extends Pick<TemplateField, K> ? K : never }[keyof TemplateField];
 
@@ -116,14 +117,14 @@ function withKeyMoved(template: StatblockTemplate, from: FieldKey, to: FieldKey 
 
 /** Why `from` cannot be renamed to `to`, in plain words, or null when it can. */
 export function renameKeyProblem(template: StatblockTemplate, from: FieldKey, to: FieldKey): string | null {
-  if (!template.fields.some((field) => field.key === from)) return `The template has no field “${from}”.`;
+  if (!template.fields.some((field) => field.key === from)) return t('statblockEditor.key.noField', { key: from });
   if (to === from) return null;
   const problem = keyProblem(to, keysOfOthers(template, from));
   if (problem) return problem;
   const inFormula = flattenReadingOrder(template.layout.blocks).some((block) => columnsRead(block, from)
     || blockPatterns(block).some((pattern) => patternFormulas(pattern).some((formula) => formulaReads(formula, from))));
   return inFormula && !formulaCanName(to)
-    ? `A formula reads “${from}”, and formulas can't name a key with a hyphen. Choose a key without one.`
+    ? t('statblockEditor.key.hyphen', { key: from })
     : null;
 }
 

@@ -4,6 +4,7 @@ import type { CollectionSettings, GridUnitType } from '../types/collectionSettin
 import type { SceneLighting } from '../types/lightingTypes';
 import { ATLAS_SCHEMA, ATLAS_VERSION, type MapFile } from './MapPersistence';
 import type { GridState } from '../types/gridTypes';
+import type { SceneLevel } from '../types/sceneLevelTypes';
 
 type SceneObjects = MapFile['objects'];
 
@@ -15,6 +16,8 @@ export interface NewSceneFile {
     objects: Omit<SceneObjects, 'walls' | 'lights'> & Partial<Pick<SceneObjects, 'walls' | 'lights'>>;
     tokenSettings: Record<string, unknown>;
     lighting?: SceneLighting;
+    /** The scene's floors, bottom first, for a scene of several (written with `sceneFileVersion`). */
+    levels?: SceneLevel[];
   };
   version: number;
 }

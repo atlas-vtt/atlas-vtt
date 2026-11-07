@@ -18,6 +18,17 @@ export interface DetectionJob {
   candidates?: AlignmentResult[];
   /** Whether the map's line evidence is wanted, which costs a moment before the search begins. */
   ink: boolean;
+  /** Whether where the map's lines lie is wanted (`LineEnergy`), for the windows a huge map is searched in. */
+  lines?: boolean;
+}
+
+/** How much line evidence each block of the analysed image holds, row-major, for choosing where to look closer. */
+export interface LineEnergy {
+  cols: number;
+  rows: number;
+  /** Pixels of the analysed image a block spans. */
+  block: number;
+  data: Float32Array;
 }
 
 /** The lines of a map, whatever they belong to, as strengths of 0–255 over the whole image. */
@@ -38,6 +49,8 @@ export interface DetectionOutcome {
   result: AlignmentResult | null;
   /** The edges of the result's grid that lie on lines of the map, four numbers each (x1, y1, x2, y2) in the result's world. */
   hits: Float32Array | null;
+  /** Where the map's lines lie, when asked for (`DetectionJob.lines`). */
+  lines?: LineEnergy;
 }
 
 /** A detection that found no grid. */
@@ -62,6 +75,29 @@ function binsBelowFull(data: Float32Array, max: number): number {
     if (seen >= data.length * INK_FULL_SHARE) return bin + 1;
   }
   return INK_BINS;
+}
+
+/** Pixels of the analysed image one block of the line energy spans: a 4096 px picture gives 16 × 16 blocks. */
+const ENERGY_BLOCK = 256;
+
+/** The line evidence of `image` summed per block of `ENERGY_BLOCK` pixels; partial blocks at the edges count what they have, scaled up. */
+export function lineEnergyOf(image: GrayImage): LineEnergy {
+  const { width, height, data } = lineContrast(image, INK_FLANK);
+  const cols = Math.max(1, Math.ceil(width / ENERGY_BLOCK));
+  const rows = Math.max(1, Math.ceil(height / ENERGY_BLOCK));
+  const sums = new Float32Array(cols * rows);
+  const counts = new Float32Array(cols * rows);
+  for (let y = 0; y < height; y++) {
+    const row = Math.floor(y / ENERGY_BLOCK) * cols;
+    for (let x = 0; x < width; x++) {
+      const at = row + Math.floor(x / ENERGY_BLOCK);
+      sums[at] = sums[at]! + data[y * width + x]!;
+      counts[at] = counts[at]! + 1;
+    }
+  }
+  const full = ENERGY_BLOCK * ENERGY_BLOCK;
+  for (let i = 0; i < sums.length; i++) sums[i] = counts[i]! > 0 ? (sums[i]! * full) / counts[i]! : 0;
+  return { cols, rows, block: ENERGY_BLOCK, data: sums };
 }
 
 /** The line evidence of `image`, reduced and scaled to bytes. */
@@ -94,13 +130,14 @@ function hitsOf(grid: RefinedGrid, { image, size }: MapGray): Float32Array {
 }
 
 /** Fits `candidates` to the map's lines, or searches the whole map without them; `emit` hears what turns up on the way. */
-export function runDetection({ gray, candidates, ink }: DetectionJob, emit: (event: DetectionEvent) => void): DetectionOutcome {
+export function runDetection({ gray, candidates, ink, lines }: DetectionJob, emit: (event: DetectionEvent) => void): DetectionOutcome {
   if (ink) emit({ type: 'ink', ink: inkOf(gray.image) });
+  const energy = lines ? { lines: lineEnergyOf(gray.image) } : {};
   const inWorld = (grid: RefinedGrid): AlignmentResult => gridInWorld(grid, gray.image, gray.size);
   const watch: DetectionWatch = {
     tried: ({ gridType, size, aspect, rotation = 0 }) => emit({ type: 'trial', trial: inWorld({ gridType, cellSize: size, offsetX: 0, offsetY: 0, aspect, rotation, support: 0 }) }),
     fitted: (fit) => emit({ type: 'fit', fit: inWorld(fit) }),
   };
   const grid = candidates ? snapGridInMapGray(gray, candidates, watch) : detectGridInImage(gray.image, undefined, watch);
-  return grid ? { result: gridInWorld(grid, gray.image, gray.size), hits: hitsOf(grid, gray) } : NO_GRID;
+  return grid ? { result: gridInWorld(grid, gray.image, gray.size), hits: hitsOf(grid, gray), ...energy } : { ...NO_GRID, ...energy };
 }

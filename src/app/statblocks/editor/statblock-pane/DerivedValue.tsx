@@ -4,6 +4,7 @@ import { isExpressionError, nameOf, type LabelResolver } from '../../expressions
 import { formulaText } from '../../expressions/formulaText';
 import { parsePatternCached } from '../../expressions/patternParse';
 import type { PatternNode } from '../../expressions/patternTypes';
+import { t } from '../../../i18n';
 
 function nodesInWords(nodes: readonly PatternNode[], labelOf: LabelResolver | undefined): string {
   return nodes.map((node) => {
@@ -39,7 +40,7 @@ export function patternInWords(pattern: string, labelOf: LabelResolver | undefin
  */
 export function DerivedValue({ words, children }: { words: string; children: React.ReactNode }): React.JSX.Element {
   return (
-    <LabelTooltip label={`Worked out from ${words}`} multiline>
+    <LabelTooltip label={t('statblockEditor.derivedFrom', { list: words })} multiline>
       <span className="atlas-sb-pane-derived">{children}</span>
     </LabelTooltip>
   );

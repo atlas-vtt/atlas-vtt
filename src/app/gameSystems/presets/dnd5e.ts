@@ -17,6 +17,8 @@ export const DND_5E: SystemPreset = {
       unitDistance: 5,
       measurementMode: 'metric',
       diagonalRule: 'equidistant',
+      // Every foot moved in difficult terrain costs one more (2014 and 2024 rules)
+      difficultTerrain: 'double',
       // A cone is as wide as it is long at every point: 2 × atan(1/2)
       coneAngle: 53.13,
       abstractRangeBands: [],

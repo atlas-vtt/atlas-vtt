@@ -2,19 +2,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Ticker } from 'pixi.js';
 import type { App } from 'obsidian';
-import type { MapImageDeps } from '../../src/app/pixi/mapImage/mapImageTypes';
+import type { MosaicCanvasDeps } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
 
-const made: MapImageDeps[] = [];
+const made: MosaicCanvasDeps[] = [];
 
 vi.mock('../../src/app/MapLoader', () => ({
   MapLoader: { load: vi.fn().mockResolvedValue({ mapData: { grid: { size: 70 } }, image: { kind: 'none' } }) },
   mapImageSourceFor: vi.fn(),
 }));
-vi.mock('../../src/app/pixi/mapImage/MapImageService', () => ({ MapImageService: { forApp: () => ({}) } }));
-vi.mock('../../src/app/pixi/mapImage/MapImage', () => ({
-  MapImage: class {
+vi.mock('../../src/app/pixi/mosaicCanvas/MosaicCanvasService', () => ({ MosaicCanvasService: { forApp: () => ({}) } }));
+vi.mock('../../src/app/pixi/mosaicCanvas/MosaicCanvas', () => ({
+  MosaicCanvas: class {
     readonly worldRect = null;
-    constructor(readonly deps: MapImageDeps) { made.push(deps); }
+    constructor(readonly deps: MosaicCanvasDeps) { made.push(deps); }
     load(): Promise<void> { return Promise.resolve(); }
   },
 }));
@@ -36,7 +36,7 @@ function heldView(): Parameters<typeof MapController.loadAndDisplay>[1] {
 }
 
 describe('MapController: the map image while a load holds the frame', () => {
-  it('runs the tiles on a ticker the hold does not stop, and draws them without a fade', async () => {
+  it('runs the tesserae on a ticker the hold does not stop, and draws them without a fade', async () => {
     const view = heldView();
     await MapController.loadAndDisplay({} as App, view, 'maps/a.atlasmap');
 

@@ -6,7 +6,10 @@ import type { TokenVitals } from '../../services/statblockVitalsSync';
 import type { TokenRollContext } from '../../types/diceRollOrigin';
 import { isModHeld, isModKey } from '../../keyboard/modKey';
 import { previewEdgeGaps, type PreviewEdgeGaps } from './statblock/previewEdgeGap';
+import { scrollOnCtrlWheel } from '../../services/previewWheel';
+import { holdPreviewShown } from './statblock/previewShown';
 import './statblock-hover-preview.scss';
+import { portalHost } from '../../host/portalHost';
 
 export interface StatblockHoverPreviewProps {
   /** Vault path of the linked statblock note */
@@ -167,6 +170,11 @@ export function StatblockHoverPreview({
     return;
   }, [isVisible, isClosing, notePath, updateMeasured]);
 
+  useEffect(() => (containerRef.current ? scrollOnCtrlWheel(containerRef.current) : undefined), [isVisible, isClosing, notePath]);
+
+  const shown = (isVisible || isClosing) && notePath !== null;
+  useEffect(() => (shown ? holdPreviewShown(document) : undefined), [shown]);
+
   const positionStyles = useMemo(() => {
     if (!isVisible && !isClosing) return {};
     // Fall back to rough defaults until the statblock has actually rendered.
@@ -188,7 +196,7 @@ export function StatblockHoverPreview({
         <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} />
       )}
     </div>,
-    document.body
+    portalHost()
   );
 }
 

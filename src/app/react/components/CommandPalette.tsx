@@ -25,7 +25,11 @@ import {
   Palette,
   UserCheck,
   History,
-} from 'lucide-react';
+  Layers,
+  Replace, Gauge } from 'lucide-react';
+import { runInBackground } from '../../utils/backgroundTask';
+import { viewedLevelId } from '../../levels/sceneLevels';
+import { collectionIdOfPath } from '../../services/assetPaths';
 import { CoinIcon } from './CoinIcon';
 
 import { useStore } from 'zustand';
@@ -49,7 +53,11 @@ import { WidgetSettingsPanel } from './command-palette/WidgetSettingsPanel';
 import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewSettingsPanel';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
+import { GraphicsPanel } from './command-palette/GraphicsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
+import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
+import { replaceMapImage } from './levels/replaceMapImage';
+import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
@@ -82,12 +90,14 @@ const paletteVariants = {
 
 const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.ReactNode }> = {
   'scene-snapshots': { title: t('palette.panel.snapshots'), icon: <History /> },
+  'scene-levels': { title: t('palette.panel.levels'), icon: <Layers /> },
   'grid-settings': { title: t('palette.panel.grid'), icon: <Grid /> },
   'token-settings': { title: t('palette.panel.tokens'), icon: <Users /> },
   'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
   'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
+  'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
 };
 
 export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
@@ -264,6 +274,30 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       submenu: [],
     },
     {
+      id: "scene-levels",
+      icon: <Layers />,
+      label: t('palette.sceneLevels'),
+      keywords: ["floors", "storeys", "stories", "upstairs", "basement", "elevation"],
+      section: "tools",
+      hasSubmenu: true,
+      submenu: [],
+    },
+    {
+      id: "replace-map-image",
+      icon: <Replace />,
+      label: t('palette.replaceMapImage'),
+      keywords: ["swap", "gridless", "gridded", "video", "animated", "background"],
+      section: "tools",
+      action: () => {
+        onClose();
+        const state = store.getState();
+        const levelId = viewedLevelId(state);
+        runInBackground(pickMapImage(app, collectionIdOfPath(state.mapPath), (path) => {
+          if (path) runInBackground(replaceMapImage(app, store, levelId, path), 'Replacing the map image');
+        }), 'Picking a map image');
+      },
+    },
+    {
       id: "open-dice-log",
       icon: <Dices />,
       label: t('palette.openDiceLog'),
@@ -422,6 +456,23 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       ],
     },
     {
+      id: "graphics-settings",
+      icon: <Gauge />,
+      label: t('graphics.command'),
+      keywords: ["graphics", "quality", "performance", "lighting", "gpu", "battery", "fps", "bounce", "flicker", "saver", "balanced"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "graphics-all-settings",
+          icon: null,
+          label: t('graphics.commandHint'),
+          section: "graphics",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
       id: "experimental-features",
       icon: <FlaskConical />,
       label: "Experimental features",
@@ -496,7 +547,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (!isOpen) return;
     setSearchQuery("");
     setActiveTab("all");
-    setActiveSubmenu(null);
+    // A page asked for with the opening (a menu's "Graphics settings…" row) is opened in place of the list.
+    const page = store.getState().commandPalettePage;
+    setActiveSubmenu(isSettingsPanelId(page) ? page : null);
     setSubmenuOptions([]);
     setIsTemporarilyHidden(false);
     if (filteredOptions.length > 0) {
@@ -684,54 +737,53 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Close on click outside
   useEffect(() => {
-    const handleMouseDown = (e: MouseEvent): void => {
-      // Don't handle outside clicks when temporarily hidden
-      if (isTemporarilyHidden) {
-        return;
+    if (!isOpen || isTemporarilyHidden) return;
+
+    const isOutsidePress = (target: Element | null): boolean => {
+      if (target?.closest?.('.atlas-onboarding-overlay')) return false;
+      // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
+      if (target?.closest?.('.atlas-text-dialog-backdrop')) return false;
+
+      // Don't close if clicking on Obsidian menu elements
+      if (target?.closest?.('.menu') ||
+          target?.closest?.('.obsidian-menu') ||
+          target?.closest?.('[class*="menu"]') ||
+          target?.classList?.contains('menu-item') ||
+          target?.classList?.contains('clickable-icon') ||
+          // Check if target is within any dropdown that might be open
+          target?.closest?.('.atlas-obsidian-menu-dropdown')) {
+        return false;
       }
 
-      // Add a small delay to allow dropdown menus to properly handle their events first
-      window.setTimeout(() => {
-        const target = e.target as Element;
-        if (target?.closest?.('.atlas-onboarding-overlay')) return;
-        // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
-        if (target?.closest?.('.atlas-text-dialog-backdrop')) return;
+      // Allow interaction with grid settings without closing
+      if (activeSubmenu === 'grid-settings' &&
+          (target?.closest?.('.atlas-command-palette-grid-settings') ||
+           target?.closest?.('[role="slider"]') ||
+           target?.closest?.('.atlas-command-palette-custom-content'))) {
+        return false;
+      }
 
-        // Don't close if clicking on Obsidian menu elements
-        if (target?.closest?.('.menu') ||
-            target?.closest?.('.obsidian-menu') ||
-            target?.closest?.('[class*="menu"]') ||
-            target?.classList?.contains('menu-item') ||
-            target?.classList?.contains('clickable-icon') ||
-            // Check if target is within any dropdown that might be open
-            target?.closest?.('.atlas-obsidian-menu-dropdown')) {
-          return;
-        }
-
-        // Also don't close if we're in grid settings and clicking on grid setting controls
-        if (activeSubmenu === 'grid-settings') {
-          // Allow interaction with grid settings without closing
-          if (target?.closest?.('.atlas-command-palette-grid-settings') ||
-              target?.closest?.('[role="slider"]') ||
-              target?.closest?.('.atlas-command-palette-custom-content')) {
-            return;
-          }
-        }
-
-        if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-          if (toolbarRef?.current && !toolbarRef.current.contains(e.target as Node)) {
-            onClose();
-          }
-        }
-      }, 10); // Small delay to allow menu events to complete
+      return !!containerRef.current && !containerRef.current.contains(target) &&
+        !!toolbarRef?.current && !toolbarRef.current.contains(target);
     };
 
-    if (isOpen && !isTemporarilyHidden) {
-      document.addEventListener("mousedown", handleMouseDown);
-    }
+    const timers = new Set<number>();
+    const handleMouseDown = (e: MouseEvent): void => {
+      // Decided at the press: by the time the close runs, the click may already have
+      // replaced the pressed entry (one that opens a page), which then lies in no container.
+      if (!isOutsidePress(e.target as Element | null)) return;
+      // A small delay lets dropdown menus handle their events first.
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        onClose();
+      }, 10);
+      timers.add(timer);
+    };
 
+    document.addEventListener("mousedown", handleMouseDown);
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
+      timers.forEach(timer => window.clearTimeout(timer));
     };
   }, [isOpen, isTemporarilyHidden, onClose, toolbarRef, activeSubmenu]);
 
@@ -799,6 +851,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     switch (panel) {
       case 'scene-snapshots':
         return <SceneSnapshotsPanel onRestore={onClose} />;
+      case 'scene-levels':
+        return <SceneLevelsPanel />;
       case 'grid-settings':
         return (
           <GridSettingsPanel
@@ -838,6 +892,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         return <DiceSettingsPanel />;
       case 'experimental-features':
         return <ExperimentalFeaturesPanel />;
+      case 'graphics-settings':
+        return <GraphicsPanel />;
     }
   };
 

@@ -109,6 +109,16 @@ if (exists('dist/styles.css')) {
   errors.push('dist/styles.css is missing');
 }
 
+// --- Dungeon drawings ---------------------------------------------------------
+// A dungeon furniture kind, terrain kind or cave part the generator would use but no painter draws
+// yet waits in this list; nothing ships while one does.
+const awaitingDrawings = 'tests/unit/dungeons/awaitingDrawings.json';
+if (exists(awaitingDrawings)) {
+  for (const [list, ids] of Object.entries(JSON.parse(read(awaitingDrawings)))) {
+    if (Array.isArray(ids) && ids.length) errors.push(`${ids.length} dungeon ${list} drawings still awaited: ${ids.join(', ')}`);
+  }
+}
+
 // --- Report ------------------------------------------------------------------
 warnings.forEach((message) => console.warn(`warning  ${message}`));
 errors.forEach((message) => console.error(`error    ${message}`));

@@ -3,7 +3,7 @@ import { rulesLookup } from './mapRules';
 import type { App } from 'obsidian';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
-import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerInstanceBadges';
+import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
 import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, sideIdsOf, type EntryToken } from './playerInitiativeList';
 import { mapInitiativeRules } from './mapInitiativeRules';
 import { mapConditions } from '../gameSystems/mapRules';
@@ -22,14 +22,16 @@ interface InitiativeScene {
   mapPath: string | null;
   /** What the list shows of every initiative token (`EntryToken`), in entry order, as a key that changes when one of them does. */
   tokens: string;
+  /** The scene's Show nameplates, which says with each token's own whom the list names. */
+  mapShowsNameplates: boolean;
 }
 
 /**
  * Read-only initiative projection; never mounts the DM tracker or its controls. It lists the
  * GM's combatants without those whose token is hidden, in turn order or by sides as the fight runs.
- * Look-alikes carry the number their badge shows the players (`PlayerBadgeNumbers`), which may
- * differ from the GM's: the list is drawn anew once the players' frame numbered them anew. It
- * follows the GM's layout: the edge it stands at and whether it starts at the turn.
+ * Look-alikes carry the GM's number where the players see their token (`PlayerBadgeNumbers`): the
+ * list is drawn anew once the players' frame shows another set. It follows the GM's layout: the
+ * edge it stands at and whether it starts at the turn.
  */
 export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
   private badgeNumbers: PlayerBadgeNumbers | undefined;
@@ -68,7 +70,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     super.hold();
   }
 
-  /** The players' frame numbers its badges while it renders: the list is drawn once that render is done. */
+  /** The players' frame takes its badge numbers while it renders: the list is drawn once that render is done. */
   private redrawSoon(): void {
     if (this.redrawQueued) return;
     this.redrawQueued = true;
@@ -84,7 +86,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.badgeNumbers = undefined;
   }
 
-  protected select({ initiative, initiativeTrackerOpen, objects, mapPath }: ViewAtlasState): InitiativeScene {
+  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings }: ViewAtlasState): InitiativeScene {
     const tokens = objects?.tokens;
     const entries = initiative?.entries ?? [];
     // Who is defeated follows the map's resources, as on the GM's cards
@@ -99,7 +101,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     // A token's side counts where the fight or the rules know it
     const sides = entries.length > 0 && initiative ? sideIdsOf(initiative, mapInitiativeRules(this.app, mapPath ?? null)) : undefined;
     const entryTokens = JSON.stringify(entries.map((entry): EntryToken => entryTokenOf(tokens?.[entry.tokenId], definitions, conditions, sides)));
-    return { initiative, initiativeTrackerOpen, visibleTokenIds, mapPath: mapPath ?? null, tokens: entryTokens };
+    return { initiative, initiativeTrackerOpen, visibleTokenIds, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false };
   }
 
   protected render(container: HTMLElement, scene: InitiativeScene, settings: PlayerSettings): void {
@@ -126,6 +128,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     const { fromTurn, dock } = this.settings.initiativeLayout();
     renderPlayerInitiative(container, list, {
       showNames: settings.showTokenNameplates,
+      mapShowsNameplates: scene.mapShowsNameplates,
       fromTurn,
       dock,
       badgeNumber: (tokenId) => shown.get(tokenId) ?? null,

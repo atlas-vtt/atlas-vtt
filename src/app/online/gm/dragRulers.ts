@@ -4,6 +4,7 @@ import { cellToWorld, formationGridFromOptions, worldToCell, type FormationGrid 
 import { snapTokenCenter } from '../../grid/gridPlacement';
 import { call, type SceneState } from './atlasView.ts';
 import { mapTokens } from '../../tokens/offMap';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** The rulers of the drags under way, by GM token id: the points each runs through. */
 export type RulerPaths = ReadonlyMap<string, readonly Point[]>;
@@ -14,7 +15,7 @@ export interface GmRuler {
   readonly points: readonly Point[];
 }
 
-type RulerState = Pick<SceneState, 'objects' | 'grid'>;
+type RulerState = Pick<SceneState, 'objects' | 'grid' | 'levels' | 'viewedLevel'>;
 
 /** Points closer than half a pixel are one, as Atlas's ruler takes them. */
 const samePoint = (a: Point, b: Point): boolean => Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
@@ -33,10 +34,10 @@ function snapGrid(grid: RulerState['grid']): FormationGrid | null {
  */
 export function dragRulerPaths(state: RulerState, gm: GmRuler | null, starts: ReadonlyMap<string, Point>): Map<string, readonly Point[]> {
   const paths = new Map<string, readonly Point[]>();
-  if (gm !== null && mapTokens(state.objects)[gm.tokenId] !== undefined) paths.set(gm.tokenId, gm.points);
+  if (gm !== null && mapTokens(levelObjects(state))[gm.tokenId] !== undefined) paths.set(gm.tokenId, gm.points);
   const grid = snapGrid(state.grid);
   for (const [tokenId, start] of starts) {
-    const token = mapTokens(state.objects)[tokenId];
+    const token = mapTokens(levelObjects(state))[tokenId];
     if (token === undefined || paths.has(tokenId)) continue;
     const snap = (point: Point): Point => (grid === null ? { x: point.x, y: point.y } : snapTokenCenter(point, token.size || 1, grid.type, grid.size, (at) => cellToWorld(grid, worldToCell(grid, at))));
     const from = snap(start);
@@ -50,7 +51,7 @@ export function dragRulerPaths(state: RulerState, gm: GmRuler | null, starts: Re
 export function rulersToDraw(state: RulerState, paths: RulerPaths): RemoteDrag[] {
   const snaps = state.grid?.snapToGrid ?? true;
   return [...paths].flatMap(([tokenId, path]) => {
-    const token = mapTokens(state.objects)[tokenId];
+    const token = mapTokens(levelObjects(state))[tokenId];
     return token === undefined ? [] : [{ key: tokenId, path, cells: token.size || 1, snaps }];
   });
 }

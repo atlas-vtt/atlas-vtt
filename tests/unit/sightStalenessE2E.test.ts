@@ -27,8 +27,16 @@ import { wallList } from '../../src/app/vision/wallList';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
-// The line-of-sight fallback is the whole lighting view here: real sight, real cache, no GPU.
-vi.mock('../../src/app/pixi/utils/rendererType', () => ({ usesCanvasRenderer: () => true }));
+// The line-of-sight fallback is the whole lighting view here: real sight, real cache, no GPU. The
+// engine's view gives up as it is made, as one whose shaders do not compile does.
+vi.mock('../../src/app/pixi/lighting/LightingRenderer', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/app/pixi/lighting/LightingRenderer')>()),
+  LightingRenderer: class {
+    modeLayer = { visible: false };
+    constructor(deps: { onUnavailable: (reason: 'failed') => void }) { deps.onUnavailable('failed'); }
+    destroy(): void {}
+  },
+}));
 vi.mock('../../src/app/utils/activeLeafGuard', () => ({ isActiveAtlasLeaf: () => true }));
 
 const MAP = 'atlas-vtt/collections/dungeon/scenes/cave.atlasmap';
@@ -67,7 +75,7 @@ function world(): World {
   store.getState().setMapPath(MAP);
   const controller = new LightingController({
     viewport,
-    app: { canvas: document.createElement('canvas'), renderer: { name: 'canvas' } } as unknown as Application,
+    app: { canvas: document.createElement('canvas'), renderer: { name: 'webgl' } } as unknown as Application,
     store,
     eventBus: new EventEmitter(),
     obsApp: current.app,
@@ -78,7 +86,7 @@ function world(): World {
   controller.wire({
     setWallPointerDownHandler: vi.fn(), setWallPointerMoveHandler: vi.fn(), setWallPointerUpHandler: vi.fn(), setWallDoubleClickHandler: vi.fn(),
     setWallContextMenuHandler: vi.fn(), setWallCursorProvider: vi.fn(), setDoorMenuHandlers: () => undefined, setDoorClickHandler: vi.fn(), setLightHandlers: vi.fn(),
-    setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(), refreshPlayerSight: vi.fn(), getSensedOutlineLayer: () => ({ visible: false }),
+    setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(), setArtFloors: vi.fn(), refreshPlayerSight: vi.fn(), getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   cleanup = () => {
     controller.destroy();
@@ -117,7 +125,7 @@ function compare({ current, store, controller }: World): { held: unknown; fresh:
   const walls = sealedWalls(wallList(state.objects.walls), worldTexel(BOUNDS));
   const resolver = tokenSensesResolver(CreatureIndex.forApp(current.app), mapSenseRulesSource(current.app, assets, () => state));
   const rules = mapSightRules(current.app, state, (token) => resolver.visionOf(token));
-  const sight = sceneSight(state.lighting, sightSources(state.objects.tokens, scale, BOUNDS, rules), walls);
+  const sight = sceneSight(state.lighting, sightSources(state.objects.tokens, scale, BOUNDS, rules), walls, undefined, { sceneHasVision: true });
   const fresh = tokenPerception(sight, { ambient: 1 }, [], state.objects.tokens, { conditions: rules.conditions, held: heldForSight(state) });
   return {
     held: { sight: describeSight(controller.renderer.currentSight()), tokens: Object.fromEntries(ids.map((id) => [id, perception?.(id)])) },

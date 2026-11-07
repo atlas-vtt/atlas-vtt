@@ -19,6 +19,7 @@ import type { ConflictChoice } from './sessionFile';
 import type { SaveResult } from './sessionFileSync';
 import { acquireSessionCore, acquireUnsavedCore, holdersOf, isSessionOpen, releaseSessionCore } from './sessionRegistry';
 import { TemplateLibrary } from './TemplateLibrary';
+import { t } from '../../i18n';
 
 export type { RoleOnSave, SaveState, SessionSnapshot } from './sessionCore';
 export type { ConflictChoice } from './sessionFile';
@@ -108,7 +109,7 @@ export class TemplateSession {
 
   /** Writes the draft over the template's file ("Update"); a built-in or a template never saved is saved as a new one instead. */
   save(): Promise<SaveResult> {
-    return this.released ? Promise.resolve({ ok: false, problem: 'The template is closed.' }) : this.core.save();
+    return this.released ? Promise.resolve({ ok: false, problem: t('statblockEditor.templateClosed') }) : this.core.save();
   }
 
   /** The text a template without a file (never saved, or a built-in) gives its note once saved; ignored for a saved template. */

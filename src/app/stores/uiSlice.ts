@@ -7,7 +7,7 @@
  */
 
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
-import type { HeldTokens, ViewUIState } from '../types/viewUIState';
+import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */
 export interface UISlice extends ViewUIState {
@@ -15,21 +15,32 @@ export interface UISlice extends ViewUIState {
   // Actions
   setGridSettingsOpen: (open: boolean) => void;
   setDMScreenOpen: (open: boolean) => void;
+  setDMScreenPage: (page: DMScreenPage) => void;
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
   closeAssetManager: () => void;
-  setCommandPaletteOpen: (open: boolean) => void;
+  /** Opens or closes the palette; `page` names the page it opens on. */
+  setCommandPaletteOpen: (open: boolean, page?: string) => void;
   setDiceTrayOpen: (open: boolean) => void;
   openLightPopover: (lightId: string) => void;
   closeLightPopover: () => void;
   openLightZonePopover: (zoneId: string) => void;
   closeLightZonePopover: () => void;
+  openLevelLinkPopover: (linkId: string) => void;
+  closeLevelLinkPopover: () => void;
+  openLevelSurfacePopover: (surfaceId: string) => void;
+  closeLevelSurfacePopover: () => void;
   setSceneLightingPanelOpen: (open: boolean) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
   /** Starting the toolbar editor closes the dice tray, which hangs where the tray goes. */
   setToolbarEditing: (on: boolean) => void;
+  /** Opens the dungeon generator over the map, in place of one open already. */
+  openDungeonGenerator: (request: DungeonGeneratorRequest) => void;
+  /** Closes the generator opening `id`; one opened since stays. */
+  closeDungeonGenerator: (id: number) => void;
+  setRoofsHidden: (hidden: boolean) => void;
 }
 
 /** Default state — all panels closed */
@@ -37,34 +48,46 @@ export function createInitialUIState(): Pick<
   UISlice,
   | 'isGridSettingsOpen'
   | 'isDMScreenOpen'
+  | 'dmScreenPage'
   | 'isGridAlignmentOpen'
   | 'isDiceLogOpen'
   | 'isAssetManagerOpen'
   | 'assetManagerInitialTab'
   | 'isCommandPaletteOpen'
+  | 'commandPalettePage'
   | 'isDiceTrayOpen'
   | 'lightPopover'
   | 'lightZonePopover'
+  | 'levelLinkPopover'
+  | 'levelSurfacePopover'
   | 'isSceneLightingPanelOpen'
   | 'heldTokens'
   | 'exploredBrush'
   | 'isToolbarEditing'
+  | 'dungeonGenerator'
+  | 'roofsHidden'
 > {
   return {
     isGridSettingsOpen: false,
     isDMScreenOpen: false,
+    dmScreenPage: 'statblocks',
     isGridAlignmentOpen: false,
     isDiceLogOpen: false,
     isAssetManagerOpen: false,
     assetManagerInitialTab: undefined,
     isCommandPaletteOpen: false,
+    commandPalettePage: null,
     isDiceTrayOpen: false,
     lightPopover: null,
     lightZonePopover: null,
+    levelLinkPopover: null,
+    levelSurfacePopover: null,
     isSceneLightingPanelOpen: false,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
     isToolbarEditing: false,
+    dungeonGenerator: null,
+    roofsHidden: false,
   };
 }
 
@@ -75,6 +98,7 @@ export function createUIActions(
   UISlice,
   | 'setGridSettingsOpen'
   | 'setDMScreenOpen'
+  | 'setDMScreenPage'
   | 'setGridAlignmentOpen'
   | 'setDiceLogOpen'
   | 'openAssetManager'
@@ -85,14 +109,22 @@ export function createUIActions(
   | 'closeLightPopover'
   | 'openLightZonePopover'
   | 'closeLightZonePopover'
+  | 'openLevelLinkPopover'
+  | 'closeLevelLinkPopover'
+  | 'openLevelSurfacePopover'
+  | 'closeLevelSurfacePopover'
   | 'setSceneLightingPanelOpen'
   | 'setHeldTokens'
   | 'setExploredBrush'
   | 'setToolbarEditing'
+  | 'openDungeonGenerator'
+  | 'closeDungeonGenerator'
+  | 'setRoofsHidden'
 > {
   return {
     setGridSettingsOpen: (open) => set((draft) => { draft.isGridSettingsOpen = open; }),
     setDMScreenOpen: (open) => set((draft) => { draft.isDMScreenOpen = open; }),
+    setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
     // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
@@ -105,8 +137,9 @@ export function createUIActions(
       draft.isAssetManagerOpen = false;
       draft.assetManagerInitialTab = undefined;
     }),
-    setCommandPaletteOpen: (open) => set((draft) => {
+    setCommandPaletteOpen: (open, page) => set((draft) => {
       draft.isCommandPaletteOpen = open;
+      draft.commandPalettePage = open ? page ?? null : null;
       if (open) draft.isToolbarEditing = false;
     }),
     setDiceTrayOpen: (open) => set((draft) => {
@@ -122,6 +155,10 @@ export function createUIActions(
       draft.lightPopover = null;
     }),
     closeLightZonePopover: () => set((draft) => { draft.lightZonePopover = null; }),
+    openLevelLinkPopover: (linkId) => set((draft) => { draft.levelLinkPopover = linkId; }),
+    closeLevelLinkPopover: () => set((draft) => { draft.levelLinkPopover = null; }),
+    openLevelSurfacePopover: (surfaceId) => set((draft) => { draft.levelSurfacePopover = surfaceId; }),
+    closeLevelSurfacePopover: () => set((draft) => { draft.levelSurfacePopover = null; }),
     closeLightPopover: () => set((draft) => { draft.lightPopover = null; }),
     setSceneLightingPanelOpen: (open) => set((draft) => { draft.isSceneLightingPanelOpen = open; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
@@ -130,5 +167,13 @@ export function createUIActions(
       draft.isToolbarEditing = on;
       if (on) draft.isDiceTrayOpen = false;
     }),
+    openDungeonGenerator: (request) => set((draft) => {
+      draft.dungeonGenerator = request;
+      draft.isToolbarEditing = false;
+    }),
+    closeDungeonGenerator: (id) => set((draft) => {
+      if (draft.dungeonGenerator?.id === id) draft.dungeonGenerator = null;
+    }),
+    setRoofsHidden: (hidden) => set((draft) => { draft.roofsHidden = hidden; }),
   };
 }

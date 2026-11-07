@@ -1,0 +1,343 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
+
+// The desk: what plays now, fixed under the stage in both views.
+.atlas-sound-desk {
+  flex-shrink: 0;
+  height: 336px;
+  display: flex;
+  flex-direction: column;
+  gap: $card-inset;
+  padding: $card-inset;
+  background: var(--atlas-sound-well);
+  box-shadow: inset 0 1px 0 $hairline, inset 0 12px 24px -16px color-mix(in oklch, black 60%, transparent);
+
+  @container atlas-dm-screen (max-height: 760px) {
+    height: 288px;
+  }
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    height: 264px;
+  }
+
+  @container atlas-dm-screen (max-height: 560px) {
+    height: 216px;
+  }
+}
+
+.atlas-sound-desk__head {
+  flex-shrink: 0;
+  height: $button-height-m;
+  display: flex;
+  align-items: center;
+  gap: $spacing-m;
+  // Its words start where the cards' do below it.
+  padding-inline: $spacing-m;
+}
+
+.atlas-sound-desk__mix {
+  @include atlas-truncate;
+  min-width: 0;
+  flex-shrink: 1;
+  font-weight: $font-weight-semibold;
+  color: var(--text-normal);
+}
+
+.atlas-sound-desk__state {
+  flex-shrink: 0;
+  color: var(--atlas-sound-muted);
+}
+
+.atlas-sound-desk__end {
+  // Who hears and the output are never cut: the mood's name gives way first.
+  flex-shrink: 0;
+  min-width: 0;
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: $spacing-m;
+  color: var(--atlas-sound-muted);
+}
+
+.atlas-sound-who,
+.atlas-sound-output {
+  @include bare-button;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  height: $button-height-m;
+  border-radius: $control-radius;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.atlas-sound-who {
+  gap: $spacing-s;
+
+  span {
+    @include atlas-truncate;
+  }
+
+  i {
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: $radius-full;
+    background: var(--color-green, var(--text-success));
+  }
+
+  // Not sent, or stopped: no live green beside words that say nothing is heard.
+  &[data-off] i,
+  &[data-stopped] i {
+    background: var(--text-faint);
+  }
+}
+
+button.atlas-sound-who,
+.atlas-sound-output {
+  color: var(--atlas-sound-muted);
+  cursor: pointer;
+  transition: color $transition-normal $press-ease;
+
+  &:hover {
+    color: var(--text-normal);
+  }
+}
+
+.atlas-sound-output {
+  flex-shrink: 0;
+  gap: $spacing-s;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.6;
+  }
+}
+
+.atlas-sound-strips {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: $card-inset;
+
+  // Library rows held over the desk: the row they land in.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: $card-radius;
+    @include atlas-corner-shape;
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    box-shadow: inset 0 0 0 $border-width-m var(--interactive-accent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity $transition-fast $press-ease;
+  }
+
+  &[data-drop-target]::after {
+    opacity: 1;
+  }
+}
+
+// The strips' row and the buttons that name what lies past its edges (`MoreStrips`).
+.atlas-sound-strips__view {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+// A slim tile at the edge strips lie past: beside the row, never over a fader, as tall as the strips.
+.atlas-sound-more-strips {
+  @include bare-button;
+  @include hairline-tile;
+  flex-shrink: 0;
+  width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+  background: var(--background-primary-alt);
+  color: var(--text-normal);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: center;
+  transition: background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+  @include pressable(0.98);
+
+  &[data-side='start'] {
+    margin-inline-end: $card-inset;
+  }
+
+  &[data-side='end'] {
+    margin-inline-start: $card-inset;
+  }
+
+  &:hover {
+    background: var(--background-secondary);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// What does not fit scrolls here, past the cards' lower edge, so a scrollbar never takes height from a fader.
+// The system's scrollbar may show only while scrolling, so the side with more to come fades out (`useMoreToScroll`).
+// Only then: a mask makes a layer of the row, which holds the meters.
+.atlas-sound-strips__mix {
+  @include atlas-scrollbar;
+  --atlas-strips-fade-start: 0px;
+  --atlas-strips-fade-end: 0px;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: $card-inset;
+  margin-bottom: -$card-inset;
+  padding-bottom: max(0px, #{$card-inset} - var(--atlas-strips-bar, 0px));
+  overflow: auto hidden;
+
+  &[data-more-start] {
+    --atlas-strips-fade-start: 40px;
+  }
+
+  &[data-more-end] {
+    --atlas-strips-fade-end: 40px;
+  }
+
+  &[data-more-start],
+  &[data-more-end] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--atlas-strips-fade-start), #000 calc(100% - var(--atlas-strips-fade-end)), transparent);
+  }
+}
+
+.atlas-sound-desk__idle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-m;
+  padding: $spacing-m;
+  border: $border-width-m solid color-mix(in oklch, var(--mono-100) 16%, transparent);
+  border-radius: $card-radius;
+  color: var(--atlas-sound-muted);
+  text-align: center;
+  @include atlas-corner-shape;
+
+  p {
+    margin: 0;
+    color: var(--text-normal);
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-medium;
+    text-wrap: balance;
+  }
+}
+
+.atlas-sound-desk__keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $spacing-m;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-sound-desk__key {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-s;
+}
+
+.atlas-sound-card {
+  @include hairline-tile;
+  background: var(--background-primary-alt);
+}
+
+.atlas-sound-stop-all {
+  @include bare-button;
+  @include hairline-tile;
+  flex-shrink: 0;
+  width: 132px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-s;
+  background: var(--background-primary-alt);
+  color: var(--text-normal);
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  transition: background-color $transition-normal $press-ease, color $transition-normal $press-ease, transform $press-ms $press-ease;
+  @include pressable(0.98);
+
+  > svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.6;
+  }
+
+  &:hover {
+    background: var(--background-secondary);
+  }
+
+  &[aria-pressed='true'] {
+    @include solid-accent;
+
+    .atlas-sound-cap {
+      color: var(--text-on-accent);
+    }
+  }
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    width: 88px;
+    font-size: $font-ui-small;
+
+    .atlas-sound-cap {
+      display: none;
+    }
+  }
+}
+
+@container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+  .atlas-sound-who,
+  .atlas-sound-output span {
+    display: none;
+  }
+
+  .atlas-sound-desk__state {
+    @include atlas-truncate;
+    flex-shrink: 1;
+  }
+}
+
+// A coarse pointer (DECISIONS #24): the header's controls and the strips' mutes take 44 px, as the library's rows do.
+@media (pointer: coarse) {
+  .atlas-sound-desk__head {
+    height: 44px;
+
+    .atlas-sound-button,
+    .atlas-sound-icon,
+    .atlas-sound-who,
+    .atlas-sound-output {
+      min-width: 44px;
+      height: 44px;
+    }
+  }
+
+  .atlas-sound-strip__top {
+    height: 44px;
+
+    .atlas-sound-icon:not(.atlas-sound-strip__remove) {
+      width: 44px;
+      height: 44px;
+    }
+  }
+}

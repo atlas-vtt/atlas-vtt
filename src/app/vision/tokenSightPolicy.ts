@@ -34,3 +34,17 @@ export const PLAYER_SIGHT_POLICY: SightPolicy = Object.freeze({ givesSight: play
  * has one), and must stay so: while both pictures have the same sight the GM's view draws the players' footprints.
  */
 export const GM_SIGHT_POLICY: SightPolicy = Object.freeze({ givesSight: visionOn, alwaysSeen: playersSource });
+
+const sceneVision = new WeakMap<Readonly<Record<string, TokenEntity>>, boolean>();
+
+/**
+ * Whether a token of the scene, on any of its levels, has vision switched on, hidden or not: pass every level's
+ * tokens (`everyLevelObjects`). A scene where none has sees everything (with token vision on); a level shown
+ * without such a token while the scene has one elsewhere sees nothing, or presenting a floor the party is not on
+ * would show players all of it. Kept per record, so a store write that leaves the tokens asks nothing anew.
+ */
+export function sceneHasVision(tokens: Readonly<Record<string, TokenEntity>>): boolean {
+  let has = sceneVision.get(tokens);
+  if (has === undefined) sceneVision.set(tokens, has = Object.values(tokens).some(visionOn));
+  return has;
+}

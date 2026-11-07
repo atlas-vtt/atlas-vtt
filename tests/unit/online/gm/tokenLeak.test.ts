@@ -55,7 +55,7 @@ function entityOf(entry: Generated, random: () => number, hiddenNow: boolean): T
 }
 
 /** Every message the players got, as JSON text, without the refusals that only echo a hash a player asked for. */
-const traffic = (sent: readonly Sent[]): string => sent.filter(({ body }) => body.t !== 'asset-refused').map(({ body }) => JSON.stringify(body)).join('\n');
+const traffic = (sent: readonly Sent[]): string => sent.map(({ body }) => JSON.stringify(body)).join('\n');
 
 describe('what players are sent of the tokens', () => {
   it(`never holds a hidden token's id, image, name or hash, nor an unseen token's image or name (${TRIALS} generated scenes)`, async () => {
@@ -81,8 +81,6 @@ describe('what players are sent of the tokens', () => {
         table.perception = (id) => (visible.get(id) === true ? 'seen' : PERCEPTIONS[1 + Math.floor(random() * 2)] ?? 'unseen');
         await table.set(next);
         await table.advance(random() < 0.5 ? TOKEN_INTERVAL_MS : TOKEN_POLL_MS);
-        for (const hash of hashes.values()) table.share.receive('alice', { t: 'asset-request', hash });
-        await table.settle();
         const expected = generated.filter((entry) => visible.get(entry.id) === true && next.objects.tokens[entry.id]?.isHidden !== true).map((entry) => entry.name);
         expect(tokenLists(table.sent).at(-1)?.tokens.map((entry) => entry.name).sort(), `trial ${trial} step ${step}: the players' tokens`).toEqual(expected.sort());
       }

@@ -2,18 +2,18 @@ import '../setup/obsidianDom';
 import { Ticker } from 'pixi.js';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { MapLoader } from '../../src/app/MapLoader';
-import { MapImage } from '../../src/app/pixi/mapImage/MapImage';
-import { MapImageService } from '../../src/app/pixi/mapImage/MapImageService';
-import { TileDecoderClient } from '../../src/app/pixi/mapImage/TileDecoderClient';
-import { tileDatabaseName } from '../../src/app/pixi/mapImage/indexedDbTileBackend';
-import { workerPort } from '../../src/app/pixi/mapImage/tilePorts';
-import TileWorker from '../../src/app/pixi/mapImage/tileWorker?worker&inline';
+import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
+import { MosaicCanvasService } from '../../src/app/pixi/mosaicCanvas/MosaicCanvasService';
+import { TesseraDecoderClient } from '../../src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { tesseraDatabaseName } from '../../src/app/pixi/mosaicCanvas/indexedDbTesseraBackend';
+import { workerPort } from '../../src/app/pixi/mosaicCanvas/tesseraPorts';
+import TileWorker from '../../src/app/pixi/mosaicCanvas/tesseraWorker?worker&inline';
 import { newSceneFile } from '../../src/app/services/newSceneFile';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
 
 /**
  * A scene's map image, opened as Obsidian hands it out and decoded by a real browser and the real
- * tile worker.
+ * tessera worker.
  *
  * Obsidian answers a `fetch` of a file's resource URL only where its installer registered the
  * `app://` scheme for that (for the Fetch API since installer 1.4.5, for cross-origin requests,
@@ -43,7 +43,7 @@ const drawn = (size: string): ArrayBuffer => new TextEncoder().encode(
   `<svg xmlns="http://www.w3.org/2000/svg" ${size}><rect width="100%" height="100%" fill="#b0a48e"/></svg>`,
 ).buffer;
 
-const client = new TileDecoderClient({
+const client = new TesseraDecoderClient({
   appId: APP_ID,
   worker: workerPort(() => new TileWorker({ name: 'map background load test' })),
 });
@@ -59,12 +59,12 @@ function deleteDatabase(name: string): Promise<void> {
 
 afterAll(async () => {
   client.dispose();
-  await deleteDatabase(tileDatabaseName(APP_ID));
+  await deleteDatabase(tesseraDatabaseName(APP_ID));
 });
 
 interface Opened {
-  mapImage: MapImage;
-  service: MapImageService;
+  mapImage: MosaicCanvas;
+  service: MosaicCanvasService;
   readBinary: ReturnType<typeof vi.fn>;
 }
 
@@ -75,9 +75,9 @@ async function open(image: string, bytes: ArrayBuffer): Promise<Opened> {
   const readBinary = vi.fn(async (): Promise<ArrayBuffer> => bytes.slice(0));
   app.vault.readBinary = readBinary;
   app.vault.adapter.getResourcePath = resourceUrl;
-  const service = new MapImageService(app, client);
+  const service = new MosaicCanvasService(app, client);
   const viewport = { left: 0, top: 0, worldScreenWidth: 800, worldScreenHeight: 600, scale: { x: 1 }, worldWidth: 0, worldHeight: 0 };
-  const mapImage = new MapImage({ service, viewport, ticker: new Ticker(), renderer: null, requestRender: () => undefined });
+  const mapImage = new MosaicCanvas({ service, viewport, ticker: new Ticker(), renderer: null, requestRender: () => undefined });
   const loaded = await MapLoader.load(app, SCENE);
   await mapImage.load(loaded.image);
   return { mapImage, service, readBinary };
@@ -123,7 +123,7 @@ describe('opening a scene on a map image', () => {
   });
 
   it('shows the placeholder and names the image when the file holds none', async () => {
-    const reported = vi.spyOn(MapImageService.prototype, 'reportUnshown').mockImplementation(() => undefined);
+    const reported = vi.spyOn(MosaicCanvasService.prototype, 'reportUnshown').mockImplementation(() => undefined);
 
     const { mapImage } = await open('atlas-vtt/assets/Broken.webp', new TextEncoder().encode('not an image').buffer);
 

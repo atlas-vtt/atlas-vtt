@@ -45,6 +45,13 @@ export function registerVaultSync(plugin: Plugin): void {
     pendingMoves = [];
     runInBackground(propagateMoves(moves), 'Updating references to moved files');
   };
+  /** Folders renamed in this task, nested ones included: maps are read once for all of them. */
+  let pendingFolderMoves: PathMove[] = [];
+  const flushFolderMoves = (): void => {
+    const moves = pendingFolderMoves;
+    pendingFolderMoves = [];
+    runInBackground(fileReferences.followMovedFolders(moves), 'Updating references to moved folders');
+  };
 
   // Files deleted since the last check; a deleted map's thumbnail waits for it, since the map may have only moved.
   // Snapshots are never trashed here: a deletion may be another device's rename arriving in halves,
@@ -73,7 +80,9 @@ export function registerVaultSync(plugin: Plugin): void {
     const moves = [...result.fileMoves, ...filesOfMovedFolders(app, result.folderMoves)];
     const view = getLoadedAtlasView(app);
     for (const { from, to } of moves) view?.handleFileRenamed(from, to, stemOf(to));
+    for (const { from, to } of result.folderMoves) view?.handleFolderRenamed(from, to);
     if (moves.length > 0) await propagateMoves(moves);
+    await fileReferences.followMovedFolders(result.folderMoves);
     await followSceneSnapshots(app, await assets.getAssets(undefined, 'scene'));
     app.workspace.trigger('atlas-vtt:refresh-assets');
   };
@@ -82,7 +91,11 @@ export function registerVaultSync(plugin: Plugin): void {
   plugin.registerEvent(
     app.vault.on('rename', (file, oldPath) => {
       if (file instanceof TFolder) {
+        // The open map first, so its next autosave cannot write the old folder back.
+        getLoadedAtlasView(app)?.handleFolderRenamed(oldPath, file.path);
         runInBackground(fileReferences.handleFolderRenamed(oldPath, file.path), 'Following a renamed folder');
+        if (pendingFolderMoves.length === 0) queueMicrotask(flushFolderMoves);
+        pendingFolderMoves.push({ from: oldPath, to: file.path });
       } else if (file instanceof TFile) {
         // The open map first, so its next autosave cannot write the old paths back.
         getLoadedAtlasView(app)?.handleFileRenamed(oldPath, file.path, file.basename);

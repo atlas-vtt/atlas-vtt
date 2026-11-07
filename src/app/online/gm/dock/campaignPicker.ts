@@ -3,6 +3,7 @@ import { scrollWithin } from '../../../utils/scrollWithin';
 import { WIDGET_ICON_PATHS, WIDGET_ICON_VIEW_BOX } from '../../../types/widgetIcons';
 import type { CampaignChoice } from '../campaignChoices.ts';
 import { textButton } from './controls.ts';
+import { t } from '../../../i18n';
 
 /** The campaigns a table can start on, and the one it would start on now. */
 export interface CampaignPick {
@@ -44,9 +45,8 @@ export function matchesQuery(name: string, query: string): boolean {
 }
 
 function playersText(count: number): string {
-  if (count === 0) return 'No players yet';
-  if (count === 1) return '1 player';
-  return `${count} players`;
+  if (count === 0) return t('online.noPlayers');
+  return t('online.players', { count });
 }
 
 /** The art of a campaign without a world map, as its dashboard card has it: its own tint and a d20. */
@@ -122,10 +122,10 @@ function searchField(parent: HTMLElement, query: string): { field: HTMLInputElem
   setIcon(frame.createSpan({ cls: 'atlas-online-campaigns__search-icon', attr: { 'aria-hidden': 'true' } }), 'search');
   const field = frame.createEl('input', {
     cls: 'atlas-online-campaigns__search-field',
-    attr: { type: 'search', placeholder: 'Search campaigns', 'aria-label': 'Search campaigns', spellcheck: 'false', autocomplete: 'off', 'data-focus-key': 'campaign-search' },
+    attr: { type: 'search', placeholder: t('campaign.search'), 'aria-label': t('campaign.search'), spellcheck: 'false', autocomplete: 'off', 'data-focus-key': 'campaign-search' },
   });
   field.value = query;
-  const clear = frame.createEl('button', { cls: 'atlas-online-campaigns__search-clear', attr: { type: 'button', 'aria-label': 'Clear search', tabindex: '-1' } });
+  const clear = frame.createEl('button', { cls: 'atlas-online-campaigns__search-clear', attr: { type: 'button', 'aria-label': t('online.clearSearch'), tabindex: '-1' } });
   setIcon(clear, 'x');
   return { field, clear };
 }
@@ -138,16 +138,16 @@ function searchField(parent: HTMLElement, query: string): { field: HTMLInputElem
  */
 export function renderCampaignPicker(parent: HTMLElement, pick: CampaignPick, actions: CampaignPickerActions, disabled = false): void {
   const section = parent.createDiv({ cls: 'atlas-online-campaigns' });
-  const label = section.createDiv({ cls: 'atlas-online-campaigns__label', text: 'Campaign' });
+  const label = section.createDiv({ cls: 'atlas-online-campaigns__label', text: t('online.campaignLabel') });
   label.id = `${parent.id || 'atlas-online'}-campaigns`;
   const list = pick.list;
   if (list === null) {
-    section.createDiv({ cls: 'atlas-online-help atlas-online-campaigns__note', text: 'Reading your campaigns…' });
+    section.createDiv({ cls: 'atlas-online-help atlas-online-campaigns__note', text: t('online.readingCampaigns') });
     return;
   }
   if (list.length === 0) {
-    section.createDiv({ cls: 'atlas-online-help atlas-online-campaigns__note', text: 'A table plays a campaign: its players come back with their own codes. Make one in the Atlas dashboard.' });
-    textButton(section, 'Open dashboard', () => actions.openCampaigns()).dataset.focusKey = 'open-campaigns';
+    section.createDiv({ cls: 'atlas-online-help atlas-online-campaigns__note', text: t('online.noCampaigns') });
+    textButton(section, t('online.openDashboard'), () => actions.openCampaigns()).dataset.focusKey = 'open-campaigns';
     return;
   }
   const { field, clear } = searchField(section, pick.query);
@@ -159,7 +159,7 @@ export function renderCampaignPicker(parent: HTMLElement, pick: CampaignPick, ac
     button.disabled = disabled;
     return { choice, button };
   });
-  const none = box.createDiv({ cls: 'atlas-online-help atlas-online-campaigns__none', text: 'No campaign by that name' });
+  const none = box.createDiv({ cls: 'atlas-online-help atlas-online-campaigns__none', text: t('online.noCampaignMatch') });
   field.disabled = disabled;
 
   /** Shows the campaigns the search finds, and says so where it finds none. */

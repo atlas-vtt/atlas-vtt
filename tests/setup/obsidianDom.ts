@@ -92,6 +92,9 @@ const helpers: Record<string, (this: HTMLElement, ...args: never[]) => unknown> 
   hasClass(this: HTMLElement, cls: string) {
     return this.classList.contains(cls);
   },
+  setCssProps(this: HTMLElement, props: Record<string, string>) {
+    for (const [name, value] of Object.entries(props)) this.style.setProperty(name, value);
+  },
   instanceOf(this: HTMLElement, type: new () => unknown) {
     return this instanceof type;
   },
@@ -100,10 +103,6 @@ const helpers: Record<string, (this: HTMLElement, ...args: never[]) => unknown> 
   },
   show(this: HTMLElement) {
     this.style.removeProperty('display');
-  },
-  // A test's page is one window, so nothing ever moves to another.
-  onWindowMigrated(this: HTMLElement): () => void {
-    return () => undefined;
   },
 };
 

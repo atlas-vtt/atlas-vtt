@@ -1,10 +1,14 @@
 import type { DiceRollOrigin } from '../types/diceRollOrigin';
 import type { DiceRollResult } from '../types/diceTypes';
+import { nameShownToPlayers } from '../pixi/token-renderer/nameplateVisibility';
 import type { PreparedDiceRoll, RollSourcePresentation } from '../react/components/dice/diceSourcePresentation';
 
 /** A token the players' picture shows, as a roll may name it: plain data read from the map. */
 export interface ShownRollToken {
   readonly name: string | null;
+  /** The token's own Show nameplate, and the scene's: whether the GM's map names it (`nameplateShownToPlayers`). */
+  readonly showNameplate?: boolean;
+  readonly mapShowsNameplates: boolean;
   readonly imagePath: string | undefined;
   readonly showRing: boolean;
   readonly ringColor: string | undefined;
@@ -28,7 +32,7 @@ export interface RollSceneLookup {
 
 /** How the player window shows names and pictures. */
 export interface PlayerRollView {
-  /** Whether players see token names (the player view's nameplate setting). */
+  /** Whether players see token names (the player view's nameplate setting): then those the GM's map shows, a placeholder for the rest. */
   showNames: boolean;
   /** A displayable address of a vault image, or null when it cannot be shown. */
   imageSrc(path: string): string | null;
@@ -60,7 +64,7 @@ export function rollForPlayers(
 function presentationOf(shown: ShownRollToken, view: PlayerRollView): RollSourcePresentation {
   const src = shown.imagePath ? view.imageSrc(shown.imagePath) : null;
   return {
-    name: view.showNames ? shown.name : null,
+    name: nameShownToPlayers(shown.name, shown, shown.mapShowsNameplates, view.showNames),
     avatar: src ? { src, showRing: shown.showRing, ringColor: shown.ringColor } : null,
   };
 }

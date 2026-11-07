@@ -7,6 +7,7 @@ import { draftResourceKey, isDraftResourceKey, resourceKey } from '../../resourc
 import type { StatblockRole, StatblockRoleFolders } from '../model/roleTypes';
 import { isRecord } from '../format/jsonValues';
 import { isValidTemplateId } from '../model/templateIds';
+import { t } from '../../i18n';
 
 /** What `resourceKey` gives a name without a letter or digit to key by. */
 const FALLBACK_ROLE_ID = 'role';
@@ -97,9 +98,9 @@ export function savedRoleFolders(folders: StatblockRoleFolders, roles: readonly 
 export function roleNameProblem(roles: readonly StatblockRole[], index: number): string | null {
   const role = roles[index];
   if (!role) return null;
-  if (!role.name.trim()) return 'Enter a name';
+  if (!role.name.trim()) return t('statblockEditor.role.enterName');
   const key = nameKey(role.name);
-  return roles.slice(0, index).some((other) => nameKey(other.name) === key) ? 'Another role has this name' : null;
+  return roles.slice(0, index).some((other) => nameKey(other.name) === key) ? t('statblockEditor.role.taken') : null;
 }
 
 /** Whether every role has a name and no two share one. */

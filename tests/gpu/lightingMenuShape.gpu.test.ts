@@ -11,7 +11,8 @@ import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
-vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({ useHotkeyLabels: () => () => 'L' }));
+// Without settings the lighting quality section renders nothing: the shape measured is the scene's own rows and switch.
+vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({ useHotkeyLabels: () => () => 'L', useAtlasSettings: () => undefined }));
 
 /** The lighting tool's menu as the toolbar shows it, styled by the plugin's real stylesheet. */
 const THEME = `

@@ -7,10 +7,11 @@ import type { EditorSession } from '../sessionTypes';
 import { listFromText, sameList, textFromList } from './blockEdits';
 import { SwitchSetting, TextSetting } from './InspectorControls';
 import { useGestureText } from './useGestureText';
+import { t } from '../../../../i18n';
 
 const EXTRA_TYPES: Array<{ value: EntryExtraType; label: string }> = [
-  { value: 'text', label: 'Text' }, { value: 'number', label: 'Number' }, { value: 'dice', label: 'Dice' },
-  { value: 'list', label: 'List' }, { value: 'choice', label: 'One of a list' },
+  { value: 'text', label: t('templateEditor.fieldType.text') }, { value: 'number', label: t('templateEditor.look.number') }, { value: 'dice', label: t('templateEditor.fieldType.dice') },
+  { value: 'list', label: t('templateEditor.primitive.list') }, { value: 'choice', label: t('templateEditor.fieldType.choice') },
 ];
 
 /** The part as another type: what only a choice has goes when it is no choice any more. */
@@ -52,18 +53,18 @@ export function EntryPartRow({ extra, index, session, disabled, onEdit, onRemove
   return (
     <div className="atlas-te-entry-part">
       <div className="atlas-te-setting__inline">
-        <span id={labelId} hidden>{`Part ${index + 1}`}</span>
-        <span id={typeId} hidden>{`Type of ${extra.label}`}</span>
+        <span id={labelId} hidden>{t('templateEditor.partN', { n: index + 1 })}</span>
+        <span id={typeId} hidden>{t('templateEditor.typeOf', { name: extra.label })}</span>
         <input {...label} type="text" className="atlas-te-input" aria-labelledby={labelId} disabled={disabled} spellCheck={false} />
         <Select<EntryExtraType> value={extra.type} options={EXTRA_TYPES} onChange={(type) => onEdit((current) => retyped(current, type))} labelledBy={typeId} disabled={disabled} />
-        <ToolButton icon={X} label="Remove" isActive={false} disabled={disabled} onClick={onRemove} />
+        <ToolButton icon={X} label={t('templateEditor.remove')} isActive={false} disabled={disabled} onClick={onRemove} />
       </div>
       {extra.type === 'choice' && (
         <div className="atlas-te-entry-part__choice">
           <TextSetting
-            label="Choices"
+            label={t('templateEditor.choices')}
             value={textFromList(extra.options)}
-            placeholder="Main action, Reaction, Passive"
+            placeholder={t('templateEditor.partChoicesExample')}
             session={session}
             disabled={disabled}
             onText={(text) => {
@@ -72,7 +73,7 @@ export function EntryPartRow({ extra, index, session, disabled, onEdit, onRemove
             }}
           />
           <SwitchSetting
-            label="Pick several"
+            label={t('templateEditor.pickSeveral')}
             value={extra.several === true}
             disabled={disabled}
             onChange={(several) => onEdit((current) => withSeveral(current, several))}

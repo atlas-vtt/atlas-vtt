@@ -95,6 +95,8 @@ function sameGridDefaults(a: CollectionGridDefaults, b: CollectionGridDefaults):
     && a.unitDistance === b.unitDistance
     && a.measurementMode === b.measurementMode
     && (a.diagonalRule ?? 'equidistant') === (b.diagonalRule ?? 'equidistant')
+    // Rules without a difficult terrain rule of their own move by the preset's
+    && (b.difficultTerrain === undefined || (a.difficultTerrain ?? 'none') === b.difficultTerrain)
     // Rules without a cone angle of their own measure with the preset's
     && (b.coneAngle === undefined || (a.coneAngle ?? DEFAULT_CONE_ANGLE) === b.coneAngle)
     && bandsA.length === bandsB.length

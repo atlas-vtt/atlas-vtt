@@ -1,6 +1,7 @@
 import { GM_LEVEL, isRecord, levelIn } from '../protocol/index.ts';
 import type { Http } from './account/http.ts';
 import { readCreated, type CreatedTable } from './createdTable.ts';
+import { t } from '../../i18n';
 
 /** Why no table was made: the relay's status (0: not reached) and a sentence for the GM. */
 export interface CreateFailure {
@@ -22,6 +23,6 @@ export async function createTable(http: Http, origin: string, token: string, lin
     const outdated = response.status === 426 && isRecord(response.json) ? { minLevel: Math.max(GM_LEVEL + 1, levelIn(response.json, 'minLevel')) } : {};
     return { status: response.status, message: created, ...outdated };
   } catch {
-    return { status: 0, message: 'The server could not be reached.' };
+    return { status: 0, message: t('online.server.unreachable') };
   }
 }

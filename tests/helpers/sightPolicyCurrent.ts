@@ -22,7 +22,8 @@ export const current = {
   none: NO_SIGHT,
   all: SEES_ALL,
   SightCache,
-  builder: (): SceneModelBuilder => new SceneModelBuilder(),
+  // The frozen copies predate reflected light, which has tests of its own.
+  builder: (): SceneModelBuilder => new SceneModelBuilder({ reflectedLight: false }),
   /** The players' picture calls with the default. */
   sources: (tokens: Record<string, TokenEntity>, scale: UnitScale, bounds: MapBounds, rules: SightRules, picture: Picture): SightSource[] =>
     sightSources(tokens, scale, bounds, rules, picture === 'GM' ? GM_SIGHT_POLICY : undefined),
