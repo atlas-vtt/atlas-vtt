@@ -2,6 +2,11 @@
   "version": "0.13.2-beta.0",
   "releases": [
     {
+      "version": "0.13.2-beta.0",
+      "title": "Coming in 0.13.2",
+      "markdown": "## Fixed\n\n- Hovering a token linked to a Fantasy Statblocks note on the map now shows its statblock, the same one the asset manager and the DM screen show, instead of the plain note"
+    },
+    {
       "version": "0.13.1",
       "date": "2026-11-06",
       "title": "Scene tab dragging, TrueScale staging and sound sync",
