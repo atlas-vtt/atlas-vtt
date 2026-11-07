@@ -1,11 +1,11 @@
 import type * as React from 'react';
 import { useMemo } from 'react';
 import type { App } from 'obsidian';
-import type { AnyAsset, SelectionEvent } from '../types';
+import type { AnyAsset, SelectionEvent, TokenAsset } from '../types';
 import type { OpenAsset } from './useOpenAsset';
 import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 import { runInBackground } from '../../../../utils/backgroundTask';
-import { editInStatblockPane } from '../../../../statblocks/editor/create/entryPoints';
+import { openStatblockNote } from '../../../../statblocks/editor/create/entryPoints';
 
 export interface DraggedItems {
   type: 'asset' | 'folder';
@@ -20,7 +20,8 @@ export interface AssetCardHandlers {
   onDragStart: (assetId: string, event: React.DragEvent) => void;
   onDragEnd: () => void;
   onSpawnCountChange: (assetId: string, count: number) => void;
-  onOpenStatblock: (statblockPath: string) => void;
+  /** Opens a token's statblock note; a note that is gone opens the dialog to link another. */
+  onOpenStatblock: (asset: TokenAsset) => void;
   /** A card on screen still waits for its art (`useArtPriority`). */
   onArtNeeded: (assetId: string) => void;
 }
@@ -34,6 +35,8 @@ interface AssetCardHandlerDeps {
   onAssetContextMenu: AssetCardHandlers['onContextMenu'];
   onSpawnCountChange: AssetCardHandlers['onSpawnCountChange'];
   onArtNeeded: AssetCardHandlers['onArtNeeded'];
+  /** Opens the dialog that links a token to a statblock. */
+  onLinkStatblock: (asset: TokenAsset) => void;
   /** Closes the asset manager, which would cover a statblock pair opening behind it. */
   onClose?: (() => void) | undefined;
 }
@@ -51,13 +54,12 @@ export function useAssetCardHandlers(deps: AssetCardHandlerDeps): AssetCardHandl
     event.dataTransfer.effectAllowed = 'move';
   });
   const onDragEnd = useStableCallback((): void => deps.setDraggedItems(null));
-  const onOpenStatblock = useStableCallback((statblockPath: string): void => {
+  const onOpenStatblock = useStableCallback((asset: TokenAsset): void => {
+    if (!asset.statblockPath) return;
     // The pane takes the collection from the tokens that link the note (§7.1).
-    if (editInStatblockPane(deps.app, statblockPath, { collectionId: null, from: 'asset-manager' })) {
-      deps.onClose?.();
-      return;
-    }
-    void deps.app.workspace.openLinkText('', statblockPath, true);
+    const opened = openStatblockNote(deps.app, asset.statblockPath, { collectionId: null, from: 'asset-manager' });
+    if (opened === 'missing') deps.onLinkStatblock(asset);
+    else if (opened === 'editor') deps.onClose?.();
   });
   const onArtNeeded = useStableCallback(deps.onArtNeeded);
 

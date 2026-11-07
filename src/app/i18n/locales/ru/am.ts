@@ -132,6 +132,7 @@ export const am: Translation = {
   'am.tab.party': 'Игроки',
   'am.card.select': 'Выбрать {name}',
   'am.card.statblockLinked': 'Статблок привязан — нажмите, чтобы открыть',
+  'am.card.statblockMissing': 'Заметка статблока не найдена — нажмите, чтобы привязать другую',
   'am.card.decrease': 'Меньше копий',
   'am.card.increase': 'Больше копий',
   'am.card.spawn': { one: 'Разместить {count} токен', few: 'Разместить {count} токена', many: 'Разместить {count} токенов', other: 'Разместить {count} токена' },

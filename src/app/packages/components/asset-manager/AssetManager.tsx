@@ -289,6 +289,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                         scrollMemory={memory}
                         onAssetSelect={sel.handleAssetSelect}
                         onAssetContextMenu={handleAssetContextMenu}
+                        onLinkStatblock={statblock.openStatblockLinkModal}
                         onFolderSelection={sel.handleFolderSelection}
                         onFolderContextMenu={handleFolderContextMenu}
                         onFolderDoubleClick={sel.handleFolderDoubleClick}

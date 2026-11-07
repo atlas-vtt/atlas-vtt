@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useId } from 'react';
-import { Film, Map as MapIcon, ScrollText } from 'lucide-react';
+import { FileX, Film, Map as MapIcon, ScrollText } from 'lucide-react';
 import type { AnyAsset } from '../types';
 import type { AssetCardHandlers } from '../hooks/useAssetCardHandlers';
 import { TokenPortrait } from '../../shared/TokenPortrait';
@@ -16,6 +16,8 @@ export interface AssetCardProps extends AssetCardHandlers {
   isSelected: boolean;
   isDragging: boolean;
   spawnCount: number;
+  /** The token's statblock note is gone from the vault. */
+  statblockMissing?: boolean;
 }
 
 function ArtFallback({ asset }: { asset: AnyAsset }): React.JSX.Element {
@@ -70,11 +72,11 @@ function Artwork({ asset }: { asset: AnyAsset }): React.JSX.Element {
  * handlers, so selecting or dragging one asset re-renders only the cards involved.
  */
 export const AssetCard = memo(function AssetCard({
-  asset, isSelected, isDragging, spawnCount,
+  asset, isSelected, isDragging, spawnCount, statblockMissing = false,
   onSelect, onContextMenu, onOpen, onDragStart, onDragEnd, onSpawnCountChange, onOpenStatblock, onArtNeeded,
 }: AssetCardProps): React.JSX.Element {
   const nameId = useId();
-  const statblockPath = asset.type === 'tokens' ? asset.statblockPath : undefined;
+  const linkedToken = asset.type === 'tokens' && asset.statblockPath ? asset : null;
   const awaitsArt = asset.thumbnailPending === true;
 
   // Cards are mounted only in and around the view, so this card's art is wanted now.
@@ -126,13 +128,13 @@ export const AssetCard = memo(function AssetCard({
 
             {(asset.type === 'maps' || asset.type === 'scenes') && <ProcessingBadge asset={asset} />}
 
-            {statblockPath && spawnCount <= 1 && (
-              <LabelTooltip label={t('am.card.statblockLinked')}>
+            {linkedToken && spawnCount <= 1 && (
+              <LabelTooltip label={t(statblockMissing ? 'am.card.statblockMissing' : 'am.card.statblockLinked')}>
                 <div
-                  className="atlas-asset-statblock-indicator"
-                  onClick={(event) => { event.stopPropagation(); onOpenStatblock(statblockPath); }}
+                  className={`atlas-asset-statblock-indicator${statblockMissing ? ' atlas-asset-statblock-indicator--missing' : ''}`}
+                  onClick={(event) => { event.stopPropagation(); onOpenStatblock(linkedToken); }}
                 >
-                  <ScrollText />
+                  {statblockMissing ? <FileX /> : <ScrollText />}
                 </div>
               </LabelTooltip>
             )}

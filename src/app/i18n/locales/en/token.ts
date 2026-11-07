@@ -13,6 +13,7 @@ export const token = {
   'token.saveEncounter': 'Save as Encounter',
   'token.addInitiative': 'Add to Initiative',
   'token.editStatblock': 'Edit Statblock',
+  'token.statblockMissing': "This token's statblock note is gone. Link another one in the asset manager.",
   'token.makePlayerCharacter': 'Make player character',
   'token.noLongerPlayerCharacter': 'No longer a player character',
   'token.playerCharacterFailed': 'Could not change whether this token is a player character.',

@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { PackageOpen } from 'lucide-react';
 import type { App } from 'obsidian';
 import type {
-  Tab, AnyAsset, Folder as FolderType, SelectionEvent,
+  Tab, AnyAsset, Folder as FolderType, SelectionEvent, TokenAsset,
 } from '../types';
 import { getTabDisplayName } from '../types';
 import { AssetCard } from './AssetCard';
@@ -19,6 +19,7 @@ import type { AssetService } from '../../../../services/AssetService';
 import type { AtlasView } from '../../../../atlas-view';
 import { useSpawnCountTyping } from '../hooks/useSpawnCountTyping';
 import { useAssetStatblockPreview } from '../hooks/useAssetStatblockPreview';
+import { useMissingStatblocks } from '../hooks/useMissingStatblocks';
 import { useRememberedScroll, type ScrollMemory } from '../hooks/useRememberedScroll';
 import { useScrollbarGutter } from '../../primitives/useScrollbarGutter';
 import { MapProcessing } from '../../../../pixi/mosaicCanvas/mapProcessing';
@@ -36,6 +37,8 @@ export interface ContentPaneProps {
   selectedFolderIds: string[];
   onAssetSelect: (assetId: string, event?: SelectionEvent, toggle?: boolean) => void;
   onAssetContextMenu: (asset: AnyAsset, event: React.MouseEvent) => void;
+  /** Opens the dialog that links a token to a statblock. */
+  onLinkStatblock: (asset: TokenAsset) => void;
   onFolderSelection: (folderId: string, event?: SelectionEvent) => void;
   onFolderContextMenu: (folder: FolderType, event: React.MouseEvent) => void;
   onFolderDoubleClick: (folderId: string) => void;
@@ -87,8 +90,9 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   const cardHandlers = useAssetCardHandlers({
     app: props.app, openAsset, selectedAssetIds, setDraggedItems,
     onAssetSelect: props.onAssetSelect, onAssetContextMenu: props.onAssetContextMenu,
-    onSpawnCountChange: props.onSpawnCountChange, onArtNeeded, onClose: props.onClose,
+    onSpawnCountChange: props.onSpawnCountChange, onArtNeeded, onLinkStatblock: props.onLinkStatblock, onClose: props.onClose,
   });
+  const missingStatblocks = useMissingStatblocks(props.app, assets);
   useSpawnCountTyping(scrollElement, props.onSpawnCountChange);
   useAssetStatblockPreview({
     app: props.app, container: scrollElement, assets,
@@ -111,9 +115,10 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
       isSelected={selectedIds.has(asset.id)}
       isDragging={draggingIds.has(asset.id)}
       spawnCount={spawnCounts[asset.id] || 1}
+      statblockMissing={asset.type === 'tokens' && missingStatblocks.has(asset.statblockPath ?? '')}
       {...cardHandlers}
     />
-  ), [selectedIds, draggingIds, spawnCounts, cardHandlers]);
+  ), [selectedIds, draggingIds, spawnCounts, missingStatblocks, cardHandlers]);
 
   const clearIfBackground = (e: React.MouseEvent): void => {
     if (e.target === e.currentTarget) onClearSelection();

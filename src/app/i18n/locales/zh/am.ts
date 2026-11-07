@@ -131,6 +131,7 @@ export const am: Translation = {
   'am.tab.tokens': '棋子',
   'am.card.select': '选择 {name}',
   'am.card.statblockLinked': '已关联属性块——点击打开',
+  'am.card.statblockMissing': '找不到属性块笔记——点击关联其他笔记',
   'am.card.decrease': '减少放置数量',
   'am.card.increase': '增加放置数量',
   'am.card.spawn': { other: '放置 {count} 个棋子' },
