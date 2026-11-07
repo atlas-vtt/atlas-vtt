@@ -22,6 +22,9 @@ vi.mock('../../src/app/react/root/ContextMenuContext', () => ({
 }));
 const showNotice = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
+/** How long the files say they play: jsdom loads no audio metadata, so the length is the test's to say. */
+const seconds = vi.hoisted(() => ({ value: 5 as number | null }));
+vi.mock('../../src/app/soundLibrary/audioDuration', () => ({ readAudioSecondsAt: vi.fn(() => Promise.resolve(seconds.value)) }));
 
 const token = (id: string, sounds?: TokenSound[]): Token => ({
   id, kind: 'token', imagePath: `${id}.png`, x: 0, y: 0, ...(sounds && { sounds }),
@@ -71,6 +74,7 @@ beforeEach(() => {
   FakeTokenSoundContext.reset();
   vi.stubGlobal('AudioContext', FakeTokenSoundContext);
   showNotice.mockClear();
+  seconds.value = 5;
   opened.entries = [];
 });
 
@@ -142,6 +146,17 @@ describe('token context menu sounds', () => {
 
     expect(showNotice).toHaveBeenCalledOnce();
     expect(showNotice.mock.calls[0]![0]).toContain('lost-roar');
+  });
+
+  it('tells the GM a sound is too long, naming it', async () => {
+    const { rightClick } = setup([token('dragon', [{ path: 'Sounds/dragon-roar.mp3' }])]);
+    seconds.value = 200;
+    rightClick('dragon');
+
+    await choose('dragon-roar');
+
+    expect(showNotice).toHaveBeenCalledWith('The sound "dragon-roar" is longer than 3 minutes, too long for a token.');
+    expect(playing()).toEqual([]);
   });
 
   it('says nothing when a sound plays', async () => {

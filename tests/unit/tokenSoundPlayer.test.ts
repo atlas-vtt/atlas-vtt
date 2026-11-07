@@ -3,10 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { TokenSoundPlayer } from '../../src/app/audio/TokenSoundPlayer';
 import { followOutputDevice, forgetOutputFollower } from '../../src/app/sound/engine/outputDevice';
+import { readAudioSecondsAt } from '../../src/app/soundLibrary/audioDuration';
 import { FakeTokenSoundContext } from '../helpers/fakeTokenSoundContext';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 vi.mock('../../src/app/sound/engine/outputDevice', () => ({ followOutputDevice: vi.fn(), forgetOutputFollower: vi.fn() }));
+/** How long the files say they play: jsdom loads no audio metadata, so the length is the test's to say. */
+const seconds = vi.hoisted(() => ({ value: 5 as number | null }));
+vi.mock('../../src/app/soundLibrary/audioDuration', () => ({ readAudioSecondsAt: vi.fn(() => Promise.resolve(seconds.value)) }));
 
 const MB = 1024 * 1024;
 
@@ -31,6 +35,8 @@ beforeEach(() => {
   vi.stubGlobal('AudioContext', FakeTokenSoundContext);
   vi.mocked(followOutputDevice).mockClear();
   vi.mocked(forgetOutputFollower).mockClear();
+  vi.mocked(readAudioSecondsAt).mockClear();
+  seconds.value = 5;
 });
 
 afterEach(() => {
@@ -164,6 +170,63 @@ describe('TokenSoundPlayer', () => {
     expect(FakeTokenSoundContext.instances.every((made) => made.decodeCalls === 0)).toBe(true);
     expect(await player.play({ path: 'Sounds/long.mp3', volume: 1 })).toBe('played');
     expect(context().playing()).toHaveLength(1);
+  });
+
+  it('refuses a sound longer than three minutes without decoding it', async () => {
+    const { player, context } = setup();
+    seconds.value = 181;
+
+    expect(await player.play({ path: 'Sounds/roar.mp3', volume: 1 })).toBe('too-long');
+    expect(context().decodeCalls).toBe(0);
+    expect(context().sources).toEqual([]);
+  });
+
+  it('plays a sound of exactly three minutes', async () => {
+    const { player } = setup();
+    seconds.value = 180;
+    expect(await player.play({ path: 'Sounds/roar.mp3', volume: 1 })).toBe('played');
+  });
+
+  it('plays a sound whose length cannot be read', async () => {
+    const { player } = setup();
+    seconds.value = null;
+    expect(await player.play({ path: 'Sounds/roar.mp3', volume: 1 })).toBe('played');
+  });
+
+  it('reads the length once for a sound it holds decoded', async () => {
+    const { player } = setup();
+
+    await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+    await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+
+    expect(readAudioSecondsAt).toHaveBeenCalledOnce();
+    expect(readAudioSecondsAt).toHaveBeenCalledWith('app://vault/Sounds/roar.mp3');
+  });
+
+  it('measures a sound again once its file changed, and refuses it if it grew too long', async () => {
+    const { app, player, context } = setup();
+    await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+
+    await app.vault.process(app.vault.getFileByPath('Sounds/roar.mp3')!, () => 'audio:96000000');
+    seconds.value = 400;
+
+    expect(await player.play({ path: 'Sounds/roar.mp3', volume: 1 })).toBe('too-long');
+    expect(context().sources).toHaveLength(1);
+    expect(context().decodeCalls).toBe(1);
+  });
+
+  it('does not start a sound that was being measured when sounds were stopped', async () => {
+    const { player, context } = setup();
+    let measured: (value: number | null) => void = () => undefined;
+    vi.mocked(readAudioSecondsAt).mockReturnValueOnce(new Promise((resolve) => { measured = resolve; }));
+
+    const playing = player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+    player.stopAll(2);
+    measured(5);
+
+    expect(await playing).toBe('stopped');
+    expect(context().sources).toEqual([]);
+    expect(context().decodeCalls).toBe(0);
   });
 
   it('reports a sound whose file is not in the vault', async () => {

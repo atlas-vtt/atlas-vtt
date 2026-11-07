@@ -4,9 +4,10 @@ import type { SoundBuffer, SoundContext, SoundGainNode, SoundSourceNode } from '
 import { GainTrack } from '../sound/engine/gainTrack';
 import { followOutputDevice, forgetOutputFollower } from '../sound/engine/outputDevice';
 import { MAX_TOKEN_SOUND_BYTES } from './tokenSounds';
+import { isTooLong, tokenSoundSeconds } from './tokenSoundLength';
 
 /** What became of a sound asked for: it played, or why it did not. */
-export type PlayOutcome = 'played' | 'stopped' | 'missing' | 'too-large' | 'unreadable' | 'unavailable';
+export type PlayOutcome = 'played' | 'stopped' | 'missing' | 'too-large' | 'too-long' | 'unreadable' | 'unavailable';
 
 /** What the player asks of an audio context beyond what the sound engine does: waking it, and closing it. */
 export type TokenSoundContext = SoundContext & {
@@ -15,11 +16,13 @@ export type TokenSoundContext = SoundContext & {
   close(): Promise<void>;
 };
 
-/** What the player is made with: the vault it reads sounds from, and how it gets an audio context. */
+/** What the player is made with: the vault it reads sounds from, how it gets an audio context, and how it reads a file's length. */
 export interface TokenSoundDeps {
   vault: Vault;
   /** Null where this device offers no Web Audio. */
   createContext: () => TokenSoundContext | null;
+  /** Seconds the file plays, read before it is decoded; null when it cannot be told. */
+  readSeconds: (file: TFile) => Promise<number | null>;
 }
 
 /** The most decoded sound kept to play again: 32-bit samples of every channel. */
@@ -68,7 +71,7 @@ export class TokenSoundPlayer {
   static forApp(app: App): TokenSoundPlayer {
     let player = TokenSoundPlayer.instances.get(app);
     if (!player) {
-      player = new TokenSoundPlayer({ vault: app.vault, createContext: browserContext });
+      player = new TokenSoundPlayer({ vault: app.vault, createContext: browserContext, readSeconds: (file) => tokenSoundSeconds(app.vault, file) });
       TokenSoundPlayer.instances.set(app, player);
     }
     return player;
@@ -105,6 +108,9 @@ export class TokenSoundPlayer {
     if (file.stat.size > MAX_TOKEN_SOUND_BYTES) return 'too-large';
 
     const stops = this.stops;
+    // A file held decoded as it is now was measured before it was decoded.
+    if (!this.holds(file) && isTooLong(await this.deps.readSeconds(file))) return 'too-long';
+    if (stops !== this.stops) return 'stopped';
     let buffer: SoundBuffer;
     try {
       buffer = await this.bufferOf(context, file);
@@ -135,6 +141,11 @@ export class TokenSoundPlayer {
     }
     if (this.context.state === 'suspended') void this.context.resume().catch(() => undefined);
     return this.context;
+  }
+
+  /** Whether the file is held decoded as it is now. */
+  private holds(file: TFile): boolean {
+    return this.decoded.get(file.path)?.stamp === stampOf(file);
   }
 
   private bufferOf(context: TokenSoundContext, file: TFile): Promise<SoundBuffer> {

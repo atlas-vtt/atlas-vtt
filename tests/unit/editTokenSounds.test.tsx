@@ -14,6 +14,9 @@ import { withSound } from '../mocks/experimentalFeatures';
 
 const showNotice = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
+/** How long the files say they play: jsdom loads no audio metadata, so the length is the test's to say. */
+const seconds = vi.hoisted(() => ({ value: 5 as number | null }));
+vi.mock('../../src/app/soundLibrary/audioDuration', () => ({ readAudioSecondsAt: vi.fn(() => Promise.resolve(seconds.value)) }));
 
 const MB = 1024 * 1024;
 let current: App | null = null;
@@ -66,6 +69,7 @@ beforeEach(() => {
   FakeTokenSoundContext.reset();
   vi.stubGlobal('AudioContext', FakeTokenSoundContext);
   showNotice.mockClear();
+  seconds.value = 5;
 });
 
 afterEach(() => {
