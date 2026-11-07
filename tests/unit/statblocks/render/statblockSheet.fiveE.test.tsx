@@ -1,6 +1,6 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import { FIVE_E_2024, MARSH_CREATURE } from '../../../fixtures/statblockTemplateFixtures';
 import { blockEl, blockText, renderSheet, valueOf } from './sheetTestKit';

@@ -3,6 +3,7 @@
 import type { LibraryTemplate } from '../model/resolvedTypes';
 import type { StatblockRole } from '../model/roleTypes';
 import type { TemplateId } from '../model/templateTypes';
+import { t } from '../../i18n';
 
 export interface TemplateRow {
   entry: LibraryTemplate;
@@ -34,10 +35,10 @@ export function templateRows(
 
 /** "Built-in · Monster, NPC" and "23 statblocks": what a row says beside the name. */
 export function rowDetail(row: TemplateRow): string {
-  return [row.entry.builtIn ? 'Built-in' : null, row.roleNames.join(', ') || null].filter((part) => part !== null).join(' · ');
+  return [row.entry.builtIn ? t('statblockEditor.builtInDetail') : null, row.roleNames.join(', ') || null].filter((part) => part !== null).join(' · ');
 }
 
 export function usageText(count: number): string {
-  if (count === 0) return 'Not used';
-  return count === 1 ? '1 statblock' : `${count} statblocks`;
+  if (count === 0) return t('statblockEditor.notUsed');
+  return t('statblockEditor.statblockCount', { count });
 }

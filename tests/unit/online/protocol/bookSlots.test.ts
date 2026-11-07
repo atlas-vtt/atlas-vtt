@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SLOTS, fitsPlayerFrame, MAX_OWN_SLOTS, MAX_SLOT_NAME, mayEquip, parseGmMessage, parsePlayerMessage, settledEquipped, shownSlots, withEquipped, type BookSlots, type PlayerBookMessage,

@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import type { FoundEntry } from '../protocol/index.ts';
 import { BookOpen } from 'lucide-react';
 import { memo, type ReactElement } from 'react';
@@ -32,7 +31,7 @@ export const FoundRow = memo(function FoundRow({ entry, onOpen, time, thread, ap
       {onOpen !== undefined && (
         <span className="atlas-online-log__found-read">
           <BookOpen aria-hidden="true" />
-          {t('uiOnline.foundRow_read')}
+          Read
         </span>
       )}
     </>
@@ -43,7 +42,7 @@ export const FoundRow = memo(function FoundRow({ entry, onOpen, time, thread, ap
         <AuthorDisc who={entry.who} name={entry.name} size="row" />
         <div className="atlas-online-log__content">
           <div className="atlas-online-log__byline">
-            <span className="atlas-online-log__name">{t('uiOnlineDetails.foundRow_foundByName', { name: finder })}</span>
+            <span className="atlas-online-log__name">{`Found by ${finder}`}</span>
             <span className="atlas-online-log__time">{time}</span>
           </div>
           {onOpen === undefined

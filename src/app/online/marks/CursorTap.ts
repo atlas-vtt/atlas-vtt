@@ -1,6 +1,6 @@
 import type { MarkPoint } from '../protocol/index.ts';
 import { SpanMeter } from './SpanMeter.ts';
-import type { TrailBatch } from './PointerTap.ts';
+import { thinTrail, type TrailBatch } from './PointerTap.ts';
 
 /** A pointer event on the map's canvas: where it is on the canvas, in CSS pixels, and what kind of pointer it is. */
 export type CursorEvent = Pick<PointerEvent, 'offsetX' | 'offsetY' | 'pointerType'>;
@@ -30,7 +30,7 @@ export interface CursorSource {
    * pointer on the same place still counts: they are at work), on the tap's clock; null while it is away.
    */
   movedAt(): number | null;
-  /** The places passed since the last call (the newest `max` numbers) and the time they cover, as a laser tells it. */
+  /** The places passed since the last call (at most `max` numbers, `thinTrail`) and the time they cover, as a laser tells it. */
   take(max: number): TrailBatch;
   /** Calls `listener` whenever the pointer or the map under it moved, or the pointer came or left; returns the function that stops it. */
   subscribe(listener: () => void): () => void;
@@ -98,7 +98,7 @@ export class CursorTap implements CursorSource {
   }
 
   take(max: number): TrailBatch {
-    const pts = this.pending.slice(Math.max(0, this.pending.length - max));
+    const pts = thinTrail(this.pending, max);
     this.pending = [];
     const span = this.meter.take();
     return span === undefined ? { pts } : { pts, span };

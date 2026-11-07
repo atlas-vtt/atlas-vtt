@@ -1,12 +1,15 @@
 import type { ChangelogService } from '../changelog/ChangelogService';
 import type { SettingsService } from '../services/SettingsService';
+import type { UpdateWatch } from '../updates/UpdateWatch';
+import { updateSettingsRows } from '../updates/updateSettingsRows';
 import type { AtlasSettingSection } from './settingSections';
 import { t } from '../i18n';
 
-export function changelogSettingsSection(settings: SettingsService, changelog: ChangelogService, version: string): AtlasSettingSection {
+export function changelogSettingsSection(settings: SettingsService, changelog: ChangelogService, version: string, updates: UpdateWatch): AtlasSettingSection {
   return {
     heading: t('settings.updates.heading'),
     rows: [
+      ...updateSettingsRows(settings, updates),
       {
         name: t('settings.updates.changelog'),
         desc: t('settings.updates.changelogDesc', { version }),

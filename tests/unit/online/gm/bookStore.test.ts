@@ -1,13 +1,29 @@
-// @vitest-environment node
 import {
   MAX_BOOK_ITEMS, MAX_BOOK_NOTES, MAX_BOOK_PINS, MAX_ITEM_PROPERTIES, MAX_ITEM_TEXT, MAX_BOOK_TITLE, parseBookItem, parsePlayerBook, type BookItem, type BookPin, type PlayerBookMessage,
 } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import type { LootDraw } from '../../../../src/app/loot/lootRoller';
 import { bookItemOf } from '../../../../src/app/online/gm/book/bookItem.ts';
-import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
-import { applyBookMessage, EMPTY_BOOK, readBooks, withItem, type StoredBook } from '../../../../src/app/online/gm/book/bookStore.ts';
+import { BookShelf, type BookSource } from '../../../../src/app/online/gm/book/BookShelf.ts';
+import { applyBookMessage, EMPTY_BOOK, isEmptyBook, readBooks, withItem, type StoredBook } from '../../../../src/app/online/gm/book/bookStore.ts';
 import { clippedLine, clippedText, openingOf } from '../../../../src/app/online/gm/book/bookTexts.ts';
+
+/** A source that keeps books in a map, noting what it was asked to write. */
+function fakeSource(accepts = true): BookSource & { readonly written: [string, StoredBook][] } {
+  const kept = new Map<string, StoredBook>();
+  const written: [string, StoredBook][] = [];
+  return {
+    written,
+    read: (characterId) => kept.get(characterId),
+    write: (characterId, book) => {
+      if (!accepts) return false;
+      written.push([characterId, book]);
+      if (isEmptyBook(book)) kept.delete(characterId);
+      else kept.set(characterId, book);
+      return true;
+    },
+  };
+}
 
 const id = (count: number): string => count.toString(16).padStart(24, '0');
 const note = (count: number, body = 'Body'): PlayerBookMessage => ({ t: 'book-note', note: { id: id(count), title: `Note ${count}`, body } });
@@ -50,6 +66,16 @@ describe('a book as the GM keeps it', () => {
     expect(applyBookMessage(pinned, { t: 'book-pin-delete', id: id(0) }, 1, new Set())?.pins).toHaveLength(MAX_BOOK_PINS - 1);
   });
 
+  it('refuses, and never writes, a message that belongs elsewhere or that it does not know', () => {
+    const book = written([note(1)]);
+    const elsewhere = [
+      { t: 'book-refill', refill: 'Long rest' },
+      { t: 'book-field', key: 'speed', base: '', value: '40 ft.' },
+      { t: 'book-unknown' },
+    ] as unknown as Parameters<typeof applyBookMessage>[1][];
+    for (const message of elsewhere) expect(applyBookMessage(book, message, 1000, new Set())).toBeNull();
+  });
+
   it('replaces the purse whole and leaves the rest alone', () => {
     const book = written([note(1), { t: 'book-purse', purse: [{ name: 'Gold', amount: 12 }] }, { t: 'book-purse', purse: [{ name: 'Silver', amount: 3 }] }]);
     expect(book.purse).toEqual([{ name: 'Silver', amount: 3 }]);
@@ -65,10 +91,9 @@ describe('a book as the GM keeps it', () => {
   });
 
   it('is read back through the protocol\'s parsers: what is malformed is dropped, the rest kept', () => {
-    const shelf = new BookShelf();
-    shelf.keep('Cairn', 'art/brannoch.png', withItem(written([note(1), { t: 'book-pin', pin: pin(2) }, { t: 'book-purse', purse: [{ name: 'Gold', amount: 4 }] }]), item(3)));
-    const saved = JSON.parse(JSON.stringify(shelf.toData())) as Record<string, Record<string, Record<string, unknown[]>>>;
-    expect(readBooks(saved)).toEqual(shelf.toData());
+    const stored = { Cairn: { 'art/brannoch.png': withItem(written([note(1), { t: 'book-pin', pin: pin(2) }, { t: 'book-purse', purse: [{ name: 'Gold', amount: 4 }] }]), item(3)) } };
+    const saved = JSON.parse(JSON.stringify(stored)) as Record<string, Record<string, Record<string, unknown[]>>>;
+    expect(readBooks(saved)).toEqual(stored);
 
     const book = saved.Cairn?.['art/brannoch.png'];
     if (book === undefined) throw new Error('no book saved');
@@ -91,19 +116,55 @@ describe('a book as the GM keeps it', () => {
   });
 
   it('keeps a character named like a property of every object apart from it', () => {
-    const shelf = new BookShelf(readBooks(JSON.parse('{"__proto__":{"constructor":{"items":[],"notes":[],"pins":[],"purse":[{"name":"Gold","amount":1}]}}}')));
-    expect(shelf.of('__proto__', 'constructor').purse).toEqual([{ name: 'Gold', amount: 1 }]);
-    expect(shelf.of('Cairn', 'constructor')).toBe(EMPTY_BOOK);
+    const source = fakeSource();
+    const shelf = new BookShelf(source);
+    shelf.keep('__proto__', written([note(1)]));
+    expect(shelf.of('__proto__').notes).toHaveLength(1);
+    expect(shelf.of('constructor')).toBe(EMPTY_BOOK);
     expect(({} as Record<string, unknown>).constructor).toBe(Object);
   });
 
-  it('tells its keeper of every change and forgets a book that is empty again', () => {
-    let saves = 0;
-    const shelf = new BookShelf({}, () => (saves += 1));
-    shelf.keep('Cairn', 'art/a.png', written([note(1)]));
-    shelf.keep('Cairn', 'art/a.png', written([note(1), { t: 'book-note-delete', id: id(1) }]));
-    expect(saves).toBe(2);
-    expect(shelf.toData()).toEqual({});
+  it('keeps a book in its source and reads it back, and takes a book that is empty again away', () => {
+    const source = fakeSource();
+    const shelf = new BookShelf(source);
+    const book = written([note(1)]);
+    shelf.keep('lib-a', book);
+    expect(source.written).toEqual([['lib-a', book]]);
+    expect(shelf.of('lib-a')).toBe(book);
+    shelf.keep('lib-a', written([note(1), { t: 'book-note-delete', id: id(1) }]));
+    expect(source.written.at(-1)?.[1]).toMatchObject({ notes: [] });
+    expect(shelf.of('lib-a')).toBe(EMPTY_BOOK);
+  });
+
+  it('never hands a book of a token placed from no library token to its source', () => {
+    const source = fakeSource();
+    const shelf = new BookShelf(source);
+    const book = written([note(1)]);
+    shelf.keep('token:tok-1', book);
+    expect(source.written).toEqual([]);
+    expect(shelf.of('token:tok-1')).toBe(book);
+  });
+
+  it('keeps a book in memory while its source cannot keep it, and with no source at all', () => {
+    const source = fakeSource(false);
+    const book = written([note(1)]);
+    const shelf = new BookShelf(source);
+    shelf.keep('lib-a', book);
+    expect(shelf.of('lib-a')).toBe(book);
+    const alone = new BookShelf();
+    alone.keep('lib-a', book);
+    expect(alone.of('lib-a')).toBe(book);
+    expect(alone.of('lib-b')).toBe(EMPTY_BOOK);
+  });
+
+  it('forgets what it held in memory of library tokens once a campaign\'s file keeps their books, and keeps the rest', () => {
+    const book = written([note(1)]);
+    const shelf = new BookShelf();
+    shelf.keep('lib-a', book);
+    shelf.keep('token:tok-1', book);
+    shelf.forgetKept();
+    expect(shelf.of('lib-a')).toBe(EMPTY_BOOK);
+    expect(shelf.of('token:tok-1')).toBe(book);
   });
 });
 

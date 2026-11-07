@@ -1,4 +1,3 @@
-import { t } from '../../../../i18n';
 import React from 'react';
 import { Redo2, Undo2 } from 'lucide-react';
 import { ToolButton } from '../../../../packages/components/primitives/ToolButton';
@@ -7,6 +6,7 @@ import { blockGlyph } from '../editorGlyphs';
 import { insertItems, itemKey, type InsertItem } from '../insertItems';
 import { UNDOES_PLACEMENT } from '../naming/NamePopover';
 import { shortcutText } from '../shortcutText';
+import { t } from '../../../../i18n';
 import './dock.scss';
 
 export interface EditorDockProps {
@@ -23,7 +23,7 @@ function AddButton({ item, onAdd }: { item: InsertItem; onAdd: EditorDockProps['
   const drag = useKindDrag(item, !onAdd);
   return (
     <span ref={drag.ref} className="atlas-te-dock__add" data-item={itemKey(item)} onPointerDown={drag.onPointerDown}>
-      <ToolButton icon={blockGlyph(item.type)} label={`Add ${item.label.toLowerCase()}`} subtitle={item.example} isActive={false} disabled={!onAdd} tooltipSide="left"
+      <ToolButton icon={blockGlyph(item.type)} label={t('templateEditor.addKind', { kind: item.label.toLowerCase() })} subtitle={item.example} isActive={false} disabled={!onAdd} tooltipSide="left"
         onClick={() => onAdd?.(item)} />
     </span>
   );
@@ -32,19 +32,19 @@ function AddButton({ item, onAdd }: { item: InsertItem; onAdd: EditorDockProps['
 /**
  * The template editor's dock: a vertical capsule in the note column, beside the
  * line between the note and the card and halfway down it,
- * edge with the six kinds a statblock is built from, each added by a click
+ * edge with the seven kinds a statblock is built from, each added by a click
  * or dragged onto the card, and the session's undo and redo. While a tile
  * just placed asks for its name, Undo takes that tile away.
  */
 export function EditorDock({ onAdd, canUndo, canRedo, onUndo, onRedo }: EditorDockProps): React.JSX.Element {
   return (
-    <div className="atlas-te-dock" role="toolbar" aria-orientation="vertical" aria-label={t('uiTemplateEditor.editorDock_addToTheTemplate')} data-te-region="dock">
+    <div className="atlas-te-dock" role="toolbar" aria-orientation="vertical" aria-label={t('templateEditor.dock')} data-te-region="dock">
       {insertItems().map((item) => <AddButton key={itemKey(item)} item={item} onAdd={onAdd} />)}
       <span className="atlas-te-dock__divider" aria-hidden="true" />
       <span className="atlas-te-dock__history" {...{ [UNDOES_PLACEMENT]: '' }}>
-        <ToolButton icon={Undo2} label={t('uiTemplateEditor.editorDock_undo')} shortcut={shortcutText(['Mod'], 'Z')} isActive={false} disabled={!canUndo} onClick={onUndo} tooltipSide="left" />
+        <ToolButton icon={Undo2} label={t('templateEditor.undo')} shortcut={shortcutText(['Mod'], 'Z')} isActive={false} disabled={!canUndo} onClick={onUndo} tooltipSide="left" />
       </span>
-      <ToolButton icon={Redo2} label={t('uiTemplateEditor.editorDock_redo')} shortcut={shortcutText(['Mod', 'Shift'], 'Z')} isActive={false} disabled={!canRedo} onClick={onRedo} tooltipSide="left" />
+      <ToolButton icon={Redo2} label={t('templateEditor.redo')} shortcut={shortcutText(['Mod', 'Shift'], 'Z')} isActive={false} disabled={!canRedo} onClick={onRedo} tooltipSide="left" />
     </div>
   );
 }

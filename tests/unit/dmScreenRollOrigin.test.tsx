@@ -1,10 +1,10 @@
+// @vitest-environment jsdom
 import React, { useLayoutEffect } from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighlight: vi.fn(), addTokenHighlight: vi.fn() }));
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../src/app/react/components/LinkedNotePicker', () => ({ default: () => null }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 vi.mock('../../src/app/react/root/AtlasUIContext', async (importOriginal) => ({
@@ -43,12 +43,13 @@ function scene(mapPath: string, name: string, changes: object = {}): typeof stat
   return {
     mapPath, mapLoaded: true, isMapLoading: false,
     objects: { tokens: { wolf: { id: 'wolf', kind: 'character', name, x: 0, y: 0, imagePath: '', statblockPath: WOLF } } },
+    initiative: { entries: [], isActive: false, round: 0 },
     dmNotePath: null, setDMNotePath: vi.fn(), updateToken: vi.fn(),
     ...changes,
   };
 }
 
-let state: { mapPath: string; mapLoaded: boolean; isMapLoading: boolean; objects: { tokens: Record<string, object> }; dmNotePath: null; setDMNotePath: () => void; updateToken: () => void };
+let state: { mapPath: string; mapLoaded: boolean; isMapLoading: boolean; objects: { tokens: Record<string, object> }; initiative: { entries: never[]; isActive: boolean; round: number }; dmNotePath: null; setDMNotePath: () => void; updateToken: () => void };
 
 /** Clicks the first dice link while a render is committed, before the screen's effects run. */
 function ClickDuringCommit({ armed }: { armed: boolean }): null {

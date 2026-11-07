@@ -1,7 +1,10 @@
-import { Text } from 'pixi.js';
+// @vitest-environment jsdom
+import { Container, Text } from 'pixi.js';
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { TokenFootprint } from '../../src/app/vision/measureOrigin';
 import type { MeasurePlayersView } from '../../src/app/pixi/measurePartsVisibility';
+import { labelScale } from '../../src/app/pixi/utils/measureLabelLayout';
+import { NAMEPLATE_TEXT } from '../../src/app/pixi/token-renderer/tokenSizing';
 import { measureFrom, measureScene, type MeasureScene } from '../helpers/measureScene';
 
 let current: MeasureScene | undefined;
@@ -56,17 +59,35 @@ describe('MeasureRenderer in the GM view', () => {
     s.store.getState().setActiveTool('select');
     steps.push(s.visible());
     expect(steps).toEqual([
-      [true, true, true],
-      [true, true, true],
-      [true, true, true],
-      [true, true, true],
-      [true, false, false],
-      [true, false, false, true, true, true],
-      [true, true, true, true, true, true],
-      [true, false, false, true, true, true],
-      [true, false, false],
-      [true, false, false],
+      [true, true],
+      [true, true],
+      [true, true],
+      [true, true],
+      [true, false],
+      [true, false, true, true],
+      [true, true, true, true],
+      [true, false, true, true],
+      [true, false],
+      [true, false],
     ]);
+  });
+});
+
+describe('MeasureRenderer layers', () => {
+  it('keeps every distance label above every measurement shape, kept ones included', () => {
+    const s = scene();
+    s.bus.emit('measure-persistence-changed', true);
+    s.store.getState().setActiveTool('measure');
+    measureFrom(s, 100, 100);
+    s.bus.emit('measure-shape-changed', 'circle');
+    measureFrom(s, 300, 300);
+    const labels = s.parts().filter((_, index) => index % 2 === 1) as Container[];
+    const shapes = s.viewport.children.find((child) => child.label === 'measures')!;
+    s.viewport.sortChildren();
+    for (const label of labels) {
+      expect(label.parent).toBe(labels[0]!.parent);
+      expect(s.viewport.getChildIndex(label.parent!)).toBeGreaterThan(s.viewport.getChildIndex(shapes));
+    }
   });
 });
 
@@ -81,11 +102,11 @@ describe('MeasureRenderer and the players\' picture', () => {
     s.pointer('pointermove', 300, 100);
     s.pointer('pointermove', 350, 100);
     expect(view.seenAtStart).toHaveBeenCalledTimes(1);
-    const [graphics, pill, text] = s.parts();
+    const [shape, label] = s.parts();
     const layers = s.measure.getPlayerViewLayers((id) => seen.has(id));
-    expect([shownIn(layers, graphics), shownIn(layers, pill), shownIn(layers, text)]).toEqual([false, false, false]);
+    expect([shownIn(layers, shape), shownIn(layers, label)]).toEqual([false, false]);
     // The GM's canvas keeps the ruler.
-    expect(s.visible()).toEqual([true, true, true]);
+    expect(s.visible()).toEqual([true, true]);
     s.pointer('pointerup', 350, 100);
   });
 
@@ -95,7 +116,7 @@ describe('MeasureRenderer and the players\' picture', () => {
     s.store.getState().setActiveTool('measure');
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);
-    expect(s.measure.getPlayerViewLayers(() => true).slice(0, 3).map((entry) => entry.visible)).toEqual([false, false, false]);
+    expect(s.measure.getPlayerViewLayers(() => true).slice(0, 2).map((entry) => entry.visible)).toEqual([false, false]);
   });
 
   it('mirrors a measurement from a seen token or from empty floor as the GM view shows it', () => {
@@ -105,10 +126,10 @@ describe('MeasureRenderer and the players\' picture', () => {
     s.store.getState().setActiveTool('measure');
     s.pointer('pointerdown', 400, 100);
     s.pointer('pointermove', 600, 100);
-    expect(s.measure.getPlayerViewLayers((id) => seen.has(id)).map((entry) => entry.visible)).toEqual([true, true, true]);
+    expect(s.measure.getPlayerViewLayers((id) => seen.has(id)).map((entry) => entry.visible)).toEqual([true, true]);
     s.pointer('pointerup', 600, 100);
     s.pointer('pointerdown', 800, 800);
-    expect(s.measure.getPlayerViewLayers(() => false).map((entry) => entry.visible)).toEqual([true, true, true]);
+    expect(s.measure.getPlayerViewLayers(() => false).map((entry) => entry.visible)).toEqual([true, true]);
   });
 
   it('keeps the origin with a persistent copy, drops it when the measurement clears, and forgets copies switched off', () => {
@@ -120,22 +141,22 @@ describe('MeasureRenderer and the players\' picture', () => {
     measureFrom(s, 100, 100);
     measureFrom(s, 400, 100);
     const isSeen = (id: string): boolean => seen.has(id);
-    const [, , , ...goblinRuler] = s.parts();
+    const [, , ...goblinRuler] = s.parts();
     const fromGoblin = s.measure.getPlayerViewLayers(isSeen);
-    expect(goblinRuler.slice(0, 3).map((part) => shownIn(fromGoblin, part))).toEqual([false, false, false]);
-    expect(goblinRuler.slice(3).map((part) => shownIn(fromGoblin, part))).toEqual([true, true, true]);
+    expect(goblinRuler.slice(0, 2).map((part) => shownIn(fromGoblin, part))).toEqual([false, false]);
+    expect(goblinRuler.slice(2).map((part) => shownIn(fromGoblin, part))).toEqual([true, true]);
     // The goblin is revealed: a ruler started while it was unseen stays out for good.
     seen.add('goblin');
-    expect(goblinRuler.slice(0, 3).map((part) => shownIn(s.measure.getPlayerViewLayers(isSeen), part))).toEqual([false, false, false]);
+    expect(goblinRuler.slice(0, 2).map((part) => shownIn(s.measure.getPlayerViewLayers(isSeen), part))).toEqual([false, false]);
     // The hero leaves the players' sight, and the ruler from it goes with it until it is seen again.
     seen.delete('hero');
-    expect(goblinRuler.slice(3).map((part) => shownIn(s.measure.getPlayerViewLayers(isSeen), part))).toEqual([false, false, false]);
+    expect(goblinRuler.slice(2).map((part) => shownIn(s.measure.getPlayerViewLayers(isSeen), part))).toEqual([false, false]);
     seen.add('hero');
-    expect(goblinRuler.slice(3).map((part) => shownIn(s.measure.getPlayerViewLayers(isSeen), part))).toEqual([true, true, true]);
+    expect(goblinRuler.slice(2).map((part) => shownIn(s.measure.getPlayerViewLayers(isSeen), part))).toEqual([true, true]);
     // The live parts were cleared with their origin.
-    expect(s.measure.getPlayerViewLayers(() => false).slice(0, 3).map((entry) => entry.visible)).toEqual([true, false, false]);
+    expect(s.measure.getPlayerViewLayers(() => false).slice(0, 2).map((entry) => entry.visible)).toEqual([true, false]);
     s.bus.emit('measure-persistence-changed', false);
-    expect(s.measure.getPlayerViewLayers(() => false)).toHaveLength(3);
+    expect(s.measure.getPlayerViewLayers(() => false)).toHaveLength(2);
   });
 
   it('hides by the rule on the canvas while it shows the players\' view, and gives the GM view back', () => {
@@ -148,17 +169,17 @@ describe('MeasureRenderer and the players\' picture', () => {
     measureFrom(s, 400, 100);
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);
-    expect(s.visible()).toEqual([false, false, false, true, true, true]);
+    expect(s.visible()).toEqual([false, false, true, true]);
     seen.delete('hero');
     s.measure.refreshVisibility();
-    expect(s.visible()).toEqual([false, false, false, false, false, false]);
+    expect(s.visible()).toEqual([false, false, false, false]);
     canvas.players = false;
     s.measure.refreshVisibility();
-    expect(s.visible()).toEqual([true, true, true, true, true, true]);
+    expect(s.visible()).toEqual([true, true, true, true]);
     // A picture of the scene is the GM's, whatever the canvas shows.
     canvas.players = true;
     s.measure.refreshVisibility();
-    expect(s.measure.getGmViewLayers().map((entry) => entry.visible)).toEqual([true, true, true, true, true, true]);
+    expect(s.measure.getGmViewLayers().map((entry) => entry.visible)).toEqual([true, true, true, true]);
     s.pointer('pointerup', 300, 100);
   });
 
@@ -168,12 +189,15 @@ describe('MeasureRenderer and the players\' picture', () => {
     s.store.getState().setActiveTool('measure');
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);
-    const text = s.parts()[2];
-    if (!(text instanceof Text)) throw new Error('Expected the live label');
-    expect(text.visible).toBe(false);
+    const label = s.parts()[1];
+    const text = label instanceof Container ? label.children.find((child) => child instanceof Text) : undefined;
+    if (!(label instanceof Container) || !(text instanceof Text)) throw new Error('Expected the live label');
+    expect(label.visible).toBe(false);
     s.viewport.scale.set(0.5);
     s.viewport.emit('zoomed', { viewport: s.viewport, type: 'wheel' });
-    expect(text.style.fontSize).toBe(32);
+    // Sized as token UI for the new zoom, its font as it always is.
+    expect(label.scale.x).toBe(labelScale(70, 0.5));
+    expect(text.style.fontSize).toBe(NAMEPLATE_TEXT.fontSize);
   });
 
   it('asks nothing of the players\' sight while there is no measurement', () => {

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { constants, createDeflateRaw } from 'node:zlib';
 import { ALL_PLAYERS, PROTOCOL_VERSION } from '../../../../src/app/online/protocol/index.ts';
 import type { FogOperation } from '../../../../src/app/types/fogTypes';

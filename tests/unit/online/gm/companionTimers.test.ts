@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { every, WorkerTimers, type TimerWorker } from '../../../../src/app/online/gm/companionTimers.ts';
 

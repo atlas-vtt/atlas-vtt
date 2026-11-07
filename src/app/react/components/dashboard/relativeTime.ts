@@ -1,5 +1,6 @@
 import { t } from '../../../i18n';
 import type { MessageKey } from '../../../i18n/types';
+import type { Campaign } from '../../../campaigns/campaignTypes';
 
 /** The sentence for each step of a relative time; the counted ones take `{count}`. */
 export interface RelativeTimePhrases {
@@ -28,3 +29,22 @@ export function formatRelativeTime(timestamp: number, phrases: RelativeTimePhras
   if (diff < DAY) return t(phrases.hours, { count: Math.floor(diff / HOUR) });
   return t(phrases.days, { count: Math.floor(diff / DAY) });
 }
+
+const PLAYED: RelativeTimePhrases = {
+  justNow: 'campaign.playedJustNow',
+  minutes: 'campaign.playedMinutesAgo',
+  hours: 'campaign.playedHoursAgo',
+  days: 'campaign.playedDaysAgo',
+};
+
+const CREATED: RelativeTimePhrases = {
+  justNow: 'campaign.createdJustNow',
+  minutes: 'campaign.createdMinutesAgo',
+  hours: 'campaign.createdHoursAgo',
+  days: 'campaign.createdDaysAgo',
+};
+
+/** "Last played 3d ago", or when it was made for a campaign never played. */
+export const campaignActivity = (campaign: Campaign): string => (campaign.lastPlayed !== undefined
+  ? formatRelativeTime(campaign.lastPlayed, PLAYED)
+  : formatRelativeTime(campaign.createdAt, CREATED));

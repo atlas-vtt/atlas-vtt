@@ -18,6 +18,7 @@ import type { PaneEditController } from '../statblock-pane/paneEditContext';
 import { fieldPatches } from '../statblock-pane/valuePatches';
 import type { CardToken } from './useNoteTokens';
 import { isVaultImage } from '../../../utils/vaultImage';
+import { t } from '../../../i18n';
 
 /** The key Fantasy Statblocks reads the art from, which the link service writes. */
 const LINK_IMAGE_KEY = 'image';
@@ -63,7 +64,7 @@ export function shownArt(pane: PaneEditController, field: TemplateField): ShownA
 /** Frames the token, and every token placed with its art, with the ring or without. */
 export async function setRing(pane: PaneEditController, token: TokenAsset, showRing: boolean): Promise<void> {
   await setTokenRing(pane.app, token, showRing);
-  pane.announce(showRing ? `${token.name} has a ring.` : `${token.name} has no ring.`);
+  pane.announce(showRing ? t('statblockEditor.token.hasRing', { name: token.name }) : t('statblockEditor.token.noRing', { name: token.name }));
 }
 
 /** Writes `path` as the note's art: one step of the note's history, as any value the pane edits. */

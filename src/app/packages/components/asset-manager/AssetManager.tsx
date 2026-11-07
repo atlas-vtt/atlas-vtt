@@ -8,6 +8,7 @@ import type { AnyAsset, AssetManagerProps, Tab } from './types';
 
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
+import { BestiaryTokensOffer } from './components/BestiaryTokensOffer';
 import { Content } from './components/Content';
 import { LocationBar } from './components/LocationBar';
 import { ModalLayer } from './components/ModalLayer';
@@ -34,6 +35,8 @@ import { useCollectionFilterDefinitions } from './hooks/useCollectionFilterDefin
 import { useFilterSearch, useSearchKeywords } from './hooks/useFilterSearch';
 import { ActiveFilterBar } from './components/search/ActiveFilterBar';
 import { DIALOG_EXIT_DURATION, dialogBackdropVariants, useDialogWindowVariants } from '../primitives/dialogMotion';
+import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator';
+import { runInBackground } from '../../../utils/backgroundTask';
 import { t } from '../../../i18n';
 
 const NO_ASSETS: AnyAsset[] = [];
@@ -173,7 +176,13 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
     data, sel, crud, tags, statblock,
   });
 
-  const anyModalOpen = crud.isTokenCreatorOpen || crud.isMapCreatorOpen;
+  const anyModalOpen = crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isMapCreatorOpen;
+
+  // The empty Tokens tab offers the starter tokens in place of its hint.
+  const offerService = data.assetService;
+  const emptyOffer = shown.tab === 'tokens' && offerService
+    ? (hint: React.ReactNode): React.ReactNode => <BestiaryTokensOffer app={data.app} assets={offerService} collection={selectedCollection} variant="empty" fallback={hint} />
+    : null;
 
   return (
     <>
@@ -226,6 +235,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onEditCollectionSettings={crud.setSettingsModalCollectionId}
                   onExportCollection={() => { void crud.handleExportCollection(); }}
                   onImportCollection={crud.handleImportCollection}
+                  footer={activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" /> : null}
                   layout={sidebar}
                 />
                 <Header
@@ -238,6 +248,11 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   assetCounts={data.assetCounts}
                   onCreateTokens={() => crud.setIsTokenCreatorOpen(true)}
                   onCreateMap={crud.handleCreateMap}
+                  onGenerateDungeon={() => {
+                    runInBackground(showDungeonGenerator(data.app, selectedCollection), 'Opening the dungeon generator');
+                    onClose();
+                  }}
+                  onCreateEncounter={() => crud.setIsEncounterBuilderOpen(true)}
                   onCreateCollection={crud.handleCreateCollection}
                   onCreateFolder={crud.handleCreateFolder}
                   sidebarToggleLabel={sidebar.toggleLabel}
@@ -289,6 +304,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                         onDrop={crud.handleDrop}
                         view={data.view}
                         app={data.app}
+                        {...(emptyOffer && { emptyOffer })}
                         assetService={data.assetService}
                         spawnCounts={sel.spawnCounts}
                         onSpawnCountChange={sel.handleSpawnCountChange}

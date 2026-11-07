@@ -10,17 +10,23 @@ import type { DiceSource } from '../../../../src/app/online/gm/atlasDice.ts';
 import type { AtlasPlayerSettings, LightingSource } from '../../../../src/app/online/gm/atlasLighting.ts';
 import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayers.ts';
 import type { TokenRules } from '../../../../src/app/online/gm/tokenUI.ts';
+import type { RemoteDrag } from '../../../../src/app/online/marks/index.ts';
+import type { GmRuler } from '../../../../src/app/online/gm/dragRulers.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
-import { GENERIC_SOURCE, LIGHTING_ON } from './gmLighting.ts';
+import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
 import { settled } from './settled.ts';
+import { isVideoMapPath } from '../../../../src/app/pixi/mosaicCanvas/video/videoMapFiles';
+import type { AssetStoring } from '../../../../src/app/online/gm/assets/assetUses.ts';
+import { fakeStoring } from './fakeStoring.ts';
 
 export const GRID_SIZE = 70;
 
-/** A scene state with the given changes; no tokens, a map at `maps/cave.webp`. */
+/** A scene state with the given changes; no tokens, a map at `maps/cave.webp`, every nameplate shown on the GM's map. */
 export function sceneState(changes: Partial<SceneState> = {}): SceneState {
   return {
     mapPath: 'Scenes/Cave.atlasmap', mapLoaded: true, isMapLoading: false, background: 'maps/cave.webp', grid: null, isDragging: false, _audioDirty: false,
-    lighting: { enabled: false, ambient: 1 }, heldTokens: {}, exploredMask: null, objects: { tokens: {}, fog: {}, pins: {}, texts: {}, drawings: {}, walls: {}, lights: {}, audios: {} },
+    lighting: { enabled: false, ambient: 1 }, heldTokens: {}, exploredMask: null, exploredEdits: 0, objects: { tokens: {}, fog: {}, pins: {}, texts: {}, drawings: {}, walls: {}, lights: {}, audios: {} },
+    tokenSettings: { showNameplates: true } as SceneState['tokenSettings'],
     ...changes,
   };
 }
@@ -52,13 +58,25 @@ export interface ShareHarness {
   layers: MapLayerSource | null;
   /** The map's resource and condition definitions, or null while they cannot be read (the default). */
   rules: TokenRules | null;
+  /** What the GM's own drag ruler measures; none by default. */
+  gmRuler: GmRuler | null;
+  /** The rulers of the players' drags the GM's overlay was given, in order. */
+  readonly playerDrags: (readonly RemoteDrag[])[];
   /** The rolls taken into the table's log. */
   readonly logged: LoggedRoll[];
   /** The roll buttons of the table's log, as a player may roll them; none by default. */
   requests: (from: string, answer: RollRequestAnswer) => RollRequest | null;
   /** The log entry of whoever found a readable pin; nobody by default. */
   foundPin: (mapPath: string, pinId: string) => string | null;
+  /** The level of a scene with several Atlas presents to its player view; unset is the first. */
+  presented: string | undefined;
+  /** The vault's animated maps by path, whose posters are their entries in the images; none by default. */
+  videos: Map<string, Uint8Array<ArrayBuffer>>;
+  /** How often the store was handed a video to keep. */
+  videoReads: number;
   set(next: SceneState): Promise<void>;
+  /** The store's state now, as the share's own writes (players' moves) leave it. */
+  state(): SceneState;
   /** Moves the clock on, running the timers that fall due, and lets reads settle. */
   advance(ms: number): Promise<void>;
   settle(): Promise<void>;
@@ -70,9 +88,10 @@ const counterId = (count: number): string => count.toString(16).padStart(24, '0'
 /**
  * A SceneShare over a fake store, renderer (`fakeTokenSource`), vault and clock; `images` are the
  * vault's image files by path; `seats` tells who plays, owns which token and may claim which; `real`
- * (Atlas's own view store) replaces the fake store, and is written through its own actions, not `set`.
+ * (Atlas's own view store) replaces the fake store, and is written through its own actions, not `set`;
+ * `stored` hands players assets the store keeps (by default all of them, `fakeStoring`).
  */
-export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: SceneStore): ShareHarness {
+export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: SceneStore, stored?: AssetStoring): ShareHarness {
   let current = initial;
   const listeners: ((next: SceneState) => void)[] = [];
   const store: SceneStore = real ?? {
@@ -92,14 +111,20 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     perception: undefined,
     rendered: true,
     lighting: GENERIC_SOURCE,
-    settings: LIGHTING_ON,
+    settings: PLAYER_SETTINGS,
     dice: null,
     layers: null,
     rules: null,
+    gmRuler: null,
+    playerDrags: [],
     logged: [],
     requests: () => null,
     foundPin: () => null,
+    presented: undefined,
+    videos: new Map(),
+    videoReads: 0,
     share: new SceneShare(store, {
+      presentedLevel: () => harness.presented,
       logRoll: (roll) => harness.logged.push(roll),
       rollRequest: (from, answer) => harness.requests(from, answer),
       foundPin: (mapPath, pinId) => harness.foundPin(mapPath, pinId),
@@ -110,9 +135,12 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       showNames: () => harness.settings.showNames,
       tokenRules: () => harness.rules,
       tokenSource: () => (harness.rendered ? source : null),
+      gmDragRuler: () => harness.gmRuler,
+      showPlayerDrags: (drags) => harness.playerDrags.push(drags),
       readImage: (path) => {
         const bytes = images.get(path);
-        const mime = imageMimeType(path);
+        // An animated map is read as its poster, as `readVaultImage` takes it
+        const mime = isVideoMapPath(path) ? 'image/png' : imageMimeType(path);
         return Promise.resolve(bytes === undefined || mime === null ? null : { bytes, mime });
       },
       send: (body, to) => harness.sent.push({ body, to }),
@@ -127,7 +155,13 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       },
       clearTimer: (timer) => void timers.delete(timer),
       seats,
+      stored: stored ?? fakeStoring(undefined, (path) => {
+        const bytes = harness.videos.get(path);
+        if (bytes !== undefined) harness.videoReads += 1;
+        return bytes;
+      }),
     }),
+    state: () => store.getState(),
     set: async (next) => {
       current = next;
       for (const listener of listeners) listener(next);

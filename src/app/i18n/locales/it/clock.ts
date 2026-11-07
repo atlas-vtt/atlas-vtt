@@ -1,6 +1,6 @@
-import type { Message } from '../../types';
+import type { Translation } from '../../types';
 
 export const clock = {
-  'clock.clear': 'Svuota un segmento',
-  'clock.fill': 'Riempi un segmento',
-} as const satisfies Record<string, Message>;
+  "clock.clear": "Svuota un segmento",
+  "clock.fill": "Riempi un segmento"
+} satisfies Translation;

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { MAX_LOG_ENTRIES, parseGmMessage, type GmMessage, type LogEntry, type SharedRoll } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { entriesWithin, type GmLogEntry } from '../../../../src/app/online/gm/log/logEntries.ts';

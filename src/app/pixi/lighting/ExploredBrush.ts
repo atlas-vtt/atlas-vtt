@@ -9,7 +9,7 @@ import type { WallToolSubMode } from '../../tools/WallTool';
 import type { Point } from '../../types/visionTypes';
 import type { MapBounds } from '../../vision/visibility';
 import { ExploredOverlay } from './ExploredOverlay';
-import { lightMarkerTheme } from './LightMarkers';
+import { lightMarkerTheme } from './lightMarker';
 import type { ExploredMemoryWatcher } from './sceneLightingView';
 
 export interface ExploredBrushDeps {

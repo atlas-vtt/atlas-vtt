@@ -1,5 +1,5 @@
-import { t } from '../../../i18n';
 import React, { useEffect, useId, useRef } from 'react';
+import { t } from '../../../i18n';
 import { senseKind, senseNameProblem, senseProblem, withSenseKind, type SenseKind } from '../../../gameSystems/senseEditing';
 import { withUnit } from '../../../lighting/tokenLighting';
 import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
@@ -8,33 +8,33 @@ import type { SenseDefinition, SenseLook, SenseRange, SenseSight } from '../../.
 import { numberText, parseNumberText, positiveNumber } from '../../../utils/numberInput';
 
 const KINDS: SelectOption<SenseKind>[] = [
-  { value: 'sense', label: t('uiSettings.senseDefinitionEditor_aSenseOfItsOwn') },
-  { value: 'see-invisible', label: t('uiSettings.senseDefinitionEditor_letsTheTokenSSightSeeInvisibleCreatures') },
+  { value: 'sense', label: t('senses.kind.sense') },
+  { value: 'see-invisible', label: t('senses.kind.seeInvisible') },
 ];
 
 const RANGES: SelectOption<SenseRange>[] = [
-  { value: 'required', label: t('uiSettings.senseDefinitionEditor_needsARange') },
-  { value: 'optional', label: t('uiSettings.senseDefinitionEditor_rangeOptional') },
-  { value: 'unlimited', label: t('uiSettings.senseDefinitionEditor_noRange') },
+  { value: 'required', label: t('senses.range.required') },
+  { value: 'optional', label: t('senses.range.optional') },
+  { value: 'unlimited', label: t('senses.range.unlimited') },
 ];
 
 const IN_DIM: SelectOption<SenseSight['dim']>[] = [
-  { value: 'none', label: t('uiSettings.senseDefinitionEditor_seesNothing') },
-  { value: 'normal', label: t('uiSettings.senseDefinitionEditor_seesItAsItIs') },
-  { value: 'as-bright', label: t('uiSettings.senseDefinitionEditor_seesItAsBrightLight') },
+  { value: 'none', label: t('senses.sees.none') },
+  { value: 'normal', label: t('senses.sees.asIs') },
+  { value: 'as-bright', label: t('senses.sees.asBright') },
 ];
 
 const IN_DARK: SelectOption<SenseSight['dark']>[] = [
-  { value: 'none', label: t('uiSettings.senseDefinitionEditor_seesNothing') },
-  { value: 'as-dim', label: t('uiSettings.senseDefinitionEditor_seesItAsDimLight') },
-  { value: 'as-bright', label: t('uiSettings.senseDefinitionEditor_seesItAsBrightLight') },
+  { value: 'none', label: t('senses.sees.none') },
+  { value: 'as-dim', label: t('senses.sees.asDim') },
+  { value: 'as-bright', label: t('senses.sees.asBright') },
 ];
 
 const LOOKS: SelectOption<SenseLook>[] = [
-  { value: 'colour', label: t('uiSettings.senseDefinitionEditor_inColour') },
-  { value: 'monochrome', label: t('uiSettings.senseDefinitionEditor_inGrey') },
-  { value: 'black-and-white', label: t('uiSettings.senseDefinitionEditor_inBlackAndWhite') },
-  { value: 'heat', label: t('uiSettings.senseDefinitionEditor_asHeatTones') },
+  { value: 'colour', label: t('senses.look.colour') },
+  { value: 'monochrome', label: t('senses.look.grey') },
+  { value: 'black-and-white', label: t('senses.look.blackWhite') },
+  { value: 'heat', label: t('senses.look.heat') },
 ];
 
 interface ChoiceProps<T extends string> {
@@ -105,48 +105,48 @@ export function SenseDefinitionEditor({ sense, all, unit, onChange }: SenseDefin
   return (
     <div ref={fields} className="atlas-csm-sense-editor">
       <div className="atlas-csm-field atlas-csm-sense-editor__wide">
-        <label className="atlas-csm-label" htmlFor={nameId}>{t('uiSettings.senseDefinitionEditor_name')}</label>
+        <label className="atlas-csm-label" htmlFor={nameId}>{t('senses.editor.name')}</label>
         <input
           id={nameId}
           type="text"
           className="atlas-csm-input"
           value={sense.name}
-          placeholder={t('uiSettings.senseDefinitionEditor_senseName')}
+          placeholder={t('senses.editor.namePlaceholder')}
           aria-invalid={senseNameProblem(sense, all) ? true : undefined}
           aria-describedby={problem ? problemId : undefined}
           onChange={(event) => set({ name: event.target.value })}
         />
       </div>
-      <Choice label={t('uiSettings.senseDefinitionEditor_kind')} value={senseKind(sense)} options={KINDS} onChange={(kind) => onChange(withSenseKind(sense, kind))} wide />
+      <Choice label={t('senses.editor.kind')} value={senseKind(sense)} options={KINDS} onChange={(kind) => onChange(withSenseKind(sense, kind))} wide />
       {isSense && (
         <>
-          <Choice label={t('uiSettings.senseDefinitionEditor_range')} value={sense.range} options={RANGES} onChange={setRange} />
+          <Choice label={t('senses.editor.range')} value={sense.range} options={RANGES} onChange={setRange} />
           {sense.range === 'required' ? (
             <div className="atlas-csm-field">
-              <label className="atlas-csm-label" htmlFor={rangeId}>{withUnit(t('uiSettingsDetails.senseDefinitionEditor_defaultRange'), unit)}</label>
+              <label className="atlas-csm-label" htmlFor={rangeId}>{withUnit(t('senses.editor.defaultRange'), unit)}</label>
               <input
                 id={rangeId}
                 type="number"
                 className="atlas-csm-input"
                 min={0}
                 value={numberText(sense.defaultRange)}
-                placeholder={t('uiSettings.senseDefinitionEditor_none')}
+                placeholder={t('common.none')}
                 onChange={(event) => setDefaultRange(event.target.value)}
               />
             </div>
           ) : <span />}
-          <Choice label={t('uiSettings.senseDefinitionEditor_inDimLight')} value={sense.sees.dim} options={IN_DIM} onChange={(dim) => set({ sees: { ...sense.sees, dim } })} />
-          <Choice label={t('uiSettings.senseDefinitionEditor_inDarkness')} value={sense.sees.dark} options={IN_DARK} onChange={(dark) => set({ sees: { ...sense.sees, dark } })} />
+          <Choice label={t('senses.editor.inDim')} value={sense.sees.dim} options={IN_DIM} onChange={(dim) => set({ sees: { ...sense.sees, dim } })} />
+          <Choice label={t('senses.editor.inDark')} value={sense.sees.dark} options={IN_DARK} onChange={(dark) => set({ sees: { ...sense.sees, dark } })} />
           {sense.sees.dark !== 'none' && sense.reveals === 'all' && (
-            <Choice label={t('uiSettings.senseDefinitionEditor_lookInDarkness')} value={sense.look} options={LOOKS} onChange={(look) => set({ look })} wide />
+            <Choice label={t('senses.editor.lookInDark')} value={sense.look} options={LOOKS} onChange={(look) => set({ look })} wide />
           )}
-          <Switch label={t('uiSettings.senseDefinitionEditor_throughWalls')} value={!sense.lineOfSight} onChange={(on) => set({ lineOfSight: !on })} />
-          <Switch label={t('uiSettings.senseDefinitionEditor_seesInvisibleCreatures')} value={sense.seesInvisible} onChange={(seesInvisible) => set({ seesInvisible })} />
-          <Switch label={t('uiSettings.senseDefinitionEditor_worksWhileBlinded')} value={sense.worksWhileBlinded} onChange={(worksWhileBlinded) => set({ worksWhileBlinded })} />
-          <Switch label={t('uiSettings.senseDefinitionEditor_creaturesOnly')} value={sense.reveals === 'creatures'} onChange={(on) => set(on ? { reveals: 'creatures' } : { reveals: 'all', precise: true })} />
+          <Switch label={t('senses.editor.throughWalls')} value={!sense.lineOfSight} onChange={(on) => set({ lineOfSight: !on })} />
+          <Switch label={t('senses.editor.seesInvisible')} value={sense.seesInvisible} onChange={(seesInvisible) => set({ seesInvisible })} />
+          <Switch label={t('senses.editor.whileBlinded')} value={sense.worksWhileBlinded} onChange={(worksWhileBlinded) => set({ worksWhileBlinded })} />
+          <Switch label={t('senses.editor.creaturesOnly')} value={sense.reveals === 'creatures'} onChange={(on) => set(on ? { reveals: 'creatures' } : { reveals: 'all', precise: true })} />
           {/* A sense that shows the map sees what it perceives; one that feels creatures may only sense them. */}
           {sense.reveals === 'creatures' && (
-            <Switch label={t('uiSettings.senseDefinitionEditor_showsAsOutlines')} value={!sense.precise} onChange={(on) => set({ precise: !on })} />
+            <Switch label={t('senses.editor.outlines')} value={!sense.precise} onChange={(on) => set({ precise: !on })} />
           )}
         </>
       )}

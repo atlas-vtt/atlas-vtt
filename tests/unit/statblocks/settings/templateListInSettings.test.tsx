@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { MotionGlobalConfig } from 'framer-motion';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';

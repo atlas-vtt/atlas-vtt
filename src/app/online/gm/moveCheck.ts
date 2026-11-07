@@ -3,8 +3,9 @@ import { MAX_COORDINATE, type PlayerMove } from '../protocol/index.ts';
 import type { TokenEntity } from '../../types';
 import type { WallSegment } from '../../types/wallTypes';
 import { wallList } from '../../vision/wallList';
+import { stairSides, withStairSides, type StairsOfTokens } from './stairSides.ts';
 
-/** The map's size in world pixels: the image lies at (0, 0) at its natural size. */
+/** The map's size in world pixels, from (0, 0): its image's own size, or the box Atlas draws it into turned, stretched and placed (`floorWorldSize`). */
 export interface MapSize {
   readonly width: number;
   readonly height: number;
@@ -22,11 +23,13 @@ export interface MoveContext {
   readonly map: MapSize | null;
   /** The walls players' tokens stop at, or null where none do: a scene players do not see lit. */
   readonly walls: MoveWalls | null;
+  /** Whether a token that fights may not move now, for it does not hold the turn (`movesOutOfTurn`); none are without. */
+  outOfTurn?(tokenId: string): boolean;
 }
 
 export type MoveVerdict =
   | { readonly ok: true; readonly tokenId: string; readonly x: number; readonly y: number }
-  | { readonly ok: false; readonly reason: 'scene' | 'token' | 'owner' | 'place' };
+  | { readonly ok: false; readonly reason: 'scene' | 'token' | 'owner' | 'turn' | 'place' };
 
 const within = (value: number, max: number): boolean => Number.isFinite(value) && value >= 0 && value <= max;
 
@@ -39,7 +42,8 @@ export function insideMap(x: number, y: number, map: MapSize | null): boolean {
 /**
  * Whether the GM takes a player's move: the move names the shared scene and a token of the list
  * players see (so not hidden, not under fog), the token is not hidden now, it is the sender's
- * (by the id the relay stamped), and its centre lands inside the map.
+ * (by the id the relay stamped), it is not out of its turn where the GM chose that players move
+ * only on their turn, and its centre lands inside the map.
  */
 export function checkMove(from: string, move: Omit<PlayerMove, 't'>, context: MoveContext): MoveVerdict {
   if (context.scene === null || move.scene !== context.scene) return { ok: false, reason: 'scene' };
@@ -47,6 +51,7 @@ export function checkMove(from: string, move: Omit<PlayerMove, 't'>, context: Mo
   const token = tokenId === undefined ? undefined : context.tokens[tokenId];
   if (tokenId === undefined || token === undefined || token.isHidden === true) return { ok: false, reason: 'token' };
   if (context.ownerOf(tokenId) !== from) return { ok: false, reason: 'owner' };
+  if (context.outOfTurn?.(tokenId) === true) return { ok: false, reason: 'turn' };
   if (!insideMap(move.x, move.y, context.map)) return { ok: false, reason: 'place' };
   return { ok: true, tokenId, x: move.x, y: move.y };
 }
@@ -57,11 +62,13 @@ export function sceneWalls(walls: Record<string, WallSegment>, lit: boolean, map
 }
 
 /**
- * Where a player's token moving from `from` towards `to` comes to rest: at `to`, or on a lit scene
- * just before the first wall in its way, slid along it (`stopAtWalls`).
+ * Where a player's token `tokenId` moving from `from` towards `to` comes to rest: at `to`, or just
+ * before the first wall in its way (on a lit scene) or side of walked stairs on its level (on any
+ * scene: `stairSides`, so it steps on and off stairs only at their ground end), slid along it (`stopAtWalls`).
  */
-export function landing(context: Pick<MoveContext, 'walls'>, from: Point, to: Point): Point {
-  return context.walls === null ? to : stopAtWalls(context.walls, from, to);
+export function landing(context: Pick<MoveContext, 'walls' | 'map'>, state: StairsOfTokens, tokenId: string, from: Point, to: Point): Point {
+  const walls = withStairSides(context.walls, stairSides(state, tokenId, context.map));
+  return walls === null ? to : stopAtWalls(walls, from, to);
 }
 
 /** Moves a player may make: a burst of `MOVE_BURST`, then `MOVES_PER_SECOND` (a held movement key steps 5 times a second). */

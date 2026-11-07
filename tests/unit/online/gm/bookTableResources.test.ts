@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { produce } from 'immer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ALL_PLAYERS, parseGmMessage, type BookCharacter } from '../../../../src/app/online/protocol/index.ts';
@@ -19,6 +18,7 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
       return null;
     }
     showPlayers(): void {}
+    showPlayerDrags(): void {}
     showPlayerCursors(): void {}
     dispose(): void {}
   },
@@ -68,8 +68,8 @@ describe('players editing their characters\' resources at a running table', () =
     const { online, socket, tab, from } = await openTable(new BookShelf(), PLAYERS);
     writable(tab);
     expect(character(delivered(socket), ANA)?.resources).toEqual([
-      { key: 'hp', name: 'Hit Points', colour: '#cc3333', direction: 'drains', current: 7, max: 12, editable: true },
-      { key: 'doom', name: 'Doom Track', colour: '#333333', direction: 'fills', current: DOOM, max: 99999, editable: true },
+      { key: 'hp', name: 'Hit Points', colour: '#cc3333', direction: 'drains', current: 7, max: 12, editable: true, maxEditable: true },
+      { key: 'doom', name: 'Doom Track', colour: '#333333', direction: 'fills', current: DOOM, max: 99999, editable: true, maxEditable: true },
     ]);
 
     let since = delivered(socket).length;
@@ -98,6 +98,24 @@ describe('players editing their characters\' resources at a running table', () =
     await advance(100);
     expect(hpOf(tab, MIRA)).toEqual({ current: 1, max: 12 });
     expect(hpOf(tab, BRANNOCH)).toEqual({ current: 12, max: 12 });
+    online.stop();
+  });
+
+  it('sets a maximum by hand on the token of a character that follows no note, the current value kept within it, as one step of the GM\'s', async () => {
+    const { online, socket, tab, from } = await openTable(new BookShelf(), PLAYERS);
+    writable(tab);
+    const since = delivered(socket).length;
+    from(ANA, { t: 'book-resource', key: 'hp', current: 7, max: 5 });
+    await advance(100);
+    expect(hpOf(tab, BRANNOCH)).toEqual({ current: 5, max: 5 });
+    expect(tab.store.getState().objects.tokens[BRANNOCH]?.overriddenMax).toEqual(['hp']);
+    expect(character(delivered(socket).slice(since), ANA)?.resources).toMatchObject([{ key: 'hp', current: 5, max: 5, maxEditable: true }, { key: 'doom' }]);
+    // A counting value needs a maximum above 0, and another player's character is never theirs to change
+    from(ANA, { t: 'book-resource', key: 'hp', current: 0, max: 0 });
+    from(BEN, { t: 'book-resource', key: 'hp', current: 3, max: 30 });
+    await advance(100);
+    expect(hpOf(tab, BRANNOCH)).toEqual({ current: 5, max: 5 });
+    expect(hpOf(tab, MIRA)).toEqual({ current: 3, max: 30 });
     online.stop();
   });
 
@@ -182,6 +200,32 @@ describe('players editing their characters\' resources at a running table', () =
     expect(written).toEqual([[CAMPAIGN, 'lib-brannoch', 'hp', { current: 10, max: 10 }]]);
     expect(ofType(delivered(socket).slice(since), 'book', 'book-sheet')).toMatchObject([{ to: ANA, body: { t: 'book-sheet' } }]);
     expect(character(delivered(socket).slice(since), ANA)?.resources).toMatchObject([{ key: 'hp', current: 10 }, { key: 'doom' }]);
+    online.stop();
+  });
+
+  it('sets the played campaign\'s maximum by hand while the scene holds no token of the character', async () => {
+    const values = new Map<string, PartyValue>([['lib-brannoch\nhp', { current: 9, max: 10 }]]);
+    const written: unknown[] = [];
+    PartySync.register(app, {
+      characterOf: (placed: { imagePath: string }) => (placed.imagePath === BRANNOCH_ART ? 'lib-brannoch' : null),
+      value: (campaignId: string, characterId: string, key: string) => (campaignId === CAMPAIGN ? values.get(`${characterId}\n${key}`) : undefined),
+      setValue: (...args: unknown[]) => written.push(args) > 0,
+      destroy: () => undefined,
+    } as unknown as PartySync);
+    Object.assign(app, { loadLocalStorage: () => CAMPAIGN, saveLocalStorage: () => undefined });
+    const { online, socket, tab, from } = await openTable(new BookShelf(), PLAYERS);
+    writable(tab);
+    const scene = cave();
+    const tokens = { ...scene.objects.tokens };
+    delete tokens[BRANNOCH];
+    tab.store.set({ ...scene, objects: { ...scene.objects, tokens } });
+    await advance(1_000);
+
+    const since = delivered(socket).length;
+    from(ANA, { t: 'book-resource', key: 'hp', current: 9, max: 6 });
+    await advance(100);
+    expect(written).toEqual([[CAMPAIGN, 'lib-brannoch', 'hp', { current: 6, max: 6, maxByHand: true }]]);
+    expect(character(delivered(socket).slice(since), ANA)?.resources).toMatchObject([{ key: 'hp', current: 6, max: 6 }, { key: 'doom' }]);
     online.stop();
   });
 });

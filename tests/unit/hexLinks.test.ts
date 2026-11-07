@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { Texture, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
@@ -99,6 +100,28 @@ describe('linked hexes on the canvas', () => {
     expect(badge()).toMatchObject({ x: center.x + 20, y: center.y - 15 });
     expect(pins.hitTestPins(center.x + 20, center.y - 15)).toBe(id);
     expect(hexes.hitTest(center.x, center.y)).toBeNull();
+  });
+
+  it('lights up the square the note pin tool would put its pin in on a square grid, and nothing without a grid', () => {
+    const { store, viewport, eventBus } = setup();
+    store.getState().setGrid({ ...HEX_GRID, type: 'square' });
+    const hexes = new HexLinkRenderer({ viewport, store, eventBus, getMapRect: () => null });
+    cleanups.push(() => hexes.destroy());
+    const highlight = (): { x: number; y: number; width: number; height: number } => {
+      const bounds = hexes.container.children[0]!.getLocalBounds();
+      return { x: Math.round(bounds.x), y: Math.round(bounds.y), width: Math.round(bounds.width), height: Math.round(bounds.height) };
+    };
+
+    eventBus.emit('hex-link-preview', { x: 150, y: 250 });
+    expect(hexes.container.visible).toBe(true);
+    expect(highlight()).toEqual({ x: 100, y: 200, width: 100, height: 100 });
+    eventBus.emit('hex-link-preview-hide');
+    expect(highlight()).toMatchObject({ width: 0, height: 0 });
+
+    store.getState().setGrid({ ...HEX_GRID, type: 'square', enabled: false });
+    eventBus.emit('hex-link-preview', { x: 150, y: 250 });
+    expect(hexes.container.visible).toBe(false);
+    expect(highlight()).toMatchObject({ width: 0, height: 0 });
   });
 
   it('hides linked hexes from the player perspective', () => {

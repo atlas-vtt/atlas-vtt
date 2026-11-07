@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import type { Command, Plugin } from 'obsidian';
 import { cleanup, render, screen } from '@testing-library/react';
@@ -9,7 +10,8 @@ vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTa
 vi.mock('../../src/app/services/TokenStatblockLinkService', () => ({ TokenStatblockLinkService: {} }));
 vi.mock('../../src/app/plugin/cleanupMissingAssets', () => ({ cleanupMissingAssets: vi.fn() }));
 
-import { formatList, getLocale, setLocale, t, TRANSLATIONS } from '../../src/app/i18n';
+import { formatList, getLocale, setLocale, t } from '../../src/app/i18n';
+import { TRANSLATIONS } from '../../src/app/i18n/languages';
 import { registerCommands, type CommandDependencies } from '../../src/app/plugin/registerCommands';
 import { CreatureFieldSuggestions } from '../../src/app/react/components/collection-settings/CreatureFieldSuggestions';
 
@@ -27,10 +29,10 @@ function registeredNames(): { commands: Command[]; ribbon: string[] } {
 }
 
 describe('Atlas in Russian', () => {
-  beforeEach(() => setLocale('ru'));
+  beforeEach(() => setLocale('ru', TRANSLATIONS));
   afterEach(() => {
     cleanup();
-    setLocale('en');
+    setLocale('en', TRANSLATIONS);
   });
 
   it('picks the Russian plural form for one, few and many', () => {
@@ -74,10 +76,10 @@ describe('Atlas in Russian', () => {
 });
 
 describe('falling back to English', () => {
-  afterEach(() => setLocale('en'));
+  afterEach(() => setLocale('en', TRANSLATIONS));
 
   it('speaks English for a language Atlas has no translation for', () => {
-    setLocale('de');
+    setLocale('de', TRANSLATIONS);
     expect(getLocale()).toBe('en');
     expect(t('count.files', { count: 3 })).toBe('3 files');
     expect(registeredNames().commands.find((command) => command.id === 'open-dashboard')?.name).toBe('Open dashboard');
@@ -88,7 +90,7 @@ describe('falling back to English', () => {
     const kept = russian['view.sceneNotFound']!;
     delete russian['view.sceneNotFound'];
     try {
-      setLocale('ru');
+      setLocale('ru', TRANSLATIONS);
       expect(t('view.sceneNotFound', { path: 'Maps/Crypt.atlasmap' })).toBe('Scene file not found: Maps/Crypt.atlasmap');
       expect(t('count.files', { count: 5 })).toBe('5 файлов');
     } finally {

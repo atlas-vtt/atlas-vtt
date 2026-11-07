@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'events';
 import { Container, Sprite, Texture, type Rectangle } from 'pixi.js';
@@ -5,7 +6,7 @@ import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import type { SceneFrame } from '../../src/app/pixi/lighting/engine/types';
-import type { TileView } from '../../src/app/pixi/mapImage/levelOfDetail';
+import type { TesseraView } from '../../src/app/pixi/mosaicCanvas/levelOfDetail';
 import { MapThumbnailService } from '../../src/app/services/MapThumbnailService';
 import { ServiceManager } from '../../src/app/services/ServiceManager';
 
@@ -39,12 +40,12 @@ function setup(contextLost = false) {
     lightMarkers: gmOverlays.lightMarkers.visible, rangeRings: gmOverlays.rangeRings.visible, sightAids: gmOverlays.sightAids.visible, hiddenToken: hiddenToken.visible, hiddenTokenAlpha: hiddenToken.alpha, fogAlpha: fog.alpha,
   });
 
-  const rendered: Array<{ frame: Rectangle; resolution: number; shown: ReturnType<typeof shown>; lit: boolean; picture: TileView | null }> = [];
+  const rendered: Array<{ frame: Rectangle; resolution: number; shown: ReturnType<typeof shown>; lit: boolean; picture: TesseraView | null }> = [];
   let lighting = false;
-  // The map image's tiles of the picture it draws for, until restored
-  let picture: TileView | null = null;
+  // The map image's tesserae of the picture it draws for, until restored
+  let picture: TesseraView | null = null;
   const restoreMapImage = vi.fn(() => { picture = null; });
-  const drawFor = vi.fn((view: TileView) => {
+  const drawFor = vi.fn((view: TesseraView) => {
     picture = view;
     return restoreMapImage;
   });
@@ -64,12 +65,12 @@ function setup(contextLost = false) {
   const drawn = deferred();
   const whenReady = vi.fn((_rect: Rectangle, _worldPerScreenPixel: number, _timeoutMs: number) => drawn.promise);
   Object.assign(orchestrator as any, {
-    mapImage: { layer: background, worldRect: { x: 0, y: 0, width: 800, height: 600 }, whenReady, drawFor },
+    mapImage: { layer: background, worldRect: { x: 0, y: 0, width: 800, height: 600 }, whenReady, drawFor, hideVideoFor: () => () => undefined },
     pinRenderer: { getPinContainer: () => pins },
     hexLinkRenderer: { container: hexLinks },
     tokenRenderer: { getGmViewLayers: () => [{ layer: hiddenToken, visible: true, alpha: 0.5 }] },
     fogRenderer: { getGmViewLayers: () => [{ layer: fog, visible: true, alpha: 0.5 }] },
-    lightingFeature: { controller: {
+    lighting: {
       gmOverlays: () => gmOverlays,
       renderer: {
         renderForFrame: <T,>(frame: SceneFrame, render: () => T): T => {
@@ -78,7 +79,7 @@ function setup(contextLost = false) {
           try { return render(); } finally { lighting = false; }
         },
       },
-    } },
+    },
   });
   // Session view shows the fog opaque
   fog.alpha = 1;
@@ -99,11 +100,12 @@ describe('a map view\'s thumbnail render', () => {
     expect(new TextDecoder().decode(bytes!)).toBe('JPG');
     expect(rendered).toHaveLength(1);
     expect(rendered[0]!.lit).toBe(true);
-    expect(frames).toEqual([{ x: rendered[0]!.frame.x, y: rendered[0]!.frame.y, resolution: rendered[0]!.resolution }]);
-    expect(frames[0]).toEqual({ x: 0, y: 0, resolution: 0.5 });
+    const { x, y, width, height } = rendered[0]!.frame;
+    expect(frames).toEqual([{ x, y, resolution: rendered[0]!.resolution, width, height }]);
+    expect(frames[0]).toMatchObject({ x: 0, y: 0, resolution: 0.5 });
   });
 
-  it('draws the map image\'s tiles at the thumbnail\'s own detail, and the canvas\' again afterwards', () => {
+  it('draws the map image\'s tesserae at the thumbnail\'s own detail, and the canvas\' again afterwards', () => {
     const { services, rendered, restoreMapImage } = setup();
     services.renderMapThumbnail({ width: 640, height: 360 });
     expect(rendered[0]!.picture).toEqual({ rect: { x: 0, y: 75, width: 800, height: 450 }, worldPerScreenPixel: 1.25 });

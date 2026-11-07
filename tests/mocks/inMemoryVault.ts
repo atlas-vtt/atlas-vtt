@@ -82,7 +82,7 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     const folder = new TFolder(path);
     const inside = (candidate: string): boolean => parentOf(candidate) === path;
     folder.children = [
-      ...[...folders].filter(inside).map((child) => new TFolder(child)),
+      ...[...folders].filter(inside).map(folderAt),
       ...[...files.keys()].filter(inside).map(fileAt),
     ];
     return folder;
@@ -115,8 +115,9 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   const localStorage = new Map<string, unknown>();
   Object.assign(app, {
     loadLocalStorage: vi.fn((key: string) => localStorage.get(key) ?? null),
+    // As Obsidian does: any falsy value (`false`, `0`, `''`, null) clears the key instead of storing it
     saveLocalStorage: vi.fn((key: string, value: unknown) => {
-      if (value === null || value === undefined) localStorage.delete(key);
+      if (!value) localStorage.delete(key);
       else localStorage.set(key, value);
     }),
   });
@@ -170,6 +171,12 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     }),
     getFileByPath: vi.fn((path: string): TFile | null => (files.has(path) && !isHiddenPath(path) ? fileAt(path) : null)),
     getFolderByPath: vi.fn((path: string): TFolder | null => (folders.has(path) && !isHiddenPath(path) ? folderAt(path) : null)),
+    getRoot: vi.fn((): TFolder => {
+      const root = new TFolder('/');
+      const atTop = (path: string): boolean => !path.includes('/');
+      root.children = [...[...folders].filter(atTop).map(folderAt), ...[...files.keys()].filter(atTop).map(fileAt)];
+      return root;
+    }),
     getAllFolders: vi.fn((includeRoot = false): TFolder[] => [
       ...(includeRoot ? [new TFolder('/')] : []),
       ...[...folders].filter((path) => !isHiddenPath(path)).map(folderAt),

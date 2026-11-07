@@ -1,10 +1,10 @@
-import { t } from '../../../i18n';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import { Skeleton, SkeletonGroup } from '../../../packages/components/primitives/Skeleton';
 import { tokenDetails } from './tokenDetails';
 import type { CardToken } from './useNoteTokens';
+import { t } from '../../../i18n';
 
 const PLACEHOLDERS = 8;
 
@@ -86,7 +86,7 @@ export function TokenChoiceGrid({ tokens, linkedIds, loaded, busy, onChoose, que
 
   if (!loaded) {
     return (
-      <SkeletonGroup className="atlas-sb-token-grid" label={t('uiStatblocks.tokenChoiceGrid_loadingTokens')}>
+      <SkeletonGroup className="atlas-sb-token-grid" label={t('statblockEditor.token.loading')}>
         {Array.from({ length: PLACEHOLDERS }, (_, index) => (
           <span key={index} className="atlas-sb-token-choice atlas-sb-token-choice--placeholder">
             <Skeleton shape="circle" className="atlas-sb-token-choice__art" />
@@ -96,10 +96,10 @@ export function TokenChoiceGrid({ tokens, linkedIds, loaded, busy, onChoose, que
       </SkeletonGroup>
     );
   }
-  if (tokens.length === 0) return <p className="atlas-sb-token-panel__empty">{t('uiStatblocks.tokenChoiceGrid_noTokensInThisCollectionYet')}</p>;
-  if (shown.length === 0) return <p className="atlas-sb-token-panel__empty">{t('uiMessages.noToken', { query: query.trim() })}.</p>;
+  if (tokens.length === 0) return <p className="atlas-sb-token-panel__empty">{t('statblockEditor.token.none')}</p>;
+  if (shown.length === 0) return <p className="atlas-sb-token-panel__empty">{t('statblockEditor.token.noMatch', { query: query.trim() })}</p>;
   return (
-    <div ref={gridRef} className="atlas-sb-token-grid" role="group" aria-label={t('uiStatblocks.tokenChoiceGrid_tokens')} onKeyDown={onGridKeyDown}>
+    <div ref={gridRef} className="atlas-sb-token-grid" role="group" aria-label={t('statblockEditor.token.tokens')} onKeyDown={onGridKeyDown}>
       {shown.map((token, index) => {
         const linked = linkedIds.has(token.id);
         return (
@@ -126,7 +126,7 @@ export function TokenChoiceGrid({ tokens, linkedIds, loaded, busy, onChoose, que
             </span>
             <span className="atlas-sb-token-choice__name">{token.name}</span>
             {details.get(token.id) && <span className="atlas-sb-token-choice__detail">{details.get(token.id)}</span>}
-            {linked && <span className="atlas-sb-token-panel__hidden">{t('uiMessages.linkedMark')}</span>}
+            {linked && <span className="atlas-sb-token-panel__hidden">, linked</span>}
           </button>
         );
       })}

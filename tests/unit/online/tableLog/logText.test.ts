@@ -1,4 +1,3 @@
-// @vitest-environment node
 import type { ChatEntry, LogEntry, RollEntry } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { AUTHOR_COLOURS, authorColour, authorTone, continuesPrevious, dayLabel, monogram, reactionsFor, relativeTime, sameDay, shownName } from '../../../../src/app/online/tableLog/index.ts';

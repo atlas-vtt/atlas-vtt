@@ -42,8 +42,8 @@ describe('map data that cannot be loaded', () => {
   });
 
   it.each([
-    ['the file', { version: 5, state: { mapPath: MAP_PATH, objects: { tokens: {} } } }],
-    ['its state', { version: 4, state: { version: 5, mapPath: MAP_PATH, objects: { tokens: {} } } }],
+    ['the file', { version: 6, state: { mapPath: MAP_PATH, objects: { tokens: {} } } }],
+    ['its state', { version: 4, state: { version: 6, mapPath: MAP_PATH, objects: { tokens: {} } } }],
   ])('refuses a file of a newer Atlas by the version of %s, and leaves it alone', async (_label, saved) => {
     const content = JSON.stringify(saved);
     const { storage, files } = createStorage(content);

@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 /**
  * StatblocksTab: the kinds of statblock a collection makes (its roles), each with the template
  * a new statblock of it starts from and the folder it is created in. Offered while the
@@ -22,6 +21,7 @@ import { LayoutAdoptionList } from '../editor/fs-import/LayoutAdoptionList';
 import { RoleRow } from './RoleRow';
 import { TemplateList } from './TemplateList';
 import { templateState } from './TemplatePicker';
+import { t } from '../../i18n';
 import './statblocks-tab.scss';
 
 export interface StatblocksTabProps {
@@ -51,7 +51,7 @@ export function withRoleFolder(folders: StatblockRoleFolders, roleId: string, fo
 /** What the muted label above inherited roles says; null for roles of the collection's own. */
 function inheritedLabel(own: boolean, preset: SystemPreset | undefined): string | null {
   if (own) return null;
-  return preset?.rules.statblockRoles?.length ? t('uiStatblockDetails.statblocksTab_fromTheNameSystem', { name: preset.name }) : t('uiStatblockDetails.statblocksTab_atlasDefaultRoles');
+  return preset?.rules.statblockRoles?.length ? t('statblockEditor.role.fromSystem', { name: preset.name }) : t('statblockEditor.role.defaults');
 }
 
 export function StatblocksTab({
@@ -68,7 +68,7 @@ export function StatblocksTab({
   const label = inheritedLabel(own, preset);
   const fallbackName = builtInTemplate(GENERIC_ROLE_TEMPLATE_ID)?.name ?? 'generic';
   const editBlocked = canSave ? null
-    : statblockRolesAreValid(roles) ? t('uiStatblockDetails.statblocksTab_fixTheErrorsOnTheOtherTabsFirst') : t('uiStatblockDetails.statblocksTab_everyRoleNeedsANameOfItsOwnFirst');
+    : statblockRolesAreValid(roles) ? 'Fix the errors on the other tabs first' : 'Every role needs a name of its own first';
 
   // An edit that ends at the system's roles stores none, so the collection keeps following its system.
   const edit = (next: readonly StatblockRole[]): void => onOwnRolesChange(editedStatblockRoles(next, systemRoles));
@@ -84,17 +84,17 @@ export function StatblocksTab({
   return (
     <>
       <p className="atlas-csm-hint">
-        {t('uiStatblocks.statblocksTab_rolesAreTheKindsOfStatblockThisCollectionMakesSuchAsMonstersAndNPCsANe')}
+        {t('statblockEditor.role.hint')}
       </p>
 
       <div className="atlas-csm-field">
         <div className="atlas-sb-roles__head">
-          <span className="atlas-csm-label">{t('uiStatblocks.statblocksTab_roles')}</span>
+          <span className="atlas-csm-label">{t('statblockEditor.role.roles')}</span>
           {label && <span className="atlas-sb-roles__source">{label}</span>}
           {own && (
             <Button variant="ghost" className="atlas-csm-add-btn atlas-sb-roles__revert" onClick={() => onOwnRolesChange(undefined)}>
               <RotateCcw />
-              {systemRoles?.length ? t('uiStatblockDetails.statblocksTab_useTheSystemSRoles') : t('uiStatblockDetails.statblocksTab_useTheDefaultRoles')}
+              {systemRoles?.length ? t('statblockEditor.role.useSystem') : t('statblockEditor.role.useDefault')}
             </Button>
           )}
         </div>
@@ -124,7 +124,7 @@ export function StatblocksTab({
         </div>
         <Button variant="ghost" className="atlas-csm-add-btn" onClick={add}>
           <Plus />
-          {t('uiStatblocks.statblocksTab_addRole')}
+          {t('statblockEditor.role.add')}
         </Button>
       </div>
 

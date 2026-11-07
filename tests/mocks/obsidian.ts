@@ -41,8 +41,9 @@ export class App {
   loadLocalStorage(key: string): unknown {
     return this.localStorage.get(key) ?? null;
   }
+  /** As Obsidian does: any falsy value (`false`, `0`, `''`, null) clears the key instead of storing it. */
   saveLocalStorage(key: string, data: unknown): void {
-    if (data === null) this.localStorage.delete(key);
+    if (!data) this.localStorage.delete(key);
     else this.localStorage.set(key, data);
   }
 }
@@ -189,6 +190,13 @@ export class TFile extends TAbstractFile {
   }
 }
 
+/** The desktop adapter; tests' vaults are in memory, so none is one. */
+export class FileSystemAdapter {
+  getBasePath(): string {
+    return '';
+  }
+}
+
 export class TFolder extends TAbstractFile {
   children: TAbstractFile[];
 
@@ -217,22 +225,32 @@ export async function requestUrl(_params: RequestUrlParam): Promise<any> {
 
 interface CachedHeading {
   heading: string;
+  level: number;
   position: { start: { line: number } };
 }
 
+/** Obsidian's: what a link compares a heading by. */
+export function stripHeading(heading: string): string {
+  return heading.replace(/[!"#$%&()*+,.:;<=>?@^`{|}~/[\]\\\r\n]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
- * Resolves a `#heading` subpath against the cached headings as Obsidian does:
- * every `#` starts a nested heading, so `#Keep#Cellar` is the Cellar after Keep
- * and a heading containing `#` itself is never found this way.
+ * Resolves a `#heading` subpath against the cached headings as Obsidian's does:
+ * every `#` starts a heading deeper than the one before, empty parts count for
+ * nothing, and a heading containing `#` itself is never found by that text.
  */
-export function resolveSubpath(cache: { headings?: CachedHeading[] }, subpath: string): { start: { line: number } } | null {
-  const headings = cache.headings ?? [];
-  let index = -1;
-  for (const part of subpath.split('#').filter(Boolean)) {
-    index = headings.findIndex((h, i) => i > index && h.heading === part);
-    if (index === -1) return null;
+export function resolveSubpath(cache: { headings?: CachedHeading[] }, subpath: string): { type: 'heading'; current: CachedHeading; start: { line: number } } | null {
+  const parts = subpath.split('#').filter(Boolean);
+  if (parts.length === 0) return null;
+  let matched = 0;
+  let level = 0;
+  for (const heading of cache.headings ?? []) {
+    if (heading.level <= level || stripHeading(heading.heading).toLowerCase() !== stripHeading(parts[matched]!).toLowerCase()) continue;
+    matched++;
+    level = heading.level;
+    if (matched === parts.length) return { type: 'heading', current: heading, start: heading.position.start };
   }
-  return index === -1 ? null : { start: headings[index].position.start };
+  return null;
 }
 
 export function normalizePath(path: string): string {
@@ -469,6 +487,7 @@ export const Platform = {
   isWin: false,
   isLinux: false,
   isDesktop: true,
+  isDesktopApp: true,
   isMobile: false,
 };
 

@@ -1,6 +1,8 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile, TFolder } from 'obsidian';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
+import { WORK_SLICE_MS } from '../../../../src/app/utils/workSlices';
 import { MARSH_CREATURE } from '../../../fixtures/statblockTemplateFixtures';
 import { withHeader } from '../../../../src/app/statblocks/model/headerDuplicates';
 import { creatureVault, forbidWrites, type CreatureVault } from '../../../mocks/creatureVault';
@@ -36,7 +38,20 @@ afterEach(() => {
   library = null;
   TemplateLibrary.release(current.app);
   Reflect.deleteProperty(window, 'FantasyStatblocks');
+  Reflect.deleteProperty(window, 'scheduler');
+  vi.restoreAllMocks();
 });
+
+/** Uses up the slice at every read, and hands the browser's turns to `turn`, which counts them. */
+function turnAfterEveryRead(turn: () => Promise<void> = async () => undefined): ReturnType<typeof vi.fn> {
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => (now += WORK_SLICE_MS));
+  const asked = vi.fn(turn);
+  Object.assign(window, { scheduler: { yield: asked } });
+  return asked;
+}
+
+const aTask = (): Promise<void> => new Promise((resolve) => { window.setTimeout(resolve, 0); });
 
 describe('TemplateLibrary: reading', () => {
   it('reads every .atlastemplate file wherever it lies, beside the built-ins', async () => {
@@ -247,5 +262,31 @@ describe('TemplateLibrary: one per app', () => {
     TemplateLibrary.release(current.app);
     expect(current.vault.count()).toBe(0);
     expect(TemplateLibrary.forApp(current.app)).not.toBe(first);
+  });
+
+  it('reads nothing more, and asks the browser for no turn, once released during a read', async () => {
+    current.files.set(SWAMP_PATH, marshText({ id: SWAMP_ID }));
+    const turns = turnAfterEveryRead();
+    let finish: (text: string) => void = () => undefined;
+    const read = vi.spyOn(current.app.vault, 'cachedRead').mockImplementationOnce(() => new Promise<string>((resolve) => { finish = resolve; }));
+    const target = open();
+    target.destroy();
+    finish(marshText());
+    await aTask();
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(turns).not.toHaveBeenCalled();
+  });
+
+  it('reads nothing more once released while the browser has its turn', async () => {
+    current.files.set(SWAMP_PATH, marshText({ id: SWAMP_ID }));
+    let endTurn: () => void = () => undefined;
+    const turns = turnAfterEveryRead(() => new Promise<void>((resolve) => { endTurn = resolve; }));
+    const read = vi.spyOn(current.app.vault, 'cachedRead');
+    const target = open();
+    await vi.waitFor(() => expect(turns).toHaveBeenCalledTimes(1));
+    target.destroy();
+    endTurn();
+    await aTask();
+    expect(read).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -25,10 +26,10 @@ function sheet(template: StatblockTemplate, fields: Record<string, unknown>, mod
   return <StatblockSheet template={template} name="Test" fields={fields} variant="full" mode={mode} />;
 }
 
-/** The markup, with React's generated ids (which count up from render to render) made equal. */
+/** The markup, with React's generated ids (which count up from render to render; `«r1»` before React 19.2, `_r_1_` since) made equal. */
 function html(element: React.JSX.Element): string {
   const { container, unmount } = render(element);
-  const markup = container.innerHTML.replace(/«[^»]+»/g, '«id»');
+  const markup = container.innerHTML.replace(/«[^»]+»|_[rR]_[0-9a-zA-Z]+_/g, '«id»');
   unmount();
   return markup;
 }

@@ -2,7 +2,7 @@ import { mapResources } from '../resources/collectionResources';
 import { isHitPointsKey } from '../resources/resourceFields';
 import { resourceUpdate } from '../resources/resourceValues';
 import type { App } from 'obsidian';
-import { ATLAS_VIEW_TYPE } from '../atlas-view';
+import { ATLAS_VIEW_TYPE } from '../atlasViewType';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { TokenUpdates } from '../types/viewState';
 import { rollStatblockDice, type OffMapRolls } from './statblockRolls';

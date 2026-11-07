@@ -1,7 +1,7 @@
-import { t } from '../i18n';
 import type { Setting } from 'obsidian';
 import { DICE_DISPLAY_HINTS, DICE_DISPLAY_OPTIONS, isDiceDisplay } from '../dice3d/diceDisplay';
 import { DICE_COLOUR_OPTIONS, DICE_FONT_OPTIONS, isDiceColour, isDiceFont } from '../dice3d/diceLook';
+import { t } from '../i18n';
 import type { SettingsService } from '../services/SettingsService';
 import type { AtlasSettingSection } from './settingSections';
 
@@ -32,9 +32,9 @@ function addLookDropdown(
 /** How dice rolls are shown. */
 export function diceSettingsSection(settings: SettingsService): AtlasSettingSection {
   return {
-    heading: t('uiGeneral.diceDisplay_dice'),
+    heading: t('diceSettings.dice'),
     rows: [{
-      name: t('uiGeneral.commandPalette_rollDisplay'),
+      name: t('diceSettings.display'),
       desc: DICE_DISPLAY_HINTS[settings.getDiceDisplay()],
       aliases: ['dice', 'roll', 'animation', '3d', 'toast', 'speed', 'fast'],
       render: (setting) => {
@@ -55,8 +55,23 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
         return unsubscribe;
       },
     }, {
-      name: t('uiGeneral.diceColourStrip_diceColour'),
-      desc: t('uiMessages.diceColourHint'),
+      name: t('dice.volume'),
+      desc: t('dice.volumeHint'),
+      aliases: ['dice', 'sound', 'volume', 'mute', 'audio', 'quiet'],
+      render: (setting) => {
+        let unsubscribe: (() => void) | undefined;
+        setting.addSlider((slider) => {
+          const percent = (): number => Math.round(settings.getDiceVolume() * 100);
+          slider.setLimits(0, 100, 5)
+            .setValue(percent())
+            .onChange((value) => settings.setDiceVolume(value / 100));
+          unsubscribe = settings.onChange(() => { slider.setValue(percent()); });
+        });
+        return unsubscribe;
+      },
+    }, {
+      name: t('diceSettings.colour'),
+      desc: t('diceSettings.colourHint'),
       aliases: ['dice', 'colour', 'color', 'skin', 'accent', 'dark'],
       render: (setting) => addLookDropdown(
         setting,
@@ -68,8 +83,8 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
         },
       ),
     }, {
-      name: t('uiMessages.diceNumbers'),
-      desc: t('uiMessages.diceNumbersHint'),
+      name: t('diceSettings.diceNumbers'),
+      desc: t('diceSettings.numbersHintTotals'),
       aliases: ['dice', 'font', 'numbers', 'sci-fi', 'medieval', 'cyberpunk'],
       render: (setting) => addLookDropdown(
         setting,

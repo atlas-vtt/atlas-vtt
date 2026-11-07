@@ -17,7 +17,8 @@ import type {
   OptionState,
 } from '../types/creatureFilterTypes';
 import type { OptionValue, TokenFacts } from './creatureFacts';
-import { hasPicks, LAYOUT_FACET, optionState, STATBLOCK_FACET } from './creatureSelection';
+import { hasPicks, LAYOUT_FACET, optionState, STATBLOCK_FACET, TEXT_FACET } from './creatureSelection';
+import { statblockText } from './statblockText';
 import { pickedOptionLabel, templateOptions } from './templateFacet';
 import { ALIGNMENT_PARTS, optionKey } from './creatureValues';
 
@@ -102,6 +103,24 @@ function optionsCheck(
   };
 }
 
+/**
+ * Every required phrase must stand somewhere in the statblock's text and no excluded one may; a
+ * token without a statblock lacks the text, so it is missing data when a phrase is required.
+ */
+function phrasesCheck(picks: OptionPicks): Check | null {
+  if (!hasPicks(picks)) return null;
+  return {
+    id: TEXT_FACET,
+    test: (facts) => {
+      const text = facts.creature ? statblockText(facts.creature) : '';
+      if (picks.exclude.some((phrase) => text.includes(phrase))) return 'fail';
+      if (picks.include.length === 0) return 'pass';
+      if (!facts.creature) return 'missing';
+      return outcome(picks.include.every((phrase) => text.includes(phrase)));
+    },
+  };
+}
+
 /** The checks the selection makes; filters that pick nothing make none. */
 function activeChecks(definitions: readonly CreatureFilterDefinition[], selection: CreatureFilterSelection): Check[] {
   const checks: Check[] = [];
@@ -111,6 +130,8 @@ function activeChecks(definitions: readonly CreatureFilterDefinition[], selectio
   }
   const layoutCheck = optionsCheck(LAYOUT_FACET, selection.layouts, 'any', templateOptions);
   if (layoutCheck) checks.push(layoutCheck);
+  const textCheck = phrasesCheck(selection.text);
+  if (textCheck) checks.push(textCheck);
   for (const definition of definitions) {
     if (definition.kind === 'range') {
       const range = selection.ranges[definition.id];

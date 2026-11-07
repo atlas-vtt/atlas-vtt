@@ -1,5 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DM_CAMERA, MIRRORED, SETTINGS, mirroring, setupMirror } from '../mocks/mirrorHarness';
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DM_CAMERA, MIRRORED, SETTINGS, mirroring, setupMirror, type MirrorHarness } from '../mocks/mirrorHarness';
+import { TickerRelay } from '../../src/app/pixi/tickerRelay';
 
 afterEach(() => { vi.restoreAllMocks(); });
 
@@ -181,6 +183,67 @@ describe('PlayerFrameMirror on a canvas that renders on change', () => {
   });
 });
 
+describe('PlayerFrameMirror while the DM window is hidden', () => {
+  beforeEach(() => {
+    // A started ticker asks for animation frames, which a hidden window never gives
+    vi.stubGlobal('requestAnimationFrame', () => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  /** A mirroring harness whose DM canvas animates something on its own ticker, as liquids and flickering lights do. */
+  function animating(): MirrorHarness & { relay: TickerRelay } {
+    const harness = mirroring();
+    const { dm } = harness;
+    dm.ticker.start();
+    dm.ticker.add(() => dm.change());
+    // Starting puts the ticker on the real clock; the DM window's last frame is at 16
+    dm.tick(16);
+    harness.events.length = 0;
+    const relay = new TickerRelay([dm.ticker]);
+    return { ...harness, relay };
+  }
+
+  const capturesIn = (events: string[]): number => events.filter((event) => event === 'capture:player').length;
+
+  it('shows what moves on the map, its clocks run on the player window\'s frames', () => {
+    const { events, frame, dm, relay } = animating();
+    dm.source.keepTime = (time) => relay.frame(time);
+
+    // The DM window went behind the player window: its ticker gets no more frames
+    for (let time = 32; time < 1000; time += 16) frame(time);
+
+    // From the moment its ticker counts as asleep, one mirrored frame for each frame of the player window
+    expect(capturesIn(events)).toBeGreaterThanOrEqual(40);
+    expect(events.slice(-3)).toEqual(MIRRORED);
+  });
+
+  it('without its clocks kept, shows players one still frame', () => {
+    const { events, frame } = animating();
+
+    for (let time = 32; time < 1000; time += 16) frame(time);
+
+    expect(capturesIn(events)).toBeLessThanOrEqual(1);
+  });
+
+  it('lets the DM window step its own clocks again once it shows', () => {
+    const { events, frame, dm, relay } = animating();
+    dm.source.keepTime = (time) => relay.frame(time);
+    for (let time = 32; time < 600; time += 16) frame(time);
+    const steps = vi.fn();
+    dm.ticker.add(steps);
+
+    for (let time = 600; time < 1000; time += 16) {
+      dm.tick(time);
+      frame(time + 4);
+    }
+
+    expect(steps).toHaveBeenCalledTimes(25);
+    expect(events.slice(-3)).toEqual(MIRRORED);
+  });
+});
+
 describe('PlayerFrameMirror on a canvas without a render schedule', () => {
   it('captures every display frame and restores the DM frame itself', () => {
     const { events, frame, dm, state, onFrame } = setupMirror();
@@ -192,5 +255,48 @@ describe('PlayerFrameMirror on a canvas without a render schedule', () => {
 
     expect(events).toEqual([...MIRRORED, ...MIRRORED]);
     expect(onFrame).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("TrueScale's set-up screen", () => {
+  const tv = {
+    prefs: { viewGlideMs: 800 }, trueScale: false, cellMm: 25.4, setup: null, rotation: 0,
+    devicePixelRatio: 1, screenKey: '1600x1200',
+  } as const;
+
+  it('is drawn over every live frame after its pieces while it is shown', () => {
+    const { events, frame, dm, state, mirror } = mirroring();
+    state.tv = tv;
+    state.setup = { kind: 'orientation' };
+    mirror.markStale();
+    frame(50);
+    dm.tick(51);
+    expect(events).toEqual(['render:player', 'capture:player', 'draw:setup', 'render:dm']);
+
+    events.length = 0;
+    state.setup = null;
+    mirror.markStale();
+    frame(100);
+    dm.tick(101);
+    expect(events).toEqual(MIRRORED);
+  });
+
+  it('is drawn over a held frame, which is drawn again when the screen changes and only then', () => {
+    const { events, frame, state } = mirroring();
+    state.tv = tv;
+    state.held = document.createElement('canvas');
+    frame(50);
+    expect(events).toEqual(['draw:held']);
+
+    events.length = 0;
+    state.setup = { kind: 'fit', pxPerMm: 3 };
+    frame(60);
+    frame(70);
+    expect(events).toEqual(['draw:held', 'draw:setup']);
+
+    events.length = 0;
+    state.setup = null;
+    frame(80);
+    expect(events).toEqual(['draw:held']);
   });
 });

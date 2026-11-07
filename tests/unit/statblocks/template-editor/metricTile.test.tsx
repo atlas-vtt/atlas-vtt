@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
@@ -142,7 +143,7 @@ describe('a Metric tile in the template editor', () => {
     const frame = setup(session);
     fireEvent.click(frame('metric01'));
     const toolbar = screen.getByRole('toolbar', { name: 'Metric toolbar' });
-    expect(within(toolbar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Add number', 'Add below', 'Delete', 'More']);
+    expect(within(toolbar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Options', 'Add number', 'Add below', 'Delete', 'More']);
     fireEvent.click(within(toolbar).getByRole('button', { name: 'Add number' }));
     expect(fieldsOf(session)).toEqual(['major', 'severe', '']);
     expect(session.steps).toBe(1);

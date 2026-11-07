@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { loadStatblockOverrides } from '../../src/app/packages/components/asset-manager/utils/statblockLoader';

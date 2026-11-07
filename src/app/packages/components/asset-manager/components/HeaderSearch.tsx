@@ -24,6 +24,8 @@ export interface HeaderSearchProps {
   label?: string;
   /** Whether Cmd/Ctrl+F focuses the field while it is mounted; leave it off where the field stays mounted out of sight. */
   shortcut?: boolean;
+  /** Offers the filter panel at the field's end; off where the filters are shown beside the field anyway. */
+  filterButton?: boolean;
 }
 
 /**
@@ -33,7 +35,7 @@ export interface HeaderSearchProps {
  * field then opens over the toolbar row while it has focus (see `_header.scss`),
  * so Cmd/Ctrl+F opens it as well.
  */
-export function HeaderSearch({ app, search, onSearch, query, label, shortcut = true }: HeaderSearchProps): React.JSX.Element {
+export function HeaderSearch({ app, search, onSearch, query, label, shortcut = true, filterButton = true }: HeaderSearchProps): React.JSX.Element {
   const labelId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,7 +45,7 @@ export function HeaderSearch({ app, search, onSearch, query, label, shortcut = t
   const autocomplete = useSearchAutocomplete(search, onSearch, filters, inputRef);
   useSearchShortcut(app, inputRef, shortcut);
   const closeFilters = useCallback(() => setFiltersOpen(false), []);
-  const hasFilters = filters.panel !== null;
+  const hasFilters = filterButton && filters.panel !== null;
 
   // A tab without filters closes the panel, so it does not open again on the way back.
   useEffect(() => {
@@ -103,7 +105,7 @@ export function HeaderSearch({ app, search, onSearch, query, label, shortcut = t
           </LabelTooltip>
         )}
         {/* On every tab of the asset manager, so the field keeps its size; tabs without a filter panel yet disable it. */}
-        {query && (
+        {query && filterButton && (
           <>
             <span className="atlas-am-search-divider" aria-hidden="true" />
             <LabelTooltip label={t('filters.title')}>

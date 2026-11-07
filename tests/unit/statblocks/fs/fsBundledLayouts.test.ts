@@ -1,4 +1,3 @@
-// @vitest-environment node
 /**
  * The converter on Fantasy Statblocks' bundled layouts, read from a local FS
  * checkout (`ATLAS_FS_CHECKOUT=/path/to/fantasy-statblocks`); skipped without

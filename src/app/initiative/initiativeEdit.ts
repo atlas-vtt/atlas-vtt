@@ -17,12 +17,17 @@ export function modifierText(entry: Pick<InitiativeEntry, 'initiativeModifier' |
  * no number changes nothing.
  */
 export function initiativeEdit(totalText: string, modifierInput: string): EditedParts {
-  const total = parseInitiativeModifier(totalText);
   const modifier = modifierInput.trim() === '' ? null : parseInitiativeModifier(modifierInput);
   return {
-    ...(total !== null && { initiative: total }),
+    ...totalEdit(totalText),
     ...(modifierInput.trim() === ''
       ? { initiativeModifier: 0, modifierByHand: undefined }
       : modifier !== null && { initiativeModifier: modifier, modifierByHand: true }),
   };
+}
+
+/** The change of a number typed on the card itself: the total where it reads as a whole number, else nothing. */
+export function totalEdit(totalText: string): Pick<EditedParts, 'initiative'> {
+  const total = parseInitiativeModifier(totalText);
+  return total === null ? {} : { initiative: total };
 }

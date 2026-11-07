@@ -2,7 +2,7 @@ import { getHistoryStore, type HistorySnapshot, type HistoryState, type HistoryS
 
 type Timeline = Pick<HistoryState, 'pastStates' | 'futureStates'>;
 
-const OTHER_BRANCHES = ['objects', 'grid', 'background', 'widgetValues', 'partyValues'] as const;
+const OTHER_BRANCHES = ['objects', 'grid', 'background', 'widgetValues', 'partyValues', 'levelAlignments'] as const;
 
 const sameButForEdits = (a: HistorySnapshot, b: HistorySnapshot): boolean => OTHER_BRANCHES.every((branch) => a[branch] === b[branch]);
 

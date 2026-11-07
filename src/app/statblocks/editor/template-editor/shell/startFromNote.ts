@@ -1,4 +1,3 @@
-import { t } from '../../../../i18n';
 /**
  * "Start from a note…": the text of a note already in the vault becomes the
  * text new statblocks of the template start with. It is copied, never
@@ -17,6 +16,7 @@ import { templateBodyPath } from '../../../library/templatePaths';
 import { noteBodyAt } from '../../gallery/statblockNotes';
 import type { EditorSession } from '../sessionTypes';
 import { NoteTextModal } from './NoteTextModal';
+import { t } from '../../../../i18n';
 
 type TextSession = Pick<EditorSession, 'getSnapshot' | 'setDraftBody'>;
 
@@ -34,14 +34,14 @@ export async function startFromNote(app: App, session: TextSession, notePath: st
   const name = noteName(notePath);
   const text = await noteBodyAt(app, notePath);
   if (text === '') {
-    showNotice(t('uiTemplateDetails.startFromNote_nameHasNoTextToStartFrom', { name: name }));
+    showNotice(t('templateEditor.fromNote.empty', { name }));
     return false;
   }
   if ((await currentText(app, session)).trim() !== '') {
     const replace = await confirmAction({
-      title: t('uiTemplateEditor.startFromNote_replaceTheText'),
-      message: [t('uiTemplateDetails.startFromNote_theTextNewStatblocksStartWithWillBeTheTextOfNameInstead', { name: name })],
-      confirmLabel: t('uiTemplateDetails.startFromNote_replace'),
+      title: t('templateEditor.fromNote.title'),
+      message: [t('templateEditor.fromNote.message', { name })],
+      confirmLabel: t('templateEditor.fromNote.replace'),
       destructive: true,
     });
     if (!replace) return false;
@@ -57,6 +57,6 @@ export async function startFromNote(app: App, session: TextSession, notePath: st
 export function chooseNoteToStartFrom(app: App, session: TextSession): void {
   const { path } = session.getSnapshot();
   new NoteTextModal(app, path === null ? null : templateBodyPath(path), (file) => {
-    runInBackground(startFromNote(app, session, file.path), 'Starting the template\'s text from a note', t('uiTemplateDetails.startFromNote_couldnTCopyTheNoteSText'));
+    runInBackground(startFromNote(app, session, file.path), 'Starting the template\'s text from a note', t('templateEditor.fromNote.failed'));
   }).open();
 }

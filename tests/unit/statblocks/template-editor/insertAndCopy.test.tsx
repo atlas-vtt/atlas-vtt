@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bestMatch, findItems, insertItems, previewTemplate } from '../../../../src/app/statblocks/editor/template-editor/insertItems';
@@ -7,9 +8,9 @@ import { FakeSession, sampleTemplate } from './editorKit';
 afterEach(cleanup);
 
 describe('the insert menu\'s items', () => {
-  it('are the six kinds of the grid, in plain words, each saying what it makes', () => {
+  it('are the seven kinds of the grid, in plain words, each saying what it makes', () => {
     expect(insertItems().map((item) => [item.label, item.type])).toEqual([
-      ['Value', 'stat'], ['Metric', 'metric'], ['Abilities', 'entries'], ['Table', 'scores'], ['Text', 'text'], ['Divider', 'divider'],
+      ['Value', 'stat'], ['Metric', 'metric'], ['Abilities', 'entries'], ['Table', 'scores'], ['Counters', 'counters'], ['Text', 'text'], ['Divider', 'divider'],
     ]);
     for (const item of insertItems()) expect(item.example, item.label).not.toBe('');
   });

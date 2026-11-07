@@ -50,14 +50,14 @@ describe('initiative roll inputs', () => {
     expect(get().initiative.entries.map(e => [e.id, e.order])).toEqual([['b', 0], ['c', 1], ['a', 2]]);
   });
 
-  it('rolls just the named entry without reordering during an active fight', () => {
+  it('rolls just the named entry and reorders during an active fight', () => {
     const { actions, random, set, get } = setup();
     actions.startCombat();
     set.mockClear();
     actions.rollEntryInitiative('b', '2d6');
     expect(random).toHaveBeenCalledTimes(2);
     expect(set).toHaveBeenCalledOnce();
-    expect(get().initiative.entries.map(e => [e.id, e.initiative])).toEqual([['a', 0], ['b', 6]]);
+    expect(get().initiative.entries.map(e => [e.id, e.initiative])).toEqual([['b', 6], ['a', 0]]);
     expect(get().initiative.isActive).toBe(true);
   });
 

@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import React, { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { type App } from 'obsidian';
@@ -18,6 +17,7 @@ import type { StatblockRole } from '../model/roleTypes';
 import type { TemplateId } from '../model/templateTypes';
 import { rowDetail, templateRows, usageText, type TemplateRow } from './templateRows';
 import { useTemplateNoteCounts } from './useTemplateNoteCounts';
+import { t } from '../../i18n';
 import './template-list.scss';
 
 export interface TemplateListProps {
@@ -60,17 +60,17 @@ export function TemplateList(props: TemplateListProps): React.JSX.Element {
   const duplicate = (entry: LibraryTemplate): void => {
     copyTemplate(app, entry.template.id).catch((error: unknown) => {
       console.error('[Atlas] Copying a template failed:', error);
-      showNotice(t('uiStatblockDetails.templateList_couldnTCopyTheTemplate'));
+      showNotice(t('statblockEditor.templateCopyFailed'));
     });
   };
 
   const entriesOf = ({ entry }: TemplateRow): ContextMenuEntry[] => [
     ...(onEditTemplate
-      ? [{ type: 'item' as const, label: t('uiStatblocks.templateList_open'), icon: 'pencil', disabled: editBlocked !== null, onClick: () => onEditTemplate(entry.template.id) }]
+      ? [{ type: 'item' as const, label: t('statblockEditor.open'), icon: 'pencil', disabled: editBlocked !== null, onClick: () => onEditTemplate(entry.template.id) }]
       : []),
-    { type: 'item', label: t('uiStatblocks.templateList_duplicate'), icon: 'copy', onClick: () => duplicate(entry) },
+    { type: 'item', label: t('statblockEditor.duplicate'), icon: 'copy', onClick: () => duplicate(entry) },
     {
-      type: 'item', label: t('uiStatblocks.templateList_delete'), icon: 'trash-2', destructive: true, disabled: entry.builtIn,
+      type: 'item', label: t('statblockEditor.deleteMenu'), icon: 'trash-2', destructive: true, disabled: entry.builtIn,
       onClick: () => setDeleting({ entry, usage: templateUsage(app, entry.template.id) }),
     },
   ];
@@ -84,31 +84,31 @@ export function TemplateList(props: TemplateListProps): React.JSX.Element {
       setDeleting(null);
     } catch (error) {
       console.error('[Atlas] Deleting a template failed:', error);
-      showNotice(t('uiStatblockDetails.templateList_couldnTDeleteTheTemplate'));
+      showNotice(t('statblockEditor.templateDeleteFailed'));
     }
   };
 
   return (
     <div ref={setRoot} className="atlas-csm-field atlas-sb-templates">
       <div className="atlas-sb-roles__head">
-        <span className="atlas-csm-label">{t('uiStatblocks.templateList_templates')}</span>
+        <span className="atlas-csm-label">{t('statblockEditor.templates')}</span>
         <Button variant="ghost" className="atlas-csm-add-btn atlas-sb-roles__revert" onClick={() => setGalleryOpen(true)}>
           <Plus />
-          {t('uiStatblocks.templateList_newTemplate')}
+          {t('statblockEditor.newTemplate')}
         </Button>
       </div>
-      <p className="atlas-csm-hint">{t('uiStatblocks.templateList_everyCollectionInThisVaultSharesTheseTemplates')}</p>
-      <ul className="atlas-sb-templates__list" aria-label={t('uiStatblocks.templateList_templates')}>
+      <p className="atlas-csm-hint">{t('statblockEditor.sharedTemplates')}</p>
+      <ul className="atlas-sb-templates__list" aria-label={t('statblockEditor.templates')}>
         {rows.map((row) => (
           <li key={row.entry.template.id} className="atlas-sb-templates__row">
             <span className="atlas-sb-templates__name">{row.entry.name}</span>
             {rowDetail(row) && <span className="atlas-sb-templates__detail">{rowDetail(row)}</span>}
             <span className="atlas-sb-templates__usage">{usageText(row.count)}</span>
-            <ActionsMenuButton label={t('uiStatblockDetails.templateList_actionsForName', { name: row.entry.name })} entries={entriesOf(row)} className="atlas-sb-templates__more" />
+            <ActionsMenuButton label={t('statblockEditor.actionsFor', { name: row.entry.name })} entries={entriesOf(row)} className="atlas-sb-templates__more" />
           </li>
         ))}
       </ul>
-      {!ownTemplates && library && !library.loading && <p className="atlas-sb-templates__empty">{t('uiStatblocks.templateList_noStatblockTemplatesYet')}</p>}
+      {!ownTemplates && library && !library.loading && <p className="atlas-sb-templates__empty">{t('statblockEditor.noTemplates')}</p>}
       <AnimatePresence>
         {galleryOpen && root && (
           <TemplateGallery
@@ -133,6 +133,7 @@ export function TemplateList(props: TemplateListProps): React.JSX.Element {
           templateId={deleting.entry.template.id}
           usage={deleting.usage}
           templates={library?.templates ?? []}
+          lostButtons={(deleting.entry.template.recovery ?? []).map((button) => button.name)}
           onDelete={remove}
           onClose={() => setDeleting(null)}
         />

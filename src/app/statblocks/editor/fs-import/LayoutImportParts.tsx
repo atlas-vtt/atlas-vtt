@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 import React from 'react';
 import { noteName } from '../../../utils/pathUtils';
 import { BY_PATH } from '../../fs/fsLayoutNotes';
@@ -10,6 +9,7 @@ import {
 } from './importReportText';
 import type { StatblockMoveResult } from './statblockMove';
 import type { AdoptionPhase } from './useLayoutAdoption';
+import { t } from '../../../i18n';
 
 /** What Atlas can do now, and what of the look it shows only through Fantasy Statblocks or not in full, each part folded away. */
 export function ImportSummary({ layoutName, fsOnlyParts, report }: {
@@ -58,13 +58,13 @@ export function AdoptionSection({ statblocks, phase }: { statblocks: LayoutStatb
       {phase.kind === 'ready' && (
         <>
           <p className="atlas-te-dialog__text">{moveExplanation(statblocks)}</p>
-          <Disclosure label={t('uiStatblockDetails.layoutImportParts_showTheCountStatblocks', { count: total })}>
+          <Disclosure label={t('statblockEditor.fs.showStatblocks', { count: total })}>
             <StatblockRows statblocks={statblocks} />
           </Disclosure>
         </>
       )}
       {phase.kind === 'running' && (
-        <BatchProgress done={phase.done} total={phase.total} label={t('uiStatblocks.layoutImportParts_movingStatblocks')} text={t('uiStatblockDetails.layoutImportParts_movingStatblocksDoneOfTotal', { done: phase.done, total: phase.total })} />
+        <BatchProgress done={phase.done} total={phase.total} label={t('statblockEditor.fs.moving')} text={t('statblockEditor.fs.movingProgress', { done: phase.done, total: phase.total })} />
       )}
       {phase.kind === 'finished' && phase.result && (
         <>

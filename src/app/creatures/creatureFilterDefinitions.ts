@@ -8,6 +8,8 @@ import { isRecord } from '../utils/guards';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import type { CreatureFilterDefinition, CreatureFilterKind } from '../types/creatureFilterTypes';
 import { CATALOG_CREATURE_FILTERS } from './creatureFieldCatalog';
+import type { StatblockTemplate } from '../statblocks/model/templateTypes';
+import { templateCreatureFilters } from './templateCreatureFilters';
 
 function fieldName(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -92,16 +94,25 @@ export function isCompleteCreatureFilter(filter: CreatureFilterDefinition): bool
 
 const CATALOG_IDS = new Set(CATALOG_CREATURE_FILTERS.map((filter) => filter.id));
 
-/** The ids of catalog filters a collection switched off, as stored by any Atlas version. */
+/**
+ * The ids of the filters a collection switched off, as stored by any Atlas version: Atlas' own and
+ * those of its templates' fields, which are kept while no template offers them, for when one does again.
+ */
 export function parseHiddenCreatureFilters(raw: unknown): string[] {
-  return Array.isArray(raw) ? [...new Set(raw.filter((id): id is string => typeof id === 'string' && CATALOG_IDS.has(id)))] : [];
+  return Array.isArray(raw) ? [...new Set(raw.filter((id): id is string => typeof id === 'string' && id.trim() !== ''))] : [];
 }
 
-/** The filters a collection offers: the catalog's that it keeps on, then its own. */
+/**
+ * The filters a collection offers: the catalog's that it keeps on, then its own, then those of the
+ * fields of its statblock templates (`templateCreatureFilters`) that it keeps on.
+ */
 export function collectionCreatureFilters(
   settings: Pick<CollectionSettings, 'customCreatureFilters' | 'hiddenCreatureFilters'>,
+  templates: readonly StatblockTemplate[] = [],
 ): CreatureFilterDefinition[] {
   const hidden = new Set(parseHiddenCreatureFilters(settings.hiddenCreatureFilters));
   const custom = parseCreatureFilters(settings.customCreatureFilters).filter((filter) => !CATALOG_IDS.has(filter.id));
-  return [...CATALOG_CREATURE_FILTERS.filter((filter) => !hidden.has(filter.id)), ...custom];
+  const own = [...CATALOG_CREATURE_FILTERS, ...custom];
+  const fromTemplates = templateCreatureFilters(templates, own);
+  return [...own, ...fromTemplates].filter((filter) => !hidden.has(filter.id));
 }

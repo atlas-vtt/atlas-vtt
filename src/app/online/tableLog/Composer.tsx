@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import { MAX_CHAT_TEXT, type ChatRefusal, type TablePerson } from '../protocol/index.ts';
 import { ArrowUp, CircleHelp } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactElement, type RefObject } from 'react';
@@ -150,7 +149,7 @@ export function Composer(props: ComposerProps): ReactElement {
   const line = warning ?? (canSend ? null : offlineText);
   const listOpen = suggestions.open && canSend;
   const whisperLabel = whisperTo === null ? null : audienceNames(whisperTo, people, self);
-  const placeholder = whisperLabel !== null ? t('uiOnlineDetails.composer_whisperToName', { name: whisperLabel }) : speaker?.kind === 'token' ? t('uiOnlineDetails.composer_speakAsName', { name: speaker.name }) : reply?.thread === true ? t('uiOnlineDetails.composer_replyInThread') : t('uiOnlineDetails.composer_messageTheTable');
+  const placeholder = whisperLabel !== null ? `Whisper to ${whisperLabel}` : speaker?.kind === 'token' ? `Speak as ${speaker.name}` : reply?.thread === true ? 'Reply in thread' : 'Message the table';
   return (
     <div className="atlas-online-log__composer">
       {help && <HelpCard onClose={() => { setHelp(false); toField(); }} />}
@@ -158,10 +157,10 @@ export function Composer(props: ComposerProps): ReactElement {
       <div className={classes('atlas-online-log__composer-box', !canSend && 'is-disabled')}>
         {listOpen && <SuggestionList id={listId} list={suggestions} onComplete={complete} />}
         {reply !== null && (reply.thread !== true || reply.whisper !== null) && (
-          <ComposerStrip text={reply.label} whisper={reply.whisper} clear={reply.thread === true ? undefined : { label: t('uiOnline.composer_cancelReply'), onClear: onClearReply }} />
+          <ComposerStrip text={reply.label} whisper={reply.whisper} clear={reply.thread === true ? undefined : { label: 'Cancel reply', onClear: onClearReply }} />
         )}
         {whisperLabel !== null && (reply === null || reply.whisper === null) && (
-          <ComposerStrip text={t('uiMessages.rollCallout', { name: whisperLabel })} locked clear={{ label: t('uiOnline.composer_stopWhispering'), onClear: () => { state.setWhisperTo(null); toField(); } }} />
+          <ComposerStrip text={`To ${whisperLabel}`} locked clear={{ label: 'Stop whispering', onClear: () => { state.setWhisperTo(null); toField(); } }} />
         )}
         <div className="atlas-online-log__field">
           {speakers.length > 1 && speaker !== null && (
@@ -174,7 +173,7 @@ export function Composer(props: ComposerProps): ReactElement {
             mode={choices.rollMode} open={menu === 'mode'} disabled={!canSend}
             onOpenChange={(open) => setMenu(open ? 'mode' : null)} onChoose={(mode) => choose(() => state.setRollMode(mode))}
           />
-          <label className="atlas-online-log__sr" htmlFor={name}>{t('uiOnline.composer_message')}</label>
+          <label className="atlas-online-log__sr" htmlFor={name}>Message</label>
           <textarea
             ref={field} id={name} className="atlas-online-log__input" rows={1} maxLength={MAX_CHAT_TEXT} placeholder={placeholder}
             role="combobox" aria-autocomplete="list" aria-expanded={listOpen} aria-controls={listOpen ? listId : undefined}
@@ -182,10 +181,10 @@ export function Composer(props: ComposerProps): ReactElement {
             disabled={!canSend} value={draft} onChange={(event) => type(event.target.value)} onKeyDown={onKeyDown}
           />
           {left <= COUNTER_FROM && <span className="atlas-online-log__counter">{left}</span>}
-          <LabelTooltip label={t('uiOnline.composer_commandsAndDice')}>
+          <LabelTooltip label="Commands and dice">
             <button type="button" className="atlas-online-log__chip-button" aria-expanded={help} onClick={() => setHelp(!help)}><CircleHelp /></button>
           </LabelTooltip>
-          <LabelTooltip label={t('uiOnline.composer_send')}>
+          <LabelTooltip label="Send">
             <button type="button" className="atlas-online-log__send" disabled={!canSend || draft.trim() === ''} onClick={send}><ArrowUp /></button>
           </LabelTooltip>
         </div>

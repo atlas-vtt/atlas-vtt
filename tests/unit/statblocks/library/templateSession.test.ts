@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { serializeTemplate } from '../../../../src/app/statblocks/format/templateFormat';
 import { TemplateSession } from '../../../../src/app/statblocks/library/TemplateSession';

@@ -1,8 +1,8 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import type { TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { BlockChromeContext, type BlockChrome } from '../../../../src/app/statblocks/render/blockChrome';

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createViewAtlasStore, type ViewAtlasState, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
@@ -474,12 +475,12 @@ describe('sight on drop', () => {
 
   it('turns a carried directional light with its token, and keeps it where the drag began while the token is dragged', () => {
     const lantern: LightEmission = { ...TORCH, bright: 10, dim: 20, angle: 90 };
-    const { store, rig, press, dragTo, release } = createScene([hero({ light: lantern, rotation: 90 })], { ambient: 0 });
+    const { store, rig, press, dragTo, release } = createScene([hero({ light: lantern, rotation: 270 })], { ambient: 0 });
     const lit = (point: { x: number; y: number }): boolean => pointInPolygon(point, rig.reaches[0]!.polygon);
-    // Turned right (rotation 90), 100 px ahead is lit and 100 px behind is not.
+    // Looking right (rotation 270: a token looks towards its art's bottom), 100 px ahead is lit and 100 px behind is not.
     expect(rig.reaches[0]!.cone).toMatchObject({ facing: 0, angle: Math.PI / 2 });
     expect([lit({ x: 300, y: 300 }), lit({ x: 100, y: 300 })]).toEqual([true, false]);
-    store.getState().updateToken('hero', { rotation: 270 });
+    store.getState().updateToken('hero', { rotation: 90 });
     expect(rig.reaches[0]!.cone!.facing).toBeCloseTo(Math.PI);
     expect([lit({ x: 300, y: 300 }), lit({ x: 100, y: 300 })]).toEqual([false, true]);
     // Dragged, its light stays where the drag began, still turned as the token is; a turn meanwhile is followed at once.
@@ -488,7 +489,7 @@ describe('sight on drop', () => {
     dragTo(RIGHT_ROOM);
     expect(rig.lightsAt).toEqual([{ key: 'token:hero', ...LEFT_ROOM }]);
     expect(lit({ x: 100, y: 300 })).toBe(true);
-    store.getState().updateToken('hero', { rotation: 90 });
+    store.getState().updateToken('hero', { rotation: 270 });
     expect(rig.lightsAt).toEqual([{ key: 'token:hero', ...LEFT_ROOM }]);
     expect([lit({ x: 300, y: 300 }), lit({ x: 100, y: 300 })]).toEqual([true, false]);
     release(RIGHT_ROOM);

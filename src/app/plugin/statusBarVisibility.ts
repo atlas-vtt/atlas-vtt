@@ -1,5 +1,5 @@
 import type { Plugin, View, WorkspaceLeaf } from 'obsidian';
-import { ATLAS_VIEW_TYPE } from '../atlas-view';
+import { ATLAS_VIEW_TYPE } from '../atlasViewType';
 import { DASHBOARD_VIEW_TYPE } from '../dashboard-view';
 import { TEMPLATE_EDITOR_VIEW_TYPE } from '../statblocks/editor/templateEditorState';
 import { STATBLOCK_NOTE_CLASS } from '../statblocks/notes/openEditors';

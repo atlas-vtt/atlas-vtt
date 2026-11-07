@@ -4,9 +4,11 @@ import type { PlayerCameraState } from '../local-player-view';
 import type { ViewAtlasState } from '../storeFactory';
 import type { AtlasSettings } from './SettingsService';
 import type { FramePiece, PlayerFrame, Screen } from '../types/playerFrame';
-import { playerFrame, viewOf } from './playerFrame';
 import type { PlayerRollSources } from './playerRollSource';
 import { PlayerFrameDemand, type DemandRegions } from './playerFrameDemand';
+import { drawTvSetup, tableTvPlayerFrame, type TableTv, type TvSetupScreen } from './tableTvFrame';
+import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
+import { WINDOW_ASLEEP_AFTER_MS } from '../pixi/tickerRelay';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
 
@@ -16,11 +18,12 @@ const MIRROR_INTERVAL_MS = 1000 / PLAYER_MIRROR_FPS;
 /** A display frame may come this much early for its slot, so frames a full interval apart are never just short of it. */
 const FRAME_TIME_SLACK_MS = 1;
 /**
- * A window without a display frame for this long is hidden, and its animation frames sleep. A
- * hidden player window is mirrored nothing; for a hidden DM window, whose requested renders do
- * not come, the mirror renders the frame itself.
+ * A player window without display frames is mirrored nothing (one covered by other windows or
+ * minimised keeps its frames: `keepPlayerWindowAwake`); for a hidden DM window, whose requested
+ * renders do not come, the mirror renders the frame itself, and its clocks run on the player
+ * window's frames (`keepTime`).
  */
-const ASLEEP_AFTER_MS = 250;
+const ASLEEP_AFTER_MS = WINDOW_ASLEEP_AFTER_MS;
 
 /**
  * Renders `frame`, a picture that is safe to show players, at its own size and camera, and
@@ -51,6 +54,8 @@ export interface PlayerFrameSource extends DemandRegions {
   diceEvents?: EventEmitter;
   /** Which tokens the scene this canvas shows lets players see, for rolls to name. Without it rolls name nobody. */
   rollSources?: PlayerRollSources;
+  /** The numbers the players' instance badges show, for their initiative list. Without it the list shows none. */
+  badgeNumbers?: PlayerBadgeNumbers;
   /** The DM's camera, with the world rectangle the DM's screen shows through it. */
   getCamera?(): PlayerCameraState | undefined;
   /** The DM's screen: what a camera without a rectangle of its own is centred in, and the pixels the players' picture never has fewer of. */
@@ -61,8 +66,16 @@ export interface PlayerFrameSource extends DemandRegions {
   withPlayerSafeFrame: PlayerSafeFrame;
   /** Without it the scene is captured on every display frame of the player window. */
   beforeRender?: BeforeRenderCapture;
+  /**
+   * Run on every display frame of the player window that shows this canvas live, at the mirror's
+   * time: steps the canvas' clocks while its own window is hidden and they sleep (`TickerRelay`),
+   * so what moves by itself on the map moves for players too.
+   */
+  keepTime?(time: number): void;
   /** Gives back what the source holds for players' frames, once the window shows it no longer. */
   release?(): void;
+  /** Grid cell size in world units, for showing cells at a real-world size; undefined when the scene opts out. */
+  getGridSize?(): number | undefined;
 }
 
 /**
@@ -80,6 +93,18 @@ export interface MirrorInputs {
   window(): Screen | null;
   /** A still frame to show instead of the live canvas. */
   heldFrame(): HTMLCanvasElement | null;
+  /** The table TV the window is, for true scale. Without it frames are `playerFrame`'s. */
+  tableTv?(): TableTv | undefined;
+  /** TrueScale's set-up screen, drawn over every frame while the GM sets the TV up; none without. */
+  setup?(): TvSetupScreen | null;
+  /** Most pixels a frame is rendered with (`playerFrame`); its default without. */
+  pixelBudget?(): number;
+  /** Whether the curtain is down: players see black, and nothing is rendered for them. Never down without. */
+  curtained?(): boolean;
+  /** Whether the curtain's sheet is still on its way down at `time`, with the canvas held under it. Never without. */
+  curtainFalling?(time: number): boolean;
+  /** Whether no new picture may reach the canvas at `time`, which keeps what it holds: the sheet is on its way down. Never without. */
+  withheld?(time: number): boolean;
   /**
    * The camera players stay on while the DM's own moves. One with a world rectangle (`width`,
    * `height`) keeps showing that rectangle; one without is centred in the DM's screen as it is now.
@@ -102,8 +127,8 @@ export interface MirrorInputs {
  * A view that renders on change is captured right before its own renders: the players' frame
  * is rendered and copied, and the DM's render that follows in the same task puts the DM's
  * frame back on its canvas, so the DM never sees anything of the players' frame and a mirrored
- * frame costs one extra render. Frames skipped by the cap, or while the player window is
- * hidden, leave the mirror stale; `frame`, run on every display frame of the player window,
+ * frame costs one extra render. Frames skipped by the cap, or while the player window has no
+ * display frames, leave the mirror stale; `frame`, run on every display frame of the player window,
  * then asks the view for a render once one is due, so players always end on the DM's latest
  * state and an idle map is never rendered. A player window that changed size, or moved to a
  * screen with another pixel ratio, is stale too.
@@ -125,9 +150,13 @@ export class PlayerFrameMirror {
   /** Since when a requested render is awaited. */
   private requestedAt: number | null = null;
   private lastHeld: HTMLCanvasElement | null = null;
+  /** The set-up screen drawn over the held frame, which is drawn again when it changes. */
+  private heldSetup: TvSetupScreen | null = null;
   private watched: PlayerFrameSource | null = null;
   private stopListening: (() => void) | null = null;
   private failing = false;
+  /** Whether the canvas has been blacked for the curtain that is down. */
+  private blacked = false;
   /** The window the last frame was rendered for. */
   private shown: Screen | null = null;
   private readonly demand = new PlayerFrameDemand();
@@ -150,18 +179,27 @@ export class PlayerFrameMirror {
     this.lastFrameAt = now;
     const source = this.inputs.source();
     this.watch(source);
+    if (this.inputs.curtained?.()) {
+      this.guarded(() => this.drawCurtain(now));
+      return;
+    }
+    if (this.blacked) this.liftCurtain();
     if (!source) return;
     this.guarded(() => {
       const held = this.inputs.heldFrame();
       if (held) {
-        // A held frame is static: draw it once, then idle until it changes
-        if (held !== this.lastHeld) this.draw(held);
+        // A held frame is static: draw it once, then idle until it or the set-up screen over it changes
+        const setup = this.inputs.setup?.() ?? null;
+        if (held !== this.lastHeld || setup !== this.heldSetup) this.drawHeld(held, setup);
         this.lastHeld = held;
+        this.heldSetup = setup;
         this.demand.release();
         return;
       }
       if (this.lastHeld) this.stale = true;
       this.lastHeld = null;
+      // May render the canvas, and with it a players' frame (`beforeRender`)
+      source.keepTime?.(now);
       if (!sameScreen(this.inputs.window(), this.shown)) this.stale = true;
 
       if (cannotRender(source)) {
@@ -172,6 +210,12 @@ export class PlayerFrameMirror {
       }
       const frame = this.frameOf(source);
       this.demand.follow(source, frame);
+      // Its tiles load meanwhile, so the frame that comes after it is sharp
+      if (this.inputs.withheld?.(now)) {
+        this.stale = true;
+        this.requestedAt = null;
+        return;
+      }
       if (!source.beforeRender) {
         this.mirror(source, source, now);
         return;
@@ -196,9 +240,9 @@ export class PlayerFrameMirror {
     // A window asleep shows nothing, so its frame needs no tiles; its next display frame asks again
     if (frameTime - this.lastFrameAt > ASLEEP_AFTER_MS) this.demand.release();
     const source = this.watched;
-    // A canvas that is no longer presented, or stands behind a held frame, is not what players see
-    if (!source?.beforeRender || source !== this.inputs.source() || this.inputs.heldFrame()) return;
-    if (cannotRender(source) || !this.isDue(frameTime) || frameTime - this.lastFrameAt > ASLEEP_AFTER_MS) {
+    // A canvas that is no longer presented, or stands behind a held frame or the curtain, is not what players see
+    if (!source?.beforeRender || source !== this.inputs.source() || this.inputs.heldFrame() || this.inputs.curtained?.()) return;
+    if (cannotRender(source) || this.inputs.withheld?.(frameTime) || !this.isDue(frameTime) || frameTime - this.lastFrameAt > ASLEEP_AFTER_MS) {
       this.stale = true;
       return;
     }
@@ -233,9 +277,7 @@ export class PlayerFrameMirror {
   private frameOf(source: PlayerFrameSource): PlayerFrame | null {
     const window = this.inputs.window();
     const camera = this.cameraOf(source);
-    const screen = source.getScreen?.();
-    const view = camera ? viewOf(camera, screen) : null;
-    return window && view ? playerFrame(window, view, screen) : null;
+    return window && camera ? tableTvPlayerFrame(window, camera, source.getScreen?.(), this.inputs.tableTv?.(), source.getGridSize?.(), this.inputs.pixelBudget?.()) : null;
   }
 
   /** Bring a live frame of `source`, rendered through `frames`, onto the players' canvas. */
@@ -262,6 +304,7 @@ export class PlayerFrameMirror {
       this.stale = true;
       return;
     }
+    this.drawSetup(frame);
     this.inputs.onFrame(this.cameraOf(source));
     this.failing = false;
   }
@@ -272,11 +315,48 @@ export class PlayerFrameMirror {
     this.target.height = height;
   }
 
+  /** The set-up screen, if one is shown, over a picture of `frame`'s size. */
+  private drawSetup(frame: Pick<PlayerFrame, 'width' | 'height' | 'resolution'>): void {
+    const setup = this.inputs.setup?.();
+    const tv = this.inputs.tableTv?.();
+    if (setup && tv) drawTvSetup(this.context, frame, setup, tv);
+  }
+
+  /** A held frame with the set-up screen over it, which takes the held frame's pixels per point of the window. */
+  private drawHeld(image: HTMLCanvasElement, setup: TvSetupScreen | null): void {
+    this.draw(image);
+    const window = this.inputs.window();
+    if (setup && window && window.width > 0) {
+      this.drawSetup({ width: image.width, height: image.height, resolution: image.width / window.width });
+    }
+  }
+
   /** A still frame, at its own size: the window fits it into itself. */
   private draw(image: HTMLCanvasElement): void {
     this.resize(image.width, image.height);
     this.context.clearRect(0, 0, image.width, image.height);
     this.context.drawImage(image, 0, 0);
+  }
+
+  /**
+   * The curtain: the canvas is blacked once, so no stylesheet is needed to hide the map, and
+   * nothing is rendered or asked for while it is down. Its tiles are let go. It keeps its last
+   * picture until the sheet is down, or the fade would be a cut to black.
+   */
+  private drawCurtain(now: number): void {
+    this.demand.release();
+    this.requestedAt = null;
+    if (this.blacked || this.inputs.curtainFalling?.(now)) return;
+    this.context.fillStyle = '#000';
+    this.context.fillRect(0, 0, this.target.width, this.target.height);
+    this.blacked = true;
+  }
+
+  /** The curtain lifted: players are owed a frame, live or held. */
+  private liftCurtain(): void {
+    this.blacked = false;
+    this.stale = true;
+    this.lastHeld = null;
   }
 
   /** A failed frame must not stop the DM's render or the mirror; it is reported once until a frame succeeds. */

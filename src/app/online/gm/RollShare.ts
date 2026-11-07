@@ -25,14 +25,15 @@ export function sharedRoll(result: DiceRollResult): SharedRoll {
   const { id, timestamp, formula, modifiers, total, crit, source } = result;
   return {
     id, timestamp, formula, modifiers, total,
-    rolls: result.rolls.map(({ die, value, max, min, negative, exploded, rerolled, dropped, success, failure, label }) => ({
+    rolls: result.rolls.map(({ die, value, max, min, negative, exploded, rerolled, dropped, success, failure, label, name, colour }) => ({
       die, value, max,
       ...(min === -1 && { min }),
       ...(negative && { negative }), ...(exploded && { exploded }), ...(rerolled && { rerolled }), ...(dropped && { dropped }),
-      ...(success && { success }), ...(failure && { failure }), ...(label !== undefined && { label }),
+      ...(success && { success }), ...(failure && { failure }), ...(label !== undefined && { label }), ...(name !== undefined && { name }), ...(colour !== undefined && { colour }),
     })),
     ...(crit !== undefined && { crit }),
     ...(result.linear === false && { linear: false as const }),
+    ...(result.namedModifiers !== undefined && result.namedModifiers.length > 0 && { namedModifiers: result.namedModifiers.map(({ label, value }) => ({ label, value })) }),
     ...(source !== undefined && { source: source.abilityName === undefined ? { type: source.type } : { type: source.type, abilityName: source.abilityName.slice(0, MAX_ABILITY_NAME) } }),
   };
 }

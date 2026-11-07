@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { App, Scope, TFile } from 'obsidian';
@@ -102,7 +103,7 @@ function type(text: string): void {
 
 it('suggests the keywords the characters in view have, and their values with counts', async () => {
   await openManager();
-  expect(suggestionLabels().map((label) => label.split(':')[0])).toEqual(['name', 'tag', 'statblock', 'cr', 'type', 'source']);
+  expect(suggestionLabels().map((label) => label.split(':')[0])).toEqual(['name', 'tag', 'statblock', 'cr', 'type', 'source', 'text']);
   type('type:');
   expect(suggestionLabels()).toEqual(['beast2', 'dragon1', 'humanoid1']);
 });

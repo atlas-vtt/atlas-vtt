@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COALESCE_MS, NoteFieldWriter } from '../../../../src/app/statblocks/notes/NoteFieldWriter';
 import type { NotePatch } from '../../../../src/app/statblocks/notes/patchTypes';

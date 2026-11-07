@@ -1,9 +1,9 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 
-vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 import { EntryLine } from '../../../../src/app/statblocks/render/shared/EntryLine';
 import { hitPointsAttribute, namesHitPoints } from '../../../../src/app/statblocks/render/shared/hitPoints';
 import { spellGroups } from '../../../../src/app/statblocks/render/shared/spellGroups';

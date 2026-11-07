@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { fakeQueries } from '../../mocks/fakeLootQueries';
@@ -146,5 +147,15 @@ describe('a master table over Base views and a note table', () => {
     expect(await h.reader.resolver.resolve('Brew', 'Master.md')).toBeNull();
     h.reader.stop();
     expect(fakeQueries.started.every((query) => query.stopped)).toBe(true);
+  });
+
+  it('says a listed generator is one, by the name the GM gave it, so a link rolls it whole', async () => {
+    const weapons = '## Magic Weapon\n\n| Part | Result |\n| --- | --- |\n| Type | Mace |\n';
+    const h = harness({ 'Weapons.md': weapons, 'Coins.md': '| Coins |\n| --- |\n| 3 gp |\n', 'Master.md': '' });
+    h.reader.setSources([{ path: 'Weapons.md', index: 0, kind: 'generator', label: 'Arms' }, { path: 'Coins.md', index: 0, kind: 'text' }]);
+    await settled(h);
+    expect(await h.reader.resolver.resolve('Weapons', 'Master.md')).toMatchObject({ kind: 'table', generator: { name: 'Arms', noteName: 'Weapons' } });
+    expect(await h.reader.resolver.resolve('Coins', 'Master.md')).not.toHaveProperty('generator');
+    h.reader.stop();
   });
 });

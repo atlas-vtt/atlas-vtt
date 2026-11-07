@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { produce } from 'immer';
 import { Texture } from 'pixi.js';

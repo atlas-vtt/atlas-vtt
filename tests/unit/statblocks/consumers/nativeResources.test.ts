@@ -1,9 +1,10 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadStatblockOverrides } from '../../../../src/app/packages/components/asset-manager/utils/statblockLoader';
 import { buildStatblockLinkUpdates } from '../../../../src/app/pixi/token-renderer/statblockFrontmatter';
 import { HP_RESOURCE } from '../../../../src/app/resources/resourceDefinitions';
 import { resolveField } from '../../../../src/app/resources/resourceFields';
-import { fillMissingResources } from '../../../../src/app/resources/statblockResourceSync';
+import { fillMissingResources, syncedResources } from '../../../../src/app/resources/statblockResourceSync';
 import { startingResources } from '../../../../src/app/resources/statblockResourceValues';
 import { TokenStatblockLinkService } from '../../../../src/app/services/TokenStatblockLinkService';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
@@ -56,12 +57,27 @@ describe('native statblocks reach tokens', () => {
     });
   });
 
+  it('places a token with hit points written as a sum that names another number of the statblock', async () => {
+    addNote(current, 'Bestiary/Iron Captain.md', { ...IRON_GUARD, name: 'Iron Captain', stamina: '20 + @level' });
+    expect((await loadStatblockOverrides(current.app, 'Bestiary/Iron Captain.md', [HP_RESOURCE]))?.resources).toEqual({ hp: { current: 23, max: 23 } });
+  });
+
   it('links a token to a native statblock with the same values, and never writes the note', async () => {
     const refusals = forbidWrites(current.app);
     const data = await linkService().extractStatblockData(GUARD);
     expect(data).toMatchObject({ name: 'Iron Guard', difficulty: 'Level 3', meanings: { 'hit-points': 'stamina', rating: 'level' } });
     expect(await linkService().readStatblockRecord(GUARD)).toMatchObject({ fields: { stamina: 40 }, meanings: STAMINA });
     expect(refusals.every((refusal) => refusal.mock.calls.length === 0)).toBe(true);
+  });
+
+  it('takes the hit points off a token once the note clears them, and keeps a value its template has no field for', async () => {
+    const { stamina: _cleared, ...cleared } = IRON_GUARD;
+    addNote(current, GUARD, cleared);
+    const statblock = await linkService().readStatblockRecord(GUARD);
+    const token = { resources: { hp: { current: 12, max: 40 }, mana: { current: 1, max: 4 } } };
+    const mana = { ...HP_RESOURCE, key: 'mana', name: 'Mana', field: 'mana', defeatedWhenSpent: false };
+    expect(statblock && syncedResources(token, statblock.fields, [HP_RESOURCE, mana], statblock.meanings, statblock.emptyFields))
+      .toEqual({ mana: { current: 1, max: 4 } });
   });
 
   it('links a token on an open map with the same values as on closed maps', async () => {

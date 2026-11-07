@@ -85,7 +85,7 @@ export function ContentsList({ groups, media, selection }: ContentsListProps): R
   const titleId = useId();
   return (
     <section className="atlas-transfer-section" aria-labelledby={titleId}>
-      <h4 id={titleId} className="atlas-transfer-section__title">{t('uiAssets.contentsList_whatSIncluded')}</h4>
+      <h4 id={titleId} className="atlas-transfer-section__title">What&rsquo;s included</h4>
       <ul className="atlas-transfer-groups">
         {groups.map((group) => <GroupRow key={group.category} group={group} media={media} selection={selection} />)}
       </ul>

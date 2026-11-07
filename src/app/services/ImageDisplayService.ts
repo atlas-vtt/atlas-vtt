@@ -3,9 +3,15 @@ import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/Cont
 import { PlayerWindowService } from './PlayerWindowService';
 import { playImageEnter, playImageExit } from './imageDisplayMotion';
 import { ImageOverlayControls } from './imageOverlayControls';
+import { SettingsService } from './SettingsService';
+import { tableTvOf } from './tableTvFrame';
 import './image-display.scss';
 import { t } from '../i18n';
+import { DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable } from '../imageProcessing/decodeLimits';
+import { imageHeader } from '../imageProcessing/imageDimensions';
 import { showNotice } from '../ui/notice';
+import { statblockImageAt } from './statblockImageTarget';
+import { playerWindowStore } from '../stores/playerWindowStore';
 
 /** An image overlay in the player window. */
 interface ImageDisplay {
@@ -102,9 +108,10 @@ export class ImageDisplayService {
    * Handles rendered embeds (![[image.png]]) and direct IMG clicks.
    */
   private resolveImageFromTarget(target: HTMLElement): { file: TFile; imgElement: HTMLImageElement } | null {
-    if (target.closest('[class*="atlas-"]') || target.closest('.modal-container')) return null;
-
-    let imgElement: HTMLImageElement | null = null;
+    if (target.closest('.modal-container')) return null;
+    // Atlas' own UI keeps its images to itself, but a statblock's pictures are content.
+    let imgElement = statblockImageAt(target);
+    if (!imgElement && target.closest('[class*="atlas-"]')) return null;
 
     if (target.tagName === 'IMG') {
       imgElement = target as HTMLImageElement;
@@ -146,13 +153,23 @@ export class ImageDisplayService {
   private handleContextMenu(event: MouseEvent): void {
     const target = event.target as HTMLElement;
 
-    if (target.closest('[class*="atlas-"]') || target.closest('.modal-container')) return;
+    if (target.closest('.modal-container')) return;
 
     // In markdown views, the editor-menu handler adds items to Obsidian's native menu
     const isInMarkdownView = target.closest('.markdown-preview-view') ||
                             target.closest('.markdown-source-view') ||
                             target.closest('.markdown-reading-view');
     if (isInMarkdownView) return;
+
+    // A statblock's picture in a statblock preview or the DM screen, unless a menu of its own took the click
+    const statblockImage = this.statblockImageFileAt(target);
+    if (statblockImage) {
+      if (!event.defaultPrevented) this.openImageMenu(event, statblockImage.file, statblockImage.imgElement);
+      return;
+    }
+
+    // Atlas' own UI keeps its images to itself
+    if (target.closest('[class*="atlas-"]')) return;
 
     // Only handle direct image viewing (e.g. clicking an image file in a tab)
     const viewContent = target.closest('.view-content');
@@ -164,13 +181,7 @@ export class ImageDisplayService {
     if (!imgElement) return;
 
     // Try to resolve the image file
-    let imageFile: TFile | null = null;
-
-    const filePath = this.extractFilePathFromSrc(imgElement.src);
-    if (filePath) {
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (file instanceof TFile) imageFile = file;
-    }
+    let imageFile = this.imageFileOf(imgElement);
 
     if (!imageFile) {
       const activeFile = this.app.workspace.getActiveFile();
@@ -181,19 +192,39 @@ export class ImageDisplayService {
       }
     }
 
-    if (imageFile) {
-      event.preventDefault();
-      event.stopPropagation();
+    if (imageFile) this.openImageMenu(event, imageFile, imgElement);
+  }
 
-      const file = imageFile;
-      const entries: ContextMenuEntry[] = [
-        { type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) },
-        { type: 'item', label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) },
-        { type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) },
-      ];
+  /**
+   * The vault image of a statblock's picture under a right-click, which this
+   * service's menu offers to show to the players; null for anything else, a
+   * picture from the web included.
+   */
+  public statblockImageFileAt(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
+    const imgElement = statblockImageAt(target);
+    const file = imgElement ? this.imageFileOf(imgElement) : null;
+    return imgElement && file ? { file, imgElement } : null;
+  }
 
-      openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
-    }
+  /** The vault image an `<img>` shows, or null for one from elsewhere. */
+  private imageFileOf(imgElement: HTMLImageElement): TFile | null {
+    const filePath = this.extractFilePathFromSrc(imgElement.src);
+    const file = filePath ? this.app.vault.getAbstractFileByPath(filePath) : null;
+    return file instanceof TFile && this.isImageFile(file) ? file : null;
+  }
+
+  /** Atlas' menu for an image: show it to the players, copy it, open it outside Obsidian. */
+  private openImageMenu(event: MouseEvent, file: TFile, imgElement: HTMLImageElement): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const entries: ContextMenuEntry[] = [
+      { type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) },
+      { type: 'item', label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) },
+      { type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) },
+    ];
+
+    openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
   }
   
   /**
@@ -261,6 +292,12 @@ export class ImageDisplayService {
       // Read the image file
       const arrayBuffer = await this.app.vault.readBinary(file);
       const blob = new Blob([arrayBuffer], { type: this.getMimeType(file.extension) });
+      // An image the browser cannot open would end the player window; it is shown nowhere but as map tiles.
+      const header = await imageHeader(blob);
+      if (header && !decodable(header)) {
+        showNotice(t('image.tooLarge', { width: header.width, height: header.height, megapixels: Math.floor(DECODED_MAX_PIXELS / 1e6), side: DECODER_MAX_SIDE }));
+        return;
+      }
       const imageUrl = URL.createObjectURL(blob);
 
       // Get the player window
@@ -287,7 +324,9 @@ export class ImageDisplayService {
     const previous = this.detachImageDisplay();
 
     this.imageContainer = doc.body.createDiv({ cls: 'atlas-image-display' });
-    this.imageStage = this.imageContainer.createDiv({ cls: 'atlas-image-display__stage' });
+    // Turns with a table TV (the body's --atlas-tv-rotation); the close button stays on the window
+    const turn = this.imageContainer.createDiv({ cls: 'atlas-image-display__turn' });
+    this.imageStage = turn.createDiv({ cls: 'atlas-image-display__stage' });
     this.currentImage = this.imageStage.createEl('img', { cls: 'atlas-image-display__image' });
     this.currentImage.src = imageUrl;
 
@@ -295,22 +334,25 @@ export class ImageDisplayService {
     closeButton.setAttribute('aria-label', t('common.close'));
     closeButton.addEventListener('click', () => this.closeImageDisplay());
 
-    this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay());
+    const settings = SettingsService.forApp(this.app);
+    const turnOf = (): number => (settings ? tableTvOf(playerWindow, settings.getTableTvSettings(), settings.getTableTvDevice()).rotation : 0);
+    this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay(), turnOf);
 
     // A replaced image leaves above the new one, so the scrim stays dark while they crossfade
     previous?.container.before(this.imageContainer);
+    playerWindowStore.setState({ imageShown: true });
     const entrance = playImageEnter(this.imageContainer, this.imageStage, this.currentImage, previous !== null);
     // The previous image stays until the new one can paint, so the crossfade never shows an empty scrim
     if (previous) void this.leave(previous, entrance);
   }
 
   /**
-   * Close the image display
+   * Close the image display. `quiet` says nothing, for a control whose own change shows it (the player window bar).
    */
-  public closeImageDisplay(): void {
+  public closeImageDisplay(options?: { quiet?: boolean }): void {
     const display = this.detachImageDisplay();
     if (!display) return;
-    showNotice(t('image.closed'));
+    if (!options?.quiet) showNotice(t('image.closed'));
     void this.leave(display);
   }
   
@@ -459,6 +501,7 @@ export class ImageDisplayService {
     this.imageContainer = null;
     this.imageStage = null;
     this.currentImage = null;
+    playerWindowStore.setState({ imageShown: false });
     return display;
   }
 

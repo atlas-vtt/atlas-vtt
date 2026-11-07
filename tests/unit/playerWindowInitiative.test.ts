@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
@@ -11,7 +12,6 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { attachFakePlayerWindow } from '../mocks/playerPopout';
 import { memoryPluginData } from '../mocks/pluginData';
 
-vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 const collection = vi.hoisted(() => ({ hpVisibleToPlayers: false }));
 vi.mock('../../src/app/resources/collectionResources', () => ({
   mapResources: () => [{ key: 'hp', name: 'HP', field: 'hp', direction: 'drains', color: '#22c55e', defeatedWhenSpent: true, visibleToPlayers: collection.hpVisibleToPlayers }],
@@ -23,6 +23,9 @@ const initiativeRules = vi.hoisted(() => ({ value: undefined as InitiativeRules 
 vi.mock('../../src/app/services/mapInitiativeRules', () => ({ mapInitiativeRules: () => initiativeRules.value ?? TURN_ORDER }));
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.useRealTimers(); vi.restoreAllMocks(); collection.hpVisibleToPlayers = false; initiativeRules.value = undefined; scrolls.calls.length = 0; });
 
+/** The map shows every nameplate, so the player view's switch alone decides. */
+const MAP_NAMES = { showNameplates: true, hiddenResources: [], showInstanceBadges: false, tokenRingSize: 1 };
+
 function scene(name = 'Hero', initiativeTrackerOpen = true): StoreApi<ViewAtlasState> {
   const token: TokenEntity = { id: 'hero', kind: 'character', name, x: 0, y: 0, imagePath: '', resources: { hp: { current: 8, max: 10 } } };
   const entry: InitiativeEntry = {
@@ -31,7 +34,7 @@ function scene(name = 'Hero', initiativeTrackerOpen = true): StoreApi<ViewAtlasS
   };
   return createStore(() => ({
     initiative: { ...createDefaultInitiativeState(), entries: [entry], isActive: true, round: 1 },
-    objects: { tokens: { hero: token } }, initiativeTrackerOpen,
+    objects: { tokens: { hero: token } }, initiativeTrackerOpen, tokenSettings: MAP_NAMES,
   })) as StoreApi<ViewAtlasState>;
 }
 
@@ -93,6 +96,12 @@ describe('player initiative panel', () => {
     expect(panel()?.textContent).not.toContain('Hero');
     expect(panel()?.querySelector('progress')).toBeNull();
     settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
+    expect(panel()?.textContent).toContain('Hero');
+    // A token the GM's map does not name goes unnamed for players too
+    store.setState({ tokenSettings: { ...MAP_NAMES, showNameplates: false } });
+    expect(panel()?.textContent).not.toContain('Hero');
+    expect(panel()?.textContent).toContain('Unknown Creature');
+    store.setState({ tokenSettings: MAP_NAMES });
     expect(panel()?.textContent).toContain('Hero');
     // HP stays hidden until the collection lets players see it
     expect(panel()?.querySelector('progress')).toBeNull();
@@ -213,14 +222,27 @@ describe('player initiative panel', () => {
   });
 
   it('keeps the combatant whose turn it is in view: the list is drawn anew on every change', () => {
-    const { store, doc } = setup();
+    const { store, doc, settings } = setup();
+    settings.setInitiativeLayout({ fromTurn: false });
     const { initiative } = store.getState();
     scrolls.calls.length = 0;
 
     store.setState({ initiative: { ...initiative, round: 2 } });
 
-    expect(scrolls.calls).toEqual([[doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__card--active'), 'nearest']]);
+    expect(scrolls.calls).toEqual([[doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__card--active'), 'nearest', 2]]);
     expect(scrolls.calls[0]?.[1]).not.toBeNull();
+  });
+
+  it('follows the GM\'s layout: the edge the lists stand at, drawn anew when it changes', () => {
+    const { settings, doc } = setup();
+    const panel = (): Element | null => doc.querySelector('.atlas-player-initiative');
+    expect(panel()?.classList.contains('atlas-player-initiative--left')).toBe(false);
+    settings.setInitiativeLayout({ dock: 'left' });
+    expect(panel()?.classList.contains('atlas-player-initiative--left')).toBe(true);
+    // Collapsing the GM's tracker is the GM's own view of it: the players' list stays as it is
+    const drawn = panel();
+    settings.setInitiativeLayout({ collapsed: true });
+    expect(panel()).toBe(drawn);
   });
 
   it('defaults on for old settings and persists the DM choice across reloads', async () => {
@@ -252,7 +274,7 @@ describe('player initiative panel of a collection that fights by sides', () => {
     const store = createStore(() => ({
       initiative: { ...createDefaultInitiativeState(), entries: [entry('goblin', 0), entry('hero', 1), entry('rat', 2, { sitsOut: true }), entry('cleric', 3)], ...initiative },
       objects: { tokens: { goblin: token('goblin'), hero: token('hero', { vision: { enabled: true } }), rat: token('rat'), cleric: token('cleric', { side: 'players' }) } },
-      initiativeTrackerOpen: true,
+      initiativeTrackerOpen: true, tokenSettings: MAP_NAMES,
     })) as StoreApi<ViewAtlasState>;
     const service = new PlayerWindowService(app, store, settings);
     return { doc: attachFakePlayerWindow(service, { canvas: createEl('canvas'), withPlayerSafeFrame: vi.fn(), store }), store };
@@ -282,7 +304,9 @@ describe('player initiative panel of a collection that fights by sides', () => {
     const { initiative } = store.getState();
     store.setState({ initiative: { ...initiative, entries: initiative.entries.map((each) => ({ ...each, isActive: true })) } });
     expect(doc.querySelector('.atlas-player-initiative__card--active')).toBeNull();
-    expect(groups(doc).map(({ side, active }) => [side, active])).toEqual([['Opponents', false], ['Players', true]]);
+    // The GM's list starts at the turn: the side whose turn it is on top, the next round's below a divider
+    expect(groups(doc).map(({ side, active }) => [side, active])).toEqual([['Players', true], ['Opponents', false]]);
+    expect(doc.querySelector('.atlas-player-initiative__next-round')?.getAttribute('aria-label')).toBe('Round 3');
     expect(doc.querySelectorAll('.atlas-player-initiative__card--sitting-out')).toHaveLength(1);
     expect(doc.body.textContent).toContain('Round 2');
   });

@@ -1,4 +1,4 @@
-import { diceAverage, isDiceNotation, parseDiceNotation } from '../../../../src/app/statblocks/values/diceNotation';
+import { diceAverage, parseDiceNotation } from '../../../../src/app/statblocks/values/diceNotation';
 import { pick, randomInt, randomString, seededRandom } from '../expressions/seededRandom';
 
 describe('parseDiceNotation', () => {
@@ -31,12 +31,6 @@ describe('parseDiceNotation', () => {
     ['7d10 + 14 slashing'], ['2d6++1'], ['--1'], ['2d6!x'], ['99999999999999999999d6'],
   ])('%j is not notation', (text) => {
     expect(parseDiceNotation(text)).toBeNull();
-  });
-
-  it('tells notation that rolls dice', () => {
-    expect(isDiceNotation('2d6+2')).toBe(true);
-    expect(isDiceNotation('14')).toBe(false);
-    expect(isDiceNotation('two dice')).toBe(false);
   });
 });
 

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { findImportedTemplate, importFsLayout, pluginLayoutResolver, readLayoutText } from '../../../../src/app/statblocks/fs/fsImport';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';

@@ -25,14 +25,14 @@ interface StatblockLinkModalProps {
   newStatblock?: NewStatblockOption | undefined;
 }
 
-function emptyNotesMessage(): React.ReactNode {
-  const [before, after] = t('uiMessages.statblockNotesMissing').split('{example}');
-  return <>{before}<code>monster: Goblin</code>{after}</>;
-}
-
 const EMPTY_MESSAGES: Record<Exclude<BestiaryStatus, 'loading'>, React.ReactNode> = {
   missing: t('am.link.missing'),
-  ready: emptyNotesMessage(),
+  ready: (
+    <>
+      No statblock notes found. Add a statblock code block to a note (<code>monster: Goblin</code> is enough for a
+      bestiary creature), or enable &quot;Parse Frontmatter for Creatures&quot; in the Fantasy Statblocks settings.
+    </>
+  ),
 };
 
 /** What the list says when it has no rows; nothing while the creatures are read, when placeholder rows stand in. */
@@ -113,7 +113,7 @@ const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose
         <div className="atlas-modal-header">
           <div className="atlas-statblock-link__heading">
             <h2 id={`${idPrefix}-title`}>{t('am.link.title')}</h2>
-            <span className="atlas-statblock-link__subtitle">{t('uiMessages.forAsset', { name: asset.name })}</span>
+            <span className="atlas-statblock-link__subtitle">For {asset.name}</span>
           </div>
           <CloseButton onClick={onClose} />
         </div>

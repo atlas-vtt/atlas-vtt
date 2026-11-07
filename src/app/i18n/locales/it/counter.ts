@@ -1,6 +1,6 @@
-import type { Message } from '../../types';
+import type { Translation } from '../../types';
 
 export const counter = {
-  'counter.decrease': 'Diminuisci',
-  'counter.increase': 'Aumenta',
-} as const satisfies Record<string, Message>;
+  "counter.decrease": "Diminuisci",
+  "counter.increase": "Aumenta"
+} satisfies Translation;

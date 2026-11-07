@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import { GM_AUTHOR, type RollEntry } from '../protocol/index.ts';
 import { ChevronDown, CornerDownRight, EyeOff } from 'lucide-react';
 import { memo, useId, useState, type ReactElement } from 'react';
@@ -10,7 +9,7 @@ import type { ThreadStat } from './logThreads.ts';
 import type { ShownEntry } from './LogState.ts';
 import type { Portrait, RollFace, RowApi, RowFlags } from './panelTypes.ts';
 import { ReactionChips } from './ReactionChips.tsx';
-import { critClass, RollDice } from './rollDice.tsx';
+import { critClass, formulaLine, RollDice } from './rollDice.tsx';
 import { ROLL_MODE_INFO } from './rollModes.ts';
 import { RowShell } from './RowShell.tsx';
 import { SpeakerFace } from './SpeakerFace.tsx';
@@ -54,7 +53,7 @@ export const RollRow = memo(function RollRow({ entry, face, portrait, time, thre
   const roller = shownName(who, name, api.self);
   const ability = roll.source?.abilityName;
   // A roll answering a button in a whisper among players goes to that whisper's people, not to the GM.
-  const badge = mode === undefined ? null : mode === 'gm' && entry.to?.includes(GM_AUTHOR) === false ? t('uiOnlineDetails.rollRow_whisper') : ROLL_MODE_INFO[mode].badge;
+  const badge = mode === undefined ? null : mode === 'gm' && entry.to?.includes(GM_AUTHOR) === false ? 'Whisper' : ROLL_MODE_INFO[mode].badge;
   return (
     <RowShell id={id} className="atlas-online-log__row--roll" reactions={reactions} canEdit={false} canDelete={false} api={api} editing={false} {...flags}>
       <div className={classes('atlas-online-log__roll', critClass(roll, 'atlas-online-log__roll'), mode !== undefined && 'atlas-online-log__roll--private')}>
@@ -74,16 +73,16 @@ export const RollRow = memo(function RollRow({ entry, face, portrait, time, thre
           {ability !== undefined && ability !== '' && <span className="atlas-online-log__roll-ability atlas-dice-toast__ability">{ability}</span>}
           {flavor !== undefined && flavor !== request?.label && <span className="atlas-online-log__roll-flavor atlas-dice-toast__ability">{flavor}</span>}
           <div className="atlas-online-log__roll-summary">
-            <span className="atlas-online-log__roll-formula">{roll.formula}</span>
+            <span className="atlas-online-log__roll-formula">{formulaLine(roll)}</span>
             <span className="atlas-online-log__roll-equals" aria-hidden="true">=</span>
             <span className="atlas-online-log__roll-total">{roll.total}</span>
           </div>
           <button type="button" className="atlas-online-log__roll-toggle" aria-expanded={open} aria-controls={dice} onClick={() => setOpen(!open)}>
             <ChevronDown className={classes('atlas-online-log__roll-chevron', open && 'is-open')} />
-            {t('uiOnline.rollRow_dice')}
+            Dice
           </button>
           {open && <RollDice id={dice} roll={roll} />}
-          {entry.hidden === true && <span className="atlas-online-log__roll-hidden"><EyeOff />{t('uiOnline.rollRow_onlyYouSeeThisRoll')}</span>}
+          {entry.hidden === true && <span className="atlas-online-log__roll-hidden"><EyeOff />Only you see this roll</span>}
         </div>
       </div>
       <ReactionChips id={id} reactions={reactions} api={api} />

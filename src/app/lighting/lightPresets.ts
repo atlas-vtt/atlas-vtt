@@ -1,4 +1,3 @@
-import { t } from '../i18n';
 import type { LightEmission, LightKind } from '../types/lightingTypes';
 import { coneAngle } from '../vision/visionCone';
 
@@ -17,12 +16,12 @@ export interface LightPreset {
  * Light cantrip's 20 and 40 feet. Offered as presets through `GENERIC_LIGHT_PRESETS`.
  */
 export const LIGHT_PRESETS: Record<LightPresetId, LightPreset> = {
-  candle: { label: t('uiLighting.lightPresets_candle'), emission: { bright: 5, dim: 10, color: '#ffb347', intensity: 0.9, animation: 'candle', sourceRadius: 1 } },
-  torch: { label: t('uiLighting.lightPresets_torch'), emission: { bright: 20, dim: 40, color: '#ff9a3c', intensity: 1, animation: 'torch', sourceRadius: 2 } },
-  lantern: { label: t('uiLighting.lightPresets_lantern'), emission: { bright: 30, dim: 60, color: '#ffd28a', intensity: 1, animation: 'none', sourceRadius: 1.5 } },
-  magical: { label: t('uiLighting.lightPresets_magicalLight'), emission: { bright: 20, dim: 40, color: '#8fb8ff', intensity: 1, animation: 'magic', sourceRadius: 2.5 } },
+  candle: { label: 'Candle', emission: { bright: 5, dim: 10, color: '#ffb347', intensity: 0.9, animation: 'candle', sourceRadius: 1 } },
+  torch: { label: 'Torch', emission: { bright: 20, dim: 40, color: '#ff9a3c', intensity: 1, animation: 'torch', sourceRadius: 2 } },
+  lantern: { label: 'Lantern', emission: { bright: 30, dim: 60, color: '#ffd28a', intensity: 1, animation: 'none', sourceRadius: 1.5 } },
+  magical: { label: 'Magical light', emission: { bright: 20, dim: 40, color: '#8fb8ff', intensity: 1, animation: 'magic', sourceRadius: 2.5 } },
   // Magical darkness, three squares wide like the Darkness spell: it swallows light instead of giving any.
-  darkness: { label: t('uiLighting.lightPresets_darkness'), emission: { bright: 0, dim: 15, color: DARKNESS_COLOR, intensity: 1, animation: 'none', sourceRadius: 1, darkness: true } },
+  darkness: { label: 'Darkness', emission: { bright: 0, dim: 15, color: DARKNESS_COLOR, intensity: 1, animation: 'none', sourceRadius: 1, darkness: true } },
 };
 
 export const LIGHT_PRESET_IDS = Object.keys(LIGHT_PRESETS) as LightPresetId[];

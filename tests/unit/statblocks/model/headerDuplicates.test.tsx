@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { serializeTemplate } from '../../../../src/app/statblocks/format/templateFormat';
 import { readTemplateFile } from '../../../../src/app/statblocks/library/templateFiles';

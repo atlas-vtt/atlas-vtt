@@ -4,19 +4,19 @@ import { ChevronRight } from 'lucide-react';
 import { useElementHeight } from '../../../react/hooks/useElementHeight';
 import { MOTION_NORMAL_MS, EASE_OUT_CONTROL_POINTS } from '../../../utils/motion';
 import type { SectionBlock } from '../../model/templateTypes';
-import { valueText } from '../../values/valueText';
-import type { SheetState } from '../sheetState';
 import { useSheet } from '../sheetContext';
 import { TabPanelContext } from '../tabs/openTabs';
+import { sectionHeading } from '../values/sectionHeading';
 import { SheetHeading } from '../values/SheetHeading';
 import type { BlockViewProps } from './blockViewProps';
+import { t } from '../../../i18n';
 
 interface SectionViewProps extends BlockViewProps<SectionBlock> {
   children: React.ReactNode;
 }
 
 /** What an empty tab says while a template is edited. */
-export const EMPTY_TAB_PROMPT = 'Empty tab: select it and add a block';
+export const EMPTY_TAB_PROMPT = t('statblockEditor.emptyTab');
 
 const HEIGHT_TRANSITION = { duration: MOTION_NORMAL_MS / 1000, ease: EASE_OUT_CONTROL_POINTS };
 
@@ -62,11 +62,6 @@ function Collapsible({ heading, initiallyOpen, children }: {
       </motion.div>
     </>
   );
-}
-
-/** What a Section is headed with: its heading property's value, else its own heading. */
-export function sectionHeading(block: SectionBlock, state: SheetState): string {
-  return (block.headingField ? valueText(state.reader(block.headingField)) : '') || block.heading || '';
 }
 
 /**

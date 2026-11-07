@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { App } from 'obsidian';
 import { DEFAULT_MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
@@ -16,15 +17,15 @@ describe('Atlas settings in the plugin data', () => {
   it('saves the preferences into the plugin data and reads them back', async () => {
     const { settings, data, app } = await loaded();
     settings.setDiceLook({ colour: 'dark' });
-    settings.setExperimental('dynamicLighting', true);
+    settings.setExperimental('statblockEditor', true);
     settings.setHotkey('assets', 'q');
     await settings.saveSettingsNow();
-    expect(data.stored()).toMatchObject({ diceColour: 'dark', experimental: { dynamicLighting: true }, hotkeys: { assets: 'q' } });
+    expect(data.stored()).toMatchObject({ diceColour: 'dark', experimental: { statblockEditor: true }, hotkeys: { assets: 'q' } });
 
     const reopened = new SettingsService(app, undefined, data);
     await reopened.initialize();
     expect(reopened.getDiceLook().colour).toBe('dark');
-    expect(reopened.isExperimentalOn('dynamicLighting')).toBe(true);
+    expect(reopened.isExperimentalOn('statblockEditor')).toBe(true);
     expect(reopened.getHotkeys().assets).toBe('q');
   });
 
@@ -93,17 +94,28 @@ describe('Atlas settings in the plugin data', () => {
     expect((await loaded({ detectGridOnNewScenes: 'no' })).settings.detectsGridOnNewScenes()).toBe(true);
   });
 
+  it('shows no names on the GM\'s initiative cards until the GM switches them on', async () => {
+    const { settings, data } = await loaded();
+    expect(settings.showsInitiativeNames()).toBe(false);
+
+    settings.setInitiativeNames(true);
+    await settings.saveSettingsNow();
+    expect(settings.showsInitiativeNames()).toBe(true);
+    expect(data.stored()).toMatchObject({ initiativeNames: true });
+    expect((await loaded({ initiativeNames: 'yes' })).settings.showsInitiativeNames()).toBe(false);
+  });
+
   it('reads the plugin data again when it changed on disk and tells every listener', async () => {
     const { settings, data } = await loaded({ diceColour: 'card' });
     const heard = vi.fn();
     settings.onChange(heard);
-    data.set({ diceColour: 'dark', hotkeys: { assets: 'q' }, experimental: { dynamicLighting: true } });
+    data.set({ diceColour: 'dark', hotkeys: { assets: 'q' }, experimental: { statblockEditor: true } });
     await settings.reload();
     expect(heard).toHaveBeenCalledOnce();
-    expect(heard.mock.calls[0]![0]).toMatchObject({ diceColour: 'dark', experimental: { dynamicLighting: true } });
+    expect(heard.mock.calls[0]![0]).toMatchObject({ diceColour: 'dark', experimental: { statblockEditor: true } });
     expect(settings.getDiceLook().colour).toBe('dark');
     expect(settings.getHotkeys().assets).toBe('q');
-    expect(settings.isExperimentalOn('dynamicLighting')).toBe(true);
+    expect(settings.isExperimentalOn('statblockEditor')).toBe(true);
     expect(data.saveData).not.toHaveBeenCalled();
   });
 
@@ -124,13 +136,13 @@ describe('Atlas settings in the plugin data', () => {
   });
 
   it('keeps the settings when the file reads as nothing, as while a sync tool rewrites it', async () => {
-    const { settings, data } = await loaded({ diceColour: 'dark', experimental: { dynamicLighting: true } });
+    const { settings, data } = await loaded({ diceColour: 'dark', experimental: { statblockEditor: true } });
     const heard = vi.fn();
     settings.onChange(heard);
     data.set(null);
     await settings.reload();
     expect(settings.getDiceLook().colour).toBe('dark');
-    expect(settings.isExperimentalOn('dynamicLighting')).toBe(true);
+    expect(settings.isExperimentalOn('statblockEditor')).toBe(true);
     expect(heard).not.toHaveBeenCalled();
   });
 

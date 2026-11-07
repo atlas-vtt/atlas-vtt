@@ -1,9 +1,9 @@
+// @vitest-environment jsdom
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent } from '@testing-library/react';
 
-vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import { EVERY_BLOCK } from '../../../fixtures/statblockTemplateFixtures';
 import { blockSpec } from '../../../../src/app/statblocks/model/blockCatalogue';

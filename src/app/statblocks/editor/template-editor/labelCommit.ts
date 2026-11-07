@@ -41,7 +41,7 @@ function bindBlock(block: TemplateBlock, key: FieldKey, label: string, ownLabel:
   switch (block.type) {
     case 'line': return { ...block, fields: [key] };
     case 'entries': case 'spells': case 'text': return { ...block, field: key, heading: label };
-    case 'stat': case 'tags': case 'pairs': case 'track':
+    case 'stat': case 'tags': case 'pairs': case 'track': case 'counters':
       return ownLabel ? { ...block, field: key, label } : { ...block, field: key };
     case 'title': case 'scores': case 'image': return { ...block, field: key };
     default: return block;
@@ -89,7 +89,7 @@ function bindNumber(block: MetricBlock, index: number, key: FieldKey): MetricBlo
 
 /** A bound block's label: its own where it keeps one (words standing on their own show only their own), else its field's. */
 function relabel(template: StatblockTemplate, block: TemplateBlock, label: string): StatblockTemplate {
-  if (block.type !== 'stat' && block.type !== 'tags' && block.type !== 'pairs' && block.type !== 'track') return template;
+  if (block.type !== 'stat' && block.type !== 'tags' && block.type !== 'pairs' && block.type !== 'track' && block.type !== 'counters') return template;
   const field = fieldByKey(template.fields, block.field);
   const ownLabel = block.label !== undefined || wordsStandAlone(block);
   if (field && !ownLabel) return updateField(template, field.key, { label });

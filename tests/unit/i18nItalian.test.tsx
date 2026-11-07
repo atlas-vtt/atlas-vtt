@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import type { App, Command, Plugin } from 'obsidian';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -11,6 +12,7 @@ vi.mock('../../src/app/plugin/cleanupMissingAssets', () => ({ cleanupMissingAsse
 
 import { formatList, getLocale, resolveLocale, setLocale, t } from '../../src/app/i18n';
 import { en } from '../../src/app/i18n/locales/en';
+import { TRANSLATIONS } from '../../src/app/i18n/languages';
 import { it as italian } from '../../src/app/i18n/locales/it';
 import { Tutorial } from '../../src/app/onboarding/Tutorial';
 import { registerCommands, type CommandDependencies } from '../../src/app/plugin/registerCommands';
@@ -19,22 +21,23 @@ import { SettingsService } from '../../src/app/services/SettingsService';
 
 afterEach(() => {
   cleanup();
-  setLocale('en');
+  setLocale('en', TRANSLATIONS);
 });
 
 describe('Atlas in Italian', () => {
-  beforeEach(() => setLocale('it'));
+  beforeEach(() => setLocale('it', TRANSLATIONS));
 
   it('recognises Obsidian language codes and regional variants', () => {
-    expect(resolveLocale('it')).toBe('it');
-    expect(resolveLocale('IT')).toBe('it');
-    expect(resolveLocale('it-IT')).toBe('it');
-    expect(resolveLocale('it-CH')).toBe('it');
+    expect(resolveLocale('it', TRANSLATIONS)).toBe('it');
+    expect(resolveLocale('IT', TRANSLATIONS)).toBe('it');
+    expect(resolveLocale('it-IT', TRANSLATIONS)).toBe('it');
+    expect(resolveLocale('it-CH', TRANSLATIONS)).toBe('it');
     expect(getLocale()).toBe('it');
   });
 
-  it('covers the complete English catalogue without empty translations', () => {
-    expect(Object.keys(italian).sort()).toEqual(Object.keys(en).sort());
+  it('keeps current translations nonempty and falls back for new upstream texts', () => {
+    expect(Object.keys(italian).every((key) => key in en)).toBe(true);
+    expect(t('dungeon.title')).toBe(en['dungeon.title']);
     for (const [key, message] of Object.entries(italian)) {
       const forms = typeof message === 'string' ? [message] : Object.values(message);
       for (const form of forms) expect(form.trim(), key).not.toBe('');
@@ -115,7 +118,7 @@ it('selects Italian before importing module-level toolbar labels and tutorial st
     expect(LOOT_SETTINGS_STEPS[0]?.title).toBe('Il bottino è nelle tue note');
     expect(LOOT_SETTINGS_STEPS[0]?.image?.alt).toBe('Una base di note di oggetti con una vista per ogni tipo di oggetto');
   } finally {
-    runtime?.setLocale('en');
+    runtime?.setLocale('en', TRANSLATIONS);
     vi.doUnmock('obsidian');
     vi.resetModules();
   }

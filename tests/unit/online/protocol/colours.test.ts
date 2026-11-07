@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { playerColour } from '../../../../src/app/online/gm/dock/panelModel.ts';

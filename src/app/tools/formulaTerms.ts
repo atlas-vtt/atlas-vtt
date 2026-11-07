@@ -19,7 +19,10 @@ const BANG = /!{1,2}(i|\d{1,2})?/y;
 const EXPLODE = /x(o?)(?:(>=|>)(\d{1,4}))?/y;
 const KEEP = /([kd])([hl]?)(\d{1,3})?/y;
 const TALLY = /(?:c([sf])(>=|<=|>|<|=)|(>=|<=))(\d{1,4})/y;
-const LABEL = /\[([\p{L}\p{N} '-]{1,24})\]/uy;
+/** The characters a term's label may hold (`2d6[fire]`, `2[Proficiency]`), and how many at most. */
+export const LABEL_CHARACTERS = String.raw`\p{L}\p{N} '-`;
+export const LABEL_LENGTH = 24;
+const LABEL = new RegExp(String.raw`\[([${LABEL_CHARACTERS}]{1,${LABEL_LENGTH}})\]`, 'uy');
 
 /** Matches `pattern` at `at`; the match and where it ends, or null. */
 function matchAt(pattern: RegExp, text: string, at: number): RegExpExecArray | null {

@@ -3,6 +3,7 @@ import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPreset
 import { newSense } from '../../src/app/gameSystems/senseEditing';
 import { senseWithRole } from '../../src/app/gameSystems/senseRules';
 import { GENERIC_SENSES } from '../../src/app/gameSystems/senses/generic';
+import { ATLAS_VIEW_TYPE } from '../../src/app/atlasViewType';
 import { AssetService } from '../../src/app/services/AssetService';
 import { dropUnknownSenses, dropUnknownSensesFromJson, removeUndefinedSenses } from '../../src/app/services/collectionSenseCleanup';
 import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
@@ -129,8 +130,7 @@ describe('removeUndefinedSenses', () => {
     const history = getHistoryStore(store)!;
     history.getState().clear();
     const saveMap = vi.fn(async () => undefined);
-    const { AtlasView } = await import('../../src/app/atlas-view');
-    const view = Object.assign(Object.create(AtlasView.prototype) as object, { getStore: () => store, saveMap });
+    const view = { getViewType: () => ATLAS_VIEW_TYPE, atlasStore: store, getStore: () => store, saveMap };
     const { app } = vault({ systemPresetId: dnd5e.id }, [{ view }]);
     const before = store.getState().objects.tokens.b;
 

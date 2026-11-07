@@ -9,8 +9,9 @@ import type { TokenEntity } from '../../types';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import type { TokenPerception } from '../../vision/tokenPerception';
+import { MapController } from '../../MapController';
 import { field } from './atlasLighting.ts';
-import { call } from './atlasView.ts';
+import { call, type SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
 
 /** Atlas's default token diameter, which the players' outlines take for a sprite that names none. */
@@ -35,9 +36,9 @@ export interface MapLayerSource {
 
 const isFunction = (value: unknown): value is (...args: never[]) => unknown => typeof value === 'function';
 
-/** The lighting controller of a renderer while dynamic lighting is on: its view of the scene and the players' sight. */
+/** The lighting controller of a renderer (the GM's view): its view of the scene and the players' sight. */
 function controllerOf(renderer: unknown): { view: SceneLightingView; playerSight: () => TokenPerception | undefined } | null {
-  const controller = field(field(renderer, 'lightingFeature'), 'controller');
+  const controller = field(renderer, 'lighting');
   const view = field(controller, 'renderer');
   const playerSight = field(controller, 'playerSight');
   if (!isFunction(playerSight) || !isFunction(field(view, 'currentSight')) || !isFunction(field(view, 'sightIsCurrent'))) return null;
@@ -57,8 +58,8 @@ function spritePlace(sprite: unknown): SensedMark | null {
 
 /**
  * The map layers' source of an Atlas tab's renderer and view, read anew at each call: the
- * renderer's grid, its lighting controller (`lightingFeature.controller`, private, duck-typed: lit
- * scenes only) and token renderer (`playerFramePerception`, `getTokenSprites`), and the view's
+ * renderer's grid, its lighting controller (`lighting`, private, duck-typed: lit scenes only)
+ * and token renderer (`playerFramePerception`, `getTokenSprites`), and the view's
  * asset service (`serviceManager.getAssetService`).
  */
 export function mapLayerSourceOf(renderer: unknown, view: unknown): MapLayerSource {
@@ -104,4 +105,17 @@ export function rulesLookupOf(view: unknown): RulesLookup | null {
     getCollectionSettings: (collectionId) => collections.getCollectionSettings(collectionId),
     playedSystem: () => (typeof app === 'object' && app !== null ? PlayedRules.forApp(app)?.played() ?? null : null),
   };
+}
+
+/**
+ * Whether the renderer's picture is of the level its view shows now: that level's map image has
+ * loaded and its lighting's sight is the scene's (`sightIsCurrent`). After the GM switches levels both
+ * take a moment; until then the players' picture of that level is worked out without the renderer.
+ */
+export function showsViewedLevel(renderer: unknown, state: SceneState): boolean {
+  const lighting = field(field(renderer, 'lighting'), 'renderer');
+  const current = field(lighting, 'sightIsCurrent');
+  if (typeof current === 'function' && (current as () => boolean).call(lighting) !== true) return false;
+  const mapImage = call(renderer, 'getMapImage');
+  return MapController.showsViewedLevel((mapImage ?? null) as Parameters<typeof MapController.showsViewedLevel>[0], state);
 }

@@ -1,7 +1,6 @@
-// @vitest-environment node
 import fs from 'node:fs';
 import type { ResourceDefinition } from '../../../../src/app/resources/resourceTypes';
-import { shapeOf, visibleResources } from '../../../../src/app/resources/visibleResources';
+import { visibleResources } from '../../../../src/app/resources/visibleResources';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { GridState } from '../../../../src/app/types/gridTypes';
 import type { SceneLightingChanges } from '../../../../src/app/types/lightingTypes';
@@ -22,9 +21,9 @@ const { createViewAtlasStore } = (await import(/* @vite-ignore */ STORE_FACTORY)
  *   takes the GM's grid as it is);
  * - nameplates show by the player view's Show nameplates alone (`TokenUIRenderer.update` with player
  *   settings; the map's and the token's own nameplate switches decide only the GM's canvas);
- * - bars are the resources `visibleToPlayers` in bar sockets (`visibleResources(…, 'player')`; the
- *   map's hidden resources decide only the GM's canvas); the player window also shows the wheels
- *   players see, at rest, which the companion does not send yet;
+ * - bars and wheels are the resources `visibleToPlayers` (`visibleResources(…, 'player')`, each
+ *   with its socket; the map's hidden resources decide only the GM's canvas), the wheels at rest as
+ *   the player window shows them;
  * - everything else is the scene as the store holds it.
  * Settings change without a store write, so players must get them within the companion's poll.
  */
@@ -59,33 +58,35 @@ describe("the grid: Atlas's player window shows it as the GM sets it", () => {
   });
 });
 
-describe("token nameplates: Atlas's player window shows them by the player view's Show nameplates alone", () => {
-  it("leaves players' tokens alone when the GM shows the map's nameplates or one token's own, and follows Show nameplates, without a store write", async () => {
+describe("token nameplates: Atlas's player window shows the names the GM's map shows, while Show nameplates is on", () => {
+  it("names a token for players only where the map names it, and none while Show nameplates is off, without a store write", async () => {
     const { store, table, settle, tokens } = await gm(createViewAtlasStore);
     expect(tokens().get('ogre')).toMatchObject({ name: null, ui: { nameplate: false } });
+    table.settings = { ...table.settings, showNames: true };
+    await settle(TOKEN_POLL_MS);
+    for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: null, ui: { nameplate: false } });
     const before = table.sent.length;
-    const list = JSON.stringify([...tokens()]);
-    store.getState().setTokenSettings({ ...store.getState().tokenSettings, showNameplates: true });
     store.getState().updateTokens([{ id: 'ogre', changes: { showNameplate: true } }]);
     await settle(TOKEN_POLL_MS);
-    expect(JSON.stringify([...tokens()])).toBe(list);
-    expect(sentSince(table, before)).not.toContain('Name-of-');
-    table.settings = { ...table.settings, showNames: true };
+    expect(tokens().get('ogre')).toMatchObject({ name: 'Name-of-ogre', ui: { nameplate: true } });
+    expect(tokens().get('bear')).toMatchObject({ name: null, ui: { nameplate: false } });
+    expect(sentSince(table, before)).not.toContain('Name-of-bear');
+    store.getState().setTokenSettings({ ...store.getState().tokenSettings, showNameplates: true });
     await settle(TOKEN_POLL_MS);
     for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: `Name-of-${id}`, ui: { nameplate: true } });
     table.settings = { ...table.settings, showNames: false };
     await settle(TOKEN_POLL_MS);
-    expect(tokens().get('bear')).toMatchObject({ name: null, ui: { nameplate: false } });
+    for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: null, ui: { nameplate: false } });
   });
 });
 
-describe("token bars: Atlas's player window shows the resources players may see, in bar sockets", () => {
+describe("token bars and wheels: Atlas's player window shows the resources players may see, in their sockets", () => {
   it("leaves players' bars alone when the GM hides a bar on his map, and follows each resource's Show to players, without a store write", async () => {
     const { store, table, settle, tokens } = await gm(createViewAtlasStore);
     const bars = (): unknown => tokens().get('ogre')?.ui?.bars.map(({ colour, current, max }) => [colour, current, max]);
     const atlasBars = (resources: readonly ResourceDefinition[]): unknown => {
       const ogre = store.getState().objects.tokens.ogre as TokenEntity;
-      return visibleResources(ogre, resources, 'player').filter(({ slot }) => shapeOf(slot) === 'bar').map(({ definition, value }) => [definition.color, value.current, value.max]);
+      return visibleResources(ogre, resources, 'player').map(({ definition, value }) => [definition.color, value.current, value.max]);
     };
     expect(bars()).toEqual([['#dc2626', 13, 31]]);
     expect(bars()).toEqual(atlasBars(RESOURCES));
@@ -153,12 +154,12 @@ describe("Atlas's player window rules, read from its source at the pin", () => {
     expect(grid).toMatch(/public setEnabled\(enabled: boolean\): void \{\s*this\.options\.enabled = enabled;\s*if \(enabled\) \{\s*this\.createGrid\(\);\s*\} else if \(this\.gridSprite\) \{\s*this\.gridSprite\.visible = false;\s*\}/);
   });
 
-  it("draws players' nameplates by Show nameplates alone and their bars by the resources they may see, never the map's hidden ones", () => {
+  it("draws players' nameplates where the map shows them while Show nameplates is on, and their bars by the resources they may see, never the map's hidden ones", () => {
     const ui = vendor('pixi/TokenUIRenderer.ts');
     expect(ui).toContain('const forPlayers = playerSettings !== undefined || this.playersView;');
     expect(ui).toContain("const viewer: ResourceViewer = forPlayers ? 'player' : 'dm';");
     expect(ui).toContain('const hidden = forPlayers ? [] : tokenSettings?.hiddenResources ?? [];');
-    expect(ui).toContain('const showNameplate = playerSettings ? playerSettings.showTokenNameplates : isNameplateVisible(');
+    expect(ui).toContain('const showNameplate = playerSettings ? nameplateShownToPlayers(token, mapShowsNameplates, playerSettings.showTokenNameplates) : isNameplateVisible(token, mapShowsNameplates);');
     expect(vendor('pixi/token-renderer/UIManager.ts')).toContain('ui.update(token, sprite.tokenSize || 70, settings);');
   });
 });

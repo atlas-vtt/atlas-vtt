@@ -209,6 +209,7 @@ export class TemplateLibrary implements TemplateLookup {
   }
 
   private enqueue(path: string): void {
+    if (this.destroyed) return;
     this.bump(path);
     this.queue.add(path);
     void this.drain();
@@ -219,9 +220,10 @@ export class TemplateLibrary implements TemplateLookup {
     this.running = true;
     const pause = workSlices();
     try {
-      for (let path = this.next(); path !== null && !this.destroyed; path = this.next()) {
+      for (let path = this.next(); path !== null; path = this.next()) {
         await this.read(path);
-        await pause();
+        // Released during the read: no turn is asked for, and `next` hands out nothing more.
+        if (!this.destroyed) await pause();
       }
     } finally {
       this.running = false;
@@ -233,6 +235,7 @@ export class TemplateLibrary implements TemplateLookup {
   }
 
   private next(): string | null {
+    if (this.destroyed) return null;
     const [path] = this.queue;
     if (path === undefined) return null;
     this.queue.delete(path);

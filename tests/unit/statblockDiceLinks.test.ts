@@ -1,15 +1,11 @@
+// @vitest-environment jsdom
 import type { App } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../src/app/atlasViewType', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
-import {
-  attachDiceRolling,
-  linkDiceIn,
-  splitDiceSegments,
-  toRollFormula,
-} from '../../src/app/services/statblockDiceLinks';
+import { attachDiceRolling, linkDiceIn } from '../../src/app/services/statblockDiceLinks';
+import { splitDiceSegments, toRollFormula } from '../../src/app/services/statblockDiceText';
 import { rollStatblockDice } from '../../src/app/services/statblockRolls';
 
 interface Roll {
@@ -113,7 +109,7 @@ describe('linkDiceIn + attachDiceRolling', () => {
 
     el.querySelector<HTMLElement>('.atlas-dice-link')!.click();
 
-    expect(rolls[0]).toEqual({ formula: '+3', source: { type: 'statblock', abilityName: 'STR' } });
+    expect(rolls[0]).toEqual({ formula: '+3[STR]', source: { type: 'statblock', abilityName: 'STR' } });
 
     dispose();
   });

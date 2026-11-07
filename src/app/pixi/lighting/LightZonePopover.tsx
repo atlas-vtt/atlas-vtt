@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
@@ -13,6 +12,8 @@ import type { LightZoneChanges } from '../../types/lightingTypes';
 import { SliderField } from './lightingPanelFields';
 import { useColourPick, useGestureTransactions, type ColourPick } from './useGestureTransactions';
 import { useZonePopoverPosition } from './useLightPopoverPosition';
+import { levelObjects } from '../../levels/levelObjects';
+import { t } from '../../i18n';
 
 /** Keys the popover's controls use themselves; they must not reach the map's shortcuts. */
 const OWN_KEYS = new Set([' ', 'Enter', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown', 'Backspace', 'Delete']);
@@ -33,7 +34,7 @@ export function LightZonePopoverHost(): React.ReactElement {
 
 function LightZonePopover({ zoneId }: { zoneId: string }): React.ReactElement | null {
   const store = useViewStoreHook();
-  const current = useAtlasStore((state) => state.objects.lightZones?.[zoneId]);
+  const current = useAtlasStore((state) => levelObjects(state).lightZones?.[zoneId]);
   // While it leaves, the popover still shows the zone it had, also when that zone was deleted.
   const shown = useRef(current);
   if (current) shown.current = current;
@@ -58,7 +59,7 @@ function LightZonePopover({ zoneId }: { zoneId: string }): React.ReactElement | 
       animate="visible"
       exit="exit"
       role="dialog"
-      aria-label={t('uiLighting.lightZonePopover_lightZone')}
+      aria-label={t('light.zone')}
       tabIndex={-1}
       inert={!present}
       onKeyDown={(event) => {
@@ -76,14 +77,14 @@ function LightZonePopover({ zoneId }: { zoneId: string }): React.ReactElement | 
           className="atlas-segmented--fit"
           value={time}
           options={TIMES_OF_DAY}
-          ariaLabel="Time of day in the zone"
+          ariaLabel={t('light.zoneTime')}
           onChange={(value) => {
             const stop = TIMES_OF_DAY.find((candidate) => candidate.value === value);
             if (stop) update({ ambient: stop.ambient });
           }}
         />
         <div className="atlas-light-popover__ambient">
-          <SliderField label={t('uiLighting.lightZonePopover_ambientLight')} value={Math.round(zone.ambient * 100)} min={0} max={100} step={1} display={`${Math.round(zone.ambient * 100)} %`}
+          <SliderField label={t('sceneLight.ambient')} value={Math.round(zone.ambient * 100)} min={0} max={100} step={1} display={`${Math.round(zone.ambient * 100)} %`}
             onPointerDown={onSliderPointerDown} onChange={(percent) => update({ ambient: percent / 100 })} />
           <ZoneColour color={zone.ambientColor ?? DEFAULT_AMBIENT_COLOR} onChange={(ambientColor) => update({ ambientColor })}
             onPickStart={beginPick} onPickEnd={endPick} />
@@ -93,7 +94,7 @@ function LightZonePopover({ zoneId }: { zoneId: string }): React.ReactElement | 
         <span />
         <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().deleteLightZone(zone.id)}>
           <Trash2 />
-          <span>{t('uiLighting.lightZonePopover_delete')}</span>
+          <span>{t('common.delete')}</span>
         </Button>
       </div>
     </motion.section>
@@ -112,8 +113,8 @@ function ZoneName({ name, onChange }: { name: string; onChange: (name: string | 
   };
   return (
     <label className="atlas-light-popover__range" htmlFor={id}>
-      <span>{t('uiLighting.lightZonePopover_name')}</span>
-      <input id={id} type="text" autoComplete="off" value={text} placeholder={t('uiLighting.lightZonePopover_caveLitHall')}
+      <span>{t('light.zoneName')}</span>
+      <input id={id} type="text" autoComplete="off" value={text} placeholder={t('light.zoneNamePlaceholder')}
         onChange={(event) => setText(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -129,7 +130,7 @@ function ZoneName({ name, onChange }: { name: string; onChange: (name: string | 
 function ZoneColour({ color, ...pick }: ColourPick & { color: string }): React.ReactElement {
   const input = useColourPick(pick);
   return (
-    <LabelTooltip label={t('uiLighting.lightZonePopover_ambientColour')}>
+    <LabelTooltip label={t('sceneLight.ambientColour')}>
       <input ref={input.ref} type="color" className="atlas-swatch atlas-swatch--picker" value={color} onChange={input.onChange} />
     </LabelTooltip>
   );

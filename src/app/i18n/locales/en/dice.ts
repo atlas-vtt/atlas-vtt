@@ -30,8 +30,13 @@ export const dice = {
   'dice.rollAgain': 'Roll again',
   'dice.unknown': 'Unknown',
   'dice.unpin': 'Unpin panel',
+  'dice.modifier': 'Modifier',
   'dice.player': 'Player',
   'dice.rollFormula': 'Roll {formula}',
   'dice.showRollsToPlayers': 'Show my rolls to players',
   'dice.showRollsToPlayersHint': 'Your rolls appear in the player window too.',
+  'dice.volume': 'Dice volume',
+  'dice.volumeHint': 'How loud dice sound when they roll and land. All the way down turns them off.',
+  'dice.volumeOff': 'Off',
+  'dice.volumePercent': '{percent}%',
 } as const satisfies Record<string, Message>;

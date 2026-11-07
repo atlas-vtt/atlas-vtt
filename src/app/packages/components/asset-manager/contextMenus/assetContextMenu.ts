@@ -3,21 +3,19 @@ import { App as ObsidianApp } from 'obsidian';
 import type { ContextMenuEntry } from '../../../../react/components/context-menu/AtlasContextMenu';
 import type {
   AnyAsset,
+  EncounterAsset,
   CollectionOption,
   Folder,
   InputModalState,
   Tag as TagType,
 } from '../types';
-import {
-  spawnEncounterTokens,
-  spawnSelectedTokens,
-  spawnTokenAsset,
-  type SpawnContext,
-} from '../utils/tokenSpawnService';
-import { SPAWN_MULTIPLE_COUNTS } from '../utils/spawnCount';
+import type { SpawnContext } from '../utils/tokenSpawnService';
+import { spawnMenuEntries } from './spawnMenuEntries';
 import type { AssetService } from '../../../../services/AssetService';
 import { renameScene } from '../../../../services/sceneRename';
+import { hasAssetTag } from '../../../../services/tagGroups';
 import { TagSearchModal } from '../TagSearchModal';
+import type { AssetTagChange } from '../utils/assetTags';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { confirmAction } from '../../../../ui/confirmDialog';
 import type { AtlasView } from '../../../../atlas-view';
@@ -26,10 +24,12 @@ import { tokenSizeSubmenu } from '../../../../react/components/context-menu/toke
 import { playerCharacterEntry, setPlayerCharacters } from '../../../../react/components/context-menu/playerCharacterMenu';
 import type { TransferMode } from '../../../../services/assetTransfer/transferPlan';
 import type { CreateScenePrefill } from '../hooks/useAssetCrud';
-import { scenePrefillFromMap } from '../utils/sceneCreation';
+import { sceneMenuEntries } from './sceneMenuEntries';
+import { openScene } from '../hooks/useOpenAsset';
 import { createStatblockEntry } from '../../../../statblocks/editor/create/entryPoints';
 import { copyAssetLink } from '../../../../links/atlasLinkText';
 import { t } from '../../../../i18n';
+import { diceRandom } from '../../../../services/offlineDiceInputs';
 
 export interface AssetContextMenuDeps {
   app: ObsidianApp;
@@ -39,6 +39,8 @@ export interface AssetContextMenuDeps {
   // State setters
   setEditingToken: (asset: AnyAsset | null) => void;
   setIsTokenCreatorOpen: (open: boolean) => void;
+  /** Opens the encounter builder on a saved encounter. */
+  editEncounter: (encounter: EncounterAsset) => void;
   setIsMoveModalOpen: (open: boolean) => void;
   openCreateScene: (prefill: CreateScenePrefill) => void;
   setInputModalState: (state: InputModalState) => void;
@@ -46,7 +48,7 @@ export interface AssetContextMenuDeps {
   setSelectedAssetIds: React.Dispatch<React.SetStateAction<string[]>>;
   loadAssetsForActiveTab: () => Promise<void>;
   handleCreateTag: (tag: string) => Promise<TagType | null>;
-  setAssetTags: (asset: AnyAsset, tags: string[]) => Promise<void>;
+  setTagsOfAssets: (changes: AssetTagChange[]) => Promise<void>;
   handleSaveAsEncounter: (tokenAssets: AnyAsset[]) => Promise<void>;
   openStatblockLinkModal: (asset: AnyAsset) => void;
   unlinkStatblock: (asset: AnyAsset) => Promise<void>;
@@ -72,60 +74,24 @@ export function buildAssetContextMenuEntries(
   const spawnCtx: SpawnContext = {
     app: deps.app,
     view: deps.view,
-    assetService: deps.assetService,
+    assetService: deps.assetService, random: diceRandom,
   };
 
-  // ── Create Scene from Map ─────────────────────────────────────
-  if (asset.type === 'maps') {
+  // ── Create Scene from Map(s) ──────────────────────────────────
+  entries.push(...sceneMenuEntries(asset, selectedAssets, deps));
+
+  // ── Open Scene (single scene) ─────────────────────────────────
+  if (asset.type === 'scenes' && selectedAssets.length === 1) {
     entries.push({
       type: 'item',
-      label: t('uiAssets.assetContextMenu_createScene'),
-      icon: 'clapperboard',
-      onClick: () => deps.openCreateScene(scenePrefillFromMap(asset)),
+      label: t('am.menu.openScene'),
+      icon: 'play',
+      onClick: () => runInBackground(openScene(deps, asset.id), `Opening scene ${asset.id}`, t('am.menu.openSceneFailed')),
     });
   }
 
-  // ── Spawn Encounter ───────────────────────────────────────────
-  if (asset.type === 'encounters') {
-    entries.push({
-      type: 'item',
-      label: t('am.menu.spawnEncounter'),
-      icon: 'target',
-      onClick: async () => {
-        const ids = await spawnEncounterTokens(spawnCtx, asset);
-        if (ids.length > 0) deps.onClose();
-      },
-    });
-  }
-
-  // ── Spawn Token(s) on Map ─────────────────────────────────────
-  if (asset.type === 'tokens') {
-    const spawnCount = selectedAssets.filter((a) => a.type === 'tokens').length;
-    entries.push({
-      type: 'item',
-      label: spawnCount > 1 ? t('am.menu.spawnTokens', { count: spawnCount }) : t('am.menu.spawn'),
-      icon: 'map-pin',
-      onClick: async () => {
-        const ids = await spawnSelectedTokens(spawnCtx, selectedAssets);
-        if (ids.length > 0) deps.onClose();
-      },
-    });
-    if (spawnCount <= 1) {
-      entries.push({
-        type: 'submenu',
-        label: t('am.menu.spawnMultiple'),
-        icon: 'copy-plus',
-        children: SPAWN_MULTIPLE_COUNTS.map((count) => ({
-          type: 'item' as const,
-          label: t('am.menu.nTokens', { count }),
-          onClick: async (): Promise<void> => {
-            const ids = await spawnTokenAsset(spawnCtx, asset, count);
-            if (ids.length > 0) deps.onClose();
-          },
-        })),
-      });
-    }
-  }
+  // ── Spawn: on the map, or into the initiative tracker ─────────
+  entries.push(...spawnMenuEntries(asset, selectedAssets, spawnCtx, deps.onClose));
 
   // ── Save as Encounter (multi-select tokens) ───────────────────
   if (asset.type === 'tokens' && selectedAssets.length > 1) {
@@ -139,6 +105,14 @@ export function buildAssetContextMenuEntries(
   }
 
   // ── Edit / Rename ─────────────────────────────────────────────
+  if (asset.type === 'encounters' && selectedAssets.length <= 1) {
+    entries.push({
+      type: 'item',
+      label: t('am.menu.editEncounter'),
+      icon: 'swords',
+      onClick: () => deps.editEncounter(asset),
+    });
+  }
   if (asset.type === 'tokens') {
     entries.push({
       type: 'item',
@@ -294,22 +268,14 @@ export function buildAssetContextMenuEntries(
         selectedAssets: assetsToTag,
         availableTags: deps.availableTags,
         allAssets: deps.assets,
-        onToggleTag: (tagId: string, modalSelectedAssets: AnyAsset[]) => {
-          for (const sa of modalSelectedAssets) {
-            const currentTags = sa.tags || [];
-            const newTags = currentTags.includes(tagId)
-              ? currentTags.filter((t) => t !== tagId)
-              : [...currentTags, tagId];
-            void deps.setAssetTags(sa, newTags);
-          }
-        },
+        onSetTags: (changes: AssetTagChange[]) => { void deps.setTagsOfAssets(changes); },
         onCreateTag: (tagName: string, modalSelectedAssets: AnyAsset[]) => {
           const applyNewTag = async (): Promise<void> => {
             const tag = await deps.handleCreateTag(tagName);
             if (!tag) return;
-            await Promise.all(modalSelectedAssets
-              .filter((sa) => !(sa.tags || []).includes(tag.id))
-              .map((sa) => deps.setAssetTags(sa, [...(sa.tags || []), tag.id])));
+            await deps.setTagsOfAssets(modalSelectedAssets
+              .filter((sa) => !hasAssetTag(sa.tags, tag))
+              .map((sa) => ({ asset: sa, tags: [...(sa.tags || []), tag.name] })));
           };
           runInBackground(applyNewTag(), `Creating tag ${tagName}`);
         },

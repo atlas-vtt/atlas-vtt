@@ -5,6 +5,7 @@ import { BlockFrame } from './BlockFrame';
 import { provisionalSheet } from './provisionalSheet';
 import { SheetContext, useSheet } from './sheetContext';
 import { strandedDividers } from './strandedDividers';
+import { CountersView } from './blocks/CountersView';
 import { DividerView } from './blocks/DividerView';
 import { EntriesView } from './blocks/EntriesView';
 import { HeadingView } from './blocks/HeadingView';
@@ -50,6 +51,7 @@ function content(block: TemplateBlock, display: BlockDisplay): React.ReactNode {
     case 'entries': return <EntriesView block={block} display={display} />;
     case 'pairs': return <PairsView block={block} display={display} />;
     case 'track': return <TrackView block={block} display={display} />;
+    case 'counters': return <CountersView block={block} display={display} />;
     case 'image': return <ImageView block={block} display={display} />;
     case 'spells': return <SpellsView block={block} display={display} />;
     case 'heading': return <HeadingView block={block} display={display} />;

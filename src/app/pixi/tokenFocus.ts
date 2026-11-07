@@ -20,3 +20,24 @@ export function focusToken(viewport: Viewport, token: Pick<TokenEntity, 'x' | 'y
     ease: 'easeInOutCubic',
   });
 }
+
+/** The smallest a token is shown, in CSS pixels, when a click elsewhere brings it into view: its art still reads beside its controls. */
+export const READABLE_TOKEN_PX = 40;
+
+/**
+ * Brings `token` to the middle of the view at the zoom the GM chose, zooming in only so far that
+ * it is shown `READABLE_TOKEN_PX` wide where it would be smaller; never out.
+ */
+export function panToToken(viewport: Viewport, token: Pick<TokenEntity, 'x' | 'y' | 'size'>, gridSize: number): void {
+  const diameter = computeTokenPixelSize(gridSize, token.size || 1);
+  const current = viewport.scale.x;
+  const readable = Number.isFinite(diameter) && diameter > 0 ? READABLE_TOKEN_PX / diameter : current;
+  const scale = Math.max(current, readable);
+  allowZoom(viewport, scale);
+  viewport.animate({
+    position: { x: token.x, y: token.y },
+    scale,
+    time: 400,
+    ease: 'easeInOutCubic',
+  });
+}

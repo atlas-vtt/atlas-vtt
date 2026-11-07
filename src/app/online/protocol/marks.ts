@@ -19,8 +19,13 @@ export const MAX_MARK_CURSOR_NUMBERS = 64;
 export const MAX_KEPT = 20;
 /** The most kept measurements one sender has in a `marks` message (the GM keeps more than a player). */
 export const MAX_MARK_KEPT = 50;
-/** The shortest time between two `marks` messages, and between two of a player's lasers or measurements: about 30 a second (the last change always goes out). */
-export const MARKS_INTERVAL_MS = 33;
+/**
+ * The shortest time between two `marks` messages, and between two of a player's lasers, measurements
+ * or cursors: 10 a second (the last change always goes out). Each message carries the places passed
+ * since the one before and the time they took, so a receiver still moves a pointer on every frame
+ * (`PointerTrack`). Older pages and GMs send every 33 ms.
+ */
+export const MARKS_INTERVAL_MS = 100;
 /** The longest span a laser or a measurement message tells, in ms. */
 export const MAX_LASER_SPAN_MS = 1000;
 /** Who a mark is from: a player's relay id, or the GM. */

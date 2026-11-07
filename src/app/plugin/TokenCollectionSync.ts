@@ -1,5 +1,5 @@
 import type { App, EventRef } from 'obsidian';
-import { rulesForMap } from '../gameSystems/mapRules';
+import { mapConditions } from '../gameSystems/mapRules';
 import type { MeasurementSettings } from '../grid/measurementFormat';
 import { mapResources } from '../resources/collectionResources';
 import type { ResourceDefinition } from '../resources/resourceTypes';
@@ -29,7 +29,7 @@ export class TokenCollectionSync {
     this.fileRef = app.vault.on('modify', (file) => { void callbacks.refreshArt(file.path); });
   }
 
-  readonly conditions = (): ConditionDefinition[] => rulesForMap(rulesLookup(this.app), this.readState().mapPath).settings?.conditions ?? [];
+  readonly conditions = (): ConditionDefinition[] => mapConditions(rulesLookup(this.app), this.readState().mapPath);
 
   readonly resources = (): readonly ResourceDefinition[] => mapResources(rulesLookup(this.app), this.readState().mapPath);
 

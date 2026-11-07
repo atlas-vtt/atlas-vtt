@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 const templateSet = vi.hoisted(() => ({ set: undefined as unknown }));
 vi.mock('../../../src/app/statblocks/resolve/templateDiceSet', () => ({ templateDiceSet: () => templateSet.set }));
 
@@ -54,6 +53,37 @@ describe('a roll with a dice set', () => {
     expect(result.rolls).toEqual([{ die: 'd8', value: 5, max: 8 }]);
     expect(namedDiceLine(result.rolls, result.modifiers)).toBeNull();
     expect(rollLine(result)).toBe('1d8 + 3');
+  });
+
+  it('can give explicit matching dice the set appearance without changing the written roll', () => {
+    const bus = new EventEmitter();
+    const hear = vi.fn();
+    bus.on('dice-rolled', hear);
+    const tool = new DiceTool(bus, () => duality, inputs([9, 12], [4, 12], [3, 6]));
+    const result = tool.rollDice('2d12+d6+2', undefined, undefined, { setAppearance: true })!;
+    expect(result.formula).toBe('2d12+d6+2');
+    expect(result.total).toBe(18);
+    expect(result.rolls).toEqual([
+      { die: 'd12', max: 12, value: 9, name: 'Hope', colour: '#ca8a04' },
+      { die: 'd12', max: 12, value: 4, name: 'Fear', colour: '#7e22ce' },
+      { die: 'd6', max: 6, value: 3 },
+    ]);
+    expect(hear.mock.calls[0]?.[0]).toBe(result);
+  });
+
+  it('requires the whole matching pool and an explicit appearance request', () => {
+    const tool = new DiceTool(new EventEmitter(), () => duality, inputs());
+    for (const formula of ['d12', 'd8+d12', 'd12-d12', '2d8']) {
+      expect(tool.rollDice(formula, undefined, undefined, { setAppearance: true })!.rolls.some((die) => die.name || die.colour)).toBe(false);
+    }
+    expect(tool.rollDice('d12+d12')!.rolls.some((die) => die.name || die.colour)).toBe(false);
+  });
+
+  it('gives explosions their original die’s appearance and leaves extra dice alone', () => {
+    const tool = new DiceTool(new EventEmitter(), () => ({ ...duality, explode: { dice: 'default', repeats: false, highFaces: 1, lowFaces: 0 } }), inputs([12, 12], [5, 12], [3, 12], [2, 12]));
+    const result = tool.rollDice('d12+d12+d12', undefined, undefined, { setAppearance: true })!;
+    expect(result.rolls.map(({ name }) => name)).toEqual(['Hope', 'Hope', 'Fear', undefined]);
+    expect(result.rolls.map(({ value }) => value)).toEqual([12, 5, 3, 2]);
   });
 
   it('is critical by the set\'s rule over the set\'s dice', () => {

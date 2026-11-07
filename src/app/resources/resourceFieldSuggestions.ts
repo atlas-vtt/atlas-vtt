@@ -12,6 +12,10 @@ export interface FieldSuggestion {
   path: string;
   /** The template's name for it ("Hit Points", "STR"); unset for a field found only in statblocks. */
   label?: string;
+  /** What a statblock of the collection holds there, as the setting would read it ("+3"). */
+  sample?: string;
+  /** One of a scores field's slots: an ability score, read as one when picked. */
+  score?: boolean;
 }
 
 /** The paths of a field that hold a quantity: each slot of a Scores field, a number, or the hit points whatever their type. */

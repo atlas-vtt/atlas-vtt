@@ -1,4 +1,3 @@
-// @vitest-environment node
 import type { WorkspaceLeaf } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { create } from 'zustand';

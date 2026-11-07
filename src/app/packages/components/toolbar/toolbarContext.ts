@@ -5,12 +5,11 @@ import type { Tool } from "./toolFaces"
 import type { ToolGroupControls } from "./ToolGroup"
 
 /** Tool groups whose options menu is open; only one at a time. */
-export type ToolMenu = 'move' | 'fog' | 'draw' | 'text' | 'measure' | 'wall'
+export type ToolMenu = 'move' | 'fog' | 'draw' | 'text' | 'measure' | 'wall' | 'pin'
 
 /**
  * What MainToolbar hands every control's item builder. Gates (player view,
- * experimental features, build flags) live in the catalog and are applied
- * before a builder is asked.
+ * build flags) live in the catalog and are applied before a builder is asked.
  */
 export interface ToolbarContext {
   activeTool: Tool

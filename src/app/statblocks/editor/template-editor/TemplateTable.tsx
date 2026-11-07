@@ -7,6 +7,7 @@ import type { ShownTable } from '../../render/values/shownTable';
 import { EditableTable } from '../table/EditableTable';
 import { firstCell, sameCell, walkOf, type TableHost, type TableRoom } from '../table/tableHost';
 import { TemplateEditorContext } from './editorContext';
+import { t } from '../../../i18n';
 
 /** The template editor makes every change a statblock may make, and aligns columns too. */
 const TEMPLATE_ROOM: TableRoom = { rows: true, columns: true, names: true, align: true };
@@ -15,7 +16,7 @@ const TEMPLATE_ROOM: TableRoom = { rows: true, columns: true, names: true, align
 function inertHost(shown: ShownTable): TableHost {
   const nothing = (): void => undefined;
   return {
-    name: 'Table', grid: () => shown.grid, room: TEMPLATE_ROOM, active: null,
+    name: t('templateEditor.primitive.table'), grid: () => shown.grid, room: TEMPLATE_ROOM, active: null,
     open: nothing, close: nothing, leave: nothing, commit: nothing, exit: nothing, announce: nothing,
   };
 }
@@ -42,7 +43,7 @@ export function TemplateTable({ block, shown, look }: { block: ScoresBlock; show
   if (tableParts(editor.snapshot.template, block.id) === undefined) return <EditableTable block={block} shown={shown} look={look} host={inertHost(shown)} />;
   const { session } = editor;
   const host: TableHost = {
-    name: tableParts(editor.snapshot.template, block.id)?.field.label ?? 'Table',
+    name: tableParts(editor.snapshot.template, block.id)?.field.label ?? t('templateEditor.primitive.table'),
     grid: () => tableParts(session.getSnapshot().template, block.id)?.grid ?? shown.grid,
     room: TEMPLATE_ROOM,
     active,

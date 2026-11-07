@@ -2,18 +2,21 @@
 
 import { HEADER_PARTS } from '../model/templateHeader';
 import {
-  HEADER_PART_IDS, type HeaderPartId, type HeaderTrack, type StatblockTemplate, type TemplateHeader, type TemplateLicence,
+  HEADER_PART_IDS, PLAYER_ACCESS, type HeaderPartId, type PlayerAccess, type HeaderTrack, type StatblockTemplate, type TemplateHeader, type TemplateLicence,
   type TemplateSource,
 } from '../model/templateTypes';
 import { TRACK_COUNTS, TRACK_LOOKS } from './blockParts';
 import { DERIVED_FROM_KEYS, HEADER_KEYS, HEADER_TRACK_KEYS, IMPORTED_FROM_KEYS, SOURCE_KEYS } from './formatKeys';
 import { describeValue, isRecord } from './jsonValues';
 import { ObjectReader } from './objectReader';
-import { JSON_OBJECT, asJsonRecord, asKey, asNonNegativeInteger, asOneOf, asString, asText } from './valueReads';
+import { JSON_OBJECT, asJsonRecord, asKey, asNonNegativeInteger, asOneOf, asString, asText, choices } from './valueReads';
 
 type DerivedFrom = NonNullable<StatblockTemplate['derivedFrom']>;
 type ImportedFrom = NonNullable<StatblockTemplate['importedFrom']>;
 type Lookups = NonNullable<StatblockTemplate['lookups']>;
+type Players = NonNullable<StatblockTemplate['players']>;
+
+const HIDDEN: PlayerAccess = 'hidden';
 
 const LICENCE_SET: Record<TemplateLicence, true> = {
   'CC-BY-4.0': true, 'CC-BY-3.0': true, 'CC-BY-SA-4.0': true, ORC: true, 'DS-Creator': true, 'RTG-Homebrew': true,
@@ -115,4 +118,31 @@ export function readLookups(r: ObjectReader<keyof StatblockTemplate>): Partial<P
   const lookups: Lookups = Object.fromEntries(tables);
   if (dropped > 0) r.keep('lookups', raw, lookups, `holds ${dropped} tables or rows that are not text; they are ignored`);
   return { lookups };
+}
+
+/**
+ * What players may do with each field. A setting is kept as written, so one of a newer Atlas
+ * survives a save and reads as hidden (`isPlayerAccess` tells the ones this Atlas knows). A value
+ * that is no text reads as hidden too, and the file's settings are then kept for writing back.
+ */
+export function readPlayers(r: ObjectReader<keyof StatblockTemplate>): Partial<Pick<StatblockTemplate, 'players'>> {
+  const raw = r.rawValue('players');
+  if (raw === undefined) return {};
+  if (!isRecord(raw)) {
+    r.keep('players', raw, undefined, `is ${describeValue(raw)}, not an object of field keys; it is ignored`);
+    return {};
+  }
+  const entries: [string, string][] = [];
+  let unread = 0;
+  for (const [key, value] of Object.entries(raw)) {
+    if (key === '') unread += 1;
+    else if (typeof value === 'string') entries.push([key, value]);
+    else {
+      unread += 1;
+      entries.push([key, HIDDEN]);
+    }
+  }
+  const players: Players = Object.fromEntries(entries);
+  if (unread > 0) r.keep('players', raw, players, `holds ${unread} settings that are not ${choices(PLAYER_ACCESS)}; they read as hidden`);
+  return { players };
 }

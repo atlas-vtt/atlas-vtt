@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import { rollStatblockDice, type OffMapRolls } from '../../src/app/services/statblockRolls';
 import type { DiceRollResult } from '../../src/app/tools/DiceTool';
@@ -65,6 +64,17 @@ describe('where a statblock\'s roll goes', () => {
     expect(map.rolls).toHaveLength(1);
     expect(note.rolled).toEqual([]);
     expect(note.shown).toEqual([['18d10+36', true]]);
+  });
+
+  it('shows a map\'s roll on a surface over that map, and not on one the map\'s own display stands above', () => {
+    const map = mapView(true);
+    const over = { ...offMap(), covers: (mapEl: HTMLElement) => mapEl === (map.view.containerEl as unknown) };
+    rollStatblockDice(appWith(map.view), '1d6', {}, over);
+    expect(over.shown).toEqual([['1d6', true]]);
+    const inside = { ...offMap(), covers: () => false };
+    rollStatblockDice(appWith(map.view), '1d6', {}, inside);
+    expect(inside.shown).toEqual([]);
+    expect(map.rolls).toHaveLength(2);
   });
 
   it('is rolled and shown by the note, with sound, while no map is open', () => {

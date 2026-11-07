@@ -1,4 +1,3 @@
-// @vitest-environment node
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,10 +6,11 @@ import type { App, WorkspaceLeaf } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
-import { findPresentedTab, PRESENT_COMMAND, presentedScene, readPresented, showPresentedElsewhere } from '../../../../src/app/online/gm/presentedScene.ts';
+import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
+import { findPresentedTab, PRESENT_COMMAND, presentedScene, readPresented, showPresentedElsewhere, showsPresented } from '../../../../src/app/online/gm/presentedScene.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
-import { app, atlasTab, FakeSocket, FakeTabs, png, present, switchScene, workspace } from './fakeTable.ts';
+import { app, atlasTab, FakeSocket, FakeTabs, png, present, switchScene, workspace, storedAccount } from './fakeTable.ts';
 import { sceneState } from './shareHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -34,6 +34,7 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
       return null;
     }
     showPlayers(): void {}
+    showPlayerDrags(): void {}
     showPlayerCursors(): void {}
     dispose(): void {}
   },
@@ -48,7 +49,7 @@ const ANA = 'anaanaanaanaanaanaan';
 const BEN = 'benbenbenbenbenbenbe';
 const CAVE = 'Scenes/Cave.atlasmap';
 const HALL = 'Scenes/Hall.atlasmap';
-const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, mapPath: CAVE, gate: { code: '483912', requireCode: true, askToJoin: true } };
+const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, campaignId: 'c1', mapPath: CAVE, gate: { code: '483912', requireCode: true, askToJoin: true } };
 const character = (id: string, name: string, x: number): TokenEntity => ({ id, kind: 'character', name, imagePath: 'art/ogre.png', x, y: 140 });
 const cave = (x = 140): SceneState => sceneState({ mapPath: CAVE, background: 'maps/cave.png', objects: { ...sceneState().objects, tokens: { 'gm-ogre': character('gm-ogre', 'Ogre', x) } } });
 const hall = (): SceneState => sceneState({ mapPath: HALL, background: 'maps/hall.png', objects: { ...sceneState().objects, tokens: { 'gm-goblin': character('gm-goblin', 'Goblin', 700) } } });
@@ -59,9 +60,10 @@ const scenes = (socket: FakeSocket, to?: string): unknown[] => bodies(socket, to
 const mapHash = (scene: unknown): unknown => (scene as { map?: { hash?: string } } | null)?.map?.hash;
 
 /** A running table restored from `SAVED`, welcomed by the relay with Ana at it. */
-async function running(ownership = new Ownership(readOwnership(undefined), () => undefined)): Promise<{ online: OnlineControl; socket: FakeSocket }> {
-  const online = new OnlineControl(app, ownership);
-  online.resume(SAVED);
+async function running(): Promise<{ online: OnlineControl; socket: FakeSocket }> {
+  const players = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }];
+  const online = new OnlineControl(app, boundOwnership(players), fakeCampaigns(players), undefined, storedAccount());
+  void online.resume(SAVED);
   await advance(0);
   const socket = FakeSocket.all.at(-1);
   if (socket === undefined) throw new Error('no socket');
@@ -112,7 +114,7 @@ describe('the scene players see', () => {
     socket.relay({ t: 'player-joined', id: BEN, name: 'Ben' });
     await advance(500);
     expect(bodies(socket, ANA).at(-1)).toMatchObject({ t: 'move-refused', x: 140, y: 140 });
-    expect(online.ownership.ownerOf('gm-ogre')).toBe(ANA);
+    expect(online.ownership.ownerOf('gm-ogre', undefined)).toBe(ANA);
     expect(scenes(socket, BEN)).toEqual([shown]);
     expect(bodies(socket, BEN).find((body) => body.t === 'tokens')?.tokens).toMatchObject([{ id: ogre.id, x: 140 }]);
     expect(JSON.stringify(socket.frames().slice(before))).not.toMatch(/Goblin|hall\.png|Hall/);
@@ -129,6 +131,38 @@ describe('the scene players see', () => {
     await advance(1_500);
     expect(mapHash(scenes(socket).at(-1))).not.toBe(mapHash(shown));
     expect(scenes(socket).at(-1)).not.toBeNull();
+    online.stop();
+  });
+
+  it('keeps a player\'s character theirs on the next scene the GM presents, as Foundry keeps an actor\'s tokens its owner\'s', async () => {
+    const hero = (id: string, x: number): TokenEntity => ({ ...character(id, 'Hero', x), assetId: 'library-hero' });
+    const scene = (mapPath: string, background: string, tokens: Record<string, TokenEntity>): SceneState => sceneState({ mapPath, background, objects: { ...sceneState().objects, tokens } });
+    const tab = atlasTab(scene(CAVE, 'maps/cave.png', { 'cave-hero': hero('cave-hero', 140), 'gm-ogre': character('gm-ogre', 'Ogre', 300) }));
+    workspace.leaves = [tab.leaf];
+    present(tab);
+    const { online, socket } = await running();
+    online.give(['cave-hero'], ANA);
+    await advance(500);
+
+    // The Hall holds another token of the same library character, and a goblin nobody was given.
+    switchScene(tab, scene(HALL, 'maps/hall.png', { 'hall-hero': hero('hall-hero', 200), 'gm-goblin': character('gm-goblin', 'Goblin', 700) }));
+    present(tab);
+    await advance(1_500);
+    const listed = bodies(socket).filter((body) => body.t === 'tokens').at(-1)?.tokens ?? [];
+    const hallHero = listed.find((entry) => entry.x === 200)?.id;
+    const mine = bodies(socket, ANA).filter((body) => body.t === 'mine').at(-1) as { tokens?: readonly string[] } | undefined;
+    expect(hallHero).toBeDefined();
+    expect(mine?.tokens).toEqual([hallHero]);
+    expect(online.playerTokens().map(({ tokenId, owner }) => [tokenId, owner?.name])).toEqual([['hall-hero', 'Ana']]);
+
+    // Ana moves her hero on the Hall: taken, while her move of the goblin is refused.
+    const hallScene = (scenes(socket).at(-1) as { id: string }).id;
+    const goblin = listed.find((entry) => entry.x === 700)?.id;
+    const before = bodies(socket, ANA).length;
+    socket.relay({ t: 'game', from: ANA, body: { t: 'move', scene: hallScene, id: hallHero, x: 260, y: 140 } });
+    socket.relay({ t: 'game', from: ANA, body: { t: 'move', scene: hallScene, id: goblin, x: 640, y: 140 } });
+    await advance(500);
+    expect(bodies(socket, ANA).slice(before).filter((body) => body.t === 'move-refused').map((body) => body.id)).toEqual([goblin]);
     online.stop();
   });
 
@@ -216,6 +250,21 @@ describe('what Atlas presents', () => {
     expect(findPresentedTab(leaves, { tabId: 'gone', filePath: CAVE })).toMatchObject({ leaf: leaves[1], tabId: FakeTabs.idOf(CAVE) });
     expect(findPresentedTab(leaves, null)).toBeNull();
     expect(findPresentedTab(leaves, { tabId: 'gone', filePath: 'Scenes/None.atlasmap' })).toBeNull();
+  });
+
+  it('names the presented level of a scene with several, and shows the scene whichever level the GM looks at: players see their own floors', () => {
+    const levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.png' },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'maps/hall.png' },
+    ];
+    expect(readPresented({ tabId: 't1', filePath: CAVE, levelId: 'upper' })).toEqual({ tabId: 't1', filePath: CAVE, levelId: 'upper' });
+    const leaves = [tabsLeaf(new FakeTabs(CAVE))];
+    const tab = findPresentedTab(leaves, { tabId: FakeTabs.idOf(CAVE), filePath: CAVE, levelId: 'upper' });
+    if (tab === null) throw new Error('no tab');
+    expect(tab.levelId).toBe('upper');
+    expect(showsPresented(cave(), tab)).toBe(true);
+    expect(showsPresented({ ...cave(), levels, viewedLevel: 'upper' }, tab)).toBe(true);
+    expect(showsPresented({ ...cave(), levels, viewedLevel: 'ground' }, tab)).toBe(true);
   });
 
   it('tells Atlas it shows the presented scene, and tells nothing to an Atlas without the call', () => {

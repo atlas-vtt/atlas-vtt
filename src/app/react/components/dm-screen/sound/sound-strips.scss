@@ -1,0 +1,289 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
+
+// One strip of the desk: mute, a fader with its level inside, the level in dB, a name. All on one line across.
+.atlas-sound-strip {
+  position: relative;
+  flex-shrink: 0;
+  width: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  transition: opacity $transition-normal $press-ease;
+
+  &[data-muted] {
+    opacity: 0.55;
+  }
+
+  &[data-waiting] {
+    opacity: 0.7;
+  }
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    width: 88px;
+  }
+}
+
+.atlas-sound-strip--master {
+  width: 96px;
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    width: 72px;
+  }
+}
+
+// In the music card, whose padding is a step wider: the margins bring its fader level with the others'.
+.atlas-sound-strip--music {
+  width: 64px;
+  margin-block: -($spacing-m - $spacing-s);
+  padding: 0;
+}
+
+.atlas-sound-strip__top {
+  flex-shrink: 0;
+  width: 100%;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+
+  .atlas-sound-icon {
+    width: 28px;
+    height: 28px;
+
+    // 40 px to press, where the strip has room: remove lies against its edge.
+    &:not(.atlas-sound-strip__remove)::after {
+      content: '';
+      position: absolute;
+      inset: -$spacing-xs;
+    }
+  }
+}
+
+.atlas-sound-strip__remove {
+  position: absolute;
+  top: $spacing-s;
+  right: $spacing-xs;
+  opacity: 0;
+  transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+}
+
+// Never `.parent:hover &`: all of this compiles inside `.atlas-vtt-plugin`, which would then have to lie within the parent.
+.atlas-sound-strip:hover .atlas-sound-strip__remove,
+.atlas-sound-strip:focus-within .atlas-sound-strip__remove {
+  opacity: 1;
+}
+
+.atlas-sound-strip__name {
+  flex-shrink: 0;
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: $font-weight-medium;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+
+  span {
+    @include atlas-line-clamp(2);
+  }
+
+  @container atlas-dm-screen (max-height: 560px) {
+    height: 16px;
+
+    span {
+      -webkit-line-clamp: 1;
+    }
+  }
+}
+
+.atlas-sound-fader {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 56px;
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  // The thumb's press area reaches past the rail's ends by half the thumb, never onto the knob or the level.
+  overflow: clip;
+  overflow-clip-margin: 8px;
+}
+
+.atlas-sound-meter {
+  position: relative;
+  width: 8px;
+  overflow: hidden;
+  border-radius: $radius-full;
+  background: var(--atlas-sound-slot);
+  box-shadow: inset 0 0 0 $border-width-s $control-line;
+
+  i {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      color-mix(in oklch, var(--interactive-accent) 55%, var(--background-primary)),
+      var(--interactive-accent)
+    );
+    transform: scaleY(0);
+    transform-origin: bottom;
+    will-change: transform;
+  }
+}
+
+// The thumb's place is a share of this rail, which moves by a transform: a mood's levels glide into place.
+.atlas-sound-fader__rail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateY(calc(var(--atlas-sound-fader-at, 0) * 100%));
+  transition: transform 240ms $press-ease;
+
+  &[data-held] {
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.atlas-sound-fader__thumb {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  z-index: 1;
+  width: 32px;
+  height: 16px;
+  margin-inline-start: -16px;
+  border-radius: $cap-radius;
+  background: linear-gradient(
+    color-mix(in oklch, var(--mono-100) 20%, var(--background-secondary)),
+    color-mix(in oklch, var(--mono-100) 6%, var(--background-secondary))
+  );
+  box-shadow: 0 1px 3px color-mix(in oklch, black 65%, transparent), inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 13%, transparent);
+  cursor: grab;
+  pointer-events: auto;
+  @include atlas-corner-shape;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 7px $spacing-s auto;
+    height: 2px;
+    border-radius: $radius-full;
+    background: var(--interactive-accent);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  // The cap is drawn 16 px high; it takes a press 44 px high (the rail's clip keeps it on the rail).
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -14px (-$spacing-s);
+  }
+}
+
+.atlas-sound-fader__foot {
+  flex-shrink: 0;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+}
+
+// The reset always keeps its room beside the level; until the strip is hovered the level stands half that
+// room aside, so it is centred, and the reset waits unseen. Only transforms move.
+$reset-shift: calc((16px + #{$spacing-xs}) / 2);
+
+.atlas-sound-fader__foot .atlas-sound-fader__value,
+.atlas-sound-fader__foot .atlas-sound-fader__reset {
+  transition: transform $press-ms $press-ease, opacity $transition-fast $press-ease, color $transition-normal $press-ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity $transition-fast $press-ease;
+  }
+}
+
+.atlas-sound-fader__foot .atlas-sound-fader__value {
+  transform: translateX($reset-shift);
+}
+
+.atlas-sound-fader__foot .atlas-sound-fader__reset {
+  position: relative;
+  flex-shrink: 0;
+  // 24 px to press, in the 16 px the foot gives it: it reaches into the gaps above and below, never the rail.
+  width: 24px;
+  height: 24px;
+  margin: -$spacing-xs;
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+
+  svg {
+    width: 12px;
+    height: 12px;
+    transition: transform $press-ms $press-ease;
+  }
+
+  &:hover:not(:disabled) {
+    background: none;
+
+    svg {
+      transform: rotate(-45deg);
+    }
+  }
+}
+
+.atlas-sound-strip:hover .atlas-sound-fader__foot,
+.atlas-sound-strip:focus-within .atlas-sound-fader__foot {
+  .atlas-sound-fader__value,
+  .atlas-sound-fader__reset {
+    transform: none;
+  }
+
+  .atlas-sound-fader__reset {
+    opacity: 1;
+    pointer-events: auto;
+
+    &:active:not(:disabled) svg {
+      transform: scale(0.85);
+    }
+
+    &:disabled {
+      opacity: 0.35;
+    }
+  }
+}
+
+@media (hover: none) {
+  .atlas-sound-fader__foot {
+    .atlas-sound-fader__value,
+    .atlas-sound-fader__reset {
+      transform: none;
+    }
+
+    .atlas-sound-fader__reset {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+
+.atlas-sound-fader__value {
+  flex-shrink: 0;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

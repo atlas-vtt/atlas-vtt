@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -58,6 +59,25 @@ const timerValue = (store: ViewAtlasStore): number => timerShownSeconds(store.ge
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { cleanup(); document.body.empty(); vi.useRealTimers(); });
+
+describe('the widget used last', () => {
+  const topLabel = (): string | null | undefined => document.querySelector('[data-stack-depth="0"] .atlas-widget-label-text')?.textContent;
+
+  it('is the one a held key steers', () => {
+    renderBar();
+    expect(topLabel()).toBe('Fear');
+    press('2', 'Digit2');
+    expect(topLabel()).toBe('Torch');
+    release('2', 'Digit2');
+    expect(topLabel()).toBe('Torch');
+  });
+
+  it('is the one a click landed on', () => {
+    renderBar();
+    act(() => { document.querySelectorAll<HTMLElement>('.atlas-widget')[1]!.click(); });
+    expect(topLabel()).toBe('Torch');
+  });
+});
 
 describe('held timer hotkeys', () => {
   it('starts, pauses and resets the timer at the held position', () => {

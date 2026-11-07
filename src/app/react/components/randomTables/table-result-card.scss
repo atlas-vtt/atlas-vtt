@@ -98,3 +98,45 @@
     @include atlas-focus-ring;
   }
 }
+
+// ── Generators ─────────────────────────────────────────────────────────────
+// A generator's parts take a third column: the part's lock and its own reroll.
+.atlas-table-card__fields--parts {
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.atlas-table-card__part-controls {
+  @include atlas-flex-row(2px);
+}
+
+.atlas-table-card__part-action.btn--icon {
+  width: $button-height-s;
+  height: $button-height-s;
+  margin: 0;
+  color: var(--text-faint);
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover {
+    color: var(--text-normal);
+  }
+
+  &.is-locked {
+    color: var(--interactive-accent);
+    background: color-mix(in oklch, var(--interactive-accent) 16%, transparent);
+  }
+}
+
+.atlas-table-card__reroll.atlas-loot-text-button {
+  @include atlas-flex-row($spacing-xs);
+  flex-shrink: 0;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}

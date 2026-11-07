@@ -99,8 +99,8 @@ describe.each([false, true])('thumbnail of a scene with dynamic lighting (antial
     // Each overlay covers the map in magenta: one that reached the picture would light its dark floor.
     const dark = inThumbnail(DARK_AT, SCENE_CARD);
     expect(brightnessAt(await thumbnail(), dark.x, dark.y)).toBeLessThan(70);
-    // Pins, hex links and the GM's seven overlays: all but the wall editor, hidden before, are back.
-    expect(layers.map((layer) => layer.visible)).toEqual([true, true, false, true, true, true, true, true, true]);
+    // Pins, hex links and the GM's eight overlays: all but the wall editor, hidden before, are back.
+    expect(layers.map((layer) => layer.visible)).toEqual([true, true, false, true, true, true, true, true, true, true]);
     expect(largestDifference(scene.onScreen(SCENE_CARD), before)).toBe(0);
   });
 

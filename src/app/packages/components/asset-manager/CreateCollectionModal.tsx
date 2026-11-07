@@ -161,7 +161,7 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
                   id="atlas-new-collection-name"
                   type="text"
                   className="atlas-csm-input"
-                  placeholder={t('uiAssets.createCollectionModal_eGCurseOfTheCrimsonThrone')}
+                  placeholder="e.g. Curse of the Crimson Throne"
                   value={name}
                   aria-invalid={(showErrors && nameError !== null) || undefined}
                   onChange={(e) => setName(e.target.value)}
@@ -170,7 +170,7 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
               </div>
               <section className="atlas-create-collection__section" aria-labelledby="atlas-new-collection-system">
                 <h4 id="atlas-new-collection-system" className="atlas-create-collection__heading">{t('am.create.system')}</h4>
-                <p className="atlas-csm-hint">{t('uiAssets.createCollectionModal_setsHowDistancesAreMeasuredAndWhichConditionsTokensCanHaveYouCanChange')}</p>
+                <p className="atlas-csm-hint">Sets how distances are measured and which conditions tokens can have. You can change it later in the collection&apos;s settings.</p>
                 <SystemChoiceList presets={presets} choice={choice} onChange={setChoice} />
               </section>
             </>

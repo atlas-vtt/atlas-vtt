@@ -1,0 +1,63 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// What every part of the Sound page shares. Only Obsidian's variables: a theme decides the colours.
+$hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
+// What a control is drawn with where it must be told from the card it stands on (WCAG 1.4.11, 3:1): a fader's
+// rail, the waveform's unplayed part. Half the text colour into the card: 4.9:1 dark, 3.9:1 light.
+$control-line: color-mix(in srgb, var(--mono-100) 50%, var(--background-primary-alt));
+// Four corners: the pane's (24), the cards' (16: concentric with it, one $spacing-s in, as every Atlas panel's
+// corner controls are), a control's (8) and a keycap's (4).
+$card-inset: $spacing-s;
+$card-radius: atlas-panel-inset-radius-value($card-inset);
+$control-radius: $radius-m;
+$cap-radius: $radius-s;
+$press-ease: cubic-bezier(0.2, 0, 0, 1);
+$press-ms: 120ms;
+
+// The page's quiet text (counts, tags, times, the second line of a tile). A dark theme's muted grey is a
+// step too dim for text this small (APCA Lc 59 on the page), so it takes a fifth of the normal text.
+@mixin sound-muted-text {
+  --atlas-sound-muted: var(--text-muted);
+
+  .theme-dark & {
+    --atlas-sound-muted: color-mix(in srgb, var(--text-muted) 80%, var(--text-normal));
+  }
+}
+
+@mixin bare-button {
+  height: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  @include atlas-corner-shape;
+}
+
+@mixin pressable($scale: 0.96) {
+  &:active:not(:disabled) {
+    transform: scale($scale);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}
+
+// The page's filled button (Stop all held): Atlas' accent fill, whose text reads on any accent.
+@mixin solid-accent {
+  @include atlas-accent-fill;
+}
+
+@mixin hairline-tile {
+  border-radius: $card-radius;
+  box-shadow: inset 0 0 0 $border-width-s $hairline;
+  @include atlas-corner-shape;
+}

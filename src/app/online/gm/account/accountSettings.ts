@@ -1,17 +1,17 @@
-import { t } from '../../../i18n';
 import type { AtlasSettingSection } from '../../../settings/settingSections';
 import type { AccountControl } from './AccountControl.ts';
 import { accessText, accountText, planText, UNREACHABLE_TEXT, type AccountView } from './accountView.ts';
+import { t } from '../../../i18n';
 
 /** What the account row says. */
 function accountDesc(view: AccountView): string {
   switch (view.kind) {
-    case 'waiting': return t('uiOnlineDetails.accountSettings_approveTheSignInInYourBrowser');
-    case 'checking': return t('uiOnlineDetails.accountSettings_checkingYourAccount');
+    case 'waiting': return t('online.account.approve');
+    case 'checking': return t('online.account.checking');
     case 'unreachable': return UNREACHABLE_TEXT;
-    case 'no-access': return t('uiOnlineDetails.accountSettings_signedInAsAccountAccess', { account: accountText(view.account), access: accessText(view.reason) });
-    case 'can-host': return t('uiOnlineDetails.accountSettings_signedInAsAccountPlan', { account: accountText(view.account), plan: planText(view.access) });
-    default: return t('uiOnlineDetails.accountSettings_notSignedInSignInToHostOnlineTablesWithYourAtlasAccount');
+    case 'no-access': return t('online.account.signedInNoAccess', { account: accountText(view.account), reason: accessText(view.reason) });
+    case 'can-host': return t('online.account.signedInPlan', { account: accountText(view.account), plan: planText(view.access) });
+    default: return t('online.account.signedOut');
   }
 }
 
@@ -23,9 +23,9 @@ const signedIn = (view: AccountView): boolean => view.kind === 'no-access' || vi
  */
 export function accountSections(account: AccountControl): AtlasSettingSection[] {
   return [{
-    heading: t('uiOnlineDetails.accountSettings_onlineAccount'),
+    heading: t('online.account.heading'),
     rows: [{
-      name: t('uiOnlineDetails.accountSettings_atlasAccount'),
+      name: t('online.account.name'),
       desc: accountDesc(account.view()),
       // The row is drawn from the account as it is now and again whenever it changes, while the settings are open.
       render: (setting) => {
@@ -33,11 +33,11 @@ export function accountSections(account: AccountControl): AtlasSettingSection[] 
           const view = account.view();
           setting.setDesc(accountDesc(view));
           setting.clear();
-          if (signedIn(view)) setting.addButton((button) => button.setButtonText(t('uiOnline.accountSettings_signOut')).onClick(() => void account.signOut()));
-          else if (view.kind === 'signed-out') setting.addButton((button) => button.setButtonText(t('uiOnline.accountSettings_signIn')).setCta().onClick(() => void account.signIn()));
-          else if (view.kind === 'waiting') setting.addButton((button) => button.setButtonText(t('uiOnline.accountSettings_cancel')).onClick(() => account.cancelSignIn()));
+          if (signedIn(view)) setting.addButton((button) => button.setButtonText(t('online.signOut')).onClick(() => void account.signOut()));
+          else if (view.kind === 'signed-out') setting.addButton((button) => button.setButtonText(t('online.signIn')).setCta().onClick(() => void account.signIn()));
+          else if (view.kind === 'waiting') setting.addButton((button) => button.setButtonText(t('online.cancel')).onClick(() => account.cancelSignIn()));
           setting.addButton((button) => {
-            button.setButtonText(t('uiOnline.accountSettings_openAccountPage')).onClick(() => account.openAccountPage());
+            button.setButtonText(t('online.account.open')).onClick(() => account.openAccountPage());
             if (view.kind === 'no-access') button.setCta();
           });
         };

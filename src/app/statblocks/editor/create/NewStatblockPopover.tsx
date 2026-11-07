@@ -1,8 +1,8 @@
-import { t } from '../../../i18n';
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAnchoredPopoverVariants } from '../../../packages/components/primitives/dialogMotion';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
+import { t } from '../../../i18n';
 import './create-statblock.scss';
 
 export interface NewStatblockPopoverProps {
@@ -71,7 +71,7 @@ export function NewStatblockPopover({ roleName, onCreate, onCancel }: NewStatblo
       exit="exit"
     >
       <div className="atlas-sb-new-popover__header">
-        <label id={`${id}-label`} htmlFor={`${id}-name`} className="atlas-sb-new-popover__label">{t('uiStatblocks.newStatblockPopover_newStatblock')}</label>
+        <label id={`${id}-label`} htmlFor={`${id}-name`} className="atlas-sb-new-popover__label">{t('statblockEditor.newStatblock')}</label>
         <span className="atlas-sb-new-popover__role">{roleName}</span>
       </div>
       <input
@@ -79,7 +79,7 @@ export function NewStatblockPopover({ roleName, onCreate, onCancel }: NewStatblo
         id={`${id}-name`}
         type="text"
         className="atlas-sb-new-popover__input"
-        placeholder={t('uiStatblocks.newStatblockPopover_name')}
+        placeholder={t('statblockEditor.name')}
         spellCheck={false}
         autoComplete="off"
         value={name}

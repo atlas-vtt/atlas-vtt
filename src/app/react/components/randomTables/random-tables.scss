@@ -91,6 +91,97 @@
   }
 }
 
+// A row and its ⋯, which takes the fact's place while the row is pointed at, focused or selected.
+.atlas-tables-entry {
+  position: relative;
+
+  // Room for the ⋯ that takes the fact's place, so the name never runs under it.
+  .atlas-tables-row__fact {
+    min-width: $button-height-s;
+    text-align: right;
+  }
+
+  // Without hover (a touch screen) a row cannot be pointed at first: the ⋯ stands beside it.
+  @media (hover: none) {
+    display: flex;
+    align-items: center;
+
+    .atlas-tables-row {
+      min-width: 0;
+    }
+
+    .atlas-tables-entry__more {
+      position: static;
+      flex-shrink: 0;
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
+    }
+  }
+
+  @media (hover: hover) {
+    &:hover,
+    &:focus-within,
+    &:has(.is-selected) {
+      .atlas-tables-entry__more {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .atlas-tables-row__fact {
+        visibility: hidden;
+      }
+    }
+  }
+}
+
+// Concentric inside the row: the row's corner less its inset.
+.atlas-tables-entry__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 50%;
+  right: $spacing-xs;
+  width: $button-height-s;
+  height: $button-height-s;
+  padding: 0;
+  border: none;
+  border-radius: $radius-s;
+  @include atlas-corner-shape;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  cursor: pointer;
+  transition: opacity $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-tables-row--rename {
+  background: var(--background-modifier-form-field);
+  cursor: text;
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+}
+
 .atlas-tables-row__name {
   @include atlas-line-clamp(2);
   flex: 1;

@@ -1,4 +1,5 @@
 import type { PreviewWindowLayout } from '../stores/pinnedNotePreviewSlice';
+import type { ViewFrame } from '../packages/components/primitives/popoverFit';
 
 interface Size {
   width: number;
@@ -58,6 +59,55 @@ export function previewPositionNearPointer(
   return {
     left: nearAxis(pointer.x, size.width, area.width),
     top: nearAxis(pointer.y, size.height, area.height),
+  };
+}
+
+/** How much of the grab area beside a preview's controls stays in view, in px. */
+const GRAB_REACH = 96;
+
+/**
+ * The part of a preview window that must stay in view, so it can still be
+ * moved, unpinned and closed: its controls and the stretch of its grab area
+ * (a header) beside them, up to `GRAB_REACH` px to their left. Null while the
+ * window is hidden.
+ */
+export function previewReach(controls: ViewFrame, grabArea: ViewFrame | null): ViewFrame | null {
+  // A hidden window measures nothing, and has nothing to keep in view.
+  if (controls.right === controls.left && controls.bottom === controls.top) return null;
+  if (!grabArea) return { left: controls.left, top: controls.top, right: controls.right, bottom: controls.bottom };
+  return {
+    left: Math.min(controls.left, Math.max(grabArea.left, controls.left - GRAB_REACH)),
+    top: Math.min(controls.top, grabArea.top),
+    right: Math.max(controls.right, grabArea.right),
+    bottom: Math.max(controls.bottom, grabArea.bottom),
+  };
+}
+
+/**
+ * The part of `frame` that lies inside every one of `clips`, or null where nothing does: what
+ * shows of an element inside the boxes that hold it, such as a header scrolled out of its card.
+ */
+export function visiblePart(frame: ViewFrame, clips: readonly ViewFrame[]): ViewFrame | null {
+  const part = clips.reduce<ViewFrame>((shown, clip) => ({
+    left: Math.max(shown.left, clip.left),
+    top: Math.max(shown.top, clip.top),
+    right: Math.min(shown.right, clip.right),
+    bottom: Math.min(shown.bottom, clip.bottom),
+  }), frame);
+  return part.right > part.left && part.bottom > part.top ? part : null;
+}
+
+/**
+ * The least shift that brings `reach` inside `frame`, both in the same
+ * coordinates. Where the reach does not fit, its top right corner wins: the
+ * pin and close buttons of both kinds of preview sit there. An unknown frame
+ * (a hidden map view, 0 × 0) asks for no shift.
+ */
+export function shiftIntoFrame(reach: ViewFrame, frame: ViewFrame): { x: number; y: number } {
+  if (frame.right <= frame.left || frame.bottom <= frame.top) return { x: 0, y: 0 };
+  return {
+    x: Math.min(Math.max(0, frame.left - reach.left), frame.right - reach.right),
+    y: Math.max(Math.min(0, frame.bottom - reach.bottom), frame.top - reach.top),
   };
 }
 

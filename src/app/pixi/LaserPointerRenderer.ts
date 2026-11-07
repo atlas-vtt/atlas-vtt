@@ -7,8 +7,6 @@ import { setCanvasCursor } from './utils/canvasCursor';
 import { destroyTree } from './utils/destroyTree';
 import { MAX_TRAIL_SAMPLES, type BeamPoint } from './laser/laserBeamGeometry';
 import { LaserBeam, beamWidth, type LaserBeamView } from './laser/LaserBeam';
-import { CanvasLaserBeam } from './laser/CanvasLaserBeam';
-import { usesCanvasRenderer } from './utils/rendererType';
 
 interface TrailPoint {
   x: number;
@@ -80,7 +78,7 @@ export class LaserPointerRenderer {
     this.container.interactive = false;
     this.container.interactiveChildren = false;
 
-    this.beam = usesCanvasRenderer(pixiApp.renderer) ? new CanvasLaserBeam() : new LaserBeam();
+    this.beam = new LaserBeam();
     this.container.addChild(this.beam.view);
 
     this.readSettings = readSettings;

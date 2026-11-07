@@ -13,7 +13,7 @@ import type { FieldKey, FieldType, TemplateBlock, TemplateField } from './templa
 /** The type a new field gets from the block that names it; the tile's Kind of value changes it. */
 const NEW_FIELD_TYPES: Partial<Record<TemplateBlock['type'], FieldType>> = {
   stat: 'text', metric: 'number', line: 'text', title: 'text', tags: 'list', pairs: 'pairs', track: 'number',
-  scores: 'scores', entries: 'entries', spells: 'spells', text: 'markdown', image: 'image',
+  counters: 'counters', scores: 'scores', entries: 'entries', spells: 'spells', text: 'markdown', image: 'image',
 };
 
 /** The field `block` gets when it is named `label` under `key`; null for a block that shows no field. */

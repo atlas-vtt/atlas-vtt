@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,7 +7,7 @@ import type { UvttImported } from '../../src/app/import/uvtt/importUvttFile';
 import { runUvttImport } from '../../src/app/import/uvtt/runUvttImport';
 import { TokenCreator } from '../../src/app/packages/components/asset-manager/TokenCreator';
 import { FolderGridItem } from '../../src/app/packages/components/asset-manager/components/FolderGridItem';
-import { mayCarryMapFile, useUvttImport, uvttFilesAmong, type ImportMaps } from '../../src/app/packages/components/asset-manager/hooks/useUvttImport';
+import { mapFilesAmong, mayCarryMapFile, useUvttImport, type ImportMaps } from '../../src/app/packages/components/asset-manager/hooks/useUvttImport';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { AssetService } from '../../src/app/services/AssetService';
 
@@ -32,6 +33,7 @@ vi.mock('../../src/app/packages/components/asset-manager/token-creator/tokenImag
 const crypt = new File(['{}'], 'Crypt.dd2vtt');
 const keep = new File(['{}'], 'Keep.UVTT');
 const cave = new File(['art'], 'Cave.png', { type: 'image/png' });
+const river = new File(['video'], 'River.webm', { type: 'video/webm' });
 
 const imported = (name: string): UvttImported => ({
   ok: true, name, scenePath: `atlas-vtt/collections/Dungeons/scenes/${name}.atlasmap`, counts: { walls: 1, doors: 0, lights: 0 }, lightsOff: false,
@@ -60,15 +62,18 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('telling map files from other files', () => {
-  it('picks the Universal VTT files by their names', () => {
-    expect(uvttFilesAmong([cave, crypt, keep])).toEqual([crypt, keep]);
-    expect(uvttFilesAmong([cave])).toEqual([]);
+  it('picks the Universal VTT files and the videos by their names', () => {
+    expect(mapFilesAmong([cave, crypt, keep, river])).toEqual([crypt, keep, river]);
+    expect(mapFilesAmong([cave])).toEqual([]);
   });
 
   it.each([
     ['a file of a type the browser does not know, as a map file is', [{ kind: 'file', type: '' }], true],
     ['a map file among images', [{ kind: 'file', type: 'image/png' }, { kind: 'file', type: '' }], true],
     ['only images', [{ kind: 'file', type: 'image/png' }, { kind: 'file', type: 'image/webp' }], false],
+    ['a WebM video', [{ kind: 'file', type: 'video/webm' }], true],
+    ['an MP4 video', [{ kind: 'file', type: 'video/mp4' }], true],
+    ['a QuickTime video', [{ kind: 'file', type: 'video/quicktime' }], false],
     ['a PDF', [{ kind: 'file', type: 'application/pdf' }], false],
     ['a note', [{ kind: 'file', type: 'text/markdown' }], false],
     ['a JSON file', [{ kind: 'file', type: 'application/json' }], false],
@@ -96,11 +101,12 @@ describe('importing maps in the asset manager', () => {
   interface Props { isOpen: boolean; isMapCreatorOpen: boolean; isBusy: boolean }
   const OPEN: Props = { isOpen: true, isMapCreatorOpen: false, isBusy: false };
 
-  function manager(initial: Props = OPEN): { importMaps: () => ImportMaps; set: (props: Partial<Props>) => void; onSceneOpened: ReturnType<typeof vi.fn> } {
+  function manager(initial: Props = OPEN): { importMaps: () => ImportMaps; set: (props: Partial<Props>) => void; onSceneOpened: ReturnType<typeof vi.fn>; onVideos: ReturnType<typeof vi.fn> } {
     const onSceneOpened = vi.fn();
+    const onVideos = vi.fn();
     let current = initial;
-    const { result, rerender } = renderHook((props: Props) => useUvttImport({ app, assetService: assets, collectionId: 'Dungeons', onSceneOpened, ...props }), { initialProps: initial });
-    return { importMaps: () => result.current, onSceneOpened, set: (props) => { current = { ...current, ...props }; rerender(current); } };
+    const { result, rerender } = renderHook((props: Props) => useUvttImport({ app, assetService: assets, collectionId: 'Dungeons', onSceneOpened, onVideos, ...props }), { initialProps: initial });
+    return { importMaps: () => result.current, onSceneOpened, onVideos, set: (props) => { current = { ...current, ...props }; rerender(current); } };
   }
 
   /** Fires a native drag event at `target` and tells whether it was taken (default prevented). */
@@ -118,6 +124,16 @@ describe('importing maps in the asset manager', () => {
     vi.mocked(runUvttImport).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
     return (result) => finish(result);
   }
+
+  it('hands dropped videos to the map creator and imports nothing by itself', async () => {
+    const { onSceneOpened, onVideos } = manager();
+
+    expect(drag('drop', container, [river, cave]).taken).toBe(true);
+
+    expect(onVideos).toHaveBeenCalledExactlyOnceWith([river]);
+    expect(runUvttImport).not.toHaveBeenCalled();
+    expect(onSceneOpened).not.toHaveBeenCalled();
+  });
 
   it('takes a dragged map file as a copy and lets every other file pass', () => {
     manager();
@@ -158,7 +174,7 @@ describe('importing maps in the asset manager', () => {
     expect(drag('drop', container, [stranger]).taken).toBe(true);
 
     expect(runUvttImport).not.toHaveBeenCalled();
-    expect(notices.shown.map((notice) => notice.message)).toEqual(['Crypt.dd2vtt.bak is not a map Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file.']);
+    expect(notices.shown.map((notice) => notice.message)).toEqual(['Crypt.dd2vtt.bak is not a map Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file, or a WebM or MP4 video.']);
   });
 
   it('imports the map files of a drop and names the files it cannot take', () => {
@@ -167,7 +183,7 @@ describe('importing maps in the asset manager', () => {
     drag('drop', container, [stranger, crypt, new File(['x'], 'README')]);
 
     expect(runUvttImport).toHaveBeenCalledWith(app, assets, [crypt], 'Dungeons');
-    expect(notices.shown.map((notice) => notice.message)).toEqual(['Crypt.dd2vtt.bak and README are not maps Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file.']);
+    expect(notices.shown.map((notice) => notice.message)).toEqual(['Crypt.dd2vtt.bak and README are not maps Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file, or a WebM or MP4 video.']);
   });
 
   it('leaves drops outside its window alone, and every drop once it is closed', () => {
@@ -303,11 +319,11 @@ describe('adding maps with the map creator', () => {
   const picker = (): HTMLInputElement => document.querySelector<HTMLInputElement>('input[type=file]')!;
   const pick = (files: File[]): void => { fireEvent.change(picker(), { target: { files } }); };
 
-  it('offers Universal VTT files beside images', () => {
+  it('offers Universal VTT files and videos beside images', () => {
     mount(<TokenCreator isOpen onClose={() => {}} mode="map" selectedCollection="Dungeons" onImportMaps={vi.fn<ImportMaps>()} />);
 
-    expect(picker().accept).toBe('image/*,.dd2vtt,.uvtt,.df2vtt');
-    expect(screen.getByText('PNG · JPG · WebP · Universal VTT')).toBeTruthy();
+    expect(picker().accept).toBe('image/*,.dd2vtt,.uvtt,.df2vtt,.webm,.mp4,.m4v');
+    expect(screen.getByText('PNG · JPG · WebP · Universal VTT · WebM · MP4')).toBeTruthy();
   });
 
   it('offers only images for tokens', () => {
@@ -326,6 +342,30 @@ describe('adding maps with the map creator', () => {
     expect(onImportMaps).toHaveBeenCalledWith([crypt], 'Dungeons', expect.any(Function));
     expect(onImportMaps.mock.calls[0]![2]!()).toBe(false);
     expect(screen.getByText('No maps yet')).toBeTruthy();
+  });
+
+  it('shows a picked video as a preview to name, tag and create, and imports nothing yet', async () => {
+    const onImportMaps = vi.fn<ImportMaps>(async () => {});
+    mount(<TokenCreator isOpen onClose={() => {}} mode="map" selectedCollection="Dungeons" onImportMaps={onImportMaps} />);
+
+    pick([river]);
+
+    await waitFor(() => expect(screen.getByText('1 map')).toBeTruthy());
+    expect(onImportMaps).not.toHaveBeenCalled();
+  });
+
+  it('shows the videos it was opened with', async () => {
+    mount(<TokenCreator isOpen onClose={() => {}} mode="map" selectedCollection="Dungeons" onImportMaps={vi.fn<ImportMaps>()} initialFiles={[river]} />);
+
+    await waitFor(() => expect(screen.getByText('1 map')).toBeTruthy());
+  });
+
+  it('never takes a video as a token', async () => {
+    mount(<TokenCreator isOpen onClose={() => {}} mode="token" selectedCollection="Dungeons" />);
+
+    pick([river, cave]);
+
+    await waitFor(() => expect(screen.getByText('1 token')).toBeTruthy());
   });
 
   it('keeps images as previews and stays open for them', async () => {

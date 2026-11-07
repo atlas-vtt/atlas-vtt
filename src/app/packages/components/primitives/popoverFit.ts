@@ -9,7 +9,7 @@ export interface PopoverBox {
   right: number
   top: number
   bottom: number
-  /** Height of the whole content, also when the box is capped and scrolls. */
+  /** Height of the whole content, also when the box is capped and scrolls; `Infinity` keeps a cap that is applied. */
   contentHeight: number
 }
 

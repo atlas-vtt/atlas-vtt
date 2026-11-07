@@ -1,7 +1,7 @@
-import { t } from '../../../i18n';
 import type { ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 import type { PaneNote } from './usePaneNote';
 import type { PaneTemplate } from './usePaneTemplate';
+import { t } from '../../../i18n';
 
 export interface StatblockMenuInput {
   note: PaneNote;
@@ -25,9 +25,9 @@ export function statblockMenuEntries({ note, paneTemplate, editTemplate, changeT
   if (note.kind !== 'atlas' || paneTemplate.status === 'loading') return [];
   const usable = paneTemplate.status === 'ok';
   return [
-    ...(usable && editTemplate ? [{ type: 'item' as const, label: t('uiStatblocks.statblockMenu_editTemplate'), icon: 'pencil', onClick: editTemplate }] : []),
-    ...(changeTemplate ? [{ type: 'item' as const, label: t('uiStatblocks.statblockMenu_changeTemplate'), icon: 'replace', onClick: changeTemplate }] : []),
-    ...(usable && duplicateTemplate ? [{ type: 'item' as const, label: t('uiStatblocks.statblockMenu_duplicateTemplate'), icon: 'copy', onClick: duplicateTemplate }] : []),
-    ...(showProperties ? [{ type: 'item' as const, label: t('uiStatblocks.statblockMenu_showProperties'), icon: 'list', onClick: showProperties }] : []),
+    ...(usable && editTemplate ? [{ type: 'item' as const, label: t('statblockEditor.editTemplate'), icon: 'pencil', onClick: editTemplate }] : []),
+    ...(changeTemplate ? [{ type: 'item' as const, label: t('statblockEditor.changeTemplateMenu'), icon: 'replace', onClick: changeTemplate }] : []),
+    ...(usable && duplicateTemplate ? [{ type: 'item' as const, label: t('statblockEditor.duplicateTemplate'), icon: 'copy', onClick: duplicateTemplate }] : []),
+    ...(showProperties ? [{ type: 'item' as const, label: t('statblockEditor.showProperties'), icon: 'list', onClick: showProperties }] : []),
   ];
 }

@@ -114,7 +114,7 @@ export function setup(prepare?: (store: ViewAtlasStore) => void): Setup {
     setDoorMenuHandlers: vi.fn(),
     setDoorClickHandler: vi.fn(),
     setLightHandlers: (handlers: LightPointerHandlers) => { wired.light = handlers; },
-    setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(),
+    setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(), setArtFloors: vi.fn(),
     refreshPlayerSight: vi.fn(),
     getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);

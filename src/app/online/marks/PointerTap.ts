@@ -34,7 +34,7 @@ export interface TrailBatch {
 export interface LaserSource {
   /** The pointer while the laser shows it, and whether it draws. */
   state(): Pick<LaserState, 'at' | 'on'>;
-  /** The trail drawn since the last call, at most `max` numbers of it (the newest). */
+  /** The trail drawn since the last call, at most `max` numbers of it (`thinTrail`). */
   takeTrail(max: number): TrailBatch;
   lastPress(): Press | null;
   /** Calls `listener` whenever any of that changed; returns the function that stops it. */
@@ -47,6 +47,22 @@ const MIN_SPACING_PX = 3;
 const MAX_PENDING = 100;
 
 const rounded = (value: number): number => Math.round(value * 10) / 10;
+
+/**
+ * At most `max` numbers of a trail (x, y pairs, oldest first): all of it while it fits, else pairs
+ * spread evenly along it up to the newest, so a fast stroke keeps its whole way, only coarser.
+ */
+export function thinTrail(pts: readonly number[], max: number): number[] {
+  const pairs = Math.floor(pts.length / 2);
+  const keep = Math.floor(max / 2);
+  if (pairs <= keep) return pts.slice(0, pairs * 2);
+  const thinned: number[] = [];
+  for (let index = 1; index <= keep; index += 1) {
+    const pair = Math.round((index * pairs) / keep) - 1;
+    thinned.push(pts[2 * pair] ?? 0, pts[2 * pair + 1] ?? 0);
+  }
+  return thinned;
+}
 
 /**
  * The laser of a map's viewport by Atlas's two rules: the primary button draws while the Laser tool
@@ -93,7 +109,7 @@ export class PointerTap implements LaserSource {
   }
 
   takeTrail(max: number): TrailBatch {
-    const pts = this.pending.slice(Math.max(0, this.pending.length - max));
+    const pts = thinTrail(this.pending, max);
     this.pending = [];
     const span = this.meter.take();
     return span === undefined ? { pts } : { pts, span };

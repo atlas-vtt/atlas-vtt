@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { sealTolerance } from '../../../../src/app/lighting/lightingConstants';
 import { sealedWalls } from '../../../../src/app/lighting/sealWalls';

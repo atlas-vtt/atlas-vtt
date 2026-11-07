@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Graphics, Sprite } from 'pixi.js';
 import { DoorIcons, badgeLook } from '../../src/app/pixi/lighting/DoorIcons';

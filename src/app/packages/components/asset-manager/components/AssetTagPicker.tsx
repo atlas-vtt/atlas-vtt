@@ -79,7 +79,7 @@ export function AssetTagPicker({ asset }: AssetTagPickerProps): React.ReactEleme
         <Search aria-hidden />
         {/* Named without aria-label, which Obsidian shows as its own tooltip. */}
         <span id={`${idPrefix}-search-label`} hidden>{t('creator.searchTags')}</span>
-        <span id={`${idPrefix}-list-label`} hidden>{t('uiMessages.tagsOf', { name: asset.name })}</span>
+        <span id={`${idPrefix}-list-label`} hidden>Tags of {asset.name}</span>
         <input
           ref={inputRef}
           type="text"

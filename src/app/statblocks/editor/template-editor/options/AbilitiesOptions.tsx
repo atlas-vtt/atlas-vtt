@@ -1,4 +1,3 @@
-import { t } from '../../../../i18n';
 import React from 'react';
 import { Plus, X } from 'lucide-react';
 import { Button } from '../../../../packages/components/primitives/button';
@@ -17,6 +16,7 @@ import { Setting, SettingNote } from '../inspector/InspectorControls';
 import { useGestureText } from '../inspector/useGestureText';
 import { applyEdit } from '../sessionEdit';
 import type { EditorSession } from '../sessionTypes';
+import { t } from '../../../../i18n';
 
 interface AbilitiesOptionsProps {
   block: TemplateBlock;
@@ -41,8 +41,8 @@ function TabName({ tab, session, readOnly, onRemove }: { tab: SectionBlock; sess
   });
   return (
     <div className="atlas-te-setting__inline">
-      <input {...text} type="text" className="atlas-te-input" aria-label={t('uiTemplateEditor.abilitiesOptions_tabName')} disabled={readOnly} spellCheck={false} />
-      <ToolButton icon={X} label={`Remove ${tab.heading?.trim() || 'tab'}`} isActive={false} disabled={readOnly} onClick={onRemove} />
+      <input {...text} type="text" className="atlas-te-input" aria-label={t('templateEditor.tabName')} disabled={readOnly} spellCheck={false} />
+      <ToolButton icon={X} label={tab.heading?.trim() ? t('templateEditor.removeNamed', { name: tab.heading.trim() }) : t('templateEditor.removeTab')} isActive={false} disabled={readOnly} onClick={onRemove} />
     </div>
   );
 }
@@ -75,22 +75,22 @@ export function AbilitiesOptions({ block, session, readOnly }: AbilitiesOptionsP
     <>
       {field
         ? <EntryParts fields={fields} session={session} readOnly={readOnly} />
-        : <SettingNote>{t('uiTemplateEditor.abilitiesOptions_nameTheListFirstClickItsHeadingOnTheCard')}</SettingNote>}
+        : <SettingNote>{t('templateEditor.nameListFirst')}</SettingNote>}
       {block.type === 'entries' && (
-        <Setting label={t('uiTemplateEditor.abilitiesOptions_tabs')} wide>
+        <Setting label={t('templateEditor.primitive.tabs')} wide>
           {() => (
             <div className="atlas-te-setting__list">
               <Button type="button" variant="outline" size="sm" disabled={readOnly || !mayTab || !field}
                 onClick={() => editTabs((current) => splitAbilities(current, block.id))}>
-                {t('uiTemplateEditor.abilitiesOptions_splitIntoTabs')}
+                {t('templateEditor.splitTabs')}
               </Button>
-              {!mayTab && <span className="atlas-te-setting__hint">{t('uiTemplateEditor.abilitiesOptions_aListSideBySideWithOthersHasNoTabsGiveItARowOfItsOwnFirst')}</span>}
+              {!mayTab && <span className="atlas-te-setting__hint">{t('templateEditor.noTabsSideBySide')}</span>}
             </div>
           )}
         </Setting>
       )}
       {block.type === 'tabs' && (
-        <Setting label={t('uiTemplateEditor.abilitiesOptions_tabs')} wide>
+        <Setting label={t('templateEditor.primitive.tabs')} wide>
           {() => (
             <div className="atlas-te-setting__list">
               {tabs.map((tab) => (
@@ -100,7 +100,7 @@ export function AbilitiesOptions({ block, session, readOnly }: AbilitiesOptionsP
               <Button type="button" variant="ghost" size="sm" disabled={readOnly}
                 onClick={() => editTabs((current) => addAbilityTab(current, block.id))}>
                 <Plus aria-hidden="true" />
-                {t('uiTemplateEditor.abilitiesOptions_addTab')}
+                {t('templateEditor.addTab')}
               </Button>
             </div>
           )}

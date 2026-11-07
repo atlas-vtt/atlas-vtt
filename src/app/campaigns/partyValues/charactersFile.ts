@@ -6,7 +6,7 @@
  */
 
 import type { RecordLayout, StoredRecord } from '../../services/recordFiles/recordLayout';
-import { CAMPAIGNS_FOLDER } from '../campaignPaths';
+import { campaignFileLayout } from '../campaignFileLayout';
 import { isRecord } from '../campaignValues';
 import { partyKey, readPartyKey, readPartyValue, type PartyValue, type PartyValues } from './partyKeys';
 
@@ -25,52 +25,22 @@ export type StoredCharacters = StoredRecord;
 /** The values to write: by party key, a value or undefined to remove it. */
 export type PartyChanges = ReadonlyMap<string, PartyValue | undefined>;
 
+const FILE = campaignFileLayout({ file: CHARACTERS_FILE, format: CHARACTERS_FORMAT, kind: 'campaign characters' });
+
 /** Whether `path` is a characters file: `characters.json` directly in a campaign's folder. */
-export function isCharactersPath(path: string): boolean {
-  const rest = path.startsWith(`${CAMPAIGNS_FOLDER}/`) ? path.slice(CAMPAIGNS_FOLDER.length + 1) : '';
-  const parts = rest.split('/');
-  return parts.length === 2 && parts[0] !== '' && parts[1] === CHARACTERS_FILE;
-}
-
-function readStored(text: string): StoredCharacters | null {
-  try {
-    const parsed: unknown = JSON.parse(text);
-    if (!isRecord(parsed) || typeof parsed.campaignId !== 'string' || parsed.campaignId === '') return null;
-    return { ...parsed, id: parsed.campaignId };
-  } catch {
-    return null;
-  }
-}
-
-function storedText(record: StoredCharacters): string {
-  const { id, format, campaignId: _campaignId, ...rest } = record;
-  const kept = typeof format === 'number' && format > CHARACTERS_FORMAT ? format : CHARACTERS_FORMAT;
-  return `${JSON.stringify({ format: kept, campaignId: id, ...rest }, null, 2)}\n`;
-}
+export const isCharactersPath = FILE.isPath;
 
 /** The characters file of the campaign whose folder is `folder`. */
-export const charactersPathIn = (folder: string): string => `${folder}/${CHARACTERS_FILE}`;
+export const charactersPathIn = FILE.pathIn;
 
 /**
  * A characters file lies in its campaign's folder and is never named after anything: it is
  * created there (`RecordFiles.createAt`), follows the folder when it is renamed and goes with it.
  */
-export const CHARACTERS_LAYOUT: RecordLayout<StoredCharacters> = {
-  root: CAMPAIGNS_FOLDER,
-  kind: 'campaign characters',
-  isRecordPath: isCharactersPath,
-  read: readStored,
-  text: storedText,
-  namedPath: (path) => path,
-  recordPathIn: (path) => path,
-  freeNamedPath: () => {
-    throw new Error('A characters file is created in its campaign\'s folder.');
-  },
-  isNamedAfter: () => true,
-};
+export const CHARACTERS_LAYOUT: RecordLayout<StoredCharacters> = FILE.layout;
 
 /** Whether this Atlas may write the file: one of a later format is only read. */
-export const isWritable = (stored: StoredCharacters): boolean => !(typeof stored.format === 'number' && stored.format > CHARACTERS_FORMAT);
+export const isWritable: (stored: StoredCharacters) => boolean = FILE.isWritable;
 
 /** The values a characters file holds, as party values of its campaign; what cannot be read is left out. */
 export function partyValuesOf(stored: StoredCharacters): PartyValues {

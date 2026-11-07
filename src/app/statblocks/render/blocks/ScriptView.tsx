@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 import React, { useContext, useMemo } from 'react';
 import type { ScriptBlock, TemplateBlock } from '../../model/templateTypes';
 import { BlockChromeContext } from '../blockChrome';
@@ -6,6 +5,7 @@ import { scriptBlocksShown, viewedSheet } from '../blockDisplay';
 import { SheetContext, useSheet } from '../sheetContext';
 import { ValueEditingContext } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
+import { t } from '../../../i18n';
 
 interface ScriptViewProps extends BlockViewProps<ScriptBlock> {
   renderBlock: (block: TemplateBlock) => React.ReactNode;
@@ -22,7 +22,7 @@ export function ScriptView({ block, renderBlock }: ScriptViewProps): React.JSX.E
   const inTemplateEditor = useContext(ValueEditingContext)?.drawsUnnamed === true;
   const viewed = useMemo(() => ({ ...sheet, state: viewedSheet(sheet.state) }), [sheet]);
   const shown = inTemplateEditor ? [] : scriptBlocksShown(block.id, sheet.state);
-  if (shown.length === 0) return <div className="atlas-sb-script">{t('uiStatblocks.scriptView_shownByFantasyStatblocks')}</div>;
+  if (shown.length === 0) return <div className="atlas-sb-script">{t('statblockEditor.shownByFs')}</div>;
   return (
     <SheetContext.Provider value={viewed}>
       <BlockChromeContext.Provider value={null}>

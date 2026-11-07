@@ -1,7 +1,6 @@
-// @vitest-environment node
 import { JOIN_CODE_PATTERN, shownJoinCode } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
-import { ARM_MS, FULL_NOTE_MS, gateFrame, newGate, newJoinCode, readGate, TableGate, type GateFrame, type GateSettings } from '../../../../src/app/online/gm/joinGate.ts';
+import { ARM_MS, freeGate, FULL_NOTE_MS, gateFrame, newGate, newJoinCode, readGate, TableGate, type GateFrame, type GateSettings } from '../../../../src/app/online/gm/joinGate.ts';
 import { readSavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 
 const MIRA = { id: 'm'.repeat(20), name: 'Mira' };
@@ -9,7 +8,7 @@ const NOOR = { id: 'n'.repeat(20), name: 'Noor' };
 const SETTINGS: GateSettings = { code: '483912', requireCode: true, askToJoin: true };
 
 /** The gates of a table with a clock and timers the test moves. */
-function gate(settings: GateSettings = SETTINGS): {
+function gate(settings: GateSettings = SETTINGS, taken: ReadonlySet<string> = new Set()): {
   gate: TableGate; sent: GateFrame[]; answers: [string, boolean][]; saved: GateSettings[]; changes: { count: number }; told: { count: number }; advance(ms: number): void; clock: { now: number }; timers(): number;
 } {
   const sent: GateFrame[] = [];
@@ -37,6 +36,7 @@ function gate(settings: GateSettings = SETTINGS): {
     },
     // Each new code is another: 100000, 100001, …
     random: () => 100_000 + draws++,
+    taken: () => taken,
   });
   /** Moves the clock on, running every timer when it is due, those set meanwhile too. */
   const advance = (ms: number): void => {
@@ -67,6 +67,18 @@ describe('a join code', () => {
     expect(draws).toEqual([]);
   });
 
+  it('is never one of the codes it is told are taken', () => {
+    const seq = (...draws: number[]): (() => number) => () => draws.shift() ?? 0;
+    expect(newJoinCode(seq(5, 7), new Set(['000005']))).toBe('000007');
+    expect(newGate(seq(5, 7), new Set(['000005'])).code).toBe('000007');
+  });
+
+  it('of a table that comes back is made anew only where a player\'s own code is now the same', () => {
+    const seq = (...draws: number[]): (() => number) => () => draws.shift() ?? 0;
+    expect(freeGate(SETTINGS, new Set(['111111']))).toBe(SETTINGS);
+    expect(freeGate(SETTINGS, new Set(['483912', '000005']), seq(483_912, 5, 7))).toEqual({ ...SETTINGS, code: '000007' });
+  });
+
   it('is shown in two groups', () => {
     expect(shownJoinCode('483912')).toBe('483 912');
   });
@@ -81,10 +93,10 @@ describe('a table\'s gates as kept', () => {
     expect(readGate({ code: '483912', requireCode: false, askToJoin: false })).toEqual({ code: '483912', requireCode: false, askToJoin: false });
     for (const none of [undefined, null, 'gate', 7]) expect(readGate(none, () => 7)).toEqual({ code: '000007', requireCode: true, askToJoin: true });
     expect(readGate({ code: '48391', requireCode: 'no', askToJoin: 0 }, () => 7)).toEqual({ code: '000007', requireCode: true, askToJoin: true });
-    const saved = readSavedTable({ code: 'a'.repeat(26), secret: 's'.repeat(43), mapPath: null, maxPlayers: 4 });
+    const saved = readSavedTable({ code: 'a'.repeat(26), secret: 's'.repeat(43), campaignId: 'c1', mapPath: null, maxPlayers: 4 });
     expect(saved?.gate).toMatchObject({ requireCode: true, askToJoin: true });
     expect(saved?.gate.code).toMatch(JOIN_CODE_PATTERN);
-    expect(readSavedTable({ code: 'a'.repeat(26), secret: 's'.repeat(43), gate: { code: '111111', requireCode: true, askToJoin: false } })?.gate).toEqual({ code: '111111', requireCode: true, askToJoin: false });
+    expect(readSavedTable({ code: 'a'.repeat(26), secret: 's'.repeat(43), campaignId: 'c1', gate: { code: '111111', requireCode: true, askToJoin: false } })?.gate).toEqual({ code: '111111', requireCode: true, askToJoin: false });
   });
 
   it('tell the relay the code only while it is asked for', () => {
@@ -112,6 +124,12 @@ describe('the gates of a running table', () => {
     expect(table.saved.at(-1)).toEqual({ code: '100000', requireCode: true, askToJoin: false });
     expect(table.saved).toHaveLength(4);
     expect(table.gate.frame()).toEqual({ code: '100000', ask: false });
+  });
+
+  it('never make a new code that is a player\'s own code', () => {
+    const table = gate(SETTINGS, new Set(['100000', '100001']));
+    table.gate.newCode();
+    expect(table.gate.settings.code).toBe('100002');
   });
 
   it('keep the code while it is switched off, so switching it on again shows the one the players have', () => {

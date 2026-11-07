@@ -10,7 +10,9 @@ import type {
   BlockBase,
   BlockType,
   Condition,
+  CounterPreset,
   EntryShape,
+  FieldTracking,
   HeaderTrack,
   ScoreColumn,
   StatblockTemplate,
@@ -47,7 +49,7 @@ function keyOrder<K extends string>(order: Record<K, true>): KeyOrder<K> {
 
 export const TEMPLATE_KEYS = keyOrder<keyof StatblockTemplate>({
   format: true, version: true, id: true, description: true, suits: true, diceSetId: true, derivedFrom: true, source: true,
-  importedFrom: true, fields: true, header: true, layout: true, lookups: true, sample: true,
+  importedFrom: true, fields: true, header: true, layout: true, players: true, lookups: true, sample: true, recovery: true,
 });
 
 export const HEADER_KEYS = keyOrder<keyof TemplateHeader>({ hidden: true, hitPoints: true });
@@ -57,8 +59,13 @@ export const HEADER_TRACK_KEYS = keyOrder<keyof HeaderTrack>({ look: true, count
 export const FIELD_KEYS = keyOrder<keyof TemplateField>({
   key: true, label: true, type: true, meaning: true, formerKeys: true, unit: true, options: true, open: true,
   several: true, numbered: true,
-  slots: true, slotKeys: true, header: true, rows: true, align: true, addRows: true, addColumns: true, entry: true, prompt: true,
+  slots: true, slotKeys: true, header: true, rows: true, align: true, addRows: true, addColumns: true, entry: true,
+  counterRows: true, prompt: true, tracks: true,
 });
+
+export const FIELD_TRACKING_KEYS = keyOrder<keyof FieldTracking>({ counts: true, max: true });
+
+export const COUNTER_PRESET_KEYS = keyOrder<keyof CounterPreset>({ name: true, max: true, regain: true });
 
 export const ENTRY_SHAPE_KEYS = keyOrder<keyof EntryShape>({ nameKey: true, textKey: true, extras: true });
 export const ENTRY_EXTRA_KEYS = keyOrder<keyof EntryExtra>({ key: true, label: true, type: true, options: true, several: true });
@@ -82,14 +89,15 @@ const BLOCK_PROPS: { [T in FileBlockType]: Record<OwnBlockKeys<T>, true> } = {
   tabs: { heading: true, blocks: true },
   title: { field: true, level: true, pattern: true },
   line: { fields: true, pattern: true, separator: true },
-  stat: { field: true, label: true, look: true, pattern: true, display: true, rollFrom: true },
-  metric: { heading: true, fields: true },
-  scores: { field: true, orientation: true, perLine: true, display: true, columns: true },
+  stat: { field: true, label: true, look: true, pattern: true, display: true, rollFrom: true, rollable: true, addsToRolls: true },
+  metric: { heading: true, fields: true, rollable: true, addsToRolls: true },
+  scores: { field: true, orientation: true, perLine: true, display: true, columns: true, rollable: true },
   tags: { field: true, label: true, look: true },
   text: { field: true, text: true, heading: true },
   entries: { field: true, heading: true, introField: true, nameStyle: true, addLabel: true },
-  pairs: { field: true, label: true, display: true },
+  pairs: { field: true, label: true, display: true, rollable: true, addsToRolls: true },
   track: { field: true, label: true, resource: true, look: true, counts: true },
+  counters: { field: true, label: true },
   image: { field: true, shape: true },
   spells: { field: true, heading: true, look: true },
   heading: { text: true, level: true },

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { ShowResult } from '../../../../src/app/online/gm/image/ImageShare.ts';
 import { HIDDEN_TEXT, ImageTakeover, SHOWN_TEXT, takeOverImageDisplay, type ImageTakeoverPorts } from '../../../../src/app/online/gm/image/imageTakeover.ts';

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const notices: Array<{ message: DocumentFragment; timeout: number; hide: ReturnType<typeof vi.fn> }> = [];

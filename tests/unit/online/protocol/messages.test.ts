@@ -1,7 +1,6 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
-  ASSET_CHUNK_BYTES, CLOSE, FINAL_CLOSE_CODES, GATE_CLOSE_CODES, MAX_ASSET_BYTES, MAX_CURSOR_NUMBERS, MAX_LASER_SPAN_MS, MAX_LIVE_TOKENS, MAX_PLAYER_NAME, MAX_PLAYERS, MAX_TOKEN_CONDITIONS, MAX_TOKENS, parseClientFrame, parseGmMessage, parsePlayerMessage, parseRelayFrame,
+  CLOSE, MAX_CAMPAIGN_PLAYERS, FINAL_CLOSE_CODES, GATE_CLOSE_CODES, MAX_CURSOR_NUMBERS, PART_BYTES, MAX_LASER_SPAN_MS, MAX_LIVE_PATH, MAX_LIVE_TOKENS, MAX_BATCH_SENDS, MAX_PLAYER_NAME, MAX_PLAYERS, MAX_TOKEN_CONDITIONS, MAX_TOKENS, parseClientFrame, parseGmMessage, parsePlayerMessage, parseRelayFrame,
   playerName,
 } from '../../../../src/app/online/protocol/index.ts';
 
@@ -9,16 +8,19 @@ const HASH = 'a'.repeat(64);
 
 describe('client frames', () => {
   it('read a GM hello, a player hello with and without key, a send, a kick and an end', () => {
-    expect(parseClientFrame('{"v":1,"t":"hello","role":"gm","secret":"0123456789abcdef"}')).toEqual({ v: 1, t: 'hello', role: 'gm', secret: '0123456789abcdef' });
+    expect(parseClientFrame('{"v":1,"t":"hello","role":"gm","secret":"0123456789abcdef"}')).toEqual({ v: 1, t: 'hello', role: 'gm', secret: '0123456789abcdef', level: 1 });
     expect(parseClientFrame('{"v":1,"t":"hello","role":"player","name":"Ana"}')).toEqual({ v: 1, t: 'hello', role: 'player', name: 'Ana' });
     expect(parseClientFrame('{"v":1,"t":"hello","role":"player","name":"Ana","key":"0123456789abcdef"}')).toEqual({ v: 1, t: 'hello', role: 'player', name: 'Ana', key: '0123456789abcdef' });
     expect(parseClientFrame(`{"v":1,"t":"kick","id":"${'a'.repeat(20)}"}`)).toEqual({ v: 1, t: 'kick', id: 'a'.repeat(20) });
     expect(parseClientFrame('{"v":1,"t":"send","to":"*","body":{"t":"x"}}')).toEqual({ v: 1, t: 'send', to: '*', body: { t: 'x' } });
     expect(parseClientFrame('{"v":1,"t":"end"}')).toEqual({ v: 1, t: 'end' });
+    expect(parseClientFrame('{"v":1,"t":"sends","sends":[{"to":"*","body":{"t":"x"}},{"to":"p","body":null}]}')).toEqual({ v: 1, t: 'sends', sends: [{ to: '*', body: { t: 'x' } }, { to: 'p', body: null }] });
   });
 
   it('refuse other versions, short secrets, a send without body and non-JSON', () => {
-    for (const text of ['{"v":2,"t":"end"}', '{"v":1,"t":"hello","role":"player"}', '{"v":1,"t":"kick","id":"*"}', '{"v":1,"t":"hello","role":"gm","secret":"short"}', '{"v":1,"t":"send"}', '{"v":1,"t":"hello","role":"admin"}', 'not json', '[1]']) {
+    const tooMany = JSON.stringify({ v: 1, t: 'sends', sends: Array.from({ length: MAX_BATCH_SENDS + 1 }, () => ({ to: '*', body: 1 })) });
+    for (const text of ['{"v":2,"t":"end"}', '{"v":1,"t":"hello","role":"player"}', '{"v":1,"t":"kick","id":"*"}', '{"v":1,"t":"hello","role":"gm","secret":"short"}', '{"v":1,"t":"send"}', '{"v":1,"t":"hello","role":"admin"}', 'not json', '[1]',
+      '{"v":1,"t":"sends","sends":[]}', '{"v":1,"t":"sends","sends":[{"to":"*"}]}', '{"v":1,"t":"sends","sends":[{"body":1}]}', '{"v":1,"t":"sends","sends":{}}', tooMany]) {
       expect(parseClientFrame(text), text).toBeNull();
     }
   });
@@ -60,6 +62,8 @@ describe('the join gates\' frames', () => {
     expect(parseRelayFrame('{"v":1,"t":"waiting"}')).toEqual({ v: 1, t: 'waiting' });
     expect(parseRelayFrame(`{"v":1,"t":"welcome","role":"gm","players":[],"waiting":[{"id":"${id}","name":"Mira"}]}`)).toEqual({ v: 1, t: 'welcome', role: 'gm', players: [], waiting: [{ id, name: 'Mira' }] });
     expect(parseRelayFrame('{"v":1,"t":"welcome","role":"gm","players":[],"waiting":[]}')).toEqual({ v: 1, t: 'welcome', role: 'gm', players: [] });
+    expect(parseRelayFrame('{"v":1,"t":"welcome","role":"gm","players":[],"batch":true}')).toEqual({ v: 1, t: 'welcome', role: 'gm', players: [], batch: true });
+    expect(parseRelayFrame('{"v":1,"t":"welcome","role":"gm","players":[],"batch":"yes"}')).toEqual({ v: 1, t: 'welcome', role: 'gm', players: [] });
   });
 
   it('refuse a knock without a name or id, a knock-gone without an id, a pause without a time and a welcome whose waiting list is malformed', () => {
@@ -130,23 +134,19 @@ describe('relay frames', () => {
 });
 
 describe('game messages', () => {
-  it('read a scene, no scene, a chunk and a refusal', () => {
-    const scene = { t: 'scene', scene: { id: 's', map: { hash: HASH, size: 10, mime: 'image/webp' }, lit: false } };
+  it('read a scene and no scene', () => {
+    const scene = { t: 'scene', scene: { id: 's', map: { hash: HASH, size: 10, mime: 'image/webp', id: 'e'.repeat(64) }, lit: false } };
     expect(parseGmMessage(scene)).toEqual(scene);
     expect(parseGmMessage({ t: 'scene', scene: null })).toEqual({ t: 'scene', scene: null });
-    expect(parseGmMessage({ t: 'asset-chunk', hash: HASH, index: 0, count: 1, data: 'AAAA' })).toEqual({ t: 'asset-chunk', hash: HASH, index: 0, count: 1, data: 'AAAA' });
-    expect(parseGmMessage({ t: 'asset-refused', hash: HASH })).toEqual({ t: 'asset-refused', hash: HASH });
   });
 
-  it('refuse a map of another type, a chunk past its count or larger than a chunk, and a bad hash', () => {
-    expect(parseGmMessage({ t: 'scene', scene: { id: 's', map: { hash: HASH, size: 10, mime: 'text/html' }, lit: false } })).toBeNull();
-    expect(parseGmMessage({ t: 'asset-chunk', hash: HASH, index: 1, count: 1, data: '' })).toBeNull();
-    expect(parseGmMessage({ t: 'asset-chunk', hash: HASH, index: 0, count: 1, data: 'A'.repeat((ASSET_CHUNK_BYTES / 3) * 4 + 4) })).toBeNull();
-    expect(parsePlayerMessage({ t: 'asset-request', hash: 'A'.repeat(64) })).toBeNull();
-    expect(parsePlayerMessage({ t: 'asset-request', hash: HASH })).toEqual({ t: 'asset-request', hash: HASH });
-    expect(parsePlayerMessage({ t: 'asset-request', hash: HASH, from: 0 })).toEqual({ t: 'asset-request', hash: HASH });
-    expect(parsePlayerMessage({ t: 'asset-request', hash: HASH, from: 5 })).toEqual({ t: 'asset-request', hash: HASH, from: 5 });
-    for (const from of [-1, 1.5, '3', null, Math.ceil(MAX_ASSET_BYTES / ASSET_CHUNK_BYTES)]) expect(parsePlayerMessage({ t: 'asset-request', hash: HASH, from })).toBeNull();
+  it('refuse a map of another type, and know nothing of assets sent over the socket', () => {
+    expect(parseGmMessage({ t: 'scene', scene: { id: 's', map: { hash: HASH, size: 10, mime: 'text/html', id: 'e'.repeat(64) }, lit: false } })).toBeNull();
+    expect(parseGmMessage({ t: 'asset-chunk', hash: HASH, index: 0, count: 1, data: 'AAAA' })).toBeNull();
+    expect(parseGmMessage({ t: 'asset-refused', hash: HASH })).toBeNull();
+    expect(parseGmMessage({ t: 'asset-variant', hash: HASH, maxSide: 1024, variant: { hash: HASH, size: 1, mime: 'image/png', id: 'e'.repeat(64) }, width: 2, height: 2 })).toBeNull();
+    expect(parsePlayerMessage({ t: 'asset-request', hash: HASH })).toBeNull();
+    expect(parseGmMessage({ t: 'part', id: 'p', index: 0, count: 1, data: 'A'.repeat((PART_BYTES / 3) * 4 + 4) })).toBeNull();
   });
 });
 
@@ -160,7 +160,7 @@ describe('mine', () => {
 });
 
 describe('token lists', () => {
-  const token = { id: '0'.repeat(24), x: 10, y: -20.5, size: 62, cells: 1.5, rotation: 90, art: { hash: HASH, size: 3, mime: 'image/webp' }, name: 'Bear', ring: { colour: '#aabbcc', size: 70 }, claim: 'open', badge: null, ui: null };
+  const token = { id: '0'.repeat(24), x: 10, y: -20.5, size: 62, cells: 1.5, rotation: 90, art: { hash: HASH, size: 3, mime: 'image/webp', id: 'e'.repeat(64) }, name: 'Bear', ring: { colour: '#aabbcc', size: 70 }, claim: 'open', badge: null, ui: null };
   const ui = {
     nameplate: true, downed: false,
     bars: [{ colour: '#dc2626', direction: 'drains', defeats: true, current: 4, max: 12 }, { colour: '#3b82f6', direction: 'static', defeats: false, current: 15, max: 15 }],
@@ -185,7 +185,7 @@ describe('token lists', () => {
     const condition = ui.conditions[0];
     const bad = [
       { badge: 0 }, { badge: 1.5 }, { badge: '2' }, { ui: { ...ui, nameplate: 'yes' } }, { ui: { ...ui, downed: undefined } },
-      { ui: { ...ui, bars: [bar, bar, bar] } }, { ui: { ...ui, bars: [{ ...bar, colour: 'red' }] } }, { ui: { ...ui, bars: [{ ...bar, max: 0 }] } },
+      { ui: { ...ui, bars: [bar, bar, bar, bar, bar, bar, bar] } }, { ui: { ...ui, bars: [{ ...bar, slot: 6 }] } }, { ui: { ...ui, bars: [{ ...bar, slot: 1.5 }] } }, { ui: { ...ui, bars: [{ ...bar, colour: 'red' }] } }, { ui: { ...ui, bars: [{ ...bar, max: 0 }] } },
       { ui: { ...ui, bars: [{ ...bar, current: Number.NaN }] } }, { ui: { ...ui, bars: [{ ...bar, direction: 'up' }] } }, { ui: { ...ui, bars: [{ ...bar, defeats: 1 }] } },
       { ui: { ...ui, conditions: [{ ...condition, glyph: { kind: 'icon', icon: '<svg>' } }] } }, { ui: { ...ui, conditions: [{ ...condition, glyph: { kind: 'text', text: '' } }] } },
       { ui: { ...ui, conditions: [{ ...condition, value: Number.POSITIVE_INFINITY }] } }, { ui: { ...ui, conditions: Array.from({ length: MAX_TOKEN_CONDITIONS + 1 }, () => condition) } },
@@ -207,7 +207,7 @@ describe('token lists', () => {
   });
 
   it('refuse the whole list for one token with a GM id, a place that is no number, a colour or artwork it may not have', () => {
-    for (const bad of [{ id: 'gm-token-1' }, { x: Number.NaN }, { cells: 0 }, { cells: Number.POSITIVE_INFINITY }, { y: '1' }, { size: 0 }, { rotation: 400 }, { ring: { colour: 'red', size: 70 } }, { art: { hash: HASH, size: 3, mime: 'image/svg+xml' } }, { name: 'x'.repeat(201) }, { claim: 'mine' }, { claim: undefined }]) {
+    for (const bad of [{ id: 'gm-token-1' }, { x: Number.NaN }, { cells: 0 }, { cells: Number.POSITIVE_INFINITY }, { y: '1' }, { size: 0 }, { rotation: 400 }, { ring: { colour: 'red', size: 70 } }, { art: { hash: HASH, size: 3, mime: 'image/svg+xml', id: 'e'.repeat(64) } }, { name: 'x'.repeat(201) }, { claim: 'mine' }, { claim: undefined }]) {
       expect(parseGmMessage({ t: 'tokens', scene: 's', tokens: [token, { ...token, ...bad }], cell: 70, snap: null }), JSON.stringify(bad)).toBeNull();
     }
     expect(parseGmMessage({ t: 'tokens', scene: 's', tokens: Array.from({ length: MAX_TOKENS + 1 }, () => token), cell: 70, snap: null })).toBeNull();
@@ -263,7 +263,7 @@ describe('fog and lighting', () => {
     expect(parseGmMessage(lighting)).toEqual(lighting);
     expect(parseGmMessage(sight)).toEqual(sight);
     expect(parseGmMessage({ ...sight, blind: true })).toEqual({ ...sight, blind: true });
-    expect(parseGmMessage({ t: 'explored', scene: 's', mask: { hash: HASH, size: 3, mime: 'image/png' } })).not.toBeNull();
+    expect(parseGmMessage({ t: 'explored', scene: 's', png: 'AAAA' })).toEqual({ t: 'explored', scene: 's', png: 'AAAA' });
     expect(parseGmMessage({ t: 'part', id: 'p', index: 1, count: 2, data: 'AAAA' })).toEqual({ t: 'part', id: 'p', index: 1, count: 2, data: 'AAAA' });
   });
 
@@ -275,7 +275,7 @@ describe('fog and lighting', () => {
     expect(parseGmMessage({ ...sight, tokens: [{ ...sight.tokens[0], id: 'gm-token' }] })).toBeNull();
     expect(parseGmMessage({ ...sight, tokens: [{ ...sight.tokens[0], effects: ['petrified'] }] })).toBeNull();
     expect(parseGmMessage({ ...sight, tokens: [{ ...sight.tokens[0], vision: { senses: [{ id: 'x', range: -1 }] } }] })).toBeNull();
-    expect(parseGmMessage({ t: 'explored', scene: 's', mask: { hash: HASH, size: 3, mime: 'image/webp' } })).toBeNull();
+    expect(parseGmMessage({ t: 'explored', scene: 's', png: 'not base64!' })).toBeNull();
     expect(parseGmMessage({ t: 'part', id: 'p', index: 2, count: 2, data: 'AAAA' })).toBeNull();
   });
 });
@@ -418,5 +418,75 @@ describe('live places of a drag', () => {
       { ...live, tokens: [{ id, x: 2e6, y: 1 }] }, { ...live, tokens: [{ id, x: 1 }] }, { ...live, tokens: [{ id, x: 1, y: 1, end: false }] },
       { ...live, tokens: Array.from({ length: MAX_LIVE_TOKENS + 1 }, () => ({ id, x: 1, y: 1 })) }, { ...live, tokens: {} }, { ...live, scene: 's'.repeat(65) },
     ]) expect(parseGmMessage(bad), JSON.stringify(bad).slice(0, 80)).toBeNull();
+  });
+});
+
+describe('the ruler of a drag', () => {
+  const id = 'a'.repeat(24);
+  const place = { id, x: 105, y: 35 };
+  const live = (path: unknown): unknown => ({ t: 'live', scene: 's1', at: 1, tokens: [{ ...place, path }] });
+
+  it('is read with its place, and a place without one reads as before', () => {
+    expect(parseGmMessage(live([[35, 35], [105, 35], [105.5, -70]]))).toEqual(live([[35, 35], [105, 35], [105.5, -70]]));
+    expect(parseGmMessage({ t: 'live', scene: 's1', at: 1, tokens: [place] })).toEqual({ t: 'live', scene: 's1', at: 1, tokens: [place] });
+  });
+
+  it('refuses a path of fewer than two points, too many, or with a point that is no pair of coordinates', () => {
+    for (const bad of [
+      [], [[1, 1]], Array.from({ length: MAX_LIVE_PATH + 1 }, () => [1, 1]), [[1, 1], [1]], [[1, 1], [1, 2, 3]], [[1, 1], [2e6, 1]], [[1, 1], ['1', 1]], [[1, 1], { x: 1, y: 1 }], {}, null,
+    ]) expect(parseGmMessage(live(bad)), JSON.stringify(bad).slice(0, 80)).toBeNull();
+  });
+});
+
+describe('whose pointer holds a dragged token', () => {
+  const place = { id: 'a'.repeat(24), x: 105, y: 35 };
+  const live = (by: unknown): unknown => ({ t: 'live', scene: 's1', at: 1, tokens: [{ ...place, by }] });
+
+  it('is read as the GM or a player\'s relay id, and a place without it reads as before', () => {
+    expect(parseGmMessage(live('gm'))).toEqual(live('gm'));
+    expect(parseGmMessage(live('abcdefghijklmnopqrst'))).toEqual(live('abcdefghijklmnopqrst'));
+    expect(parseGmMessage({ t: 'live', scene: 's1', at: 1, tokens: [place] })).toEqual({ t: 'live', scene: 's1', at: 1, tokens: [place] });
+  });
+
+  it('leaves out a holder it cannot name and keeps the place: a later GM may name holders of other kinds', () => {
+    for (const unknown of ['', 'GM', 'player', 'abcdefghijklmnopqrs1', 1, null, {}]) {
+      expect(parseGmMessage(live(unknown)), JSON.stringify(unknown)).toEqual({ t: 'live', scene: 's1', at: 1, tokens: [place] });
+    }
+  });
+});
+
+describe('a campaign\'s players', () => {
+  const LETTERS = 'abcdefghijklmnopqrstuvwxyz234567';
+  const seat = (n: number): { id: string; name: string; code: string } => ({ id: `${LETTERS[n % 32]}${LETTERS[Math.floor(n / 32)]}`.padEnd(20, 'a'), name: `Player ${n}`, code: String(100000 + n) });
+  const frame = (players: unknown): string => JSON.stringify({ v: 1, t: 'players', players });
+
+  it('are read from the GM\'s players frame, with an empty list too', () => {
+    const players = [{ id: 'a'.repeat(20), name: ' Ana ', code: '482193' }, { id: 'b'.repeat(20), name: 'Ben', code: '000001' }];
+    expect(parseClientFrame(frame(players))).toEqual({ v: 1, t: 'players', players: [{ id: 'a'.repeat(20), name: 'Ana', code: '482193' }, players[1]] });
+    expect(parseClientFrame(frame([]))).toEqual({ v: 1, t: 'players', players: [] });
+  });
+
+  it('are refused with a bad id, a bad code, a bad name, a shared id or code, too many or no list', () => {
+    const ok = { id: 'a'.repeat(20), name: 'Ana', code: '482193' };
+    const other = { id: 'b'.repeat(20), name: 'Ben', code: '111111' };
+    const tooMany = Array.from({ length: MAX_CAMPAIGN_PLAYERS + 1 }, (_, n) => seat(n));
+    for (const players of [
+      [{ ...ok, id: 'short' }], [{ ...ok, id: 'A'.repeat(20) }], [{ ...ok, code: '48219' }], [{ ...ok, code: 482193 }], [{ ...ok, name: '‮' }], [{ ...ok, name: 7 }], [{ id: ok.id, name: ok.name }],
+      [ok, { ...other, id: ok.id }], [ok, { ...other, code: ok.code }], ['x'], null, {}, tooMany,
+    ]) expect(parseClientFrame(frame(players)), JSON.stringify(players)).toBeNull();
+    expect(parseClientFrame('{"v":1,"t":"players"}')).toBeNull();
+  });
+
+  it('are at most as many as the protocol allows, and that fits', () => {
+    const full = Array.from({ length: MAX_CAMPAIGN_PLAYERS }, (_, n) => seat(n));
+    expect(new Set(full.map((p) => p.id)).size).toBe(MAX_CAMPAIGN_PLAYERS);
+    expect(parseClientFrame(frame(full))).toEqual({ v: 1, t: 'players', players: full });
+  });
+
+  it('keep a newcomer\'s flag on a player hello and drop any other value of it', () => {
+    expect(parseClientFrame('{"v":1,"t":"hello","role":"player","name":"Ana","newcomer":true}')).toEqual({ v: 1, t: 'hello', role: 'player', name: 'Ana', newcomer: true });
+    for (const value of ['false', '"yes"', '1', 'null']) {
+      expect(parseClientFrame(`{"v":1,"t":"hello","role":"player","name":"Ana","newcomer":${value}}`), value).toEqual({ v: 1, t: 'hello', role: 'player', name: 'Ana' });
+    }
   });
 });

@@ -20,6 +20,32 @@ const MAX_ROLL_ID = 64;
 const MAX_TOTAL = 1_000_000_000;
 /** The longest label a die's term carries. */
 const MAX_DIE_LABEL = 24;
+/** The most labelled constants a shared roll names: Atlas's formula holds no more terms. */
+export const MAX_NAMED_MODIFIERS = 20;
+
+/** Which way a roll is helped or hindered: rolled as the GM's dice set's rule for that side says. */
+export type AdvantageSide = 'advantage' | 'disadvantage';
+
+export const ADVANTAGE_SIDES: readonly AdvantageSide[] = ['advantage', 'disadvantage'];
+
+export const isAdvantageSide = (value: unknown): value is AdvantageSide => value === 'advantage' || value === 'disadvantage';
+
+/** The most groups of dice a dice set names. */
+export const MAX_ROLL_DICE_GROUPS = 20;
+/** The most dice of one group: Atlas's 100 dice of a formula. */
+const MAX_GROUP_DICE = 100;
+/** The most sides a roll's dice name, those of a later Atlas included. */
+const MAX_SIDES = 8;
+
+/**
+ * What a page needs of the dice a roll is made with to offer advantage: the set's own dice, in its
+ * order (a bare bonus is rolled with them, and advantage changes only a roll that holds them), and the
+ * sides its rules say anything for. A roll the set's dice are not in rolls as it is.
+ */
+export interface SharedRollDice {
+  readonly dice: readonly { readonly count: number; readonly sides: number }[];
+  readonly sides: readonly AdvantageSide[];
+}
 
 /** The roll button a roll answers: the log entry that offers it and which of its rolls. */
 export interface RollRequestAnswer {
@@ -40,6 +66,13 @@ export interface PlayerRoll {
   readonly mode?: RollMode;
   readonly flavor?: string;
   readonly request?: RollRequestAnswer;
+  /** Ask for the GM’s names and colours on an explicit matching pool. */
+  readonly setAppearance?: true;
+  /**
+   * Roll with advantage or disadvantage, as the GM's dice set rules it; a roll that cannot take the
+   * side rolls plain. Added later: an older GM rolls plain, an older page never asks.
+   */
+  readonly advantage?: AdvantageSide;
 }
 
 /**
@@ -59,6 +92,9 @@ export interface SharedDie {
   readonly success?: true;
   readonly failure?: true;
   readonly label?: string;
+  /** The name and colour the GM's dice set gives this die. */
+  readonly name?: string;
+  readonly colour?: string;
 }
 
 /** A roll as players see it: Atlas's result without who rolled it, its source reduced to what players may know. */
@@ -73,6 +109,18 @@ export interface SharedRoll {
   readonly source?: { readonly type: 'toolbar' | 'statblock'; readonly abilityName?: string };
   /** The formula is no plain sum (it multiplies, divides or counts): `modifiers` is 0 then. */
   readonly linear?: false;
+  /**
+   * The constants of `modifiers` written with a label (`+3[Str mod]`), in written order, each kept
+   * apart so the roll names it: "+ 4 − 1 Str mod". Absent where it names none. Added later: an older
+   * GM sends none, and an older page reads `modifiers` alone.
+   */
+  readonly namedModifiers?: readonly SharedNamedModifier[];
+}
+
+/** A constant of a roll written with a label: `+2[Proficiency]` is Proficiency, 2; a subtracted one is negative. */
+export interface SharedNamedModifier {
+  readonly label: string;
+  readonly value: number;
 }
 
 /**
@@ -99,17 +147,32 @@ const REFUSALS: readonly string[] = ['formula', 'rate', 'scene', 'unavailable'];
 const isInteger = (value: unknown, min: number, max: number): value is number => Number.isInteger(value) && (value as number) >= min && (value as number) <= max;
 const isText = (value: unknown, max: number): value is string => typeof value === 'string' && value.length <= max;
 
+function parseDiceGroup(value: unknown): SharedRollDice['dice'][number] | null {
+  if (!isRecord(value) || !isInteger(value.count, 1, MAX_GROUP_DICE) || !isInteger(value.sides, 1, MAX_FACES)) return null;
+  return { count: value.count, sides: value.sides };
+}
+
+/** A roll's dice as a page reads them, or undefined for anything malformed; a side it does not know is left out. */
+export function parseRollDice(value: unknown): SharedRollDice | undefined {
+  if (!isRecord(value) || !Array.isArray(value.dice) || value.dice.length > MAX_ROLL_DICE_GROUPS || !Array.isArray(value.sides) || value.sides.length > MAX_SIDES) return undefined;
+  const dice = value.dice.map(parseDiceGroup);
+  if (dice.some((group) => group === null)) return undefined;
+  const sides = ADVANTAGE_SIDES.filter((side) => (value.sides as unknown[]).includes(side));
+  return { dice: dice as SharedRollDice['dice'][number][], sides };
+}
+
 function parseRequestAnswer(value: unknown): RollRequestAnswer | null {
   if (!isRecord(value) || typeof value.id !== 'string' || !LOG_ID_PATTERN.test(value.id) || !isInteger(value.index, 0, MAX_INLINE_ROLLS - 1)) return null;
   return { id: value.id, index: value.index };
 }
 
-/** A player's roll as the GM reads it, or null for anything malformed. */
+/** A player's roll as the GM reads it, or null for anything malformed; a side of advantage it does not know is left out, and the roll rolls plain. */
 export function parsePlayerRoll(value: Record<string, unknown>): PlayerRoll | null {
   const { scene, formula, token, mode, flavor } = value;
   if (!isText(scene, MAX_SCENE_ID) || scene === '' || !isText(formula, MAX_FORMULA)) return null;
   if (token !== null && (typeof token !== 'string' || !TOKEN_ID_PATTERN.test(token))) return null;
   if (mode !== undefined && !isRollMode(mode)) return null;
+  if (value.setAppearance !== undefined && value.setAppearance !== true) return null;
   const shownFlavor = flavor === undefined ? undefined : shownLine(flavor, MAX_FLAVOR);
   const request = value.request === undefined ? undefined : parseRequestAnswer(value.request);
   if (shownFlavor === null || request === null) return null;
@@ -118,6 +181,8 @@ export function parsePlayerRoll(value: Record<string, unknown>): PlayerRoll | nu
     ...(mode !== undefined && mode !== 'public' && { mode }),
     ...(shownFlavor !== undefined && { flavor: shownFlavor }),
     ...(request !== undefined && { request }),
+    ...(value.setAppearance === true && { setAppearance: true }),
+    ...(isAdvantageSide(value.advantage) && { advantage: value.advantage }),
   };
 }
 
@@ -126,14 +191,16 @@ const DIE_LABEL = /^[\p{L}\p{N}' -]{1,24}$/u;
 
 function parseDie(value: unknown): SharedDie | null {
   if (!isRecord(value)) return null;
-  const { die, value: rolled, max, min, label } = value;
+  const { die, value: rolled, max, min, label, name, colour } = value;
   const fate = die === 'dF';
   if (typeof die !== 'string' || !isInteger(max, 1, MAX_FACES) || !isInteger(rolled, -1, max)) return null;
   if (fate ? max !== 1 || min !== -1 : die !== `d${max}` || min !== undefined || rolled < 1) return null;
   if (FLAGS.some((flag) => value[flag] !== undefined && value[flag] !== true)) return null;
   if (label !== undefined && (typeof label !== 'string' || label.length > MAX_DIE_LABEL || !DIE_LABEL.test(label))) return null;
+  if (name !== undefined && (typeof name !== 'string' || name.trim() === '' || name.length > 40 || /[\p{Cc}\p{Cf}]/u.test(name))) return null;
+  if (colour !== undefined && (typeof colour !== 'string' || !/^#[0-9a-f]{6}$/i.test(colour))) return null;
   const flags = Object.fromEntries(FLAGS.filter((flag) => value[flag] === true).map((flag) => [flag, true]));
-  return { die, value: rolled, max, ...(fate && { min: -1 as const }), ...flags, ...(label !== undefined && { label }) };
+  return { die, value: rolled, max, ...(fate && { min: -1 as const }), ...flags, ...(label !== undefined && { label }), ...(name !== undefined && { name }), ...(colour !== undefined && { colour }) };
 }
 
 function parseSource(value: unknown): SharedRoll['source'] | null {
@@ -142,6 +209,27 @@ function parseSource(value: unknown): SharedRoll['source'] | null {
   const { abilityName } = value;
   if (abilityName === undefined) return { type: value.type };
   return isText(abilityName, MAX_ABILITY_NAME) ? { type: value.type, abilityName } : null;
+}
+
+/** A labelled constant as a shared roll names it, or null for anything else: a label the dice notation writes, a whole signed number. */
+function parseNamedModifier(value: unknown): SharedNamedModifier | null {
+  if (!isRecord(value)) return null;
+  const { label, value: amount } = value;
+  if (typeof label !== 'string' || label.trim() === '' || !DIE_LABEL.test(label) || !isInteger(amount, -MAX_TOTAL, MAX_TOTAL)) return null;
+  return { label, value: amount };
+}
+
+/**
+ * A roll's labelled constants, or undefined where it names none or the list cannot be part of its
+ * constants (`modifiers`): a roll that is no plain sum has none, and what the named ones leave for
+ * the unnamed constants is a number a formula can make. A malformed list is dropped, the roll kept.
+ */
+function parseNamedModifiers(value: unknown, modifiers: number, linear: boolean): readonly SharedNamedModifier[] | undefined {
+  if (!linear || !Array.isArray(value) || value.length === 0 || value.length > MAX_NAMED_MODIFIERS) return undefined;
+  const entries = value.flatMap((entry: unknown) => parseNamedModifier(entry) ?? []);
+  if (entries.length !== value.length) return undefined;
+  const plain = entries.reduce((rest, entry) => rest - entry.value, modifiers);
+  return Math.abs(plain) <= MAX_TOTAL ? entries : undefined;
 }
 
 /** A shared roll as the client reads it, or null for anything malformed: nothing else reaches the dice. */
@@ -155,9 +243,11 @@ export function parseSharedRoll(value: unknown): SharedRoll | null {
   const rolls = value.rolls.map(parseDie);
   const source = parseSource(value.source);
   if (rolls.some((die) => die === null) || source === null || (value.linear !== undefined && value.linear !== false)) return null;
+  const namedModifiers = parseNamedModifiers(value.namedModifiers, modifiers, value.linear !== false);
   return {
     id, timestamp, formula, rolls: rolls as SharedDie[], modifiers, total,
     ...(value.linear === false && { linear: false as const }),
+    ...(namedModifiers !== undefined && { namedModifiers }),
     ...(crit !== undefined && { crit }),
     ...(source !== undefined && { source }),
   };

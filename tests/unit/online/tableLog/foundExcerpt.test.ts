@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { foundExcerpt } from '../../../../src/app/online/tableLog/foundExcerpt.ts';
 

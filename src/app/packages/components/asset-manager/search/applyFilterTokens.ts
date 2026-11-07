@@ -1,5 +1,5 @@
 import type { CreatureFacets } from '../../../../creatures/creatureFilterEngine';
-import { LAYOUT_FACET, withOptionState, withRange, withStatblockFilter } from '../../../../creatures/creatureSelection';
+import { LAYOUT_FACET, TEXT_FACET, withOptionState, withRange, withStatblockFilter } from '../../../../creatures/creatureSelection';
 import { optionKey } from '../../../../creatures/creatureValues';
 import type { QueryToken } from '../../../../search/querySyntax';
 import type { CreatureFilterSelection, NumericRange } from '../../../../types/creatureFilterTypes';
@@ -31,7 +31,7 @@ function boundsFor(op: QueryToken<FilterKeyword>['op'], typed: NumericRange, val
 /**
  * The filters `tokens` set on top of `filters`, and the words that stay in the
  * search: plain words, `name:` values and tokens that name nothing (a tag that
- * does not exist) as typed. Negated options and templates are excluded.
+ * does not exist) as typed. Negated options, templates and text are excluded.
  */
 export function applyFilterTokens(
   text: string,
@@ -57,6 +57,11 @@ export function applyFilterTokens(
       case 'statblock':
         selection = withStatblockFilter(selection, statblockValue(value) ?? 'any');
         break;
+      case 'text': {
+        const phrase = value.trim().replace(/\s+/g, ' ').toLowerCase();
+        if (phrase) selection = withOptionState(selection, TEXT_FACET, phrase, state);
+        break;
+      }
       case 'template': {
         // A Fantasy Statblocks layout and a native template may share the name: the name picks both
         const named = facets?.layouts.filter((candidate) => optionKey(candidate.label) === optionKey(value)) ?? [];

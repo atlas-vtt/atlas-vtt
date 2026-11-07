@@ -8,11 +8,14 @@
 import { parseRating } from '../../creatures/creatureValues';
 import type { FieldType, FieldValue } from '../model/templateTypes';
 import { choiceText, readChoice, unreadProblem, type ChoiceShape } from './choicePicks';
-import { isDiceNotation, parseDiceNotation } from './diceNotation';
+import { parseDiceNotation } from './diceNotation';
+import { isDiceValue } from './diceValues';
 import { isWholeNumberText, parseNumberText } from './numberText';
-import { splitListText } from './listText';
+import { splitEscapedList } from './listText';
 import { parsePairText } from './pairValues';
 import { quoted } from './valueText';
+import { NUMBER_SUM, withReferencesAsOne } from './fillReferences';
+import { namesReference } from './references';
 
 /** `value: undefined` means the key is cleared. */
 export type CoercionResult =
@@ -36,7 +39,10 @@ function refused(raw: string, problem: string): CoercionResult {
 
 function coerceNumber(text: string, input: string): CoercionResult {
   const value = parseNumberText(text);
-  return value === null ? refused(input, `${quoted(text)} isn't a number.`) : kept(value);
+  if (value !== null) return kept(value);
+  // `10 + @dex` is kept as written: the card shows its total
+  if (namesReference(text) && NUMBER_SUM.test(withReferencesAsOne(text).trim())) return kept(text);
+  return refused(input, `${quoted(text)} isn't a number.`);
 }
 
 function coerceRating(text: string, input: string): CoercionResult {
@@ -45,7 +51,8 @@ function coerceRating(text: string, input: string): CoercionResult {
 }
 
 function coerceDice(text: string, input: string): CoercionResult {
-  if (isDiceNotation(text)) return kept(text);
+  // `2d6 + @str` is kept as written: the card shows and rolls it with the number in
+  if (isDiceValue(namesReference(text) ? withReferencesAsOne(text) : text)) return kept(text);
   const problem = parseDiceNotation(text) ? `${quoted(text)} rolls no dice, ${DICE_EXAMPLE}.` : `${quoted(text)} isn't dice, ${DICE_EXAMPLE}.`;
   return refused(input, problem);
 }
@@ -88,7 +95,7 @@ function coerceScores(text: string): CoercionResult {
 
 function coercePairs(text: string, input: string): CoercionResult {
   const pairs: FieldValue[] = [];
-  for (const part of splitListText(text)) {
+  for (const part of splitEscapedList(text)) {
     const pair = parsePairText(part);
     if (!pair) return refused(input, `${quoted(part)} isn't a name and a number, like Dex +5.`);
     pairs.push({ [pair.key]: pair.value });
@@ -103,12 +110,13 @@ const COERCERS: Readonly<Record<FieldType, Coercer>> = {
   rating: coerceRating,
   dice: coerceDice,
   choice: coerceChoice,
-  list: (text) => kept(splitListText(text)),
+  list: (text) => kept(splitEscapedList(text)),
   scores: coerceScores,
   entries: (_text, input) => refused(input, 'Entries are added one at a time.'),
   pairs: coercePairs,
   image: (text) => kept(text),
   spells: (text) => kept(text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== '')),
+  counters: (_text, input) => refused(input, 'Counters are changed with their pips.'),
 };
 
 /**

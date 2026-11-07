@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 import React, { forwardRef, useId, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
@@ -9,11 +8,12 @@ import { ChipsEditor } from './ListValueInput';
 import { usePaneEdit } from './paneEditContext';
 import { hiddenFields } from './templateChoices';
 import { TrayValueRow } from './TrayValueRow';
+import { t } from '../../../i18n';
 
 /** Obsidian's own properties, edited here while the note's Properties are hidden (D7). */
 const NOTE_FIELDS: readonly TemplateField[] = [
-  { key: 'tags', label: t('uiStatblocks.morePropertiesTray_tags'), type: 'list' },
-  { key: 'aliases', label: t('uiStatblocks.morePropertiesTray_aliases'), type: 'list' },
+  { key: 'tags', label: t('statblockEditor.tags'), type: 'list' },
+  { key: 'aliases', label: t('statblockEditor.aliases'), type: 'list' },
 ];
 
 interface MorePropertiesTrayProps {
@@ -47,7 +47,7 @@ export const MorePropertiesTray = forwardRef<HTMLButtonElement, MorePropertiesTr
         onClick={() => setOpen((was) => !was)}
       >
         <ChevronRight aria-hidden="true" className="atlas-sb-pane-tray__chevron" />
-        {t('uiMessages.moreProperties', { count })}
+        {t('statblockEditor.moreProperties', { count })}
       </Button>
       {open && (
         <div id={contentId} className="atlas-sb-pane-tray__content">
@@ -59,7 +59,7 @@ export const MorePropertiesTray = forwardRef<HTMLButtonElement, MorePropertiesTr
           ))}
           {hidden.length > 0 && (
             <>
-              <h3 className="atlas-sb-pane-tray__heading">{t('uiStatblocks.morePropertiesTray_hiddenByThisTemplate')}</h3>
+              <h3 className="atlas-sb-pane-tray__heading">{t('statblockEditor.hiddenByTemplate')}</h3>
               {hidden.map((field) => <TrayValueRow key={field.key} field={field} />)}
             </>
           )}

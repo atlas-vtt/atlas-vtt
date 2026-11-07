@@ -1,14 +1,15 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { EditorState, RangeSetBuilder } from '@codemirror/state';
 import { Decoration, EditorView } from '@codemirror/view';
 import { App, TFile } from 'obsidian';
-import { findEditorHeading, findRenderedHeading, headingLine } from '../../src/app/services/noteHeadings';
+import { findEditorHeading, findRenderedHeading, linkedHeading, type LinkedHeading } from '../../src/app/services/noteHeadings';
 
 const NOTE = new TFile('Dungeon.md');
 
-function appWithHeadings(headings: Array<[heading: string, line: number]>): App {
+function appWithHeadings(headings: Array<[heading: string, line: number, level?: number]>): App {
   const app = new App();
-  const cache = { headings: headings.map(([heading, line]) => ({ heading, level: 2, position: { start: { line } } })) };
+  const cache = { headings: headings.map(([heading, line, level = 2]) => ({ heading, level, position: { start: { line } } })) };
   app.metadataCache = { getFileCache: (): typeof cache => cache };
   return app;
 }
@@ -25,19 +26,24 @@ function editorWithHeadings(parent: HTMLElement, lines: string[], headingLines: 
   return new EditorView({ state, parent });
 }
 
-describe('headingLine', () => {
+describe('linkedHeading', () => {
   it('finds a heading containing # by its exact text', () => {
     const app = appWithHeadings([['Room #2', 4], ['Room #3', 9]]);
-    expect(headingLine(app, NOTE, 'Room #3')).toBe(9);
+    expect(linkedHeading(app, NOTE, 'Room #3')?.line).toBe(9);
   });
 
   it('resolves a nested heading link written by hand', () => {
-    const app = appWithHeadings([['Cellar', 2], ['Keep', 6], ['Cellar', 8]]);
-    expect(headingLine(app, NOTE, 'Keep#Cellar')).toBe(8);
+    const app = appWithHeadings([['Cellar', 2, 2], ['Keep', 6, 1], ['Cellar', 8, 2]]);
+    expect(linkedHeading(app, NOTE, 'Keep#Cellar')).toEqual({ text: 'Cellar', line: 8, occurrence: 1, count: 2 });
+  });
+
+  it('tells which of its name a counted link means', () => {
+    const app = appWithHeadings([['Loot', 2], ['Exit', 4], ['Loot', 6], ['Loot', 8]]);
+    expect(linkedHeading(app, NOTE, 'Loot##')).toEqual({ text: 'Loot', line: 8, occurrence: 2, count: 3 });
   });
 
   it('is null when the note lacks the heading', () => {
-    expect(headingLine(appWithHeadings([['Keep', 1]]), NOTE, 'Tower')).toBeNull();
+    expect(linkedHeading(appWithHeadings([['Keep', 1]]), NOTE, 'Tower')).toBeNull();
   });
 });
 
@@ -74,21 +80,70 @@ describe('findRenderedHeading', () => {
     return element;
   };
 
+  const only = (text: string): LinkedHeading => ({ text, line: 0, occurrence: 0, count: 1 });
+
   it('matches the source text Obsidian keeps in data-heading, # marks and links included', () => {
     const container = document.body.createDiv();
     rendered(container, '1 Suspect', 0);
     const suspect = rendered(container, '#1 Suspect', 40);
     const market = rendered(container, '[[Alula|The city]] market', 80);
-    expect(findRenderedHeading(container, '#1 Suspect')).toBe(suspect);
-    expect(findRenderedHeading(container, '[[Alula|The city]] market')).toBe(market);
+    expect(findRenderedHeading(container, only('#1 Suspect'))).toBe(suspect);
+    expect(findRenderedHeading(container, only('[[Alula|The city]] market'))).toBe(market);
   });
 
-  it('picks the repeated heading nearest the top', () => {
+  it('picks the repeated heading nearest the top while not all of its name are drawn', () => {
     const container = document.body.createDiv();
     container.getBoundingClientRect = (): DOMRect => ({ top: 100 }) as DOMRect;
     rendered(container, 'Loot', -400);
     const nearTop = rendered(container, 'Loot', 110);
     rendered(container, 'Loot', 900);
-    expect(findRenderedHeading(container, 'Loot')).toBe(nearTop);
+    expect(findRenderedHeading(container, { text: 'Loot', line: 30, occurrence: 4, count: 9 })).toBe(nearTop);
+  });
+
+  it('counts to the very heading when all of its name are drawn, however far it is from the top', () => {
+    const container = document.body.createDiv();
+    container.getBoundingClientRect = (): DOMRect => ({ top: 100 }) as DOMRect;
+    rendered(container, 'Loot', 100);
+    const second = rendered(container, 'Loot', 700);
+    expect(findRenderedHeading(container, { text: 'Loot', line: 30, occurrence: 1, count: 2 })).toBe(second);
+  });
+
+  it('takes the view\'s word for the line a drawn heading is on', () => {
+    const container = document.body.createDiv();
+    container.getBoundingClientRect = (): DOMRect => ({ top: 100 }) as DOMRect;
+    const first = rendered(container, 'Loot', 100);
+    const second = rendered(container, 'Loot', 500);
+    const lines = new Map([[first, 50], [second, 80]]);
+    const lineOf = (element: HTMLElement): number | null => lines.get(element) ?? null;
+    expect(findRenderedHeading(container, { text: 'Loot', line: 80, occurrence: 8, count: 9 }, lineOf)).toBe(second);
+  });
+
+  it('does not take a heading an embed draws for a repeat of the note\'s own', () => {
+    const container = document.body.createDiv();
+    const own = rendered(container, 'Overview', 100);
+    rendered(container, 'Overview', 200);
+    const lineOf = (element: HTMLElement): number | null => (element === own ? 10 : null);
+    expect(findRenderedHeading(container, { text: 'Overview', line: 500, occurrence: 1, count: 2 }, lineOf)).toBeNull();
+  });
+
+  it('finds nothing while the view knows the drawn ones lie on other lines, so the scroll goes on', () => {
+    const container = document.body.createDiv();
+    container.getBoundingClientRect = (): DOMRect => ({ top: 100 }) as DOMRect;
+    const first = rendered(container, 'Overview', 100);
+    const lineOf = (element: HTMLElement): number | null => (element === first ? 3 : null);
+    expect(findRenderedHeading(container, { text: 'Overview', line: 400, occurrence: 4, count: 9 }, lineOf)).toBeNull();
+  });
+
+  it('falls back on the nearest only where the view knows no line', () => {
+    const container = document.body.createDiv();
+    container.getBoundingClientRect = (): DOMRect => ({ top: 100 }) as DOMRect;
+    const near = rendered(container, 'Overview', 110);
+    expect(findRenderedHeading(container, { text: 'Overview', line: 400, occurrence: 4, count: 9 }, () => null)).toBe(near);
+  });
+
+  it('counts a unique heading in on its text, whatever line the view gives it', () => {
+    const container = document.body.createDiv();
+    const heading = rendered(container, 'Overview', 110);
+    expect(findRenderedHeading(container, { text: 'Overview', line: 400, occurrence: 0, count: 1 }, () => 3)).toBe(heading);
   });
 });

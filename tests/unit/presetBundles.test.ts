@@ -1,4 +1,3 @@
-// @vitest-environment node
 // JSZip needs Node's ArrayBuffer realm; jsdom's differs and its Blob support is absent.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { App, TFile } from 'obsidian';
@@ -12,10 +11,6 @@ import { SYSTEM_PRESET_FOLDER } from '../../src/app/services/systemPresets/prese
 import { SystemPresetFiles } from '../../src/app/services/systemPresets/SystemPresetFiles';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
 
-vi.mock('../../src/app/atlas-view', () => ({
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-  AtlasView: class { async saveMap(): Promise<void> {} },
-}));
 
 const PRESET = 'marsh-rules';
 const PRESET_PATH = `${SYSTEM_PRESET_FOLDER}/Marsh.json`;

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { ALL_PLAYERS, PROTOCOL_VERSION } from '../../../../src/app/online/protocol/index.ts';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { LightSource } from '../../../../src/app/types/lightingTypes';

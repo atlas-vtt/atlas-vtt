@@ -1,4 +1,3 @@
-// @vitest-environment node
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +19,7 @@ describe('the companion plugin', () => {
   it('finds Atlas\'s image display on its plugin instance, with the three calls it stands in front of', () => {
     expect(vendor('main.ts')).toMatch(/this\.imageDisplayService = new ImageDisplayService\(/);
     const service = vendor('src/app/services/ImageDisplayService.ts');
-    for (const call of ['public async displayImageOnPlayerView(file: TFile): Promise<void>', 'public closeImageDisplay(): void', 'public isImageDisplayed(): boolean']) expect(service).toContain(call);
+    for (const call of ['public async displayImageOnPlayerView(file: TFile): Promise<void>', 'public closeImageDisplay(options?: { quiet?: boolean }): void', 'public isImageDisplayed(): boolean']) expect(service).toContain(call);
   });
 
   it('is reached by every caller: menus, the overlay\'s own × and the commands call through the instance', () => {

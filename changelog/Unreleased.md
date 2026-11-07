@@ -1,3 +1,3 @@
-## New
 
-- Atlas now follows Obsidian's Italian interface language, including its in-app tutorials, settings, menus and tooltips.
+## New
+- Italian interface and in-app guides, following Obsidian’s language. Texts added or changed since the translation was prepared fall back to English.

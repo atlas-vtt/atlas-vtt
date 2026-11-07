@@ -5,7 +5,8 @@ import {
 } from '../../src/app/gameSystems/initiativeRules';
 import { parseUserPreset } from '../../src/app/gameSystems/presetValidation';
 import { rulesOfPreset, sameSystemRules, vanillaSystemSettings } from '../../src/app/gameSystems/systemRules';
-import { sideOf, sidesInOrder } from '../../src/app/initiative/sides';
+import { sideOf } from '../../src/app/initiative/sides';
+import { sidesOfRules } from '../../src/app/gameSystems/initiativeSideRules';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 
 const preset = (name: string): (typeof BUILT_IN_SYSTEM_PRESETS)[number] => BUILT_IN_SYSTEM_PRESETS.find((p) => p.name === name)!;
@@ -27,7 +28,7 @@ describe('initiative rules of a collection', () => {
   it('rolls a d10 in Cyberpunk RED and a d20 in every other built-in turn order', () => {
     const rolls = Object.fromEntries(BUILT_IN_SYSTEM_PRESETS.map((p) => [p.name, collectionInitiativeRules({ systemPresetId: p.id }, BUILT_IN_SYSTEM_PRESETS)]));
     expect(rolls['Cyberpunk RED']).toMatchObject({ mode: 'turn-order', roll: '1d10' });
-    expect(Object.entries(rolls).filter(([, rules]) => rules.mode === 'sides').map(([name]) => name)).toEqual(['Cairn']);
+    expect(Object.entries(rolls).filter(([, rules]) => rules.mode === 'sides').map(([name]) => name)).toEqual(['Cairn', 'Old-School Essentials']);
   });
 
   it('reads stored rules that are none as unset, so the preset decides', () => {
@@ -88,6 +89,6 @@ describe('the side a token fights on', () => {
   });
 
   it('lists the sides in the order they act', () => {
-    expect(sidesInOrder('opponents')).toEqual(['opponents', 'players']);
+    expect(sidesOfRules({ firstSide: 'opponents' }).map((side) => side.id)).toEqual(['opponents', 'players']);
   });
 });

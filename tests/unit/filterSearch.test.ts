@@ -34,7 +34,7 @@ describe('keywords', () => {
   it('offer name and tag everywhere and the statblock fields on the Characters tab', () => {
     expect(filterKeywords('maps', CATALOG_CREATURE_FILTERS).map((keyword) => keyword.prefix)).toEqual(['name', 'tag']);
     expect(keywords.map((keyword) => keyword.prefix)).toEqual([
-      'name', 'tag', 'statblock', 'cr', 'level', 'tier', 'type', 'trait', 'rarity', 'alignment', 'source', 'template',
+      'name', 'tag', 'statblock', 'cr', 'level', 'tier', 'type', 'trait', 'rarity', 'alignment', 'source', 'template', 'text',
     ]);
   });
 
@@ -43,7 +43,7 @@ describe('keywords', () => {
       { id: 'hit-dice', label: 'Hit dice', kind: 'range', field: 'hit_dice' },
       { id: 'tag', label: 'Clash', kind: 'options', fields: ['tag'] },
     ]);
-    expect(custom.map((keyword) => keyword.prefix)).toEqual(['name', 'tag', 'statblock', 'hit-dice', 'template']);
+    expect(custom.map((keyword) => keyword.prefix)).toEqual(['name', 'tag', 'statblock', 'hit-dice', 'template', 'text']);
   });
 
   it('read ranges and statblock choices as typed', () => {
@@ -61,7 +61,7 @@ describe('suggestions', () => {
   it('list the keywords whose values the characters in view have', () => {
     const suggestions = filterSuggestions('', 0, sources);
     expect(suggestions?.items.map((item) => (item.kind === 'keyword' ? item.keyword.prefix : ''))).toEqual([
-      'name', 'tag', 'statblock', 'cr', 'type', 'source',
+      'name', 'tag', 'statblock', 'cr', 'type', 'source', 'text',
     ]);
   });
 
@@ -72,7 +72,7 @@ describe('suggestions', () => {
   it('offer the keywords that can exclude after a minus', () => {
     const suggestions = filterSuggestions('-t', 2, sources);
     expect(suggestions?.heading).toBe('Exclude');
-    expect(suggestions?.items.map((item) => (item.kind === 'keyword' ? [item.keyword.prefix, item.negated] : null))).toEqual([['type', true], ['trait', true], ['template', true]]);
+    expect(suggestions?.items.map((item) => (item.kind === 'keyword' ? [item.keyword.prefix, item.negated] : null))).toEqual([['type', true], ['trait', true], ['template', true], ['text', true]]);
     expect(filterSuggestions('-type:', 6, sources)?.heading).toBe('Exclude type');
   });
 
@@ -146,5 +146,43 @@ describe('active filter chips', () => {
     expect(formatRange({ min: 0.25, max: 3 })).toBe('1/4 – 3');
     expect(formatRange({ min: 5, max: 5 })).toBe('5');
     expect(formatRating(2 + 1e-12)).toBe('2');
+  });
+});
+
+describe('statblock text', () => {
+  const creatures: Record<string, IndexedCreature> = {
+    hound: { path: 'hound', templateId: null, meanings: {}, lookName: null, fields: { name: 'Hell Hound', actions: [{ name: 'Fire Breath', desc: 'Exhales [[fire]] in a 15-foot cone.' }] } },
+    wolf: { path: 'wolf', templateId: null, meanings: {}, lookName: null, fields: { name: 'Wolf', traits: [{ name: 'Pack Tactics', desc: 'Advantage on attacks.' }] } },
+  };
+  const textFacts = ['hound', 'wolf', 'plain'].map((path) => factsOf(path === 'plain' ? {} : { statblockPath: path }, (p) => creatures[p] ?? null, []));
+  const passing = (selection: CreatureFilterSelection): boolean[] => [...evaluateCreatureFilters(textFacts, [], selection).passes];
+
+  it('takes text: phrases out of the search, in lowercase', () => {
+    const { filters, leftover } = apply('wolf text:"Pack  Tactics" -has:fire');
+    expect(filters.selection.text).toEqual({ include: ['pack tactics'], exclude: ['fire'] });
+    expect(leftover).toBe('wolf');
+  });
+
+  it('finds a phrase anywhere in a statblock, ability names and linked words alike, and excludes it', () => {
+    expect(passing(apply('text:fire').filters.selection)).toEqual([true, false, false]);
+    expect(passing(apply('text:"pack tactics"').filters.selection)).toEqual([false, true, false]);
+    expect(passing(apply('-text:fire').filters.selection)).toEqual([false, true, true]);
+  });
+});
+
+describe('statblock text as a phrase', () => {
+  it('reads unquoted words after text: up to the next keyword', () => {
+    const { filters, leftover } = apply('text:pack   tactics type:beast');
+    expect(filters.selection.text.include).toEqual(['pack tactics']);
+    expect(filters.selection.options.type?.include).toEqual(['beast']);
+    expect(leftover).toBe('');
+  });
+
+  it('keeps every word of the phrase, a trailing space included, in the value, so Enter applies it', () => {
+    for (const text of ['text:pack t', 'text:pack tactics ']) {
+      const suggestions = filterSuggestions(text, text.length, sources);
+      expect(suggestions?.mode).toBe('value');
+      expect(suggestions?.items).toEqual([]);
+    }
   });
 });

@@ -86,12 +86,14 @@ describe('the world map players may be shown', () => {
     }
   });
 
-  it('is none for artwork outside Atlas\'s own folders for the asset\'s collection', async () => {
+  it('is the artwork wherever in the vault it lies, as presenting the scene sends it too, but never a path that climbs out', async () => {
     const { play, worldMap } = setup(['passport', 'climb', 'elsewhere'].map((id) => campaign(`plays-${id}`, id)));
-    for (const id of ['passport', 'climb', 'elsewhere']) {
-      play.play(`plays-${id}`);
-      expect(await worldMap()).toBeNull();
-    }
+    play.play('plays-passport');
+    expect(await worldMap()).toBe(PRIVATE);
+    play.play('plays-elsewhere');
+    expect(await worldMap()).toBe(OTHER_FOLDER);
+    play.play('plays-climb');
+    expect(await worldMap()).toBeNull();
   });
 
   it('is none before the campaigns can be read', async () => {

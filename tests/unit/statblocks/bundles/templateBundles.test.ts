@@ -1,4 +1,3 @@
-// @vitest-environment node
 // JSZip needs Node's ArrayBuffer realm; jsdom's differs and its Blob support is absent.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
@@ -13,10 +12,6 @@ import { findCode } from '../../../../src/app/statblocks/model/fsCodeKeys';
 import { MARSH_CREATURE_JSON } from '../../../fixtures/statblockTemplateFixtures';
 import { createInMemoryApp, parseFrontmatter, type InMemoryApp } from '../../../mocks/inMemoryVault';
 
-vi.mock('../../../../src/app/atlas-view', () => ({
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-  AtlasView: class { async saveMap(): Promise<void> {} },
-}));
 
 const MARSH = 'marsh-creature-k7m2qa';
 const LIBRARY = 'atlas-vtt/statblock-templates';

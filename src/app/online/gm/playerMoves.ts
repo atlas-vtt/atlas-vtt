@@ -3,6 +3,7 @@ import { placeTokens, type PlacedTokensState } from '../../stores/tokenStacking'
 import type { ViewState } from '../../types/viewState';
 import { checkMove, insideMap, landing, MoveRate, type MoveContext } from './moveCheck.ts';
 import { PlayerDrags } from './playerDrags.ts';
+import { mapTokens } from '../../tokens/offMap';
 
 /** What player moves read and write of an Atlas tab's store. */
 export type MoveState = PlacedTokensState & Pick<ViewState, 'objects' | 'mapLoaded' | 'isMapLoading' | 'isDragging' | 'heldTokens'>;
@@ -68,6 +69,16 @@ export class PlayerMoves {
     this.drags.receive(from, drag);
   }
 
+  /** Where each token a player drags now was taken from, by GM token id. */
+  dragStarts(): ReadonlyMap<string, { readonly x: number; readonly y: number }> {
+    return this.drags.starts();
+  }
+
+  /** The player whose drag holds a token (by GM token id), or undefined while no player drags it. */
+  draggerOf(tokenId: string): string | undefined {
+    return this.drags.draggerOf(tokenId);
+  }
+
   /** The player let go of a drag without a drop: the token goes back, with no undo step. */
   dragCancel(from: string, cancel: PlayerDragCancel): void {
     this.drags.cancel(from, cancel);
@@ -96,13 +107,14 @@ export class PlayerMoves {
     const state = this.store.getState();
     if (!this.rate.take(from, this.ports.now()) || !state.mapLoaded || state.isMapLoading) return this.refuse(from, move);
     const dropped = this.drags.drop(from, move);
+    if (dropped === 'turn') return this.refuse(from, move, 'turn');
     if (dropped !== null) return dropped !== false && dropped.x === move.x && dropped.y === move.y ? undefined : this.refuse(from, move);
     const verdict = checkMove(from, move, this.context(state));
-    if (!verdict.ok) return this.refuse(from, move);
+    if (!verdict.ok) return this.refuse(from, move, verdict.reason === 'turn' ? 'turn' : undefined);
     if (!this.drags.gmHolds(state)) return this.apply(from, verdict.tokenId, move);
     const earlier = this.waiting.get(verdict.tokenId);
     if (earlier !== undefined && earlier.from !== from) this.refuse(earlier.from, earlier.move);
-    const token = state.objects.tokens[verdict.tokenId];
+    const token = mapTokens(state.objects)[verdict.tokenId];
     this.waiting.set(verdict.tokenId, { from, move, x: token?.x ?? Number.NaN, y: token?.y ?? Number.NaN });
   }
 
@@ -123,8 +135,9 @@ export class PlayerMoves {
     for (const { from, move, x, y } of waiting) {
       const now = this.store.getState();
       const verdict = now.mapLoaded && !now.isMapLoading ? checkMove(from, move, this.context(now)) : null;
-      const token = verdict?.ok === true ? now.objects.tokens[verdict.tokenId] : undefined;
-      if (verdict?.ok !== true || token === undefined || token.x !== x || token.y !== y) this.refuse(from, move);
+      const token = verdict?.ok === true ? mapTokens(now.objects)[verdict.tokenId] : undefined;
+      if (verdict?.ok === false && verdict.reason === 'turn') this.refuse(from, move, 'turn');
+      else if (verdict?.ok !== true || token === undefined || token.x !== x || token.y !== y) this.refuse(from, move);
       else this.apply(from, verdict.tokenId, move);
     }
   }
@@ -136,24 +149,28 @@ export class PlayerMoves {
    */
   private apply(from: string, tokenId: string, move: PlayerMove): void {
     const state = this.store.getState();
-    const token = state.objects.tokens[tokenId];
-    const at = token === undefined ? move : landing(this.context(state), token, move);
+    const token = mapTokens(state.objects)[tokenId];
+    const at = token === undefined ? move : landing(this.context(state), state, tokenId, token, move);
     const stopped = at.x !== move.x || at.y !== move.y;
+    // A token put down on stairs goes to the level they lead to, and its player's picture follows it there
     if (!stopped || at.x !== token?.x || at.y !== token.y) this.store.setState((draft) => placeTokens(draft, [{ id: tokenId, x: at.x, y: at.y }]));
     if (stopped) this.refuse(from, move);
   }
 
-  /** Tells the sender the move was not taken, with the token's place where the players see it. */
-  private refuse(from: string, move: PlayerMove): void {
+  /**
+   * Tells the sender the move was not taken, with the token's place where the players see it, and
+   * `turn` where the token may move only on its turn; every other refusal names no reason.
+   */
+  private refuse(from: string, move: PlayerMove, reason?: 'turn'): void {
     const state = this.store.getState();
     const context = this.context(state);
     const tokenId = context.scene === move.scene ? context.listedToken(move.id) : undefined;
-    const token = tokenId === undefined ? undefined : state.objects.tokens[tokenId];
+    const token = tokenId === undefined ? undefined : mapTokens(state.objects)[tokenId];
     const seen = token !== undefined && token.isHidden !== true && insideMap(token.x, token.y, null);
-    this.ports.send({ t: 'move-refused', scene: move.scene, id: move.id, x: seen ? token.x : null, y: seen ? token.y : null }, from);
+    this.ports.send({ t: 'move-refused', scene: move.scene, id: move.id, x: seen ? token.x : null, y: seen ? token.y : null, ...(reason ? { reason } : {}) }, from);
   }
 
   private context(state: MoveState): MoveContext {
-    return { ...this.ports.context(), tokens: state.objects.tokens };
+    return { ...this.ports.context(), tokens: mapTokens(state.objects) };
   }
 }

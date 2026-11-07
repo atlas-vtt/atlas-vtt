@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import React, { useId } from 'react';
 import type { App } from 'obsidian';
 import { AlertTriangle, Trash2 } from 'lucide-react';
@@ -9,6 +8,7 @@ import type { StatblockRole } from '../model/roleTypes';
 import type { TemplateId } from '../model/templateTypes';
 import { FolderField } from './FolderField';
 import { TemplatePicker } from './TemplatePicker';
+import { t } from '../../i18n';
 
 interface RoleRowProps {
   app: App;
@@ -40,7 +40,7 @@ export function RoleRow({
   onChange, onFolderChange, onRemove, onEdit, editBlocked,
 }: RoleRowProps): React.JSX.Element {
   const templateLabel = useId();
-  const name = role.name.trim() || t('uiStatblockDetails.roleRow_thisRole');
+  const name = role.name.trim() || 'this role';
 
   return (
     <div className="atlas-csm-condition atlas-sb-role">
@@ -48,15 +48,15 @@ export function RoleRow({
         <input
           type="text"
           className="atlas-csm-input atlas-sb-role__name"
-          placeholder={t('uiStatblocks.roleRow_roleName')}
-          aria-label={t('uiStatblocks.roleRow_roleName')}
+          placeholder={t('statblockEditor.role.name')}
+          aria-label={t('statblockEditor.role.name')}
           aria-invalid={problem ? true : undefined}
           autoFocus={autoFocus}
           value={role.name}
           onChange={(event) => onChange({ ...role, name: event.target.value })}
         />
         <div className="atlas-sb-role__template">
-          <span id={templateLabel} hidden>{t('uiMessages.templateOf', { name })}</span>
+          <span id={templateLabel} hidden>{t('statblockEditor.role.templateOf', { name })}</span>
           <TemplatePicker
             value={role.templateId}
             library={library}
@@ -66,7 +66,7 @@ export function RoleRow({
           />
         </div>
         {onEdit && (
-          <LabelTooltip label={editBlocked ?? t('uiStatblockDetails.roleRow_savesTheSettingsAndOpensTheTemplate')} describe>
+          <LabelTooltip label={editBlocked ?? t('statblockEditor.role.editHint')} describe>
             <Button
               variant="ghost"
               size="sm"
@@ -75,11 +75,11 @@ export function RoleRow({
               // Not `disabled`: a disabled button shows no tooltip, and this one says why.
               onClick={editBlocked ? undefined : onEdit}
             >
-              {t('uiStatblocks.roleRow_edit')}
+              Edit
             </Button>
           </LabelTooltip>
         )}
-        <LabelTooltip label={removable ? t('uiStatblockDetails.roleRow_removeRole') : t('uiStatblockDetails.roleRow_aCollectionNeedsAtLeastOneRole')}>
+        <LabelTooltip label={removable ? t('statblockEditor.role.remove') : t('statblockEditor.role.lastOne')}>
           <Button
             variant="ghost"
             size="icon"
@@ -92,13 +92,13 @@ export function RoleRow({
         </LabelTooltip>
       </div>
       <div className="atlas-csm-condition-row">
-        <FolderField app={app} value={folder} onChange={onFolderChange} label={t('uiStatblockDetails.roleRow_folderForNewStatblocksOfName', { name: name })} />
+        <FolderField app={app} value={folder} onChange={onFolderChange} label={t('statblockEditor.role.folder', { name })} />
         {fallbackName !== null && (
-          <LabelTooltip label={t('uiStatblockDetails.roleRow_theRoleSTemplateIsNotInThisVaultSoNewStatblocksStartFro', { name: fallbackName })} describe multiline>
+          <LabelTooltip label={t('statblockEditor.role.missingTemplate', { name: fallbackName })} describe multiline>
             {/* Focusable, so the explanation also opens from the keyboard. */}
             <span className="atlas-sb-role__missing" role="note" tabIndex={0}>
               <AlertTriangle aria-hidden="true" />
-              {t('uiMessages.usingInstead', { name: fallbackName })}
+              {t('statblockEditor.role.using', { name: fallbackName })}
             </span>
           </LabelTooltip>
         )}

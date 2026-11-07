@@ -2,12 +2,12 @@
 
 ## Assets
 
-- Widget icons, map pin icons, the dashboard's icons, the token icon, the end-combat icon and the loot coin icon come from [game-icons.net](https://game-icons.net) by Lorc, Delapouite, Skoll, sbed, Carl Olsen and Caro Asercion, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
-- The light markers' glyphs are the game-icons.net icons candle-light, lantern-flame, fairy-wand and light-bulb by Lorc, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
+- Widget icons, map pin icons, the sound moods' crests, the dashboard's icons, the token icon, the end-combat icon and the loot coin icon come from [game-icons.net](https://game-icons.net) by Lorc, Delapouite, Skoll, sbed, Carl Olsen and Caro Asercion, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
+- The light markers' glyphs are the game-icons.net icons candle-light, lantern-flame, fairy-wand and light-bulb by Lorc and lava by sbed, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
 - The door badges' glyphs are the game-icons.net icons closed-doors and open-gate by Delapouite, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
 - The dice tray's dice are the game-icons.net icons d4, d10 and d12 by Skoll and dice-six-faces-six, dice-eight-faces-eight and dice-twenty-faces-twenty by Delapouite, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), redrawn as pencil sketches.
 - The starter class tokens (Cleric, Fighter, Paladin, Ranger, Rogue, Warlock, Wizard, and Knight, Assassin and Occultist from the Guard, Bandit and Cultist icons) are icons by [Sketch Studio](https://www.fiverr.com/sketchstudioart), commissioned by Maatlock of [maatlockstavern.com](https://maatlockstavern.com), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They were redrawn as pencil sketches and placed on a parchment background.
-- The toolbar editor's screenshots show a map generated with watabou's [One Page Dungeon](https://watabou.itch.io/one-page-dungeon) and creature tokens cropped from Oozejar's Illustrated Bestiary (Gourdin Konbo Club), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- The toolbar editor's screenshots show creature tokens cropped from Oozejar's Illustrated Bestiary (Gourdin Konbo Club), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 - Dice result sounds are built from the "Impact Sounds" and "Casino Audio" packs by [Kenney](https://kenney.nl), released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) and converted from OGG to MP3.
 - The dice toast knotwork corners are cropped from "Celtic knot border" by pitr on [ClipSafari](https://www.clipsafari.com/clips/o213700-celtic-knot-border), released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
 - The numerals of the 3D dice panel are set in Fantaisie Artistique by George Williams, released under the SIL Open Font License by its author ([FontForge font archive](https://fontforge.org/archive/sfds/toyfonts.html)). The licence text is in [`src/app/assets/fonts/fantaisie-artistique-OFL.txt`](src/app/assets/fonts/fantaisie-artistique-OFL.txt). The font is bundled unmodified in `styles.css`.
@@ -252,15 +252,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Licence: MIT
 
-### @radix-ui/number@1.1.1
+### @radix-ui/number@1.1.3
 
 Licence: MIT
 
-### @radix-ui/primitive@1.1.2
-
-Licence: MIT
-
-### @radix-ui/react-arrow@1.1.4
+### @radix-ui/primitive@1.2.0
 
 Licence: MIT
 
@@ -288,7 +284,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-collection@1.1.4
+### @radix-ui/react-arrow@1.1.17
 
 Licence: MIT
 
@@ -316,23 +312,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-slot@1.2.0
-
-Licence: MIT
-
-### @radix-ui/react-compose-refs@1.1.2
-
-Licence: MIT
-
-### @radix-ui/react-context@1.1.2
-
-Licence: MIT
-
-### @radix-ui/react-direction@1.1.1
-
-Licence: MIT
-
-### @radix-ui/react-dismissable-layer@1.1.7
+### @radix-ui/react-collection@1.2.0
 
 Licence: MIT
 
@@ -360,7 +340,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-dropdown-menu@2.1.16
+### @radix-ui/react-slot@1.5.0
 
 Licence: MIT
 
@@ -388,7 +368,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/primitive@1.1.3
+### @radix-ui/react-compose-refs@1.1.5
+
+Licence: MIT
+
+### @radix-ui/react-context@1.3.0
+
+Licence: MIT
+
+### @radix-ui/react-direction@1.2.0
+
+Licence: MIT
+
+### @radix-ui/react-dismissable-layer@1.2.1
 
 Licence: MIT
 
@@ -416,7 +408,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-primitive@2.1.3
+### @radix-ui/react-dropdown-menu@2.2.1
 
 Licence: MIT
 
@@ -444,7 +436,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-slot@1.2.3
+### @radix-ui/react-primitive@2.2.0
 
 Licence: MIT
 
@@ -472,7 +464,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-focus-guards@1.1.3
+### @radix-ui/react-focus-guards@1.2.0
 
 Licence: MIT
 
@@ -500,7 +492,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-focus-scope@1.1.7
+### @radix-ui/react-focus-scope@1.3.1
 
 Licence: MIT
 
@@ -528,39 +520,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-id@1.1.1
+### @radix-ui/react-id@1.1.4
 
 Licence: MIT
 
-### @radix-ui/react-menu@2.1.16
-
-Licence: MIT
-
-```
-MIT License
-
-Copyright (c) 2022 WorkOS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### @radix-ui/react-arrow@1.1.7
+### @radix-ui/react-menu@2.2.1
 
 Licence: MIT
 
@@ -588,7 +552,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-collection@1.1.7
+### @radix-ui/react-popper@1.4.0
 
 Licence: MIT
 
@@ -616,7 +580,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-dismissable-layer@1.1.11
+### @radix-ui/react-portal@1.2.0
 
 Licence: MIT
 
@@ -644,7 +608,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-popper@1.2.8
+### @radix-ui/react-presence@1.1.11
 
 Licence: MIT
 
@@ -672,7 +636,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-portal@1.1.9
+### @radix-ui/react-roving-focus@1.2.1
 
 Licence: MIT
 
@@ -700,7 +664,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-presence@1.1.5
+### @radix-ui/react-slider@1.6.1
 
 Licence: MIT
 
@@ -728,7 +692,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-popper@1.2.4
+### @radix-ui/react-tooltip@1.4.1
 
 Licence: MIT
 
@@ -756,7 +720,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-portal@1.1.6
+### @radix-ui/react-use-callback-ref@1.1.5
+
+Licence: MIT
+
+### @radix-ui/react-use-controllable-state@1.3.0
 
 Licence: MIT
 
@@ -784,7 +752,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-presence@1.1.4
+### @radix-ui/react-use-effect-event@0.0.5
 
 Licence: MIT
 
@@ -812,7 +780,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-primitive@2.1.0
+### @radix-ui/react-use-is-hydrated@0.1.3
+
+Licence: MIT
+
+### @radix-ui/react-use-layout-effect@1.1.4
+
+Licence: MIT
+
+### @radix-ui/react-use-rect@1.1.4
+
+Licence: MIT
+
+### @radix-ui/react-use-size@1.1.5
+
+Licence: MIT
+
+### @radix-ui/react-visually-hidden@1.2.13
 
 Licence: MIT
 
@@ -840,231 +824,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @radix-ui/react-roving-focus@1.1.11
+### @radix-ui/rect@1.1.3
 
 Licence: MIT
 
-```
-MIT License
-
-Copyright (c) 2022 WorkOS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### @radix-ui/react-slider@1.3.2
-
-Licence: MIT
-
-```
-MIT License
-
-Copyright (c) 2022 WorkOS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### @radix-ui/react-slot@1.2.4
-
-Licence: MIT
-
-```
-MIT License
-
-Copyright (c) 2022 WorkOS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### @radix-ui/react-tooltip@1.2.4
-
-Licence: MIT
-
-```
-MIT License
-
-Copyright (c) 2022 WorkOS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### @radix-ui/react-use-callback-ref@1.1.1
-
-Licence: MIT
-
-### @radix-ui/react-use-controllable-state@1.2.2
-
-Licence: MIT
-
-```
-MIT License
-
-Copyright (c) 2022 WorkOS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### @radix-ui/react-use-effect-event@0.0.2
-
-Licence: MIT
-
-```
-MIT License
-
-Copyright (c) 2022 WorkOS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### @radix-ui/react-use-escape-keydown@1.1.1
-
-Licence: MIT
-
-### @radix-ui/react-use-layout-effect@1.1.1
-
-Licence: MIT
-
-### @radix-ui/react-use-previous@1.1.1
-
-Licence: MIT
-
-### @radix-ui/react-use-rect@1.1.1
-
-Licence: MIT
-
-### @radix-ui/react-use-size@1.1.1
-
-Licence: MIT
-
-### @radix-ui/react-visually-hidden@1.2.0
-
-Licence: MIT
-
-```
-MIT License
-
-Copyright (c) 2022 WorkOS
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### @radix-ui/rect@1.1.1
-
-Licence: MIT
-
-### @tanstack/react-virtual@3.14.13
+### @tanstack/react-virtual@3.14.24
 
 Licence: MIT
 
@@ -1092,7 +856,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @tanstack/virtual-core@3.17.11
+### @tanstack/virtual-core@3.19.9
 
 Licence: MIT (same text as @tanstack/react-virtual)
 
@@ -1247,7 +1011,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
 ```
 
-### csstype@3.1.3
+### csstype@3.2.3
 
 Licence: MIT
 
@@ -1462,7 +1226,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### immer@11.1.18
+### immer@11.2.9
 
 Licence: MIT
 
@@ -1568,7 +1332,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### jszip@3.10.1
+### jszip@3.10.2
 
 Licence: (MIT OR GPL-3.0-or-later)
 
@@ -2361,7 +2125,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### pixi-filters@6.1.2
+### pixi-filters@6.1.5
 
 Licence: see text
 
@@ -2417,7 +2181,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### pixi.js@8.21.0
+### pixi.js@8.22.0
 
 Licence: MIT
 
@@ -2471,7 +2235,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.**
 ```
 
-### react@19.1.0
+### react@19.3.1
 
 Licence: MIT
 
@@ -2499,7 +2263,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### react-dom@19.1.0
+### react-dom@19.3.1
 
 Licence: MIT
 
@@ -2673,7 +2437,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### scheduler@0.26.0
+### scheduler@0.28.0
 
 Licence: MIT
 
@@ -2755,7 +2519,7 @@ IN THE SOFTWARE.
 """
 ```
 
-### tailwind-merge@3.2.0
+### tailwind-merge@3.7.0
 
 Licence: MIT
 
@@ -2783,7 +2547,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### three@0.185.1
+### three@0.187.0
 
 Licence: MIT
 

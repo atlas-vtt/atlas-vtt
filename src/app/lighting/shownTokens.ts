@@ -1,6 +1,8 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { TokenEntity } from '../types';
+import { everyLevelObjects } from '../levels/levelObjects';
 import type { ShownPlaces } from './shownPlaces';
+import { sceneTokens } from '../tokens/offMap';
 
 type Tokens = Record<string, TokenEntity>;
 /** What sight and light read of a view's store. */
@@ -12,7 +14,9 @@ const SAME_PLACE = 0.25;
 /** `state` with every token that glides at the place it is drawn; `state` itself while none is drawn elsewhere. */
 export function withShownPlaces<S extends { objects: { tokens: Tokens } }>(state: S, shown: ShownPlaces): S {
   if (shown.size === 0) return state;
-  const { tokens } = state.objects;
+  const objects = everyLevelObjects(state);
+  // Only tokens on the map glide; sight and light leave out the others where they read them (`mapTokens`)
+  const tokens = sceneTokens(objects);
   let moved: Tokens | null = null;
   for (const [id, at] of shown.entries()) {
     const token = tokens[id];
@@ -20,7 +24,7 @@ export function withShownPlaces<S extends { objects: { tokens: Tokens } }>(state
     moved ??= { ...tokens };
     moved[id] = { ...token, x: at.x, y: at.y };
   }
-  return moved === null ? state : { ...state, objects: { ...state.objects, tokens: moved } };
+  return moved === null ? state : { ...state, objects: { ...objects, tokens: moved } };
 }
 
 /**

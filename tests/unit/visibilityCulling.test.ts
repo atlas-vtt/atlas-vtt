@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { firstDifference, Tally } from '../helpers/visibilityCompare';
 import { literalCulling, withoutEdgeOn, withoutTies } from '../helpers/literalCulling';

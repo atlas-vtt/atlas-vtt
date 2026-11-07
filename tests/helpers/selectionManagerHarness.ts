@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { Container, Sprite, type FederatedPointerEvent, type Graphics } from 'pixi.js';
+import { Container, Sprite, type FederatedPointerEvent } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { SelectionManager } from '../../src/app/pixi/SelectionManager';
@@ -9,7 +9,8 @@ export type ScreenPoint = [number, number];
 
 export interface SelectionHarness {
   store: { getState: () => { selectedIds: string[] }; setState: (patch: Record<string, unknown>) => void };
-  overlay: Graphics;
+  /** How many selected things the canvas highlights now. */
+  highlighted: () => number;
   /** Presses at `from`, moves through `via` to `to` and releases there. */
   drag: (from: ScreenPoint, to: ScreenPoint, via?: ScreenPoint[]) => void;
 }
@@ -56,10 +57,10 @@ export function selectionHarness({ selectionMode = 'box', tokens, drawings = {},
   const manager = new SelectionManager(viewport as never, () => tokens, () => fog, store as never, new EventEmitter());
   manager.setHitTestTokensProvider(() => null);
   const event = ([x, y]: ScreenPoint): FederatedPointerEvent => ({ button: 0, global: { x, y }, stopPropagation: () => undefined }) as unknown as FederatedPointerEvent;
-  const overlay = manager.getPlayerViewLayers()[0]!.layer as Graphics;
+  const layer = manager.getPlayerViewLayers()[0]!.layer as Container;
   return {
     store: store as never,
-    overlay,
+    highlighted: () => layer.children.filter((child) => child.label === 'selectionHighlight').length,
     drag: (from, to, via = []) => {
       viewport.emit('pointerdown', event(from));
       for (const point of [...via, to]) viewport.emit('pointermove', event(point));

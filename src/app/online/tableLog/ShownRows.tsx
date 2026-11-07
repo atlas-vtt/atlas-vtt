@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import type { ImageEntry, LootEntry } from '../protocol/index.ts';
 import { ImageIcon } from 'lucide-react';
 import { memo, type ReactElement } from 'react';
@@ -51,7 +50,7 @@ export const ImageRow = memo(function ImageRow({ entry, src, onOpen, time, threa
         <div className="atlas-online-log__content">
           <Byline who={entry.who} name={entry.name} verb="showed an image" time={time} api={api} />
           <div className="atlas-online-log__shown" style={{ aspectRatio: `${entry.width} / ${entry.height}` }}>
-            {onOpen === undefined || src === null ? picture : <button type="button" className="atlas-online-log__shown-open" aria-label={t('uiOnline.shownRows_openTheImage')} onClick={onOpen}>{picture}</button>}
+            {onOpen === undefined || src === null ? picture : <button type="button" className="atlas-online-log__shown-open" aria-label="Open the image" onClick={onOpen}>{picture}</button>}
           </div>
           <ReactionChips id={entry.id} reactions={reactions} api={api} />
           <ThreadPill stat={thread} onOpen={() => api.openThread(entry.id)} />

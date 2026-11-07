@@ -1,8 +1,6 @@
-import { t } from '../../../i18n';
 import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { useAnchoredPopoverVariants } from '../../../packages/components/primitives/dialogMotion';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
@@ -13,8 +11,11 @@ import { usePaneEdit } from '../statblock-pane/paneEditContext';
 import { TokenLinkPanel } from './TokenLinkPanel';
 import { TokenSocketFace } from './TokenSocketFace';
 import { shownArt } from './tokenSocketActions';
+import { useSocketDismiss } from './useSocketDismiss';
 import { useSocketPlacement } from './useSocketPlacement';
+import { t } from '../../../i18n';
 import './token-socket.scss';
+import { portalHost } from '../../../host/portalHost';
 
 export interface TokenSocketProps {
   block: ImageBlock;
@@ -54,36 +55,7 @@ export function TokenSocket({ block, art }: TokenSocketProps): React.JSX.Element
     if (open && placed) searchRef.current?.focus({ preventScroll: true });
   }, [open, placed]);
 
-  // A press outside the socket and its panel closes the panel; Escape inside either closes it and returns focus.
-  useEffect(() => {
-    const doc = socket?.doc;
-    if (!open || !doc) return undefined;
-    // Paths, not `instanceof`: a popout window's nodes are not this window's `Node`s.
-    const within = (event: Event): boolean => event.composedPath().some((target) => target === socket || target === popoverRef.current);
-    const onPointerDown = (event: PointerEvent): void => {
-      if (!within(event)) close(false);
-    };
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || !within(event) || handledByAnotherControl(event)) return;
-      // Obsidian's own Escape would move focus on to the note's editor.
-      event.preventDefault();
-      event.stopPropagation();
-      close(true);
-    };
-    // The panel hangs in the window's body: it goes with its socket when another tab hides the note.
-    const { workspace } = pane.app;
-    const onLayout = (): void => {
-      if (!socket.isShown()) close(false);
-    };
-    const refs = [workspace.on('active-leaf-change', onLayout), workspace.on('layout-change', onLayout)];
-    doc.addEventListener('pointerdown', onPointerDown, true);
-    doc.addEventListener('keydown', onKeyDown);
-    return () => {
-      for (const ref of refs) workspace.offref(ref);
-      doc.removeEventListener('pointerdown', onPointerDown, true);
-      doc.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open, socket, close, pane.app]);
+  useSocketDismiss(pane.app, open, socket, popoverRef, close);
 
   if (!field || !pane.writable) return <>{art}</>;
   const { src, token } = shownArt(pane, field);
@@ -95,12 +67,12 @@ export function TokenSocket({ block, art }: TokenSocketProps): React.JSX.Element
 
   return (
     <>
-      <LabelTooltip label={t('uiStatblocks.tokenSocket_linkTokenArt')}>
+      <LabelTooltip label={t('statblockEditor.token.link')}>
         <TokenSocketFace
           ref={setSocket}
           shape={block.shape}
           art={src ? shown : null}
-          prompt={named ? t('uiStatblockDetails.tokenSocket_artNotFound') : t('uiStatblockDetails.tokenSocket_addTokenArt')}
+          prompt={named ? t('statblockEditor.token.artMissing') : t('statblockEditor.token.addArt')}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => setOpen((was) => !was)}
@@ -122,7 +94,7 @@ export function TokenSocket({ block, art }: TokenSocketProps): React.JSX.Element
             </div>
           )}
         </AnimatePresence>,
-        socket.doc.body,
+        portalHost(socket.doc),
       )}
     </>
   );

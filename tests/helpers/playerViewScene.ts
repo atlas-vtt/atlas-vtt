@@ -14,7 +14,7 @@ import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/
 import { captureSceneFrame } from '../../src/app/pixi/sceneFrameCapture';
 import { gmPictureLayers, playerFrameLayers, wirePlayerMeasurements } from './playerMeasureWiring';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
-import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
+import { SettingsService } from '../../src/app/services/SettingsService';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import { watchGl } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
 import { destroyTree } from '../../src/app/pixi/utils/destroyTree';
@@ -46,6 +46,8 @@ export interface PlayerViewScene {
   fog: FogOfWarRenderer;
   measure: MeasureRenderer;
   store: ReturnType<typeof createViewAtlasStore>;
+  /** Atlas' settings of the scene's app: the player view's among them. */
+  settings: SettingsService;
   events: EventEmitter;
   /** The scene's lighting as the players see it: `unseen`, `sensed` or `seen` per token; none on an unlit scene. */
   lighting: { perception: TokenPerception | undefined; peeking: boolean };
@@ -88,6 +90,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
     viewport.addChild(floor);
     viewport.moveCenter(map / 2, map / 2);
     const obsidian = createInMemoryApp().app;
+    const settings = new SettingsService(obsidian);
     const store = createViewAtlasStore(obsidian, 'player-view-test');
     store.getState().setPersistenceEnabled(false);
     store.setState({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true });
@@ -134,7 +137,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
       viewport.emit(type, event);
     };
     const scene: PlayerViewScene = {
-      app, renderer, viewport, grid, tokens, fog, measure, store, events, lighting, pointer,
+      app, renderer, viewport, grid, tokens, fog, measure, store, settings, events, lighting, pointer,
       setFog(operations): void { store.setState((state) => ({ objects: { ...state.objects, fog: operations } })); },
       async add(...added): Promise<void> {
         for (const token of added) store.getState().addToken({ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity);
@@ -157,7 +160,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
         if (!hold) pointer('pointerup', x1, y1);
       },
       canvas: () => read([]),
-      frameLayers: () => playerFrameLayers({ measure, tokens, fog, settings: DEFAULT_SETTINGS.localPlayerView, lighting: lighting.perception }),
+      frameLayers: () => playerFrameLayers({ measure, tokens, fog, settings: settings.getLocalPlayerViewSettings(), lighting: lighting.perception }),
       frame(): Uint8ClampedArray { return read(this.frameLayers()); },
       thumbnail(): Uint8ClampedArray {
         let result: Uint8ClampedArray = new Uint8ClampedArray();

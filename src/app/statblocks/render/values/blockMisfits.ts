@@ -1,5 +1,5 @@
-import { readField, splitRef } from '../../values/fieldValues';
-import { valueMisfit, type ValueMisfit } from '../../values/valueFit';
+import { splitRef } from '../../values/fieldValues';
+import { referenceMisfit, valueMisfit, type ValueMisfit } from '../../values/valueFit';
 import type { FieldKey, TemplateBlock } from '../../model/templateTypes';
 import { visibilityFields } from '../blockDisplay';
 import type { SheetState } from '../sheetState';
@@ -18,7 +18,9 @@ export function blockMisfits(block: TemplateBlock, sheet: SheetState): FieldMisf
   const keys = new Set(visibilityFields(block).map((ref) => (sheet.fields.has(ref) ? ref : splitRef(ref).key)));
   return [...keys].flatMap((key) => {
     const field = sheet.fields.get(key);
-    const misfit = field ? valueMisfit(field, readField(sheet.record, field).value) : null;
+    // The value as shown: references filled in, those that name nothing left as written
+    const shown = field ? sheet.reader(field.key) : undefined;
+    const misfit = field ? referenceMisfit(field, shown) ?? valueMisfit(field, shown) : null;
     return misfit ? [{ key, ...misfit }] : [];
   });
 }

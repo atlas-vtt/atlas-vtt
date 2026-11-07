@@ -1,8 +1,8 @@
-import { t } from '../../../../i18n';
 import React, { useEffect, useState } from 'react';
 import { ConflictBar } from '../ConflictBar';
 import { EditorBar } from '../EditorBar';
 import type { EditorSession, SessionSnapshot } from '../sessionTypes';
+import { t } from '../../../../i18n';
 
 /** A save is quiet: "Saving…" shows only once a write has taken this long. */
 const SAVING_SHOWN_AFTER_MS = 1000;
@@ -37,9 +37,9 @@ export function TemplateStateBars({ session, snapshot }: TemplateStateBarsProps)
     <>
       <ConflictBar session={session} snapshot={snapshot} />
       {snapshot.saveState === 'error' && !snapshot.readOnly && (
-        <EditorBar tone="warning" text={snapshot.saveProblem ?? t('uiTemplateDetails.templateStateBars_couldnTSave')} />
+        <EditorBar tone="warning" text={snapshot.saveProblem ?? t('templateEditor.save.failed')} />
       )}
-      {saving && <p className="atlas-te-saving" role="status">{t('uiTemplateEditor.templateStateBars_saving')}</p>}
+      {saving && <p className="atlas-te-saving" role="status">{t('templateEditor.saving')}</p>}
     </>
   );
 }

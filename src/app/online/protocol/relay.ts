@@ -1,4 +1,11 @@
+import { JOIN_CODE_PATTERN, PLAYER_ID_PATTERN, playerName } from './identity.ts';
+import { parseSends, type BatchedSend } from './relayBatch.ts';
+import { levelIn } from './level.ts';
+import { type CampaignSeat, parseSeats } from './seat.ts';
 import { isRecord } from './shape.ts';
+
+export * from './identity.ts';
+export * from './relayBatch.ts';
 
 /** The version every frame carries. A hello of another version is closed with `CLOSE.version`. */
 export const PROTOCOL_VERSION = 1;
@@ -23,14 +30,6 @@ export const MAX_GM_FRAME = 320 * 1024;
 export const MAX_PLAYER_FRAME = 4 * 1024;
 /** Players connected at once. */
 export const MAX_PLAYERS = 12;
-/** The longest player name, in characters. */
-export const MAX_PLAYER_NAME = 32;
-/** A player id: 96 random bits in lowercase base32 (20 characters). */
-export const PLAYER_ID_PATTERN = /^[a-z2-7]{20}$/;
-/** A join code: six digits, which the GM hands out apart from the link. */
-export const JOIN_CODE_PATTERN = /^\d{6}$/;
-/** A join code as people read and say it: `483 912`. */
-export const shownJoinCode = (code: string): string => `${code.slice(0, 3)} ${code.slice(3)}`;
 /** Players who wait for the GM's answer at once. */
 export const MAX_WAITING = 8;
 
@@ -57,10 +56,12 @@ export const CLOSE = {
   noAccess: 4015,
   /** The table ended because its account started another table. */
   superseded: 4016,
+  /** A newcomer's name is another player's in the GM's campaign: they come back with their own code, or under another name. */
+  nameTaken: 4017,
 } as const;
 
 /** The close codes of the join gates: the player's page stops and says why; only a new try by the player connects again. */
-export const GATE_CLOSE_CODES: readonly number[] = [CLOSE.wrongCode, CLOSE.paused, CLOSE.declined, CLOSE.noAnswer, CLOSE.tooManyKnocks];
+export const GATE_CLOSE_CODES: readonly number[] = [CLOSE.wrongCode, CLOSE.paused, CLOSE.declined, CLOSE.noAnswer, CLOSE.tooManyKnocks, CLOSE.nameTaken];
 
 /** Close codes after which a client gives up instead of reconnecting. */
 export const FINAL_CLOSE_CODES: readonly number[] = [CLOSE.badSecret, CLOSE.version, CLOSE.ended, CLOSE.replaced, CLOSE.kicked, CLOSE.noAccess, CLOSE.superseded, ...GATE_CLOSE_CODES];
@@ -75,6 +76,7 @@ export interface PlayerInfo {
  * A player's hello: `key` for a player the table knows, `code` (the join code) for one it does not.
  * `waits`: the page keeps the token of a wait for the GM, so the relay hands it one; `wait`: the
  * token it holds, which takes that wait up again. A page from before tokens sends neither.
+ * `newcomer`: the page holds no code and is new here.
  */
 export interface PlayerHello {
   readonly v: 1;
@@ -85,28 +87,49 @@ export interface PlayerHello {
   readonly code?: string;
   readonly waits?: true;
   readonly wait?: string;
+  readonly newcomer?: true;
 }
 
-export type Hello = { readonly v: 1; readonly t: 'hello'; readonly role: 'gm'; readonly secret: string } | PlayerHello;
+/** A GM's hello; `level`: what its Atlas serves (`GM_LEVEL`), a GM from before levels names none and serves level 1. */
+export interface GmHello {
+  readonly v: 1;
+  readonly t: 'hello';
+  readonly role: 'gm';
+  readonly secret: string;
+  readonly level: number;
+}
+
+export type Hello = GmHello | PlayerHello;
 
 /**
  * What a client sends the relay. A player's `send` has no `to`: it always reaches the GM. `kick`,
  * `gate` (the join code, or null for none, and whether newcomers wait for the GM), `admit` and
- * `decline` (a waiting player, by the id of their knock) are the GM's.
+ * `decline` (a waiting player, by the id of their knock) are the GM's, and so is `players`, the
+ * campaign's whole roster.
  */
 export type ClientFrame =
   | Hello
   | { readonly v: 1; readonly t: 'send'; readonly to?: string; readonly body: unknown }
+  /** The GM's game messages of one moment in one frame, each passed on as its own `send` would be; only to a relay that offers it (`batch`). */
+  | { readonly v: 1; readonly t: 'sends'; readonly sends: readonly BatchedSend[] }
   | { readonly v: 1; readonly t: 'kick'; readonly id: string }
   | { readonly v: 1; readonly t: 'gate'; readonly code: string | null; readonly ask: boolean }
+  | { readonly v: 1; readonly t: 'players'; readonly players: readonly CampaignSeat[] }
   | { readonly v: 1; readonly t: 'admit'; readonly id: string }
   | { readonly v: 1; readonly t: 'decline'; readonly id: string }
+  /** One time exchange: `t1` is the client's own clock when it sent this. Only to a relay that offers it (`clock`). */
+  | { readonly v: 1; readonly t: 'time'; readonly t1: number }
   | { readonly v: 1; readonly t: 'end' };
 
 /** What the relay sends a client. */
 export type RelayFrame =
-  /** `waiting`: the newcomers who wait for the GM's answer, left out while there are none. */
-  | { readonly v: 1; readonly t: 'welcome'; readonly role: 'gm'; readonly players: readonly PlayerInfo[]; readonly waiting?: readonly PlayerInfo[] }
+  /**
+   * `waiting`: the newcomers who wait for the GM's answer, left out while there are none. `batch`: the
+   * relay takes `sends` frames; an older one says nothing. `minLevel`: the least GM level the relay's
+   * player page needs; a GM below it was let in because players sit at the table, and should update.
+   * `clock`: the relay answers time exchanges; an older one says nothing, and would close a socket that sent one.
+   */
+  | { readonly v: 1; readonly t: 'welcome'; readonly role: 'gm'; readonly players: readonly PlayerInfo[]; readonly waiting?: readonly PlayerInfo[]; readonly batch?: true; readonly minLevel?: number; readonly clock?: true }
   /** A newcomer waits for the GM's answer; `knock-gone` once they do not (left, timed out, answered; `full`: admitted into a table without a seat). */
   | { readonly v: 1; readonly t: 'knock'; readonly id: string; readonly name: string }
   | { readonly v: 1; readonly t: 'knock-gone'; readonly id: string; readonly full?: true }
@@ -117,15 +140,19 @@ export type RelayFrame =
    * that keeps it (in memory only): a later hello with it takes the same wait up again.
    */
   | { readonly v: 1; readonly t: 'waiting'; readonly wait?: string }
-  | { readonly v: 1; readonly t: 'welcome'; readonly role: 'player'; readonly id: string; readonly key: string; readonly gmOnline: boolean }
+  /** `gmLevel`: what the table's GM serves (`GM_LEVEL`) while one is there; an older relay names none. `clock`: as the GM's. */
+  | { readonly v: 1; readonly t: 'welcome'; readonly role: 'player'; readonly id: string; readonly key: string; readonly gmOnline: boolean; readonly gmLevel?: number; readonly clock?: true }
   | { readonly v: 1; readonly t: 'player-joined'; readonly id: string; readonly name: string }
   | { readonly v: 1; readonly t: 'player-left'; readonly id: string }
-  | { readonly v: 1; readonly t: 'gm'; readonly online: boolean }
+  /** The GM came or went; `level`: what the GM who came serves, named by a relay that knows it. */
+  | { readonly v: 1; readonly t: 'gm'; readonly online: boolean; readonly level?: number }
   /**
    * To the GM: the table's account may no longer host, and the table closes at `closesAt` (the relay's
    * clock, in milliseconds) unless the account may host again by then; null once it may.
    */
   | { readonly v: 1; readonly t: 'access'; readonly closesAt: number | null }
+  /** The table's answer to a time exchange: the client's `t1` and the table's clock (`t2`), which is one clock for everyone at the table. */
+  | { readonly v: 1; readonly t: 'time'; readonly t1: number; readonly t2: number }
   /** A game message; `from` names the player on the GM's side, stamped by the relay. */
   | { readonly v: 1; readonly t: 'game'; readonly from?: string; readonly body: unknown };
 
@@ -138,28 +165,6 @@ export const SEAT_PATH = '/__atlas-online-seat';
 
 /** A host secret or player key: base64url, 16 to 128 characters. */
 export const SECRET_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
-/**
- * Characters a name never keeps: controls, line and paragraph separators, the marks and overrides
- * that set a text's direction (the Arabic letter mark among them), and letters that show as nothing
- * (the Hangul fillers, the blank Braille pattern). A name stands in other people's sentences ("Mira
- * wants to join"), where it must neither reorder the words around it nor stand there as a gap.
- */
-export const UNSHOWN = /[\p{Cc}\p{Zl}\p{Zp}\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\u115f\u1160\u3164\uffa0\u2800]/gu;
-/** Zero-width characters no name needs: the zero-width space, the word joiner, the byte order mark, the soft hyphen, the Mongolian vowel separator. The joiners scripts and emoji are written with stay. */
-export const UNSEEN = /[\u00ad\u180e\u200b\u2060\ufeff]/gu;
-/** Something of a name that shows: a letter, a digit, a mark of punctuation or a symbol. */
-export const SHOWN = /[\p{L}\p{N}\p{P}\p{S}]/u;
-
-/**
- * A player name as shown: unshown characters removed, white space collapsed; null when nothing that
- * shows or too much is left.
- */
-export function playerName(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length > MAX_PLAYER_NAME * 4) return null;
-  const name = value.replace(UNSHOWN, ' ').replace(UNSEEN, '').replace(/\s+/g, ' ').trim();
-  return SHOWN.test(name) && [...name].length <= MAX_PLAYER_NAME ? name : null;
-}
-
 function playerInfo(value: unknown): PlayerInfo | null {
   if (!isRecord(value) || typeof value.id !== 'string' || !PLAYER_ID_PATTERN.test(value.id)) return null;
   const name = playerName(value.name);
@@ -171,18 +176,27 @@ export function parseClientFrame(text: string): ClientFrame | null {
   const value = parseJson(text);
   if (!isRecord(value) || value.v !== PROTOCOL_VERSION) return null;
   if (value.t === 'end') return { v: 1, t: 'end' };
+  if (value.t === 'time') return isClockTime(value.t1) ? { v: 1, t: 'time', t1: value.t1 } : null;
   if (value.t === 'kick' || value.t === 'admit' || value.t === 'decline') return typeof value.id === 'string' && PLAYER_ID_PATTERN.test(value.id) ? { v: 1, t: value.t, id: value.id } : null;
   if (value.t === 'gate') {
     const code = value.code === null ? null : joinCode(value.code);
     return code !== undefined && typeof value.ask === 'boolean' ? { v: 1, t: 'gate', code, ask: value.ask } : null;
+  }
+  if (value.t === 'players') {
+    const players = parseSeats(value.players);
+    return players === null ? null : { v: 1, t: 'players', players };
   }
   if (value.t === 'send') {
     if (!('body' in value)) return null;
     if (value.to === undefined) return { v: 1, t: 'send', body: value.body };
     return typeof value.to === 'string' ? { v: 1, t: 'send', to: value.to, body: value.body } : null;
   }
+  if (value.t === 'sends') {
+    const sends = parseSends(value.sends);
+    return sends === null ? null : { v: 1, t: 'sends', sends };
+  }
   if (value.t !== 'hello') return null;
-  if (value.role === 'gm') return typeof value.secret === 'string' && SECRET_PATTERN.test(value.secret) ? { v: 1, t: 'hello', role: 'gm', secret: value.secret } : null;
+  if (value.role === 'gm') return typeof value.secret === 'string' && SECRET_PATTERN.test(value.secret) ? { v: 1, t: 'hello', role: 'gm', secret: value.secret, level: levelIn(value, 'level') } : null;
   if (value.role !== 'player') return null;
   const name = playerName(value.name);
   if (name === null) return null;
@@ -195,6 +209,7 @@ export function parseClientFrame(text: string): ClientFrame | null {
     v: 1, t: 'hello', role: 'player', name,
     ...(value.key === undefined ? {} : { key: value.key }), ...(code === null ? {} : { code }),
     ...(value.waits === true ? { waits: true as const } : {}), ...(value.wait === undefined ? {} : { wait: value.wait }),
+    ...(value.newcomer === true ? { newcomer: true as const } : {}),
   };
 }
 
@@ -227,10 +242,13 @@ export function parseRelayFrame(text: string): RelayFrame | null {
         const players = value.players === undefined ? null : playerList(value.players);
         const waiting = playerList(value.waiting);
         if (players === null || waiting === null) return null;
-        return waiting.length === 0 ? { v: 1, t: 'welcome', role: 'gm', players } : { v: 1, t: 'welcome', role: 'gm', players, waiting };
+        return {
+          v: 1, t: 'welcome', role: 'gm', players, ...(waiting.length > 0 && { waiting }), ...(value.batch === true && { batch: true as const }),
+          ...(value.minLevel !== undefined && { minLevel: levelIn(value, 'minLevel') }), ...(value.clock === true && { clock: true as const }),
+        };
       }
       if (value.role === 'player' && typeof value.id === 'string' && typeof value.key === 'string' && typeof value.gmOnline === 'boolean') {
-        return { v: 1, t: 'welcome', role: 'player', id: value.id, key: value.key, gmOnline: value.gmOnline };
+        return { v: 1, t: 'welcome', role: 'player', id: value.id, key: value.key, gmOnline: value.gmOnline, ...(value.gmLevel !== undefined && { gmLevel: levelIn(value, 'gmLevel') }), ...(value.clock === true && { clock: true as const }) };
       }
       return null;
     case 'player-joined': {
@@ -251,10 +269,13 @@ export function parseRelayFrame(text: string): RelayFrame | null {
     case 'waiting':
       return typeof value.wait === 'string' && SECRET_PATTERN.test(value.wait) ? { v: 1, t: 'waiting', wait: value.wait } : { v: 1, t: 'waiting' };
     case 'gm':
-      return typeof value.online === 'boolean' ? { v: 1, t: 'gm', online: value.online } : null;
+      if (typeof value.online !== 'boolean') return null;
+      return value.level === undefined ? { v: 1, t: 'gm', online: value.online } : { v: 1, t: 'gm', online: value.online, level: levelIn(value, 'level') };
     case 'access':
       if (value.closesAt === null) return { v: 1, t: 'access', closesAt: null };
       return typeof value.closesAt === 'number' && Number.isFinite(value.closesAt) ? { v: 1, t: 'access', closesAt: value.closesAt } : null;
+    case 'time':
+      return isClockTime(value.t1) && isClockTime(value.t2) ? { v: 1, t: 'time', t1: value.t1, t2: value.t2 } : null;
     case 'game':
       if (!('body' in value)) return null;
       if (value.from === undefined) return { v: 1, t: 'game', body: value.body };
@@ -262,6 +283,11 @@ export function parseRelayFrame(text: string): RelayFrame | null {
     default:
       return null;
   }
+}
+
+/** A time in an exchange, in ms of either clock. */
+function isClockTime(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= Number.MAX_SAFE_INTEGER;
 }
 
 function parseJson(text: string): unknown {

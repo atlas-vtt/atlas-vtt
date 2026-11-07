@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import type { App } from 'obsidian';
 import { moveStatblocks } from '../../../../src/app/statblocks/editor/fs-import/statblockMove';

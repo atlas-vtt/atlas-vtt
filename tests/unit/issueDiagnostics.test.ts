@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { App, PluginManifest } from 'obsidian';
 import { collectDiagnostics, formatDiagnostics } from '../../src/app/support/diagnostics';

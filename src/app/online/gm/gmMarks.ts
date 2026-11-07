@@ -1,5 +1,6 @@
-import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type CursorViewport, type MeasureRules, type OverlayHost, type TapViewport } from '../marks/index.ts';
-import type { SharedCursor } from '../protocol/index.ts';
+import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type CursorViewport, type MeasureRules, type OverlayHost, type RemoteDrag, type TapViewport } from '../marks/index.ts';
+import { LIVE_INTERVAL_MS, type SharedCursor } from '../protocol/index.ts';
+import type { HeldPlayout } from '../../pixi/token-renderer/TokenGlide';
 import type { App } from 'obsidian';
 import type { SceneSource } from '../../host/sceneSource';
 import type { Measurements } from '../../pixi/MeasureRenderer';
@@ -8,6 +9,8 @@ import { tokenFootprints, type TokenFootprint } from '../../vision/measureOrigin
 import { atlasLaserLook, field } from './atlasLighting.ts';
 import { asTokenSource, call, type SceneState, type SceneStore } from './atlasView.ts';
 import type { GmMarkSource, PlayerMarks } from './MarkShare.ts';
+import { levelObjects } from '../../levels/levelObjects';
+import { mapTokens } from '../../tokens/offMap';
 
 type Viewport = TapViewport & CursorViewport & OverlayHost['viewport'];
 
@@ -18,6 +21,12 @@ const hasMethods = (value: unknown, names: readonly string[]): boolean => typeof
 function measurementsOf(renderer: unknown): SceneSource<Measurements> | null {
   const source = field(field(renderer, 'measureRenderer'), 'measurements');
   return hasMethods(source, ['get', 'subscribe']) ? (source as SceneSource<Measurements>) : null;
+}
+
+/** Tells an Atlas tab's token renderer how to draw the tokens players drag (`TokenRenderer.setHeldPlayout`), where it can be told. */
+function setHeldPlayout(tokens: unknown, playout: HeldPlayout | null): void {
+  const set = field(tokens, 'setHeldPlayout');
+  if (isFunction(set)) (set as (playout: HeldPlayout | null) => void).call(tokens, playout);
 }
 
 /**
@@ -38,22 +47,35 @@ function rendererParts(renderer: unknown): { readonly measurements: SceneSource<
  * The GM's marks on a shared Atlas tab, read from its renderer: the measure renderer's records, a
  * `PointerTap` on its viewport for Atlas's laser (whose state is private), and what the players see of
  * the tokens (`playerRollTokens`, the token list's own source). Built anew when the tab builds its
- * renderer anew. Also draws the players' marks over the tab (`MarkOverlay`) and their cursors
- * (`CursorOverlay`), and follows the GM's own cursor (`CursorTap`).
+ * renderer anew. Also draws the players' marks and the rulers of their drags over the tab (`MarkOverlay`) and their cursors
+ * (`CursorOverlay`), and follows the GM's own cursor (`CursorTap`). A token a player drags is drawn as far
+ * behind as that player's cursor, so the two move as one (`HeldPlayout`).
  */
 export class GmMarks {
   private readonly app: App;
   /** The shared tab's renderer, or null once it is gone. */
   private readonly renderer: () => unknown;
   private readonly store: SceneStore;
+  /** The player whose drag holds a token, by GM token id. */
+  private readonly draggerOf: (tokenId: string) => string | undefined;
   private readonly overlay: MarkOverlay;
   private readonly cursors = new CursorOverlay((cursor) => cursor.name ?? '');
-  private built: { readonly renderer: unknown; readonly source: GmMarkSource; readonly taps: readonly { destroy(): void }[]; readonly host: OverlayHost } | null = null;
+  /** What the overlay shows: the players' marks and the rulers of their drags, each kept until it changes. */
+  private shown: { players: PlayerMarks; drags: readonly RemoteDrag[] } = { players: { lasers: [], measures: [] }, drags: [] };
+  private built: { readonly renderer: unknown; readonly source: GmMarkSource; readonly taps: readonly { destroy(): void }[]; readonly host: OverlayHost; readonly tokens: unknown } | null = null;
+  private readonly playout: HeldPlayout = {
+    interval: LIVE_INTERVAL_MS,
+    lag: (tokenId) => {
+      const player = this.draggerOf(tokenId);
+      return player === undefined ? null : this.cursors.lagOf(player);
+    },
+  };
 
-  constructor(app: App, renderer: () => unknown, store: SceneStore, rules: () => MeasureRules | null) {
+  constructor(app: App, renderer: () => unknown, store: SceneStore, rules: () => MeasureRules | null, draggerOf: (tokenId: string) => string | undefined) {
     this.app = app;
     this.renderer = renderer;
     this.store = store;
+    this.draggerOf = draggerOf;
     this.overlay = new MarkOverlay(rules);
   }
 
@@ -62,8 +84,7 @@ export class GmMarks {
     const renderer = this.renderer();
     const built = this.built;
     if (built !== null && built.renderer === renderer) return built.source;
-    built?.taps.forEach((tap) => tap.destroy());
-    this.built = null;
+    this.release();
     const parts = rendererParts(renderer);
     if (parts === null) return null;
     const state = (): SceneState & Partial<Pick<ViewState, 'activeTool' | 'tokenSettings'>> => this.store.getState();
@@ -86,14 +107,21 @@ export class GmMarks {
         return isFunction(stop) ? () => void stop() : () => undefined;
       },
     };
-    this.built = { renderer, source, taps: [tap, cursor], host: { canvas: parts.canvas, viewport: parts.viewport } };
+    setHeldPlayout(parts.tokens, this.playout);
+    this.built = { renderer, source, taps: [tap, cursor], host: { canvas: parts.canvas, viewport: parts.viewport }, tokens: parts.tokens };
     return source;
   }
 
   /** Draws the players' marks over the tab's map. */
   showPlayers(marks: PlayerMarks): void {
-    this.source();
-    if (this.built !== null) this.overlay.show(marks, this.built.host);
+    this.shown.players = marks;
+    this.showOverlay();
+  }
+
+  /** Draws the rulers of the players' drags over the tab's map. */
+  showPlayerDrags(drags: readonly RemoteDrag[]): void {
+    this.shown.drags = drags;
+    this.showOverlay();
   }
 
   /** Draws the players' cursors over the tab's map. */
@@ -104,10 +132,21 @@ export class GmMarks {
   }
 
   dispose(): void {
-    this.built?.taps.forEach((tap) => tap.destroy());
-    this.built = null;
+    this.release();
     this.overlay.dispose();
     this.cursors.dispose();
+  }
+
+  /** Lets go of the renderer's parts: its taps, and its tokens go back to gliding. */
+  private release(): void {
+    this.built?.taps.forEach((tap) => tap.destroy());
+    if (this.built !== null) setHeldPlayout(this.built.tokens, null);
+    this.built = null;
+  }
+
+  private showOverlay(): void {
+    this.source();
+    if (this.built !== null) this.overlay.show({ ...this.shown.players, drags: this.shown.drags }, this.built.host);
   }
 
   /** Where every token stands, hidden ones included, as Atlas's measurements judge their start. */
@@ -115,6 +154,6 @@ export class GmMarks {
     const sprites = call(tokens, 'getTokenSprites');
     const displayed = typeof sprites === 'object' && sprites !== null ? (sprites as Record<string, { x: number; y: number } | null>) : {};
     const size = asTokenSource(this.renderer())?.getGridOptions()?.size ?? state.grid?.size ?? 0;
-    return tokenFootprints(state.objects.tokens, displayed, size, state.tokenSettings?.tokenRingSize ?? 1);
+    return tokenFootprints(mapTokens(levelObjects(state)), displayed, size, state.tokenSettings?.tokenRingSize ?? 1);
   }
 }

@@ -5,6 +5,7 @@ import { linksReadableNote } from '../../../tools/pinNoteLink';
 import type { NotePin } from '../../../types';
 import type { Point } from '../../../types/visionTypes';
 import type { SceneState } from '../atlasView.ts';
+import { levelObjects } from '../../../levels/levelObjects';
 import { sentPinFace } from './sentPinFace.ts';
 
 /** A readable pin players see now: the GM's pin, the place they see it at and the alias they know it by. */
@@ -24,8 +25,11 @@ export interface PinSight {
 
 const onMap = (point: Point): boolean => [point.x, point.y].every((value) => Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE);
 
-/** A pin that may be offered to players: readable, not the GM's own, linking a note. */
-const isOffered = (pin: NotePin): boolean => pin.readable === true && pin.gmOnly !== true && linksReadableNote(pin);
+/**
+ * A pin that may be offered to players: one the GM made readable (the pin menu's switch, which wins
+ * over `gmOnly`, the mark the dungeon generator gives its room pins and no menu shows), linking a note.
+ */
+const isOffered = (pin: NotePin): boolean => pin.readable === true && linksReadableNote(pin);
 
 /**
  * The readable pins of the shared scene, as players may know them: only where their picture shows
@@ -47,7 +51,7 @@ export class ReadablePins {
   /** The pins players see now; null while a lit scene's sight cannot be read. */
   listed(state: SceneState, sight: PinSight): ListedPin[] | null {
     const layout = hexLayoutOfGrid(state.grid);
-    const offered = Object.values(state.objects.pins ?? {}).filter(isOffered)
+    const offered = Object.values(levelObjects(state).pins ?? {}).filter(isOffered)
       .map((pin) => ({ pin, place: pinDisplayPoint(pin, layout) }))
       .filter(({ place }) => onMap(place));
     const shown = this.shown(offered.map(({ place }) => place), sight);

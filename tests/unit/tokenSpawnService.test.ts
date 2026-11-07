@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Notice } from 'obsidian';
 import { spawnEncounterTokens, spawnSelectedTokens, spawnTokenAsset, type SpawnContext } from '../../src/app/packages/components/asset-manager/utils/tokenSpawnService';
@@ -27,7 +28,7 @@ function mapView(mapPath: string | null = 'maps/cave.atlasmap', isMapLoading = f
   const setSelection = vi.fn();
   const view = {
     leaf: {},
-    serviceManager: { getRendererService: () => ({ getViewport: () => viewport, getGridSystem: () => null }) },
+    serviceManager: { getRendererService: () => ({ getViewport: () => viewport, getGridSystem: () => null, getRenderer: () => null }) },
     getStore: () => ({ getState: () => ({ mapPath, isMapLoading, addTokens, setSelection }) }),
   } as unknown as AtlasView;
   return { view, spawned, addTokens, setSelection };
@@ -40,6 +41,7 @@ function setup(records: Record<string, Partial<TokenAsset>> = {}, defaultTokenVi
   const ctx: SpawnContext = {
     app,
     view,
+    random: Math.random,
     assetService: {
       getAssetById: vi.fn(async (id: string) => (id in records ? { id, type: 'token', name: id, imagePath: `tokens/${id}.png`, ...records[id] } : null)),
       getCollectionForMap: vi.fn((path: string) => (path === 'maps/cave.atlasmap' ? 'dungeon' : null)),
@@ -107,6 +109,21 @@ describe('encounter spawning', () => {
       { id: 'knight', name: 'Knight', imagePath: 'tokens/knight.png', size: 1 },
     ]));
     expect(spawned.map(t => [t.name, t.showRing])).toEqual([['Goblin', false], ['Knight', true]]);
+  });
+
+  it('rolls a creature\'s dice into that many tokens on every spawn, laid out in the grid', async () => {
+    const { ctx, spawned } = setup();
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
+    try {
+      await spawnEncounterTokens(ctx, {
+        ...encounter([{ id: 'goblin', name: 'Goblin', imagePath: 'tokens/goblin.png', size: 1, quantity: '1d3', cell: { q: 0, r: 0 }, offset: { x: 0, y: 0 } }]),
+        formation: { gridType: 'square', pitch: 70 },
+      });
+    } finally {
+      random.mockRestore();
+    }
+    expect(spawned.map((token) => token.name)).toEqual(['Goblin', 'Goblin', 'Goblin']);
+    expect(new Set(spawned.map((token) => `${String(token.x)},${String(token.y)}`)).size).toBe(3);
   });
 
   it('restores the ring saved with a token captured from a map', async () => {

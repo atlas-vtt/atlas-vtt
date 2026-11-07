@@ -14,6 +14,8 @@ export interface TabMetaActions {
   markTabLoaded: (tabId: string) => void;
   markTabDirty: (tabId: string, isDirty: boolean) => void;
   setTabs: (tabs: SceneTab[], activeTabId: string | null) => void;
+  /** Moves a tab to `toIndex` (clamped), keeping every tab's data and the active tab. False when nothing moved. */
+  moveTab: (tabId: string, toIndex: number) => boolean;
   updateTabFilePath: (oldPath: string, newPath: string, newDisplayName: string) => void;
 }
 
@@ -72,6 +74,17 @@ export function createTabMetaStore(): TabMetaStore {
 
     setTabs: (tabs: SceneTab[], activeTabId: string | null): void => {
       set({ tabs, activeTabId });
+    },
+
+    moveTab: (tabId: string, toIndex: number): boolean => {
+      const { tabs } = get();
+      const from = tabs.findIndex((t) => t.id === tabId);
+      const to = Math.max(0, Math.min(tabs.length - 1, toIndex));
+      if (from === -1 || from === to) return false;
+      const next = tabs.slice();
+      next.splice(to, 0, ...next.splice(from, 1));
+      set({ tabs: next });
+      return true;
     },
 
     updateTabFilePath: (oldPath: string, newPath: string, newDisplayName: string): void => {

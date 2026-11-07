@@ -1,14 +1,14 @@
-import { t } from '../../../i18n';
 /**
- * What the Add bar and the insert menu offer: the six kinds a statblock is
+ * What the Add bar and the insert menu offer: the seven kinds a statblock is
  * built from in the grid (a value, a metric of key numbers, a list of
- * abilities, a table, text and a divider), each with one line saying what it makes, and the small template
+ * abilities, a table, counters of limited uses, text and a divider), each with one line saying what it makes, and the small template
  * each one is previewed with: the tile it places, as it looks before it is named.
  */
 
 import { createBlock, type AuthorableBlockType } from '../../model/blockCatalogue';
 import type { BlockIdSource } from '../../model/templateIds';
 import { TEMPLATE_FORMAT, TEMPLATE_VERSION, type StatblockTemplate } from '../../model/templateTypes';
+import { t } from '../../../i18n';
 
 export interface InsertItem {
   /** The block type it puts in. */
@@ -21,12 +21,13 @@ export interface InsertItem {
 }
 
 const ITEMS: readonly InsertItem[] = [
-  { type: 'stat', label: t('uiTemplateEditor.insertItems_value'), example: t('uiMessages.insertValueExample'), keywords: ['stat', 'number', 'property', 'words', 'tags', 'choice'] },
-  { type: 'metric', label: t('uiTemplateEditor.insertItems_metric'), example: t('uiMessages.insertMetricExample'), keywords: ['numbers', 'thresholds', 'attributes', 'boxed', 'strip', 'stat'] },
-  { type: 'entries', label: t('uiTemplateEditor.insertItems_abilities'), example: t('uiMessages.insertAbilitiesExample'), keywords: ['actions', 'traits', 'features', 'list', 'spells'] },
-  { type: 'scores', label: t('uiTemplateEditor.insertItems_table'), example: t('uiMessages.insertTableExample'), keywords: ['ability scores', 'scores', 'attributes', 'stats', 'columns', 'rows', 'grid'] },
-  { type: 'text', label: t('uiTemplateEditor.insertItems_text'), example: t('uiMessages.insertTextExample'), keywords: ['description', 'notes', 'paragraph'] },
-  { type: 'divider', label: t('uiTemplateEditor.insertItems_divider'), example: t('uiMessages.insertDividerExample'), keywords: ['rule', 'separator'] },
+  { type: 'stat', label: t('templateEditor.primitive.value'), example: t('templateEditor.example.stat'), keywords: ['stat', 'number', 'property', 'words', 'tags', 'choice'] },
+  { type: 'metric', label: t('templateEditor.primitive.metric'), example: t('templateEditor.example.metric'), keywords: ['numbers', 'thresholds', 'attributes', 'boxed', 'strip', 'stat'] },
+  { type: 'entries', label: t('templateEditor.abilities'), example: t('templateEditor.example.entries'), keywords: ['actions', 'traits', 'features', 'list', 'spells'] },
+  { type: 'scores', label: t('templateEditor.primitive.table'), example: t('templateEditor.example.scores'), keywords: ['ability scores', 'scores', 'attributes', 'stats', 'columns', 'rows', 'grid'] },
+  { type: 'counters', label: t('templateEditor.primitive.counters'), example: t('templateEditor.example.counters'), keywords: ['spell slots', 'slots', 'uses', 'charges', 'ki', 'points', 'rest', 'pips', 'resources'] },
+  { type: 'text', label: t('templateEditor.primitive.text'), example: t('templateEditor.example.text'), keywords: ['description', 'notes', 'paragraph'] },
+  { type: 'divider', label: t('templateEditor.primitive.divider'), example: t('templateEditor.example.divider'), keywords: ['rule', 'separator'] },
 ];
 
 /** The item that puts a block of `type` in; a type the grid offers no kind for is offered as a Value. */
@@ -38,7 +39,7 @@ export function itemKey(item: InsertItem): string {
   return `block:${item.type}`;
 }
 
-/** The six kinds, in the order the Add bar shows them. */
+/** The seven kinds, in the order the Add bar shows them. */
 export function insertItems(): readonly InsertItem[] {
   return ITEMS;
 }

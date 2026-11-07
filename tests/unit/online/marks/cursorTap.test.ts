@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { CursorTap, type CursorCanvas, type CursorEvent, type CursorViewport } from '../../../../src/app/online/marks/CursorTap.ts';
 

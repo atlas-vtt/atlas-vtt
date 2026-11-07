@@ -1,4 +1,3 @@
-import { t } from '../../../../i18n';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BetweenVerticalEnd, Ellipsis, EyeOff, Pencil, Plus, Settings2, Trash2, type LucideIcon } from 'lucide-react';
@@ -14,6 +13,7 @@ import { blockGlyph, fieldTypeGlyph } from '../editorGlyphs';
 import type { ChromeStyle } from '../LabelEditor';
 import { shortcutText } from '../shortcutText';
 import { HIDDEN_TOOLBAR, placeBelow, type ToolbarPlacement } from './toolbarBelow';
+import { t } from '../../../../i18n';
 import './selection-toolbar.scss';
 
 export interface SelectionToolbarProps {
@@ -141,11 +141,11 @@ export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Elemen
         <span className="atlas-te-toolbar__type-name">{chipLabel}</span>
       </span>
       {single && props.valueKind && (
-        <AnchoredButton icon={fieldTypeGlyph(props.valueKind.type)} label={t('uiTemplateDetails.selectionToolbar_kindOfValueKind', { kind: props.valueKind.label })} attribute="data-value-kind"
+        <AnchoredButton icon={fieldTypeGlyph(props.valueKind.type)} label={t('templateEditor.valueKind', { kind: props.valueKind.label })} attribute="data-value-kind"
           onPress={props.valueKind.onOpen} />
       )}
       {single && props.onOptions && (
-        <AnchoredButton icon={Settings2} label={t('uiTemplateEditor.selectionToolbar_options')} shortcut={shortcutText(['Shift'], '⏎')} attribute="data-options" onPress={props.onOptions} />
+        <AnchoredButton icon={Settings2} label={t('templateEditor.options')} shortcut={shortcutText(['Shift'], '⏎')} attribute="data-options" onPress={props.onOptions} />
       )}
       {single && props.addPart && (
         <ToolButton icon={BetweenVerticalEnd} label={props.addPart.label} isActive={false} disabled={!editable || !props.addPart.canAdd}
@@ -154,17 +154,17 @@ export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Elemen
       )}
       {props.headerPart ? (
         <>
-          <ToolButton icon={Pencil} label={t('uiTemplateEditor.selectionToolbar_rename')} shortcut="⏎" isActive={false} disabled={!editable} onClick={props.headerPart.onRename} />
-          {props.headerPart.hideable && <ToolButton icon={EyeOff} label={t('uiTemplateEditor.selectionToolbar_hideFromCard')} isActive={false} disabled={!editable} onClick={props.onToggleHidden} />}
+          <ToolButton icon={Pencil} label={t('templateEditor.rename')} shortcut="⏎" isActive={false} disabled={!editable} onClick={props.headerPart.onRename} />
+          {props.headerPart.hideable && <ToolButton icon={EyeOff} label={t('templateEditor.hideFromCard')} isActive={false} disabled={!editable} onClick={props.onToggleHidden} />}
         </>
       ) : (
         <>
-          <ToolButton icon={Plus} label={t('uiTemplateEditor.selectionToolbar_addBelow')} shortcut="/" isActive={false} disabled={!editable} onClick={props.onAddBelow} />
-          <ToolButton icon={Trash2} label={t('uiTemplateEditor.selectionToolbar_delete')} shortcut="Del" isActive={false} disabled={!editable} onClick={props.onDelete} />
+          <ToolButton icon={Plus} label={t('templateEditor.addBelow')} shortcut="/" isActive={false} disabled={!editable} onClick={props.onAddBelow} />
+          <ToolButton icon={Trash2} label={t('templateEditor.delete')} shortcut="Del" isActive={false} disabled={!editable} onClick={props.onDelete} />
         </>
       )}
       <span ref={more} className="atlas-te-toolbar__more">
-        <ToolButton icon={Ellipsis} label={t('uiTemplateEditor.selectionToolbar_more')} shortcut={shortcutText(['Shift'], 'F10')} isActive={false} onClick={() => { if (more.current) props.onMore(more.current); }} />
+        <ToolButton icon={Ellipsis} label={t('templateEditor.more')} shortcut={shortcutText(['Shift'], 'F10')} isActive={false} onClick={() => { if (more.current) props.onMore(more.current); }} />
       </span>
     </div>,
     layer,

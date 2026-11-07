@@ -1,8 +1,8 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Renderer } from 'pixi.js';
 import { RemoteLasers, type RemoteLaser } from '../../../../src/app/online/marks/RemoteLasers.ts';
-import { CanvasLaserBeam } from '../../../../src/app/pixi/laser/CanvasLaserBeam';
-import type { LaserBeamFrame } from '../../../../src/app/pixi/laser/LaserBeam';
+import { LaserBeam, type LaserBeamFrame } from '../../../../src/app/pixi/laser/LaserBeam';
 import { MAX_TRAIL_SAMPLES } from '../../../../src/app/pixi/laser/laserBeamGeometry';
 import { LASER_FADE_TIME } from '../../../../src/app/tools/laserPointerSettings';
 
@@ -10,7 +10,7 @@ const INTERVAL = 33;
 const FRAME = 25 / 3;
 const ANA = 'a'.repeat(20);
 const BEN = 'b'.repeat(20);
-const canvasRenderer = { name: 'canvas' } as unknown as Renderer;
+const renderer = { name: 'webgl' } as unknown as Renderer;
 const laser = (changes: Partial<RemoteLaser> = {}): RemoteLaser => ({ who: ANA, color: '#66ffa9', size: 16, at: [0, 0], pts: [], on: false, ...changes });
 
 /** A stroke along x at a pixel a millisecond: the laser's message sent at `now`, with the points drawn since the last one. */
@@ -32,8 +32,10 @@ describe('RemoteLasers', () => {
 
   beforeEach(() => {
     frames = [];
-    vi.spyOn(CanvasLaserBeam.prototype, 'draw').mockImplementation((frame) => void frames.push({ ...frame, trail: frame.trail.map((point) => ({ ...point })) }));
-    lasers = new RemoteLasers(canvasRenderer, () => 1, INTERVAL);
+    // PIXI probes a WebGL context for shader precision; jsdom has none
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    vi.spyOn(LaserBeam.prototype, 'draw').mockImplementation((frame) => void frames.push({ ...frame, trail: frame.trail.map((point) => ({ ...point })) }));
+    lasers = new RemoteLasers(renderer, () => 1, INTERVAL);
   });
 
   afterEach(() => {

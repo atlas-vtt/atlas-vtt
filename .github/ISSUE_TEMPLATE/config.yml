@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/ByteMirror/atlas-vtt/security/advisories/new
     about: Report security problems privately instead of in a public issue.
   - name: Beta builds
-    url: https://github.com/ByteMirror/atlas-vtt/blob/beta/docs/beta-testing.md
+    url: https://github.com/ByteMirror/atlas-vtt/blob/beta/.github/beta-testing.md
     about: How to try upcoming versions through BRAT before they are released.

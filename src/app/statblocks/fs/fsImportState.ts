@@ -12,7 +12,7 @@ import type { FsImportReport, FsLayoutResolver, FsScriptNote } from './fsLayoutT
 /** How sure a block is of its field's type; a surer block retypes the field (a key shown as text and as an image is an image). */
 const TYPE_RANK: Readonly<Record<FieldType, number>> = {
   text: 1, rating: 2, number: 2, dice: 2, choice: 2, markdown: 3, image: 4,
-  list: 5, scores: 5, entries: 5, pairs: 5, spells: 5,
+  list: 5, scores: 5, entries: 5, pairs: 5, spells: 5, counters: 5,
 };
 /** A key only a group lists or a pattern reads: text until a block shows it. */
 const MENTIONED = 0;

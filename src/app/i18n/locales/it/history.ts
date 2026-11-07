@@ -1,6 +1,6 @@
-import type { Message } from '../../types';
+import type { Translation } from '../../types';
 
 export const history = {
-  'history.redo': 'Ripeti',
-  'history.undo': 'Annulla',
-} as const satisfies Record<string, Message>;
+  "history.redo": "Ripeti",
+  "history.undo": "Annulla"
+} satisfies Translation;

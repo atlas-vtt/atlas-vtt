@@ -5,9 +5,13 @@ import { METRIC_INDEX_ATTRIBUTE } from '../../render/blocks/MetricView';
 import { LIVE_TABLE_ATTRIBUTE } from '../table/EditableTable';
 import type { EditableSpots } from './editableSpots';
 import type { EditTarget } from './paneEditContext';
+import { t } from '../../../i18n';
 
-/** Clicks on these keep their own meaning: a link opens, a die rolls, a section folds, a Table's cell is typed (`EditableTable`). */
-const OWN_CLICKS = `a, button, input, textarea, .atlas-dice-link, .internal-link, [${LIVE_TABLE_ATTRIBUTE}]`;
+/**
+ * Clicks on these keep their own meaning: a link opens, a die rolls, a section folds, a Table's cell is typed
+ * (`EditableTable`), a value's switch arms it for the next roll (`ArmSwitch`).
+ */
+const OWN_CLICKS = `a, button, input, textarea, [role="switch"], .atlas-dice-link, .internal-link, [${LIVE_TABLE_ATTRIBUTE}]`;
 
 function clickedInside(target: EventTarget | null, selector: string): Element | null {
   const node = target as { closest?: (selector: string) => Element | null } | null;
@@ -85,7 +89,7 @@ export function paneChrome(
         className: 'atlas-sb-pane-value',
         tabIndex: 0,
         role: 'button',
-        attributes: { 'aria-label': `Edit ${fields.map((field) => field.label).join(', ')}` },
+        attributes: { 'aria-label': t('statblockEditor.editNamed', { name: fields.map((field) => field.label).join(', ') }) },
         handlers: {
           onClick: (event: MouseEvent<HTMLDivElement>) => {
             if (!clickedInside(event.target, OWN_CLICKS)) beginAt(event);

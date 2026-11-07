@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { diceLinkProps, splitDiceSegments } from '../../../services/statblockDiceLinks';
+import { diceLinkProps } from '../../../services/statblockDiceLinks';
+import { splitDiceSegments } from '../../../services/statblockDiceText';
 
 /**
  * Text as it reads, its dice notation and bare bonuses as roll links: the

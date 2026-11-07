@@ -5,6 +5,7 @@ import { fieldByKey } from '../../model/fieldKeys';
 import { kindName } from '../../model/templateGrid';
 import { boundField } from '../../model/treeQueries';
 import type { BlockType, FieldKey, TemplateBlock, TemplateField } from '../../model/templateTypes';
+import { t } from '../../../i18n';
 
 function fieldLabel(fields: readonly TemplateField[], key: FieldKey | undefined): string | undefined {
   if (!key) return undefined;
@@ -16,7 +17,7 @@ export function blockTitle(block: TemplateBlock, fields: readonly TemplateField[
   switch (block.type) {
     case 'heading': return block.text.trim();
     case 'section': return (block.heading ?? '').trim() || (fieldLabel(fields, block.headingField) ?? '');
-    case 'stat': case 'tags': case 'pairs': case 'track':
+    case 'stat': case 'tags': case 'pairs': case 'track': case 'counters':
       return (block.label ?? '').trim() || (fieldLabel(fields, block.field) ?? '');
     case 'entries': case 'spells': return (block.heading ?? '').trim() || (fieldLabel(fields, block.field) ?? '');
     case 'tabs': return (block.heading ?? '').trim();
@@ -54,8 +55,8 @@ export function blockDescription(block: TemplateBlock, fields: readonly Template
 
 /** Where a block stands, for "Moved Armor class to section Defenses, position 2 of 3". */
 export function placeName(parent: TemplateBlock | null, fields: readonly TemplateField[]): string {
-  if (!parent) return 'the top level';
+  if (!parent) return t('templateEditor.place.top');
   const title = blockTitle(parent, fields);
   const type = blockSpec(parent.type).label.toLowerCase();
-  return title ? `${type} ${title}` : `a ${type}`;
+  return title ? t('templateEditor.place.named', { type, title }) : t('templateEditor.place.unnamed', { type });
 }

@@ -1,6 +1,7 @@
-import type { Message } from '../../types';
+import type { Translation } from '../../types';
 
 export const playerInit = {
-  'playerInit.order': 'Ordine di iniziativa',
-  'playerInit.round': 'Round {round}',
-} as const satisfies Record<string, Message>;
+  "playerInit.conditions": "Condizioni",
+  "playerInit.order": "Ordine di iniziativa",
+  "playerInit.round": "Round {round}"
+} satisfies Translation;

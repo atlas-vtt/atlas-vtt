@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { watchFieldSuggests } from './fieldSuggests';
 import { LinkSuggest } from './LinkSuggest';
 import { markdownField } from './textFields';
 
@@ -15,18 +16,5 @@ export function linkField(target: EventTarget | null): HTMLElement | null {
  * (`panelScope.ts`). Returns the stop, which closes a list still open.
  */
 export function watchMarkdownTyping(app: App, host: HTMLElement, sourcePath: () => string): () => void {
-  const suggests = new WeakMap<HTMLElement, LinkSuggest>();
-  let current: LinkSuggest | null = null;
-  const onFocusIn = (event: FocusEvent): void => {
-    const field = linkField(event.target);
-    if (!field) return;
-    current = suggests.get(field) ?? new LinkSuggest(app, field, sourcePath);
-    suggests.set(field, current);
-  };
-  host.addEventListener('focusin', onFocusIn);
-  return () => {
-    host.removeEventListener('focusin', onFocusIn);
-    current?.close();
-    current = null;
-  };
+  return watchFieldSuggests(host, linkField, (field) => new LinkSuggest(app, field, sourcePath));
 }

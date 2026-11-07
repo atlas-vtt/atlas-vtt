@@ -13,6 +13,10 @@ interface InputModalProps {
   defaultValue?: string | undefined;
   onConfirm: (value: string) => void;
   validation?: ((value: string) => string | null) | undefined;
+  /** Names the field for screen readers; the placeholder too when none is given. */
+  label?: string | undefined;
+  /** The confirm button's words, where "Confirm" says less than the action. */
+  confirmLabel?: string | undefined;
 }
 
 const InputModal: React.FC<InputModalProps> = ({
@@ -22,7 +26,9 @@ const InputModal: React.FC<InputModalProps> = ({
   placeholder = '',
   defaultValue = '',
   onConfirm,
-  validation
+  validation,
+  label,
+  confirmLabel
 }) => {
   const [value, setValue] = useState(defaultValue);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +117,8 @@ const InputModal: React.FC<InputModalProps> = ({
                   setError(null);
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder={placeholder}
+                placeholder={placeholder || label}
+                aria-label={label}
                 className="atlas-input"
               />
               {error && <div className="atlas-input-error">{error}</div>}
@@ -119,7 +126,7 @@ const InputModal: React.FC<InputModalProps> = ({
 
             <div className="atlas-modal-footer">
               <Button variant="outline" size="sm" onClick={handleCancel}>{t('common.cancel')}</Button>
-              <Button variant="default" size="sm" onClick={handleConfirm}>{t('common.confirm')}</Button>
+              <Button variant="default" size="sm" disabled={value.trim() === ''} onClick={handleConfirm}>{confirmLabel ?? t('common.confirm')}</Button>
             </div>
           </motion.div>
         </motion.div>

@@ -26,6 +26,12 @@ export interface TokenGroupContainer extends Container {
   currentAnimation?: TickerCallback<unknown> | null;
 }
 
+/** How far a selected token's bars stand out, in world units: to either side of its centre, and below its bottom edge. */
+export interface BarsSpan {
+  readonly halfWidth: number;
+  readonly reach: number;
+}
+
 /** Round drag handle drawn by the token resize and rotation UIs. */
 export interface TokenHandleContainer extends Container {
   bg: Graphics;

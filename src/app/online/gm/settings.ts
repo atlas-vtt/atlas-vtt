@@ -1,8 +1,8 @@
-import { t } from '../../i18n';
 import type { AtlasSettingSection } from '../../settings/settingSections';
 import type { AccountControl } from './account/AccountControl.ts';
 import { accountSections } from './account/accountSettings.ts';
 import { COMPANION_REPORTS_NOTE } from './companionReports.ts';
+import { t } from '../../i18n';
 
 export interface OnlineSettings {
   /** Whether this plugin's errors are reported to the server; off until the GM switches it on. */
@@ -34,9 +34,9 @@ export function onlineSettingsSections(host: OnlineSettingsHost): AtlasSettingSe
   return [
     ...accountSections(host.account),
     {
-      heading: t('uiMessages.diagnostics'),
+      heading: t('online.diag.heading'),
       rows: [{
-        name: t('uiMessages.sendReports'),
+        name: t('online.diag.send'),
         desc: COMPANION_REPORTS_NOTE,
         render: (setting) => {
           setting.addToggle((toggle) => toggle.setValue(settings.reportErrors).onChange((value) => void save((current) => (current.reportErrors = value))));

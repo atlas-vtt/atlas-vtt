@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import type { FoundEntry, ImageEntry, LogSpeaker, RollEntry, TablePerson } from '../protocol/index.ts';
 import { ArrowDown, MessagesSquare } from 'lucide-react';
 import { useEffect, useState, type FocusEvent, type KeyboardEvent, type ReactElement } from 'react';
@@ -11,6 +10,7 @@ import type { ShownEntry } from './LogState.ts';
 import type { ThreadStat } from './logThreads.ts';
 import { dayLabel, relativeTime, sameDay } from './logTime.ts';
 import type { Portrait, RollFace, RowApi } from './panelTypes.ts';
+import { RestRow } from './RestRow.tsx';
 import { RollRow } from './RollRow.tsx';
 import { SecretRow } from './SecretRow.tsx';
 import { ImageRow, LootRow } from './ShownRows.tsx';
@@ -48,11 +48,11 @@ export interface LogListProps {
   readonly onTabStop: (id: string) => void;
 }
 
-const hasTools = (entry: ShownEntry): boolean => entry.kind === 'chat' || entry.kind === 'roll' || entry.kind === 'image' || entry.kind === 'loot' || entry.kind === 'found';
+const hasTools = (entry: ShownEntry): boolean => entry.kind === 'chat' || entry.kind === 'roll' || entry.kind === 'image' || entry.kind === 'loot' || entry.kind === 'found' || entry.kind === 'rest';
 
 /** The way down, over the list's lower edge: what arrived below, or just the way where nothing did. */
 function JumpPill({ scroll }: { readonly scroll: LogScroll }): ReactElement {
-  const label = scroll.pending === 0 ? t('uiOnlineDetails.logList_jumpToLatest') : scroll.pending === 1 ? t('uiOnlineDetails.logList_1NewMessage') : t('uiOnlineDetails.logList_countNewMessages', { count: scroll.pending });
+  const label = scroll.pending === 0 ? 'Jump to latest' : scroll.pending === 1 ? '1 new message' : `${scroll.pending} new messages`;
   return (
     <button type="button" className={classes('atlas-online-log__jump', scroll.away && 'is-visible')} inert={!scroll.away} onClick={scroll.jump}>
       {label}
@@ -63,7 +63,7 @@ function JumpPill({ scroll }: { readonly scroll: LogScroll }): ReactElement {
 
 /**
  * The log, oldest at the top: chat messages (those of one author close together as one block),
- * rolls, private rolls the viewer is not shown, lines about who came and left, and a line between
+ * rolls, private rolls the viewer is not shown, rests, lines about who came and left, and a line between
  * two days. The Tab key reaches one row; the arrow keys move between rows. A thread stands under
  * its root, which is ruled off from the answers.
  */
@@ -94,7 +94,7 @@ export function LogList({ entries, stats, selected, ui, api, scroll, rollFace, s
         {entries.length === 0 && (
           <div className="atlas-online-log__empty">
             <MessagesSquare />
-            <span>{t('uiOnline.logList_nothingYetSayHelloOrRollSomeDice')}</span>
+            <span>Nothing yet. Say hello, or roll some dice.</span>
           </div>
         )}
         <div ref={scroll.rowsRef} className={classes('atlas-online-log__rows', inThread && 'atlas-online-log__rows--thread')} role="log" onKeyDown={onKeyDown} onFocus={onFocus}>
@@ -111,24 +111,25 @@ export function LogList({ entries, stats, selected, ui, api, scroll, rollFace, s
                   <ChatRow
                     entry={entry} continued={!newDay && continuesPrevious(before, entry)} time={time} thread={thread} api={api} editing={ui.editing === entry.id} {...flags}
                     portrait={entry.style === 'ic' ? portraitOf(entry.speaker) : null}
-                    whisper={entry.to === undefined ? null : t('uiOnlineDetails.logList_whisperToName', { name: audienceNames(entry.to, people, api.self) })}
+                    whisper={entry.to === undefined ? null : `Whisper to ${audienceNames(entry.to, people, api.self)}`}
                   />
                 )}
                 {entry.kind === 'roll' && <RollRow entry={entry} face={rollFace?.(entry) ?? null} portrait={portraitOf(entry.speaker)} time={time} thread={thread} api={api} {...flags} />}
                 {entry.kind === 'secret' && <SecretRow entry={entry} self={api.self} time={time} />}
                 {entry.kind === 'image' && <ImageRow entry={entry} src={imageSrc?.(entry) ?? null} onOpen={openImage === undefined ? undefined : () => openImage(entry)} time={time} thread={thread} api={api} {...flags} />}
                 {entry.kind === 'loot' && <LootRow entry={entry} time={time} thread={thread} api={api} {...flags} />}
+                {entry.kind === 'rest' && <RestRow entry={entry} time={time} thread={thread} api={api} {...flags} />}
                 {entry.kind === 'found' && <FoundRow entry={entry} onOpen={openFound === undefined ? undefined : () => openFound(entry)} time={time} thread={thread} api={api} {...flags} />}
                 {(entry.kind === 'joined' || entry.kind === 'left') && (
                   <div className="atlas-online-log__presence">
-                    {entry.kind === 'joined' ? t('uiOnlineDetails.logList_nameJoinedTheTable', { name: shownName(entry.who, entry.name, api.self) }) : t('uiOnlineDetails.logList_nameLeftTheTable', { name: shownName(entry.who, entry.name, api.self) })}
+                    {entry.kind === 'joined' ? `${shownName(entry.who, entry.name, api.self)} joined the table` : `${shownName(entry.who, entry.name, api.self)} left the table`}
                     <span className="atlas-online-log__time">{time}</span>
                   </div>
                 )}
               </div>
             );
           })}
-          {inThread && entries.length === 1 && <div className="atlas-online-log__thread-empty">{t('uiOnline.logList_noRepliesYetStartTheThread')}</div>}
+          {inThread && entries.length === 1 && <div className="atlas-online-log__thread-empty">No replies yet. Start the thread.</div>}
         </div>
       </div>
       <JumpPill scroll={scroll} />

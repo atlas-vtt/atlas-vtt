@@ -11,7 +11,7 @@ export interface PinTone {
 }
 
 /** Heraldic palette shared by every pin, so a map full of pins reads as one set. */
-const TONES = {
+export const PIN_TONES = {
   gules: { light: '#b3261e', dark: '#e5534b' },
   tenne: { light: '#c2410c', dark: '#f0883e' },
   or: { light: '#a16207', dark: '#e3b341' },
@@ -25,6 +25,10 @@ const TONES = {
   earth: { light: '#8a5a2b', dark: '#c99562' },
   stone: { light: '#57606a', dark: '#a3abb5' },
 } as const satisfies Record<string, PinTone>;
+
+export type PinToneName = keyof typeof PIN_TONES;
+
+const TONES = PIN_TONES;
 
 export interface PinIconDefinition {
   id: PinIconId;

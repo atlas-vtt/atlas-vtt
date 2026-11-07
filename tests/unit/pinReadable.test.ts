@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Texture, type Container, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';

@@ -16,12 +16,13 @@ export class DockTooltip {
   private enabled = true;
   private readonly cleanups: (() => void)[] = [];
 
-  constructor(parent: HTMLElement, trigger: HTMLElement) {
+  /** `cls`: a class of its own, which places it; `multiline`: an explanation rather than a name, which wraps. */
+  constructor(parent: HTMLElement, trigger: HTMLElement, options: { readonly cls?: string; readonly multiline?: boolean } = {}) {
     this.trigger = trigger;
     const id = `atlas-online-tooltip-${++nextId}`;
-    this.el = parent.createDiv({ cls: 'tooltip-content atlas-online-tooltip', attr: { id, role: 'tooltip' } });
+    this.el = parent.createDiv({ cls: ['tooltip-content', 'atlas-online-tooltip', ...(options.cls === undefined ? [] : [options.cls])], attr: { id, role: 'tooltip' } });
     this.el.hidden = true;
-    this.label = this.el.createDiv({ cls: 'tooltip-inner' }).createSpan({ cls: 'tooltip-label' });
+    this.label = this.el.createDiv({ cls: 'tooltip-inner' }).createSpan({ cls: options.multiline === true ? 'tooltip-label tooltip-label--multiline' : 'tooltip-label' });
     trigger.setAttribute('aria-describedby', id);
     const on = <K extends keyof HTMLElementEventMap>(target: HTMLElement, type: K, run: (event: HTMLElementEventMap[K]) => void): void => {
       target.addEventListener(type, run);

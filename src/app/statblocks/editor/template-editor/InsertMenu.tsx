@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
@@ -11,6 +10,7 @@ import type { Box } from './gapGeometry';
 import { bestMatch, findItems, insertItems, itemKey, type InsertItem } from './insertItems';
 import { ItemPreview } from './ItemPreview';
 import type { ChromeStyle } from './LabelEditor';
+import { t } from '../../../i18n';
 
 export interface InsertMenuProps {
   /** The layer the menu is drawn in, and where it hangs from in that layer's coordinates. */
@@ -35,8 +35,8 @@ interface InsertListProps {
 /** The kinds; the highlighted row has the context menu's hover look. */
 function InsertList({ id, items, current, onHover, onChoose }: InsertListProps): React.JSX.Element {
   return (
-    <div id={id} className="atlas-te-insert__list" role="listbox" aria-label={t('uiTemplateEditor.insertMenu_kinds')} {...STANDING_LIST}>
-      {items.length === 0 && <div className="atlas-te-insert__empty">{t('uiTemplateEditor.insertMenu_nothingMatches')}</div>}
+    <div id={id} className="atlas-te-insert__list" role="listbox" aria-label={t('templateEditor.insert.kinds')} {...STANDING_LIST}>
+      {items.length === 0 && <div className="atlas-te-insert__empty">{t('templateEditor.nothingMatches')}</div>}
       {items.map((item) => (
         <div
           key={itemKey(item)}
@@ -59,7 +59,7 @@ function InsertList({ id, items, current, onHover, onChoose }: InsertListProps):
 }
 
 /**
- * The insert menu (§7.6), opened by `/` or the `+` line: the six kinds,
+ * The insert menu (§7.6), opened by `/` or the `+` line: the seven kinds,
  * filtered by what is typed, with a preview of the row under the pointer or
  * the keys. Enter inserts, Escape closes.
  */
@@ -124,7 +124,7 @@ export function InsertMenu({ layer, anchor, app, onInsert, onClose }: InsertMenu
       data-above={above || undefined}
       style={style}
       role="dialog"
-      aria-label={t('uiTemplateEditor.insertMenu_add')}
+      aria-label={t('templateEditor.add')}
     >
       <motion.div className="atlas-te-insert__panel" variants={variants} initial="hidden" animate="visible" exit="exit">
         <div className="atlas-te-insert__menu">
@@ -132,8 +132,8 @@ export function InsertMenu({ layer, anchor, app, onInsert, onClose }: InsertMenu
             ref={inputRef}
             type="text"
             className="atlas-te-insert__search"
-            placeholder={t('uiTemplateEditor.insertMenu_add')}
-            aria-label={t('uiTemplateEditor.insertMenu_findAKind')}
+            placeholder={t('templateEditor.add')}
+            aria-label={t('templateEditor.insert.find')}
             role="combobox"
             aria-expanded="true"
             aria-controls={listId}

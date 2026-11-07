@@ -1,0 +1,7 @@
+// Radix's modal layers (menus, dialogs, selects) lock scrolling with react-remove-scroll, which gives <body>
+// `--removed-body-scroll-bar-size`, the width of the scrollbar it hid, while one is open. Obsidian's body never
+// scrolls, so that width is 0. Declared up front, opening or closing a menu no longer gives <body> a new inherited
+// value, which restyled every element of the window (12–17 ms to open a menu, 9 ms to close it).
+body {
+  --removed-body-scroll-bar-size: 0px;
+}

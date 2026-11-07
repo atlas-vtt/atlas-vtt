@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 /**
  * A Table's menus, with Obsidian's entries in Obsidian's order: a cell's
  * (Row ›, Column ›, then the two sorts), a row handle's and a column
@@ -13,6 +12,7 @@ import type { TableAlign } from '../../model/templateTypes';
 import { SEPARATOR, tidy, type SurfaceAction } from '../interaction/surfaceActions';
 import type { TableCommand } from './tableCommands';
 import type { TableRoom } from './tableHost';
+import { t } from '../../../i18n';
 
 export interface TableMenuInput {
   grid: TableGrid;
@@ -25,9 +25,9 @@ function item(id: string, label: string, icon: string, run: () => void, disabled
 }
 
 const ALIGNS: readonly { align: TableAlign; label: string; icon: string }[] = [
-  { align: 'start', label: t('uiStatblocks.tableMenu_alignLeft'), icon: 'align-left' },
-  { align: 'center', label: t('uiStatblocks.tableMenu_alignCenter'), icon: 'align-center' },
-  { align: 'end', label: t('uiStatblocks.tableMenu_alignRight'), icon: 'align-right' },
+  { align: 'start', label: t('statblockEditor.table.alignLeft'), icon: 'align-left' },
+  { align: 'center', label: t('statblockEditor.table.alignCenter'), icon: 'align-center' },
+  { align: 'end', label: t('statblockEditor.table.alignRight'), icon: 'align-right' },
 ];
 
 /** Add, move, duplicate and delete the row `row`. */
@@ -36,14 +36,14 @@ export function rowEntries({ grid, room, run }: TableMenuInput, row: number): Su
   const full = !canAddRow(grid);
   const last = grid.rows.length - 1;
   return [
-    item('row-before', t('uiStatblockDetails.tableMenu_addRowAbove'), 'panel-top-close', () => run({ kind: 'insert-row', at: row }), full),
-    item('row-after', t('uiStatblockDetails.tableMenu_addRowBelow'), 'panel-bottom-close', () => run({ kind: 'insert-row', at: row + 1 }), full),
+    item('row-before', t('statblockEditor.table.addRowAbove'), 'panel-top-close', () => run({ kind: 'insert-row', at: row }), full),
+    item('row-after', t('statblockEditor.table.addRowBelow'), 'panel-bottom-close', () => run({ kind: 'insert-row', at: row + 1 }), full),
     SEPARATOR,
-    item('row-up', t('uiStatblockDetails.tableMenu_moveRowUp'), 'arrow-up', () => run({ kind: 'move-row', from: row, to: row - 1 }), row === 0),
-    item('row-down', t('uiStatblockDetails.tableMenu_moveRowDown'), 'arrow-down', () => run({ kind: 'move-row', from: row, to: row + 1 }), row === last),
+    item('row-up', t('statblockEditor.table.moveRowUp'), 'arrow-up', () => run({ kind: 'move-row', from: row, to: row - 1 }), row === 0),
+    item('row-down', t('statblockEditor.table.moveRowDown'), 'arrow-down', () => run({ kind: 'move-row', from: row, to: row + 1 }), row === last),
     SEPARATOR,
-    item('row-copy', t('uiStatblockDetails.tableMenu_duplicateRow'), 'copy', () => run({ kind: 'duplicate-row', row }), full),
-    item('row-delete', t('uiStatblockDetails.tableMenu_deleteRow'), 'trash-2', () => run({ kind: 'delete-row', row }), last === 0),
+    item('row-copy', t('statblockEditor.table.duplicateRow'), 'copy', () => run({ kind: 'duplicate-row', row }), full),
+    item('row-delete', t('statblockEditor.table.deleteRow'), 'trash-2', () => run({ kind: 'delete-row', row }), last === 0),
   ];
 }
 
@@ -53,11 +53,11 @@ export function columnEntries({ grid, room, run }: TableMenuInput, col: number):
   const last = grid.columns.length - 1;
   const align = grid.columns[col]?.align ?? null;
   const shape = room.columns ? [
-    item('col-before', t('uiStatblockDetails.tableMenu_addColumnToTheLeft'), 'panel-left-close', () => run({ kind: 'insert-column', at: col, align }), full),
-    item('col-after', t('uiStatblockDetails.tableMenu_addColumnToTheRight'), 'panel-right-close', () => run({ kind: 'insert-column', at: col + 1, align }), full),
+    item('col-before', t('statblockEditor.table.addColumnLeft'), 'panel-left-close', () => run({ kind: 'insert-column', at: col, align }), full),
+    item('col-after', t('statblockEditor.table.addColumnRight'), 'panel-right-close', () => run({ kind: 'insert-column', at: col + 1, align }), full),
     SEPARATOR,
-    item('col-left', t('uiStatblockDetails.tableMenu_moveColumnLeft'), 'arrow-left', () => run({ kind: 'move-column', from: col, to: col - 1 }), col === 0),
-    item('col-right', t('uiStatblockDetails.tableMenu_moveColumnRight'), 'arrow-right', () => run({ kind: 'move-column', from: col, to: col + 1 }), col === last),
+    item('col-left', t('statblockEditor.table.moveColumnLeft'), 'arrow-left', () => run({ kind: 'move-column', from: col, to: col - 1 }), col === 0),
+    item('col-right', t('statblockEditor.table.moveColumnRight'), 'arrow-right', () => run({ kind: 'move-column', from: col, to: col + 1 }), col === last),
     SEPARATOR,
   ] : [];
   const aligns = room.align ? ALIGNS.map(({ align: to, label, icon }): SurfaceAction => ({
@@ -65,8 +65,8 @@ export function columnEntries({ grid, room, run }: TableMenuInput, col: number):
   })) : [];
   const copies = room.columns ? [
     SEPARATOR,
-    item('col-copy', t('uiStatblockDetails.tableMenu_duplicateColumn'), 'copy', () => run({ kind: 'duplicate-column', col }), full),
-    item('col-delete', t('uiStatblockDetails.tableMenu_deleteColumn'), 'trash-2', () => run({ kind: 'delete-column', col }), last === 0),
+    item('col-copy', t('statblockEditor.table.duplicateColumn'), 'copy', () => run({ kind: 'duplicate-column', col }), full),
+    item('col-delete', t('statblockEditor.table.deleteColumn'), 'trash-2', () => run({ kind: 'delete-column', col }), last === 0),
   ] : [];
   return tidy([...shape, ...aligns, ...copies]);
 }
@@ -76,8 +76,8 @@ export function sortEntries({ grid, room, run }: TableMenuInput, col: number): S
   if (!room.rows) return [];
   const one = grid.rows.length < 2;
   return [
-    item('sort-a-z', t('uiStatblockDetails.tableMenu_sortByColumnAToZ'), 'arrow-down-a-z', () => run({ kind: 'sort', col, direction: 1 }), one),
-    item('sort-z-a', t('uiStatblockDetails.tableMenu_sortByColumnZToA'), 'arrow-up-z-a', () => run({ kind: 'sort', col, direction: -1 }), one),
+    item('sort-a-z', t('statblockEditor.table.sortAZ'), 'arrow-down-a-z', () => run({ kind: 'sort', col, direction: 1 }), one),
+    item('sort-z-a', t('statblockEditor.table.sortZA'), 'arrow-up-z-a', () => run({ kind: 'sort', col, direction: -1 }), one),
   ];
 }
 
@@ -86,8 +86,8 @@ export function cellMenu(input: TableMenuInput, at: CellAt): SurfaceAction[] {
   const row = at.row === HEADER_ROW ? [] : rowEntries(input, at.row);
   const column = columnEntries(input, at.col);
   return tidy([
-    ...(row.length ? [{ kind: 'submenu' as const, id: 'row', label: t('uiStatblocks.tableMenu_row'), icon: 'table', children: row }] : []),
-    ...(column.length ? [{ kind: 'submenu' as const, id: 'column', label: t('uiStatblocks.tableMenu_column'), icon: 'table', children: column }] : []),
+    ...(row.length ? [{ kind: 'submenu' as const, id: 'row', label: t('statblockEditor.table.row'), icon: 'table', children: row }] : []),
+    ...(column.length ? [{ kind: 'submenu' as const, id: 'column', label: t('statblockEditor.table.column'), icon: 'table', children: column }] : []),
     SEPARATOR,
     ...sortEntries(input, at.col),
   ]);

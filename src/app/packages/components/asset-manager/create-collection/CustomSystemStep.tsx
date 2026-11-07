@@ -41,7 +41,7 @@ export function CustomSystemStep({
           id="atlas-new-system-name"
           type="text"
           className="atlas-csm-input"
-          placeholder={t('uiAssets.customSystemStep_eGMyHomebrew')}
+          placeholder="e.g. My homebrew"
           value={presetName}
           aria-invalid={presetNameError !== null || undefined}
           onChange={(e) => onPresetNameChange(e.target.value)}
@@ -67,7 +67,7 @@ export function CustomSystemStep({
       </section>
 
       <section className="atlas-create-collection__section" aria-labelledby="atlas-new-system-resources">
-        <h4 id="atlas-new-system-resources" className="atlas-create-collection__heading">{t('uiAssets.customSystemStep_resources')}</h4>
+        <h4 id="atlas-new-system-resources" className="atlas-create-collection__heading">Resources</h4>
         <ResourcesTab
           resources={rules.resources}
           onChange={(resources) => onRulesChange({ ...rules, resources })}

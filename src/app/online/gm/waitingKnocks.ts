@@ -1,12 +1,8 @@
 import type { PlayerInfo } from '../protocol/index.ts';
+import { ArmedCards } from './armedCards.ts';
 import type { Timers } from './companionTimers.ts';
 
-/**
- * How long a card takes no answer after it first showed, and again after it may have moved: whoever
- * knocks chooses the moment their card appears, so a press or a key meant for something else that
- * lands on it must do nothing.
- */
-export const ARM_MS = 700;
+export { ARM_MS } from './armedCards.ts';
 /** How long a card says that its table was full. */
 export const FULL_NOTE_MS = 4_000;
 
@@ -20,27 +16,35 @@ export interface WaitingPlayer extends PlayerInfo {
   readonly armed: boolean;
 }
 
+/** A newcomer's card among the cards over the control (`ArmedCards`). */
+export const knockKey = (id: string): string => `knock:${id}`;
+
 /**
  * The newcomers who wait, in the order they knocked, each with the time its card has stood where it
- * stands. That time is kept here, with the knock, and not with what is drawn: drawing the cards anew
- * neither starts it again nor skips it. A later knock goes after the earlier ones and leaves their
- * time alone. When a card leaves, or the cards may have moved on screen (`moved`), the others start
- * again, since one of them may now lie under the pointer or have the keyboard's focus. One timer
- * tells of the cards that came due together, once.
+ * stands, kept by the cards' shared clock (`ArmedCards`), so a card that leaves or moves starts the
+ * time of every card in the stack again, a rest request's too. A later knock goes after the earlier
+ * ones and leaves their time alone.
  */
 export class WaitingKnocks {
   private list: readonly WaitingPlayer[] = [];
-  /** Since when each card has stood where it stands, by its player's id. */
-  private readonly since = new Map<string, number>();
-  private armTimer: number | undefined;
   /** The timers of the cards that say their table was full. */
   private readonly notes = new Map<string, number>();
   private readonly timers: Timers;
   private readonly changed: () => void;
+  private readonly cards: ArmedCards;
+  private readonly owned: boolean;
+  private readonly heard = (): void => {
+    if (this.refresh()) this.changed();
+  };
+  private readonly stopListening: () => void;
 
-  constructor(timers: Timers, changed: () => void) {
+  /** `cards`: the clock shared with the other cards of the stack; one of its own without it. */
+  constructor(timers: Timers, changed: () => void, cards?: ArmedCards) {
     this.timers = timers;
     this.changed = changed;
+    this.owned = cards === undefined;
+    this.cards = cards ?? new ArmedCards(timers);
+    this.stopListening = this.cards.listen(this.heard);
   }
 
   get players(): readonly WaitingPlayer[] {
@@ -50,30 +54,27 @@ export class WaitingKnocks {
   /** The relay's welcome: who waits now. A card that keeps its place keeps its time; an answer under way is void. */
   welcomed(waiting: readonly PlayerInfo[]): void {
     this.clearNotes();
-    const now = this.timers.now();
-    const kept = waiting.map((player, index) => (this.list[index]?.id === player.id ? this.since.get(player.id) ?? now : now));
-    this.since.clear();
-    this.list = waiting.map((player, index) => {
-      this.since.set(player.id, kept[index] ?? now);
-      return { ...player, answered: false, full: false, armed: false };
-    });
-    this.arm();
+    const kept = new Set(waiting.filter((player, index) => this.list[index]?.id === player.id).map((player) => player.id));
+    for (const player of this.list) if (!kept.has(player.id)) this.cards.drop(knockKey(player.id), this.heard);
+    for (const player of waiting) if (!kept.has(player.id)) this.cards.show(knockKey(player.id), this.heard);
+    this.list = waiting.map((player) => ({ ...player, answered: false, full: false, armed: false }));
+    this.refresh();
     this.changed();
   }
 
   /** A newcomer knocked: their card goes after the others. A knock already shown changes nothing. */
   knocked(player: PlayerInfo): void {
-    if (this.since.has(player.id)) return;
-    this.since.set(player.id, this.timers.now());
+    if (this.list.some((other) => other.id === player.id)) return;
+    this.cards.show(knockKey(player.id), this.heard);
     this.list = [...this.list, { ...player, answered: false, full: false, armed: false }];
-    this.arm();
+    this.refresh();
     this.changed();
   }
 
   /** A knock ended. One admitted into a table that had filled says so for a moment before its card goes. */
   gone(id: string, full: boolean): void {
     if (!full) return this.remove(id);
-    if (!this.since.has(id) || this.notes.has(id)) return;
+    if (!this.list.some((player) => player.id === id) || this.notes.has(id)) return;
     this.list = this.list.map((player) => (player.id === id ? { ...player, answered: true, full: true } : player));
     this.notes.set(id, this.timers.setTimer(() => this.remove(id), FULL_NOTE_MS));
     this.changed();
@@ -81,9 +82,7 @@ export class WaitingKnocks {
 
   /** The cards may have moved on screen: each takes no answer again until it has stood for `ARM_MS`. */
   moved(): void {
-    if (this.list.length === 0) return;
-    this.restart();
-    if (this.arm()) this.changed();
+    this.cards.moved();
   }
 
   /**
@@ -98,48 +97,35 @@ export class WaitingKnocks {
     return true;
   }
 
-  /** No timer is left running. */
+  /** No timer is left running, and no card of theirs in the stack. */
   dispose(): void {
     this.clearNotes();
-    if (this.armTimer !== undefined) this.timers.clearTimer(this.armTimer);
-    this.armTimer = undefined;
+    this.stopListening();
+    for (const player of this.list) this.cards.drop(knockKey(player.id), this.heard);
+    this.list = [];
+    if (this.owned) this.cards.dispose();
   }
 
   private remove(id: string): void {
     const note = this.notes.get(id);
     if (note !== undefined) this.timers.clearTimer(note);
     this.notes.delete(id);
-    if (!this.since.delete(id)) return;
+    if (!this.list.some((player) => player.id === id)) return;
     this.list = this.list.filter((player) => player.id !== id);
     // The others close up: one of them may take the place of the card that was just pressed.
-    this.restart();
-    this.arm();
+    this.cards.remove(knockKey(id), this.heard);
+    this.refresh();
     this.changed();
   }
 
-  private restart(): void {
-    const now = this.timers.now();
-    for (const player of this.list) this.since.set(player.id, now);
-  }
-
-  /** Sets each card's `armed` by the clock and times the next card that comes due; whether any changed. */
-  private arm(): boolean {
-    const now = this.timers.now();
-    let next = Number.POSITIVE_INFINITY;
-    const list: WaitingPlayer[] = [];
-    for (const player of this.list) {
-      const left = (this.since.get(player.id) ?? now) + ARM_MS - now;
-      const armed = left <= 0;
-      if (left > 0) next = Math.min(next, left);
-      list.push(player.armed === armed ? player : { ...player, armed });
-    }
+  /** Each card's `armed` as the clock says; whether any changed. */
+  private refresh(): boolean {
+    const list = this.list.map((player) => {
+      const armed = this.cards.isArmed(knockKey(player.id));
+      return player.armed === armed ? player : { ...player, armed };
+    });
     const flipped = list.some((player, index) => player !== this.list[index]);
     if (flipped) this.list = list;
-    if (this.armTimer !== undefined) this.timers.clearTimer(this.armTimer);
-    this.armTimer = next === Number.POSITIVE_INFINITY ? undefined : this.timers.setTimer(() => {
-      this.armTimer = undefined;
-      if (this.arm()) this.changed();
-    }, next);
     return flipped;
   }
 

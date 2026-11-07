@@ -129,7 +129,7 @@ const TagManager: React.FC<TagManagerProps> = ({
   const handleSaveEdit = (): void => {
     const name = editValue.trim();
     if (!name) {
-      setError(t('uiGeneralDetails.tagManager_nameCannotBeEmpty'));
+      setError('Name cannot be empty');
       return;
     }
     if (editingId && nameTaken(name, editingId)) {
@@ -268,7 +268,7 @@ const TagManager: React.FC<TagManagerProps> = ({
             <div className="atlas-tag-manager-footer">
               {selectedIds.size > 0 && (
                 <>
-                  <span className="atlas-selected-count">{t('uiMessages.selectedItems', { count: selectedIds.size })}</span>
+                  <span className="atlas-selected-count">{selectedIds.size} selected</span>
                   <Button variant="destructive" size="sm" onClick={() => { void deleteItems(selectedItems()); }}>
                     {t('am.manage.deleteSelected')}
                   </Button>

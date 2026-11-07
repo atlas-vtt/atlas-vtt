@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { ChatEntry, LogEntry, RollEntry, SecretEntry, SharedRoll } from '../../../../src/app/online/protocol/index.ts';
 import { audienceNames, audienceOf, lastWhisperAudience, nameList, personName } from '../../../../src/app/online/tableLog/audience.ts';

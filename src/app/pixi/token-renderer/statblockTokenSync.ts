@@ -6,6 +6,7 @@
  */
 
 import { difficultyLabel, statblockDisplayName } from '../../creatures/statblockRating';
+import { everyLevelObjects } from '../../levels/levelObjects';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
 import type { LinkChangeEvent } from '../../services/TokenStatblockLinkService';
 import { syncedResources, type StatblockFields } from '../../resources/statblockResourceSync';
@@ -15,6 +16,7 @@ import type { TokenUpdates } from '../../types/viewState';
 import { runUntracked } from '../../stores/history';
 import type { TokenEntity } from '../../types';
 import { STATBLOCK_UNLINK_UPDATES } from './statblockFrontmatter';
+import { sceneTokens } from '../../tokens/offMap';
 
 export type TokenChanges = Array<{ id: string; changes: TokenUpdates }>;
 
@@ -38,7 +40,7 @@ export function statblockTokenChanges(
     if (token.kind !== 'character' || token.statblockPath !== statblockPath) continue;
     const changes: TokenUpdates = {};
     if (name !== null && name !== token.name) changes.name = name;
-    const resources = syncedResources(token, statblock.fields, definitions, meanings);
+    const resources = syncedResources(token, statblock.fields, definitions, meanings, statblock.emptyFields);
     if (JSON.stringify(resources) !== JSON.stringify(token.resources ?? {})) changes.resources = resources;
     if (difficulty !== undefined && difficulty !== token.difficulty) changes.difficulty = difficulty;
     if (image && token.imagePath !== image) changes.imagePath = image;
@@ -55,7 +57,7 @@ export function syncLinkedTokens(
   definitions: readonly ResourceDefinition[],
   image: string | null,
 ): void {
-  const entries = statblockTokenChanges(store.getState().objects.tokens, statblockPath, statblock, definitions, image);
+  const entries = statblockTokenChanges(sceneTokens(everyLevelObjects(store.getState())), statblockPath, statblock, definitions, image);
   if (entries.length > 0) runUntracked(store, () => store.getState().updateTokens(entries));
 }
 
@@ -69,7 +71,7 @@ export type LinkUpdates = (token: TokenEntity, statblockPath: string) => TokenUp
  */
 export function applyLinkChange(store: ViewAtlasStore, event: LinkChangeEvent, linkUpdates: LinkUpdates): void {
   const entries: TokenChanges = [];
-  for (const [id, token] of Object.entries(store.getState().objects.tokens)) {
+  for (const [id, token] of Object.entries(sceneTokens(everyLevelObjects(store.getState())))) {
     if (token.imagePath !== event.tokenImagePath) continue;
     const changes = event.type === 'unlinked'
       ? STATBLOCK_UNLINK_UPDATES

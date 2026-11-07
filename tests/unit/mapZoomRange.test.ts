@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { Viewport, type ClampZoom } from 'pixi-viewport';
 import type { EventSystem } from 'pixi.js';

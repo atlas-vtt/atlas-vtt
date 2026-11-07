@@ -11,9 +11,10 @@ import { headerPartOf, isHeaderBlockId, shownHeaderParts } from './templateHeade
 import type { TreeTarget } from './treeEdit';
 import { findBlock } from './treeQueries';
 import type { StatblockTemplate, TemplateBlock, TemplateLayout } from './templateTypes';
+import { t } from '../../i18n';
 
-/** What a tile is to the person editing: the editor's six kinds, and `other` for blocks it shows as they render. */
-export type TileKind = 'value' | 'metric' | 'abilities' | 'table' | 'text' | 'divider' | 'other';
+/** What a tile is to the person editing: the editor's seven kinds, and `other` for blocks it shows as they render. */
+export type TileKind = 'value' | 'metric' | 'abilities' | 'table' | 'counters' | 'text' | 'divider' | 'other';
 
 export interface GridTile {
   id: string;
@@ -40,10 +41,11 @@ export function isAbilityTabs(block: TemplateBlock): boolean {
 
 export function tileKind(block: TemplateBlock): TileKind {
   switch (block.type) {
-    case 'stat': case 'tags': case 'pairs': return 'value';
+    case 'stat': case 'tags': case 'pairs': case 'track': return 'value';
     case 'metric': return 'metric';
     case 'entries': return 'abilities';
     case 'scores': return 'table';
+    case 'counters': return 'counters';
     case 'text': return 'text';
     case 'divider': return 'divider';
     case 'tabs': return isAbilityTabs(block) ? 'abilities' : 'other';
@@ -52,7 +54,7 @@ export function tileKind(block: TemplateBlock): TileKind {
 }
 
 const KIND_NAMES: Readonly<Record<Exclude<TileKind, 'other'>, string>> = {
-  value: 'Value', metric: 'Metric', abilities: 'Abilities', table: 'Table', text: 'Text', divider: 'Divider',
+  value: t('templateEditor.primitive.value'), metric: t('templateEditor.primitive.metric'), abilities: t('templateEditor.abilities'), table: t('templateEditor.primitive.table'), counters: t('templateEditor.primitive.counters'), text: t('templateEditor.primitive.text'), divider: t('templateEditor.primitive.divider'),
 };
 
 /** What a block is called before it has a name of its own: its kind in the grid, else its block's name in the format ("Section", "Tabs"). */

@@ -113,7 +113,7 @@ export function StatblockImportContent({ app, queuedPaths, onAdd, onClose, contr
         ) : (
           <>
             <div className="atlas-statblock-import__summary" role="status">
-              <strong>{ready.length} {t('uiAssets.statblockImportContent_ready')}</strong><span>{scopedRows.filter(r => r.status === 'imported').length} {t('uiAssets.statblockImportContent_alreadyImported')}</span><span>{scopedRows.length - ready.length - scopedRows.filter(r => r.status === 'imported').length} {t('uiAssets.statblockImportContent_needAttention')}</span>
+              <strong>{ready.length} ready</strong><span>{scopedRows.filter(r => r.status === 'imported').length} already imported</span><span>{scopedRows.length - ready.length - scopedRows.filter(r => r.status === 'imported').length} need attention</span>
             </div>
             <div className="atlas-statblock-import__controls">
               <label htmlFor={layoutId}>{t('sbImport.layout')}</label>
@@ -135,7 +135,7 @@ export function StatblockImportContent({ app, queuedPaths, onAdd, onClose, contr
             <div className="atlas-statblock-import__selection">
               <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setSelected(current => new Set([...current, ...filtered.filter(r => r.status === 'ready' && !queued.has(r.path)).map(r => r.path)]))}>{t('sbImport.selectShown')}</Button>
               <Button variant="ghost" size="sm" disabled={disabled || selectedRows.length === 0} onClick={() => setSelected(new Set())}>{t('dice.clearSelection')}</Button>
-              <span>{selectedRows.length} {t('uiAssets.statblockImportContent_selected')}</span>
+              <span>{selectedRows.length} selected</span>
             </div>
             {filtered.length > 0
               ? <StatblockList app={app} rows={filtered} selected={selected} queued={queued} disabled={disabled} scrollElement={scrollElement} onToggle={toggle} />

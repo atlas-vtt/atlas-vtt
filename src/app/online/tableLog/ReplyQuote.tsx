@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import type { LogReply } from '../protocol/index.ts';
 import { useRef, type ReactElement } from 'react';
 import { AuthorDisc, toneClass } from './AuthorDisc.tsx';
@@ -24,7 +23,7 @@ export function ReplyQuote({ reply, self, onOpen }: { readonly reply: LogReply; 
       {reply.gone === true ? (
         <span className="atlas-online-log__quote-line">
           {who}
-          <span className="atlas-online-log__quote-text atlas-online-log__quote-text--gone">{t('uiOnline.replyQuote_messageDeleted')}</span>
+          <span className="atlas-online-log__quote-text atlas-online-log__quote-text--gone">Message deleted</span>
         </span>
       ) : (
         <button type="button" className="atlas-online-log__quote-line" onClick={onOpen}>

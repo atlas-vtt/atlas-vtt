@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import React, { useEffect, useId, useState } from 'react';
 import { DropdownSwatchGrid } from '../../packages/components/primitives/DropdownSwatchGrid';
 import { Slider } from '../../packages/components/primitives/slider';
@@ -7,6 +6,7 @@ import { editEmission, withEmissionValue } from '../../lighting/lightEmissionFor
 import { formatRange, rangeSliderScale, type RangeField } from '../../lighting/lightRanges';
 import type { LightEmission } from '../../types/lightingTypes';
 import { useColourPick, type ColourPick } from './useGestureTransactions';
+import { t } from '../../i18n';
 
 interface EmissionFieldProps {
   emission: LightEmission;
@@ -15,13 +15,13 @@ interface EmissionFieldProps {
 
 /** Colours lights commonly have: the kinds' own, and a few for magic. */
 const LIGHT_COLOR_SWATCHES = [
-  { value: '#ffb347', label: t('uiLighting.lightPopoverFields_candleAmber') },
-  { value: '#ff9a3c', label: t('uiLighting.lightPopoverFields_torchOrange') },
-  { value: '#ffd28a', label: t('uiLighting.lightPopoverFields_lanternGold') },
-  { value: '#fff1d6', label: t('uiLighting.lightPopoverFields_warmWhite') },
-  { value: '#8fb8ff', label: t('uiLighting.lightPopoverFields_arcaneBlue') },
-  { value: '#7ee0a8', label: t('uiLighting.lightPopoverFields_feyGreen') },
-  { value: '#ff6b5e', label: t('uiLighting.lightPopoverFields_emberRed') },
+  { value: '#ffb347', label: t('light.colour.candle') },
+  { value: '#ff9a3c', label: t('light.colour.torch') },
+  { value: '#ffd28a', label: t('light.colour.lantern') },
+  { value: '#fff1d6', label: t('light.colour.warm') },
+  { value: '#8fb8ff', label: t('light.colour.arcane') },
+  { value: '#7ee0a8', label: t('light.colour.fey') },
+  { value: '#ff6b5e', label: t('light.colour.ember') },
 ] as const;
 
 /** The light's colour: common ones as swatches, any other from the system picker in the last cell. */
@@ -29,9 +29,9 @@ export function ColorSwatches({ color, ...pick }: ColourPick & { color: string }
   const input = useColourPick(pick);
   const custom = !LIGHT_COLOR_SWATCHES.some((swatch) => swatch.value === color.toLowerCase());
   return (
-    <DropdownSwatchGrid label={t('uiLighting.lightPopoverFields_colour')} swatches={LIGHT_COLOR_SWATCHES} value={color} onChange={pick.onChange}>
+    <DropdownSwatchGrid label={t('light.colourLabel')} swatches={LIGHT_COLOR_SWATCHES} value={color} onChange={pick.onChange}>
       <span className={`atlas-swatch atlas-swatch--custom${custom ? ' atlas-swatch--active' : ''}`} style={custom ? { background: color } : undefined}>
-        <LabelTooltip label={t('uiLighting.lightPopoverFields_customColour')}>
+        <LabelTooltip label={t('light.customColour')}>
           <input ref={input.ref} type="color" value={/^#[0-9a-f]{6}$/i.test(color) ? color : '#ffffff'} onChange={input.onChange} />
         </LabelTooltip>
       </span>
@@ -60,7 +60,7 @@ export function RangeFields({ emission, unit, unitDistance, maxRange, onChange, 
     return (
       <div className="atlas-light-popover__field">
         <div className="atlas-light-popover__ranges">
-          <RangeInput label={t('uiLighting.lightPopoverFields_radius')} field="dim" emission={emission} maxRange={maxRange} onChange={onChange} />
+          <RangeInput label={t('light.radius')} field="dim" emission={emission} maxRange={maxRange} onChange={onChange} />
           {unit && <span className="atlas-light-popover__unit">{unit}</span>}
         </div>
         <Slider
@@ -68,7 +68,7 @@ export function RangeFields({ emission, unit, unitDistance, maxRange, onChange, 
           min={0}
           max={Math.min(max, maxRange)}
           step={step}
-          thumbLabels={[t('uiGeneralDetails.lightPopoverFields_darknessRadius')]}
+          thumbLabels={[t('light.darknessRadius')]}
           getValueText={(value) => `${formatRange(value)} ${unit}`.trim()}
           onPointerDown={onSliderPointerDown}
           onValueChange={([dim]) => {
@@ -81,8 +81,8 @@ export function RangeFields({ emission, unit, unitDistance, maxRange, onChange, 
   return (
     <div className="atlas-light-popover__field">
       <div className="atlas-light-popover__ranges">
-        <RangeInput label={t('uiLighting.lightPopoverFields_bright')} field="bright" emission={emission} maxRange={maxRange} onChange={onChange} />
-        <RangeInput label={t('uiLighting.lightPopoverFields_dim')} field="dim" emission={emission} maxRange={maxRange} onChange={onChange} />
+        <RangeInput label={t('light.bright')} field="bright" emission={emission} maxRange={maxRange} onChange={onChange} />
+        <RangeInput label={t('light.dim')} field="dim" emission={emission} maxRange={maxRange} onChange={onChange} />
         {unit && <span className="atlas-light-popover__unit">{unit}</span>}
       </div>
       <Slider
@@ -90,7 +90,7 @@ export function RangeFields({ emission, unit, unitDistance, maxRange, onChange, 
         min={0}
         max={Math.min(max, maxRange)}
         step={step}
-        thumbLabels={[t('uiGeneralDetails.lightPopoverFields_brightRange'), t('uiGeneralDetails.lightPopoverFields_dimRange')]}
+        thumbLabels={[t('light.brightRange'), t('light.dimRange')]}
         getValueText={(value) => `${formatRange(value)} ${unit}`.trim()}
         onPointerDown={onSliderPointerDown}
         onValueChange={([bright, dim]) => {

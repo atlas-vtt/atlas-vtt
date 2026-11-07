@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const snapshots: Translation = {
+  'snapshots.deleteBody': '快照会从此地图移除。地图本身不会改变。',
+  'snapshots.deleteFailed': '无法删除快照',
+  'snapshots.deleteTitle': '删除「{name}」？',
+  'snapshots.empty': '还没有快照。把地图的当前状态保存下来，以后可以回到这一状态，例如在遭遇开始之前。',
+  'snapshots.name': '快照名称',
+  'snapshots.new': '新建快照',
+  'snapshots.overwriteBody': '快照会替换为地图的当前状态。先前的状态将丢失。',
+  'snapshots.overwriteFailed': '无法覆盖快照',
+  'snapshots.overwriteTitle': '覆盖「{name}」？',
+  'snapshots.overwriteWithCurrent': '用当前地图覆盖',
+  'snapshots.renameFailed': '无法重命名快照',
+  'snapshots.renameNamed': '重命名 {name}',
+  'snapshots.restoreBody': '棋子、图钉、迷雾、绘图、先攻以及这张地图上的其他一切都会回到此快照中的样子。',
+  'snapshots.restoreFailed': '无法恢复快照',
+  'snapshots.restoreNamed': '恢复 {name}',
+  'snapshots.restoreTitle': '恢复「{name}」？',
+  'snapshots.restoreWarning': '此后的更改会丢失，且无法撤销。若要保留，请先另存一个快照。',
+  'snapshots.restored': '已恢复「{name}」',
+  'snapshots.saveFailed': '无法保存快照',
+  'snapshots.savedAt': '保存于 {date}',
+  'snapshots.updatedAt': '更新于 {date}',
+  'snapshots.defaultName': '快照',
+};

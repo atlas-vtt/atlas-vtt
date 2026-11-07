@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 const assets = vi.hoisted(() => ({ updateAsset: vi.fn(async () => undefined) }));
 vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => assets } }));
 const history = vi.hoisted(() => ({ untracked: 0 }));

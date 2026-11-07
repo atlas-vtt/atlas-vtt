@@ -19,8 +19,9 @@ function scene(wolf: Partial<Token>) {
   const wolfNow = (): Token | undefined => store.getState().objects.tokens.wolf as Token | undefined;
   /** Presses the card menu's "Move to Players" or "Move to Opponents" entry, as the tracker wires it (`updateTokens`). */
   const move = (): void => {
-    const entries = initiativeCardMenu(entry, wolfNow(), { bySides: true, fightRuns: false }, {
-      roll: noop, moveToFront: noop, moveToBack: noop, edit: noop, setSitsOut: noop, remove: noop,
+    const sides = [{ id: 'players', name: 'Players' }, { id: 'opponents', name: 'Opponents' }];
+    const entries = initiativeCardMenu(entry, wolfNow(), { bySides: true, sides, cards: false, fightRuns: false, swapTargets: [] }, {
+      roll: noop, moveToFront: noop, moveToBack: noop, edit: noop, setSitsOut: noop, remove: noop, delay: noop, actNow: noop, swapCard: noop,
       updateToken: (changes) => store.getState().updateTokens([{ id: 'wolf', changes }]),
     });
     const item = entries.find((candidate): candidate is Extract<ContextMenuEntry, { type: 'item' }> => candidate.type === 'item' && /^Move to (Players|Opponents)$/.test(candidate.label));

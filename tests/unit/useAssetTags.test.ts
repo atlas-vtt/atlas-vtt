@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { useAssetTags } from '../../src/app/packages/components/asset-manager/token-creator/useAssetTags';

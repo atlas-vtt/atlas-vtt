@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { nextTimerStep, parseGmMessage, timerSecondsAt, TIMER_LAG_MS } from '../../../../src/app/online/protocol/index.ts';
 

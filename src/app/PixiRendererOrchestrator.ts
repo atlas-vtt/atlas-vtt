@@ -1,3 +1,4 @@
+import { HARD_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
 import { createSceneSource } from './plugin/host/sceneSource';
 import { canRunMapHotkeys, matchesMapHotkey } from './keyboard/mapHotkeys';
 import { SettingsService, type AtlasSettings } from './services/SettingsService';
@@ -18,6 +19,12 @@ import { TokenRenderer } from "./pixi/token-renderer"; // Import TokenRenderer
 import { PinRenderer } from "./pixi/PinRenderer"; // Import PinRenderer
 import { HexLinkRenderer } from "./pixi/hexLinks/HexLinkRenderer";
 import { HexLinkInteraction } from "./pixi/hexLinks/HexLinkInteraction";
+import { LevelLinkEditor } from "./pixi/levelLinks/LevelLinkEditor";
+import { MapFeatureInteraction } from "./pixi/mapFeatures/MapFeatureInteraction";
+import { onLeavingView } from "./pixi/viewLeaving";
+import { linkedSceneLevels } from "./services/linkedSceneLevels";
+import type { SceneLevel } from "./types/sceneLevelTypes";
+import { MAX_LEVEL_LINKS } from "./levels/levelLinks";
 import type { MapRect } from "./grid/cellNumbering";
 import type { NotePin } from "./types";
 import { captureBeforeRender, frameCamera, type LayerVisibility } from "./pixi/playerSafeFrame";
@@ -25,6 +32,7 @@ import { PlayerFrameTexture } from "./pixi/PlayerFrameTexture";
 import type { FramePiece, PlayerFrame } from "./types/playerFrame";
 import { contextLost } from "./pixi/lighting/engine/gpu";
 import { SelectionManager } from "./pixi/SelectionManager"; // Import SelectionManager
+import { NO_BARS } from "./pixi/selection/selectionTargets";
 import { FogOfWarRenderer } from "./pixi/fog/FogOfWarRenderer";
 import { MeasureRenderer } from "./pixi/MeasureRenderer"; // Import MeasureRenderer
 import { measurePlayersView } from './pixi/measurePlayersView';
@@ -35,8 +43,10 @@ import { DrawingRenderer } from "./pixi/DrawingRenderer"; // Import DrawingRende
 import { DrawingInteraction } from "./pixi/DrawingInteraction";
 import { TextRenderer } from "./pixi/TextRenderer"; // Import TextRenderer
 import { TextTool } from "./tools/TextTool"; // Import TextTool
-import type { LightingController } from './pixi/lighting/LightingController';
-import { LightingFeature } from './pixi/lighting/LightingFeature';
+import { LightingController } from './pixi/lighting/LightingController';
+import { settingsLightingQuality } from './pixi/lighting/settingsLightingQuality';
+import { createBelowLevelsHost } from './pixi/lighting/belowLevelsHost';
+import { ViewRoofs } from './pixi/roofs/ViewRoofs';
 import { ShownPlaces } from './lighting/shownPlaces';
 import type { SceneFrame } from './pixi/lighting/engine/types';
 import { captureSceneFrame } from './pixi/sceneFrameCapture';
@@ -52,16 +62,28 @@ import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
 import { shownRollTokens } from './pixi/playerRollTokens';
+import type { PlayerBadgeNumbers } from './pixi/token-renderer/PlayerBadgeNumbers';
 import type { ShownRollToken } from './services/playerRollSource';
 import { t } from './i18n';
-import type { MapImage } from './pixi/mapImage/MapImage';
-import type { MapImageChange } from './pixi/mapImage/mapImageView';
-import type { TileView } from './pixi/mapImage/levelOfDetail';
+import { showNotice } from './ui/notice';
+import type { MosaicCanvas } from './pixi/mosaicCanvas/MosaicCanvas';
+import type { MosaicCanvasChange } from './pixi/mosaicCanvas/mosaicCanvasView';
+import type { TesseraView } from './pixi/mosaicCanvas/levelOfDetail';
 import { frameView } from './services/playerFrameDemand';
 import { MapController } from './MapController';
-import { NO_STRETCH, readMapStretch, sameStretch, type MapStretch } from './grid/mapStretch';
+import { NO_STRETCH, sameStretch, type MapStretch } from './grid/mapStretch';
+import { levelImageOnItsOwn, viewedImagePlacement } from './levels/levelAlignment';
+import { viewedLevelId } from './levels/sceneLevels';
+import { levelObjects } from './levels/levelObjects';
+import { watchMapVideoPlayback } from './pixi/mosaicCanvas/video/watchMapVideoPlayback';
+import type { LiquidLayer } from './pixi/liquids/LiquidLayer';
+import { createViewLiquids, type PlayersView } from './pixi/liquids/viewLiquids';
+import { playerWindowStore } from './stores/playerWindowStore';
+import { PlayerWindowService } from './services/PlayerWindowService';
 import { fitZoomRange } from './pixi/fitMapRect';
 import { viewCentreInClient, worldToClient, type ClientPoint } from './pixi/utils/worldToClient';
+import { mapTokens } from './tokens/offMap';
+import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
 
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
@@ -69,7 +91,14 @@ export class PixiRendererOrchestrator { // Renamed class
   private tokenRenderer?: TokenRenderer; // Add TokenRenderer instance
   private pinRenderer?: PinRenderer; // Add PinRenderer instance
   private hexLinkRenderer?: HexLinkRenderer;
+  private tokenPlacer?: TokenPlacer;
   private hexLinkInteraction?: HexLinkInteraction;
+  /** The stairs between levels: shown to the GM, edited with the stairs tool. */
+  private levelLinks?: LevelLinkEditor;
+  /** The GM's hover label of map features and doors, and a feature's menu; none in a player view. */
+  private mapFeatures?: MapFeatureInteraction;
+  /** Water, lava and acid moving over the map image, right above it. */
+  private liquids?: LiquidLayer;
   private selectionManager?: SelectionManager; // Add SelectionManager instance
   private fogRenderer?: FogOfWarRenderer; // Add FogRenderer instance
   private measureRenderer?: MeasureRenderer; // Add MeasureRenderer instance
@@ -80,15 +109,14 @@ export class PixiRendererOrchestrator { // Renamed class
   private drawingInteraction?: DrawingInteraction;
   private textRenderer?: TextRenderer; // Add TextRenderer instance
   private textTool?: TextTool; // Add TextTool instance
-  /** The view's lighting, built and removed as the GM switches dynamic lighting on and off. */
-  private lightingFeature?: LightingFeature;
+  /** The GM view's walls, lights and sight; the player view has none. */
+  private lighting?: LightingController;
+  /** The roof of the level shown, above the lighting. */
+  private roofs?: ViewRoofs;
   /** Where gliding tokens are drawn: the token renderer notes them, the lighting reads its tokens there. */
   private readonly shownPlaces = new ShownPlaces();
   /** The players' frame, rendered at the player window's size; made when this view is first presented. */
   private playerFrames?: Pick<PlayerFrameTexture, 'canRender' | 'render' | 'copy' | 'release' | 'destroy'>;
-  private get lighting(): LightingController | undefined {
-    return this.lightingFeature?.controller;
-  }
   private audioRenderer?: AudioRenderer;
   private audioTool?: AudioTool;
   private soundRegistry?: SoundRegistry;
@@ -101,10 +129,12 @@ export class PixiRendererOrchestrator { // Renamed class
   private layerFog: Container | null = null; // Add fog layer
   private gridSystem?: GridSystem; // Instance of GridSystem
   /** The view's map image, owned here once the first load hands it over. */
-  private mapImage: MapImage | null = null;
+  private mapImage: MosaicCanvas | null = null;
   private stopFollowingMapImage: (() => void) | null = null;
   /** The stretch of the map the zoom range was last fitted to. */
   private zoomFittedStretch: MapStretch = NO_STRETCH;
+  /** The alignment panel fits the viewed level's image to the grid (`setLevelImageAlignment`). */
+  private alignsLevelImage = false;
   private obsApp: App;
   private eventBus: EventEmitter;
   private activeHoverLinkAnchorEl: HTMLElement | null = null;
@@ -116,7 +146,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private _unsubscribeFromToolChanges?: () => void; // Add tool subscription cleanup
   private _unsubscribeFromGridVisibility?: () => void; // Add grid visibility subscription cleanup
   private viewId: string;
-  private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
+  private unbindKeyboard: (() => void) | null = null;
   private getViewportPositionHandler: ((e: WindowEventMap['get-viewport-position']) => void) | null = null;
   private eventBusUnsubscribers: Array<() => void> = [];
   /** Screen-space overlays that exist only for the DM, such as tool previews. */
@@ -365,6 +395,8 @@ export class PixiRendererOrchestrator { // Renamed class
     // Check if this is a player view through the store
     const isPlayerView = this.store.getState().isPlayerView || false;
     this.pinRenderer = new PinRenderer(viewport, this.eventBus, this.store, isPlayerView);
+    const pinnedSceneLevels = (pin: NotePin): Promise<readonly SceneLevel[] | null> => linkedSceneLevels(this.obsApp, this.store.getState(), pin.notePath);
+    this.pinRenderer.setPinnedSceneLevels(pinnedSceneLevels);
 
     this.hexLinkRenderer = new HexLinkRenderer({
       viewport,
@@ -378,7 +410,22 @@ export class PixiRendererOrchestrator { // Renamed class
       store: this.store,
       renderer: this.hexLinkRenderer,
       onNoteHover: (type, pin, e) => this.emitNoteHover(type, pin, e),
+      pinnedSceneLevels,
     });
+
+    if (!isPlayerView) {
+      this.levelLinks = new LevelLinkEditor({
+        viewport,
+        canvas: this.pixiAppManager.getCanvasElement(),
+        store: this.store,
+        onFull: () => showNotice(t('levels.stairsFull', { count: MAX_LEVEL_LINKS })),
+      });
+      const stairs = this.levelLinks;
+      this.eventBusUnsubscribers.push(onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => stairs.stop()));
+      const features = new MapFeatureInteraction(this.store, this.pixiAppManager.getCanvasElement());
+      this.mapFeatures = features;
+      this.eventBusUnsubscribers.push(onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => features.leave()));
+    }
 
     this.selectionManager = new SelectionManager(
         viewport,
@@ -387,10 +434,11 @@ export class PixiRendererOrchestrator { // Renamed class
         this.store,
         this.eventBus
     );
-    this.selectionManager.barsReachProvider = (tokenId) => this.tokenRenderer?.barsReach(tokenId) ?? 0;
+    this.selectionManager.barsProvider = (tokenId) => this.tokenRenderer?.bars(tokenId) ?? NO_BARS;
 
     // Initialize FogOfWarRenderer after pins so it can be on top when active
     this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getMapRect());
+    this.followFogEdge();
     
     // Add fog layer to viewport - it should be on top for interaction when the fog tool is active
     const fogContainer = this.fogRenderer.getContainer();
@@ -399,8 +447,20 @@ export class PixiRendererOrchestrator { // Renamed class
     // Set the fog container to a high z-index to ensure it's on top when visible
     fogContainer.zIndex = 1000;
 
+    this.roofs = new ViewRoofs({
+      app: this.pixiAppManager.app,
+      viewport,
+      store: this.store,
+      obsApp: this.obsApp,
+      mapSize: () => this.mapImage?.imageSize ?? null,
+      bounds: () => this.getMapRect(),
+      lighting: () => this.lighting?.renderer,
+      onChange: () => this.tokenRenderer?.refreshPlayerSight(),
+    });
+
     if (!isPlayerView) {
-      this.lightingFeature = new LightingFeature({
+      const quality = settingsLightingQuality(SettingsService.forApp(this.obsApp));
+      this.lighting = new LightingController({
         viewport,
         app: this.pixiAppManager.app,
         store: this.store,
@@ -412,6 +472,20 @@ export class PixiRendererOrchestrator { // Renamed class
         grid: () => this.gridSystem ?? null,
         fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
         shown: this.shownPlaces,
+        ...(this.roofs && { roofs: this.roofs }),
+        below: createBelowLevelsHost({
+          obsApp: this.obsApp,
+          app: this.pixiAppManager.app,
+          viewport,
+          store: this.store,
+          viewedFog: () => this.fogRenderer?.getCommittedCoverage(),
+          viewedRoof: () => {
+            const roofs = this.roofs;
+            return roofs ? (point) => roofs.covers(point) : null;
+          },
+          placeEraser: (eraser) => this.placeAboveGrid(eraser),
+        }),
+        ...(quality && { quality }),
       });
     }
 
@@ -423,7 +497,7 @@ export class PixiRendererOrchestrator { // Renamed class
     const pluginDir = this.store.getState().plugin?.manifest?.dir ?? `${this.obsApp.vault.configDir}/plugins/atlas-vtt`;
     this.soundRegistry = new SoundRegistry(this.obsApp, pluginDir);
     void this.soundRegistry.scanCustomSounds();
-    this.bufferCache = new AudioBufferCache(new AudioContext(), this.obsApp, this.soundRegistry);
+    this.bufferCache = new AudioBufferCache(() => new AudioContext(), this.obsApp, this.soundRegistry);
     this.spatialAudioEngine = new SpatialAudioEngine(this.store, this.bufferCache);
 
 
@@ -481,7 +555,7 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   /** Builds the grid over `mapImage`, or brings the existing grid `options` and the image. */
-  public initGrid(options: GridOptions, mapImage: MapImage): void {
+  public initGrid(options: GridOptions, mapImage: MosaicCanvas): void {
     if (!this.viewport) return;
     this.setMapImage(mapImage);
     // Without an image (a scene that failed) an existing grid follows the next one by itself.
@@ -489,7 +563,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this._initGridInternal(options, mapImage);
   }
 
-  private _initGridInternal(options: GridOptions, mapImage: MapImage): void {
+  private _initGridInternal(options: GridOptions, mapImage: MosaicCanvas): void {
     const currentViewport = this.viewport;
     const currentApp = this.app;
     if (!currentViewport) return;
@@ -585,26 +659,91 @@ export class PixiRendererOrchestrator { // Renamed class
    * Takes over the view's map image: its layer goes to the bottom of the viewport, and the grid,
    * the fog and the lighting follow every image it shows. Called once; the same image again does nothing.
    */
-  public setMapImage(mapImage: MapImage): void {
+  public setMapImage(mapImage: MosaicCanvas): void {
     if (this.mapImage === mapImage || this._isDestroyed) return;
     const viewport = this.viewport;
     if (!viewport) return;
     this.releaseMapImage();
     this.mapImage = mapImage;
     viewport.addChildAt(mapImage.layer, 0);
+    mapImage.layer.zIndex = MAP_LAYER_Z.mapImage;
+    this.placeLiquids(viewport, mapImage);
     this.gridSystem?.setMapImage(mapImage);
     const stopChanges = mapImage.onChange((change) => this.mapImageChanged(change));
     const stopBackground = MapController.followBackground(this.obsApp, this.store, mapImage);
     const stopStretch = MapController.followStretch(this.store, mapImage, () => this.mapSizeSettled());
+    const stopPlayback = this.watchMapVideo(mapImage);
     this.stopFollowingMapImage = (): void => {
       stopChanges();
       stopBackground();
       stopStretch();
+      stopPlayback();
     };
     this.mapImageChanged('image');
   }
 
-  public getMapImage(): MapImage | null {
+  /**
+   * Puts the liquid surfaces right above the map image, beneath the grid and everything the
+   * lighting lights after the map. By zIndex: the grid inserts itself right above the map image.
+   */
+  private placeLiquids(viewport: Viewport, mapImage: MosaicCanvas): void {
+    const app = this.pixiAppManager.getApp();
+    if (!app?.renderer || !app.ticker) return;
+    this.liquids ??= createViewLiquids(app, viewport, this.store, settingsLightingQuality(SettingsService.forApp(this.obsApp)), () => this.playersView());
+    this.liquids.container.zIndex = MAP_LAYER_Z.liquids;
+    viewport.addChildAt(this.liquids.container, viewport.getChildIndex(mapImage.layer) + 1);
+  }
+
+  /** What the player window shows of this view while it shows it live: what moves only while seen moves for it too. */
+  private playersView(): PlayersView | null {
+    const frame = PlayerWindowService.getInstance()?.liveFrameOf(this.store);
+    if (!frame) return null;
+    const { rect } = frameView(frame);
+    return { view: { left: rect.x, top: rect.y, right: rect.x + rect.width, bottom: rect.y + rect.height }, scale: frame.scale };
+  }
+
+  /** Gives the fog the edge the GM set, now and when it changes; a hard edge, which the fog starts with, asks for nothing. */
+  private followFogEdge(): void {
+    const settings = SettingsService.forApp(this.obsApp);
+    if (!settings) return;
+    let edge = HARD_FOG_EDGE;
+    const follow = (): void => {
+      const next = settings.getFogEdge();
+      if (sameFogEdge(next, edge)) return;
+      edge = next;
+      this.fogRenderer?.setEdge(next);
+    };
+    follow();
+    this.eventBusUnsubscribers.push(settings.onChange(follow));
+  }
+
+  /** Plays the map image's animated map and the liquids on it while someone sees them; returns the function that stops. */
+  private watchMapVideo(mapImage: MosaicCanvas): () => void {
+    const app = this.pixiAppManager.getApp();
+    if (!app?.renderer) return () => undefined;
+    const settings = SettingsService.forApp(this.obsApp);
+    return watchMapVideoPlayback({
+      map: {
+        setVideoMode: (mode): void => {
+          mapImage.setVideoMode(mode);
+          this.liquids?.setMode(mode);
+        },
+      },
+      canvas: app.canvas,
+      renderer: app.renderer,
+      scene: {
+        getState: () => this.store.getState(),
+        subscribe: (listener) => this.store.subscribe((state) => state.isMapLoading || !state.mapLoaded, listener),
+      },
+      players: {
+        shown: () => PlayerWindowService.getInstance()?.mirrors(this.store) ?? false,
+        subscribe: (listener) => playerWindowStore.subscribe(listener),
+      },
+      animate: settings ? { get: () => settings.getAnimateMaps(), onChange: (listener) => settings.onChange(listener) } : null,
+    });
+  }
+
+  public getMapImage(): MosaicCanvas | null {
     return this.mapImage;
   }
 
@@ -619,7 +758,7 @@ export class PixiRendererOrchestrator { // Renamed class
     return rect && rect.width > 0 ? rect : null;
   }
 
-  private mapImageChanged(change: MapImageChange): void {
+  private mapImageChanged(change: MosaicCanvasChange): void {
     // The lighting follows a new albedo by itself, without building its scene anew.
     if (this._isDestroyed || change !== 'image') return;
     // An alignment's preview draws the map another way than the scene has it: only the zoom range
@@ -632,7 +771,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private isPreviewingStretch(): boolean {
     const state = this.store.getState();
     if (!this.mapImage || !state.mapLoaded || state.isMapLoading) return false;
-    return !sameStretch(this.mapImage.mapStretch, readMapStretch(state.grid?.mapStretch));
+    return !sameStretch(this.mapImage.mapStretch, viewedImagePlacement(state));
   }
 
   /** The map has the size the scene gives it: what covers the map follows. */
@@ -685,12 +824,27 @@ export class PixiRendererOrchestrator { // Renamed class
     this.resnapTokensToGrid();
   }
 
+  /**
+   * While the alignment panel fits a level's image to the grid, the image is drawn on its own, from
+   * its corner (`levelImageOnItsOwn`), and what is measured or found on it is in that frame.
+   */
+  public setLevelImageAlignment(on: boolean): void {
+    this.alignsLevelImage = on;
+    this.mapImage?.setStretch(this.alignmentStretch());
+  }
+
+  /** How the map is drawn when no preview is shown: the viewed level's placement, or its image on its own while it is being fitted. */
+  private alignmentStretch(): MapStretch {
+    const state = this.store.getState();
+    return this.alignsLevelImage ? levelImageOnItsOwn(state, viewedLevelId(state)) : viewedImagePlacement(state);
+  }
+
   /** Cancel grid alignment: restore original grid values and the map's stretch from the store. */
   public cancelGridAlignment(): void {
     if (!this.gridSystem) return;
 
     const grid = this.store.getState().grid;
-    this.mapImage?.setStretch(readMapStretch(grid?.mapStretch));
+    this.mapImage?.setStretch(this.alignmentStretch());
     this.gridSystem.updateOptions({
       type: grid?.type ?? 'square',
       size: grid?.size || 50,
@@ -731,14 +885,42 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!app?.renderer || !viewport) return;
     const frames = this.playerFrames ??= new PlayerFrameTexture(app.renderer);
     if (!frames.canRender()) return;
-    // The map image at the players' own detail, put back before the DM's render
-    const restoreMapImage = this.mapImage?.drawFor(frameView(frame));
+    // The map image and the roof at the players' own detail, put back before the DM's render
+    const tesserae = frameView(frame);
+    const restoreMapImage = this.mapImage?.drawFor(tesserae);
+    const restoreRoof = this.roofs?.drawFor(tesserae);
+    const render = (): void => {
+      // The levels below the openings, in the players' look: the DM's own are bound again before the DM's render.
+      this.lighting?.renderer.prepareBelow?.({ key: 'frame', width: frame.width / frame.resolution, height: frame.height / frame.resolution, mode: 'player' });
+      frames.render(app.stage, frame);
+    };
     try {
-      captureBeforeRender(this.playerFrameLayers(settings), () => frames.render(app.stage, frame), () => frames.copy(copy), frameCamera(viewport, frame));
+      captureBeforeRender(this.playerFrameLayers(settings), render, () => frames.copy(copy), frameCamera(viewport, frame));
     } finally {
       restoreMapImage?.();
-      if (!renderFollows) app.renderer.render(app.stage);
+      restoreRoof?.();
+      if (!renderFollows) {
+        this.lighting?.renderer.prepareBelow?.();
+        app.renderer.render(app.stage);
+      }
     }
+  }
+
+  /** Keeps the map's tesserae of `view` (the player window's frame) loaded: the view's own and its roof's (the levels below draw their snapshots' own). */
+  public addMapDemandRegion(view: TesseraView): () => void {
+    const releases = [this.mapImage?.addDemandRegion(view), this.roofs?.addDemandRegion(view)];
+    return (): void => {
+      for (const release of releases) release?.();
+    };
+  }
+
+  /** Puts `layer` into the viewport right above the grid (above the map where there is none), below the tokens. */
+  private placeAboveGrid(layer: Container): void {
+    const viewport = this.viewport;
+    if (!viewport || !this.mapImage) return;
+    const map = viewport.getChildIndex(this.mapImage.layer);
+    const grid = this.gridSystem ? viewport.children.findIndex((child) => child.label === 'grid') : -1;
+    viewport.addChildAt(layer, Math.max(map, grid) + 1);
   }
 
   /** Whether a players' frame can be rendered now: not while the graphics context is lost. */
@@ -751,19 +933,20 @@ export class PixiRendererOrchestrator { // Renamed class
   /** Gives back the graphics memory of the players' frame, once nobody is shown it any more. */
   public releasePlayerFrame(): void {
     this.playerFrames?.release();
+    this.lighting?.renderer.releaseBelowPicture?.();
   }
 
   /** What a players' frame changes on the stage: everything players must not see, hidden for one render. */
   private playerFrameLayers(settings: AtlasSettings['localPlayerView']): LayerVisibility[] {
     // The grid is left as the GM set it: players see it exactly as the GM does, hidden included.
     const layers = this.markerLayers();
+    if (this.roofs) layers.push({ layer: this.roofs.modeLayer, visible: true });
     // The lighting's part is the list session view holds on this canvas (`SessionLighting`).
     const sight = this.lighting?.playerSight();
     layers.push(...(this.tokenRenderer?.getPlayerViewLayers(settings, sight) ?? []));
     if (this.measureRenderer) layers.push(...this.measureRenderer.getPlayerViewLayers(this.playersSeeInFrame(sight)));
     layers.push(...(this.lighting?.playerLayers() ?? []));
     layers.push(...(this.fogRenderer?.getPlayerViewLayers() ?? []));
-    layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     for (const overlay of this.dmScreenOverlays) layers.push({ layer: overlay, visible: false });
     return layers;
   }
@@ -779,29 +962,50 @@ export class PixiRendererOrchestrator { // Renamed class
     return shownRollTokens(this.store.getState(), mapPath, tokens.getTokenSprites(), () => tokens.playerFramePerception(this.lighting?.playerSight()), tokenIds);
   }
 
+  /** Whether the canvas shows the token, so it may be selected; none is shown while there is no token renderer. */
+  public canvasShowsToken(tokenId: string): boolean {
+    return this.tokenRenderer?.showsToken(tokenId) ?? false;
+  }
+
+  /** The numbers the players' instance badges show; null while there is no token renderer. */
+  public playerBadgeNumbers(): PlayerBadgeNumbers | null {
+    return this.tokenRenderer?.playerBadgeNumbers() ?? null;
+  }
+
   /** Which tokens a players' frame shows, by the scene's `sight` with committed fog; none while there is no token renderer. */
   private playersSeeInFrame(sight: TokenPerception | undefined): (tokenId: string) => boolean {
     return this.tokenRenderer?.playersSeeInFrame(sight) ?? NOTHING_SEEN;
   }
 
-  /** The GM's markers on the map: neither the players nor a picture of the scene show them. */
+  /** The GM's markers on the map and the selection: neither the players nor a picture of the scene show them. */
   private markerLayers(): LayerVisibility[] {
     const layers: LayerVisibility[] = [];
     if (this.pinRenderer) layers.push({ layer: this.pinRenderer.getPinContainer(), visible: false });
     if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
+    if (this.levelLinks) layers.push({ layer: this.levelLinks.view, visible: false });
+    for (const layer of this.tokenPlacer?.layers ?? []) layers.push({ layer, visible: false });
+    layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     return layers;
   }
 
   /**
    * Runs `render`, the off-screen render of a thumbnail's `frame`: always the GM's picture
    * (`gmViewLayers`), lit as the GM sees the scene, without the GM's overlays. `picture` is what
-   * the thumbnail shows of the world and at what detail: the map image draws its own tiles for it.
+   * the thumbnail shows of the world and at what detail: the map image draws its own tesserae for it.
    */
-  public captureSceneFrame<T>(frame: SceneFrame, render: () => T, picture?: TileView | null): T {
+  public captureSceneFrame<T>(frame: SceneFrame, render: () => T, picture?: TesseraView | null): T {
     const restoreMapImage = picture ? this.mapImage?.drawFor(picture) : undefined;
+    const restoreRoof = picture ? this.roofs?.drawFor(picture) : undefined;
+    // A picture of an animated map shows its poster, as its asset card does, not whatever frame plays now.
+    const restoreVideo = this.mapImage?.hideVideoFor();
+    // Liquids take the still moment too, so a picture of the scene is the same however long it played.
+    const restoreLiquids = this.liquids?.stillFor();
     try {
-      return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(), lighting: this.lighting }, frame, render);
+      return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(), lighting: this.lighting, roofs: this.roofs }, frame, render);
     } finally {
+      restoreLiquids?.();
+      restoreVideo?.();
+      restoreRoof?.();
       restoreMapImage?.();
     }
   }
@@ -820,6 +1024,25 @@ export class PixiRendererOrchestrator { // Renamed class
   getGridSystem(): GridSystem | null { return this.gridSystem || null; }
   getTokenRenderer(): TokenRenderer | null { return this.tokenRenderer || null; }
 
+  /** Places spawned tokens by hand on this view's map; null until the map's tokens can be drawn. */
+  getTokenPlacer(): TokenPlacer | null {
+    if (this._isDestroyed) return null;
+    const tokens = this.tokenRenderer;
+    const viewport = this.pixiAppManager.getViewport();
+    if (!tokens || !viewport) return null;
+    this.tokenPlacer ??= new TokenPlacer({
+      app: this.pixiAppManager.app,
+      viewport,
+      canvas: this.pixiAppManager.getCanvasElement(),
+      viewId: this.viewId,
+      settings: () => SettingsService.forApp(this.obsApp),
+      store: this.store,
+      grid: () => this.gridSystem ?? null,
+      previewToken: (token) => tokens.previewToken(token),
+    });
+    return this.tokenPlacer;
+  }
+
   /**
    * Reinitialize viewport plugins after map switch to restore interactions
    * @deprecated Use full renderer recreation instead
@@ -833,17 +1056,19 @@ export class PixiRendererOrchestrator { // Renamed class
   }
   
   private setupKeyboardHandlers(): void {
-    if (this.keyboardHandler) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
+    this.unbindKeyboard?.();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!canRunMapHotkeys(e, this.viewId)) return;
       const settings = SettingsService.forApp(this.obsApp);
       // Escape key
       if (matchesMapHotkey(e, 'cancel', settings)) {
-        if (this.lighting?.handleEscape()) {
+        // A group being turned is put back; the selection stays
+        if (this.selectionManager?.handleEscape()) {
+          e.preventDefault();
+          return;
+        }
+        if (this.levelLinks?.handleEscape() || this.lighting?.handleEscape()) {
           e.preventDefault();
           return;
         }
@@ -857,14 +1082,14 @@ export class PixiRendererOrchestrator { // Renamed class
       }
       
       // Enter closes the light zone being drawn
-      if (e.key === 'Enter' && this.lighting?.handleEnter()) {
+      if (e.key === 'Enter' && (this.levelLinks?.handleEnter() || this.lighting?.handleEnter())) {
         e.preventDefault();
         return;
       }
 
       // Delete selected tokens on Delete or Backspace key
       if (!this.store.getState().isPlayerView && (matchesMapHotkey(e, 'delete', settings) || matchesMapHotkey(e, 'deleteAlt', settings))) {
-        if (this.lighting?.handleDelete()) {
+        if (this.levelLinks?.handleDelete() || this.lighting?.handleDelete()) {
           e.preventDefault();
           return;
         }
@@ -878,8 +1103,8 @@ export class PixiRendererOrchestrator { // Renamed class
       }
     };
     
-    this.keyboardHandler = handleKeyDown;
     document.addEventListener('keydown', handleKeyDown);
+    this.unbindKeyboard = (): void => document.removeEventListener('keydown', handleKeyDown);
   }
   
 
@@ -904,6 +1129,10 @@ export class PixiRendererOrchestrator { // Renamed class
    *  Must be called after TokenRenderer is available (either from setupRenderersAndManagers or initGrid). */
   private wireViewportDispatchProviders(): void {
     if (!this.tokenRenderer) return;
+
+    const roofs = this.roofs;
+    if (roofs) this.tokenRenderer.setRoofProvider((point) => roofs.covers(point));
+    this.tokenRenderer.setPlacementGuard(() => this.tokenPlacer?.active ?? false);
 
     if (this.fogRenderer) {
       this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
@@ -939,13 +1168,17 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this.hexLinkInteraction) {
       this.tokenRenderer.setHexLinkHandlers(this.hexLinkInteraction);
     }
+    if (this.levelLinks) this.tokenRenderer.setStairsTool(this.levelLinks);
+    if (this.mapFeatures) this.tokenRenderer.setMapFeatureHandlers(this.mapFeatures);
     if (this.selectionManager) {
       this.selectionManager.setHitTestTokensProvider(
         (x, y) => this.tokenRenderer!.hitTestTokens(x, y)
       );
+      this.tokenRenderer.setGroupFrameHitTest((x, y) => this.selectionManager?.groupFrameContains(x, y) ?? false);
+      this.selectionManager.setGroupTurnHost(this.tokenRenderer.groupTurnHost());
     }
 
-    this.lightingFeature?.wire(this.tokenRenderer);
+    this.lighting?.wire(this.tokenRenderer);
 
     // Wire audio tool viewport handlers
     if (this.audioRenderer && this.audioTool) {
@@ -1051,19 +1284,20 @@ export class PixiRendererOrchestrator { // Renamed class
     delete this._unsubscribeFromGridVisibility;
     
 
-    // Remove keyboard handler
-    if (this.keyboardHandler) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
+    this.unbindKeyboard?.();
+    this.unbindKeyboard = null;
 
     
     // Remove drawing tool handlers
 
+    this.tokenPlacer?.destroy();
     this.tokenRenderer?.destroy(); // Destroy TokenRenderer
     this.pinRenderer?.destroy(); // Destroy PinRenderer
     this.hexLinkInteraction?.destroy();
     this.hexLinkRenderer?.destroy();
+    this.levelLinks?.destroy();
+    this.mapFeatures?.destroy();
+    this.liquids?.destroy();
     this.fogRenderer?.destroy(); // Destroy FogRenderer
     this.stopMeasuresFollowingPlayers?.();
     this.measureRenderer?.destroy(); // Destroy MeasureRenderer
@@ -1072,7 +1306,8 @@ export class PixiRendererOrchestrator { // Renamed class
     this.drawingInteraction?.destroy();
     this.textRenderer?.destroy(); // Destroy TextRenderer
     this.textTool?.destroy(); // Destroy TextTool
-    this.lightingFeature?.destroy();
+    this.lighting?.destroy();
+    this.roofs?.destroy();
     this.playerFrames?.destroy();
     delete this.playerFrames;
     this.audioRenderer?.destroy();
@@ -1126,8 +1361,8 @@ export class PixiRendererOrchestrator { // Renamed class
     
     if (!snapToGrid) return;
     
-    // Handle position snapping
-    const tokens = state.objects?.tokens || {};
+    // Handle position snapping, of the tokens on the level the alignment was made on
+    const tokens = mapTokens(levelObjects(state));
     const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
     
     for (const [id, token] of Object.entries(tokens)) {

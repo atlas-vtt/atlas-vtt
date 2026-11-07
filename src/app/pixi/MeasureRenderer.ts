@@ -1,4 +1,4 @@
-import { FederatedPointerEvent, Graphics, Text } from "pixi.js";
+import { Container, FederatedPointerEvent } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import type { StoreApi } from 'zustand/vanilla';
 import { getObsidianAccentColor, cssColorToHexNumber } from "./utils/colorUtils";
@@ -8,7 +8,10 @@ import { formatDistance, resolveMeasurementSettings, type MeasurementSettings } 
 import type { SceneSource } from '../host/sceneSource';
 import type { ViewState } from '../types/viewState';
 import { isHandled } from './utils/handledEvents';
-import { createMeasureLabelText, drawMeasureLabel, drawMeasurement, measureLabelFontSize, watchMeasureLabelTheme, type MeasureRecord, type MeasureShape } from './utils/measureDrawing';
+import { drawMeasurement, measureLabelTarget, type MeasureRecord, type MeasureShape } from './utils/measureDrawing';
+import { MeasureInk, MeasureInkLayer } from './utils/measureInk';
+import { destroyTree } from './utils/destroyTree';
+import { MeasureLabel, watchMeasureLabelTheme } from './utils/measureLabel';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { MeasurePartsVisibility, type MeasurePlayersView } from './measurePartsVisibility';
 import type { LayerVisibility } from './playerSafeFrame';
@@ -36,13 +39,11 @@ export interface Measurements {
 
 const NO_MEASUREMENTS: Measurements = Object.freeze({ live: null, kept: Object.freeze([]) });
 
-interface PersistentMeasurement {
-  graphics: Graphics;
-  pill: Graphics;
-  text: Text;
-  /** Where its label stands and the zoom it was drawn at, so a theme change redraws it in place. */
-  labelCenter: { x: number; y: number };
-  labelScale: number;
+/** A measurement drawn on the map: what it measures, its shape and its distance label. */
+interface DrawnMeasurement {
+  readonly record: MeasureRecord;
+  readonly shape: MeasureInk;
+  readonly label: MeasureLabel;
 }
 
 export class MeasureRenderer {
@@ -51,9 +52,14 @@ export class MeasureRenderer {
   private store: MeasureStore;
   private gridSystem: MeasureGrid;
   
-  private measureGraphics: Graphics;
-  private measureText: Text;
-  private measurePill: Graphics; // Background pill for text
+  /** The measurement being drawn, or showing after its release. */
+  /** Every measurement's shape, composed in one pass; every label above all of them. */
+  private readonly shapes = new MeasureInkLayer();
+  private readonly labels = new Container({ label: 'measure-labels', eventMode: 'none', interactiveChildren: false });
+  private readonly liveShape = new MeasureInk(this.shapes);
+  private readonly liveLabel = new MeasureLabel();
+  /** The zoom everything is drawn at: shapes and labels keep their size on screen. */
+  private drawnZoom = 1;
   /** Measurement settings of the current map, from its collection when it has one. */
   public measurementSettingsProvider: (() => MeasurementSettings) | null = null;
   /** How the players see the tokens a measurement starts on; without it, the players' picture shows every measurement. */
@@ -63,7 +69,7 @@ export class MeasureRenderer {
   private isDrawing: boolean = false;
   private measureShape: MeasureShape = 'line';
   private persistMeasurements: boolean = false;
-  private persistentMeasurements: PersistentMeasurement[] = [];
+  private persistentMeasurements: DrawnMeasurement[] = [];
   private current: Measurements = NO_MEASUREMENTS;
   private readonly listeners = new Set<(next: Measurements, previous: Measurements) => void>();
 
@@ -98,27 +104,15 @@ export class MeasureRenderer {
     this.store = store;
     this.gridSystem = gridSystem;
     
-    // Create graphics for drawing measurements
-    this.measureGraphics = new Graphics();
-    this.measureGraphics.eventMode = 'none';
-    this.measureGraphics.interactiveChildren = false;
-    this.measureGraphics.zIndex = MAP_LAYER_Z.measure;
-    this.viewport.addChild(this.measureGraphics);
+    // Same zIndex, labels added after: the stable sort keeps every label above every shape.
+    this.shapes.view.zIndex = MAP_LAYER_Z.measure;
+    this.labels.zIndex = MAP_LAYER_Z.measure;
+    this.viewport.addChild(this.shapes.view, this.labels);
+    this.labels.addChild(this.liveLabel.view);
+    this.parts = new MeasurePartsVisibility({ shape: this.liveShape.shape, label: this.liveLabel.view }, () => this.playersView);
     
-    // Create graphics for text pill background
-    this.measurePill = new Graphics();
-    this.measurePill.eventMode = 'none';
-    this.measurePill.zIndex = MAP_LAYER_Z.measure;
-    this.viewport.addChild(this.measurePill);
-    
-    this.measureText = createMeasureLabelText();
-    this.measureText.zIndex = MAP_LAYER_Z.measure;
-    this.viewport.addChild(this.measureText);
-    this.parts = new MeasurePartsVisibility({ graphics: this.measureGraphics, pill: this.measurePill, text: this.measureText }, () => this.playersView);
-    
-    // Setup viewport scale listener
     this.setupViewportScaleListener();
-    this.stopThemeWatch = watchMeasureLabelTheme(() => this.redrawLabels());
+    this.stopThemeWatch = watchMeasureLabelTheme(() => this.redrawAll());
     
     // Bind handlers
     this.pointerDownHandler = this.handlePointerDown.bind(this);
@@ -169,33 +163,34 @@ export class MeasureRenderer {
   }
   
   private setupViewportScaleListener(): void {
-    // Update text scale whenever viewport scale changes
+    // Shapes and labels keep their size on screen, so a new zoom draws them again; a pan changes nothing.
     this._viewportScaleHandler = () => {
-      this.updateTextScale();
+      if (this.viewport.scale.x !== this.drawnZoom) this.redrawAll();
     };
-    
-    // Listen to viewport scale changes
     this.viewport.on('zoomed', this._viewportScaleHandler);
+    this.viewport.on('zoomed-end', this._viewportScaleHandler);
     this.viewport.on('moved', this._viewportScaleHandler);
   }
-  
-  private updateTextScale(): void {
-    if (!this.parts.labelDrawn) return;
-    
-    this.measureText.style.fontSize = measureLabelFontSize(this.viewport.scale.x);
-    
-    // Redraw pill if text is visible
-    if (this.current.live) {
-      this.updatePillAndText();
-    }
+
+  /** Draws every measurement again at the current zoom and in the current theme. */
+  private redrawAll(): void {
+    this.drawnZoom = this.viewport.scale.x;
+    const live = this.current.live;
+    if (live) this.drawLive(live);
+    for (const kept of this.persistentMeasurements) this.draw(kept);
   }
-  
-  /** Redraws every label in the current theme's colours. */
-  private redrawLabels(): void {
-    this.updatePillAndText();
-    for (const { pill, text, labelCenter, labelScale } of this.persistentMeasurements) {
-      drawMeasureLabel(pill, text, labelCenter, labelScale);
-    }
+
+  /** Draws `measurement`'s shape and label at the current zoom. */
+  private draw({ record, shape, label }: DrawnMeasurement): void {
+    const zoom = this.viewport.scale.x;
+    shape.begin(zoom);
+    drawMeasurement(shape, cssColorToHexNumber(getObsidianAccentColor()), record, this.measurementSettings().coneAngle);
+    label.show(this.measurementLabel(record.start, record.end), measureLabelTarget(record), zoom, this.gridSystem.getOptions().size);
+  }
+
+  private drawLive(record: MeasureRecord): void {
+    this.drawnZoom = this.viewport.scale.x;
+    this.draw({ record, shape: this.liveShape, label: this.liveLabel });
   }
 
   private enableMeasureTool(): void {
@@ -298,17 +293,8 @@ export class MeasureRenderer {
   private updateMeasurement(start: { x: number; y: number }, end: { x: number; y: number }): void {
     const live = { shape: this.measureShape, start, end };
     this.setMeasurements({ ...this.current, live });
-    this.measureGraphics.clear();
-    drawMeasurement(this.measureGraphics, cssColorToHexNumber(getObsidianAccentColor()), live, this.measurementSettings().coneAngle);
-    this.measureText.text = this.measurementLabel(start, end);
+    this.drawLive(live);
     this.parts.drawn();
-    this.updatePillAndText();
-  }
-  
-  private updatePillAndText(): void {
-    const live = this.current.live;
-    if (!live || !this.measureText.text) return;
-    drawMeasureLabel(this.measurePill, this.measureText, this.labelAnchor(live.start, live.end), this.viewport.scale.x);
   }
 
   /** Records the measurements on the map and tells whoever follows them. */
@@ -316,11 +302,6 @@ export class MeasureRenderer {
     const previous = this.current;
     this.current = next;
     for (const listener of [...this.listeners]) listener(next, previous);
-  }
-
-  /** Midpoint of the measurement, lifted a constant screen distance above the line. */
-  private labelAnchor(start: { x: number; y: number }, end: { x: number; y: number }): { x: number; y: number } {
-    return { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 30 / this.viewport.scale.x };
   }
 
   private measurementSettings(): MeasurementSettings {
@@ -333,60 +314,29 @@ export class MeasureRenderer {
   }
   
   private clearMeasurement(): void {
-    this.measureGraphics.clear();
-    this.measurePill.clear();
+    this.liveShape.clear();
     this.parts.cleared();
     this.rightClickDownPos = null;
     if (this.current.live) this.setMeasurements({ ...this.current, live: null });
   }
   
   private createPersistentMeasurement(): void {
-    if (!this.current.live || !this.measureText.text) return;
-    const record: MeasureRecord = { shape: this.measureShape, start: this.current.live.start, end: this.current.live.end };
-    
-    const persistGraphics = new Graphics();
-    const persistPill = new Graphics();
-    const persistText = new Text({ 
-      text: this.measureText.text, 
-      style: this.measureText.style.clone() 
-    });
-    drawMeasurement(persistGraphics, cssColorToHexNumber(getObsidianAccentColor()), record, this.measurementSettings().coneAngle);
-
-    persistText.anchor.set(0.5);
-    const labelCenter = this.labelAnchor(record.start, record.end);
-    const labelScale = this.viewport.scale.x;
-    drawMeasureLabel(persistPill, persistText, labelCenter, labelScale);
-    const measurement = { graphics: persistGraphics, pill: persistPill, text: persistText, labelCenter, labelScale };
-    this.parts.keep(measurement);
-    
-    for (const part of [persistGraphics, persistPill, persistText]) {
-      part.zIndex = MAP_LAYER_Z.measure;
-      this.viewport.addChild(part);
-    }
-    
+    const live = this.current.live;
+    if (!live) return;
+    const record: MeasureRecord = { shape: this.measureShape, start: live.start, end: live.end };
+    const measurement: DrawnMeasurement = { record, shape: new MeasureInk(this.shapes), label: new MeasureLabel() };
+    this.draw(measurement);
+    this.labels.addChild(measurement.label.view);
+    this.parts.keep({ shape: measurement.shape.shape, label: measurement.label.view });
     this.persistentMeasurements.push(measurement);
     this.setMeasurements({ ...this.current, kept: [...this.current.kept, record] });
   }
   
   private clearAllPersistentMeasurements(): void {
-    // Remove all persistent measurements from viewport
-    for (const measurement of this.persistentMeasurements) {
-      if (measurement.graphics.parent) {
-        this.viewport.removeChild(measurement.graphics);
-      }
-      if (measurement.pill.parent) {
-        this.viewport.removeChild(measurement.pill);
-      }
-      if (measurement.text.parent) {
-        this.viewport.removeChild(measurement.text);
-      }
-      
-      // Destroy the graphics objects
-      measurement.graphics.destroy();
-      measurement.pill.destroy();
-      measurement.text.destroy();
+    for (const { shape, label } of this.persistentMeasurements) {
+      shape.destroy();
+      label.destroy();
     }
-    
     this.persistentMeasurements = [];
     this.parts.forgetKept();
     if (this.current.kept.length > 0) this.setMeasurements({ ...this.current, kept: [] });
@@ -414,6 +364,7 @@ export class MeasureRenderer {
     // Remove viewport scale listener
     if (this._viewportScaleHandler) {
       this.viewport.off('zoomed', this._viewportScaleHandler);
+      this.viewport.off('zoomed-end', this._viewportScaleHandler);
       this.viewport.off('moved', this._viewportScaleHandler);
     }
     
@@ -429,9 +380,8 @@ export class MeasureRenderer {
     this.clearAllPersistentMeasurements();
     
     this.disableMeasureTool();
-    this.measureGraphics.destroy();
-    this.measurePill.destroy();
-    this.measureText.destroy();
+    this.shapes.destroy();
+    destroyTree(this.labels);
     this.listeners.clear();
   }
 }

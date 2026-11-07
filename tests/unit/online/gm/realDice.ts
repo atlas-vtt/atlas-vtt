@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import type { RollingDice } from '../../../../src/app/types/diceSetTypes';
 import type { DiceRules } from '../../../../src/app/types/diceRulesTypes';
 import type { DiceRollResult } from '../../../../src/app/types/diceTypes';
 import type { DiceSource } from '../../../../src/app/online/gm/atlasDice.ts';
@@ -17,7 +18,7 @@ interface DiceRollInputs {
   onFormulaError(error: { readonly code: string }): void;
 }
 /** Atlas's `DiceTool` class, as far as these tests use it. */
-export type DiceToolClass = new (bus: EventEmitter, rules: () => DiceRules, inputs: DiceRollInputs) => Pick<DiceSource, 'rollDice'>;
+export type DiceToolClass = new (bus: EventEmitter, rules: () => DiceRules | RollingDice, inputs: DiceRollInputs) => Pick<DiceSource, 'rollDice'> & { getDiceRules(): DiceRules | RollingDice };
 
 export interface RealDice {
   /** The tab's dice as the companion sees them: Atlas's dice tool and the bus it announces rolls on. */
@@ -29,7 +30,7 @@ export interface RealDice {
 }
 
 /** An Atlas map tab's dice: Atlas's real `DiceTool` on an `EventEmitter`, rolling by `rules` with `random`. */
-export function realDice(DiceTool: DiceToolClass, rules: DiceRules, random: () => number, viewId = 'view-1'): RealDice {
+export function realDice(DiceTool: DiceToolClass, rules: DiceRules | RollingDice, random: () => number, viewId = 'view-1'): RealDice {
   const bus = new EventEmitter();
   const errors: string[] = [];
   let ids = 0;
@@ -38,6 +39,6 @@ export function realDice(DiceTool: DiceToolClass, rules: DiceRules, random: () =
   bus.on('dice-rolled', (result: DiceRollResult) => rolled.push(result));
   return {
     rolled, errors,
-    dice: { viewId, rollDice: (formula, source, origin) => tool.rollDice(formula, source, origin), rules: () => tool.getDiceRules(), on: (event, listener) => bus.on(event, listener), off: (event, listener) => bus.off(event, listener) },
+    dice: { viewId, rollDice: (formula, source, origin, options) => tool.rollDice(formula, source, origin, options), rules: () => tool.getDiceRules(), on: (event, listener) => bus.on(event, listener), off: (event, listener) => bus.off(event, listener) },
   };
 }

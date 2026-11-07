@@ -1,10 +1,11 @@
 import React, { memo, useEffect, useId } from 'react';
-import { Map as MapIcon, ScrollText } from 'lucide-react';
+import { Film, Map as MapIcon, ScrollText } from 'lucide-react';
 import type { AnyAsset } from '../types';
 import type { AssetCardHandlers } from '../hooks/useAssetCardHandlers';
 import { TokenPortrait } from '../../shared/TokenPortrait';
 import { LabelTooltip, Tooltip, TooltipContent, TooltipTrigger } from '../../primitives/tooltip';
 import { AssetTagMenu } from './AssetTagMenu';
+import { ProcessingBadge } from './ProcessingBadge';
 import { RevealImage } from '../../primitives/RevealImage';
 import { Skeleton } from '../../primitives/Skeleton';
 import { encounterPreviewStyle } from '../utils/encounterPreviewLayout';
@@ -116,6 +117,14 @@ export const AssetCard = memo(function AssetCard({
             </div>
 
             <AssetTagMenu asset={asset} />
+
+            {asset.type === 'maps' && asset.animated && (
+              <LabelTooltip label={t('am.card.animated')}>
+                <div className="atlas-asset-animated-indicator"><Film /></div>
+              </LabelTooltip>
+            )}
+
+            {(asset.type === 'maps' || asset.type === 'scenes') && <ProcessingBadge asset={asset} />}
 
             {statblockPath && spawnCount <= 1 && (
               <LabelTooltip label={t('am.card.statblockLinked')}>

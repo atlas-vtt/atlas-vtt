@@ -6,19 +6,65 @@
 $widget-value-size: 28px;
 $widget-bar-offset: $spacing-s;
 
-// Top right, where the DM's top row (main.scss) also places it.
+// Top right, where the DM's top row (main.scss) also places it, never wider than the window.
 .atlas-widget-bar {
   position: fixed;
   top: $widget-bar-offset;
   right: $widget-bar-offset;
+  max-width: calc(100vw - 2 * #{$widget-bar-offset});
   z-index: 50; // below the asset manager (100)
   pointer-events: none;
 }
 
 // Lays the cards out without a panel of its own; only the cards catch the pointer,
-// so the gaps between them stay clickable on the map.
+// so the gaps between them stay clickable on the map. Cards that do not fit in one
+// row wrap into more, right-aligned under the first.
 .atlas-widget-container {
   @include atlas-flex-row($spacing-s);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+// The stack's one control, over its whole box (`useWidgetStack`); the cards under it are inert.
+.atlas-widget-stack-opener {
+  @include atlas-panel-radius($radius-2xl);
+  @include atlas-focus-ring;
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  pointer-events: auto;
+
+  &:hover {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+// The number of cards, on the top card's corner.
+.atlas-widget-stack-count {
+  position: absolute;
+  top: -$spacing-xs;
+  right: -$spacing-xs;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 $spacing-xs;
+  border-radius: $radius-full;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-bold;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: center;
 }
 
 // ── Widget card ──────────────────────────────────────────────────────────────
@@ -34,7 +80,9 @@ $widget-bar-offset: $spacing-s;
   pointer-events: auto;
   transition: border-color $transition-normal $transition-ease,
               box-shadow $transition-normal $transition-ease-out,
-              background-color $transition-normal $transition-ease;
+              background-color $transition-normal $transition-ease,
+              transform $transition-normal $transition-ease-out,
+              opacity $transition-normal $transition-ease;
 }
 
 .atlas-widget-icon-wrapper {

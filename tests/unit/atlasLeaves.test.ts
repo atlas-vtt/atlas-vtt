@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { WorkspaceLeaf, type App, type View } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';

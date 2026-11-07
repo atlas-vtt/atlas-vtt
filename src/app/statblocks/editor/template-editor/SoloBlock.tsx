@@ -10,6 +10,8 @@ import { sheetState } from '../../render/sheetState';
 import { ValueEditingContext } from '../../render/valueSlot';
 import type { FieldRecord } from '../../values/fieldValues';
 import { PREVIEW_VALUE_EDITING } from './editorValueSlot';
+import { armableValues } from '../../rollBonuses/armableValues';
+import { RollBonusContext, type RollBonusTarget } from '../../rollBonuses/rollBonusContext';
 
 /** A drawing beside the card carries no block id: the canvas's frame stays the one block of that id. */
 const SOLO_CHROME: BlockChrome = { decorate: () => ({ attributes: { 'data-block-id': undefined } }) };
@@ -34,17 +36,21 @@ export interface SoloBlockProps {
 export function SoloBlock({ template, id, record = NO_VALUES, app, sourcePath, className }: SoloBlockProps): React.JSX.Element | null {
   const state = useMemo(() => sheetState({ template, record, mode: 'editing' }), [template, record]);
   const sheet = useMemo((): SheetContextValue => ({ state, app, sourcePath }), [state, app, sourcePath]);
+  // Drawn as on the card, its "Add to next roll" switches inert.
+  const bonuses = useMemo((): RollBonusTarget => ({ key: id, armable: armableValues(template.layout.blocks, state), store: null }), [id, template, state]);
   const block = findBlock(template.layout.blocks, id)?.block;
   if (!block) return null;
   return (
     <SheetContext.Provider value={sheet}>
-      <BlockChromeContext.Provider value={SOLO_CHROME}>
-        <ValueEditingContext.Provider value={PREVIEW_VALUE_EDITING}>
-          <div className={cn('atlas-statblock atlas-sb-sheet atlas-sb-sheet--full is-editing', className)}>
-            <BlockView block={block} />
-          </div>
-        </ValueEditingContext.Provider>
-      </BlockChromeContext.Provider>
+      <RollBonusContext.Provider value={bonuses}>
+        <BlockChromeContext.Provider value={SOLO_CHROME}>
+          <ValueEditingContext.Provider value={PREVIEW_VALUE_EDITING}>
+            <div className={cn('atlas-statblock atlas-sb-sheet atlas-sb-sheet--full is-editing', className)}>
+              <BlockView block={block} />
+            </div>
+          </ValueEditingContext.Provider>
+        </BlockChromeContext.Provider>
+      </RollBonusContext.Provider>
     </SheetContext.Provider>
   );
 }

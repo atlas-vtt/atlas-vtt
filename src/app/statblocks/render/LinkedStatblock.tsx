@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import React from 'react';
 import type { App } from 'obsidian';
 import { useLoadingReveal } from '../../packages/components/primitives/useLoadingReveal';
@@ -14,6 +13,7 @@ import { LinkedSheet, type DrawnStatblock } from './LinkedSheet';
 import type { SheetVariant } from './sheetTypes';
 import { useLinkedStatblock, useNativeTemplateId, type LinkedStatblockResult } from './useLinkedStatblock';
 import type { TokenRollContext } from '../../types/diceRollOrigin';
+import { t } from '../../i18n';
 
 export interface LinkedStatblockProps {
   app: App;
@@ -88,9 +88,9 @@ function ResolvedView(props: LinkedStatblockProps & { templateId: TemplateId | n
   }
   // The note stopped being native while Fantasy Statblocks is loaded: the plugin draws it.
   if (result.kind === 'statblock') return <FantasyView {...props} />;
-  if (result.kind === 'unreadable') return <Hint>{t('uiStatblocks.linkedStatblock_thisStatblockCouldNotBeRead')}</Hint>;
-  if (result.fence) return <Hint>{t('uiStatblocks.linkedStatblock_installAndEnableTheFantasyStatblocksPluginToPreviewStatblocks')}</Hint>;
-  return <Hint>{t('uiStatblocks.linkedStatblock_thisNoteHasNoStatblock')}</Hint>;
+  if (result.kind === 'unreadable') return <Hint>{t('statblockEditor.unreadable')}</Hint>;
+  if (result.fence) return <Hint>{t('statblockEditor.needFs')}</Hint>;
+  return <Hint>{t('statblockEditor.noStatblock')}</Hint>;
 }
 
 /**

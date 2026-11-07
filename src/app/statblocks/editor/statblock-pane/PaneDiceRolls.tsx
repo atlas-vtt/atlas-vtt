@@ -20,6 +20,11 @@ export interface PaneDiceRollsProps {
   app: App;
   /** The pane's collection, whose dice rules roll while no map is open. */
   collectionId: string | null;
+  /**
+   * The pane lies over every map, so it shows the rolls of a map on screen as well, except a map
+   * whose view it is drawn in: that map's display stands above it.
+   */
+  coversMaps?: boolean;
   children: React.ReactNode;
 }
 
@@ -31,8 +36,10 @@ export interface PaneDiceRollsProps {
  * display mounts with the first roll: dice stages hold graphics memory, and
  * most notes are read without rolling.
  */
-export function PaneDiceRolls({ app, collectionId, children }: PaneDiceRollsProps): React.JSX.Element {
+export function PaneDiceRolls({ app, collectionId, coversMaps = false, children }: PaneDiceRollsProps): React.JSX.Element {
   const [host, setHost] = useState<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  hostRef.current = host;
   const [rolled, setRolled] = useState(false);
   const listeners = useRef(new Set<RollListener>());
   /** Rolls made before the display listened: the first one mounts it. */
@@ -48,6 +55,7 @@ export function PaneDiceRolls({ app, collectionId, children }: PaneDiceRollsProp
       const result = rollDiceFormula(formula, rules, offlineDiceInputs(), shown, options?.advantage);
       return result && { ...result, source };
     },
+    covers: (mapEl) => coversMaps && hostRef.current !== null && !mapEl.contains(hostRef.current),
     rollingDice: (set) => rollingRules(rollingWith(diceSetOfCollection(app, collection.current), set).rules),
     show: (result, muted) => {
       if (listeners.current.size === 0) {
@@ -57,7 +65,7 @@ export function PaneDiceRolls({ app, collectionId, children }: PaneDiceRollsProp
       }
       for (const listener of listeners.current) listener(result, { muted });
     },
-  }), [app]);
+  }), [app, coversMaps]);
   const subscribe = useCallback<DiceRollSubscription>((onRoll) => {
     listeners.current.add(onRoll);
     for (const { result, muted } of waiting.current.splice(0)) onRoll(result, { muted });

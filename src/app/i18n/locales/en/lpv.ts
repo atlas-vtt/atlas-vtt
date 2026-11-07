@@ -8,6 +8,8 @@ export const lpv = {
   'lpv.openWindow': 'Open player window',
   'lpv.showCursors': 'Show everyone\'s cursors',
   'lpv.showDiceRolls': 'Show dice rolls',
+  'lpv.view4k': 'Render up to 4K',
+  'lpv.view4kHint': 'A 4K TV or an ultrawide gets a rendered pixel for every pixel of its screen instead of an upscaled 1440p picture, at up to 2.25 times the graphics work for the player view. This device only.',
   'lpv.showInitiative': 'Show initiative panel',
   'lpv.showWidgets': 'Show widgets',
   'lpv.tokens': 'Tokens',

@@ -1,6 +1,6 @@
-import { t } from '../../../../i18n';
 import React from 'react';
 import type { TemplateReview } from '../../../../services/collectionBundle/importTemplates';
+import { plural } from '../../../../utils/plural';
 
 interface TemplateCopiesProps {
   templates: TemplateReview;
@@ -13,7 +13,7 @@ const SHOWN = 5;
 
 function namesOf(names: readonly string[]): string {
   const shown = names.slice(0, SHOWN).join(', ');
-  return names.length > SHOWN ? t('uiMessages.namesAndMore', { names: shown, count: names.length - SHOWN }) : shown;
+  return names.length > SHOWN ? `${shown} and ${names.length - SHOWN} more` : shown;
 }
 
 /**
@@ -27,17 +27,19 @@ export function TemplateCopies({ templates, switchNotes, onSwitchNotesChange }: 
   return (
     <div className="atlas-transfer-callout" role="note">
       <strong>
-        {t('uiMessages.templateCopies', { count: copies.length })}
+        {copies.length === 1
+          ? 'Your version of this template differs, so the collection’s comes in as a copy. Yours stays as it is.'
+          : 'Your versions of these templates differ, so the collection’s come in as copies. Yours stay as they are.'}
       </strong>
       <ul>
         {copies.slice(0, SHOWN).map((copy) => <li key={copy.copyName}>{copy.name} → {copy.copyName}</li>)}
-        {copies.length > SHOWN && <li>{t('common.andMore', { count: copies.length - SHOWN })}</li>}
+        {copies.length > SHOWN && <li>and {copies.length - SHOWN} more</li>}
       </ul>
       {reusedNotes.length > 0 && (
         <label className="atlas-transfer-checkbox">
           <input type="checkbox" checked={switchNotes} onChange={(event) => onSwitchNotesChange(event.target.checked)} />
           <span>
-            {t('uiMessages.switchStatblocks', { count: reusedNotes.length, names: namesOf(reusedNotes.map((note) => note.name)) })}
+            Switch {plural(reusedNotes.length, 'statblock')} you already had to the copies: {namesOf(reusedNotes.map((note) => note.name))}
           </span>
         </label>
       )}

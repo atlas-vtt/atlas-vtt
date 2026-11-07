@@ -8,7 +8,9 @@
 
 import type { FieldValue } from '../model/templateTypes';
 import { DEFAULT_ENTRY_TEXT_KEY, entryName } from './entryValues';
-import { parseNumberText } from './numberText';
+import { unescapeCommas } from './listText';
+import { formatSigned, numericValue, parseNumberText } from './numberText';
+import { valueText } from './valueText';
 
 export interface Pair {
   key: string;
@@ -47,9 +49,10 @@ function describedPair(item: { [key: string]: FieldValue }): Pair {
   return { key: name.startsWith('_') ? '' : name, value: item[DEFAULT_ENTRY_TEXT_KEY] ?? null };
 }
 
-/** Every pair of a pairs value in written order; values that hold no pairs give none. */
+/** Every pair of a pairs value in written order; values that hold no pairs give none. A line kept as typed shows its escaped commas as commas. */
 export function normalisePairs(value: FieldValue | undefined): Pair[] {
-  return Array.isArray(value) ? value.flatMap(itemPairs) : itemPairs(value);
+  if (Array.isArray(value)) return value.flatMap(itemPairs);
+  return itemPairs(typeof value === 'string' ? unescapeCommas(value) : value);
 }
 
 function findPair(pairs: readonly Pair[], name: string | undefined): Pair | undefined {
@@ -65,4 +68,18 @@ function findPair(pairs: readonly Pair[], name: string | undefined): Pair | unde
 export function pairValue(pairs: FieldValue | undefined, slotKey: string | undefined, slotLabel?: string): FieldValue | undefined {
   const list = normalisePairs(pairs);
   return (findPair(list, slotKey) ?? findPair(list, slotLabel))?.value;
+}
+
+const FIRST_LETTER = /^\p{Ll}/u;
+
+/** A pair's name as a statblock writes it: "dex" reads "Dex". */
+export function pairName(key: string): string {
+  return key.trim().replace(FIRST_LETTER, (letter) => letter.toUpperCase());
+}
+
+/** One pair as a statblock shows it: "Dex +5", the name alone where it has no value ("Stealth"), or the value alone where it has no name. */
+export function pairText(pair: Pair, signed: boolean): string {
+  const number = signed ? numericValue(pair.value) : null;
+  const value = (number === null ? valueText(pair.value) : formatSigned(number)).trim();
+  return [pairName(pair.key), value].filter((part) => part !== '').join(' ');
 }

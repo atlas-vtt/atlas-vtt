@@ -1,5 +1,5 @@
 import { Plugin, Workspace, WorkspaceLeaf } from 'obsidian';
-import { ATLAS_VIEW_TYPE } from '../atlas-view';
+import { ATLAS_VIEW_TYPE } from '../atlasViewType';
 
 function isOpen(workspace: Workspace, leaf: WorkspaceLeaf): boolean {
   let open = false;

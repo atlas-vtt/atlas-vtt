@@ -16,6 +16,8 @@ export interface BookScene {
   readonly resources: readonly ResourceDefinition[];
   /** The tokens among these the players' frame shows now: not hidden, seen, not under fog. */
   shown(tokenIds: readonly string[]): ReadonlyMap<string, ShownRollToken>;
+  /** The GM id of a token by the id players know it by in the list of `scene` (the shared scene's id), while that list is the last they were sent. */
+  listedToken(scene: string, alias: string): string | undefined;
 }
 
 /**
@@ -35,7 +37,9 @@ function collectionOf(collections: CollectionLookup | null, mapPath: string): st
  * the scene loads, the tab has no renderer or its collection is not known yet: the books then stay
  * as they were.
  */
-export function bookSceneOf(state: SceneState, source: PlayerTokenSource | null, rules: TokenRules | null, collections: CollectionLookup | null): BookScene | null {
+export function bookSceneOf(
+  state: SceneState, source: PlayerTokenSource | null, rules: TokenRules | null, collections: CollectionLookup | null, listedToken: BookScene['listedToken'],
+): BookScene | null {
   const { mapPath } = state;
   if (!state.mapLoaded || state.isMapLoading || mapPath === null || source === null) return null;
   const collection = collectionOf(collections, mapPath);
@@ -46,5 +50,6 @@ export function bookSceneOf(state: SceneState, source: PlayerTokenSource | null,
     tokens: state.objects.tokens,
     resources: rules?.resources ?? [],
     shown: (tokenIds) => (tokenIds.length === 0 ? new Map() : source.playerRollTokens(mapPath, tokenIds)),
+    listedToken,
   };
 }

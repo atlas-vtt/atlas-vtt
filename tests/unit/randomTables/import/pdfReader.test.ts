@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { readPdfTables, type PdfDocument, type PdfLibrary } from '../../../../src/app/randomTables/import/pdfReader';
 

@@ -1,6 +1,6 @@
-import type { Message } from '../../types';
+import type { Translation } from '../../types';
 
 export const drawing = {
-  'drawing.color': 'Colore',
-  'drawing.changeIcon': 'Cambia icona',
-} as const satisfies Record<string, Message>;
+  "drawing.color": "Colore",
+  "drawing.changeIcon": "Cambia icona"
+} satisfies Translation;

@@ -21,7 +21,9 @@ describe('light kinds', () => {
       expect(LIGHT_GLYPH_PATHS[kind].length).toBeGreaterThan(kind === 'darkness' ? 40 : 100);
       expect(pinPaths.has(LIGHT_GLYPH_PATHS[kind])).toBe(kind === 'torch');
     }
-    expect(new Set(Object.values(LIGHT_GLYPH_PATHS)).size).toBe(LIGHT_KINDS.length);
+    // And one for an area light's glowing surface.
+    expect(pinPaths.has(LIGHT_GLYPH_PATHS.surface)).toBe(false);
+    expect(new Set(Object.values(LIGHT_GLYPH_PATHS)).size).toBe(LIGHT_KINDS.length + 1);
   });
 
   it('reads the kind a light was given', () => {

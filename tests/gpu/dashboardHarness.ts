@@ -2,7 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import { vi } from 'vitest';
 import { cdp, page } from 'vitest/browser';
-import type { TFile } from 'obsidian';
+import type { App, TFile } from 'obsidian';
 import type { StoredCampaign } from '../../src/app/campaigns/campaignTypes';
 import { Dashboard } from '../../src/app/react/components/dashboard/Dashboard';
 import { AssetService } from '../../src/app/services/AssetService';
@@ -73,6 +73,7 @@ const sceneFile = (path: string, background?: string, tokens: Record<string, unk
 });
 
 export interface Mounted {
+  app: App;
   storage: ReturnType<typeof memoryCampaigns>;
   sceneIds: Map<string, string>;
   mapIds: Map<string, string>;
@@ -146,7 +147,7 @@ export async function mountDashboard(
     React.createElement('div', { className: 'workspace-leaf-content atlas-dashboard-view atlas-vtt-plugin', style: { width: `${size.width}px`, height: `${size.height}px` } },
       React.createElement(Dashboard, { app, campaignStorage: storage, onOpenScene: vi.fn(), onCreateMap: vi.fn(), onOpenAssetManager: vi.fn() })),
   );
-  return { storage, sceneIds, mapIds };
+  return { app, storage, sceneIds, mapIds };
 }
 
 export const query = (selector: string): HTMLElement => document.querySelector<HTMLElement>(selector)!;

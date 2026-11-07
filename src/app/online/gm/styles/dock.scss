@@ -9,6 +9,7 @@
 @use 'gate';
 @use 'image-row';
 @use 'qr';
+@use 'campaign-picker';
 
 // The collapsed control stands as high as Atlas's bars: a 40 px control with $spacing-s around it,
 // inside the border, so its top and bottom edges run level with the undo/redo bar and the toolbar.

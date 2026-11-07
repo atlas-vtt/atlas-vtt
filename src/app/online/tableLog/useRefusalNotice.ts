@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import type { ChatRefusal } from '../protocol/index.ts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LogView } from './LogState.ts';
@@ -7,12 +6,12 @@ import type { LogView } from './LogState.ts';
 export const NOTICE_MS = 4000;
 
 const REFUSALS: Readonly<Record<ChatRefusal, string>> = {
-  rate: t('uiOnlineDetails.useRefusalNotice_youAreSendingTooFastWaitAMoment'),
-  text: t('uiOnline.useRefusalNotice_thatMessageCannotBeSent'),
-  gone: t('uiOnlineDetails.useRefusalNotice_thatMessageIsGone'),
-  whisper: t('uiOnlineDetails.useRefusalNotice_nobodyAtTheTableHasThatName'),
-  speaker: t('uiOnlineDetails.useRefusalNotice_youCannotSpeakAsThatToken'),
-  roll: t('uiOnlineDetails.useRefusalNotice_aRollInThatMessageDoesNotWorkCheckTheDiceOrKeepTheRolls'),
+  rate: 'You are sending too fast. Wait a moment.',
+  text: 'That message cannot be sent.',
+  gone: 'That message is gone.',
+  whisper: 'Nobody at the table has that name.',
+  speaker: 'You cannot speak as that token.',
+  roll: 'A roll in that message does not work. Check the dice, or keep the rolls as they were.',
 };
 
 /**

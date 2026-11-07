@@ -30,7 +30,7 @@ export function ConflictList({ conflicts, resolutions, onChange }: ConflictListP
   return (
     <section className="atlas-transfer-conflicts" aria-labelledby={titleId}>
       <div className="atlas-transfer-conflicts__header">
-        <strong id={titleId}>{t('uiMessages.overlappingChanges', { count: conflicts.length })}</strong>
+        <strong id={titleId}>Your changes and the update overlap ({conflicts.length})</strong>
         <div className="atlas-transfer-conflicts__bulk">
           <Button variant="ghost" size="sm" onClick={() => setAll('mine')}>{t('conflict.keepMineAll')}</Button>
           <Button variant="ghost" size="sm" onClick={() => setAll('theirs')}>{t('conflict.useUpdateAll')}</Button>

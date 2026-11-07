@@ -1,4 +1,7 @@
+import { MapController } from '../MapController';
 import { App } from 'obsidian';
+import { watchLevelsToRefit } from '../react/components/levels/levelRefitNotice';
+import { followHistoryAcrossLevels } from '../react/components/levels/levelHistoryFollow';
 import type AtlasVTTPlugin from '../../../main';
 import { EventEmitter } from 'events';
 import { RendererService } from './RendererService';
@@ -17,7 +20,8 @@ import { SoundEffectService } from './SoundEffectService';
 import { DiceToastObserver } from './DiceToastObserver';
 import type { ViewAtlasStore } from '../storeFactory';
 import { PartySync } from '../campaigns/partyValues/PartySync';
-import { pictureView } from '../pixi/mapImage/levelOfDetail';
+import { openedDirector } from '../soundDirector/directorRegistry';
+import { pictureView } from '../pixi/mosaicCanvas/levelOfDetail';
 
 /** How long a snapshot waits for the map image's detail before it renders what is drawn. */
 const THUMBNAIL_DETAIL_WAIT_MS = 500;
@@ -43,6 +47,8 @@ export class ServiceManager {
   private diceToastObserver: DiceToastObserver;
   private viewId: string;
   private sceneThumbnails: SceneThumbnailUpdater;
+  private readonly stopRefitNotice: () => void;
+  private readonly stopHistoryFollow: () => void;
   
   constructor(private app: App, private store: ViewAtlasStore, private plugin?: AtlasVTTPlugin, viewId?: string) {
     // Create event bus for inter-service communication
@@ -76,8 +82,11 @@ export class ServiceManager {
 
     void Promise.all([this.settingsService.initialize(), this.assetService.initialize()]);
     
+    this.stopRefitNotice = watchLevelsToRefit(store);
+    this.stopHistoryFollow = followHistoryAcrossLevels(store);
     this.sceneThumbnails = new SceneThumbnailUpdater(store, {
       render: () => this.renderMapThumbnail(),
+      levelShown: () => MapController.showsViewedLevel(this.rendererService.getRenderer()?.getMapImage() ?? null, store.getState()),
       save: (mapPath, bytes) => this.mapThumbnailService.saveThumbnail(mapPath, bytes),
       hasThumbnail: (mapPath) => this.mapThumbnailService.hasThumbnail(mapPath),
     });
@@ -97,6 +106,7 @@ export class ServiceManager {
 
     // The played campaign's player characters show one set of values in every view
     PartySync.forApp(app)?.registerStore(this.viewId, store);
+    openedDirector(app)?.joinView(this.viewId, store);
     
   }
   
@@ -244,7 +254,11 @@ export class ServiceManager {
       this.widgetSyncService.unregisterStore(this.viewId);
     }
     PartySync.forApp(this.app)?.unregisterStore(this.viewId);
+    openedDirector(this.app)?.leaveView(this.viewId);
     
+    this.stopRefitNotice();
+    this.stopHistoryFollow();
+
     // Writes a pending thumbnail, so it must run while the renderer still shows the scene
     this.sceneThumbnails.destroy();
 
@@ -252,10 +266,11 @@ export class ServiceManager {
     this.diceToastObserver.destroy();
     this.soundEffectService.destroy();
     this.toolController.destroy();
+    // Ends a load, a grid detection and a new dungeon's reveal, which still hold the renderer's ticker
+    this.mapService.destroy();
     this.rendererService.destroy();
     this.layerGraph.destroy();
     this.uiOverlay.unmount();
-    this.mapService.destroy();
     this.notePreviewUIManager.destroy();
 
     // Remove all event listeners

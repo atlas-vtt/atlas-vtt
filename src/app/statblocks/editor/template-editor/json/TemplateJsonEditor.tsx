@@ -1,10 +1,10 @@
-import { t } from '../../../../i18n';
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Button } from '../../../../packages/components/primitives/button';
 import { serializeTemplate } from '../../../format/templateFormat';
 import { useTemplateEditor } from '../editorContext';
 import { readOnlyMessage } from '../sessionEdit';
 import { readTemplateJson, saysTheSame, type JsonReading } from './templateJson';
+import { t } from '../../../../i18n';
 import './json.scss';
 
 /** How long typing pauses before a valid text is taken. */
@@ -53,8 +53,8 @@ export function TemplateJsonEditor({ onDone }: { onDone: () => void }): React.JS
   return (
     <div className="atlas-te-json" data-te-region="json">
       <div className="atlas-te-json__head">
-        <span id={labelId} className="atlas-te-json__title">{t('uiTemplateEditor.templateJsonEditor_templateAsJSON')}</span>
-        <Button type="button" variant="default" size="sm" onClick={onDone}>{t('uiTemplateEditor.templateJsonEditor_done')}</Button>
+        <span id={labelId} className="atlas-te-json__title">{t('templateEditor.json.title')}</span>
+        <Button type="button" variant="default" size="sm" onClick={onDone}>{t('templateEditor.done')}</Button>
       </div>
       {locked && <p className="atlas-te-json__note">{locked}</p>}
       <textarea
@@ -71,7 +71,7 @@ export function TemplateJsonEditor({ onDone }: { onDone: () => void }): React.JS
       />
       {reading.problems.length > 0 && (
         <div className="atlas-te-json__problems" role="status" data-refused={refused || undefined}>
-          <span className="atlas-te-json__state">{refused ? t('uiTemplateDetails.templateJsonEditor_notTakenYetTheCardShowsTheLastValidText') : t('uiTemplateDetails.templateJsonEditor_takenWithTheseNotes')}</span>
+          <span className="atlas-te-json__state">{refused ? t('templateEditor.json.refused') : t('templateEditor.json.taken')}</span>
           <ul>
             {reading.problems.map((problem, index) => <li key={`${index}:${problem}`}>{problem}</li>)}
           </ul>

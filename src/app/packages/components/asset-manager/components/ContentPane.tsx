@@ -21,6 +21,8 @@ import { useSpawnCountTyping } from '../hooks/useSpawnCountTyping';
 import { useAssetStatblockPreview } from '../hooks/useAssetStatblockPreview';
 import { useRememberedScroll, type ScrollMemory } from '../hooks/useRememberedScroll';
 import { useScrollbarGutter } from '../../primitives/useScrollbarGutter';
+import { MapProcessing } from '../../../../pixi/mosaicCanvas/mapProcessing';
+import { MapProcessingContext, type MapProcessingLookup } from './mapProcessingContext';
 import { Button } from '../../primitives/button';
 import { t } from '../../../../i18n';
 
@@ -57,6 +59,8 @@ export interface ContentPaneProps {
   scrollMemory: ScrollMemory;
   /** Set while filters narrow the list; the empty state offers to clear them. */
   onClearFilters?: () => void;
+  /** What the empty state offers to add, unless filters made it empty (the starter tokens); it is given the hint to show once it has nothing to offer. */
+  emptyOffer?: (hint: React.ReactNode) => React.ReactNode;
 }
 
 const NO_IDS: ReadonlySet<string> = new Set();
@@ -93,6 +97,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   useScrollbarGutter(scrollElement);
   useRememberedScroll(scrollElement, props.scrollKey, props.scrollMemory);
 
+  const processing = useMemo((): MapProcessingLookup => ({ app: props.app, processing: MapProcessing.forApp(props.app) }), [props.app]);
   const selectedIds = useMemo(() => new Set(selectedAssetIds), [selectedAssetIds]);
   const draggingIds = useMemo(
     () => (draggedItems?.type === 'asset' ? new Set(draggedItems.ids) : NO_IDS),
@@ -121,6 +126,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   const endDrag = (): void => { setDraggedItems(null); setDropTarget(null); };
 
   const isEmpty = assets.length === 0 && folders.length === 0;
+  const withOffer = (hint: React.ReactNode): React.ReactNode => (props.emptyOffer ? props.emptyOffer(hint) : hint);
   // The first section's header carries the selection, under the sort.
   const selection = (
     <SelectionInfo count={selectedAssetIds.length + selectedFolderIds.length} onClear={onClearSelection} />
@@ -141,7 +147,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
             {props.onClearFilters ? (
               <Button variant="outline" className="atlas-empty-action" onClick={props.onClearFilters}>{t('am.empty.clearFilters')}</Button>
             ) : (
-              <p>{t(activeTab === 'party' ? 'am.empty.partyHint' : 'am.empty.hint')}</p>
+              withOffer(<p>{t(activeTab === 'party' ? 'am.empty.partyHint' : 'am.empty.hint')}</p>)
             )}
           </motion.div>
         ) : (
@@ -196,13 +202,15 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
                   end={folders.length === 0 && selection}
                 />
                 {!collapsedSections.assets && (
-                  <VirtualAssetGrid
-                    assets={assets}
-                    scrollElement={scrollElement}
-                    renderCard={renderCard}
-                    onBackgroundClick={clearIfBackground}
-                    appear={paneShown.current}
-                  />
+                  <MapProcessingContext.Provider value={processing}>
+                    <VirtualAssetGrid
+                      assets={assets}
+                      scrollElement={scrollElement}
+                      renderCard={renderCard}
+                      onBackgroundClick={clearIfBackground}
+                      appear={paneShown.current}
+                    />
+                  </MapProcessingContext.Provider>
                 )}
               </section>
             )}

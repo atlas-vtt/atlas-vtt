@@ -1,12 +1,13 @@
-// @vitest-environment node
 import { parseGmMessage, type BookQuest, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { applyBookMessage, EMPTY_BOOK, readBooks } from '../../../../src/app/online/gm/book/bookStore.ts';
-import { setQuestGate, type QuestAsset } from '../../../../src/app/online/gm/book/questGate.ts';
+import { ownBookOf } from '../../../../src/app/online/gm/book/playerWritings.ts';
+import { setQuestGate, type HandedQuest, type QuestAsset } from '../../../../src/app/online/gm/book/questGate.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
+import { storedRef } from './fakeStoring.ts';
 import { FakeSocket, png, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH_ART, CAL, delivered, MIRA_ART, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
+import { ANA, ANA_OWN, BEN, BEN_OWN, CAL, delivered, keptBooks, nameWorldMap, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -17,6 +18,7 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
       return null;
     }
     showPlayers(): void {}
+    showPlayerDrags(): void {}
     showPlayerCursors(): void {}
     dispose(): void {}
   },
@@ -27,11 +29,11 @@ const id = (count: number): string => count.toString(16).padStart(24, '0');
 const quest = (count: number, parts: Partial<BookQuest> = {}): BookQuest => ({ id: id(count), kind: 'main', state: 'open', title: `Quest ${count}`, body: 'Find the crown.', place: null, xp: 300, rewards: ['Favour of the King'], ...parts });
 
 /** The quests Atlas answers from the played campaign's notes, and a way to change them as an edit of a note would. */
-let quests: readonly BookQuest[] = [];
+let quests: readonly HandedQuest[] = [];
 /** What Atlas serves the quests' assets from, by hash. */
 let questAssets = new Map<string, QuestAsset>();
 const questListeners = new Set<() => void>();
-function writeQuests(next: readonly BookQuest[]): void {
+function writeQuests(next: readonly HandedQuest[]): void {
   quests = next;
   for (const listener of [...questListeners]) listener();
 }
@@ -110,6 +112,27 @@ describe('quests at a running table', () => {
     table.online.stop();
   });
 
+  it('sends a page that reads its book in parts a changed quest list or world map alone, and any other page its whole book', async () => {
+    quests = [quest(1)];
+    const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
+    table.from(ANA, { t: 'book-parts' });
+    await advance(100);
+    const books = (player: string): number => ofType(delivered(table.socket), 'book').filter(({ to }) => to === player).length;
+    const before = { ana: books(ANA), ben: books(BEN) };
+    const part = (type: string): unknown => ofType(delivered(table.socket), type).filter(({ to }) => to === ANA).map(({ body }) => parseGmMessage(JSON.parse(JSON.stringify(body)))).at(-1);
+
+    writeQuests([quest(1, { state: 'done' })]);
+    await advance(100);
+    expect(part('book-quests')).toEqual({ t: 'book-quests', quests: [quest(1, { state: 'done' })] });
+    workspace.files.set('maps/other world.png', png(640, 480));
+    nameWorldMap('maps/other world.png');
+    await advance(100);
+    expect(part('book-map')).toMatchObject({ t: 'book-map', worldMap: { width: 640, height: 480 } });
+    expect(books(ANA)).toBe(before.ana);
+    expect(books(BEN)).toBe(before.ben + 2);
+    table.online.stop();
+  });
+
   it('places an active quest where the GM\'s pin on the world map stands, and a quest told, done or failed nowhere', async () => {
     quests = [quest(1, { state: 'active' }), quest(2), quest(3, { state: 'active' })];
     const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }]);
@@ -133,32 +156,34 @@ describe('quests at a running table', () => {
 
   it('keeps a player\'s notes on a quest, answers a note on a quest they are not sent with their book, and takes no quest text from a player', async () => {
     quests = [quest(1, { title: 'The crown under the root' })];
-    const shelf = new BookShelf();
+    const source = keptBooks();
+    const shelf = new BookShelf(source);
     const table = await openTable(shelf, [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
     table.from(ANA, { t: 'book-note', note: { id: id(60), title: '', body: 'Ask the abbot.', quest: id(1) } });
     await advance(100);
-    expect(shelf.of('Cairn', BRANNOCH_ART).notes).toMatchObject([{ id: id(60), quest: id(1), body: 'Ask the abbot.' }]);
+    expect(shelf.of(ANA_OWN).notes).toMatchObject([{ id: id(60), quest: id(1), body: 'Ask the abbot.' }]);
 
     const before = ofType(delivered(table.socket), 'book').filter(({ to }) => to === ANA).length;
     table.from(ANA, { t: 'book-note', note: { id: id(61), title: '', body: 'Not mine.', quest: id(9) } });
     // Answered with the whole book, at most one in five seconds.
     await advance(6_000);
-    expect(shelf.of('Cairn', BRANNOCH_ART).notes.map((note) => note.id)).toEqual([id(60)]);
+    expect(shelf.of(ANA_OWN).notes.map((note) => note.id)).toEqual([id(60)]);
     expect(ofType(delivered(table.socket), 'book').filter(({ to }) => to === ANA).length).toBe(before + 1);
-    expect(shelf.of('Cairn', MIRA_ART).notes).toEqual([]);
+    expect(shelf.of(BEN_OWN).notes).toEqual([]);
 
     // A quest written by a player, in any shape, changes nothing.
     for (const body of [{ t: 'book-quest', quest: quest(1, { body: 'Rewritten.' }) }, { t: 'book-note', note: { ...quest(1, { body: 'Rewritten.' }), quest: id(1) } }]) table.from(BEN, body);
     await advance(6_000);
     expect(lastBook(table, ANA)?.quests).toEqual(quests);
     expect(lastBook(table, BEN)?.quests).toEqual(quests);
-    expect(shelf.toData().Cairn?.[MIRA_ART]).not.toHaveProperty('quests');
+    expect(shelf.of(BEN_OWN)).not.toHaveProperty('quests');
     table.online.stop();
   });
 
-  it('sends the quests to a player without a character too, and takes no note on one from them', async () => {
+  it('sends the quests to a player without a character too, and keeps a note on one that reaches the GM from them', async () => {
     quests = [quest(1, { title: 'The crown under the root' })];
-    const shelf = new BookShelf();
+    const source = keptBooks();
+    const shelf = new BookShelf(source);
     const table = await openTable(shelf, [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }, { id: CAL, name: 'Cal' }]);
     expect(lastBook(table, CAL)?.character).toBeNull();
     expect(lastBook(table, CAL)?.quests).toEqual(quests);
@@ -167,46 +192,35 @@ describe('quests at a running table', () => {
     await advance(100);
     expect(lastBook(table, CAL)?.quests.map((kept) => kept.state)).toEqual(['active']);
 
-    const before = ofType(delivered(table.socket), 'book').filter(({ to }) => to === CAL).length;
     table.from(CAL, { t: 'book-note', note: { id: id(70), title: '', body: 'Mine?', quest: id(1) } });
     await advance(6_000);
-    expect(ofType(delivered(table.socket), 'book').filter(({ to }) => to === CAL).length).toBe(before + 1);
-    expect(lastBook(table, CAL)?.notes).toEqual([]);
-    expect(JSON.stringify(shelf.toData())).not.toContain('Mine?');
+    expect(shelf.of(ownBookOf(CAL)).notes).toMatchObject([{ body: 'Mine?', quest: id(1) }]);
     table.online.stop();
   });
 
-  it('serves a quest\'s whole text and its images to the players sent the quest, and to nobody else', async () => {
+  it('names a quest\'s whole text and its images by the ids the store keeps them under, and leaves out one it cannot read', async () => {
     const text = new TextEncoder().encode(`${'Über dem Fluss 🐸 '.repeat(12_000)}![[cellar.png|300]]`).slice();
-    const cellar = png(8, 8);
-    const [textHash, cellarHash, otherHash] = await Promise.all([sha256Hex(text), sha256Hex(cellar as Uint8Array<ArrayBuffer>), sha256Hex(png(9, 9) as Uint8Array<ArrayBuffer>)]);
-    questAssets = new Map<string, QuestAsset>([[textHash, { bytes: text }], [cellarHash, { path: 'Quests/cellar.png' }], [otherHash, { path: 'Quests/secret.png' }]]);
-    quests = [quest(1, {
+    const cellar = png(8, 8) as Uint8Array<ArrayBuffer>;
+    const missing = png(9, 9) as Uint8Array<ArrayBuffer>;
+    const [textHash, cellarHash, missingHash] = await Promise.all([sha256Hex(text), sha256Hex(cellar), sha256Hex(missing)]);
+    questAssets = new Map<string, QuestAsset>([[textHash, { bytes: text }], [cellarHash, { path: 'Quests/cellar.png' }], [missingHash, { path: 'Quests/gone.png' }]]);
+    const embed = { width: 300, height: null };
+    quests = [{
+      ...quest(1),
       text: { hash: textHash, size: text.length, mime: 'text/markdown' },
-      images: [{ target: 'cellar.png', width: 300, height: null, image: { hash: cellarHash, size: cellar.length, mime: 'image/png' } }],
-    })];
+      images: [
+        { target: 'cellar.png', ...embed, image: { hash: cellarHash, size: cellar.length, mime: 'image/png' } },
+        { target: 'gone.png', ...embed, image: { hash: missingHash, size: missing.length, mime: 'image/png' } },
+      ],
+    }];
     const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }, { id: CAL, name: 'Cal' }]);
+    // An image not yet in the vault is left out until the quests are read again.
+    expect(lastBook(table, ANA)?.quests[0]).not.toHaveProperty('images');
     workspace.files.set('Quests/cellar.png', cellar);
-    workspace.files.set('Quests/secret.png', png(9, 9));
-    expect(lastBook(table, ANA)?.quests).toEqual(quests);
-    expect(lastBook(table, CAL)?.quests).toEqual(quests);
-
-    const since = delivered(table.socket).length;
-    for (const player of [ANA, BEN, CAL]) for (const hash of [textHash, cellarHash, otherHash]) table.from(player, { t: 'asset-request', hash });
-    await advance(500);
-    const sent = delivered(table.socket).slice(since);
-    const answered = (hash: string): { served: string[]; refused: string[] } => {
-      const of = (type: string): string[] => [...new Set(ofType(sent, type).filter(({ body }) => body.hash === hash).map(({ to }) => to))].sort();
-      return { served: of('asset-chunk'), refused: of('asset-refused') };
-    };
-    expect(answered(textHash)).toEqual({ served: [ANA, BEN, CAL], refused: [] });
-    expect(answered(cellarHash)).toEqual({ served: [ANA, BEN, CAL], refused: [] });
-    // An asset Atlas could serve but no quest a player was sent names is nobody's.
-    expect(answered(otherHash)).toEqual({ served: [], refused: [ANA, BEN, CAL] });
-    // The whole text arrives in chunks and is the text, byte for byte.
-    const chunks = ofType(sent, 'asset-chunk').filter(({ body, to }) => body.hash === textHash && to === ANA).map(({ body }) => Buffer.from(String(body.data), 'base64'));
-    expect(chunks.length).toBeGreaterThan(1);
-    expect(new Uint8Array(Buffer.concat(chunks))).toEqual(text);
+    writeQuests([...quests]);
+    await advance(100);
+    const sent = { ...quest(1), text: await storedRef(text, 'text/markdown'), images: [{ target: 'cellar.png', ...embed, image: await storedRef(cellar, 'image/png') }] };
+    for (const player of [ANA, BEN, CAL]) expect(lastBook(table, player)?.quests).toEqual([sent]);
     table.online.stop();
   });
 });

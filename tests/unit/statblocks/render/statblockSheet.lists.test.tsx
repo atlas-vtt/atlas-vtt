@@ -1,6 +1,6 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import type { TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { blockEl, renderSheet, templateOf, valueOf } from './sheetTestKit';
@@ -32,6 +32,15 @@ describe('StatblockSheet: lists and rows', () => {
     const { container } = renderSheet(TEMPLATE, { saves: { dex: 5, con: 3 } });
     expect(valueOf(container, 'saves000')).toBe('Dex +5, Con +3');
     expect(blockEl(container, 'saves000')!.querySelector('.atlas-sb-label')?.textContent).toBe('Saving Throws');
+  });
+
+  it('shows an escaped comma of a line kept as typed without its backslash', () => {
+    const pairs = renderSheet(TEMPLATE, { saves: 'Fire\\, cold' });
+    expect(valueOf(pairs.container, 'saves000')).toBe('Fire, cold');
+    pairs.unmount();
+
+    const line = renderSheet(TEMPLATE, { languages: 'Fire\\, cold, Ice' });
+    expect(valueOf(line.container, 'langs000')).toBe('Fire, cold, Ice');
   });
 
   it('runs a list in after its label, whether the note holds a list or a line of text', () => {

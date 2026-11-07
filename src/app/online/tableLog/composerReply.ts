@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import type { TablePerson } from '../protocol/index.ts';
 import { audienceNames, audienceOf } from './audience.ts';
 import type { ComposerProps } from './Composer.tsx';
@@ -18,8 +17,8 @@ export function answerable(entries: readonly ShownEntry[], id: string | null): S
 export function composerReply(replied: ShownEntry | undefined, root: string | null, self: string | null, people: readonly TablePerson[]): ComposerProps['reply'] {
   if (replied === undefined) return null;
   const audience = audienceOf(replied, self);
-  const whisper = audience === null || audience.length === 0 ? null : t('uiOnlineDetails.composerReply_whisperingToName', { name: audienceNames(audience, people, self) });
-  if (replied.id === root) return { id: replied.id, label: t('uiOnline.composerReply_replyingInThread'), whisper, thread: true };
-  const label = replied.who === self ? t('uiOnlineDetails.composerReply_replyingToYourself') : t('uiOnlineDetails.composerReply_replyingToName', { name: shownName(replied.who, replied.name, self) });
+  const whisper = audience === null || audience.length === 0 ? null : `Whispering to ${audienceNames(audience, people, self)}`;
+  if (replied.id === root) return { id: replied.id, label: 'Replying in thread', whisper, thread: true };
+  const label = replied.who === self ? 'Replying to yourself' : `Replying to ${shownName(replied.who, replied.name, self)}`;
   return { id: replied.id, label, whisper };
 }

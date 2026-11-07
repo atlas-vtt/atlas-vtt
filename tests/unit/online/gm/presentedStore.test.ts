@@ -1,4 +1,3 @@
-// @vitest-environment node
 import type { GmMessage, PlayerDrag, PlayerMove } from '../../../../src/app/online/protocol/index.ts';
 import type { WorkspaceLeaf } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

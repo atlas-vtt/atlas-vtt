@@ -14,12 +14,15 @@ export interface ToggleSwitchProps extends Omit<React.HTMLAttributes<HTMLDivElem
   iconOn?: ToggleIcon
   /** Icon to show when value is false */
   iconOff?: ToggleIcon
-  /** Id of the visible label that names the switch. */
+  /** Id of the visible label that names the switch; else the name a wrapper gives it (`LabelTooltip`). */
   labelledBy?: string
   /** Shown but not switchable: it keeps its place and its focus, so a tooltip can say why. */
   disabled?: boolean
-  /** `s`: a switch as tall as a small control, for a bar or a row of them; no icon on its thumb. */
-  size?: "m" | "s"
+  /**
+   * `s`: a switch as tall as a small control, for a bar or a row of them; `xs`: one that sits in a line of
+   * text (a statblock's value). Neither has an icon on its thumb.
+   */
+  size?: "m" | "s" | "xs"
 }
 
 /**
@@ -37,6 +40,7 @@ export const ToggleSwitch = React.forwardRef<HTMLDivElement, ToggleSwitchProps>(
   className,
   onClick,
   onKeyDown,
+  "aria-labelledby": wrapperLabel,
   ...rest
 }, ref) => {
   const state = value ? "on" : "off"
@@ -45,10 +49,10 @@ export const ToggleSwitch = React.forwardRef<HTMLDivElement, ToggleSwitchProps>(
     <div
       {...rest}
       ref={ref}
-      className={cn("atlas-toggle", size === "s" && "atlas-toggle--s", disabled && "atlas-toggle--disabled", className)}
+      className={cn("atlas-toggle", size !== "m" && `atlas-toggle--${size}`, disabled && "atlas-toggle--disabled", className)}
       role="switch"
       aria-checked={value}
-      aria-labelledby={labelledBy}
+      aria-labelledby={labelledBy ?? wrapperLabel}
       aria-disabled={disabled || undefined}
       tabIndex={0}
       onClick={(event) => {

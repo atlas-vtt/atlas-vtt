@@ -1,17 +1,18 @@
 import { t } from '../i18n';
+
 /** How rolls are shown: as a result card, or thrown as dice at normal or double speed. */
 export type DiceDisplay = 'card' | 'fast' | 'full';
 
 export const DICE_DISPLAY_OPTIONS: readonly { value: DiceDisplay; label: string }[] = [
-  { value: 'card', label: t('uiGeneral.diceDisplay_resultCard') },
-  { value: 'fast', label: t('uiGeneral.diceDisplay_fastDice') },
-  { value: 'full', label: t('uiGeneral.diceDisplay_dice') },
+  { value: 'card', label: t('diceSettings.display.card') },
+  { value: 'fast', label: t('diceSettings.display.fast') },
+  { value: 'full', label: t('diceSettings.display.full') },
 ];
 
 export const DICE_DISPLAY_HINTS: Record<DiceDisplay, string> = {
-  card: t('uiGeneralDetails.diceDisplay_everyRollShowsItsResultOnACardWithoutDice'),
-  fast: t('uiGeneralDetails.diceDisplay_diceAreThrownAtDoubleSpeedAndBounceOffTheWallsAtMostThr'),
-  full: t('uiGeneralDetails.diceDisplay_diceAreThrownBounceOffThePanelAndLandOnTheResult'),
+  card: t('diceSettings.display.cardHint'),
+  fast: t('diceSettings.display.fastHint'),
+  full: t('diceSettings.display.fullHint'),
 };
 
 export function isDiceDisplay(value: unknown): value is DiceDisplay {

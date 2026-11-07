@@ -51,14 +51,14 @@ const KNOWN_BLOCKS: TemplateBlock[] = [
   { id: 'a5head00', type: 'heading', text: 'Defences', level: 'minor' },
   {
     id: 'a6stat00', type: 'stat', field: 'vigor', label: 'Vigor', look: 'stacked', pattern: '{vigor}[ ({vigor_dice})]',
-    display: 'plain', rollFrom: 'vigor_dice', showWhen: { field: 'vigor', is: 'above', value: 0 }, whenEmpty: 'fallback',
+    display: 'plain', rollFrom: 'vigor_dice', rollable: true, showWhen: { field: 'vigor', is: 'above', value: 0 }, whenEmpty: 'fallback',
     fallback: '{=armor * 2}', className: 'vigor', ...FUTURE_BLOCK_KEYS,
   },
   {
     id: 'a7score0', type: 'scores', field: 'stats', orientation: 'table', perLine: 3, display: 'signed',
-    columns: [{ label: 'Save', field: 'saves', formula: 'value', display: 'signed' }],
+    columns: [{ label: 'Save', field: 'saves', formula: 'value', display: 'signed' }], rollable: true,
   },
-  { id: 'a8pairs0', type: 'pairs', field: 'saves', label: 'Saves', display: 'signed', showWhen: { field: 'saves', is: 'present' } },
+  { id: 'a8pairs0', type: 'pairs', field: 'saves', label: 'Saves', display: 'signed', rollable: true, showWhen: { field: 'saves', is: 'present' } },
   { id: 'a9tags00', type: 'tags', field: 'keywords', label: 'Keywords', look: 'chips', whenEmpty: 'hide' },
   { id: 'b0divid0', type: 'divider' },
   { id: 'b1text00', type: 'text', field: 'story', heading: 'Story' },
@@ -69,7 +69,7 @@ const KNOWN_BLOCKS: TemplateBlock[] = [
   },
   { id: 'b4track0', type: 'track', field: 'stress', label: 'Stress', resource: 'stress', look: 'boxes', counts: 'up' },
   { id: 'b5spell0', type: 'spells', field: 'spells', heading: 'Spells' },
-  { id: 'b8metr00', type: 'metric', heading: 'Thresholds', fields: ['armor', 'stress'], size: 'fill' },
+  { id: 'b8metr00', type: 'metric', heading: 'Thresholds', fields: ['armor', 'stress'], rollable: true, size: 'fill' },
   {
     id: 'b6scrip0', type: 'script', summary: 'Rolls the vigor dice', fs: { type: 'javascript', code: 'return el;' },
     fsExtras: { conditioned: true },

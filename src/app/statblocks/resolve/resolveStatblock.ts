@@ -22,7 +22,10 @@ import {
 import { layoutForCreature, type FantasyStatblocksCreature } from '../../services/FantasyStatblocksService';
 import { autoTemplate } from '../model/autoTemplate';
 import type { ResolveContext, ResolvedStatblock, StatblockSource, TemplateLookup } from '../model/resolvedTypes';
+import { withHeaderFields } from '../model/templateHeader';
 import { cachedFrontmatter, statblockSourceOf, type FrontmatterRecord } from '../notes/statblockSource';
+import { withReferencesFilled } from '../values/fillReferences';
+import { statblockLookup } from '../values/statblockLookup';
 import { NO_MEANINGS, meaningsOf, withFormerKeysAliased } from './fieldMeanings';
 
 export type AtlasSource = Extract<StatblockSource, { kind: 'atlas' }>;
@@ -47,6 +50,8 @@ export function resolveNative(
     return { path, source, fields, template: autoTemplate(fields), templateStatus: 'missing', lookName: null, meanings: NO_MEANINGS };
   }
   const fields = frontmatterCreature(withFormerKeysAliased(frontmatter, found.template.fields), path);
+  const { fields: templateFields } = withHeaderFields(found.template);
+  const shownFields = withReferencesFilled(fields, templateFields, statblockLookup(found.template, fields, templateFields));
   return {
     path,
     source,
@@ -55,6 +60,7 @@ export function resolveNative(
     templateStatus: found.status,
     lookName: found.name,
     meanings: meaningsOf(found.template.fields),
+    ...(shownFields !== fields && { shownFields }),
   };
 }
 
@@ -103,7 +109,7 @@ export async function resolveStatblock(app: App, path: string, context: VaultRes
   const source = note ? await statblockSourceOf(app, note) : null;
   if (note && source?.kind === 'atlas') return resolveNative(path, source, cachedFrontmatter(app, note) ?? {}, context.templates);
 
-  const bestiary = context.bestiary ?? bestiaryLookup();
+  const bestiary = context.bestiary ?? bestiaryLookup(app);
   const loaded = bestiary.api !== null;
   const creature = await linkedCreatureFor(app, path, source, bestiary);
   if (!creature) return !loaded && source?.kind === 'fs-fence' ? resolveInlineFence(path, source) : null;

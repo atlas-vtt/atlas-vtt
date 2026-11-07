@@ -18,6 +18,11 @@ export function asBoolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
 }
 
+/** A switch written only where it is on: `true`, never `false`. */
+export function asTrue(value: unknown): true | undefined {
+  return value === true ? true : undefined;
+}
+
 export function asOneOf<T extends string | number>(options: readonly T[]): ValueRead<T> {
   return (value: unknown): T | undefined => options.find((option) => option === value);
 }

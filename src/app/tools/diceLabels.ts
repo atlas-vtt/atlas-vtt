@@ -8,6 +8,7 @@
 
 import { explodes } from './diceExplosion';
 import type { RolledDie } from './diceFormula';
+import { formulaWithNamedTerms, KEEP, keptModifiersText, type ModifierParts } from './namedModifiers';
 import type { RolledWithSet } from '../types/diceSetTypes';
 
 type ListedDie = Pick<RolledDie, 'value' | 'negative' | 'exploded' | 'rerolled' | 'dropped' | 'success' | 'failure' | 'min' | 'label'>;
@@ -83,22 +84,13 @@ export function dieLabel(rolls: readonly RolledDie[], index: number): string {
 
 type NamedDie = Pick<RolledDie, 'value' | 'negative' | 'exploded' | 'name' | 'dropped' | 'rerolled'>;
 
-/** ` + 3` or ` − 3`; nothing without a modifier. */
-export function modifierText(modifier: number): string {
-  if (modifier === 0) return '';
-  return modifier > 0 ? ` + ${modifier}` : ` − ${Math.abs(modifier)}`;
-}
-
-/** A space a line never breaks at: a die's name stays with its number, a bonus with the last die. */
-const KEEP = '\u00a0';
-
 /**
  * The kept dice of a roll by the names a dice set gave them, with the modifier:
  * `Sun 9 · Moon 4 + 3`. A die rolled for an explosion is added to the die it
  * was rolled for (`Sun 12! + 5 · Moon 4`). A line wraps only between dice.
  * Null where no die has a name: the plain sum says it then.
  */
-export function namedDiceLine(all: readonly NamedDie[], modifiers: number): string | null {
+export function namedDiceLine(all: readonly NamedDie[], modifiers: ModifierParts): string | null {
   const rolls = keptRolls(all);
   if (!rolls.some((roll) => roll.name)) return null;
   const chunks: string[] = [];
@@ -111,7 +103,7 @@ export function namedDiceLine(all: readonly NamedDie[], modifiers: number): stri
     const signed = roll.negative ? `−${value}` : value;
     chunks.push(roll.name ? `${roll.name}${KEEP}${signed}` : signed);
   });
-  return `${chunks.join(' · ')}${modifierText(modifiers).replace(/ /g, KEEP)}`;
+  return `${chunks.join(' · ')}${keptModifiersText(modifiers)}`;
 }
 
 /** What a roll rolled: its formula, after the dice set where that was not the collection's (`Power roll · 2d10+3`). */
@@ -122,10 +114,11 @@ export function rollFormulaText(result: { formula: string; diceSet?: RolledWithS
 /**
  * A roll in one line for a card or the log: its dice by name where a set named them
  * (`Sun 9 · Moon 4 + 3`), else its formula, after the set where that was not the collection's.
+ * Labelled modifiers read as terms of their own (`1d20+3 + 2 Stealth`).
  */
-export function rollLine(result: { formula: string; rolls: readonly NamedDie[]; modifiers: number; diceSet?: RolledWithSet | undefined }): string {
-  const named = namedDiceLine(result.rolls, result.modifiers);
-  if (named === null) return rollFormulaText(result);
+export function rollLine(result: { formula: string; rolls: readonly NamedDie[]; diceSet?: RolledWithSet | undefined } & ModifierParts): string {
+  const named = namedDiceLine(result.rolls, result);
+  if (named === null) return rollFormulaText({ formula: formulaWithNamedTerms(result), diceSet: result.diceSet });
   return result.diceSet ? `${result.diceSet.name} · ${named}` : named;
 }
 

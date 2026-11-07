@@ -1,9 +1,9 @@
-import { t } from '../../../i18n';
 import React from "react"
 import { Button } from "./button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "./tooltip"
 import { cn } from "../../../../utils/cn"
 import { ChevronDown } from "lucide-react"
+import { t } from "../../../i18n"
 
 interface ToolButtonProps {
   icon: React.ComponentType<{ className?: string }>
@@ -87,7 +87,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
           onClick={onChevronClick}
         >
           <ChevronDown />
-          <span className="sr-only">{label} {t('uiGeneral.toolButton_options')}</span>
+          <span className="sr-only">{t('toolbar.optionsOf', { label })}</span>
         </Button>
       )}
 

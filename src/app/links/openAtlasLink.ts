@@ -3,12 +3,15 @@ import type { AtlasView } from '../atlas-view';
 import { loadAtlasView, openMapInView } from '../plugin/atlasLeaves';
 import { AssetService } from '../services/AssetService';
 import { confirmSnapshotRestore, restoreSnapshotInView } from '../snapshots/snapshotRestore';
-import { spawnEncounterTokens } from '../packages/components/asset-manager/utils/tokenSpawnService';
+import { spawnEncounterTokens, type SpawnPlacement } from '../packages/components/asset-manager/utils/tokenSpawnService';
 import { formatServiceAsset } from '../packages/components/asset-manager/utils/assetFormatters';
 import { encounterOfFile, findSnapshot, snapshotsOfMap } from './atlasLinkAssets';
 import { snapshotNameOfSubpath } from './atlasLinkTargets';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import type { NotePin } from '../types';
+import { pinSceneLevel } from '../levels/pinSceneLevel';
+import { diceRandom } from '../services/offlineDiceInputs';
 
 /** How long a snapshot link waits for its scene to open before it gives up. */
 const SCENE_OPEN_TIMEOUT_MS = 30_000;
@@ -57,14 +60,27 @@ export async function restoreLinkedSnapshot(app: App, mapPath: string, subpath: 
   if (view) await restoreSnapshotInView(view, service, entry);
 }
 
+/**
+ * Once a view shows the scene at `mapPath` loaded, shows the level of it the pin opens
+ * (`pinSceneLevel`: the one it names, the first where the scene lacks it); nothing for a pin that
+ * names none.
+ */
+export async function showPinnedLevel(app: App, mapPath: string, pin: Pick<NotePin, 'sceneLevel'>): Promise<void> {
+  if (pin.sceneLevel === undefined) return;
+  const view = await whenSceneShown(app, mapPath);
+  const state = view?.getStore().getState();
+  const level = state ? pinSceneLevel(pin, state.levels) : null;
+  if (state && level !== null) state.setViewedLevel(level);
+}
+
 /** Opens a scene in Atlas and, when the link names one of its snapshots, offers to restore it. */
 export async function openSceneLink(app: App, file: TFile, subpath: string): Promise<void> {
   await openMapInView(app, file);
   await restoreLinkedSnapshot(app, file.path, subpath);
 }
 
-/** Places the encounter whose JSON is `file` on the open map, as its asset manager card does. */
-export async function placeEncounterFile(app: App, file: TFile): Promise<void> {
+/** Brings the encounter whose JSON is `file` into the open scene as its asset manager card does (`placement`: on the map, a fight, beside it). */
+export async function placeEncounterFile(app: App, file: TFile, placement: SpawnPlacement = 'map'): Promise<void> {
   const assets = AssetService.getInstance(app);
   const encounter = await encounterOfFile(assets, file.path);
   if (!encounter) {
@@ -72,5 +88,5 @@ export async function placeEncounterFile(app: App, file: TFile): Promise<void> {
     return;
   }
   const shown = formatServiceAsset(encounter, '', app);
-  if (shown.type === 'encounters') await spawnEncounterTokens({ app, view: null, assetService: assets }, shown);
+  if (shown.type === 'encounters') await spawnEncounterTokens({ app, view: null, assetService: assets, random: diceRandom }, shown, placement);
 }

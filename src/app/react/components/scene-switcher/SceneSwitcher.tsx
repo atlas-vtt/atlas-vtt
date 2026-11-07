@@ -155,7 +155,7 @@ function SceneSwitcherPanel({ onSwitchTab, onPresentTab, onClose }: SceneSwitche
               {result.tab.id === activeTabId && <span className="atlas-scene-switcher__current">{t('switcher.current')}</span>}
             </div>
           ))}
-          {!results.length && <div className="atlas-scene-switcher__empty">{t('uiMessages.noOpenMap', { query: query.trim() })}</div>}
+          {!results.length && <div className="atlas-scene-switcher__empty">No open map matches “{query.trim()}”</div>}
         </div>
         <SceneSwitcherFooter isRaised={hasMapsBelow} />
       </div>

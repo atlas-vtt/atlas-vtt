@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '../../../../utils/cn';
 import { explodes } from '../../../tools/diceExplosion';
 import type { RolledDie } from '../../../tools/diceFormula';
-import { modifierText } from '../../../tools/diceLabels';
+import { keptModifiersText } from '../../../tools/namedModifiers';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import { t } from '../../../i18n';
 
@@ -48,7 +48,7 @@ export function listsDice(result: Pick<DiceRollResult, 'rolls' | 'advantage' | '
  * each by its name and number, the kept in bold and the dropped (or rolled
  * again) struck through, then the modifier: `17 · 4 + 5`.
  */
-export function RolledDiceLine({ result, className }: { result: Pick<DiceRollResult, 'rolls' | 'modifiers' | 'diceSet'>; className?: string }): React.ReactElement {
+export function RolledDiceLine({ result, className }: { result: Pick<DiceRollResult, 'rolls' | 'modifiers' | 'namedModifiers' | 'diceSet'>; className?: string }): React.ReactElement {
   const chunks = chunksOf(result.rolls);
   return (
     <span className={cn('atlas-rolled-dice', className)}>
@@ -66,7 +66,7 @@ export function RolledDiceLine({ result, className }: { result: Pick<DiceRollRes
           )}
         </React.Fragment>
       ))}
-      {modifierText(result.modifiers).replace(/ /g, KEEP)}
+      {keptModifiersText(result)}
     </span>
   );
 }

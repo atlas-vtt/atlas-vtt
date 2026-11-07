@@ -5,6 +5,8 @@ export interface HttpRequest {
   readonly authorization?: string;
   /** A form body (`application/x-www-form-urlencoded`), as RFC 8628 has apps send. */
   readonly form?: Readonly<Record<string, string>>;
+  /** A JSON body (`application/json`). */
+  readonly json?: Readonly<Record<string, unknown>>;
 }
 
 export interface HttpResponse {
@@ -19,6 +21,7 @@ export type Http = (request: HttpRequest) => Promise<HttpResponse>;
 /** The request's body and its type. */
 export function bodyOf(request: HttpRequest): { readonly body?: string; readonly contentType?: string } {
   if (request.form !== undefined) return { body: new URLSearchParams(request.form).toString(), contentType: 'application/x-www-form-urlencoded' };
+  if (request.json !== undefined) return { body: JSON.stringify(request.json), contentType: 'application/json' };
   return {};
 }
 

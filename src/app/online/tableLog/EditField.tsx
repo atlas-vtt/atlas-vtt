@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import { MAX_CHAT_TEXT } from '../protocol/index.ts';
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { isComposing, useGrowingField } from './growField.ts';
@@ -37,13 +36,13 @@ export function EditField({ text, onSave, onCancel }: EditFieldProps): ReactElem
   return (
     <div className="atlas-online-log__edit">
       <div className="atlas-online-log__edit-box">
-        <label className="atlas-online-log__sr" htmlFor={name}>{t('uiOnline.editField_editMessage')}</label>
+        <label className="atlas-online-log__sr" htmlFor={name}>Edit message</label>
         <textarea ref={field} id={name} className="atlas-online-log__input" rows={1} maxLength={MAX_CHAT_TEXT} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={onKeyDown} />
       </div>
       <div className="atlas-online-log__edit-actions">
-        <span className="atlas-online-log__edit-hint">{t('uiOnline.editField_enterSavesEscapeCancels')}</span>
-        <button type="button" className="atlas-online-log__text-button" onClick={onCancel}>{t('uiOnline.editField_cancel')}</button>
-        <button type="button" className="atlas-online-log__text-button atlas-online-log__text-button--accent" onClick={save}>{t('uiOnline.editField_save')}</button>
+        <span className="atlas-online-log__edit-hint">Enter saves, Escape cancels</span>
+        <button type="button" className="atlas-online-log__text-button" onClick={onCancel}>Cancel</button>
+        <button type="button" className="atlas-online-log__text-button atlas-online-log__text-button--accent" onClick={save}>Save</button>
       </div>
     </div>
   );

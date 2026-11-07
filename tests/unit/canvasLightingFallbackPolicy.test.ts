@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { isDeepStrictEqual } from 'node:util';
 import { Container, type Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';

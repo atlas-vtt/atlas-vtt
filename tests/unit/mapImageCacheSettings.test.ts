@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Setting } from 'obsidian';
 import { mapImageCacheSettingsSection, type MapImageCache } from '../../src/app/settings/mapImageCacheSettingsSection';
@@ -35,7 +36,7 @@ describe('the map image cache setting', () => {
   it('is one row named for the cache, without a description of its own', () => {
     const section = mapImageCacheSettingsSection(() => cacheOf(0));
     expect(section.heading).toBe('Storage');
-    expect(section.rows.map((row) => [row.name, row.desc])).toEqual([['Map image cache', undefined]]);
+    expect(section.rows.map((row) => [row.name, row.desc])).toEqual([['Mosaic Canvas cache', undefined]]);
   });
 
   it('shows the size once it is read, and keeps its line while it waits', async () => {

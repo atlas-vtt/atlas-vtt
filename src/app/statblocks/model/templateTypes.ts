@@ -3,6 +3,8 @@
  * Pure data, no Obsidian and no React (a lint rule keeps it that way).
  */
 
+import type { RecoveryButton } from '../../recovery/recoveryTypes';
+
 export const TEMPLATE_FORMAT = 'atlas-statblock-template';
 export const TEMPLATE_VERSION = 1;
 export const BUILT_IN_TEMPLATE_PREFIX = 'builtin:';
@@ -32,10 +34,21 @@ export interface StatblockTemplate {
   header?: TemplateHeader;
   /** What the template lays out below the header. */
   layout: TemplateLayout;
+  /**
+   * What a player may do with a field of their own character's statblock, by the field's key, where it is not
+   * what a field of its kind lets them do by default. Holds only those exceptions. A setting that is no
+   * `PlayerAccess` (one of a newer Atlas) is kept as written and counts as `hidden`.
+   */
+  players?: Record<FieldKey, PlayerAccess | (string & NonNullable<unknown>)>;
   /** Tables patterns read with `{cr|lookup:xp}`. */
   lookups?: Record<string, Record<string, string>>;
   /** Values the template editor previews with when no statblock is picked. Never creature content in built-ins. */
   sample?: Record<FieldKey, FieldValue>;
+  /**
+   * The recovery buttons statblocks of this template offer a player character ("Short rest", "Long rest"),
+   * in order. Absent: none. Read as stored through `parseRecoveryButtons`, so every button holds.
+   */
+  recovery?: RecoveryButton[];
   /** The template it was copied from, with the built-in's revision at the time. */
   derivedFrom?: { templateId: TemplateId; revision?: number };
   /** Licence and attribution of a licensed built-in; copied with the template and kept on copies. */
@@ -56,10 +69,11 @@ export type FieldType =
   | 'entries'   // list of { name, desc, ...extras }
   | 'pairs'     // { dex: 5 } or [{ dex: 5 }]
   | 'image'     // vault path
-  | 'spells';   // FS spell shape: strings or { level: spells }
+  | 'spells'    // FS spell shape: strings or { level: spells }
+  | 'counters'; // rows of limited uses: [{ name, max, used, reset }]
 
 export const FIELD_TYPES: readonly FieldType[] = [
-  'text', 'markdown', 'number', 'rating', 'dice', 'choice', 'list', 'scores', 'entries', 'pairs', 'image', 'spells',
+  'text', 'markdown', 'number', 'rating', 'dice', 'choice', 'list', 'scores', 'entries', 'pairs', 'image', 'spells', 'counters',
 ];
 
 /**
@@ -99,6 +113,15 @@ export interface HeaderTrack {
   resource?: string;
 }
 
+/** What a player may do with a field of their own character's statblock: change it, only read it, or not see it. */
+export type PlayerAccess = 'edit' | 'read' | 'hidden';
+
+export const PLAYER_ACCESS: readonly PlayerAccess[] = ['edit', 'read', 'hidden'];
+
+export function isPlayerAccess(value: unknown): value is PlayerAccess {
+  return PLAYER_ACCESS.some((access) => access === value);
+}
+
 export interface TemplateField {
   key: FieldKey;
   label: string;
@@ -131,8 +154,33 @@ export interface TemplateField {
   addColumns?: false;
   /** entries: the keys inside an entry. */
   entry?: EntryShape;
+  /** counters: the rows every statblock starts with, each with its default maximum. Unset: none. */
+  counterRows?: CounterPreset[];
   /** Prompt for an empty value in the statblock pane ("Add speed"). */
   prompt?: string;
+  /** number: a value a character spends and gets back (Luck, Ki, Hit Dice), read as `trackOf` reads it. */
+  tracks?: FieldTracking;
+}
+
+/**
+ * A tracked number: the note's value (or `max`'s) is its maximum, and the character's current value
+ * is kept with its tokens and the played campaign, as a resource's is. `down` starts full, `up` at 0.
+ */
+export interface FieldTracking {
+  counts: 'down' | 'up';
+  /** The number field that holds the maximum (Hit Dice up to `level`); unset: this field's own value. */
+  max?: FieldKey;
+}
+
+/**
+ * A row a Counters field starts with: its name, its default maximum, and the dice formula of how many
+ * uses come back when a recovery button restores it ("1d6+1"; unset: all of them). Which button
+ * restores it is the character's choice, kept in the note's row (`reset`).
+ */
+export interface CounterPreset {
+  name: string;
+  max: number;
+  regain?: string;
 }
 
 /** One cell of a Table: a number, text, or nothing. */
@@ -206,13 +254,31 @@ export interface RowBlock extends BlockBase { type: 'row'; align?: 'start' | 'ce
 export interface TabsBlock extends BlockBase { type: 'tabs'; heading?: string; blocks: TemplateBlock[] }
 export interface TitleBlock extends BlockBase { type: 'title'; field: FieldKey; level: 1 | 2 | 3; pattern?: string }
 export interface LineBlock extends BlockBase { type: 'line'; fields: FieldKey[]; pattern?: string; separator?: string }
-export interface StatBlock extends BlockBase { type: 'stat'; field: FieldKey; label?: string; look: 'run-in' | 'stacked'; pattern?: string; display?: 'plain' | 'signed'; rollFrom?: FieldKey }
+/**
+ * `rollable` ("Roll as a bonus"), on a Value, Metric, Table or Labels and values: every whole number it shows is a
+ * roll link, rolled as a bonus (`2` rolls `+2`) with the game's own dice, as a signed bonus in its text already is.
+ */
+export interface Rollable { rollable?: true }
+/**
+ * `addsToRolls` ("Add to next roll"), on a Value, Metric or Labels and values: each whole number it shows gets a
+ * switch on the card that arms it for the statblock's next roll, which adds it as a term named by its label
+ * (`+2[Proficiency]`). What is armed is view state (`statblocks/rollBonuses/`), never stored.
+ */
+export interface AddsToRolls { addsToRolls?: true }
+
+/** The blocks that may add to rolls. */
+export const ADDS_TO_ROLLS_TYPES = ['stat', 'metric', 'pairs'] as const satisfies readonly BlockType[];
+
+export function mayAddToRolls(block: TemplateBlock): block is StatBlock | MetricBlock | PairsBlock {
+  return ADDS_TO_ROLLS_TYPES.some((type) => type === block.type);
+}
+export interface StatBlock extends BlockBase, Rollable, AddsToRolls { type: 'stat'; field: FieldKey; label?: string; look: 'run-in' | 'stacked'; pattern?: string; display?: 'plain' | 'signed'; rollFrom?: FieldKey }
 /**
  * A stat block's key numbers in one box: each a field of its own, its label the number's name over a large
  * value, a rule between two ("Major 8 | Severe 15"). `heading` names the group above them where it holds two or
  * more. A number not named yet is `''` until its label is committed, as a new Value's field is.
  */
-export interface MetricBlock extends BlockBase { type: 'metric'; heading?: string; fields: FieldKey[] }
+export interface MetricBlock extends BlockBase, Rollable, AddsToRolls { type: 'metric'; heading?: string; fields: FieldKey[] }
 /**
  * A worked-out row of a Table (`columns` in the file): per column, the column's entry in a pairs field (by its
  * key), else the formula over the column's value in the table's one row (`value`), as a modifier under an ability
@@ -220,7 +286,7 @@ export interface MetricBlock extends BlockBase { type: 'metric'; heading?: strin
  */
 export interface ScoreColumn { label?: string; field?: FieldKey; formula?: string; display?: 'plain' | 'signed' }
 /** A Table: the rows and columns its property holds (`TemplateField.rows`, `slots`), drawn as Obsidian draws a Markdown table. */
-export interface ScoresBlock extends BlockBase {
+export interface ScoresBlock extends BlockBase, Rollable {
   type: 'scores';
   field: FieldKey;
   /** 'row': a grid, the header row over the rows. 'table': a table of one row, one line per column (the 5E 2024 look). */
@@ -236,8 +302,10 @@ export interface ScoresBlock extends BlockBase {
 export interface TagsBlock extends BlockBase { type: 'tags'; field: FieldKey; label?: string; look: 'comma' | 'chips' | 'bullets' | 'numbered' }
 export interface TextBlock extends BlockBase { type: 'text'; field?: FieldKey; text?: string; heading?: string }
 export interface EntriesBlock extends BlockBase { type: 'entries'; field: FieldKey; heading?: string; introField?: FieldKey; nameStyle?: 'run-in' | 'heading'; addLabel?: string }
-export interface PairsBlock extends BlockBase { type: 'pairs'; field: FieldKey; label?: string; display?: 'plain' | 'signed' }
+export interface PairsBlock extends BlockBase, Rollable, AddsToRolls { type: 'pairs'; field: FieldKey; label?: string; display?: 'plain' | 'signed' }
 export interface TrackBlock extends BlockBase { type: 'track'; field: FieldKey; label?: string; resource?: string; look: 'boxes' | 'gauge'; counts: 'down' | 'up' }
+/** Rows of limited uses (spell slots per level, ki, a feature's uses per day), each a cell of pips. */
+export interface CountersBlock extends BlockBase { type: 'counters'; field: FieldKey; label?: string }
 export interface ImageBlock extends BlockBase { type: 'image'; field: FieldKey; shape: 'token' | 'portrait' }
 /** `look: 'tabs'` shows each group as a tab, loose lines above the strip; unset is 'lines'. */
 export interface SpellsBlock extends BlockBase { type: 'spells'; field: FieldKey; heading?: string; look?: 'lines' | 'tabs' }
@@ -250,7 +318,7 @@ export interface OpaqueBlock extends BlockBase { type: 'opaque'; raw: Record<str
 
 export type TemplateBlock =
   | SectionBlock | RowBlock | TabsBlock | TitleBlock | LineBlock | StatBlock | MetricBlock | ScoresBlock | TagsBlock | TextBlock
-  | EntriesBlock | PairsBlock | TrackBlock | ImageBlock | SpellsBlock | HeadingBlock | DividerBlock | ScriptBlock | OpaqueBlock;
+  | EntriesBlock | PairsBlock | TrackBlock | CountersBlock | ImageBlock | SpellsBlock | HeadingBlock | DividerBlock | ScriptBlock | OpaqueBlock;
 
 export type BlockType = TemplateBlock['type'];
 export type ContainerBlock = SectionBlock | RowBlock | TabsBlock;

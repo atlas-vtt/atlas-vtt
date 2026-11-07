@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
@@ -13,7 +12,9 @@ import { moveLabel, readyTitle } from './importReportText';
 import { partsOnlyFsShows } from './layoutImportActions';
 import { AdoptionSection, ImportSummary } from './LayoutImportParts';
 import { useLayoutAdoption } from './useLayoutAdoption';
+import { t } from '../../../i18n';
 import './layout-import-dialog.scss';
+import { portalHost } from '../../../host/portalHost';
 
 export interface LayoutImportDialogProps {
   app: App;
@@ -78,25 +79,25 @@ export function LayoutImportDialog({ app, doc, layout, imported, statblocks, onO
         </div>
         <div className="atlas-te-dialog__footer">
           {running ? (
-            <Button type="button" variant="outline" size="sm" onClick={cancel}>{t('uiStatblocks.layoutImportDialog_cancel')}</Button>
+            <Button type="button" variant="outline" size="sm" onClick={cancel}>{t('statblockEditor.cancel')}</Button>
           ) : (
             <>
               {onOpenTemplate && (
-                <Button type="button" variant="outline" size="sm" onClick={() => { onOpenTemplate(); close(); }}>{t('uiStatblocks.layoutImportDialog_openTemplate')}</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => { onOpenTemplate(); close(); }}>{t('statblockEditor.fs.openTemplate')}</Button>
               )}
               {offersMove ? (
                 <>
-                  <Button type="button" variant="outline" size="sm" onClick={close}>{t('uiStatblocks.layoutImportDialog_notNow')}</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={close}>{t('statblockEditor.fs.notNow')}</Button>
                   <Button type="button" size="sm" onClick={adopt}>{moveLabel(total)}</Button>
                 </>
               ) : (
-                <Button type="button" size="sm" onClick={close}>{t('uiStatblocks.layoutImportDialog_done')}</Button>
+                <Button type="button" size="sm" onClick={close}>{t('statblockEditor.done')}</Button>
               )}
             </>
           )}
         </div>
       </motion.div>
     </motion.div>,
-    doc.body,
+    portalHost(doc),
   );
 }

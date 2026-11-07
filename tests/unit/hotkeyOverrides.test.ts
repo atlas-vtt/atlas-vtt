@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { DEFAULT_MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';

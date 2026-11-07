@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import * as full from '../oracles/visibilityBaseline/visibility';

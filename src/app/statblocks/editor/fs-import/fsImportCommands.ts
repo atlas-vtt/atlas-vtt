@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 /**
  * Importing a Fantasy Statblocks layout file (§6.2): the command "Import
  * Fantasy Statblocks layout…" picks one from the file system, the file menu
@@ -10,8 +9,9 @@ import { TFile, type App, type Menu, type Plugin, type TAbstractFile } from 'obs
 import { experimentalFeatureOn } from '../../../experimental/experimentalFeatures';
 import { runInBackground } from '../../../utils/backgroundTask';
 import { importLayoutFile } from './layoutImportFlow';
+import { t } from '../../../i18n';
 
-const FAILED = "Couldn't import the layout.";
+const FAILED = t('statblockEditor.fs.importFailed');
 
 /** Asks for a layout file in the window of `doc` and imports it. */
 export function pickLayoutFile(app: App, doc: Document): void {
@@ -33,7 +33,7 @@ export function pickLayoutFile(app: App, doc: Document): void {
 export function addLayoutFileMenuItem(app: App, menu: Menu, file: TAbstractFile): void {
   if (!(file instanceof TFile) || file.extension !== 'json' || !experimentalFeatureOn(app, 'statblockEditor')) return;
   menu.addItem((item) => item
-    .setTitle('Import as statblock template')
+    .setTitle(t('statblockEditor.fs.importAs'))
     .setIcon('layout-template')
     .onClick(() => {
       runInBackground(
@@ -48,7 +48,7 @@ export function registerLayoutImportCommand(plugin: Plugin): void {
   const { app } = plugin;
   plugin.addCommand({
     id: 'import-fantasy-statblocks-layout',
-    name: t('uiMessages.importLayoutCommand'),
+    name: t('statblockEditor.fs.importCommand'),
     checkCallback: (checking) => {
       if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
       if (!checking) pickLayoutFile(app, activeDocument);

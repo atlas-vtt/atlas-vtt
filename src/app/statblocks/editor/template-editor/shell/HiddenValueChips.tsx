@@ -1,10 +1,10 @@
-import { t } from '../../../../i18n';
 import React from 'react';
 import { EyeOff } from 'lucide-react';
 import { Button } from '../../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import { hiddenHeaderParts } from '../../../model/templateHeader';
 import type { StatblockTemplate } from '../../../model/templateTypes';
+import { t } from '../../../../i18n';
 import '../../panel-frame/folded-chips.scss';
 
 export interface HiddenValueChipsProps {
@@ -24,9 +24,9 @@ export function HiddenValueChips({ template, editable, onShow }: HiddenValueChip
   const hidden = hiddenHeaderParts(template);
   if (hidden.length === 0) return null;
   return (
-    <div className="atlas-sb-folded" role="group" aria-label={t('uiTemplateEditor.hiddenValueChips_headerPartsHiddenFromTheCard')}>
+    <div className="atlas-sb-folded" role="group" aria-label={t('templateEditor.hiddenParts')}>
       {hidden.map((part) => (
-        <LabelTooltip key={part.id} label={t('uiTemplateDetails.hiddenValueChips_hiddenFromTheCardClickToShowNameAgain', { name: part.label })} describe>
+        <LabelTooltip key={part.id} label={t('templateEditor.hiddenPart', { name: part.label })} describe>
           <Button
             type="button"
             variant="ghost"

@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 /** What the Change template dialog lists and says. Pure. */
 
 import { isReservedKey } from '../../model/reservedKeys';
@@ -9,6 +8,7 @@ import { displayNameKey, headerParts, hiddenHeaderParts } from '../../model/temp
 import { fieldsShownBy, flattenReadingOrder } from '../../model/treeQueries';
 import type { StatblockTemplate, TemplateField } from '../../model/templateTypes';
 import type { FieldRecord } from '../../values/fieldValues';
+import { t } from '../../../i18n';
 
 export interface TemplateChoice {
   entry: LibraryTemplate;
@@ -31,8 +31,8 @@ export function templateGroups(templates: readonly LibraryTemplate[], roles: rea
   const ofRoles = templates.filter((entry) => roleNames.has(entry.template.id));
   const others = templates.filter((entry) => !roleNames.has(entry.template.id));
   const groups: TemplateGroup[] = [
-    { heading: t('uiMessages.usedCollection'), items: ofRoles.map((entry) => ({ entry, detail: roleNames.get(entry.template.id)?.join(', ') ?? null })) },
-    { heading: t('uiMessages.allTemplates'), items: others.map((entry) => ({ entry, detail: entry.builtIn ? t('uiMessages.builtIn') : null })) },
+    { heading: t('statblockEditor.usedByCollection'), items: ofRoles.map((entry) => ({ entry, detail: roleNames.get(entry.template.id)?.join(', ') ?? null })) },
+    { heading: t('statblockEditor.allTemplates'), items: others.map((entry) => ({ entry, detail: entry.builtIn ? t('statblockEditor.builtInDetail') : null })) },
   ];
   return groups.filter((group) => group.items.length > 0);
 }

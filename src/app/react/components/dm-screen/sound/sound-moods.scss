@@ -1,0 +1,311 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
+
+// The moods in their fixed places: as many across as fit, always one height.
+.atlas-sound-moods__head {
+  height: $button-height-m;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $card-inset;
+  margin-bottom: $card-inset;
+  // The words start where a tile's do.
+  padding-inline-start: $spacing-m;
+}
+
+// A search that finds no mood says so where the tiles would stand.
+.atlas-sound-moods__none {
+  margin: 0;
+  padding-inline-start: $spacing-m;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
+}
+
+// The regions' heading step: the moods', as the rail's roots and the desk's mix name are theirs.
+.atlas-sound-section {
+  margin: 0;
+  color: var(--text-normal);
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  line-height: 1.2;
+}
+
+.atlas-sound-moods__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  // Three rows of tiles fill the stage under its heading at 900 px high.
+  grid-auto-rows: 104px;
+  gap: $card-inset;
+  align-content: start;
+}
+
+.atlas-sound-mood {
+  --atlas-sound-tone: var(--atlas-sound-tone-light);
+  position: relative;
+  min-width: 0;
+
+  .theme-dark & {
+    --atlas-sound-tone: var(--atlas-sound-tone-dark);
+  }
+
+  &[data-dragging] {
+    opacity: 0.6;
+  }
+}
+
+.atlas-sound-mood__press {
+  @include bare-button;
+  @include hairline-tile;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  // Name, what plays, and the footer at the foot: the last row takes what is left, so no auto margin (an off-grid
+  // distance in every audit) places it.
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  padding: $spacing-m;
+  overflow: hidden;
+  background: var(--background-primary-alt);
+  text-align: start;
+  white-space: normal;
+  touch-action: none;
+  transition: background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+  @include pressable(0.985);
+
+  &:hover {
+    background: var(--background-secondary);
+  }
+}
+
+.atlas-sound-mood__crest {
+  position: absolute;
+  right: -8px;
+  bottom: -12px;
+  width: 84px;
+  height: 84px;
+  fill: var(--atlas-sound-tone);
+  opacity: 0.12;
+  transition: opacity $transition-slow $press-ease;
+}
+
+.atlas-sound-mood__press:hover .atlas-sound-mood__crest {
+  opacity: 0.2;
+}
+
+// A linked scene's thumbnail: it rises from the tile's right edge, so the name and its lines keep the
+// tile's own colour behind them, and fades in once painted. Below the crest, which stays a watermark.
+.atlas-sound-mood__scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  opacity: 0;
+  filter: saturate(0.85);
+  mask-image: linear-gradient(to right, transparent 45%, rgba(0, 0, 0, 0.35) 72%, #000 100%);
+  transition: opacity $transition-normal $press-ease, transform $transition-slow $press-ease;
+
+  &[data-shown] {
+    opacity: 0.5;
+  }
+
+  // Painted already when the tile came: the page opens on it as it is.
+  &[data-at-once] {
+    transition: none;
+  }
+}
+
+.atlas-sound-mood__press:hover .atlas-sound-mood__scene[data-shown] {
+  opacity: 0.65;
+  transform: scale(1.03);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-sound-mood__scene,
+  .atlas-sound-mood__press:hover .atlas-sound-mood__scene[data-shown] {
+    transform: none;
+    transition: opacity $transition-normal $press-ease;
+  }
+}
+
+.atlas-sound-mood__name {
+  @include atlas-truncate;
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  // The ⋯ stands at the line's end on hover: a long name is cut before it, never under it.
+  padding-inline-end: 28px + $spacing-xs;
+  font: 400 #{$font-ui-large}/1.12 var(--h3-font, inherit);
+  color: var(--mono-100);
+}
+
+.atlas-sound-mood__what {
+  position: relative;
+  display: block;
+  margin-top: $spacing-xs;
+  // The track's name in the normal text colour (a name, not a note): below the mood's name by size alone.
+  color: var(--text-normal);
+  line-height: 1.3;
+
+  span {
+    @include atlas-truncate;
+    display: block;
+  }
+
+  // A class, not `span + span`: a sibling rule on a tag restyles every span of the window whenever a span is put
+  // at the start of <body> (a menu's focus guard).
+  .atlas-sound-mood__layers {
+    color: var(--atlas-sound-muted);
+  }
+}
+
+.atlas-sound-mood__foot {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: $spacing-s;
+}
+
+.atlas-sound-mood__state {
+  @include atlas-truncate;
+  min-width: 0;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-sound-mood__link {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--atlas-sound-muted);
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+// The tile's own state word is never cut: what stands beside it gives way (a problem to its mark and count).
+.atlas-sound-mood__state--main {
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.atlas-sound-mood__state--problem[data-compact] {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-sound-mood__state--problem {
+  color: var(--text-normal);
+
+  // The warning's colour is for the mark: as text it reads at 3:1 on a light tile.
+  svg {
+    width: 12px;
+    height: 12px;
+    margin-inline-end: $spacing-xs;
+    vertical-align: -2px;
+    color: var(--text-warning);
+  }
+}
+
+.atlas-sound-bars {
+  flex-shrink: 0;
+  height: 12px;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+
+  i {
+    width: 2.5px;
+    height: 100%;
+    border-radius: $radius-full;
+    background: var(--atlas-sound-tone);
+    transform: scaleY(0.15);
+    transform-origin: bottom;
+    will-change: transform;
+  }
+}
+
+.atlas-sound-mood__fade {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: var(--atlas-sound-tone);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.atlas-sound-mood[data-playing] {
+  .atlas-sound-mood__press {
+    background: color-mix(in oklch, var(--atlas-sound-tone) 17%, var(--background-primary-alt));
+    box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--atlas-sound-tone) 70%, transparent);
+  }
+
+  .atlas-sound-mood__crest {
+    opacity: 0.3;
+  }
+
+  .atlas-sound-mood__state,
+  .atlas-sound-mood__link,
+  .atlas-sound-cap {
+    color: var(--mono-100);
+  }
+
+  .atlas-sound-mood__what .atlas-sound-mood__layers {
+    color: var(--atlas-sound-muted);
+  }
+}
+
+.atlas-sound-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-ui-smaller;
+  line-height: 16px;
+  color: var(--atlas-sound-muted);
+  white-space: nowrap;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}
+
+.atlas-sound-mood__players {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+  // A chip of the tile's own surface: the words read over a scene's thumbnail and the crest alike.
+  padding: 0 $spacing-xs;
+  border-radius: $cap-radius;
+  background: var(--background-primary-alt);
+  color: var(--text-normal);
+  @include atlas-corner-shape;
+
+  &[data-players='nowhere'] svg {
+    color: var(--text-warning);
+  }
+}
+
+.atlas-sound-mood__menu {
+  position: absolute;
+  top: $spacing-s;
+  right: $spacing-s;
+  width: 28px;
+  height: 28px;
+  background: color-mix(in oklch, var(--background-primary-alt) 70%, transparent);
+  opacity: 0;
+  transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+}
+
+.atlas-sound-mood:hover .atlas-sound-mood__menu,
+.atlas-sound-mood:focus-within .atlas-sound-mood__menu {
+  opacity: 1;
+}

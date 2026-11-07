@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Plugin } from 'obsidian';
 import { registerNoteWriterFlush } from '../../../../src/app/plugin/noteWriterFlush';

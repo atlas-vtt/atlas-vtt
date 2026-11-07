@@ -1,5 +1,5 @@
 import type { DiceCrit } from '../tools/diceCrit';
-import type { RolledDie } from '../tools/diceFormula';
+import type { NamedModifier, RolledDie } from '../tools/diceFormula';
 import type { AdvantageSide, RolledWithSet } from './diceSetTypes';
 
 export interface DiceRollResult {
@@ -9,6 +9,12 @@ export interface DiceRollResult {
   rolls: RolledDie[];
   /** The constants added to the dice; 0 where the formula is no plain sum (`linear`). */
   modifiers: number;
+  /**
+   * The labelled constants among `modifiers` (`+2[Proficiency]`), each shown as a term of its own. Part of
+   * `modifiers`, so a reader that knows only the sum (an older Atlas, the players' page) still adds up; missing
+   * on rolls without one and on rolls logged before named modifiers existed.
+   */
+  namedModifiers?: NamedModifier[];
   total: number;
   /** The formula multiplies, divides or counts dice, so its constants are no modifier; unset for a plain sum. */
   linear?: false;

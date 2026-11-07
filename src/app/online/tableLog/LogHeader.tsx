@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import { Pin, PinOff, Trash2 } from 'lucide-react';
 import { useEffect, useRef, type ReactElement } from 'react';
 import { Button } from '../../packages/components/primitives/button';
@@ -30,21 +29,21 @@ export function LogHeader({ titleId, pinned, asking, onClear, onAsk, onPin, onCl
 
   return (
     <div className="atlas-online-log__header">
-      <span id={titleId} className={classes('atlas-online-log__title', asking && 'atlas-online-log__sr')}>{t('uiOnline.logHeader_tableLog')}</span>
+      <span id={titleId} className={classes('atlas-online-log__title', asking && 'atlas-online-log__sr')}>Table log</span>
       {asking && onClear !== undefined ? (
         <div className="atlas-online-log__ask">
-          <span className="atlas-online-log__ask-text">{t('uiOnline.logHeader_clearTheLogForEveryone')}</span>
-          <Button variant="ghost" size="sm" className="atlas-online-log__ask-button atlas-online-log__ask-button--danger" onClick={onClear}>{t('uiOnline.logHeader_clear')}</Button>
-          <Button variant="ghost" size="sm" className="atlas-online-log__ask-button" autoFocus onClick={() => onAsk(false)}>{t('uiOnline.logHeader_keep')}</Button>
+          <span className="atlas-online-log__ask-text">Clear the log for everyone?</span>
+          <Button variant="ghost" size="sm" className="atlas-online-log__ask-button atlas-online-log__ask-button--danger" onClick={onClear}>Clear</Button>
+          <Button variant="ghost" size="sm" className="atlas-online-log__ask-button" autoFocus onClick={() => onAsk(false)}>Keep</Button>
         </div>
       ) : (
         <div className="atlas-online-log__actions">
           {onClear !== undefined && (
-            <LabelTooltip label={t('uiOnline.logHeader_clearTheLog')}>
+            <LabelTooltip label="Clear the log">
               <Button ref={clear} variant="ghost" size="icon" className="atlas-online-log__action" onClick={() => onAsk(true)}><Trash2 /></Button>
             </LabelTooltip>
           )}
-          <LabelTooltip label={pinned ? t('uiOnlineDetails.logHeader_unpin') : 'Pin'}>
+          <LabelTooltip label={pinned ? 'Unpin' : 'Pin'}>
             <Button variant="ghost" size="icon" className={classes('atlas-online-log__action', pinned && 'is-pinned')} aria-pressed={pinned} onClick={() => onPin(!pinned)}>
               {pinned ? <PinOff /> : <Pin />}
             </Button>

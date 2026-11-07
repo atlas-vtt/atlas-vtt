@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import type { TablePerson } from '../protocol/index.ts';
 import { useMemo, useState, type ReactElement } from 'react';
 import { classes } from './classes.ts';
@@ -41,7 +40,7 @@ export interface SuggestionListProps {
 /** The commands or people the field offers, above it; the focus stays in the field, which names the row it is on. */
 export function SuggestionList({ id, list, onComplete }: SuggestionListProps): ReactElement {
   return (
-    <div id={id} role="listbox" aria-label={t('uiOnline.suggestionList_suggestions')} className="atlas-dropdown-content atlas-dropdown-content--top atlas-online-log__suggestions">
+    <div id={id} role="listbox" aria-label="Suggestions" className="atlas-dropdown-content atlas-dropdown-content--top atlas-online-log__suggestions">
       {list.items.map((item, index) => (
         <div
           key={item.key} id={`${id}-${index}`} role="option" aria-selected={index === list.active}

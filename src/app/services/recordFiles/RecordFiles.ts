@@ -136,6 +136,18 @@ export class RecordFiles<Stored extends StoredRecord> {
     this.changed();
   }
 
+  /** The record `id` as the disk holds it now, read back through the adapter; null when no file holds it or it cannot be read. */
+  async onDisk(id: string): Promise<Stored | null> {
+    const path = this.pathOf(id);
+    if (path === null) return null;
+    try {
+      const read = this.layout.read(await this.app.vault.adapter.read(path));
+      return read?.id === id ? read : null;
+    } catch {
+      return null;
+    }
+  }
+
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };

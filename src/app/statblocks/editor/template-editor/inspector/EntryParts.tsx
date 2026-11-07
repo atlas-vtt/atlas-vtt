@@ -1,4 +1,3 @@
-import { t } from '../../../../i18n';
 import React, { useState } from 'react';
 import { withAbilityParts } from '../../../model/abilityParts';
 import { labelToKey } from '../../../model/fieldKeys';
@@ -6,6 +5,7 @@ import type { EntryExtraShape, TemplateField } from '../../../model/templateType
 import type { EditorSession } from '../sessionTypes';
 import { EntryPartRow } from './EntryPartRow';
 import { Setting } from './InspectorControls';
+import { t } from '../../../../i18n';
 
 export interface EntryPartsProps {
   /** The properties the component's lists show, one per tab; the first's parts are shown, and every edit is made to all. */
@@ -15,7 +15,7 @@ export interface EntryPartsProps {
 }
 
 /** Parts many statblocks give their abilities, offered with one click; any other is typed. */
-const PART_SUGGESTIONS: readonly string[] = ['Type', t('uiTemplateDetails.entryParts_range'), 'Damage', 'Cost', 'Uses', 'Trigger', 'Requirement'];
+const PART_SUGGESTIONS: readonly string[] = ['Type', 'Range', 'Damage', 'Cost', 'Uses', 'Trigger', 'Requirement'];
 /** A suggested Type is the kind of ability, which the template names once and every ability picks. */
 const CHOICE_SUGGESTIONS: ReadonlySet<string> = new Set(['Type']);
 
@@ -44,7 +44,7 @@ export function EntryParts({ fields, session, readOnly }: EntryPartsProps): Reac
   const named = new Set(extras.map((extra) => extra.label.trim().toLowerCase()));
   const suggestions = PART_SUGGESTIONS.filter((label) => !named.has(label.toLowerCase()));
   return (
-    <Setting label={t('uiTemplateEditor.entryParts_eachItemAlsoHas')} wide>
+    <Setting label={t('templateEditor.eachItemHas')} wide>
       {(labelId) => (
         <div className="atlas-te-setting__list">
           {extras.map((extra, index) => (
@@ -62,7 +62,7 @@ export function EntryParts({ fields, session, readOnly }: EntryPartsProps): Reac
             type="text"
             className="atlas-te-input"
             aria-labelledby={labelId}
-            placeholder={t('uiTemplateEditor.entryParts_addAPartLikeRange')}
+            placeholder={t('templateEditor.addPart')}
             disabled={readOnly}
             value={name}
             spellCheck={false}
@@ -75,7 +75,7 @@ export function EntryParts({ fields, session, readOnly }: EntryPartsProps): Reac
             }}
           />
           {suggestions.length > 0 && (
-            <div className="atlas-te-setting__suggestions" role="group" aria-label={t('uiTemplateEditor.entryParts_commonParts')}>
+            <div className="atlas-te-setting__suggestions" role="group" aria-label={t('templateEditor.commonParts')}>
               {suggestions.map((label) => (
                 <button key={label} type="button" className="atlas-te-suggestion" disabled={readOnly} onClick={() => addPart(label, CHOICE_SUGGESTIONS.has(label) ? 'choice' : 'text')}>+ {label}</button>
               ))}

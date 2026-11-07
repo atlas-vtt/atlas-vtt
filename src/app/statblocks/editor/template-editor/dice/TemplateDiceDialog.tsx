@@ -54,24 +54,24 @@ export function TemplateDiceDialog(props: TemplateDiceDialogProps): React.JSX.El
   return (
     <EditorDialog
       anchor={anchor}
-      title={t('uiTemplateEditor.templateDiceDialog_diceRolls')}
+      title={t('templateEditor.dice.title')}
       className="atlas-te-dice"
       onClose={onClose}
       initialFocus={doneRef}
       footer={(
         <>
-          <Button type="button" variant="outline" size="sm" onClick={() => setLab(true)}>{t('uiTemplateEditor.templateDiceDialog_diceLab')}</Button>
-          <Button ref={doneRef} type="button" variant="default" size="sm" onClick={onClose}>{t('uiTemplateEditor.templateDiceDialog_done')}</Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => setLab(true)}>{t('templateEditor.dice.lab')}</Button>
+          <Button ref={doneRef} type="button" variant="default" size="sm" onClick={onClose}>{t('templateEditor.done')}</Button>
         </>
       )}
     >
       {lab && <DiceLabDialog anchor={anchor} diceSets={diceSets} initialId={picked || collectionSet.id || undefined} onClose={() => setLab(false)} />}
       <div className="atlas-te-dialog__field">
         <p className="atlas-te-dice__intro">
-          <span>{t('uiTemplateEditor.templateDiceDialog_aBonusWithoutDiceSuchAs6RollsWithTheseDice')}</span>
-          <InfoMark label={t('uiTemplateEditor.templateDiceDialog_diceWrittenOutSuchAs2d63RollAsWritten')} />
+          <span>{t('templateEditor.dice.intro')}</span>
+          <InfoMark label={t('templateEditor.dice.written')} />
         </p>
-        <DiceSetPicker choices={choices} value={picked} leading={1} disabled={readOnly} label={t('uiTemplateEditor.templateDiceDialog_diceRolls')}
+        <DiceSetPicker choices={choices} value={picked} leading={1} disabled={readOnly} label={t('templateEditor.dice.title')}
           onPick={(id) => onPick(id === COLLECTION ? null : id)} />
       </div>
     </EditorDialog>

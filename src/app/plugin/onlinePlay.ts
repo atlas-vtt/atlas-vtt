@@ -1,7 +1,10 @@
 import { requireApiVersion, type Plugin } from 'obsidian';
+import { CampaignPlay } from '../campaigns/campaignPlay';
 import { SECRET_STORAGE_VERSION } from '../online/gm/account/tokenStore.ts';
 import { ONLINE_COMMANDS } from '../online/gm/onlineCommands.ts';
 import { setQuestGate } from '../online/gm/book/questGate.ts';
+import { setRestGate } from '../online/gm/book/restGate.ts';
+import { setStatblockGate } from '../online/gm/book/statblockGate.ts';
 import { setWorldMapGate } from '../online/gm/book/worldMapGate.ts';
 import { OnlineFeature } from '../online/gm/OnlineFeature.ts';
 import type { TableChat } from '../online/gm/tableChat.ts';
@@ -11,6 +14,8 @@ import type { AtlasSettingSection } from '../settings/settingSections';
 import { showNotice } from '../ui/notice';
 import { campaignQuestGate } from './campaignQuestGate';
 import { campaignWorldMapGate } from './campaignWorldMapGate';
+import { characterRestGate } from './characterRestGate';
+import { characterStatblockGate } from './characterStatblockGate';
 
 /** Online play as the plugin holds it. */
 export interface OnlinePlay {
@@ -22,8 +27,9 @@ export interface OnlinePlay {
 
 /**
  * Online play runs only while the GM has its experimental switch on: switching it on loads it,
- * switching it off closes the table's connection and takes its controls away. Off, Atlas does no
- * work for it and connects to nothing. It needs the Obsidian that keeps the account token safe.
+ * switching it off closes the table's connection, ends the play of its campaign and takes its
+ * controls away. Off, Atlas does no work for it and connects to nothing. It needs the Obsidian that
+ * keeps the account token safe.
  */
 export function registerOnlinePlay(plugin: Plugin, settings: SettingsService): OnlinePlay {
   let feature: OnlineFeature | null = null;
@@ -35,11 +41,17 @@ export function registerOnlinePlay(plugin: Plugin, settings: SettingsService): O
       toldTooOld = true;
       showNotice(`Online play needs Obsidian ${SECRET_STORAGE_VERSION} or newer.`);
     }
-    if (on === (feature !== null)) return;
-    if (feature !== null) plugin.removeChild(feature);
-    setWorldMapGate(on ? campaignWorldMapGate(plugin.app) : null);
-    setQuestGate(on ? campaignQuestGate(plugin.app) : null);
-    feature = on ? plugin.addChild(new OnlineFeature(plugin, onlineDataFile(plugin.app))) : null;
+    if (on !== (feature !== null)) {
+      if (feature !== null) plugin.removeChild(feature);
+      setWorldMapGate(on ? campaignWorldMapGate(plugin.app) : null);
+      setQuestGate(on ? campaignQuestGate(plugin.app) : null);
+      setStatblockGate(on ? characterStatblockGate(plugin.app) : null);
+      setRestGate(on ? characterRestGate(plugin.app) : null);
+      feature = on ? plugin.addChild(new OnlineFeature(plugin, onlineDataFile(plugin.app))) : null;
+    }
+    // A campaign is played only while its online table runs, and none runs while online play is off.
+    // Only once the table's connection is closed, so players are never sent a book without the campaign first.
+    if (!on) CampaignPlay.forApp(plugin.app).stop();
   };
   // Registered once: a command asks whichever feature is loaded, and is not offered while none is.
   for (const { id, name } of ONLINE_COMMANDS) {
@@ -49,6 +61,8 @@ export function registerOnlinePlay(plugin: Plugin, settings: SettingsService): O
   plugin.register(() => {
     setWorldMapGate(null);
     setQuestGate(null);
+    setStatblockGate(null);
+    setRestGate(null);
   });
   sync();
   return { settingsSections: () => feature?.settingsSections() ?? [], chat: () => feature?.chat ?? null };

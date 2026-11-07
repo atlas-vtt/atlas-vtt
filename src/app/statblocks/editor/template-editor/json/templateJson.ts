@@ -10,6 +10,7 @@ import { parseTemplate } from '../../../format/parseTemplate';
 import { serializeTemplate } from '../../../format/templateFormat';
 import { withHeader } from '../../../model/headerDuplicates';
 import type { StatblockTemplate, TemplateId } from '../../../model/templateTypes';
+import { t } from '../../../../i18n';
 
 export interface JsonReading {
   /** The template the text holds; null where it cannot be taken. */
@@ -22,10 +23,10 @@ export interface JsonReading {
 export function readTemplateJson(text: string, id: TemplateId): JsonReading {
   const { template, status, problems } = parseTemplate(text);
   if (status !== 'ok' || !template) return { template: null, problems };
-  if (template.id !== id) return { template: null, problems: [...problems, `A template keeps its id: "id" must stay "${id}".`] };
+  if (template.id !== id) return { template: null, problems: [...problems, t('templateEditor.json.keepId', { id })] };
   const whole = withHeader(template);
   if (whole === template) return { template, problems };
-  return { template: whole, problems: [...problems, 'Every template has one header (name, token art, level, type, HP and description): a field it lacked was put back, and blocks repeating the header were taken out.'] };
+  return { template: whole, problems: [...problems, t('templateEditor.json.header')] };
 }
 
 /** Whether a reading holds the same template as `text`, the file text of another. */

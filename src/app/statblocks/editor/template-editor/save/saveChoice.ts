@@ -1,4 +1,3 @@
-import { t } from '../../../../i18n';
 /**
  * What Save does with the name typed (the template editor's save dialog):
  * the template's own name updates its file, another name saves a new
@@ -12,6 +11,7 @@ import type { LibraryTemplate } from '../../../model/resolvedTypes';
 import type { TemplateId } from '../../../model/templateTypes';
 import { TEMPLATE_FOLDER, templateNameProblem, templateNameTakenAt, templatePathIn } from '../../../library/templatePaths';
 import type { SessionSnapshot } from '../sessionTypes';
+import { t } from '../../../../i18n';
 
 export type SaveKind = 'update' | 'new';
 
@@ -41,14 +41,14 @@ const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b
 
 export function saveChoice(subject: SaveSubject, typed: string, taken: NameTaken): SaveChoice {
   const name = typed.trim();
-  const problem = templateNameProblem(name) ?? (taken(name) ? t('uiTemplateDetails.saveChoice_thereIsAlreadyATemplateNamedName', { name: name }) : null);
-  if (subject.unsaved) return { kind: 'new', label: t('uiTemplateEditor.saveChoice_save'), problem, hint: null };
+  const problem = templateNameProblem(name) ?? (taken(name) ? t('templateEditor.save.taken', { name }) : null);
+  if (subject.unsaved) return { kind: 'new', label: t('templateEditor.save.save'), problem, hint: null };
   if (subject.builtIn) {
-    const own = sameName(name, subject.name) ? t('uiTemplateDetails.saveChoice_builtInTemplatesCanTBeChangedGiveYoursANameOfItsOwn') : null;
-    return { kind: 'new', label: t('uiTemplateEditor.saveChoice_saveAsNew'), problem: own ?? problem, hint: t('uiTemplateDetails.saveChoice_nameIsBuiltInAndStaysAsItIsYourChangesAreSavedAsANewTem', { name: subject.name }) };
+    const own = sameName(name, subject.name) ? t('templateEditor.save.builtInName') : null;
+    return { kind: 'new', label: t('templateEditor.save.asNew'), problem: own ?? problem, hint: t('templateEditor.save.builtInHint', { name: subject.name }) };
   }
-  if (sameName(name, subject.name)) return { kind: 'update', label: t('uiTemplateEditor.saveChoice_update'), problem: null, hint: t('uiTemplateEditor.saveChoice_statblocksThatUseThisTemplateShowTheChange') };
-  return { kind: 'new', label: t('uiTemplateEditor.saveChoice_saveAsNew'), problem, hint: t('uiTemplateDetails.saveChoice_nameStaysAsItIs', { name: subject.name }) };
+  if (sameName(name, subject.name)) return { kind: 'update', label: t('templateEditor.save.update'), problem: null, hint: t('templateEditor.save.updateHint') };
+  return { kind: 'new', label: t('templateEditor.save.asNew'), problem, hint: t('templateEditor.save.staysHint', { name: subject.name }) };
 }
 
 /** `base`, else `base 2`, `base 3`, … : the first name no template goes by. */

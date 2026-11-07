@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CreatureIndex } from '../../src/app/creatures/CreatureIndex';
@@ -7,7 +8,6 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import type { TokenVision } from '../../src/app/types/lightingTypes';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
-import { withDynamicLighting } from '../mocks/experimentalFeatures';
 
 const GOBLIN = 'Bestiary/Goblin.md';
 const sense = (name: string): string => GENERIC_SENSES.find((candidate) => candidate.name === name)!.id;
@@ -24,7 +24,6 @@ afterEach(() => {
 /** Edit Token for a token linked to the goblin's statblock, whose senses line is `senses`. */
 function open(senses: string | undefined, vision: TokenVision = { enabled: true }, linked = true): () => TokenEntity {
   current = creatureVault();
-  withDynamicLighting(current.app);
   if (senses !== undefined) current.frontmatter[GOBLIN]!.senses = senses;
   const store = createViewAtlasStore(current.app, `edit-token-statblock-${Math.random()}`);
   const token = { id: 't', kind: 'character', name: 'Goblin', imagePath: 't.png', x: 0, y: 0, vision, ...(linked && { statblockPath: GOBLIN }) } as TokenEntity;

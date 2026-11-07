@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { MAX_SHARED_PINS, parseGmMessage, parseLogEntry, parsePlayerMessage, TEXT_MIME_TYPE } from '../../../../src/app/online/protocol/index.ts';
 
@@ -31,7 +30,7 @@ describe('readable pins as players are sent them', () => {
 
 describe('a found note in the log', () => {
   it('reads with its whole text and images by hash, and its reactions', () => {
-    const entry = { ...FOUND, text: { hash: HASH, size: 9000, mime: TEXT_MIME_TYPE }, images: [{ target: 'cask.png', width: 200, height: null, image: { hash: HASH, size: 10, mime: 'image/png' } }], reactions: [{ emoji: '👍', by: ['gm'] }] };
+    const entry = { ...FOUND, text: { hash: HASH, size: 9000, mime: TEXT_MIME_TYPE, id: 'e'.repeat(64) }, images: [{ target: 'cask.png', width: 200, height: null, image: { hash: HASH, size: 10, mime: 'image/png', id: 'e'.repeat(64) } }], reactions: [{ emoji: '👍', by: ['gm'] }] };
     expect(parseLogEntry(entry)).toEqual(entry);
     expect(parseLogEntry(FOUND)).toEqual(FOUND);
   });
@@ -40,6 +39,6 @@ describe('a found note in the log', () => {
     expect(parseLogEntry({ ...FOUND, who: 'gm', name: 'GM' })).toBeNull();
     expect(parseLogEntry({ ...FOUND, title: '' })).toBeNull();
     expect(parseLogEntry({ ...FOUND, body: 'x'.repeat(3000) })).toBeNull();
-    expect(parseLogEntry({ ...FOUND, text: { hash: HASH, size: 9, mime: 'image/png' } })).toBeNull();
+    expect(parseLogEntry({ ...FOUND, text: { hash: HASH, size: 9, mime: 'image/png', id: 'e'.repeat(64) } })).toBeNull();
   });
 });

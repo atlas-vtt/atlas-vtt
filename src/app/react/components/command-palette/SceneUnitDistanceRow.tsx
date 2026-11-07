@@ -3,9 +3,7 @@ import { SettingRow } from './SettingRows';
 import type { AtlasView } from '../../../atlas-view';
 import { sceneUnitDistance, unitLabelFor } from '../../../grid/measurementFormat';
 import { typedDistance } from '../../../grid/unitDistance';
-import { rulesForMap } from '../../../gameSystems/mapRules';
-import { rulesLookup } from '../../../services/mapRules';
-import { mapMeasurementSettings } from '../../../services/mapMeasurementSettings';
+import { useSceneMeasurement } from './useSceneMeasurement';
 import { t } from '../../../i18n';
 
 /**
@@ -14,20 +12,17 @@ import { t } from '../../../i18n';
  * typing a number is one undo step; text that is no distance puts the stored one back.
  */
 export function SceneUnitDistanceRow({ view }: { view: AtlasView | null }): React.ReactElement | null {
-  const store = view?.atlasStore;
-  const subscribe = React.useCallback((listener: () => void): (() => void) => store?.subscribe(listener) ?? ((): void => undefined), [store]);
-  // The palette does not re-render on store changes: follow undo, redo and other views here
-  const stored = React.useSyncExternalStore(subscribe, () => sceneUnitDistance(store?.getState().grid));
+  const scene = useSceneMeasurement(view);
   const [draft, setDraft] = React.useState<string | null>(null);
-  const state = store?.getState();
-  if (!view || !store || !state?.grid) return null;
+  if (!view || !scene) return null;
 
-  const rules = rulesLookup(view.app);
-  const measurement = mapMeasurementSettings(rules, state);
+  const { measurement } = scene;
   // Range bands name distances; there is no distance per cell to change.
   if (measurement.mode === 'abstract') return null;
+  const store = view.atlasStore;
+  const stored = sceneUnitDistance(scene.state.grid);
   const unit = unitLabelFor(measurement.unitType);
-  const { kind } = rulesForMap(rules, state.mapPath).source;
+  const { kind } = scene.rules.source;
   const distance = `${measurement.ruleDistance}${unit ? ` ${unit}` : ''}`;
   const hint = kind === 'campaign' ? t('grid.distanceFromCampaign', { distance })
     : kind === 'collection' ? t('grid.distanceFromCollection', { distance })

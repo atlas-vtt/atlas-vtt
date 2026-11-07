@@ -1,6 +1,6 @@
 import type { RenderTexture } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
-import { wallBand, worldTexel } from '../../../../lighting/lightingConstants';
+import { lightFade, wallBand, worldTexel } from '../../../../lighting/lightingConstants';
 import { sealedWalls } from '../../../../lighting/sealWalls';
 import type { WallSegment } from '../../../../types/wallTypes';
 import { crossedByHand, grazes, turningPoints } from '../../../../vision/__tests__/byHand';
@@ -185,7 +185,8 @@ describe('limited walls in the picture', () => {
       const rule = lightLevelAt(p, { ambient: 0 }, [reach]) !== 'dark';
       // The rule's reach is a polygon of 64 sides around the dim radius: within two pixels of it a chord decides.
       if (texels[i]! > 0 && !rule && Math.hypot(p.x - light.x, p.y - light.y) < light.dim - 2) shadow++;
-      if (rule) (texels[i]! > 0 ? lit++ : dark++);
+      // The light fades to nothing at its dim radius: where the fade leaves under a thousandth, the light map may round it to 0.
+      if (rule && lightFade(light.bright, light.dim, Math.hypot(p.x - light.x, p.y - light.y)) > 1e-3) (texels[i]! > 0 ? lit++ : dark++);
     }
     expect({ shadow, dark, lit: lit > 20_000 }).toEqual({ shadow: 0, dark: 0, lit: true });
   });

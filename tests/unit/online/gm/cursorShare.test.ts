@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { CURSOR_REST_MS, GM_MARKS, MARKS_INTERVAL_MS, type PlayerCursor } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { checkCursor, MARKS_PER_SECOND } from '../../../../src/app/online/gm/markCheck.ts';

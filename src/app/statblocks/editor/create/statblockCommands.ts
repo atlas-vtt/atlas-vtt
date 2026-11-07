@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 /**
  * The statblock editor's commands and file menu items (§7.3): "New
  * statblock…", "New statblock here" on folders, "Edit statblock" on native
@@ -16,6 +15,7 @@ import { editInStatblockPane, opensStatblockEditor } from './entryPoints';
 import {
   COPY_INTO_STATBLOCK, EDIT_WITH_TEMPLATE, isFsFrontmatterNote, mayHoldStatblockFence, menuPlace, offerFenceCopy, offerFsAdoption,
 } from './fsStatblockActions';
+import { t } from '../../../i18n';
 
 /** Commands and the file menu name no collection: the role menu offers one. */
 function newStatblock(app: App, folder?: string): void {
@@ -23,23 +23,23 @@ function newStatblock(app: App, folder?: string): void {
 }
 
 function adopt(app: App, file: TFile, event?: MouseEvent | KeyboardEvent): void {
-  runInBackground(offerFsAdoption(app, file, menuPlace(event)), `Giving ${file.path} an Atlas template`, "Couldn't change the statblock.");
+  runInBackground(offerFsAdoption(app, file, menuPlace(event)), `Giving ${file.path} an Atlas template`, t('statblockEditor.changeFailed'));
 }
 
 function copyFence(app: App, file: TFile, event?: MouseEvent | KeyboardEvent): void {
-  runInBackground(offerFenceCopy(app, file, menuPlace(event)), `Copying the statblock of ${file.path}`, "Couldn't copy the statblock.");
+  runInBackground(offerFenceCopy(app, file, menuPlace(event)), `Copying the statblock of ${file.path}`, t('statblockEditor.copyFailed'));
 }
 
 function addFileMenuItems(app: App, menu: Menu, file: TAbstractFile): void {
   if (!experimentalFeatureOn(app, 'statblockEditor')) return;
   if (file instanceof TFolder) {
     menu.addItem((item) => item
-      .setTitle(t('uiMessages.newStatblockHere'))
+      .setTitle(t('statblockEditor.newHere'))
       .setIcon('file-plus')
       .onClick(() => newStatblock(app, file.path)));
   } else if (file instanceof TFile && opensStatblockEditor(app, file.path)) {
     menu.addItem((item) => item
-      .setTitle(t('uiMessages.editStatblockAtlas'))
+      .setTitle(t('statblockEditor.editInAtlas'))
       .setIcon('scroll-text')
       .onClick(() => { editInStatblockPane(app, file.path, { collectionId: null, from: 'command' }); }));
   } else if (file instanceof TFile && isFsFrontmatterNote(app, file)) {
@@ -61,7 +61,7 @@ export function registerStatblockEditorCommands(plugin: Plugin): void {
 
   plugin.addCommand({
     id: 'new-statblock',
-    name: t('uiMessages.newStatblockCommand'),
+    name: t('statblockEditor.newStatblockMenu'),
     checkCallback: (checking) => {
       if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
       if (!checking) newStatblock(app);
@@ -71,7 +71,7 @@ export function registerStatblockEditorCommands(plugin: Plugin): void {
 
   plugin.addCommand({
     id: 'edit-statblock',
-    name: t('uiMessages.editStatblockCommand'),
+    name: t('statblockEditor.editStatblock'),
     checkCallback: (checking) => {
       const file = activeNote(app, (candidate) => opensStatblockEditor(app, candidate.path));
       if (!file) return false;

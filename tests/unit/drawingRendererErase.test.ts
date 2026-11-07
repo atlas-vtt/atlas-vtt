@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import { EventBoundary, FederatedPointerEvent, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';

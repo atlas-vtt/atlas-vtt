@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage, type GmMessage, type SharedWidgetBar } from '../../../../src/app/online/protocol/index.ts';
 import type { AnyWidget } from '../../../../src/app/types/widgetTypes';
 import { pausedTimers } from '../../../../src/app/utils/timerWidget';

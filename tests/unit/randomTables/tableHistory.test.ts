@@ -118,3 +118,23 @@ describe('items', () => {
     expect(new Set(outcome.draws.map((draw) => draw.name))).toEqual(new Set(['Rope', 'Lantern', 'Crowbar', 'Gold Tooth']));
   });
 });
+
+describe('a generator\'s result in the history', () => {
+  const result = {
+    id: 'g', source: ['Weapons', 'Magic Weapon'], notePath: 'Weapons.md', text: '+1 Mace',
+    fields: [{ label: 'Type', value: 'Mace', row: 1, items: ['d1'] }],
+    generator: { path: 'Weapons.md', index: 0, name: '{Bonus} {Type}' },
+    item: 'd0',
+  };
+
+  it('keeps its generator, rows and item through a write and a read', () => {
+    const roll: LootRoll = { id: 'a', rolledAt: 1, mapName: 'X', draws: [], results: [result] };
+    expect(readDeviceLootHistory(JSON.parse(serializeDeviceLootHistory(withRoll(EMPTY_DEVICE_HISTORY, roll)))).rolls).toEqual([roll]);
+  });
+
+  it('drops what it cannot read of them and keeps the result as a Text result', () => {
+    const broken = { ...result, fields: [{ label: 'Type', value: 'Mace', row: -1, items: [2] }], generator: { path: 3, index: 0 }, item: 4 };
+    const [roll] = readLootHistory({ rolls: [{ id: 'a', rolledAt: 1, mapName: 'X', draws: [], results: [broken] }] });
+    expect(roll!.results).toEqual([{ id: 'g', source: ['Weapons', 'Magic Weapon'], notePath: 'Weapons.md', text: '+1 Mace', fields: [{ label: 'Type', value: 'Mace' }] }]);
+  });
+});

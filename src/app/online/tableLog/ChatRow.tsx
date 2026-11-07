@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import type { ChatEntry } from '../protocol/index.ts';
 import { Lock } from 'lucide-react';
 import { memo, type ReactElement } from 'react';
@@ -45,7 +44,7 @@ export const ChatRow = memo(function ChatRow({ entry, continued, time, portrait,
   const author = shownName(who, name, api.self);
   const inCharacter = entry.style === 'ic' && speaker !== undefined;
   const emote = entry.style === 'emote';
-  const edited = entry.edited !== undefined && <span className="atlas-online-log__edited"> {t('uiOnline.chatRow_edited')}</span>;
+  const edited = entry.edited !== undefined && <span className="atlas-online-log__edited"> (edited)</span>;
 
   const body = flags.editing ? (
     <EditField text={text} onSave={(next) => api.saveEdit(id, next)} onCancel={api.cancelEdit} />

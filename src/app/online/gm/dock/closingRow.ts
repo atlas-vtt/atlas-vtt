@@ -1,8 +1,13 @@
 import { textButton } from './controls.ts';
 
+import { UPDATE_AFTER_TEXT } from '../gmLevel.ts';
+import { t } from '../../../i18n';
+
 export interface ClosingRowActions {
   /** Opens the account page of the website, where access to online play comes from. */
   openAccountPage(): void;
+  /** Opens Atlas's page in Obsidian, where Obsidian installs the update. */
+  update(): void;
 }
 
 /**
@@ -14,5 +19,13 @@ export function renderClosingRow(layer: HTMLElement, closing: string | null, act
   if (closing === null) return;
   const row = layer.createDiv({ cls: 'atlas-online-closing', attr: { role: 'status' } });
   row.createSpan({ cls: 'atlas-online-closing__text', text: closing });
-  textButton(row, 'Account page', () => actions.openAccountPage()).dataset.focusKey = 'account-page';
+  textButton(row, t('online.accountPage'), () => actions.openAccountPage()).dataset.focusKey = 'account-page';
+}
+
+/** Under a surface's header while the relay let this Atlas in although it needs a newer one: players sit at the table, so the game goes on. */
+export function renderUpdateRow(layer: HTMLElement, show: boolean, actions: ClosingRowActions): void {
+  if (!show) return;
+  const row = layer.createDiv({ cls: 'atlas-online-closing', attr: { role: 'status' } });
+  row.createSpan({ cls: 'atlas-online-closing__text', text: UPDATE_AFTER_TEXT });
+  textButton(row, t('online.update'), () => actions.update()).dataset.focusKey = 'update';
 }

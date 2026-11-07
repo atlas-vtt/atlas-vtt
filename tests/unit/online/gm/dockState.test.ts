@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
   CLOSED, close, closesDiceLog, escapeCloses, escapeClosesQr, keyStaysInControl, makesWay, open, outsidePressCloses, pressClosesQr, surfaceFor, tableChanged, toggle,
@@ -82,11 +81,13 @@ describe('Escape', () => {
 });
 
 describe('presses outside', () => {
-  it('close the menu with the left button only, and never the panel', () => {
+  it('close the menu and the panel with the left button only', () => {
     expect(outsidePressCloses('menu', { button: 0, inside: false })).toBe(true);
     expect(outsidePressCloses('menu', { button: 2, inside: false })).toBe(false);
     expect(outsidePressCloses('menu', { button: 0, inside: true })).toBe(false);
-    expect(outsidePressCloses('panel', { button: 0, inside: false })).toBe(false);
+    expect(outsidePressCloses('panel', { button: 0, inside: false })).toBe(true);
+    expect(outsidePressCloses('panel', { button: 2, inside: false })).toBe(false);
+    expect(outsidePressCloses('panel', { button: 0, inside: true })).toBe(false);
     expect(outsidePressCloses('closed', { button: 0, inside: false })).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
-import { t } from '../../../i18n';
 import { MAX_FEEDBACK_TEXT, feedbackNote, type FeedbackResult } from '../../protocol/index.ts';
 import { COMPANION_REPORTS_NOTE, type CompanionFeedback } from '../companionReports.ts';
 import { textButton } from './controls.ts';
+import { t } from '../../../i18n';
 
 export type FeedbackState = 'idle' | 'sending' | FeedbackResult;
 
@@ -27,9 +27,9 @@ export interface FeedbackActions {
 const STATE_TEXT: Readonly<Record<FeedbackState, string>> = {
   idle: '',
   sending: 'Sending…',
-  sent: t('uiOnlineDetails.feedbackForm_thankYouYourFeedbackWasSent'),
-  busy: t('uiOnlineDetails.feedbackForm_tooMuchFeedbackRightNowTryAgainInAMinute'),
-  failed: t('uiOnlineDetails.feedbackForm_itCouldNotBeSentCheckTheServerInTheSettings'),
+  sent: t('online.feedback.sent'),
+  busy: t('online.feedback.busy'),
+  failed: t('online.feedback.failed'),
 };
 
 /**
@@ -39,10 +39,10 @@ const STATE_TEXT: Readonly<Record<FeedbackState, string>> = {
  */
 export function renderFeedback(parent: HTMLElement, view: FeedbackView, actions: FeedbackActions): void {
   const form = parent.createDiv({ cls: 'atlas-online-feedback', attr: { role: 'group', 'aria-labelledby': `${parent.id}-feedback` } });
-  form.createDiv({ cls: 'atlas-online-group-label', text: t('uiOnline.feedbackForm_sendFeedback'), attr: { id: `${parent.id}-feedback` } });
+  form.createDiv({ cls: 'atlas-online-group-label', text: t('online.feedback.send'), attr: { id: `${parent.id}-feedback` } });
   const field = form.createEl('textarea', {
     cls: 'atlas-online-feedback__text',
-    attr: { rows: '4', maxlength: String(MAX_FEEDBACK_TEXT), placeholder: t('uiOnline.feedbackForm_whatWentWrongOrWhatWouldHelp'), 'aria-label': t('uiOnlineDetails.feedbackForm_feedback'), 'data-focus-key': 'feedback-text' },
+    attr: { rows: '4', maxlength: String(MAX_FEEDBACK_TEXT), placeholder: t('online.feedback.placeholder'), 'aria-label': t('online.feedback.label'), 'data-focus-key': 'feedback-text' },
   });
   field.value = actions.feedbackText();
   const send = (): void => {
@@ -52,14 +52,14 @@ export function renderFeedback(parent: HTMLElement, view: FeedbackView, actions:
   field.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) send();
   });
-  checkbox(form, t('uiOnlineDetails.feedbackForm_includeDiagnostics'), 'feedback-diagnostics', view.diagnostics, (on) => actions.setFeedbackDiagnostics(on));
+  checkbox(form, 'Include diagnostics', 'feedback-diagnostics', view.diagnostics, (on) => actions.setFeedbackDiagnostics(on));
   form.createDiv({ cls: 'atlas-online-help atlas-online-feedback__note', text: feedbackNote(view.diagnostics) });
   const row = form.createDiv({ cls: 'atlas-online-feedback__actions' });
   row.createSpan({ cls: 'atlas-online-help atlas-online-feedback__status', text: STATE_TEXT[view.state], attr: { role: 'status' } });
-  const button = textButton(row, t('uiOnlineDetails.feedbackForm_send'), send, 'cta');
+  const button = textButton(row, t('online.feedback.submit'), send, 'cta');
   button.dataset.focusKey = 'feedback-send';
   button.disabled = view.state === 'sending';
-  checkbox(form, t('uiOnlineDetails.feedbackForm_sendErrorReportsAutomatically'), 'error-reports', view.errorReports, (on) => actions.setErrorReports(on));
+  checkbox(form, 'Send error reports automatically', 'error-reports', view.errorReports, (on) => actions.setErrorReports(on));
   form.createDiv({ cls: 'atlas-online-help atlas-online-feedback__note', text: COMPANION_REPORTS_NOTE });
 }
 

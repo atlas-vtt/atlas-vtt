@@ -1,8 +1,8 @@
-// @vitest-environment node
 import type { SharedToken } from '../../../../src/app/online/protocol/index.ts';
 import type { TokenEntity } from '../../../../src/app/types';
 import { describe, expect, it } from 'vitest';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
+import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership } from './fakeSeats.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
 
@@ -21,7 +21,7 @@ const mineTo = (table: ShareHarness, player: string): readonly string[] | undefi
 const listed = (table: ShareHarness, id: string): SharedToken | undefined => tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.x === TOKENS.find((gm) => gm.id === id)?.x);
 
 async function table(showNames = false): Promise<{ readonly share: ShareHarness; readonly owners: Ownership; readonly scene: string; readonly send: (from: string, t: 'claim' | 'release', id: string | undefined) => Promise<void> }> {
-  const owners = new Ownership(readOwnership(undefined), () => undefined);
+  const owners = boundOwnership([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   owners.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const share = shareHarness(withTokens(), ART, owners);
   share.settings = { ...share.settings, showNames };
@@ -53,26 +53,25 @@ describe('player tokens', () => {
     const before = share.sent.length;
     await send(ANA, 'claim', hero);
     await send(BEN, 'claim', listed(share, 'ogre')?.id);
-    expect(owners.tokensOf(ANA)).toEqual([]);
-    expect(owners.tokensOf(BEN)).toEqual([]);
+    expect([owners.ownerOf('hero', undefined), owners.ownerOf('ogre', undefined)]).toEqual([undefined, undefined]);
     expect(share.sent.slice(before)).toEqual([]);
-    owners.give(['hero'], ANA);
+    owners.give(['hero'], {}, ANA);
     await share.advance(TOKEN_INTERVAL_MS);
     expect(mineTo(share, ANA)).toEqual([hero]);
     await send(BEN, 'claim', hero);
-    expect(owners.ownerOf('hero')).toBe(ANA);
+    expect(owners.ownerOf('hero', undefined)).toBe(ANA);
   });
 
   it('let no player give a token back, its owner neither: the GM does', async () => {
     const { share, owners, send } = await table();
     const hero = listed(share, 'hero')?.id;
-    owners.give(['hero'], ANA);
+    owners.give(['hero'], {}, ANA);
     await share.advance(TOKEN_INTERVAL_MS);
     await send(BEN, 'release', hero);
     await send(ANA, 'release', hero);
-    expect(owners.ownerOf('hero')).toBe(ANA);
+    expect(owners.ownerOf('hero', undefined)).toBe(ANA);
     expect(mineTo(share, ANA)).toEqual([hero]);
-    owners.give(['hero'], null);
+    owners.give(['hero'], {}, null);
     await share.advance(TOKEN_INTERVAL_MS);
     expect(listed(share, 'hero')?.claim).toBe('taken');
     expect(mineTo(share, ANA)).toEqual([]);
@@ -80,9 +79,9 @@ describe('player tokens', () => {
 
   it('follow the GM: a token made the GM\'s is taken back and loses its name, one made a player token is named', async () => {
     const { share, owners } = await table();
-    owners.give(['hero'], ANA);
-    owners.markPlayerTokens(MAP, ['hero'], false);
-    owners.markPlayerTokens(MAP, ['ogre'], true);
+    owners.give(['hero'], {}, ANA);
+    owners.markPlayerTokens(MAP, ['hero'], {}, false);
+    owners.markPlayerTokens(MAP, ['ogre'], {}, true);
     await share.advance(TOKEN_INTERVAL_MS);
     const tokens = tokenLists(share.sent).at(-1)?.tokens ?? [];
     expect(tokens.map(({ name, claim }) => [name, claim])).toEqual([[null, null], ['ogre', 'taken']]);

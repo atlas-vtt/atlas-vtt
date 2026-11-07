@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceLeaf } from 'obsidian';
 import { LocalPlayerView } from '../../src/app/local-player-view';
@@ -34,6 +35,15 @@ describe('restorable local player view', () => {
     const restored = createView();
     await restored.setState(JSON.parse(JSON.stringify(original.getState())), {});
     expect(restored.getState().camera).toEqual({ centerX: 100, centerY: 200, scale: 1.5, width: 800, height: 450 });
+  });
+
+  it('round-trips the frames the GM set per map, leaving out any that is no camera', async () => {
+    const original = createView();
+    const frames = { 'maps/tavern.atlasmap': { centerX: 100, centerY: 200, scale: 1.5, width: 800, height: 450 } };
+    original.updateSession({ tabId: 'tavern', filePath: 'maps/tavern.atlasmap', frozen: false, frames });
+    const restored = createView();
+    await restored.setState({ ...JSON.parse(JSON.stringify(original.getState())), frames: { ...frames, 'maps/cave.atlasmap': { centerX: 'x' } } }, {});
+    expect(restored.getState().frames).toEqual(frames);
   });
 
   it.each([

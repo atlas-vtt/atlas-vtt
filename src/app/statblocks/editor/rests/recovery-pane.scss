@@ -1,0 +1,236 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The template editor's recovery buttons (rests/: TemplateRests, RecoveryRail;
+// the card in recovery-stage.scss, the rule card in recovery-card.scss).
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$capsule-height: 30px;
+$badge-height: 18px;
+$accent-line: color-mix(in oklch, var(--interactive-accent) 45%, transparent);
+
+// ── Pane ───────────────────────────────────────────────────────────────────
+.atlas-rc-pane {
+  @include atlas-flex-col($spacing-m);
+  min-width: 0;
+}
+
+.atlas-rc-pane__head {
+  @include atlas-flex-col($spacing-xs);
+}
+
+// In the template editor: the title with Done, which goes back to the card
+.atlas-te-rests__title-row {
+  @include atlas-flex-row($spacing-s);
+  justify-content: space-between;
+}
+
+.atlas-rc-pane__title {
+  margin: 0;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+  color: var(--text-normal);
+}
+
+.atlas-rc-pane__empty {
+  margin: 0;
+  padding: $spacing-l;
+  border-radius: $radius-l;
+  background: var(--background-modifier-hover);
+  color: var(--text-faint);
+  font-size: $font-ui-small;
+  text-align: center;
+}
+
+// ── Templates: one tab each ────────────────────────────────────────────────
+.atlas-rc-templates .atlas-sb-tabstrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 $spacing-l;
+  border-bottom: $border-width-s solid var(--background-modifier-border);
+}
+
+// Two classes: above Obsidian's `button:not(.clickable-icon)` look.
+.atlas-rc-templates .atlas-sb-tab.atlas-sb-tab {
+  height: auto;
+  margin: 0 0 (-$border-width-s);
+  padding: $spacing-s 0;
+  border: 0;
+  border-bottom: $border-width-m solid transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: color $transition-fast $transition-ease, border-color $transition-normal $transition-ease;
+
+  &:hover { color: var(--text-normal); }
+
+  &[aria-selected='true'] {
+    border-bottom-color: var(--interactive-accent);
+    color: var(--text-normal);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: 2px;
+    border-radius: $radius-s;
+  }
+}
+
+// ── Rail: the template's buttons ───────────────────────────────────────────
+.atlas-rc-editor {
+  @include atlas-flex-col($spacing-m);
+}
+
+.atlas-rc-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-s;
+}
+
+.atlas-rc-rail__capsules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-s;
+}
+
+.atlas-rc-rail__slot {
+  position: relative;
+  // Reorder lifts the dragged capsule over its neighbours
+  z-index: 0;
+  touch-action: none;
+}
+
+// A capsule: the height is fixed and the ends are round, so it takes room on its sides only
+.atlas-rc-capsule {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-s;
+  height: $capsule-height;
+  margin: 0;
+  padding: 0 $spacing-m;
+  border: $border-width-s solid var(--background-modifier-border) !important;
+  border-radius: $radius-full !important;
+  corner-shape: round;
+  background: var(--background-primary) !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color $transition-fast $transition-ease, border-color $transition-fast $transition-ease,
+    background-color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  &:active { transform: scale(0.97); }
+
+  &:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: 2px;
+  }
+
+  &.atlas-selected {
+    border-color: $accent-line !important;
+    background: color-mix(in oklch, var(--interactive-accent) 12%, var(--background-primary)) !important;
+    color: var(--text-normal);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-rc-capsule:not(.atlas-selected):hover {
+    border-color: var(--background-modifier-border-hover) !important;
+    color: var(--text-normal);
+  }
+}
+
+// How many rules the button holds
+.atlas-rc-capsule__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: $badge-height;
+  height: $badge-height;
+  padding: 0 5px;
+  border-radius: $radius-full;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-rc-capsule.atlas-selected .atlas-rc-capsule__count {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+input.atlas-rc-capsule--input {
+  width: auto;
+  border-color: $accent-line !important;
+  color: var(--text-normal);
+  cursor: text;
+  font-weight: $font-weight-medium;
+  @include atlas-input-focus;
+
+  &:focus { box-shadow: 0 0 0 3px color-mix(in oklch, var(--interactive-accent) 20%, transparent) !important; }
+}
+
+.atlas-rc-rail__add {
+  @include atlas-icon-button;
+  display: grid;
+  place-items: center;
+  width: $capsule-height;
+  height: $capsule-height;
+  // A quiet fill, as an empty socket has: Atlas draws no dashed lines
+  border: $border-width-s solid transparent !important;
+  border-radius: $radius-full !important;
+  corner-shape: round;
+  background: var(--background-modifier-hover) !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color $transition-fast $transition-ease, border-color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &:active:not([aria-disabled='true']) { transform: scale(0.94); }
+
+  &[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-rc-rail__add:not([aria-disabled='true']):hover {
+    background: var(--background-modifier-active-hover) !important;
+    color: var(--text-accent);
+  }
+}
+
+.atlas-rc-prompt {
+  margin: 0;
+  min-height: 1.5em;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+  transition: color $transition-normal $transition-ease;
+}
+
+// Waiting for what a Spend rule spends: the line says so in the accent, the metrics breathe
+.atlas-rc-prompt--spending {
+  color: var(--text-accent);
+  font-weight: $font-weight-medium;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-rc-capsule,
+  .atlas-rc-rail__add { transition: none; }
+}

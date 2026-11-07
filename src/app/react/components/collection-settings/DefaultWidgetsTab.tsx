@@ -4,6 +4,7 @@
 
 import React from 'react';
 import type { FieldSuggestion } from '../../../resources/resourceFieldSuggestions';
+import type { NamedModifierStatblock } from '../../../initiative/modifierPreview';
 import type { InitiativeRules } from '../../../types/initiativeRulesTypes';
 import { InitiativeFields } from './InitiativeFields';
 import { t } from '../../../i18n';
@@ -15,6 +16,10 @@ interface DefaultWidgetsTabProps {
   onInitiativeChange: (initiative: InitiativeRules) => void;
   /** The statblock fields offered for the initiative modifier (`initiativeFieldSuggestions`). */
   initiativeFieldSuggestions: readonly FieldSuggestion[];
+  /** The collection's statblocks, for what the modifier's field reads in them. */
+  modifierStatblocks?: readonly NamedModifierStatblock[] | undefined;
+  /** A line above the initiative rules, such as that a played campaign's rules apply in their place. */
+  initiativeNotice?: React.ReactNode;
 }
 
 /** Available widget definitions for the MVP. */
@@ -37,6 +42,8 @@ export function DefaultWidgetsTab({
   initiative,
   onInitiativeChange,
   initiativeFieldSuggestions,
+  modifierStatblocks,
+  initiativeNotice,
 }: DefaultWidgetsTabProps): React.ReactElement {
   const toggle = (key: string): void => {
     onChange({ ...defaultWidgets, [key]: !defaultWidgets[key] });
@@ -45,7 +52,7 @@ export function DefaultWidgetsTab({
   return (
     <>
       <p className="atlas-csm-hint">
-        {t('uiSettings.defaultWidgetsTab_theseDefaultsApplyToNewMapsOfTheCollection')}
+        These defaults apply to new maps of the collection.
       </p>
       {WIDGET_OPTIONS.map((w) => (
         <div key={w.key} className="atlas-csm-toggle-row">
@@ -63,7 +70,8 @@ export function DefaultWidgetsTab({
           </label>
         </div>
       ))}
-      <InitiativeFields initiative={initiative} onChange={onInitiativeChange} fieldSuggestions={initiativeFieldSuggestions} />
+      {initiativeNotice}
+      <InitiativeFields initiative={initiative} onChange={onInitiativeChange} fieldSuggestions={initiativeFieldSuggestions} modifierStatblocks={modifierStatblocks} />
     </>
   );
 }

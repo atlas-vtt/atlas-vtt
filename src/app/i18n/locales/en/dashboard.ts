@@ -1,6 +1,9 @@
 import type { Message } from '../../types';
 
 export const dashboard = {
+  'dashboard.allCreatures': 'All ({count})',
+  'dashboard.inThisFight': 'In this fight ({count})',
+  'dashboard.statblockScope': 'Statblocks shown',
   'dashboard.linkNote': 'Link a note to this map',
   'dashboard.linkOther': 'Link a different note',
   'dashboard.loading': 'Loading statblocks...',

@@ -6,30 +6,35 @@ import type { CampaignService } from '../../../campaigns/CampaignService';
 import { viewOfRules } from '../../../gameSystems/rulesView';
 import { vanillaSystemSettings } from '../../../gameSystems/systemRules';
 import { resourceFieldSuggestions } from '../../../resources/resourceFieldSuggestions';
-import { initiativeFieldSuggestions } from '../../../initiative/initiativeFieldSuggestions';
+import { useModifierFieldOffer } from '../collection-settings/useModifierFieldOffer';
+import type { StatblockTemplate } from '../../../statblocks/model/templateTypes';
 import { AssetService } from '../../../services/AssetService';
-import { SettingsService } from '../../../services/SettingsService';
 import { deleteSystemPreset } from '../../../services/systemPresetDeletion';
 import type { SystemPreset } from '../../../types/systemPresetTypes';
 import { t } from '../../../i18n';
-import { RulesSettingsTabs, type SettingsTab } from '../collection-settings/RulesSettingsTabs';
+import { RULES_TABS, RulesSettingsTabs, type SettingsTab } from '../collection-settings/RulesSettingsTabs';
 import { SettingsDialog } from '../collection-settings/SettingsDialog';
 import { useCollectionCreatures } from '../collection-settings/useCollectionCreatures';
 import { useRulesDraft } from '../collection-settings/useRulesDraft';
-import { useExperimentalFeature } from '../../hooks/useExperimentalFeature';
 import { useSystemPresets } from '../../hooks/useSystemPresets';
 import { useDiceSets } from '../../hooks/useDiceSets';
 import { usePlayedCollections } from './usePlayedCollections';
 
-/** A campaign makes no scenes, so its system has no default widgets, and no creature filters or loot. */
-const SYSTEM_TABS: readonly SettingsTab[] = ['system', 'dice', 'grid', 'vision', 'conditions', 'resources', 'initiative'];
+/**
+ * Without a game system the dialog offers only the choice of one. A campaign makes no scenes, so with
+ * one it has the rules' tabs alone (`RULES_TABS`): no default widgets, creature filters or loot.
+ */
 const NO_SYSTEM_TABS: readonly SettingsTab[] = ['system'];
+/** A campaign names no statblock roles: its fields come from the statblocks of the collections it plays. */
+const NO_TEMPLATES: readonly StatblockTemplate[] = [];
 
 interface CampaignRulesDialogProps {
   app: App;
   campaign: Campaign;
   service: CampaignService;
   onClose: () => void;
+  /** The tab it opens on, where the campaign's system has it; Game System otherwise. */
+  initialTab?: SettingsTab;
 }
 
 /**
@@ -37,17 +42,17 @@ interface CampaignRulesDialogProps {
  * edited or not, or no game system, which leaves every map to its collection's rules. Saved as a
  * whole; the campaign's file keeps what a newer Atlas added.
  */
-export function CampaignRulesDialog({ app, campaign, service, onClose }: CampaignRulesDialogProps): React.ReactElement {
+export function CampaignRulesDialog({ app, campaign, service, onClose, initialTab = 'system' }: CampaignRulesDialogProps): React.ReactElement {
   const systemPresets = useSystemPresets(app);
   const diceSets = useDiceSets(app);
-  const lightingOn = useExperimentalFeature('dynamicLighting', SettingsService.forApp(app));
   const draft = useRulesDraft();
   const [hasSystem, setHasSystem] = useState(campaign.system !== undefined);
-  const [activeTab, setActiveTab] = useState<SettingsTab>('system');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(RULES_TABS.includes(initialTab) ? initialTab : 'system');
   const offersFields = activeTab === 'resources' || activeTab === 'initiative';
   const collections = usePlayedCollections(app, campaign, offersFields);
   const creatures = useCollectionCreatures(app, AssetService.getInstance(app), collections, offersFields);
   const statblockRecords = creatures.creatures.map((creature) => creature.fields);
+  const modifierFields = useModifierFieldOffer(app, NO_TEMPLATES, creatures.creatures, offersFields);
 
   // Read once, as the dialog opens: a save made elsewhere meanwhile does not take the GM's edits away.
   const opened = useRef({ system: campaign.system, presets: systemPresets.presets });
@@ -92,9 +97,10 @@ export function CampaignRulesDialog({ app, campaign, service, onClose }: Campaig
       canSave={canSave}
       onSave={save}
       onClose={onClose}
+      size="fullscreen"
     >
       <RulesSettingsTabs
-        tabs={hasSystem ? SYSTEM_TABS : NO_SYSTEM_TABS}
+        tabs={hasSystem ? RULES_TABS : NO_SYSTEM_TABS}
         activeTab={hasSystem ? activeTab : 'system'}
         onTabChange={setActiveTab}
         draft={{ ...draft, applyPreset }}
@@ -103,9 +109,9 @@ export function CampaignRulesDialog({ app, campaign, service, onClose }: Campaig
         diceSets={diceSets}
         onDeletePreset={deletePreset}
         none={{ summary: t('campaign.systemNoneSummary'), isActive: !hasSystem, onSelect: () => setHasSystem(false) }}
-        lightingOn={lightingOn}
         fieldSuggestions={resourceFieldSuggestions([], statblockRecords)}
-        initiativeFieldSuggestions={initiativeFieldSuggestions([], statblockRecords)}
+        initiativeFieldSuggestions={modifierFields.suggestions}
+        modifierStatblocks={modifierFields.statblocks}
       />
     </SettingsDialog>
   );

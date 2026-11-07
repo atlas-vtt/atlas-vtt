@@ -1,22 +1,11 @@
-import { uiMessages } from './uiMessages';
-import { uiTemplateDetails } from './uiTemplateDetails';
-import { uiStatblockDetails } from './uiStatblockDetails';
-import { uiSettingsDetails } from './uiSettingsDetails';
-import { uiOnlineDetails } from './uiOnlineDetails';
-import { uiGeneralDetails } from './uiGeneralDetails';
-import { uiTemplateEditor } from './uiTemplateEditor';
-import { uiStatblocks } from './uiStatblocks';
-import { uiSettings } from './uiSettings';
-import { uiToolbar } from './uiToolbar';
-import { uiAssets } from './uiAssets';
-import { uiOnline } from './uiOnline';
-import { uiLighting } from './uiLighting';
-import { uiGeneral } from './uiGeneral';
 import type { Translation } from '../../types';
 import { align } from './align';
-import { atlasLinks } from './atlasLinks';
 import { am } from './am';
+import { atlasLinks } from './atlasLinks';
+import { audio } from './audio';
 import { bundle } from './bundle';
+import { campaign } from './campaign';
+import { changelog } from './changelog';
 import { cleanup } from './cleanup';
 import { clock } from './clock';
 import { color } from './color';
@@ -28,98 +17,100 @@ import { count } from './count';
 import { counter } from './counter';
 import { cover } from './cover';
 import { creator } from './creator';
+import { creatureFilter } from './creatureFilter';
 import { csm } from './csm';
-import { campaign } from './campaign';
-import { quest } from './quest';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
 import { diceLab } from './diceLab';
+import { diceRoll } from './diceRoll';
+import { diceSettings } from './diceSettings';
+import { drawing } from './drawing';
+import { dungeon } from './dungeon';
+import { dungeonProp } from './dungeonProp';
+import { dungeonScene } from './dungeonScene';
+import { editToken } from './editToken';
+import { encounter } from './encounter';
 import { exportDialog } from './exportDialog';
+import { filters } from './filters';
+import { glass } from './glass';
+import { graphics } from './graphics';
 import { grid } from './grid';
 import { gridModal } from './gridModal';
+import { hex } from './hex';
 import { history } from './history';
+import { hotkey } from './hotkey';
+import { image } from './image';
 import { importReview } from './importReview';
 import { initiative } from './initiative';
+import { issue } from './issue';
+import { laser } from './laser';
+import { levels } from './levels';
+import { light } from './light';
+import { link } from './link';
 import { loot } from './loot';
-import { tables } from './tables';
 import { lpv } from './lpv';
 import { map } from './map';
+import { mapFeature } from './mapFeature';
+import { mapIcon } from './mapIcon';
+import { mapPreview } from './mapPreview';
 import { menu } from './menu';
+import { migration } from './migration';
+import { names } from './names';
 import { notice } from './notice';
+import { online } from './online';
 import { palette } from './palette';
 import { picker } from './picker';
-import { settings } from './settings';
-import { snapshots } from './snapshots';
-import { statblock } from './statblock';
-import { switcher } from './switcher';
-import { tabs } from './tabs';
-import { timer } from './timer';
-import { tokens } from './tokens';
-import { transfer } from './transfer';
-import { view } from './view';
-import { widgets } from './widgets';
-import { sbImport } from './sbImport';
-import { vaultImages } from './vaultImages';
-import { filters } from './filters';
-import { search } from './search';
-import { sort } from './sort';
-import { toolbar } from './toolbar';
-import { hotkey } from './hotkey';
 import { pin } from './pin';
-import { laser } from './laser';
-import { text } from './text';
-import { audio } from './audio';
-import { drawing } from './drawing';
-import { editToken } from './editToken';
-import { hex } from './hex';
-import { light } from './light';
-import { mapIcon } from './mapIcon';
 import { pinMenu } from './pinMenu';
-import { resource } from './resource';
-import { token } from './token';
-import { image } from './image';
-import { link } from './link';
-import { mapPreview } from './mapPreview';
-import { names } from './names';
 import { player } from './player';
 import { playerInit } from './playerInit';
 import { present } from './present';
 import { preview } from './preview';
+import { quest } from './quest';
 import { recovery } from './recovery';
+import { recoveryEditor } from './recoveryEditor';
+import { resource } from './resource';
+import { rest } from './rest';
 import { review } from './review';
 import { sbCandidate } from './sbCandidate';
+import { sbImport } from './sbImport';
 import { sbToken } from './sbToken';
-import { validation } from './validation';
-import { issue } from './issue';
-import { changelog } from './changelog';
-import { tour } from './tour';
-import { creatureFilter } from './creatureFilter';
-import { encounter } from './encounter';
-import { migration } from './migration';
-import { wall } from './wall';
 import { sceneLight } from './sceneLight';
+import { search } from './search';
+import { senses } from './senses';
+import { settings } from './settings';
+import { snapshots } from './snapshots';
+import { sort } from './sort';
+import { statblock } from './statblock';
+import { statblockEditor } from './statblockEditor';
+import { switcher } from './switcher';
+import { tableTv } from './tableTv';
+import { tables } from './tables';
+import { tabs } from './tabs';
+import { templateEditor } from './templateEditor';
+import { text } from './text';
+import { timer } from './timer';
+import { token } from './token';
+import { tokens } from './tokens';
+import { toolbar } from './toolbar';
+import { toolbarEdit } from './toolbarEdit';
+import { tour } from './tour';
+import { transfer } from './transfer';
+import { validation } from './validation';
+import { vaultImages } from './vaultImages';
+import { view } from './view';
 import { vision } from './vision';
+import { wall } from './wall';
+import { widgets } from './widgets';
 
-/** Italian interface text, including the in-app tutorials. */
 export const it = {
-  ...uiMessages,
-  ...uiTemplateDetails,
-  ...uiStatblockDetails,
-  ...uiSettingsDetails,
-  ...uiOnlineDetails,
-  ...uiGeneralDetails,
-  ...uiTemplateEditor,
-  ...uiStatblocks,
-  ...uiSettings,
-  ...uiToolbar,
-  ...uiAssets,
-  ...uiOnline,
-  ...uiLighting,
-  ...uiGeneral,
   ...align,
-  ...atlasLinks,
   ...am,
+  ...atlasLinks,
+  ...audio,
   ...bundle,
+  ...campaign,
+  ...changelog,
   ...cleanup,
   ...clock,
   ...color,
@@ -131,77 +122,89 @@ export const it = {
   ...counter,
   ...cover,
   ...creator,
+  ...creatureFilter,
   ...csm,
-  ...campaign,
-  ...quest,
   ...dashboard,
   ...dice,
   ...diceLab,
+  ...diceRoll,
+  ...diceSettings,
+  ...drawing,
+  ...dungeon,
+  ...dungeonProp,
+  ...dungeonScene,
+  ...editToken,
+  ...encounter,
   ...exportDialog,
+  ...filters,
+  ...glass,
+  ...graphics,
   ...grid,
   ...gridModal,
+  ...hex,
   ...history,
+  ...hotkey,
+  ...image,
   ...importReview,
   ...initiative,
+  ...issue,
+  ...laser,
+  ...levels,
+  ...light,
+  ...link,
   ...loot,
-  ...tables,
   ...lpv,
   ...map,
+  ...mapFeature,
+  ...mapIcon,
+  ...mapPreview,
   ...menu,
+  ...migration,
+  ...names,
   ...notice,
+  ...online,
   ...palette,
   ...picker,
-  ...settings,
-  ...snapshots,
-  ...statblock,
-  ...switcher,
-  ...tabs,
-  ...timer,
-  ...tokens,
-  ...transfer,
-  ...view,
-  ...widgets,
-  ...sbImport,
-  ...vaultImages,
-  ...filters,
-  ...search,
-  ...sort,
-  ...toolbar,
-  ...hotkey,
   ...pin,
-  ...laser,
-  ...text,
-  ...audio,
-  ...drawing,
-  ...editToken,
-  ...hex,
-  ...light,
-  ...mapIcon,
   ...pinMenu,
-  ...resource,
-  ...token,
-  ...image,
-  'index.unreadable': 'Atlas VTT non ha potuto leggere l’indice delle risorse ({path}) e lo ha lasciato invariato. Riavvia Obsidian per riprovare.',
-  'index.rebuilding': 'Atlas VTT non ha potuto leggere l’indice delle risorse e lo sta ricostruendo dai file delle collezioni. Il file illeggibile è stato conservato in {path}.',
-  ...link,
-  ...mapPreview,
-  ...names,
   ...player,
   ...playerInit,
   ...present,
   ...preview,
+  ...quest,
   ...recovery,
+  ...recoveryEditor,
+  ...resource,
+  ...rest,
   ...review,
   ...sbCandidate,
+  ...sbImport,
   ...sbToken,
-  ...validation,
-  ...issue,
-  ...changelog,
-  ...tour,
-  ...creatureFilter,
-  ...encounter,
-  ...migration,
-  ...wall,
   ...sceneLight,
+  ...search,
+  ...senses,
+  ...settings,
+  ...snapshots,
+  ...sort,
+  ...statblock,
+  ...statblockEditor,
+  ...switcher,
+  ...tableTv,
+  ...tables,
+  ...tabs,
+  ...templateEditor,
+  ...text,
+  ...timer,
+  ...token,
+  ...tokens,
+  ...toolbar,
+  ...toolbarEdit,
+  ...tour,
+  ...transfer,
+  ...validation,
+  ...vaultImages,
+  ...view,
   ...vision,
-} as const satisfies Translation;
+  ...wall,
+  ...widgets,
+} satisfies Translation;

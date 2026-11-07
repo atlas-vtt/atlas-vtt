@@ -17,6 +17,7 @@ import {
 } from './fsBlockParts';
 import { replacedIntegration } from './fsIntegrations';
 import { LEAF_BLOCKS } from './fsLeafBlocks';
+import { t } from '../../i18n';
 
 /** Deeper FS blocks are left out: wrappers can add levels, and a template keeps 32. */
 const MAX_DEPTH = 14;
@@ -123,10 +124,10 @@ const included: Leaf = (record, ctx, at) => {
   const ref = textOf(record, 'layout')?.trim();
   if (!ref) return dropped('A block that includes another layout names none, so it was left out.');
   const found: unknown = ctx.resolveLayout?.(ref) ?? null;
-  if (!isRecord(found)) return dropped(`The included layout ${describeValue(ref)} was not found, so its blocks were left out.`);
+  if (!isRecord(found)) return dropped(t('statblockEditor.fs.includeMissing', { name: describeValue(ref) }));
   const names = [ref, textOf(found, 'id'), textOf(found, 'name')].filter((name): name is string => name !== undefined);
   const shown = describeValue(textOf(found, 'name') ?? ref);
-  if (names.some((name) => ctx.including.includes(name))) return dropped(`The layout ${shown} includes itself, so the repeat was left out.`);
+  if (names.some((name) => ctx.including.includes(name))) return dropped(t('statblockEditor.fs.includesItself', { name: shown }));
   ctx.including.push(...names);
   const id = ctx.nextId();
   const blocks = convertBlocks(own(found, 'blocks'), ctx, { depth: at.depth + 1, parent: 'section' });
@@ -139,7 +140,7 @@ const OTHER_BLOCKS: ReadonlyMap<string, Leaf> = new Map(Object.entries({
 }));
 
 function convertByType(record: FsRecord, type: string, ctx: ImportContext, at: Place): Converted {
-  if (at.depth > MAX_DEPTH) return dropped(`Blocks nested more than ${MAX_DEPTH} deep were left out.`);
+  if (at.depth > MAX_DEPTH) return dropped(t('statblockEditor.fs.tooDeep', { depth: MAX_DEPTH }));
   const convert = LEAF_BLOCKS.get(type) ?? OTHER_BLOCKS.get(type);
   if (convert) return convert(record, ctx, at);
   return dropped(type ? `A block of the type ${describeValue(type)} was left out: Atlas does not know it.` : 'A block without a type was left out.');
@@ -147,13 +148,13 @@ function convertByType(record: FsRecord, type: string, ctx: ImportContext, at: P
 
 function convertOne(raw: unknown, ctx: ImportContext, at: Place): TemplateBlock[] {
   if (!isRecord(raw)) {
-    ctx.tally.record('dropped', false, 'Something in the layout that is not a block was left out.');
+    ctx.tally.record('dropped', false, t('statblockEditor.fs.notABlock'));
     return [];
   }
   const type = textOf(raw, 'type') ?? '';
   const code = carriesCode(raw, type);
   if (ctx.budget <= 0) {
-    ctx.tally.record('dropped', code, 'The layout is too large, so its last blocks were left out.');
+    ctx.tally.record('dropped', code, t('statblockEditor.fs.tooLarge'));
     return [];
   }
   ctx.budget -= 1;

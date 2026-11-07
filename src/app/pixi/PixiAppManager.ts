@@ -3,12 +3,10 @@ import { Viewport } from "pixi-viewport";
 import { SmoothDecelerate } from "./SmoothDecelerate";
 import { RenderScheduler } from "./RenderScheduler";
 import { destroyTree } from "./utils/destroyTree";
-import { usesCanvasRenderer } from "./utils/rendererType";
-import { webglAvailable } from "./utils/webglAvailable";
-import { showSoftwareRenderingNotice } from "./softwareRenderingNotice";
+import { addRendererSystemsByEntry } from "./utils/rendererSystems";
+import { showNoGraphicsNotice } from './noGraphicsNotice';
 import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
 
-type RendererPreference = 'webgl' | 'canvas';
 
 export class PixiAppManager {
   private _isDestroyed: boolean = false;
@@ -21,17 +19,11 @@ export class PixiAppManager {
   private _canvasContextMenuPreventer: ((e: Event) => void) | null = null;
   public onRecoverCallback?: () => void;
 
-  /**
-   * `throughBackBuffer`: WebGL draws through a multisampled back buffer and the canvas gets no
-   * samples. For a view that will light its scenes: dynamic lighting needs the back buffer anyway
-   * and from resolution 2 draws it plain (`BackBufferHold`), so samples on the canvas were 190 to
-   * 250 MB of graphics memory nothing drew into. Unlit, the back buffer costs about 80 MB more
-   * than samples on the canvas, so a view without dynamic lighting keeps those.
-   */
-  constructor(initialWidth: number, initialHeight: number, private readonly throughBackBuffer = false) {
+  constructor(initialWidth: number, initialHeight: number) {
     this.width = initialWidth;
     this.height = initialHeight;
     this.canvasEl = createEl('canvas');
+    addRendererSystemsByEntry();
     this.app = new Application();
   }
 
@@ -42,7 +34,6 @@ export class PixiAppManager {
     }
     try {
       await this.initRenderer();
-      if (usesCanvasRenderer(this.app.renderer)) showSoftwareRenderingNotice();
 
       this.app.stage.eventMode = 'static'; // Or 'passive'. 'static' means it can be an event target.
       this.app.stage.interactiveChildren = true;
@@ -101,42 +92,41 @@ export class PixiAppManager {
   }
 
   /**
-   * Atlas ships GLSL shaders only; without WebGL it draws with Canvas 2D instead of WebGPU.
-   * PIXI picks Canvas 2D by itself only when WebGL is missing at its first check, whose answer
-   * it keeps, so Atlas asks again before every start (`webglAvailable`) and goes straight to
-   * Canvas 2D when WebGL is gone: PIXI never builds a WebGL renderer that cannot start.
-   *
-   * Should WebGL fail to start all the same, Canvas 2D gets one try of its own, on a new
-   * canvas, since one that was asked for WebGL may never give a 2D context. PIXI keeps no
-   * reference to the renderer whose start threw, so that one cannot be destroyed: its
-   * scheduler stays on PIXI's system ticker, with nothing to do.
+   * Atlas draws with WebGL alone: its grid, lights, lasers and liquids are GLSL programs, and a
+   * machine without WebGL (a blocklisted driver, some virtual machines) is not one it runs on.
+   * When WebGL cannot start the user is told what to turn on, and the view is left without a map.
    */
   private async initRenderer(): Promise<void> {
-    if (!webglAvailable()) {
-      await this.app.init(this.rendererOptions(['canvas']));
-      return;
-    }
     try {
-      await this.app.init(this.rendererOptions(['webgl', 'canvas']));
+      await this.app.init(this.rendererOptions());
     } catch (error) {
-      console.error('[PixiAppManager] WebGL could not start, drawing with Canvas 2D instead:', error);
-      this.canvasEl = createEl('canvas');
-      await this.app.init(this.rendererOptions(['canvas']));
+      showNoGraphicsNotice();
+      throw error;
     }
   }
 
-  private rendererOptions(preference: RendererPreference[]): Partial<ApplicationOptions> {
+  private rendererOptions(): Partial<ApplicationOptions> {
     return {
-      preference,
+      preference: 'webgl',
       canvas: this.canvasEl,
       width: this.width,
       height: this.height,
       backgroundColor: 0xf4e8d0, // Default parchment color
       backgroundAlpha: 1,
       antialias: true,
-      useBackBuffer: this.throughBackBuffer,
+      // WebGL draws through a multisampled back buffer and the canvas gets no samples: dynamic
+      // lighting needs the back buffer anyway and from resolution 2 draws it plain
+      // (`BackBufferHold`), so samples on the canvas were 190 to 250 MB of graphics memory nothing
+      // drew into. A scene that is not lit pays about 80 MB more than samples on the canvas would.
+      useBackBuffer: true,
       autoDensity: true,
       resolution: window.devicePixelRatio || 1,
+      // Asks for the faster of two graphics chips, as Foundry and Owlbear Rodeo do; Chromium on
+      // Windows keeps the chip its GPU process started on whatever this says.
+      powerPreference: 'high-performance',
+      // The map has no accessible display objects; since PIXI 8.22 Tab would otherwise
+      // switch on its accessibility layer, which walks the whole stage after every render.
+      accessibilityOptions: { activateOnTab: false },
     };
   }
 

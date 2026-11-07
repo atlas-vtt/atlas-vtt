@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Setting } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { AccountControl } from '../../../../src/app/online/gm/account/AccountControl.ts';
@@ -12,6 +13,10 @@ describe('online play\'s settings data', () => {
     expect(readSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(readSettings({ reportErrors: 'yes' })).toEqual(DEFAULT_SETTINGS);
     expect(readSettings({ reportErrors: true })).toEqual({ reportErrors: true });
+  });
+
+  it('reads nothing of the switch that once deleted the players\' copies on sign-out', () => {
+    expect(readSettings({ deleteCopiesOnSignOut: true, reportErrors: true })).toEqual({ reportErrors: true });
   });
 
   it('keeps nothing of a key that made tables without an account', () => {
@@ -90,4 +95,5 @@ describe('online play\'s settings', () => {
     expect(buttonsOf(row)).toEqual(['Sign out', 'Open account page']);
     expect(of.requests.map((request) => request.url)).toEqual(['https://play.atlas-vtt.dev/api/me']);
   });
+
 });

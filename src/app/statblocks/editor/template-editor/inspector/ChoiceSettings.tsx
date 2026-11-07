@@ -1,10 +1,10 @@
-import { t } from '../../../../i18n';
 import React from 'react';
 import type { FieldChanges } from '../../../model/fieldOps';
 import type { TemplateField } from '../../../model/templateTypes';
 import type { EditorSession } from '../sessionTypes';
 import { listFromText, sameList, textFromList } from './blockEdits';
 import { SettingNote, SwitchSetting, TextSetting } from './InspectorControls';
+import { t } from '../../../../i18n';
 
 /** Where the inspector focuses the choices when a block asks for them (the toolbar's Kind of value). */
 export const CHOICES_FOCUS_KEY = 'choices';
@@ -33,9 +33,9 @@ export function ChoiceSettings({ field, session, readOnly, edit }: ChoiceSetting
   return (
     <>
       <TextSetting
-        label={t('uiTemplateEditor.choiceSettings_choices')}
+        label={t('templateEditor.choices')}
         value={textFromList(field.options)}
-        placeholder={t('uiTemplateEditor.choiceSettings_smallMediumLarge')}
+        placeholder={t('templateEditor.choicesExample')}
         session={session}
         disabled={readOnly}
         focusKey={CHOICES_FOCUS_KEY}
@@ -44,14 +44,14 @@ export function ChoiceSettings({ field, session, readOnly, edit }: ChoiceSetting
           if (!sameList(options, field.options)) edit({ options: options.length > 0 ? options : undefined });
         }}
       />
-      <SwitchSetting label={t('uiTemplateEditor.choiceSettings_pickSeveral')} value={field.several === true} onChange={(several) => edit({ several: several || undefined })} disabled={readOnly} />
-      <SwitchSetting label={t('uiTemplateEditor.choiceSettings_eachWithANumber')} value={field.numbered === true} onChange={(numbered) => edit({ numbered: numbered || undefined })} disabled={readOnly} />
+      <SwitchSetting label={t('templateEditor.pickSeveral')} value={field.several === true} onChange={(several) => edit({ several: several || undefined })} disabled={readOnly} />
+      <SwitchSetting label={t('templateEditor.eachWithNumber')} value={field.numbered === true} onChange={(numbered) => edit({ numbered: numbered || undefined })} disabled={readOnly} />
       {field.numbered && (
-        <TextSetting label={t('uiTemplateEditor.choiceSettings_unit')} value={field.unit ?? ''} placeholder="ft." session={session} disabled={readOnly}
+        <TextSetting label={t('templateEditor.unit')} value={field.unit ?? ''} placeholder={t('templateEditor.unitExample')} session={session} disabled={readOnly}
           onText={(text) => edit({ unit: text.trim() ? text : undefined })} />
       )}
-      <SwitchSetting label={t('uiTemplateEditor.choiceSettings_allowOtherValues')} value={field.open === true} onChange={(open) => edit({ open: open || undefined })} disabled={readOnly} />
-      {(field.options?.length ?? 0) > 0 && <SettingNote>{t('uiMessages.choiceExample', { example: choiceExample(field) })}</SettingNote>}
+      <SwitchSetting label={t('templateEditor.allowOther')} value={field.open === true} onChange={(open) => edit({ open: open || undefined })} disabled={readOnly} />
+      {(field.options?.length ?? 0) > 0 && <SettingNote>{t('templateEditor.choiceReads', { example: choiceExample(field) })}</SettingNote>}
     </>
   );
 }

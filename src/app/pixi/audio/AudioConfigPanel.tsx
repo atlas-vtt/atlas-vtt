@@ -13,6 +13,8 @@ import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { unitLabelFor } from '../../grid/measurementFormat';
 import { t } from '../../i18n';
+import { levelObjects } from '../../levels/levelObjects';
+import { portalHost } from '../../host/portalHost';
 
 /** Convert game units (feet/meters) to world pixels. */
 function unitsToPixels(units: number, gridSize: number, unitDistance: number): number {
@@ -169,7 +171,7 @@ function AudioConfigPanelInner({
         <div className="atlas-audio-config__section-label">{t('audio.range')}</div>
         <div className="atlas-audio-config__field">
           <label className="atlas-audio-config__label">
-            {t('uiGeneral.audioConfigPanel_innerRadius')}{unitLabel ? ` (${unitLabel})` : ''}
+            Inner Radius{unitLabel ? ` (${unitLabel})` : ''}
           </label>
           <div className="atlas-audio-config__slider-row">
             <input
@@ -193,7 +195,7 @@ function AudioConfigPanelInner({
 
         <div className="atlas-audio-config__field">
           <label className="atlas-audio-config__label">
-            {t('uiGeneral.audioConfigPanel_outerRadius')}{unitLabel ? ` (${unitLabel})` : ''}
+            Outer Radius{unitLabel ? ` (${unitLabel})` : ''}
           </label>
           <div className="atlas-audio-config__slider-row">
             <input
@@ -227,7 +229,7 @@ function AudioConfigPanelInner({
 
         {/* Delete */}
         <button className="atlas-audio-config__delete-btn" onClick={handleDelete}>
-          {t('uiGeneral.audioConfigPanel_deleteSoundSource')}
+          Delete Sound Source
         </button>
       </div>
     </div>
@@ -245,10 +247,10 @@ export function openAudioConfigPanel(
   screenX?: number,
   screenY?: number,
 ): void {
-  const audio = store.getState().objects.audios[audioId];
+  const audio = levelObjects(store.getState()).audios[audioId];
   if (!audio) return;
 
-  const container = document.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
+  const container = portalHost().createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
 
   const root = createRoot(container);
 

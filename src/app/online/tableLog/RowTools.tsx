@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import { LOG_REACTIONS, type LogReactionEmoji } from '../protocol/index.ts';
 import { Pencil, Plus, Reply, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type MouseEvent, type ReactElement, type ReactNode, type Ref } from 'react';
@@ -11,12 +10,12 @@ import type { RowApi } from './panelTypes.ts';
 const QUICK_REACTIONS = 3;
 
 const REACTION_NAMES: Readonly<Record<LogReactionEmoji, { readonly give: string; readonly take: string }>> = {
-  '👍': { give: t('uiOnlineDetails.rowTools_thumbsUp'), take: t('uiOnlineDetails.rowTools_removeThumbsUp') },
-  '❤️': { give: t('uiOnlineDetails.rowTools_heart'), take: t('uiOnlineDetails.rowTools_removeHeart') },
-  '😂': { give: t('uiOnlineDetails.rowTools_laugh'), take: t('uiOnlineDetails.rowTools_removeLaugh') },
-  '😮': { give: t('uiMessages.wow'), take: t('uiOnlineDetails.rowTools_removeWow') },
-  '😢': { give: t('uiMessages.sad'), take: t('uiOnlineDetails.rowTools_removeSad') },
-  '👎': { give: t('uiOnlineDetails.rowTools_thumbsDown'), take: t('uiOnlineDetails.rowTools_removeThumbsDown') },
+  '👍': { give: 'Thumbs up', take: 'Remove thumbs up' },
+  '❤️': { give: 'Heart', take: 'Remove heart' },
+  '😂': { give: 'Laugh', take: 'Remove laugh' },
+  '😮': { give: 'Wow', take: 'Remove wow' },
+  '😢': { give: 'Sad', take: 'Remove sad' },
+  '👎': { give: 'Thumbs down', take: 'Remove thumbs down' },
 };
 
 interface ToolProps {
@@ -98,21 +97,21 @@ export function RowTools({ id, reactions, canEdit, canDelete, asking, api }: Row
             <div className={classes('atlas-online-log__tools-more', more && 'is-open')} inert={!more}>
               <div className="atlas-online-log__tools-inner">{LOG_REACTIONS.slice(QUICK_REACTIONS).map(reaction)}</div>
             </div>
-            <Tool label={more ? t('uiOnlineDetails.rowTools_fewerReactions') : t('uiOnlineDetails.rowTools_moreReactions')} className={classes('atlas-online-log__tool--more', more && 'is-open')} expanded={more} onClick={() => setMore(!more)}>
+            <Tool label={more ? 'Fewer reactions' : 'More reactions'} className={classes('atlas-online-log__tool--more', more && 'is-open')} expanded={more} onClick={() => setMore(!more)}>
               <Plus />
             </Tool>
             <span className="atlas-online-log__tools-divider" aria-hidden="true" />
-            <Tool label={t('uiOnline.rowTools_reply')} onClick={() => api.reply(id)}><Reply /></Tool>
-            {canEdit && <Tool label={t('uiOnline.rowTools_edit')} onClick={() => api.edit(id)}><Pencil /></Tool>}
-            {canDelete && <Tool label={t('uiOnline.rowTools_delete')} className="atlas-online-log__tool--danger" buttonRef={remove} onClick={onDelete}><Trash2 /></Tool>}
+            <Tool label="Reply" onClick={() => api.reply(id)}><Reply /></Tool>
+            {canEdit && <Tool label="Edit" onClick={() => api.edit(id)}><Pencil /></Tool>}
+            {canDelete && <Tool label="Delete" className="atlas-online-log__tool--danger" buttonRef={remove} onClick={onDelete}><Trash2 /></Tool>}
           </div>
         </div>
         {canDelete && (
           <div className={classes('atlas-online-log__tools-layer', !asking && 'is-out')} inert={!asking}>
             <div className="atlas-online-log__tools-inner">
-              <span className="atlas-online-log__tools-question">{t('uiOnline.rowTools_deleteThisMessage')}</span>
-              <button type="button" className="atlas-online-log__tool atlas-online-log__tool--text atlas-online-log__tool--danger" onClick={() => api.remove(id)}>{t('uiOnline.rowTools_delete')}</button>
-              <button ref={keep} type="button" className="atlas-online-log__tool atlas-online-log__tool--text" onClick={() => api.askDelete(null)}>{t('uiOnline.rowTools_keep')}</button>
+              <span className="atlas-online-log__tools-question">Delete this message?</span>
+              <button type="button" className="atlas-online-log__tool atlas-online-log__tool--text atlas-online-log__tool--danger" onClick={() => api.remove(id)}>Delete</button>
+              <button ref={keep} type="button" className="atlas-online-log__tool atlas-online-log__tool--text" onClick={() => api.askDelete(null)}>Keep</button>
             </div>
           </div>
         )}

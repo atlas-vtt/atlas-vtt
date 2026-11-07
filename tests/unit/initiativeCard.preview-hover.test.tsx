@@ -1,10 +1,12 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Platform } from 'obsidian';
 import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 
-vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
+vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
+  AtlasUIContext: (await import('react')).createContext(null),
   useAtlasUI: () => ({
     app: null,
     view: null,
@@ -12,6 +14,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
 }));
 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
+  useViewStoreHook: () => ({ getState: () => ({}) }),
   useAtlasStore: (selector: (state: any) => unknown) => selector({
     objects: { tokens: {} },
     tokenSettings: { showInstanceBadges: true },
@@ -112,13 +115,11 @@ describe('InitiativeCard statblock preview hover behavior', () => {
     expect(onHover).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps working when the modifier key is tracked globally but not reflected on the mouse event', () => {
+  it('believes a pointer event over the keys: a Mod release nobody heard opens no preview (#501)', () => {
     const onHover = vi.fn();
-    const entry = createEntry();
-
     const { getByRole } = render(
       <InitiativeCard
-        entry={entry}
+        entry={createEntry()}
         index={0}
         isHoveredForPreview={false}
         onDragStart={vi.fn()}
@@ -128,13 +129,36 @@ describe('InitiativeCard statblock preview hover behavior', () => {
         onHover={onHover}
       />,
     );
+    // Mod went down over the map, and came up where nothing passed the release on
+    fireEvent.keyDown(window, { key: 'Meta', metaKey: true });
 
+    fireEvent.mouseEnter(getByRole('listitem'));
+    fireEvent.mouseMove(getByRole('listitem'));
+
+    expect(onHover).not.toHaveBeenCalled();
+  });
+
+  it('ends the preview when the pointer leaves the card without Mod, and keeps it when Mod is held', () => {
+    const onHover = vi.fn();
+    const { getByRole } = render(
+      <InitiativeCard
+        entry={createEntry()}
+        index={0}
+        isHoveredForPreview={true}
+        onDragStart={vi.fn()}
+        onDragOver={vi.fn()}
+        onDragEnd={vi.fn()}
+        onContextMenu={vi.fn()}
+        onHover={onHover}
+      />,
+    );
     const card = getByRole('listitem');
 
-    fireEvent.keyDown(window, { key: 'Meta', metaKey: true });
-    fireEvent.mouseMove(card);
+    fireEvent.mouseLeave(card, { metaKey: true });
+    expect(onHover).not.toHaveBeenCalled();
 
-    expect(onHover).toHaveBeenCalledTimes(1);
+    fireEvent.mouseLeave(card);
+    expect(onHover).toHaveBeenCalledWith(null);
   });
 
   it('ignores Ctrl on macOS, where Ctrl+click is a right click', () => {

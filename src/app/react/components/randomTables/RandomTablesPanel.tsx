@@ -27,11 +27,13 @@ import { openTemplateEditor } from '../../../statblocks/editor/openTemplateEdito
 import { useRandomTables } from './useRandomTables';
 import { librarySources, selectedSource } from './tableSelection';
 import { TablesSidebar } from './TablesSidebar';
+import { tableName } from './tableFacts';
 import { TableSummary } from './TableSummary';
 import { TablesSkeleton } from './TablesSkeleton';
 import { useSourceRoll } from './useSourceRoll';
+import { useGeneratorCards } from './useGeneratorCards';
 import { openLink, openNote } from './openNote';
-import { setTableNoRepeats } from './tableSettingsWrite';
+import { removeLootBase, removeTableSource, setTableLabel, setTableNoRepeats } from './tableSettingsWrite';
 import { PasteTableDialog, type PastedTableNote } from './PasteTableDialog';
 import { saveImportedTables, type ImportedTableNote, type ImportSaveJournal } from '../../../randomTables/import/saveImportedTables';
 import { tableSourceId } from '../../../randomTables/tableLookup';
@@ -92,6 +94,7 @@ function RandomTablesPanel(): React.ReactElement {
   const excludedRarities = useMemo(() => new Set(state.excludedRarities), [state.excludedRarities]);
   const source = selectedSource(library, state.selected);
   const sourceRoll = useSourceRoll(source, library, { disabledViews, excludedRarities }, state.count);
+  const generatorCards = useGeneratorCards(app, collectionId, library);
 
   const roll = (): void => {
     if (!collectionId) return;
@@ -114,6 +117,7 @@ function RandomTablesPanel(): React.ReactElement {
   const openImporter = (): void => {
     setImportCollection(collectionId);
   };
+  const openNoteTables = (): void => setSettingsOpen(true);
 
   const savePasted = async (note: PastedTableNote, journal: ImportSaveJournal): Promise<void> => {
     if (!importCollection) throw new Error('No destination collection');
@@ -172,7 +176,7 @@ function RandomTablesPanel(): React.ReactElement {
           inCollection={collectionId !== null}
           basesOff={basesOff && hasSources}
           onNewTable={openImporter}
-          onUseNote={() => setSettingsOpen(true)}
+          onUseNote={openNoteTables}
         />
       ) : (
         <div className="atlas-loot-roller__body">
@@ -185,6 +189,16 @@ function RandomTablesPanel(): React.ReactElement {
               disabledViews={disabledViews}
               onDisabledViewsChange={(views) => update({ disabledViews: views })}
               onNewTable={openImporter}
+              onUseNote={openNoteTables}
+              onRename={(found, name) => {
+                if (collectionId) setTableLabel(app, collectionId, found, name);
+              }}
+              onRemove={(removed) => {
+                if (!collectionId) return;
+                if ('source' in removed) removeTableSource(app, collectionId, removed.source, tableName(removed));
+                else removeLootBase(app, collectionId, removed.path, removed.name);
+              }}
+              onOpen={(path, name) => openNote(app, path, name)}
             />
           </aside>
           <div className="atlas-loot-roller__main">
@@ -222,9 +236,14 @@ function RandomTablesPanel(): React.ReactElement {
             />
             <div className="atlas-loot-list">
               {state.pane === 'results' ? (
-                <LootResults roll={state.lastRoll} fresh={state.lastRoll?.id === freshRollId} {...cardHandlers} />
+                <LootResults roll={state.lastRoll} fresh={state.lastRoll?.id === freshRollId} {...cardHandlers} generator={generatorCards.latest} />
               ) : (
-                <LootHistory rolls={history} onRemove={(rollId) => LootHistoryStore.forApp(app).remove(collectionId, rollId)} {...cardHandlers} />
+                <LootHistory
+                  rolls={history}
+                  onRemove={(rollId) => LootHistoryStore.forApp(app).remove(collectionId, rollId)}
+                  {...cardHandlers}
+                  generator={generatorCards.history}
+                />
               )}
             </div>
           </div>

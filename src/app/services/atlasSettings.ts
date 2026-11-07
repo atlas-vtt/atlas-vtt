@@ -5,6 +5,12 @@ import type { DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
+import type { InitiativeDock } from '../initiative/initiativeLayout';
+import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
+import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
+import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
+import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 
 /**
  * How wheel events drive the map viewport.
@@ -24,6 +30,8 @@ export type TutorialId = typeof TUTORIAL_IDS[number];
 export interface AtlasSettings {
   showChangelogOnUpdate: boolean;
   changelogMajorUpdatesOnly: boolean;
+  /** Whether Atlas looks for a newer version of itself at start and hourly (`registerUpdateWatch`). */
+  checkForUpdates: boolean;
   /** Only the bindings the user changed; read the effective ones with `getHotkeys`. */
   hotkeys: HotkeyOverrides;
   onboarding: { enabled: boolean; completed: Partial<Record<TutorialId, boolean>>; tokenImported: boolean };
@@ -34,16 +42,38 @@ export interface AtlasSettings {
   laserPointer: LaserPointerSettings;
   /** How rolls show: a result card, or 3D dice at double or normal speed. Read with `getDiceDisplay`. */
   diceDisplay: DiceDisplay;
+  /** Loudness of dice sounds, 0 (silent) to 1. Read with `getDiceVolume`. */
+  diceVolume: number;
+  /** Levels, default fade and following scenes for music and ambience. Read with `getSoundSettings`. */
+  sound: SoundSettings;
+  /** The sound library's linked folders, as far as devices share them. Read with `getSoundRoots`. */
+  soundRoots?: SharedSoundRoots;
   /** Whether a new scene looks for the grid of its map. Off for tables that play without one. Read with `detectsGridOnNewScenes`. */
   detectGridOnNewScenes: boolean;
+  /** How the fog's edge looks, on the GM's map and the players'. Read with `getFogEdge`. */
+  fogEdge: FogEdge;
   /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;
+  /** Whether the GM's initiative cards show each combatant's name. Read with `showsInitiativeNames`. */
+  initiativeNames: boolean;
+  /** Whether the initiative lists start at the turn during a fight. Read with `initiativeLayout`. */
+  initiativeFromTurn: boolean;
+  /** The edge of the map the initiative lists stand at. Read with `initiativeLayout`. */
+  initiativeDock: InitiativeDock;
+  /** Whether a turn change shows the turn banner. Read with `initiativeTurnOptions`. */
+  initiativeBanner: boolean;
+  /** Whether the GM's view pans to the combatant whose turn begins. Read with `initiativeTurnOptions`. */
+  initiativeFollowTurn: boolean;
+  /** Whether online players move their tokens in a fight only on their turn. Read with `initiativeTurnOptions`. */
+  initiativeMovesOnTurn: boolean;
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
   /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
   toolbar: StoredToolbarLayout;
+  /** The dungeon generator's style, view and last tags. Read with `getDungeonGenerator`. */
+  dungeonGenerator: DungeonGeneratorSettings;
   localPlayerView: {
     // UI element visibility toggles
     showToolbar: boolean;
@@ -57,6 +87,8 @@ export interface AtlasSettings {
     /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
     showCursors: boolean;
   };
+  /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
+  tableTv: TableTvSettings;
 }
 
 /** The input mode a device starts with: Macs mostly have a trackpad, other computers a mouse. */
@@ -65,17 +97,28 @@ export const defaultInputMode = (): NavigationInputMode => (Platform.isMacOS ? '
 export const DEFAULT_SETTINGS: AtlasSettings = {
   showChangelogOnUpdate: true,
   changelogMajorUpdatesOnly: false,
+  checkForUpdates: true,
   hotkeys: {},
   onboarding: { enabled: true, completed: {}, tokenImported: false },
   starterTokensAdded: false,
   navigation: { inputMode: defaultInputMode() },
   laserPointer: DEFAULT_LASER_POINTER_SETTINGS,
   diceDisplay: 'full',
+  diceVolume: 1,
+  sound: DEFAULT_SOUND_SETTINGS,
   detectGridOnNewScenes: true,
+  fogEdge: DEFAULT_FOG_EDGE,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
+  initiativeNames: false,
+  initiativeFromTurn: true,
+  initiativeDock: 'right',
+  initiativeBanner: true,
+  initiativeFollowTurn: false,
+  initiativeMovesOnTurn: false,
   experimental: {},
   toolbar: {},
+  dungeonGenerator: DEFAULT_DUNGEON_GENERATOR_SETTINGS,
   localPlayerView: {
     // UI element visibility defaults
     showToolbar: false, // Hide toolbar by default in player view
@@ -87,6 +130,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showCommandPalette: false, // Hide command palette
     showCursors: false,
   },
+  tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };
 
 /**
@@ -132,6 +176,7 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       navigation: { inputMode },
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
+      tableTv: readTableTvSettings(record.tableTv),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),

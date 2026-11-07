@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
@@ -27,7 +26,9 @@ import {
 import { StatblockSourcePanel } from './StatblockSourcePanel';
 import { noteValues, statblockNoteChoices, statblockTemplate } from './statblockNotes';
 import { BLANK_ITEM, TemplateGrid, templateItem } from './TemplateGrid';
+import { t } from '../../../i18n';
 import './template-gallery.scss';
+import { portalHost } from '../../../host/portalHost';
 
 export interface TemplateGalleryProps {
   app: App;
@@ -76,7 +77,7 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onUse, onC
     if (source === 'fantasy-statblocks') {
       return fsItems.map((item) => {
         const waiting = toMove.get(item.layout.id);
-        return waiting ? { ...item, detail: t('uiStatblockDetails.templateGallery_countStatblocksToMove', { count: statblockCount(waiting.statblocks) }) } : item;
+        return waiting ? { ...item, detail: t('statblockEditor.toMove', { count: statblockCount(waiting.statblocks) }) } : item;
       });
     }
     const lookup = (id: TemplateId): ReturnType<TemplateLibrary['get']> => TemplateLibrary.forApp(app).get(id);
@@ -128,7 +129,7 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onUse, onC
       })
       .catch((error: unknown) => {
         console.error('[Atlas] Creating a template from the gallery failed:', error);
-        showNotice(t('uiStatblockDetails.templateGallery_couldnTCreateTheTemplate'));
+        showNotice(t('statblockEditor.templateCreateFailed'));
         setBusy(false);
       });
   };
@@ -166,7 +167,7 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onUse, onC
         tabIndex={-1}
       >
         <div className="atlas-te-gallery__header">
-          <h2 id={titleId}>{t('uiStatblocks.templateGallery_newTemplate')}</h2>
+          <h2 id={titleId}>{t('statblockEditor.newTemplate')}</h2>
           <CloseButton onClick={onClose} />
         </div>
         <div className="atlas-te-gallery__body">
@@ -177,7 +178,7 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onUse, onC
             ) : (
               <TemplateGrid
                 app={app}
-                label={sources.find((entry) => entry.id === source)?.label ?? t('uiStatblockDetails.templateGallery_templates')}
+                label={sources.find((entry) => entry.id === source)?.label ?? t('statblockEditor.templates')}
                 items={items}
                 selected={selected}
                 layer={layer}
@@ -189,16 +190,16 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onUse, onC
         </div>
         <div className="atlas-te-gallery__footer">
           {candidates.length > 0 && <UseForField roles={candidates} value={roleOf(pick)} onChange={setUseFor} layer={layer} />}
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>{t('uiStatblocks.templateGallery_cancel')}</Button>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>{t('statblockEditor.cancel')}</Button>
           {moving && (
             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={move}>{moveLabel(statblockCount(moving.statblocks))}…</Button>
           )}
           <Button type="button" variant="default" size="sm" disabled={!pick || busy} onClick={() => use()}>
-            {busy ? 'Creating…' : t('uiStatblockDetails.templateGallery_useTemplate')}
+            {busy ? t('statblockEditor.creating') : t('statblockEditor.useTemplate')}
           </Button>
         </div>
       </motion.div>
     </motion.div>,
-    doc.body,
+    portalHost(doc),
   );
 }

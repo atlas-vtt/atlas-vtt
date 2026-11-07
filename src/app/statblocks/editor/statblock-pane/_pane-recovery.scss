@@ -1,0 +1,114 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// A player character's recovery buttons under the card's header, and each row of
+// counters naming the rest that gives its uses back. They take none of the theme's
+// button look: quiet capsules in the card's ink, the accent only on their glyph.
+
+$recovery-height: 24px;
+
+.atlas-vtt-plugin .atlas-sb-sheet {
+  .atlas-sb-recovery {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-s;
+    margin-block-end: $spacing-s;
+  }
+
+  .atlas-sb-recovery__who {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  button.atlas-sb-recovery__button,
+  button.atlas-sb-counter__reset {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: $font-ui-smaller;
+    cursor: pointer;
+    transition-property: color, background-color, border-color, scale;
+    transition-duration: $transition-fast;
+    transition-timing-function: $transition-ease;
+
+    &:hover:not(:disabled),
+    &[data-state='open'] {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
+
+    &:active:not(:disabled) {
+      scale: 0.97;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--background-modifier-border-focus);
+      outline-offset: 0;
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+
+    svg {
+      flex: none;
+      width: $icon-xs;
+      height: $icon-xs;
+      color: var(--text-accent);
+    }
+  }
+
+  // A capsule's round ends need the room its flat sides do not: the text keeps half
+  // the capsule's height clear of the curve, the glyph sits in the curve itself.
+  button.atlas-sb-recovery__button {
+    gap: $spacing-xs;
+    height: $recovery-height;
+    padding: 0 ($recovery-height * 0.5) 0 ($recovery-height * 0.5 - $spacing-xs);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: $radius-full;
+    white-space: nowrap;
+
+    &:hover:not(:disabled),
+    &[data-state='open'] {
+      border-color: var(--background-modifier-border-hover);
+    }
+  }
+
+  // Under a row's uses, flush with its name; its padding reaches past the line.
+  button.atlas-sb-counter__reset {
+    align-self: flex-start;
+    gap: 2px;
+    height: auto;
+    margin: -2px;
+    padding: 2px;
+    border-radius: $radius-s;
+    color: var(--text-faint);
+
+    svg {
+      color: inherit;
+    }
+
+    &.is-set {
+      color: var(--text-muted);
+
+      svg {
+        color: var(--text-accent);
+      }
+    }
+  }
+
+  .atlas-sb-counter:hover button.atlas-sb-counter__reset:not(.is-set) {
+    color: var(--text-muted);
+  }
+
+  .atlas-sb-counter__reset-name {
+    overflow-wrap: anywhere;
+  }
+}

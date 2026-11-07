@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Container } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';

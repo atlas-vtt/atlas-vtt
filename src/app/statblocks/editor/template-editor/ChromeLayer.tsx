@@ -1,4 +1,3 @@
-import { t } from '../../../i18n';
 import React, { useLayoutEffect, useState, type RefObject } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Plus } from 'lucide-react';
@@ -16,6 +15,7 @@ import { PartRemoveButtons } from './PartRemoveButtons';
 import { primaryOf, type BlockSelection } from './selection';
 import { tilePartsOf } from './tileParts';
 import { useHoveredBlock, useStageGap } from './useStagePointer';
+import { t } from '../../../i18n';
 
 /** The card inside the stage: chrome looks up blocks only there, never in its own layer. */
 export const SHEET_SELECTOR = '.atlas-statblock';
@@ -148,7 +148,7 @@ export function ChromeLayer(props: ChromeLayerProps): React.JSX.Element {
         );
       })}
       {gap && (
-        <LabelTooltip label={t('uiTemplateEditor.chromeLayer_addABlockHere')}>
+        <LabelTooltip label={t('templateEditor.addBlockHere')}>
           <button
             type="button"
             tabIndex={-1}

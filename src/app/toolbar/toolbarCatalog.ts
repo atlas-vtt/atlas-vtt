@@ -1,8 +1,6 @@
-import { t } from '../i18n';
-// Type-only: that module imports SettingsService at runtime, which imports this catalog.
-import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import type { MapHotkeyId } from '../keyboard/mapHotkeys';
 import { AMBIENT_AUDIO_ENABLED } from '../featureFlags';
+import { t } from '../i18n';
 
 /** One control of the main toolbar, as the settings and the toolbar editor know it. */
 export interface ToolbarControlDefinition {
@@ -16,8 +14,6 @@ export interface ToolbarControlDefinition {
   dmOnly: boolean;
   /** Build gate, as `MAP_HOTKEYS` writes it. */
   enabled?: boolean;
-  /** Runtime gate: on only while the GM has the feature switched on. */
-  experimental?: ExperimentalFeatureId;
   /** Every control can be hidden except the way into the editor. */
   hideable: boolean;
 }
@@ -25,52 +21,52 @@ export interface ToolbarControlDefinition {
 /** The main toolbar's controls in their default order. Never rename an id: stored layouts use them. */
 export const TOOLBAR_CONTROLS = [
   {
-    id: 'move', label: t('uiToolbar.toolbarCatalog_moveAndSelect'), hotkey: 'move', dmOnly: false, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_selectAndMoveTokensOrPointAtTheMapWithTheLaserPointer'),
+    id: 'move', label: t('toolbarEdit.move.label'), hotkey: 'move', dmOnly: false, hideable: true,
+    description: t('toolbarEdit.move.description'),
   },
   {
-    id: 'fog', label: t('uiToolbar.toolbarCatalog_fogOfWar'), hotkey: 'fog', dmOnly: true, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_hidePartsOfTheMapFromYourPlayersAndRevealThemAsTheyExplore'),
+    id: 'fog', label: t('toolbarEdit.fog.label'), hotkey: 'fog', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.fog.description'),
   },
   {
-    id: 'draw', label: t('uiToolbar.toolbarCatalog_draw'), hotkey: 'draw', dmOnly: true, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_drawLinesAndPlaceIconsOnTheMapAndEraseThemAgain'),
+    id: 'draw', label: t('toolbarEdit.draw.label'), hotkey: 'draw', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.draw.description'),
   },
   {
-    id: 'text', label: t('uiToolbar.toolbarCatalog_text'), hotkey: 'text', dmOnly: true, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_writeLabelsAndShortNotesStraightOntoTheMap'),
+    id: 'text', label: t('toolbarEdit.text.label'), hotkey: 'text', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.text.description'),
   },
   {
-    id: 'measure', label: t('uiToolbar.toolbarCatalog_measure'), hotkey: 'measure', dmOnly: false, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_measureADistanceOrTheReachOfACircleOrConeInYourGridSUnits'),
+    id: 'measure', label: t('toolbarEdit.measure.label'), hotkey: 'measure', dmOnly: false, hideable: true,
+    description: t('toolbarEdit.measure.description'),
   },
   {
-    id: 'wall', label: t('uiToolbar.toolbarCatalog_lighting'), hotkey: 'wall', dmOnly: true, hideable: true, experimental: 'dynamicLighting',
-    description: t('uiToolbar.toolbarCatalog_drawWallsAndDoorsPlaceLightsAndDecideWhatEachTokenCanSee'),
+    id: 'wall', label: t('toolbarEdit.wall.label'), hotkey: 'wall', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.wall.description'),
   },
   {
-    id: 'pin', label: t('uiToolbar.toolbarCatalog_notePin'), hotkey: 'pin', dmOnly: true, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_pinANoteOrALinkToAnotherSceneOntoASpotOnTheMap'),
+    id: 'pin', label: t('toolbarEdit.pin.label'), hotkey: 'pin', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.pin.description'),
   },
   {
-    id: 'audio', label: t('uiToolbar.toolbarCatalog_ambientSound'), hotkey: 'audio', dmOnly: true, hideable: true, enabled: AMBIENT_AUDIO_ENABLED,
-    description: t('uiToolbar.toolbarCatalog_placeSoundsOnTheMapThatGrowLouderAsTokensComeNear'),
+    id: 'audio', label: t('toolbarEdit.audio.label'), hotkey: 'audio', dmOnly: true, hideable: true, enabled: AMBIENT_AUDIO_ENABLED,
+    description: t('toolbarEdit.audio.description'),
   },
   {
-    id: 'dice', label: t('uiToolbar.toolbarCatalog_dice'), hotkey: 'diceTray', dmOnly: false, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_rollAnyMixOfDiceAndShowTheResultToEveryoneAtTheTable'),
+    id: 'dice', label: t('toolbarEdit.dice.label'), hotkey: 'diceTray', dmOnly: false, hideable: true,
+    description: t('toolbarEdit.dice.description'),
   },
   {
-    id: 'loot', label: t('uiToolbar.toolbarCatalog_randomTables'), hotkey: 'lootRoller', dmOnly: true, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_rollOnTheRandomTablesInYourNotesAndLootBases'),
+    id: 'loot', label: 'Random tables', hotkey: 'lootRoller', dmOnly: true, hideable: true,
+    description: 'Roll on the random tables in your notes and loot bases.',
   },
   {
-    id: 'assets', label: t('uiToolbar.toolbarCatalog_assetManager'), hotkey: 'assets', dmOnly: true, hideable: true,
-    description: t('uiToolbar.toolbarCatalog_findAndPlaceYourMapsTokensScenesAndEncounters'),
+    id: 'assets', label: t('toolbarEdit.assets.label'), hotkey: 'assets', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.assets.description'),
   },
   {
-    id: 'palette', label: t('uiToolbar.toolbarCatalog_commandPalette'), hotkey: 'palette', dmOnly: true, hideable: false,
-    description: t('uiToolbar.toolbarCatalog_findAnyAtlasCommandOrSettingByTypingItsName'),
+    id: 'palette', label: t('toolbarEdit.palette.label'), hotkey: 'palette', dmOnly: true, hideable: false,
+    description: t('toolbarEdit.palette.description'),
   },
 ] as const satisfies readonly ToolbarControlDefinition[];
 
@@ -82,8 +78,8 @@ export type ToolbarControlId = (typeof TOOLBAR_CONTROLS)[number]['id'];
  * main bar's order. Never rename its id: stored layouts use it.
  */
 export const UNDO_BAR = {
-  id: 'undo', label: t('uiToolbar.toolbarCatalog_undoAndRedo'), hotkey: 'undo', dmOnly: true, hideable: true,
-  description: t('uiToolbar.toolbarCatalog_stepBackThroughYourChangesOnTheMapOrForwardAgain'),
+  id: 'undo', label: t('toolbarEdit.undo.label'), hotkey: 'undo', dmOnly: true, hideable: true,
+  description: t('toolbarEdit.undo.description'),
 } as const satisfies ToolbarControlDefinition;
 
 export const UNDO_BAR_ID = UNDO_BAR.id;
@@ -126,10 +122,8 @@ export function isHideableToolbarControl(id: string): boolean {
 }
 
 /** The controls a view offers, gated like its hotkeys (`availableHotkeys`). */
-export function availableToolbarControls(player: boolean, isOn: (feature: ExperimentalFeatureId) => boolean): ReadonlySet<ToolbarControlId> {
+export function availableToolbarControls(player: boolean): ReadonlySet<ToolbarControlId> {
   const offered = TOOLBAR_CONTROLS.filter((control: ToolbarControlDefinition) =>
-    control.enabled !== false
-    && (control.experimental === undefined || isOn(control.experimental))
-    && !(player && control.dmOnly));
+    control.enabled !== false && !(player && control.dmOnly));
   return new Set(offered.map(control => control.id));
 }

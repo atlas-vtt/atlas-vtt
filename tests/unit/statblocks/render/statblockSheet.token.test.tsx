@@ -1,7 +1,7 @@
+// @vitest-environment jsdom
 import { fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 const hitPointRolls = vi.hoisted(() => [] as Array<{ formula: string; notePath: string; ability: string | undefined }>);
 vi.mock('../../../../src/app/services/statblockHitPoints', () => ({
   rollHitPoints: (_app: unknown, formula: string, notePath: string, _tokens: unknown, ability?: string) => {

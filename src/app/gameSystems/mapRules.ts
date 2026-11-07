@@ -4,7 +4,7 @@
  * `services/mapRules.ts`.
  */
 
-import type { CollectionSettings } from '../types/collectionSettingsTypes';
+import type { CollectionSettings, ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { SystemSettings } from './systemRules';
 
 /** The game system part of a collection's settings, which a campaign's system holds too. */
@@ -57,4 +57,9 @@ export function rulesForMap(lookup: RulesLookup, mapPath: string | null | undefi
   const collectionId = mapPath ? lookup.getCollectionForMap(mapPath) : null;
   if (collectionId) return { source: { kind: 'collection', id: collectionId }, settings: lookup.getCollectionSettings(collectionId) };
   return { source: { kind: 'none', outsideCollections: !mapPath || !COLLECTION_FOLDER.test(mapPath) }, settings: null };
+}
+
+/** The conditions tokens on the map at `mapPath` may carry: those of its rules, none without a source. */
+export function mapConditions(lookup: RulesLookup, mapPath: string | null | undefined): ConditionDefinition[] {
+  return rulesForMap(lookup, mapPath).settings?.conditions ?? [];
 }

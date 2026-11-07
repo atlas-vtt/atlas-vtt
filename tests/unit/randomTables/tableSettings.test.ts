@@ -7,7 +7,8 @@ import { parseSystemRules } from '../../../src/app/gameSystems/presetValidation'
 import { sameSystemRules, vanillaSystemSettings } from '../../../src/app/gameSystems/systemRules';
 import { tablesFolder } from '../../../src/app/randomTables/tablePaths';
 import {
-  readRandomTables, withMovedTableNotes, withRandomTable, withoutRandomTable,
+  readRandomTables, storedRandomTable, withMovedTableNotes, withRandomTable, withRandomTableChanged, withRestoredRandomTable,
+  withoutRandomTable,
 } from '../../../src/app/randomTables/tableSettings';
 import { isReservedCollectionPath } from '../../../src/app/services/vault-sync/reservedPaths';
 import type { CollectionSettings } from '../../../src/app/types/collectionSettingsTypes';
@@ -41,6 +42,16 @@ describe('reading the tables of a collection', () => {
     ]);
   });
 
+  it('reads the name the GM gave a table, trimmed and bounded, and none that is blank or no text', () => {
+    const settings = stored([
+      { ...RUMOURS, label: '  Tavern talk ' },
+      { path: 'Long.md', index: 0, kind: 'text', label: 'x'.repeat(300) },
+      { path: 'Blank.md', index: 0, kind: 'text', label: '   ' },
+      { path: 'Odd.md', index: 0, kind: 'text', label: 7 },
+    ]);
+    expect(readRandomTables(settings).map((source) => source.label)).toEqual(['Tavern talk', 'x'.repeat(200), undefined, undefined]);
+  });
+
   it('reads nothing from a value that is no list', () => {
     expect(readRandomTables(stored({ path: 'A.md' }))).toEqual([]);
     expect(readRandomTables({})).toEqual([]);
@@ -48,6 +59,23 @@ describe('reading the tables of a collection', () => {
 });
 
 describe('writing the tables of a collection', () => {
+  it('changes an entry as stored now, its fields of a newer Atlas kept, and never adds one that is gone', () => {
+    const settings = stored([{ ...RUMOURS, future: 1 }]);
+    expect(withRandomTableChanged(settings, RUMOURS.path, 1, (source) => ({ ...source, label: 'Talk' })))
+      .toEqual([{ ...RUMOURS, future: 1, label: 'Talk' }]);
+    expect(withRandomTableChanged(settings, 'Gone.md', 0, (source) => source)).toBeNull();
+  });
+
+  it('puts a removed entry back where it was, whole, unless the table is listed again', () => {
+    const later = { path: 'Later.md', index: 0, kind: 'npcs' };
+    const settings = stored([later, { ...RUMOURS, future: 1 }]);
+    const removed = storedRandomTable(settings, RUMOURS.path, 1)!;
+    expect(removed.at).toBe(1);
+    const without = stored(withoutRandomTable(settings, RUMOURS.path, 1));
+    expect(withRestoredRandomTable(without, removed.entry, removed.at)).toEqual([later, { ...RUMOURS, future: 1 }]);
+    expect(withRestoredRandomTable(settings, removed.entry, removed.at)).toEqual(settings.randomTables);
+  });
+
   it('changes one entry and keeps the fields of a newer Atlas', () => {
     const settings = stored([{ ...RUMOURS, players: 'roll', columns: { 'True?': 'secret' } }, { path: 'Later.md', index: 0, kind: 'npcs' }]);
     const next = withRandomTable(settings, { path: RUMOURS.path, table: 'Rumours', index: 1, kind: 'text', noRepeats: true });
@@ -132,5 +160,39 @@ describe('item rarities', () => {
   it('keeps a preset\'s words through its file, and a collection without a system has none of its own', () => {
     expect(parseSystemRules(JSON.parse(JSON.stringify(pf2e.rules)))?.itemRarities).toEqual(pf2e.rules.itemRarities);
     expect(vanillaSystemSettings()).toHaveProperty('itemRarities', undefined);
+  });
+});
+
+describe('a generator in the settings', () => {
+  const WEAPONS: RandomTableSource = { path: 'Generators/Weapons.md', table: 'Magic Weapon', index: 0, kind: 'generator', saveFolder: 'Loot/Weapons' };
+
+  it('reads kind generator and its save folder, trimmed, and none that is blank, no text or no path', () => {
+    const settings = stored([
+      { ...WEAPONS, saveFolder: ' Loot/Weapons ' },
+      { path: 'Blank.md', index: 0, kind: 'generator', saveFolder: '  ' },
+      { path: 'Odd.md', index: 0, kind: 'generator', saveFolder: 3 },
+      { path: 'Long.md', index: 0, kind: 'generator', saveFolder: 'x'.repeat(600) },
+    ]);
+    expect(readRandomTables(settings)).toEqual([
+      WEAPONS,
+      { path: 'Blank.md', index: 0, kind: 'generator' },
+      { path: 'Odd.md', index: 0, kind: 'generator' },
+      { path: 'Long.md', index: 0, kind: 'generator' },
+    ]);
+  });
+
+  it('writes the save folder, and takes it away with an entry that has none', () => {
+    const settings = stored([WEAPONS]);
+    const { saveFolder: _folder, ...without } = WEAPONS;
+    expect(withRandomTable(settings, without)).toEqual([without]);
+    expect(withRandomTable(stored([without]), { ...without, saveFolder: 'Elsewhere' })).toEqual([{ ...without, saveFolder: 'Elsewhere' }]);
+  });
+
+  it('stays in the file as written where a kind is not known: an older Atlas leaves the entry out and keeps it', () => {
+    // An older Atlas reads `generator` as this one reads a kind of a newer one: not at all.
+    const newer = { path: 'Odd.md', index: 0, kind: 'npcs', saveFolder: 'NPCs' };
+    const settings = stored([newer, RUMOURS]);
+    expect(readRandomTables(settings)).toEqual([RUMOURS]);
+    expect(withRandomTable(settings, { ...RUMOURS, noRepeats: true })).toEqual([newer, { ...RUMOURS, noRepeats: true }]);
   });
 });

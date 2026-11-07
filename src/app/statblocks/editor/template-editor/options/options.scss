@@ -79,6 +79,23 @@ $options-width: 320px;
     margin-inline-start: $spacing-m;
   }
 
+  // One row a Counters tile starts with: its name and uses over what it regains when restored, with Move.
+  .atlas-te-counter-row {
+    @include atlas-flex-col($spacing-xs);
+    align-items: stretch;
+
+    .atlas-te-setting__inline > .atlas-te-input--count {
+      flex: 0 0 56px;
+      text-align: end;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .atlas-te-setting__inline > .atlas-te-input--regain {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
   // Parts many abilities have, one click each.
   .atlas-te-setting__suggestions {
     display: flex;
@@ -100,6 +117,22 @@ $options-width: 320px;
     &:hover:not(:disabled) {
       background: var(--background-modifier-hover);
       color: var(--text-normal);
+    }
+
+    &[aria-pressed] {
+      display: inline-flex;
+      align-items: center;
+      gap: $spacing-xs;
+    }
+
+    &[aria-pressed='true'] {
+      border-color: var(--interactive-accent);
+      color: var(--text-normal);
+    }
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
     }
   }
 }

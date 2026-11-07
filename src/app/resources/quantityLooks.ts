@@ -8,14 +8,20 @@
 
 import type { StatblockItem, StatblockLayout } from '../react/components/statblock/statblockTypes';
 import type { StatblockTemplate } from '../statblocks/model/templateTypes';
+import { meaningsOf, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
 import { flattenReadingOrder } from '../statblocks/model/treeQueries';
 import { isHitPointsKey, normalizedKey } from './resourceFields';
+import { trackedNumbers, type TrackedNumber } from '../statblocks/values/trackedNumbers';
 
 export interface QuantityLook {
   /** Quantities drawn as tracks of boxes: resource keys, and field keys as the DM screen names them (`hp`, `stress`). */
   tracks: ReadonlySet<string>;
   /** Labels the statblock gives quantities, by field key or dotted path (`stress.0`: "Physical"). */
   labels: ReadonlyMap<string, string>;
+  /** The numbers a native template tracks (`trackedNumbers`): listed with the note's maximum. */
+  tracked?: readonly TrackedNumber[];
+  /** What the native template's fields mean (`meaningsOf`), so a tracked number a resource reads under another key is that resource. */
+  meanings?: FieldMeanings;
 }
 
 /** A statblock that draws no tracks and names nothing: every quantity is a gauge under its field's name. */
@@ -62,7 +68,8 @@ export function fsQuantityLook(layout: StatblockLayout): QuantityLook {
 
 /**
  * A native template: a Track block drawn as boxes makes its field (and the resource it shows)
- * a track, under the Track's label; a Scores field names each entry after its slot.
+ * a track, under the Track's label; a Scores field names each entry after its slot; the numbers
+ * it tracks are listed by it.
  */
 export function templateQuantityLook(template: StatblockTemplate): QuantityLook {
   const tracks = new Set<string>();
@@ -77,5 +84,5 @@ export function templateQuantityLook(template: StatblockTemplate): QuantityLook 
     tracks.add(quantityKey(block.field));
     if (block.resource) tracks.add(block.resource);
   }
-  return { tracks, labels };
+  return { tracks, labels, tracked: trackedNumbers(template), meanings: meaningsOf(template.fields) };
 }

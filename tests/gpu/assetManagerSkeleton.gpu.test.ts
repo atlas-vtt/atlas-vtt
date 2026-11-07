@@ -17,6 +17,8 @@ vi.mock('../../src/app/packages/components/asset-manager/hooks/useOpenAsset', ()
 vi.mock('../../src/app/packages/components/asset-manager/hooks/useAssetStatblockPreview', () => ({
   useAssetStatblockPreview: (): void => undefined,
 }));
+// The cards reach the token link service, which loads Node's events module.
+vi.mock('events', async () => import('eventemitter3'));
 
 /** The Obsidian variables the asset manager's sizes and colours come from, at their default values. */
 const OBSIDIAN = `

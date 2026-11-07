@@ -156,6 +156,11 @@ export function withRoleTemplates<T extends TemplateSettings>(settings: T, ids: 
   return { ...settings, statblockRoles: roles.map((role) => ({ ...role, templateId: ids.get(role.templateId) ?? role.templateId })) };
 }
 
+/** Settings whose roles name the templates' ids in this vault. */
+export function withSettingsTemplates<T extends TemplateSettings>(settings: T, ids: TemplateIdMap): T {
+  return withRoleTemplates(settings, ids);
+}
+
 /** A note the import keeps as the vault has it, which names a template whose bundle version arrives as a copy. */
 export interface ReusedNote {
   path: string;

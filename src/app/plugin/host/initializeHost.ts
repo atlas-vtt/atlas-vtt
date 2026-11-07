@@ -1,8 +1,9 @@
 import { getLanguage } from 'obsidian';
 import { installDomHost } from '../../host/dom';
 import { setLocale } from '../../i18n';
+import { TRANSLATIONS } from '../../i18n/languages';
 import { pluginDomHost } from './dom';
 
 installDomHost(pluginDomHost);
 // Module-level labels must see the selected language before other plugin imports run.
-setLocale(getLanguage());
+setLocale(getLanguage(), TRANSLATIONS);

@@ -62,12 +62,6 @@ export function parseDiceNotation(text: string): DiceNotation | null {
   return notation;
 }
 
-/** Whether the text is notation that rolls at least one die. */
-export function isDiceNotation(text: string): boolean {
-  const notation = parseDiceNotation(text);
-  return notation !== null && notation.dice.length > 0;
-}
-
 /**
  * The average of a roll, rounded down as statblocks print it ("7d10 + 14" is
  * 52); null when the text is not notation. A constant alone is its own average.

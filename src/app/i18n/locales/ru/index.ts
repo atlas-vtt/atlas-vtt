@@ -1,5 +1,6 @@
 import type { Translation } from '../../types';
 import { align } from './align';
+import { atlasLinks } from './atlasLinks';
 import { am } from './am';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
@@ -16,6 +17,9 @@ import { creator } from './creator';
 import { csm } from './csm';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
+import { diceLab } from './diceLab';
+import { diceRoll } from './diceRoll';
+import { diceSettings } from './diceSettings';
 import { exportDialog } from './exportDialog';
 import { grid } from './grid';
 import { gridModal } from './gridModal';
@@ -27,11 +31,13 @@ import { lpv } from './lpv';
 import { map } from './map';
 import { menu } from './menu';
 import { notice } from './notice';
+import { online } from './online';
 import { palette } from './palette';
 import { picker } from './picker';
 import { settings } from './settings';
 import { snapshots } from './snapshots';
 import { statblock } from './statblock';
+import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
 import { tabs } from './tabs';
 import { timer } from './timer';
@@ -43,8 +49,10 @@ import { sbImport } from './sbImport';
 import { vaultImages } from './vaultImages';
 import { filters } from './filters';
 import { search } from './search';
+import { senses } from './senses';
 import { sort } from './sort';
 import { toolbar } from './toolbar';
+import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
@@ -52,6 +60,13 @@ import { text } from './text';
 import { audio } from './audio';
 import { drawing } from './drawing';
 import { editToken } from './editToken';
+import { templateEditor } from './templateEditor';
+import { tables } from './tables';
+import { campaign } from './campaign';
+import { quest } from './quest';
+import { rest } from './rest';
+import { initRules } from './initRules';
+import { recoveryEditor } from './recoveryEditor';
 import { hex } from './hex';
 import { light } from './light';
 import { mapIcon } from './mapIcon';
@@ -80,9 +95,19 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { vision } from './vision';
+import { dungeon } from './dungeon';
+import { dungeonProp } from './dungeonProp';
+import { dungeonScene } from './dungeonScene';
+import { levels } from './levels';
+import { mapFeature } from './mapFeature';
+import { openings } from './openings';
+import { uvtt } from './uvtt';
+import { uvttFloors } from './uvttFloors';
+import { videoMap } from './videoMap';
 
 export const ru: Translation = {
   ...align,
+  ...atlasLinks,
   ...am,
   ...bundle,
   ...cleanup,
@@ -99,6 +124,9 @@ export const ru: Translation = {
   ...csm,
   ...dashboard,
   ...dice,
+  ...diceLab,
+  ...diceRoll,
+  ...diceSettings,
   ...exportDialog,
   ...grid,
   ...gridModal,
@@ -110,11 +138,13 @@ export const ru: Translation = {
   ...map,
   ...menu,
   ...notice,
+  ...online,
   ...palette,
   ...picker,
   ...settings,
   ...snapshots,
   ...statblock,
+  ...statblockEditor,
   ...switcher,
   ...tabs,
   ...timer,
@@ -126,8 +156,10 @@ export const ru: Translation = {
   ...vaultImages,
   ...filters,
   ...search,
+  ...senses,
   ...sort,
   ...toolbar,
+  ...toolbarEdit,
   ...hotkey,
   ...pin,
   ...laser,
@@ -165,4 +197,20 @@ export const ru: Translation = {
   ...wall,
   ...sceneLight,
   ...vision,
+  ...templateEditor,
+  ...tables,
+  ...campaign,
+  ...quest,
+  ...rest,
+  ...initRules,
+  ...recoveryEditor,
+  ...dungeon,
+  ...dungeonProp,
+  ...dungeonScene,
+  ...levels,
+  ...mapFeature,
+  ...openings,
+  ...uvtt,
+  ...uvttFloors,
+  ...videoMap,
 };

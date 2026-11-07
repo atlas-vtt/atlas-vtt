@@ -1,4 +1,3 @@
-// @vitest-environment node
 import type { MarksMessage, SharedMeasure } from '../../../../src/app/online/protocol/index.ts';
 import type { Measurements } from '../../../../src/app/pixi/MeasureRenderer';
 import type { MeasureRecord } from '../../../../src/app/pixi/utils/measureDrawing';

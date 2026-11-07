@@ -1,10 +1,10 @@
-import type { Message } from '../../types';
+import type { Translation } from '../../types';
 
 export const tabs = {
-  'tabs.allOpen': 'Tutte le mappe aperte',
-  'tabs.close': 'Chiudi {name}',
-  'tabs.openMaps': 'Mappe aperte',
-  'tabs.openScene': 'Apri scena',
-  'tabs.show': 'Mostra {name} nella vista giocatori',
-  'tabs.shown': '{name} è mostrata nella vista giocatori',
-} as const satisfies Record<string, Message>;
+  "tabs.allOpen": "Tutte le mappe aperte",
+  "tabs.close": "Chiudi {name}",
+  "tabs.openMaps": "Mappe aperte",
+  "tabs.openScene": "Apri scena",
+  "tabs.show": "Mostra {name} nella vista giocatori",
+  "tabs.shown": "{name} è mostrata nella vista giocatori"
+} satisfies Translation;

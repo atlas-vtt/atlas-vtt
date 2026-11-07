@@ -6,6 +6,7 @@ import { useAtlasSettings } from './useMapHotkeys';
 import { availableHotkeys, DEFAULT_MAP_HOTKEYS, formatHotkey } from './mapHotkeys';
 import { useDialogFocus } from '../onboarding/useDialogFocus';
 import { t } from '../i18n';
+import { portalHost } from '../host/portalHost';
 
 export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }: { settings?: SettingsService | undefined; onClose: () => void; isPlayerView?: boolean }): React.JSX.Element {
   const settings = useAtlasSettings(explicit);
@@ -13,7 +14,7 @@ export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useDialogFocus(ref, onClose);
-  const actions = availableHotkeys(isPlayerView, feature => settings?.isExperimentalOn(feature) ?? false);
+  const actions = availableHotkeys(isPlayerView, (feature) => settings?.isExperimentalOn(feature) ?? false);
   return createPortal(<div className="atlas-vtt-plugin atlas-vtt-root atlas-hotkey-help" onClick={onClose}>
     <div ref={ref} className="atlas-hotkey-help-card" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={e => e.stopPropagation()}>
       <div className="atlas-hotkey-help-header">
@@ -34,12 +35,12 @@ export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }
             <div><dt>{t('hotkey.previewStatblock')}</dt><dd><kbd>Ctrl/Cmd</kbd> {t('hotkey.hover')}</dd></div>
             <div><dt>{t('hotkey.dragCopy')}</dt><dd><kbd>Alt/Option</kbd> {t('hotkey.drag')}</dd></div>
             <div><dt>{t('hotkey.openBoth')}</dt><dd><kbd>Shift + Enter</kbd></dd></div>
-            <div><dt>{t('hotkey.waypoint')}</dt><dd><kbd>{t('uiGeneral.hotkeyHelp_space')}</kbd> {t('hotkey.whileDragging')}</dd></div>
+            <div><dt>{t('hotkey.waypoint')}</dt><dd><kbd>Space</kbd> {t('hotkey.whileDragging')}</dd></div>
             <div><dt>{t('hotkey.closeDialog')}</dt><dd><kbd>Escape</kbd></dd></div>
             <div><dt>{t('hotkey.navigateMenus')}</dt><dd><kbd>Tab</kbd> / <kbd>{t('hotkey.arrowKeys')}</kbd></dd></div>
           </dl>
         </section>
       </div>
     </div>
-  </div>, document.body);
+  </div>, portalHost());
 }

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // The harness first: it mocks what the controller imports.
 import { contextMenuOpened, event, setup, type Setup } from './lightingControllerHarness';
 import { describe, expect, it, vi } from 'vitest';

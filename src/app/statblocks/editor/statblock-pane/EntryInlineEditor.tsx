@@ -15,6 +15,7 @@ import { removedMessage } from './announcements';
 import { focusStaysIn } from './focusWithin';
 import { usePaneEdit } from './paneEditContext';
 import { caretIn, insertAtCaret, placeCaret, textOf } from './plainEditable';
+import { t } from '../../../i18n';
 
 /** The ability edited, or a new one written after `afterIndex` in the stored list (null: first). */
 export type EntryEditing =
@@ -34,9 +35,13 @@ export interface EntryInlineEditorProps {
  * name or a part goes on to the next part or the text; Enter in the text (or
  * Mod+Enter) writes the ability, parts picked included, and starts the next;
  * Shift+Enter breaks the line; Backspace in an empty ability deletes it, as
- * does leaving it with name and text emptied; Alt+↑/↓ move it and Mod+D
+ * does leaving it with name and text emptied (a held Backspace stops once the
+ * ability is empty, and never reaches the one before); Alt+↑/↓ move it and Mod+D
  * duplicates it, each one write to the note that takes what is typed along.
  */
+/** What takes focus on a press inside an ability being edited: its inputs, its text and the controls of its parts. */
+const FOCUSABLE = 'input, textarea, button, select, [contenteditable], [tabindex], [role="option"]';
+
 export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorProps): React.JSX.Element {
   const pane = usePaneEdit();
   const target = pane.editing;
@@ -55,6 +60,8 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
   const textNow = useRef(startText);
   const textTyped = (): string => (textRef.current?.isConnected ? textOf(textRef.current) : textNow.current);
   const finished = useRef(false);
+  /** Whether a key was pressed (not only held) while this editor was open. */
+  const pressedHere = useRef(false);
   const noun = singular(field.label) || 'Entry';
   const nameStyle = block.nameStyle ?? 'run-in';
 
@@ -187,6 +194,12 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
   const onKeyDown = (event: React.KeyboardEvent<HTMLElement>): void => {
     // A part's dropdown that took the key (picked, closed, removed a pick) keeps it.
     if (handledByAnotherControl(event.nativeEvent)) return;
+    if (!event.repeat) pressedHere.current = true;
+    // Backspace held since before this editor opened deleted the ability after this one: it erases nothing here.
+    if (event.key === 'Backspace' && event.repeat && !pressedHere.current) {
+      event.preventDefault();
+      return;
+    }
     const inText = event.target === textRef.current;
     const inName = event.target === nameRef.current;
     const inPart = !inText && !inName && (event.target as Partial<Element>).hasAttribute?.(ENTRY_PART_CONTROL) === true;
@@ -221,6 +234,8 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
       pane.move(field.key, event.shiftKey ? -1 : 1);
     } else if (event.key === 'Backspace' && (inName || inText) && !nameDraft.value && !textTyped()) {
       event.preventDefault();
+      // Only a fresh press deletes: a held one stops once the ability is empty.
+      if (event.repeat) return;
       finished.current = true;
       if (editing.kind === 'edit') write([removeEntryPatch(listKey(), editing.item)]);
       const before = editing.shown - 1;
@@ -229,6 +244,12 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
       if (previous === undefined) pane.stop(true);
       else pane.start({ blockId: block.id, field: field.key, anchor: previous, part: 'text' });
     }
+  };
+
+  /** A press on a part of the ability that is no control (a part's label, a gap) keeps focus where it is: it would leave the ability and close it. */
+  const keepFocusOnBareParts = (event: React.MouseEvent): void => {
+    if (event.button !== 0) return;
+    if ((event.target as Partial<Element>).closest?.(FOCUSABLE) == null) event.preventDefault();
   };
 
   const onBlur = (event: React.FocusEvent): void => {
@@ -249,9 +270,10 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
       data-item-key={editing.kind === 'edit' ? editing.itemKey : undefined}
       data-item-index={editing.kind === 'edit' ? editing.index : undefined}
       role="group"
-      aria-label={editing.kind === 'edit' ? `Edit ${startName || noun.toLowerCase()}` : `New ${noun.toLowerCase()}`}
+      aria-label={editing.kind === 'edit' ? t('statblockEditor.editNamed', { name: startName || noun.toLowerCase() }) : t('statblockEditor.newNamed', { name: noun.toLowerCase() })}
       onKeyDown={onKeyDown}
       onBlur={onBlur}
+      onMouseDown={keepFocusOnBareParts}
     >
       <span className="atlas-sb-trait-name">
         <input
@@ -284,7 +306,7 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
         role="textbox"
         aria-multiline="true"
         aria-label={`${noun} description`}
-        data-placeholder="What it does"
+        data-placeholder={t('statblockEditor.whatItDoes')}
         tabIndex={0}
         onInput={(event) => { textNow.current = textOf(event.currentTarget); }}
       />

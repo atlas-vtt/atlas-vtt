@@ -28,8 +28,8 @@ interface SuggestionSources {
 }
 
 const STATBLOCK_CHOICES = [
-  { label: t('uiAssets.filterSuggestions_yes'), detail: t('uiGeneralDetails.filterSuggestions_withAStatblock'), value: 'linked' },
-  { label: t('uiAssets.filterSuggestions_no'), detail: t('uiGeneralDetails.filterSuggestions_withoutAStatblock'), value: 'unlinked' },
+  { label: 'yes', detail: 'with a statblock', value: 'linked' },
+  { label: 'no', detail: 'without a statblock', value: 'unlinked' },
 ] as const;
 
 /** The template facet's options by name: a Fantasy Statblocks layout and a native template of one name are one value to type. */
@@ -96,7 +96,7 @@ export function filterSuggestions(text: string, cursor: number, sources: Suggest
   const typed = context.fragment.toLowerCase();
   const items = valueItems(keyword, context.fragment, sources)
     .sort((a, b) => Number(b.kind === 'value' && b.label.toLowerCase() === typed) - Number(a.kind === 'value' && a.label.toLowerCase() === typed));
-  const typedFreely = keyword.kind === 'name' || keyword.kind === 'range';
+  const typedFreely = keyword.kind === 'name' || keyword.kind === 'range' || keyword.kind === 'text';
   const label = keyword.description.split(':')[0]!;
   return {
     mode: 'value',

@@ -27,7 +27,7 @@ const SKELETON_ROWS = 9;
 /** Rows of the creatures being read, in the shape of an option: a name over its detail. */
 function ListSkeleton(): React.JSX.Element {
   return (
-    <SkeletonGroup label={t('uiAssets.statblockList_loadingStatblocks')} className="atlas-statblock-link__list-skeleton">
+    <SkeletonGroup label="Loading statblocks…" className="atlas-statblock-link__list-skeleton">
       {Array.from({ length: SKELETON_ROWS }, (_, index) => (
         <div key={index} className="atlas-statblock-link__option">
           <span className="atlas-statblock-link__option-text">

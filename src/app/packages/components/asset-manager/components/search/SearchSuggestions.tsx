@@ -1,4 +1,3 @@
-import { t } from '../../../../../i18n';
 import React, { useEffect, useRef } from 'react';
 import type { FilterSuggestion, FilterSuggestions } from '../../search/filterSuggestions';
 
@@ -57,7 +56,7 @@ export function SearchSuggestions({ id, suggestions, highlight, onHighlight, onP
       </div>
       {hint && <div className="atlas-search-suggestions__hint">{hint}</div>}
       {mode === 'value' && items.length === 0 && !hint && (
-        <div className="atlas-search-suggestions__hint">{t('uiMessages.searchNoMatches', { query: context.kind === 'value' ? context.fragment : '' })}</div>
+        <div className="atlas-search-suggestions__hint">No matches for “{context.kind === 'value' ? context.fragment : ''}”</div>
       )}
       {items.length > 0 && (
         <div ref={listRef} id={id} className="atlas-search-suggestions__list" role="listbox" aria-label={heading}>

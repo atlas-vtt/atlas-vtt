@@ -1,6 +1,6 @@
-import { t } from '../../../../i18n';
 import React from 'react';
 import { ArrowDown, ArrowUp, Eye, EyeOff, Hash, Skull, Trash2 } from 'lucide-react';
+import { t } from '../../../../i18n';
 import type { ResourceDefinition, ResourceDirection } from '../../../../resources/resourceTypes';
 import { RadialFan, type FanButton } from '../fan/RadialFan';
 import { fanOffsets, type SocketPlace } from './resourceSockets';
@@ -14,9 +14,9 @@ interface ResourceFanProps {
 
 /** How a resource counts, in the order the button steps through them. */
 const DIRECTIONS: ReadonlyArray<{ direction: ResourceDirection; label: string; icon: React.ReactNode }> = [
-  { direction: 'drains', label: t('uiSettings.resourceFan_drainsStartsFullAndCountsDown'), icon: <ArrowDown /> },
-  { direction: 'fills', label: t('uiSettings.resourceFan_fillsStartsEmptyAndCountsUp'), icon: <ArrowUp /> },
-  { direction: 'static', label: t('uiSettings.resourceFan_staticAFixedValueLikeAnArmourClass'), icon: <Hash /> },
+  { direction: 'drains', label: t('resource.fan.drains'), icon: <ArrowDown /> },
+  { direction: 'fills', label: t('resource.fan.fills'), icon: <ArrowUp /> },
+  { direction: 'static', label: t('resource.fan.static'), icon: <Hash /> },
 ];
 
 /**
@@ -34,20 +34,20 @@ export function ResourceFan({ place, resource, onChange, onRemove }: ResourceFan
     {
       label: counting.label,
       icon: counting.icon,
-      // A static value is never spent, so it cannot defeat its token
-      onClick: () => onChange(next === 'static' ? { direction: next, defeatedWhenSpent: false } : { direction: next }),
+      // A static value cannot defeat its token, but the choice stays for when it counts again (`savedResources` drops it)
+      onClick: () => onChange({ direction: next }),
     },
     {
-      label: fixed ? t('uiSettingsDetails.resourceFan_aStaticValueNeverDefeatsTheToken') : defeats ? t('uiSettingsDetails.resourceFan_defeatsTheTokenWhenSpent') : t('uiSettingsDetails.resourceFan_doesNotDefeatTheToken'),
+      label: fixed ? t('resource.fan.staticNeverDefeats') : defeats ? t('resource.fan.defeats') : t('resource.fan.doesNotDefeat'),
       icon: <Skull />, pressed: defeats, disabled: fixed,
       onClick: () => onChange({ defeatedWhenSpent: !defeats }),
     },
     {
-      label: resource.visibleToPlayers ? t('uiSettingsDetails.resourceFan_playersSeeIt') : t('uiSettingsDetails.resourceFan_hiddenFromPlayers'),
+      label: resource.visibleToPlayers ? t('resource.fan.playersSee') : t('resource.fan.hiddenFromPlayers'),
       icon: resource.visibleToPlayers ? <Eye /> : <EyeOff />, pressed: resource.visibleToPlayers,
       onClick: () => onChange({ visibleToPlayers: !resource.visibleToPlayers }),
     },
-    { label: t('uiSettings.resourceFan_remove'), icon: <Trash2 />, danger: true, onClick: onRemove },
+    { label: t('common.remove'), icon: <Trash2 />, danger: true, onClick: onRemove },
   ];
   // On the fan's outer side, so a tooltip never covers the buttons beside it
   const spots = fanOffsets(buttons.length, place.fanSide).map((offset) => ({ ...offset, side: place.fanSide }));

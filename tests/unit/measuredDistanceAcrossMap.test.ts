@@ -1,4 +1,5 @@
-import { Text } from 'pixi.js';
+// @vitest-environment jsdom
+import { Container, Text } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PATHFINDER_2E } from '../../src/app/gameSystems/presets/pathfinder2e';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
@@ -37,7 +38,7 @@ function measureToolLabels(grid: SnappingGridOptions, dCol: number, dRow: number
     const to = pointInCell(grid, col + dCol, row + dRow);
     scene.pointer('pointerdown', from.x, from.y);
     scene.pointer('pointermove', to.x, to.y);
-    labels.add(scene.parts().find((part): part is Text => part instanceof Text)!.text);
+    labels.add(scene.parts().flatMap((part) => (part instanceof Container ? part.children : [])).find((part): part is Text => part instanceof Text)!.text);
     scene.pointer('pointerup', to.x, to.y);
   }
   return [...labels];

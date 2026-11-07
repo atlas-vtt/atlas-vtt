@@ -8,7 +8,8 @@ interface StatblockFieldChipsProps {
   suggestions: readonly FieldSuggestion[];
   /** The field as typed so far. */
   value: string;
-  onPick: (path: string) => void;
+  /** Called with the path picked and the suggestion it came from. */
+  onPick: (path: string, suggestion?: FieldSuggestion) => void;
 }
 
 /** Whether a suggestion's path or name holds what is typed. */
@@ -28,12 +29,16 @@ export function StatblockFieldChips({ suggestions, value, onPick }: StatblockFie
 
   return (
     <div className="atlas-csm-field-chips" role="group" aria-label={t('csm.statblockFieldChips')}>
-      {offered.map(({ path, label }) => (
-        <button key={path} type="button" className={cn('atlas-csm-field-chip', path === value && 'atlas-selected')}
-          aria-pressed={path === value} onClick={() => onPick(path)}>
-          {label && label !== path ? <>{label}<span className="atlas-csm-field-chip__path">{path}</span></> : path}
-        </button>
-      ))}
+      {offered.map((suggestion) => {
+        const { path, label, sample } = suggestion;
+        return (
+          <button key={path} type="button" className={cn('atlas-csm-field-chip', path === value && 'atlas-selected')}
+            aria-pressed={path === value} onClick={() => onPick(path, suggestion)}>
+            {label && label !== path ? <>{label}<span className="atlas-csm-field-chip__path">{path}</span></> : path}
+            {sample && <span className="atlas-csm-field-chip__sample">{sample}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

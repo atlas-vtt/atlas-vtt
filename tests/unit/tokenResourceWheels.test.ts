@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import 'pixi.js/events';
 import { Container, EventBoundary, Rectangle, loadEnvironmentExtensions, updateRenderGroupTransforms } from 'pixi.js';
@@ -6,7 +7,7 @@ import { ResourceBarHitArea } from '../../src/app/pixi/ResourceBarHitArea';
 import { TokenControlsUI } from '../../src/app/pixi/TokenControlsUI';
 import { TokenUIRenderer } from '../../src/app/pixi/TokenUIRenderer';
 import { getTokenRingCenterRadius } from '../../src/app/pixi/token-renderer/tokenRingMetrics';
-import { computeTokenPixelSize, NAMEPLATE_HEIGHT, RESIZE_HANDLE_SIZE, tokenUIScale } from '../../src/app/pixi/token-renderer/tokenSizing';
+import { computeTokenPixelSize, RESIZE_HANDLE_SIZE, tokenUIScale } from '../../src/app/pixi/token-renderer/tokenSizing';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { Character } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -177,17 +178,40 @@ describe('resource wheels on a token', () => {
     } finally { ui.destroy(); }
   });
 
-  it.each([2, 1, 0.5])('keeps the wheels above the nameplate and the bars at zoom %s', (zoom) => {
+  it.each([2, 1, 0.5])('stands the wheels beside the bars, their buttons and the nameplate, centred on the token and its bars, at zoom %s', (zoom) => {
     const { ui } = tokenUI({ zoom });
     try {
-      ui.update(hero, 62);
+      ui.update({ ...hero, name: 'Gargoyle', showNameplate: true }, 62);
       ui.setSelectionState(true);
+      ui.setBarButtonsShown(true);
       settle();
       const scale = beside(ui).scale.x;
-      const nameplateTop = 62 / 2 - NAMEPLATE_HEIGHT * scale;
-      for (const slot of wheelSlots(ui)) {
-        expect(beside(ui).position.y + (slot.top + slot.height) * scale).toBeLessThanOrEqual(nameplateTop + 1e-6);
-      }
+      const [upper, lower] = wheelSlots(ui);
+      const inner = beside(ui).position.x + upper!.left * scale;
+      // Outside the bars' + buttons, which stand a gap past the bars' right end
+      expect(inner).toBeGreaterThan((32 + 2 + 10) * scale);
+      // As high as the token and its two bars, centred on them
+      const top = -62 / 2;
+      const bottom = 62 / 2 + ui.getBarsReach();
+      const middle = beside(ui).position.y + ((upper!.top + lower!.top + lower!.height) / 2) * scale;
+      expect(middle).toBeCloseTo((top + bottom) / 2);
+    } finally { ui.destroy(); }
+  });
+
+  it('moves the wheels clear of a long nameplate', () => {
+    const { ui } = tokenUI({ zoom: 1 });
+    try {
+      ui.update({ ...hero, name: 'Ancient Red Dragon of the Northern Wastes', showNameplate: true }, 62);
+      ui.setSelectionState(true);
+      settle();
+      // The nameplate is the first thing drawn below the token
+      const below = ui.getContainer().children[0] as Container;
+      const plateRight = (below.children[0] as Container).getLocalBounds().maxX * below.scale.x;
+      expect(plateRight).toBeGreaterThan((32 + 2 + 10) * below.scale.x);
+      const slot = wheelSlots(ui)[0]!;
+      expect(beside(ui).position.x + slot.left * beside(ui).scale.x).toBeGreaterThan(plateRight);
+      const left = leftOf(ui);
+      expect(left.position.x).toBeCloseTo(-beside(ui).position.x);
     } finally { ui.destroy(); }
   });
 
@@ -236,13 +260,14 @@ describe('resource wheels on a token', () => {
       expect(leftOf(ui).position.y).toBeCloseTo(beside(ui).position.y);
       expect((leftOf(ui).children[0] as Container).visible).toBe(false);
       ui.setSelectionState(true);
+      ui.setBarButtonsShown(true);
       settle();
       expect((leftOf(ui).children[0] as Container).visible).toBe(true);
       expect(leftOf(ui).scale.x).toBeCloseTo(beside(ui).scale.x);
-      // Above the nameplate at the selected size too, like the right side
+      // Outside the bars' - buttons at the selected size, like the right side outside their + buttons
       const scale = leftOf(ui).scale.x;
       for (const slot of leftSlots(ui)) {
-        expect(leftOf(ui).position.y + (slot.top + slot.height) * scale).toBeLessThanOrEqual(62 / 2 - NAMEPLATE_HEIGHT * scale + 1e-6);
+        expect(leftOf(ui).position.x + (slot.left + slot.width) * scale).toBeLessThan(-(32 + 2 + 10) * scale);
       }
     } finally { ui.destroy(); }
   });
@@ -273,7 +298,9 @@ describe('resource wheels on a token', () => {
     const controls = new TokenControlsUI(viewport, store);
     controls.resourceDefsProvider = () => SIX;
     controls.slotsProvider = () => ui.getResourceSlots();
+    controls.wheelAnchorProvider = () => ui.getWheelAnchor();
     ui.onScaleChange = (scale) => controls.setScaleFor('hero', scale);
+    controls.onBarButtonsChange = (tokenId) => ui.setBarButtonsShown(tokenId === 'hero');
     try {
       ui.update(veteran, 62);
       controls.show('hero', 0, 0, 62, ui.getUIScale());
@@ -316,7 +343,9 @@ describe('resource wheels on a token', () => {
     const controls = new TokenControlsUI(viewport, store);
     controls.resourceDefsProvider = () => DEFINITIONS;
     controls.slotsProvider = () => ui.getResourceSlots();
+    controls.wheelAnchorProvider = () => ui.getWheelAnchor();
     ui.onScaleChange = (scale) => controls.setScaleFor('hero', scale);
+    controls.onBarButtonsChange = (tokenId) => ui.setBarButtonsShown(tokenId === 'hero');
     try {
       ui.update(hero, 62);
       // As the app does: the controls are shown when the selection changes, before the UI has grown

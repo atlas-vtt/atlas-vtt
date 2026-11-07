@@ -1,4 +1,3 @@
-import { t } from '../i18n';
 import React from 'react';
 import { Modal, type App } from 'obsidian';
 import { createPortal } from 'react-dom';
@@ -6,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { ChangelogContent } from './ChangelogContent';
 import { RepositoryLink } from './RepositoryLink';
 import type { ChangelogOptions } from './types';
-import atlasIcon from '../../../docs/images/atlas-vtt-icon.webp?inline';
+import atlasIcon from '../../../.github/images/atlas-vtt-icon.webp?inline';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 
 /** The service targets the main window; Obsidian owns focus and Escape handling. */
@@ -25,7 +24,7 @@ export class ChangelogModal extends Modal {
       cls: 'atlas-changelog-icon',
       attr: { src: atlasIcon, alt: '', 'aria-hidden': 'true' },
     });
-    this.titleEl.createSpan({ text: t('uiGeneral.changelogModal_whatSNewInAtlas') });
+    this.titleEl.createSpan({ text: 'What’s new in Atlas' });
     this.titleEl.createSpan({ cls: 'atlas-changelog-version', text: this.options.currentVersion });
     const repositoryLinkHost = this.titleEl.createSpan({ cls: 'atlas-changelog-title-actions' });
     this.modalEl.addClass(...ATLAS_NATIVE_MODAL_CLASSES, 'atlas-changelog-modal');

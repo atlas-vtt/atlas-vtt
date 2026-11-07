@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { createInMemoryApp } from '../mocks/inMemoryVault';

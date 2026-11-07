@@ -4,6 +4,7 @@ import type { ContextMenuEntry } from './AtlasContextMenu';
 import { emissionOf, lightPresetOf } from '../../../lighting/lightPresetChoice';
 import type { LightPresetDefinition } from '../../../types/lightPresetTypes';
 import { t } from '../../../i18n';
+import { lightPresetName } from '../../../lighting/lightPresetNames';
 
 /**
  * Vision and carried light for `tokenId` and the rest of `targets` (the selection it belongs to),
@@ -46,7 +47,7 @@ export function tokenLightingEntries(
       type: 'submenu',
       label: t('vision.carryLight'),
       icon: 'flame',
-      children: [option(t('common.none'), null), ...presets.map((preset) => option(preset.name, preset))],
+      children: [option(t('common.none'), null), ...presets.map((preset) => option(lightPresetName(preset), preset))],
     },
   ];
 }

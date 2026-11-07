@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerReturnToAtlasOnClose } from '../../src/app/plugin/returnToAtlasOnClose';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 interface FakeLeaf {
   viewType: string;

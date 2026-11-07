@@ -3,18 +3,20 @@ import type { CellAt } from '../../model/tableGrid';
 import { HEADER_ROW } from '../../model/tableGrid';
 import type { TableAlign } from '../../model/templateTypes';
 import { SheetContext, useSheet } from '../sheetContext';
+import { BonusLink } from '../shared/BonusLink';
 import { InlineText } from '../shared/InlineText';
 import { ProblemMarker } from '../values/ProblemMarker';
 import { hasText, NO_TEXT, type ShownText } from '../values/shownText';
 import type { ShownTable } from '../values/shownTable';
 import { TABLE_COL_ATTRIBUTE, TABLE_ROW_ATTRIBUTE } from './tableAttributes';
 import { useTableBands } from './useTableBands';
+import { t } from '../../../i18n';
 
 export { TABLE_COL_ATTRIBUTE, TABLE_ROW_ATTRIBUTE };
 
 /** What a column without a name is called while a statblock or template is edited. */
 export function unnamedColumn(col: number): string {
-  return `Column ${col + 1}`;
+  return t('statblockEditor.table.columnN', { n: col + 1 });
 }
 
 /** What an editor adds to the table: its inputs, handles and buttons. Every part is optional; the card has none. */
@@ -47,12 +49,16 @@ function alignStyle(align: TableAlign | null): React.CSSProperties | undefined {
   return align && align !== 'start' ? { textAlign: ALIGNS[align] } : undefined;
 }
 
-/** A cell's text, Markdown drawn as a note's table draws it, or a zero-width space that keeps an empty cell one line high, as Obsidian keeps one with a line break. */
-export function CellText({ shown }: { shown: ShownText }): React.JSX.Element {
+/**
+ * A cell's text, Markdown drawn as a note's table draws it, or a zero-width space that keeps an empty cell one line
+ * high, as Obsidian keeps one with a line break. In a rollable table a whole number rolls as a bonus.
+ */
+export function CellText({ shown, rollable }: { shown: ShownText; rollable?: boolean | undefined }): React.JSX.Element {
   const sheet = useContext(SheetContext);
+  const text = <InlineText text={shown.text} app={sheet?.app} sourcePath={sheet?.sourcePath} dice />;
   return (
     <>
-      {hasText(shown) ? <InlineText text={shown.text} app={sheet?.app} sourcePath={sheet?.sourcePath} dice /> : '\u200b'}
+      {hasText(shown) ? <BonusLink text={shown.text} rollable={rollable}>{text}</BonusLink> : '\u200b'}
       {shown.problems.length > 0 && <ProblemMarker problems={shown.problems} />}
     </>
   );
@@ -73,6 +79,12 @@ function cellProps(at: CellAt, edges: BandEdges, decor: TableDecor | undefined, 
     [TABLE_ROW_ATTRIBUTE]: at.row,
     [TABLE_COL_ATTRIBUTE]: at.col,
   } as React.TdHTMLAttributes<HTMLTableCellElement>;
+}
+
+/** In a rollable table, what names a cell's roll: its column (a cell holds no label of its own). */
+export function rollNameOf(shown: ShownTable, col: number): { 'data-roll-name'?: string } {
+  const name = shown.rollable ? shown.grid.columns[col]?.name.trim() : undefined;
+  return name ? { 'data-roll-name': name } : {};
 }
 
 interface BandProps {
@@ -122,8 +134,8 @@ function TableBand({ shown, decor, cols }: BandProps): React.JSX.Element {
             {cols.map((col, index) => {
               const at = { row: r, col };
               return (
-                <td key={col} {...cellProps(at, edges(index), decor, grid.columns[col]?.align ?? null, 'atlas-sb-sheet-table__cell')}>
-                  {content(at, <CellText shown={row[col] ?? NO_TEXT} />)}
+                <td key={col} {...cellProps(at, edges(index), decor, grid.columns[col]?.align ?? null, 'atlas-sb-sheet-table__cell')} {...rollNameOf(shown, col)}>
+                  {content(at, <CellText shown={row[col] ?? NO_TEXT} rollable={shown.rollable} />)}
                   {handles(at)}
                 </td>
               );
@@ -134,8 +146,8 @@ function TableBand({ shown, decor, cols }: BandProps): React.JSX.Element {
           <tr key={`derived-${index}`} className="atlas-sb-sheet-table__derived">
             {labelled && <th scope="row" className="atlas-sb-sheet-table__derived-label">{row.label}</th>}
             {cols.map((col) => (
-              <td key={col} className="atlas-sb-sheet-table__worked" style={alignStyle(grid.columns[col]?.align ?? null)}>
-                <CellText shown={row.cells[col] ?? NO_TEXT} />
+              <td key={col} className="atlas-sb-sheet-table__worked" style={alignStyle(grid.columns[col]?.align ?? null)} {...rollNameOf(shown, col)}>
+                <CellText shown={row.cells[col] ?? NO_TEXT} rollable={shown.rollable} />
               </td>
             ))}
           </tr>

@@ -1,9 +1,9 @@
-import { t } from '../../../../i18n';
 import React, { useEffect, useRef } from 'react';
 import { useKeepInView } from '../../../../packages/components/primitives/useKeepInView';
 import { cn } from '../../../../../utils/cn';
 import { FIELD_TYPE_LABELS } from '../editorGlyphs';
 import type { FieldChoice, FieldChoiceGroup } from './fieldChoices';
+import { t } from '../../../../i18n';
 
 export interface FieldChoiceListProps {
   id: string;
@@ -52,9 +52,9 @@ export function FieldChoiceList({ id, label, groups, active, onHover, onPick }: 
       className={cn('atlas-te-choices', keepInView.capped && 'atlas-keep-in-view--capped')}
       style={keepInView.style}
     >
-      {groups.length === 0 && <div className="atlas-te-choices__empty">{t('uiTemplateEditor.fieldChoiceList_noFieldMatches')}</div>}
+      {groups.length === 0 && <div className="atlas-te-choices__empty">{t('templateEditor.noFieldMatches')}</div>}
       {groups.map((group) => (
-        <div key={group.id} role="group" aria-label={group.label ?? t('uiTemplateDetails.fieldChoiceList_newProperty')} className="atlas-te-choices__group">
+        <div key={group.id} role="group" aria-label={group.label ?? t('templateEditor.newProperty')} className="atlas-te-choices__group">
           {group.label && <div className="atlas-te-choices__group-label" aria-hidden="true">{group.label}</div>}
           {group.choices.map((choice) => (
             <div
@@ -70,7 +70,7 @@ export function FieldChoiceList({ id, label, groups, active, onHover, onPick }: 
               onClick={() => onPick(choice)}
             >
               <span className="atlas-te-choices__label">
-                {choice.kind === 'new' ? t('uiTemplateDetails.fieldChoiceList_newPropertyName', { name: choice.label }) : choice.label}
+                {choice.kind === 'new' ? t('templateEditor.newPropertyNamed', { name: choice.label }) : choice.label}
               </span>
               <span className={cn('atlas-te-choices__hint', choice.kind === 'new' && 'atlas-te-choices__hint--key')}>
                 {hint(choice)}

@@ -17,6 +17,7 @@ import { statblockMenuEntries } from './statblockMenu';
 import { usePaneCollection } from './usePaneCollection';
 import { usePaneNote } from './usePaneNote';
 import { usePaneTemplate } from './usePaneTemplate';
+import { useReferenceSuggest } from './useReferenceSuggest';
 import './statblock-pane.scss';
 
 /**
@@ -66,6 +67,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
   }, []);
 
   const writable = note.kind === 'atlas' && paneTemplate.status !== 'loading';
+  useReferenceSuggest(app, rootRef, note.kind === 'atlas' && paneTemplate.status !== 'loading' ? paneTemplate.template : null, note.record);
   const entry = writable && paneTemplate.status === 'ok' ? paneTemplate.entry : null;
   const templateId = note.templateId;
   const menu = statblockMenuEntries({

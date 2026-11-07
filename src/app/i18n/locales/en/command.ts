@@ -1,12 +1,14 @@
 import type { Message } from '../../types';
 
 export const command = {
+  'command.newStatblockTemplate': 'New statblock template…',
   'command.cleanUpMissingAssets': 'Clean up missing assets in current map',
   'command.createTokenFromStatblock': 'Create token from statblock image',
   'command.dismissImageFromPlayerView': 'Dismiss image from player view',
   'command.displayImageOnPlayerView': 'Display image on player view',
   'command.importStatblockTokens': 'Import tokens from Fantasy Statblocks',
   'command.openDashboard': 'Open dashboard',
+  'command.generateDungeon': 'Generate dungeon',
   'command.openPlayerWindow': 'Open player window',
   'command.openSceneBrowser': 'Open scene browser',
   'command.reportIssue': 'Report an issue…',

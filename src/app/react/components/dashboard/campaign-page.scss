@@ -4,7 +4,7 @@
 @use 'campaign-controls' as *;
 
 // A campaign's page (CampaignPage.tsx): its world map behind the head of the page, fading into the
-// page; the name and Play over it; then the world map card and the game system beside the
+// page; the name and the party over it; then the world map card and the game system beside the
 // description and the quests (one column in a narrow pane).
 
 $backdrop-height: clamp(300px, 42cqi, 500px);
@@ -12,7 +12,7 @@ $backdrop-height: clamp(300px, 42cqi, 500px);
 $backdrop-head-room: clamp(72px, 12cqi, 168px);
 $campaign-side-width: 360px;
 $campaign-narrow: 820px;
-$play-height: 40px;
+$hero-row-height: 40px;
 
 .campaign-page {
   position: relative;
@@ -134,48 +134,22 @@ $play-height: 40px;
 .campaign-hero__actions {
   @include atlas-flex-row($spacing-m);
   flex-wrap: wrap;
-  // Holds the party's room (faces as tall as Play), so the page does not move when they arrive.
-  min-height: $play-height;
+  // Holds the party's room, so the page does not move when the faces arrive.
+  min-height: $hero-row-height;
   margin-top: $spacing-s;
   font-size: $font-ui-small;
 }
 
-.campaign-hero__play.btn {
-  height: $play-height;
-  padding: 0 $spacing-l;
-  gap: $spacing-s;
-  border-radius: $radius-l;
-  font-weight: $font-weight-semibold;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 20%), 0 4px 14px color-mix(in oklch, var(--interactive-accent) 30%, transparent);
-  transition: background-color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
-  @include atlas-focus-ring;
-
-  svg {
-    fill: currentColor;
-  }
-
-  &:active:not(:disabled) {
-    transform: scale(0.97);
-  }
-}
-
-// While played: the mark and Stop, as one pill of the page's surface.
+// While played (its online table is open): the mark as a pill of the page's surface, over the map.
 .campaign-hero__playing {
   @include atlas-flex-row($spacing-s);
-  height: $play-height;
+  height: $hero-row-height;
   box-sizing: border-box;
-  padding: $spacing-xs;
-  padding-inline-start: $spacing-m;
+  padding: 0 $spacing-m;
   border-radius: $radius-full;
   background: color-mix(in oklch, var(--background-secondary) 85%, transparent);
   border: $border-width-s solid var(--background-modifier-border);
   backdrop-filter: blur(8px);
-}
-
-.campaign-hero__stop.btn {
-  @include campaign-ghost-control;
-  height: calc(#{$play-height} - 2 * #{$spacing-xs} - 2px);
-  border-radius: $radius-full;
 }
 
 // ── Body ────────────────────────────────────────────────────────────────────

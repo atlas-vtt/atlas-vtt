@@ -118,7 +118,7 @@ export function TokenCreatorRail(props: TokenCreatorRailProps): React.JSX.Elemen
 
       {props.statblocks?.offered && <StatblockRoleSelect row={props.statblocks} />}
 
-      <p className="atlas-token-creator__empty-note">{t('uiMessages.tagsApply', { count: selectedCount })}</p>
+      <p className="atlas-token-creator__empty-note">Tags apply to {selectedCount} selected {selectedCount === 1 ? 'preview' : 'previews'}.</p>
       <TagPicker available={availableTags} selected={selectedTags} onToggle={onToggleTag} onCreate={props.onCreateTag} disabled={props.tagsDisabled} />
 
       {mode === 'token' && selectedCount > 0 && (

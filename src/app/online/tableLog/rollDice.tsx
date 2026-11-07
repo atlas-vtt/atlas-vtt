@@ -27,22 +27,40 @@ export function dieView(rolls: readonly SharedDie[], index: number): DieView {
   return { text: dieLabel(rolls, index), modifiers };
 }
 
-/** The constant a roll adds, as the dice list ends with it: "+3", "−2"; null for none. */
-function modifierText(modifiers: number): string | null {
-  if (modifiers === 0) return null;
-  return modifiers > 0 ? `+${modifiers}` : `−${Math.abs(modifiers)}`;
+/** A number with its sign: "+3", "−2". */
+const signed = (amount: number): string => (amount < 0 ? `−${Math.abs(amount)}` : `+${amount}`);
+
+/**
+ * The constants a roll adds, as the dice list ends with them: the unnamed ones' sum where it is not 0
+ * ("+3"), then each named one ("−1 Str mod"), as Atlas's roll steps them.
+ */
+export function constantChips(roll: Pick<SharedRoll, 'modifiers' | 'namedModifiers'>): string[] {
+  const named = roll.namedModifiers ?? [];
+  const plain = named.reduce((rest, term) => rest - term.value, roll.modifiers);
+  return [...(plain === 0 ? [] : [signed(plain)]), ...named.map((term) => `${signed(term.value)} ${term.label}`)];
 }
 
-/** The dice of a roll and the constant it adds, each in a chip: the one place a roll's dice are written out. */
+/**
+ * A roll's formula as a line reads it: each labelled constant a term of its own (`1d20+4-1[Str mod]`
+ * reads `1d20+4 − 1 Str mod`), where the roll names its constants; a label of dice stays.
+ */
+export function formulaLine(roll: Pick<SharedRoll, 'formula' | 'namedModifiers'>): string {
+  if (roll.namedModifiers === undefined) return roll.formula;
+  return roll.formula.replace(/(^|[+\-(])(\d+)\[([^\]]+)\]/g, (_, before: string, amount: string, label: string) => {
+    if (before === '+' || before === '-') return ` ${before === '-' ? '−' : '+'} ${amount} ${label}`;
+    return `${before}${amount} ${label}`;
+  });
+}
+
+/** The dice of a roll and the constants it adds, each in a chip: the one place a roll's dice are written out. */
 export function RollDice({ roll, id }: { readonly roll: SharedRoll; readonly id?: string }): ReactElement {
-  const constant = modifierText(roll.modifiers);
   return (
     <div id={id} className="atlas-online-log__roll-dice">
       {roll.rolls.map((_, index) => {
         const { text, modifiers } = dieView(roll.rolls, index);
         return <span key={index} className={classes('atlas-online-log__die', ...modifiers.map((modifier) => `atlas-online-log__die--${modifier}`))}>{text}</span>;
       })}
-      {constant !== null && <span className="atlas-online-log__die">{constant}</span>}
+      {constantChips(roll).map((chip, index) => <span key={`constant-${index}`} className="atlas-online-log__die">{chip}</span>)}
     </div>
   );
 }
