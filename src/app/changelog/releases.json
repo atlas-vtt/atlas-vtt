@@ -2,6 +2,11 @@
   "version": "0.13.2-beta.0",
   "releases": [
     {
+      "version": "0.13.2-beta.0",
+      "title": "Coming in 0.13.2",
+      "markdown": "## Fixed\n\n- Statblocks with large tables no longer freeze Obsidian when their note opens beside the statblock or when the window is resized."
+    },
+    {
       "version": "0.13.1",
       "date": "2026-11-06",
       "title": "Scene tab dragging, TrueScale staging and sound sync",
