@@ -1,14 +1,25 @@
 import { FuzzySuggestModal, setIcon, type App, type FuzzyMatch } from 'obsidian';
+import { ABOVE_ATLAS_DIALOGS } from '../ui/nativeModal';
 
 export interface FolderChoice {
   label: string;
   path: string;
+  /** A second line under the label, such as the folder a file lies in. */
+  note?: string;
+  /** What typing matches; unset matches the label. */
+  search?: string;
+}
+
+/** How a picker stands: above Atlas' own dialogs where it opens from one, or Obsidian would show it behind it. */
+export interface PathPickerOptions {
+  aboveDialogs?: boolean;
 }
 
 class SoundPathPicker extends FuzzySuggestModal<FolderChoice> {
-  constructor(app: App, private readonly choices: readonly FolderChoice[], placeholder: string, private readonly onChoose: (path: string) => void, private readonly icon: string) {
+  constructor(app: App, private readonly choices: readonly FolderChoice[], placeholder: string, private readonly onChoose: (path: string) => void, private readonly icon: string, options: PathPickerOptions = {}) {
     super(app);
     this.setPlaceholder(placeholder);
+    if (options.aboveDialogs) this.containerEl.addClass(ABOVE_ATLAS_DIALOGS);
   }
 
   getItems(): FolderChoice[] {
@@ -16,7 +27,7 @@ class SoundPathPicker extends FuzzySuggestModal<FolderChoice> {
   }
 
   getItemText(choice: FolderChoice): string {
-    return choice.label;
+    return choice.search ?? choice.label;
   }
 
   renderSuggestion(match: FuzzyMatch<FolderChoice>, el: HTMLElement): void {
@@ -24,6 +35,7 @@ class SoundPathPicker extends FuzzySuggestModal<FolderChoice> {
     setIcon(el.createDiv({ cls: 'atlas-link-choice__icon' }), this.icon);
     const content = el.createDiv({ cls: 'suggestion-content' });
     content.createDiv({ cls: 'suggestion-title', text: match.item.label });
+    if (match.item.note) content.createDiv({ cls: 'suggestion-note', text: match.item.note });
   }
 
   onChooseItem(choice: FolderChoice): void {
@@ -36,7 +48,7 @@ export function pickFolder(app: App, choices: readonly FolderChoice[], placehold
   new SoundPathPicker(app, choices, placeholder, onChoose, 'folder').open();
 }
 
-/** Lets the GM pick a file of a root from a list, as a missing track's relink does. */
-export function pickSoundFile(app: App, choices: readonly FolderChoice[], placeholder: string, onChoose: (path: string) => void): void {
-  new SoundPathPicker(app, choices, placeholder, onChoose, 'file-audio').open();
+/** Lets the GM pick a file of a root from a list, as a missing track's relink does, or a token's sound. */
+export function pickSoundFile(app: App, choices: readonly FolderChoice[], placeholder: string, onChoose: (path: string) => void, options: PathPickerOptions = {}): void {
+  new SoundPathPicker(app, choices, placeholder, onChoose, 'file-audio', options).open();
 }

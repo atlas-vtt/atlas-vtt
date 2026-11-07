@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { App, TFile } from 'obsidian';
+import { Modal, type App } from 'obsidian';
 import { openEditTokenModal } from '../../src/app/pixi/token-renderer/EditTokenModal';
-import { AudioFileModal } from '../../src/app/audio/AudioFileModal';
+import type { FolderChoice } from '../../src/app/soundLibrary/SoundFolderPicker';
+import { recentSounds, rememberSound } from '../../src/app/audio/recentSounds';
 import { TokenSoundPlayer } from '../../src/app/audio/TokenSoundPlayer';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
@@ -21,13 +22,14 @@ vi.mock('../../src/app/soundLibrary/audioDuration', () => ({ readAudioSecondsAt:
 const MB = 1024 * 1024;
 let current: App | null = null;
 
-function open(sounds?: unknown, { sound = true }: { sound?: boolean } = {}): { app: App; store: ViewAtlasStore; saved: () => TokenEntity; section: () => HTMLElement } {
+function open(sounds?: unknown, { sound = true, files = {} }: { sound?: boolean; files?: Record<string, string> } = {}): { app: App; store: ViewAtlasStore; saved: () => TokenEntity; section: () => HTMLElement } {
   const { app: made } = createInMemoryApp({
     files: {
       'Sounds/dragon-roar.mp3': 'audio:48000',
       'Sounds/wings.ogg': 'audio:24000',
       'Sounds/album.mp3': 'audio:100'.padEnd(20 * MB + 1, ' '),
       'Lore/Dragon.md': '# Dragon',
+      ...files,
     },
   });
   // Token sounds belong to Sound, so Edit Token offers them only while the GM switched it on.
@@ -47,20 +49,34 @@ function open(sounds?: unknown, { sound = true }: { sound?: boolean } = {}): { a
 
 const save = (): void => act(() => screen.getByRole('button', { name: 'Save' }).click());
 
-/** The picker Add sound opens, as Obsidian would show it. */
-function openPicker(): AudioFileModal {
-  const opened = vi.spyOn(AudioFileModal.prototype, 'open');
+/** The picker Add sound opens, as Obsidian would show it: the choices it offers and their layer. */
+interface SoundPicker {
+  containerEl: HTMLElement;
+  getItems(): FolderChoice[];
+  onChooseItem(choice: FolderChoice): void;
+}
+
+function openPicker(): SoundPicker {
+  const opened = vi.spyOn(Modal.prototype, 'open');
   act(() => screen.getByRole('button', { name: 'Add sound' }).click());
-  const picker = opened.mock.contexts.at(-1) as AudioFileModal | undefined;
+  const picker = opened.mock.contexts.at(-1) as SoundPicker | undefined;
   opened.mockRestore();
   if (!picker) throw new Error('Add sound opened no picker');
   return picker;
 }
 
-/** Opens the picker from Add sound and chooses `path` in it, as Obsidian's prompt would. */
-function addSound(app: App, path: string): void {
+/** The paths the picker offers, in its order. */
+const offered = (picker: SoundPicker): string[] => picker.getItems().map((choice) => choice.path);
+
+/** Opens the picker from Add sound and chooses `path` in it, as Obsidian's prompt would, then lets its checks finish. */
+async function addSound(path: string): Promise<void> {
   const picker = openPicker();
-  act(() => picker.onChooseItem(app.vault.getFileByPath(path) as TFile));
+  const choice = picker.getItems().find((item) => item.path === path);
+  if (!choice) throw new Error(`the picker offers no ${path}`);
+  await act(async () => {
+    picker.onChooseItem(choice);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 const volumeOf = (name: string): string | null => screen.getByRole('slider', { name: `Volume of ${name}` }).getAttribute('aria-valuenow');
@@ -102,22 +118,56 @@ describe('the Sounds of Edit Token', () => {
     expect(volumeOf('wings')).toBe('100');
   });
 
-  it('adds a sound chosen in the vault at full volume and saves it', () => {
-    const { app, saved } = open();
-    addSound(app, 'Sounds/wings.ogg');
+  it('adds a sound chosen in the vault at full volume and saves it', async () => {
+    const { saved } = open();
+    await addSound('Sounds/wings.ogg');
     expect(volumeOf('wings')).toBe('100');
     save();
     expect(saved().sounds).toEqual([{ path: 'Sounds/wings.ogg', volume: 1 }]);
   });
 
-  it('offers only the vault\'s sound files to choose from', () => {
-    const { app } = open();
-    const paths = new AudioFileModal(app, () => undefined).getItems().map((file) => file.path).sort();
-    expect(paths).toEqual(['Sounds/album.mp3', 'Sounds/dragon-roar.mp3', 'Sounds/wings.ogg']);
+  it('offers the vault\'s audio files, but none of Atlas\'s own', () => {
+    open(undefined, { files: { 'Sounds/horn.aac': 'audio:100', 'atlas-vtt/maps/cave.webm': 'video', 'atlas-vtt/sounds/ambience/rain.ogg': 'audio:100' } });
+    expect(offered(openPicker()).sort()).toEqual(['Sounds/album.mp3', 'Sounds/dragon-roar.mp3', 'Sounds/horn.aac', 'Sounds/wings.ogg', 'atlas-vtt/sounds/ambience/rain.ogg']);
   });
 
-  it('saves sounds after the token moves to another level while Edit Token stays open', () => {
-    const { app, store, saved } = open();
+  it('names each sound by its file, with its folder below, and matches its whole path', () => {
+    open();
+    expect(openPicker().getItems().find((choice) => choice.path === 'Sounds/wings.ogg'))
+      .toEqual({ label: 'wings', note: 'Sounds', search: 'Sounds/wings.ogg', path: 'Sounds/wings.ogg' });
+  });
+
+  it('opens above the Edit Token dialog', () => {
+    open();
+    expect(openPicker().containerEl.classList.contains('atlas-above-dialogs')).toBe(true);
+  });
+
+  it('refuses a sound longer than three minutes when picked, and neither adds nor remembers it', async () => {
+    const { app, saved } = open();
+    seconds.value = 200;
+
+    await addSound('Sounds/wings.ogg');
+
+    expect(showNotice).toHaveBeenCalledWith('The sound "wings" is longer than 3 minutes, too long for a token.');
+    expect(screen.queryByRole('list', { name: 'Sounds' })).toBeNull();
+    expect(recentSounds(app)).toEqual([]);
+    save();
+    expect(saved().sounds).toBeUndefined();
+  });
+
+  it('lists no recent pick that is gone or lies in Atlas\'s own folder', () => {
+    const { app } = open(undefined, { files: { 'atlas-vtt/maps/cave.webm': 'video' } });
+    for (const path of ['Sounds/gone.mp3', 'atlas-vtt/maps/cave.webm', 'Sounds/wings.ogg']) rememberSound(app, path);
+
+    const paths = offered(openPicker());
+
+    expect(paths[0]).toBe('Sounds/wings.ogg');
+    expect(paths).not.toContain('Sounds/gone.mp3');
+    expect(paths).not.toContain('atlas-vtt/maps/cave.webm');
+  });
+
+  it('saves sounds after the token moves to another level while Edit Token stays open', async () => {
+    const { store, saved } = open();
     store.setState({
       levels: [
         { id: 'ground', elevation: { bottom: 0, top: 10 }, background: null },
@@ -125,23 +175,23 @@ describe('the Sounds of Edit Token', () => {
       ],
       viewedLevel: 'ground',
     });
-    addSound(app, 'Sounds/wings.ogg');
+    await addSound('Sounds/wings.ogg');
     act(() => store.getState().moveTokensToLevel(['t'], 'upper'));
     expect(store.getState().viewedLevel).toBe('ground');
     save();
     expect(saved()).toMatchObject({ level: 'upper', sounds: [{ path: 'Sounds/wings.ogg', volume: 1 }] });
   });
 
-  it('offers the sound picked last at the top of the picker the next time, and not a refused one', () => {
-    const { app } = open();
-    addSound(app, 'Sounds/wings.ogg');
-    addSound(app, 'Sounds/album.mp3');
-    expect(openPicker().getItems().map((file) => file.path)).toEqual(['Sounds/wings.ogg', 'Sounds/album.mp3', 'Sounds/dragon-roar.mp3']);
+  it('offers the sound picked last at the top of the picker the next time, and not a refused one', async () => {
+    open();
+    await addSound('Sounds/wings.ogg');
+    await addSound('Sounds/album.mp3');
+    expect(offered(openPicker())).toEqual(['Sounds/wings.ogg', 'Sounds/album.mp3', 'Sounds/dragon-roar.mp3']);
   });
 
-  it('refuses a file larger than 20 MB, saying so, and adds nothing', () => {
-    const { app, saved } = open();
-    addSound(app, 'Sounds/album.mp3');
+  it('refuses a file larger than 20 MB, saying so, and adds nothing', async () => {
+    const { saved } = open();
+    await addSound('Sounds/album.mp3');
     expect(showNotice).toHaveBeenCalledOnce();
     expect(showNotice.mock.calls[0]![0]).toContain('album');
     expect(screen.queryByRole('slider', { name: 'Volume of album' })).toBeNull();

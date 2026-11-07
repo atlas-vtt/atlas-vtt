@@ -24,7 +24,7 @@ import { TokenIdentitySection, TokenResourcesSection } from './EditTokenSections
 import { TokenLightSection, TokenVisionSection, type TokenLightingContext } from './TokenLightingFields';
 import { TokenSoundsSection } from './TokenSoundsSection';
 import { MAX_TOKEN_SOUNDS, tokenSounds } from '../../audio/tokenSounds';
-import { pickTokenSound } from '../../audio/AudioFileModal';
+import { pickTokenSound } from '../../audio/pickTokenSound';
 import { playTokenSound } from '../../audio/playTokenSound';
 import { TokenSoundPlayer } from '../../audio/TokenSoundPlayer';
 import { experimentalFeatureOn } from '../../experimental/experimentalFeatures';
