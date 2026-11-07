@@ -12,7 +12,7 @@ import { perceivedLevel, showsMap } from '../../gameSystems/senseRules';
 import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
 import { SEES_ALL, SightCache, sceneSight, sightSources, type AmbientLight, type LightReach, type Sight, type SightRegion } from '../../vision/sight';
 import { wallList } from '../../vision/wallList';
-import { seenSpots, type SeenSpot } from '../../vision/perception';
+import { perceptionOptions, seenSpots, type SeenSpot } from '../../vision/perception';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds, Polygon } from '../../vision/visibility';
 import type { HideableLayer } from '../playerSafeFrame';
@@ -154,7 +154,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     // The same regions are the same sight: what was worked out from it (who is seen) stays good.
     if (!sameSight(sight, this.sight)) this.sight = sight;
     this.sightBuilt = true;
-    const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, mapTokens(levelObjects(state)), scale.cellSize, walls, { conditions: rules?.conditions ?? [], held, policy: PLAYER_SIGHT_POLICY });
+    const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, mapTokens(levelObjects(state)), scale.cellSize, walls, perceptionOptions(rules, held));
     this.setDarkness(bounds, spots, this.openings(state, bounds));
     this.deps.onSightChange?.();
   }
