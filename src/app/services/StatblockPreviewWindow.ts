@@ -112,6 +112,7 @@ export class StatblockPreviewWindow {
       noteText: outsideNote?.text,
       bundleTemplates: outsideNote?.templates,
       variant: 'hover',
+      pressableCounters: true,
     };
     const content = this.element.createDiv({ cls: 'atlas-statblock-preview-window__content' });
     this.reactRoot = createRoot(content);
