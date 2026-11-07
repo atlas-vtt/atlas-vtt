@@ -109,15 +109,15 @@ describe('TokenRenderer and the collection of its map', () => {
     isDestroyed,
     uiManager: { refreshConditions: vi.fn(), refreshResources: vi.fn() },
     turnMarkers: { refresh: vi.fn() },
-    fillMissingResources: vi.fn(),
+    statblockSync: { followRules: vi.fn() },
   });
 
-  it('redraws conditions and resources and starts missing ones once the collection\'s rules are known or change', () => {
+  it('redraws conditions and resources and linked tokens follow their resources once the collection\'s rules are known or change', () => {
     const renderer = harness(false);
     (TokenRenderer.prototype as any).refreshCollectionRules.call(renderer);
     expect(renderer.uiManager.refreshConditions).toHaveBeenCalledOnce();
     expect(renderer.uiManager.refreshResources).toHaveBeenCalledOnce();
-    expect(renderer.fillMissingResources).toHaveBeenCalledOnce();
+    expect(renderer.statblockSync.followRules).toHaveBeenCalledOnce();
     // Who is defeated follows the resources, and so who holds a side's turn
     expect(renderer.turnMarkers.refresh).toHaveBeenCalledOnce();
   });
@@ -126,6 +126,6 @@ describe('TokenRenderer and the collection of its map', () => {
     const renderer = harness(true);
     (TokenRenderer.prototype as any).refreshCollectionRules.call(renderer);
     expect(renderer.uiManager.refreshResources).not.toHaveBeenCalled();
-    expect(renderer.fillMissingResources).not.toHaveBeenCalled();
+    expect(renderer.statblockSync.followRules).not.toHaveBeenCalled();
   });
 });
