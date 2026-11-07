@@ -2,6 +2,11 @@
   "version": "0.13.2-beta.0",
   "releases": [
     {
+      "version": "0.13.2-beta.0",
+      "title": "Coming in 0.13.2",
+      "markdown": "## Improved\n- Edit Token stays where it opened while you edit: switching vision or a carried light on or off no longer moves the dialog, so the switch you clicked stays under the pointer."
+    },
+    {
       "version": "0.13.1",
       "date": "2026-11-06",
       "title": "Scene tab dragging, TrueScale staging and sound sync",

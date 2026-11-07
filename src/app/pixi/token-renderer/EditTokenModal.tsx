@@ -8,6 +8,7 @@ import type { TokenEntity } from '../../types';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { Button } from '../../packages/components/primitives/button';
 import { TooltipProvider } from '../../packages/components/primitives/tooltip';
+import { useAnchoredTop } from '../../packages/components/primitives/useAnchoredTop';
 import { AssetService } from '../../services/AssetService';
 import { mapMeasurementSettings } from '../../services/mapMeasurementSettings';
 import type { SenseRules } from '../../creatures/tokenSensesResolver';
@@ -69,6 +70,8 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
   );
   const [vision, setVision] = useState(initial.vision);
   const [light, setLight] = useState(initial.light);
+  const [dialog, setDialog] = useState<HTMLDivElement | null>(null);
+  useAnchoredTop(dialog);
   const inputRef = useRef<HTMLInputElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const context = { ...lighting, inherited };
@@ -111,7 +114,7 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
 
   return (
     <div ref={overlayRef} className="atlas-modal-overlay" onClick={onClose}>
-      <div className="atlas-modal atlas-edit-token-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={setDialog} className="atlas-modal atlas-edit-token-modal" onClick={(e) => e.stopPropagation()}>
         <div className="atlas-modal-header">
           <h3>{t('editToken.title')}</h3>
           <CloseButton onClick={onClose} />
