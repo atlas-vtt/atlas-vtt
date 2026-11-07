@@ -193,7 +193,7 @@ export function StatblockHoverPreview({
   return createPortal(
     <div ref={containerRef} className={className} style={positionStyles}>
       {app && (
-        <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} />
+        <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} pressableCounters />
       )}
     </div>,
     portalHost()
