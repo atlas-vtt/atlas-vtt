@@ -1,0 +1,9 @@
+// An Obsidian prompt opened from one of Atlas' dialogs (`ABOVE_ATLAS_DIALOGS`,
+// `src/app/ui/nativeModal.ts`): Atlas' dialog overlays lie far above Obsidian's modal layer,
+// so the prompt stands one layer above them instead of opening behind its dialog.
+
+@use './tokens' as *;
+
+.modal-container.atlas-above-dialogs {
+  z-index: $z-atlas-modal + 1;
+}

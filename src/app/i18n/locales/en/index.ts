@@ -67,6 +67,7 @@ import { pin } from './pin';
 import { laser } from './laser';
 import { text } from './text';
 import { audio } from './audio';
+import { tokenSound } from './tokenSound';
 import { drawing } from './drawing';
 import { dungeon } from './dungeon';
 import { dungeonProp } from './dungeonProp';
@@ -179,6 +180,7 @@ export const en = {
   ...laser,
   ...text,
   ...audio,
+  ...tokenSound,
   ...drawing,
   ...dungeon,
   ...dungeonProp,
