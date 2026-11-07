@@ -5,3 +5,4 @@
 - A token whose statblock note was deleted or moved outside Obsidian now shows a red badge in the asset manager, and clicking it lets you link another statblock instead of opening an empty Untitled note
 - One-way walls that let light through no longer draw a dark line across passages when ray tracing is off.
 - "New statblock…" in the Link Statblock dialog opens its menu in front of the dialog, so its choices can be picked
+- Snapshots that were saved but no longer showed in a scene's snapshot tray appear there again
