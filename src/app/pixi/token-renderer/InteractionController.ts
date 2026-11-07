@@ -27,7 +27,7 @@ import { initiativeEntryForToken } from '../../stores/initiativeEntries';
 import { EventEmitter } from 'events';
 import { StatblockDialogService } from '../../services/StatblockDialogService';
 import { AssetService } from '../../services/AssetService';
-import { createStatblockEntry, editInStatblockPane, newStatblockOption, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';
+import { createStatblockEntry, newStatblockOption, openStatblockNote, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import { saveMapTokensAsEncounter } from '../../encounters/saveMapTokensAsEncounter';
@@ -49,6 +49,7 @@ import { dropTokensOnStairs, type StairsMenuPlace } from './stairsDrop';
 import type { TokenPreviewAnchor } from '../../services/NotePreviewUIManager';
 import type { ArtFloors } from '../../levels/levelSurfaces';
 import { t } from '../../i18n';
+import { showNotice } from '../../ui/notice';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
@@ -656,11 +657,9 @@ export class InteractionController implements ITokenInteractionController {
         type: 'item',
         label: t('token.editStatblock'),
         icon: 'file-text',
-        onClick: async () => {
-          if (obsApp && editInStatblockPane(obsApp, statblockPath, this.statblockEntryContext())) return;
-          if (obsApp) {
-            const file = obsApp.vault.getAbstractFileByPath(statblockPath);
-            if (file) await obsApp.workspace.openLinkText(file.path, '', true);
+        onClick: () => {
+          if (obsApp && openStatblockNote(obsApp, statblockPath, this.statblockEntryContext()) === 'missing') {
+            showNotice(t('token.statblockMissing'));
           }
         },
       });

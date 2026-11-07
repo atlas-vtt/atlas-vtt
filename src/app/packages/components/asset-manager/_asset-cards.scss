@@ -201,6 +201,12 @@
   &:active {
     transform: scale(0.95);
   }
+
+  // The linked note is gone: a click links another.
+  &--missing,
+  &--missing:hover {
+    color: var(--text-error);
+  }
 }
 
 // Marks a map whose video plays over its first frame; the card shows that frame.

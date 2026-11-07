@@ -5,7 +5,7 @@
  */
 
 import type { App, TFile } from 'obsidian';
-import { getFantasyStatblocksApi, hasCreatureForNotePath } from '../../services/FantasyStatblocksService';
+import { hasCreatureForNotePath } from '../../services/FantasyStatblocksService';
 import { cachedFrontmatter, frontmatterSource, statblockSourceOf } from '../notes/statblockSource';
 
 /**
@@ -22,16 +22,4 @@ export function statblockNoteKnown(app: App, file: TFile): boolean {
 /** Whether a vault note shows as a statblock: the predicate (`statblockSourceOf`) or the bestiary finds one for it. */
 export async function isStatblockNote(app: App, file: TFile): Promise<boolean> {
   return statblockNoteKnown(app, file) || (await statblockSourceOf(app, file)) !== null;
-}
-
-/**
- * A frontmatter statblock (`statblock: true`) that Fantasy Statblocks, loaded,
- * has not parsed: its "Parse Frontmatter" is off by default, and the plugin then
- * draws the note only through a fence in its text. Native notes and notes the
- * bestiary knows are never such a note.
- */
-export function unparsedFrontmatterStatblock(app: App, file: TFile): boolean {
-  return getFantasyStatblocksApi() !== null
-    && frontmatterSource(cachedFrontmatter(app, file))?.kind === 'fs-frontmatter'
-    && !hasCreatureForNotePath(file.path);
 }

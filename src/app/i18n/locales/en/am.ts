@@ -158,6 +158,7 @@ export const am = {
   'am.tab.party': 'Players',
   'am.card.select': 'Select {name}',
   'am.card.statblockLinked': 'Statblock linked – click to open',
+  'am.card.statblockMissing': 'Statblock note not found – click to link another',
   'am.card.animated': 'Animated map',
   'am.card.processing': 'Processing',
   'am.card.processingProgress': 'Processing · {percent}%',
