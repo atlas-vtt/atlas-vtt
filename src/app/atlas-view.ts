@@ -18,6 +18,7 @@ import { observeResize } from './utils/observeResize';
 import { inMainWindow } from './plugin/atlasMainWindow';
 
 import { ATLAS_VIEW_TYPE } from './atlasViewType';
+import { followPresentedScene } from './services/PlayerWindowPresenter';
 
 export { ATLAS_VIEW_TYPE };
 
@@ -78,6 +79,8 @@ export class AtlasView extends FileView {
   private openingLevel: string | null = null;
   private plugin: AtlasVTTPlugin | undefined;
   private stopResizeObserver: (() => void) | null = null;
+  /** Stops showing players the presented scene from this view once it loads it (`followPresentedScene`). */
+  private stopFollowingPresentedScene: (() => void) | null = null;
   private lastContainerWidth: number = 0;
   private lastContainerHeight: number = 0;
   private isViewClosing = false;
@@ -238,6 +241,10 @@ export class AtlasView extends FileView {
     // `keepAtlasInMainWindow` closes it and opens its scenes in the main window.
     if (!inMainWindow(this.app.workspace, this.leaf)) return;
 
+    // A player window whose map view closed shows players the presented scene again once this view loads it
+    this.stopFollowingPresentedScene?.();
+    this.stopFollowingPresentedScene = followPresentedScene(this.app, this);
+
     this.detachLeafFocusHandlers();
     this.boundClaimLeafFocus = () => this.claimLeafFocus();
     containerEl.addEventListener('pointerdown', this.boundClaimLeafFocus, true);
@@ -310,6 +317,9 @@ export class AtlasView extends FileView {
     // Clean up event listeners
     this.detachLeafFocusHandlers();
     this.detachTabHeaderActivationHandler();
+
+    this.stopFollowingPresentedScene?.();
+    this.stopFollowingPresentedScene = null;
 
     // Clean up all services
     this._serviceManager.destroy();
