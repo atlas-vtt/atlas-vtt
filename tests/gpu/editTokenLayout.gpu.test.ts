@@ -9,6 +9,7 @@ import { openEditTokenModal } from '../../src/app/pixi/token-renderer/EditTokenM
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { Character } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { withSound } from '../mocks/experimentalFeatures';
 import { HP, STR } from '../mocks/resourceFixtures';
 
 /**
@@ -34,9 +35,11 @@ const body = (): HTMLElement => modal().querySelector<HTMLElement>('.atlas-modal
 const columns = (): DOMRect[] => [...modal().querySelectorAll('.atlas-edit-token__column')].map((column) => column.getBoundingClientRect());
 const headings = (): HTMLElement[] => [...modal().querySelectorAll<HTMLElement>('h4')];
 
-async function open(token: Character, width: number, height: number): Promise<void> {
+async function open(token: Character, width: number, height: number, { sound = false }: { sound?: boolean } = {}): Promise<void> {
   await page.viewport(width, height);
-  const { app } = createInMemoryApp({ files: {} });
+  const { app: made } = createInMemoryApp({ files: {} });
+  // With Sound switched on, the token's sounds have a section of their own.
+  const app = sound ? withSound(made) : made;
   const store = createViewAtlasStore(app, `edit-token-layout-${Math.random()}`);
   store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
   act(() => openEditTokenModal(token, store, app, [HP, STR]));
@@ -132,6 +135,13 @@ describe('the layout of the Edit Token dialog', () => {
     expect(parts()).toEqual(lit.parts);
     // This token's own column is the longer one: the dialog keeps its size, with the light or without.
     expect(placeInModal(modal())).toEqual(lit.size);
+  });
+
+  it('puts Sounds under the carried light in the right column while Sound is on', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900, { sound: true });
+    const [, right] = columns();
+    expect(headings().map((heading) => [heading.textContent, heading.getBoundingClientRect().left < right!.left ? 'left' : 'right']))
+      .toEqual([['Token', 'left'], ['Resources', 'left'], ['Vision', 'left'], ['Carried light', 'right'], ['Sounds', 'right']]);
   });
 
   it('scrolls only its body in a window too low for it: the header and the footer stay', async () => {

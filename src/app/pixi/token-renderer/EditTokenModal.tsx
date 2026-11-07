@@ -27,6 +27,7 @@ import { MAX_TOKEN_SOUNDS, tokenSounds } from '../../audio/tokenSounds';
 import { pickTokenSound } from '../../audio/AudioFileModal';
 import { playTokenSound } from '../../audio/playTokenSound';
 import { TokenSoundPlayer } from '../../audio/TokenSoundPlayer';
+import { experimentalFeatureOn } from '../../experimental/experimentalFeatures';
 import type { TokenSound } from '../../types/audioTypes';
 import { unitLabelFor } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
@@ -62,7 +63,8 @@ interface EditTokenModalProps {
   lighting: TokenLightingContext;
   /** The statblock the token links, whose senses it follows while it has none of its own. */
   statblock: StatblockLink | null;
-  soundActions: SoundActions;
+  /** Null while Sound is switched off: the dialog then has no Sounds section and leaves the token's sounds as they are. */
+  soundActions: SoundActions | null;
   /** Saves the form; `resourceDefaults` is what the linked statblock gives each resource. */
   onSave: (values: EditTokenValues, resourceDefaults: Record<string, ResourceValue>) => void;
   onClose: () => void;
@@ -148,12 +150,14 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, soundA
           </div>
           <div className="atlas-edit-token__column">
             <TokenLightSection light={light} onChange={setLight} context={context} />
-            <TokenSoundsSection
-              sounds={sounds}
-              onChange={setSounds}
-              onAdd={() => soundActions.pick((sound) => setSounds((current) => [...current, sound].slice(0, MAX_TOKEN_SOUNDS)))}
-              onPlay={soundActions.play}
-            />
+            {soundActions && (
+              <TokenSoundsSection
+                sounds={sounds}
+                onChange={setSounds}
+                onAdd={() => soundActions.pick((sound) => setSounds((current) => [...current, sound].slice(0, MAX_TOKEN_SOUNDS)))}
+                onPlay={soundActions.play}
+              />
+            )}
           </div>
         </div>
 
@@ -219,10 +223,11 @@ export function openEditTokenModal(
     light: lightForm(token.light, lighting.lightPresets),
     sounds: tokenSounds(token),
   };
-  const soundActions: SoundActions = {
+  // Token sounds are part of Sound: read once as the dialog opens, like the rest of its context.
+  const soundActions: SoundActions | null = experimentalFeatureOn(app, 'sound') ? {
     pick: (onPicked) => pickTokenSound(app, onPicked),
     play: (sound) => void playTokenSound(TokenSoundPlayer.forApp(app), sound),
-  };
+  } : null;
 
   /**
    * Saves what the form changed onto the token as the store has it now: the map goes on while

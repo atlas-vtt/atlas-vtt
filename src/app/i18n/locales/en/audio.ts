@@ -9,7 +9,7 @@ export const audio = {
   'audio.loop': 'Loop',
 
   'audio.experimental.label': 'Sound',
-  'audio.experimental.hint': 'Music and ambience from folders you link: moods and a library on the DM screen. While off, both stay hidden.',
+  'audio.experimental.hint': 'Music and ambience from folders you link, moods and a library on the DM screen, and sounds tokens play from their menu. While off, all of it stays hidden.',
 
   'audio.importing': 'Adding sounds: {done} of {total}',
   'audio.added': { one: 'Added {count} sound.', other: 'Added {count} sounds.' },

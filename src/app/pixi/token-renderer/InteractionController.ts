@@ -40,6 +40,7 @@ import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLeve
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
 import { tokenSoundsSubmenu } from '../../react/components/context-menu/tokenSoundsMenu';
 import { TokenSoundPlayer } from '../../audio/TokenSoundPlayer';
+import { experimentalFeatureOn } from '../../experimental/experimentalFeatures';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
 import { applySelectionResourceChange, selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
@@ -638,8 +639,8 @@ export class InteractionController implements ITokenInteractionController {
       onClick: () => this.showEditTokenModal(token),
     });
 
-    // The token's sounds, played on the GM's computer
-    const sounds = tokenSoundsSubmenu(TokenSoundPlayer.forApp(this.obsApp), token);
+    // The token's sounds, played on the GM's computer: part of Sound, so only while it is switched on
+    const sounds = experimentalFeatureOn(this.obsApp, 'sound') ? tokenSoundsSubmenu(TokenSoundPlayer.forApp(this.obsApp), token) : null;
     if (sounds) entries.push(sounds);
 
     // Initiative, for the selection the token belongs to; the clicked token decides which way

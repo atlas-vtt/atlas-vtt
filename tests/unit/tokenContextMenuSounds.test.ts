@@ -13,6 +13,7 @@ import type { Token } from '../../src/app/types';
 import type { TokenSound } from '../../src/app/types/audioTypes';
 import { FakeAudioContext } from '../mocks/fakeAudioContext';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { withSound } from '../mocks/experimentalFeatures';
 
 const opened = vi.hoisted(() => ({ entries: [] as ContextMenuEntry[] }));
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({
@@ -29,10 +30,12 @@ const token = (id: string, sounds?: TokenSound[]): Token => ({
 /** The app of the running test, whose sound player is released after it. */
 let current: App | null = null;
 
-function setup(tokens: Token[], selectedIds: string[] = []): { app: App; rightClick: (id: string) => void } {
-  const { app } = createInMemoryApp({
+function setup(tokens: Token[], selectedIds: string[] = [], { sound = true }: { sound?: boolean } = {}): { app: App; rightClick: (id: string) => void } {
+  const { app: made } = createInMemoryApp({
     files: { 'Sounds/dragon-roar.mp3': 'audio:48000', 'Sounds/wings.ogg': 'audio:24000', 'Sounds/hiss.wav': 'audio:12000' },
   });
+  // Token sounds belong to Sound, so they show only while the GM switched it on.
+  const app = sound ? withSound(made) : made;
   current = app;
   const store = createViewAtlasStore(app, `sounds-${Math.random()}`);
   store.setState({
@@ -81,6 +84,12 @@ describe('token context menu sounds', () => {
     const { rightClick } = setup([token('dragon', [{ path: 'Sounds/dragon-roar.mp3' }, { path: 'Sounds/wings.ogg', volume: 0.5 }])]);
     rightClick('dragon');
     expect(soundRows()?.map((row) => row.label)).toEqual(['dragon-roar', 'wings']);
+  });
+
+  it('offers no Play sound while Sound is switched off', () => {
+    const { rightClick } = setup([token('dragon', [{ path: 'Sounds/dragon-roar.mp3' }, { path: 'Sounds/wings.ogg' }])], [], { sound: false });
+    rightClick('dragon');
+    expect(soundRows()).toBeNull();
   });
 
   it('has no Play sound submenu for a token without sounds', () => {

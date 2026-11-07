@@ -10,6 +10,7 @@ import type { TokenEntity } from '../../src/app/types';
 import type { TokenSound } from '../../src/app/types/audioTypes';
 import { FakeAudioContext } from '../mocks/fakeAudioContext';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { withSound } from '../mocks/experimentalFeatures';
 
 const showNotice = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
@@ -17,8 +18,8 @@ vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
 const MB = 1024 * 1024;
 let current: App | null = null;
 
-function open(sounds?: unknown): { app: App; store: ViewAtlasStore; saved: () => TokenEntity; section: () => HTMLElement } {
-  const { app } = createInMemoryApp({
+function open(sounds?: unknown, { sound = true }: { sound?: boolean } = {}): { app: App; store: ViewAtlasStore; saved: () => TokenEntity; section: () => HTMLElement } {
+  const { app: made } = createInMemoryApp({
     files: {
       'Sounds/dragon-roar.mp3': 'audio:48000',
       'Sounds/wings.ogg': 'audio:24000',
@@ -26,6 +27,8 @@ function open(sounds?: unknown): { app: App; store: ViewAtlasStore; saved: () =>
       'Lore/Dragon.md': '# Dragon',
     },
   });
+  // Token sounds belong to Sound, so Edit Token offers them only while the GM switched it on.
+  const app = sound ? withSound(made) : made;
   current = app;
   const store = createViewAtlasStore(app, `edit-token-sounds-${Math.random()}`);
   const token: TokenEntity = { id: 't', kind: 'token', imagePath: 't.png', x: 0, y: 0, ...(sounds !== undefined && { sounds: sounds as TokenSound[] }) };
@@ -74,6 +77,19 @@ afterEach(() => {
 });
 
 describe('the Sounds of Edit Token', () => {
+  it('has no Sounds section while Sound is switched off, and saving keeps the token\'s sounds', () => {
+    const { saved } = open([{ path: 'Sounds/wings.ogg', volume: 0.5 }], { sound: false });
+    expect(screen.queryByRole('region', { name: 'Sounds' })).toBeNull();
+    save();
+    expect(saved().sounds).toEqual([{ path: 'Sounds/wings.ogg', volume: 0.5 }]);
+  });
+
+  it('leaves sounds it cannot read as they are while Sound is switched off', () => {
+    const { saved } = open('junk', { sound: false });
+    save();
+    expect(saved().sounds).toBe('junk');
+  });
+
   it('lists the token\'s sounds by file name, each with its volume', () => {
     open([{ path: 'Sounds/dragon-roar.mp3', volume: 0.8 }, { path: 'Sounds/wings.ogg' }]);
     const rows = within(screen.getByRole('list', { name: 'Sounds' })).getAllByRole('listitem');
