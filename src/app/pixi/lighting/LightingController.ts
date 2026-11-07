@@ -15,6 +15,7 @@ import { tokenSensesResolver, type TokenSensesResolver } from '../../creatures/t
 import { mapSenseRulesSource } from '../../services/mapSenseRules';
 import { rulesLookup } from '../../services/mapRules';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
+import { perceptionOptions } from '../../vision/perception';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
 import type { Point } from '../../types/visionTypes';
@@ -212,7 +213,7 @@ export class LightingController {
   /** How the players perceive each token, for their frame and for session view; sight hides nothing in an unlit scene. */
   playerSight(): TokenPerception | undefined {
     const state = this.deps.store.getState();
-    return playerTokenSight(this.renderer, mapTokens(levelObjects(state)), { conditions: this.sightRules().conditions, held: heldForSight(state) }, this.perceptions);
+    return playerTokenSight(this.renderer, mapTokens(levelObjects(state)), perceptionOptions(this.sightRules(), heldForSight(state)), this.perceptions);
   }
 
   /** The senses and conditions of the map's collection, and how each token perceives. */
