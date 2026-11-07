@@ -106,7 +106,7 @@ async function loadAndDisplay(
   isSuperseded: () => boolean = () => false,
   shownLevel?: string,
 ): Promise<DisplayedMap | null> {
-  const { mapData, image, level } = await MapLoader.load(app, filePath, shownLevel ?? camera?.level);
+  const { mapData, image, level } = await MapLoader.load(app, filePath, shownLevel);
   if (isSuperseded()) return null;
 
   const mapImage = viewMapImage(app, renderer);

@@ -21,11 +21,12 @@ import { fakeStoring } from './fakeStoring.ts';
 
 export const GRID_SIZE = 70;
 
-/** A scene state with the given changes; no tokens, a map at `maps/cave.webp`. */
+/** A scene state with the given changes; no tokens, a map at `maps/cave.webp`, every nameplate shown on the GM's map. */
 export function sceneState(changes: Partial<SceneState> = {}): SceneState {
   return {
     mapPath: 'Scenes/Cave.atlasmap', mapLoaded: true, isMapLoading: false, background: 'maps/cave.webp', grid: null, isDragging: false, _audioDirty: false,
     lighting: { enabled: false, ambient: 1 }, heldTokens: {}, exploredMask: null, exploredEdits: 0, objects: { tokens: {}, fog: {}, pins: {}, texts: {}, drawings: {}, walls: {}, lights: {}, audios: {} },
+    tokenSettings: { showNameplates: true } as SceneState['tokenSettings'],
     ...changes,
   };
 }

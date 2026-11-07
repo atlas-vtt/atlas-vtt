@@ -1,0 +1,352 @@
+@use '../../../../../../../styles/tokens' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+// The sound library, in the proportions of the approved mock: a rail of roots and tags, a heading in the
+// theme's heading face, and rows that show their action only when they are pointed at.
+.atlas-sound-lib {
+  --atlas-sound-lib-hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
+  --atlas-sound-lib-well: color-mix(in srgb, var(--background-primary) 72%, black);
+  --atlas-sound-lib-press: cubic-bezier(0.2, 0, 0, 1);
+  container-type: inline-size;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  font-size: $font-ui-small;
+  line-height: 1.35;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  -webkit-font-smoothing: antialiased;
+
+  button {
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    cursor: var(--cursor);
+    @include atlas-corner-shape;
+  }
+
+  // Black would make a grey well of a white page.
+  @at-root .theme-light #{&} {
+    --atlas-sound-lib-well: var(--background-secondary);
+  }
+}
+
+.atlas-sound-lib__glyph {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.atlas-sound-lib__triangle {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+// ---- Rail ----
+
+.atlas-sound-lib__rail {
+  width: clamp(192px, 24cqi, 232px);
+  flex-shrink: 0;
+  padding: $spacing-s;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+  overflow: auto;
+  box-shadow: inset -1px 0 0 var(--atlas-sound-lib-hairline);
+}
+
+.atlas-sound-lib__root-block {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: $spacing-xs;
+
+  > * {
+    flex-shrink: 0;
+  }
+}
+
+.atlas-sound-lib__root {
+  position: relative;
+  display: flex;
+  align-items: center;
+  // Its middle on the head's, 56 px high, from one inset down.
+  height: 40px;
+  padding-right: $spacing-s;
+  border-radius: $radius-m;
+  transition: background-color 120ms var(--atlas-sound-lib-press);
+
+  small {
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
+    font-variant-numeric: tabular-nums;
+    transition: opacity 120ms var(--atlas-sound-lib-press);
+  }
+
+  .atlas-sound-lib__more {
+    position: absolute;
+    right: 4px;
+    opacity: 0;
+  }
+
+  &:hover .atlas-sound-lib__more,
+  .atlas-sound-lib__more:focus-visible {
+    opacity: 1;
+  }
+
+  &:hover small {
+    opacity: 0;
+  }
+}
+
+.atlas-sound-lib__root--selected {
+  background: var(--background-secondary);
+}
+
+// It lies in the panel's corner, one inset from its border.
+.atlas-sound-lib__root-block:first-child .atlas-sound-lib__root {
+  @include atlas-panel-inset-radius($spacing-s, top-left);
+}
+
+.atlas-sound-lib__root--target,
+.atlas-sound-lib .atlas-sound-lib__tag--target {
+  box-shadow: inset 0 0 0 1.5px var(--interactive-accent);
+}
+
+.atlas-sound-lib .atlas-sound-lib__root-name {
+  display: flex;
+  align-items: center;
+  // Obsidian centres what a button holds.
+  justify-content: flex-start;
+  gap: $spacing-s;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 $spacing-s;
+  border-radius: inherit;
+  font-weight: $font-weight-semibold;
+  text-align: left;
+}
+
+.atlas-sound-lib__where {
+  padding: 0 $spacing-s $spacing-s 32px;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atlas-sound-lib .atlas-sound-lib__link {
+  align-self: flex-start;
+  margin-left: 32px;
+  height: 28px;
+  padding: 0 $spacing-s;
+  border-radius: $radius-m;
+  background: var(--background-secondary);
+  box-shadow: inset 0 0 0 1px var(--atlas-sound-lib-hairline);
+  font-weight: $font-weight-medium;
+}
+
+// The starter ambience: under the ambience root, and among the first screen's links.
+.atlas-sound-lib .atlas-sound-lib__starter {
+  white-space: nowrap;
+
+  small {
+    margin-left: $spacing-s;
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
+    font-weight: $font-weight-normal;
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 1;
+    color: var(--atlas-sound-muted);
+  }
+}
+
+// A failed download says so on two lines: what happened (and that a press tries again), then what to check.
+.atlas-sound-lib .atlas-sound-lib__starter[data-failed] {
+  max-width: 100%;
+  height: auto;
+  // Its two lines wrap inside the rail rather than widen it.
+  white-space: normal;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-xs;
+  padding-block: $spacing-xs;
+  text-align: start;
+
+  small {
+    display: block;
+    margin-left: 0;
+    font-size: $font-ui-smaller;
+  }
+}
+
+.atlas-sound-lib__starter-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+
+  svg {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    color: var(--text-warning);
+  }
+}
+
+// The rail has no room for the size; the button's name still says it.
+.atlas-sound-lib__rail .atlas-sound-lib__starter {
+  margin-top: $spacing-s;
+
+  small {
+    display: none;
+  }
+}
+
+.atlas-sound-lib__tag-line {
+  position: relative;
+
+  small {
+    transition: opacity 120ms var(--atlas-sound-lib-press);
+  }
+
+  .atlas-sound-lib__more {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  &:hover .atlas-sound-lib__more,
+  .atlas-sound-lib__more:focus-visible {
+    opacity: 1;
+  }
+
+  &:hover small {
+    opacity: 0;
+  }
+}
+
+.atlas-sound-lib .atlas-sound-lib__tag {
+  display: flex;
+  align-items: center;
+  // Obsidian centres what a button holds.
+  justify-content: flex-start;
+  gap: $spacing-s;
+  width: 100%;
+  height: 28px;
+  // Under the root's name, as what belongs to it.
+  padding: 0 $spacing-s 0 $spacing-l + $spacing-s;
+  border-radius: $radius-m;
+  // A tag's name reads in the normal text colour; under its root by indent and weight, its count muted.
+  color: var(--text-normal);
+  text-align: left;
+  transition: background-color 120ms var(--atlas-sound-lib-press), color 120ms var(--atlas-sound-lib-press);
+
+  &:hover {
+    background: var(--atlas-sound-lib-hairline);
+    color: var(--text-normal);
+  }
+
+  // The name takes the room, so the count stands at the end with no auto margin.
+  span {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  small {
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.atlas-sound-lib .atlas-sound-lib__tag--selected {
+  background: var(--background-secondary);
+  color: var(--atlas-sound-accent-text);
+}
+
+// ---- Nothing linked ----
+
+.atlas-sound-lib__nolink {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: $spacing-s;
+  padding: $spacing-l;
+
+  // Beside the moods' empty state, on one line with it.
+  @container atlas-dm-screen (min-width: #{$breakpoint-m + 1}) {
+    justify-content: flex-start;
+    padding-top: 12cqh;
+  }
+
+  h2 {
+    margin: 0;
+    font-family: var(--h3-font, var(--font-interface));
+    font-size: $font-ui-large;
+    font-weight: 400;
+    line-height: 1.12;
+    color: var(--mono-100);
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 0;
+    max-width: 46ch;
+    color: var(--atlas-sound-muted);
+    text-wrap: balance;
+  }
+}
+
+.atlas-sound-lib__nolink-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-s;
+  margin-top: $spacing-s;
+}
+
+.atlas-sound-lib__nolink-row {
+  display: flex;
+  justify-content: center;
+  gap: $spacing-s;
+}
+
+// Where nothing hovers, a root's and a tag's ⋯ stand shown: their counts step aside for them.
+@media (hover: none) {
+  .atlas-sound-lib__root small,
+  .atlas-sound-lib__tag-line small {
+    margin-inline-end: 32px;
+  }
+
+  // On the row's middle, whatever height a coarse pointer gives the button.
+  .atlas-sound-lib__root .atlas-sound-lib__more,
+  .atlas-sound-lib__tag-line .atlas-sound-lib__more {
+    top: 50%;
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+}

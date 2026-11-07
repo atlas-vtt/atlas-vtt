@@ -298,3 +298,123 @@
     line-height: var(--line-height-normal);
   }
 }
+
+// The starter tokens, offered where the Tokens tab is empty: the lead, the button with its
+// progress, and the small print, in one column.
+.atlas-empty-state .atlas-starter-offer {
+  @include atlas-flex-col($gap: $spacing-l);
+  align-items: center;
+  pointer-events: auto;
+}
+
+.atlas-starter-offer__panel {
+  @include atlas-flex-col($gap: $spacing-s);
+  width: 280px;
+}
+
+// The download button and the popover it opens; the anchor spans its column.
+.atlas-dropdown-menu.atlas-starter-anchor {
+  display: block;
+  width: 100%;
+}
+
+// Which statblocks the starter tokens come with, under (or over) the download button.
+.atlas-starter-choice {
+  width: 280px;
+  text-align: left;
+  pointer-events: auto;
+}
+
+// Above the menu's own row rule, which sets them as blocks.
+.atlas-starter-choice .atlas-starter-choice__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-s;
+  height: auto;
+  // The menu's one text edge, where its heading starts too.
+  padding: $spacing-s var(--atlas-menu-text-inset);
+  border-radius: $radius-m;
+
+  // The ring is for the keyboard; a press shows the choice by its tick and shade.
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+  }
+
+  &.atlas-active {
+    background-color: var(--background-modifier-hover);
+  }
+}
+
+.atlas-starter-choice__text {
+  @include atlas-flex-col($gap: 2px);
+  min-width: 0;
+
+  small {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+}
+
+.atlas-starter-choice__tick {
+  flex-shrink: 0;
+  width: $icon-xs;
+  height: $icon-xs;
+  color: var(--text-accent);
+}
+
+.atlas-starter-choice__download.btn {
+  width: 100%;
+  margin-top: $spacing-s;
+  justify-content: center;
+  gap: $spacing-xs;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}
+
+.atlas-empty-state .atlas-starter-offer__fine {
+  @include atlas-flex-col($gap: 2px);
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+}
+
+
+.atlas-bestiary-offer__progress {
+  width: 100%;
+}
+
+.atlas-bestiary-offer--empty.btn {
+  width: 100%;
+  justify-content: center;
+  gap: $spacing-xs;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:disabled {
+    cursor: progress;
+  }
+
+  // Busy is not unavailable: the button keeps its strength while the pack comes in.
+  &[aria-busy='true'] {
+    opacity: 1;
+  }
+
+  // On the accent the spinner takes the button's text colour, or it would vanish into it.
+  .atlas-spinner {
+    --atlas-spinner-color: var(--text-on-accent);
+    --atlas-spinner-highlight: var(--text-on-accent);
+    --atlas-spinner-core: var(--text-on-accent);
+    --atlas-spinner-halo: 0%;
+  }
+}

@@ -8,6 +8,7 @@ import type { AnyAsset } from '../types';
 import { AssetTagPicker } from './AssetTagPicker';
 import { useAssetTagMenuActions } from './assetTagMenuContext';
 import { t } from '../../../../i18n';
+import { portalHost } from '../../../../host/portalHost';
 
 const stop = (event: React.SyntheticEvent): void => event.stopPropagation();
 
@@ -45,7 +46,7 @@ export const AssetTagMenu = memo(function AssetTagMenu({ asset }: { asset: AnyAs
         </DropdownMenu.Trigger>
       </LabelTooltip>
       {/* Inside the asset manager's scope, where its styles apply. */}
-      <DropdownMenu.Portal container={trigger?.closest<HTMLElement>('.atlas-vtt-plugin') ?? trigger?.ownerDocument.body}>
+      <DropdownMenu.Portal container={trigger?.closest<HTMLElement>('.atlas-vtt-plugin') ?? portalHost(trigger?.ownerDocument)}>
         <DropdownMenu.Content
           className="atlas-ctx-menu atlas-asset-tag-menu"
           role="dialog"

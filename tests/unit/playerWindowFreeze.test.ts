@@ -50,7 +50,7 @@ function setup({ attach: attachNow = true } = {}): Harness {
   const drawImage = vi.fn();
   const fillText = vi.fn();
   const drawing = Object.fromEntries(['save', 'restore', 'fillRect', 'beginPath', 'moveTo', 'lineTo', 'arcTo', 'closePath', 'fill', 'stroke'].map((name) => [name, vi.fn()]));
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ ...drawing, clearRect: vi.fn(), drawImage, fillText } as never);
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ ...drawing, clearRect: vi.fn(), drawImage, fillText, measureText: () => ({ width: 0 }) } as never);
   sizePlayerWindow();
   const { app } = createInMemoryApp();
   const store = createStore(() => ({})) as StoreApi<ViewAtlasState>;
@@ -192,7 +192,9 @@ describe('player camera freeze', () => {
     }
 
     it('does not freeze players on the rectangle they saw of the scene before, nor on a camera read while the new scene loads', () => {
-      const { service, session, setDmCamera, nextFrame } = setup();
+      const { service, session, settings, setDmCamera, nextFrame } = setup();
+      // No dip to black: the frame comes with the next display frame
+      settings.setTableTvSettings({ viewGlideMs: 0 });
       // Zoomed far out on the first scene: a rectangle much larger than the next scene's view
       setDmCamera({ centerX: 5000, centerY: 5000, scale: 0.1 });
       nextFrame();
@@ -226,7 +228,8 @@ describe('player camera freeze', () => {
     });
 
     it('freezes players on the new scene\'s own view when it is frozen before its first frame comes', () => {
-      const { service, nextFrame } = setup();
+      const { service, settings, nextFrame } = setup();
+      settings.setTableTvSettings({ viewGlideMs: 0 });
       nextFrame();
       const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
       next.loaded();
@@ -243,7 +246,8 @@ describe('player camera freeze', () => {
     });
 
     it('does not freeze on the camera of the scene the DM browses while players are held on theirs and were shown nothing of it yet', () => {
-      const { service, source, setDmCamera, nextFrame, lastFrame } = setup();
+      const { service, source, settings, setDmCamera, nextFrame, lastFrame } = setup();
+      settings.setTableTvSettings({ viewGlideMs: 0 });
       nextFrame();
       const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
       service.presentCanvas(next, 'scene-b');
@@ -312,6 +316,74 @@ describe('player camera freeze', () => {
     expect(session.camera).toMatchObject({ centerX: 100, centerY: 0, scale: 1 });
   });
 
+  describe('players following the GM, sent to a frame of the same scene', () => {
+    const FRAME_B = { centerX: 300, centerY: 400, scale: 1, width: 1280, height: 720 };
+
+    it('glide from what they see, pinned from the first step, and land on it', () => {
+      const { service, session, setDmCamera, nextFrame, lastFrame } = setup();
+      setDmCamera({ centerX: 10, centerY: 20, scale: 1 });
+      nextFrame();
+      service.playersToCamera('scene-a', FRAME_B);
+      expect(service.isFrozen()).toBe(true);
+      expect(playerWindowStore.getState().isFrozen).toBe(true);
+      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 10, centerY: 20 });
+
+      // Moving the GM's camera now moves them no more
+      setDmCamera({ centerX: 9000, centerY: 9000, scale: 1 });
+      nextFrame(400);
+      const between = service.glassOf('scene-a')!;
+      expect(between.centerX).toBeGreaterThan(10);
+      expect(between.centerX).toBeLessThan(300);
+
+      nextFrame(800);
+      expect(session.camera).toEqual(FRAME_B);
+      expect(session.frozen).toBe(true);
+      expect(lastFrame().centerX).toBeLessThan(9000);
+    });
+
+    it('jump with no glide time, with reduced motion, and under the curtain', () => {
+      const off = setup();
+      off.settings.setTableTvSettings({ viewGlideMs: 0 });
+      off.nextFrame();
+      off.service.playersToCamera('scene-a', FRAME_B);
+      expect(off.session.camera).toEqual(FRAME_B);
+      off.service.destroy();
+
+      const reduced = setup();
+      reduced.nextFrame();
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+      reduced.service.playersToCamera('scene-a', FRAME_B);
+      expect(reduced.session.camera).toEqual(FRAME_B);
+      vi.mocked(window.matchMedia).mockRestore();
+      reduced.service.destroy();
+
+      const curtained = setup();
+      curtained.nextFrame();
+      curtained.service.setCurtain(true);
+      curtained.service.playersToCamera('scene-a', FRAME_B);
+      expect(curtained.session.camera).toEqual(FRAME_B);
+    });
+
+    it('stop gliding when the GM unpins them', () => {
+      const { service, nextFrame } = setup();
+      nextFrame();
+      service.playersToCamera('scene-a', FRAME_B);
+      service.unfreezeCamera();
+      nextFrame(800);
+      expect(service.isFrozen()).toBe(false);
+    });
+
+    it('glide too when the frame comes through a present of the scene they see', () => {
+      const { service, source, session, setDmCamera, nextFrame } = setup();
+      setDmCamera({ centerX: 10, centerY: 20, scale: 1 });
+      nextFrame();
+      service.presentCanvas(source, 'scene-a', undefined, FRAME_B);
+      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 10, centerY: 20 });
+      nextFrame(800);
+      expect(session.camera).toEqual(FRAME_B);
+    });
+  });
+
   it('returns players to the frame the GM set on a map when it is presented again', () => {
     const { service, source, session, settings, setDmCamera, nextFrame } = setup();
     settings.setTableTvSettings({ viewGlideMs: 0 });
@@ -337,6 +409,7 @@ describe('player camera freeze', () => {
 
     expect(service.framePlayersOn('scene-a', 300, 400)).toBe(true);
     expect(service.isFrozen()).toBe(true);
+    nextFrame(800);
     expect(session.camera).toMatchObject({ centerX: 300, centerY: 400, scale: 1.5 });
     // The DM's camera no longer moves them
     setDmCamera({ centerX: 0, centerY: 0, scale: 3 });
@@ -368,30 +441,6 @@ describe('player camera freeze', () => {
   });
 
   describe('the glass', () => {
-    it('drags players to a point at once, pinned, without remembering it or writing the session', () => {
-      const { service, session, setDmCamera, nextFrame, lastFrame } = setup();
-      setDmCamera({ centerX: 10, centerY: 20, scale: 1.5 });
-      nextFrame();
-      const saved = { ...session.camera };
-      expect(service.dragPlayersTo('scene-b', 300, 400)).toBe(false);
-      expect(service.isFrozen()).toBe(false);
-
-      // A following glass is pinned by the drag, and with the default glide still lands at once
-      expect(service.dragPlayersTo('scene-a', 300, 400)).toBe(true);
-      expect(service.isFrozen()).toBe(true);
-      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 300, centerY: 400 });
-      expect(service.dragPlayersTo('scene-a', 320, 410)).toBe(true);
-      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 320, centerY: 410 });
-      expect(session.camera).toEqual(saved);
-      expect(session.frames).toBeUndefined();
-      nextFrame();
-      expect(lastFrame()).toMatchObject({ centerX: 320, centerY: 410, scale: lastFrame().scale });
-
-      // The drop remembers the frame
-      expect(service.framePlayersOn('scene-a', 320, 410)).toBe(true);
-      expect(session.frames?.['scene-a.atlasmap']).toMatchObject({ centerX: 320, centerY: 410 });
-    });
-
     it('lets players follow the GM again without a notice, and does nothing while they follow', () => {
       const { service, session, setDmCamera, nextFrame, lastFrame } = setup();
       nextFrame();
@@ -496,13 +545,13 @@ describe('player camera freeze', () => {
 
       service.showSetup({ kind: 'orientation' });
       nextFrame();
-      expect(fillText.mock.calls.map(([text]) => text)).toEqual(['Which way is up?', 'Turn the picture until the arrow points away from the players']);
+      expect(fillText.mock.calls.map(([text]) => text)).toEqual(['TrueScale setup · the map at real size on this screen', 'Which way is up?', 'Turn the picture until the arrow points away from the players']);
       expect(lastFrame().scale).toBe(scale);
 
       fillText.mockClear();
       service.showSetup({ kind: 'fit', pxPerMm: 5.512 });
       nextFrame();
-      expect(fillText.mock.calls[0]).toEqual(['Lay a bank card inside the outline', expect.any(Number), expect.any(Number)]);
+      expect(fillText.mock.calls[1]).toEqual(['Lay a bank or credit card inside the outline', expect.any(Number), expect.any(Number)]);
       // A cell of 70 world pixels spans 25.4 mm of the dial's 5.512 device pixels (140), at a pixel ratio of 1
       expect(lastFrame().scale).toBeCloseTo(2);
 

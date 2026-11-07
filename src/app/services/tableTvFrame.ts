@@ -81,8 +81,9 @@ const INK = '#ffffff';
 
 /**
  * The set-up screen over a players' frame of `frame`'s size, in its pixels and as the players
- * see it, so the window's turn turns it too: Which way is up shows an arrow pointing up, the card
- * fit the outline of a bank card at `state.pxPerMm` device pixels per mm, centred.
+ * see it, so the window's turn turns it too: a line at the top says what the screen is, Which way
+ * is up shows an arrow pointing up, the card fit the outline of a bank card at `state.pxPerMm`
+ * device pixels per mm, centred.
  */
 export function drawTvSetup(
   ctx: CanvasRenderingContext2D, frame: Pick<PlayerFrame, 'width' | 'height' | 'resolution'>, state: TvSetupScreen, tv: TableTv,
@@ -94,11 +95,13 @@ export function drawTvSetup(
   ctx.fillRect(0, 0, w, h);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  const caption = (text: string, y: number, title: boolean): void => drawCaption(ctx, text, w, y, unit, resolution, title);
+  caption(t('tableTv.setup.screen'), unit * 0.07, false);
   if (state.kind === 'orientation') {
     const length = unit * 0.36;
     drawUpArrow(ctx, w / 2, h / 2 - unit * 0.08, length);
-    drawCaption(ctx, t('tableTv.setup.upTitle'), w / 2, h / 2 + unit * 0.2, unit, resolution, true);
-    drawCaption(ctx, t('tableTv.setup.upHint'), w / 2, h / 2 + unit * 0.28, unit, resolution, false);
+    caption(t('tableTv.setup.upTitle'), h / 2 + unit * 0.2, true);
+    caption(t('tableTv.setup.upHint'), h / 2 + unit * 0.28, false);
   } else {
     // Millimetres of glass in frame pixels: device pixels to points to frame pixels
     const px = (mm: number): number => (mm * state.pxPerMm / tv.devicePixelRatio) * resolution;
@@ -110,8 +113,8 @@ export function drawTvSetup(
     roundedRect(ctx, (w - card.width - line) / 2, (h - card.height - line) / 2, card.width + line, card.height + line, card.radius + line / 2);
     ctx.stroke();
     const gap = Math.max(card.height / 2, unit * 0.06) + line * 4;
-    drawCaption(ctx, t('tableTv.setup.fitTitle'), w / 2, h / 2 - gap - unit * 0.04, unit, resolution, true);
-    drawCaption(ctx, t('tableTv.setup.fitHint'), w / 2, h / 2 + gap + unit * 0.04, unit, resolution, false);
+    caption(t('tableTv.setup.fitTitle'), h / 2 - gap - unit * 0.04, true);
+    caption(t('tableTv.setup.fitHint'), h / 2 + gap + unit * 0.04, false);
   }
   ctx.restore();
 }
@@ -148,11 +151,16 @@ function drawUpArrow(ctx: CanvasRenderingContext2D, x: number, y: number, length
   ctx.fill();
 }
 
+/** A centred line at height `y`, made smaller where it would not fit `width` (a TV turned a quarter is narrow). */
 function drawCaption(
-  ctx: CanvasRenderingContext2D, text: string, x: number, y: number, unit: number, resolution: number, title: boolean,
+  ctx: CanvasRenderingContext2D, text: string, width: number, y: number, unit: number, resolution: number, title: boolean,
 ): void {
+  const fontOf = (size: number): string => `${title ? '600 ' : ''}${size}px sans-serif`;
   const size = Math.max(14 * resolution, Math.round(unit * (title ? 0.05 : 0.032)));
-  ctx.font = `${title ? '600 ' : ''}${size}px sans-serif`;
+  ctx.font = fontOf(size);
+  const room = width * 0.92;
+  const measured = ctx.measureText(text).width;
+  if (measured > room) ctx.font = fontOf(size * room / measured);
   ctx.fillStyle = INK;
-  ctx.fillText(text, x, y);
+  ctx.fillText(text, width / 2, y);
 }

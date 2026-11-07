@@ -134,6 +134,9 @@ $breakpoint-m:  768px;
 $breakpoint-l:  1024px;
 $breakpoint-xl: 1280px;
 
+// What a page that fills its view keeps from the edges; `cqi` reads the container around it.
+$dm-screen-inset: clamp(#{$spacing-l}, 3cqi, 64px);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CSS Custom Properties Export
 // ═══════════════════════════════════════════════════════════════════════════

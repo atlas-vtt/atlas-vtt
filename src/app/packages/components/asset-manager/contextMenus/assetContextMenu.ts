@@ -15,6 +15,7 @@ import type { AssetService } from '../../../../services/AssetService';
 import { renameScene } from '../../../../services/sceneRename';
 import { hasAssetTag } from '../../../../services/tagGroups';
 import { TagSearchModal } from '../TagSearchModal';
+import type { AssetTagChange } from '../utils/assetTags';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { confirmAction } from '../../../../ui/confirmDialog';
 import type { AtlasView } from '../../../../atlas-view';
@@ -24,6 +25,7 @@ import { playerCharacterEntry, setPlayerCharacters } from '../../../../react/com
 import type { TransferMode } from '../../../../services/assetTransfer/transferPlan';
 import type { CreateScenePrefill } from '../hooks/useAssetCrud';
 import { sceneMenuEntries } from './sceneMenuEntries';
+import { openScene } from '../hooks/useOpenAsset';
 import { createStatblockEntry } from '../../../../statblocks/editor/create/entryPoints';
 import { copyAssetLink } from '../../../../links/atlasLinkText';
 import { t } from '../../../../i18n';
@@ -46,7 +48,7 @@ export interface AssetContextMenuDeps {
   setSelectedAssetIds: React.Dispatch<React.SetStateAction<string[]>>;
   loadAssetsForActiveTab: () => Promise<void>;
   handleCreateTag: (tag: string) => Promise<TagType | null>;
-  setAssetTags: (asset: AnyAsset, tags: string[]) => Promise<void>;
+  setTagsOfAssets: (changes: AssetTagChange[]) => Promise<void>;
   handleSaveAsEncounter: (tokenAssets: AnyAsset[]) => Promise<void>;
   openStatblockLinkModal: (asset: AnyAsset) => void;
   unlinkStatblock: (asset: AnyAsset) => Promise<void>;
@@ -77,6 +79,16 @@ export function buildAssetContextMenuEntries(
 
   // ── Create Scene from Map(s) ──────────────────────────────────
   entries.push(...sceneMenuEntries(asset, selectedAssets, deps));
+
+  // ── Open Scene (single scene) ─────────────────────────────────
+  if (asset.type === 'scenes' && selectedAssets.length === 1) {
+    entries.push({
+      type: 'item',
+      label: t('am.menu.openScene'),
+      icon: 'play',
+      onClick: () => runInBackground(openScene(deps, asset.id), `Opening scene ${asset.id}`, t('am.menu.openSceneFailed')),
+    });
+  }
 
   // ── Spawn: on the map, or into the initiative tracker ─────────
   entries.push(...spawnMenuEntries(asset, selectedAssets, spawnCtx, deps.onClose));
@@ -256,14 +268,14 @@ export function buildAssetContextMenuEntries(
         selectedAssets: assetsToTag,
         availableTags: deps.availableTags,
         allAssets: deps.assets,
-        onSetAssetTags: (taggedAsset: AnyAsset, tags: string[]) => { void deps.setAssetTags(taggedAsset, tags); },
+        onSetTags: (changes: AssetTagChange[]) => { void deps.setTagsOfAssets(changes); },
         onCreateTag: (tagName: string, modalSelectedAssets: AnyAsset[]) => {
           const applyNewTag = async (): Promise<void> => {
             const tag = await deps.handleCreateTag(tagName);
             if (!tag) return;
-            await Promise.all(modalSelectedAssets
+            await deps.setTagsOfAssets(modalSelectedAssets
               .filter((sa) => !hasAssetTag(sa.tags, tag))
-              .map((sa) => deps.setAssetTags(sa, [...(sa.tags || []), tag.name])));
+              .map((sa) => ({ asset: sa, tags: [...(sa.tags || []), tag.name] })));
           };
           runInBackground(applyNewTag(), `Creating tag ${tagName}`);
         },

@@ -1,3 +1,4 @@
+import { MapController } from '../MapController';
 import { App } from 'obsidian';
 import { watchLevelsToRefit } from '../react/components/levels/levelRefitNotice';
 import { followHistoryAcrossLevels } from '../react/components/levels/levelHistoryFollow';
@@ -19,6 +20,7 @@ import { SoundEffectService } from './SoundEffectService';
 import { DiceToastObserver } from './DiceToastObserver';
 import type { ViewAtlasStore } from '../storeFactory';
 import { PartySync } from '../campaigns/partyValues/PartySync';
+import { openedDirector } from '../soundDirector/directorRegistry';
 import { pictureView } from '../pixi/mosaicCanvas/levelOfDetail';
 
 /** How long a snapshot waits for the map image's detail before it renders what is drawn. */
@@ -84,6 +86,7 @@ export class ServiceManager {
     this.stopHistoryFollow = followHistoryAcrossLevels(store);
     this.sceneThumbnails = new SceneThumbnailUpdater(store, {
       render: () => this.renderMapThumbnail(),
+      levelShown: () => MapController.showsViewedLevel(this.rendererService.getRenderer()?.getMapImage() ?? null, store.getState()),
       save: (mapPath, bytes) => this.mapThumbnailService.saveThumbnail(mapPath, bytes),
       hasThumbnail: (mapPath) => this.mapThumbnailService.hasThumbnail(mapPath),
     });
@@ -103,6 +106,7 @@ export class ServiceManager {
 
     // The played campaign's player characters show one set of values in every view
     PartySync.forApp(app)?.registerStore(this.viewId, store);
+    openedDirector(app)?.joinView(this.viewId, store);
     
   }
   
@@ -250,6 +254,7 @@ export class ServiceManager {
       this.widgetSyncService.unregisterStore(this.viewId);
     }
     PartySync.forApp(this.app)?.unregisterStore(this.viewId);
+    openedDirector(this.app)?.leaveView(this.viewId);
     
     this.stopRefitNotice();
     this.stopHistoryFollow();

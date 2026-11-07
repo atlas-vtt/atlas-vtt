@@ -122,11 +122,11 @@
     }
   }
 
-  // The sheet spaces a spells block's parts as siblings (`> * + *`, _sheet-lists.scss); the slot's wrappers
-  // take no box at rest, so the spacing reaches through them to the values.
+  // The sheet spaces a spells block's parts as siblings (every part but the first, _sheet-lists.scss); the slot's
+  // wrappers take no box at rest, so the spacing reaches through them to the values.
   .atlas-sb-sheet .atlas-sb-spells-block {
-    > * + .atlas-sb-pane-slot:not(.atlas-sb-pane-slot--editing) > .atlas-sb-pane-slot__rest > :first-child,
-    .atlas-sb-pane-slot__rest > * + * {
+    > .atlas-sb-pane-slot:where(:not(:first-child)):not(.atlas-sb-pane-slot--editing) > .atlas-sb-pane-slot__rest > :first-child,
+    .atlas-sb-pane-slot__rest > :where(:not(:first-child)) {
       margin-top: $spacing-s;
     }
   }
@@ -220,12 +220,11 @@
 
   // ── Choice ──────────────────────────────────────────────────────────────
   // The options of a choice, under its input: a menu surface that grows in by opacity and scale.
-  .atlas-sb-pane-options {
+  // It floats in the document's body (the card clips its content), placed by its field in px set inline.
+  &.atlas-sb-pane-options {
     @include atlas-flex-col(2px);
     @include atlas-keep-in-view;
     position: absolute;
-    top: calc(100% + #{$spacing-xs});
-    left: 0;
     z-index: $z-popover;
     min-width: 160px;
     max-height: 300px;

@@ -1,0 +1,300 @@
+@use '../../../../../../../styles/tokens' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+// ---- Rows ----
+
+.atlas-sound-lib__rows {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  padding: 0 $spacing-s $spacing-s;
+  padding-inline-end: max(0px, #{$spacing-s} - var(--atlas-scrollbar-gutter, 0px));
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: none;
+  }
+}
+
+.atlas-sound-lib__row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 100px 60px 88px 32px;
+  align-items: center;
+  height: 38px;
+  padding: 0 4px;
+  border-radius: $radius-m;
+  contain: layout style;
+  transition: background-color 100ms var(--atlas-sound-lib-press);
+
+  &:hover {
+    background: var(--background-primary-alt);
+  }
+
+  // Obsidian's own selection tint, which hover never shows.
+  &[aria-selected='true'] {
+    background: var(--background-modifier-active-hover);
+  }
+
+  // Selected is more than a hue: a bar at the row's start, which hover never draws.
+  &[aria-selected='true']::before {
+    content: '';
+    position: absolute;
+    top: $spacing-s;
+    bottom: $spacing-s;
+    left: 0;
+    width: 2px;
+    background: var(--interactive-accent);
+  }
+}
+
+.atlas-sound-lib__rows:focus-visible .atlas-sound-lib__row[data-active] {
+  box-shadow: inset 0 0 0 1.5px var(--background-modifier-border-focus);
+}
+
+.atlas-sound-lib .atlas-sound-lib__play {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: $radius-m;
+  color: var(--atlas-sound-muted);
+  transition: color 100ms var(--atlas-sound-lib-press), background-color 100ms var(--atlas-sound-lib-press), transform 120ms var(--atlas-sound-lib-press);
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: var(--atlas-sound-lib-hairline);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  &[aria-pressed='true'] {
+    color: var(--interactive-accent);
+
+    svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
+  }
+}
+
+.atlas-sound-lib__row:hover .atlas-sound-lib__play {
+  color: var(--text-normal);
+}
+
+// One line: a tag that does not fit whole wraps onto a second line, which is cut off, so it goes rather than reads "E…".
+.atlas-sound-lib__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-self: center;
+  column-gap: $spacing-s;
+  row-gap: 0;
+  min-width: 0;
+  height: 1lh;
+  overflow: hidden;
+}
+
+.atlas-sound-lib__title {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atlas-sound-lib__name .atlas-sound-lib__where {
+  padding: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.atlas-sound-lib__row--mix .atlas-sound-lib__title {
+  color: var(--atlas-sound-accent-text);
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-sound-lib__row--waiting .atlas-sound-lib__title {
+  color: var(--atlas-sound-muted);
+}
+
+.atlas-sound-lib__state {
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// A file Atlas cannot read: what went wrong and what to do, on up to two lines within its share of the row (the name
+// keeps its own); the whole sentence is the mark's tooltip at every width.
+.atlas-sound-lib__state:has(.atlas-sound-lib__refused) {
+  max-width: min(24em, 50cqi);
+  white-space: normal;
+}
+
+.atlas-sound-lib__refused {
+  display: inline-flex;
+  align-items: flex-start;
+  line-height: 1.15;
+
+  .atlas-sound-lib__state-icon {
+    flex-shrink: 0;
+  }
+
+  .atlas-sound-lib__state-words {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+}
+
+// Where the state has its narrow column of its own, an unreadable file's sentence takes the length's beside it too.
+@container atlas-sound-lib-main (min-width: 621px) {
+  .atlas-sound-lib__row .atlas-sound-lib__state:has(.atlas-sound-lib__refused) {
+    grid-column: 3 / 5;
+  }
+}
+
+.atlas-sound-lib__state--busy {
+  color: var(--text-warning);
+}
+
+// A track whose file is gone: the words say it, the mark beside them draws the eye.
+.atlas-sound-lib__state-icon {
+  width: 12px;
+  height: 12px;
+  margin-inline-end: $spacing-xs;
+  vertical-align: -2px;
+  color: var(--text-warning);
+}
+
+.atlas-sound-lib .atlas-sound-lib__act.atlas-sound-lib__act--shown {
+  opacity: 1;
+}
+
+// A glyph only where the row is narrow (`library-narrow.scss`).
+.atlas-sound-lib__act-icon {
+  display: none;
+  width: 16px;
+  height: 16px;
+}
+
+.atlas-sound-lib__length {
+  color: var(--atlas-sound-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-right: $spacing-l;
+}
+
+.atlas-sound-lib .atlas-sound-lib__act {
+  width: 100%;
+  height: 28px;
+  border-radius: $radius-m;
+  background: var(--background-secondary);
+  box-shadow: inset 0 0 0 1px var(--atlas-sound-lib-hairline);
+  font-weight: $font-weight-medium;
+  opacity: 0;
+  transition: opacity 100ms var(--atlas-sound-lib-press), transform 120ms var(--atlas-sound-lib-press);
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.atlas-sound-lib__row:hover .atlas-sound-lib__act,
+.atlas-sound-lib__rows:focus-visible .atlas-sound-lib__row[data-active] .atlas-sound-lib__act,
+.atlas-sound-lib__row[aria-selected='true'] .atlas-sound-lib__act,
+.atlas-sound-lib__row--mix .atlas-sound-lib__act {
+  opacity: 1;
+}
+
+.atlas-sound-lib .atlas-sound-lib__row--mix .atlas-sound-lib__act {
+  background: none;
+  box-shadow: none;
+  color: var(--atlas-sound-muted);
+}
+
+.atlas-sound-lib .atlas-sound-lib__more {
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: $radius-m;
+  color: var(--atlas-sound-muted);
+  opacity: 0;
+  transition: opacity 100ms var(--atlas-sound-lib-press), background-color 100ms var(--atlas-sound-lib-press);
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: var(--atlas-sound-lib-hairline);
+    color: var(--text-normal);
+  }
+}
+
+.atlas-sound-lib__row:hover .atlas-sound-lib__more,
+.atlas-sound-lib__row[aria-selected='true'] .atlas-sound-lib__more,
+.atlas-sound-lib__rows:focus-visible .atlas-sound-lib__row[data-active] .atlas-sound-lib__more {
+  opacity: 1;
+}
+
+.atlas-sound-lib .atlas-sound-lib__rename {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 $spacing-s;
+  border-radius: $radius-m;
+  font-size: inherit;
+}
+
+.atlas-sound-lib__none {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  color: var(--atlas-sound-muted);
+
+  p {
+    margin: 0;
+  }
+}
+
+// Where no pointer hovers (Obsidian on a tablet), a row's actions stay shown.
+@media (hover: none) {
+  .atlas-sound-lib .atlas-sound-lib__act,
+  .atlas-sound-lib .atlas-sound-lib__more {
+    opacity: 1;
+  }
+}
+
+// A coarse pointer (DECISIONS #24): the row and its controls take 44 px; a fine pointer keeps the dense 32.
+@media (pointer: coarse) {
+  .atlas-sound-lib__row {
+    height: 44px;
+    grid-template-columns: 48px minmax(0, 1fr) 100px 60px 88px 48px;
+  }
+
+  .atlas-sound-lib__row .atlas-sound-lib__play,
+  .atlas-sound-lib__row .atlas-sound-lib__more {
+    width: 44px;
+    height: 44px;
+  }
+
+  .atlas-sound-lib .atlas-sound-lib__act {
+    height: 44px;
+  }
+}

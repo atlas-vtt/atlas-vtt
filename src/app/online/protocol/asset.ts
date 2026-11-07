@@ -16,7 +16,9 @@ export const ASSET_CAPS = {
   image: 95 * 1024 * 1024,
   tiles: MAX_STORED_BYTES,
   video: 500 * 1024 * 1024,
-  audio: 100 * 1024 * 1024,
+  audio: 256 * 1024 * 1024,
+  /** A long sound stored in segments (`s/<id>/manifest.json` and `s/<id>/<n>.ogg`): no larger than a whole copy may be. */
+  segments: 256 * 1024 * 1024,
   text: 1024 * 1024,
   book: 64 * 1024 * 1024,
 } as const;
@@ -27,6 +29,8 @@ export const isAssetKind = (value: unknown): value is AssetKind => typeof value 
 export const IMAGE_MIME_TYPES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'];
 /** Video types an animated map may have: a page plays it in its poster's place. */
 export const VIDEO_MIME_TYPES: readonly string[] = ['video/webm', 'video/mp4'];
+/** The one type a sound is stored as: Ogg Opus, as the GM's Atlas converts it. */
+export const AUDIO_MIME_TYPE = 'audio/ogg';
 /** The type of a text players are sent by hash (a quest's whole text): Markdown in UTF-8. */
 export const TEXT_MIME_TYPE = 'text/markdown';
 
@@ -42,7 +46,15 @@ export interface AssetRef {
   readonly id: string;
   /** The stored object is the map's tile pyramid (`t/<id>/manifest.json` and its tiles), not one image. */
   readonly tiles?: true;
+  /**
+   * The stored object is a long sound in segments (`s/<id>/manifest.json`, then `s/<id>/<n>.ogg`), going up in
+   * order while it may still be made: a page fetches segment n once `parts` says more than n are stored.
+   */
+  readonly segments?: true;
 }
+
+/** The most segments one sound has: six hours of 30-second segments, with room. */
+export const MAX_SEGMENTS = 1024;
 
 export const isHash = (value: unknown): value is string => typeof value === 'string' && HASH_PATTERN.test(value);
 export const isAssetId = (value: unknown): value is string => typeof value === 'string' && ASSET_ID_PATTERN.test(value);
@@ -52,7 +64,8 @@ function parseRef(value: unknown, mimes: readonly string[]): AssetRef | null {
   if (!isRecord(value) || !isHash(value.hash) || !isAssetId(value.id) || !isCount(value.size, MAX_STORED_BYTES)) return null;
   if (typeof value.mime !== 'string' || !mimes.includes(value.mime)) return null;
   if (value.tiles !== undefined && value.tiles !== true) return null;
-  return { hash: value.hash, size: value.size, mime: value.mime, id: value.id, ...(value.tiles === true ? { tiles: true as const } : {}) };
+  if (value.segments !== undefined && value.segments !== true) return null;
+  return { hash: value.hash, size: value.size, mime: value.mime, id: value.id, ...(value.tiles === true ? { tiles: true as const } : {}), ...(value.segments === true ? { segments: true as const } : {}) };
 }
 
 /** An image's reference, or null for anything malformed or of a type players are not sent. */
@@ -63,6 +76,9 @@ export const parseVideoAsset = (value: unknown): AssetRef | null => parseRef(val
 
 /** A text's reference (`TEXT_MIME_TYPE`), or null for anything malformed or of another type. */
 export const parseTextAsset = (value: unknown): AssetRef | null => parseRef(value, [TEXT_MIME_TYPE]);
+
+/** A sound's reference (`AUDIO_MIME_TYPE`), or null for anything malformed or of another type. */
+export const parseAudioAsset = (value: unknown): AssetRef | null => parseRef(value, [AUDIO_MIME_TYPE]);
 
 /** A side of an image in pixels, as a message may name it. */
 export const isSide = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= 1 << 20;
@@ -79,6 +95,8 @@ export const MAX_PROGRESS_ENTRIES = 2000;
 export interface AssetProgress {
   readonly t: 'asset-progress';
   readonly shares: Readonly<Record<string, number>>;
+  /** Of a sound in segments: how many, from the first, are stored. */
+  readonly parts?: Readonly<Record<string, number>>;
 }
 
 export function parseAssetProgress(value: Record<string, unknown>): AssetProgress | null {
@@ -90,5 +108,10 @@ export function parseAssetProgress(value: Record<string, unknown>): AssetProgres
     if (!isAssetId(id) || typeof share !== 'number' || !Number.isFinite(share) || share < 0 || share > 1) return null;
     shares[id] = share;
   }
-  return { t: 'asset-progress', shares };
+  // Parts only say more of what a share says: anything malformed there is left out, never a reason to drop the shares.
+  const parts: Record<string, number> = {};
+  if (isRecord(value.parts)) {
+    for (const [id, count] of Object.entries(value.parts).slice(0, MAX_PROGRESS_ENTRIES)) if (isAssetId(id) && isCount(count, MAX_SEGMENTS)) parts[id] = count;
+  }
+  return { t: 'asset-progress', shares, ...(Object.keys(parts).length > 0 && { parts }) };
 }

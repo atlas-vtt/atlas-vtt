@@ -53,7 +53,7 @@ export function useContextMenus({
       setAssets: data.setAssets, setSelectedAssetIds: sel.setSelectedAssetIds,
       loadAssetsForActiveTab: data.loadAssetsForActiveTab,
       handleCreateTag: (name) => tags.handleCreateTag(tagGroupOfTab(asset.type), name),
-      setAssetTags: tags.setAssetTags,
+      setTagsOfAssets: tags.setTagsOfAssets,
       handleSaveAsEncounter: crud.handleSaveAsEncounter,
       openStatblockLinkModal: statblock.openStatblockLinkModal,
       unlinkStatblock: statblock.unlinkStatblock,

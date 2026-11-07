@@ -60,7 +60,7 @@ describe('switching scene tabs around a load that did not finish', () => {
 
   it('opens a scene on the level its opening asked for, once', async () => {
     const { context } = setup({ sceneLoads: true, mapLoaded: false });
-    const camera = { centerX: 10, centerY: 20, scale: 0.5, level: 'cellar' };
+    const camera = { centerX: 10, centerY: 20, scale: 0.5 };
     Object.assign(context, { openingLevel: 'tower' });
 
     await AtlasView.prototype.onLoadFile.call(context as unknown as AtlasView, CAVE, camera);

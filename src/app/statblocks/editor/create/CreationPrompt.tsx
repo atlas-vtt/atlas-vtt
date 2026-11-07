@@ -2,11 +2,12 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AnimatePresence } from 'framer-motion';
 import { NewStatblockPopover } from './NewStatblockPopover';
+import { portalHost } from '../../../host/portalHost';
 
 /** The name step alone, for a template chosen in the modal (§12.2): resolves with the name, or null. */
 export function promptStatblockName(doc: Document, at: { x: number; y: number }, templateName: string): Promise<string | null> {
   const previous = doc.activeElement;
-  const container = doc.body.createDiv({ cls: ['atlas-vtt-plugin', 'atlas-sb-create-host'] });
+  const container = portalHost(doc).createDiv({ cls: ['atlas-vtt-plugin', 'atlas-sb-create-host'] });
   const root = createRoot(container);
   return new Promise((resolve) => {
     let settled = false;

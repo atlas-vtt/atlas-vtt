@@ -24,6 +24,30 @@
   }
 }
 
+/// Atlas' filled button: the theme's accent, darkened until its text reads at 4.5:1
+/// or more on Obsidian's accents in both themes (white on the default purple: 3.9:1
+/// plain, 5.5:1 here). Only Atlas' own buttons take it; Obsidian's variables stay.
+@mixin atlas-accent-fill {
+  background: color-mix(in oklch, var(--interactive-accent) 82%, black);
+  color: var(--text-on-accent);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in oklch, var(--interactive-accent) 88%, black);
+  }
+}
+
+/// Atlas' destructive button (Delete, Clear in a confirmation): the theme's error red, darkened until
+/// white reads at 4.5:1 or more on it in both themes (Obsidian's default reds: 3.6:1 dark and 4.4:1
+/// light plain, 5.3:1 and 6.3:1 here). Only Atlas' own buttons take it.
+@mixin atlas-danger-fill {
+  background: color-mix(in srgb, var(--background-modifier-error) 80%, black);
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--background-modifier-error) 86%, black);
+  }
+}
+
 /// Marks a token with a linked statblock: a small round badge on its art,
 /// holding the ScrollText icon.
 @mixin atlas-statblock-badge($size: $icon-m) {
@@ -863,4 +887,14 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+// What a page that fills its view keeps from the edges (`$dm-screen-inset`), on the 4 px scale where the browser can
+// round it (`round()`, Chromium 125); older ones keep the unrounded share of the width.
+@mixin atlas-dm-screen-inset {
+  --atlas-dm-screen-inset: #{$dm-screen-inset};
+
+  @supports (width: round(nearest, 1px, 4px)) {
+    --atlas-dm-screen-inset: clamp(#{$spacing-l}, round(nearest, 3cqi, 4px), 64px);
+  }
 }

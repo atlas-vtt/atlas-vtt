@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Release channel rules. `main` only ever carries stable `x.y.z` versions and
- * `beta` only ever carries `x.y.z-beta.N` pre-releases, so a production build
+ * Release channel rules. `main` and `release/*` only ever carry stable `x.y.z`
+ * versions and `beta` only ever carries `x.y.z-beta.N` pre-releases, so a production build
  * can never be cut from beta work and a beta build can never pass as stable.
  */
 const fs = require('fs');
@@ -24,7 +24,7 @@ function parseVersion(version) {
 }
 
 function channelForBranch(branch) {
-  return CHANNEL_BRANCHES[branch] ?? null;
+  return branch.startsWith('release/') ? 'stable' : CHANNEL_BRANCHES[branch] ?? null;
 }
 
 function readProjectVersion(root) {

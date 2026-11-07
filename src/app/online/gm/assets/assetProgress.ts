@@ -23,13 +23,20 @@ export interface ProgressPorts {
   /** The players connected now. */
   connected(): readonly string[];
   readonly timers: Timers;
+  /** A share moved or went. */
+  shareChanged?(): void;
 }
 
-/** Shares as messages of at most `MAX_PROGRESS_ENTRIES` each. */
-function messagesOf(entries: readonly (readonly [string, number])[]): GmMessage[] {
+/** Shares as messages of at most `MAX_PROGRESS_ENTRIES` each, with how many segments of a sound in segments are stored. */
+function messagesOf(entries: readonly (readonly [string, number])[], parts: ReadonlyMap<string, number> = new Map()): GmMessage[] {
   const messages: GmMessage[] = [];
   for (let start = 0; start < entries.length; start += MAX_PROGRESS_ENTRIES) {
-    messages.push({ t: 'asset-progress', shares: Object.fromEntries(entries.slice(start, start + MAX_PROGRESS_ENTRIES)) });
+    const slice = entries.slice(start, start + MAX_PROGRESS_ENTRIES);
+    const counts = slice.flatMap(([id]): [string, number][] => {
+      const count = parts.get(id);
+      return count === undefined ? [] : [[id, count]];
+    });
+    messages.push({ t: 'asset-progress', shares: Object.fromEntries(slice), ...(counts.length > 0 && { parts: Object.fromEntries(counts) }) });
   }
   return messages;
 }
@@ -52,6 +59,8 @@ export function refIdsIn(text: string): string[] {
  */
 export class AssetProgress {
   private readonly shares = new Map<string, number>();
+  /** Of sounds in segments: how many, from the first, are stored. */
+  private readonly parts = new Map<string, number>();
   /** The ids each player was sent references of. */
   private readonly handed = new Map<string, Set<string>>();
   /** When each asset reached 1, while it is still named in the paced messages. */
@@ -70,6 +79,15 @@ export class AssetProgress {
     this.shares.set(id, clamped);
     if (clamped === 1) this.doneAt.set(id, this.ports.timers.now());
     else this.doneAt.delete(id);
+    this.changed.add(id);
+    this.schedule();
+    this.ports.shareChanged?.();
+  }
+
+  /** How many segments of a sound in segments are stored; told as shares are. */
+  setParts(id: string, count: number): void {
+    if (this.parts.get(id) === count) return;
+    this.parts.set(id, count);
     this.changed.add(id);
     this.schedule();
   }
@@ -94,7 +112,7 @@ export class AssetProgress {
     // Told at once and to each alone, so a page never waits out a silence for an asset that is already there.
     for (const [player, list] of fresh) {
       const entries = list.map((id): [string, number] => [id, this.shares.get(id) ?? 0]);
-      for (const body of messagesOf(entries)) this.ports.send(body, player);
+      for (const body of messagesOf(entries, this.parts)) this.ports.send(body, player);
     }
   }
 
@@ -106,9 +124,11 @@ export class AssetProgress {
   /** Forgets an asset: it is named no more, to anyone. */
   delete(id: string): void {
     this.shares.delete(id);
+    this.parts.delete(id);
     this.doneAt.delete(id);
     this.changed.delete(id);
     for (const held of this.handed.values()) held.delete(id);
+    this.ports.shareChanged?.();
   }
 
   /** Every share a player holds, whole, to that player; to everyone, each their own. */
@@ -177,7 +197,7 @@ export class AssetProgress {
     const everyone = this.ports.connected().length;
     for (const { entries, players: holders } of groups.values()) {
       const recipients = holders.length === everyone && everyone > 1 ? [ALL_PLAYERS] : holders;
-      for (const recipient of recipients) messagesOf(entries).forEach((body, index) => send(body, recipient, index === 0));
+      for (const recipient of recipients) messagesOf(entries, this.parts).forEach((body, index) => send(body, recipient, index === 0));
     }
   }
 }

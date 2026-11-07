@@ -221,8 +221,8 @@ button.atlas-dice-lab__set {
 .atlas-dice-lab__dots {
   @include atlas-flex-row(0);
 
-  // Overlapping, like dice held in a hand
-  > * + * {
+  // Overlapping, like dice held in a hand (every dot but the first; never `* + *`, see _sheet-lists.scss)
+  > :where(:not(:first-child)) {
     margin-inline-start: -3px;
   }
 }

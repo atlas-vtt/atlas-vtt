@@ -67,7 +67,7 @@ export function tokenQuantities(
     definitions.some((definition) => definition.key === key || normalizedKey(definition.field) === normalizedKey(field));
 
   for (const tracked of look.tracked ?? []) {
-    if (quantities.has(tracked.key) || isCollectionResource(definitions, tracked.key, tracked.field.key)) continue;
+    if (quantities.has(tracked.key) || isCollectionResource(definitions, tracked.key, tracked.field.key, look.meanings)) continue;
     const max = trackedMax(tracked, (key) => fieldNumber(monster[key]));
     if (max === null) continue;
     quantities.set(tracked.key, {

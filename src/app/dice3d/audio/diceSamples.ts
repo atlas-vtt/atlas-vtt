@@ -1,4 +1,5 @@
 import { dataUrlToArrayBuffer } from '../../audio/dataUrl';
+import { followOutputDevice, forgetOutputFollower } from '../../sound/engine/outputDevice';
 import throw1 from '../../sounds/dice-sfx/dice-throw-1.mp3?inline';
 import throw2 from '../../sounds/dice-sfx/dice-throw-2.mp3?inline';
 import throw3 from '../../sounds/dice-sfx/dice-throw-3.mp3?inline';
@@ -71,6 +72,7 @@ export function audio(): AudioContext | null {
     } catch {
       return null;
     }
+    followOutputDevice(ctx);
     master = ctx.createGain();
     master.gain.value = masterLevel();
     master.connect(ctx.destination);
@@ -121,6 +123,7 @@ export function prime(c: AudioContext): Promise<void> {
 
 /** Closes the audio context and forgets the decoded samples; the next sound starts over. */
 export function disposeDiceSamples(): void {
+  if (ctx) forgetOutputFollower(ctx);
   ctx?.close().catch(() => undefined);
   ctx = null;
   master = null;

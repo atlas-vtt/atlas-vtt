@@ -1,4 +1,5 @@
-import { ASSET_CAPS, type AssetRef } from '../../protocol/index.ts';
+import { ASSET_CAPS, AUDIO_MIME_TYPE, type AssetRef } from '../../protocol/index.ts';
+import type { LiveSegments } from '../sound/liveSegments.ts';
 import { TESSERA_SPEC } from '../../../pixi/mosaicCanvas/pyramid';
 import { ASSET_RANKS, ASSET_USES, type AssetStoring, type AssetUse, type FloorMaps } from './assetUses.ts';
 import type { FileHashes, FileStat } from './fileHashes.ts';
@@ -30,15 +31,25 @@ export interface AssetRefsDeps {
   release(ref: AssetRef): void;
   /** Whether the store takes no pyramids (a relay without them): maps then go as images. */
   tilesRefused(): boolean;
+  /** A sound in segments has another segment cut, or its copy is whole: its upload may go on. */
+  segmentsReady?(): void;
+  /** Whether the store takes no sounds in segments (a relay before them): long sounds then go whole. */
+  segmentsRefused?(): boolean;
   /** Who looks at which floor's map now. */
   floorMaps?(maps: FloorMaps): void;
 }
+
+/** A sound in segments is named by its copy's key and codec version, so it is never the id of a whole copy. */
+export const segmentsKey = (key: string, codecVersion: number): string => `${key}/segments/${codecVersion}`;
 
 /** A pyramid's id is worked out of the image's hash with its tile spec, so it is never the id of the image itself. */
 export const pyramidKey = (hash: string, spec: number): string => `${hash}/tiles/${spec}`;
 
 /** The references players are handed (`AssetStoring`), and the assets of the scenes open beside the presented one. */
 export class AssetRefs implements AssetStoring {
+  /** Segments whose progress the upload follows already: a sound is offered more than once. */
+  private readonly followed = new WeakSet<LiveSegments>();
+
   constructor(private readonly deps: AssetRefsDeps) {}
 
   async refOf(bytes: Uint8Array<ArrayBuffer>, mime: string, use: AssetUse, path?: string): Promise<AssetRef | null> {
@@ -59,6 +70,33 @@ export class AssetRefs implements AssetStoring {
     const { size } = stat;
     const id = await this.deps.register({ key: hash, hash, size, mime, use, source: { path }, handed: true });
     return id === undefined ? null : { hash, size, mime, id };
+  }
+
+  /** The reference of a copy kept outside the vault: named by its hash, read again for the upload, and named to players only where `handed` says so. */
+  async copyRef(copy: Pick<AssetRef, 'hash' | 'size' | 'mime'>, read: () => Promise<Uint8Array<ArrayBuffer> | null>, use: AssetUse, handed: boolean): Promise<AssetRef | null> {
+    const id = await this.deps.register({ key: copy.hash, ...copy, use, source: { read }, handed });
+    return id === undefined ? null : { ...copy, id };
+  }
+
+  /**
+   * A long sound's reference as segments, at once, while its copy may still be made: its id is worked out of
+   * the copy's key (the source's hash) and the codec version, so it exists before the copy is whole, and its
+   * size is a bound until it is. `hash` stays the copy's key, as a pyramid keeps its image's hash.
+   */
+  /** Whether a long sound may go in segments: not where the store refused them (a relay before them). */
+  segmentsTaken(): boolean {
+    return this.deps.segmentsRefused?.() !== true;
+  }
+
+  async segmentsRef(key: string, codecVersion: number, segments: LiveSegments, use: AssetUse, handed: boolean): Promise<AssetRef | null> {
+    const size = segments.done ? segments.bytes : segments.boundBytes;
+    const id = await this.deps.register({ key: segmentsKey(key, codecVersion), hash: key, size, mime: AUDIO_MIME_TYPE, use, source: { segments }, handed });
+    if (id === undefined) return null;
+    if (!this.followed.has(segments)) {
+      this.followed.add(segments);
+      segments.onChange(() => this.deps.segmentsReady?.());
+    }
+    return { hash: key, size, mime: AUDIO_MIME_TYPE, id, segments: true };
   }
 
   release(ref: AssetRef): void {

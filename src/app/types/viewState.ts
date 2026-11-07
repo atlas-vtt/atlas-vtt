@@ -13,6 +13,7 @@ import type { LevelAlignment, LevelLink, LevelSurface, SceneLevel } from './scen
 import type { LiquidSurface } from './liquidTypes';
 import type { MapFeature } from './mapFeatureTypes';
 import type { SavedPlayerFrame } from './playerCamera';
+import type { SceneSound } from '../sound/soundTypes';
 
 /** Data read from a map view, independent of the store and persistence services. */
 export interface ViewState extends ViewUIState {
@@ -88,6 +89,8 @@ export interface ViewState extends ViewUIState {
   lighting: SceneLighting;
   /** Frames the GM saved for the players' TV, numbered in this order; saved with the map, never undo-tracked. */
   playerFrames: SavedPlayerFrame[];
+  /** The moods this scene links to; saved with the map, never undo-tracked. */
+  sound: SceneSound | null;
   /** What the players' tokens have explored, as a PNG data URL; saved with the map, never undo-tracked. */
   exploredMask: string | null;
   /** The explored memories of the levels above the first, by level id; the first level's is `exploredMask`. */

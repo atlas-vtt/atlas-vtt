@@ -20,3 +20,21 @@ export function showNotice(message: string | DocumentFragment, duration?: number
   }
   return notice;
 }
+
+/**
+ * A notice that offers one thing to do about it (Undo, Open): the message, then a link that does it and
+ * closes the notice. `duration` should leave time to read the message and reach the link.
+ */
+export function showNoticeWithAction(text: string, actionLabel: string, onAction: () => void, duration: number): Notice {
+  const message = createFragment();
+  message.append(`${text} `);
+  const link = createEl('a', { text: actionLabel, href: '#' });
+  message.append(link);
+  const notice = showNotice(message, duration);
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    notice.hide();
+    onAction();
+  });
+  return notice;
+}

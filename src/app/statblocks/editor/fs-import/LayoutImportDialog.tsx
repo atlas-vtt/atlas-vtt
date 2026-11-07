@@ -14,6 +14,7 @@ import { AdoptionSection, ImportSummary } from './LayoutImportParts';
 import { useLayoutAdoption } from './useLayoutAdoption';
 import { t } from '../../../i18n';
 import './layout-import-dialog.scss';
+import { portalHost } from '../../../host/portalHost';
 
 export interface LayoutImportDialogProps {
   app: App;
@@ -97,6 +98,6 @@ export function LayoutImportDialog({ app, doc, layout, imported, statblocks, onO
         </div>
       </motion.div>
     </motion.div>,
-    doc.body,
+    portalHost(doc),
   );
 }

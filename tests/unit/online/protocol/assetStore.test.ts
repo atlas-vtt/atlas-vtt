@@ -29,7 +29,7 @@ describe('an asset reference with its stored id', () => {
   });
 
   it('names the caps of every kind the store holds', () => {
-    expect(Object.keys(ASSET_CAPS).sort()).toEqual(['audio', 'book', 'image', 'text', 'tiles', 'video']);
+    expect(Object.keys(ASSET_CAPS).sort()).toEqual(['audio', 'book', 'image', 'segments', 'text', 'tiles', 'video']);
     expect(ASSET_CAPS.video).toBe(500 * 1024 * 1024);
     expect(isAssetKind('tiles')).toBe(true);
     expect(isAssetKind('font')).toBe(false);

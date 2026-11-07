@@ -13,6 +13,7 @@ import { StatblockSheet } from '../../render/StatblockSheet';
 import type { FieldRecord } from '../../values/fieldValues';
 import { templateGroups, unshownKeys } from './templateChoices';
 import { t } from '../../../i18n';
+import { portalHost } from '../../../host/portalHost';
 
 export interface ChangeTemplateDialogProps {
   app: App;
@@ -113,6 +114,6 @@ export function ChangeTemplateDialog(props: ChangeTemplateDialogProps): React.JS
         </div>
       </motion.div>
     </motion.div>,
-    anchor.doc.body,
+    portalHost(anchor.doc),
   );
 }

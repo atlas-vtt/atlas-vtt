@@ -1,6 +1,7 @@
 /**
- * "Change HP of 4 tokens…" in the token menu of a selection: one change typed once for every
- * selected token that holds the resource (an area's damage, a healing spell over the party).
+ * "Change HP of 4 tokens…" in the token menu of a selection, as a press on a selected token's bar
+ * offers it too: one change typed once for every selected token that holds the resource (an area's
+ * damage, a healing spell over the party).
  */
 
 import type { StoreApi } from 'zustand';
@@ -12,6 +13,15 @@ import type { ContextMenuEntry } from './AtlasContextMenu';
 
 /** Opens the popover for one resource; it calls back with the amount typed. */
 export type OpenSelectionEditor = (definition: ResourceDefinition, count: number, apply: (amount: number) => void) => void;
+
+/** Adds `amount` to resource `key` of `targets`, in one undo step, from their values as the store holds them now. */
+export function applySelectionResourceChange(
+  store: StoreApi<ViewAtlasState>, targets: readonly string[], definitions: readonly ResourceDefinition[], key: string, amount: number,
+): void {
+  const { objects, updateTokens } = store.getState();
+  const updates = selectionResourceUpdates(objects.tokens, targets, definitions, key, amount);
+  if (updates.length > 0) updateTokens(updates);
+}
 
 /**
  * The entry for a selection of `targets`; null for a single token (its bar takes the same input) or
@@ -34,11 +44,7 @@ export function selectionResourceEntry(
     type: 'item',
     label,
     icon: 'heart-pulse',
-    onClick: () => openEditor(definition, count, (amount) => {
-      const { objects, updateTokens } = store.getState();
-      const updates = selectionResourceUpdates(objects.tokens, targets, definitions, definition.key, amount);
-      if (updates.length > 0) updateTokens(updates);
-    }),
+    onClick: () => openEditor(definition, count, (amount) => applySelectionResourceChange(store, targets, definitions, definition.key, amount)),
   });
 
   if (offered.length === 1) {

@@ -13,7 +13,7 @@ export interface DropdownSliderRowProps {
   onChange: (value: number) => void
 }
 
-/** A menu row with a slider: its name and value on the menu's text edge, the track across the menu. */
+/** A menu row with a slider: its name and value on the menu's text edge, the track across the menu. A screen reader hears the value as it is shown, with its unit. */
 export const DropdownSliderRow: FC<DropdownSliderRowProps> = ({
   label,
   value,
@@ -38,6 +38,7 @@ export const DropdownSliderRow: FC<DropdownSliderRowProps> = ({
         max={max}
         step={step}
         disabled={disabled}
+        getValueText={(v: number) => `${v}${unit}`}
         onValueChange={(v: number[]) => onChange(v[0] ?? value)}
       />
     </div>

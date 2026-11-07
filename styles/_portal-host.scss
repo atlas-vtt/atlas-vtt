@@ -1,0 +1,11 @@
+// Atlas' floating UI renders into one host under <body> per document (`src/app/host/portalHost.ts`). It adds no box,
+// so what it holds lays out and stacks as a child of <body> would.
+.atlas-portal-host {
+  display: contents;
+}
+
+// Obsidian takes window drag away from every child of a frameless window's <body> after its `.app-container`;
+// a host without a box has no region of its own, so its children take that place.
+body.is-frameless > .atlas-portal-host > * {
+  -webkit-app-region: no-drag;
+}

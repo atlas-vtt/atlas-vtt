@@ -31,6 +31,7 @@ import { t } from '../../i18n';
 import { sceneTokens } from '../../tokens/offMap';
 import { everyLevelObjects } from '../../levels/levelObjects';
 import { getDomHost } from '../../host/dom';
+import { portalHost } from '../../host/portalHost';
 
 interface EditTokenValues {
   name: string;
@@ -180,7 +181,7 @@ export function openEditTokenModal(
   const rules = mapSenseRules(app, AssetService.getInstance(app), store.getState());
   const lighting = lightingContext(store.getState(), app, rules);
   const statblock = character?.statblockPath ? { app, path: character.statblockPath, rules } : null;
-  const container = getDomHost().createDiv(doc.body, 'atlas-vtt-plugin atlas-vtt-root');
+  const container = getDomHost().createDiv(portalHost(doc), 'atlas-vtt-plugin atlas-vtt-root');
   const root = createRoot(container);
 
   const cleanup = (): void => {

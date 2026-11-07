@@ -2,6 +2,7 @@ import { MARKS_INTERVAL_MS, type SharedCursor } from '../protocol/index.ts';
 import { getDomHost } from '../../host/dom';
 import type { OverlayHost } from './MarkOverlay.ts';
 import { RemoteCursors } from './RemoteCursors.ts';
+import { portalHost } from '../../host/portalHost';
 
 /** The class of the marks overlay's canvas, which the cursors lie above. */
 const MARKS_CANVAS = 'atlas-online-marks';
@@ -74,7 +75,7 @@ export class CursorOverlay {
     this.host = host;
     host.viewport.on('moved', this.onCamera);
     host.viewport.on('zoomed', this.onCamera);
-    const layer = this.layer ?? getDomHost().createDiv(host.canvas.ownerDocument.body, 'atlas-online-cursors');
+    const layer = this.layer ?? getDomHost().createDiv(portalHost(host.canvas.ownerDocument), 'atlas-online-cursors');
     this.layer = layer;
     this.cursors ??= new RemoteCursors(layer, this.labelOf, MARKS_INTERVAL_MS);
     let anchor: Element = host.canvas;

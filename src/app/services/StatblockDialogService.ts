@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import StatblockLinkModal from '../packages/components/asset-manager/StatblockLinkModal';
 import type { NewStatblockOption } from '../statblocks/editor/create/roleChoices';
 import { t } from '../i18n';
+import { portalHost } from '../host/portalHost';
 
 export class StatblockDialogService {
   private app: App;
@@ -33,7 +34,7 @@ export class StatblockDialogService {
     this.closeDialog();
 
     // Create container for the modal
-    this.modalContainer = document.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
+    this.modalContainer = portalHost().createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
 
     const asset = {
       name: assetName,

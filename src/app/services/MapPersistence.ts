@@ -23,6 +23,7 @@ import { pausedTimers } from '../utils/timerWidget';
 import { preserveDamagedSceneFile, SceneFileError } from './sceneFileProblems';
 import { SceneFileWriter } from './sceneFileWriter';
 import type { LevelLink, LevelSurface, SceneLevel } from '../types/sceneLevelTypes';
+import type { SceneSound } from '../sound/soundTypes';
 import { LEVELS_FILE_VERSION, readSceneLevels, sceneFileVersion } from '../levels/levelFile';
 
 import type { FogOperation } from '../types/fogTypes';
@@ -50,6 +51,8 @@ export interface MapFile {
   /** Human-readable map name, written when the map is created (absent in older files) */
   name?: string;
   background: string | null;
+  /** The level the scene was last shown on, which it opens on again; unset is the first. */
+  viewedLevel?: string | null;
   /** The scene's levels, bottom first; absent for a scene with one level. The first level's background is `background`. */
   levels?: SceneLevel[] | undefined;
   grid: GridState | null;
@@ -75,6 +78,8 @@ export interface MapFile {
   camera: CameraState;
   /** Frames the GM saved for the players' TV; absent in older files and until a scene has one. Read with `readPlayerFrames`. */
   playerFrames?: SavedPlayerFrame[];
+  /** The moods the scene links to; older versions ignore it and files of scenes without leave it out. Read with `readSceneSound`. */
+  sound?: SceneSound;
 }
 
 /** A token as found in older map files, where conditions were still called `statuses`. */

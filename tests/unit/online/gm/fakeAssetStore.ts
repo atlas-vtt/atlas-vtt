@@ -21,7 +21,7 @@ const failed = <T>(trouble: StoreTrouble): StoreResult<T> => ({ ok: false, troub
 
 /** A request to the store that went out: what it was, and the way to let it come back. */
 export interface StoreCall {
-  readonly kind: 'whole' | 'part' | 'start' | 'complete' | 'tiles';
+  readonly kind: 'whole' | 'part' | 'start' | 'complete' | 'tiles' | 'segments';
   readonly id: string;
   readonly part?: number;
   readonly bytes?: number;
@@ -31,7 +31,11 @@ export class FakeStoreClient {
   readonly offers: OfferedAsset[][] = [];
   readonly calls: StoreCall[] = [];
   /** How an offered asset is answered; `need` in one body by default. */
-  answer: (asset: OfferedAsset) => OfferAnswer = (asset) => (asset.kind === 'tiles' ? { answer: 'need', upload: 'tiles', partBytes: 8 * 1024 * 1024 } : { answer: 'need', upload: 'single', partBytes: 95 * 1024 * 1024 });
+  answer: (asset: OfferedAsset) => OfferAnswer = (asset) => {
+    if (asset.kind === 'tiles') return { answer: 'need', upload: 'tiles', partBytes: 8 * 1024 * 1024 };
+    if (asset.kind === 'segments') return { answer: 'need', upload: 'segments', partBytes: 8 * 1024 * 1024 };
+    return { answer: 'need', upload: 'single', partBytes: 95 * 1024 * 1024 };
+  };
   /** How an offer as a whole is answered: answered by default. */
   offerTrouble: StoreTrouble | null = null;
   /** How an upload request comes back: stored by default. */
@@ -63,6 +67,7 @@ export class FakeStoreClient {
     this.offers.push([...assets]);
     if (this.holdOffers) await new Promise<void>((resolve) => this.waitingOffers.push(resolve));
     for (const asset of assets) if (asset.tiles !== undefined) this.pieces.set(asset.id, asset.tiles.count + 1);
+    for (const asset of assets) if (asset.segments !== undefined) this.pieces.set(asset.id, asset.segments.pieces);
     if (this.offerTrouble !== null) return failed(this.offerTrouble);
     return ok(new Map(assets.map((asset) => [asset.id, this.answer(asset)])));
   }
@@ -94,6 +99,19 @@ export class FakeStoreClient {
     this.batches.push({ id, names, bytes: body.byteLength, text });
     await this.call({ kind: 'tiles', id, bytes: body.byteLength });
     if (this.tilesResult !== null) return this.tilesResult({ id, names });
+    const held = this.held.get(id) ?? new Set<string>();
+    for (const name of names) held.add(name);
+    this.held.set(id, held);
+    const of = this.pieces.get(id) ?? 0;
+    return ok({ stored: held.size >= of && held.has('manifest.json'), pieces: held.size, of });
+  }
+
+  /** A sound's segments as the store counts them: held once every offered piece is there, the manifest with them. */
+  async putSegments(id: string, body: ArrayBuffer): Promise<StoreResult<{ stored: boolean; pieces: number; of: number }>> {
+    const text = new TextDecoder('latin1').decode(body);
+    const names = [...text.matchAll(/; name="([^"]+)"/g)].map((match) => match[1] ?? '');
+    this.batches.push({ id, names, bytes: body.byteLength, text });
+    await this.call({ kind: 'segments', id, bytes: body.byteLength });
     const held = this.held.get(id) ?? new Set<string>();
     for (const name of names) held.add(name);
     this.held.set(id, held);

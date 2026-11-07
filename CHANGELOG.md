@@ -2,6 +2,113 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.13.1 — Scene tab dragging, TrueScale staging and sound sync
+
+2026-11-06
+
+### Improved
+
+- Drag open scene tabs into a new order
+- TrueScale: dragging the frame on the map no longer moves your players. Set it up, then press play on the frame and their view glides there
+
+### Fixed
+
+- Token names are readable in the light theme again
+
+### Atlas Online
+
+- Fixed issue where sometimes when playing sounds in Atlas Online the client play state would desync from the DM's host machine
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, LittleBlueShyGuy, Markus Baumann, Michael Breuer, Pau Benazet Montobbio, Pavel Zinoviev, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.13.0 — Sound, free starter tokens and fog edges
+
+2026-11-05
+
+### New
+
+**New Feature: Sound**
+- A new Sound page on the DM screen for music and ambience, from folders in your vault or anywhere on your computer. It also opens in its own tab from the command palette, no map needed
+- Starter ambience: download six free loops (forest, campfire, thunderstorm, beach, night marsh, cave) to play right away
+- Moods: press a mood and the sound crossfades to it, while sounds both moods share keep playing. Save a mood from whatever is playing, and drag moods into the order you like
+- Mix up to 8 ambience layers beside the music, each with its own fader. Every track plays at an even loudness
+- Reverb on every layer. Each mood can sound like a room, a hall, a cave or a cathedral
+- Music queue: crossfades between tracks, drag to reorder, repeat the list or one track, stop after this track, and see what played
+- Search your tracks and moods with `/`, and filter by tags
+- Stop all fades everything out, and one more press brings it back
+- Link a mood to a scene or the initiative tracker for combat and it plays by itself
+
+**New Feature: Free starter tokens**
+- An empty collection offers 155 free creature and class tokens, sorted into tags, with 5E (SRD 5.2.1) or Cairn statblocks depending on what you choose
+
+**General**
+- Fog edges: in Atlas settings, Maps, make the edge of the fog soft or crackled, for you and your players. Contributed by ThatMattLatt
+
+### Improved
+- Right-click a scene in the asset manager and choose Open Scene. Contributed by marinojoey
+- Tooltips only fade in and out when your system is set to reduce motion
+- Confirm and delete buttons are easier to read
+
+### Fixed
+- The DM screen's text is sharp on screens without high resolution
+- The DM screen keeps your All statblocks choice after you close it
+- Statblocks: the choices of a "One of a list" value and of ability parts open over the card instead of being cut off
+- A note previewed from a link in a statblock preview opens in front of the statblock
+- Statblocks: emptying a linked statblock's hit points, or setting them to 0, removes the bar from tokens on the map
+- Deleting a map also removes its image and thumbnail, unless something else still uses them
+- Renamed statblock notes no longer show twice when you link a statblock to a token
+- Statblocks: hit points a template stores under another name (such as `pv`) are no longer counted twice
+- Statblocks: a renamed Counter row no longer shows twice
+- Enlarged text boxes can be rotated again
+- Settings opened from the command palette no longer close right after a quick click
+- Holding Shift places a note pin in the centre of a square, as on hex grids
+- With Show nameplates on in the player view, players only see the names your map shows: on the map, in the initiative list, the turn banner and rolls
+- Deleted assets no longer come back from copies a sync tool left behind
+- Exported collections include their random tables correctly again
+- Encounter folder pins keep working after an import under another collection name
+- Fixed memory leak when reloading Obsidian with Atlas enabled
+
+### Atlas Online
+- Players hear your music and ambience in sync on their own devices
+- Players set their own music, ambience and dice volume under More, and can turn sound off on their device
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, Markus Baumann, Michael Breuer, Pau Benazet Montobbio, Pavel Zinoviev, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.12.1 — TrueScale fixes, levels and multi-token actions
+
+2026-11-02
+
+### Improved
+- TrueScale: better tooltips for various buttons
+- TrueScale: the chips on the map have a cleaner look
+- TrueScale: the frame players see no longer tints the map inside it
+- Player window: better animation when switching between saved frames and when showing/hiding the map to players
+- Tokens: The context menu options "Kill, Delete, Reset" now work with multiple tokens selected
+- Tokens: Clicking on a HP bar with multiple tokens selected now allows adjusting for all selected tokens
+
+### Fixed
+- Scenes with several levels open on the level they were last shown on
+- Fixed bug where player window couldn't be dragged
+- TrueScale: saved frames can be shown and removed every time
+- TrueScale: a moved Bring players here frame goes back to its place when a drag is cancelled, and no longer carries its position over to the next map
+- Editing a value in the statblock beside a note no longer jumps away from what you are editing
+- Picking or resetting a game system now correctly updates token resource widgets
+- The confirmation for deleting a collection no longer opens behind the asset manager
+- Tags in a selection of several assets: a tag only some of them have now goes to all of them when pressed, and from all of them when pressed again
+- Statblocks: a backslash keeps a comma in a label or word (`Fire\, cold: 3` shows as Fire, cold)
+- Statblocks: rows added to a Counter block in a template now show on notes that already had some of its rows
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Andrew, Anna B. Meyer, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, Markus Baumann, Michael Breuer, Pau Benazet Montobbio, Pavel Zinoviev, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
 ## 0.12.0 — TrueScale and the player window bar
 
 2026-11-01

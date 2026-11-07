@@ -130,7 +130,8 @@ $portrait-size: 72px;
 }
 
 // ── Traits and spells ───────────────────────────────────────────────────────
-.atlas-sb-traits > * + * {
+// Every trait but the first (never `* + *`, see statblocks/render/_sheet-lists.scss).
+.atlas-sb-traits > :where(:not(:first-child)) {
   margin-top: $spacing-s;
 }
 

@@ -270,6 +270,20 @@ describe('the DM screen during a fight', () => {
     expect(screen.getByRole('radio', { name: 'In this fight (1)' }).getAttribute('aria-checked')).toBe('true');
   });
 
+  it('keeps All while the screen closes and opens again during one fight', async () => {
+    state.initiative = { entries: [{ id: 'e', tokenId: '1', order: 0 }], isActive: true, round: 1 };
+    const { container, rerender } = showDMScreen([creaturePath, fencePath]);
+    await waitFor(() => expect(container.textContent).toContain('Inline Creature'));
+    fireEvent.click(screen.getByRole('radio', { name: 'All (2)' }));
+    await waitFor(() => expect(shownNames(container)).toHaveLength(2));
+
+    rerender(<DMScreen isOpen={false} onClose={vi.fn()} />);
+    expect(shownNames(container)).toHaveLength(0);
+    rerender(<DMScreen isOpen onClose={vi.fn()} />);
+    await waitFor(() => expect(shownNames(container)).toHaveLength(2));
+    expect(screen.getByRole('radio', { name: 'All (2)' }).getAttribute('aria-checked')).toBe('true');
+  });
+
   it('shows every statblock and no switch without a fight, or where the fight uses every creature', async () => {
     const { container } = showDMScreen([creaturePath, fencePath]);
     await waitFor(() => expect(shownNames(container)).toHaveLength(2));

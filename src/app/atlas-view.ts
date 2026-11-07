@@ -45,8 +45,7 @@ function isViewCamera(value: unknown): value is ViewCamera {
   return isRecord(value)
     && typeof value.centerX === 'number'
     && typeof value.centerY === 'number'
-    && typeof value.scale === 'number'
-    && (value.level === undefined || typeof value.level === 'string');
+    && typeof value.scale === 'number';
 }
 
 /**
@@ -374,6 +373,11 @@ export class AtlasView extends FileView {
     this.app.workspace.requestSaveLayout();
   }
 
+  /** Moves an open scene tab to another place in the bar; the order is saved with the workspace. */
+  moveTab(tabId: string, toIndex: number): void {
+    if (this.tabMetaStore.getState().moveTab(tabId, toIndex)) this.app.workspace.requestSaveLayout();
+  }
+
   /**
    * Points the active tab and the view's file at the scene the store holds as loaded.
    * A load that fails before it replaces that scene leaves it open, while the tab bar
@@ -441,12 +445,10 @@ export class AtlasView extends FileView {
   private saveViewportState(tabId: string): void {
     const viewport = this._serviceManager.getRendererService().getViewport();
     if (!viewport) return;
-    const { viewedLevel } = this.store.getState();
     this.viewportCache.set(tabId, {
       centerX: viewport.center.x,
       centerY: viewport.center.y,
       scale: viewport.scale.x,
-      ...(viewedLevel ? { level: viewedLevel } : {}),
     });
   }
 

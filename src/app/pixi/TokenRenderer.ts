@@ -1868,6 +1868,12 @@ export class TokenRenderer {
     // ── Token + fog interactions: only for select/move tools ────────────
     if (activeTool !== 'select' && activeTool !== 'move') return;
 
+    // The bars of a selection stand above every token: one change for all of it
+    if (e.button === 0 && !e.shiftKey && this.pressSelectionBar(e)) {
+      markHandled(e);
+      return;
+    }
+
     // 1. Hit-test individual tokens
     const tokenId = this.hitTestTokens(worldPos.x, worldPos.y);
     if (tokenId) {
@@ -1946,6 +1952,7 @@ export class TokenRenderer {
       this.lastHoveredPinId = null;
     }
     this.hexLinkHandlers?.hover(null);
+    this.uiManager.hoverSelectionBar(null);
     this.mapFeatureHandlers?.leave();
     this.lightHandlers?.leave();
     this.interactionController.handleViewportTokenHover(null);
@@ -2049,8 +2056,31 @@ export class TokenRenderer {
     this.hexLinkHandlers?.hover(hexLinkId, e);
     this.hoverMapFeatures(worldPos, tokenId !== null || hexLinkId !== null, e);
 
-    this.applyCursor(tokenId || hexLinkId ? 'pointer' : 'default');
+    const selectionBar = this.selectionBarAt(e);
+    this.uiManager.hoverSelectionBar(selectionBar);
+    this.applyCursor(tokenId || hexLinkId || selectionBar ? 'pointer' : 'default');
   };
+
+  /** The key of the resource a token of a selection of two or more draws under the pointer, or null. */
+  private selectionBarAt(e: FederatedPointerEvent): string | null {
+    const { selectedIds, activeTool } = this.store.getState();
+    if (selectedIds.length < 2 || (activeTool !== 'select' && activeTool !== 'move')) return null;
+    const key = this.uiManager.resourceAt(selectedIds, e.global);
+    return key && this.interactionController.offersSelectionResource(key) ? key : null;
+  }
+
+  private pressSelectionBar(e: FederatedPointerEvent): boolean {
+    const key = this.selectionBarAt(e);
+    if (!key) return false;
+    const opened = this.interactionController.pressSelectionResource(
+      key, { x: e.clientX, y: e.clientY }, () => this.uiManager.setSelectionBarActive(null),
+    );
+    if (!opened) return false;
+    this.uiManager.setSelectionBarActive(key);
+    e.preventDefault(); // Keeps the canvas's default focus from stealing the popover's focus
+    e.stopPropagation();
+    return true;
+  }
 
   /**
    * The GM's label of what lies under the pointer: a door badge above everything, else a map feature

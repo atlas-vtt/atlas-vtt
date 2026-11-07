@@ -16,11 +16,15 @@ export interface DungeonGeneratorRequest {
   anchor?: { left: number; top: number; width: number; height: number };
 }
 
+/** Which page of the DM screen shows. */
+export type DMScreenPage = 'statblocks' | 'sound';
+
 export interface ViewUIState {
 
   // Panel visibility
   isGridSettingsOpen: boolean;
   isDMScreenOpen: boolean;
+  dmScreenPage: DMScreenPage;
   isGridAlignmentOpen: boolean;
   isDiceLogOpen: boolean;
   isAssetManagerOpen: boolean;

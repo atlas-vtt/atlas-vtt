@@ -1,3 +1,4 @@
+import { readFogEdge, type FogEdge } from '../fog/fogEdge';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import type { App, Plugin } from 'obsidian';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
@@ -30,6 +31,8 @@ import type { InitiativeTurnOptions } from '../initiative/turnOptions';
 import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
 import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import { readSoundSettings, type SoundSettings } from './soundSettings';
+import { readSharedSoundRoots, type SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import type { TableTvSettings } from './tableTvSettings';
 import { loadTableTvDevice, saveTableTvDevice, type TableTvDevice, type TvScreenRecord, type TvScreenSetup } from './tableTvDevice';
 
@@ -174,7 +177,7 @@ export class SettingsService {
 
   setHotkey(id: MapHotkeyId, key: string): void {
     const bindings = this.getHotkeys();
-    const conflict = key && availableHotkeys().find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
+    const conflict = key && availableHotkeys(false, (feature) => this.isExperimentalOn(feature)).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
     if (conflict) throw new Error(`Already assigned to ${conflict.label}. Clear that shortcut first.`);
     this.settings.hotkeys = withHotkey(this.settings.hotkeys, id, key);
     this.commit();
@@ -402,6 +405,29 @@ export class SettingsService {
     this.commit();
   }
 
+  /** Levels, default fade and following scenes for music and ambience; the default for whatever the file does not hold. */
+  getSoundSettings(): SoundSettings {
+    return readSoundSettings(this.settings.sound);
+  }
+
+  setSoundSettings(changes: Partial<SoundSettings>): void {
+    const current = this.getSoundSettings();
+    const next = readSoundSettings({ ...current, ...changes });
+    if (JSON.stringify(next) === JSON.stringify(current)) return;
+    this.settings.sound = { ...this.settings.sound, ...next };
+    this.commit();
+  }
+
+  /** The sound library's linked folders, as far as devices share them. */
+  getSoundRoots(): SharedSoundRoots {
+    return readSharedSoundRoots(this.settings.soundRoots);
+  }
+
+  setSoundRoots(roots: SharedSoundRoots): void {
+    this.settings.soundRoots = roots;
+    this.commit();
+  }
+
   /** Whether a new scene looks for the grid of its map: on unless the file says `false`. */
   detectsGridOnNewScenes(): boolean {
     return this.settings.detectGridOnNewScenes !== false;
@@ -410,6 +436,15 @@ export class SettingsService {
   setDetectGridOnNewScenes(on: boolean): void {
     if (this.detectsGridOnNewScenes() === on) return;
     this.settings.detectGridOnNewScenes = on;
+    this.commit();
+  }
+
+  getFogEdge(): FogEdge {
+    return readFogEdge(this.settings.fogEdge);
+  }
+
+  setFogEdge(changes: Partial<FogEdge>): void {
+    this.settings.fogEdge = { ...this.getFogEdge(), ...changes };
     this.commit();
   }
 

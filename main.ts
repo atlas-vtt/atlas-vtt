@@ -7,6 +7,7 @@ import { AtlasView, ATLAS_VIEW_TYPE } from './src/app/atlas-view';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE } from './src/app/local-player-view';
 import { DashboardView, DASHBOARD_VIEW_TYPE } from './src/app/dashboard-view';
 import { DungeonGeneratorView, DUNGEON_GENERATOR_VIEW_TYPE } from './src/app/dungeon-generator-view';
+import { SoundView, SOUND_VIEW_TYPE } from './src/app/sound-view';
 import { initializeAtlasStorage } from './src/app/atlasStorageInit';
 import { t } from './src/app/i18n';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
@@ -26,6 +27,7 @@ import { registerStatblockFileMenu } from './src/app/statblocks/editor/create/st
 import { registerStatblockInitiativeMenu } from './src/app/initiative/statblockCombatant';
 import { disposeImageProcessing } from './src/app/imageProcessing/imageProcessing';
 import { disposeSpectralEngine } from './src/app/pixi/spectralEngine/spectralEngineService';
+import { releaseAssetWorkers } from './src/app/pixi/utils/assetLifecycle';
 import { registerLootQueryView } from './src/app/loot/lootQueryView';
 import { registerBaseGiveButtons } from './src/app/loot/baseGiveButtons';
 import { GlobalAssetManagerService } from './src/app/services/GlobalAssetManagerService';
@@ -51,6 +53,8 @@ import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSe
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { registerPageListenerRelease } from './src/app/plugin/pageListenerRelease';
+import { releasePortalHosts } from './src/app/host/portalHost';
 import { supportSettingsSection } from './src/app/settings/supportSettingsSection';
 import { registerAtlasLeafSync } from './src/app/plugin/atlasLeaves';
 import { EXTENSION_ATLASMAP } from './src/app/utils/sceneFiles';
@@ -64,9 +68,16 @@ import { CampaignPlayers } from './src/app/campaigns/players/CampaignPlayers';
 import { releaseMapPictures } from './src/app/react/components/dashboard/mapPicture';
 import { PlayedRules } from './src/app/campaigns/playedRules';
 import { QuestIndex } from './src/app/campaigns/quests/QuestIndex';
+import { MoodStore } from './src/app/soundLibrary/MoodStore';
+import { SoundLibrary } from './src/app/soundLibrary/SoundLibrary';
+import { SoundRecordStore } from './src/app/soundLibrary/SoundRecordStore';
 import { nameQuestCampaigns } from './src/app/campaigns/quests/nameQuestCampaigns';
 import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
+import { registerSoundDirector } from './src/app/plugin/soundDirector';
+import { SoundDirector } from './src/app/soundDirector/SoundDirector';
+import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
+import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
 import { registerOnlinePlay, type OnlinePlay } from './src/app/plugin/onlinePlay';
 import type { TableChat } from './src/app/online/gm/tableChat';
 import { registerPlayerWindowReloadCleanup } from './src/app/plugin/playerWindowReload';
@@ -77,6 +88,7 @@ import { migrateSettingsToPluginData } from './src/app/plugin/settingsMigration'
 import { SystemPresetFiles } from './src/app/services/systemPresets/SystemPresetFiles';
 import { DiceSetFiles } from './src/app/services/diceSets/DiceSetFiles';
 import { registerStatusBarVisibility } from './src/app/plugin/statusBarVisibility';
+import { registerObsidianSyncNotice } from './src/app/plugin/obsidianSyncNotice';
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
@@ -122,6 +134,8 @@ export default class AtlasVTTPlugin extends Plugin {
   private unloaded = false;
 
   async onload(): Promise<void> {
+    // Before anything of Atlas renders: what React and framer-motion put on the page goes with Atlas.
+    registerPageListenerRelease(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());
@@ -164,10 +178,13 @@ export default class AtlasVTTPlugin extends Plugin {
     // Created before the views so every restored tab shares it; it reads the
     // plugin's data only once the migration has put the settings there.
     this.settingsService = new SettingsService(this.app, settingsReady, this);
+    // Before the views too: every restored map view joins it, for its fights.
+    const soundDirector = registerSoundDirector(this);
 
     // Before the views: a restored map may start Atlas's first check of the vault,
     // whose folder renames reach map files only through these vault events.
     registerVaultSync(this);
+    registerObsidianSyncNotice(this);
     registerDiceStageRelease(this);
     registerMapProcessingStatus(this);
     registerAccentColorSync(this);
@@ -207,6 +224,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
+      ...(this.settingsService.isExperimentalOn('sound') ? [soundSettingsSection(this.settingsService, soundDirector)] : []),
       mapsSettingsSection(this.settingsService),
       mapImageCacheSettingsSection(() => TesseraDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
@@ -267,6 +285,11 @@ export default class AtlasVTTPlugin extends Plugin {
     CampaignPlayers.release(this.app);
     CampaignFiles.release(this.app);
     QuestIndex.release(this.app);
+    SoundDirector.release(this.app);
+    MoodStore.release(this.app);
+    SceneMoodLinks.release(this.app);
+    SoundRecordStore.release(this.app);
+    SoundLibrary.release(this.app);
     DiceSetFiles.release(this.app);
     this.widgetSyncService?.destroy();
     this.widgetSyncService = undefined;
@@ -287,6 +310,9 @@ export default class AtlasVTTPlugin extends Plugin {
     MosaicCanvasService.release(this.app);
     disposeImageProcessing();
     disposeSpectralEngine();
+    releaseAssetWorkers();
+    // Last: what is still mounted in the hosts goes with them.
+    releasePortalHosts();
   }
 
   /** The statblock beside every native statblock note, in every window, while the statblock editor is switched on. */
@@ -308,6 +334,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     this.registerView(DUNGEON_GENERATOR_VIEW_TYPE, (leaf) => new DungeonGeneratorView(leaf));
+    this.registerView(SOUND_VIEW_TYPE, (leaf) => new SoundView(leaf));
     registerLootQueryView(this);
     registerBaseGiveButtons(this);
     this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf));

@@ -1,5 +1,6 @@
 import type { HoverText } from './mapFeatureText';
 import './map-feature-label.scss';
+import { portalHost } from '../../host/portalHost';
 
 /** Hovering this long on a new thing shows its label, as Atlas's tooltips do. */
 const HOVER_DELAY_MS = 300;
@@ -29,7 +30,7 @@ export class MapFeatureLabel {
 
   constructor(canvas: HTMLCanvasElement) {
     this.win = canvas.win;
-    this.el = canvas.doc.body.createDiv({ cls: ['tooltip-content', 'atlas-map-feature-label'], attr: { role: 'tooltip' } });
+    this.el = portalHost(canvas.doc).createDiv({ cls: ['tooltip-content', 'atlas-map-feature-label'], attr: { role: 'tooltip' } });
     this.el.hidden = true;
     const inner = this.el.createDiv({ cls: 'tooltip-inner' });
     this.title = inner.createSpan({ cls: 'tooltip-label' });

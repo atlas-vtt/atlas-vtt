@@ -74,7 +74,7 @@ describe('a scene that names a relief and a shade', () => {
 
   it('of several floors loads every level with its map', async () => {
     const h = setup();
-    await h.service.loadMap(h.rendererService, FLOORS, { centerX: 0, centerY: 0, scale: 1, level: 'upper' });
+    await h.service.loadMap(h.rendererService, FLOORS, { centerX: 0, centerY: 0, scale: 1 }, 'upper');
     const state = h.store.getState();
     expect(state.mapLoaded).toBe(true);
     expect(state.viewedLevel).toBe('upper');

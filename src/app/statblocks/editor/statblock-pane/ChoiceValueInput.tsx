@@ -29,7 +29,7 @@ export function ChoiceValueInput({ field, autoFocus, placeholder }: ValueInputPr
   };
 
   return (
-    <span className="atlas-sb-pane-field atlas-sb-pane-choice">
+    <span ref={list.anchorRef} className="atlas-sb-pane-field atlas-sb-pane-choice">
       <input
         ref={inputRef}
         type="text"

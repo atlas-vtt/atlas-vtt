@@ -1,15 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import playerCss from '../../src/app/services/player-window.scss?inline';
-import transitionCss from '../../src/app/pixi/scene-transition.scss?inline';
 import widgetCss from '../../src/app/react/components/widget-bar.scss?inline';
 import { applyTableTvLook, PLAYER_OVERLAYS_CLASS } from '../../src/app/services/playerWindowTurn';
 import { DEFAULT_TABLE_TV_SETTINGS, type TvRotation } from '../../src/app/services/tableTvSettings';
 
 describe('the player canvas on a turned table TV', () => {
   const style = document.createElement('style');
-  // The snapshot's own rules come first, as the plugin's stylesheet has them
-  style.textContent = transitionCss + playerCss;
+  style.textContent = playerCss;
   afterEach(() => {
     document.body.replaceChildren();
     document.body.className = '';
@@ -27,16 +25,12 @@ describe('the player canvas on a turned table TV', () => {
     document.body.style.setProperty('--atlas-tv-rotation', `${rotation}deg`);
     const canvas = document.body.appendChild(document.createElement('canvas'));
     canvas.id = 'atlas-player-canvas';
-    const snapshot = document.body.appendChild(document.createElement('canvas'));
-    snapshot.className = 'atlas-scene-transition-snapshot';
 
     const sideways = rotation === 90 || rotation === 270;
     // The frames are rendered for this box (`windowScreen` reads it): the window's sides swap a quarter turn
     expect([canvas.clientWidth, canvas.clientHeight]).toEqual(sideways ? [600, 1200] : [1200, 600]);
-    for (const element of [canvas, snapshot]) {
-      const shown = element.getBoundingClientRect();
-      expect([shown.left, shown.top, shown.width, shown.height].map(Math.round)).toEqual([0, 0, 1200, 600]);
-    }
+    const shown = canvas.getBoundingClientRect();
+    expect([shown.left, shown.top, shown.width, shown.height].map(Math.round)).toEqual([0, 0, 1200, 600]);
   });
 });
 
