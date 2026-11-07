@@ -8,3 +8,4 @@
 - Recovery buttons can restore a tracked number such as HP or Stress again when the collection has a resource of the same name that reads another field
 - Tokens on an open map take the new maximum when a resource is pointed at another statblock field in the collection's settings
 - Counters such as spell slots can now be ticked off in a statblock's hover preview and in the DM screen, not only beside the note
+- Snapshots that were saved but no longer showed in a scene's snapshot tray appear there again
