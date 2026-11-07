@@ -7,7 +7,7 @@ import { drawFlight } from '../terrain/raised';
 import type { Hand } from './hand';
 import { polyPath } from './paths';
 import { drawWindows } from './windows';
-import { doorAnchor, doorMiddle } from '../../geometry';
+import { doorAnchor, doorCells, doorMiddle } from '../../geometry';
 import { type CaveWayDraw, type CaveWayPart, caveWay } from '../cave/caveArt';
 
 /**
@@ -31,7 +31,7 @@ function cellFrame(door: Pick<DungeonDoor, 'x' | 'y' | 'dir' | 'edge' | 'wide'>)
  */
 function doorSpan(door: DungeonDoor, dungeon: VisibleFloor): [number, number] {
   const shape = door.edge ? dungeon.house?.doorways.get(door) : undefined;
-  if (!shape) return [-0.5, 0.5];
+  if (!shape) return [-doorCells(door).length / 2, doorCells(door).length / 2];
   const mid = doorMiddle(door);
   const ends = door.dir.y !== 0 ? [shape.x, shape.x + shape.w].map((x) => (x - mid.x) * -door.dir.y) : [shape.y, shape.y + shape.h].map((y) => (y - mid.y) * door.dir.x);
   return [Math.min(...ends), Math.max(...ends)];

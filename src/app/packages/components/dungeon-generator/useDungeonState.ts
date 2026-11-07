@@ -10,6 +10,7 @@ import type { DungeonStyleId } from '../../../dungeons/styleCatalog';
 import { SIZE_TAGS, withTag, type DungeonTag } from '../../../dungeons/tags';
 import type { ThemeChoice } from '../../../dungeons/themes/themeTypes';
 import { SettingsService } from '../../../services/SettingsService';
+import type { RoomScale } from '../../../dungeons/roomScale';
 
 /** Everything the generator panel holds and how it changes. */
 export interface DungeonState {
@@ -34,6 +35,7 @@ export interface DungeonState {
   setTheme: (theme: ThemeChoice) => void;
   setBossRoom: (on: boolean) => void;
   setFiveRoom: (on: boolean) => void;
+  setRoomScale: (scale: RoomScale) => void;
   setGenerated: (request: DungeonRequest, model: DungeonModel) => void;
   /** The Name field: names the scene, changes nothing of the dungeon. */
   setName: (name: string) => void;
@@ -79,7 +81,7 @@ function shownFloor(picked: number, request: DungeonRequest, model: DungeonModel
 export function useDungeonState(app: App, initialName = ''): DungeonState {
   const [settings, setSettings] = useState<DungeonGeneratorSettings>(() => readSettings(app));
   const [request, setRequest] = useState<DungeonRequest>(() => ({
-    seed: randomSeed(), theme: settings.theme, tags: sized(settings.tags), floors: settings.floors, bossRoom: settings.bossRoom, fiveRoom: settings.fiveRoom,
+    seed: randomSeed(), theme: settings.theme, tags: sized(settings.tags), floors: settings.floors, bossRoom: settings.bossRoom, fiveRoom: settings.fiveRoom, roomScale: settings.roomScale,
   }));
   const [pickedFloor, setPickedFloor] = useState(0);
   const [name, setNameState] = useState(initialName.trim());
@@ -142,8 +144,9 @@ export function useDungeonState(app: App, initialName = ''): DungeonState {
       persist({ floors: floorCount(floors) });
     }, [changeRequest, persist]),
     setTheme: useCallback((theme) => {
-      changeRequest((current) => (current.theme === theme ? current : { ...current, theme }));
-      persist({ theme });
+      const roomScale = theme === 'fortress' ? requestRef.current.roomScale ?? 'standard' : 'standard';
+      changeRequest((current) => (current.theme === theme && current.roomScale === roomScale ? current : { ...current, theme, roomScale }));
+      persist({ theme, roomScale });
     }, [changeRequest, persist]),
     setBossRoom: useCallback((on) => {
       changeRequest((current) => (current.bossRoom === on ? current : { ...current, bossRoom: on }));
@@ -152,6 +155,11 @@ export function useDungeonState(app: App, initialName = ''): DungeonState {
     setFiveRoom: useCallback((on) => {
       changeRequest((current) => (current.fiveRoom === on ? current : { ...current, fiveRoom: on }));
       persist({ fiveRoom: on });
+    }, [changeRequest, persist]),
+    setRoomScale: useCallback((roomScale) => {
+      roomScale = requestRef.current.theme === 'fortress' ? roomScale : 'standard';
+      changeRequest((current) => (current.roomScale === roomScale ? current : { ...current, roomScale }));
+      persist({ roomScale });
     }, [changeRequest, persist]),
     setGenerated: useCallback((asked, next) => setGeneratedState({ request: asked, model: next }), []),
     setName: setNameState,

@@ -26,6 +26,7 @@ import { floorStream, stream } from './rng';
 import { readTags } from './tags';
 import type { FloorTerrain } from './terrain/floorTerrain';
 import { addShallowWater, planTerrain } from './terrain/placeTerrain';
+import { clearTacticalColumns } from './terrain/tacticalColumns';
 import { pickTheme, themeOf, themedTags } from './themes/themes';
 import type { ThemeId } from './themes/themeTypes';
 import { typeDungeon } from './themes/typeDungeon';
@@ -109,7 +110,7 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const theme = pickTheme(seed, request.theme ?? 'any', asked);
   const tags = dungeonTags(seed, themedTags(theme, asked));
   const definition = themeOf(theme);
-  const plain = dungeonParams(tags);
+  const plain = { ...dungeonParams(tags), ...(request.theme === 'fortress' && request.roomScale === 'tactical' && { roomScale: request.roomScale }) };
   const base = definition.params?.(plain) ?? plain;
   const sized = fiveRoom ? fiveRoomParams(base) : base;
   // A Cavern follows the book's cave rules, its character drawn once; a Forest's glades keep their own.
@@ -138,18 +139,19 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const parts = planned.map((floor, index): Omit<FloorParts, 'stack' | 'openAbove'> => {
     // A cellar is built as a floor below ground.
     const floorPar = floorParams(params, index, storeyOf(stack, index) < 0 ? 'down' : rise);
+    const columns = floorColumns(seed, index, floor.rooms, floor.stairs, floorPar);
     return {
       planned: floor,
       params: floorPar,
       empty: new Set(typed.empty[index]),
-      columns: floorColumns(seed, index, floor.rooms, floor.stairs, floorPar),
+      columns: params.roomScale === 'tactical' ? clearTacticalColumns({ ...floor, columns }, stack, index) : columns,
       theme,
       water: built ? themeWater(floor.rooms, themed.rooms[index] ?? new Map(), params.tags.has('ruined')) : null,
     };
   });
   const terrain = planTerrain(
     seed,
-    parts.map(({ planned: floor, empty, columns }, index) => ({ ...floor, columns, empty, types: themed.rooms[index] ?? new Map() })),
+    parts.map(({ planned: floor, empty, columns }, index) => ({ ...floor, columns, empty, ...(params.roomScale && { roomScale: params.roomScale }), types: themed.rooms[index] ?? new Map() })),
     params.tags,
     themed.theme,
     stack,

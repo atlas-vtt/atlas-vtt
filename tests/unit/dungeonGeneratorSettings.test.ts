@@ -14,6 +14,16 @@ import { readStoredSettings } from '../../src/app/services/atlasSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
 
 describe('reading the generator settings', () => {
+  it('defaults old or invalid room scales safely and remembers Tactical', () => {
+    expect(readDungeonGeneratorSettings({})).toHaveProperty('roomScale', 'standard');
+    expect(readDungeonGeneratorSettings({ roomScale: 'huge' })).toHaveProperty('roomScale', 'standard');
+    expect(readDungeonGeneratorSettings({ theme: 'fortress', roomScale: 'tactical' })).toHaveProperty('roomScale', 'tactical');
+  });
+  it('reads a Tactical preference as Standard when Fortress is not selected', () => {
+    for (const theme of ['any', 'mansion', 'cavern', 'forest']) {
+      expect(readDungeonGeneratorSettings({ theme, roomScale: 'tactical' }).roomScale, theme).toBe('standard');
+    }
+  });
   it('gives the defaults for nothing stored', () => {
     expect(readDungeonGeneratorSettings(undefined)).toEqual(DEFAULT_DUNGEON_GENERATOR_SETTINGS);
     expect(readStoredSettings({}, 'mouse').settings.dungeonGenerator).toEqual(DEFAULT_DUNGEON_GENERATOR_SETTINGS);
@@ -42,7 +52,7 @@ describe('reading the generator settings', () => {
   it('keeps what the GM chose in Atlas settings', () => {
     const settings = new SettingsService({} as App);
     settings.setDungeonGenerator({ view: { ...DEFAULT_VIEW, monochrome: true }, theme: 'cavern', tags: ['wet'], style: 'blueprint', floors: 3, bossRoom: false, fiveRoom: true });
-    expect(settings.getDungeonGenerator()).toEqual({ view: { ...DEFAULT_VIEW, monochrome: true }, theme: 'cavern', tags: ['wet'], style: 'blueprint', floors: 3, bossRoom: false, fiveRoom: true });
+    expect(settings.getDungeonGenerator()).toEqual({ view: { ...DEFAULT_VIEW, monochrome: true }, theme: 'cavern', tags: ['wet'], style: 'blueprint', floors: 3, bossRoom: false, fiveRoom: true, roomScale: 'standard' });
   });
 
   it('reads retired theme tags and an unknown theme as Any', () => {

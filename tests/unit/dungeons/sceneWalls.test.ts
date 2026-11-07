@@ -117,6 +117,26 @@ describe('dungeon walls', () => {
     expect(length).toBeCloseTo(placement.pxPerCell + 2 * half, 0);
   });
 
+  it('closes every two-cell Tactical door across its full opening', () => {
+    const model = generateDungeon({ seed: 6271, theme: 'fortress', roomScale: 'tactical', tags: ['large', 'dry', 'flat', 'square'], floors: 1, fiveRoom: true });
+    const floor = model.floors[0]!;
+    const wideDoors = floor.doors.filter(door => door.kind === 'door' && door.wide);
+    expect(wideDoors.length).toBeGreaterThan(0);
+    const placement = placementOf(model);
+    const half = wallInkWidth(STYLE) / 2 * placement.pxPerCell;
+    const result = dungeonWalls(model, STYLE, DEFAULT_VIEW, placement);
+    expect(result.unplaced).toBe(0);
+    expect(result.doors.door).toBe(floor.doors.filter(door => door.kind === 'door').length);
+    for (const door of wideDoors) {
+      const mid = doorMiddle(door);
+      const at = toWorld(mid, placement);
+      const placed = Object.values(result.walls).find(wall => wall.type === 'door'
+        && pointSegmentDistance(at, wall.p1, wall.p2) < 1);
+      expect(placed, `door at ${door.x},${door.y}`).toBeDefined();
+      expect(Math.hypot(placed!.p2.x - placed!.p1.x, placed!.p2.y - placed!.p1.y)).toBeCloseTo(2 * placement.pxPerCell + 2 * half, 0);
+    }
+  });
+
   it('gives a secret wing no walls when the view hides it', () => {
     const model = smallDungeon();
     const placement = placementOf(model);

@@ -14,6 +14,8 @@ import { ThemeStep } from './ThemeStep';
 import type { DungeonState } from './useDungeonState';
 import type { Wizard } from './useWizard';
 import { ViewSettings } from './ViewSettings';
+import { SegmentedControl } from '../primitives/SegmentedControl';
+import type { RoomScale } from '../../../dungeons/roomScale';
 import type { WizardStep } from './wizardSteps';
 
 /** The collection the scene goes to, and the ones the GM may choose instead. */
@@ -95,6 +97,19 @@ function LayoutStep({ state }: { state: DungeonState }): React.JSX.Element {
         onChange={state.setBossRoom}
       />
       <SwitchRow label={t('dungeon.fiveRoom')} hint={t('dungeon.fiveRoom.hint')} value={fiveRoom} onChange={state.setFiveRoom} />
+      {request.theme === 'fortress' && <div className="atlas-dungeon-field atlas-dungeon-field--stacked">
+        <span className="atlas-dungeon-field__label">{t('dungeon.roomScale')}</span>
+        <SegmentedControl<RoomScale>
+          ariaLabel={t('dungeon.roomScale')}
+          value={request.roomScale ?? 'standard'}
+          onChange={state.setRoomScale}
+          roving
+          options={[
+            { value: 'standard', label: t('dungeon.roomScale.standard'), hint: t('dungeon.roomScale.standard.hint') },
+            { value: 'tactical', label: t('dungeon.roomScale.tactical'), hint: t('dungeon.roomScale.tactical.hint') },
+          ]}
+        />
+      </div>}
     </div>
   );
 }

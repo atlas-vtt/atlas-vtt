@@ -20,6 +20,7 @@ import { shapeRooms } from './roomShapes';
 import { placeSecretWings } from './secrets';
 import { addSteps } from './steps';
 import { fitPassages } from './passageWidths';
+import { widenEncounterDoors } from './tacticalDoors';
 
 const MAX_ATTEMPTS = 120;
 /** A cave's floor must also fit its chambers' blocks and a lane two cells wide, so it may take more attempts. */
@@ -55,6 +56,8 @@ export interface FloorRequest {
 interface Built {
   layout: CompactLayout;
   normals: number;
+  /** Keeps every required rule, allowing a smaller Tactical boss where a full arena cannot fit. */
+  viable: boolean;
   /** Keeps the rules between floors, which no fallback may break; asked only where it decides something (null: not yet). */
   linked: boolean | null;
   /** How many of the floor's own rules it keeps: its fewest rooms, its entrances, its boss room, its loop. */
@@ -74,7 +77,7 @@ function linked(built: Built, request: FloorRequest): boolean {
  * one keeping most of its own (then with the most rooms, then the first), else the same of all.
  */
 function fallback(built: readonly Built[], request: FloorRequest): Built | null {
-  const ranked = [...built].sort((a, b) => b.kept - a.kept || b.normals - a.normals);
+  const ranked = [...built].sort((a, b) => Number(b.viable) - Number(a.viable) || b.kept - a.kept || b.normals - a.normals);
   return ranked.find((b) => linked(b, request)) ?? ranked[0] ?? null;
 }
 
@@ -93,7 +96,7 @@ function attempt(seed: number, request: FloorRequest, index: number, whole: bool
   const work = growTree(rngOf, params, root, { reserved: request.reserved, within: request.within, blocked: request.blocked });
   const normals = normalCount(work);
   growPass(rngOf, work);
-  const placed = !request.boss || placeBossRoom(work, request.galleries ?? []);
+  const placed = !request.boss || placeBossRoom(work, request.galleries ?? [], params.roomScale, !request.fiveRoom);
   if (!whole && (normals < params.minRooms || !placed)) return index;
   if (!request.fiveRoom) addLoops(rngOf, work, params);
   addBossDoor(rngOf, work);
@@ -108,9 +111,15 @@ function attempt(seed: number, request: FloorRequest, index: number, whole: bool
   shapeRooms(rngOf, work, params);
   const compacted = compactLayout(work);
   const compact = params.passageFloor ? fitPassages(compacted) : compacted;
-  const layout = request.fiveRoom ? withStages(compact) : compact;
-  const kept = [normals >= params.minRooms, entrances, boss, floorRulesHold(layout)].filter(Boolean).length;
-  return { layout, normals, linked: null, kept };
+  const staged = request.fiveRoom ? withStages(compact) : compact;
+  const layout = params.roomScale === 'tactical' && !params.cave ? widenEncounterDoors(staged) : staged;
+  const enoughRooms = normals >= params.minRooms;
+  const rules = floorRulesHold(layout);
+  const smallerBoss = params.roomScale === 'tactical' && request.boss && !request.fiveRoom
+    && layout.rooms.some((room) => room.boss && room.id !== 0);
+  const viable = enoughRooms && entrances && (boss || smallerBoss) && rules;
+  const kept = [enoughRooms, entrances, boss, rules].filter(Boolean).length;
+  return { layout, normals, viable, linked: null, kept };
 }
 
 /** The attempts tried, in order, those left unfinished (`attempt`) finished now. */
@@ -120,7 +129,7 @@ function finished(seed: number, request: FloorRequest, tried: readonly (Built | 
 
 export interface BuiltFloor {
   layout: CompactLayout;
-  /** Keeps every rule; a floor that does not is the best attempt there was. */
+  /** Keeps every rule, allowing a smaller Tactical boss only after all full-arena attempts fail. */
   sound: boolean;
   /** Keeps the rules between floors (`accept`), as every sound floor does; false only for a fallback none of whose attempts did. */
   linked: boolean;
@@ -147,5 +156,5 @@ export function buildFloorLayout(seed: number, request: FloorRequest): BuiltFloo
   }
   if (lastSound) return { layout: lastSound.layout, sound: true, linked: true };
   const best = fallback(finished(seed, request, tried), request);
-  return best ? { layout: best.layout, sound: false, linked: linked(best, request) } : null;
+  return best ? { layout: best.layout, sound: best.viable && linked(best, request), linked: linked(best, request) } : null;
 }
