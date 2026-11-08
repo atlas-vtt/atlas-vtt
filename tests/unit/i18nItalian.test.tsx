@@ -55,7 +55,7 @@ describe('Atlas in Italian', () => {
   });
 
   it('covers every command-palette, graphics, level and experimental message', () => {
-    const groups = ['palette.', 'graphics.', 'levels.', 'experimental.', 'diceSettings.'];
+    const groups = ['palette.', 'graphics.', 'levels.', 'experimental.', 'diceSettings.', 'am.bestiary.'];
     const missing = Object.keys(en).filter((key) => groups.some((group) => key.startsWith(group)) && !(key in italian));
     expect(missing).toEqual([]);
   });

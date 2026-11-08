@@ -1,6 +1,22 @@
 import type { Translation } from '../../types';
 
 export const am = {
+  'am.bestiary.get': 'Scarica i token iniziali',
+  'am.bestiary.offer': { one: 'Scarica {count} token gratuito', other: 'Scarica {count} token gratuiti' },
+  'am.bestiary.lead': 'Inizia con i token gratuiti oppure aggiungi i tuoi.',
+  'am.bestiary.fine': 'Illustrazioni di Oozejar e Sketch Studio · {size} MB',
+  'am.bestiary.optionNone': 'Solo token',
+  'am.bestiary.optionNoneHint': 'Senza blocchi statistiche',
+  'am.bestiary.optionFiveE': '5E',
+  'am.bestiary.optionFiveEHint': 'Con {count} blocchi statistiche dell’SRD 5.2.1',
+  'am.bestiary.optionCairn': 'Cairn',
+  'am.bestiary.optionCairnHint': 'Con {count} blocchi statistiche dal bestiario di Cairn',
+  'am.bestiary.confirm': 'Scarica · {size} MB',
+  'am.bestiary.size': '{size} MB',
+  'am.bestiary.label': { one: 'Scarica {count} token gratuito, {size} MB', other: 'Scarica {count} token gratuiti, {size} MB' },
+  'am.bestiary.downloading': 'Download in corso…',
+  'am.bestiary.added': { one: 'Aggiunto {count} token a {collection}, organizzato per tag.', other: 'Aggiunti {count} token a {collection}, organizzati per tag.' },
+  'am.bestiary.failed': 'Impossibile scaricare i token iniziali. Controlla la connessione e riprova.',
   "am.folder.confirmDelete": "Vuoi eliminare la cartella \"{name}\"?",
   "am.folder.contains": {
     "one": "Questa cartella contiene {count} risorsa. Verrà spostata nella cartella superiore.",
