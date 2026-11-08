@@ -54,6 +54,12 @@ describe('Atlas in Italian', () => {
     expect(formatList(['goblin', 'orco', 'troll'])).toBe('goblin, orco e troll');
   });
 
+  it('covers every command-palette, graphics, level and experimental message', () => {
+    const groups = ['palette.', 'graphics.', 'levels.', 'experimental.', 'diceSettings.'];
+    const missing = Object.keys(en).filter((key) => groups.some((group) => key.startsWith(group)) && !(key in italian));
+    expect(missing).toEqual([]);
+  });
+
   it('preserves user paths and names when interpolating messages', () => {
     expect(t('view.sceneNotFound', { path: 'Maps/Crypt.atlasmap' })).toBe('File della scena non trovato: Maps/Crypt.atlasmap');
     expect(t('am.tagPicker.create', { name: 'Goblin Scout' })).toBe('Crea “Goblin Scout”');
@@ -112,11 +118,14 @@ it('selects Italian before importing module-level toolbar labels and tutorial st
     const { TOOLBAR_CONTROLS } = await import('../../src/app/toolbar/toolbarCatalog');
     const { ONLINE_COMMANDS } = await import('../../src/app/online/gm/onlineCommands');
     const { LOOT_SETTINGS_STEPS } = await import('../../src/app/onboarding/lootTutorials');
+    const { EXPERIMENTAL_FEATURES } = await import('../../src/app/experimental/experimentalFeatures');
     expect(runtime.getLocale()).toBe('it');
     expect(TOOLBAR_CONTROLS.find((control) => control.id === 'move')?.label).toBe('Sposta e seleziona');
     expect(ONLINE_COMMANDS.find((command) => command.id === 'start-online-table')?.name).toBe('Avvia tavolo online');
     expect(LOOT_SETTINGS_STEPS[0]?.title).toBe('Il bottino è nelle tue note');
     expect(LOOT_SETTINGS_STEPS[0]?.image?.alt).toBe('Una base di note di oggetti con una vista per ogni tipo di oggetto');
+    expect(EXPERIMENTAL_FEATURES.find((feature) => feature.id === 'statblockEditor')?.label).toBe('Editor dei blocchi statistiche');
+    expect(EXPERIMENTAL_FEATURES.find((feature) => feature.id === 'onlinePlay')?.label).toBe('Gioco online');
   } finally {
     runtime?.setLocale('en', TRANSLATIONS);
     vi.doUnmock('obsidian');

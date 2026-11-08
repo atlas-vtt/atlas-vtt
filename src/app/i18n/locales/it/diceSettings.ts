@@ -1,6 +1,16 @@
 import type { Translation } from '../../types';
 
 export const diceSettings = {
+  'diceSettings.faces.pair': '{first} o {last}',
+  'diceSettings.faces.run': 'da {first} a {last}',
+  'diceSettings.rule.defaultHigh': 'Un dado predefinito (d{sides}) che mostra {faces} viene ritirato e il nuovo risultato viene aggiunto.',
+  'diceSettings.rule.low': 'Un dado che mostra {faces} viene ritirato e il nuovo risultato viene sottratto.',
+  'diceSettings.rule.allHighest': 'Ogni dado che mostra il proprio valore massimo viene ritirato e il nuovo risultato viene aggiunto: un d{sides} con {faces}, un d{other} con {otherFaces}.',
+  'diceSettings.rule.allHighFaces': 'Ogni dado che mostra uno dei suoi {number} valori più alti viene ritirato e il nuovo risultato viene aggiunto: un d{sides} con {faces}, un d{other} con {otherFaces}.',
+  'diceSettings.rule.lowest': 'Un dado che mostra il proprio valore minimo viene ritirato e il nuovo risultato viene sottratto.',
+  'diceSettings.rule.lowFaces': 'Un dado che mostra uno dei suoi {number} valori più bassi viene ritirato e il nuovo risultato viene sottratto.',
+  'diceSettings.rule.repeats': 'Anche il nuovo dado può esplodere.',
+  'diceSettings.rule.once': 'Il nuovo dado non esplode.',
   "diceSettings.title": "Impostazioni dei dadi",
   "diceSettings.command": "Impostazioni dei dadi",
   "diceSettings.rolls": "Tiri",

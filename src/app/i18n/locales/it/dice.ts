@@ -1,6 +1,9 @@
 import type { Translation } from '../../types';
 
 export const dice = {
+  'dice.volume': 'Volume dei dadi',
+  'dice.volumeHint': 'Volume dei dadi durante il lancio e all’arresto. Portalo al minimo per disattivare i suoni.',
+  'dice.volumePercent': '{percent}%',
   "dice.formulaError.syntax": "Usa dadi e numeri uniti da +, −, * o /, come 2d6+3 o 4d6kh3. I dadi devono avere da 2 a 1.000 facce e i numeri al massimo 4 cifre.",
   "dice.formulaError.length": "Una formula di tiro può contenere al massimo 100 caratteri.",
   "dice.formulaError.terms": "Una formula di tiro può contenere al massimo 20 termini.",

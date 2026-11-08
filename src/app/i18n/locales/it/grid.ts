@@ -1,6 +1,12 @@
 import type { Translation } from '../../types';
 
 export const grid = {
+  'grid.snapHint': 'Token e misurazioni si agganciano al centro delle celle',
+  'grid.tableTvTrueScale': 'Scala reale sul televisore da tavolo',
+  'grid.tableTvTrueScaleHint': 'Disattivala per le mappe senza una griglia allineata, come quelle regionali: il televisore seguirà lo zoom della tua vista',
+  'grid.unitOfCampaign': 'Per ogni mappa durante la sessione della campagna',
+  'grid.unitOfCollection': 'Per ogni scena della collezione',
+  'grid.unitOfScene': 'Per questa scena',
   "grid.hexNumbers": "Numeri delle celle",
   "grid.line.dashed": "Tratteggiata",
   "grid.line.dotted": "Punteggiata",

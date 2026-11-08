@@ -1,4 +1,5 @@
 import type { Translation } from '../../types';
+import { experimental } from './experimental';
 import { align } from './align';
 import { am } from './am';
 import { atlasLinks } from './atlasLinks';
@@ -104,6 +105,7 @@ import { wall } from './wall';
 import { widgets } from './widgets';
 
 export const it = {
+  ...experimental,
   ...align,
   ...am,
   ...atlasLinks,

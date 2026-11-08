@@ -1,6 +1,9 @@
 import type { Message } from '../../types';
 
 export const palette = {
+  'palette.panel.experimental': 'Experimental Features',
+  'palette.experimentalFeatures': 'Experimental features',
+  'palette.experimentalLighting': 'Dynamic lighting',
   'palette.enterAlignment': 'Enter Alignment Mode',
   'palette.enterPlayerMode': 'Enter Player Mode',
   'palette.exitPlayerMode': 'Exit Player Mode',

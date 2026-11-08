@@ -1,6 +1,12 @@
 import type { Translation } from '../../types';
 
 export const palette = {
+  'palette.panel.experimental': 'Funzioni sperimentali',
+  'palette.experimentalFeatures': 'Funzioni sperimentali',
+  'palette.experimentalLighting': 'Illuminazione dinamica',
+  'palette.panel.levels': 'Livelli della scena',
+  'palette.sceneLevels': 'Livelli della scena',
+  'palette.replaceMapImage': 'Sostituisci immagine della mappa',
   "palette.enterAlignment": "Entra in modalità allineamento",
   "palette.enterPlayerMode": "Entra in modalità giocatore",
   "palette.exitPlayerMode": "Esci dalla modalità giocatore",
