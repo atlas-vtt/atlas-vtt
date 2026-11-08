@@ -22,6 +22,13 @@ import type { ResourceDefinition, ResourceValue } from '../../resources/resource
 import { handledByAnotherControl } from '../../keyboard/tooltipEscape';
 import { TokenIdentitySection, TokenResourcesSection } from './EditTokenSections';
 import { TokenLightSection, TokenVisionSection, type TokenLightingContext } from './TokenLightingFields';
+import { TokenSoundsSection } from './TokenSoundsSection';
+import { MAX_TOKEN_SOUNDS, tokenSounds } from '../../audio/tokenSounds';
+import { pickTokenSound } from '../../audio/pickTokenSound';
+import { playTokenSound } from '../../audio/playTokenSound';
+import { TokenSoundPlayer } from '../../audio/TokenSoundPlayer';
+import { experimentalFeatureOn } from '../../experimental/experimentalFeatures';
+import type { TokenSound } from '../../types/audioTypes';
 import { unitLabelFor } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { maxLightRange } from '../../lighting/lightRanges';
@@ -40,6 +47,13 @@ interface EditTokenValues {
   maxima: Record<string, number | undefined>;
   vision: VisionForm;
   light: LightForm;
+  sounds: Required<TokenSound>[];
+}
+
+/** What the Sounds section asks of Obsidian: a sound file chosen in the vault, and a sound played. */
+interface SoundActions {
+  pick: (onPicked: (sound: Required<TokenSound>) => void) => void;
+  play: (sound: Required<TokenSound>) => void;
 }
 
 interface EditTokenModalProps {
@@ -49,6 +63,8 @@ interface EditTokenModalProps {
   lighting: TokenLightingContext;
   /** The statblock the token links, whose senses it follows while it has none of its own. */
   statblock: StatblockLink | null;
+  /** Null while Sound is switched off: the dialog then has no Sounds section and leaves the token's sounds as they are. */
+  soundActions: SoundActions | null;
   /** Saves the form; `resourceDefaults` is what the linked statblock gives each resource. */
   onSave: (values: EditTokenValues, resourceDefaults: Record<string, ResourceValue>) => void;
   onClose: () => void;
@@ -56,10 +72,10 @@ interface EditTokenModalProps {
 
 /**
  * The Edit Token dialog: two columns of sections, the token's own on the left (name, resources,
- * vision) and the light it carries on the right, so the fields are read and tabbed through
- * column by column. A dialog too narrow for two columns stacks them in the same order.
+ * vision) and on the right the light it carries and its sounds, so the fields are read and tabbed
+ * through column by column. A dialog too narrow for two columns stacks them in the same order.
  */
-function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave, onClose }: EditTokenModalProps): React.ReactElement {
+function EditTokenModalInner({ initial, definitions, lighting, statblock, soundActions, onSave, onClose }: EditTokenModalProps): React.ReactElement {
   const inherited = useStatblockSenses(statblock);
   const resourceDefaults = useStatblockResourceDefaults(statblock, definitions);
   const [name, setName] = useState(initial.name);
@@ -69,6 +85,7 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
   );
   const [vision, setVision] = useState(initial.vision);
   const [light, setLight] = useState(initial.light);
+  const [sounds, setSounds] = useState(initial.sounds);
   const inputRef = useRef<HTMLInputElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const context = { ...lighting, inherited };
@@ -87,6 +104,7 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
       maxima: Object.fromEntries(definitions.map(({ key }) => [key, parseNumberInput(maxInputs[key] ?? '')])),
       vision,
       light,
+      sounds,
     }, resourceDefaults);
   };
 
@@ -132,6 +150,14 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
           </div>
           <div className="atlas-edit-token__column">
             <TokenLightSection light={light} onChange={setLight} context={context} />
+            {soundActions && (
+              <TokenSoundsSection
+                sounds={sounds}
+                onChange={setSounds}
+                onAdd={() => soundActions.pick((sound) => setSounds((current) => [...current, sound].slice(0, MAX_TOKEN_SOUNDS)))}
+                onPlay={soundActions.play}
+              />
+            )}
           </div>
         </div>
 
@@ -195,7 +221,13 @@ export function openEditTokenModal(
     maxima: Object.fromEntries(definitions.map(({ key }) => [key, character?.resources?.[key]?.max])),
     vision: visionForm(token.vision, lighting.senses),
     light: lightForm(token.light, lighting.lightPresets),
+    sounds: tokenSounds(token),
   };
+  // Token sounds are part of Sound: read once as the dialog opens, like the rest of its context.
+  const soundActions: SoundActions | null = experimentalFeatureOn(app, 'sound') ? {
+    pick: (onPicked) => pickTokenSound(app, onPicked),
+    play: (sound) => void playTokenSound(TokenSoundPlayer.forApp(app), sound),
+  } : null;
 
   /**
    * Saves what the form changed onto the token as the store has it now: the map goes on while
@@ -212,6 +244,7 @@ export function openEditTokenModal(
       ...(changed('showNameplate') && { showNameplate: values.showNameplate }),
       ...(changed('vision') && { vision: visionFromForm(values.vision) }),
       ...(changed('light') && { light: lightFromForm(values.light) }),
+      ...(changed('sounds') && { sounds: values.sounds.length > 0 ? values.sounds : undefined }),
       ...(maxima.length > 0 && current && buildResourceEdits(
         current.kind === 'character' ? current : {},
         maxima.map((definition) => ({ definition, max: values.maxima[definition.key] })),
@@ -229,6 +262,7 @@ export function openEditTokenModal(
         initial={initial}
         lighting={lighting}
         statblock={statblock}
+        soundActions={soundActions}
         definitions={definitions}
         onSave={handleSave}
         onClose={cleanup}

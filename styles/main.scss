@@ -18,6 +18,7 @@
 @use './notices';
 @use './scroll-lock';
 @use './portal-host';
+@use './native-prompts';
 
 // Registered so `atlas-scrollbar-while-scrolling` can fade the thumb. At-rules
 // must stay at the root: inside the scope block below they would be invalid.

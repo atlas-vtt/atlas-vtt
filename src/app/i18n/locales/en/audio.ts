@@ -9,7 +9,7 @@ export const audio = {
   'audio.loop': 'Loop',
 
   'audio.experimental.label': 'Sound',
-  'audio.experimental.hint': 'Music and ambience from folders you link: moods and a library on the DM screen. While off, both stay hidden.',
+  'audio.experimental.hint': 'Music and ambience from folders you link, moods and a library on the DM screen, and sounds tokens play from their menu. While off, all of it stays hidden.',
 
   'audio.importing': 'Adding sounds: {done} of {total}',
   'audio.added': { one: 'Added {count} sound.', other: 'Added {count} sounds.' },
@@ -47,7 +47,7 @@ export const audio = {
   'audio.outputNumbered': 'Output {n}',
   'audio.output': 'Output',
   'audio.outputNamed': '{device}, output of this device',
-  'audio.outputHint': 'Where music, ambience and dice play on this device.',
+  'audio.outputHint': 'Where music, ambience, dice and token sounds play on this device.',
 
   'audio.screen.pages': 'DM screen page',
   'audio.screen.statblocks': 'Statblocks',

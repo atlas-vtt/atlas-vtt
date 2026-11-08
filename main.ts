@@ -95,6 +95,7 @@ import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
+import { TokenSoundPlayer } from './src/app/audio/TokenSoundPlayer';
 import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
 import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
 import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
@@ -304,6 +305,7 @@ export default class AtlasVTTPlugin extends Plugin {
     releaseMapPictures(this.app);
     CreatureIndex.release(this.app);
     TemplateLibrary.release(this.app);
+    TokenSoundPlayer.release(this.app);
     MapProcessing.release(this.app);
     TesseraDecoderClient.release(this.app);
     DungeonWorkerClient.release(this.app);

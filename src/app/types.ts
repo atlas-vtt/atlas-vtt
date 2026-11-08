@@ -3,6 +3,7 @@
 
 import type { SideId } from './types/initiativeRulesTypes';
 import type { LightEmission, TokenVision } from './types/lightingTypes';
+import type { TokenSound } from './types/audioTypes';
 import type { OnOneLevel } from './types/sceneLevelTypes';
 
 /**
@@ -69,6 +70,8 @@ export interface BaseToken extends OnOneLevel {
   vision?: TokenVision;
   /** Light the token carries; it moves with the token. */
   light?: LightEmission;
+  /** Sounds the GM plays from the token's menu; read with `tokenSounds`. */
+  sounds?: TokenSound[];
   /** Whether to show the nameplate (defaults to false) */
   showNameplate?: boolean;
   /** Rotation in degrees (0-360) */
@@ -180,5 +183,3 @@ export type ToolMode =
   | 'draw-rectangle'
   | 'draw-circle'
   | 'audio';
-
- 
