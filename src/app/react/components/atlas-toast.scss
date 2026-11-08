@@ -1,4 +1,5 @@
-.atlas-toast-container {
+// The container carries `.atlas-vtt-plugin` itself (`AtlasToast.ts`): it lies in the portal host under <body>.
+&.atlas-toast-container {
   position: fixed;
   bottom: 24px;
   left: 50%;
