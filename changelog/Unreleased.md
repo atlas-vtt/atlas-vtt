@@ -1,5 +1,6 @@
 ## Fixed
 
+- Atlas notices such as "Saved" show at the bottom of the window again; since 0.13.0 they appeared nowhere
 - A defeated token no longer gives its players sight under dynamic lighting, and sees again once revived
 - Hovering a token linked to a Fantasy Statblocks note on the map now shows its statblock, the same one the asset manager and the DM screen show, instead of the plain note
 - A token whose statblock note was deleted or moved outside Obsidian now shows a red badge in the asset manager, and clicking it lets you link another statblock instead of opening an empty Untitled note
