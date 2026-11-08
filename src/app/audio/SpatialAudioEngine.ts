@@ -5,6 +5,7 @@ import type { AudioBufferCache } from './AudioBufferCache';
 import { countWallsBetween, computeWallDampening, computeDistanceGain } from './audioOcclusion';
 import { runInBackground } from '../utils/backgroundTask';
 import { levelObjects } from '../levels/levelObjects';
+import { blockingWalls } from '../lighting/rooms';
 import { mapTokens } from '../tokens/offMap';
 
 const UPDATE_THROTTLE_MS = 100; // ~10fps during drag
@@ -117,7 +118,7 @@ export class SpatialAudioEngine {
     const listenerX = selectedToken.x;
     const listenerY = selectedToken.y;
     const audioSources = levelObjects(state).audios;
-    const walls = levelObjects(state).walls;
+    const walls = blockingWalls(levelObjects(state));
 
     const inRangeSources = new Set<string>();
     for (const source of Object.values(audioSources)) {

@@ -43,6 +43,7 @@ import { settings } from './settings';
 import { snapshots } from './snapshots';
 import { levels } from './levels';
 import { openings } from './openings';
+import { rooms } from './rooms';
 import { statblock } from './statblock';
 import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
@@ -155,6 +156,7 @@ export const en = {
   ...snapshots,
   ...levels,
   ...openings,
+  ...rooms,
   ...statblock,
   ...statblockEditor,
   ...switcher,
