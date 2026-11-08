@@ -328,4 +328,49 @@ describe('LightingToolGroup', () => {
     expect(events).toContainEqual(['lighting-reveal-explored', undefined]);
     expect(closeMenu).toHaveBeenCalledTimes(1);
   });
+
+  it('carves rooms from the rooms mode, and lists the rooms of the level with what can be done to each', () => {
+    const { store, events, rerender } = renderGroup('move');
+    fireEvent.click(row('Rooms'));
+    expect(events).toContainEqual(['wall-submode-changed', 'rooms']);
+    rerender('wall');
+    for (const label of ['Carve', 'Fill in', 'Door', 'Rectangle', 'Points', 'Lasso', 'Brush']) screen.getByText(label);
+    // A door is dragged across an opening: no shape to choose
+    act(() => store.getState().setRoomTool({ action: 'door' }));
+    expect(screen.queryByText('Rectangle')).toBeNull();
+
+    const square = (x: number): number[][] => [[x * 8, 0, (x + 100) * 8, 0, (x + 100) * 8, 800, x * 8, 800]];
+    act(() => {
+      store.getState().carveRoom(square(0));
+      store.getState().setActiveRoom(null);
+      store.getState().carveRoom(square(200));
+      store.getState().setActiveRoom(null);
+      store.getState().carveRoom(square(400));
+    });
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.getByText('3 of 24')).toBeTruthy();
+    // The room carved last is highlighted; New room clears that, and the next shape is a room of its own
+    expect(checked('Room 3')).toBe(true);
+    fireEvent.click(row('New room'));
+    expect(checked('New room')).toBe(true);
+    expect(store.getState().activeRoomId).toBeNull();
+    fireEvent.click(row('Room 2'));
+    expect(store.getState().activeRoomId).not.toBeNull();
+    expect(checked('Room 2')).toBe(true);
+    expect(checked('New room')).toBe(false);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Join into the room above' })[2]!);
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    fireEvent.doubleClick(row('Room 1'));
+    const name = screen.getByRole('textbox', { name: 'Name of the room' });
+    fireEvent.change(name, { target: { value: 'Crypt' } });
+    fireEvent.keyDown(name, { key: 'Enter' });
+    screen.getByText('Crypt');
+
+    fireEvent.click(row('Join all rooms'));
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete room' }));
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    expect(row('Join all rooms').disabled).toBe(true);
+  });
 });

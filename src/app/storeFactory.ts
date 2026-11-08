@@ -51,6 +51,7 @@ import { elsewhereThanViewedLevel, firstLevelId, placedOnViewedLevel, placedOnVi
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
+import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
@@ -239,6 +240,21 @@ export interface ViewAtlasState extends ViewState {
   addMapFeatures: MapFeaturesSlice['addMapFeatures'];
   updateMapFeature: MapFeaturesSlice['updateMapFeature'];
   deleteMapFeature: MapFeaturesSlice['deleteMapFeature'];
+
+  // Rooms carved out of the rock, and the rooms mode's choices (from roomsSlice.ts)
+  activeRoomId: RoomsSlice['activeRoomId'];
+  roomSplit: RoomsSlice['roomSplit'];
+  roomTool: RoomsSlice['roomTool'];
+  setRoomTool: RoomsSlice['setRoomTool'];
+  setActiveRoom: RoomsSlice['setActiveRoom'];
+  setRoomSplit: RoomsSlice['setRoomSplit'];
+  carveRoom: RoomsSlice['carveRoom'];
+  fillRooms: RoomsSlice['fillRooms'];
+  splitRoom: RoomsSlice['splitRoom'];
+  updateRoom: RoomsSlice['updateRoom'];
+  deleteRoom: RoomsSlice['deleteRoom'];
+  mergeRoomIntoPrevious: RoomsSlice['mergeRoomIntoPrevious'];
+  joinRooms: RoomsSlice['joinRooms'];
   // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
   addLiquids: LiquidsSlice['addLiquids'];
   deleteLiquid: LiquidsSlice['deleteLiquid'];
@@ -1395,6 +1411,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.camera = { x: 0, y: 0, scale: 1 };
             draft.selectedIds = [];
             draft.dmNotePath = null;
+            draft.activeRoomId = null;
+            draft.roomSplit = null;
             // Maps without saved widgets must not inherit the previous map's
             draft.widgetSettings = createDefaultWidgets();
             draft.widgetValues = {};
@@ -1526,6 +1544,10 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createSceneLevelsActions(set, get),
           ...createLevelSurfacesActions(set),
           ...createMapFeaturesActions(set),
+          activeRoomId: null,
+          roomSplit: null,
+          roomTool: DEFAULT_ROOM_TOOL,
+          ...createRoomsSlice(set),
           ...createLiquidsActions(set),
           ...createPlayerFramesActions(set),
           setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),

@@ -18,6 +18,7 @@ import { wallList } from '../../vision/wallList';
 import type { SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
 import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
+import { blockingWalls } from '../../lighting/rooms';
 import { GM_SIGHT_POLICY, sceneHasVision, sightPolicyFor, type SightPolicy } from '../../vision/tokenSightPolicy';
 import { mapTokens } from '../../tokens/offMap';
 
@@ -70,7 +71,7 @@ export function sharedLightingScene(state: SceneState, rules: SightRules, measur
     cellSize,
     unitDistance,
     // A window stops a token and nothing players see by, so their lighting never gets it.
-    walls: wallList(levelObjects(state).walls).filter((wall) => wall.blocks !== 'movement').map(sharedWall),
+    walls: wallList(blockingWalls(levelObjects(state))).filter((wall) => wall.blocks !== 'movement').map(sharedWall),
     zones: lightZoneList(levelObjects(state).lightZones).map((zone) => ({
       polygon: zone.polygon.flatMap((corner) => [corner.x, corner.y]), ambient: zone.ambient, ...(zone.ambientColor && { colour: zone.ambientColor }),
     })),

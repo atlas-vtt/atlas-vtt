@@ -26,6 +26,7 @@ import { LightReaches } from './lightReaches';
 import { LightMotion, NO_MOVING_LIGHTS } from './lightMotion';
 import { activeLights, engineLight } from './lightSources';
 import { everyLevelObjects, levelObjects } from '../levels/levelObjects';
+import { blockingWalls } from '../lighting/rooms';
 import { mapTokens } from '../tokens/offMap';
 
 /** What a scene's lighting works out on the CPU, in world pixels: the engine draws it and the rules read it. */
@@ -48,7 +49,7 @@ export interface SceneModel {
 
 /** What a scene's lighting is worked out from: the records sight and light read, the scene's lighting, the grid and the tokens the pointer holds. */
 export interface SceneState {
-  objects: Pick<ViewState['objects'], 'tokens' | 'walls' | 'lights' | 'lightZones'>;
+  objects: Pick<ViewState['objects'], 'tokens' | 'walls' | 'lights' | 'lightZones' | 'rooms'>;
   lighting: ViewState['lighting'];
   grid: ViewState['grid'];
   heldTokens: ViewState['heldTokens'];
@@ -110,7 +111,8 @@ export class SceneModelBuilder {
    * `reach` (the map, unless the level's openings look over larger maps below it).
    */
   update(state: SceneState, bounds: MapBounds, measurement: () => MeasurementSettings, sightRules?: () => SightRules, reach: MapBounds = bounds): { model: SceneModel; rebuilt: boolean } {
-    const { walls, lights, lightZones: zones } = levelObjects(state);
+    const { lights, lightZones: zones } = levelObjects(state);
+    const walls = blockingWalls(levelObjects(state));
     const { grid, lighting } = state;
     const tokens = this.sightTokens.read(state);
     const rules = sightRules?.();
@@ -139,7 +141,7 @@ export class SceneModelBuilder {
 
   private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, reach: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined, hasVision: boolean): SceneModel {
     const scale = unitScaleOf(measurement, state.grid);
-    const walls = sealedWalls(wallList(levelObjects(state).walls), worldTexel(bounds));
+    const walls = sealedWalls(wallList(blockingWalls(levelObjects(state))), worldTexel(bounds));
     const zoneList = lightZoneList(levelObjects(state).lightZones);
     const ambient = withZones(state.lighting, zoneList);
     const shining = activeLights(levelObjects(state).lights, tokens, ambient).map((light) => engineLight(light, scale));

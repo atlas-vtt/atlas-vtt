@@ -33,3 +33,72 @@
     margin-bottom: $spacing-s;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The rooms mode: its hints, and the list of the level's rooms
+// ═══════════════════════════════════════════════════════════════════════════
+
+// On the menu's text edge, as the menu's other labels
+.atlas-rooms-hint {
+  margin: 0;
+  padding-inline: var(--atlas-menu-text-inset, 0px);
+  max-width: 260px;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
+.atlas-room-list__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-inline-end: var(--atlas-menu-text-inset, 0px);
+}
+
+.atlas-room-list__count {
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+// A long list scrolls inside the menu, so the actions below it stay in reach.
+.atlas-room-list__rows {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.atlas-room-row {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+
+  &[data-hidden] .atlas-room-row__label {
+    color: var(--text-faint);
+  }
+}
+
+// The row's own name and its tick, without the menu item's icon column.
+.atlas-room-row__name.atlas-dropdown-menu-item {
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: $icon-s minmax(0, 1fr);
+}
+
+.atlas-room-row__label {
+  @include atlas-truncate;
+}
+
+.atlas-room-row__button {
+  flex-shrink: 0;
+
+  &:disabled {
+    opacity: 0.4;
+  }
+}
+
+.atlas-room-row__name-input {
+  flex: 1;
+  min-width: 0;
+}
