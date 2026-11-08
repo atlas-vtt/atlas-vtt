@@ -54,8 +54,8 @@ describe('Atlas in Italian', () => {
     expect(formatList(['goblin', 'orco', 'troll'])).toBe('goblin, orco e troll');
   });
 
-  it('covers every command-palette, graphics, level and experimental message', () => {
-    const groups = ['palette.', 'graphics.', 'levels.', 'experimental.', 'diceSettings.', 'am.bestiary.', 'senses.', 'initiative.'];
+  it('covers the translated settings, command palette, senses and initiative sections', () => {
+    const groups = ['palette.', 'graphics.', 'levels.', 'experimental.', 'diceSettings.', 'am.bestiary.', 'senses.', 'initiative.', 'settings.', 'audio.settings.', 'audio.output'];
     const missing = Object.keys(en).filter((key) => groups.some((group) => key.startsWith(group)) && !(key in italian));
     expect(missing).toEqual([]);
   });
