@@ -1,5 +1,5 @@
 import '../setup/obsidianDom';
-import { act } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
@@ -44,11 +44,19 @@ async function open(token: Character, width: number, height: number): Promise<vo
   await expect.poll(() => document.activeElement?.getAttribute('placeholder')).toBe('Token name');
 }
 
-/** Where a part of the dialog lies in it: from the dialog's own corner, so a dialog that moves as a whole leaves it unchanged. */
-function placeInModal(element: Element): number[] {
-  const frame = modal().getBoundingClientRect();
+/** Where an element lies in the window, to the pixel. */
+function placeOnScreen(element: Element): number[] {
   const { left, top, width, height } = element.getBoundingClientRect();
-  return [left - frame.left, top - frame.top, width, height].map(Math.round);
+  return [left, top, width, height].map(Math.round);
+}
+
+/** The dialog's distances from the top and the bottom of the overlay's area that centres it. */
+function marginsInOverlay(): number[] {
+  const overlay = modal().parentElement!;
+  const area = overlay.getBoundingClientRect();
+  const padding = parseFloat(getComputedStyle(overlay).paddingTop);
+  const frame = modal().getBoundingClientRect();
+  return [frame.top - area.top - padding, area.bottom - padding - frame.bottom].map(Math.round);
 }
 
 describe('the layout of the Edit Token dialog', () => {
@@ -120,18 +128,52 @@ describe('the layout of the Edit Token dialog', () => {
     expect([...tops].sort((a, b) => a - b)).toEqual(tops);
   });
 
-  it('fits an ordinary window with a light switched on, and moves nothing in the left column when the light is switched', async () => {
+  it('opens in the middle of the window', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900);
+    const [above, below] = marginsInOverlay();
+    expect(Math.abs(above! - below!)).toBeLessThanOrEqual(1);
+  });
+
+  it('fits an ordinary window with a light switched on, and moves nothing above what changed when the light is switched', async () => {
     await open({ ...MIRABEL, light: TORCH }, 1280, 900);
     expect(body().scrollHeight).toBe(body().clientHeight);
     const left = modal().querySelector('.atlas-edit-token__column')!;
-    const parts = (): number[][] => [...left.querySelectorAll('h4, input, .atlas-toggle, button')].map(placeInModal);
-    const lit = { parts: parts(), size: placeInModal(modal()) };
+    const parts = (): number[][] => [...left.querySelectorAll('h4, input, .atlas-toggle, button')].map(placeOnScreen);
     const carried = [...modal().querySelectorAll<HTMLElement>('[role="switch"]')].find((toggle) => toggle.getAttribute('aria-checked') === 'true' && !left.contains(toggle))!;
+    const lit = { parts: parts(), carried: placeOnScreen(carried), top: Math.round(modal().getBoundingClientRect().top) };
+    // The dialog keeps the top it opened with and changes its size downward: the switch just
+    // clicked stays under the pointer, and so does the token's own column, off and on again.
     act(() => carried.click());
     expect(modal().querySelector('.atlas-edit-token__light')).toBeNull();
+    expect(Math.round(modal().getBoundingClientRect().top)).toBe(lit.top);
+    expect(placeOnScreen(carried)).toEqual(lit.carried);
     expect(parts()).toEqual(lit.parts);
-    // This token's own column is the longer one: the dialog keeps its size, with the light or without.
-    expect(placeInModal(modal())).toEqual(lit.size);
+    act(() => carried.click());
+    expect(modal().querySelector('.atlas-edit-token__light')).not.toBeNull();
+    expect(placeOnScreen(carried)).toEqual(lit.carried);
+    expect(parts()).toEqual(lit.parts);
+  });
+
+  it('keeps the vision switch under the pointer when vision is switched off and on again', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900);
+    const vision = screen.getByRole('switch', { name: 'Vision (party member)' });
+    const seen = { switch: placeOnScreen(vision), top: Math.round(modal().getBoundingClientRect().top) };
+    // Switching vision off takes its range, angle and senses away, so the token's column, the longer one, grows shorter.
+    act(() => vision.click());
+    expect(screen.queryByLabelText(/^Sight range/)).toBeNull();
+    expect(Math.round(modal().getBoundingClientRect().top)).toBe(seen.top);
+    expect(placeOnScreen(vision)).toEqual(seen.switch);
+    act(() => vision.click());
+    expect(placeOnScreen(vision)).toEqual(seen.switch);
+  });
+
+  it('takes the middle of the window again when the window changes size', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900);
+    await page.viewport(1280, 760);
+    await expect.poll(() => {
+      const [above, below] = marginsInOverlay();
+      return Math.abs(above! - below!) <= 1;
+    }).toBe(true);
   });
 
   it('scrolls only its body in a window too low for it: the header and the footer stay', async () => {
