@@ -13,6 +13,7 @@ import { levelLinksFromFile } from '../levels/levelLinks';
 import { levelSurfacesFromFile } from '../levels/levelSurfaces';
 import { mapFeaturesFromFile } from '../mapFeatures/mapFeatures';
 import { liquidsFromFile } from '../liquids/liquids';
+import { roomsFromFile, type Room } from '../lighting/rooms';
 import type { MapFeature } from '../types/mapFeatureTypes';
 import type { LiquidSurface } from '../types/liquidTypes';
 import { normalizeImagePath } from '../utils/pathUtils';
@@ -74,6 +75,8 @@ export interface MapFile {
     mapFeatures?: Record<string, MapFeature>;
     /** Water, lava and acid that move on animated maps; absent until a map has some. */
     liquids?: Record<string, LiquidSurface>;
+    /** Areas carved out of the rock; absent until a map has some. */
+    rooms?: Record<string, Room>;
   };
   camera: CameraState;
   /** Frames the GM saved for the players' TV; absent in older files and until a scene has one. Read with `readPlayerFrames`. */
@@ -438,6 +441,7 @@ export function migrateMapFile(persisted: unknown): MapFile {
   const surfaces = levelSurfacesFromFile(persisted.objects?.levelSurfaces);
   const features = mapFeaturesFromFile(persisted.objects?.mapFeatures);
   const liquids = liquidsFromFile(persisted.objects?.liquids);
+  const rooms = roomsFromFile(persisted.objects?.rooms);
   const background = persisted.background ?? null;
   const levels = readSceneLevels(persisted.levels, background);
 
@@ -464,6 +468,7 @@ export function migrateMapFile(persisted: unknown): MapFile {
       ...(surfaces && { levelSurfaces: surfaces }),
       ...(features && { mapFeatures: features }),
       ...(liquids && { liquids }),
+      ...(rooms && { rooms }),
     },
     grid: persisted.grid ? migrateGrid(persisted.grid) : initial.grid,
     camera: persisted.camera || initial.camera

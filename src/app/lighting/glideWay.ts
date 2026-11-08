@@ -1,4 +1,5 @@
 import { levelObjects, type LevelObjectsState } from '../levels/levelObjects';
+import { blockingWalls } from './rooms';
 import type { WallSegment } from '../types/wallTypes';
 import type { Point } from '../types/visionTypes';
 import type { MapBounds } from '../vision/visibility';
@@ -25,5 +26,5 @@ export function wayIsClear(walls: readonly WallSegment[], from: Point, to: Point
  */
 export function glideWayIsClear(scene: LitScene, bounds: MapBounds | null, from: Point, to: Point): boolean {
   if (!scene.lighting.enabled || bounds === null) return true;
-  return wayIsClear(sealedWalls(wallList(levelObjects(scene).walls), worldTexel(bounds)), from, to);
+  return wayIsClear(sealedWalls(wallList(blockingWalls(levelObjects(scene))), worldTexel(bounds)), from, to);
 }

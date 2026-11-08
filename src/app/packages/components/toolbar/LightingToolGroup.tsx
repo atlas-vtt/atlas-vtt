@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { ArrowDownToDot, BrickWall, Flame, FlameKindling, Footprints, Gauge, Lamp, Lightbulb, Moon, MousePointer2, Pencil, Sparkles, SunMoon } from "lucide-react"
+import { ArrowDownToDot, BrickWall, Flame, FlameKindling, Footprints, Gauge, Lamp, Lightbulb, Moon, MousePointer2, Pencil, Pickaxe, Sparkles, SunMoon } from "lucide-react"
 import { t } from '../../../i18n';
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
@@ -12,6 +12,7 @@ import type { LightKind } from "../../../types/lightingTypes"
 import type { WallToolMode, WallToolSubMode } from "../../../tools/WallTool"
 import { DropdownMenuItem, type DropdownMenuItemProps } from "../primitives/DropdownMenuItem"
 import { ExploredMemorySection } from "./ExploredMemorySection"
+import { RoomsSection } from "./RoomsSection"
 import { SceneLightingSection } from "./SceneLightingSection"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { lightingToolFace } from "./toolFaces"
@@ -22,6 +23,7 @@ type RowIcon = DropdownMenuItemProps['icon']
 /** What the tool does with a click. */
 const SUB_MODES: readonly { value: WallToolSubMode; icon: RowIcon; label: string }[] = [
   { value: 'draw', icon: BrickWall, label: t('toolbar.drawWalls') },
+  { value: 'rooms', icon: Pickaxe, label: t('rooms.mode') },
   { value: 'place-light', icon: Lightbulb, label: t('toolbar.placeLights') },
   { value: 'light-zone', icon: SunMoon, label: t('sceneLight.mode.zones') },
   { value: 'level-surface', icon: ArrowDownToDot, label: t('openings.mode') },
@@ -61,6 +63,8 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
   // The explored-memory mode's choices are the tool's own, in the view's store: a menu mounted anew shows them as they are.
   const brush = useAtlasStore((state) => state.exploredBrush)
   const setBrush = useAtlasStore((state) => state.setExploredBrush)
+  const roomTool = useAtlasStore((state) => state.roomTool)
+  const setRoomTool = useAtlasStore((state) => state.setRoomTool)
   // What the tool does with a click is this menu's to say: a menu mounted anew starts with drawing walls, and so does the tool.
   useEffect(() => {
     emit('wall-submode-changed', 'draw')
@@ -117,6 +121,8 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
       {subMode === 'explored-memory' && (
         <ExploredMemorySection options={brush} onChange={setBrush} />
       )}
+
+      {subMode === 'rooms' && <RoomsSection options={roomTool} onChange={setRoomTool} />}
 
       {/* The zone mode has no choices of its own: a zone is drawn corner by corner. */}
       {(subMode === 'draw' || subMode === 'place-light') && <div className="atlas-dropdown-section">
