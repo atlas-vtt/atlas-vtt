@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLocale } from '../../src/app/i18n';
 import { TRANSLATIONS } from '../../src/app/i18n/languages';
-import { describeSense, newSense, senseNameProblem, senseProblem } from '../../src/app/gameSystems/senseEditing';
+import { describeSense, senseDisplayName, senseSummary, newSense, senseNameProblem, senseProblem } from '../../src/app/gameSystems/senseEditing';
+import { GENERIC_SENSES } from '../../src/app/gameSystems/senses/generic';
+import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { granting } from '../../src/app/gameSystems/senses/senseHelpers';
 import type { SenseDefinition } from '../../src/app/types/senseTypes';
 
@@ -51,5 +53,38 @@ describe('senseProblem', () => {
     expect(senseNameProblem(sense(), [sense({ id: 'other', name: 'echo SIGHT' })])).toBe('Another sense has this name.');
     expect(senseProblem(sense({ sees: { bright: 'none', dim: 'none', dark: 'none', magicalDark: 'none' } }), [])).toBe('Choose a light the sense works in.');
     expect(senseProblem(sense(), [])).toBeNull();
+  });
+});
+
+
+describe('localized shipped senses', () => {
+  afterEach(() => setLocale('en', TRANSLATIONS));
+  const dnd = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')?.rules.senses ?? [];
+  const shipped = [...GENERIC_SENSES, ...dnd];
+
+  it('preserves the English wording and stored definitions when changing language', () => {
+    expect(dnd).toHaveLength(6);
+    const before = JSON.stringify(shipped);
+    for (const definition of shipped) {
+      expect(senseDisplayName(definition)).toBe(definition.name);
+      expect(senseSummary(definition)).toBe(definition.description);
+    }
+    setLocale('it', TRANSLATIONS);
+    for (const definition of shipped) {
+      expect(senseDisplayName(definition)).not.toBe(definition.name);
+      expect(senseSummary(definition)).not.toBe(definition.description);
+    }
+    expect(JSON.stringify(shipped)).toBe(before);
+  });
+
+  it('localizes D&D darkvision without replacing custom names or descriptions', () => {
+    setLocale('it', TRANSLATIONS);
+    const darkvision = dnd.find((definition) => definition.id === 'dnd5e-darkvision')!;
+    expect(senseDisplayName(darkvision)).toBe('Scurovisione');
+    expect(senseSummary(darkvision)).toContain('luce fioca');
+    const custom = { ...darkvision, name: 'Visione di Ambra', description: 'Il mio senso personale.' };
+    expect(senseDisplayName(custom)).toBe(custom.name);
+    expect(senseSummary(custom)).toBe(custom.description);
+    expect(describeSense(sense())).toBe('Vede nell’oscurità come in luce fioca, in grigio, entro il proprio raggio.');
   });
 });

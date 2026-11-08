@@ -1,7 +1,7 @@
 import React, { useId, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { t } from '../../../i18n';
-import { isBuiltInSense, newSense, senseProblem, senseSummary } from '../../../gameSystems/senseEditing';
+import { senseDisplayName, isBuiltInSense, newSense, senseProblem, senseSummary } from '../../../gameSystems/senseEditing';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { SenseDefinition } from '../../../types/senseTypes';
@@ -39,7 +39,7 @@ export function SenseDefinitionList({ senses, unit, onChange, onDelete }: SenseD
           if (isBuiltInSense(sense)) {
             return (
               <li key={sense.id} className="atlas-csm-sense">
-                <span className="atlas-csm-sense__name">{sense.name}</span>
+                <span className="atlas-csm-sense__name">{senseDisplayName(sense)}</span>
                 <span className="atlas-csm-sense__text">{senseSummary(sense)}</span>
               </li>
             );
