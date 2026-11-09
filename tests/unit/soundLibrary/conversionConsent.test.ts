@@ -13,6 +13,8 @@ interface World {
   on: boolean;
   canTrash: boolean;
   canWrite: boolean;
+  failWrite: Set<SoundKind>;
+  closed: number;
   shown: ConversionConsentOptions[];
   listeners: Set<() => void>;
   unlink: ReturnType<typeof vi.fn>;
@@ -22,7 +24,7 @@ interface World {
 function world(init: Partial<World> = {}): World {
   return {
     roots: new Map([['music', 'Audio/Music']]), choices: new Map(), walked: new Set(['music']), on: true,
-    canTrash: true, canWrite: true, shown: [], listeners: new Set(), unlink: vi.fn(), setOriginals: vi.fn(), ...init,
+    canTrash: true, canWrite: true, failWrite: new Set(), closed: 0, shown: [], listeners: new Set(), unlink: vi.fn(), setOriginals: vi.fn(), ...init,
   };
 }
 
@@ -31,7 +33,7 @@ function start(w: World): { dialog: ConsentDialog; stop: () => void; fire: () =>
   const listen = (l: () => void): (() => void) => { w.listeners.add(l); return () => w.listeners.delete(l); };
   const library = {
     rootOf: (kind: SoundKind): SoundRootState => w.roots.has(kind) ? { kind, status: 'vault', path: w.roots.get(kind)! } : { kind, status: 'unlinked' },
-    locationOf: () => ({ canWrite: async () => w.canWrite, canTrash: () => w.canTrash }),
+    locationOf: (kind: SoundKind) => ({ canWrite: async () => { if (w.failWrite.has(kind)) throw new Error('x'); return w.canWrite; }, canTrash: () => w.canTrash }),
     filesOf: () => [1, 2, 3],
     isWalked: (kind: SoundKind) => w.walked.has(kind),
     onChange: listen,
@@ -43,7 +45,7 @@ function start(w: World): { dialog: ConsentDialog; stop: () => void; fire: () =>
     },
   };
   const director = { get isOn() { return w.on; }, subscribe: listen };
-  const dialog: ConsentDialog = { open: (o) => { w.shown.push(o); } };
+  const dialog: ConsentDialog = { open: (o) => { w.shown.push(o); return { close: () => { w.closed += 1; o.onChoose(null); } }; } };
   const stop = registerConversionConsent({ register: () => undefined, app: {} } as unknown as Plugin, library as never, director as never, dialog);
   return { dialog, stop, fire };
 }
@@ -129,6 +131,44 @@ describe('the consent dialog', () => {
     const w = world({ choices: new Map([['music', 'keep']]) });
     start(w); await settle();
     expect(w.shown).toHaveLength(0);
+  });
+});
+
+describe('the consent dialog under change', () => {
+  it('closes an open modal on dispose without unlinking', async () => {
+    const w = world();
+    const { stop } = start(w); await settle();
+    stop();
+    expect(w.closed).toBe(1);
+    expect(w.unlink).not.toHaveBeenCalled();
+    expect(w.setOriginals).not.toHaveBeenCalled();
+  });
+
+  it('leaves a root relinked elsewhere alone when the old modal is cancelled', async () => {
+    const w = world();
+    const { fire } = start(w); await settle();
+    w.roots.set('music', 'Other/Path'); w.walked.clear(); fire(); await settle();
+    expect(w.closed).toBe(1);
+    expect(w.unlink).not.toHaveBeenCalled();
+    expect(w.roots.get('music')).toBe('Other/Path');
+  });
+
+  it('closes without overwriting a choice made elsewhere', async () => {
+    const w = world();
+    const { fire } = start(w); await settle();
+    w.choices.set('music', 'keep'); fire(); await settle();
+    expect(w.closed).toBe(1);
+    w.shown[0]!.onChoose('trash');
+    expect(w.setOriginals).not.toHaveBeenCalled();
+    expect(w.choices.get('music')).toBe('keep');
+  });
+
+  it('asks the next root after canWrite fails for one', async () => {
+    const w = world({ roots: new Map([['music', 'A'], ['ambience', 'B']]), walked: new Set(['music', 'ambience']), failWrite: new Set(['music']) });
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    start(w); await settle();
+    quiet.mockRestore();
+    expect(w.shown.map((o) => o.folderName)).toEqual(['B']);
   });
 });
 
