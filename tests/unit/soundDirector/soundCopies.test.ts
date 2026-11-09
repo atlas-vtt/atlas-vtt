@@ -13,6 +13,12 @@ import { ASSET_USES } from '@/app/online/gm/assets/assetUses';
 import { sha256Hex } from '@/app/online/gm/assetServe';
 import { keyOf, taggedCopy } from '../../helpers/atlasCopies';
 import { FakeCopyFolder, factsOf, record } from '../../helpers/soundDirectorRig';
+import { FakeSoundLocation } from '../../helpers/fakeSoundLocation';
+import { LibraryCopyFolder } from '@/app/soundLibrary/libraryCopyFolder';
+import { SoundLibrary } from '@/app/soundLibrary/SoundLibrary';
+import { externalAudioPath } from '@/app/soundLibrary/soundPaths';
+import type { StoredSound } from '@/app/soundLibrary/soundRecords';
+import { SoundRoots } from '@/app/soundLibrary/SoundRoots';
 
 const MB = 1024 * 1024;
 const NEVER = new Promise<never>(() => undefined);
@@ -391,5 +397,85 @@ describe('the background queue', () => {
     runs[1]?.finish();
     await settle();
     expect(copies.background()).toBeNull();
+  });
+});
+
+describe('a kept original beside its own copy, in the GM\'s folder', () => {
+  it('is never converted again when its copy\'s header read took too long, and plays from its copy once it reads', async () => {
+    vi.stubGlobal('window', globalThis);
+    const location = new FakeSoundLocation();
+    location.put('Inn/Tavern.mp3', new Blob(['MP3']));
+    location.put('Inn/Tavern.opus', await taggedCopy({ key: keyOf('a'), from: 'Tavern.mp3' }));
+    const roots = new SoundRoots({
+      shared: () => ({ music: { type: 'external' } }),
+      setShared: () => undefined,
+      onSharedChange: () => () => undefined,
+      local: (kind) => (kind === 'music' ? '/Music' : null),
+      setLocal: () => undefined,
+      localOriginals: () => 'keep',
+      setLocalOriginals: () => undefined,
+      vaultBase: () => null,
+      realPath: async (path) => path,
+    });
+    const library = new SoundLibrary({ roots, open: () => location, probeSeconds: async () => null });
+    const stored: StoredSound[] = [{ id: 'tavern', name: 'Tavern', tags: [], createdAt: 1, modifiedAt: 1, audioPath: externalAudioPath('music', 'Inn/Tavern.mp3'), audioSize: 3, kind: 'music' }];
+    const rewrites: StoredSound[] = [];
+    const folder = new LibraryCopyFolder(() => library, {
+      whenLoaded: () => Promise.resolve(),
+      rewrite: (change) => {
+        for (const sound of stored) {
+          const next = change(sound);
+          if (next) rewrites.push(next);
+        }
+        return rewrites.length > 0;
+      },
+    }, () => 5, 1000);
+    await library.reread('music');
+    await library.settle('music', ['Inn']);
+    await library.settle('music', ['Inn']);
+    const copyRecord: SoundRecord = { id: 'copy', name: 'Tavern', kind: 'music', filePath: externalAudioPath('music', 'Inn/Tavern.opus') };
+    await folder.factsOf(copyRecord);
+    expect(library.isCopied('music', 'Inn/Tavern.mp3'), 'the copy is known').toBe(true);
+
+    const readRange = location.readRange.bind(location);
+    let stuck = true;
+    vi.spyOn(location, 'readRange').mockImplementation((path, start, end) => (stuck && path === 'Inn/Tavern.opus' ? NEVER : readRange(path, start, end)));
+    let made = 0;
+    const maker = {
+      run: async (job: SoundImportJob): Promise<SoundImportResult> => {
+        made++;
+        return { bytes: await taggedCopy({ key: job.key, from: 'Tavern.mp3' }), frames: 144_000, channels: 1, lufs: -20, truePeakDb: -3, peaks: null };
+      },
+    };
+    const files: SoundFileAccess = {
+      statOf: ({ filePath, audioSize }) => library.statOfFile(filePath, audioSize),
+      read: ({ filePath, audioSize }) => library.readFile(filePath, audioSize),
+      pathNow: ({ filePath, audioSize }) => library.pathNow(filePath, audioSize),
+    };
+    const copies = new SoundCopies(files, folder, maker, async (source) => ({ hash: keyOf('a'), source: source instanceof Blob ? source : new Blob([source]) }), () => undefined, 3);
+    const tavern: SoundRecord = { id: 'tavern', name: 'Tavern', kind: 'music', filePath: externalAudioPath('music', 'Inn/Tavern.mp3'), audioSize: 3 };
+
+    expect(copies.stateOf(tavern).state).toBe('not-converted');
+    await vi.advanceTimersByTimeAsync(1000);
+    await settle();
+    copies.request([tavern], true);
+    await settle();
+    expect(made, 'nothing is converted').toBe(0);
+    expect(location.files.has('Inn/Tavern 2.opus')).toBe(false);
+    expect(location.changes).toEqual([]);
+    expect(rewrites).toEqual([]);
+
+    stuck = false;
+    await vi.advanceTimersByTimeAsync(UNKNOWN_RETRY_MS);
+    copies.request([tavern]);
+    await settle();
+    expect(copies.stateOf(tavern).state).toBe('ready');
+    location.reads.length = 0;
+    await copies.bytes(keyOf('a'));
+    expect(location.reads).toEqual(['Inn/Tavern.opus']);
+    expect(made).toBe(0);
+    expect(location.files.has('Inn/Tavern 2.opus')).toBe(false);
+    library.destroy();
+    copies.dispose();
   });
 });

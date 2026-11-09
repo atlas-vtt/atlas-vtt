@@ -21,7 +21,7 @@ export interface SourceStat {
  * to its originals.
  */
 export interface CopyFolder {
-  /** The GM's choice for the root the sound lies in; null while not agreed (nothing converts). */
+  /** The GM's choice for the root the sound lies in; null while not agreed, or where its own copy stands beside it already (nothing converts). */
   choiceFor(sound: SoundRecord): OriginalsChoice | null;
   /** Whether the sound's file lies outside every linked folder, where nothing converts. */
   outside(sound: SoundRecord): boolean;

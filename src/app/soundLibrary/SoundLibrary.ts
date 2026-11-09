@@ -196,13 +196,15 @@ export class SoundLibrary {
     return place.opened.location.read(this.filed(place.opened, place.path, audioSize)?.path ?? place.path, onStep);
   }
 
-  /** What a record's file is called on this device, as `audioPathOf` writes it: what the record says where nothing else is known. */
-  pathNow(audioPath: string, audioSize?: number): string {
+  /**
+   * What a record's file is called on this device, as `audioPathOf` writes it: what the record says where nothing else is known.
+   * A source beside its own copy is called as the copy, whose row it belongs to, unless `asCopy` is false (converting, storing).
+   */
+  pathNow(audioPath: string, audioSize?: number, asCopy = true): string {
     const place = this.placeOf(audioPath);
     const entry = place && this.filed(place.opened, place.path, audioSize);
-    if (!place || !entry) return audioPath;
-    // A source beside its own copy is listed as the copy: its records belong to that row, and play from it.
-    return this.audioPathOf(place.kind, this.copies.copyOf(place.kind, entry.path) ?? entry.path) ?? audioPath;
+    const shown = entry && ((asCopy && this.copies.copyOf(place.kind, entry.path)) || entry.path);
+    return (place && shown && this.audioPathOf(place.kind, shown)) ?? audioPath;
   }
 
   /** Reads what `paths` changed, at once: an operation of the library's own does not wait for the watch. */

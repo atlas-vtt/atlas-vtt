@@ -51,7 +51,10 @@ export class LibraryCopyFolder implements CopyFolder {
 
   choiceFor(sound: SoundRecord): OriginalsChoice | null {
     const place = this.placeOf(sound.filePath, sound.audioSize);
-    return place === 'outside' || !place ? null : (this.library()?.roots.originalsOf(place.kind) ?? null);
+    const library = this.library();
+    if (place === 'outside' || !place || !library) return null;
+    // A source whose own copy stands beside it is never converted again: it plays from the copy once that reads.
+    return library.copies.copyOf(place.kind, place.path) === null ? library.roots.originalsOf(place.kind) : null;
   }
 
   outside(sound: SoundRecord): boolean {
@@ -203,7 +206,8 @@ export class LibraryCopyFolder implements CopyFolder {
   private placeOf(audioPath: string, audioSize?: number): Place | 'outside' | null {
     const library = this.library();
     if (!library) return null;
-    const now = library.pathNow(audioPath, audioSize);
+    // The source's own name: a source beside its copy is converted and stored as itself, never as its copy.
+    const now = library.pathNow(audioPath, audioSize, false);
     const file = library.fileOfAudioPath(now);
     if (!file) return isExternalAudioPath(now) ? null : 'outside';
     if (isExternalAudioPath(now) && library.rootOf(file.kind).status !== 'external') return null;

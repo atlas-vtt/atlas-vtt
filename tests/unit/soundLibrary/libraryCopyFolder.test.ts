@@ -223,6 +223,20 @@ describe('what a file says of itself', () => {
     expect(stored).toEqual([storedSound('Tavern.opus')]);
   });
 
+  it('a kept original whose copy is known is never converted, and is stored as itself where it is', async () => {
+    choice = 'keep';
+    location.put('Tavern.mp3', new Blob(['MP3']));
+    const copy = await taggedCopy({ key: KEY, from: 'Tavern.mp3' });
+    location.put('Tavern.opus', copy);
+    await library.reread('music');
+    expect(folder.choiceFor(sound('Tavern.mp3')), 'not yet known: it may convert').toBe('keep');
+    await folder.factsOf(sound('Tavern.opus'));
+    expect(folder.choiceFor(sound('Tavern.mp3'))).toBeNull();
+    expect(await folder.store(sound('Tavern.mp3'), copy, 'keep', stat('Tavern.mp3'))).toBe(at('Tavern.opus'));
+    expect(location.changes).toEqual(['write Tavern.mp3.atlas-part', 'trash Tavern.mp3.atlas-part']);
+    expect(location.files.has('Tavern 2.opus')).toBe(false);
+  });
+
   it('a file Atlas marked whose facts do not read is refused as damaged', async () => {
     location.put('Tavern.opus', await withComments(await taggedCopy({ key: KEY }), (comment) => !comment.startsWith('ATLAS_LUFS'), ['ATLAS_LUFS=?']));
     await expect(folder.factsOf(sound('Tavern.opus'))).rejects.toMatchObject({ reason: 'unreadable' });
