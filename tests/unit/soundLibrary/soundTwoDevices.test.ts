@@ -367,6 +367,18 @@ describe('sound records on two devices', () => {
       ]);
     });
 
+    it('a twin name held by several files is none of them', async () => {
+      vi.stubGlobal('window', globalThis);
+      const disk = diskHolding({ 'First album/01.mp3': 7, 'Second album/01.mp3': 8, 'Live/02.mp3': 9 });
+      await walked(disk, 100_000);
+      expect(disk.library.pathNow('atlas-sound:music/Elsewhere/01.opus', 5)).toBe('atlas-sound:music/Elsewhere/01.opus');
+      expect(disk.library.statOfFile('atlas-sound:music/Elsewhere/01.opus', 5)).toBeNull();
+      expect(disk.library.pathNow('atlas-sound:music/Elsewhere/01.mp3', 8), 'the name and size still match').toBe('atlas-sound:music/Second album/01.mp3');
+      expect(disk.library.pathNow('atlas-sound:music/Elsewhere/02.opus', 5), 'a name held once is that file').toBe('atlas-sound:music/Live/02.mp3');
+      disk.library.destroy();
+      vi.unstubAllGlobals();
+    });
+
     it('of several that match, every device with those files finds the same', async () => {
       vi.stubGlobal('window', globalThis);
       const one = diskOf(['Z/song.mp3', 'B/song.mp3', 'M/song.mp3']);

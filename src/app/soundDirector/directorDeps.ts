@@ -9,7 +9,7 @@ import { sceneSoundOfText } from '../soundLibrary/sceneSound';
 import { isAudioPath } from '../soundLibrary/soundFiles';
 import { SoundLibrary } from '../soundLibrary/SoundLibrary';
 import { LibraryCopyFolder } from '../soundLibrary/libraryCopyFolder';
-import { twinCandidates } from '../soundLibrary/soundPaths';
+import { isExternalAudioPath, twinCandidates } from '../soundLibrary/soundPaths';
 import { soundRecordOf } from '../soundLibrary/soundRecords';
 import { SoundRecordStore } from '../soundLibrary/SoundRecordStore';
 import { showNotice } from '../ui/notice';
@@ -57,6 +57,7 @@ export function fileAccess(app: App): SoundFileAccess {
   const vaultFile = (path: string): TFile | null => app.vault.getFileByPath(normalizePath(path));
   /** The vault file a record names, else its converted file or its source beside it, as the library finds them in a root. */
   const fileOf = (path: string): { file: TFile; path: string } | null => {
+    if (isExternalAudioPath(path)) return null;
     for (const candidate of [path, ...twinCandidates(path)]) {
       const file = vaultFile(candidate);
       if (file) return { file, path: candidate };

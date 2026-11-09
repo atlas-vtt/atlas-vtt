@@ -39,7 +39,7 @@ export class FolderTree {
   private readonly missing = new Set<string>();
   private counts: Map<string, number> | null = null;
   private indexed: IndexedFile[] | null = null;
-  private byIdentity: Map<string, SoundFileEntry> | null = null;
+  private byIdentity: Map<string, SoundFileEntry | null> | null = null;
   private walking = false;
   private walkedOnce = false;
   private wantsWalk = false;
@@ -76,7 +76,8 @@ export class FolderTree {
   /**
    * The file of a name and size, once every folder was read, so it is not the first of several that happens to have
    * been reached yet: the first in path order, so every device holding these files finds the same one. Else the
-   * file of a twin name (`twinCandidates`) whatever its size, since a conversion on one device changed it.
+   * file of a twin name (`twinCandidates`) whatever its size, since a conversion on one device changed it, but only
+   * where the root holds that name once: of two albums' `01.mp3` neither is a record's `01.opus`.
    */
   fileNamed(name: string, size: number): SoundFileEntry | null {
     if (!this.walkedOnce) return null;
@@ -222,14 +223,15 @@ export class FolderTree {
     this.byIdentity = null;
   }
 
-  /** The first file in path order of each name and size, and of each name whatever its size. */
-  private identities(): Map<string, SoundFileEntry> {
-    const identities = new Map<string, SoundFileEntry>();
+  /** The first file in path order of each name and size; of each name whatever its size, the file, or null where several have it. */
+  private identities(): Map<string, SoundFileEntry | null> {
+    const identities = new Map<string, SoundFileEntry | null>();
     for (const file of this.files.values()) {
-      for (const identity of [identityOf(file.name, file.size), identityOf(file.name)]) {
-        const first = identities.get(identity);
-        if (!first || file.path < first.path) identities.set(identity, file);
-      }
+      const sized = identityOf(file.name, file.size);
+      const first = identities.get(sized);
+      if (!first || file.path < first.path) identities.set(sized, file);
+      const named = identityOf(file.name);
+      identities.set(named, identities.has(named) ? null : file);
     }
     return identities;
   }

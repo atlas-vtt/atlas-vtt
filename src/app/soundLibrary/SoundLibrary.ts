@@ -200,7 +200,9 @@ export class SoundLibrary {
   pathNow(audioPath: string, audioSize?: number): string {
     const place = this.placeOf(audioPath);
     const entry = place && this.filed(place.opened, place.path, audioSize);
-    return (entry && this.audioPathOf(place.kind, entry.path)) ?? audioPath;
+    if (!place || !entry) return audioPath;
+    // A source beside its own copy is listed as the copy: its records belong to that row, and play from it.
+    return this.audioPathOf(place.kind, this.copies.copyOf(place.kind, entry.path) ?? entry.path) ?? audioPath;
   }
 
   /** Reads what `paths` changed, at once: an operation of the library's own does not wait for the watch. */

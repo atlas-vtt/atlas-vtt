@@ -4,6 +4,8 @@ import { rowHidden } from '@/app/react/components/dm-screen/sound/library/rowHid
 import { shelfOf } from '@/app/react/components/dm-screen/sound/library/rowModel';
 import type { SoundRecord } from '@/app/sound/soundTypes';
 import { LibraryCopyFolder } from '@/app/soundLibrary/libraryCopyFolder';
+import { recordsByFile, recordsForFiles } from '@/app/soundLibrary/libraryRecords';
+import type { StoredSound } from '@/app/soundLibrary/soundRecords';
 import { SoundLibrary } from '@/app/soundLibrary/SoundLibrary';
 import { externalAudioPath } from '@/app/soundLibrary/soundPaths';
 import { SoundRoots } from '@/app/soundLibrary/SoundRoots';
@@ -92,6 +94,26 @@ describe('what the library leaves out', () => {
     expect(location.ranges).toEqual([]);
     await folder.factsOf(sound('Inn/Tavern.mp3'));
     expect(await listed()).toEqual(['Inn/Tavern.opus']);
+  });
+
+  it('a record of a kept original from another device belongs to the copy\'s row, which makes no second record', async () => {
+    location.put('Inn/Tavern.mp3', new Blob(['MP3']));
+    await listed();
+    await folder.store(sound('Inn/Tavern.mp3'), await taggedCopy({ key: keyOf('a'), from: 'Tavern.mp3' }), 'keep', { size: 3, mtime: 1 });
+    expect(await listed()).toEqual(['Inn/Tavern.opus']);
+    const foreign: StoredSound = { id: 'made-on-b', name: 'Tavern', tags: ['Night'], createdAt: 1, modifiedAt: 1, audioPath: externalAudioPath('music', 'Inn/Tavern.mp3'), audioSize: 3, kind: 'music' };
+    const copyPath = externalAudioPath('music', 'Inn/Tavern.opus');
+    const byFile = recordsByFile([foreign], library);
+    expect(byFile.get(copyPath)).toEqual([foreign]);
+    expect(shelfOf(library, [foreign], byFile, 'music').rows).toMatchObject([{ type: 'file', file: { path: 'Inn/Tavern.opus' }, tagKeys: expect.arrayContaining([expect.any(String)]) }]);
+    const added: StoredSound[][] = [];
+    const seam = { whenLoaded: (): Promise<void> => Promise.resolve(), all: (): StoredSound[] => [foreign], add: (fresh: StoredSound[]): void => { added.push(fresh); } };
+    const [file] = library.filesOf('music').filter(({ entry }) => entry.path === 'Inn/Tavern.opus').map(({ entry }) => ({ ...entry, kind: 'music' as const }));
+    expect(await recordsForFiles(seam, library, [file!])).toMatchObject([{ id: 'made-on-b' }]);
+    expect(added).toEqual([]);
+    location.ranges.length = 0;
+    expect(await folder.factsOf({ ...sound('Inn/Tavern.mp3'), id: 'made-on-b' }), 'it reads the copy\'s own header').toMatchObject({ audioPath: copyPath });
+    expect(location.ranges.every((range) => range.startsWith('Inn/Tavern.opus '))).toBe(true);
   });
 
   it('an Opus file of the GM\'s own, or a copy of another source, hides nothing', async () => {
