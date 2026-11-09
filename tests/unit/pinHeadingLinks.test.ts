@@ -53,6 +53,11 @@ describe('what players read of a repeated heading', () => {
     expect(await readPinNote(appWithNote(text), link, 'map.atlasmap')).toBeNull();
   });
 
+  it('reads a heading alone in the note the link stands in, and nothing for a map', async () => {
+    expect((await readPinNote(appWithNote(), '#Inn', NOTE.path))?.body.trim()).toBe('Inn text\n## Overview\nInn overview');
+    expect(await readPinNote(appWithNote(), '#Inn', 'map.atlasmap')).toBeNull();
+  });
+
   it('keeps a link of an older pin on the first of them', async () => {
     const reading = await readPinNote(appWithNote(), 'Book/Chapter.md#Overview', 'map.atlasmap');
     expect(reading?.body.trim()).toBe('Inn overview');

@@ -16,3 +16,7 @@
 - Snapshots that were saved but no longer showed in a scene's snapshot tray appear there again
 - The player window shows the map live again when you reopen the scene it was showing, instead of staying frozen on its last picture
 - Statblocks with large tables no longer freeze Obsidian when their note opens beside the statblock or when the window is resized
+
+## Atlas Online
+
+- Abilities named with a link (to a heading in the note or to another note) show their plain name in the players' Abilities tab, and their details are taken from what the link points to

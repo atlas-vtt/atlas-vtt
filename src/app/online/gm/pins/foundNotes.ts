@@ -22,15 +22,16 @@ export interface FoundHandout {
 }
 
 /**
- * What players read of the note a pin links (`notePath`, from the map `mapPath`): the whole note
- * without its frontmatter, or, for `note#heading`, only that heading's section (to the next heading
- * of its level or higher, as Obsidian resolves the link), without the heading's own line, which is
- * the title. The GM's comments (`%% %%`, `<!-- -->`) are left out. Null where the note or its
- * heading is gone or is no Markdown.
+ * What players read of the note a link names (a pin's `notePath`, from the map `sourcePath`; a
+ * link in a statblock note): the whole note without its frontmatter, or, for `note#heading`, only
+ * that heading's section (to the next heading of its level or higher, as Obsidian resolves the
+ * link), without the heading's own line, which is the title; `#heading` alone is a heading of the
+ * source. The GM's comments (`%% %%`, `<!-- -->`) are left out. Null where the note or its heading
+ * is gone or is no Markdown.
  */
-export async function readPinNote(app: App, notePath: string, mapPath: string): Promise<NoteReading | null> {
+export async function readPinNote(app: App, notePath: string, sourcePath: string): Promise<NoteReading | null> {
   const { linkpath, heading } = pinNoteLink(notePath);
-  const file = noteFile(app, linkpath, mapPath);
+  const file = noteFile(app, linkpath === '' ? sourcePath : linkpath, sourcePath);
   if (file === null) return null;
   const content = await app.vault.cachedRead(file);
   if (heading === null) return { path: file.path, title: file.basename, body: questBody(content) };

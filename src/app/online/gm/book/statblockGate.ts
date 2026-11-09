@@ -20,6 +20,8 @@ export interface StatblockGate {
   read(path: string): Promise<ResolvedStatblock | null>;
   /** Writes checked patches into a note, as every statblock edit in Atlas is written. */
   write(path: string, patches: readonly NotePatch[]): Promise<StatblockWriteOutcome>;
+  /** The text a link in an ability's name of a note names (`abilityLink`: a heading of the note, another note), without the GM's comments; null where there is none. */
+  readLink?(path: string, link: string): Promise<string | null>;
   /** The width of the statblock panel beside a note on this device now, which the players' cards are laid out at (`shownPanelWidth`; while no note shows, the width last measured beside one). */
   panelWidth?(): number | undefined;
   /** Calls `listener` with a note's path when its properties may read otherwise, and with null when every note may (a template changed); returns what stops it. */
@@ -54,6 +56,7 @@ export const gatedStatblocks: StatblockGate = {
   diceSet: (path) => gate?.diceSet?.(path),
   panelWidth: () => gate?.panelWidth?.(),
   read: async (path) => (gate === null ? null : gate.read(path)),
+  readLink: async (path, link) => (await gate?.readLink?.(path, link)) ?? null,
   write: async (path, patches) => (gate === null ? { ...REFUSED, conflicts: patches } : gate.write(path, patches)),
   onChange: (listener) => {
     listeners.add(listener);

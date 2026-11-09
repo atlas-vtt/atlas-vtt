@@ -12,6 +12,7 @@ import { toFieldValue } from '../../../statblocks/values/fieldValueOf';
 import { readField } from '../../../statblocks/values/fieldValues';
 import { splitListText } from '../../../statblocks/values/listText';
 import { valueText } from '../../../statblocks/values/valueText';
+import { abilityLink, plainAbilityName } from './abilityLinks.ts';
 import { clippedLine } from './bookTexts.ts';
 import type { SheetBuild } from './sheetFields.ts';
 
@@ -54,11 +55,12 @@ function abilityParts(shape: EntryShape | undefined): AbilityPart[] {
   }).slice(0, MAX_ABILITY_PARTS);
 }
 
-/** An ability's name, text and the values of its parts as one item of its list holds them. */
+/** An ability's name, text and the values of its parts as one item of its list holds them, and what its name links. */
 interface EntryContent {
   readonly name: string;
   readonly text: string;
   readonly parts: Readonly<Record<string, SheetRaw>>;
+  readonly link: string | null;
 }
 
 function entryContent(item: FieldValue | undefined, shape: EntryShape | undefined, parts: readonly AbilityPart[]): EntryContent {
@@ -67,7 +69,19 @@ function entryContent(item: FieldValue | undefined, shape: EntryShape | undefine
     const value = record[part.key] === undefined ? undefined : parseSheetRaw(record[part.key]);
     return value === undefined ? [] : [[part.key, value]];
   });
-  return { name: clippedLine(entryName(item, shape), MAX_BOOK_TITLE) ?? '', text: entryText(item, shape) ?? '', parts: Object.fromEntries(values) };
+  const name = entryName(item, shape) ?? '';
+  return { name: clippedLine(name, MAX_BOOK_TITLE) ?? '', text: entryText(item, shape) ?? '', parts: Object.fromEntries(values), link: abilityLink(name) };
+}
+
+/**
+ * An ability as the player reads it: its name as plain words, and where it has no text of its own
+ * and its name is a link (to a heading of the note, or to another note), the text there. The GM
+ * wrote that link: a player may keep the links the note holds but never write one (`checkAbilityEdit`).
+ */
+function readEntry(build: SheetBuild, content: EntryContent): EntryContent {
+  const name = clippedLine(plainAbilityName(content.name), MAX_BOOK_TITLE) ?? content.name;
+  const text = content.text.trim() === '' && content.link !== null ? build.texts.linkedText(content.link) : content.text;
+  return { ...content, name, text };
 }
 
 /** What of an ability as written differs from what shows (its `@` references); undefined where nothing does. */
@@ -96,7 +110,7 @@ function abilityEntries(build: SheetBuild, block: EntriesBlock, parts: readonly 
   const asWritten = readField(build.shown.record, field).value;
   const writtenList = Array.isArray(asWritten) ? asWritten : [asWritten];
   return keyedEntryItems(readField(build.record, field).value).map(({ key, index }): AbilityEntry => {
-    const content = entryContent(shownList[index], shape, parts);
+    const content = readEntry(build, entryContent(shownList[index], shape, parts));
     const written = edit ? writtenEntry(build, entryContent(writtenList[index], shape, parts), content) : undefined;
     return { key, name: content.name, text: build.texts.of(content.text), parts: content.parts, ...(written !== undefined && { written }) };
   });
@@ -142,9 +156,9 @@ export function abilityComponent(build: SheetBuild, block: TabsBlock | EntriesBl
   return { id: componentId(block.id), name: componentName(build, block, place), access, parts, tabs, ...keys, ...cardPlace(build, block, place) };
 }
 
-/** One level line of a spell list as a tab, its spells by name. */
+/** One level line of a spell list as a tab, its spells by name as plain words. */
 function levelTab(list: string, line: SpellLine): AbilityTab {
-  const names = splitListText(line.spells).flatMap((spell) => clippedLine(spell, MAX_BOOK_TITLE) ?? []);
+  const names = splitListText(line.spells).flatMap((spell) => clippedLine(plainAbilityName(spell), MAX_BOOK_TITLE) ?? []);
   const keys = sheetItemKeys(names);
   return {
     label: clippedLine(line.level ?? '', MAX_BOOK_TITLE),
