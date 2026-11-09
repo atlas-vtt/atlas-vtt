@@ -96,6 +96,18 @@ describe('the consent dialog', () => {
     expect(w.shown).toHaveLength(1);
   });
 
+  it('asks again for a folder linked again after a cancel, the same one or another', async () => {
+    const w = world();
+    const { fire } = start(w); await settle();
+    w.shown[0]!.onChoose(null);
+    expect(w.roots.has('music')).toBe(false);
+    w.roots.set('music', 'Audio/Music'); fire(); await settle();
+    expect(w.shown).toHaveLength(2);
+    w.shown[1]!.onChoose(null); await settle();
+    w.roots.set('music', 'Elsewhere/Songs'); fire(); await settle();
+    expect(w.shown.map((o) => o.folderName)).toEqual(['Music', 'Music', 'Songs']);
+  });
+
   it('asks one root at a time', async () => {
     const w = world({ roots: new Map([['music', 'A'], ['ambience', 'B']]), walked: new Set(['music', 'ambience']) });
     start(w); await settle();

@@ -23,9 +23,9 @@ const realDialog = (app: App): ConsentDialog => ({
 const folderNameOf = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
 /**
- * Asks the GM, once per linked folder and session, what Atlas may do before it converts the folder:
- * while sound is on, for a root without a choice whose walk ended, one dialog at a time. Closing a
- * dialog without a choice unlinks the folder (a vault folder for every device that shares its settings).
+ * Asks the GM what Atlas may do before it converts a linked folder: once per folder while sound is on, and again
+ * once a folder is unlinked and linked anew; for a root without a choice whose walk ended, one dialog at a time.
+ * Closing a dialog without a choice unlinks the folder (a vault folder for every device that shares its settings).
  * Returns the release.
  */
 export function registerConversionConsent(
@@ -34,7 +34,8 @@ export function registerConversionConsent(
   director: SoundDirector,
   dialog: ConsentDialog = realDialog(plugin.app),
 ): () => void {
-  const asked = new Set<string>();
+  /** The folder each root was last asked about; one unlinked since is asked about again once it is linked. */
+  const asked = new Map<SoundKind, string>();
   let showing = false;
   let disposed = false;
   let current: { kind: SoundKind; path: string; handle: { close(): void } | null } | null = null;
@@ -94,16 +95,19 @@ export function registerConversionConsent(
     for (const kind of KINDS) {
       const state = library.rootOf(kind);
       if (!isLinked(state) || library.roots.originalsOf(kind) !== null || !library.isWalked(kind)) continue;
-      const key = `${kind}:${state.path}`;
-      if (asked.has(key)) continue;
-      asked.add(key);
+      if (asked.get(kind) === state.path) continue;
+      asked.set(kind, state.path);
       showing = true;
       runInBackground(ask(kind, state.path), 'Asking before converting a linked sound folder');
       return;
     }
   }
 
-  const stops = [library.onChange(check), library.roots.onChange(() => { dropStale(); check(); }), director.subscribe(check)];
+  const forgetUnlinked = (): void => {
+    for (const kind of KINDS) if (!isLinked(library.rootOf(kind))) asked.delete(kind);
+  };
+
+  const stops = [library.onChange(check), library.roots.onChange(() => { forgetUnlinked(); dropStale(); check(); }), director.subscribe(check)];
   check();
   return () => {
     disposed = true;
