@@ -27,8 +27,8 @@ describe('the reader turns', () => {
     expect(started).toHaveLength(8);
   });
 
-  it('time a sound from when its turn comes, and let a hurried one go first', async () => {
-    const reader = new CopyReader(100);
+  it('let a hurried sound go first', async () => {
+    const reader = new CopyReader(1000);
     const started: string[] = [];
     let release = (): void => undefined;
     const held = new Promise<void>((resolve) => { release = resolve; });
@@ -41,5 +41,35 @@ describe('the reader turns', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(started).toEqual(['pressed', 'late']);
     expect([await late, await pressed]).toEqual(['read', 'read']);
+  });
+
+  it('give a sound that waits behind reads stuck past their time unknown, without reading it', async () => {
+    const reader = new CopyReader(100);
+    for (let index = 0; index < 8; index++) void reader.within(`dead${index}`, () => new Promise<string>(() => undefined));
+    const work = vi.fn(async () => 'read');
+    let answer: string | null = null;
+    void reader.within('late', work).then((value) => { answer = value; });
+    await vi.advanceTimersByTimeAsync(150);
+    expect(answer).toBeNull();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(answer).toBe('unknown');
+    expect(work).not.toHaveBeenCalled();
+  });
+
+  it('keep a sound waiting while turns turn over, however long the reads ahead of it take', async () => {
+    const reader = new CopyReader(100);
+    const slow = (): Promise<string> => new Promise((resolve) => setTimeout(() => resolve('read'), 60));
+    const answers = Array.from({ length: 40 }, (_, index) => reader.within(`s${index}`, slow));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await Promise.all(answers)).toEqual(answers.map(() => 'read'));
+  });
+
+  it('give a turn back when the work throws before it returns a promise', async () => {
+    const reader = new CopyReader(100);
+    const thrown = Array.from({ length: 8 }, (_, index) => reader.within(`t${index}`, () => { throw new Error('at once'); }));
+    for (const answer of thrown) await expect(answer).rejects.toThrow('at once');
+    const after = reader.within('after', async () => 'read');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await after).toBe('read');
   });
 });

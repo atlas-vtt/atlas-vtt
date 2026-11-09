@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SoundRecord } from '@/app/sound/soundTypes';
 import { SoundCopies } from '@/app/soundDirector/soundCopies';
+import { FACTS_STUCK_MS } from '@/app/soundLibrary/copyReader';
 import { LibraryCopyFolder } from '@/app/soundLibrary/libraryCopyFolder';
 import { SoundLibrary } from '@/app/soundLibrary/SoundLibrary';
 import { externalAudioPath } from '@/app/soundLibrary/soundPaths';
@@ -78,6 +79,34 @@ describe('reading what a large library on a slow disk says of itself', () => {
     expect(run).not.toHaveBeenCalled();
     expect(error).not.toHaveBeenCalled();
     expect(order.indexOf(`F${FILES - 1}/T${FILES - 1}.opus`)).toBeLessThan(3 * 8);
+    copies.dispose();
+  });
+
+  it('answers for a sound behind reads on a dead share, and a press on it still converts', async () => {
+    const copy = await taggedCopy({ key: keyOf('a') });
+    const count = 9;
+    for (let index = 0; index < count; index++) location.put(`F${index}/T${index}.opus`, copy);
+    const readRange = location.readRange.bind(location);
+    vi.spyOn(location, 'readRange').mockImplementation((path, start, end) => (path === `F${count - 1}/T${count - 1}.opus` ? readRange(path, start, end) : new Promise(() => undefined)));
+    const run = vi.fn(() => new Promise<never>(() => undefined));
+    const copies = new SoundCopies(
+      { statOf: (record) => library.statOfFile(record.filePath), read: () => Promise.resolve(new Blob(['source'])), pathNow: (record) => record.filePath },
+      new LibraryCopyFolder(() => library, { whenLoaded: async () => undefined, rewrite: () => false }),
+      { run },
+      async (source) => ({ hash: keyOf('b'), source: source instanceof Blob ? source : new Blob([source]) }),
+      () => undefined,
+      3,
+    );
+    await library.settle('music', Array.from({ length: count }, (_, index) => `F${index}`));
+    for (let index = 0; index < count; index++) await library.settle('music', [`F${index}/T${index}.opus`]);
+    const sounds = Array.from({ length: count }, (_, index) => sound(index));
+
+    copies.request(sounds);
+    copies.request([sounds[count - 1]!], true);
+    await vi.advanceTimersByTimeAsync(2 * FACTS_STUCK_MS + ANSWER_MS);
+
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({ from: `T${count - 1}.opus` }), expect.anything(), expect.anything());
     copies.dispose();
   });
 });
