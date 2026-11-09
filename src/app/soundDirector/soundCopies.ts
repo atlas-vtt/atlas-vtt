@@ -7,7 +7,8 @@ import type { SoundBytes, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConversion';
 import type { CopyFolder } from './copyFolder';
 import { backgroundCopies, CopyQueue, type BackgroundProgress } from './copyQueue';
-import { asBytes, atlasMade, copyEntry, type CopyMaker, entryKeyOf, identityOf, makeCopy, PENDING, readyIn, stored, UNKNOWN_RETRY_MS, type CopyEntry, type StoredFacts } from './copyEntries';
+import { CopyKeys } from './copyKeys';
+import { asBytes, atlasMade, copyEntry, OUTSIDE, type CopyMaker, entryKeyOf, identityOf, makeCopy, PENDING, readyIn, stored, UNKNOWN_RETRY_MS, type CopyEntry, type StoredFacts } from './copyEntries';
 import type { PreparedSource } from './sourcePrepare';
 import type { GrowingCopy } from '../sound/codec/growingCopy';
 
@@ -34,10 +35,7 @@ export interface SoundFileAccess {
 export class SoundCopies {
   /** By record and the path it names: a record that moved to its copy while an older object of it still names the source is two entries. */
   private readonly entries = new Map<string, CopyEntry>();
-  /** The entry each sound key was last made or found for. */
-  private readonly keys = new Map<string, CopyEntry>();
-  /** Every entry that holds a key, newest last: a row of a file without a record holds the key of the record's copy too. */
-  private readonly holders = new Map<string, CopyEntry[]>();
+  private readonly keys = new CopyKeys();
   private readonly listeners = new Set<() => void>();
   private readonly queue: CopyQueue;
   private disposed = false;
@@ -90,8 +88,7 @@ export class SoundCopies {
 
   /** Every record a copy was made or found for, newest first. */
   recordIdsOf(key: string): string[] {
-    const held = (this.holders.get(key) ?? []).filter((entry) => entry.key === key).map((entry) => entry.recordId);
-    return [...new Set(held.reverse())];
+    return this.keys.recordIdsOf(key);
   }
 
   /**
@@ -104,7 +101,7 @@ export class SoundCopies {
     if (this.disposed) return;
     const known = records.flatMap((record) => {
       const entry = this.entryOf(record);
-      if (entry && entry.unknownAt !== null && !urgent && Date.now() - entry.unknownAt >= UNKNOWN_RETRY_MS) entry.known = this.lookUp(record, entry, false);
+      if (entry && entry.unknownAt !== null && !entry.looking && !urgent && Date.now() - entry.unknownAt >= UNKNOWN_RETRY_MS) entry.known = this.lookUp(record, entry);
       else if (urgent) this.folder.hurry(record);
       return entry?.known ?? [];
     });
@@ -188,28 +185,29 @@ export class SoundCopies {
     const identity = identityOf(record.filePath, stat);
     if (entry?.identity === identity) return entry;
     const fresh = copyEntry(record, identity);
-    fresh.known = this.lookUp(record, fresh, false);
     this.entries.set(at, fresh);
+    // Seen as it is made, so nobody is told: a listener that reads the same record must find it here.
+    if (this.folder.outside(record)) fresh.conversion = OUTSIDE;
+    else fresh.known = this.lookUp(record, fresh);
     return fresh;
   }
 
-  private async lookUp(record: SoundRecord, entry: CopyEntry, pressed: boolean): Promise<void> {
-    // A file outside every linked folder shows why on the sound; a start that found several would tell each.
-    if (this.folder.outside(record)) return this.refuse(record, entry, 'outside-folder', false);
-    try {
-      const found = await this.folder.factsOf(record, pressed);
-      entry.unknownAt = found === 'unknown' ? Date.now() : null;
-      if (found && found !== 'unknown' && !this.disposed) this.markStored(record, entry, found.facts.key, stored(found.facts, record.kind), found.audioPath);
-    } catch (error) {
-      if (this.disposed) return;
-      if (error instanceof SoundImportError) this.refuse(record, entry, error.reason);
-      else console.error('[Atlas] Could not read what a sound says of itself', error);
-    }
+  /** One at a time per entry; never rejects. */
+  private async lookUp(record: SoundRecord, entry: CopyEntry): Promise<void> {
+    entry.looking = true;
+    const found = await this.folder.factsOf(record).catch((error: unknown) => {
+      if (!this.disposed && error instanceof SoundImportError) this.refuse(record, entry, error.reason);
+      else if (!this.disposed) console.error('[Atlas] Could not read what a sound says of itself', error);
+      return null;
+    });
+    entry.looking = false;
+    entry.unknownAt = found === 'unknown' ? Date.now() : null;
+    if (found && found !== 'unknown' && !this.disposed) this.markStored(record, entry, found.facts.key, stored(found.facts, record.kind), found.audioPath);
   }
 
   private markStored(record: SoundRecord, entry: CopyEntry, key: string, facts: StoredFacts, audioPath: string): void {
     readyIn(entry, key, facts, audioPath);
-    this.hold(key, entry);
+    this.keys.hold(key, entry);
     if (entry.growing) {
       entry.growing.end();
       entry.growing = null;
@@ -251,7 +249,7 @@ export class SoundCopies {
         progress: (share) => {
           if (entry.conversion.state === 'converting') this.set(entry, { state: 'converting', progress: share });
         },
-        started: () => this.keys.set(hash, entry),
+        started: () => this.keys.making(hash, entry),
         changed: () => this.changed(),
       });
       const audioPath = await this.folder.store(record, result.bytes, choice, stat);
@@ -273,18 +271,12 @@ export class SoundCopies {
   private storedAt(record: SoundRecord, entry: CopyEntry, audioPath: string): void {
     const moved: CopyEntry = { ...entry, identity: PENDING, known: Promise.resolve(), unknownAt: null, growing: null, toldGainDb: null };
     this.entries.set(entryKeyOf(record.id, audioPath), moved);
-    if (entry.key) this.hold(entry.key, moved);
+    if (entry.key) this.keys.hold(entry.key, moved);
   }
 
-  private hold(key: string, entry: CopyEntry): void {
-    this.keys.set(key, entry);
-    const held = (this.holders.get(key) ?? []).filter((one) => one !== entry && one.key === key);
-    this.holders.set(key, [...held, entry]);
-  }
-
-  private refuse(record: SoundRecord, entry: CopyEntry, reason: SoundImportError['reason'], tell = true): void {
+  private refuse(record: SoundRecord, entry: CopyEntry, reason: SoundImportError['reason']): void {
     this.set(entry, { state: 'refused', reason });
-    if (!tell || this.toldRefused.has(record.id)) return;
+    if (this.toldRefused.has(record.id)) return;
     this.toldRefused.add(record.id);
     this.onRefused(record, reason);
   }
@@ -294,7 +286,14 @@ export class SoundCopies {
     this.changed();
   }
 
+  /** A listener that throws is reported and the others still hear: nothing it throws may vanish in a look-up's promise. */
   private changed(): void {
-    for (const listener of [...this.listeners]) listener();
+    for (const listener of [...this.listeners]) {
+      try {
+        listener();
+      } catch (error) {
+        console.error('[Atlas] A listener of the sound copies failed', error);
+      }
+    }
   }
 }

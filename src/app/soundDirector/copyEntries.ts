@@ -13,6 +13,9 @@ import { grownGain } from './growingCopies';
 
 export const READY: SoundConversion = { state: 'ready' };
 
+/** A file outside every linked folder shows why on the sound; a start that found several does not tell each. */
+export const OUTSIDE: SoundConversion = { state: 'refused', reason: 'outside-folder' };
+
 export interface CopyMaker {
   run(job: SoundImportJob, onProgress?: ImportProgress, sink?: StreamSink): Promise<SoundImportResult>;
 }
@@ -40,6 +43,8 @@ export interface CopyEntry {
   known: Promise<void>;
   /** When its file last took too long to say what it is: never converted in the background, asked again later. */
   unknownAt: number | null;
+  /** Whether its file is being read for what it says of itself: one read at a time. */
+  looking: boolean;
   /** The copy while it is made, for a sound that may play before it is whole. */
   growing: GrowingCopy | null;
   /** The gain the table was last told of a growing copy, so a small move is no change. */
@@ -54,7 +59,7 @@ export const PENDING = '';
 export const entryKeyOf = (recordId: string, path: string): string => `${recordId}\n${path}`;
 
 export function copyEntry(record: SoundRecord, identity: string): CopyEntry {
-  return { record, recordId: record.id, identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, audioPath: null, known: Promise.resolve(), unknownAt: null, growing: null, toldGainDb: null };
+  return { record, recordId: record.id, identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, audioPath: null, known: Promise.resolve(), unknownAt: null, looking: false, growing: null, toldGainDb: null };
 }
 
 /** A file asked about while it was unknown is read again no sooner than this. */

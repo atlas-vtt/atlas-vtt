@@ -26,20 +26,23 @@ export class CopyReader {
   constructor(private readonly stuckMs = FACTS_STUCK_MS) {}
 
   /**
-   * Runs one sound's reads in its turn, a press before the reads waiting in the background, and gives `unknown`
-   * where they take longer than `stuckMs` from the moment they began. Nothing cancels the reads themselves.
+   * Runs one sound's reads in its turn and gives `unknown` where they take longer than `stuckMs` from the moment
+   * they began. Nothing cancels the reads themselves, so the turn is given back only when they settle: reads
+   * on a dead share never outnumber the turns.
    */
-  async within<T>(key: string, pressed: boolean, work: () => Promise<T>): Promise<T | 'unknown'> {
-    await this.turn(key, pressed);
+  async within<T>(key: string, work: () => Promise<T>): Promise<T | 'unknown'> {
+    await this.turn(key);
+    const running = work();
+    const release = (): void => this.done();
+    void running.then(release, release);
     let timer = 0;
     const stuck = new Promise<'unknown'>((resolve) => {
       timer = window.setTimeout(() => resolve('unknown'), this.stuckMs);
     });
     try {
-      return await Promise.race([work(), stuck]);
+      return await Promise.race([running, stuck]);
     } finally {
       window.clearTimeout(timer);
-      this.done();
     }
   }
 
@@ -80,16 +83,12 @@ export class CopyReader {
     }
   }
 
-  private turn(key: string, pressed: boolean): Promise<void> {
+  private turn(key: string): Promise<void> {
     if (this.reading < READING_AT_ONCE) {
       this.reading++;
       return Promise.resolve();
     }
-    return new Promise((resolve) => {
-      const waiter = { key, start: resolve };
-      if (pressed) this.waiting.unshift(waiter);
-      else this.waiting.push(waiter);
-    });
+    return new Promise((resolve) => this.waiting.push({ key, start: resolve }));
   }
 
   private done(): void {

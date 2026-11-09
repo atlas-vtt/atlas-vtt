@@ -58,10 +58,10 @@ export class LibraryCopyFolder implements CopyFolder {
     return this.placeOf(sound.filePath, sound.audioSize) === 'outside';
   }
 
-  factsOf(sound: SoundRecord, pressed = false): Promise<FolderCopy | null | 'unknown'> {
+  factsOf(sound: SoundRecord): Promise<FolderCopy | null | 'unknown'> {
     const place = this.placeOf(sound.filePath, sound.audioSize);
     if (!place || place === 'outside') return Promise.resolve(null);
-    return this.reader.within(readKey(sound), pressed, () => this.readFacts(place));
+    return this.reader.within(readKey(sound), () => this.readFacts(place));
   }
 
   hurry(sound: SoundRecord): void {

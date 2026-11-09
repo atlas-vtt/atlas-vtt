@@ -28,10 +28,9 @@ export interface CopyFolder {
   /**
    * What the sound's file says of itself; null for a source (or a file that cannot be read now); `unknown` where
    * its reads took too long once they began (a dead share), which is never taken for a source. Always settles.
-   * A press is read before reads that wait in the background. A file that carries Atlas' mark beside facts
-   * that do not read is refused with `SoundImportError`.
+   * A file that carries Atlas' mark beside facts that do not read is refused with `SoundImportError`.
    */
-  factsOf(sound: SoundRecord, pressed?: boolean): Promise<FolderCopy | null | 'unknown'>;
+  factsOf(sound: SoundRecord): Promise<FolderCopy | null | 'unknown'>;
   /** Moves the sound's reads that still wait for their turn to the front: it was pressed. */
   hurry(sound: SoundRecord): void;
   /**

@@ -273,6 +273,41 @@ describe('a file outside every linked folder', () => {
   });
 });
 
+describe('what listeners read while they are told', () => {
+  it('a listener that reads the same outside record runs a bounded number of times and never throws', async () => {
+    const { copies, folder, stats } = rig();
+    folder.outsidePaths.add(RAIN.filePath);
+    const error = vi.mocked(console.error);
+    let heard = 0;
+    copies.onChanged(() => {
+      heard++;
+      copies.infoFor(RAIN);
+      copies.stateOf(RAIN);
+    });
+    expect(() => copies.stateOf(RAIN)).not.toThrow();
+    expect(copies.stateOf(RAIN)).toEqual({ state: 'refused', reason: 'outside-folder' });
+    stats.set(RAIN.filePath, { size: 2, mtime: 2 });
+    expect(() => copies.infoFor(RAIN)).not.toThrow();
+    expect(copies.stateOf(RAIN)).toEqual({ state: 'refused', reason: 'outside-folder' });
+    copies.request([RAIN], true);
+    await settle();
+    expect(heard).toBeLessThanOrEqual(2);
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it('a listener that throws is reported, and the copy is ready all the same', async () => {
+    const { copies, folder } = rig();
+    folder.copies.set(SONG.filePath, { facts: factsOf(keyOf('b')), blob: new Blob(['x']) });
+    copies.onChanged(() => {
+      throw new Error('listener broke');
+    });
+    copies.stateOf(SONG);
+    await settle();
+    expect(copies.stateOf(SONG)).toEqual({ state: 'ready' });
+    expect(vi.mocked(console.error)).toHaveBeenCalledWith('[Atlas] A listener of the sound copies failed', expect.objectContaining({ message: 'listener broke' }));
+  });
+});
+
 describe('the background queue', () => {
   const big = (id: string): SoundRecord => record(id);
 
@@ -313,6 +348,18 @@ describe('the background queue', () => {
     copies.request([RAIN], true);
     await settle();
     expect(runs.map((run) => run.job.from)).toEqual(['song.ogg', 'rain.ogg']);
+  });
+
+  it('a burst of requests for an unknown file reads it once', async () => {
+    const { copies, folder } = rig();
+    folder.slow.add(RAIN.filePath);
+    copies.request([RAIN]);
+    await settle();
+    await vi.advanceTimersByTimeAsync(UNKNOWN_RETRY_MS);
+    const factsOf = vi.spyOn(folder, 'factsOf').mockReturnValue(new Promise(() => undefined));
+    for (let request = 0; request < 5; request++) copies.request([RAIN]);
+    await settle();
+    expect(factsOf).toHaveBeenCalledTimes(1);
   });
 
   it('a copy that replaced its source under the same name stays ready through the store', async () => {
