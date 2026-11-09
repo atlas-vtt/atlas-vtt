@@ -206,6 +206,23 @@ describe('what a file says of itself', () => {
     expect(await folder.factsOf(sound('Tavern.mp3'))).toMatchObject({ facts: { key: KEY }, audioPath: at('Tavern 2.opus') });
   });
 
+  it('a record of Tavern.mp3 plays the copy that took its place on this device', async () => {
+    location.put('Tavern.opus', await taggedCopy({ key: KEY, from: 'Tavern.mp3' }));
+    await library.reread('music');
+    expect(await folder.factsOf(sound('Tavern.mp3'))).toMatchObject({ facts: { key: KEY }, audioPath: at('Tavern.opus') });
+  });
+
+  it('a record of Tavern.opus converts Tavern.mp3 on a device that has not yet, and stays as it is', async () => {
+    location.put('Tavern.mp3', new Blob(['MP3']));
+    stored = [storedSound('Tavern.opus')];
+    await library.reread('music');
+    expect(folder.choiceFor(sound('Tavern.opus'))).toBe('trash');
+    expect(await folder.factsOf(sound('Tavern.opus'))).toBeNull();
+    expect(await folder.store(sound('Tavern.opus'), await taggedCopy({ key: KEY }), 'trash', stat('Tavern.mp3'))).toBe(at('Tavern.opus'));
+    expect(location.changes).toEqual(['write Tavern.mp3.atlas-part', 'move Tavern.mp3.atlas-part Tavern.opus', 'trash Tavern.mp3']);
+    expect(stored).toEqual([storedSound('Tavern.opus')]);
+  });
+
   it('a file Atlas marked whose facts do not read is refused as damaged', async () => {
     location.put('Tavern.opus', await withComments(await taggedCopy({ key: KEY }), (comment) => !comment.startsWith('ATLAS_LUFS'), ['ATLAS_LUFS=?']));
     await expect(folder.factsOf(sound('Tavern.opus'))).rejects.toMatchObject({ reason: 'unreadable' });

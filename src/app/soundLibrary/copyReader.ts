@@ -75,13 +75,18 @@ export class CopyReader {
    * Where `refuse`, a file marked by Atlas whose facts do not read is refused as damaged.
    */
   async factsAt(location: SoundLocation, path: string, refuse: boolean): Promise<AtlasCopyFacts | null> {
+    return (await this.copyAt(location, path, refuse))?.facts ?? null;
+  }
+
+  /** As `factsAt`, with the size the file had when it was read. */
+  async copyAt(location: SoundLocation, path: string, refuse: boolean): Promise<{ facts: AtlasCopyFacts; size: number } | null> {
     try {
       const stat = await location.stat(path);
       if (!stat) return null;
       const ranges: FileRanges = { size: stat.size, read: (start, end) => location.readRange(path, start, end) };
       const facts = await readAtlasCopy(ranges);
       if (!facts && refuse && (await hasAtlasMark(ranges))) throw new SoundImportError('unreadable', `${path} was made by Atlas and its facts do not read.`);
-      return facts;
+      return facts && { facts, size: stat.size };
     } catch (error) {
       if (error instanceof SoundImportError) throw error;
       console.error(`[Atlas] Could not read ${path}`, error);

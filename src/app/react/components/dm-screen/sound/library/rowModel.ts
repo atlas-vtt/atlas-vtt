@@ -36,13 +36,18 @@ export function waitingIn(library: Pick<SoundLibrary, 'fileOfAudioPath' | 'pathN
   });
 }
 
-/** A root's shelf. Costs a pass over its files, so it is worked out only when they or the records changed. */
+/**
+ * A root's shelf. Costs a pass over its files, so it is worked out only when they, the records or the copies read
+ * changed. A source beside its own Atlas copy is the copy's, and only the copy is listed.
+ */
 export function shelfOf(library: SoundLibrary, sounds: readonly StoredSound[], byFile: ReadonlyMap<string, readonly StoredSound[]>, kind: SoundKind): RootShelf {
   const reachable = library.locationOf(kind) !== null;
-  const files = library.filesOf(kind).map(({ entry }) => ({ entry, tags: tagsOfTrack(entry.path, byFile.get(library.audioPathOf(kind, entry.path) ?? '') ?? []) }));
+  const all = library.filesOf(kind);
+  const files = all.filter(({ entry }) => !library.isCopied(kind, entry.path))
+    .map(({ entry }) => ({ entry, tags: tagsOfTrack(entry.path, byFile.get(library.audioPathOf(kind, entry.path) ?? '') ?? []) }));
   const waiting = reachable && !library.isWalked(kind)
     ? []
-    : waitingIn(library, sounds, kind, reachable, new Set(files.map(({ entry }) => entry.path))).map(({ sound, path }) => ({ sound, tags: tagsOfTrack(path, [sound]) }));
+    : waitingIn(library, sounds, kind, reachable, new Set(all.map(({ entry }) => entry.path))).map(({ sound, path }) => ({ sound, tags: tagsOfTrack(path, [sound]) }));
   const tags = rootTags([...files, ...waiting].map((track) => track.tags));
   const nameOf = new Map(tags.map((tag) => [tag.key, tag.name]));
   const shown = (track: TrackTags): Pick<RowOf, 'where' | 'tagKeys'> => {

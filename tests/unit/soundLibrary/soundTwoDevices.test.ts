@@ -314,6 +314,59 @@ describe('sound records on two devices', () => {
       vi.unstubAllGlobals();
     });
 
+    /** One record of one sound, made on `maker`, read on every disk: each finds `found` and plays it, and no record is written for it. */
+    async function oneSoundOnEach(made: { path: string; size: number }, disks: ReadonlyArray<readonly [ReturnType<typeof diskOf>, string, number]>): Promise<void> {
+      vi.stubGlobal('window', globalThis);
+      const { devices, sync } = await start(6);
+      const [maker] = disks[0]!;
+      await recordsForFiles(devices[0].records, maker.library, [{ kind: 'music', name: made.path.split('/').pop()!, path: made.path, size: made.size, mtime: 1 }], 1000);
+      await rest(devices);
+      await settle(sync, devices);
+      const audioPath = externalAudioPath('music', made.path);
+      expect(devices[1].records.all()).toMatchObject([{ audioPath, audioSize: made.size }]);
+      const writes = devices.map(({ vault }) => [vault.app.vault.adapter.write, vault.app.vault.create, vault.app.vault.process].map((spy) => vi.mocked(spy).mock.calls.length));
+      for (const [disk] of disks) await walked(disk, 100_000);
+      for (const [index, [disk, found, size]] of disks.entries()) {
+        const held = devices[index % 2]!.records.all();
+        const [sound] = held;
+        expect(disk.library.pathNow(sound!.audioPath, sound!.audioSize), `disk ${index} plays ${found}`).toBe(externalAudioPath('music', found));
+        expect(disk.library.statOfFile(sound!.audioPath, sound!.audioSize)).toMatchObject({ size });
+        expect(waitingIn(disk.library, held, 'music', true, new Set([found])), 'it waits for nothing').toEqual([]);
+        await disk.library.readFile(sound!.audioPath, sound!.audioSize);
+        expect(disk.location.reads).toEqual([found]);
+        disk.library.destroy();
+      }
+      await rest(devices);
+      await settle(sync, devices);
+      for (const { records } of devices) expect(records.all()).toMatchObject([{ audioPath, audioSize: made.size }]);
+      expect(devices.map(({ vault }) => [vault.app.vault.adapter.write, vault.app.vault.create, vault.app.vault.process].map((spy) => vi.mocked(spy).mock.calls.length))).toEqual(writes);
+      vi.unstubAllGlobals();
+    }
+
+    const diskHolding = (files: Readonly<Record<string, number>>): ReturnType<typeof diskOf> => {
+      const disk = diskOf([]);
+      for (const [path, size] of Object.entries(files)) disk.location.addFile(path, size);
+      return disk;
+    };
+
+    it('a record of Tavern.mp3 finds Tavern.opus', async () => {
+      await oneSoundOnEach({ path: 'Inn/Tavern.mp3', size: 7 }, [
+        [diskHolding({ 'Inn/Tavern.mp3': 7 }), 'Inn/Tavern.mp3', 7],
+        [diskHolding({ 'Inn/Tavern.opus': 9 }), 'Inn/Tavern.opus', 9],
+        [diskHolding({ 'Taverns/Tavern.opus': 9 }), 'Taverns/Tavern.opus', 9],
+        [diskHolding({ 'Inn/Tavern.mp3': 7, 'Inn/Tavern.opus': 9 }), 'Inn/Tavern.mp3', 7],
+      ]);
+    });
+
+    it('a record of Tavern.opus finds Tavern.mp3 on a device not converted yet', async () => {
+      await oneSoundOnEach({ path: 'Inn/Tavern.opus', size: 9 }, [
+        [diskHolding({ 'Inn/Tavern.opus': 9 }), 'Inn/Tavern.opus', 9],
+        [diskHolding({ 'Inn/Tavern.mp3': 7 }), 'Inn/Tavern.mp3', 7],
+        [diskHolding({ 'Old/Tavern.flac': 30 }), 'Old/Tavern.flac', 30],
+        [diskHolding({ 'Inn/Tavern.wav': 40, 'Inn/Tavern.mp3': 7 }), 'Inn/Tavern.mp3', 7],
+      ]);
+    });
+
     it('of several that match, every device with those files finds the same', async () => {
       vi.stubGlobal('window', globalThis);
       const one = diskOf(['Z/song.mp3', 'B/song.mp3', 'M/song.mp3']);

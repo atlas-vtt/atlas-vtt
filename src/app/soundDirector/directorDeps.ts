@@ -1,4 +1,4 @@
-import { normalizePath, type App } from 'obsidian';
+import { normalizePath, type App, type TFile } from 'obsidian';
 import { presentedSceneOf, type PresentedSceneSource } from '../services/presentedScene';
 import { SettingsService } from '../services/SettingsService';
 import { SoundImporter } from '../sound/codec/soundImporter';
@@ -9,6 +9,7 @@ import { sceneSoundOfText } from '../soundLibrary/sceneSound';
 import { isAudioPath } from '../soundLibrary/soundFiles';
 import { SoundLibrary } from '../soundLibrary/SoundLibrary';
 import { LibraryCopyFolder } from '../soundLibrary/libraryCopyFolder';
+import { twinCandidates } from '../soundLibrary/soundPaths';
 import { soundRecordOf } from '../soundLibrary/soundRecords';
 import { SoundRecordStore } from '../soundLibrary/SoundRecordStore';
 import { showNotice } from '../ui/notice';
@@ -51,18 +52,27 @@ export interface SoundDirectorDeps {
   notify(message: string): void;
 }
 
-function fileAccess(app: App): SoundFileAccess {
-  const fileOf = (path: string): ReturnType<App['vault']['getFileByPath']> => app.vault.getFileByPath(normalizePath(path));
+/** How the director reaches a record's file: in the vault where it lies there, else through the library's roots. */
+export function fileAccess(app: App): SoundFileAccess {
+  const vaultFile = (path: string): TFile | null => app.vault.getFileByPath(normalizePath(path));
+  /** The vault file a record names, else its converted file or its source beside it, as the library finds them in a root. */
+  const fileOf = (path: string): { file: TFile; path: string } | null => {
+    for (const candidate of [path, ...twinCandidates(path)]) {
+      const file = vaultFile(candidate);
+      if (file) return { file, path: candidate };
+    }
+    return null;
+  };
   // Never `forApp`: asked late in an unload, that would open a library nobody releases.
   const library = (): SoundLibrary | null => SoundLibrary.opened(app);
   return {
-    statOf: ({ filePath, audioSize }) => fileOf(filePath)?.stat ?? library()?.statOfFile(filePath, audioSize) ?? null,
+    statOf: ({ filePath, audioSize }) => fileOf(filePath)?.file.stat ?? library()?.statOfFile(filePath, audioSize) ?? null,
     read: ({ filePath, audioSize }, onStep) => {
-      const file = fileOf(filePath);
-      if (file) return app.vault.readBinary(file);
+      const found = fileOf(filePath);
+      if (found) return app.vault.readBinary(found.file);
       return library()?.readFile(filePath, audioSize, onStep) ?? Promise.reject(new Error(`${filePath} is not reachable now.`));
     },
-    pathNow: ({ filePath, audioSize }) => (fileOf(filePath) ? filePath : library()?.pathNow(filePath, audioSize) ?? filePath),
+    pathNow: ({ filePath, audioSize }) => fileOf(filePath)?.path ?? library()?.pathNow(filePath, audioSize) ?? filePath,
   };
 }
 

@@ -109,10 +109,11 @@ export function LibraryView({ query, onQuery: setQuery }: LibraryViewProps): Rea
   // Where a file is on this device changes with what the library has read.
   const soundsByPath = useMemo(() => recordsByFile(sounds, library), [sounds, library, musicFiles, ambienceFiles, read]);
   // Rows keep their objects while the files and records do, so a walk that found nothing new renders none of them.
+  const copiesRead = library.copies.revision;
   const shelves = useMemo<Record<SoundKind, RootShelf>>(() => ({
     music: shelfOf(library, sounds, soundsByPath, 'music'),
     ambience: shelfOf(library, sounds, soundsByPath, 'ambience'),
-  }), [library, sounds, soundsByPath]);
+  }), [library, sounds, soundsByPath, copiesRead]);
   const shelf = shelves[place.kind];
 
   // A tag selected that no track has any more selects nothing.

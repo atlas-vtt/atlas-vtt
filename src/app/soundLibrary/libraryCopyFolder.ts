@@ -11,7 +11,7 @@ import { soundAfterMove } from './soundRecords';
 import type { SoundRecordStore } from './SoundRecordStore';
 import type { OriginalsChoice } from './SoundRoots';
 
-export type CopyLibrary = Pick<SoundLibrary, 'pathNow' | 'fileOfAudioPath' | 'locationOf' | 'audioPathOf' | 'rootOf' | 'roots'>;
+export type CopyLibrary = Pick<SoundLibrary, 'pathNow' | 'fileOfAudioPath' | 'locationOf' | 'audioPathOf' | 'rootOf' | 'roots' | 'copies'>;
 
 export type CopyRecords = Pick<SoundRecordStore, 'whenLoaded' | 'rewrite'>;
 
@@ -70,14 +70,21 @@ export class LibraryCopyFolder implements CopyFolder {
 
   private async readFacts(place: Place): Promise<FolderCopy | null> {
     if (isOgg(place.path)) {
-      const facts = await this.reader.factsAt(place.location, place.path, true);
+      const facts = await this.copyAt(place, place.path, true);
       if (facts) return this.noted(place, place.path, facts);
     }
     for (const twin of await twinsOf(place.path, (path) => place.location.exists(path))) {
-      const facts = await this.reader.factsAt(place.location, twin, false);
+      const facts = await this.copyAt(place, twin, false);
       if (facts?.from === nameOfRelative(place.path)) return this.noted(place, twin, facts);
     }
     return null;
+  }
+
+  /** What a file in the folder says of itself; the library learns of every copy read, so a source beside its own is not listed. */
+  private async copyAt({ kind, location }: Place, path: string, refuse: boolean): Promise<AtlasCopyFacts | null> {
+    const copy = await this.reader.copyAt(location, path, refuse);
+    if (copy) this.library()?.copies.note(kind, path, copy.facts.from, copy.size);
+    return copy?.facts ?? null;
   }
 
   async store(sound: SoundRecord, copy: Blob, choice: OriginalsChoice, sourceStat: SourceStat): Promise<string> {
@@ -89,6 +96,7 @@ export class LibraryCopyFolder implements CopyFolder {
     if (!facts) throw new SoundImportError('verify-failed', 'The copy does not say what it is.');
     let final = await this.placeCopy(place, copy, facts);
     final = await this.dealWithSource(place, final, choice, sourceStat, facts, copy.size);
+    library.copies.note(place.kind, final, facts.from, (await place.location.stat(final))?.size ?? copy.size);
     const copyAudio = library.audioPathOf(place.kind, final) ?? sourceAudio;
     await this.follow(sourceAudio, copyAudio, copy.size);
     this.found.set(copyId(facts), { kind: place.kind, path: final });
