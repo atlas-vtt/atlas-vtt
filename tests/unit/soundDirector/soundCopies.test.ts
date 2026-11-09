@@ -217,6 +217,32 @@ describe('copies in the folder', () => {
   });
 });
 
+describe('a folder that refuses writing', () => {
+  it('is told once, and the rest of it waits for the next start; a press still tries', async () => {
+    const { copies, folder, runs, refused } = rig({ parallel: 1 });
+    folder.failStore = new SoundImportError('cannot-write', 'disk full');
+    const sounds = [record('a'), record('b'), record('c')];
+    copies.request(sounds);
+    await settle();
+    expect(runs).toHaveLength(1);
+    runs[0]?.finish();
+    await settle();
+    expect(refused).toEqual([['a', 'cannot-write']]);
+    expect(runs, 'the others are not encoded in the background').toHaveLength(1);
+    expect(copies.background()).toBeNull();
+    copies.request(sounds);
+    await settle();
+    expect(runs).toHaveLength(1);
+
+    copies.request([sounds[2]!], true);
+    await settle();
+    expect(runs.map((run) => run.job.from), 'a press still tries').toEqual(['a.ogg', 'c.ogg']);
+    runs[1]?.finish();
+    await settle();
+    expect(refused).toHaveLength(1);
+  });
+});
+
 describe('a file Atlas marked whose facts do not read', () => {
   it('is refused as damaged where the folder says so, and never converted', async () => {
     const { copies, folder, runs, reads, refused } = rig();

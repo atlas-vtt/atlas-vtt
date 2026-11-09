@@ -73,6 +73,19 @@ export class CopyQueue {
     return this.total === 0 ? null : { done: this.done, total: this.total, paused: this.paused };
   }
 
+  /** Takes the waiting background records `drop` names out of the queue; a press stays. */
+  drop(drop: (record: SoundRecord) => boolean): void {
+    const before = this.waiting.length;
+    this.waiting = this.waiting.filter((record) => {
+      if (this.pressed.has(record.id) || !drop(record)) return true;
+      if (this.counted.delete(record.id)) this.total--;
+      return false;
+    });
+    if (this.waiting.length === before) return;
+    this.endIfEmpty();
+    this.onChange();
+  }
+
   pause(paused: boolean): void {
     if (paused === this.paused) return;
     this.paused = paused;
@@ -110,15 +123,19 @@ export class CopyQueue {
     }
   }
 
+  /** The background stands empty once nothing it counted waits or runs: its progress starts anew. */
+  private endIfEmpty(): void {
+    if (this.counted.size > 0 || [...this.running.values()].some((one) => one.counted)) return;
+    this.total = 0;
+    this.done = 0;
+  }
+
   private finished(id: string): void {
     const running = this.running.get(id);
     this.running.delete(id);
     this.pressed.delete(id);
     if (running?.counted) this.done++;
-    if (this.counted.size === 0 && ![...this.running.values()].some((one) => one.counted)) {
-      this.total = 0;
-      this.done = 0;
-    }
+    this.endIfEmpty();
     this.pump();
     if (running?.counted) this.onChange();
   }

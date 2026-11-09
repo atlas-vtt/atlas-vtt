@@ -4,7 +4,14 @@ import { recordIdFor, recordsForFiles } from '../../../src/app/soundLibrary/libr
 import { waitingIn } from '../../../src/app/react/components/dm-screen/sound/library/rowModel';
 import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
 import { SoundLibrary } from '../../../src/app/soundLibrary/SoundLibrary';
-import { SoundRoots } from '../../../src/app/soundLibrary/SoundRoots';
+import { SoundRoots, type OriginalsChoice } from '../../../src/app/soundLibrary/SoundRoots';
+import { LibraryCopyFolder } from '../../../src/app/soundLibrary/libraryCopyFolder';
+import type { StoredSound } from '../../../src/app/soundLibrary/soundRecords';
+import { SoundCopies } from '../../../src/app/soundDirector/soundCopies';
+import { readAtlasCopy } from '../../../src/app/sound/codec/atlasOpus';
+import type { SoundImportJob, SoundImportResult } from '../../../src/app/sound/codec/soundImporter';
+import type { SoundRecord } from '../../../src/app/sound/soundTypes';
+import { keyOf, taggedCopy } from '../../helpers/atlasCopies';
 import { MOODS_FOLDER, RECORDS_FOLDER } from '../../../src/app/soundLibrary/soundFiles';
 import { externalAudioPath } from '../../../src/app/soundLibrary/soundPaths';
 import { SoundRecordStore } from '../../../src/app/soundLibrary/SoundRecordStore';
@@ -249,8 +256,7 @@ describe('sound records on two devices', () => {
 
   describe('with one file in other folders on each device', () => {
     /** A device's music root on its own disk. */
-    function diskOf(files: readonly string[]): { location: FakeSoundLocation; library: SoundLibrary } {
-      const location = new FakeSoundLocation();
+    function diskOf(files: readonly string[], originals: OriginalsChoice | null = null, location = new FakeSoundLocation()): { location: FakeSoundLocation; library: SoundLibrary } {
       for (const file of files) location.addFile(file, 7);
       const roots = new SoundRoots({
         shared: () => ({ music: { type: 'external' } }),
@@ -258,7 +264,7 @@ describe('sound records on two devices', () => {
         onSharedChange: () => () => undefined,
         local: (kind) => (kind === 'music' ? '/music' : null),
         setLocal: () => undefined,
-        localOriginals: () => null,
+        localOriginals: () => originals,
         setLocalOriginals: () => undefined,
         vaultBase: () => null,
         realPath: async (path) => path,
@@ -365,6 +371,72 @@ describe('sound records on two devices', () => {
         [diskHolding({ 'Old/Tavern.flac': 30 }), 'Old/Tavern.flac', 30],
         [diskHolding({ 'Inn/Tavern.wav': 40, 'Inn/Tavern.mp3': 7 }), 'Inn/Tavern.mp3', 7],
       ]);
+    });
+
+    /** Converts what `records` ask for on a device's disk, as its director would; counts the conversions it makes. */
+    function converter(disk: ReturnType<typeof diskOf>, stored: StoredSound[], made: SoundImportJob[]): SoundCopies {
+      const folder = new LibraryCopyFolder(() => disk.library, {
+        whenLoaded: () => Promise.resolve(),
+        rewrite: (change) => stored.some((sound, index) => {
+          const next = change(sound);
+          if (next) stored[index] = next;
+          return next !== null;
+        }),
+      });
+      const maker = {
+        run: async (job: SoundImportJob): Promise<SoundImportResult> => {
+          made.push(job);
+          return { bytes: await taggedCopy({ key: job.key, from: job.from }), frames: 144_000, channels: 1, lufs: -20, truePeakDb: -3, peaks: null };
+        },
+      };
+      const files = {
+        statOf: ({ filePath, audioSize }: SoundRecord) => disk.library.statOfFile(filePath, audioSize),
+        read: ({ filePath, audioSize }: SoundRecord) => disk.library.readFile(filePath, audioSize),
+        pathNow: ({ filePath, audioSize }: SoundRecord) => disk.library.pathNow(filePath, audioSize),
+      };
+      return new SoundCopies(files, folder, maker, async (source) => ({ hash: keyOf('a'), source: source instanceof Blob ? source : new Blob([source]) }), () => undefined, 3);
+    }
+
+    it('B converts with keep from a record naming .opus: one Tavern.opus made from Tavern.mp3, the mp3 hidden, never converted again', async () => {
+      vi.stubGlobal('window', globalThis);
+      vi.stubGlobal('self', globalThis);
+      const location = new FakeSoundLocation();
+      location.put('Inn/Tavern.mp3', new Blob(['MP3']));
+      // Device A converted and moved the synced record to its copy; this device keeps its originals.
+      const opusPath = externalAudioPath('music', 'Inn/Tavern.opus');
+      const stored: StoredSound[] = [{ id: 'tavern', name: 'Tavern', tags: [], createdAt: 1, modifiedAt: 1, audioPath: opusPath, audioSize: 9, kind: 'music' }];
+      const tavern: SoundRecord = { id: 'tavern', name: 'Tavern', kind: 'music', filePath: opusPath, audioSize: 9 };
+      const made: SoundImportJob[] = [];
+
+      const first = diskOf([], 'keep', location);
+      await walked(first, 100_000);
+      const copies = converter(first, stored, made);
+      copies.stateOf(tavern);
+      await vi.waitFor(() => expect(copies.stateOf(tavern).state).toBe('not-converted'));
+      copies.request([tavern]);
+      await vi.waitFor(() => expect(copies.stateOf(tavern).state).toBe('ready'));
+      expect(made.map((job) => job.from)).toEqual(['Tavern.mp3']);
+      expect([...location.files.keys()].sort()).toEqual(['Inn/Tavern.mp3', 'Inn/Tavern.opus']);
+      expect(await readAtlasCopy(location.contents.get('Inn/Tavern.opus')!)).toMatchObject({ from: 'Tavern.mp3' });
+      await first.library.settle('music', ['Inn/Tavern.opus']);
+      expect(first.library.isCopied('music', 'Inn/Tavern.mp3'), 'the kept original is hidden behind its copy').toBe(true);
+      copies.dispose();
+      first.library.destroy();
+
+      // The next start: the copy and, were it listed, the kept original both play from the copy.
+      const next = diskOf([], 'keep', location);
+      await walked(next, 200_000);
+      const again = converter(next, stored, made);
+      const original: SoundRecord = { id: 'tavern-mp3', name: 'Tavern', kind: 'music', filePath: externalAudioPath('music', 'Inn/Tavern.mp3'), audioSize: 3 };
+      for (const sound of [tavern, original]) again.stateOf(sound);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+      again.request([tavern, original]);
+      await vi.waitFor(() => expect([tavern, original].map((sound) => again.stateOf(sound).state)).toEqual(['ready', 'ready']));
+      expect(made, 'nothing is converted a second time').toHaveLength(1);
+      expect(location.files.has('Inn/Tavern 2.opus')).toBe(false);
+      again.dispose();
+      next.library.destroy();
+      vi.unstubAllGlobals();
     });
 
     it('a twin name held by several files is none of them', async () => {

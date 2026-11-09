@@ -23,6 +23,10 @@ export interface SourceStat {
 export interface CopyFolder {
   /** The GM's choice for the root the sound lies in; null while not agreed, or where its own copy stands beside it already (nothing converts). */
   choiceFor(sound: SoundRecord): OriginalsChoice | null;
+  /** The name of the file a conversion of the sound reads on this device, which its copy records as made from; null where none is reachable. */
+  sourceName(sound: SoundRecord): string | null;
+  /** The linked folder the sound's file lies in, as a key; null where it lies in none on this device. A folder that refuses a write is held back whole. */
+  rootOf(sound: SoundRecord): string | null;
   /** Whether the sound's file lies outside every linked folder, where nothing converts. */
   outside(sound: SoundRecord): boolean;
   /**

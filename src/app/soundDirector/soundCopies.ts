@@ -10,6 +10,7 @@ import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConver
 import type { CopyFolder } from './copyFolder';
 import { backgroundCopies, CopyQueue, type BackgroundProgress } from './copyQueue';
 import { CopyKeys } from './copyKeys';
+import { CopyRefusals } from './copyRefusals';
 import { asBytes, copyEntry, OUTSIDE, type CopyMaker, entryKeyOf, identityOf, makeCopy, PENDING, readyIn, stored, UNKNOWN_RETRY_MS, type CopyEntry, type StoredFacts } from './copyEntries';
 import type { PreparedSource } from './sourcePrepare';
 import type { GrowingCopy } from '../sound/codec/growingCopy';
@@ -41,19 +42,20 @@ export class SoundCopies {
   private readonly listeners = new Set<() => void>();
   private readonly queue: CopyQueue;
   private disposed = false;
-  private readonly toldRefused = new Set<string>();
+  private readonly refusals: CopyRefusals;
 
   constructor(
     private readonly files: SoundFileAccess,
     private readonly folder: CopyFolder,
     private readonly maker: CopyMaker,
     private readonly prepare: (source: ArrayBuffer | Blob) => Promise<PreparedSource>,
-    private readonly onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
+    onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
     parallel = backgroundCopies(),
     /** A copy that played while it was made is stored now: whatever still reads its growing pages may read the stored copy. */
     private readonly onStored: (key: string) => void = () => undefined,
   ) {
     this.queue = new CopyQueue(parallel, (record) => files.statOf(record)?.size ?? 0, (record) => this.convert(record), () => this.changed());
+    this.refusals = new CopyRefusals((record) => folder.rootOf(record), onRefused, (root) => this.queue.drop((record) => folder.rootOf(record) === root));
   }
 
   /** The same object while a sound's state is the same: cards read it on every render. */
@@ -114,7 +116,7 @@ export class SoundCopies {
     if (this.disposed) return;
     const wanted = records.filter((record) => {
       const entry = this.entryOf(record);
-      return entry?.conversion.state === 'not-converted' && (urgent || entry.unknownAt === null) && this.folder.choiceFor(record) !== null;
+      return entry?.conversion.state === 'not-converted' && (urgent || (entry.unknownAt === null && !this.refusals.holdsBack(record))) && this.folder.choiceFor(record) !== null;
     });
     if (wanted.length > 0) this.queue.add(wanted, urgent);
   }
@@ -237,7 +239,9 @@ export class SoundCopies {
     await entry.known;
     const choice = this.folder.choiceFor(record);
     const stat = this.files.statOf(record);
-    if (this.disposed || entry.conversion.state !== 'not-converted' || choice === null || !stat) return;
+    // The file read, not the record's name: a record naming another device's copy reads the source this device holds.
+    const from = this.folder.sourceName(record);
+    if (this.disposed || entry.conversion.state !== 'not-converted' || choice === null || !stat || from === null) return;
     this.set(entry, { state: 'converting', progress: null });
     try {
       const read = await untilStuck('reading a sound', (step) => this.files.read(record, step));
@@ -248,7 +252,7 @@ export class SoundCopies {
         return;
       }
       const { hash, source } = await this.prepare(read);
-      const result = await makeCopy(this.maker, record, entry, source, hash, {
+      const result = await makeCopy(this.maker, record, entry, { source, hash, from }, {
         progress: (share) => {
           if (entry.conversion.state === 'converting') this.set(entry, { state: 'converting', progress: share });
         },
@@ -279,9 +283,7 @@ export class SoundCopies {
 
   private refuse(record: SoundRecord, entry: CopyEntry, reason: SoundImportError['reason']): void {
     this.set(entry, { state: 'refused', reason });
-    if (this.toldRefused.has(record.id)) return;
-    this.toldRefused.add(record.id);
-    this.onRefused(record, reason);
+    this.refusals.refused(record, reason);
   }
 
   private set(entry: CopyEntry, conversion: SoundConversion): void {

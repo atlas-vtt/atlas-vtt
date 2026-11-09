@@ -57,6 +57,16 @@ export class LibraryCopyFolder implements CopyFolder {
     return library.copies.copyOf(place.kind, place.path) === null ? library.roots.originalsOf(place.kind) : null;
   }
 
+  sourceName(sound: SoundRecord): string | null {
+    const place = this.placeOf(sound.filePath, sound.audioSize);
+    return place && place !== 'outside' ? nameOfRelative(place.path) : null;
+  }
+
+  rootOf(sound: SoundRecord): string | null {
+    const place = this.placeOf(sound.filePath, sound.audioSize);
+    return place && place !== 'outside' ? place.kind : null;
+  }
+
   outside(sound: SoundRecord): boolean {
     return this.placeOf(sound.filePath, sound.audioSize) === 'outside';
   }
@@ -122,6 +132,7 @@ export class LibraryCopyFolder implements CopyFolder {
         await location.write(part, copy);
       } else await location.replace(part, copy);
     });
+    // `trash` below, without asking `canTrash`, only ever takes Atlas' own part or copy, never a file of the GM's.
     const stem = stemCopyOf(path);
     const there = stem === path ? null : await this.reader.factsAt(location, stem, false);
     if (there && copyId(there) === copyId(facts)) {

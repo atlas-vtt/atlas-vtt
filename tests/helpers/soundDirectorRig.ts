@@ -6,6 +6,7 @@ import type { CopyFolder, FolderCopy } from '@/app/soundDirector/copyFolder';
 import { readAtlasCopy, type AtlasCopyFacts } from '@/app/sound/codec/atlasOpus';
 import { SoundImportError } from '@/app/sound/codec/demux/demuxTypes';
 import type { OriginalsChoice } from '@/app/soundLibrary/SoundRoots';
+import { nameOfRelative } from '@/app/soundLibrary/soundPaths';
 import type { SoundImportJob } from '@/app/sound/codec/soundImporter';
 import type { Mood, SceneSound, SoundRecord } from '@/app/sound/soundTypes';
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from '@/app/services/soundSettings';
@@ -74,6 +75,14 @@ export class FakeCopyFolder implements CopyFolder {
 
   choiceFor(): OriginalsChoice | null {
     return this.choice;
+  }
+
+  sourceName(sound: SoundRecord): string | null {
+    return nameOfRelative(sound.filePath);
+  }
+
+  rootOf(sound: SoundRecord): string | null {
+    return this.outsidePaths.has(sound.filePath) ? null : 'root';
   }
 
   outside(sound: SoundRecord): boolean {

@@ -5,7 +5,6 @@ import type { SoundBytes, SoundRecord } from '../sound/soundTypes';
 import type { AtlasCopyFacts } from '../sound/codec/atlasOpus';
 import type { SoundConversion } from '../soundLibrary/soundConversion';
 import { NOT_CONVERTED } from '../soundLibrary/soundConversion';
-import { nameOfRelative } from '../soundLibrary/soundPaths';
 import { grownGain } from './growingCopies';
 
 export const READY: SoundConversion = { state: 'ready' };
@@ -87,10 +86,17 @@ export interface MakingListener {
   changed(): void;
 }
 
+/** What a conversion reads: the source's bytes, its key, and the name of the file read, which the copy records as made from. */
+export interface CopySource {
+  source: Blob;
+  hash: string;
+  from: string;
+}
+
 /** Converts a source, its pages going to a growing copy as they are written where the sound may play before it is whole. */
-export async function makeCopy(maker: CopyMaker, record: SoundRecord, entry: CopyEntry, source: Blob, hash: string, listener: MakingListener): Promise<SoundImportResult> {
+export async function makeCopy(maker: CopyMaker, record: SoundRecord, entry: CopyEntry, { source, hash, from }: CopySource, listener: MakingListener): Promise<SoundImportResult> {
   const loop = record.kind === 'ambience' || record.loop !== undefined;
-  const job = { source, key: hash, from: nameOfRelative(record.filePath), kind: record.kind, loop, stream: !loop };
+  const job = { source, key: hash, from, kind: record.kind, loop, stream: !loop };
   const sink: StreamSink = {
     start: (start) => {
       entry.growing = new GrowingCopy(start);
