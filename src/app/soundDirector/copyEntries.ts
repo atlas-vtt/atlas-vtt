@@ -2,10 +2,7 @@ import { GrowingCopy } from '../sound/codec/growingCopy';
 import type { SoundMeasure } from '../sound/codec/soundInfo';
 import type { ImportProgress, SoundImportJob, SoundImportResult, StreamSink } from '../sound/codec/soundImporter';
 import type { SoundBytes, SoundRecord } from '../sound/soundTypes';
-import { readAtlasCopy, type AtlasCopyFacts } from '../sound/codec/atlasOpus';
-import { hasAtlasMark } from '../sound/codec/atlasMark';
-import { rangesOf } from '../sound/codec/fileRanges';
-import { SoundImportError } from '../sound/codec/demux/demuxTypes';
+import type { AtlasCopyFacts } from '../sound/codec/atlasOpus';
 import type { SoundConversion } from '../soundLibrary/soundConversion';
 import { NOT_CONVERTED } from '../soundLibrary/soundConversion';
 import { nameOfRelative } from '../soundLibrary/soundPaths';
@@ -74,15 +71,6 @@ export const stored = (facts: Pick<AtlasCopyFacts, 'frames' | 'lufs' | 'truePeak
   measure: { frames: facts.frames, lufs: facts.lufs, truePeakDb: facts.truePeakDb },
   peaks: kind === 'music' && facts.peaks && facts.peaks.length > 0 ? facts.peaks : null,
 });
-
-/** What a file Atlas made says, so it is never converted again; one whose mark stands beside facts that do not read is refused. */
-export async function atlasMade(read: ArrayBuffer | Blob): Promise<AtlasCopyFacts | null> {
-  const ranges = rangesOf(read);
-  const facts = await readAtlasCopy(ranges);
-  if (facts) return facts;
-  if (await hasAtlasMark(ranges)) throw new SoundImportError('unreadable', 'An Opus file Atlas made whose facts do not read.');
-  return null;
-}
 
 export function readyIn(entry: CopyEntry, key: string, facts: StoredFacts, audioPath: string): void {
   entry.key = key;

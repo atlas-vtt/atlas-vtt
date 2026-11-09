@@ -1,5 +1,7 @@
 import { SoundImportError } from '../sound/codec/soundImporter';
 import { forPlayers } from '../sound/codec/atlasOpus';
+import { readMarkedCopy } from '../sound/codec/atlasMark';
+import { rangesOf } from '../sound/codec/fileRanges';
 import { growingInfo } from './growingCopies';
 import { soundInfoOf } from '../sound/codec/soundInfo';
 import { untilStuck } from '../sound/codec/stuckWatch';
@@ -8,7 +10,7 @@ import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConver
 import type { CopyFolder } from './copyFolder';
 import { backgroundCopies, CopyQueue, type BackgroundProgress } from './copyQueue';
 import { CopyKeys } from './copyKeys';
-import { asBytes, atlasMade, copyEntry, OUTSIDE, type CopyMaker, entryKeyOf, identityOf, makeCopy, PENDING, readyIn, stored, UNKNOWN_RETRY_MS, type CopyEntry, type StoredFacts } from './copyEntries';
+import { asBytes, copyEntry, OUTSIDE, type CopyMaker, entryKeyOf, identityOf, makeCopy, PENDING, readyIn, stored, UNKNOWN_RETRY_MS, type CopyEntry, type StoredFacts } from './copyEntries';
 import type { PreparedSource } from './sourcePrepare';
 import type { GrowingCopy } from '../sound/codec/growingCopy';
 
@@ -239,7 +241,8 @@ export class SoundCopies {
     this.set(entry, { state: 'converting', progress: null });
     try {
       const read = await untilStuck('reading a sound', (step) => this.files.read(record, step));
-      const made = await atlasMade(read);
+      // A file Atlas made is never converted again.
+      const made = await readMarkedCopy(rangesOf(read), record.filePath);
       if (made) {
         this.markStored(record, entry, made.key, stored(made, record.kind), this.files.pathNow(record));
         return;

@@ -1,5 +1,5 @@
 import type { SoundKind } from '../sound/soundTypes';
-import { stemCopyOf } from './copyNames';
+import { keptFirst, stemCopyOf } from './copyNames';
 import type { SoundFileEntry } from './soundLocation';
 import { joinRelative, parentOfRelative } from './soundPaths';
 
@@ -68,8 +68,7 @@ export class KnownCopies {
   copyOf(kind: SoundKind, source: string): string | null {
     const holders = this.bySource.get(keyOf(kind, source));
     if (!holders || holders.size === 0) return null;
-    const named = stemCopyOf(source);
-    const ordered = [...holders].sort((a, b) => (a === named ? -1 : b === named ? 1 : a < b ? -1 : a > b ? 1 : 0));
+    const ordered = [...holders].sort(keptFirst(stemCopyOf(source)));
     return ordered.find((path) => this.listed(kind, path)?.size === this.copies.get(keyOf(kind, path))?.size) ?? null;
   }
 

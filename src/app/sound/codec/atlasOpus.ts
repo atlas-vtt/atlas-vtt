@@ -16,7 +16,6 @@ export const CODEC_VERSION = 1;
 
 /** The comment that marks a file as Atlas-made. */
 export const ATLAS_MARK = 'ATLAS_VTT';
-const VTT = ATLAS_MARK;
 const SOURCE = 'ATLAS_SOURCE';
 const FROM = 'ATLAS_FROM';
 const LUFS = 'ATLAS_LUFS';
@@ -80,7 +79,7 @@ export function atlasComments(facts: CopyTags): string[] {
   if (!SOURCE_KEY.test(facts.key)) throw new Error('A sound key is 64 lowercase hex digits.');
   if (!Number.isInteger(facts.codec) || facts.codec < 1 || facts.codec > MAX_CODEC) throw new Error('A codec version is a positive integer.');
   if (!isFact(facts.lufs, LUFS_RANGE) || !isFact(facts.truePeakDb, TRUE_PEAK_RANGE)) throw new Error('Loudness out of the range a copy may say.');
-  const comments = [`${VTT}=${String(facts.codec)}`, `${SOURCE}=${facts.key}`, `${FROM}=${cleanFrom(facts.from)}`, `${LUFS}=${String(facts.lufs)}`, `${TRUE_PEAK}=${String(facts.truePeakDb)}`];
+  const comments = [`${ATLAS_MARK}=${String(facts.codec)}`, `${SOURCE}=${facts.key}`, `${FROM}=${cleanFrom(facts.from)}`, `${LUFS}=${String(facts.lufs)}`, `${TRUE_PEAK}=${String(facts.truePeakDb)}`];
   if (Number.isFinite(facts.lufs)) {
     const gain = Math.min(INT16_MAX, Math.max(INT16_MIN, Math.round(256 * (REFERENCE_LUFS - facts.lufs))));
     comments.push(`${TRACK_GAIN}=${String(gain)}`);
@@ -241,7 +240,7 @@ function headerFacts(start: Uint8Array): HeaderFacts | null {
   if (!header) return null;
   const values = valuesOf(header.comments);
   const key = values.get(SOURCE);
-  const codec = codecOf(values.get(VTT));
+  const codec = codecOf(values.get(ATLAS_MARK));
   const lufs = numberIn(values.get(LUFS), LUFS_RANGE, true);
   const truePeakDb = numberIn(values.get(TRUE_PEAK), TRUE_PEAK_RANGE, true);
   if (key === undefined || !SOURCE_KEY.test(key) || codec === null || lufs === null || truePeakDb === null) return null;

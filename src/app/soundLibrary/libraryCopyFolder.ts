@@ -2,7 +2,7 @@ import { readAtlasCopy, type AtlasCopyFacts } from '../sound/codec/atlasOpus';
 import { SoundImportError } from '../sound/codec/demux/demuxTypes';
 import type { SoundKind, SoundRecord } from '../sound/soundTypes';
 import type { CopyFolder, FolderCopy, SourceStat } from '../soundDirector/copyFolder';
-import { partOf, stemCopyOf, twinsOf } from './copyNames';
+import { keptFirst, partOf, stemCopyOf, twinsOf } from './copyNames';
 import { CopyReader, FACTS_STUCK_MS } from './copyReader';
 import type { SoundLibrary } from './SoundLibrary';
 import type { SoundLocation } from './soundLocation';
@@ -191,8 +191,7 @@ export class LibraryCopyFolder implements CopyFolder {
     const [heldFacts, pathFacts] = await Promise.all([this.reader.factsAt(location, held, false), this.reader.factsAt(location, path, false)]);
     const same = (other: AtlasCopyFacts | null): boolean => other !== null && copyId(other) === copyId(facts);
     if (!same(heldFacts) || !same(pathFacts) || !location.canTrash()) return path;
-    const named = stemCopyOf(joinRelative(parentOfRelative(path), facts.from));
-    const kept = held === named ? held : path === named ? path : held < path ? held : path;
+    const [kept = path] = [held, path].sort(keptFirst(stemCopyOf(joinRelative(parentOfRelative(path), facts.from))));
     const loser = kept === held ? path : held;
     await location.trash(loser);
     const library = this.library();

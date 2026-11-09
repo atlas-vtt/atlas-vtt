@@ -1,4 +1,4 @@
-import { hasAtlasMark } from '../sound/codec/atlasMark';
+import { readMarkedCopy } from '../sound/codec/atlasMark';
 import { readAtlasCopy, type AtlasCopyFacts } from '../sound/codec/atlasOpus';
 import { SoundImportError } from '../sound/codec/demux/demuxTypes';
 import type { FileRanges } from '../sound/codec/fileRanges';
@@ -84,8 +84,7 @@ export class CopyReader {
       const stat = await location.stat(path);
       if (!stat) return null;
       const ranges: FileRanges = { size: stat.size, read: (start, end) => location.readRange(path, start, end) };
-      const facts = await readAtlasCopy(ranges);
-      if (!facts && refuse && (await hasAtlasMark(ranges))) throw new SoundImportError('unreadable', `${path} was made by Atlas and its facts do not read.`);
+      const facts = refuse ? await readMarkedCopy(ranges, path) : await readAtlasCopy(ranges);
       return facts && { facts, size: stat.size };
     } catch (error) {
       if (error instanceof SoundImportError) throw error;

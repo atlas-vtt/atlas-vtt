@@ -1,4 +1,5 @@
-import { ATLAS_MARK } from './atlasOpus';
+import { ATLAS_MARK, readAtlasCopy, type AtlasCopyFacts } from './atlasOpus';
+import { SoundImportError } from './demux/demuxTypes';
 import type { FileRanges } from './fileRanges';
 import { MAX_PAGE_BYTES } from './oggPages';
 
@@ -25,4 +26,11 @@ export async function hasAtlasMark(file: FileRanges): Promise<boolean> {
   if (indexOf(head.subarray(0, CAPTURE.length), CAPTURE, 0) !== 0) return false;
   const tags = indexOf(head, TAGS_MAGIC, 0);
   return tags >= 0 && indexOf(head, MARK, tags) >= 0;
+}
+
+/** What an Atlas-made copy says of itself; a file whose mark stands beside facts that do not read is refused as damaged. */
+export async function readMarkedCopy(file: FileRanges, name: string): Promise<AtlasCopyFacts | null> {
+  const facts = await readAtlasCopy(file);
+  if (facts || !(await hasAtlasMark(file))) return facts;
+  throw new SoundImportError('unreadable', `${name} was made by Atlas and its facts do not read.`);
 }

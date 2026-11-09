@@ -22,3 +22,13 @@ export async function twinsOf(path: string, exists: (candidate: string) => Promi
   }
   return twins;
 }
+
+/** Orders the copies of one source as every device keeps them: the one `named` after the source first, then the lowest path. */
+export function keptFirst(named: string): (a: string, b: string) => number {
+  return (a, b) => {
+    if (a === named) return -1;
+    if (b === named) return 1;
+    if (a === b) return 0;
+    return a < b ? -1 : 1;
+  };
+}
