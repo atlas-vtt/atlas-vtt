@@ -1,6 +1,8 @@
 ## New
 
 - Rooms: in the lighting tool's Rooms mode, carve rooms out of solid rock instead of drawing walls one by one. Their outline stops sight, light, sound and tokens like walls, and a door dragged across an opening reaches the walls. Contributed by ThatMattLatt
+- Sounds in a linked folder become Opus files in that folder once you agree (originals go to the trash or stay), so they are never converted again and Atlas keeps no hidden copy of your sound library
+- The Sound page shows how far the conversion has got, with a button to pause it
 
 ## Fixed
 
@@ -16,6 +18,7 @@
 - Snapshots that were saved but no longer showed in a scene's snapshot tray appear there again
 - The player window shows the map live again when you reopen the scene it was showing, instead of staying frozen on its last picture
 - Statblocks with large tables no longer freeze Obsidian when their note opens beside the statblock or when the window is resized
+- Sound uses far less memory while preparing long files
 
 ## Atlas Online
 

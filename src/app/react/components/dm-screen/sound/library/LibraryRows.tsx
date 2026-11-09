@@ -15,7 +15,7 @@ import { soundRecordOf, type StoredSound } from '../../../../../soundLibrary/sou
 import { showNotice } from '../../../../../ui/notice';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { useSoundValue } from '../useSound';
-import { useSoundingKey } from './useLibrary';
+import { useShelfRevision, useSoundingKey } from './useLibrary';
 import { useSoundHold } from '../soundHold';
 import { LibraryRow, type RowHandlers } from './LibraryRow';
 import { entryOfRow, filesOfRows, selectionAfter, type LibraryRow as Row, type RootShelf } from './rowModel';
@@ -92,7 +92,7 @@ export function LibraryRows({ rows, loading, preparing, emptyText, onClearSearch
   const hold = useSoundHold(director);
   // Paused music is in no list the mix holds: its track keeps its mark by its id.
   const heldTrack = hold !== null && soundingKey !== null ? director.shelf.idOfKey(soundingKey) : null;
-  useSoundValue(director, (snapshot) => snapshot.shelfRevision);
+  useShelfRevision(director);
 
   const rowHeight = useRowHeight();
   const virtualizer = useVirtualizer({

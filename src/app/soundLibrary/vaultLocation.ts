@@ -1,5 +1,7 @@
-import { normalizePath, TFile, TFolder, type App, type EventRef, type TAbstractFile } from 'obsidian';
+import { FileSystemAdapter, normalizePath, TFile, TFolder, type App, type EventRef, type TAbstractFile } from 'obsidian';
 import { ensureFolder, isPathTaken } from '../plugin/vaultFolders';
+import { readRangeOf } from './externalBytes';
+import { nodeFilesOf } from './nodeFiles';
 import { isAtlasOwn, isAudioPath } from './soundFiles';
 import { isListableName, joinRelative, relativeBelow, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathReservedError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
@@ -43,10 +45,28 @@ export class VaultLocation implements SoundLocation {
     return Promise.resolve(isPathTaken(this.app, this.vaultPath(path)));
   }
 
+  stat(path: string): Promise<{ size: number; mtime: number } | null> {
+    const file = this.entry(path);
+    return Promise.resolve(file instanceof TFile ? { size: file.stat.size, mtime: file.stat.mtime } : null);
+  }
+
   async read(path: string): Promise<Blob> {
+    return new Blob([await this.app.vault.readBinary(this.fileAt(path))]);
+  }
+
+  /** On a disk only the range is read; where the vault is no folder on one (mobile), the file is read and cut. */
+  async readRange(path: string, start: number, end: number): Promise<Uint8Array<ArrayBuffer>> {
+    const file = this.fileAt(path);
+    const { adapter } = this.app.vault;
+    const files = adapter instanceof FileSystemAdapter ? nodeFilesOf(window) : null;
+    if (files && adapter instanceof FileSystemAdapter) return readRangeOf(files.fs, adapter.getFullPath(file.path), start, end);
+    return new Uint8Array(await this.app.vault.readBinary(file)).slice(start, end);
+  }
+
+  private fileAt(path: string): TFile {
     const file = this.entry(path);
     if (!(file instanceof TFile)) throw new Error(`${path} is not in the vault.`);
-    return new Blob([await this.app.vault.readBinary(file)]);
+    return file;
   }
 
   resourceUrl(path: string): string | null {
@@ -88,6 +108,25 @@ export class VaultLocation implements SoundLocation {
     const target = this.changeable(path);
     if (isPathTaken(this.app, target)) throw new SoundPathTakenError(path);
     await this.app.vault.createBinary(target, await content.arrayBuffer());
+  }
+
+  /** Writes over the file in place through the vault, so sync follows; a path with no file gets a new one. */
+  async replace(path: string, content: Blob): Promise<void> {
+    this.changeable(path);
+    const file = this.entry(path);
+    if (file instanceof TFile) await this.app.vault.modifyBinary(file, await content.arrayBuffer());
+    else await this.write(path, content);
+  }
+
+  /** Only where Obsidian's "Deleted files" sends files to a trash: anything else, an unknown value included, could delete for good. */
+  canTrash(): boolean {
+    const config = (this.app.vault as unknown as { getConfig?: (key: string) => unknown }).getConfig;
+    const option = typeof config === 'function' ? config.call(this.app.vault, 'trashOption') : undefined;
+    return option === 'system' || option === 'local';
+  }
+
+  canWrite(): Promise<boolean> {
+    return Promise.resolve(true);
   }
 
   async trash(path: string): Promise<void> {

@@ -2,20 +2,24 @@ import React, { memo, useState } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { t } from '../../../../../i18n';
 import type { SoundKind } from '../../../../../sound/soundTypes';
+import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
 import { carriesSounds, readSoundDrag } from '../../../../../soundLibrary/soundDrag';
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { isLinked, type SoundRootState } from '../../../../../soundLibrary/SoundRoots';
 import { cn } from '../../../../../../utils/cn';
+import { ConvertingLine } from './ConvertingLine';
 import { StarterPackButton } from './StarterPack';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { AmbienceGlyph, MusicGlyph, TagGlyph } from './libraryGlyphs';
+import { rootMenu } from './rootMenu';
 import type { RootShelf } from './rowModel';
 import { tagRowMenu } from './tagMenus';
 import type { LibraryActions } from './useLibraryActions';
 
 interface RailProps {
   library: SoundLibrary;
+  director: SoundDirector;
   actions: LibraryActions;
   shelves: Readonly<Record<SoundKind, RootShelf>>;
   /** The root shown; none while a search spans every root. */
@@ -117,7 +121,7 @@ const RailTag = memo(function RailTag({ actions, kind, name, count, selected, on
   );
 });
 
-function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, onTag }: Omit<RailProps, 'kind'> & { kind: SoundKind; shown: boolean }): React.JSX.Element {
+function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, onTag }: Omit<RailProps, 'kind' | 'director'> & { kind: SoundKind; shown: boolean }): React.JSX.Element {
   const root = library.rootOf(kind);
   const menu = useContextMenu();
   const linked = isLinked(root);
@@ -145,11 +149,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
             onClick={(event) => {
               const box = event.currentTarget.getBoundingClientRect();
               const win = event.currentTarget.ownerDocument.defaultView ?? window;
-              menu.open([
-                { type: 'item', label: t('audio.library.prepareAll'), icon: 'hard-drive-download', disabled: library.locationOf(kind) === null, onClick: () => actions.prepare(kind) },
-                { type: 'item', label: t('audio.library.changeFolder'), icon: 'folder-open', onClick: () => actions.link(kind, win) },
-                { type: 'item', label: t('audio.library.unlink'), icon: 'unlink', onClick: () => actions.unlink(kind) },
-              ], { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label: t('audio.library.rootMenu', { name: label }) });
+              menu.open(rootMenu(library, actions, kind, win), { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label: t('audio.library.rootMenu', { name: label }) });
             }}
           >
             <MoreHorizontal aria-hidden="true" />
@@ -168,12 +168,13 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
   );
 }
 
-/** Each root with its count and where it lies, and the tags of its tracks. */
-export function LibraryRail({ kind, ...props }: RailProps): React.JSX.Element {
+/** Each root with its count and where it lies, and the tags of its tracks; under them, how far converting has come. */
+export function LibraryRail({ kind, director, ...props }: RailProps): React.JSX.Element {
   return (
     <nav className="atlas-sound-lib__rail" aria-label={t('audio.library.rail')}>
       <RailRoot {...props} kind="music" shown={kind === 'music'} />
       <RailRoot {...props} kind="ambience" shown={kind === 'ambience'} />
+      <ConvertingLine director={director} />
     </nav>
   );
 }

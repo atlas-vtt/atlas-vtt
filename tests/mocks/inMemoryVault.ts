@@ -55,12 +55,21 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   };
   /** A modification time per file that every write moves on, as a disk's would. */
   const mtimes = new Map<string, number>();
+  /** The bytes of files written as binary, which text would mangle: `files` keeps their text as before. */
+  const binaries = new Map<string, ArrayBuffer>();
   let clock = 0;
   const touch = (path: string): void => { mtimes.set(path, ++clock); };
   const setFile = (path: string, content: string): void => {
     files.set(path, content);
+    binaries.delete(path);
     touch(path);
   };
+  const setBinary = (path: string, content: ArrayBuffer): void => {
+    addParentFolders(path);
+    setFile(path, new TextDecoder().decode(content));
+    binaries.set(path, content.slice(0));
+  };
+  const bytesAt = (path: string): ArrayBuffer => binaries.get(path)?.slice(0) ?? new TextEncoder().encode(files.get(path) ?? '').buffer;
   const writeFile = (path: string, content: string): void => {
     addParentFolders(path);
     setFile(path, content);
@@ -68,7 +77,7 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   /** A file handle with the stat Obsidian keeps: size and modification time. */
   const fileAt = (path: string): TFile => {
     const file = new TFile(path);
-    file.stat = { ctime: 0, mtime: mtimes.get(path) ?? 0, size: (files.get(path) ?? '').length };
+    file.stat = { ctime: 0, mtime: mtimes.get(path) ?? 0, size: binaries.get(path)?.byteLength ?? (files.get(path) ?? '').length };
     return file;
   };
   const moveFile = async (file: TAbstractFile, newPath: string): Promise<void> => move(file.path, newPath);
@@ -90,7 +99,10 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   /** Deletes a file, or a folder with everything inside it. */
   const removeWithin = (target: string): void => {
     const within = (path: string): boolean => path === target || path.startsWith(`${target}/`);
-    for (const path of [...files.keys()].filter(within)) files.delete(path);
+    for (const path of [...files.keys()].filter(within)) {
+      files.delete(path);
+      binaries.delete(path);
+    }
     for (const path of [...folders].filter(within)) folders.delete(path);
   };
   /** Moves a file, or a folder with everything inside it. */
@@ -101,6 +113,9 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     for (const path of [...files.keys()].filter(within)) {
       addParentFolders(moved(path));
       files.set(moved(path), files.get(path) ?? '');
+      const binary = binaries.get(path);
+      if (binary) binaries.set(moved(path), binary);
+      binaries.delete(path);
       mtimes.set(moved(path), mtimes.get(path) ?? ++clock);
       files.delete(path);
     }
@@ -133,15 +148,19 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
       }),
       write: vi.fn(async (path: string, content: string) => writeFile(path, content)),
       read: vi.fn(async (path: string) => files.get(path) ?? ''),
-      writeBinary: vi.fn(async (path: string, content: ArrayBuffer) => writeFile(path, new TextDecoder().decode(content))),
-      readBinary: vi.fn(async (path: string) => new TextEncoder().encode(files.get(path) ?? '').buffer),
+      writeBinary: vi.fn(async (path: string, content: ArrayBuffer) => setBinary(path, content)),
+      readBinary: vi.fn(async (path: string) => bytesAt(path)),
       remove: vi.fn(async (path: string) => { files.delete(path); }),
       list: vi.fn(async (path: string) => ({
         files: [...files.keys()].filter((candidate) => parentOf(candidate) === path),
         folders: [...folders].filter((candidate) => parentOf(candidate) === path),
       })),
       rename: vi.fn(async (from: string, to: string) => move(from, to)),
-      copy: vi.fn(async (from: string, to: string) => writeFile(to, files.get(from) ?? '')),
+      copy: vi.fn(async (from: string, to: string) => {
+        const binary = binaries.get(from);
+        if (binary) setBinary(to, binary);
+        else writeFile(to, files.get(from) ?? '');
+      }),
       // As Obsidian's desktop adapter: `fs.rm`, which refuses any folder unless recursive.
       rmdir: vi.fn(async (path: string, recursive: boolean) => {
         if (!recursive) throw new Error(`EISDIR: rm refuses a folder without recursive: ${path}`);
@@ -151,7 +170,7 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
       trashLocal: vi.fn(async (path: string) => removeWithin(path)),
       getResourcePath: vi.fn((path: string) => `app://local/${path}`),
       stat: vi.fn(async (path: string) => {
-        if (files.has(path)) return { type: 'file', size: (files.get(path) ?? '').length, ctime: 0, mtime: 0 };
+        if (files.has(path)) return { type: 'file', size: binaries.get(path)?.byteLength ?? (files.get(path) ?? '').length, ctime: 0, mtime: 0 };
         return folders.has(path) ? { type: 'folder', size: 0, ctime: 0, mtime: 0 } : null;
       }),
     },
@@ -199,14 +218,14 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     read: vi.fn(async (file: TFile) => files.get(file.path) ?? ''),
     cachedRead: vi.fn(async (file: TFile) => files.get(file.path) ?? ''),
     getResourcePath: vi.fn((file: TFile) => `app://vault/${file.path}`),
-    readBinary: vi.fn(async (file: TFile) => new TextEncoder().encode(files.get(file.path) ?? '').buffer),
+    readBinary: vi.fn(async (file: TFile) => bytesAt(file.path)),
     createBinary: vi.fn(async (path: string, content: ArrayBuffer) => {
       assertFree(path);
-      writeFile(path, new TextDecoder().decode(content));
+      setBinary(path, content);
       return fileAt(path);
     }),
     modifyBinary: vi.fn(async (file: TFile, content: ArrayBuffer) => {
-      setFile(file.path, new TextDecoder().decode(content));
+      setBinary(file.path, content);
     }),
   };
 

@@ -8,10 +8,11 @@ import m4a from '../../fixtures/sound/sources/tone-44k.m4a?url';
 import adts from '../../fixtures/sound/sources/tone-44k.aac?url';
 import alac from '../../fixtures/sound/sources/refused-alac.m4a?url';
 import ac3 from '../../fixtures/sound/sources/refused.ac3?url';
+import { CODEC_VERSION, readAtlasCopy } from '@/app/sound/codec/atlasOpus';
 import { openOggOpus } from '@/app/sound/codec/oggOpusReader';
 import { openSoundSource } from '@/app/sound/codec/demux/openSoundSource';
 import { SoundImporter, type SoundImportResult } from '@/app/sound/codec/soundImporter';
-import { memoryBytes, sineAt } from './soundHarness';
+import { COPY_TAGS, memoryBytes, sineAt } from './soundHarness';
 
 const FRAMES_2S = 96_000;
 
@@ -68,7 +69,7 @@ describe('importing a sound', () => {
 
   it('turns a WAV into Ogg Opus of its exact length, at its place', async () => {
     const shares: number[] = [];
-    const result = await importer.run({ source: waveBlob(48000, 2, 440), kind: 'music', loop: false }, (share) => shares.push(share));
+    const result = await importer.run({ ...COPY_TAGS, source: waveBlob(48000, 2, 440), kind: 'music', loop: false }, (share) => shares.push(share));
     expect(result.frames).toBe(FRAMES_2S);
     expect(result.channels).toBe(1);
     const samples = await decoded(result);
@@ -81,8 +82,29 @@ describe('importing a sound', () => {
     expect(shares.length).toBeGreaterThan(0);
   });
 
+  it('a copy says what it is', async () => {
+    const result = await importer.run({ source: await blobOf(plainMp3), key: 'a'.repeat(64), from: 'plain-44k.mp3', kind: 'music', loop: false });
+    const facts = await readAtlasCopy(result.bytes);
+    expect(facts?.key).toBe('a'.repeat(64));
+    expect(facts?.from).toBe('plain-44k.mp3');
+    expect(facts?.codec).toBe(CODEC_VERSION);
+    expect(facts?.frames).toBe(result.frames);
+    expect(facts?.lufs).toBe(result.lufs);
+    expect(facts?.peaks?.length).toBe(400);
+    expect(facts?.peaks).toEqual(result.peaks);
+    expect(Math.max(...result.peaks)).toBe(255);
+  });
+
+  it('an ambience copy carries no waveform', async () => {
+    const result = await importer.run({ ...COPY_TAGS, source: waveBlob(48000, 2, 440), kind: 'ambience', loop: false });
+    expect(result.peaks.length).toBe(0);
+    const facts = await readAtlasCopy(result.bytes);
+    expect(facts?.peaks).toBeNull();
+    expect(facts?.truePeakDb).toBe(result.truePeakDb);
+  });
+
   it('resamples a 44.1 kHz WAV to the length it has at 48 kHz', async () => {
-    const result = await importer.run({ source: waveBlob(44100, 2, 440), kind: 'ambience', loop: false });
+    const result = await importer.run({ ...COPY_TAGS, source: waveBlob(44100, 2, 440), kind: 'ambience', loop: false });
     expect(result.frames).toBe(FRAMES_2S);
     const samples = await decoded(result);
     expect(samples.length).toBe(FRAMES_2S);
@@ -91,8 +113,8 @@ describe('importing a sound', () => {
   });
 
   it('keeps stereo and encodes at the kind\'s bitrate', async () => {
-    const music = await importer.run({ source: waveBlob(48000, 2, 440, 0.25, 2), kind: 'music', loop: false });
-    const ambience = await importer.run({ source: waveBlob(48000, 2, 440, 0.25, 2), kind: 'ambience', loop: false });
+    const music = await importer.run({ ...COPY_TAGS, source: waveBlob(48000, 2, 440, 0.25, 2), kind: 'music', loop: false });
+    const ambience = await importer.run({ ...COPY_TAGS, source: waveBlob(48000, 2, 440, 0.25, 2), kind: 'ambience', loop: false });
     expect(music.channels).toBe(2);
     expect(ambience.bytes.size).toBeLessThan(music.bytes.size);
   });
@@ -108,7 +130,7 @@ describe('importing a sound', () => {
     const source = await blobOf(url);
     let result: SoundImportResult;
     try {
-      result = await importer.run({ source, kind: 'music', loop: false });
+      result = await importer.run({ ...COPY_TAGS, source, kind: 'music', loop: false });
     } catch (error) {
       // Playwright's Chromium has no AAC, which only a real Chrome or Obsidian's Electron has.
       if (name.includes('AAC') && error instanceof Error && error.message.includes('cannot decode')) {
@@ -132,8 +154,8 @@ describe('importing a sound', () => {
     bytes.set(await new Uint8Array(await waveBlob(48000, 1, 440).arrayBuffer()).slice(0, 44), 0);
     for (let i = 4800; i < frames - 9600; i++) view.setInt16(44 + i * 2, Math.round(8000 * Math.sin((2 * Math.PI * 440 * i) / 48000)), true);
     const source = new Blob([bytes]);
-    const kept = await importer.run({ source, kind: 'ambience', loop: false });
-    const trimmed = await importer.run({ source, kind: 'ambience', loop: true });
+    const kept = await importer.run({ ...COPY_TAGS, source, kind: 'ambience', loop: false });
+    const trimmed = await importer.run({ ...COPY_TAGS, source, kind: 'ambience', loop: true });
     console.log(`loop trim: ${kept.frames} frames kept whole, ${trimmed.frames} once trimmed`);
     expect(kept.frames).toBe(frames);
     // A pure tone: losing a frame to the trim shows at the wrap, and a short crossfade lines it up again.
@@ -143,7 +165,7 @@ describe('importing a sound', () => {
   });
 
   it('finds the ends of an MP3 without a tag, whose holes would sound on every loop', async () => {
-    const result = await importer.run({ source: await blobOf(plainMp3), kind: 'ambience', loop: true });
+    const result = await importer.run({ ...COPY_TAGS, source: await blobOf(plainMp3), kind: 'ambience', loop: true });
     console.log(`MP3 without a tag, marked as a loop: ${result.frames} frames, ${result.seam}`);
     expect(result.frames).toBeLessThanOrEqual(FRAMES_2S + 96);
     expect(result.seam).toBeDefined();
@@ -153,23 +175,23 @@ describe('importing a sound', () => {
     ['ALAC', alac, 'unsupported-codec'],
     ['AC-3', ac3, 'unknown-format'],
   ])('refuses %s, saying why', async (_name, url, reason) => {
-    await expect(importer.run({ source: await blobOf(url), kind: 'music', loop: false })).rejects.toMatchObject({ reason });
+    await expect(importer.run({ ...COPY_TAGS, source: await blobOf(url), kind: 'music', loop: false })).rejects.toMatchObject({ reason });
   });
 
   it('refuses what is no audio, and says so', async () => {
-    await expect(importer.run({ source: new Blob(['just some text, not sound at all']), kind: 'music', loop: false })).rejects.toMatchObject({ reason: 'unknown-format' });
+    await expect(importer.run({ ...COPY_TAGS, source: new Blob(['just some text, not sound at all']), kind: 'music', loop: false })).rejects.toMatchObject({ reason: 'unknown-format' });
   });
 
   it('refuses a file with nothing in it', async () => {
-    await expect(importer.run({ source: waveBlob(48000, 0, 440), kind: 'music', loop: false })).rejects.toMatchObject({ reason: 'empty' });
+    await expect(importer.run({ ...COPY_TAGS, source: waveBlob(48000, 0, 440), kind: 'music', loop: false })).rejects.toMatchObject({ reason: 'empty' });
   });
 
   it('can be cancelled, and goes on with the next', async () => {
     const controller = new AbortController();
-    const cancelled = importer.run({ source: waveBlob(48000, 60, 440), kind: 'music', loop: false }, undefined, undefined, controller.signal);
+    const cancelled = importer.run({ ...COPY_TAGS, source: waveBlob(48000, 60, 440), kind: 'music', loop: false }, undefined, undefined, controller.signal);
     controller.abort();
     await expect(cancelled).rejects.toMatchObject({ name: 'AbortError' });
-    const next = await importer.run({ source: waveBlob(48000, 1, 440), kind: 'music', loop: false });
+    const next = await importer.run({ ...COPY_TAGS, source: waveBlob(48000, 1, 440), kind: 'music', loop: false });
     expect(next.frames).toBe(48000);
   });
 });
@@ -201,7 +223,7 @@ describe('a long file', () => {
     const importer = new SoundImporter();
     const started = performance.now();
     let last = 0;
-    const result = await importer.run({ source, kind: 'music', loop: false }, (share) => {
+    const result = await importer.run({ ...COPY_TAGS, source, kind: 'music', loop: false }, (share) => {
       last = share;
     });
     importer.dispose();

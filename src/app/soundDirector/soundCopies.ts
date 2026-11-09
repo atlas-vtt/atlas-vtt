@@ -1,12 +1,22 @@
-import { SoundImportError, type ImportProgress, type SoundImportJob, type SoundImportResult, type StreamSink } from '../sound/codec/soundImporter';
-import { GrowingCopy } from '../sound/codec/growingCopy';
-import { growingInfo, grownGain } from './growingCopies';
-import { soundInfoOf, type SoundMeasure } from '../sound/codec/soundInfo';
-import type { CachedSound, SoundIdentity } from '../sound/codec/opusCache';
+import { SoundImportError } from '../sound/codec/soundImporter';
+import { forPlayers } from '../sound/codec/atlasOpus';
+import { readMarkedCopy } from '../sound/codec/atlasMark';
+import { rangesOf } from '../sound/codec/fileRanges';
+import { growingInfo } from './growingCopies';
+import { soundInfoOf } from '../sound/codec/soundInfo';
 import { untilStuck } from '../sound/codec/stuckWatch';
 import type { SoundBytes, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConversion';
+import type { CopyFolder } from './copyFolder';
+import { backgroundCopies, CopyQueue, type BackgroundProgress } from './copyQueue';
+import { CopyKeys } from './copyKeys';
+import { CopyRefusals } from './copyRefusals';
+import { asBytes, copyEntry, OUTSIDE, type CopyMaker, entryKeyOf, identityOf, makeCopy, PENDING, readyIn, stored, UNKNOWN_RETRY_MS, type CopyEntry, type StoredFacts } from './copyEntries';
 import type { PreparedSource } from './sourcePrepare';
+import type { GrowingCopy } from '../sound/codec/growingCopy';
+
+export { backgroundCopies } from './copyQueue';
+export type { CopyMaker } from './copyEntries';
 
 /** What says which file a record stands for. */
 export type SoundFileRef = Pick<SoundRecord, 'filePath' | 'audioSize'>;
@@ -20,85 +30,35 @@ export interface SoundFileAccess {
   pathNow(sound: SoundFileRef): string;
 }
 
-/** The parts of `OpusCache` a device's copies need. */
-export interface CopyCache {
-  get(hash: string): Promise<CachedSound | null>;
-  put(hash: string, copy: { bytes: Blob; frames: number; channels: number; lufs: number; truePeakDb: number }): Promise<void>;
-  bytes(hash: string): Promise<SoundBytes | null>;
-  blob(hash: string): Promise<Blob | null>;
-  setPeaks(hash: string, peaks: Uint8Array<ArrayBuffer>): Promise<void>;
-  hashOf(path: string, size: number, mtime: number): Promise<string | null>;
-  remember(identity: SoundIdentity): Promise<void>;
-  pin(hash: string): void;
-  unpin(hash: string): void;
-}
-
-export interface CopyMaker {
-  run(job: SoundImportJob, onProgress?: ImportProgress, sink?: StreamSink): Promise<SoundImportResult>;
-}
-
-
-
-const READY: SoundConversion = { state: 'ready' };
-
 /**
- * Copies made at once in the background: each takes a worker and an encoder's thread, and holds its source
- * and its copy in memory, so a few, never one per core. What the GM pressed may always take one more.
- */
-export function backgroundCopies(cores: number = typeof navigator === 'undefined' ? 2 : navigator.hardwareConcurrency || 2): number {
-  return Math.max(1, Math.min(3, Math.floor(cores / 4)));
-}
-
-interface CopyEntry {
-  identity: string;
-  conversion: SoundConversion;
-  key: string | null;
-  measure: SoundMeasure | null;
-  peaks: Uint8Array<ArrayBuffer> | null;
-  /** Settles once what the cache knows of the file has been read. */
-  known: Promise<void>;
-  /** The copy while it is made, for a sound that may play before it is whole. */
-  growing: GrowingCopy | null;
-  /** The gain the table was last told of a growing copy, so a small move is no change. */
-  toldGainDb: number | null;
-}
-
-const identityOf = (path: string, stat: { size: number; mtime: number }): string => `${path}|${stat.size}|${stat.mtime}`;
-
-
-
-/**
- * The copies of a vault's sounds on this device: which exist, one queue that makes the rest, and the
- * bytes of each. A conversion runs in a worker of its own, so it costs the map no frame. A few run at
- * once (`backgroundCopies`); what the GM pressed goes first, and starts at once beside them.
+ * The copies of a vault's sounds on this device: Atlas-made Opus files in the GM's folders, one queue that
+ * makes the rest, and the bytes of each. A file that says it is a copy is ready as it is; a source is
+ * converted once the GM agreed for its folder, in a worker of its own, and stored beside it.
  */
 export class SoundCopies {
+  /** By record and the path it names: a record that moved to its copy while an older object of it still names the source is two entries. */
   private readonly entries = new Map<string, CopyEntry>();
-  private readonly keys = new Map<string, string>();
+  private readonly keys = new CopyKeys();
   private readonly listeners = new Set<() => void>();
-  private queue: SoundRecord[] = [];
-  /** Conversions under way, and the ids of those asked for by a press, which may run past the limit. */
-  private active = 0;
-  private readonly urgent = new Set<string>();
+  private readonly queue: CopyQueue;
   private disposed = false;
-  private pinned = new Set<string>();
-  private readonly toldRefused = new Set<string>();
-  private peaksQueue: CopyEntry[] = [];
-  private readingPeaks = false;
+  private readonly refusals: CopyRefusals;
 
   constructor(
     private readonly files: SoundFileAccess,
-    private readonly cache: CopyCache,
+    private readonly folder: CopyFolder,
     private readonly maker: CopyMaker,
     private readonly prepare: (source: ArrayBuffer | Blob) => Promise<PreparedSource>,
-    private readonly onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
-    private readonly readPeaks: (copy: Blob, frames: number) => Promise<Uint8Array<ArrayBuffer>>,
-    private readonly parallel = backgroundCopies(),
+    onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
+    parallel = backgroundCopies(),
     /** A copy that played while it was made is stored now: whatever still reads its growing pages may read the stored copy. */
     private readonly onStored: (key: string) => void = () => undefined,
-  ) {}
+  ) {
+    this.queue = new CopyQueue(parallel, (record) => files.statOf(record)?.size ?? 0, (record) => this.convert(record), () => this.changed());
+    this.refusals = new CopyRefusals((record) => folder.rootOf(record), onRefused, (root) => this.queue.drop((record) => folder.rootOf(record) === root));
+  }
 
-  /** The same object while a sound's state is the same, since cards read it on every render. */
+  /** The same object while a sound's state is the same: cards read it on every render. */
   stateOf(sound: SoundRecord): SoundConversion {
     return this.entryOf(sound)?.conversion ?? NOT_CONVERTED;
   }
@@ -120,102 +80,138 @@ export class SoundCopies {
     return entry.growing ? growingInfo(entry.key, entry.growing, entry.toldGainDb, trim) : null;
   }
 
-  /** How a sound goes over its length; null until worked out, which only music is. */
+  /** How a music sound goes over its length, as its file says; null for ambience and until it is known. */
   peaksFor(record: SoundRecord): Uint8Array<ArrayBuffer> | null {
     return this.entryOf(record)?.peaks ?? null;
   }
 
   /** The record a copy was last made or found for. */
   recordIdOf(key: string): string | null {
-    return this.keys.get(key) ?? null;
+    return this.keys.get(key)?.recordId ?? null;
   }
 
-  /** Asks for copies; `urgent` is what the GM pressed. A file not in the vault yet is asked for again when it comes. */
+  /** Every record a copy was made or found for, newest first. */
+  recordIdsOf(key: string): string[] {
+    return this.keys.recordIdsOf(key);
+  }
+
+  /**
+   * Asks for copies; `urgent` is what the GM pressed. A file not here yet, or in a folder the GM has not agreed
+   * to, is asked for again when that changes. Each sound's file is read for what it says of itself first, all of
+   * a request together, which keeps its order; a press is read first. A file whose reads took too long is asked
+   * again now and then and converted only when pressed.
+   */
   request(records: readonly SoundRecord[], urgent = false): void {
     if (this.disposed) return;
-    const wanted = records.filter((record) => this.stateOf(record).state === 'not-converted' && this.files.statOf(record));
-    const ids = new Set(wanted.map((record) => record.id));
-    if (urgent) {
-      this.queue = [...wanted, ...this.queue.filter((record) => !ids.has(record.id))];
-      for (const id of ids) this.urgent.add(id);
-    } else {
-      this.queue.push(...wanted.filter((record) => !this.queue.some((other) => other.id === record.id)));
-    }
-    this.pump();
+    const known = records.flatMap((record) => {
+      const entry = this.entryOf(record);
+      if (entry && entry.unknownAt !== null && !entry.looking && !urgent && Date.now() - entry.unknownAt >= UNKNOWN_RETRY_MS) entry.known = this.lookUp(record, entry);
+      else if (urgent) this.folder.hurry(record);
+      return entry?.known ?? [];
+    });
+    void Promise.all(known).then(() => this.enqueue(records, urgent));
   }
 
+  private enqueue(records: readonly SoundRecord[], urgent: boolean): void {
+    if (this.disposed) return;
+    const wanted = records.filter((record) => {
+      const entry = this.entryOf(record);
+      return entry?.conversion.state === 'not-converted' && (urgent || (entry.unknownAt === null && !this.refusals.holdsBack(record))) && this.folder.choiceFor(record) !== null;
+    });
+    if (wanted.length > 0) this.queue.add(wanted, urgent);
+  }
+
+  /** The library changed: a sound refused as outside every linked folder is looked at again where that is no longer so. */
+  recheckOutside(): void {
+    const linked = [...this.entries].filter(([, entry]) => entry.conversion.state === 'refused' && entry.conversion.reason === 'outside-folder' && !this.folder.outside(entry.record));
+    for (const [at] of linked) this.entries.delete(at);
+    if (linked.length > 0) this.changed();
+  }
+
+  /** The background's progress since it last stood empty; null while it has nothing to do. */
+  background(): BackgroundProgress | null {
+    return this.queue.background();
+  }
+
+  /** Holds the background until resumed or the next start; a press still converts. */
+  pauseBackground(paused: boolean): void {
+    this.queue.pause(paused);
+  }
+
+  /** What the engine reads a sound by: the copy being made, else its file. */
   async bytes(key: string): Promise<SoundBytes> {
     const growing = this.growingOf(key);
     if (growing) return growing;
-    const bytes = await this.cache.bytes(key);
-    if (bytes) return bytes;
-    this.forgetKey(key);
-    throw new Error(`The copy of ${key} is gone.`);
+    try {
+      return asBytes(await this.folder.blob(this.storedPath(key)));
+    } catch (error) {
+      this.forgetKey(key);
+      throw error;
+    }
   }
 
-  /** Keeps what plays out of the cache's eviction. */
-  pinOnly(keys: ReadonlySet<string>): void {
-    for (const key of keys) if (!this.pinned.has(key)) this.cache.pin(key);
-    for (const key of this.pinned) if (!keys.has(key)) this.cache.unpin(key);
-    this.pinned = new Set(keys);
-  }
-
-  dispose(): void {
-    this.disposed = true;
-    this.queue = [];
-    this.urgent.clear();
-    this.peaksQueue = [];
-    this.listeners.clear();
-  }
-
-  /** Only what is stored, whole: what goes to players. */
+  /** Only what is stored, whole, as players get it: without Atlas' comments, so the source's hash never leaves. */
   async storedBytes(key: string): Promise<SoundBytes> {
-    const bytes = await this.cache.bytes(key);
-    if (bytes) return bytes;
-    throw new Error(`The copy of ${key} is not stored yet.`);
+    return asBytes(await forPlayers(await this.folder.blob(this.storedPath(key))));
   }
 
   /** The copy of a key while it is made. */
   growingOf(key: string): GrowingCopy | null {
-    const id = this.keys.get(key);
-    const entry = id ? this.entries.get(id) : undefined;
-    return entry && !entry.measure ? entry.growing : null;
+    const entry = this.keys.get(key);
+    return entry?.measure ? null : (entry?.growing ?? null);
   }
 
+  dispose(): void {
+    this.disposed = true;
+    this.queue.dispose();
+    this.listeners.clear();
+  }
+
+  private storedPath(key: string): string {
+    const path = this.keys.get(key)?.audioPath;
+    if (!path) throw new Error(`The copy of ${key} is not stored yet.`);
+    return path;
+  }
+
+  /**
+   * A record's entry, made anew when its file changed. The entry of a copy just stored waits for the file's
+   * measure, as the listing may not show the new file yet.
+   */
   private entryOf(record: SoundRecord): CopyEntry | null {
+    const at = entryKeyOf(record.id, record.filePath);
     const stat = this.files.statOf(record);
+    const entry = this.entries.get(at);
+    if (entry?.identity === PENDING) {
+      if (stat) entry.identity = identityOf(record.filePath, stat);
+      return entry;
+    }
     if (!stat) return null;
     const identity = identityOf(record.filePath, stat);
-    let entry = this.entries.get(record.id);
-    if (entry?.identity !== identity) {
-      const fresh: CopyEntry = { identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, known: Promise.resolve(), growing: null, toldGainDb: null };
-      fresh.known = this.lookUp(record, stat, fresh);
-      this.entries.set(record.id, fresh);
-      entry = fresh;
-    }
-    return entry;
+    if (entry?.identity === identity) return entry;
+    const fresh = copyEntry(record, identity);
+    this.entries.set(at, fresh);
+    // Seen as it is made, so nobody is told: a listener that reads the same record must find it here.
+    if (this.folder.outside(record)) fresh.conversion = OUTSIDE;
+    else fresh.known = this.lookUp(record, fresh);
+    return fresh;
   }
 
-  private async lookUp(record: SoundRecord, stat: { size: number; mtime: number }, entry: CopyEntry): Promise<void> {
-    try {
-      const hash = await this.cache.hashOf(record.filePath, stat.size, stat.mtime);
-      const copy = hash === null ? null : await this.cache.get(hash);
-      if (hash !== null && copy && !this.disposed) this.markReady(record, entry, hash, copy);
-    } catch (error) {
-      console.error('[Atlas] Could not read the copies of sounds', error);
-    }
+  /** One at a time per entry; never rejects. */
+  private async lookUp(record: SoundRecord, entry: CopyEntry): Promise<void> {
+    entry.looking = true;
+    const found = await this.folder.factsOf(record).catch((error: unknown) => {
+      if (!this.disposed && error instanceof SoundImportError) this.refuse(record, entry, error.reason);
+      else if (!this.disposed) console.error('[Atlas] Could not read what a sound says of itself', error);
+      return null;
+    });
+    entry.looking = false;
+    entry.unknownAt = found === 'unknown' ? Date.now() : null;
+    if (found && found !== 'unknown' && !this.disposed) this.markStored(record, entry, found.facts.key, stored(found.facts, record.kind), found.audioPath);
   }
 
-  private markReady(record: SoundRecord, entry: CopyEntry, key: string, measure: SoundMeasure & { peaks?: Uint8Array<ArrayBuffer> }): void {
-    entry.key = key;
-    entry.measure = measure;
-    entry.peaks = measure.peaks ?? null;
-    if (record.kind === 'music' && entry.peaks === null) {
-      this.peaksQueue.push(entry);
-      void this.drainPeaks();
-    }
-    entry.conversion = READY;
-    this.keys.set(key, record.id);
+  private markStored(record: SoundRecord, entry: CopyEntry, key: string, facts: StoredFacts, audioPath: string): void {
+    readyIn(entry, key, facts, audioPath);
+    this.keys.hold(key, entry);
     if (entry.growing) {
       entry.growing.end();
       entry.growing = null;
@@ -225,122 +221,84 @@ export class SoundCopies {
     this.changed();
   }
 
-  private set(entry: CopyEntry, conversion: SoundConversion): void {
-    entry.conversion = conversion;
-    this.changed();
-  }
-
   private forgetKey(key: string): void {
     for (const entry of this.entries.values()) {
       if (entry.key !== key) continue;
       entry.key = null;
       entry.measure = null;
       entry.peaks = null;
+      entry.audioPath = null;
       entry.conversion = NOT_CONVERTED;
     }
     this.changed();
-  }
-
-  /** Starts what the queue's front may: up to `parallel`, and one more for a press, so a press never waits behind a long file. */
-  private pump(): void {
-    for (let next = this.queue[0]; next && !this.disposed; next = this.queue[0]) {
-      const pressed = this.urgent.has(next.id);
-      if (this.active >= this.parallel + (pressed ? 1 : 0)) return;
-      this.queue.shift();
-      this.active++;
-      void this.convert(next).finally(() => {
-        this.active--;
-        this.urgent.delete(next.id);
-        this.pump();
-      });
-    }
-  }
-
-  /** One after another, in a worker each: a waveform is never worth holding up a conversion for. */
-  private async drainPeaks(): Promise<void> {
-    if (this.readingPeaks) return;
-    this.readingPeaks = true;
-    try {
-      for (let entry = this.peaksQueue.shift(); entry && !this.disposed; entry = this.peaksQueue.shift()) await this.workOutPeaks(entry);
-    } finally {
-      this.readingPeaks = false;
-    }
-  }
-
-  private async workOutPeaks({ key, measure }: CopyEntry): Promise<void> {
-    if (key === null || measure === null) return;
-    try {
-      const copy = await this.cache.blob(key);
-      if (!copy) return;
-      const peaks = await this.readPeaks(copy, measure.frames);
-      await this.cache.setPeaks(key, peaks);
-      for (const entry of this.entries.values()) if (entry.key === key) entry.peaks = peaks;
-      this.changed();
-    } catch (error) {
-      if (!this.disposed) console.error(`[Atlas] Could not read the waveform of ${key}`, error);
-    }
   }
 
   private async convert(record: SoundRecord): Promise<void> {
     const entry = this.entryOf(record);
     if (!entry) return;
     await entry.known;
-    if (this.disposed || entry.conversion.state !== 'not-converted') return;
+    const choice = this.folder.choiceFor(record);
+    const stat = this.files.statOf(record);
+    // The file read, not the record's name: a record naming another device's copy reads the source this device holds.
+    const from = this.folder.sourceName(record);
+    if (this.disposed || entry.conversion.state !== 'not-converted' || choice === null || !stat || from === null) return;
     this.set(entry, { state: 'converting', progress: null });
     try {
-      const stat = this.files.statOf(record);
       const read = await untilStuck('reading a sound', (step) => this.files.read(record, step));
-      const { hash, source } = await this.prepare(read);
-      if (stat) await this.cache.remember({ path: record.filePath, size: stat.size, mtime: stat.mtime, hash });
-      const measure = (await this.cache.get(hash)) ?? (await this.made(record, entry, source, hash));
-      if (!this.disposed) this.markReady(record, entry, hash, measure);
-    } catch (error) {
-      if (this.disposed) return;
-      const reason = error instanceof SoundImportError ? error.reason : 'unreadable';
-      if (!(error instanceof SoundImportError)) console.error(`[Atlas] Could not convert ${record.filePath}`, error);
-      this.set(entry, { state: 'refused', reason });
-      if (!this.toldRefused.has(record.id)) {
-        this.toldRefused.add(record.id);
-        this.onRefused(record, reason);
+      // A file Atlas made is never converted again.
+      const made = await readMarkedCopy(rangesOf(read), record.filePath);
+      if (made) {
+        this.markStored(record, entry, made.key, stored(made, record.kind), this.files.pathNow(record));
+        return;
       }
-    }
-  }
-
-  private async made(record: SoundRecord, entry: CopyEntry, source: Blob, hash: string): Promise<SoundMeasure> {
-    const loop = record.kind === 'ambience' || record.loop !== undefined;
-    try {
-      const result = await this.maker.run({ source, kind: record.kind, loop, stream: !loop }, (share) => {
-        if (entry.conversion.state === 'converting') this.set(entry, { state: 'converting', progress: share });
-      }, this.streamInto(record, entry, hash));
-      const copy = { bytes: result.bytes, frames: result.frames, channels: result.channels, lufs: result.lufs, truePeakDb: result.truePeakDb };
-      await this.cache.put(hash, copy);
-      return copy;
+      const { hash, source } = await this.prepare(read);
+      const result = await makeCopy(this.maker, record, entry, { source, hash, from }, {
+        progress: (share) => {
+          if (entry.conversion.state === 'converting') this.set(entry, { state: 'converting', progress: share });
+        },
+        started: () => this.keys.making(hash, entry),
+        changed: () => this.changed(),
+      });
+      const audioPath = await this.folder.store(record, result.bytes, choice, stat);
+      if (this.disposed) return;
+      this.markStored(record, entry, hash, stored(result, record.kind), audioPath);
+      // The file at the record's own path was replaced: its next measure is the copy's.
+      if (audioPath === record.filePath) entry.identity = PENDING;
+      else this.storedAt(record, entry, audioPath);
     } catch (error) {
       entry.growing?.fail(error instanceof Error ? error : new Error(String(error)));
       entry.growing = null;
-      throw error;
+      if (this.disposed) return;
+      if (!(error instanceof SoundImportError)) console.error(`[Atlas] Could not convert ${record.filePath}`, error);
+      this.refuse(record, entry, error instanceof SoundImportError ? error.reason : 'unreadable');
     }
   }
 
-  /** Where a copy's pages go while it is made: the table hears when it can begin, and when its loudness has moved. */
-  private streamInto(record: SoundRecord, entry: CopyEntry, hash: string): StreamSink {
-    return {
-      start: (start) => {
-        entry.growing = new GrowingCopy(start);
-        entry.key = hash;
-        this.keys.set(hash, record.id);
-      },
-      pages: (pages) => {
-        if (!entry.growing || entry.measure) return;
-        const told = grownGain(entry.growing, pages, entry.toldGainDb, record.trimDb);
-        if (told === entry.toldGainDb) return;
-        entry.toldGainDb = told;
-        this.changed();
-      },
-    };
+  /** The record follows its copy a moment later: its entry there is ready from the start. */
+  private storedAt(record: SoundRecord, entry: CopyEntry, audioPath: string): void {
+    const moved: CopyEntry = { ...entry, identity: PENDING, known: Promise.resolve(), unknownAt: null, growing: null, toldGainDb: null };
+    this.entries.set(entryKeyOf(record.id, audioPath), moved);
+    if (entry.key) this.keys.hold(entry.key, moved);
   }
 
+  private refuse(record: SoundRecord, entry: CopyEntry, reason: SoundImportError['reason']): void {
+    this.set(entry, { state: 'refused', reason });
+    this.refusals.refused(record, reason);
+  }
+
+  private set(entry: CopyEntry, conversion: SoundConversion): void {
+    entry.conversion = conversion;
+    this.changed();
+  }
+
+  /** A listener that throws is reported and the others still hear: nothing it throws may vanish in a look-up's promise. */
   private changed(): void {
-    for (const listener of [...this.listeners]) listener();
+    for (const listener of [...this.listeners]) {
+      try {
+        listener();
+      } catch (error) {
+        console.error('[Atlas] A listener of the sound copies failed', error);
+      }
+    }
   }
 }
