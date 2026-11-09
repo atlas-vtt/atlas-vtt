@@ -4,6 +4,9 @@ import { areaOf, blockingWalls, extended, MAX_ROOMS, movedArea, outlinesWithHole
 import { createRoomsSlice, DEFAULT_ROOM_TOOL } from '../../src/app/stores/roomsSlice';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
 import type { WallSegment } from '../../src/app/types/wallTypes';
+import { sealedWalls } from '../../src/app/lighting/sealWalls';
+import { computeVisibility, pointInPolygon } from '../../src/app/vision/visibility';
+import { wallList } from '../../src/app/vision/wallList';
 
 const rect = (x: number, y: number, w: number, h: number): Room['area'] => areaOf([[{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }]]);
 
@@ -151,5 +154,25 @@ describe('a door drawn across a corridor', () => {
     expect(extended({ x: 0, y: 90 }, { x: 0, y: 10 }, walls, 70)).toEqual({ x: 0, y: 101 });
     expect(extended({ x: 0, y: 10 }, { x: 0, y: 90 }, walls, 70)).toEqual({ x: 0, y: -1 });
     expect(extended({ x: 0, y: 20 }, { x: 0, y: 30 }, walls, 5)).toEqual({ x: 0, y: 20 });
+  });
+});
+
+describe('sight through the rock', () => {
+  const circle = (cx: number, cy: number, r: number, corners: number): { x: number; y: number }[] =>
+    Array.from({ length: corners }, (_, i) => ({ x: cx + r * Math.cos((2 * Math.PI * i) / corners), y: cy + r * Math.sin((2 * Math.PI * i) / corners) }));
+
+  it('sees nothing of another room through the rock, from anywhere in a room drawn by hand', () => {
+    const { slice, get } = roomStore();
+    slice.carveRoom(areaOf([circle(300, 300, 200, 37), circle(450, 450, 120, 23)]));
+    slice.setActiveRoom(null);
+    slice.carveRoom(areaOf([circle(900, 300, 180, 41)]));
+    const walls = sealedWalls(wallList(blockingWalls(get().objects)), 2);
+    const other = circle(900, 300, 170, 60);
+    for (const from of circle(300, 300, 150, 12)) {
+      const sight = computeVisibility(from, 4000, walls);
+      expect(other.filter((point) => pointInPolygon(point, sight))).toEqual([]);
+      // The room's own floor is seen
+      expect(pointInPolygon({ x: 300, y: 300 }, sight)).toBe(true);
+    }
   });
 });
