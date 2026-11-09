@@ -1,4 +1,5 @@
 import { committed, request } from '../../utils/indexedDbPromises';
+import { CODEC_VERSION } from './atlasOpus';
 import type { SoundBytes } from '../soundTypes';
 
 /**
@@ -11,12 +12,7 @@ import type { SoundBytes } from '../soundTypes';
  * range), `identities` (key: the file's path, one record per path).
  */
 
-/**
- * Raise this whenever conversion gives other bytes for the same file (a new loop wrap, another encoder
- * setting). A copy of another version counts as absent, so its file is converted again, and what it holds
- * goes at the next eviction: it can never be read again.
- */
-export const CODEC_VERSION = 1;
+export { CODEC_VERSION };
 
 const DB_VERSION = 1;
 const SOUNDS = 'sounds';
