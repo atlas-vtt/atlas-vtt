@@ -37,7 +37,7 @@ describe('the converting line', () => {
     expect(pause).toHaveBeenLastCalledWith(true);
 
     act(() => set({ done: 4, total: 2000, paused: true }));
-    expect(container.textContent).toContain('Converting 4 of 2,000');
+    expect(container.textContent).toContain('Paused at 4 of 2,000');
     expect(container.querySelector('button')!.getAttribute('aria-label')).toBe('Resume converting');
     fireEvent.click(container.querySelector('button')!);
     expect(pause).toHaveBeenLastCalledWith(false);

@@ -12,6 +12,7 @@ import { ConvertingLine } from './ConvertingLine';
 import { StarterPackButton } from './StarterPack';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { AmbienceGlyph, MusicGlyph, TagGlyph } from './libraryGlyphs';
+import { rootMenu } from './rootMenu';
 import type { RootShelf } from './rowModel';
 import { tagRowMenu } from './tagMenus';
 import type { LibraryActions } from './useLibraryActions';
@@ -148,11 +149,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
             onClick={(event) => {
               const box = event.currentTarget.getBoundingClientRect();
               const win = event.currentTarget.ownerDocument.defaultView ?? window;
-              menu.open([
-                { type: 'item', label: t('audio.library.prepareAll'), icon: 'hard-drive-download', disabled: library.locationOf(kind) === null, onClick: () => actions.prepare(kind) },
-                { type: 'item', label: t('audio.library.changeFolder'), icon: 'folder-open', onClick: () => actions.link(kind, win) },
-                { type: 'item', label: t('audio.library.unlink'), icon: 'unlink', onClick: () => actions.unlink(kind) },
-              ], { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label: t('audio.library.rootMenu', { name: label }) });
+              menu.open(rootMenu(library, actions, kind, win), { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label: t('audio.library.rootMenu', { name: label }) });
             }}
           >
             <MoreHorizontal aria-hidden="true" />

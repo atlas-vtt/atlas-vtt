@@ -11,7 +11,9 @@
   align-items: center;
   gap: $spacing-s;
   min-height: 28px;
-  padding-left: $spacing-s;
+  // Inline only, as a root's row in the rail: its words start where the roots' names do and its pause ends where
+  // their ⋯ does; its height is a row's.
+  padding: 0 $spacing-s;
   color: var(--atlas-sound-muted);
   background: var(--background-primary);
   // The rail's inset below it too, so the tags scrolling under it never show there.

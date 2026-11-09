@@ -23,8 +23,8 @@ export function ConvertingLine({ director }: { director: SoundDirector }): React
   if (!progress) return null;
   const label = t(progress.paused ? 'audio.convertResume' : 'audio.convertPause');
   return (
-    <div className="atlas-sound-lib__converting" data-paused={progress.paused || undefined}>
-      <span>{t('audio.converting', { done: progress.done, total: progress.total })}</span>
+    <div className="atlas-sound-lib__converting">
+      <span>{t(progress.paused ? 'audio.convertingPaused' : 'audio.converting', { done: progress.done, total: progress.total })}</span>
       <LabelTooltip label={label}>
         <button type="button" className="atlas-sound-lib__more" aria-label={label} onClick={() => director.shelf.pauseBackground(!progress.paused)}>
           {progress.paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}

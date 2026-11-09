@@ -46,14 +46,15 @@ export function fakeLibrary(app: App, options: LibraryRigOptions = {}): Pick<Lib
   const locations = { music: new FakeSoundLocation(), ambience: new FakeSoundLocation() };
   const local: Partial<Record<SoundKind, string>> = { ...options.local };
   let shared: SharedSoundRoots = options.shared ?? {};
+  let originals = options.originals ?? null;
   const roots = new SoundRoots({
     shared: () => shared,
     setShared: (next) => { shared = next; },
     onSharedChange: () => () => undefined,
     local: (kind) => local[kind] ?? null,
     setLocal: (kind, path) => { if (path) local[kind] = path; else delete local[kind]; },
-    localOriginals: () => options.originals ?? null,
-    setLocalOriginals: () => undefined,
+    localOriginals: () => originals,
+    setLocalOriginals: (_kind, choice) => { originals = choice; },
     vaultBase: () => '/vault',
     realPath: async (path) => path,
   });
