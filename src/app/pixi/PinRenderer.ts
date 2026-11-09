@@ -1,31 +1,29 @@
-import { Container, Graphics, FederatedPointerEvent, Circle, Text, Sprite, Texture, TextStyle } from "pixi.js";
+import { Container, FederatedPointerEvent, Circle, Texture } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import { EventEmitter } from 'events';
 import type { NotePin } from "../types";
 import { createPinIconTexture } from "./utils/pinIconTexture";
+import { drawPinFace } from './pinFace';
+import { PlayerPins, type PlayerPointSight } from './playerPins';
+import type { LayerVisibility } from './playerSafeFrame';
+import type { PinNameLabel } from './pinNameLabel';
+import type { PinIconId } from '../types/pinIcons';
 import { destroyTree } from "./utils/destroyTree";
 import { mapMarkerScale } from "./utils/mapMarkerScale";
 import { isHandled } from "./utils/handledEvents";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
 import type { ContextMenuEntry } from '../react/root/ContextMenuContext';
-import { pinSize } from '../styles/designTokens';
 import { isPinLabelKind, nextPinLabel } from '../tools/pinLabels';
-import { getPinIconDefinition, resolvePinIcon, type PinIconId } from '../types/pinIcons';
-import { canvasBadgeColors, isDarkTheme } from './utils/canvasBadgeColors';
 import { dispatchPinAction } from './utils/pinActions';
 import { pinOpenLook } from './pinOpenLook';
 import { hexLayoutOfGrid, isShownAsHex, pinDisplayPoint } from '../grid/hexLinks';
 import { MAP_LAYER_Z } from './mapLayerOrder';
-import { createReadableMark, createRollMark } from './pinBadgeMarks';
-import { isEncounterFolderLink } from '../links/atlasLinkTargets';
 import { readablePinEntry } from './pinReadableMenu';
 import { pinNameEntries } from './pinNameMenu';
 import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
 import { t } from '../i18n';
 import { levelObjects } from '../levels/levelObjects';
-import { pinName, showsPinName } from '../tools/pinNames';
-import { PinNameLabel } from './pinNameLabel';
 import { pinNameBoxes } from './pinNameLayout';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
@@ -45,6 +43,10 @@ export class PinRenderer {
   private pinSprites: Record<string, Container> = {};
   /** The names shown under pins, by pin id; which of them show is decided again as the map zooms (`layoutNames`). */
   private pinNames = new Map<string, PinNameLabel>();
+  /** The pins the players' picture shows in place of these: in the players' frame and in session view. */
+  private readonly players: PlayerPins;
+  /** A refresh of the players' pins waits for the next frame, so the sight a store change moves has been worked out. */
+  private playersFrame: number | null = null;
   private _unsubscribeFromStore?: () => void;
   private _notePinToolViewportListener: ((e: FederatedPointerEvent) => void) | null = null;
   private _viewportPinClickListener: ((e: FederatedPointerEvent) => void) | null = null;
@@ -75,6 +77,14 @@ export class PinRenderer {
     this.pinContainer.eventMode = 'none'; // Viewport-level dispatch handles pin interactions
     this.pinContainer.interactiveChildren = false;
     this.viewport.addChild(this.pinContainer);
+    this.players = new PlayerPins({
+      pins: () => levelObjects(this.store.getState()).pins,
+      place: (pin) => this.pinPosition(pin),
+      draw: (pin) => drawPinFace(pin, (icon) => this.getIconTexture(icon), { marks: false, named: true }),
+      scale: () => this.getPinScale(),
+      zoom: () => this.viewport.scale.x,
+    });
+    this.viewport.addChild(this.players.view);
     const unsubscribePins = this.store.subscribe(
       (state: ViewAtlasState) => levelObjects(state).pins,
       this.syncPins.bind(this),
@@ -88,13 +98,23 @@ export class PinRenderer {
     // The player window mirrors this canvas, so pins must vanish with the GM view
     const unsubscribeGMView = this.store.subscribe(
       (state: ViewAtlasState) => state.isGMView,
-      () => { this.pinContainer.visible = !this.arePinsHidden(); },
+      () => {
+        this.pinContainer.visible = !this.arePinsHidden();
+        // Session view shows the players' pins on this canvas, as their frame does
+        this.players.view.visible = !this.isPlayerView && !this.store.getState().isGMView;
+        if (this.players.view.visible) this.players.refresh();
+      },
       { fireImmediately: true }
     );
+    // While the canvas shows the players' view, what they see follows every change of the scene
+    const unsubscribeScene = this.store.subscribe(() => {
+      if (this.players.view.visible) this.schedulePlayersRefresh();
+    });
     this._unsubscribeFromStore = () => {
       unsubscribePins();
       unsubscribeHexGrid();
       unsubscribeGMView();
+      unsubscribeScene();
     };
     this._notePinToolViewportListener = (e: FederatedPointerEvent) => {
       // Skip if already handled by viewport-level dispatch (e.g. pin click)
@@ -209,6 +229,7 @@ export class PinRenderer {
       this.previewPin.scale.set(scale);
     }
     this.layoutNames();
+    this.players.rescale();
   }
 
   /** Draws every name for the zoom, then hides those that would cover another name or another pin. */
@@ -252,10 +273,36 @@ export class PinRenderer {
       }
     }
     this.layoutNames();
+    this.players.clear();
+    if (this.players.view.visible) this.players.refresh();
   }
 
   public getPinContainer(): Container {
     return this.pinContainer;
+  }
+
+  /** How the players' sight is read for the pins they are shown; set by the view once its fog and lighting exist. */
+  public setPlayerSight(sight: PlayerPointSight): void {
+    this.players.setSight(sight);
+  }
+
+  /** The players' frame: the GM's pins hidden, the pins players see now shown in their place. */
+  public playerLayers(): LayerVisibility[] {
+    this.players.refresh();
+    return [{ layer: this.pinContainer, visible: false }, { layer: this.players.view, visible: true }];
+  }
+
+  /** A picture of the scene (a thumbnail): no pin at all. */
+  public pictureLayers(): LayerVisibility[] {
+    return [{ layer: this.pinContainer, visible: false }, { layer: this.players.view, visible: false }];
+  }
+
+  private schedulePlayersRefresh(): void {
+    if (this.playersFrame !== null) return;
+    this.playersFrame = window.requestAnimationFrame(() => {
+      this.playersFrame = null;
+      if (this.players.view.visible) this.players.refresh();
+    });
   }
 
   /** Pins are DM-only: hidden in player views and whenever the DM previews the player perspective. */
@@ -369,61 +416,10 @@ export class PinRenderer {
 
   /** The badge, its glyph or label and its marks, and its name under it where it shows one (`named`). */
   private createPinGraphics(iconType: string, pin: NotePin, named = true): Container {
-    const container = new Container();
     if (named) this.pinNames.delete(pin.id);
-    
-    // Get theme colors
-    const colors = canvasBadgeColors();
-    const isDarkMode = isDarkTheme();
-    
-    // Create the circular badge background using design tokens
-    const bgGraphics = new Graphics();
-    const badgeRadius = pinSize.badgeRadius;
-    
-    // Draw circular background
-    bgGraphics.circle(0, 0, badgeRadius);
-    bgGraphics.fill({ color: colors.background, alpha: 0.95 });
-    
-    // Add subtle border
-    bgGraphics.circle(0, 0, badgeRadius);
-    bgGraphics.stroke({ width: 0.5, color: colors.stroke, alpha: isDarkMode ? 0.4 : 0.3 });
-    container.addChild(bgGraphics);
-    
-    const icon = resolvePinIcon(iconType);
-    if (isPinLabelKind(icon)) {
-      const labelText = new Text({
-        text: pin.label ?? '',
-        style: new TextStyle({
-          fill: colors.stroke,
-          fontSize: badgeRadius,
-          fontWeight: 'bold',
-          fontFamily: 'Arial, sans-serif',
-        }),
-        resolution: 8,
-      });
-      labelText.anchor.set(0.5);
-      // Longer labels ("12", "AB") shrink to stay inside the badge
-      labelText.scale.set(Math.min(1, (badgeRadius * 1.5) / labelText.width));
-      container.addChild(labelText);
-    } else {
-      const iconTexture = this.getIconTexture(icon);
-      if (iconTexture) {
-        const iconSprite = new Sprite(iconTexture);
-        iconSprite.anchor.set(0.5);
-        iconSprite.setSize(pinSize.iconSize);
-        iconSprite.tint = getPinIconDefinition(icon).tone[isDarkMode ? 'dark' : 'light'];
-        container.addChild(iconSprite);
-      }
-    }
-    if (isEncounterFolderLink(pin.notePath)) container.addChild(createRollMark(badgeRadius, colors));
-    else if (pin.readable === true) container.addChild(createReadableMark(badgeRadius, colors));
-    if (named && showsPinName(pin)) {
-      const label = new PinNameLabel(pinName(pin));
-      container.addChildAt(label.view, 0);
-      this.pinNames.set(pin.id, label);
-    }
-
-    return container;
+    const { view, name } = drawPinFace({ ...pin, icon: iconType }, (icon) => this.getIconTexture(icon), { marks: true, named });
+    if (name) this.pinNames.set(pin.id, name);
+    return view;
   }
   
 
@@ -636,5 +632,7 @@ export class PinRenderer {
     }
     this.pinSprites = {};
     this.pinNames.clear();
+    if (this.playersFrame !== null) window.cancelAnimationFrame(this.playersFrame);
+    this.players.destroy();
   }
 } 

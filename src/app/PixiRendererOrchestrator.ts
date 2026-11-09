@@ -82,6 +82,8 @@ import { playerWindowStore } from './stores/playerWindowStore';
 import { PlayerWindowService } from './services/PlayerWindowService';
 import { fitZoomRange } from './pixi/fitMapRect';
 import { viewCentreInClient, worldToClient, type ClientPoint } from './pixi/utils/worldToClient';
+import { playerPointSight } from './pixi/lighting/playerLightingLayers';
+import type { Point } from './types/visionTypes';
 import { mapTokens } from './tokens/offMap';
 import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
 
@@ -439,6 +441,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Initialize FogOfWarRenderer after pins so it can be on top when active
     this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getMapRect());
     this.followFogEdge();
+    this.pinRenderer.setPlayerSight((points) => this.playersSeeMapAt(points));
     
     // Add fog layer to viewport - it should be on top for interaction when the fog tool is active
     const fogContainer = this.fogRenderer.getContainer();
@@ -923,6 +926,18 @@ export class PixiRendererOrchestrator { // Renamed class
     viewport.addChildAt(layer, Math.max(map, grid) + 1);
   }
 
+  /**
+   * Which of `points` the players' picture shows the map at now, the online table's rule for pins
+   * shown to players: a lit scene's sight with its door badges' rule, else where committed fog does
+   * not cover them. Null (nothing shown) while a lit scene's sight is another scene's.
+   */
+  private playersSeeMapAt(points: readonly Point[]): readonly boolean[] | null {
+    const fog = this.fogRenderer?.getCommittedCoverage() ?? null;
+    const lighting = this.lighting?.renderer;
+    if (lighting?.isEnabled()) return lighting.sightIsCurrent() ? playerPointSight(lighting, points, fog) : null;
+    return points.map((point) => fog !== null && !fog.covers(point));
+  }
+
   /** Whether a players' frame can be rendered now: not while the graphics context is lost. */
   public canRenderPlayerFrame(): boolean {
     if (this._isDestroyed) return false;
@@ -939,7 +954,7 @@ export class PixiRendererOrchestrator { // Renamed class
   /** What a players' frame changes on the stage: everything players must not see, hidden for one render. */
   private playerFrameLayers(settings: AtlasSettings['localPlayerView']): LayerVisibility[] {
     // The grid is left as the GM set it: players see it exactly as the GM does, hidden included.
-    const layers = this.markerLayers();
+    const layers = this.markerLayers(true);
     if (this.roofs) layers.push({ layer: this.roofs.modeLayer, visible: true });
     // The lighting's part is the list session view holds on this canvas (`SessionLighting`).
     const sight = this.lighting?.playerSight();
@@ -977,10 +992,13 @@ export class PixiRendererOrchestrator { // Renamed class
     return this.tokenRenderer?.playersSeeInFrame(sight) ?? NOTHING_SEEN;
   }
 
-  /** The GM's markers on the map and the selection: neither the players nor a picture of the scene show them. */
-  private markerLayers(): LayerVisibility[] {
+  /**
+   * The GM's markers on the map and the selection: neither the players nor a picture of the scene
+   * show them. The players' frame (`players`) shows the pins the GM shows them instead.
+   */
+  private markerLayers(players = false): LayerVisibility[] {
     const layers: LayerVisibility[] = [];
-    if (this.pinRenderer) layers.push({ layer: this.pinRenderer.getPinContainer(), visible: false });
+    if (this.pinRenderer) layers.push(...(players ? this.pinRenderer.playerLayers() : this.pinRenderer.pictureLayers()));
     if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
     if (this.levelLinks) layers.push({ layer: this.levelLinks.view, visible: false });
     for (const layer of this.tokenPlacer?.layers ?? []) layers.push({ layer, visible: false });
@@ -1001,7 +1019,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Liquids take the still moment too, so a picture of the scene is the same however long it played.
     const restoreLiquids = this.liquids?.stillFor();
     try {
-      return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(), lighting: this.lighting, roofs: this.roofs }, frame, render);
+      return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(false), lighting: this.lighting, roofs: this.roofs }, frame, render);
     } finally {
       restoreLiquids?.();
       restoreVideo?.();

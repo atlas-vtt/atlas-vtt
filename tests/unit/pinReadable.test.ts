@@ -45,7 +45,7 @@ describe('a pin players may read', () => {
     const pin = (): ReturnType<typeof store.getState>['objects']['pins'][string] | undefined => store.getState().objects.pins[id];
     expect(marks(renderer)).toBe(0);
     const entry = readablePinEntry(store, pin()!);
-    expect(entry).toMatchObject({ type: 'item', label: 'Readable by players', checked: false });
+    expect(entry).toMatchObject({ type: 'item', label: 'Show to players', checked: false });
     if (entry?.type === 'item') void entry.onClick();
     expect(pin()?.readable).toBe(true);
     expect(marks(renderer)).toBe(1);
