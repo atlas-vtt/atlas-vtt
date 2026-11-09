@@ -23,6 +23,17 @@ export const audio = {
   'audio.state.preparing': 'Preparing',
   'audio.state.convertingPercent': 'Converting {percent}%',
 
+  'audio.consent.title': 'Convert {folder} to Opus?',
+  'audio.consent.body': {
+    one: 'Atlas converts the sound in {folder} to Opus, in this folder, and does the same for files added later.',
+    other: 'Atlas converts all {count} sounds in {folder} to Opus, in this folder, and does the same for files added later.',
+  },
+  'audio.consent.trash': 'Convert and move originals to the trash',
+  'audio.consent.keep': 'Convert and keep originals',
+  'audio.consent.noTrash': 'This folder has no trash, so originals stay.',
+  'audio.consent.ok': 'OK',
+  'audio.consent.noWrite': 'Atlas cannot write to {folder}, so it cannot use it.',
+
   'audio.trim': 'Loudness',
   'audio.trimValue': '{value} dB',
 

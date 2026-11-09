@@ -8,6 +8,7 @@ import { LinkedFolderWatch } from '../soundDirector/linkedFolderWatch';
 import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
+import { registerConversionConsent } from './soundConsent';
 import { runInBackground } from '../utils/backgroundTask';
 
 const STATUS_REFRESH_MS = 5000;
@@ -149,6 +150,7 @@ export function registerSoundDirector(plugin: Plugin): SoundDirector {
     const watch = new LinkedFolderWatch({ records: SoundRecordStore.forApp(plugin.app), library: SoundLibrary.forApp(plugin.app), director });
     plugin.register(() => watch.dispose());
   });
+  plugin.register(registerConversionConsent(plugin, SoundLibrary.forApp(plugin.app), director));
   registerSoundCommands(plugin, director);
   plugin.register(registerMoodCommands(plugin, director));
   plugin.register(registerSoundStatusBar(plugin, director));
