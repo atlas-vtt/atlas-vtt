@@ -39,12 +39,14 @@ export class SoundShelf {
   }
 
   recordOfKey(key: string): SoundRecord | null {
-    const id = this.copies?.recordIdOf(key);
+    const id = this.idOfKey(key);
     return id ? this.recordOf(id) : null;
   }
 
+  /** The record of a copy: of those it was found for, the newest that has a record, else the newest. */
   idOfKey(key: string): string | null {
-    return this.copies?.recordIdOf(key) ?? null;
+    const ids = this.copies?.recordIdsOf(key) ?? [];
+    return ids.find((id) => this.records.has(id)) ?? ids[0] ?? null;
   }
 
   has(id: string): boolean {

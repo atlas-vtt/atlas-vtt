@@ -2,7 +2,6 @@ import { act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { cdp, commands, page, userEvent } from 'vitest/browser';
 import { MusicWave } from '../../src/app/react/components/dm-screen/sound/musicWave';
-import { OpusCache, opusCacheDatabaseName } from '../../src/app/sound/codec/opusCache';
 import { PEAK_BUCKETS } from '../../src/app/sound/codec/soundPeaks';
 import { readSoundPeaks } from '../../src/app/sound/codec/soundPeaksClient';
 import { prepareSource } from '../../src/app/soundDirector/sourcePrepare';
@@ -213,7 +212,8 @@ describe('what the sound costs a frame', () => {
     // The whole sound through the worker, for a track of a minute.
     const road = tab.records.get('Road to Wolfhaven');
     const info = road && tab.director.shelf.infoOf(road);
-    const copy = await (await new OpusCache(window.indexedDB, opusCacheDatabaseName(tab.appId), () => 1e12).blob(info?.key ?? ''))?.arrayBuffer();
+    const stored = await tab.director.shelf.bytes(info?.key ?? '');
+    const copy = (await stored.read(0, stored.byteLength)).slice().buffer;
     const working = performance.now();
     const read = await readSoundPeaks(new Blob([copy ?? new ArrayBuffer(0)]), info?.frames ?? 1);
     const peaksMs = performance.now() - working;

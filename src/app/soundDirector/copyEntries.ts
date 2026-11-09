@@ -19,10 +19,9 @@ export interface StoredFacts {
 
 /** What this device knows of one record's copy. */
 export interface CopyEntry {
-  /** The file it was worked out for: its path, size and time. */
+  recordId: string;
+  /** The file it was worked out for: its path, size and time; `PENDING` for a copy just stored, until it is measured. */
   identity: string;
-  /** A copy just stored elsewhere than its source: the entry stands for both until the record names the copy. */
-  follows: { from: string; to: string } | null;
   conversion: SoundConversion;
   key: string | null;
   measure: SoundMeasure | null;
@@ -31,8 +30,6 @@ export interface CopyEntry {
   audioPath: string | null;
   /** Settles once what the file says of itself has been read. */
   known: Promise<void>;
-  /** Whether `known` has settled. */
-  settled: boolean;
   /** The copy while it is made, for a sound that may play before it is whole. */
   growing: GrowingCopy | null;
   /** The gain the table was last told of a growing copy, so a small move is no change. */
@@ -41,8 +38,13 @@ export interface CopyEntry {
 
 export const identityOf = (path: string, stat: { size: number; mtime: number }): string => `${path}|${stat.size}|${stat.mtime}`;
 
-export function copyEntry(identity: string): CopyEntry {
-  return { identity, follows: null, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, audioPath: null, known: Promise.resolve(), settled: true, growing: null, toldGainDb: null };
+/** The identity of a copy's entry just stored, taken from the file's first measure. */
+export const PENDING = '';
+
+export const entryKeyOf = (recordId: string, path: string): string => `${recordId}\n${path}`;
+
+export function copyEntry(recordId: string, identity: string): CopyEntry {
+  return { recordId, identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, audioPath: null, known: Promise.resolve(), growing: null, toldGainDb: null };
 }
 
 export function readyIn(entry: CopyEntry, key: string, facts: StoredFacts, audioPath: string): void {

@@ -39,6 +39,8 @@ export interface SoundLocation {
   move(from: string, to: string): Promise<void>;
   /** Writes a new file. Refused where something lies at `path`. */
   write(path: string, content: Blob): Promise<void>;
+  /** Writes a file over the one at `path`: only for Atlas' own files, a copy left half written where the folder has no trash. */
+  replace(path: string, content: Blob): Promise<void>;
   /** Whether `trash` can work here: false where this Obsidian has no system trash, or the vault deletes for good. */
   canTrash(): boolean;
   /** Whether Atlas may write into the folder now. */

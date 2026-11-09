@@ -249,6 +249,18 @@ describe('the sound director', () => {
     expect(rig.conversions).toHaveLength(0);
   });
 
+  it('names a copy by its record, though a file without one holds the same copy', async () => {
+    rig = directorRig([RAIN]);
+    await ready(rig);
+    const row = record('row');
+    rig.files.add(row.filePath);
+    rig.copies.set(row.filePath, { facts: factsOf(`hash-${RAIN.filePath}`), blob: new Blob([new Uint8Array(4)]) });
+    rig.director.shelf.stateOf(row);
+    await settle();
+    expect(rig.director.shelf.stateOf(row).state).toBe('ready');
+    expect(rig.director.shelf.recordOfKey(`hash-${RAIN.filePath}`)?.id).toBe('rain');
+  });
+
   it('converts nothing in a folder the GM has not agreed to', async () => {
     rig = directorRig([RAIN], { ready: false });
     rig.folder.choice = null;

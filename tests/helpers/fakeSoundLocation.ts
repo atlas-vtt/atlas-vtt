@@ -115,6 +115,13 @@ export class FakeSoundLocation implements SoundLocation {
     this.tell(path);
   }
 
+  async replace(path: string, content: Blob): Promise<void> {
+    this.change(`replace ${path}`);
+    this.addFile(path, content.size);
+    this.contents.set(path, content);
+    this.tell(path);
+  }
+
   canTrash(): boolean {
     return this.trashable;
   }

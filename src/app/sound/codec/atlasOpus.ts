@@ -3,6 +3,7 @@ import { isOpusHead, MAX_COMMENTS, readOpusComments, readOpusHead, writeOpusTags
 import { SEEK_COMMENT } from './seekTable';
 import { PEAK_BUCKETS } from './soundPeaks';
 import { fromBase64, toBase64 } from './soundSegments';
+import { isRanges, rangesOf, type FileRanges } from './fileRanges';
 
 /**
  * Atlas' own Opus files carry what is known of them in their comment header, so a start reads a file's first
@@ -13,7 +14,9 @@ import { fromBase64, toBase64 } from './soundSegments';
 /** Raise this whenever conversion gives other bytes for the same file (a new loop wrap, another encoder setting). */
 export const CODEC_VERSION = 1;
 
-const VTT = 'ATLAS_VTT';
+/** The comment that marks a file as Atlas-made. */
+export const ATLAS_MARK = 'ATLAS_VTT';
+const VTT = ATLAS_MARK;
 const SOURCE = 'ATLAS_SOURCE';
 const FROM = 'ATLAS_FROM';
 const LUFS = 'ATLAS_LUFS';
@@ -53,21 +56,6 @@ export interface AtlasCopyFacts {
 }
 
 export type CopyTags = Omit<AtlasCopyFacts, 'frames' | 'channels'>;
-
-/** A file read by its ranges, so only what is asked for leaves the disk. */
-export interface FileRanges {
-  readonly size: number;
-  /** The bytes from `start` up to `end` or the file's end, whichever comes first. */
-  read(start: number, end: number): Promise<Uint8Array>;
-}
-
-/** A file in memory, or a Blob, as ranges: nothing is copied but the ranges read. */
-export function rangesOf(file: Blob | ArrayBuffer): FileRanges {
-  if ('byteLength' in file) {
-    return { size: file.byteLength, read: (start, end) => Promise.resolve(new Uint8Array(file, start, Math.max(0, Math.min(end, file.byteLength) - start))) };
-  }
-  return { size: file.size, read: async (start, end) => new Uint8Array(await file.slice(start, end).arrayBuffer()) };
-}
 
 interface OpusHeader {
   headPacket: Uint8Array;
@@ -283,26 +271,3 @@ export async function readAtlasCopy(file: Blob | FileRanges): Promise<AtlasCopyF
   return { ...facts.known, frames: granule - facts.preSkip };
 }
 
-const isRanges = (file: Blob | FileRanges): file is FileRanges => typeof (file as Partial<FileRanges>).read === 'function';
-
-const MARK = new TextEncoder().encode(`${VTT}=`);
-const TAGS_MAGIC = new TextEncoder().encode('OpusTags');
-
-function indexOf(bytes: Uint8Array, needle: Uint8Array, from: number): number {
-  outer: for (let at = from; at <= bytes.length - needle.length; at++) {
-    for (let index = 0; index < needle.length; index++) if (bytes[at + index] !== needle[index]) continue outer;
-    return at;
-  }
-  return -1;
-}
-
-/**
- * Whether an Ogg file's comment header names Atlas as its maker, read from its bytes alone, so it holds
- * where the pages or the facts beside the mark do not read. Such a file is never converted again.
- */
-export async function hasAtlasMark(file: FileRanges): Promise<boolean> {
-  const head = await file.read(0, HEADER_BYTES);
-  if (!isCapture(head, 0)) return false;
-  const tags = indexOf(head, TAGS_MAGIC, 0);
-  return tags >= 0 && indexOf(head, MARK, tags) >= 0;
-}

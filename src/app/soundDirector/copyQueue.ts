@@ -48,8 +48,10 @@ export class CopyQueue {
     private readonly onChange: () => void,
   ) {}
 
+  /** `onChange` hears only what changes the background's progress: a page that asks again on every change must not loop. */
   add(records: readonly SoundRecord[], urgent: boolean): void {
     if (this.disposed) return;
+    const total = this.total;
     const fresh = records.filter((record) => !this.running.has(record.id));
     const ids = new Set(fresh.map((record) => record.id));
     if (urgent) {
@@ -64,7 +66,7 @@ export class CopyQueue {
       }
     }
     this.pump();
-    this.onChange();
+    if (this.total !== total) this.onChange();
   }
 
   background(): BackgroundProgress | null {
@@ -118,6 +120,6 @@ export class CopyQueue {
       this.done = 0;
     }
     this.pump();
-    this.onChange();
+    if (running?.counted) this.onChange();
   }
 }

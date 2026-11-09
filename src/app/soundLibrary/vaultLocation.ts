@@ -111,6 +111,14 @@ export class VaultLocation implements SoundLocation {
   }
 
   /** Only where Obsidian's "Deleted files" sends files to a trash: anything else, an unknown value included, could delete for good. */
+  async replace(path: string, content: Blob): Promise<void> {
+    this.changeable(path);
+    const file = this.entry(path);
+    if (file instanceof TFile) await this.app.vault.modifyBinary(file, await content.arrayBuffer());
+    else await this.write(path, content);
+  }
+
+  /** Only where Obsidian's "Deleted files" sends files to a trash: anything else, an unknown value included, could delete for good. */
   canTrash(): boolean {
     const config = (this.app.vault as unknown as { getConfig?: (key: string) => unknown }).getConfig;
     const option = typeof config === 'function' ? config.call(this.app.vault, 'trashOption') : undefined;

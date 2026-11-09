@@ -33,6 +33,7 @@ export const audio = {
   'audio.refused.unreadable': 'The file is damaged',
   'audio.refused.verify-failed': 'The conversion failed',
   'audio.refused.cannot-write': 'Atlas cannot write to its folder',
+  'audio.refused.outside-folder': 'Not in a linked folder',
   'audio.refusedNext.unknown-format': 'Convert it to MP3, Ogg, WAV or FLAC.',
   'audio.refusedNext.unsupported-codec': 'Convert it to MP3, Ogg, WAV or FLAC.',
   'audio.refusedNext.no-encoder': 'Update Obsidian to play it.',
@@ -40,6 +41,7 @@ export const audio = {
   'audio.refusedNext.unreadable': 'Pick another copy of the file.',
   'audio.refusedNext.verify-failed': 'Move it out of the folder and back to try again.',
   'audio.refusedNext.cannot-write': 'Make room on the disk or allow writing there, then restart Obsidian.',
+  'audio.refusedNext.outside-folder': 'Move it into your music or ambience folder, or link its folder.',
   'audio.refusedWithNext': '{reason}. {next}',
   'audio.refusedNotice': '{name}: {reason}. {next}',
 

@@ -246,6 +246,20 @@ describe('a file Atlas marked whose facts do not read', () => {
   });
 });
 
+describe('a file outside every linked folder', () => {
+  it('is refused as such on the sound, without a notice, and never converted', async () => {
+    const { copies, folder, runs, reads, refused } = rig();
+    vi.spyOn(folder, 'factsOf').mockRejectedValue(new SoundImportError('outside-folder', 'elsewhere'));
+    vi.spyOn(folder, 'choiceFor').mockReturnValue(null);
+    copies.request([RAIN], true);
+    await settle();
+    expect(copies.stateOf(RAIN)).toEqual({ state: 'refused', reason: 'outside-folder' });
+    expect(refused).toEqual([]);
+    expect(reads).toEqual([]);
+    expect(runs).toEqual([]);
+  });
+});
+
 describe('the background queue', () => {
   const big = (id: string): SoundRecord => record(id);
 
@@ -267,16 +281,16 @@ describe('the background queue', () => {
     expect(copies.background()).toEqual({ done: 0, total: 3, paused: false });
   });
 
-  it('a file whose first pages never come holds no other back', async () => {
+  it('a file whose first pages never come holds the others back no longer than reading them may take', async () => {
     const { copies, folder, reads } = rig();
     const factsOf = folder.factsOf.bind(folder);
     vi.spyOn(folder, 'factsOf').mockImplementation((sound) => (sound.id === 'rain' ? NEVER : factsOf(sound)));
     copies.request([RAIN, SONG]);
     await settle();
-    expect(reads).toEqual([SONG.filePath]);
+    expect(reads).toEqual([]);
     await vi.advanceTimersByTimeAsync(FACTS_STUCK_MS);
     await settle();
-    expect(reads).toEqual([SONG.filePath, RAIN.filePath]);
+    expect(reads).toEqual([RAIN.filePath, SONG.filePath]);
   });
 
   it('pausing holds the background, never a press', async () => {

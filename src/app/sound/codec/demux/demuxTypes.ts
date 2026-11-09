@@ -12,7 +12,9 @@ export type SoundRefusal =
   /** What was written did not read back as it should. */
   | 'verify-failed'
   /** The copy could not be written into the sound's folder (no room, no permission); the source is untouched. */
-  | 'cannot-write';
+  | 'cannot-write'
+  /** The file lies outside every linked folder, where Atlas converts nothing. */
+  | 'outside-folder';
 
 /** Why a sound cannot be imported: `reason` is for the words shown, `detail` for the log. */
 export class SoundImportError extends Error {

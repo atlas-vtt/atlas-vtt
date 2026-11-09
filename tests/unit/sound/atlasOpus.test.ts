@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { atlasCopyOf } from '../../helpers/atlasCopies';
-import { atlasComments, CODEC_VERSION, forPlayers, hasAtlasMark, rangesOf, readAtlasCopy, tagCopy, withComments, type AtlasCopyFacts } from '@/app/sound/codec/atlasOpus';
+import { hasAtlasMark } from '@/app/sound/codec/atlasMark';
+import { rangesOf } from '@/app/sound/codec/fileRanges';
+import { atlasComments, CODEC_VERSION, forPlayers, readAtlasCopy, tagCopy, withComments, type AtlasCopyFacts } from '@/app/sound/codec/atlasOpus';
 import { lacingOf, packetsOfPage, readPage, writePage } from '@/app/sound/codec/oggPages';
 import { readOpusComment, readOpusComments, writeOpusTags } from '@/app/sound/codec/opusFormat';
 import { SEEK_COMMENT } from '@/app/sound/codec/seekTable';

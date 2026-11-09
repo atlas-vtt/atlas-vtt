@@ -97,6 +97,33 @@ describe('storing a copy', () => {
     expect(location.files.has('Tavern.opus')).toBe(true);
   });
 
+  it('a copy that did not land whole leaves the source and is refused', async () => {
+    location.put('Tavern.mp3', new Blob(['MP3']));
+    const write = location.write.bind(location);
+    vi.spyOn(location, 'write').mockImplementation((path, content) => write(path, content.slice(0, Math.floor(content.size / 2))));
+    await expect(folder.store(sound('Tavern.mp3'), await taggedCopy({ key: KEY }), 'trash', stat('Tavern.mp3'))).rejects.toMatchObject({ reason: 'verify-failed' });
+    expect(location.files.has('Tavern.mp3')).toBe(true);
+    expect(location.files.has('Tavern.opus')).toBe(false);
+    expect(location.changes).not.toContain('trash Tavern.mp3');
+  });
+
+  it('the GM\'s own X.opus replaced keeps its record and gives it the copy\'s size', async () => {
+    location.put('X.opus', plainCopy());
+    stored = [storedSound('X.opus')];
+    const copy = await taggedCopy({ key: KEY, from: 'X.opus' });
+    await folder.store(sound('X.opus'), copy, 'trash', stat('X.opus'));
+    expect(stored[0]).toMatchObject({ audioPath: at('X.opus'), audioSize: copy.size });
+  });
+
+  it('where the folder has no trash, a leftover part is written over', async () => {
+    location.trashable = false;
+    location.put('Tavern.mp3', new Blob(['MP3']));
+    location.put('Tavern.mp3.atlas-part', new Blob(['half a copy']));
+    await folder.store(sound('Tavern.mp3'), await taggedCopy({ key: KEY }), 'trash', stat('Tavern.mp3'));
+    expect(location.changes).toEqual(['replace Tavern.mp3.atlas-part', 'move Tavern.mp3.atlas-part Tavern.opus']);
+    expect(location.files.has('Tavern.mp3')).toBe(true);
+  });
+
   it('a source that changed while converting is kept', async () => {
     location.put('Tavern.mp3', new Blob(['MP3']), 1);
     const before = stat('Tavern.mp3');
@@ -184,15 +211,46 @@ describe('what a file says of itself', () => {
     await expect(folder.factsOf(sound('Tavern.opus'))).rejects.toMatchObject({ reason: 'unreadable' });
   });
 
-  it('two copies of one key: the higher path goes to the trash', async () => {
-    location.put('Tavern.opus', await taggedCopy({ key: KEY }));
-    location.put('Tavern 2.opus', await taggedCopy({ key: KEY }));
-    stored = [storedSound('Tavern.opus')];
-    expect(await folder.factsOf(sound('Tavern.opus'))).toMatchObject({ audioPath: at('Tavern.opus') });
+  it('a race between devices: of two copies of one source, the one named after it stays', async () => {
+    location.put('Tavern.opus', await taggedCopy({ key: KEY, from: 'Tavern.mp3' }));
+    location.put('Tavern 2.opus', await taggedCopy({ key: KEY, from: 'Tavern.mp3' }));
+    stored = [storedSound('Tavern 2.opus')];
     expect(await folder.factsOf(sound('Tavern 2.opus'))).toMatchObject({ audioPath: at('Tavern 2.opus') });
-    expect(location.changes).toEqual(['trash Tavern.opus']);
-    expect(stored[0]?.audioPath).toBe(at('Tavern 2.opus'));
-    expect(await folder.factsOf(sound('Tavern.opus'))).toBeNull();
+    expect(await folder.factsOf(sound('Tavern.opus'))).toMatchObject({ audioPath: at('Tavern.opus') });
+    expect(location.changes).toEqual(['trash Tavern 2.opus']);
+    expect(stored[0]?.audioPath).toBe(at('Tavern.opus'));
+    expect(await folder.factsOf(sound('Tavern 2.opus'))).toBeNull();
+  });
+
+  it('identical sources under two names keep both copies, whatever the choice', async () => {
+    for (const chosen of ['keep', 'trash'] as const) {
+      choice = chosen;
+      location = new FakeSoundLocation();
+      library.destroy();
+      library = new SoundLibrary({ roots: library.roots, open: () => location, probeSeconds: async () => null });
+      folder = new LibraryCopyFolder(() => library, records, () => 5);
+      location.put('Tavern.mp3', new Blob(['MP3']));
+      location.put('Tavern copy.mp3', new Blob(['MP3']));
+      await folder.store(sound('Tavern.mp3'), await taggedCopy({ key: KEY, from: 'Tavern.mp3' }), chosen, stat('Tavern.mp3'));
+      await folder.store(sound('Tavern copy.mp3'), await taggedCopy({ key: KEY, from: 'Tavern copy.mp3' }), chosen, stat('Tavern copy.mp3'));
+      for (const path of ['Tavern.opus', 'Tavern copy.opus', 'Tavern.mp3', 'Tavern copy.mp3']) await folder.factsOf(sound(path));
+      expect(location.files.has('Tavern.opus') && location.files.has('Tavern copy.opus')).toBe(true);
+      expect(location.changes.filter((change) => change.startsWith('trash') && change.endsWith('.opus'))).toEqual([]);
+    }
+  });
+
+  it('a path once holding a copy and now another file is left alone', async () => {
+    location.put('Tavern.opus', await taggedCopy({ key: KEY, from: 'Tavern.mp3' }));
+    location.put('Tavern 2.opus', await taggedCopy({ key: KEY, from: 'Tavern.mp3' }));
+    await folder.factsOf(sound('Tavern 2.opus'));
+    location.put('Tavern 2.opus', plainCopy(), 2);
+    await folder.factsOf(sound('Tavern.opus'));
+    expect(location.changes).toEqual([]);
+    expect(location.files.has('Tavern 2.opus')).toBe(true);
+  });
+
+  it('a file outside every linked folder is refused as such', async () => {
+    await expect(folder.factsOf({ ...sound('x'), filePath: 'Elsewhere/x.mp3' })).rejects.toMatchObject({ reason: 'outside-folder' });
   });
 
   it('the choice is the root\'s, and none outside every root', () => {

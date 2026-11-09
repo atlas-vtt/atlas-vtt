@@ -1,14 +1,15 @@
-import { hasAtlasMark, readAtlasCopy, type AtlasCopyFacts, type FileRanges } from '../sound/codec/atlasOpus';
+import { readAtlasCopy, type AtlasCopyFacts } from '../sound/codec/atlasOpus';
 import { SoundImportError } from '../sound/codec/demux/demuxTypes';
 import type { SoundKind, SoundRecord } from '../sound/soundTypes';
 import type { CopyFolder, FolderCopy, SourceStat } from '../soundDirector/copyFolder';
+import { partOf, stemCopyOf, twinsOf } from './copyNames';
+import { CopyReader } from './copyReader';
 import type { SoundLibrary } from './SoundLibrary';
 import type { SoundLocation } from './soundLocation';
-import { freeName, isExternalAudioPath, nameOfRelative, parentOfRelative } from './soundPaths';
+import { freeName, isExternalAudioPath, joinRelative, nameOfRelative, parentOfRelative } from './soundPaths';
 import { soundAfterMove } from './soundRecords';
 import type { SoundRecordStore } from './SoundRecordStore';
 import type { OriginalsChoice } from './SoundRoots';
-import { partOf, stemCopyOf, twinsOf } from './copyNames';
 
 export type CopyLibrary = Pick<SoundLibrary, 'pathNow' | 'fileOfAudioPath' | 'locationOf' | 'audioPathOf' | 'rootOf' | 'roots'>;
 
@@ -20,23 +21,22 @@ interface Place {
   location: SoundLocation;
 }
 
-/** Files read for what they say of themselves at once: a start asks of every file in the folders. */
-const READING_AT_ONCE = 8;
-
 const isOgg = (path: string): boolean => /\.(opus|ogg)$/i.test(path);
 
 const sameStat = (a: SourceStat | null, b: SourceStat): boolean => a !== null && a.size === b.size && a.mtime === b.mtime;
 
+/** One copy of one source: two sources with the same bytes under two names are two sounds the GM keeps. */
+const copyId = (facts: AtlasCopyFacts): string => `${facts.key}\n${facts.from}`;
+
 /**
  * The copies in the GM's linked folders: `Tavern.mp3` becomes `Tavern.opus` beside it, and the original goes to
- * the trash only once the copy stands under its name, and only where the GM chose that, the folder has a
+ * the trash only once the copy stands whole under its name, and only where the GM chose that, the folder has a
  * trash and the original is still what was converted. Every change goes through the root's location.
  */
 export class LibraryCopyFolder implements CopyFolder {
-  /** Where each key's copy was found this session, by root and path, so a second copy of one key is seen. */
-  private readonly copiesOfKey = new Map<string, { kind: SoundKind; path: string }>();
-  private reading = 0;
-  private readonly waitingToRead: Array<() => void> = [];
+  /** Where each copy was found this session, so a second copy of one source in its folder is seen. */
+  private readonly found = new Map<string, { kind: SoundKind; path: string }>();
+  private readonly reader = new CopyReader();
 
   constructor(
     private readonly library: () => CopyLibrary | null,
@@ -46,18 +46,19 @@ export class LibraryCopyFolder implements CopyFolder {
 
   choiceFor(sound: SoundRecord): OriginalsChoice | null {
     const place = this.placeOf(sound.filePath, sound.audioSize);
-    return place ? (this.library()?.roots.originalsOf(place.kind) ?? null) : null;
+    return place === 'outside' || !place ? null : (this.library()?.roots.originalsOf(place.kind) ?? null);
   }
 
   async factsOf(sound: SoundRecord): Promise<FolderCopy | null> {
     const place = this.placeOf(sound.filePath, sound.audioSize);
+    if (place === 'outside') throw new SoundImportError('outside-folder', `${sound.filePath} lies outside every linked folder.`);
     if (!place) return null;
     if (isOgg(place.path)) {
-      const facts = await this.copyAt(place, place.path, true);
+      const facts = await this.reader.factsAt(place.location, place.path, true);
       if (facts) return this.noted(place, place.path, facts);
     }
     for (const twin of await twinsOf(place.path, (path) => place.location.exists(path))) {
-      const facts = await this.copyAt(place, twin, false);
+      const facts = await this.reader.factsAt(place.location, twin, false);
       if (facts?.from === nameOfRelative(place.path)) return this.noted(place, twin, facts);
     }
     return null;
@@ -66,40 +67,51 @@ export class LibraryCopyFolder implements CopyFolder {
   async store(sound: SoundRecord, copy: Blob, choice: OriginalsChoice, sourceStat: SourceStat): Promise<string> {
     const place = this.placeOf(sound.filePath, sound.audioSize);
     const library = this.library();
-    const sourceAudio = place && library?.audioPathOf(place.kind, place.path);
-    if (!place || !library || !sourceAudio) throw new SoundImportError('cannot-write', `${sound.filePath} is not in a linked folder on this device.`);
-    const { location, path } = place;
+    const sourceAudio = place && place !== 'outside' ? library?.audioPathOf(place.kind, place.path) : null;
+    if (!place || place === 'outside' || !library || !sourceAudio) throw new SoundImportError('cannot-write', `${sound.filePath} is not in a linked folder on this device.`);
     const facts = await readAtlasCopy(copy);
     if (!facts) throw new SoundImportError('verify-failed', 'The copy does not say what it is.');
-    const part = partOf(path);
-    await writing(`write ${part}`, async () => {
-      if (await location.exists(part)) await location.trash(part);
-      await location.write(part, copy);
-    });
-    const stem = stemCopyOf(path);
-    let final: string;
-    if (stem !== path && (await this.copyAt(place, stem, false))?.key === facts.key) {
-      await location.trash(part).catch((error: unknown) => console.error(`[Atlas] Could not take away ${part}`, error));
-      final = stem;
-    } else {
-      final = await freeName(stem, (candidate) => location.exists(candidate));
-      await writing(`move ${part} to ${final}`, () => location.move(part, final), () => location.trash(part));
-    }
-    final = await this.dealWithSource(place, final, choice, sourceStat);
+    let final = await this.placeCopy(place, copy, facts);
+    final = await this.dealWithSource(place, final, choice, sourceStat, facts, copy.size);
     const copyAudio = library.audioPathOf(place.kind, final) ?? sourceAudio;
     await this.follow(sourceAudio, copyAudio, copy.size);
-    this.copiesOfKey.set(facts.key, { kind: place.kind, path: final });
+    this.found.set(copyId(facts), { kind: place.kind, path: final });
     return copyAudio;
   }
 
   async blob(audioPath: string): Promise<Blob> {
     const place = this.placeOf(audioPath);
-    if (!place) throw new Error(`${audioPath} is not reachable on this device.`);
+    if (!place || place === 'outside') throw new Error(`${audioPath} is not reachable on this device.`);
     return place.location.read(place.path);
   }
 
+  /** Writes the copy beside its source and gives it its name, unless another device's copy of it stands there. Checks it whole on disk. */
+  private async placeCopy({ location, path }: Place, copy: Blob, facts: AtlasCopyFacts): Promise<string> {
+    const part = partOf(path);
+    await writing(`write ${part}`, async () => {
+      if (!(await location.exists(part))) await location.write(part, copy);
+      else if (location.canTrash()) {
+        await location.trash(part);
+        await location.write(part, copy);
+      } else await location.replace(part, copy);
+    });
+    const stem = stemCopyOf(path);
+    const there = stem === path ? null : await this.reader.factsAt(location, stem, false);
+    if (there && copyId(there) === copyId(facts)) {
+      await location.trash(part).catch((error: unknown) => console.error(`[Atlas] Could not take away ${part}`, error));
+      return stem;
+    }
+    const final = await freeName(stem, (candidate) => location.exists(candidate));
+    await writing(`move ${part} to ${final}`, () => location.move(part, final), () => location.trash(part));
+    if (!(await this.reader.stands(location, final, facts.key, copy.size))) {
+      await location.trash(final).catch(() => undefined);
+      throw new SoundImportError('verify-failed', `${final} is not whole on disk.`);
+    }
+    return final;
+  }
+
   /** The original to the trash where chosen and still what was converted; then the copy takes its name where it was an Opus file. */
-  private async dealWithSource({ location, path }: Place, final: string, choice: OriginalsChoice, sourceStat: SourceStat): Promise<string> {
+  private async dealWithSource({ location, path }: Place, final: string, choice: OriginalsChoice, sourceStat: SourceStat, facts: AtlasCopyFacts, size: number): Promise<string> {
     if (choice !== 'trash' || !location.canTrash() || !sameStat(await location.stat(path), sourceStat)) return final;
     try {
       await location.trash(path);
@@ -110,15 +122,16 @@ export class LibraryCopyFolder implements CopyFolder {
     if (path !== stemCopyOf(path) || final === path) return final;
     try {
       await location.move(final, path);
-      return path;
     } catch (error) {
       console.error(`[Atlas] Could not name ${final} as ${path}`, error);
       return final;
     }
+    if (!(await this.reader.stands(location, path, facts.key, size))) throw new SoundImportError('verify-failed', `${path} is not whole on disk.`);
+    return path;
   }
 
+  /** Records of the source name its copy, and its size. */
   private async follow(from: string, to: string, size: number): Promise<void> {
-    if (from === to) return;
     await this.records.whenLoaded();
     const now = this.now();
     this.records.rewrite((stored) => {
@@ -128,68 +141,48 @@ export class LibraryCopyFolder implements CopyFolder {
   }
 
   /**
-   * The copy found for a key. Where a race between devices left two copies of one key in one folder, every device
-   * keeps the lower path and trashes the other, as library records are decided; records follow to the one kept.
+   * The copy found for a source. Where a race between devices left two copies of one source in one folder, every
+   * device keeps the one named after the source, else the lower path, and trashes the other; records follow.
+   * Both are read again first: only two Atlas copies of one source, of the same name, are ever one too many.
    */
   private async noted(place: Place, path: string, facts: AtlasCopyFacts): Promise<FolderCopy | null> {
     const library = this.library();
-    const held = this.copiesOfKey.get(facts.key);
+    const id = copyId(facts);
+    const held = this.found.get(id);
     let kept = path;
-    if (held && held.kind === place.kind && held.path !== path && parentOfRelative(held.path) === parentOfRelative(path) && (await place.location.exists(held.path))) {
-      kept = held.path < path ? held.path : path;
-      const loser = kept === path ? held.path : path;
-      if (place.location.canTrash()) {
-        await place.location.trash(loser);
-        const from = library?.audioPathOf(place.kind, loser);
-        const to = library?.audioPathOf(place.kind, kept);
-        if (from && to) await this.follow(from, to, (await place.location.stat(kept))?.size ?? 0);
-      } else kept = path;
+    if (held && held.kind === place.kind && held.path !== path && parentOfRelative(held.path) === parentOfRelative(path)) {
+      kept = await this.oneOfTwo(place, held.path, path, facts);
     }
-    this.copiesOfKey.set(facts.key, { kind: place.kind, path: kept });
+    this.found.set(id, { kind: place.kind, path: kept });
     const audioPath = library?.audioPathOf(place.kind, kept);
-    return audioPath ? { facts: kept === path ? facts : (await this.copyAt(place, kept, false)) ?? facts, audioPath } : null;
+    if (!audioPath) return null;
+    return { facts: kept === path ? facts : (await this.reader.factsAt(place.location, kept, false)) ?? facts, audioPath };
   }
 
-  /** What a file says of itself, from its first pages and its last; a file marked by Atlas whose facts do not read is refused where `refuse`. */
-  private async copyAt(place: Place, path: string, refuse: boolean): Promise<AtlasCopyFacts | null> {
-    await this.turnToRead();
-    try {
-      const stat = await place.location.stat(path);
-      if (!stat) return null;
-      const ranges: FileRanges = { size: stat.size, read: (start, end) => place.location.readRange(path, start, end) };
-      const facts = await readAtlasCopy(ranges);
-      if (!facts && refuse && (await hasAtlasMark(ranges))) throw new SoundImportError('unreadable', `${path} was made by Atlas and its facts do not read.`);
-      return facts;
-    } catch (error) {
-      if (error instanceof SoundImportError) throw error;
-      console.error(`[Atlas] Could not read ${path}`, error);
-      return null;
-    } finally {
-      this.doneReading();
-    }
+  /** Which of two copies stays: the other goes to the trash where both still are copies of one source and the folder has a trash. */
+  private async oneOfTwo({ kind, location }: Place, held: string, path: string, facts: AtlasCopyFacts): Promise<string> {
+    const [heldFacts, pathFacts] = await Promise.all([this.reader.factsAt(location, held, false), this.reader.factsAt(location, path, false)]);
+    const same = (other: AtlasCopyFacts | null): boolean => other !== null && copyId(other) === copyId(facts);
+    if (!same(heldFacts) || !same(pathFacts) || !location.canTrash()) return path;
+    const named = stemCopyOf(joinRelative(parentOfRelative(path), facts.from));
+    const kept = held === named ? held : path === named ? path : held < path ? held : path;
+    const loser = kept === held ? path : held;
+    await location.trash(loser);
+    const library = this.library();
+    const from = library?.audioPathOf(kind, loser);
+    const to = library?.audioPathOf(kind, kept);
+    if (from && to) await this.follow(from, to, (await location.stat(kept))?.size ?? 0);
+    return kept;
   }
 
-  private turnToRead(): Promise<void> {
-    if (this.reading < READING_AT_ONCE) {
-      this.reading++;
-      return Promise.resolve();
-    }
-    return new Promise((resolve) => this.waitingToRead.push(resolve));
-  }
-
-  private doneReading(): void {
-    const next = this.waitingToRead.shift();
-    if (next) next();
-    else this.reading--;
-  }
-
-  /** A record's file on this device, in a linked root: an external path only in a root on disk. */
-  private placeOf(audioPath: string, audioSize?: number): Place | null {
+  /** A record's file on this device: in a linked root (an external path only in a root on disk), outside every root, or not reachable now. */
+  private placeOf(audioPath: string, audioSize?: number): Place | 'outside' | null {
     const library = this.library();
     if (!library) return null;
     const now = library.pathNow(audioPath, audioSize);
     const file = library.fileOfAudioPath(now);
-    if (!file || (isExternalAudioPath(now) && library.rootOf(file.kind).status !== 'external')) return null;
+    if (!file) return isExternalAudioPath(now) ? null : 'outside';
+    if (isExternalAudioPath(now) && library.rootOf(file.kind).status !== 'external') return null;
     const location = library.locationOf(file.kind);
     return location && { kind: file.kind, path: file.path, location };
   }
