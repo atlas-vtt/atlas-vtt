@@ -986,6 +986,17 @@
     visibility: hidden;
   }
 
+  // ── Show name: Atlas' switch and its text, on the icon row's inner edge ──
+  .pin-name-row {
+    @include atlas-flex-row($gap: $spacing-s);
+    padding: 0 $spacing-xs;
+  }
+
+  .pin-name-row__text {
+    cursor: pointer;
+    user-select: none;
+  }
+
   // ── Search ─────────────────────────────────────────────────────
   .pin-search-wrapper {
     position: relative;

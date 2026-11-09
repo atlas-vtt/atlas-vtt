@@ -130,7 +130,7 @@ export interface ViewAtlasState extends ViewState {
 
   // Note Pin actions
   /** With `hex`, the note is linked to the hex containing (x, y) rather than pinned to the point. */
-  addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean; sceneLevel?: string }) => string;
+  addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean; sceneLevel?: string; showName?: boolean }) => string;
   /** A field given as undefined is removed. */
   updateNotePin: (id: string, updates: { [K in keyof Omit<NotePin, 'id' | 'kind'>]?: NotePin[K] | undefined }) => void;
   moveNotePin: (id: string, x: number, y: number) => void;
@@ -1004,6 +1004,9 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               }
               if (options?.sceneLevel) {
                 newPin.sceneLevel = options.sceneLevel;
+              }
+              if (options?.showName) {
+                newPin.showName = true;
               }
               if (isPinLabelKind(icon)) {
                 newPin.label = nextPinLabel(draft.objects.pins, icon);

@@ -20,9 +20,13 @@ import { MAP_LAYER_Z } from './mapLayerOrder';
 import { createReadableMark, createRollMark } from './pinBadgeMarks';
 import { isEncounterFolderLink } from '../links/atlasLinkTargets';
 import { readablePinEntry } from './pinReadableMenu';
+import { pinNameEntries } from './pinNameMenu';
 import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
 import { t } from '../i18n';
 import { levelObjects } from '../levels/levelObjects';
+import { pinName, showsPinName } from '../tools/pinNames';
+import { PinNameLabel } from './pinNameLabel';
+import { pinNameBoxes } from './pinNameLayout';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
 function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean {
@@ -39,6 +43,8 @@ export class PinRenderer {
   private eventBus: EventEmitter;
   private pinContainer: Container;
   private pinSprites: Record<string, Container> = {};
+  /** The names shown under pins, by pin id; which of them show is decided again as the map zooms (`layoutNames`). */
+  private pinNames = new Map<string, PinNameLabel>();
   private _unsubscribeFromStore?: () => void;
   private _notePinToolViewportListener: ((e: FederatedPointerEvent) => void) | null = null;
   private _viewportPinClickListener: ((e: FederatedPointerEvent) => void) | null = null;
@@ -202,6 +208,17 @@ export class PinRenderer {
     if (this.previewPin) {
       this.previewPin.scale.set(scale);
     }
+    this.layoutNames();
+  }
+
+  /** Draws every name for the zoom, then hides those that would cover another name or another pin. */
+  private layoutNames(): void {
+    if (this.pinNames.size === 0) return;
+    const scale = this.getPinScale();
+    const zoom = this.viewport.scale.x;
+    for (const label of this.pinNames.values()) label.draw(scale, zoom);
+    const shown = pinNameBoxes(this.pinNames, this.pinSprites, scale);
+    for (const [id, label] of this.pinNames) label.view.visible = shown.has(id);
   }
 
   private getPinScale(): number {
@@ -217,6 +234,7 @@ export class PinRenderer {
       const position = this.pinPosition(pin);
       this.pinSprites[pin.id]?.position.set(position.x, position.y);
     }
+    this.layoutNames();
   }
 
   private redrawAllPins(): void {
@@ -233,6 +251,7 @@ export class PinRenderer {
         pinGroup.addChild(iconContainer);
       }
     }
+    this.layoutNames();
   }
 
   public getPinContainer(): Container {
@@ -345,11 +364,13 @@ export class PinRenderer {
     if (isPinLabelKind(icon)) {
       previewPin.label = nextPinLabel(levelObjects(this.store.getState()).pins, icon);
     }
-    return this.createPinGraphics(icon, previewPin);
+    return this.createPinGraphics(icon, previewPin, false);
   }
 
-  private createPinGraphics(iconType: string, pin: NotePin): Container {
+  /** The badge, its glyph or label and its marks, and its name under it where it shows one (`named`). */
+  private createPinGraphics(iconType: string, pin: NotePin, named = true): Container {
     const container = new Container();
+    if (named) this.pinNames.delete(pin.id);
     
     // Get theme colors
     const colors = canvasBadgeColors();
@@ -396,6 +417,11 @@ export class PinRenderer {
     }
     if (isEncounterFolderLink(pin.notePath)) container.addChild(createRollMark(badgeRadius, colors));
     else if (pin.readable === true) container.addChild(createReadableMark(badgeRadius, colors));
+    if (named && showsPinName(pin)) {
+      const label = new PinNameLabel(pinName(pin));
+      container.addChildAt(label.view, 0);
+      this.pinNames.set(pin.id, label);
+    }
 
     return container;
   }
@@ -411,6 +437,7 @@ export class PinRenderer {
       { type: 'item', ...pinOpenLook(pin), onClick: () => dispatchPinAction('open', pin, this.store) },
       { type: 'item', label: t('pinMenu.edit'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin, this.store) },
       ...[readablePinEntry(this.store, pin)].filter((entry) => entry !== null),
+      ...pinNameEntries(this.store, pin),
       { type: 'item', label: t('common.duplicate'), icon: 'files', onClick: () => this.store.getState().duplicateMapObjects([pin.id]) },
       { type: 'item', label: t('common.delete'), icon: 'trash', destructive: true, onClick: () => this.store.getState().deleteMapObject('pin', pin.id) },
     ];
@@ -443,6 +470,7 @@ export class PinRenderer {
           destroyTree(pinGroup);
           delete this.pinSprites[id];
         }
+        this.pinNames.delete(id);
       }
     }
 
@@ -489,6 +517,7 @@ export class PinRenderer {
       container.addChild(pinGroup);
       this.pinSprites[id] = pinGroup;
     }
+    this.layoutNames();
   };
 
   private showPreviewPin(icon: string): void {
@@ -606,5 +635,6 @@ export class PinRenderer {
         destroyTree(this.pinContainer, { textures: true });
     }
     this.pinSprites = {};
+    this.pinNames.clear();
   }
 } 

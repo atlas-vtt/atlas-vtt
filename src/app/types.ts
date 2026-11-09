@@ -16,6 +16,10 @@ export interface NotePin extends OnOneLevel {
   notePath: string;
   icon?: string; // Optional icon for customized pins
   label?: string; // Auto-assigned sequence label shown by 'number' / 'letter' pins
+  /** The pin's name as the GM wrote it; unset names it by its note (`pinName`). */
+  name?: string;
+  /** The name shows under the pin on the map, and to players who are shown the pin. */
+  showName?: true;
   gmOnly?: boolean; // Whether the pin is only visible to the GM
   /** Links the note to the grid cell containing (x, y) instead of marking a point; hex grids show that hex, other grids a pin. */
   hex?: boolean;
