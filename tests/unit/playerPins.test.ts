@@ -2,6 +2,7 @@ import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { PlayerPins, type PlayerPinsDeps } from '../../src/app/pixi/playerPins';
 import type { NotePin } from '../../src/app/types';
+import type { PinNameLabel } from '../../src/app/pixi/pinNameLabel';
 
 const pin = (id: string, x: number, extra: Partial<NotePin> = {}): NotePin => ({ id, kind: 'pin', x, y: 0, notePath: `Places/${id}.md`, ...extra });
 
@@ -55,5 +56,31 @@ describe('the pins the players\' picture shows', () => {
     world.layer.refresh();
     expect(world.drawn).toEqual(['a', 'a']);
     expect(world.layer.view.children).toHaveLength(1);
+  });
+});
+
+describe('the names of the pins the players see', () => {
+  const fakeName = (): PinNameLabel => ({ view: new Container(), draw: () => undefined, box: () => ({ left: -5, top: 25, right: 5, bottom: 30 }) }) as unknown as PinNameLabel;
+
+  it('stand above the fog, and only for pins out of it', () => {
+    const named = pin('inn', 10, { readable: true, showName: true });
+    const fogged = pin('crypt', 90, { readable: true, showName: true });
+    const layer = new PlayerPins({
+      pins: () => ({ inn: named, crypt: fogged }),
+      place: (p) => ({ x: p.x, y: p.y }),
+      draw: () => ({ view: new Container(), name: fakeName(), fitTo: () => undefined, whole: () => true }),
+      scale: () => 1,
+      zoom: () => 1,
+      mapSize: () => ({ width: 2000, height: 2000 }),
+    });
+    layer.setSight((points) => points.map((point) => point.x < 50));
+    layer.refresh();
+    expect(layer.names.view.zIndex).toBeGreaterThan(1000);
+    expect(layer.names.view.children.map((holder) => holder.label)).toEqual(['pin-name-inn']);
+    expect(layer.names.view.children[0]!.position.x).toBe(10);
+
+    layer.setSight(() => [false, false]);
+    layer.refresh();
+    expect(layer.names.view.children).toHaveLength(0);
   });
 });

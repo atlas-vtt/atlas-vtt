@@ -8,6 +8,7 @@ import { MAP_LAYER_Z } from './mapLayerOrder';
 import { destroyTree } from './utils/destroyTree';
 import { shownToPlayers } from '../tools/pinSharing';
 import { pinScreenDiameter, type MapSize } from './pinSizing';
+import { PinNameLayer } from './pinNameLayer';
 
 /** Which of `points` the players' picture shows the map at now; null while that cannot be read (nothing is shown then). */
 export type PlayerPointSight = (points: readonly Point[]) => readonly boolean[] | null;
@@ -34,12 +35,20 @@ export interface PlayerPinsDeps {
  */
 export class PlayerPins {
   readonly view = new Container({ label: 'pins-players', eventMode: 'none', interactiveChildren: false });
+  /** Their names, above the fog: a pin players see is out of the fog, and so is its name, whole. */
+  readonly names = new PinNameLayer('pin-names-players');
   private readonly drawn = new Map<string, { pin: NotePin; group: Container; face: DrawnPin }>();
   private sight: PlayerPointSight | null = null;
 
   constructor(private readonly deps: PlayerPinsDeps) {
     this.view.zIndex = MAP_LAYER_Z.pins;
-    this.view.visible = false;
+    this.setShown(false);
+  }
+
+  /** Shows or hides the pins and their names together: on the canvas while it shows the players' view. */
+  setShown(shown: boolean): void {
+    this.view.visible = shown;
+    this.names.view.visible = shown;
   }
 
   /** How the players' sight is read; until it is set, players see no pin. */
@@ -75,6 +84,7 @@ export class PlayerPins {
 
   /** Sizes the pins for the zoom, as the GM's are: dots on a map seen whole, names only where they fit. */
   rescale(): void {
+    this.names.sync(new Map([...this.drawn].flatMap(([id, { group, face }]) => (face.name ? [[id, { group, name: face.name }] as const] : []))));
     if (this.drawn.size === 0) return;
     const scale = this.deps.scale();
     const zoom = this.deps.zoom();
@@ -102,10 +112,12 @@ export class PlayerPins {
   clear(): void {
     for (const { group } of this.drawn.values()) destroyTree(group);
     this.drawn.clear();
+    this.names.sync(new Map());
   }
 
   destroy(): void {
     this.clear();
+    this.names.destroy();
     destroyTree(this.view);
   }
 }

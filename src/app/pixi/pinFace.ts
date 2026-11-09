@@ -10,7 +10,7 @@ import { createReadableMark, createRollMark } from './pinBadgeMarks';
 import { PinNameLabel } from './pinNameLabel';
 import { PIN_DOT_BELOW } from './pinSizing';
 
-/** A pin as drawn: its view, the name under it where it shows one, and how it turns into a dot and back. */
+/** A pin as drawn: its view, the name under it where it shows one (not in the view: `PinNameLayer` holds it), and how it turns into a dot and back. */
 export interface DrawnPin {
   readonly view: Container;
   readonly name: PinNameLabel | null;
@@ -82,11 +82,8 @@ export function drawPinFace(pin: NotePin, iconTexture: (icon: PinIconId) => Text
     else if (pin.readable === true) full.addChild(createReadableMark(badgeRadius, colors));
   }
 
-  let name: PinNameLabel | null = null;
-  if (named && showsPinName(pin)) {
-    name = new PinNameLabel(pinName(pin));
-    view.addChildAt(name.view, 0);
-  }
+  // The name stands in a layer of its own above the fog (`PinNameLayer`), placed like the pin
+  const name = named && showsPinName(pin) ? new PinNameLabel(pinName(pin)) : null;
   const dotBelow = isPinLabelKind(icon) ? LABEL_DOT_BELOW : PIN_DOT_BELOW;
   const fitTo = (diameter: number): void => {
     const shown = diameter < dotBelow;

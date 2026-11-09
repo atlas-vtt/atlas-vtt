@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import type { NotePin } from "../types";
 import { createPinIconTexture } from "./utils/pinIconTexture";
 import { drawPinFace, type DrawnPin } from './pinFace';
+import { PinNameLayer, type NamedPin } from './pinNameLayer';
 import { PlayerPins, type PlayerPointSight } from './playerPins';
 import type { LayerVisibility } from './playerSafeFrame';
 import type { PinNameLabel } from './pinNameLabel';
@@ -40,6 +41,16 @@ function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean
 /** The least radius on screen a pin answers the pointer within, also as a dot. */
 const MIN_HIT_RADIUS = 10;
 
+/** The pins that carry a name, with the groups their names are placed by. */
+function namedPins(faces: ReadonlyMap<string, DrawnPin>, groups: Readonly<Record<string, Container>>): Map<string, NamedPin> {
+  const named = new Map<string, NamedPin>();
+  for (const [id, face] of faces) {
+    const group = groups[id];
+    if (face.name && group) named.set(id, { group, name: face.name });
+  }
+  return named;
+}
+
 /** The names of the pins that show their glyph: a dot carries none. */
 function shownNames(faces: ReadonlyMap<string, DrawnPin>): Map<string, PinNameLabel> {
   const names = new Map<string, PinNameLabel>();
@@ -60,6 +71,8 @@ export class PinRenderer {
   private pinFaces = new Map<string, DrawnPin>();
   /** The placement preview as drawn, sized like the pins. */
   private previewFace: DrawnPin | null = null;
+  /** The names of these pins, above the fog. */
+  private readonly nameLayer = new PinNameLayer('pin-names');
   /** The pins the players' picture shows in place of these: in the players' frame and in session view. */
   private readonly players: PlayerPins;
   /** A refresh of the players' pins waits for the next frame, so the sight a store change moves has been worked out. */
@@ -106,7 +119,7 @@ export class PinRenderer {
       zoom: () => this.viewport.scale.x,
       mapSize: () => this.mapSize(),
     });
-    this.viewport.addChild(this.players.view);
+    this.viewport.addChild(this.players.view, this.players.names.view, this.nameLayer.view);
     const unsubscribePins = this.store.subscribe(
       (state: ViewAtlasState) => levelObjects(state).pins,
       this.syncPins.bind(this),
@@ -122,8 +135,9 @@ export class PinRenderer {
       (state: ViewAtlasState) => state.isGMView,
       () => {
         this.pinContainer.visible = !this.arePinsHidden();
+        this.nameLayer.view.visible = this.pinContainer.visible;
         // Session view shows the players' pins on this canvas, as their frame does
-        this.players.view.visible = !this.isPlayerView && !this.store.getState().isGMView;
+        this.players.setShown(!this.isPlayerView && !this.store.getState().isGMView);
         if (this.players.view.visible) this.players.refresh();
       },
       { fireImmediately: true }
@@ -256,6 +270,7 @@ export class PinRenderer {
 
   /** Draws every name for the zoom, then hides those under a dot, too wide for the map or covering another name or pin. */
   private layoutNames(): void {
+    this.nameLayer.sync(namedPins(this.pinFaces, this.pinSprites));
     const names = shownNames(this.pinFaces);
     if (names.size === 0) return;
     const scale = this.getPinScale();
@@ -321,12 +336,22 @@ export class PinRenderer {
   /** The players' frame: the GM's pins hidden, the pins players see now shown in their place. */
   public playerLayers(): LayerVisibility[] {
     this.players.refresh();
-    return [{ layer: this.pinContainer, visible: false }, { layer: this.players.view, visible: true }];
+    return [
+      { layer: this.pinContainer, visible: false },
+      { layer: this.nameLayer.view, visible: false },
+      { layer: this.players.view, visible: true },
+      { layer: this.players.names.view, visible: true },
+    ];
   }
 
   /** A picture of the scene (a thumbnail): no pin at all. */
   public pictureLayers(): LayerVisibility[] {
-    return [{ layer: this.pinContainer, visible: false }, { layer: this.players.view, visible: false }];
+    return [
+      { layer: this.pinContainer, visible: false },
+      { layer: this.nameLayer.view, visible: false },
+      { layer: this.players.view, visible: false },
+      { layer: this.players.names.view, visible: false },
+    ];
   }
 
   private schedulePlayersRefresh(): void {
@@ -673,5 +698,6 @@ export class PinRenderer {
     this.previewFace = null;
     if (this.playersFrame !== null) window.cancelAnimationFrame(this.playersFrame);
     this.players.destroy();
+    this.nameLayer.destroy();
   }
 } 
