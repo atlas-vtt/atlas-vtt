@@ -1,4 +1,4 @@
-import { createToggleSwitch } from '../packages/components/primitives/toggleSwitchElement';
+import { createToggleSwitch } from '../ui/toggleSwitchElement';
 import { t } from '../i18n';
 
 let nextId = 0;
