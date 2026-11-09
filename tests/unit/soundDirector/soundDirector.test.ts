@@ -5,7 +5,7 @@ import type { SceneSound, TableSound } from '@/app/sound/soundTypes';
 import { heldInMix } from '@/app/soundDirector/libraryDesk';
 import { SCENE_FOLLOW_DELAY_MS } from '@/app/soundDirector/sceneFollow';
 import type { FightState, FightStore } from '@/app/soundDirector/fightWatch';
-import { directorRig, mood, record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
+import { directorRig, factsOf, mood, record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
 
 const RAIN = record('rain');
 const WIND = record('wind');
@@ -51,12 +51,9 @@ describe('the sound director', () => {
     vi.useRealTimers();
   });
 
-  it('works out the waveform of music once and of no ambience, and keeps it with the copy', async () => {
+  it('reads the waveform of music from its file, and none of ambience', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    await settle();
-    expect(rig.copies.get('hash-audio/song.ogg')?.peaks).toEqual(Uint8Array.of(10, 200, 30));
-    expect(rig.copies.get('hash-audio/rain.ogg')?.peaks).toBeUndefined();
     expect(rig.director.shelf.peaksOfKey('hash-audio/song.ogg')).toEqual(Uint8Array.of(10, 200, 30));
     expect(rig.director.shelf.peaksOfKey('hash-audio/rain.ogg')).toBeNull();
   });
@@ -242,14 +239,24 @@ describe('the sound director', () => {
     expect(rig.conversions).toHaveLength(1);
   });
 
-  it('never makes a copy of a file already copied elsewhere: the cache answers by hash', async () => {
+  it('never converts a file that is a copy already: the file says so itself', async () => {
     rig = directorRig([RAIN], { ready: false });
-    rig.copies.set(await (await import('@/app/utils/hashing')).sha256(new TextEncoder().encode(RAIN.filePath).buffer), { hash: 'x', byteLength: 1, frames: 480000, channels: 2, lufs: -20, truePeakDb: -3, lastUsed: 0 });
+    rig.copies.set(RAIN.filePath, { facts: factsOf('x'), blob: new Blob([new Uint8Array(4)]) });
     await ready(rig);
     rig.director.shelf.request([RAIN], true);
     await settle();
     expect(rig.director.shelf.stateOf(RAIN).state).toBe('ready');
     expect(rig.conversions).toHaveLength(0);
+  });
+
+  it('converts nothing in a folder the GM has not agreed to', async () => {
+    rig = directorRig([RAIN], { ready: false });
+    rig.folder.choice = null;
+    await ready(rig);
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    expect(rig.conversions).toHaveLength(0);
+    expect(rig.director.shelf.stateOf(RAIN).state).toBe('not-converted');
   });
 
   it('a preview is no state of the table and reaches nobody listening to it', async () => {

@@ -1,35 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { atlasComments, CODEC_VERSION, forPlayers, readAtlasCopy, tagCopy, withComments, type AtlasCopyFacts } from '@/app/sound/codec/atlasOpus';
-import { OggOpusWriter } from '@/app/sound/codec/oggOpusWriter';
-import { lacingOf, packetsOfPage, readPage, writePage, type CarriedPacket } from '@/app/sound/codec/oggPages';
-import { readOpusComment, readOpusComments, readOpusHead, writeOpusTags } from '@/app/sound/codec/opusFormat';
+import { atlasCopyOf } from '../../helpers/atlasCopies';
+import { atlasComments, CODEC_VERSION, forPlayers, hasAtlasMark, rangesOf, readAtlasCopy, tagCopy, withComments, type AtlasCopyFacts } from '@/app/sound/codec/atlasOpus';
+import { lacingOf, packetsOfPage, readPage, writePage } from '@/app/sound/codec/oggPages';
+import { readOpusComment, readOpusComments, writeOpusTags } from '@/app/sound/codec/opusFormat';
 import { SEEK_COMMENT } from '@/app/sound/codec/seekTable';
 
 const KEY = 'ab'.repeat(32);
 
 async function bytesOf(blob: Blob): Promise<Uint8Array> {
   return new Uint8Array(await blob.arrayBuffer());
-}
-
-/** The 61 s tone as Atlas 0.13.x stores it: its packets written again by the copy writer, which adds `ATLAS_SEEK`. */
-function atlasCopyOf(file: Uint8Array): { copy: Blob; frames: number; channels: number } {
-  const first = readPage(file, 0);
-  const second = first && readPage(file, first.end);
-  if (!first || !second) throw new Error('fixture has no header');
-  const head = packetsOfPage(first, null).packets[0];
-  if (!head) throw new Error('fixture has no OpusHead');
-  const writer = new OggOpusWriter(head);
-  let carried: CarriedPacket | null = null;
-  let granule = 0;
-  for (let page = readPage(file, second.end); page; page = readPage(file, page.end)) {
-    const { packets, tail } = packetsOfPage(page, carried);
-    carried = tail;
-    for (const packet of packets) writer.addPacket(packet);
-    granule = page.granule;
-  }
-  const frames = granule - readOpusHead(head).preSkip;
-  return { copy: writer.finish(frames), frames, channels: readOpusHead(head).channels };
 }
 
 function peaks(): Uint8Array<ArrayBuffer> {
@@ -199,6 +179,23 @@ describe('Atlas facts in an Opus copy', () => {
     const taggedAgain = await tagCopy(dated, FACTS);
     expect(await readAtlasCopy(taggedAgain)).toEqual({ ...FACTS, frames, channels });
     expect(await bytesOf(await forPlayers(taggedAgain))).toEqual(fixtureBytes);
+  });
+
+  it('reads a copy by ranges, asking only for its first pages and its last', async () => {
+    const asked: Array<[number, number]> = [];
+    const ranges = { size: tagged.size, read: async (start: number, end: number) => { asked.push([start, end]); return bytesOf(tagged.slice(start, end)); } };
+    expect(await readAtlasCopy(ranges)).toEqual(await readAtlasCopy(tagged));
+    expect(asked.reduce((sum, [start, end]) => sum + Math.min(end, tagged.size) - start, 0)).toBeLessThan(200 * 1024);
+    expect(await readAtlasCopy(rangesOf(await tagged.arrayBuffer()))).toEqual({ ...FACTS, frames, channels });
+  });
+
+  it('knows its mark where its facts do not read', async () => {
+    const damaged = await withComments(tagged, (comment) => !comment.startsWith('ATLAS_LUFS'), ['ATLAS_LUFS=loud']);
+    expect(await readAtlasCopy(damaged)).toBeNull();
+    expect(await hasAtlasMark(rangesOf(damaged))).toBe(true);
+    expect(await hasAtlasMark(rangesOf(tagged))).toBe(true);
+    expect(await hasAtlasMark(rangesOf(fixture))).toBe(false);
+    expect(await hasAtlasMark(rangesOf(new Blob(['RIFF....WAVE OpusTags ATLAS_VTT=1'])))).toBe(false);
   });
 
   it('refuses tags that do not fit one page', async () => {

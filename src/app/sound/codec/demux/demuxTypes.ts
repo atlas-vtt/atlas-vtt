@@ -10,7 +10,9 @@ export type SoundRefusal =
   /** The file is damaged, or decoding it failed. */
   | 'unreadable'
   /** What was written did not read back as it should. */
-  | 'verify-failed';
+  | 'verify-failed'
+  /** The copy could not be written into the sound's folder (no room, no permission); the source is untouched. */
+  | 'cannot-write';
 
 /** Why a sound cannot be imported: `reason` is for the words shown, `detail` for the log. */
 export class SoundImportError extends Error {

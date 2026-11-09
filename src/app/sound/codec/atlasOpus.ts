@@ -54,6 +54,21 @@ export interface AtlasCopyFacts {
 
 export type CopyTags = Omit<AtlasCopyFacts, 'frames' | 'channels'>;
 
+/** A file read by its ranges, so only what is asked for leaves the disk. */
+export interface FileRanges {
+  readonly size: number;
+  /** The bytes from `start` up to `end` or the file's end, whichever comes first. */
+  read(start: number, end: number): Promise<Uint8Array>;
+}
+
+/** A file in memory, or a Blob, as ranges: nothing is copied but the ranges read. */
+export function rangesOf(file: Blob | ArrayBuffer): FileRanges {
+  if ('byteLength' in file) {
+    return { size: file.byteLength, read: (start, end) => Promise.resolve(new Uint8Array(file, start, Math.max(0, Math.min(end, file.byteLength) - start))) };
+  }
+  return { size: file.size, read: async (start, end) => new Uint8Array(await file.slice(start, end).arrayBuffer()) };
+}
+
 interface OpusHeader {
   headPacket: Uint8Array;
   tagsPage: OggPage;
@@ -252,8 +267,9 @@ function headerFacts(start: Uint8Array): HeaderFacts | null {
  * What an Atlas-made copy says of itself, from its first pages and its last; null for any other file,
  * whatever its bytes hold. A file that cannot be read throws, so a read error never passes for a foreign file.
  */
-export async function readAtlasCopy(file: Blob): Promise<AtlasCopyFacts | null> {
-  const start = await bytesOf(file.slice(0, HEADER_BYTES));
+export async function readAtlasCopy(file: Blob | FileRanges): Promise<AtlasCopyFacts | null> {
+  const ranges = isRanges(file) ? file : rangesOf(file);
+  const start = await ranges.read(0, HEADER_BYTES);
   let facts: HeaderFacts | null;
   try {
     facts = headerFacts(start);
@@ -261,8 +277,32 @@ export async function readAtlasCopy(file: Blob): Promise<AtlasCopyFacts | null> 
     return null;
   }
   if (!facts) return null;
-  const tail = await bytesOf(file.slice(Math.max(0, file.size - TAIL_BYTES)));
+  const tail = await ranges.read(Math.max(0, ranges.size - TAIL_BYTES), ranges.size);
   const granule = lastGranule(tail, facts.serial);
   if (granule === null || granule < facts.preSkip) return null;
   return { ...facts.known, frames: granule - facts.preSkip };
+}
+
+const isRanges = (file: Blob | FileRanges): file is FileRanges => typeof (file as Partial<FileRanges>).read === 'function';
+
+const MARK = new TextEncoder().encode(`${VTT}=`);
+const TAGS_MAGIC = new TextEncoder().encode('OpusTags');
+
+function indexOf(bytes: Uint8Array, needle: Uint8Array, from: number): number {
+  outer: for (let at = from; at <= bytes.length - needle.length; at++) {
+    for (let index = 0; index < needle.length; index++) if (bytes[at + index] !== needle[index]) continue outer;
+    return at;
+  }
+  return -1;
+}
+
+/**
+ * Whether an Ogg file's comment header names Atlas as its maker, read from its bytes alone, so it holds
+ * where the pages or the facts beside the mark do not read. Such a file is never converted again.
+ */
+export async function hasAtlasMark(file: FileRanges): Promise<boolean> {
+  const head = await file.read(0, HEADER_BYTES);
+  if (!isCapture(head, 0)) return false;
+  const tags = indexOf(head, TAGS_MAGIC, 0);
+  return tags >= 0 && indexOf(head, MARK, tags) >= 0;
 }

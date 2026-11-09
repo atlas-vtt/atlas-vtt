@@ -26,8 +26,12 @@ export interface SoundLocation {
   /** Null where the folder is not there (the root's disk unplugged, the folder gone). */
   list(folder: string): Promise<SoundListing | null>;
   exists(path: string): Promise<boolean>;
+  /** What a file measures; null where no file lies there. */
+  stat(path: string): Promise<{ size: number; mtime: number } | null>;
   /** `onStep` hears a read that comes in parts getting somewhere. */
   read(path: string, onStep?: () => void): Promise<Blob>;
+  /** The bytes of a file from `start` up to `end` or its end, reading no more of it where the system allows. */
+  readRange(path: string, start: number, end: number): Promise<Uint8Array<ArrayBuffer>>;
   /** A URL a media element can load; null where there is none. */
   resourceUrl(path: string): string | null;
   makeFolder(path: string): Promise<void>;

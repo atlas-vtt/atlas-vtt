@@ -1,20 +1,20 @@
 import { normalizePath, type App } from 'obsidian';
 import { presentedSceneOf, type PresentedSceneSource } from '../services/presentedScene';
 import { SettingsService } from '../services/SettingsService';
-import { OpusCache, opusCacheBudget, opusCacheDatabaseName } from '../sound/codec/opusCache';
 import { SoundImporter } from '../sound/codec/soundImporter';
-import { readSoundPeaks } from '../sound/codec/soundPeaksClient';
 import { SOUND_CONTEXT_OPTIONS } from '../sound/engine/soundMath';
 import type { SceneSound, SoundRecord } from '../sound/soundTypes';
 import { MoodStore } from '../soundLibrary/MoodStore';
 import { sceneSoundOfText } from '../soundLibrary/sceneSound';
 import { isAudioPath } from '../soundLibrary/soundFiles';
 import { SoundLibrary } from '../soundLibrary/SoundLibrary';
+import { LibraryCopyFolder } from '../soundLibrary/libraryCopyFolder';
 import { soundRecordOf } from '../soundLibrary/soundRecords';
 import { SoundRecordStore } from '../soundLibrary/SoundRecordStore';
 import { showNotice } from '../ui/notice';
 import type { DeviceStorage } from './deviceFacts';
-import type { CopyCache, CopyMaker, SoundFileAccess } from './soundCopies';
+import type { CopyFolder } from './copyFolder';
+import type { CopyMaker, SoundFileAccess } from './soundCopies';
 import type { OutputContext } from './soundOutput';
 import { prepareSource, type PreparedSource } from './sourcePrepare';
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from '../services/soundSettings';
@@ -35,10 +35,10 @@ export interface SoundDirectorDeps {
   moods: DirectorMoods;
   presented: Pick<PresentedSceneSource, 'get' | 'onChange'>;
   files: SoundFileAccess;
-  createCache(): CopyCache & { close(): Promise<void> };
+  /** Where the copies lie: Atlas-made Opus files in the GM's linked folders. */
+  createFolder(): CopyFolder;
   createMaker(): CopyMaker & { dispose(): void };
   prepareSource(source: ArrayBuffer | Blob): Promise<PreparedSource>;
-  readPeaks(copy: Blob, frames: number): Promise<Uint8Array<ArrayBuffer>>;
   createContext(): OutputContext;
   readRecords(): Promise<SoundRecord[]>;
   /** Calls back when sounds may have been added or changed. */
@@ -86,10 +86,10 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
     moods: MoodStore.forApp(app),
     presented: presentedSceneOf(app),
     files: fileAccess(app),
-    createCache: () => new OpusCache(window.indexedDB, opusCacheDatabaseName(app.appId), () => opusCacheBudget(navigator.storage)),
+    // Never `forApp`, as for the files: the library is open while sound is on.
+    createFolder: () => new LibraryCopyFolder(() => SoundLibrary.opened(app), records),
     createMaker: () => new SoundImporter(),
     prepareSource,
-    readPeaks: readSoundPeaks,
     createContext: () => new AudioContext({ ...SOUND_CONTEXT_OPTIONS, latencyHint: 'playback' }),
     readRecords: async () => {
       await records.whenLoaded();

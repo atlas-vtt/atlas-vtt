@@ -113,6 +113,14 @@ describe('reading and writing', () => {
     expect(Buffer.compare(Buffer.from(await blob.arrayBuffer()), bytes)).toBe(0);
   });
 
+  it('reads a range of a file, and only that', async () => {
+    write('a.opus', '0123456789');
+    expect(new TextDecoder().decode(await location().readRange('a.opus', 2, 5))).toBe('234');
+    expect(new TextDecoder().decode(await location().readRange('a.opus', 8, 64))).toBe('89');
+    expect(await location().stat('a.opus')).toMatchObject({ size: 10 });
+    expect(await location().stat('gone.opus')).toBeNull();
+  });
+
   it('writes a new file and never over one', async () => {
     const place = location();
     await place.write('new.mp3', new Blob(['NEW']));
