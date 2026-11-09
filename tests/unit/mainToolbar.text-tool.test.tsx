@@ -56,6 +56,7 @@ const storeState = {
   objects: { tokens: {} },
   lighting: { enabled: false, ambient: 0.1 },
   setSceneLighting: vi.fn(),
+  setRoomsMode: vi.fn(),
   setSelection,
   openAssetManager,
   closeAssetManager,

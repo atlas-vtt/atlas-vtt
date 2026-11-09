@@ -56,3 +56,22 @@
   opacity: 0.45;
   cursor: default;
 }
+
+// Choices laid out as tiles, three to a row, each its icon over a short name: a set of modes that
+// would make a long list of rows (the lighting tool's). The arrow keys still walk them in order.
+.atlas-segmented--tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  .atlas-segmented__option--icon {
+    flex-direction: column;
+    gap: 2px;
+    padding: $spacing-xs;
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-segmented__icon svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}

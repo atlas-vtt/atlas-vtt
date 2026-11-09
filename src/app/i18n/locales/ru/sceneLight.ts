@@ -2,6 +2,7 @@ import type { Translation } from '../../types';
 
 export const sceneLight: Translation = {
   'sceneLight.day': 'День',
+  'sceneLight.memoryNeeded': 'Нужна освещённая сцена, которая помнит исследованное',
   'sceneLight.dusk': 'Сумерки',
   'sceneLight.night': 'Ночь',
   'sceneLight.dark': 'Кромешная тьма',

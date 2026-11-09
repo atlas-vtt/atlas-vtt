@@ -32,6 +32,7 @@ export interface UISlice extends ViewUIState {
   openLevelSurfacePopover: (surfaceId: string) => void;
   closeLevelSurfacePopover: () => void;
   setSceneLightingPanelOpen: (open: boolean) => void;
+  setRoomsMode: (on: boolean) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
   /** Starting the toolbar editor closes the dice tray, which hangs where the tray goes. */
@@ -61,6 +62,7 @@ export function createInitialUIState(): Pick<
   | 'levelLinkPopover'
   | 'levelSurfacePopover'
   | 'isSceneLightingPanelOpen'
+  | 'isRoomsMode'
   | 'heldTokens'
   | 'exploredBrush'
   | 'isToolbarEditing'
@@ -83,6 +85,7 @@ export function createInitialUIState(): Pick<
     levelLinkPopover: null,
     levelSurfacePopover: null,
     isSceneLightingPanelOpen: false,
+    isRoomsMode: false,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
     isToolbarEditing: false,
@@ -114,6 +117,7 @@ export function createUIActions(
   | 'openLevelSurfacePopover'
   | 'closeLevelSurfacePopover'
   | 'setSceneLightingPanelOpen'
+  | 'setRoomsMode'
   | 'setHeldTokens'
   | 'setExploredBrush'
   | 'setToolbarEditing'
@@ -161,6 +165,7 @@ export function createUIActions(
     closeLevelSurfacePopover: () => set((draft) => { draft.levelSurfacePopover = null; }),
     closeLightPopover: () => set((draft) => { draft.lightPopover = null; }),
     setSceneLightingPanelOpen: (open) => set((draft) => { draft.isSceneLightingPanelOpen = open; }),
+    setRoomsMode: (on) => set((draft) => { draft.isRoomsMode = on; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),
     setToolbarEditing: (on) => set((draft) => {

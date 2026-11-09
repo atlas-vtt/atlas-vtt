@@ -2,6 +2,7 @@ import type { Message } from '../../types';
 
 export const sceneLight = {
   'sceneLight.day': 'Day',
+  'sceneLight.memoryNeeded': 'Needs a lit scene that remembers what was explored',
   'sceneLight.dusk': 'Dusk',
   'sceneLight.night': 'Night',
   'sceneLight.dark': 'Pitch black',

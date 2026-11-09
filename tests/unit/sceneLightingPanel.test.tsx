@@ -6,6 +6,11 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { SceneLightingPanelHost } from '../../src/app/pixi/lighting/SceneLightingPanel';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
+
+/** The view's event bus, as `UIRoot` gives the panel through its context. */
+const emitted: string[] = [];
+const ui = { app: undefined, view: { serviceManager: { getEventBus: () => ({ emit: (event: string) => emitted.push(event) }) } }, pixiApp: null, renderer: null } as unknown as AtlasUIContextValue;
 
 afterEach(() => {
   cleanup();
@@ -20,7 +25,7 @@ function renderPanel(): { store: ViewAtlasStore; setSceneLighting: ReturnType<ty
   store.getState().setSceneLightingPanelOpen(true);
   const setSceneLighting = vi.spyOn(store.getState(), 'setSceneLighting');
   // As `UIRoot` mounts it: outside every tooltip provider.
-  render(<ViewStoreProvider store={store}><SceneLightingPanelHost /></ViewStoreProvider>);
+  render(<AtlasUIContext.Provider value={ui}><ViewStoreProvider store={store}><SceneLightingPanelHost /></ViewStoreProvider></AtlasUIContext.Provider>);
   return { store, setSceneLighting };
 }
 
@@ -161,5 +166,14 @@ describe('SceneLightingPanel', () => {
     const { store } = renderPanel();
     fireEvent.click(screen.getByRole('button', { name: 'Close lighting settings' }));
     expect(store.getState().isSceneLightingPanelOpen).toBe(false);
+  });
+
+  it('forgets explored areas and leads to the graphics settings, which the menu no longer holds', () => {
+    const { store } = renderPanel();
+    emitted.length = 0;
+    fireEvent.click(screen.getByRole('button', { name: 'Forget explored areas' }));
+    expect(emitted).toEqual(['lighting-reset-explored']);
+    fireEvent.click(screen.getByRole('button', { name: 'Graphics settings…' }));
+    expect(store.getState().isCommandPaletteOpen).toBe(true);
   });
 });

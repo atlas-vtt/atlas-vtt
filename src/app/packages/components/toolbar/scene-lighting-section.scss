@@ -35,67 +35,121 @@
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// The rooms mode: its hints, and the list of the level's rooms
+// The rooms mode: its tools in the menu, and the Rooms panel beside the map
 // ═══════════════════════════════════════════════════════════════════════════
 
-// On the menu's text edge, as the menu's other labels
-.atlas-rooms-hint {
-  margin: 0;
-  padding-inline: var(--atlas-menu-text-inset, 0px);
-  max-width: 260px;
-  font-size: $font-ui-smaller;
-  color: var(--text-muted);
-}
-
-.atlas-room-list__head {
+// What a stroke does and its shape, side by side in one row: icons, named by their tooltips.
+.atlas-rooms-tools__row {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding-inline-end: var(--atlas-menu-text-inset, 0px);
+  gap: $spacing-s;
+
+  > .atlas-segmented {
+    flex: 3 1 0;
+  }
+
+  > .atlas-segmented + .atlas-segmented {
+    flex-grow: 4;
+  }
 }
 
-.atlas-room-list__count {
+.atlas-rooms-panel {
+  width: 260px;
+}
+
+// No line under the header: the panel's space separates it (no dividers in panels).
+.atlas-light-panel__header.atlas-rooms-panel__header {
+  border-bottom: none;
+}
+
+.atlas-rooms-panel__count {
   font-size: $font-ui-smaller;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
-// A long list scrolls inside the menu, so the actions below it stay in reach.
+.atlas-rooms-panel__body {
+  @include atlas-flex-col($spacing-xs);
+  padding: 0 $spacing-s $spacing-s;
+}
+
+.atlas-rooms-panel .btn.atlas-rooms-panel__join {
+  justify-content: flex-start;
+  gap: $spacing-s;
+  color: var(--text-muted);
+}
+
+.atlas-rooms-hint {
+  margin: 0;
+  padding: $spacing-xs $spacing-s;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
+// A long list scrolls inside the panel, so joining stays in reach.
 .atlas-room-list__rows {
   display: flex;
   flex-direction: column;
-  gap: $spacing-xs;
-  max-height: 240px;
+  gap: 2px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
 .atlas-room-row {
   display: flex;
   align-items: center;
-  gap: $spacing-xs;
+  gap: 2px;
+  border-radius: $radius-l;
+
+  &:hover,
+  &:focus-within {
+    background: var(--background-modifier-hover);
+  }
 
   &[data-hidden] .atlas-room-row__label {
     color: var(--text-faint);
   }
 }
 
-// The row's own name and its tick, without the menu item's icon column.
-.atlas-room-row__name.atlas-dropdown-menu-item {
+// The room's name and the tick of the one a stroke carves into, on the panel's text edge.
+.atlas-rooms-panel .btn.atlas-room-row__name {
   flex: 1;
   min-width: 0;
-  grid-template-columns: $icon-s minmax(0, 1fr);
+  justify-content: flex-start;
+  gap: $spacing-xs;
+  background: transparent !important;
+}
+
+.atlas-room-row__check {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: $icon-s;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+    color: var(--text-accent);
+  }
 }
 
 .atlas-room-row__label {
   @include atlas-truncate;
 }
 
-.atlas-room-row__button {
+// A row's actions show while it is pointed at or holds focus, so the list reads as names.
+.atlas-room-row__actions {
+  display: flex;
   flex-shrink: 0;
+  opacity: 0;
+  transition: opacity $transition-fast $transition-ease;
 
-  &:disabled {
-    opacity: 0.4;
+  .atlas-room-row:hover &,
+  .atlas-room-row:focus-within & {
+    opacity: 1;
   }
+}
+
+.atlas-room-row__button:disabled {
+  opacity: 0.4;
 }
 
 .atlas-room-row__name-input {

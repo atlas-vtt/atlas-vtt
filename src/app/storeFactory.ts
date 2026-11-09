@@ -318,6 +318,7 @@ export interface ViewAtlasState extends ViewState {
   openLevelSurfacePopover: UISlice['openLevelSurfacePopover'];
   closeLevelSurfacePopover: UISlice['closeLevelSurfacePopover'];
   setSceneLightingPanelOpen: UISlice['setSceneLightingPanelOpen'];
+  setRoomsMode: UISlice['setRoomsMode'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
   setToolbarEditing: UISlice['setToolbarEditing'];

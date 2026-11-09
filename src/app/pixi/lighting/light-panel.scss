@@ -117,3 +117,15 @@
 .atlas-light-panel__field--color input[type='color'] {
   @include atlas-colour-input(var(--input-height));
 }
+
+// The panel's actions at its foot: buttons with their icon, starting on the fields' edge.
+.atlas-light-panel__actions {
+  @include atlas-flex-col(2px);
+  padding: 0 $spacing-s $spacing-s;
+
+  .btn,
+  button {
+    justify-content: flex-start;
+    gap: $spacing-s;
+  }
+}

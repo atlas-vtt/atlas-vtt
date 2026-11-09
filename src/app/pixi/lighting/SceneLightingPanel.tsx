@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { GripHorizontal, SlidersHorizontal } from 'lucide-react';
+import { Gauge, GripHorizontal, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Button } from '../../packages/components/primitives/button';
+import { useAtlasUI } from '../../react/root/AtlasUIContext';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { TooltipProvider } from '../../packages/components/primitives/tooltip';
 import { useDialogWindowVariants } from '../../packages/components/primitives/dialogMotion';
@@ -50,6 +52,8 @@ function SceneLightingPanel(): React.ReactElement {
   const lighting = useAtlasStore((state) => state.lighting);
   const setSceneLighting = useAtlasStore((state) => state.setSceneLighting);
   const setOpen = useAtlasStore((state) => state.setSceneLightingPanelOpen);
+  const setCommandPaletteOpen = useAtlasStore((state) => state.setCommandPaletteOpen);
+  const { view } = useAtlasUI();
   const windowVariants = useDialogWindowVariants();
   const { position, panelRef, startDrag, isDragging } = useDraggablePosition(topRight, { margin: MARGIN });
   // The value shows live while dragging and reaches the scene on release: every step would
@@ -115,6 +119,17 @@ function SceneLightingPanel(): React.ReactElement {
           onChange={(look) => setSceneLighting({ darkSightLook: look === 'system' ? undefined : look })} />
         <TintField label={t('sceneLight.darkSightTint')} value={darkSightTintOf(lighting)} clearLabel={t('sceneLight.noTint')}
           onChange={(tint) => setSceneLighting({ darkSightTint: tint ?? undefined })} />
+      </div>
+      {/* What the menu does not need at hand: starting the memory over, and how much the picture may cost this device. */}
+      <div className="atlas-light-panel__actions">
+        <Button variant="ghost" size="sm" onClick={() => view?.serviceManager?.getEventBus?.()?.emit('lighting-reset-explored')}>
+          <RotateCcw />
+          {t('sceneLight.forgetExplored')}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setCommandPaletteOpen(true, 'graphics-settings')}>
+          <Gauge />
+          {t('graphics.open')}
+        </Button>
       </div>
     </motion.section>
   );

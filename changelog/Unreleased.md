@@ -2,6 +2,10 @@
 
 - Rooms: in the lighting tool's Rooms mode, carve rooms out of solid rock instead of drawing walls one by one. Their outline stops sight, light, sound and tokens like walls, and a door dragged across an opening reaches the walls. Contributed by ThatMattLatt
 
+## Improved
+
+- The lighting menu is half its size: modes are tiles, each mode's tools fit in one row, and Rooms are listed in their own panel beside the map
+
 ## Fixed
 
 - Atlas notices such as "Saved" show at the bottom of the window again; since 0.13.0 they appeared nowhere
