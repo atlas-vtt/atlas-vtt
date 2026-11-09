@@ -65,7 +65,7 @@ export class MeasureLabel {
     if (this.text.style.fill !== colors.text) this.text.style.fill = colors.text;
     const bounds = this.text.getLocalBounds();
     const size = pillSize({ width: bounds.width * NAMEPLATE_TEXT.textScale, height: bounds.height * NAMEPLATE_TEXT.textScale });
-    drawLabelPill(this.pill.clear(), size, colors, onScreen);
+    this.drawPill(size, colors, onScreen);
     const screenSize = { width: size.width * onScreen, height: size.height * onScreen };
     const center = this.target && labelCenter(this.target, screenSize, viewZoom, LABEL_LOOK.gap * onScreen);
     if (!center) return;
@@ -76,24 +76,25 @@ export class MeasureLabel {
   destroy(): void {
     destroyTree(this.view);
   }
-}
 
-/**
- * The pill of a label in the nameplate's look into `g`, in its own units, opaque, with the ink's soft
- * shade beside it in screen pixels (`onScreen` per unit): no translucent piece lies over another.
- */
-export function drawLabelPill(g: Graphics, { width, height, radius }: Size & { radius: number }, colors: ReturnType<typeof labelColors>, onScreen: number): void {
-  let edge = 0;
-  for (const band of INK_SHADE) {
-    const bandWidth = band.width / onScreen;
-    const grow = edge + bandWidth / 2;
-    g.roundRect(-width / 2 - grow, -height / 2 - grow, width + 2 * grow, height + 2 * grow, radius + grow)
-      .stroke({ width: bandWidth, color: 0x000000, alpha: band.alpha });
-    edge += bandWidth;
+  /**
+   * The pill in UI units, opaque, with the ink's soft shade beside it in screen pixels (`onScreen`
+   * per UI unit): no translucent piece lies over another.
+   */
+  private drawPill({ width, height, radius }: Size & { radius: number }, colors: ReturnType<typeof labelColors>, onScreen: number): void {
+    const g = this.pill.clear();
+    let edge = 0;
+    for (const band of INK_SHADE) {
+      const bandWidth = band.width / onScreen;
+      const grow = edge + bandWidth / 2;
+      g.roundRect(-width / 2 - grow, -height / 2 - grow, width + 2 * grow, height + 2 * grow, radius + grow)
+        .stroke({ width: bandWidth, color: 0x000000, alpha: band.alpha });
+      edge += bandWidth;
+    }
+    const inset = LABEL_LOOK.border;
+    g.roundRect(-width / 2, -height / 2, width, height, radius).fill(colors.border);
+    g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, radius - inset).fill(colors.background);
   }
-  const inset = LABEL_LOOK.border;
-  g.roundRect(-width / 2, -height / 2, width, height, radius).fill(colors.border);
-  g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, radius - inset).fill(colors.background);
 }
 
 /** Calls `redraw` whenever Obsidian switches between its light and dark theme; returns what stops it. */

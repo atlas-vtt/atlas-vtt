@@ -17,6 +17,7 @@ function players(pins: Record<string, NotePin>): { layer: PlayerPins; drawn: str
     },
     scale: () => 1,
     zoom: () => 1,
+    mapWidth: () => 2000,
   };
   return { layer: new PlayerPins(deps), drawn, set: (next) => { current = next; } };
 }

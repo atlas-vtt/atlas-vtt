@@ -47,6 +47,13 @@ export class PinRenderer {
   private readonly players: PlayerPins;
   /** A refresh of the players' pins waits for the next frame, so the sight a store change moves has been worked out. */
   private playersFrame: number | null = null;
+  /** The map's width in world pixels; names show only once the map is large enough on screen to carry them. */
+  private mapWidth: () => number | null = () => null;
+  /** The map's size changed (a map loaded, a stretch applied): the names it carries are laid out again. */
+  private readonly mapImageUpdated = (): void => {
+    this.layoutNames();
+    this.players.rescale();
+  };
   private _unsubscribeFromStore?: () => void;
   private _notePinToolViewportListener: ((e: FederatedPointerEvent) => void) | null = null;
   private _viewportPinClickListener: ((e: FederatedPointerEvent) => void) | null = null;
@@ -83,6 +90,7 @@ export class PinRenderer {
       draw: (pin) => drawPinFace(pin, (icon) => this.getIconTexture(icon), { marks: false, named: true }),
       scale: () => this.getPinScale(),
       zoom: () => this.viewport.scale.x,
+      mapWidth: () => this.mapWidth(),
     });
     this.viewport.addChild(this.players.view);
     const unsubscribePins = this.store.subscribe(
@@ -177,6 +185,7 @@ export class PinRenderer {
     
     this.viewport.on('zoomed', this._viewportZoomHandler);
     this.viewport.on('zoomed-end', this._viewportZoomHandler);
+    this.eventBus.on('map-image-updated', this.mapImageUpdated);
   }
   
   private setupPreviewPinListeners(): void {
@@ -238,7 +247,7 @@ export class PinRenderer {
     const scale = this.getPinScale();
     const zoom = this.viewport.scale.x;
     for (const label of this.pinNames.values()) label.draw(scale, zoom);
-    const shown = pinNameBoxes(this.pinNames, this.pinSprites, scale);
+    const shown = pinNameBoxes(this.pinNames, this.pinSprites, scale, this.mapWidth());
     for (const [id, label] of this.pinNames) label.view.visible = shown.has(id);
   }
 
@@ -279,6 +288,11 @@ export class PinRenderer {
 
   public getPinContainer(): Container {
     return this.pinContainer;
+  }
+
+  /** How wide the map is in world pixels, for how much of it a name may cover; set by the view. */
+  public setMapWidth(read: () => number | null): void {
+    this.mapWidth = read;
   }
 
   /** How the players' sight is read for the pins they are shown; set by the view once its fog and lighting exist. */
@@ -592,6 +606,8 @@ export class PinRenderer {
       delete this._viewportZoomHandler;
     }
     
+    this.eventBus.off('map-image-updated', this.mapImageUpdated);
+
     // Clean up pointer move handler
     if (this._viewportPointerMoveHandler && this.viewport) {
       this.viewport.off('pointermove', this._viewportPointerMoveHandler);

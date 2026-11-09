@@ -20,8 +20,10 @@ export interface PlayerPinsDeps {
   readonly draw: (pin: NotePin) => DrawnPin;
   /** The pins' scale, the GM's markers' (`mapMarkerScale`), so the players' picture keeps the map's proportions. */
   readonly scale: () => number;
-  /** The viewport's zoom, for how finely names are rasterised. */
+  /** The viewport's zoom, for the names' size on screen. */
   readonly zoom: () => number;
+  /** The map's width in world pixels, for how much of it a name may cover. */
+  readonly mapWidth: () => number | null;
 }
 
 /**
@@ -85,7 +87,7 @@ export class PlayerPins {
         names.set(id, name);
       }
     }
-    const visible = pinNameBoxes(names, groups, scale);
+    const visible = pinNameBoxes(names, groups, scale, this.deps.mapWidth());
     for (const [id, name] of names) name.view.visible = visible.has(id);
   }
 

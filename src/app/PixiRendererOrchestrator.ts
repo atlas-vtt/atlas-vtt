@@ -442,6 +442,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getMapRect());
     this.followFogEdge();
     this.pinRenderer.setPlayerSight((points) => this.playersSeeMapAt(points));
+    this.pinRenderer.setMapWidth(() => this.getMapRect()?.width ?? null);
     
     // Add fog layer to viewport - it should be on top for interaction when the fog tool is active
     const fogContainer = this.fogRenderer.getContainer();

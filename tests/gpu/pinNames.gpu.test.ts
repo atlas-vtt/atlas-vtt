@@ -51,7 +51,9 @@ describe('pin names on the map', () => {
         names.set(p.id, name);
       }
     }
-    const shown = pinNameBoxes(names, groups, 1);
+    // A map shown small carries no names: each would cover more than its share of it
+    expect(pinNameBoxes(names, groups, 1, 120).size).toBe(0);
+    const shown = pinNameBoxes(names, groups, 1, 2000);
     for (const [id, name] of names) name.view.visible = shown.has(id);
     app.render();
 
