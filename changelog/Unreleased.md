@@ -19,4 +19,4 @@
 
 ## Atlas Online
 
-- Abilities named with a link (to a heading in the note or to another note) show their plain name in the players' Abilities tab, and their details are taken from what the link points to
+- Abilities named with a link show their plain name in the players' Abilities tab, and an ability linking a heading of its own note shows the text under that heading

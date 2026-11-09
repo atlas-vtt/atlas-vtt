@@ -20,7 +20,7 @@ export interface StatblockGate {
   read(path: string): Promise<ResolvedStatblock | null>;
   /** Writes checked patches into a note, as every statblock edit in Atlas is written. */
   write(path: string, patches: readonly NotePatch[]): Promise<StatblockWriteOutcome>;
-  /** The text a link in an ability's name of a note names (`abilityLink`: a heading of the note, another note), without the GM's comments; null where there is none. */
+  /** The text of the heading of the note itself that a link in an ability's name names (`abilityLink`), without the GM's comments; null for any other link. */
   readLink?(path: string, link: string): Promise<string | null>;
   /** The width of the statblock panel beside a note on this device now, which the players' cards are laid out at (`shownPanelWidth`; while no note shows, the width last measured beside one). */
   panelWidth?(): number | undefined;

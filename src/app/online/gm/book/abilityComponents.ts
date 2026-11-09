@@ -75,8 +75,8 @@ function entryContent(item: FieldValue | undefined, shape: EntryShape | undefine
 
 /**
  * An ability as the player reads it: its name as plain words, and where it has no text of its own
- * and its name is a link (to a heading of the note, or to another note), the text there. The GM
- * wrote that link: a player may keep the links the note holds but never write one (`checkAbilityEdit`).
+ * and its name links a heading of the statblock's own note, the text there (the gate follows no
+ * other link). A player may keep the links the note holds but never write one (`checkAbilityEdit`).
  */
 function readEntry(build: SheetBuild, content: EntryContent): EntryContent {
   const name = clippedLine(plainAbilityName(content.name), MAX_BOOK_TITLE) ?? content.name;

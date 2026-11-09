@@ -41,6 +41,18 @@ export async function readPinNote(app: App, notePath: string, sourcePath: string
   return { path: file.path, title: section.heading, body: withoutComments(content.slice(section.start, section.end ?? content.length)) };
 }
 
+/**
+ * The text of a heading of the note at `notePath` that `link` names (`#Heading`, or the note's own
+ * name with a heading), as `readPinNote` reads it; null for a whole note, another note, or a heading
+ * the note lacks. What a statblock's ability names link: players wrote such names before they were
+ * refused one, so a link never reaches beyond the character's own note.
+ */
+export async function readOwnSection(app: App, link: string, notePath: string): Promise<string | null> {
+  if (pinNoteLink(link).heading === null) return null;
+  const reading = await readPinNote(app, link, notePath);
+  return reading?.path === notePath ? reading.body : null;
+}
+
 /** A title as players are sent it: one line, cut with an ellipsis where it is longer than a title may be. */
 function shownTitle(title: string): string {
   const characters = [...title.replace(/\s+/g, ' ').trim()];

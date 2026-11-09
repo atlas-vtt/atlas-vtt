@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { App, TFile } from 'obsidian';
-import { readPinNote } from '../../src/app/online/gm/pins/foundNotes';
+import { readOwnSection, readPinNote } from '../../src/app/online/gm/pins/foundNotes';
 import { openPinNote } from '../../src/app/services/noteHeadings';
 import { remapPaths } from '../../src/app/services/collectionBundle/pathRemap';
 import { movedPathOf, rewriteMapReferences } from '../../src/app/services/renamedPaths';
@@ -56,6 +56,13 @@ describe('what players read of a repeated heading', () => {
   it('reads a heading alone in the note the link stands in, and nothing for a map', async () => {
     expect((await readPinNote(appWithNote(), '#Inn', NOTE.path))?.body.trim()).toBe('Inn text\n## Overview\nInn overview');
     expect(await readPinNote(appWithNote(), '#Inn', 'map.atlasmap')).toBeNull();
+  });
+
+  it('reads for an ability only a heading of its own note, never a whole note or another note', async () => {
+    expect((await readOwnSection(appWithNote(), '#Stag', NOTE.path))?.trim()).toBe('## Overview\nStag overview\n## Overview\nStag again');
+    expect((await readOwnSection(appWithNote(), 'Chapter#Inn', NOTE.path))?.trim()).toBe('Inn text\n## Overview\nInn overview');
+    expect(await readOwnSection(appWithNote(), 'Chapter', NOTE.path)).toBeNull();
+    expect(await readOwnSection(appWithNote(), 'Chapter#Inn', 'Other.md')).toBeNull();
   });
 
   it('keeps a link of an older pin on the first of them', async () => {
