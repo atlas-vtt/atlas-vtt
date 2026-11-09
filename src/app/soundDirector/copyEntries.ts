@@ -1,15 +1,21 @@
 import { GrowingCopy } from '../sound/codec/growingCopy';
 import type { SoundMeasure } from '../sound/codec/soundInfo';
-import type { SoundImportResult, StreamSink } from '../sound/codec/soundImporter';
-import type { SoundRecord } from '../sound/soundTypes';
+import type { ImportProgress, SoundImportJob, SoundImportResult, StreamSink } from '../sound/codec/soundImporter';
+import type { SoundBytes, SoundRecord } from '../sound/soundTypes';
+import { readAtlasCopy, type AtlasCopyFacts } from '../sound/codec/atlasOpus';
+import { hasAtlasMark } from '../sound/codec/atlasMark';
+import { rangesOf } from '../sound/codec/fileRanges';
+import { SoundImportError } from '../sound/codec/demux/demuxTypes';
 import type { SoundConversion } from '../soundLibrary/soundConversion';
 import { NOT_CONVERTED } from '../soundLibrary/soundConversion';
 import { nameOfRelative } from '../soundLibrary/soundPaths';
-import type { CopyFolder, FolderCopy } from './copyFolder';
 import { grownGain } from './growingCopies';
-import type { CopyMaker } from './soundCopies';
 
 export const READY: SoundConversion = { state: 'ready' };
+
+export interface CopyMaker {
+  run(job: SoundImportJob, onProgress?: ImportProgress, sink?: StreamSink): Promise<SoundImportResult>;
+}
 
 /** What a stored copy plays by. */
 export interface StoredFacts {
@@ -19,6 +25,8 @@ export interface StoredFacts {
 
 /** What this device knows of one record's copy. */
 export interface CopyEntry {
+  /** The record as it was when the entry was made: it says where the file lies. */
+  record: SoundRecord;
   recordId: string;
   /** The file it was worked out for: its path, size and time; `PENDING` for a copy just stored, until it is measured. */
   identity: string;
@@ -30,6 +38,8 @@ export interface CopyEntry {
   audioPath: string | null;
   /** Settles once what the file says of itself has been read. */
   known: Promise<void>;
+  /** When its file last took too long to say what it is: never converted in the background, asked again later. */
+  unknownAt: number | null;
   /** The copy while it is made, for a sound that may play before it is whole. */
   growing: GrowingCopy | null;
   /** The gain the table was last told of a growing copy, so a small move is no change. */
@@ -43,8 +53,30 @@ export const PENDING = '';
 
 export const entryKeyOf = (recordId: string, path: string): string => `${recordId}\n${path}`;
 
-export function copyEntry(recordId: string, identity: string): CopyEntry {
-  return { recordId, identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, audioPath: null, known: Promise.resolve(), growing: null, toldGainDb: null };
+export function copyEntry(record: SoundRecord, identity: string): CopyEntry {
+  return { record, recordId: record.id, identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, audioPath: null, known: Promise.resolve(), unknownAt: null, growing: null, toldGainDb: null };
+}
+
+/** A file asked about while it was unknown is read again no sooner than this. */
+export const UNKNOWN_RETRY_MS = 30_000;
+
+export const asBytes = (blob: Blob): SoundBytes => ({
+  byteLength: blob.size,
+  read: async (start, end) => new Uint8Array(await blob.slice(start, end).arrayBuffer()),
+});
+
+export const stored = (facts: Pick<AtlasCopyFacts, 'frames' | 'lufs' | 'truePeakDb' | 'peaks'>, kind: SoundRecord['kind']): StoredFacts => ({
+  measure: { frames: facts.frames, lufs: facts.lufs, truePeakDb: facts.truePeakDb },
+  peaks: kind === 'music' && facts.peaks && facts.peaks.length > 0 ? facts.peaks : null,
+});
+
+/** What a file Atlas made says, so it is never converted again; one whose mark stands beside facts that do not read is refused. */
+export async function atlasMade(read: ArrayBuffer | Blob): Promise<AtlasCopyFacts | null> {
+  const ranges = rangesOf(read);
+  const facts = await readAtlasCopy(ranges);
+  if (facts) return facts;
+  if (await hasAtlasMark(ranges)) throw new SoundImportError('unreadable', 'An Opus file Atlas made whose facts do not read.');
+  return null;
 }
 
 export function readyIn(entry: CopyEntry, key: string, facts: StoredFacts, audioPath: string): void {
@@ -53,20 +85,6 @@ export function readyIn(entry: CopyEntry, key: string, facts: StoredFacts, audio
   entry.peaks = facts.peaks;
   entry.audioPath = audioPath;
   entry.conversion = READY;
-}
-
-/**
- * How long reading a file's first pages and last page may take: a dead network share holds the requests that wait
- * on it. A file that took longer is read whole when it converts, and plays as it is if Atlas made it.
- */
-export const FACTS_STUCK_MS = 10_000;
-
-/** What a sound's file says, or `stuck` where reading it gets nowhere: the queue must not wait on it. */
-export function factsWithin(folder: CopyFolder, record: SoundRecord): Promise<FolderCopy | null | 'stuck'> {
-  return new Promise((resolve, reject) => {
-    const timer = self.setTimeout(() => resolve('stuck'), FACTS_STUCK_MS);
-    folder.factsOf(record).then(resolve, reject).finally(() => self.clearTimeout(timer));
-  });
 }
 
 export interface MakingListener {

@@ -110,7 +110,7 @@ export class VaultLocation implements SoundLocation {
     await this.app.vault.createBinary(target, await content.arrayBuffer());
   }
 
-  /** Only where Obsidian's "Deleted files" sends files to a trash: anything else, an unknown value included, could delete for good. */
+  /** Writes over the file in place through the vault, so sync follows; a path with no file gets a new one. */
   async replace(path: string, content: Blob): Promise<void> {
     this.changeable(path);
     const file = this.entry(path);

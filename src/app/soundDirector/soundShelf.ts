@@ -101,6 +101,11 @@ export class SoundShelf {
     this.copies?.request(records, urgent);
   }
 
+  /** The library changed: a sound refused as outside every linked folder is looked at again where it now lies in one. */
+  recheckOutside(): void {
+    this.copies?.recheckOutside();
+  }
+
   /** The background's conversions since it last stood empty; null while it has nothing to do. */
   background(): ReturnType<SoundCopies['background']> {
     return this.copies?.background() ?? null;

@@ -1,7 +1,5 @@
-import { SoundImportError, type ImportProgress, type SoundImportJob, type SoundImportResult, type StreamSink } from '../sound/codec/soundImporter';
-import { forPlayers, readAtlasCopy, type AtlasCopyFacts } from '../sound/codec/atlasOpus';
-import { hasAtlasMark } from '../sound/codec/atlasMark';
-import { rangesOf } from '../sound/codec/fileRanges';
+import { SoundImportError } from '../sound/codec/soundImporter';
+import { forPlayers } from '../sound/codec/atlasOpus';
 import { growingInfo } from './growingCopies';
 import { soundInfoOf } from '../sound/codec/soundInfo';
 import { untilStuck } from '../sound/codec/stuckWatch';
@@ -9,11 +7,12 @@ import type { SoundBytes, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConversion';
 import type { CopyFolder } from './copyFolder';
 import { backgroundCopies, CopyQueue, type BackgroundProgress } from './copyQueue';
-import { copyEntry, entryKeyOf, factsWithin, identityOf, makeCopy, PENDING, readyIn, type CopyEntry, type StoredFacts } from './copyEntries';
+import { asBytes, atlasMade, copyEntry, type CopyMaker, entryKeyOf, identityOf, makeCopy, PENDING, readyIn, stored, UNKNOWN_RETRY_MS, type CopyEntry, type StoredFacts } from './copyEntries';
 import type { PreparedSource } from './sourcePrepare';
 import type { GrowingCopy } from '../sound/codec/growingCopy';
 
 export { backgroundCopies } from './copyQueue';
+export type { CopyMaker } from './copyEntries';
 
 /** What says which file a record stands for. */
 export type SoundFileRef = Pick<SoundRecord, 'filePath' | 'audioSize'>;
@@ -26,20 +25,6 @@ export interface SoundFileAccess {
   /** What the file is called on this device, which may be elsewhere than the shared record says. */
   pathNow(sound: SoundFileRef): string;
 }
-
-export interface CopyMaker {
-  run(job: SoundImportJob, onProgress?: ImportProgress, sink?: StreamSink): Promise<SoundImportResult>;
-}
-
-const asBytes = (blob: Blob): SoundBytes => ({
-  byteLength: blob.size,
-  read: async (start, end) => new Uint8Array(await blob.slice(start, end).arrayBuffer()),
-});
-
-const stored = (facts: Pick<AtlasCopyFacts, 'frames' | 'lufs' | 'truePeakDb' | 'peaks'>, kind: SoundRecord['kind']): StoredFacts => ({
-  measure: { frames: facts.frames, lufs: facts.lufs, truePeakDb: facts.truePeakDb },
-  peaks: kind === 'music' && facts.peaks && facts.peaks.length > 0 ? facts.peaks : null,
-});
 
 /**
  * The copies of a vault's sounds on this device: Atlas-made Opus files in the GM's folders, one queue that
@@ -71,7 +56,7 @@ export class SoundCopies {
     this.queue = new CopyQueue(parallel, (record) => files.statOf(record)?.size ?? 0, (record) => this.convert(record), () => this.changed());
   }
 
-  /** The same object while a sound's state is the same, since cards read it on every render. */
+  /** The same object while a sound's state is the same: cards read it on every render. */
   stateOf(sound: SoundRecord): SoundConversion {
     return this.entryOf(sound)?.conversion ?? NOT_CONVERTED;
   }
@@ -111,19 +96,35 @@ export class SoundCopies {
 
   /**
    * Asks for copies; `urgent` is what the GM pressed. A file not here yet, or in a folder the GM has not agreed
-   * to, is asked for again when that changes. Each sound's file is read for what it says of itself first, all
-   * of a request together, which keeps its order and adds it to the queue at once; a read that gets nowhere
-   * holds it up `FACTS_STUCK_MS` at most.
+   * to, is asked for again when that changes. Each sound's file is read for what it says of itself first, all of
+   * a request together, which keeps its order; a press is read first. A file whose reads took too long is asked
+   * again now and then and converted only when pressed.
    */
   request(records: readonly SoundRecord[], urgent = false): void {
     if (this.disposed) return;
-    void Promise.all(records.flatMap((record) => this.entryOf(record)?.known ?? [])).then(() => this.enqueue(records, urgent));
+    const known = records.flatMap((record) => {
+      const entry = this.entryOf(record);
+      if (entry && entry.unknownAt !== null && !urgent && Date.now() - entry.unknownAt >= UNKNOWN_RETRY_MS) entry.known = this.lookUp(record, entry, false);
+      else if (urgent) this.folder.hurry(record);
+      return entry?.known ?? [];
+    });
+    void Promise.all(known).then(() => this.enqueue(records, urgent));
   }
 
   private enqueue(records: readonly SoundRecord[], urgent: boolean): void {
     if (this.disposed) return;
-    const wanted = records.filter((record) => this.stateOf(record).state === 'not-converted' && this.files.statOf(record) && this.folder.choiceFor(record) !== null);
+    const wanted = records.filter((record) => {
+      const entry = this.entryOf(record);
+      return entry?.conversion.state === 'not-converted' && (urgent || entry.unknownAt === null) && this.folder.choiceFor(record) !== null;
+    });
     if (wanted.length > 0) this.queue.add(wanted, urgent);
+  }
+
+  /** The library changed: a sound refused as outside every linked folder is looked at again where that is no longer so. */
+  recheckOutside(): void {
+    const linked = [...this.entries].filter(([, entry]) => entry.conversion.state === 'refused' && entry.conversion.reason === 'outside-folder' && !this.folder.outside(entry.record));
+    for (const [at] of linked) this.entries.delete(at);
+    if (linked.length > 0) this.changed();
   }
 
   /** The background's progress since it last stood empty; null while it has nothing to do. */
@@ -156,7 +157,7 @@ export class SoundCopies {
   /** The copy of a key while it is made. */
   growingOf(key: string): GrowingCopy | null {
     const entry = this.keys.get(key);
-    return entry && !entry.measure ? entry.growing : null;
+    return entry?.measure ? null : (entry?.growing ?? null);
   }
 
   dispose(): void {
@@ -186,21 +187,22 @@ export class SoundCopies {
     if (!stat) return null;
     const identity = identityOf(record.filePath, stat);
     if (entry?.identity === identity) return entry;
-    const fresh = copyEntry(record.id, identity);
-    fresh.known = this.lookUp(record, fresh);
+    const fresh = copyEntry(record, identity);
+    fresh.known = this.lookUp(record, fresh, false);
     this.entries.set(at, fresh);
     return fresh;
   }
 
-  private async lookUp(record: SoundRecord, entry: CopyEntry): Promise<void> {
+  private async lookUp(record: SoundRecord, entry: CopyEntry, pressed: boolean): Promise<void> {
+    // A file outside every linked folder shows why on the sound; a start that found several would tell each.
+    if (this.folder.outside(record)) return this.refuse(record, entry, 'outside-folder', false);
     try {
-      const found = await factsWithin(this.folder, record);
-      if (found === 'stuck') console.error(`[Atlas] Reading what ${record.filePath} says of itself got nowhere`);
-      else if (found && !this.disposed) this.markStored(record, entry, found.facts.key, stored(found.facts, record.kind), found.audioPath);
+      const found = await this.folder.factsOf(record, pressed);
+      entry.unknownAt = found === 'unknown' ? Date.now() : null;
+      if (found && found !== 'unknown' && !this.disposed) this.markStored(record, entry, found.facts.key, stored(found.facts, record.kind), found.audioPath);
     } catch (error) {
       if (this.disposed) return;
-      // A file outside every linked folder shows why on the sound; a start that found several would tell each.
-      if (error instanceof SoundImportError) this.refuse(record, entry, error.reason, error.reason !== 'outside-folder');
+      if (error instanceof SoundImportError) this.refuse(record, entry, error.reason);
       else console.error('[Atlas] Could not read what a sound says of itself', error);
     }
   }
@@ -239,7 +241,7 @@ export class SoundCopies {
     this.set(entry, { state: 'converting', progress: null });
     try {
       const read = await untilStuck('reading a sound', (step) => this.files.read(record, step));
-      const made = await this.atlasMade(read);
+      const made = await atlasMade(read);
       if (made) {
         this.markStored(record, entry, made.key, stored(made, record.kind), this.files.pathNow(record));
         return;
@@ -255,7 +257,9 @@ export class SoundCopies {
       const audioPath = await this.folder.store(record, result.bytes, choice, stat);
       if (this.disposed) return;
       this.markStored(record, entry, hash, stored(result, record.kind), audioPath);
-      if (audioPath !== record.filePath) this.storedAt(record, entry, audioPath);
+      // The file at the record's own path was replaced: its next measure is the copy's.
+      if (audioPath === record.filePath) entry.identity = PENDING;
+      else this.storedAt(record, entry, audioPath);
     } catch (error) {
       entry.growing?.fail(error instanceof Error ? error : new Error(String(error)));
       entry.growing = null;
@@ -267,7 +271,7 @@ export class SoundCopies {
 
   /** The record follows its copy a moment later: its entry there is ready from the start. */
   private storedAt(record: SoundRecord, entry: CopyEntry, audioPath: string): void {
-    const moved: CopyEntry = { ...entry, identity: PENDING, known: Promise.resolve(), growing: null, toldGainDb: null };
+    const moved: CopyEntry = { ...entry, identity: PENDING, known: Promise.resolve(), unknownAt: null, growing: null, toldGainDb: null };
     this.entries.set(entryKeyOf(record.id, audioPath), moved);
     if (entry.key) this.hold(entry.key, moved);
   }
@@ -276,15 +280,6 @@ export class SoundCopies {
     this.keys.set(key, entry);
     const held = (this.holders.get(key) ?? []).filter((one) => one !== entry && one.key === key);
     this.holders.set(key, [...held, entry]);
-  }
-
-  /** What a file Atlas made says, so it is never converted again; one whose mark stands beside facts that do not read is refused. */
-  private async atlasMade(read: ArrayBuffer | Blob): Promise<AtlasCopyFacts | null> {
-    const ranges = rangesOf(read);
-    const facts = await readAtlasCopy(ranges);
-    if (facts) return facts;
-    if (await hasAtlasMark(ranges)) throw new SoundImportError('unreadable', 'An Opus file Atlas made whose facts do not read.');
-    return null;
   }
 
   private refuse(record: SoundRecord, entry: CopyEntry, reason: SoundImportError['reason'], tell = true): void {

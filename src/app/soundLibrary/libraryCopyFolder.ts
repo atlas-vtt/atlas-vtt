@@ -3,7 +3,7 @@ import { SoundImportError } from '../sound/codec/demux/demuxTypes';
 import type { SoundKind, SoundRecord } from '../sound/soundTypes';
 import type { CopyFolder, FolderCopy, SourceStat } from '../soundDirector/copyFolder';
 import { partOf, stemCopyOf, twinsOf } from './copyNames';
-import { CopyReader } from './copyReader';
+import { CopyReader, FACTS_STUCK_MS } from './copyReader';
 import type { SoundLibrary } from './SoundLibrary';
 import type { SoundLocation } from './soundLocation';
 import { freeName, isExternalAudioPath, joinRelative, nameOfRelative, parentOfRelative } from './soundPaths';
@@ -23,6 +23,8 @@ interface Place {
 
 const isOgg = (path: string): boolean => /\.(opus|ogg)$/i.test(path);
 
+const readKey = (sound: SoundRecord): string => `${sound.id}\n${sound.filePath}`;
+
 const sameStat = (a: SourceStat | null, b: SourceStat): boolean => a !== null && a.size === b.size && a.mtime === b.mtime;
 
 /** One copy of one source: two sources with the same bytes under two names are two sounds the GM keeps. */
@@ -36,23 +38,37 @@ const copyId = (facts: AtlasCopyFacts): string => `${facts.key}\n${facts.from}`;
 export class LibraryCopyFolder implements CopyFolder {
   /** Where each copy was found this session, so a second copy of one source in its folder is seen. */
   private readonly found = new Map<string, { kind: SoundKind; path: string }>();
-  private readonly reader = new CopyReader();
+  private readonly reader: CopyReader;
 
   constructor(
     private readonly library: () => CopyLibrary | null,
     private readonly records: CopyRecords,
     private readonly now: () => number = Date.now,
-  ) {}
+    stuckMs = FACTS_STUCK_MS,
+  ) {
+    this.reader = new CopyReader(stuckMs);
+  }
 
   choiceFor(sound: SoundRecord): OriginalsChoice | null {
     const place = this.placeOf(sound.filePath, sound.audioSize);
     return place === 'outside' || !place ? null : (this.library()?.roots.originalsOf(place.kind) ?? null);
   }
 
-  async factsOf(sound: SoundRecord): Promise<FolderCopy | null> {
+  outside(sound: SoundRecord): boolean {
+    return this.placeOf(sound.filePath, sound.audioSize) === 'outside';
+  }
+
+  factsOf(sound: SoundRecord, pressed = false): Promise<FolderCopy | null | 'unknown'> {
     const place = this.placeOf(sound.filePath, sound.audioSize);
-    if (place === 'outside') throw new SoundImportError('outside-folder', `${sound.filePath} lies outside every linked folder.`);
-    if (!place) return null;
+    if (!place || place === 'outside') return Promise.resolve(null);
+    return this.reader.within(readKey(sound), pressed, () => this.readFacts(place));
+  }
+
+  hurry(sound: SoundRecord): void {
+    this.reader.hurry(readKey(sound));
+  }
+
+  private async readFacts(place: Place): Promise<FolderCopy | null> {
     if (isOgg(place.path)) {
       const facts = await this.reader.factsAt(place.location, place.path, true);
       if (facts) return this.noted(place, place.path, facts);

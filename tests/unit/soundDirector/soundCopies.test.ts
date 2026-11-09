@@ -6,7 +6,7 @@ import { readOpusComments } from '@/app/sound/codec/opusFormat';
 import type { SoundImportJob, SoundImportResult } from '@/app/sound/codec/soundImporter';
 import type { SoundRecord } from '@/app/sound/soundTypes';
 import { SoundCopies, type SoundFileAccess } from '@/app/soundDirector/soundCopies';
-import { FACTS_STUCK_MS } from '@/app/soundDirector/copyEntries';
+import { UNKNOWN_RETRY_MS } from '@/app/soundDirector/copyEntries';
 import { SoundRefs } from '@/app/online/gm/sound/soundRefs';
 import { LiveSegments } from '@/app/online/gm/sound/liveSegments';
 import { ASSET_USES } from '@/app/online/gm/assets/assetUses';
@@ -249,7 +249,7 @@ describe('a file Atlas marked whose facts do not read', () => {
 describe('a file outside every linked folder', () => {
   it('is refused as such on the sound, without a notice, and never converted', async () => {
     const { copies, folder, runs, reads, refused } = rig();
-    vi.spyOn(folder, 'factsOf').mockRejectedValue(new SoundImportError('outside-folder', 'elsewhere'));
+    folder.outsidePaths.add(RAIN.filePath);
     vi.spyOn(folder, 'choiceFor').mockReturnValue(null);
     copies.request([RAIN], true);
     await settle();
@@ -257,6 +257,19 @@ describe('a file outside every linked folder', () => {
     expect(refused).toEqual([]);
     expect(reads).toEqual([]);
     expect(runs).toEqual([]);
+  });
+
+  it('can be asked for once its folder is linked, without a restart', async () => {
+    const { copies, folder, runs } = rig();
+    folder.outsidePaths.add(RAIN.filePath);
+    copies.request([RAIN], true);
+    await settle();
+    expect(copies.stateOf(RAIN).state).toBe('refused');
+    folder.outsidePaths.delete(RAIN.filePath);
+    copies.recheckOutside();
+    copies.request([RAIN], true);
+    await settle();
+    expect(runs).toHaveLength(1);
   });
 });
 
@@ -281,16 +294,37 @@ describe('the background queue', () => {
     expect(copies.background()).toEqual({ done: 0, total: 3, paused: false });
   });
 
-  it('a file whose first pages never come holds the others back no longer than reading them may take', async () => {
-    const { copies, folder, reads } = rig();
-    const factsOf = folder.factsOf.bind(folder);
-    vi.spyOn(folder, 'factsOf').mockImplementation((sound) => (sound.id === 'rain' ? NEVER : factsOf(sound)));
+  it('a file that took too long to say what it is is never converted in the background, only when pressed', async () => {
+    const { copies, folder, runs } = rig();
+    folder.slow.add(RAIN.filePath);
     copies.request([RAIN, SONG]);
     await settle();
-    expect(reads).toEqual([]);
-    await vi.advanceTimersByTimeAsync(FACTS_STUCK_MS);
+    expect(runs.map((run) => run.job.from)).toEqual(['song.ogg']);
+    expect(copies.stateOf(RAIN)).toEqual({ state: 'not-converted' });
+    const factsOf = vi.spyOn(folder, 'factsOf');
+    copies.request([RAIN]);
     await settle();
-    expect(reads).toEqual([RAIN.filePath, SONG.filePath]);
+    expect(factsOf).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(UNKNOWN_RETRY_MS);
+    copies.request([RAIN]);
+    await settle();
+    expect(factsOf).toHaveBeenCalledTimes(1);
+    expect(runs).toHaveLength(1);
+    copies.request([RAIN], true);
+    await settle();
+    expect(runs.map((run) => run.job.from)).toEqual(['song.ogg', 'rain.ogg']);
+  });
+
+  it('a copy that replaced its source under the same name stays ready through the store', async () => {
+    const { copies, runs, stats } = rig();
+    stats.set(RAIN.filePath, { size: 7, mtime: 1 });
+    copies.request([RAIN], true);
+    await settle();
+    runs[0]?.finish();
+    await settle();
+    stats.set(RAIN.filePath, { size: 99, mtime: 2 });
+    expect(copies.stateOf(RAIN)).toEqual({ state: 'ready' });
+    expect(copies.infoFor(RAIN)).not.toBeNull();
   });
 
   it('pausing holds the background, never a press', async () => {

@@ -261,6 +261,21 @@ describe('the sound director', () => {
     expect(rig.director.shelf.recordOfKey(`hash-${RAIN.filePath}`)?.id).toBe('rain');
   });
 
+  it('refuses a sound outside every linked folder, and takes it once its folder is linked, without a restart', async () => {
+    rig = directorRig([RAIN], { ready: false });
+    rig.folder.outsidePaths.add(RAIN.filePath);
+    await ready(rig);
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    expect(rig.director.shelf.stateOf(RAIN)).toEqual({ state: 'refused', reason: 'outside-folder' });
+    expect(rig.notices).toEqual([]);
+    rig.folder.outsidePaths.delete(RAIN.filePath);
+    rig.fireFileChange();
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    expect(rig.conversions).toHaveLength(1);
+  });
+
   it('converts nothing in a folder the GM has not agreed to', async () => {
     rig = directorRig([RAIN], { ready: false });
     rig.folder.choice = null;

@@ -64,6 +64,11 @@ export class FakeCopyFolder implements CopyFolder {
   readonly made = new WeakMap<Blob, AtlasCopyFacts>();
   /** Paths whose file carries Atlas' mark beside facts that do not read. */
   readonly damaged = new Set<string>();
+  /** Paths outside every linked folder. */
+  readonly outsidePaths = new Set<string>();
+  /** Paths whose reads take too long to say what they are. */
+  readonly slow = new Set<string>();
+  readonly hurried: string[] = [];
   choice: OriginalsChoice | null = 'trash';
   failStore: Error | null = null;
 
@@ -71,7 +76,16 @@ export class FakeCopyFolder implements CopyFolder {
     return this.choice;
   }
 
-  factsOf(sound: SoundRecord): Promise<FolderCopy | null> {
+  outside(sound: SoundRecord): boolean {
+    return this.outsidePaths.has(sound.filePath);
+  }
+
+  hurry(sound: SoundRecord): void {
+    this.hurried.push(sound.id);
+  }
+
+  factsOf(sound: SoundRecord): Promise<FolderCopy | null | 'unknown'> {
+    if (this.slow.has(sound.filePath)) return Promise.resolve('unknown');
     if (this.damaged.has(sound.filePath)) return Promise.reject(new SoundImportError('unreadable', 'Atlas copy whose facts do not read'));
     const held = this.copies.get(sound.filePath);
     return Promise.resolve(held ? { facts: held.facts, audioPath: sound.filePath } : null);

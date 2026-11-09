@@ -249,8 +249,12 @@ describe('what a file says of itself', () => {
     expect(location.files.has('Tavern 2.opus')).toBe(true);
   });
 
-  it('a file outside every linked folder is refused as such', async () => {
-    await expect(folder.factsOf({ ...sound('x'), filePath: 'Elsewhere/x.mp3' })).rejects.toMatchObject({ reason: 'outside-folder' });
+  it('knows a file outside every linked folder, and reads nothing of it', async () => {
+    const elsewhere = { ...sound('x'), filePath: 'Elsewhere/x.mp3' };
+    expect(folder.outside(elsewhere)).toBe(true);
+    expect(folder.outside(sound('Tavern.mp3'))).toBe(false);
+    expect(await folder.factsOf(elsewhere)).toBeNull();
+    expect(location.ranges).toEqual([]);
   });
 
   it('the choice is the root\'s, and none outside every root', () => {

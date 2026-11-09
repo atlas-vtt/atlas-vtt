@@ -7,17 +7,55 @@ import type { SoundLocation } from './soundLocation';
 /** Files read for what they say of themselves at once: a start asks of every file in the folders. */
 const READING_AT_ONCE = 8;
 
-/** Reads what files in a folder say of themselves, from their first pages and last page, a few at a time. */
+/**
+ * How long one sound's files may take to say what they are once their turn came: a dead network share holds
+ * the reads that wait behind it. A file that took longer is unknown for now, never taken for a source.
+ */
+export const FACTS_STUCK_MS = 10_000;
+
+interface Waiter {
+  key: string;
+  start: () => void;
+}
+
+/** Reads what files in a folder say of themselves, from their first pages and last page, a few sounds at a time. */
 export class CopyReader {
   private reading = 0;
-  private readonly waiting: Array<() => void> = [];
+  private waiting: Waiter[] = [];
+
+  constructor(private readonly stuckMs = FACTS_STUCK_MS) {}
+
+  /**
+   * Runs one sound's reads in its turn, a press before the reads waiting in the background, and gives `unknown`
+   * where they take longer than `stuckMs` from the moment they began. Nothing cancels the reads themselves.
+   */
+  async within<T>(key: string, pressed: boolean, work: () => Promise<T>): Promise<T | 'unknown'> {
+    await this.turn(key, pressed);
+    let timer = 0;
+    const stuck = new Promise<'unknown'>((resolve) => {
+      timer = window.setTimeout(() => resolve('unknown'), this.stuckMs);
+    });
+    try {
+      return await Promise.race([work(), stuck]);
+    } finally {
+      window.clearTimeout(timer);
+      this.done();
+    }
+  }
+
+  /** Moves a sound's reads that still wait for their turn to the front. */
+  hurry(key: string): void {
+    const at = this.waiting.findIndex((waiter) => waiter.key === key);
+    if (at <= 0) return;
+    const [waiter] = this.waiting.splice(at, 1);
+    if (waiter) this.waiting.unshift(waiter);
+  }
 
   /**
    * What a file says of itself; null for any other file, one that is not there, or one that cannot be read now.
    * Where `refuse`, a file marked by Atlas whose facts do not read is refused as damaged.
    */
   async factsAt(location: SoundLocation, path: string, refuse: boolean): Promise<AtlasCopyFacts | null> {
-    await this.turn();
     try {
       const stat = await location.stat(path);
       if (!stat) return null;
@@ -29,8 +67,6 @@ export class CopyReader {
       if (error instanceof SoundImportError) throw error;
       console.error(`[Atlas] Could not read ${path}`, error);
       return null;
-    } finally {
-      this.done();
     }
   }
 
@@ -44,17 +80,21 @@ export class CopyReader {
     }
   }
 
-  private turn(): Promise<void> {
+  private turn(key: string, pressed: boolean): Promise<void> {
     if (this.reading < READING_AT_ONCE) {
       this.reading++;
       return Promise.resolve();
     }
-    return new Promise((resolve) => this.waiting.push(resolve));
+    return new Promise((resolve) => {
+      const waiter = { key, start: resolve };
+      if (pressed) this.waiting.unshift(waiter);
+      else this.waiting.push(waiter);
+    });
   }
 
   private done(): void {
     const next = this.waiting.shift();
-    if (next) next();
+    if (next) next.start();
     else this.reading--;
   }
 }

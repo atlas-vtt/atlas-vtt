@@ -23,11 +23,17 @@ export interface SourceStat {
 export interface CopyFolder {
   /** The GM's choice for the root the sound lies in; null while not agreed (nothing converts). */
   choiceFor(sound: SoundRecord): OriginalsChoice | null;
+  /** Whether the sound's file lies outside every linked folder, where nothing converts. */
+  outside(sound: SoundRecord): boolean;
   /**
-   * What the sound's file says of itself; null for a source (or a file that cannot be read now). A file
-   * that carries Atlas' mark beside facts that do not read is refused with `SoundImportError`.
+   * What the sound's file says of itself; null for a source (or a file that cannot be read now); `unknown` where
+   * its reads took too long once they began (a dead share), which is never taken for a source. Always settles.
+   * A press is read before reads that wait in the background. A file that carries Atlas' mark beside facts
+   * that do not read is refused with `SoundImportError`.
    */
-  factsOf(sound: SoundRecord): Promise<FolderCopy | null>;
+  factsOf(sound: SoundRecord, pressed?: boolean): Promise<FolderCopy | null | 'unknown'>;
+  /** Moves the sound's reads that still wait for their turn to the front: it was pressed. */
+  hurry(sound: SoundRecord): void;
   /**
    * Puts a finished copy in the folder and deals with the source as chosen; returns the copy's audioPath.
    * A copy that cannot be written is refused with `SoundImportError('cannot-write')`, the source untouched.
