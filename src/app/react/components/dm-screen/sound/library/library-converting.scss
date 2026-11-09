@@ -1,0 +1,43 @@
+@use '../../../../../../../styles/tokens' as *;
+
+// How far converting the agreed folders has come, at the foot of the rail: one line and its pause, kept in view
+// where the tags make the rail scroll. The numbers wrap rather than hide where the rail is at its narrowest.
+.atlas-sound-lib__converting {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  min-height: 28px;
+  padding-left: $spacing-s;
+  color: var(--atlas-sound-muted);
+  background: var(--background-primary);
+  // The rail's inset below it too, so the tags scrolling under it never show there.
+  box-shadow: 0 $spacing-s 0 var(--background-primary);
+  font-variant-numeric: tabular-nums;
+
+  span {
+    flex: 1;
+    min-width: 0;
+    text-wrap: balance;
+  }
+}
+
+// Unlike a row's ⋯ it stays shown: it is the line's one control.
+.atlas-sound-lib .atlas-sound-lib__converting .atlas-sound-lib__more {
+  flex-shrink: 0;
+  margin-left: 0;
+  opacity: 1;
+}
+
+// Where the rail stands over the rows, its roots side by side, the line ends their row.
+@container atlas-dm-screen (max-width: 560px) {
+  .atlas-sound-lib__converting {
+    position: static;
+    box-shadow: none;
+    margin: 0 0 0 auto;
+    align-self: flex-start;
+  }
+}

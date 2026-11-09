@@ -180,7 +180,7 @@ export function LibraryView({ query, onQuery: setQuery }: LibraryViewProps): Rea
         dropFiles([...event.dataTransfer.files]);
       }}
     >
-      <LibraryRail library={library} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />
+      <LibraryRail library={library} director={director} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />
       <div className="atlas-sound-lib__main">
         <LibraryHead library={library} actions={actions} kind={place.kind} rows={found ?? listed} scope={found ? 'results' : selected.length > 0 ? 'tagged' : 'all'} query={query} onQuery={setQuery} shuffle={shuffle} first={playFirst} />
         <LibraryRows

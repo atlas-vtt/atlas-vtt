@@ -138,8 +138,8 @@
     box-shadow: inset 0 -1px 0 var(--atlas-sound-lib-hairline);
   }
 
-  // Side by side the last lies in the panel's other corner.
-  .atlas-sound-lib__root-block:last-child .atlas-sound-lib__root {
+  // Side by side the last lies in the panel's other corner (the converting line after it is no root).
+  .atlas-sound-lib__root-block:last-of-type .atlas-sound-lib__root {
     @include atlas-panel-inset-radius($spacing-s, top-right);
   }
 
