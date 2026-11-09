@@ -60,8 +60,8 @@ function GroupBreak(): React.ReactElement {
   return <span className="atlas-lighting-bar__break" aria-hidden="true" />
 }
 
-/** The current mode's own choices, each group after a break. */
-function ModeChoices({ mode }: { mode: WallToolSubMode }): React.ReactElement | null {
+/** The current mode's tools, in groups; none for a mode where a click only places something. */
+function useModeTools(mode: WallToolSubMode): React.ReactElement[] {
   const drawMode = useAtlasStore((state) => state.lightingTool.drawMode)
   const setLightingTool = useAtlasStore((state) => state.setLightingTool)
   const roomTool = useAtlasStore((state) => state.roomTool)
@@ -69,38 +69,28 @@ function ModeChoices({ mode }: { mode: WallToolSubMode }): React.ReactElement | 
   const brush = useAtlasStore((state) => state.exploredBrush)
   const setBrush = useAtlasStore((state) => state.setExploredBrush)
 
-  if (mode === 'draw') return (
-    <><GroupBreak /><ChoiceButtons kind="choice" choices={DRAW_MODES} value={drawMode} onChange={(value) => setLightingTool({ drawMode: value })} /></>
-  )
-  if (mode === 'rooms') {
+  if (mode === 'draw') return [
+    <ChoiceButtons key="draw" kind="choice" choices={DRAW_MODES} value={drawMode} onChange={(value) => setLightingTool({ drawMode: value })} />,
+  ]
+  if (mode === 'rooms') return [
+    <ChoiceButtons key="action" kind="choice" choices={ROOM_ACTIONS} value={roomTool.action} onChange={(action) => setRoomTool({ action })} />,
     // A door is dragged across an opening and has no shape: the shapes stay, disabled, so the bar keeps its width.
-    const door = roomTool.action === 'door'
-    return (
-      <>
-        <GroupBreak />
-        <ChoiceButtons kind="choice" choices={ROOM_ACTIONS} value={roomTool.action} onChange={(action) => setRoomTool({ action })} />
-        <GroupBreak />
-        <ChoiceButtons kind="choice" choices={ROOM_SHAPES} value={roomTool.shape} onChange={(shape) => setRoomTool({ shape })}
-          unavailable={() => (door ? t('rooms.doorHint') : null)} />
-      </>
-    )
-  }
-  if (mode === 'explored-memory') return (
-    <>
-      <GroupBreak />
-      <ChoiceButtons kind="choice" choices={MEMORY_ACTIONS} value={brush.mode} onChange={(value) => setBrush({ mode: value })} />
-      <GroupBreak />
-      <ChoiceButtons kind="choice" choices={MEMORY_SHAPES} value={brush.shape} onChange={(shape) => setBrush({ shape })} />
-    </>
-  )
+    <ChoiceButtons key="shape" kind="choice" choices={ROOM_SHAPES} value={roomTool.shape} onChange={(shape) => setRoomTool({ shape })}
+      unavailable={() => (roomTool.action === 'door' ? t('rooms.doorHint') : null)} />,
+  ]
+  if (mode === 'explored-memory') return [
+    <ChoiceButtons key="action" kind="choice" choices={MEMORY_ACTIONS} value={brush.mode} onChange={(value) => setBrush({ mode: value })} />,
+    <ChoiceButtons key="shape" kind="choice" choices={MEMORY_SHAPES} value={brush.shape} onChange={(shape) => setBrush({ shape })} />,
+  ]
   // Lights, zones and openings: a click places one, and the light to place is in the tool's menu.
-  return null
+  return []
 }
 
 /**
- * The lighting tool's bar, centred above the main toolbar while the tool is chosen: its modes, then
- * the current mode's choices. The tool's menu keeps the sizes, the light to place and the scene's
- * lighting. Hidden in the players' view and while the toolbar is arranged.
+ * The lighting tool's bars above the main toolbar while the tool is chosen, both smaller than the
+ * toolbar: its modes, ending at the toolbar's middle so they never move, and beside them a bar of
+ * the current mode's tools, which a mode with none leaves out. The tool's menu keeps the sizes, the
+ * light to place and the scene's lighting. Hidden in the players' view and while the toolbar is arranged.
  */
 export function LightingToolBar(): React.ReactElement {
   const shown = useAtlasStore((state) => state.activeTool === 'wall' && state.isGMView && !state.isPlayerView
@@ -111,28 +101,48 @@ export function LightingToolBar(): React.ReactElement {
     <AnimatePresence>
       {shown && (
         <motion.div
-          key="lighting-bar"
+          key="lighting-bars"
+          className="atlas-lighting-bars"
           initial={{ opacity: 0, y: rise }}
           animate={{ opacity: 1, y: 0, transition: { duration: PANEL_ENTER_MS / 1000, ease: easeOut } }}
           exit={{ opacity: 0, y: rise / 2, transition: { duration: MOTION_FAST_MS / 1000, ease: easeOut } }}
         >
-          <LightingBarContent />
+          <LightingBars />
         </motion.div>
       )}
     </AnimatePresence>
   )
 }
 
-function LightingBarContent(): React.ReactElement {
+function LightingBars(): React.ReactElement {
   const mode = useAtlasStore((state) => state.lightingTool.mode)
   const setLightingTool = useAtlasStore((state) => state.setLightingTool)
   const unavailable = useUnavailableModes()
+  const tools = useModeTools(mode)
+  const reduced = useReducedMotion()
+  const slide = reduced ? 0 : -6
+  const modeName = LIGHTING_MODES.find((choice) => choice.value === mode)?.label ?? ''
   return (
     <TooltipProvider delayDuration={300}>
-      <div role="toolbar" aria-label={t('toolbar.lightingTools')} className="atlas-vtt-toolbar atlas-lighting-bar">
+      <div role="toolbar" aria-label={t('toolbar.lightingModes')} className="atlas-lighting-bar atlas-lighting-bar--modes">
         <ChoiceButtons kind="mode" choices={LIGHTING_MODES} value={mode} unavailable={unavailable} onChange={(value) => setLightingTool({ mode: value })} />
-        <ModeChoices mode={mode} />
       </div>
+      {/* One mode's tools leave before the next mode's come out of the modes bar's side; the modes bar never moves. */}
+      <AnimatePresence mode="wait" initial={false}>
+        {tools.length > 0 && (
+          <motion.div
+            key={mode}
+            role="toolbar"
+            aria-label={t('toolbar.modeTools', { mode: modeName })}
+            className="atlas-lighting-bar atlas-lighting-bar--tools"
+            initial={{ opacity: 0, x: slide }}
+            animate={{ opacity: 1, x: 0, transition: { duration: MOTION_FAST_MS * 1.5 / 1000, ease: easeOut } }}
+            exit={{ opacity: 0, transition: { duration: MOTION_FAST_MS / 1000, ease: easeOut } }}
+          >
+            {tools.map((group, index) => <React.Fragment key={group.key}>{index > 0 && <GroupBreak />}{group}</React.Fragment>)}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </TooltipProvider>
   )
 }

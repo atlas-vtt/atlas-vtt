@@ -4,7 +4,7 @@
 
 ## Improved
 
-- The lighting tool's modes and their tools are a bar above the toolbar, its menu keeps only the light to place, brush sizes and the scene's lighting, and Rooms are listed in their own panel beside the map
+- The lighting tool's modes sit in a small bar above the toolbar with the chosen mode's tools in a bar beside it; its menu keeps only the light to place, brush sizes and the scene's lighting, and Rooms are listed in their own panel at the top left of the map
 
 ## Fixed
 

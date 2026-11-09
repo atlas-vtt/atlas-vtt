@@ -37,13 +37,17 @@
 // The rooms mode's Rooms panel beside the map
 // ═══════════════════════════════════════════════════════════════════════════
 
+// In one place, the top left of the map below the scene tabs; it is not dragged.
 .atlas-rooms-panel {
+  left: $spacing-l;
+  top: 64px;
   width: 260px;
 }
 
-// No line under the header: the panel's space separates it (no dividers in panels).
+// No line under the header: the panel's space separates it (no dividers in panels). Nothing drags it.
 .atlas-light-panel__header.atlas-rooms-panel__header {
   border-bottom: none;
+  cursor: default;
 }
 
 .atlas-rooms-panel__count {

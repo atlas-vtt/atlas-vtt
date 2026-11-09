@@ -588,7 +588,7 @@
   $own-look: '.atlas-dice-tray *, .atlas-segmented__option, .atlas-toolbar-tray__done';
   // The bars whose buttons these rules shape: the toolbars, the toolbar editor's tray, and the
   // ghost of a tool moving between them.
-  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost)';
+  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost, .atlas-lighting-bar)';
 
   /* Make all buttons in toolbar transparent by default, except those with their own look. */
   #{$toolbars} button.btn:not(#{$own-look}),

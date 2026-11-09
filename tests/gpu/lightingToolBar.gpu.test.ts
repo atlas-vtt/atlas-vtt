@@ -59,31 +59,52 @@ describe('the lighting tool\'s bar above the toolbar', () => {
 
   const rect = (selector: string): DOMRect => document.querySelector(selector)!.getBoundingClientRect();
   const settled = (): Promise<void> => vi.waitFor(() => {
-    // The bar has risen into place once it stands its gap above the toolbar.
-    expect(Math.abs(rect('.atlas-main-toolbar').top - 8 - rect('.atlas-lighting-bar').bottom)).toBeLessThan(0.05);
+    // The bars have risen into place once they stand their gap above the toolbar.
+    expect(Math.abs(rect('.atlas-main-toolbar').top - 8 - rect('.atlas-lighting-bar--modes').bottom)).toBeLessThan(0.05);
   });
 
-  it('stands centred on the toolbar, its gap above it, and is one bar of the toolbar\'s height', async () => {
+  it('puts the modes and the tools in two bars smaller than the toolbar, meeting at its middle', async () => {
     mount(false);
     await settled();
-    const bar = rect('.atlas-lighting-bar');
     const toolbar = rect('.atlas-main-toolbar');
-    expect(Math.abs((bar.left + bar.right) / 2 - (toolbar.left + toolbar.right) / 2)).toBeLessThan(0.5);
-    expect(bar.height).toBeCloseTo(toolbar.height, 0);
-    // The group break is space: the gap between the modes and the ways of drawing is twice the gap between buttons.
-    const buttons = [...document.querySelectorAll('.atlas-lighting-bar .atlas-tool-button')].map((button) => button.getBoundingClientRect());
-    const gaps = buttons.slice(1).map((button, index) => Math.round(button.left - buttons[index]!.right));
-    expect(gaps).toEqual([8, 8, 8, 8, 8, 16, 8]);
+    const middle = (toolbar.left + toolbar.right) / 2;
+    const modes = rect('.atlas-lighting-bar--modes');
+    const tools = rect('.atlas-lighting-bar--tools');
+    expect(modes.right).toBeCloseTo(middle - 4, 0);
+    expect(tools.left).toBeCloseTo(middle + 4, 0);
+    expect(tools.bottom).toBeCloseTo(modes.bottom, 0);
+    // A second level: buttons of 32 px in 4 px of padding, against the toolbar's 40 in 8.
+    expect(modes.height).toBeCloseTo(42, 0);
+    expect(modes.height).toBeLessThan(toolbar.height - 12);
+    const buttons = [...document.querySelectorAll('.atlas-lighting-bar--modes .atlas-tool-button')].map((button) => button.getBoundingClientRect());
+    expect(buttons.map((button) => Math.round(button.width))).toEqual([32, 32, 32, 32, 32, 32]);
   });
 
-  it('lifts the tool\'s menu by the bar and its gap, and lets it down again when the bar goes', async () => {
+  it('moves nothing of the modes when another mode brings other tools', async () => {
+    mount(false);
+    await settled();
+    const modes = rect('.atlas-lighting-bar--modes');
+    const left = rect('.atlas-lighting-bar--tools').left;
+    act(() => store.getState().setLightingTool({ mode: 'rooms' }));
+    await vi.waitFor(() => expect(document.querySelectorAll('.atlas-lighting-bar--tools .atlas-tool-button')).toHaveLength(7), { timeout: 2000 });
+    await vi.waitFor(() => expect(rect('.atlas-lighting-bar--tools').left).toBeCloseTo(left, 1), { timeout: 2000 });
+    expect(rect('.atlas-lighting-bar--modes')).toEqual(modes);
+    // Carve, fill and door, then the shapes, a doubled gap between them.
+    const buttons = [...document.querySelectorAll('.atlas-lighting-bar--tools .atlas-tool-button')].map((button) => button.getBoundingClientRect());
+    expect(buttons.slice(1).map((button, index) => Math.round(button.left - buttons[index]!.right))).toEqual([4, 4, 8, 4, 4, 4]);
+    act(() => store.getState().setLightingTool({ mode: 'light-zone' }));
+    await vi.waitFor(() => expect(document.querySelector('.atlas-lighting-bar--tools')).toBeNull(), { timeout: 2000 });
+    expect(rect('.atlas-lighting-bar--modes')).toEqual(modes);
+  });
+
+  it('lifts the tool\'s menu by the bars and their gap, and lets it down again when they go', async () => {
     mount(true);
     await settled();
-    const bar = rect('.atlas-lighting-bar');
+    const bar = rect('.atlas-lighting-bar--modes');
     const lifted = rect('.atlas-dropdown-content').bottom;
     expect(lifted).toBeLessThan(bar.top - 6);
     act(() => store.setState({ isGMView: false }));
-    await vi.waitFor(() => expect(document.querySelector('.atlas-lighting-bar')).toBeNull());
+    await vi.waitFor(() => expect(document.querySelector('.atlas-lighting-bars')).toBeNull());
     expect(rect('.atlas-dropdown-content').bottom - lifted).toBeCloseTo(bar.height + 8, 0);
   });
 });

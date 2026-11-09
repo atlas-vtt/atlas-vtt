@@ -35,6 +35,23 @@ describe('the Rooms panel', () => {
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Rooms' })).toBeNull());
   });
 
+  it('stands in one place: dragging its header moves nothing', () => {
+    const store = renderPanel();
+    act(() => {
+      store.getState().setLightingTool({ mode: 'rooms' });
+      store.getState().setActiveTool('wall');
+    });
+    const panel = screen.getByRole('region', { name: 'Rooms' });
+    const header = panel.querySelector('header')!;
+    expect(panel.querySelector('.atlas-light-panel__grip')).toBeNull();
+    fireEvent.pointerDown(header, { clientX: 40, clientY: 80, button: 0, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 340, clientY: 380, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 340, clientY: 380, pointerId: 1 });
+    // Placed by the stylesheet alone: no position of its own that a drag could have written.
+    expect(panel.style.left).toBe('');
+    expect(panel.style.top).toBe('');
+  });
+
   it('lists the rooms of the level with what can be done to each', () => {
     const store = renderPanel();
     act(() => {
