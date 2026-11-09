@@ -90,6 +90,15 @@ export class VaultLocation implements SoundLocation {
     await this.app.vault.createBinary(target, await content.arrayBuffer());
   }
 
+  canTrash(): boolean {
+    const config = (this.app.vault as unknown as { getConfig?: (key: string) => unknown }).getConfig;
+    return config?.call(this.app.vault, 'trashOption') !== 'none';
+  }
+
+  canWrite(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
   async trash(path: string): Promise<void> {
     this.changeable(path);
     const file = this.entry(path);

@@ -258,6 +258,8 @@ describe('sound records on two devices', () => {
         onSharedChange: () => () => undefined,
         local: (kind) => (kind === 'music' ? '/music' : null),
         setLocal: () => undefined,
+        localOriginals: () => null,
+        setLocalOriginals: () => undefined,
         vaultBase: () => null,
         realPath: async (path) => path,
       });

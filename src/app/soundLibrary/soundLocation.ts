@@ -35,6 +35,10 @@ export interface SoundLocation {
   move(from: string, to: string): Promise<void>;
   /** Writes a new file. Refused where something lies at `path`. */
   write(path: string, content: Blob): Promise<void>;
+  /** Whether `trash` can work here: false where this Obsidian has no system trash, or the vault deletes for good. */
+  canTrash(): boolean;
+  /** Whether Atlas may write into the folder now. */
+  canWrite(): Promise<boolean>;
   /** Moves a file or folder to the system's trash. Refused with `TrashUnavailableError` where there is none. */
   trash(path: string): Promise<void>;
   /** Calls back with the path that changed, or null where anything may have. Returns the release. */

@@ -160,3 +160,17 @@ it('without a recursive watch on this system falls back on rescans', () => {
   const place = new ExternalLocation(root, { files: { fs: thrower as unknown as NodeFsModule, sep: path.sep, home: '' }, trashItem: null, resourceUrl: null });
   expect(() => place.watch(() => undefined)()).not.toThrow();
 });
+
+describe('what a folder on disk can do', () => {
+  it('cannot trash without a system trash', () => {
+    expect(location(false).canTrash()).toBe(false);
+    expect(location(true).canTrash()).toBe(true);
+  });
+
+  it('can write into a folder it may write to, and not where access is refused', async () => {
+    await expect(location().canWrite()).resolves.toBe(true);
+    const refused = { ...fs, constants: fs.constants, promises: { ...fs.promises, access: () => Promise.reject(new Error('EACCES')) } };
+    const place = new ExternalLocation(root, { files: { fs: refused as unknown as NodeFsModule, sep: path.sep, home: '' }, trashItem: null, resourceUrl: null, vaultFolder: null });
+    await expect(place.canWrite()).resolves.toBe(false);
+  });
+});

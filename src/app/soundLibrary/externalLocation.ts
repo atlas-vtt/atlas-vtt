@@ -175,6 +175,15 @@ export class ExternalLocation implements SoundLocation {
     await writeFromBlob(this.deps.files.fs, target, content, path);
   }
 
+  canTrash(): boolean {
+    return this.deps.trashItem !== null;
+  }
+
+  async canWrite(): Promise<boolean> {
+    const { constants } = this.deps.files.fs;
+    return this.fs.access(this.root, constants.W_OK).then(() => true, () => false);
+  }
+
   async trash(path: string): Promise<void> {
     const { trashItem } = this.deps;
     if (!trashItem) throw new TrashUnavailableError();

@@ -78,6 +78,14 @@ export class FakeSoundLocation implements SoundLocation {
     this.tell(path);
   }
 
+  canTrash(): boolean {
+    return true;
+  }
+
+  canWrite(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
   async trash(path: string): Promise<void> {
     for (const file of [...this.files.keys()]) if (isWithin(path, file)) this.files.delete(file);
     for (const folder of [...this.folders]) if (folder !== '' && isWithin(path, folder)) this.folders.delete(folder);

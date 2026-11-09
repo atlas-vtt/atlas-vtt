@@ -50,6 +50,8 @@ export function fakeLibrary(app: App, options: LibraryRigOptions = {}): Pick<Lib
     onSharedChange: () => () => undefined,
     local: (kind) => local[kind] ?? null,
     setLocal: (kind, path) => { if (path) local[kind] = path; else delete local[kind]; },
+    localOriginals: () => null,
+    setLocalOriginals: () => undefined,
     vaultBase: () => '/vault',
     realPath: async (path) => path,
   });
