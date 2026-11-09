@@ -12,3 +12,4 @@
 - Snapshots that were saved but no longer showed in a scene's snapshot tray appear there again
 - The player window shows the map live again when you reopen the scene it was showing, instead of staying frozen on its last picture
 - Statblocks with large tables no longer freeze Obsidian when their note opens beside the statblock or when the window is resized
+- Sound uses far less memory while preparing long files
