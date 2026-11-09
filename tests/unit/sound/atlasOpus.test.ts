@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { atlasComments, CODEC_VERSION, forPlayers, readAtlasCopy, withComments, type AtlasCopyFacts } from '@/app/sound/codec/atlasOpus';
+import { atlasComments, CODEC_VERSION, forPlayers, readAtlasCopy, tagCopy, withComments, type AtlasCopyFacts } from '@/app/sound/codec/atlasOpus';
 import { OggOpusWriter } from '@/app/sound/codec/oggOpusWriter';
 import { lacingOf, packetsOfPage, readPage, writePage, type CarriedPacket } from '@/app/sound/codec/oggPages';
 import { readOpusComment, readOpusComments, readOpusHead, writeOpusTags } from '@/app/sound/codec/opusFormat';
@@ -105,7 +105,7 @@ describe('Atlas facts in an Opus copy', () => {
     const gain = (lufs: number): string | undefined => atlasComments({ ...FACTS, lufs }).find((comment) => comment.startsWith('R128_TRACK_GAIN='));
     expect(gain(-17.25)).toBe(`R128_TRACK_GAIN=${Math.round(256 * -5.75)}`);
     expect(gain(-200)).toBe('R128_TRACK_GAIN=32767');
-    expect(gain(200)).toBe('R128_TRACK_GAIN=-32768');
+    expect(gain(100)).toBe('R128_TRACK_GAIN=-31488');
   });
 
   it('forPlayers gives the 0.13.1 bytes back', async () => {
@@ -171,6 +171,34 @@ describe('Atlas facts in an Opus copy', () => {
     expect(packets).toHaveLength(1);
     expect(readOpusComment(packets[0] ?? new Uint8Array(), SEEK_COMMENT)).toHaveLength(64_000);
     expect(await readAtlasCopy(new Blob([big]))).toEqual({ ...FACTS, frames, channels });
+  });
+
+  it('refuses to write what it would not read back as Atlas-made', () => {
+    for (const key of [KEY.slice(1), KEY.toUpperCase(), `${KEY.slice(1)}g`]) expect(() => atlasComments({ ...FACTS, key })).toThrow();
+    for (const codec of [0, -1, 1.5, NaN, 2 ** 31]) expect(() => atlasComments({ ...FACTS, codec })).toThrow();
+    for (const lufs of [NaN, Infinity, 150, -300]) expect(() => atlasComments({ ...FACTS, lufs })).toThrow();
+    for (const truePeakDb of [NaN, Infinity, 200, -2000]) expect(() => atlasComments({ ...FACTS, truePeakDb })).toThrow();
+    expect(() => atlasComments({ ...FACTS, lufs: -Infinity, truePeakDb: -Infinity })).not.toThrow();
+  });
+
+  it('tags a copy beside the largest seek table, its file name cut to the room left', async () => {
+    const seek = `${SEEK_COMMENT}=${'a'.repeat(64_000)}`;
+    const longest = await withComments(fixture, (comment) => !comment.startsWith(SEEK_COMMENT), [seek]);
+    const name = 'Ünterwelt 音 '.repeat(160).slice(0, 2_000);
+    const facts = await readAtlasCopy(await tagCopy(longest, { ...FACTS, from: name }));
+    expect(facts).toEqual({ ...FACTS, from: expect.any(String) as string, frames, channels });
+    const from = facts?.from ?? '';
+    expect(from.length).toBeGreaterThan(0);
+    expect(Array.from(from).length).toBeLessThan(255);
+    expect(name.startsWith(from)).toBe(true);
+    expect(from).not.toContain('\uFFFD');
+  });
+
+  it('tags a copy keeping its seek table and nothing else of what it said', async () => {
+    const dated = await withComments(fixture, () => true, ['ATLAS_VTT=0', 'OTHER=1']);
+    const taggedAgain = await tagCopy(dated, FACTS);
+    expect(await readAtlasCopy(taggedAgain)).toEqual({ ...FACTS, frames, channels });
+    expect(await bytesOf(await forPlayers(taggedAgain))).toEqual(fixtureBytes);
   });
 
   it('refuses tags that do not fit one page', async () => {

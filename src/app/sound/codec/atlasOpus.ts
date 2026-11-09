@@ -34,6 +34,8 @@ const TRUE_PEAK_RANGE: readonly [number, number] = [-1000, 100];
 /** Base64 of the peaks is 536 characters; a far longer value is no peaks of ours and is not decoded. */
 const MAX_PEAKS_CHARS = 1024;
 const HEADER_BYTES = 2 * MAX_PAGE_BYTES;
+/** The longest packet one Ogg page holds whole: 255 lacing values, the last below 255. */
+const MAX_TAGS_BYTES = MAX_SEGMENTS * 255 - 1;
 /** Past the largest page, so the last page always lies whole inside. */
 const TAIL_BYTES = 64 * 1024;
 
@@ -50,6 +52,8 @@ export interface AtlasCopyFacts {
   peaks: Uint8Array<ArrayBuffer> | null;
 }
 
+export type CopyTags = Omit<AtlasCopyFacts, 'frames' | 'channels'>;
+
 interface OpusHeader {
   headPacket: Uint8Array;
   tagsPage: OggPage;
@@ -60,8 +64,20 @@ function capped(text: string): string {
   return Array.from(text).slice(0, MAX_FROM_CHARS).join('');
 }
 
-export function atlasComments(facts: Omit<AtlasCopyFacts, 'frames' | 'channels'>): string[] {
-  const comments = [`${VTT}=${String(facts.codec)}`, `${SOURCE}=${facts.key}`, `${FROM}=${capped(facts.from.replace(/[\r\n]+/g, ' '))}`, `${LUFS}=${String(facts.lufs)}`, `${TRUE_PEAK}=${String(facts.truePeakDb)}`];
+function cleanFrom(from: string): string {
+  return capped(from.replace(/[\r\n]+/g, ' '));
+}
+
+function isFact(value: number, [low, high]: readonly [number, number]): boolean {
+  return value === -Infinity || (Number.isFinite(value) && value >= low && value <= high);
+}
+
+/** Atlas' comments for a copy. Throws on a fact `readAtlasCopy` would refuse, as a copy that read as foreign would be made again. */
+export function atlasComments(facts: CopyTags): string[] {
+  if (!SOURCE_KEY.test(facts.key)) throw new Error('A sound key is 64 lowercase hex digits.');
+  if (!Number.isInteger(facts.codec) || facts.codec < 1 || facts.codec > MAX_CODEC) throw new Error('A codec version is a positive integer.');
+  if (!isFact(facts.lufs, LUFS_RANGE) || !isFact(facts.truePeakDb, TRUE_PEAK_RANGE)) throw new Error('Loudness out of the range a copy may say.');
+  const comments = [`${VTT}=${String(facts.codec)}`, `${SOURCE}=${facts.key}`, `${FROM}=${cleanFrom(facts.from)}`, `${LUFS}=${String(facts.lufs)}`, `${TRUE_PEAK}=${String(facts.truePeakDb)}`];
   if (Number.isFinite(facts.lufs)) {
     const gain = Math.min(INT16_MAX, Math.max(INT16_MIN, Math.round(256 * (REFERENCE_LUFS - facts.lufs))));
     comments.push(`${TRACK_GAIN}=${String(gain)}`);
@@ -92,13 +108,12 @@ function readHeader(bytes: Uint8Array): OpusHeader | null {
   return comments && { headPacket, tagsPage, comments };
 }
 
-/** The copy with its comment header made of the comments `keep` keeps and then `add`. Refuses a file it cannot rewrite so. */
-export async function withComments(copy: Blob, keep: (comment: string) => boolean, add: readonly string[]): Promise<Blob> {
+async function rewritten(copy: Blob, comments: (held: string[]) => string[]): Promise<Blob> {
   const header = readHeader(await bytesOf(copy.slice(0, HEADER_BYTES)));
   if (!header) throw new Error('Not an Ogg Opus file whose comments lie on one page.');
-  const comments = [...header.comments.filter(keep), ...add];
-  if (comments.length > MAX_COMMENTS) throw new Error('More comments than an Opus copy may carry.');
-  const tags = writeOpusTags(comments);
+  const written = comments(header.comments);
+  if (written.length > MAX_COMMENTS) throw new Error('More comments than an Opus copy may carry.');
+  const tags = writeOpusTags(written);
   const segments = lacingOf(tags.length);
   if (segments.length > MAX_SEGMENTS) throw new Error('The comments do not fit one Ogg page.');
   const { offset, end, serial } = header.tagsPage;
@@ -106,9 +121,42 @@ export async function withComments(copy: Blob, keep: (comment: string) => boolea
   return new Blob([copy.slice(0, offset), page, copy.slice(end)], { type: copy.type || 'audio/ogg' });
 }
 
+/** The copy with its comment header made of the comments `keep` keeps and then `add`. Refuses a file it cannot rewrite so. */
+export function withComments(copy: Blob, keep: (comment: string) => boolean, add: readonly string[]): Promise<Blob> {
+  return rewritten(copy, (held) => [...held.filter(keep), ...add]);
+}
+
+const isSeek = (comment: string): boolean => comment.startsWith(`${SEEK_COMMENT}=`);
+
+const encoder = new TextEncoder();
+
+/** The text's longest start that takes at most `room` bytes of UTF-8, cut between characters. */
+function cutToBytes(text: string, room: number): string {
+  let bytes = 0;
+  let cut = '';
+  for (const character of text) {
+    bytes += encoder.encode(character).length;
+    if (bytes > room) break;
+    cut += character;
+  }
+  return cut;
+}
+
+/**
+ * A copy as Atlas keeps it: its seek table and Atlas' facts. The file name gives way, so the header always
+ * fits the one page it lies on, beside the largest seek table the writer makes.
+ */
+export function tagCopy(copy: Blob, tags: CopyTags): Promise<Blob> {
+  return rewritten(copy, (held) => {
+    const seek = held.filter(isSeek);
+    const room = MAX_TAGS_BYTES - writeOpusTags([...seek, ...atlasComments({ ...tags, from: '' })]).length;
+    return [...seek, ...atlasComments({ ...tags, from: cutToBytes(cleanFrom(tags.from), room) })];
+  });
+}
+
 /** What players get: the header as 0.13.1 wrote it, the seek table alone. */
 export function forPlayers(copy: Blob): Promise<Blob> {
-  return withComments(copy, (comment) => comment.startsWith(`${SEEK_COMMENT}=`), []);
+  return withComments(copy, isSeek, []);
 }
 
 function valuesOf(comments: readonly string[]): Map<string, string> {
@@ -152,10 +200,19 @@ function isCapture(bytes: Uint8Array, at: number): boolean {
   return bytes[at] === 0x4f && bytes[at + 1] === 0x67 && bytes[at + 2] === 0x67 && bytes[at + 3] === 0x53;
 }
 
+/** Where a page starting at `at` ends by its own header, or -1 where the header does not lie whole in the bytes. */
+function pageEnd(bytes: Uint8Array, at: number): number {
+  const count = bytes[at + 26];
+  if (count === undefined || at + 27 + count > bytes.length) return -1;
+  let end = at + 27 + count;
+  for (let index = at + 27; index < at + 27 + count; index++) end += bytes[index] ?? 0;
+  return end;
+}
+
 /** The granule of the stream's last page, which must end the bytes and the stream. */
 function lastGranule(tail: Uint8Array, serial: number): number | null {
   for (let at = tail.length - 4; at >= 0; at--) {
-    if (!isCapture(tail, at)) continue;
+    if (!isCapture(tail, at) || pageEnd(tail, at) !== tail.length) continue;
     let page: OggPage | null;
     try {
       page = readPage(tail, at);
@@ -164,7 +221,7 @@ function lastGranule(tail: Uint8Array, serial: number): number | null {
       throw error;
     }
     if (!page) continue;
-    const ends = page.end === tail.length && page.serial === serial && (page.flags & FLAG_LAST) !== 0;
+    const ends = page.serial === serial && (page.flags & FLAG_LAST) !== 0;
     return ends && Number.isSafeInteger(page.granule) && page.granule >= 0 ? page.granule : null;
   }
   return null;

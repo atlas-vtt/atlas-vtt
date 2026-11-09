@@ -6,6 +6,7 @@ import type { CachedSound, SoundIdentity } from '../sound/codec/opusCache';
 import { untilStuck } from '../sound/codec/stuckWatch';
 import type { SoundBytes, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConversion';
+import { nameOfRelative } from '../soundLibrary/soundPaths';
 import type { PreparedSource } from './sourcePrepare';
 
 /** What says which file a record stands for. */
@@ -309,7 +310,8 @@ export class SoundCopies {
   private async made(record: SoundRecord, entry: CopyEntry, source: Blob, hash: string): Promise<SoundMeasure> {
     const loop = record.kind === 'ambience' || record.loop !== undefined;
     try {
-      const result = await this.maker.run({ source, kind: record.kind, loop, stream: !loop }, (share) => {
+      const job = { source, key: hash, from: nameOfRelative(record.filePath), kind: record.kind, loop, stream: !loop };
+      const result = await this.maker.run(job, (share) => {
         if (entry.conversion.state === 'converting') this.set(entry, { state: 'converting', progress: share });
       }, this.streamInto(record, entry, hash));
       const copy = { bytes: result.bytes, frames: result.frames, channels: result.channels, lufs: result.lufs, truePeakDb: result.truePeakDb };

@@ -218,6 +218,15 @@ describe('the sound director', () => {
     expect(rig.director.snapshot().mix.waitingLayers).toEqual([]);
   });
 
+  it('tells the copy maker the sound key and the file name it writes into the copy', async () => {
+    rig = directorRig([record('rain', 'music')], { ready: false });
+    await ready(rig);
+    rig.director.shelf.request([rig.records[0]!], true);
+    await settle();
+    const { sha256 } = await import('@/app/utils/hashing');
+    expect(rig.conversions[0]?.job).toMatchObject({ key: await sha256(new TextEncoder().encode('audio/rain.ogg').buffer), from: 'rain.ogg', kind: 'music' });
+  });
+
   it('tells a refusal once, and shows it on the sound', async () => {
     rig = directorRig([RAIN], { ready: false });
     await ready(rig);

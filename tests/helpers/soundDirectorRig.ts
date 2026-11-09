@@ -4,6 +4,7 @@ import { SoundDirector } from '@/app/soundDirector/SoundDirector';
 import type { SoundDirectorDeps } from '@/app/soundDirector/directorDeps';
 import type { CopyCache } from '@/app/soundDirector/soundCopies';
 import type { CachedSound, SoundIdentity } from '@/app/sound/codec/opusCache';
+import type { SoundImportJob } from '@/app/sound/codec/soundImporter';
 import type { Mood, SceneSound, SoundRecord } from '@/app/sound/soundTypes';
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from '@/app/services/soundSettings';
 import type { PresentedScene } from '@/app/services/presentedScene';
@@ -50,7 +51,7 @@ export interface DirectorRig {
   files: Set<string>;
   copies: Map<string, CachedSound>;
   /** Conversions under way, each to be let go by the test. */
-  conversions: Array<{ source: Blob; finish: () => void; fail: (error: unknown) => void }>;
+  conversions: Array<{ source: Blob; job: SoundImportJob; finish: () => void; fail: (error: unknown) => void }>;
   storage: Map<string, unknown>;
   moods: { current: Mood[] };
   scenes: Map<string, SceneSound>;
@@ -160,7 +161,8 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       run: (job) => new Promise((resolve, reject) => {
         conversions.push({
           source: job.source,
-          finish: () => resolve({ bytes: new Blob(['opus']), frames: 48000 * 10, channels: 2, lufs: -20, truePeakDb: -3 }),
+          job,
+          finish: () => resolve({ bytes: new Blob(['opus']), frames: 48000 * 10, channels: 2, lufs: -20, truePeakDb: -3, peaks: new Uint8Array(0) }),
           fail: reject,
         });
       }),

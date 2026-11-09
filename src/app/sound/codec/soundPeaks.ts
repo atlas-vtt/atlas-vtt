@@ -17,8 +17,17 @@ export class PeakCollector {
   private readonly energy = new Float64Array(PEAK_BUCKETS);
   private readonly counts = new Uint32Array(PEAK_BUCKETS);
   private position = 0;
+  private scratch = new Float32Array(0);
 
   constructor(private readonly frames: number) {}
+
+  /** The first channel of what a decoder gave. The data stays open: closing it is the caller's. */
+  take(data: AudioData): void {
+    const length = data.numberOfFrames;
+    if (this.scratch.length < length) this.scratch = new Float32Array(length);
+    data.copyTo(this.scratch, { planeIndex: 0, format: 'f32-planar' });
+    this.add(this.scratch, length);
+  }
 
   add(samples: Float32Array, length: number): void {
     const perBucket = Math.max(1, this.frames) / PEAK_BUCKETS;
@@ -43,14 +52,10 @@ export async function readPeaksOfCopy(copy: Blob, frames: number, onStep: () => 
   const collector = new PeakCollector(frames);
   const window = new BlobWindow(copy);
   const failures: Error[] = [];
-  let samples = new Float32Array(0);
   const decoder = new AudioDecoder({
     output: (data) => {
-      const length = data.numberOfFrames;
-      if (samples.length < length) samples = new Float32Array(length);
-      data.copyTo(samples, { planeIndex: 0, format: 'f32-planar' });
+      collector.take(data);
       data.close();
-      collector.add(samples, length);
     },
     error: (error) => {
       failures.push(error);
