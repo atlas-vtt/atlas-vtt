@@ -113,6 +113,26 @@ describe('rooms', () => {
     expect(pieces[0]!.holes).toHaveLength(0);
   });
 
+  it('leaves a scene without rooms as it is when rock is filled in', () => {
+    const { slice, get } = roomStore();
+    const before = get();
+    slice.fillRooms(rect(0, 0, 100, 100));
+    expect(get()).toBe(before);
+    expect(get().objects.rooms).toBeUndefined();
+  });
+
+  it('keeps one walls record per level while levels sharing their drawn walls are read in turn', () => {
+    const walls: Record<string, WallSegment> = {};
+    const room = (id: string, x: number): Record<string, Room> => ({ [id]: { id, kind: 'room', name: '', order: 0, area: rect(x, 0, 100, 100) } });
+    const upper = room('u', 0);
+    const lower = room('l', 300);
+    const first = blockingWalls({ walls, rooms: upper });
+    const second = blockingWalls({ walls, rooms: lower });
+    expect(first).not.toBe(second);
+    expect(blockingWalls({ walls, rooms: upper })).toBe(first);
+    expect(blockingWalls({ walls, rooms: lower })).toBe(second);
+  });
+
   it('names a wall by its ends, so an edit keeps the walls it did not move', () => {
     const { slice, get } = roomStore();
     slice.carveRoom(rect(0, 0, 100, 100));

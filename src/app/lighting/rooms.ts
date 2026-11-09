@@ -154,7 +154,12 @@ export function roomWalls(rooms: Record<string, Room>): Record<string, WallSegme
   return walls;
 }
 
-const blockingCache = new WeakMap<Record<string, WallSegment>, { rooms: Record<string, Room>; walls: Record<string, WallSegment> }>();
+/**
+ * By drawn walls, then rooms: levels share one walls record where every wall stands on each of them
+ * (none at all, too), and each level has its own rooms, so one entry per walls record would make
+ * a new record on every read while two levels are worked out in turn (a level seen through openings).
+ */
+const blockingCache = new WeakMap<Record<string, WallSegment>, WeakMap<Record<string, Room>, Record<string, WallSegment>>>();
 
 /**
  * What stops sight, light, sound and tokens on a level (`levelObjects`): its drawn walls and the
@@ -164,10 +169,10 @@ const blockingCache = new WeakMap<Record<string, WallSegment>, { rooms: Record<s
 export function blockingWalls(objects: { walls: Record<string, WallSegment>; rooms?: Record<string, Room> | undefined }): Record<string, WallSegment> {
   const { walls, rooms } = objects;
   if (!rooms || roomList(rooms).length === 0) return walls;
-  const cached = blockingCache.get(walls);
-  if (cached?.rooms === rooms) return cached.walls;
-  const merged = { ...walls, ...roomWalls(rooms) };
-  blockingCache.set(walls, { rooms, walls: merged });
+  let byRooms = blockingCache.get(walls);
+  if (!byRooms) blockingCache.set(walls, byRooms = new WeakMap());
+  let merged = byRooms.get(rooms);
+  if (!merged) byRooms.set(rooms, merged = { ...walls, ...roomWalls(rooms) });
   return merged;
 }
 

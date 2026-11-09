@@ -56,8 +56,10 @@ const roomsOf = (draft: RoomsDraft): Record<string, Room> => {
 
 /** The rooms of the level the view shows, in their order. */
 function shownRooms(draft: RoomsDraft): Room[] {
+  // Read only: a scene without rooms gets no record (and no undo step) from a stroke that changes nothing.
+  if (!isRecord(draft.objects.rooms)) return [];
   const level = viewedLevelId(draft);
-  return readRooms(roomsOf(draft)).filter((room) => level === null || onLevel(room, level, draft.levels));
+  return readRooms(draft.objects.rooms).filter((room) => level === null || onLevel(room, level, draft.levels));
 }
 
 function addRoom(draft: RoomsDraft, area: RoomArea, after?: Room): string {
