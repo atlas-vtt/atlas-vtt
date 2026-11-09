@@ -31,7 +31,11 @@ function setup(): { renderer: PinRenderer; store: ReturnType<typeof createViewAt
   return { renderer, store };
 }
 
-const marks = (renderer: PinRenderer): number => (renderer.getPinContainer().children[0] as Container).children[0]?.children.filter((child) => child.label === 'pin-readable-mark').length ?? 0;
+/** The readable marks a pin's face carries, wherever in it they stand. */
+const marks = (renderer: PinRenderer): number => {
+  const count = (node: Container): number => node.children.reduce((sum, child) => sum + (child.label === 'pin-readable-mark' ? 1 : 0) + count(child as Container), 0);
+  return count(renderer.getPinContainer());
+};
 
 describe('a pin players may read', () => {
   afterEach(() => {

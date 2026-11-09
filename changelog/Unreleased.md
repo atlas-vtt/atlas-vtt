@@ -3,6 +3,7 @@
 - Pins can show their name under them on the map: the note's name or one you give them. Switch it on in the pin menu, or once for every new pin when placing them
 - Pins you show to players appear in the player window with their names, where the players can see the map
 - Names that would crowd each other hide until you zoom in
+- Pins shrink with the map when you zoom far out instead of covering it, and become dots when the whole map fits on screen
 
 ## Fixed
 

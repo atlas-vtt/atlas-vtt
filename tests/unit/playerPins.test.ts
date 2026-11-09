@@ -13,11 +13,11 @@ function players(pins: Record<string, NotePin>): { layer: PlayerPins; drawn: str
     place: (p) => ({ x: p.x, y: p.y }),
     draw: (p) => {
       drawn.push(p.id);
-      return { view: new Container(), name: null };
+      return { view: new Container(), name: null, fitTo: () => undefined, whole: () => true };
     },
     scale: () => 1,
     zoom: () => 1,
-    mapWidth: () => 2000,
+    mapSize: () => ({ width: 2000, height: 2000 }),
   };
   return { layer: new PlayerPins(deps), drawn, set: (next) => { current = next; } };
 }

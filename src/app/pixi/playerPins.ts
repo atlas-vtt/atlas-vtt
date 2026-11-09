@@ -7,6 +7,7 @@ import { pinNameBoxes } from './pinNameLayout';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { destroyTree } from './utils/destroyTree';
 import { shownToPlayers } from '../tools/pinSharing';
+import { pinScreenDiameter, type MapSize } from './pinSizing';
 
 /** Which of `points` the players' picture shows the map at now; null while that cannot be read (nothing is shown then). */
 export type PlayerPointSight = (points: readonly Point[]) => readonly boolean[] | null;
@@ -18,12 +19,12 @@ export interface PlayerPinsDeps {
   readonly place: (pin: NotePin) => Point;
   /** A pin as players see it: its face and name, without the GM's marks. */
   readonly draw: (pin: NotePin) => DrawnPin;
-  /** The pins' scale, the GM's markers' (`mapMarkerScale`), so the players' picture keeps the map's proportions. */
+  /** The pins' scale, the GM's pins' (`pinGroupScale`), so the players' picture keeps the map's proportions. */
   readonly scale: () => number;
-  /** The viewport's zoom, for the names' size on screen. */
+  /** The viewport's zoom, for the pins' and names' size on screen. */
   readonly zoom: () => number;
-  /** The map's width in world pixels, for how much of it a name may cover. */
-  readonly mapWidth: () => number | null;
+  /** The map's size in world pixels, which pins and names are sized by. */
+  readonly mapSize: () => MapSize | null;
 }
 
 /**
@@ -33,7 +34,7 @@ export interface PlayerPinsDeps {
  */
 export class PlayerPins {
   readonly view = new Container({ label: 'pins-players', eventMode: 'none', interactiveChildren: false });
-  private readonly drawn = new Map<string, { pin: NotePin; group: Container; name: PinNameLabel | null }>();
+  private readonly drawn = new Map<string, { pin: NotePin; group: Container; face: DrawnPin }>();
   private sight: PlayerPointSight | null = null;
 
   constructor(private readonly deps: PlayerPinsDeps) {
@@ -61,33 +62,39 @@ export class PlayerPins {
     }
     for (const [id, { pin, place }] of shown) {
       if (!this.drawn.has(id)) {
-        const { view, name } = this.deps.draw(pin);
+        const face = this.deps.draw(pin);
         const group = new Container({ label: `player-pin-${id}`, eventMode: 'none' });
-        group.addChild(view);
+        group.addChild(face.view);
         this.view.addChild(group);
-        this.drawn.set(id, { pin, group, name });
+        this.drawn.set(id, { pin, group, face });
       }
       this.drawn.get(id)!.group.position.set(place.x, place.y);
     }
     this.rescale();
   }
 
-  /** Scales the pins for the zoom and hides names that would crowd. */
+  /** Sizes the pins for the zoom, as the GM's are: dots on a map seen whole, names only where they fit. */
   rescale(): void {
     if (this.drawn.size === 0) return;
     const scale = this.deps.scale();
     const zoom = this.deps.zoom();
+    const map = this.deps.mapSize();
+    const diameter = pinScreenDiameter(zoom, map);
     const groups: Record<string, Container> = {};
     const names = new Map<string, PinNameLabel>();
-    for (const [id, { group, name }] of this.drawn) {
+    for (const [id, { group, face }] of this.drawn) {
       group.scale.set(scale);
+      face.fitTo(diameter);
       groups[id] = group;
-      if (name) {
-        name.draw(scale, zoom);
-        names.set(id, name);
+      if (!face.name) continue;
+      if (!face.whole()) {
+        face.name.view.visible = false;
+        continue;
       }
+      face.name.draw(scale, zoom);
+      names.set(id, face.name);
     }
-    const visible = pinNameBoxes(names, groups, scale, this.deps.mapWidth());
+    const visible = pinNameBoxes(names, groups, scale, map?.width ?? null);
     for (const [id, name] of names) name.view.visible = visible.has(id);
   }
 

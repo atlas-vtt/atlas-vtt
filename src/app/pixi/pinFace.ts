@@ -8,12 +8,23 @@ import { isEncounterFolderLink } from '../links/atlasLinkTargets';
 import { canvasBadgeColors, isDarkTheme } from './utils/canvasBadgeColors';
 import { createReadableMark, createRollMark } from './pinBadgeMarks';
 import { PinNameLabel } from './pinNameLabel';
+import { PIN_DOT_BELOW } from './pinSizing';
 
-/** A pin as drawn: its view, and the name under it where it shows one. */
+/** A pin as drawn: its view, the name under it where it shows one, and how it turns into a dot and back. */
 export interface DrawnPin {
   readonly view: Container;
   readonly name: PinNameLabel | null;
+  /** Fits the pin to its badge's diameter on screen: a dot in its tone below `dotBelow`, else its glyph and marks. */
+  readonly fitTo: (diameter: number) => void;
+  /** Whether it shows its glyph, not a dot: a name stands only under a pin that does. */
+  readonly whole: () => boolean;
 }
+
+/** The dot's radius inside the badge, which stays around it as its rim. */
+const DOT_SHARE = 0.55;
+
+/** A numbered or lettered pin keeps its number down to this diameter on screen: the number is what the map key reads. */
+const LABEL_DOT_BELOW = 16;
 
 export interface PinFaceOptions {
   /** The GM's marks on the badge: a folder of encounters, a pin shown to players. */
@@ -38,7 +49,14 @@ export function drawPinFace(pin: NotePin, iconTexture: (icon: PinIconId) => Text
   badge.circle(0, 0, badgeRadius).stroke({ width: 0.5, color: colors.stroke, alpha: isDarkMode ? 0.4 : 0.3 });
   view.addChild(badge);
 
+  // The glyph and marks, which a dot hides
+  const full = new Container();
+  view.addChild(full);
   const icon = resolvePinIcon(pin.icon || 'pin');
+  const tone = isPinLabelKind(icon) ? colors.stroke : getPinIconDefinition(icon).tone[isDarkMode ? 'dark' : 'light'];
+  const dot = new Graphics().circle(0, 0, badgeRadius * DOT_SHARE).fill(tone);
+  dot.visible = false;
+  view.addChild(dot);
   if (isPinLabelKind(icon)) {
     const labelText = new Text({
       text: pin.label ?? '',
@@ -48,20 +66,20 @@ export function drawPinFace(pin: NotePin, iconTexture: (icon: PinIconId) => Text
     labelText.anchor.set(0.5);
     // Longer labels ("12", "AB") shrink to stay inside the badge
     labelText.scale.set(Math.min(1, (badgeRadius * 1.5) / labelText.width));
-    view.addChild(labelText);
+    full.addChild(labelText);
   } else {
     const texture = iconTexture(icon);
     if (texture) {
       const sprite = new Sprite(texture);
       sprite.anchor.set(0.5);
       sprite.setSize(pinSize.iconSize);
-      sprite.tint = getPinIconDefinition(icon).tone[isDarkMode ? 'dark' : 'light'];
-      view.addChild(sprite);
+      sprite.tint = tone;
+      full.addChild(sprite);
     }
   }
   if (marks) {
-    if (isEncounterFolderLink(pin.notePath)) view.addChild(createRollMark(badgeRadius, colors));
-    else if (pin.readable === true) view.addChild(createReadableMark(badgeRadius, colors));
+    if (isEncounterFolderLink(pin.notePath)) full.addChild(createRollMark(badgeRadius, colors));
+    else if (pin.readable === true) full.addChild(createReadableMark(badgeRadius, colors));
   }
 
   let name: PinNameLabel | null = null;
@@ -69,5 +87,11 @@ export function drawPinFace(pin: NotePin, iconTexture: (icon: PinIconId) => Text
     name = new PinNameLabel(pinName(pin));
     view.addChildAt(name.view, 0);
   }
-  return { view, name };
+  const dotBelow = isPinLabelKind(icon) ? LABEL_DOT_BELOW : PIN_DOT_BELOW;
+  const fitTo = (diameter: number): void => {
+    const shown = diameter < dotBelow;
+    if (dot.visible !== shown) dot.visible = shown;
+    if (full.visible === shown) full.visible = !shown;
+  };
+  return { view, name, fitTo, whole: () => full.visible };
 }

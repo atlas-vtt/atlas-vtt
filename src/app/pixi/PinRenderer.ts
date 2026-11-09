@@ -3,13 +3,14 @@ import { Viewport } from "pixi-viewport";
 import { EventEmitter } from 'events';
 import type { NotePin } from "../types";
 import { createPinIconTexture } from "./utils/pinIconTexture";
-import { drawPinFace } from './pinFace';
+import { drawPinFace, type DrawnPin } from './pinFace';
 import { PlayerPins, type PlayerPointSight } from './playerPins';
 import type { LayerVisibility } from './playerSafeFrame';
 import type { PinNameLabel } from './pinNameLabel';
+import { pinGroupScale, pinScreenDiameter, type MapSize } from './pinSizing';
+import { pinSize } from '../styles/designTokens';
 import type { PinIconId } from '../types/pinIcons';
 import { destroyTree } from "./utils/destroyTree";
-import { mapMarkerScale } from "./utils/mapMarkerScale";
 import { isHandled } from "./utils/handledEvents";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
@@ -36,24 +37,37 @@ function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean
   return false;
 }
 
+/** The least radius on screen a pin answers the pointer within, also as a dot. */
+const MIN_HIT_RADIUS = 10;
+
+/** The names of the pins that show their glyph: a dot carries none. */
+function shownNames(faces: ReadonlyMap<string, DrawnPin>): Map<string, PinNameLabel> {
+  const names = new Map<string, PinNameLabel>();
+  for (const [id, face] of faces) {
+    if (!face.name) continue;
+    if (face.whole()) names.set(id, face.name);
+    else face.name.view.visible = false;
+  }
+  return names;
+}
+
 export class PinRenderer {
   private viewport: Viewport;
   private eventBus: EventEmitter;
   private pinContainer: Container;
   private pinSprites: Record<string, Container> = {};
-  /** The names shown under pins, by pin id; which of them show is decided again as the map zooms (`layoutNames`). */
-  private pinNames = new Map<string, PinNameLabel>();
+  /** The pins as drawn, by pin id: they turn into dots and back, and their names are laid out again, as the map zooms. */
+  private pinFaces = new Map<string, DrawnPin>();
+  /** The placement preview as drawn, sized like the pins. */
+  private previewFace: DrawnPin | null = null;
   /** The pins the players' picture shows in place of these: in the players' frame and in session view. */
   private readonly players: PlayerPins;
   /** A refresh of the players' pins waits for the next frame, so the sight a store change moves has been worked out. */
   private playersFrame: number | null = null;
-  /** The map's width in world pixels; names show only once the map is large enough on screen to carry them. */
-  private mapWidth: () => number | null = () => null;
-  /** The map's size changed (a map loaded, a stretch applied): the names it carries are laid out again. */
-  private readonly mapImageUpdated = (): void => {
-    this.layoutNames();
-    this.players.rescale();
-  };
+  /** The map's size in world pixels: pins are a share of it (`pinGroupScale`), and names show only once it carries them. */
+  private mapSize: () => MapSize | null = () => null;
+  /** The map's size changed (a map loaded, a stretch applied): the pins it carries are sized again. */
+  private readonly mapImageUpdated = (): void => this.updatePinScales();
   private _unsubscribeFromStore?: () => void;
   private _notePinToolViewportListener: ((e: FederatedPointerEvent) => void) | null = null;
   private _viewportPinClickListener: ((e: FederatedPointerEvent) => void) | null = null;
@@ -90,7 +104,7 @@ export class PinRenderer {
       draw: (pin) => drawPinFace(pin, (icon) => this.getIconTexture(icon), { marks: false, named: true }),
       scale: () => this.getPinScale(),
       zoom: () => this.viewport.scale.x,
-      mapWidth: () => this.mapWidth(),
+      mapSize: () => this.mapSize(),
     });
     this.viewport.addChild(this.players.view);
     const unsubscribePins = this.store.subscribe(
@@ -224,35 +238,38 @@ export class PinRenderer {
     this.viewport.on('pointermove', this._viewportPointerMoveHandler);
   }
   
+  /** Sizes every pin for the zoom: its scale, dot or glyph, and the names that fit. */
   private updatePinScales(): void {
     const scale = this.getPinScale();
-    
+    const diameter = pinScreenDiameter(this.viewport.scale.x, this.mapSize());
     for (const pinId in this.pinSprites) {
-      const pinGroup = this.pinSprites[pinId];
-      if (pinGroup) {
-        pinGroup.scale.set(scale);
-      }
+      this.pinSprites[pinId]?.scale.set(scale);
     }
-    
+    for (const face of this.pinFaces.values()) face.fitTo(diameter);
     if (this.previewPin) {
       this.previewPin.scale.set(scale);
+      this.previewFace?.fitTo(diameter);
     }
     this.layoutNames();
     this.players.rescale();
   }
 
-  /** Draws every name for the zoom, then hides those that would cover another name or another pin. */
+  /** Draws every name for the zoom, then hides those under a dot, too wide for the map or covering another name or pin. */
   private layoutNames(): void {
-    if (this.pinNames.size === 0) return;
+    const names = shownNames(this.pinFaces);
+    if (names.size === 0) return;
     const scale = this.getPinScale();
     const zoom = this.viewport.scale.x;
-    for (const label of this.pinNames.values()) label.draw(scale, zoom);
-    const shown = pinNameBoxes(this.pinNames, this.pinSprites, scale, this.mapWidth());
-    for (const [id, label] of this.pinNames) label.view.visible = shown.has(id);
+    for (const label of names.values()) label.draw(scale, zoom);
+    const shown = pinNameBoxes(names, this.pinSprites, scale, this.mapSize()?.width ?? null);
+    for (const [id, face] of this.pinFaces) {
+      if (face.name) face.name.view.visible = shown.has(id);
+    }
   }
 
+  /** The pins' world scale: a share of the map, between a findable and their full size on screen. */
   private getPinScale(): number {
-    return mapMarkerScale(this.viewport.scale.x);
+    return pinGroupScale(this.viewport.scale.x, this.mapSize());
   }
   
   private pinPosition(pin: NotePin): { x: number; y: number } {
@@ -290,9 +307,10 @@ export class PinRenderer {
     return this.pinContainer;
   }
 
-  /** How wide the map is in world pixels, for how much of it a name may cover; set by the view. */
-  public setMapWidth(read: () => number | null): void {
-    this.mapWidth = read;
+  /** How large the map is in world pixels, which pins and names are sized by; set by the view. */
+  public setMapSize(read: () => MapSize | null): void {
+    this.mapSize = read;
+    this.updatePinScales();
   }
 
   /** How the players' sight is read for the pins they are shown; set by the view once its fog and lighting exist. */
@@ -330,7 +348,9 @@ export class PinRenderer {
 
     const pins = levelObjects(this.store.getState()).pins;
     const layout = hexLayoutOfGrid(this.store.getState().grid);
-    const hitRadius = 20 * this.getPinScale();
+    // A pin shrunk to a dot keeps a hit area a pointer can find
+    const zoom = this.viewport.scale.x > 0 ? this.viewport.scale.x : 1;
+    const hitRadius = Math.max(pinSize.badgeRadius * this.getPinScale(), MIN_HIT_RADIUS / zoom);
 
     for (const [id, pin] of Object.entries(pins)) {
       // A linked pin is part of its hex, which handles the pointer
@@ -428,12 +448,13 @@ export class PinRenderer {
     return this.createPinGraphics(icon, previewPin, false);
   }
 
-  /** The badge, its glyph or label and its marks, and its name under it where it shows one (`named`). */
+  /** The badge, its glyph or label and its marks, and its name under it where it shows one (`named`), fitted to the zoom. */
   private createPinGraphics(iconType: string, pin: NotePin, named = true): Container {
-    if (named) this.pinNames.delete(pin.id);
-    const { view, name } = drawPinFace({ ...pin, icon: iconType }, (icon) => this.getIconTexture(icon), { marks: true, named });
-    if (name) this.pinNames.set(pin.id, name);
-    return view;
+    const face = drawPinFace({ ...pin, icon: iconType }, (icon) => this.getIconTexture(icon), { marks: true, named });
+    face.fitTo(pinScreenDiameter(this.viewport.scale.x, this.mapSize()));
+    if (named) this.pinFaces.set(pin.id, face);
+    else this.previewFace = face;
+    return face.view;
   }
   
 
@@ -480,7 +501,7 @@ export class PinRenderer {
           destroyTree(pinGroup);
           delete this.pinSprites[id];
         }
-        this.pinNames.delete(id);
+        this.pinFaces.delete(id);
       }
     }
 
@@ -552,6 +573,7 @@ export class PinRenderer {
   }
   
   private hidePreviewPin(): void {
+    this.previewFace = null;
     if (this.previewPin) {
       destroyTree(this.previewPin);
       this.previewPin = null;
@@ -647,7 +669,8 @@ export class PinRenderer {
         destroyTree(this.pinContainer, { textures: true });
     }
     this.pinSprites = {};
-    this.pinNames.clear();
+    this.pinFaces.clear();
+    this.previewFace = null;
     if (this.playersFrame !== null) window.cancelAnimationFrame(this.playersFrame);
     this.players.destroy();
   }

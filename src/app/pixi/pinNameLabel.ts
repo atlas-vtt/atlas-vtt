@@ -18,8 +18,8 @@ const NAME_GAP = 3;
 
 /**
  * A pin's name under its badge, the way a map labels a place: text in the theme's ink with a halo
- * of the badge's colour, no box. It keeps one size on screen whatever the zoom, also where the
- * badges grow on a map zoomed far out (`mapMarkerScale`), so a name never grows over the map.
+ * of the badge's colour, no box. It keeps one size on screen whatever size the badge has
+ * (`pinGroupScale`); under a pin shrunk to a dot it shows none.
  */
 export class PinNameLabel {
   readonly view = new Container({ label: 'pin-name', eventMode: 'none', interactiveChildren: false });
