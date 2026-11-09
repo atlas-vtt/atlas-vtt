@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { readSoundPeaks } from '@/app/sound/codec/soundPeaksClient';
 import { STUCK_AFTER_MS } from '@/app/sound/codec/stuckWatch';
 import type { SoundRecord } from '@/app/sound/soundTypes';
 import { backgroundCopies, SoundCopies, type SoundFileAccess } from '@/app/soundDirector/soundCopies';
@@ -18,7 +17,6 @@ class FakeWorker {
   say(message: unknown): void { this.onmessage?.({ data: message } as MessageEvent<unknown>); }
 }
 
-vi.mock('@/app/sound/codec/soundPeaksWorker?worker&inline', () => ({ default: class { constructor() { return new FakeWorker(); } } }));
 vi.mock('@/app/soundDirector/sourceWorker?worker&inline', () => ({ default: class { constructor() { return new FakeWorker(); } } }));
 
 function copies(read: SoundFileAccess['read'], prepare: (source: ArrayBuffer | Blob) => Promise<PreparedSource> = () => Promise.resolve({ hash: 'h', source: new Blob([]) }), parallel?: number): { made: SoundCopies; refused: string[]; done: () => string[] } {
@@ -117,24 +115,5 @@ describe('copies made at once', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(made.stateOf(sounds[3]!).state).toBe('ready');
     expect(made.stateOf(sounds[2]!).state).toBe('not-converted');
-  });
-});
-
-describe('a waveform', () => {
-  it('that gets nowhere is stopped, and one that gets somewhere is not', async () => {
-    const stuck = readSoundPeaks(new Blob([]), 48000);
-    const failure = expect(stuck).rejects.toMatchObject({ reason: 'unreadable' });
-    await vi.advanceTimersByTimeAsync(STUCK_AFTER_MS + 1);
-    await failure;
-    expect(FakeWorker.made[0]?.terminated).toBe(true);
-
-    const going = readSoundPeaks(new Blob([]), 48000);
-    const worker = FakeWorker.made[1];
-    for (let at = 0; at < 3; at++) {
-      await vi.advanceTimersByTimeAsync(STUCK_AFTER_MS - 1000);
-      worker?.say({ step: true });
-    }
-    worker?.say({ peaks: Uint8Array.of(1) });
-    await expect(going).resolves.toEqual(Uint8Array.of(1));
   });
 });

@@ -9,6 +9,7 @@ import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
 import { registerConversionConsent } from './soundConsent';
+import { removeSoundCache } from './removeSoundCache';
 import { runInBackground } from '../utils/backgroundTask';
 
 const STATUS_REFRESH_MS = 5000;
@@ -147,6 +148,7 @@ export function registerSoundDirector(plugin: Plugin): SoundDirector {
   const director = SoundDirector.forApp(plugin.app);
   // Linked folders are prepared as they come, once the workspace is up, so a start is not held by a folder's walk.
   plugin.app.workspace.onLayoutReady(() => {
+    runInBackground(removeSoundCache(plugin.app), 'Removing the old sound copy cache');
     const watch = new LinkedFolderWatch({ records: SoundRecordStore.forApp(plugin.app), library: SoundLibrary.forApp(plugin.app), director });
     plugin.register(() => watch.dispose());
   });

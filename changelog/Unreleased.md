@@ -1,3 +1,8 @@
+## New
+
+- Sounds in a linked folder become Opus files in that folder once you agree (originals go to the trash or stay), so they are never converted again and Atlas keeps no hidden copy of your sound library
+- The Sound page shows how far the conversion has got, with a button to pause it
+
 ## Fixed
 
 - Atlas notices such as "Saved" show at the bottom of the window again; since 0.13.0 they appeared nowhere
