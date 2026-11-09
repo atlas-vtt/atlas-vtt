@@ -16,6 +16,8 @@ interface ToolButtonProps {
   disabled?: boolean
   /** Set for a button that opens a menu: whether that menu is open. */
   menuExpanded?: boolean
+  /** Set for one of a set of choices (a mode): whether it is the one chosen, for screen readers. */
+  pressed?: boolean
   /** Where the tooltip opens; above unless the bar is upright, whose buttons it would cover. */
   tooltipSide?: "top" | "left" | "right" | "bottom"
   // Dropdown support
@@ -36,6 +38,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   className,
   disabled = false,
   menuExpanded,
+  pressed,
   tooltipSide = "top",
   // dropdown props
   showChevron = false,
@@ -55,6 +58,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
               onClick={disabled ? undefined : onClick}
               aria-disabled={disabled || undefined}
               {...(menuExpanded !== undefined && { "aria-haspopup": "menu" as const, "aria-expanded": menuExpanded })}
+              {...(pressed !== undefined && { "aria-pressed": pressed })}
               className={cn(
                 "btn--toolbar",
                 isActive && "is-active",

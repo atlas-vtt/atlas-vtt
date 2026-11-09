@@ -10,6 +10,8 @@ interface BottomToolbarRowProps {
   end?: React.ReactNode;
   /** Centred above the row (the turn banner); it takes no room in the row. */
   above?: React.ReactNode;
+  /** The active tool's own bar, centred above the toolbar; the menus and the banner above stand clear of it. */
+  options?: React.ReactNode;
   /** The main toolbar, centred on the view. */
   children: React.ReactNode;
 }
@@ -22,10 +24,11 @@ interface BottomToolbarRowProps {
  * controls or off the view. The toolbar editor's state is shared through the
  * row, since it arranges the undo/redo bar beside the toolbar too.
  */
-export function BottomToolbarRow({ start, end, above, children }: BottomToolbarRowProps): React.ReactElement {
+export function BottomToolbarRow({ start, end, above, options, children }: BottomToolbarRowProps): React.ReactElement {
   const rowRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const optionsRef = useRef<HTMLDivElement>(null);
   const [space, setSpace] = useState<number | null>(null);
   const [bridge] = useState(createToolbarRowBridge);
 
@@ -33,9 +36,12 @@ export function BottomToolbarRow({ start, end, above, children }: BottomToolbarR
     const row = rowRef.current;
     const startSlot = startRef.current;
     const endSlot = endRef.current;
-    if (!row || !startSlot || !endSlot) return undefined;
+    const optionsSlot = optionsRef.current;
+    if (!row || !startSlot || !endSlot || !optionsSlot) return undefined;
 
     const measure = (): void => {
+      // What hangs above the toolbar (its menus, the dice tray, the turn banner) is lifted over the tool's bar.
+      row.style.setProperty('--atlas-toolbar-lift', `${optionsSlot.getBoundingClientRect().height}px`);
       // A row that is not laid out (hidden leaf, tests) constrains nothing.
       if (row.clientWidth === 0) {
         setSpace(null);
@@ -46,7 +52,7 @@ export function BottomToolbarRow({ start, end, above, children }: BottomToolbarR
       setSpace(next);
     };
     measure();
-    return observeResize([row, startSlot, endSlot], measure);
+    return observeResize([row, startSlot, endSlot, optionsSlot], measure);
   }, []);
 
   return (
@@ -55,6 +61,7 @@ export function BottomToolbarRow({ start, end, above, children }: BottomToolbarR
         <div ref={startRef} className="atlas-bottom-toolbar-row__start">{start}</div>
         <ToolbarSpaceContext.Provider value={space}>{children}</ToolbarSpaceContext.Provider>
         <div ref={endRef} className="atlas-bottom-toolbar-row__end">{end}</div>
+        <div ref={optionsRef} className="atlas-bottom-toolbar-row__options">{options}</div>
         {above}
       </div>
     </ToolbarRowBridgeContext.Provider>

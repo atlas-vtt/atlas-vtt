@@ -26,19 +26,19 @@ describe('the Rooms panel', () => {
   it('shows while the lighting tool works in its Rooms mode in the GM\'s view, and only then', async () => {
     const store = renderPanel();
     expect(screen.queryByRole('region', { name: 'Rooms' })).toBeNull();
-    act(() => store.getState().setRoomsMode(true));
+    act(() => store.getState().setLightingTool({ mode: 'rooms' }));
     expect(screen.queryByRole('region', { name: 'Rooms' })).toBeNull();
     act(() => store.getState().setActiveTool('wall'));
     screen.getByRole('region', { name: 'Rooms' });
     screen.getByText('Carve a room on the map to start');
-    act(() => store.getState().setRoomsMode(false));
+    act(() => store.getState().setLightingTool({ mode: 'draw' }));
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Rooms' })).toBeNull());
   });
 
   it('lists the rooms of the level with what can be done to each', () => {
     const store = renderPanel();
     act(() => {
-      store.getState().setRoomsMode(true);
+      store.getState().setLightingTool({ mode: 'rooms' });
       store.getState().setActiveTool('wall');
       store.getState().carveRoom(square(0));
       store.getState().setActiveRoom(null);

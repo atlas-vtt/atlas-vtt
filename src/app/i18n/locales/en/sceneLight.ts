@@ -37,10 +37,10 @@ export const sceneLight = {
   'sceneLight.mode.memory': 'Explored memory',
   'sceneLight.memory.reveal': 'Reveal',
   'sceneLight.memory.forget': 'Forget',
+  'sceneLight.memory.revealTip': 'Mark an area as explored for the players',
+  'sceneLight.memory.forgetTip': 'Make the players forget an area',
   'sceneLight.memory.brush': 'Brush',
   'sceneLight.memory.lasso': 'Lasso',
   'sceneLight.memory.rectangle': 'Rectangle',
-  'sceneLight.memory.strokeMode': 'What a stroke does',
-  'sceneLight.memory.strokeShape': 'Shape of a stroke',
   'sceneLight.memory.brushSize': 'Brush size',
 } as const satisfies Record<string, Message>;

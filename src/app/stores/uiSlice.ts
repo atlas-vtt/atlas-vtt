@@ -7,6 +7,7 @@
  */
 
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
+import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lightingTool';
 import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */
@@ -32,7 +33,7 @@ export interface UISlice extends ViewUIState {
   openLevelSurfacePopover: (surfaceId: string) => void;
   closeLevelSurfacePopover: () => void;
   setSceneLightingPanelOpen: (open: boolean) => void;
-  setRoomsMode: (on: boolean) => void;
+  setLightingTool: (changes: Partial<LightingToolOptions>) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
   /** Starting the toolbar editor closes the dice tray, which hangs where the tray goes. */
@@ -62,7 +63,7 @@ export function createInitialUIState(): Pick<
   | 'levelLinkPopover'
   | 'levelSurfacePopover'
   | 'isSceneLightingPanelOpen'
-  | 'isRoomsMode'
+  | 'lightingTool'
   | 'heldTokens'
   | 'exploredBrush'
   | 'isToolbarEditing'
@@ -85,7 +86,7 @@ export function createInitialUIState(): Pick<
     levelLinkPopover: null,
     levelSurfacePopover: null,
     isSceneLightingPanelOpen: false,
-    isRoomsMode: false,
+    lightingTool: DEFAULT_LIGHTING_TOOL,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
     isToolbarEditing: false,
@@ -117,7 +118,7 @@ export function createUIActions(
   | 'openLevelSurfacePopover'
   | 'closeLevelSurfacePopover'
   | 'setSceneLightingPanelOpen'
-  | 'setRoomsMode'
+  | 'setLightingTool'
   | 'setHeldTokens'
   | 'setExploredBrush'
   | 'setToolbarEditing'
@@ -165,7 +166,7 @@ export function createUIActions(
     closeLevelSurfacePopover: () => set((draft) => { draft.levelSurfacePopover = null; }),
     closeLightPopover: () => set((draft) => { draft.lightPopover = null; }),
     setSceneLightingPanelOpen: (open) => set((draft) => { draft.isSceneLightingPanelOpen = open; }),
-    setRoomsMode: (on) => set((draft) => { draft.isRoomsMode = on; }),
+    setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),
     setToolbarEditing: (on) => set((draft) => {

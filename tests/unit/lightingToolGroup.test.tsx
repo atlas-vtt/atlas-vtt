@@ -7,6 +7,7 @@ import { TooltipProvider } from '../../src/app/packages/components/primitives/to
 import type { Tool } from '../../src/app/packages/components/toolbar/toolFaces';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
+import type { LightingToolOptions } from '../../src/app/lighting/lightingTool';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 const bus = vi.hoisted(() => ({ current: null as EventEmitter | null }));
@@ -43,8 +44,6 @@ interface Rendered {
   closeMenu: ReturnType<typeof vi.fn>;
   events: [string, unknown][];
   rerender: (activeTool: Tool) => void;
-  /** Takes the menu down and mounts a new one on the same store, as a toolbar that is built anew. */
-  remount: () => void;
 }
 
 function renderGroup(activeTool: Tool = 'move'): Rendered {
@@ -67,15 +66,8 @@ function renderGroup(activeTool: Tool = 'move'): Rendered {
       </ViewStoreProvider>
     </TooltipProvider>
   );
-  let view = render(ui(activeTool));
-  return {
-    store, selectTool, closeMenu, events,
-    rerender: (tool) => view.rerender(ui(tool)),
-    remount: () => {
-      view.unmount();
-      view = render(ui(activeTool));
-    },
-  };
+  const view = render(ui(activeTool));
+  return { store, selectTool, closeMenu, events, rerender: (tool) => view.rerender(ui(tool)) };
 }
 
 /** A menu row, as the fog and draw menus build theirs. */
@@ -90,82 +82,51 @@ function checked(label: string): boolean {
   return row(label).querySelector('.atlas-dropdown-menu-item__check svg') !== null;
 }
 
-/** A choice of a segmented control: a mode's tile, how walls are drawn, a stroke's shape. */
-const choice = (name: string): HTMLElement => screen.getByRole('radio', { name });
-const chosen = (name: string): boolean => choice(name).getAttribute('aria-checked') === 'true';
-const inert = (name: string): boolean => choice(name).getAttribute('aria-disabled') === 'true';
+/** Chooses the tool's mode, as the bar above the toolbar does. */
+const mode = (store: ViewAtlasStore, value: LightingToolOptions['mode']): void => act(() => store.getState().setLightingTool({ mode: value }));
 
 describe('LightingToolGroup', () => {
-  it('offers what the tool does as tiles, and how walls are drawn as one choice', () => {
-    renderGroup();
-    for (const name of ['Walls', 'Rooms', 'Lights', 'Zones', 'Openings', 'Memory']) choice(name);
-    expect(document.querySelectorAll('.atlas-segmented--tiles [role="radio"]')).toHaveLength(6);
-    expect(chosen('Walls')).toBe(true);
-    expect(chosen('Point to point')).toBe(true);
-    choice('Freehand');
+  it('holds no modes and no ways of drawing: those are the bar above the toolbar', () => {
+    renderGroup('wall');
+    for (const name of ['Walls', 'Rooms', 'Point to point', 'Freehand', 'Carve', 'Reveal']) expect(screen.queryByText(name)).toBeNull();
+    row('Lighting settings…');
   });
 
-  it('switches to placing lights, selects the tool and offers the light presets', () => {
-    const { selectTool, events, rerender } = renderGroup('move');
-    fireEvent.click(choice('Lights'));
-    expect(events).toContainEqual(['wall-submode-changed', 'place-light']);
-    expect(selectTool).toHaveBeenCalledWith('wall');
-    rerender('wall');
-    expect(chosen('Lights')).toBe(true);
-    expect(chosen('Walls')).toBe(false);
-    expect(screen.queryByRole('radio', { name: 'Point to point' })).toBeNull();
+  it('offers the light presets in the lights mode and keeps the chosen one in the store', () => {
+    const { store } = renderGroup('wall');
+    expect(screen.queryByText('Torch')).toBeNull();
+    mode(store, 'place-light');
     for (const label of ['Candle', 'Torch', 'Lantern', 'Magical light']) row(label);
     expect(checked('Torch')).toBe(true);
     fireEvent.click(row('Lantern'));
-    expect(events).toContainEqual(['lighting-preset-changed', 'lantern']);
+    expect(store.getState().lightingTool.lightPreset).toBe('lantern');
     expect(checked('Lantern')).toBe(true);
     expect(checked('Torch')).toBe(false);
-  });
-
-  it('switches to drawing light zones, which has no choices of its own', () => {
-    const { selectTool, events, rerender } = renderGroup('move');
-    fireEvent.click(choice('Zones'));
-    expect(events).toContainEqual(['wall-submode-changed', 'light-zone']);
-    expect(selectTool).toHaveBeenCalledWith('wall');
-    rerender('wall');
-    expect(chosen('Zones')).toBe(true);
-    expect(screen.queryByRole('radio', { name: 'Point to point' })).toBeNull();
-    expect(screen.queryByText('Torch')).toBeNull();
   });
 
   it('offers the light presets of the map\'s collection, its torch chosen until another is', () => {
     const dnd5e = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!.rules.lightPresets!;
     lights.current = dnd5e;
-    const { events } = renderGroup('wall');
-    fireEvent.click(choice('Lights'));
+    const { store } = renderGroup('wall');
+    mode(store, 'place-light');
     for (const preset of dnd5e) row(preset.name);
     expect(screen.queryByText('Magical light')).toBeNull();
     expect(checked('Torch')).toBe(true);
     fireEvent.click(row('Daylight'));
-    expect(events).toContainEqual(['lighting-preset-changed', 'dnd5e-daylight']);
+    expect(store.getState().lightingTool.lightPreset).toBe('dnd5e-daylight');
     expect(checked('Daylight')).toBe(true);
-    expect(checked('Torch')).toBe(false);
   });
 
   it('goes back to the collection\'s torch when the chosen preset is no longer one of its lights', () => {
     const systems = BUILT_IN_SYSTEM_PRESETS.filter((preset) => preset.name === 'D&D 5e' || preset.name === 'Cairn');
     lights.current = systems.find((preset) => preset.name === 'D&D 5e')!.rules.lightPresets!;
-    const { rerender } = renderGroup('wall');
-    fireEvent.click(choice('Lights'));
+    const { store, rerender } = renderGroup('wall');
+    mode(store, 'place-light');
     fireEvent.click(row('Daylight'));
     lights.current = systems.find((preset) => preset.name === 'Cairn')!.rules.lightPresets!;
     rerender('wall');
     expect(screen.queryByText('Daylight')).toBeNull();
     expect(checked('Torch')).toBe(true);
-  });
-
-  it('chooses how walls are drawn and tells the tool', () => {
-    const { events } = renderGroup('wall');
-    expect(chosen('Point to point')).toBe(true);
-    fireEvent.click(choice('Freehand'));
-    expect(events).toContainEqual(['wall-mode-changed', 'freeform']);
-    expect(chosen('Freehand')).toBe(true);
-    expect(chosen('Point to point')).toBe(false);
   });
 
   it('switches the scene\'s lighting with a named switch and has no preview of its own', () => {
@@ -188,146 +149,68 @@ describe('LightingToolGroup', () => {
     expect(closeMenu).toHaveBeenCalledTimes(1);
   });
 
-  it('always shows the explored-memory mode, to be chosen only on a lit scene that remembers', () => {
-    const { store, selectTool, events } = renderGroup('wall');
-    expect(inert('Memory')).toBe(true);
-    fireEvent.click(choice('Memory'));
-    expect(selectTool).not.toHaveBeenCalled();
-    expect(events).not.toContainEqual(['wall-submode-changed', 'explored-memory']);
-    act(() => store.getState().setSceneLighting({ enabled: true }));
-    expect(inert('Memory')).toBe(false);
-    act(() => store.getState().setSceneLighting({ exploredMemory: false }));
-    expect(inert('Memory')).toBe(true);
-    act(() => store.getState().setSceneLighting({ exploredMemory: true }));
-    expect(inert('Memory')).toBe(false);
-  });
-
   it('keeps its rows when the scene\'s lighting is switched on or off: only what can be used changes', () => {
     const { store } = renderGroup('wall');
-    // Each row by its kind and its controls: a disabled choice's tooltip says why, so its text may change
     const rows = (): string[] => [...document.querySelectorAll('.atlas-dropdown-menu-item, .atlas-dropdown-toggle-row, .atlas-segmented, .atlas-dropdown-slider-row')]
       .map((item) => `${item.className.replace(/\s*\S+--disabled/g, '')}: ${item.querySelectorAll('button, [role="switch"], [role="slider"]').length}`);
     const off = rows();
-    row('Lighting settings…');
     expect(row('Lighting settings…').disabled).toBe(true);
-    for (const name of ['Walls', 'Lights', 'Zones', 'Point to point', 'Freehand']) expect(inert(name)).toBe(false);
     act(() => store.getState().setSceneLighting({ enabled: true }));
     expect(rows()).toEqual(off);
     expect(row('Lighting settings…').disabled).toBe(false);
   });
 
-  it('switches to editing explored memory: reveal with the brush, until the menu says otherwise', () => {
-    const { store, selectTool, events, rerender } = renderGroup('move');
-    act(() => store.getState().setSceneLighting({ enabled: true }));
-    fireEvent.click(choice('Memory'));
-    expect(events).toContainEqual(['wall-submode-changed', 'explored-memory']);
-    expect(selectTool).toHaveBeenCalledWith('wall');
-    rerender('wall');
-    expect(chosen('Memory')).toBe(true);
-    expect(screen.queryByRole('radio', { name: 'Point to point' })).toBeNull();
-    expect(screen.queryByText('Torch')).toBeNull();
-
-    expect(chosen('Reveal')).toBe(true);
-    expect(chosen('Brush')).toBe(true);
-    expect(screen.getByText('Brush size')).toBeTruthy();
-    expect(screen.getByText('50px')).toBeTruthy();
-
-    // The choices are the tool's own, kept in the view's store: the menu shows and sets them there.
-    expect(store.getState().exploredBrush).toEqual({ mode: 'reveal', shape: 'brush', brushSize: 50 });
-    fireEvent.click(choice('Forget'));
-    expect(store.getState().exploredBrush.mode).toBe('forget');
-    expect(chosen('Forget')).toBe(true);
-    fireEvent.keyDown(screen.getByRole('slider', { name: 'Brush size' }), { key: 'ArrowRight' });
-    expect(store.getState().exploredBrush.brushSize).toBe(51);
-    for (const [label, shape] of [['Rectangle', 'rectangle'], ['Lasso', 'lasso']] as const) {
-      fireEvent.click(choice(label));
-      expect(store.getState().exploredBrush.shape).toBe(shape);
-      expect(chosen(label)).toBe(true);
-      // Only the brush has a size.
-      expect(screen.queryByText('Brush size')).toBeNull();
-    }
-  });
-
-  it('keeps the mode\'s choices while another mode is in use', () => {
+  it('sizes the memory brush, and only the brush', () => {
     const { store } = renderGroup('wall');
     act(() => store.getState().setSceneLighting({ enabled: true }));
-    fireEvent.click(choice('Memory'));
-    fireEvent.click(choice('Forget'));
-    fireEvent.click(choice('Rectangle'));
-    fireEvent.click(choice('Walls'));
-    expect(screen.queryByRole('radio', { name: 'Forget' })).toBeNull();
-    fireEvent.click(choice('Memory'));
-    expect(chosen('Forget')).toBe(true);
-    expect(chosen('Rectangle')).toBe(true);
-  });
-
-  it('shows the tool\'s own choices again after the toolbar was taken down and put back', () => {
-    const { store, events, remount } = renderGroup('wall');
-    act(() => store.getState().setSceneLighting({ enabled: true }));
-    fireEvent.click(choice('Memory'));
-    fireEvent.click(choice('Forget'));
-    fireEvent.click(choice('Lasso'));
-
-    events.length = 0;
-    remount();
-    // A new menu starts with drawing walls, and tells the tool so: the two cannot differ.
-    expect(events).toContainEqual(['wall-submode-changed', 'draw']);
-    expect(chosen('Walls')).toBe(true);
-    fireEvent.click(choice('Memory'));
-    expect(chosen('Forget')).toBe(true);
-    expect(chosen('Lasso')).toBe(true);
+    mode(store, 'explored-memory');
+    expect(screen.getByText('50px')).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Brush size' }), { key: 'ArrowRight' });
+    expect(store.getState().exploredBrush.brushSize).toBe(51);
+    act(() => store.getState().setExploredBrush({ shape: 'lasso' }));
     expect(screen.queryByText('Brush size')).toBeNull();
   });
 
-  it('shows what the tool was set to from elsewhere', () => {
+  it('sizes the rooms brush, disabled while doors are placed', () => {
     const { store } = renderGroup('wall');
-    act(() => store.getState().setSceneLighting({ enabled: true }));
-    fireEvent.click(choice('Memory'));
-    act(() => store.getState().setExploredBrush({ shape: 'rectangle', mode: 'forget' }));
-    expect(chosen('Rectangle')).toBe(true);
-    expect(chosen('Forget')).toBe(true);
+    mode(store, 'rooms');
+    expect(screen.queryByText('Brush size')).toBeNull();
+    act(() => store.getState().setRoomTool({ shape: 'brush' }));
+    const slider = screen.getByRole('slider', { name: 'Brush size' });
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(store.getState().roomTool.brushSize).toBeGreaterThan(0);
+    act(() => store.getState().setRoomTool({ action: 'door' }));
+    expect(document.querySelector('.atlas-dropdown-slider-row--disabled')).not.toBeNull();
+    expect(screen.queryByText('Join all rooms')).toBeNull();
   });
 
-  it('leaves the mode for drawing walls when the scene stops remembering or its lighting goes off', () => {
+  it('leaves the memory mode for drawing walls when the scene stops remembering or its lighting goes off', () => {
     for (const off of [{ exploredMemory: false }, { enabled: false }]) {
-      const { store, events } = renderGroup('wall');
+      const { store } = renderGroup('wall');
       act(() => store.getState().setSceneLighting({ enabled: true }));
-      fireEvent.click(choice('Memory'));
-      events.length = 0;
+      mode(store, 'explored-memory');
+      expect(store.getState().lightingTool.mode).toBe('explored-memory');
       act(() => store.getState().setSceneLighting(off));
-      expect(events).toContainEqual(['wall-submode-changed', 'draw']);
-      expect(chosen('Walls')).toBe(true);
-      expect(screen.queryByRole('radio', { name: 'Reveal' })).toBeNull();
-      choice('Point to point');
+      expect(store.getState().lightingTool.mode).toBe('draw');
       cleanup();
     }
+  });
+
+  it('leaves the openings mode for drawing walls in a scene of one level', () => {
+    const { store } = renderGroup('wall');
+    mode(store, 'level-surface');
+    expect(store.getState().lightingTool.mode).toBe('draw');
   });
 
   it('marks all areas explored from a row offered in the memory mode alone', () => {
     const { store, closeMenu, events } = renderGroup('wall');
     act(() => store.getState().setSceneLighting({ enabled: true }));
     expect(screen.queryByText('Mark all areas explored')).toBeNull();
-    fireEvent.click(choice('Memory'));
+    mode(store, 'explored-memory');
     const rows = [...document.querySelectorAll('.atlas-dropdown-menu-item')].map((item) => item.textContent);
     expect(rows.slice(-2)).toEqual(['Mark all areas explored', 'Lighting settings…']);
     fireEvent.click(row('Mark all areas explored'));
     expect(events).toContainEqual(['lighting-reveal-explored', undefined]);
     expect(closeMenu).toHaveBeenCalledTimes(1);
-  });
-
-  it('gives the rooms mode one row of tools, says the mode to the store, and lists no rooms in the menu', () => {
-    const { store, events, rerender } = renderGroup('move');
-    fireEvent.click(choice('Rooms'));
-    expect(events).toContainEqual(['wall-submode-changed', 'rooms']);
-    expect(store.getState().isRoomsMode).toBe(true);
-    rerender('wall');
-    for (const name of ['Carve', 'Fill in', 'Door', 'Rectangle', 'Points', 'Lasso', 'Brush']) choice(name);
-    expect(document.querySelectorAll('.atlas-rooms-tools__row')).toHaveLength(1);
-    expect(screen.queryByText('Join all rooms')).toBeNull();
-    // A door is dragged across an opening: the shapes stay in their place, not to be chosen
-    act(() => store.getState().setRoomTool({ action: 'door' }));
-    expect(screen.getByRole('radiogroup', { name: 'Shape of a stroke' }).getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(choice('Walls'));
-    expect(store.getState().isRoomsMode).toBe(false);
   });
 });

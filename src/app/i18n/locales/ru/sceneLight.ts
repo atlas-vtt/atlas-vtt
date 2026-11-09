@@ -37,10 +37,10 @@ export const sceneLight: Translation = {
   'sceneLight.mode.memory': 'Исследованные области',
   'sceneLight.memory.reveal': 'Раскрыть',
   'sceneLight.memory.forget': 'Забыть',
+  'sceneLight.memory.revealTip': 'Отметить область как исследованную для игроков',
+  'sceneLight.memory.forgetTip': 'Заставить игроков забыть область',
   'sceneLight.memory.brush': 'Кисть',
   'sceneLight.memory.lasso': 'Лассо',
   'sceneLight.memory.rectangle': 'Прямоугольник',
-  'sceneLight.memory.strokeMode': 'Что делает штрих',
-  'sceneLight.memory.strokeShape': 'Форма штриха',
   'sceneLight.memory.brushSize': 'Размер кисти',
 };

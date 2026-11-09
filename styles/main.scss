@@ -89,6 +89,7 @@
   @import '../src/app/packages/components/primitives/context-menu.scss';
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
+  @import '../src/app/packages/components/toolbar/lighting-tool-bar.scss';
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
   @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/toolbar/editor/toolbar-card';
@@ -427,6 +428,27 @@
     grid-row: 1;
     justify-self: end;
     display: flex;
+    // The tool's bar stands above the toolbar alone: menus of the side controls keep their place.
+    --atlas-toolbar-lift: 0px;
+  }
+
+  // The active tool's own bar, centred on the toolbar's column (absolute, so the row's
+  // lines are named: an absolute grid child's auto line is the row's edge). Its height,
+  // gap included, is the lift of whatever hangs above the toolbar (BottomToolbarRow).
+  .atlas-bottom-toolbar-row__options {
+    position: absolute;
+    grid-area: 1 / 2 / 2 / 3;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    display: flex;
+    justify-content: center;
+    padding-bottom: $spacing-s;
+    pointer-events: none;
+
+    &:empty {
+      display: none;
+    }
   }
 
   .atlas-bottom-toolbar-row__start {

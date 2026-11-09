@@ -22,7 +22,7 @@ const topLeft = (_area: PanelArea, _panel: PanelArea): PanelPosition => ({ x: MA
  * outside the toolbar's tooltip provider.
  */
 export function RoomsPanelHost(): React.ReactElement {
-  const shown = useAtlasStore((state) => state.isRoomsMode && state.activeTool === 'wall' && state.isGMView && !state.isPlayerView);
+  const shown = useAtlasStore((state) => state.lightingTool.mode === 'rooms' && state.activeTool === 'wall' && state.isGMView && !state.isPlayerView);
   return (
     <TooltipProvider delayDuration={300}>
       <AnimatePresence>{shown && <RoomsPanel key="rooms" />}</AnimatePresence>

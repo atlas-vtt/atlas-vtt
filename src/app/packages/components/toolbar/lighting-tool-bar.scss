@@ -1,0 +1,25 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The lighting tool's bar above the main toolbar: its modes, then the current
+// mode's choices (`LightingToolBar`)
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The bar is an
+// `.atlas-vtt-toolbar`, so its surface, buttons and end corners are the toolbar's.
+
+@use '../../../../../styles/tokens' as *;
+
+// Groups are told apart by space alone (no divider lines): the break adds a gap to the gap.
+.atlas-lighting-bar__break {
+  flex: none;
+  width: 0;
+}
+
+// A mode is filled like a tool; the choices within it are tinted, so the two never read as one row of tools.
+.atlas-lighting-bar button.btn.atlas-lighting-bar__choice.is-active {
+  background: var(--background-modifier-active-hover) !important;
+  color: var(--text-accent) !important;
+
+  &:hover {
+    background: var(--background-modifier-active-hover) !important;
+    color: var(--text-accent-hover) !important;
+  }
+}

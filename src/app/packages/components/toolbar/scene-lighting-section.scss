@@ -8,8 +8,7 @@
 @use '../../../../../styles/mixins' as *;
 
 // Controls of different kinds, spaced like the menu's padding rather than like its rows.
-.atlas-dropdown-section.atlas-scene-lighting,
-.atlas-dropdown-section.atlas-explored-brush {
+.atlas-dropdown-section.atlas-scene-lighting {
   gap: $spacing-s;
 }
 
@@ -35,22 +34,8 @@
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// The rooms mode: its tools in the menu, and the Rooms panel beside the map
+// The rooms mode's Rooms panel beside the map
 // ═══════════════════════════════════════════════════════════════════════════
-
-// What a stroke does and its shape, side by side in one row: icons, named by their tooltips.
-.atlas-rooms-tools__row {
-  display: flex;
-  gap: $spacing-s;
-
-  > .atlas-segmented {
-    flex: 3 1 0;
-  }
-
-  > .atlas-segmented + .atlas-segmented {
-    flex-grow: 4;
-  }
-}
 
 .atlas-rooms-panel {
   width: 260px;

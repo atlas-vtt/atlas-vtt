@@ -32,6 +32,7 @@ import { LightInteraction } from './LightInteraction';
 import { LightMarkers } from './LightMarkers';
 import { LightRangeRings } from './LightRangeRings';
 import { LightingModes } from './LightingModes';
+import { followLightingTool } from './followLightingTool';
 import { showExploredTravelNotice, showSurfacesFullNotice, showZonesFullNotice } from './lightingNotices';
 import { closeStalePopovers } from './popoverGuards';
 import { playerDoorSight, playerLightingLayers, playerTokenSight, type GmOverlays } from './playerLightingLayers';
@@ -168,6 +169,7 @@ export class LightingController {
       closeStalePopovers(state);
     }));
     this.listen();
+    this.cleanups.push(followLightingTool(store, eventBus));
     this.session.sync();
     this.constructed = true;
     this.onSightChange();

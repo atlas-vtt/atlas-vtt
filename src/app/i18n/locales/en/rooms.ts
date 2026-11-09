@@ -3,11 +3,9 @@ import type { Message } from '../../types';
 /** The lighting tool's rooms mode: rooms carved out of the rock, whose outline stands as walls. */
 export const rooms = {
   'rooms.mode': 'Rooms',
-  'rooms.action': 'What a stroke does',
   'rooms.carve': 'Carve',
   'rooms.fill': 'Fill in',
   'rooms.door': 'Door',
-  'rooms.shape': 'Shape of a stroke',
   'rooms.rectangle': 'Rectangle',
   'rooms.points': 'Points',
   'rooms.lasso': 'Lasso',

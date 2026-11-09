@@ -76,7 +76,8 @@
 /* Position above trigger */
 .atlas-dropdown-content--top {
   bottom: 100%;
-  margin-bottom: $spacing-l;
+  // Over the active tool's bar, where one stands above the toolbar (BottomToolbarRow).
+  margin-bottom: calc(#{$spacing-l} + var(--atlas-toolbar-lift, 0px));
 }
 
 /* Alignment modifiers */
