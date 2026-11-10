@@ -2,6 +2,11 @@
   "version": "0.14.1-beta.0",
   "releases": [
     {
+      "version": "0.14.1-beta.0",
+      "title": "Coming in 0.14.1",
+      "markdown": "## New\n\n- In the initiative settings for sides, choose **Roll once at combat start** to roll for each side and keep the resulting order for the fight. The order of the sides in settings breaks ties."
+    },
+    {
       "version": "0.14.0",
       "date": "2026-11-10",
       "title": "Rooms, pin names and a tidier lighting tool",

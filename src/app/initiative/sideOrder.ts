@@ -4,12 +4,17 @@
  */
 
 import { defaultSides, isBuiltInSide } from '../gameSystems/initiativeSideRules';
-import type { SideId } from '../types/initiativeRulesTypes';
+import type { SideId, SideRef } from '../types/initiativeRulesTypes';
 import type { SidesFight } from '../types/initiativeTypes';
 import { rollInitiativeDice } from './initiativeDice';
 
-function orderIds(fight: SidesFight): SideId[] {
-  return (fight.order ?? defaultSides(fight.first)).map((side) => side.id);
+function score(rolls: Readonly<Record<SideId, number>>, id: SideId): number {
+  return rolls[id] ?? -Infinity;
+}
+
+/** Highest roll first, with equal rolls in the configured order. */
+export function sidesByRoll(sides: readonly SideRef[], rolls: Readonly<Record<SideId, number>>): SideRef[] {
+  return [...sides].sort((a, b) => score(rolls, b.id) - score(rolls, a.id));
 }
 
 /**
@@ -18,15 +23,14 @@ function orderIds(fight: SidesFight): SideId[] {
  * equal rolls share a turn, and a side without a roll comes last in the fight's order.
  */
 export function roundTurns(fight: SidesFight, round: number): SideId[][] {
-  const ids = orderIds(fight);
+  const order = fight.order ?? defaultSides(fight.first);
   const rolls = fight.roll ? fight.rolls?.[round] : undefined;
-  if (!rolls) return ids.map((id) => [id]);
-  const score = (id: SideId): number => rolls[id] ?? -Infinity;
-  const sorted = [...ids].sort((a, b) => score(b) - score(a));
+  if (!rolls) return order.map(({ id }) => [id]);
   const turns: SideId[][] = [];
-  for (const id of sorted) {
+  for (const { id } of sidesByRoll(order, rolls)) {
     const last = turns[turns.length - 1];
-    if (last && score(last[0]!) === score(id) && Number.isFinite(score(id))) last.push(id);
+    const total = score(rolls, id);
+    if (last && Number.isFinite(total) && score(rolls, last[0]!) === total) last.push(id);
     else turns.push([id]);
   }
   return turns;
@@ -44,7 +48,7 @@ export function rollSides(ids: readonly SideId[], roll: string, random: () => nu
 
 /** The sides `fight` rolls for, in its order. */
 export function fightSideIds(fight: SidesFight): SideId[] {
-  return orderIds(fight);
+  return (fight.order ?? defaultSides(fight.first)).map((side) => side.id);
 }
 
 /**
