@@ -16,14 +16,14 @@ interface SceneLightingSectionProps {
   onChange: (changes: Partial<SceneLighting>) => void
   /** Marks the whole map as explored; offered while the tool edits the explored memory. */
   onRevealExplored?: () => void
-  /** Opens the panel with the scene's other lighting options. */
+  /** Opens the page with the scene's other lighting options (the command palette's Lighting page). */
   onOpenSettings: () => void
 }
 
 /**
  * Scene-wide lighting in the lighting tool's menu: a section with how dark the scene is, the row
- * that opens the rest (Lighting settings, which also forgets explored areas and leads to the
- * graphics settings), and the switch last, at the menu's foot. The players' view of it is session
+ * that opens the rest (the command palette's Lighting page, which also forgets explored areas and
+ * leads to the graphics settings), and the switch last, at the menu's foot. The players' view of it is session
  * view, not shown here.
  * While lighting is off everything but the switch is shown disabled, so the menu keeps its
  * shape and the switch its place.

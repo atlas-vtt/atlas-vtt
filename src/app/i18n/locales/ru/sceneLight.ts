@@ -13,7 +13,7 @@ export const sceneLight: Translation = {
   'sceneLight.forgetExplored': 'Забыть исследованные области',
   'sceneLight.openSettings': 'Настройки освещения…',
   'sceneLight.settings': 'Настройки освещения',
-  'sceneLight.closeSettings': 'Закрыть настройки освещения',
+  'sceneLight.settingsHint': 'Зрение, исследованные области и тёмное зрение',
   'sceneLight.tokenVision': 'Зрение токенов',
   'sceneLight.tokenVisionOn': 'Игроки видят только то, что видят их токены',
   'sceneLight.tokenVisionOff': 'Игроки видят всё, что освещено',

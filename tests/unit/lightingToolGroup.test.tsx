@@ -139,13 +139,13 @@ describe('LightingToolGroup', () => {
     expect(events.some(([event]) => event === 'lighting-preview')).toBe(false);
   });
 
-  it('keeps forgetting explored areas and the graphics settings out of the menu, behind Lighting settings', () => {
+  it('keeps forgetting explored areas and the graphics settings out of the menu, behind the palette\'s Lighting page', () => {
     const { store, closeMenu } = renderGroup('wall');
     act(() => store.getState().setSceneLighting({ enabled: true }));
     expect(screen.queryByText('Forget explored areas')).toBeNull();
     expect(screen.queryByText('Graphics settings…')).toBeNull();
     fireEvent.click(row('Lighting settings…'));
-    expect(store.getState().isSceneLightingPanelOpen).toBe(true);
+    expect(store.getState()).toMatchObject({ isCommandPaletteOpen: true, commandPalettePage: 'lighting-settings' });
     expect(closeMenu).toHaveBeenCalledTimes(1);
   });
 

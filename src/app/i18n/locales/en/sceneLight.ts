@@ -13,7 +13,7 @@ export const sceneLight = {
   'sceneLight.forgetExplored': 'Forget explored areas',
   'sceneLight.openSettings': 'Lighting settings…',
   'sceneLight.settings': 'Lighting settings',
-  'sceneLight.closeSettings': 'Close lighting settings',
+  'sceneLight.settingsHint': 'Sight, explored areas and darkvision',
   'sceneLight.tokenVision': 'Token vision',
   'sceneLight.tokenVisionOn': 'Players see only what their tokens see',
   'sceneLight.tokenVisionOff': 'Players see everything the light shows',

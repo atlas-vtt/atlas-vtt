@@ -44,7 +44,7 @@ function RoomsPanel(): React.ReactElement {
       exit="exit"
       aria-label={t('rooms.list')}
     >
-      <header className="atlas-light-panel__header atlas-rooms-panel__header">
+      <header className="atlas-light-panel__header">
         <House className="atlas-light-panel__icon" />
         <h2 className="atlas-light-panel__title">{t('rooms.list')}</h2>
         {count > 0 && <span className="atlas-rooms-panel__count">{t('rooms.count', { count, max: MAX_ROOMS })}</span>}

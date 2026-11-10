@@ -18,6 +18,8 @@ vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () =
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/LightingSettingsPanel', () => ({ LightingSettingsPanel: () => <div data-testid="lighting-page" /> }));
+vi.mock('../../src/app/react/components/command-palette/GraphicsPanel', () => ({ GraphicsPanel: () => <div data-testid="graphics-page" /> }));
 
 import { CommandPalette } from '../../src/app/react/components/CommandPalette';
 
@@ -60,6 +62,24 @@ describe('Atlas search actions', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it('opens on the Lighting page the lighting menu asked for, which leads on to the Graphics page', () => {
+    const store = create(() => ({ commandPalettePage: 'lighting-settings' }));
+    render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>);
+    expect(screen.getByRole('heading', { name: 'Lighting settings' })).toBeTruthy();
+    expect(screen.getByTestId('lighting-page')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Graphics settings' }));
+    expect(screen.getByRole('heading', { name: 'Graphics Settings' })).toBeTruthy();
+    expect(screen.getByTestId('graphics-page')).toBeTruthy();
+  });
+
+  it('finds the Lighting page by what it holds', () => {
+    const store = create(() => ({}));
+    render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>);
+    fireEvent.change(screen.getByPlaceholderText('Search commands...'), { target: { value: 'darkvision' } });
+    fireEvent.click(screen.getByText('Lighting settings'));
+    expect(screen.getByTestId('lighting-page')).toBeTruthy();
   });
 
   describe('outside presses', () => {

@@ -36,7 +36,7 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
   const emit = useEmitViewEvent()
   const lighting = useAtlasStore((state) => state.lighting)
   const setSceneLighting = useAtlasStore((state) => state.setSceneLighting)
-  const setSceneLightingPanelOpen = useAtlasStore((state) => state.setSceneLightingPanelOpen)
+  const setCommandPaletteOpen = useAtlasStore((state) => state.setCommandPaletteOpen)
   const { mode, lightPreset } = useAtlasStore((state) => state.lightingTool)
   const setLightingTool = useAtlasStore((state) => state.setLightingTool)
   const presets = useMapLightPresets()
@@ -99,7 +99,7 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
           },
         })}
         onOpenSettings={() => {
-          setSceneLightingPanelOpen(true)
+          setCommandPaletteOpen(true, 'lighting-settings')
           closeMenu()
         }}
       />

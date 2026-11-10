@@ -251,6 +251,12 @@
   }
 }
 
+// A row of actions that belong to the rows above them, at the controls' edge.
+.atlas-setting-actions {
+  @include atlas-flex-row($spacing-s);
+  justify-content: flex-end;
+}
+
 // The Graphics page: the line under the presets' tabs.
 .atlas-graphics__picked {
   @include atlas-flex-row($spacing-s);

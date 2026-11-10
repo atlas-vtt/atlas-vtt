@@ -27,15 +27,17 @@ interface SettingToggleRowProps {
   label: string;
   hint?: string | undefined;
   value: boolean;
+  /** Shown but not switchable: what it sets means nothing right now. */
+  disabled?: boolean;
   onToggle: () => void;
 }
 
 /** Setting row with the shared `.atlas-toggle` switch. */
-export function SettingToggleRow({ label, hint, value, onToggle }: SettingToggleRowProps): React.ReactElement {
+export function SettingToggleRow({ label, hint, value, disabled = false, onToggle }: SettingToggleRowProps): React.ReactElement {
   const labelId = React.useId();
   return (
     <SettingRow label={label} labelId={labelId} hint={hint}>
-      <ToggleSwitch value={value} onChange={onToggle} labelledBy={labelId} />
+      <ToggleSwitch value={value} onChange={onToggle} labelledBy={labelId} disabled={disabled} />
     </SettingRow>
   );
 }
@@ -68,7 +70,10 @@ interface SettingSliderRowProps {
   max: number;
   step: number;
   displayValue: string;
+  disabled?: boolean;
   onChange: (value: number) => void;
+  /** The drag ended or a key moved the value: where it came to rest. */
+  onCommit?: (value: number) => void;
 }
 
 /** Label above a full-width slider with a monospace readout. */
@@ -80,7 +85,9 @@ export function SettingSliderRow({
   max,
   step,
   displayValue,
+  disabled = false,
   onChange,
+  onCommit,
 }: SettingSliderRowProps): React.ReactElement {
   const labelId = React.useId();
   return (
@@ -95,7 +102,9 @@ export function SettingSliderRow({
           min={min}
           max={max}
           step={step}
+          disabled={disabled}
           onValueChange={(next: number[]) => onChange(next[0] ?? value)}
+          {...(onCommit && { onValueCommit: (next: number[]) => onCommit(next[0] ?? value) })}
           className="atlas-setting-slider"
           aria-labelledby={labelId}
         />

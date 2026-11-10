@@ -44,12 +44,6 @@
   width: 260px;
 }
 
-// No line under the header: the panel's space separates it (no dividers in panels). Nothing drags it.
-.atlas-light-panel__header.atlas-rooms-panel__header {
-  border-bottom: none;
-  cursor: default;
-}
-
 .atlas-rooms-panel__count {
   font-size: $font-ui-smaller;
   color: var(--text-muted);

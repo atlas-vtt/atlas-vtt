@@ -4,11 +4,11 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
-import { SceneLightingPanelHost } from '../../src/app/pixi/lighting/SceneLightingPanel';
+import { LightingSettingsPanel } from '../../src/app/react/components/command-palette/LightingSettingsPanel';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 
-/** The view's event bus, as `UIRoot` gives the panel through its context. */
+/** The view's event bus, as `UIRoot` gives the page through its context. */
 const emitted: string[] = [];
 const ui = { app: undefined, view: { serviceManager: { getEventBus: () => ({ emit: (event: string) => emitted.push(event) }) } }, pixiApp: null, renderer: null } as unknown as AtlasUIContextValue;
 
@@ -22,10 +22,8 @@ function renderPanel(): { store: ViewAtlasStore; setSceneLighting: ReturnType<ty
   const store = createViewAtlasStore(app, `scene-lighting-panel-${Math.random()}`);
   store.setState({ persistenceEnabled: false });
   store.getState().setSceneLighting({ enabled: true });
-  store.getState().setSceneLightingPanelOpen(true);
   const setSceneLighting = vi.spyOn(store.getState(), 'setSceneLighting');
-  // As `UIRoot` mounts it: outside every tooltip provider.
-  render(<AtlasUIContext.Provider value={ui}><ViewStoreProvider store={store}><SceneLightingPanelHost /></ViewStoreProvider></AtlasUIContext.Provider>);
+  render(<AtlasUIContext.Provider value={ui}><ViewStoreProvider store={store}><LightingSettingsPanel /></ViewStoreProvider></AtlasUIContext.Provider>);
   return { store, setSceneLighting };
 }
 
@@ -33,10 +31,10 @@ function toggleOf(label: string): HTMLElement {
   return screen.getByRole('switch', { name: label });
 }
 
-describe('SceneLightingPanel', () => {
+describe('the command palette\'s Lighting page', () => {
   it('shows the scene options with their defaults', () => {
     renderPanel();
-    expect(screen.getByRole('heading', { name: 'Lighting settings' })).toBeTruthy();
+    expect(toggleOf('Dynamic lighting').getAttribute('aria-checked')).toBe('true');
     expect(toggleOf('Token vision').getAttribute('aria-checked')).toBe('true');
     expect(toggleOf('Remember explored areas').getAttribute('aria-checked')).toBe('true');
     expect(toggleOf('Update sight when a token is dropped').getAttribute('aria-checked')).toBe('false');
@@ -162,18 +160,34 @@ describe('SceneLightingPanel', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Darkvision tint').value).toBe('#ffffff');
   });
 
-  it('closes', () => {
-    const { store } = renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: 'Close lighting settings' }));
-    expect(store.getState().isSceneLightingPanelOpen).toBe(false);
-  });
-
-  it('forgets explored areas and leads to the graphics settings, which the menu no longer holds', () => {
-    const { store } = renderPanel();
+  it('forgets explored areas', () => {
+    renderPanel();
     emitted.length = 0;
     fireEvent.click(screen.getByRole('button', { name: 'Forget explored areas' }));
     expect(emitted).toEqual(['lighting-reset-explored']);
-    fireEvent.click(screen.getByRole('button', { name: 'Graphics settings…' }));
-    expect(store.getState().isCommandPaletteOpen).toBe(true);
+  });
+
+  it('says under each switch what it does as it stands', () => {
+    const { store } = renderPanel();
+    expect(screen.getByText('Players see only what their tokens see')).toBeTruthy();
+    act(() => store.getState().setSceneLighting({ tokenVision: false }));
+    expect(screen.getByText('Players see everything the light shows')).toBeTruthy();
+  });
+
+  it('switches dynamic lighting, and shows everything else disabled in its place while it is off', () => {
+    const { store } = renderPanel();
+    fireEvent.click(toggleOf('Dynamic lighting'));
+    expect(store.getState().lighting.enabled).toBe(false);
+    for (const label of ['Token vision', 'Remember explored areas', 'Update sight when a token is dropped']) {
+      expect(toggleOf(label).getAttribute('aria-disabled')).toBe('true');
+    }
+    fireEvent.click(toggleOf('Token vision'));
+    expect(store.getState().lighting).not.toHaveProperty('tokenVision');
+    expect(screen.getByLabelText<HTMLInputElement>('Explored colour').disabled).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>('Darkvision tint').disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Forget explored areas' }).disabled).toBe(true);
+    expect(screen.getByRole('radio', { name: 'Grey' }).hasAttribute('disabled')).toBe(true);
+    fireEvent.click(toggleOf('Dynamic lighting'));
+    expect(toggleOf('Token vision').hasAttribute('aria-disabled')).toBe(false);
   });
 });

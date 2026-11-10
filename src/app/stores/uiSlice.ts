@@ -32,7 +32,6 @@ export interface UISlice extends ViewUIState {
   closeLevelLinkPopover: () => void;
   openLevelSurfacePopover: (surfaceId: string) => void;
   closeLevelSurfacePopover: () => void;
-  setSceneLightingPanelOpen: (open: boolean) => void;
   setLightingTool: (changes: Partial<LightingToolOptions>) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
@@ -62,7 +61,6 @@ export function createInitialUIState(): Pick<
   | 'lightZonePopover'
   | 'levelLinkPopover'
   | 'levelSurfacePopover'
-  | 'isSceneLightingPanelOpen'
   | 'lightingTool'
   | 'heldTokens'
   | 'exploredBrush'
@@ -85,7 +83,6 @@ export function createInitialUIState(): Pick<
     lightZonePopover: null,
     levelLinkPopover: null,
     levelSurfacePopover: null,
-    isSceneLightingPanelOpen: false,
     lightingTool: DEFAULT_LIGHTING_TOOL,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
@@ -117,7 +114,6 @@ export function createUIActions(
   | 'closeLevelLinkPopover'
   | 'openLevelSurfacePopover'
   | 'closeLevelSurfacePopover'
-  | 'setSceneLightingPanelOpen'
   | 'setLightingTool'
   | 'setHeldTokens'
   | 'setExploredBrush'
@@ -165,7 +161,6 @@ export function createUIActions(
     openLevelSurfacePopover: (surfaceId) => set((draft) => { draft.levelSurfacePopover = surfaceId; }),
     closeLevelSurfacePopover: () => set((draft) => { draft.levelSurfacePopover = null; }),
     closeLightPopover: () => set((draft) => { draft.lightPopover = null; }),
-    setSceneLightingPanelOpen: (open) => set((draft) => { draft.isSceneLightingPanelOpen = open; }),
     setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),
