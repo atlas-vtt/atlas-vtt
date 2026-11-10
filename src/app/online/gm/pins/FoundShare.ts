@@ -6,6 +6,8 @@ import { MoveRate } from '../moveCheck.ts';
 import type { MapLayerShare } from '../MapLayerShare.ts';
 import { FoundTexts } from './FoundTexts.ts';
 import type { AssetStoring } from '../assets/assetUses.ts';
+import type { NotePin } from '../../../types';
+import { isReadablePin } from './ReadablePins.ts';
 
 /** Pins a player may open: a burst of `FIND_BURST`, then one a second. */
 export const FIND_BURST = 5;
@@ -57,6 +59,19 @@ export class FoundShare {
   /** The log entry that tells who found the pin `pinId` of the map `mapPath`, or null while nobody has. */
   entryOf(mapPath: string, pinId: string): string | null {
     return this.log.entries().find((entry) => entry.kind === 'found' && entry.pin?.map === mapPath && entry.pin.pin === pinId)?.id ?? null;
+  }
+
+  /**
+   * The pins of the shared map `mapPath` as the GM has them now: a found pin pointed at another note
+   * or heading hands players that one from now on, in the same entry; where players may not read what
+   * it links (the readable rule), the entry keeps the text it has and follows no note.
+   */
+  followPins(mapPath: string, pins: Readonly<Record<string, NotePin>>): void {
+    for (const entry of this.log.entries()) {
+      if (entry.kind !== 'found' || entry.pin?.map !== mapPath) continue;
+      const pin = pins[entry.pin.pin];
+      if (pin !== undefined && pin.notePath !== entry.pin.link) this.texts.relink(entry, { ...entry.pin, link: pin.notePath }, isReadablePin(pin));
+    }
   }
 
   /** A player's message: a pin they open; false when it is none, which the others then read. */

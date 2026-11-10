@@ -1,7 +1,7 @@
 import { DeltaReader, parseGmMessage, type DeltaOf, type GmMessage, type RollRequestAnswer } from '../../../../src/app/online/protocol/index.ts';
 import type { LoggedRoll, RollRequest } from '../../../../src/app/online/gm/log/TableLog.ts';
 import { produce } from 'immer';
-import type { TokenEntity } from '../../../../src/app/types';
+import type { NotePin, TokenEntity } from '../../../../src/app/types';
 import type { TokenPerception } from '../../../../src/app/vision/tokenPerception';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
@@ -68,6 +68,8 @@ export interface ShareHarness {
   requests: (from: string, answer: RollRequestAnswer) => RollRequest | null;
   /** The log entry of whoever found a readable pin; nobody by default. */
   foundPin: (mapPath: string, pinId: string) => string | null;
+  /** Told of the shared map's pins whenever they changed; nobody listens by default. */
+  pinsChanged: (mapPath: string, pins: Readonly<Record<string, NotePin>>) => void;
   /** The level of a scene with several Atlas presents to its player view; unset is the first. */
   presented: string | undefined;
   /** The vault's animated maps by path, whose posters are their entries in the images; none by default. */
@@ -120,6 +122,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     logged: [],
     requests: () => null,
     foundPin: () => null,
+    pinsChanged: () => undefined,
     presented: undefined,
     videos: new Map(),
     videoReads: 0,
@@ -128,6 +131,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       logRoll: (roll) => harness.logged.push(roll),
       rollRequest: (from, answer) => harness.requests(from, answer),
       foundPin: (mapPath, pinId) => harness.foundPin(mapPath, pinId),
+      pinsChanged: (mapPath, pins) => harness.pinsChanged(mapPath, pins),
       mapLayers: () => harness.layers,
       lightingSource: () => harness.lighting,
       atlasSettings: () => harness.settings,
