@@ -18,3 +18,4 @@
 - A statblock value that tracks a number now shows its own pattern, such as a rank looked up from the current Glory, instead of "current / max"
 - In statblocks, the name of an action or trait and its text now stand a full space apart in every font, and text that starts with a space no longer gets a double gap
 - Hovering a link to an Atlas statblock note, or holding Cmd/Ctrl over it, now shows the statblock in the preview instead of only its properties
+- Online play: a player whose page fell out of step with the table is caught up by itself, instead of having every roll and move refused until they reload
