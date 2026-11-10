@@ -26,15 +26,15 @@ $open-window: 'body.atlas-asset-manager-open > .atlas-portal-host';
 }
 
 // ── Field edges (decision #60) ──────────────────────────────────────────────
-// Every field of the window and its dialogs shows its edge in one colour, `$am-control-border` (3:1 against its
-// surface in both themes, WCAG 1.4.11, where Obsidian's border colour gives 1.3–2:1), and the accent while it is typed
-// in (`$am-control-border-focus`). The colours are resolved on the layer's children (after the dark muted text above),
+// Every field of the window and its dialogs shows its edge in one quiet colour, `$am-control-border` (a shade above
+// Obsidian's border), a step stronger under the pointer, and the softened accent while it is typed in
+// (`$am-control-border-focus`). The colours are resolved on the layer's children (after the dark muted text above),
 // then handed to each field as Obsidian's own border variables, which its native field rule and Atlas' input mixins
 // (`atlas-text-input`, `atlas-select-trigger`) read. So no rule gains specificity: a field drawn without a frame (a
 // search inside a framed row, the token card's name) stays without one.
 #{$open-window} > * {
   --atlas-am-field-border: #{$am-control-border};
-  --atlas-am-field-border-hover: var(--text-muted);
+  --atlas-am-field-border-hover: #{$am-control-border-hover};
   --atlas-am-field-border-focus: #{$am-control-border-focus};
 
   :where(input:is([type='text'], [type='search'], [type='number'], [type='email'], [type='password'], :not([type])), textarea, .atlas-select-trigger) {
