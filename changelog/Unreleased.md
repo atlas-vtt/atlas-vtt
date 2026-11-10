@@ -12,3 +12,4 @@
 
 - A roll you make as Public roll in the online table log now always reaches your players, even while "Show my rolls to players" is off
 - Creating a statblock from a token no longer says it failed when only linking the token went wrong: the new note opens and a notice tells you to link the token from its menu
+- In statblocks, the name of an action or trait and its text now stand a full space apart in every font, and text that starts with a space no longer gets a double gap
