@@ -56,6 +56,7 @@ export const toolbar = {
   'toolbar.lightingOptions': 'Lighting options',
   'toolbar.lightingModes': 'Lighting modes',
   'toolbar.modeTools': '{mode} tools',
+  'toolbar.lightingNeedsGmView': 'Switch to GM View ({key}) to edit the lighting',
   'toolbar.placeLights': 'Place lights',
   'toolbar.freehand': 'Freehand',
   'toolbar.moreTools': 'More tools',
