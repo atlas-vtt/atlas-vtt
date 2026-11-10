@@ -89,6 +89,7 @@
   @import '../src/app/packages/components/primitives/context-menu.scss';
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
+  @import '../src/app/packages/components/toolbar/lighting-tool-bar.scss';
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
   @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/toolbar/editor/toolbar-card';
@@ -431,6 +432,28 @@
     display: flex;
   }
 
+  // The active tool's own bars, from the toolbar's left edge (absolute, so the row's
+  // lines are named: an absolute grid child's auto line is the row's edge). The turn banner
+  // stands clear of them (`--atlas-toolbar-lift`, BottomToolbarRow); the toolbar's menus and
+  // the dice tray open in their own place, over the bars, so the bars lie below the toolbar
+  // and everything that hangs from it.
+  .atlas-bottom-toolbar-row__options {
+    position: absolute;
+    z-index: -1;
+    grid-area: 1 / 2 / 2 / 3;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    display: flex;
+    justify-content: flex-start;
+    padding-bottom: $spacing-s;
+    pointer-events: none;
+
+    &:empty {
+      display: none;
+    }
+  }
+
   .atlas-bottom-toolbar-row__start {
     grid-column: 1;
   }
@@ -568,7 +591,7 @@
   $own-look: '.atlas-dice-tray *, .atlas-segmented__option, .atlas-toolbar-tray__done';
   // The bars whose buttons these rules shape: the toolbars, the toolbar editor's tray, and the
   // ghost of a tool moving between them.
-  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost)';
+  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost, .atlas-lighting-bar)';
 
   /* Make all buttons in toolbar transparent by default, except those with their own look. */
   #{$toolbars} button.btn:not(#{$own-look}),

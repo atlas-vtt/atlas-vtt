@@ -1,40 +1,20 @@
-import React, { useEffect, useState } from "react"
-import { ArrowDownToDot, BrickWall, Flame, FlameKindling, Footprints, Gauge, Lamp, Lightbulb, Moon, MousePointer2, Pencil, Pickaxe, Sparkles, SunMoon } from "lucide-react"
+import React, { useEffect } from "react"
+import { Flame, FlameKindling, Lamp, Lightbulb, Moon, Sparkles } from "lucide-react"
 import { t } from '../../../i18n';
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { chosenLightPreset } from "../../../lighting/lightPresetChoice"
-import { exploredMemoryEditable } from "../../../lighting/sceneLightingOptions"
-import { hasLevels } from "../../../levels/sceneLevels"
-import { LabelTooltip } from "../primitives/tooltip"
 import { useMapLightPresets } from "../../../react/hooks/useMapLightPresets"
 import type { LightKind } from "../../../types/lightingTypes"
-import type { WallToolMode, WallToolSubMode } from "../../../tools/WallTool"
 import { DropdownMenuItem, type DropdownMenuItemProps } from "../primitives/DropdownMenuItem"
-import { ExploredMemorySection } from "./ExploredMemorySection"
-import { RoomsSection } from "./RoomsSection"
+import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
+import { useUnavailableModes } from "./LightingToolBar"
 import { SceneLightingSection } from "./SceneLightingSection"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { lightingToolFace } from "./toolFaces"
 import { useEmitViewEvent } from "./useEmitViewEvent"
 
 type RowIcon = DropdownMenuItemProps['icon']
-
-/** What the tool does with a click. */
-const SUB_MODES: readonly { value: WallToolSubMode; icon: RowIcon; label: string }[] = [
-  { value: 'draw', icon: BrickWall, label: t('toolbar.drawWalls') },
-  { value: 'rooms', icon: Pickaxe, label: t('rooms.mode') },
-  { value: 'place-light', icon: Lightbulb, label: t('toolbar.placeLights') },
-  { value: 'light-zone', icon: SunMoon, label: t('sceneLight.mode.zones') },
-  { value: 'level-surface', icon: ArrowDownToDot, label: t('openings.mode') },
-  { value: 'explored-memory', icon: Footprints, label: t('sceneLight.mode.memory') },
-]
-
-
-const DRAW_MODES: readonly { value: WallToolMode; icon: RowIcon; label: string }[] = [
-  { value: 'point-to-point', icon: MousePointer2, label: t('toolbar.pointToPoint') },
-  { value: 'freeform', icon: Pencil, label: t('toolbar.freehand') },
-]
 
 /** A row's icon for each kind of light a preset can be. */
 const KIND_ICONS: Record<LightKind, RowIcon> = {
@@ -46,44 +26,33 @@ const KIND_ICONS: Record<LightKind, RowIcon> = {
   custom: Lightbulb,
 }
 
-/** Walls, lights and the scene's lighting in one place. DM only. */
+/**
+ * Walls, lights and the scene's lighting. DM only. The modes and what a click does are the bar
+ * above the toolbar (`LightingToolBar`); the menu holds the current mode's settings (the light to
+ * place, a brush's size) and the scene's lighting.
+ */
 export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, closeMenu }: ToolGroupControls): React.ReactElement {
   const hotkeyLabel = useHotkeyLabels()
   const emit = useEmitViewEvent()
   const lighting = useAtlasStore((state) => state.lighting)
   const setSceneLighting = useAtlasStore((state) => state.setSceneLighting)
-  const setSceneLightingPanelOpen = useAtlasStore((state) => state.setSceneLightingPanelOpen)
   const setCommandPaletteOpen = useAtlasStore((state) => state.setCommandPaletteOpen)
-  const [subMode, setSubMode] = useState<WallToolSubMode>('draw')
-  const [drawMode, setDrawMode] = useState<WallToolMode>('point-to-point')
+  const { mode, lightPreset } = useAtlasStore((state) => state.lightingTool)
+  const setLightingTool = useAtlasStore((state) => state.setLightingTool)
   const presets = useMapLightPresets()
-  // The chosen preset's id; the collection's torch until one is chosen, and again once the collection no longer has it.
-  const [presetId, setPresetId] = useState<string | null>(null)
-  const preset = chosenLightPreset(presets, presetId)
-  // The explored-memory mode's choices are the tool's own, in the view's store: a menu mounted anew shows them as they are.
+  // The collection's torch until a light is chosen, and again once the collection no longer has it.
+  const preset = chosenLightPreset(presets, lightPreset)
   const brush = useAtlasStore((state) => state.exploredBrush)
   const setBrush = useAtlasStore((state) => state.setExploredBrush)
   const roomTool = useAtlasStore((state) => state.roomTool)
   const setRoomTool = useAtlasStore((state) => state.setRoomTool)
-  // What the tool does with a click is this menu's to say: a menu mounted anew starts with drawing walls, and so does the tool.
-  useEffect(() => {
-    emit('wall-submode-changed', 'draw')
-  }, [emit])
   const face = lightingToolFace(activeTool)
-  // Explored memory is edited only on a lit scene that remembers: without one the mode's row is disabled, and the tool leaves it.
-  const memoryEditable = exploredMemoryEditable(lighting)
+  // A mode that can no longer be chosen (the scene stopped remembering, its last level went) is left for walls.
+  const unavailable = useUnavailableModes()
+  const modeUnavailable = unavailable(mode) !== null
   useEffect(() => {
-    if (memoryEditable || subMode !== 'explored-memory') return
-    setSubMode('draw')
-    emit('wall-submode-changed', 'draw')
-  }, [memoryEditable, subMode, emit])
-  // Openings look down to another level: in a scene of one level the row is disabled, and the tool leaves the mode.
-  const levelled = useAtlasStore((state) => hasLevels(state.levels))
-  useEffect(() => {
-    if (levelled || subMode !== 'level-surface') return
-    setSubMode('draw')
-    emit('wall-submode-changed', 'draw')
-  }, [levelled, subMode, emit])
+    if (modeUnavailable) setLightingTool({ mode: 'draw' })
+  }, [modeUnavailable, setLightingTool])
 
   return (
     <ToolGroup
@@ -94,89 +63,43 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
       onSelect={() => selectTool(face.tool)}
       onMenuToggle={toggleMenu}
     >
-      <div className="atlas-dropdown-section">
-        {SUB_MODES.map(({ value, icon, label }) => {
-          const row = (
-            <DropdownMenuItem
-              key={value}
-              icon={icon}
-              label={label}
-              // The tool's key selects it with what it did last.
-              {...(value === subMode && { shortcut: hotkeyLabel('wall') })}
-              isActive={face.isActive && value === subMode}
-              disabled={(value === 'explored-memory' && !memoryEditable) || (value === 'level-surface' && !levelled)}
-              onClick={() => {
-                setSubMode(value)
-                emit('wall-submode-changed', value)
-                selectTool('wall')
-              }}
-            />
-          )
-          return value === 'level-surface' && !levelled
-            ? <LabelTooltip key={value} side="right" label={t('openings.needsLevels')}><div>{row}</div></LabelTooltip>
-            : row
-        })}
-      </div>
-
-      {subMode === 'explored-memory' && (
-        <ExploredMemorySection options={brush} onChange={setBrush} />
-      )}
-
-      {subMode === 'rooms' && <RoomsSection options={roomTool} onChange={setRoomTool} />}
-
-      {/* The zone mode has no choices of its own: a zone is drawn corner by corner. */}
-      {(subMode === 'draw' || subMode === 'place-light') && <div className="atlas-dropdown-section">
-        {subMode === 'draw' ? DRAW_MODES.map(({ value, icon, label }) => (
-          <DropdownMenuItem
-            key={value}
-            icon={icon}
-            label={label}
-            isActive={value === drawMode}
-            onClick={() => {
-              setDrawMode(value)
-              emit('wall-mode-changed', value)
-            }}
-          />
-        )) : presets.map(({ id, name, kind }) => (
+      {mode === 'place-light' && <div className="atlas-dropdown-section">
+        {presets.map(({ id, name, kind }) => (
           <DropdownMenuItem
             key={id}
             icon={KIND_ICONS[kind]}
             label={name}
             isActive={id === preset.id}
-            onClick={() => {
-              setPresetId(id)
-              emit('lighting-preset-changed', id)
-            }}
+            onClick={() => setLightingTool({ lightPreset: id })}
           />
         ))}
       </div>}
 
-      <div className="atlas-dropdown-section">
-        <DropdownMenuItem
-          icon={Gauge}
-          label={t('graphics.open')}
-          onClick={() => {
-            setCommandPaletteOpen(true, 'graphics-settings')
-            closeMenu()
-          }}
-        />
-      </div>
+      {mode === 'rooms' && roomTool.shape === 'brush' && (
+        <div className="atlas-dropdown-section">
+          <DropdownSliderRow label={t('rooms.brushSize')} value={roomTool.brushSize} min={10} max={300} disabled={roomTool.action === 'door'}
+            onChange={(brushSize) => setRoomTool({ brushSize })} />
+        </div>
+      )}
+
+      {mode === 'explored-memory' && brush.shape === 'brush' && (
+        <div className="atlas-dropdown-section">
+          <DropdownSliderRow label={t('sceneLight.memory.brushSize')} value={brush.brushSize} min={10} max={200}
+            onChange={(brushSize) => setBrush({ brushSize })} />
+        </div>
+      )}
 
       <SceneLightingSection
         lighting={lighting}
         onChange={setSceneLighting}
-        onResetExplored={() => {
-          emit('lighting-reset-explored')
-          closeMenu()
-        }}
-        {...(subMode === 'explored-memory' && {
+        {...(mode === 'explored-memory' && {
           onRevealExplored: (): void => {
             emit('lighting-reveal-explored')
             closeMenu()
           },
         })}
         onOpenSettings={() => {
-          setSceneLightingPanelOpen(true)
+          setCommandPaletteOpen(true, 'lighting-settings')
           closeMenu()
         }}
       />

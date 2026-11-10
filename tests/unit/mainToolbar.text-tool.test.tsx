@@ -56,6 +56,8 @@ const storeState = {
   objects: { tokens: {} },
   lighting: { enabled: false, ambient: 0.1 },
   setSceneLighting: vi.fn(),
+  lightingTool: { mode: 'draw', drawMode: 'point-to-point', lightPreset: null },
+  setLightingTool: vi.fn(),
   setSelection,
   openAssetManager,
   closeAssetManager,

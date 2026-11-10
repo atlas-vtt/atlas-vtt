@@ -2,8 +2,9 @@ import { EventEmitter } from 'events';
 import type { WallType } from '../types/wallTypes';
 import { simplifyStroke } from '../pixi/lighting/wallEdits';
 
-export type WallToolMode = 'point-to-point' | 'freeform';
-export type WallToolSubMode = 'draw' | 'place-light' | 'light-zone' | 'level-surface' | 'explored-memory' | 'rooms';
+import type { WallToolMode, WallToolSubMode } from '../lighting/lightingTool';
+
+export type { WallToolMode, WallToolSubMode };
 
 export interface WallToolSettings {
   mode: WallToolMode;

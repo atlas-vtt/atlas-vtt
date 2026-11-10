@@ -50,6 +50,8 @@ export const toolbar: Translation = {
   'toolbar.laserColour': '激光颜色',
   'toolbar.laserSize': '激光大小',
   'toolbar.lightingOptions': '光照选项',
+  'toolbar.lightingModes': '光照模式',
+  'toolbar.modeTools': '{mode}工具',
   'toolbar.placeLights': '放置光源',
   'toolbar.freehand': '手绘',
   'toolbar.moreTools': '更多工具',

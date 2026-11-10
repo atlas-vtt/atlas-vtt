@@ -8,6 +8,13 @@
 - Names that would crowd each other hide until you zoom in
 - Pins shrink with the map when you zoom far out instead of covering it, and become dots when the whole map fits on screen
 
+## Improved
+
+- The lighting tool's modes sit in a small bar above the toolbar with the chosen mode's tools in a bar beside it; its menu keeps only the light to place, brush sizes and the scene's lighting, and Rooms are listed in their own panel at the top left of the map
+- The scene's lighting settings are a page in the command palette like the grid and token settings, found by searching for it or from the lighting tool's menu, in place of a separate window; the page also switches dynamic lighting
+- In the lighting tool's Rooms mode, walls and doors can be selected, dragged by their points and right-clicked as in the Walls mode, without switching back
+- Right-clicking a wall offers Add point, which puts a new point where you clicked, ready to drag
+
 ## Fixed
 
 - Atlas notices such as "Saved" show at the bottom of the window again; since 0.13.0 they appeared nowhere

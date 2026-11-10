@@ -2,6 +2,7 @@ import type { Translation } from '../../types';
 
 export const sceneLight: Translation = {
   'sceneLight.day': '白天',
+  'sceneLight.memoryNeeded': '需要启用探索记忆的光照场景',
   'sceneLight.dusk': '黄昏',
   'sceneLight.night': '夜晚',
   'sceneLight.dark': '漆黑',
@@ -12,7 +13,7 @@ export const sceneLight: Translation = {
   'sceneLight.forgetExplored': '忘记已探索区域',
   'sceneLight.openSettings': '光照设置…',
   'sceneLight.settings': '光照设置',
-  'sceneLight.closeSettings': '关闭光照设置',
+  'sceneLight.settingsHint': '视野、已探索区域与黑暗视觉',
   'sceneLight.tokenVision': '棋子视野',
   'sceneLight.tokenVisionOn': '玩家只能看到自己棋子所见',
   'sceneLight.tokenVisionOff': '玩家能看到光照照到的一切',
