@@ -28,6 +28,7 @@ export const statblockEditor = {
   'statblockEditor.copyIntoStatblock': 'Copy into a new statblock',
   'statblockEditor.copyNoSwitch': 'The copy is there, but this statblock could not switch to it.',
   'statblockEditor.createFailed': 'Couldn\'t create the statblock.',
+  'statblockEditor.createdNotLinked': 'The statblock was created, but the token could not be linked to it. Use Link statblock in the token\'s menu.',
   'statblockEditor.createStatblock': 'Create statblock',
   'statblockEditor.creating': 'Creating…',
   'statblockEditor.deleteMenu': 'Delete…',

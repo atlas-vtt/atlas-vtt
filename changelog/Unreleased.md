@@ -11,3 +11,4 @@
 ## Fixed
 
 - A roll you make as Public roll in the online table log now always reaches your players, even while "Show my rolls to players" is off
+- Creating a statblock from a token no longer says it failed when only linking the token went wrong: the new note opens and a notice tells you to link the token from its menu

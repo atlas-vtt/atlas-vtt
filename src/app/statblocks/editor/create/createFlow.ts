@@ -11,7 +11,7 @@ import { type App } from 'obsidian';
 import { showNotice } from '../../../ui/notice';
 import { experimentalFeatureOn } from '../../../experimental/experimentalFeatures';
 import { AssetService } from '../../../services/AssetService';
-import { createStatblockNote, type NewStatblockNote } from '../../notes/createStatblockNote';
+import { createStatblockNote, type CreatedStatblockNote, type NewStatblockNote } from '../../notes/createStatblockNote';
 import { roleFolder } from '../../roles/collectionStatblockRoles';
 import { openStatblockEditor, type StatblockEditorEntry } from '../openStatblockEditor';
 import { chosenRole, roleChoicesFor, roleTemplateId } from './collectionRoles';
@@ -56,7 +56,8 @@ export interface StatblockCreationRequest {
 /**
  * Creates the note for a chosen role and name, links the token, and opens the
  * note. Returns the note's path, or null when nothing was created (the switch
- * is off, or the note could not be written, which a notice says).
+ * is off, or the note could not be written, which a notice says). A note whose
+ * token could not be linked is kept and opened, and a notice says so.
  */
 export async function createStatblock(app: App, creation: StatblockCreation): Promise<string | null> {
   if (!experimentalFeatureOn(app, 'statblockEditor')) return null;
@@ -64,22 +65,23 @@ export async function createStatblock(app: App, creation: StatblockCreation): Pr
   if (!chosen) return null;
   const { collectionId, settings, role } = chosen;
 
-  let notePath: string;
+  let created: CreatedStatblockNote;
   try {
-    const { file, linked } = await createStatblockNote(app, {
+    created = await createStatblockNote(app, {
       name: creation.name,
       templateId: creation.templateId ?? await roleTemplateId(app, role),
       folder: creation.folder ?? roleFolder(settings, role.id),
       tokenImagePath: creation.tokenImagePath,
       values: creation.values,
     });
-    notePath = file.path;
-    if (linked) creation.onLinked?.(notePath);
   } catch (error) {
     console.error('[Atlas] Creating a statblock failed:', error);
     showNotice(t('statblockEditor.createFailed'));
     return null;
   }
+  const notePath = created.file.path;
+  if (created.linked) creation.onLinked?.(notePath);
+  else if (creation.tokenImagePath !== undefined) showNotice(t('statblockEditor.createdNotLinked'));
   await openStatblockEditor(app, { notePath, collectionId, from: creation.from, focusFirstEmpty: true });
   return notePath;
 }
