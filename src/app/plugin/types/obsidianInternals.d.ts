@@ -78,6 +78,11 @@ declare module 'obsidian' {
     revealInFolder(file: TAbstractFile): void;
   }
 
+  interface MarkdownPostProcessorContext {
+    /** The renderer's sizer, inside the view, embed or hover popover it draws in; a section is post-processed before it is attached there. */
+    containerEl?: HTMLElement;
+  }
+
   interface MarkdownPreviewView {
     /** Knows which lines of the note a drawn element came from. */
     renderer?: { getSectionInfo(element: HTMLElement): { lineStart: number } | null };

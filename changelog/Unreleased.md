@@ -16,3 +16,4 @@
 - Online play: when you point a pin players already found at another note or heading, they now read the new one instead of the old note
 - A statblock value that tracks a number now shows its own pattern, such as a rank looked up from the current Glory, instead of "current / max"
 - In statblocks, the name of an action or trait and its text now stand a full space apart in every font, and text that starts with a space no longer gets a double gap
+- Hovering a link to an Atlas statblock note, or holding Cmd/Ctrl over it, now shows the statblock in the preview instead of only its properties

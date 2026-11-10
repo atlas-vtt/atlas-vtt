@@ -13,6 +13,7 @@ import { t } from './src/app/i18n';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
 import { TemplateLibrary } from './src/app/statblocks/library/TemplateLibrary';
 import { registerStatblockFence } from './src/app/statblocks/render/statblockFence';
+import { registerStatblockLinkPreview } from './src/app/statblocks/render/statblockLinkPreview';
 import { registerNoteStatblockPanels } from './src/app/statblocks/editor/note-panel/noteStatblockPanels';
 import { TemplateEditorView } from './src/app/statblocks/editor/TemplateEditorView';
 import { TEMPLATE_EDITOR_VIEW_TYPE } from './src/app/statblocks/editor/templateEditorState';
@@ -195,6 +196,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerAtlasViews();
     // Before the first await, so notes restored at startup draw their statblock fence.
     registerStatblockFence(this, (path) => { editInStatblockPane(this.app, path, { collectionId: null, from: 'note' }); });
+    // A native statblock note is frontmatter alone: its link preview shows its card.
+    registerStatblockLinkPreview(this);
     // Statblock edits reach their notes before a window closes or Obsidian quits.
     registerNoteWriterFlush(this);
     // A template's note moves and goes with its template file.
