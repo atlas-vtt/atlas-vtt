@@ -7,3 +7,7 @@
 - In the lighting tool's Lights mode, the lights you can place are in the bar beside the modes instead of the menu
 - Rooms saved with 0.14.0 turn into walls when you open the scene. The Rooms panel is gone: joining two rooms is deleting the wall between them
 - Fields, drop-downs and search bars in the asset manager and its dialogs have a quieter edge instead of a bright outline
+
+## Fixed
+
+- A roll you make as Public roll in the online table log now always reaches your players, even while "Show my rolls to players" is off
