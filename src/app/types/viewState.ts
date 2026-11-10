@@ -14,7 +14,6 @@ import type { LiquidSurface } from './liquidTypes';
 import type { MapFeature } from './mapFeatureTypes';
 import type { SavedPlayerFrame } from './playerCamera';
 import type { SceneSound } from '../sound/soundTypes';
-import type { Room } from '../lighting/rooms';
 
 /** Data read from a map view, independent of the store and persistence services. */
 export interface ViewState extends ViewUIState {
@@ -81,8 +80,6 @@ export interface ViewState extends ViewUIState {
     mapFeatures?: Record<string, MapFeature>;
     /** Water, lava and acid that move while maps are animated; absent until the first is added. Read with `liquidList`. */
     liquids?: Record<string, LiquidSurface>;
-    /** Areas carved out of the rock, whose outline stands as walls; absent until the first is carved. Read with `roomList`. */
-    rooms?: Record<string, Room>;
   };
 
   // Camera state

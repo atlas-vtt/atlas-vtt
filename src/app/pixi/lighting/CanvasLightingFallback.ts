@@ -25,7 +25,6 @@ import { sourcesInDarkness } from '../../vision/magicalDarkness';
 import { activeLights, engineLight } from '../../vision/lightSources';
 import type { SceneLightingView } from './sceneLightingView';
 import { everyLevelObjects, levelObjects, levelObjectsOn } from '../../levels/levelObjects';
-import { blockingWalls } from '../../lighting/rooms';
 import { levelStack, levelsBelow, stackGrid, type LevelStack } from '../../levels/levelStack';
 import { levelSurfaceList } from '../../levels/levelSurfaces';
 import { hasLevels, viewedLevelId } from '../../levels/sceneLevels';
@@ -132,7 +131,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     const measurement = this.deps.measurement();
     const held = heldForSight(state);
     const hasVision = sceneHasVision(mapTokens(everyLevelObjects(state)));
-    const inputs = [state.lighting, mapTokens(levelObjects(state)), hasVision, blockingWalls(levelObjects(state)), levelObjects(state).lights, state.grid, held, rules, bounds?.width, bounds?.height, measurement.unitDistance, state.levels, state.viewedLevel, everyLevelObjects(state).levelSurfaces];
+    const inputs = [state.lighting, mapTokens(levelObjects(state)), hasVision, levelObjects(state).walls, levelObjects(state).lights, state.grid, held, rules, bounds?.width, bounds?.height, measurement.unitDistance, state.levels, state.viewedLevel, everyLevelObjects(state).levelSurfaces];
     if (inputs.every((input, i) => input === this.inputs[i]) && inputs.length === this.inputs.length) return;
     this.inputs = inputs;
     if (!state.lighting.enabled || !bounds) {
@@ -144,7 +143,7 @@ export class CanvasLightingFallback implements SceneLightingView {
       return;
     }
     const scale = unitScaleOf(measurement, state.grid);
-    const walls = this.sealedWalls(blockingWalls(levelObjects(state)), worldTexel(bounds));
+    const walls = this.sealedWalls(levelObjects(state).walls, worldTexel(bounds));
     const tokens = this.sightTokens.read(state);
     const dark = activeLights(levelObjects(state).lights, tokens, state.lighting.ambient).filter((light) => light.emission.darkness).map((light) => engineLight(light, scale));
     // The same list while there is no darkness, so whoever compares it finds it unchanged.

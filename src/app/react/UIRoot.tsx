@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
 import { LevelSurfacePopoverHost } from '../pixi/levelSurfaces/LevelSurfacePopover';
-import { RoomsPanelHost } from '../pixi/lighting/RoomsPanel';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
 import { MainToolbar } from '../packages/components/MainToolbar';
@@ -260,7 +259,6 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the players' glass"><GlassChip view={view} /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
-          {!isPlayerView && <PanelBoundary name="the rooms"><RoomsPanelHost /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}
           

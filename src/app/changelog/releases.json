@@ -2,6 +2,11 @@
   "version": "0.14.1-beta.0",
   "releases": [
     {
+      "version": "0.14.1-beta.0",
+      "title": "Coming in 0.14.1",
+      "markdown": "## Improved\n\n- Rooms are now real walls: a room carved in the lighting tool's Rooms mode can be dragged by its points, deleted and given doors like any wall you drew\n- Carving into a room opens into it and makes the two one room, whether that room was carved or drawn with walls; Fill in walls a room off again\n- Rooms saved with 0.14.0 turn into walls when you open the scene. The Rooms panel is gone: joining two rooms is deleting the wall between them"
+    },
+    {
       "version": "0.14.0",
       "date": "2026-11-10",
       "title": "Rooms, pin names and a tidier lighting tool",

@@ -20,7 +20,6 @@ import { movesOutOfTurn } from './turnShare.ts';
 import { RulesShare } from './RulesShare.ts';
 import { TOKEN_POLL_MS, TokenShare } from './TokenShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
-import { blockingWalls } from '../../lighting/rooms';
 import { levelBackground } from '../../levels/levelEdits';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
@@ -98,7 +97,7 @@ export class FloorShare {
         ownerOf,
         map: this.mapSize,
         // The walls of this floor, on which every token of its list stands
-        walls: sceneWalls(blockingWalls(levelObjects(store.getState())), this.scene?.lit === true, this.mapSize),
+        walls: sceneWalls(levelObjects(store.getState()).walls, this.scene?.lit === true, this.mapSize),
         outOfTurn: (tokenId) => {
           const settings = ports.atlasSettings();
           return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, showInitiative: settings.showInitiative, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);

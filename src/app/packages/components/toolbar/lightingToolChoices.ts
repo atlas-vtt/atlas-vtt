@@ -1,4 +1,4 @@
-import { ArrowDownToDot, Brush, BrickWall, DoorOpen, Eye, EyeOff, Footprints, House, Lasso, Lightbulb, MousePointer2, PaintBucket, Pencil, PenTool, Pickaxe, Square, SunMoon } from "lucide-react"
+import { ArrowDownToDot, BrickWall, Brush, DoorOpen, Eye, EyeOff, Footprints, House, Lasso, Lightbulb, MousePointer2, PaintBucket, PenTool, Pencil, Pickaxe, Square, SunMoon } from "lucide-react"
 import type React from "react"
 import { t } from "../../../i18n"
 import type { ExploredEditMode } from "../../../lighting/exploredEdits"
