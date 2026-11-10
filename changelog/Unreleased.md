@@ -5,6 +5,8 @@
 ## Improved
 
 - The lighting tool's modes sit in a small bar above the toolbar with the chosen mode's tools in a bar beside it; its menu keeps only the light to place, brush sizes and the scene's lighting, and Rooms are listed in their own panel at the top left of the map
+- In the lighting tool's Rooms mode, walls and doors can be selected, dragged by their points and right-clicked as in the Walls mode, without switching back
+- Right-clicking a wall offers Add point, which puts a new point where you clicked, ready to drag
 
 ## Fixed
 

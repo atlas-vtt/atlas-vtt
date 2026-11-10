@@ -82,6 +82,11 @@ export class RoomEditor {
     return this.subMode === 'rooms';
   }
 
+  /** A shape, a polygon's corners or a door is under way: the presses until it ends are the mode's own. */
+  get busy(): boolean {
+    return this.stroke.active || this.draft.length > 0 || this.door !== null;
+  }
+
   private get shown(): boolean {
     return this.active && this.view.visible;
   }

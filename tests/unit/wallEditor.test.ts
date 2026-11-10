@@ -198,4 +198,29 @@ describe('the wall menu', () => {
     expect(Object.values(store.getState().objects.walls).map((side) => [side.p1, side.p2])).toEqual(expect.arrayContaining([[{ x: 0, y: 0 }, { x: 280, y: 280 }]]));
     expect(Object.values(store.getState().objects.walls)).toHaveLength(2);
   });
+
+  it('adds a point where a wall was right-clicked, which then drags like any wall end, in one undo step each', () => {
+    const { editor, store, wall } = setup();
+    choose(menu(editor, store, { x: 160, y: 102 }), 'Add point');
+    const sides = Object.values(store.getState().objects.walls);
+    expect(store.getState().objects.walls[wall]).toBeUndefined();
+    expect(sides.map((side) => [side.p1, side.p2])).toEqual(expect.arrayContaining([
+      [{ x: 100, y: 100 }, { x: 160, y: 100 }],
+      [{ x: 160, y: 100 }, { x: 300, y: 100 }],
+    ]));
+    expect(sides).toHaveLength(2);
+    drag(editor, { x: 160, y: 100 }, { x: 170, y: 140 });
+    expect(Object.values(store.getState().objects.walls).flatMap((side) => [side.p1, side.p2])).toEqual(expect.arrayContaining([{ x: 170, y: 140 }, { x: 170, y: 140 }]));
+    store.temporal.getState().undo();
+    store.temporal.getState().undo();
+    expect(Object.values(store.getState().objects.walls).map((side) => [side.p1, side.p2])).toEqual([[{ x: 100, y: 100 }, { x: 300, y: 100 }]]);
+  });
+
+  it('offers no new point on a wall\'s end or in a door', () => {
+    const { editor, store } = setup();
+    const labels = (at: { x: number; y: number }): string[] => menu(editor, store, at).flatMap((entry) => (entry.type === 'item' ? [entry.label] : []));
+    expect(labels({ x: 300, y: 100 })).not.toContain('Add point');
+    store.getState().addWall({ type: 'door', p1: { x: 100, y: 400 }, p2: { x: 170, y: 400 }, closed: true });
+    expect(labels({ x: 135, y: 401 })).not.toContain('Add point');
+  });
 });
