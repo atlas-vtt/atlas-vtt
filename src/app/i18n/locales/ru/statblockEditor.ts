@@ -28,6 +28,7 @@ export const statblockEditor: Translation = {
   'statblockEditor.copyIntoStatblock': 'Скопировать в новый статблок',
   'statblockEditor.copyNoSwitch': 'Копия создана, но статблок не смог на неё переключиться.',
   'statblockEditor.createFailed': 'Не удалось создать статблок.',
+  'statblockEditor.createdNotLinked': 'Статблок создан, но токен не удалось к нему привязать. Выберите «Привязать статблок» в меню токена.',
   'statblockEditor.createStatblock': 'Создать статблок',
   'statblockEditor.creating': 'Создание…',
   'statblockEditor.deleteMenu': 'Удалить…',

@@ -7,3 +7,7 @@
 - In the lighting tool's Lights mode, the lights you can place are in the bar beside the modes instead of the menu
 - Rooms saved with 0.14.0 turn into walls when you open the scene. The Rooms panel is gone: joining two rooms is deleting the wall between them
 - Fields, drop-downs and search bars in the asset manager and its dialogs have a quieter edge instead of a bright outline
+
+## Fixed
+
+- Creating a statblock from a token no longer says it failed when only linking the token went wrong: the new note opens and a notice tells you to link the token from its menu
