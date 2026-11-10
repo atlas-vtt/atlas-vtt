@@ -9,6 +9,7 @@ import type { RemoteDrag } from '../marks/index.ts';
 import type { RulesSharePorts } from './RulesShare.ts';
 import type { SeatSource } from './seatSource.ts';
 import type { TokenSharePorts } from './TokenShare.ts';
+import type { NotePin } from '../../types';
 
 /** What the shared scene of an Atlas tab reads of the tab and the table, and how it reaches players. */
 export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'nameOf'> {
@@ -37,6 +38,8 @@ export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<
   rollRequest?(from: string, answer: RollRequestAnswer): RollRequest | null;
   /** The log entry that tells who found a readable pin of a map, or null while nobody has. */
   foundPin?(mapPath: string, pinId: string): string | null;
+  /** The shared map's pins whenever the GM changed them, so found pins can follow the notes they link now. */
+  pinsChanged?(mapPath: string, pins: Readonly<Record<string, NotePin>>): void;
   /** Whether the GM's renderer draws the level its view shows now (its map and sight); without it, it always does. */
   rendererCurrent?(): boolean;
   /** The level of a scene with several that Atlas presents to its player view (the eye); unset is the first. Players without a token on the map see it. */

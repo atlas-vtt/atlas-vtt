@@ -7,3 +7,7 @@
 - In the lighting tool's Lights mode, the lights you can place are in the bar beside the modes instead of the menu
 - Rooms saved with 0.14.0 turn into walls when you open the scene. The Rooms panel is gone: joining two rooms is deleting the wall between them
 - Fields, drop-downs and search bars in the asset manager and its dialogs have a quieter edge instead of a bright outline
+
+## Fixed
+
+- Online play: when you point a pin players already found at another note or heading, they now read the new one instead of the old note

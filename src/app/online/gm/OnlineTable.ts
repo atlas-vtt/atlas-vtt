@@ -178,6 +178,7 @@ export class OnlineTable {
         logRoll: (roll) => this.log.rolled(roll),
         rollRequest: (from, answer) => this.log.requestOf(from, answer),
         foundPin: (map, pin) => this.found.entryOf(map, pin),
+        pinsChanged: (map, pins) => this.found.followPins(map, pins),
         nameOf: (player) => ownership.nameOf(player),
       }, tab, presented),
       lost: (reason) => {
