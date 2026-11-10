@@ -4,7 +4,6 @@
 // Icon grid shared by the widget editor and the collection's conditions.
 // The grid scrolls; the panels that hold it never do.
 .atlas-icon-picker {
-  @include atlas-scrollbar;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--input-height), 1fr));
   gap: $spacing-xs;

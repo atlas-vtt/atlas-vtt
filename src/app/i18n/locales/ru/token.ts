@@ -20,4 +20,6 @@ export const token: Translation = {
   'token.linkFailed': 'Не удалось привязать статблок',
   'token.ringColor': 'Цвет кольца',
   'token.reset': 'Сбросить (полное HP, без состояний)',
+  'token.placeHint': 'Щёлкните, чтобы поставить · Esc — отмена',
+  'token.placeHintMany': 'Щёлкните, чтобы поставить всех · Shift-щелчок — по одному · Esc — отмена',
 };

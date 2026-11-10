@@ -11,16 +11,18 @@ interface TagPickerProps {
   onToggle: (tag: string) => void;
   onCreate: (tag: string) => Promise<string>;
   disabled?: boolean;
+  /** What the tags apply to, said under the heading. */
+  hint?: string;
 }
 
 /** Search, select or create tags without leaving the creator. */
-export function TagPicker({ available, selected, onToggle, onCreate, disabled = false }: TagPickerProps): React.JSX.Element {
+export function TagPicker({ available, selected, onToggle, onCreate, disabled = false, hint }: TagPickerProps): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const creatingRef = useRef(false);
-  const labelId = useId();
+  const hintId = useId();
   const name = query.trim();
   const tags = Array.from(new Set([...available, ...selected]));
   const filtered = tags.filter((tag) => tag.toLowerCase().includes(name.toLowerCase()));
@@ -54,14 +56,15 @@ export function TagPicker({ available, selected, onToggle, onCreate, disabled = 
       <div className="atlas-token-creator__section-title">
         <span>{t('creator.tags')} <span className="atlas-token-creator__count">{t('creator.selected', { count: selected.length })}</span></span>
       </div>
+      {hint && <p id={hintId} className="atlas-token-creator__empty-note">{hint}</p>}
 
       <div className="atlas-token-creator__search">
         <Search />
-        <span id={labelId} hidden>{t('creator.searchTags')}</span>
         <input
           ref={inputRef}
           type="text"
-          aria-labelledby={labelId}
+          aria-label={t('creator.searchTags')}
+          aria-describedby={hint ? hintId : undefined}
           placeholder={t('creator.searchTagsPlaceholder')}
           value={query}
           disabled={disabled}

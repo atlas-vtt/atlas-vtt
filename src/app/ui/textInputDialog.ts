@@ -16,20 +16,18 @@ export interface TextInputDialogOptions {
  */
 export function promptForText(options: TextInputDialogOptions): Promise<string | null> {
   return new Promise((resolve) => {
-    const { root, dialog } = createDialogShell(options.title);
+    const close = (result: string | null): void => {
+      root.remove();
+      resolve(result);
+    };
+    const { root, dialog, footer } = createDialogShell(options.title, { onDismiss: () => close(null) });
 
     const textarea = dialog.createEl('textarea', { cls: 'atlas-text-dialog__input' });
     textarea.value = options.initialValue ?? '';
     if (options.placeholder) textarea.placeholder = options.placeholder;
 
-    const actions = dialog.createDiv({ cls: 'atlas-text-dialog__actions' });
-    const cancelButton = actions.createEl('button', { text: t('common.cancel') });
-    const confirmButton = actions.createEl('button', { cls: 'mod-cta', text: options.confirmLabel });
-
-    const close = (result: string | null): void => {
-      root.remove();
-      resolve(result);
-    };
+    const cancelButton = footer.createEl('button', { text: t('common.cancel') });
+    const confirmButton = footer.createEl('button', { cls: 'mod-cta', text: options.confirmLabel });
     const confirm = (): void => {
       const text = textarea.value.trim();
       close(text !== '' || options.allowEmpty === true ? text : null);

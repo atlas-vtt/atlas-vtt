@@ -1,32 +1,23 @@
 /**
- * The statblock fields the initiative settings offer for the modifier, each with what a statblock
- * of the collection holds there: what the templates mean as initiative first, then their numbers,
- * then their other fields that hold a modifier in a statblock (Perception kept as entries), then
+ * The statblock fields the initiative settings offer for the modifier, never one a template means
+ * as hit points, armour or a rating: what the templates mean as initiative first (`recommended`),
+ * then their numbers, then their other fields that hold a modifier in a statblock (Perception kept as entries), then
  * the slots of their scores and the SRD's DEX (read as ability scores), then the further fields
  * the statblocks hold that read as a modifier.
  */
 
 import { discoverFields } from '../resources/resourceFields';
 import type { FieldSuggestion } from '../resources/resourceFieldSuggestions';
-import type { StatblockTemplate, TemplateField } from '../statblocks/model/templateTypes';
+import type { FieldMeaning, StatblockTemplate, TemplateField } from '../statblocks/model/templateTypes';
 import { t } from '../i18n';
 import { findModifierField, type ModifierStatblock } from './modifierFields';
-import { holdsModifier, statblockModifierValue } from './modifierValue';
+import { holdsModifier } from './modifierValue';
 
 /** Fantasy Statblocks' `stats` hold the six scores in order: DEX is the second. */
 const FANTASY_DEX = 'stats.1';
 
-const signed = (modifier: number): string => (modifier < 0 ? `−${-modifier}` : `+${modifier}`);
-
-/** The modifier the first statblock holding one gives at `path`, written signed. */
-function sampleAt(statblocks: readonly ModifierStatblock[], path: string, score: boolean): string | undefined {
-  for (const statblock of statblocks) {
-    const found = findModifierField(statblock, path);
-    const modifier = found ? statblockModifierValue(found.value, score || found.score) : null;
-    if (modifier !== null) return signed(modifier);
-  }
-  return undefined;
-}
+/** What a template means by these fields is never a modifier, whatever number a statblock holds there. */
+const NOT_A_MODIFIER: ReadonlySet<FieldMeaning> = new Set(['hit-points', 'armor', 'rating']);
 
 const holdsSixScores = (statblock: ModifierStatblock): boolean =>
   statblock.fantasy === true && Array.isArray(statblock.fields.stats) && statblock.fields.stats.length === 6;
@@ -36,15 +27,15 @@ export function initiativeFieldSuggestions(
   statblocks: readonly ModifierStatblock[],
 ): FieldSuggestion[] {
   const fields = templates.flatMap((template) => template.fields);
+  const notModifiers = new Set(fields.filter(({ meaning }) => meaning !== undefined && NOT_A_MODIFIER.has(meaning)).map(({ key }) => key));
   const offered = new Map<string, FieldSuggestion>();
-  const offer = (path: string, label: string | undefined, score = false): void => {
-    if (offered.has(path)) return;
-    const sample = sampleAt(statblocks, path, score);
-    offered.set(path, { path, ...(label && { label }), ...(score && { score: true }), ...(sample && { sample }) });
+  const offer = (path: string, label: string | undefined, score = false, recommended = false): void => {
+    if (offered.has(path) || notModifiers.has(path)) return;
+    offered.set(path, { path, ...(label && { label }), ...(score && { score: true }), ...(recommended && { recommended: true as const }) });
   };
   const ofField = (field: TemplateField): void => offer(field.key, field.label);
 
-  fields.filter((field) => field.meaning === 'initiative').forEach(ofField);
+  fields.filter((field) => field.meaning === 'initiative').forEach((field) => offer(field.key, field.label, false, true));
   fields.filter((field) => field.type === 'number').forEach(ofField);
   const holdsSomewhere = (field: TemplateField): boolean => statblocks.some((statblock) => {
     const found = findModifierField(statblock, field.key);

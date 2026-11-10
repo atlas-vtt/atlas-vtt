@@ -2,6 +2,7 @@ import type { Translation } from '../../types';
 import { align } from './align';
 import { atlasLinks } from './atlasLinks';
 import { am } from './am';
+import { assetGrid } from './assetGrid';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
 import { clock } from './clock';
@@ -109,6 +110,7 @@ export const ru: Translation = {
   ...align,
   ...atlasLinks,
   ...am,
+  ...assetGrid,
   ...bundle,
   ...cleanup,
   ...clock,

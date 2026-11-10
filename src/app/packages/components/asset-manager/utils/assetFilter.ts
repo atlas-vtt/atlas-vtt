@@ -10,25 +10,30 @@ export interface AssetFilter {
   search: string;
   /** Tags an asset must all carry. */
   tags: readonly Pick<Tag, 'id' | 'name'>[];
-  /** Other filters narrow the list (creature filters), so it searches the folder's whole subtree as well. */
+  /** Other filters narrow the list (creature filters), so it searches every folder of the tab as well. */
   narrowed?: boolean;
 }
 
 /**
  * The assets the content area shows. Unfiltered, those directly in the open
- * folder. While a search, tag or other filter narrows the list, those anywhere
- * below it, so a filter finds assets whatever folder they sit in; at the root
- * that is every asset of the tab.
+ * folder. While a search, tag or other filter narrows the list, the matches in
+ * every folder of the tab, wherever the GM stands: a tag's count in the sidebar
+ * is what picking it shows (`matchingAssets`), as in Finder or Eagle.
  */
-export function filterAssets(assets: readonly AnyAsset[], folders: readonly Folder[], filter: AssetFilter): AnyAsset[] {
-  const searchLower = filter.search.toLowerCase();
-  const inScope = folderScope(folders, filter);
+export function filterAssets(assets: readonly AnyAsset[], filter: AssetFilter): AnyAsset[] {
+  const filtering = isFiltering(filter);
+  const searchLower = filter.search.trim().toLowerCase();
   return assets.filter((asset) =>
     asset.type === assetTypeOfTab(filter.tab)
-    && inScope(asset.folderId)
+    && (filtering || asset.folderId === filter.folderId)
     && (!searchLower || asset.name.toLowerCase().includes(searchLower))
     && filter.tags.every((tag) => hasAssetTag(asset.tags, tag)),
   );
+}
+
+/** The assets of the tab a search, tags or other filters would show, in every folder: what tag counts are taken from. */
+export function matchingAssets(assets: readonly AnyAsset[], filter: AssetFilter): AnyAsset[] {
+  return filterAssets(assets, { ...filter, narrowed: true });
 }
 
 /** The subfolders the content area shows: none while filtering, since their matching assets are listed directly. */
@@ -37,28 +42,7 @@ export function filterFolders(folders: readonly Folder[], filter: AssetFilter): 
   return folders.filter((folder) => folder.type === filter.tab && folder.parentId === filter.folderId);
 }
 
-function folderScope(folders: readonly Folder[], filter: AssetFilter): (folderId: string | null | undefined) => boolean {
-  if (!isFiltering(filter)) return (folderId) => folderId === filter.folderId;
-  if (filter.folderId === null) return () => true;
-  const subtree = folderSubtree(folders, filter.folderId);
-  return (folderId) => folderId != null && subtree.has(folderId);
-}
-
-function isFiltering(filter: AssetFilter): boolean {
-  return filter.search !== '' || filter.tags.length > 0 || filter.narrowed === true;
-}
-
-/** `rootId` and the ids of every folder below it. */
-function folderSubtree(folders: readonly Folder[], rootId: string): Set<string> {
-  const subtree = new Set([rootId]);
-  const pending = [rootId];
-  for (let parentId = pending.pop(); parentId !== undefined; parentId = pending.pop()) {
-    for (const folder of folders) {
-      if (folder.parentId === parentId && !subtree.has(folder.id)) {
-        subtree.add(folder.id);
-        pending.push(folder.id);
-      }
-    }
-  }
-  return subtree;
+/** Whether a search, tags or other filters narrow the list. */
+export function isFiltering(filter: AssetFilter): boolean {
+  return filter.search.trim() !== '' || filter.tags.length > 0 || filter.narrowed === true;
 }

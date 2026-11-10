@@ -1,0 +1,76 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// ── One column (WCAG 1.4.10 Reflow: 320 CSS px, 400 % zoom) ─────────────────
+// Narrower than the main pane and the cover rail side by side, the rail moves under the main pane, at most part of the
+// window's height (its covers scroll inside), and the main pane keeps its own scroller: the contents' virtual grids
+// read where it is scrolled (`TransferScrollContext`). The banner is lower, so the title, contents, name and version
+// keep their room. Under the dialog's class: these rules must win over `_transfer-dialog.scss`'s.
+
+// A main pane of 280 px beside the 296 px rail, with the overlay's padding.
+$transfer-stack-below: 640px;
+
+.atlas-transfer-overlay {
+  // The dialog asks the room the overlay gives it.
+  container: atlas-transfer / inline-size;
+}
+
+@container atlas-transfer (max-width: #{$transfer-stack-below}) {
+  .atlas-transfer-dialog[data-with-aside] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-areas: none;
+
+    > .atlas-transfer-dialog__main {
+      grid-row: 1;
+      grid-column: 1;
+    }
+
+    > .atlas-transfer-dialog__aside {
+      grid-row: 2;
+      grid-column: 1;
+      max-height: 40dvh;
+    }
+
+    > .atlas-transfer-dialog__footer {
+      grid-row: 3;
+      grid-column: 1;
+
+      > .btn:last-child {
+        @include atlas-modal-corner-control(bottom-right);
+      }
+    }
+
+    // The rail's header no longer sits under the close button.
+    .atlas-transfer-covers__header {
+      padding-right: 0;
+    }
+
+    // Covers as tiles of one height, several to a row, so the rail shows more than one at its height. The rows have a
+    // height of their own: from the cards' aspect ratio a grid sizes its rows before its columns grow and cuts them.
+    .atlas-transfer-covers__list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+      grid-auto-rows: 80px;
+      align-content: start;
+    }
+
+    .atlas-transfer-cover-card {
+      height: 100%;
+      aspect-ratio: auto;
+    }
+  }
+
+  // The counts take a line of their own over the buttons rather than a word per line beside them.
+  .atlas-transfer-dialog .atlas-transfer-dialog__footer {
+    flex-wrap: wrap;
+
+    .atlas-transfer-summary {
+      flex-basis: 100%;
+    }
+  }
+
+  .atlas-transfer-dialog .atlas-transfer-hero:not([data-empty]) {
+    height: 176px;
+  }
+}

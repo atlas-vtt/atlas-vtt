@@ -1,0 +1,28 @@
+// The hint over the toolbar while tokens are in the GM's hand (`PlacementHint`): one line in a capsule, the turn
+// banner's surface without its portrait. It fades in; it leaves at once, as the tokens do.
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+.atlas-placement-hint {
+  @include atlas-elevated-surface;
+  border-radius: $radius-full;
+  max-width: calc(100% - 2 * #{$spacing-l});
+  padding: $spacing-s;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: $font-ui-small;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  // The capsule's round ends cannot hold text: it keeps this much more room from them.
+  padding-inline: $spacing-m;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity $transition-normal $transition-ease-out;
+
+  @starting-style {
+    opacity: 0;
+  }
+}

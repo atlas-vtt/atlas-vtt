@@ -3,6 +3,8 @@ import { ChevronDown } from 'lucide-react';
 import type { Tab } from '../types';
 import { tabs, getTabDisplayName } from '../types';
 import { HeaderMenu } from './HeaderMenu';
+import { LabelTooltip } from '../../primitives/tooltip';
+import { modShortcut } from '../utils/modShortcut';
 import { Skeleton } from '../../primitives/Skeleton';
 import { t } from '../../../../i18n';
 
@@ -11,11 +13,18 @@ export interface TabSwitcherProps {
   onTabChange: (tab: Tab) => void;
   /** How many assets each tab holds; null while they are being counted. */
   assetCounts: Record<Tab, number> | null;
+  /** The collection could not be loaded: no count is coming, so none is shown or awaited. */
+  countsFailed?: boolean;
 }
 
-/** A tab's count, or its placeholder while the collection is being counted: never a wrong 0. */
-function TabCount({ count }: { count: number | undefined }): React.JSX.Element {
-  return <span className="atlas-tab-count">{count ?? <Skeleton shape="text" live />}</span>;
+/**
+ * A tab's count: how many assets the collection holds in it, never what a search or filters leave, so the tabs keep
+ * their width whatever the list shows. Its placeholder while the collection is being counted: never a wrong 0. A
+ * collection that could not be loaded has no count to wait for, so its place stays empty and still.
+ */
+function TabCount({ count, failed }: { count: number | undefined; failed: boolean }): React.JSX.Element {
+  if (count === undefined) return <span className="atlas-tab-count">{failed ? null : <Skeleton shape="text" live />}</span>;
+  return <span className="atlas-tab-count">{count}</span>;
 }
 
 /**
@@ -23,7 +32,7 @@ function TabCount({ count }: { count: number | undefined }): React.JSX.Element {
  * the current type as a menu button instead (the toolbar's `data-compact`
  * steps pick one), so the toolbar stays a single row.
  */
-export function TabSwitcher({ activeTab, onTabChange, assetCounts }: TabSwitcherProps): React.JSX.Element {
+export function TabSwitcher({ activeTab, onTabChange, assetCounts, countsFailed = false }: TabSwitcherProps): React.JSX.Element {
   const labelId = useId();
   const activeName = getTabDisplayName(activeTab);
 
@@ -31,17 +40,19 @@ export function TabSwitcher({ activeTab, onTabChange, assetCounts }: TabSwitcher
     <>
       <nav className="atlas-asset-manager-tabs" aria-labelledby={labelId}>
         <span id={labelId} hidden>{t('am.tabs.assetType')}</span>
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={`atlas-tab-button ${activeTab === tab ? 'atlas-active' : ''}`}
-            onClick={() => onTabChange(tab)}
-            aria-current={activeTab === tab ? 'page' : undefined}
-          >
-            <span className="atlas-tab-label">{getTabDisplayName(tab)}</span>
-            <TabCount count={assetCounts?.[tab]} />
-          </button>
+        {tabs.map((tab, index) => (
+          <LabelTooltip key={tab} label={getTabDisplayName(tab)} shortcut={modShortcut(String(index + 1)).label} describe>
+            <button
+              type="button"
+              className={`atlas-tab-button ${activeTab === tab ? 'atlas-active' : ''}`}
+              onClick={() => onTabChange(tab)}
+              aria-current={activeTab === tab ? 'page' : undefined}
+              aria-keyshortcuts={modShortcut(String(index + 1)).aria}
+            >
+              <span className="atlas-tab-label">{getTabDisplayName(tab)}</span>
+              <TabCount count={assetCounts?.[tab]} failed={countsFailed} />
+            </button>
+          </LabelTooltip>
         ))}
       </nav>
 
@@ -53,7 +64,7 @@ export function TabSwitcher({ activeTab, onTabChange, assetCounts }: TabSwitcher
         triggerContent={
           <>
             <span className="atlas-tab-label">{activeName}</span>
-            <TabCount count={assetCounts?.[activeTab]} />
+            <TabCount count={assetCounts?.[activeTab]} failed={countsFailed} />
             <ChevronDown className="atlas-am-tab-menu-chevron" />
           </>
         }

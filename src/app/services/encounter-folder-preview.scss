@@ -61,7 +61,6 @@ $face-size: 26px;
 
 .atlas-encounter-folder-preview__list {
   @include atlas-flex-col(0);
-  @include atlas-scrollbar;
   // Five and a half rows, so a longer list shows it scrolls
   max-height: $row-height * 5.5;
   overflow-y: auto;

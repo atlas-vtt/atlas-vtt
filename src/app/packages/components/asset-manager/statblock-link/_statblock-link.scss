@@ -1,18 +1,41 @@
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
+@use '../../../../../../styles/sidebar-dialog' as *;
 @use '../../../../react/components/statblock/statblock-preview-surface' as *;
 
 // Link Statblock dialog: the creatures on the left, the selected one's
 // statblock on the right.
 
-$browser-width: 320px;
+// Wide enough for the footer's four actions, which stand in this column.
+$browser-width: 416px;
 $statblock-max-width: 560px;
+// Narrower than this the preview would leave the statblock no room: the list alone, the actions under it.
+$link-stack-below: 720px;
 
+// A dialog with a sidebar at its end (`_sidebar-dialog.scss`): the statblock's preview runs its full height on the
+// right, the title row, the list and the actions stand in the column beside it.
 .atlas-statblock-link {
   @include atlas-modal-window;
+  @include atlas-sidebar-dialog(end, minmax(0, 1fr), $browser-width);
+  // The close button's containing block (it stands in the preview's corner)
+  position: relative;
   width: min(960px, 100%);
   // Statblocks run long, so the dialog takes what height the window offers.
   height: min(1040px, 100%);
+
+  &__header {
+    @include atlas-sidebar-dialog-header($link-stack-below);
+  }
+
+  &__close.atlas-close-btn.btn {
+    @include atlas-sidebar-dialog-corner-close($link-stack-below);
+  }
+
+  &__footer {
+    @include atlas-sidebar-dialog-footer(end, $link-stack-below);
+    // Longer translations of the actions take a second line rather than leave the column.
+    flex-wrap: wrap;
+  }
 
   &__heading {
     @include atlas-flex-col($gap: 2px);
@@ -25,29 +48,26 @@ $statblock-max-width: 560px;
     font-size: $font-ui-smaller;
   }
 
+  // Lends the list and the preview to the window's grid.
   &__body {
-    display: grid;
-    grid-template-columns: $browser-width minmax(0, 1fr);
-    flex: 1;
-    min-height: 0;
+    display: contents;
   }
 
   // ── Search and results ─────────────────────────────────────────────────────
 
   &__browser {
+    @include atlas-sidebar-dialog-area(body, $link-stack-below);
     display: flex;
     flex-direction: column;
     min-height: 0;
-    border-right: $border-width-s solid var(--divider-color);
   }
 
-  // Flush with the pane; the icon lines up with the text of the rows below.
+  // Flush with the pane; the icon lines up with the text of the rows below, which fade under it when scrolled.
   &__search {
     @include atlas-flex-row;
     flex-shrink: 0;
     height: calc(var(--input-height) + 2 * #{$spacing-s});
     padding: 0 $spacing-l;
-    border-bottom: $border-width-s solid var(--divider-color);
 
     svg {
       width: $icon-s;
@@ -66,8 +86,8 @@ $statblock-max-width: 560px;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    @include atlas-scroll-padding($spacing-s);
-    @include atlas-scrollbar-while-scrolling;
+    padding: $spacing-s;
+    @include atlas-scroll-shadow;
   }
 
   // The placeholder rows take the list's own layout and can not be chosen.
@@ -81,7 +101,7 @@ $statblock-max-width: 560px;
 
   &__list-empty {
     padding: $spacing-xl $spacing-l;
-    color: var(--text-faint);
+    color: var(--text-muted);
     font-size: $font-ui-small;
     text-align: center;
     text-wrap: pretty;
@@ -108,7 +128,7 @@ $statblock-max-width: 560px;
       background-color: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
 
       .atlas-statblock-link__option-name {
-        color: var(--text-accent);
+        @include atlas-accent-text;
       }
     }
   }
@@ -141,7 +161,7 @@ $statblock-max-width: 560px;
     padding: 0 $spacing-s;
     border-radius: $radius-s;
     background: color-mix(in oklch, var(--interactive-accent) 18%, transparent);
-    color: var(--text-accent);
+    @include atlas-accent-text;
     font-size: $font-ui-smaller;
     font-weight: $font-weight-semibold;
     line-height: 1;
@@ -156,10 +176,9 @@ $statblock-max-width: 560px;
 
   // The card shrinks to the pane and scrolls inside, like the hover preview.
   &__preview {
+    @include atlas-sidebar-dialog-side;
     @include atlas-flex-col($gap: $spacing-l);
-    min-height: 0;
     padding: $spacing-l;
-    background: var(--background-secondary);
     @include atlas-statblock-contained-card;
 
     .atlas-fantasy-statblock,
@@ -167,6 +186,11 @@ $statblock-max-width: 560px;
       width: 100%;
       max-width: $statblock-max-width;
       margin-inline: auto;
+    }
+
+    // A long statblock runs down to the window's bottom-right corner: its corner there is concentric with it.
+    .atlas-statblock {
+      @include atlas-panel-inset-radius($spacing-l, bottom-right);
     }
   }
 
@@ -176,7 +200,7 @@ $statblock-max-width: 560px;
     width: 100%;
     max-width: $statblock-max-width;
     margin-inline: auto;
-    color: var(--text-faint);
+    color: var(--text-muted);
     font-size: $font-ui-smaller;
 
     svg {
@@ -195,7 +219,7 @@ $statblock-max-width: 560px;
     align-items: center;
     justify-content: center;
     flex: 1;
-    color: var(--text-faint);
+    color: var(--text-muted);
     font-size: $font-ui-small;
     text-align: center;
 
@@ -227,15 +251,7 @@ $statblock-max-width: 560px;
   }
 
   // Narrow windows keep the list; the preview needs room to be useful.
-  @media (max-width: $breakpoint-m) {
-    &__body {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    &__browser {
-      border-right: none;
-    }
-
+  @container atlas-sidebar-dialog (max-width: #{$link-stack-below}) {
     &__preview {
       display: none;
     }

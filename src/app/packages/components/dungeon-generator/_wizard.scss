@@ -112,21 +112,15 @@ $wizard-height: 600px;
   white-space: nowrap;
 }
 
-// Fills what header and footer leave; a step taller than it scrolls, under a scrollbar that takes
-// no room (`OverlayScroll`, over the inline-end padding) and shows only while it scrolls.
-.atlas-dungeon-wizard__body {
-  flex: 1;
-}
-
+// Fills what header and footer leave; a step taller than it scrolls, under the overlay scrollbar.
 .atlas-dungeon-wizard__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   // The steps slide across inside it; the one leaving is laid over the one coming.
   position: relative;
   padding-inline: $spacing-l;
   overflow-x: hidden;
-}
-
-.atlas-dungeon-wizard__body:hover:not(:has(> [data-scrolling])) > .atlas-overlay-scroll__track:not([data-dragging]) > .atlas-overlay-scroll__thumb:not(:hover) {
-  opacity: 0;
 }
 
 .atlas-dungeon-wizard__step {

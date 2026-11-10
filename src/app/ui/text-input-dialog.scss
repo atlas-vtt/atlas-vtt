@@ -7,27 +7,73 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: $spacing-2xl;
   background: var(--background-modifier-cover);
 }
 
+// The frame every Atlas dialog has (`dialogShell.ts`): header with icon, title and close button,
+// body, footer, as the asset manager's New folder and New collection.
 .atlas-text-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-m;
-  min-width: 300px;
-  padding: $spacing-m;
-  border-radius: $radius-xl;
+  @include atlas-modal-window;
+  width: min(420px, 100%);
   background: var(--background-primary);
-  @include atlas-elevated-surface;
+  // Focusable only to keep a press on its text inside the dialog; it draws no ring.
+  outline: none;
 
   &--confirm {
-    max-width: 420px;
+    width: min(440px, 100%);
   }
 
-  &__title,
+  &__header {
+    @include atlas-modal-header;
+  }
+
+  &__icon {
+    display: flex;
+  }
+
+  &__body {
+    @include atlas-modal-body;
+    gap: $spacing-m;
+  }
+
+  &__footer {
+    @include atlas-modal-footer;
+
+    &:empty {
+      display: none;
+    }
+
+    // The confirm button is Atlas' own filled button, whose text reads on any accent.
+    button.mod-cta {
+      @include atlas-accent-fill;
+    }
+
+    button.mod-warning {
+      @include atlas-danger-fill;
+    }
+
+    > button:last-child {
+      @include atlas-modal-corner-control(bottom-right);
+    }
+  }
+
   &__message {
     margin: 0;
+    color: var(--text-normal);
+    line-height: var(--line-height-normal);
     text-wrap: pretty;
+  }
+
+  &__list {
+    margin: 0;
+    padding-inline-start: $spacing-l;
+    color: var(--text-normal);
+    font-weight: $font-weight-medium;
+
+    li {
+      overflow-wrap: anywhere;
+    }
   }
 
   &__input {
@@ -36,13 +82,13 @@
     resize: vertical;
   }
 
+  // Dialogs that lay out their own row of buttons in the body (Save as encounter).
   &__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: $spacing-m;
+    gap: $spacing-s;
     justify-content: flex-end;
 
-    // The confirm button is Atlas' own filled button, whose text reads on any accent.
     button.mod-cta {
       @include atlas-accent-fill;
     }

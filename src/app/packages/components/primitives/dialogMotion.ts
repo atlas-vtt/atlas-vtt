@@ -1,4 +1,5 @@
-import { useReducedMotion, type Variants } from 'framer-motion';
+import { useSyncExternalStore } from 'react';
+import type { Variants } from 'framer-motion';
 import {
   BACKDROP_ENTER_MS,
   EASE_OUT_CONTROL_POINTS as EASE_OUT,
@@ -49,9 +50,28 @@ export const dialogOverlayMotion = {
   exit: 'exit',
 } as const;
 
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+function followReducedMotion(onChange: () => void): () => void {
+  const query = window.matchMedia(REDUCED_MOTION);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+const reducedMotionNow = (): boolean => window.matchMedia(REDUCED_MOTION).matches;
+
+/**
+ * Whether reduced motion is asked for, following the setting while the component stays mounted. framer-motion's own
+ * `useReducedMotion` reads it once, when the component mounts: a window kept mounted (the asset manager's, which only
+ * opens and closes) went on rising and growing after the setting was switched on.
+ */
+export function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(followReducedMotion, reducedMotionNow);
+}
+
 /** Variants for a dialog window, honouring the reduced-motion preference. */
 export function useDialogWindowVariants(): Variants {
-  return useReducedMotion() ? fadingWindowVariants : dialogWindowVariants;
+  return usePrefersReducedMotion() ? fadingWindowVariants : dialogWindowVariants;
 }
 
 /** A popover anchored on the map grows out of its anchor, the element's `transform-origin`. */
@@ -63,5 +83,5 @@ const anchoredPopoverVariants = {
 
 /** Variants for a popover that grows out of its anchor, honouring the reduced-motion preference. */
 export function useAnchoredPopoverVariants(): Variants {
-  return useReducedMotion() ? fadingWindowVariants : anchoredPopoverVariants;
+  return usePrefersReducedMotion() ? fadingWindowVariants : anchoredPopoverVariants;
 }

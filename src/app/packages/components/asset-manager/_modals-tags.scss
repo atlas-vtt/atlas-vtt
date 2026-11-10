@@ -26,11 +26,39 @@
   justify-content: center;
   padding: $spacing-l $spacing-l 0;
 
+  // The switcher asks the room the dialog gives it: narrow, its tabs share it.
+  container: atlas-tag-manager-tabs / inline-size;
+
   .atlas-tab-switcher {
     @include atlas-tab-switcher;
+    max-width: 100%;
 
     .atlas-tab-button {
       @include atlas-tab-button;
+      min-width: 0;
+    }
+  }
+}
+
+.atlas-tab-button__label {
+  min-width: 0;
+  @include atlas-truncate;
+}
+
+// A dialog at 320 CSS px (400 % zoom, WCAG 1.4.10): the three tabs split the width and drop their icons, so every
+// label stays whole.
+@container atlas-tag-manager-tabs (max-width: 380px) {
+  .atlas-tag-manager-tabs .atlas-tab-switcher {
+    width: 100%;
+
+    .atlas-tab-button {
+      flex: 1 1 0;
+      justify-content: center;
+      padding: 0 $spacing-s;
+
+      > svg {
+        display: none;
+      }
     }
   }
 }
@@ -71,7 +99,7 @@
   background-color: color-mix(in oklch, var(--color-red) 15%, transparent);
   border: $border-width-s solid color-mix(in oklch, var(--color-red) 30%, transparent);
   border-radius: $radius-m;
-  color: var(--text-error);
+  @include atlas-error-text;
   font-size: $font-ui-small;
   margin-bottom: $spacing-s;
 }
@@ -80,8 +108,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  @include atlas-flex-col($gap: 2px);
-  @include atlas-scrollbar;
+  @include atlas-flex-col($gap: 0);
 }
 
 .atlas-create-item {
@@ -89,7 +116,7 @@
   height: var(--input-height);
   padding: 0 $spacing-s;
   border-radius: $radius-m;
-  color: var(--text-accent);
+  @include atlas-accent-text;
   font-size: $font-ui-small;
   cursor: pointer;
 
@@ -114,6 +141,12 @@
   border-radius: $radius-m;
   position: relative;
 
+  // The checkbox's 44 px hit area reaches 14 px past its box; the list scrolls and so clips it, unless the row's
+  // padding holds it.
+  @media (pointer: coarse) {
+    padding-left: $spacing-l;
+  }
+
   &:hover {
     background-color: var(--background-modifier-hover);
   }
@@ -127,15 +160,19 @@
   }
 
   .atlas-selection-checkbox {
-    margin-right: $spacing-s;
+    margin-right: $spacing-m;
     display: flex;
     align-items: center;
 
+    // Obsidian puts 6 px after every checkbox; the row's own spacing stands in for it.
     & input[type="checkbox"] {
       width: 16px;
       height: 16px;
+      margin: 0;
       cursor: pointer;
     }
+
+    @include atlas-coarse-checkbox-hit;
   }
 
   .atlas-item-name {
@@ -173,7 +210,7 @@
 
 .atlas-empty-state {
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-muted);
   padding: $spacing-xl;
   font-size: $font-ui-small;
 }

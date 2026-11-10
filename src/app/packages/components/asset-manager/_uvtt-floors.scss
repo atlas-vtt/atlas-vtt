@@ -59,7 +59,7 @@
 
 .atlas-uvtt-floors__file {
   @include atlas-truncate;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
 }
 

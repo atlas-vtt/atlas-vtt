@@ -91,7 +91,7 @@ describe('the Random tables tab', () => {
 
     fireEvent.click(row);
     fireEvent.click(screen.getByRole('button', { name: 'True?' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'No repeats' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'No repeats' }));
     expect(draft().randomTables[0]).toEqual({ ...stored, kind: 'items', hiddenColumns: ['True?'], noRepeats: true });
 
     fireEvent.click(screen.getByRole('button', { name: 'True?' }));
@@ -130,7 +130,7 @@ describe('the Random tables tab', () => {
     expect(draft().randomTables[0]).toMatchObject({ kind: 'generator' });
     await waitFor(() => expect(row.textContent).toContain('2'));
     fireEvent.click(row);
-    expect(screen.queryByRole('checkbox', { name: 'No repeats' })).toBeNull();
+    expect(screen.queryByRole('switch', { name: 'No repeats' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Result' })).toBeNull();
 
     const folder = screen.getByRole('combobox', { name: 'Save results to' });

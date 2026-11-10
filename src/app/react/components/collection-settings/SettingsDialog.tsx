@@ -1,10 +1,11 @@
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
 import { Button } from '../../../packages/components/primitives/button';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../../packages/components/primitives/dialogMotion';
+import { useFocusTrap } from '../../../packages/components/primitives/useFocusTrap';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { t } from '../../../i18n';
 import { portalHost } from '../../../host/portalHost';
@@ -31,6 +32,8 @@ interface SettingsDialogProps {
 export function SettingsDialog({ title, subtitle, closeLabel, canSave, onSave, onClose, size, children }: SettingsDialogProps): React.ReactElement {
   const windowVariants = useDialogWindowVariants();
   const titleId = useId();
+  const windowRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(windowRef);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -49,6 +52,7 @@ export function SettingsDialog({ title, subtitle, closeLabel, canSave, onSave, o
 
       <motion.div
         className={cn('atlas-vtt-plugin atlas-collection-settings-modal', size === 'fullscreen' && 'atlas-collection-settings-modal--fullscreen')}
+        ref={windowRef}
         variants={windowVariants}
         role="dialog"
         aria-modal="true"

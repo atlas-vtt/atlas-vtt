@@ -2,7 +2,7 @@ import type { Message } from '../../types';
 
 export const toolbar = {
   'toolbar.ambientSound': 'Ambient Sound',
-  'toolbar.assetManager': 'Asset Manager',
+  'toolbar.assetManager': 'Asset manager',
   'toolbar.bold': 'Bold',
   'toolbar.brushSize': 'Brush Size',
   'toolbar.circle': 'Circle/Sphere',

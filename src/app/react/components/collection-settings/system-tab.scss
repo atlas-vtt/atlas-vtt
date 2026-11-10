@@ -90,7 +90,7 @@
 }
 
 .atlas-csm-preset__text {
-  @include atlas-flex-col(2px);
+  @include atlas-flex-col($spacing-xs);
   flex: 1;
   min-width: 0;
 }

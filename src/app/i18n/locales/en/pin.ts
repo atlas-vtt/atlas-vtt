@@ -87,7 +87,7 @@ export const pin = {
   'pin.crossCollection': 'This pin links to a scene of another collection. Link it to a scene of this collection instead.',
   'pin.openMapFailed': 'Could not open the linked map',
   'pin.iconGroup': 'Pin icon',
-  'pin.search.placeholder': 'Search notes, maps and encounters...',
+  'pin.search.placeholder': 'Search notes, maps and encounters…',
   'pin.search.label': 'Search notes, maps and encounters',
   'pin.search.navigate': 'navigate',
   'pin.search.select': 'select',

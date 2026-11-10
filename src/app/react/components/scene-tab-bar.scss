@@ -36,7 +36,7 @@ $tab-fade: 24px;
   gap: $tab-bar-inset;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  scrollbar-width: none;
+  @include atlas-scrollbar-none;
   // Keeps a tab scrolled into view clear of the fades.
   scroll-padding-inline: $tab-fade;
   mask-image: linear-gradient(
@@ -46,10 +46,6 @@ $tab-fade: 24px;
     #000 calc(100% - var(--atlas-tab-fade-end)),
     transparent
   );
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 
   &--hidden-before {
     --atlas-tab-fade-start: #{$tab-fade};

@@ -19,7 +19,7 @@ const token = (id: string, statblockPath?: string): TokenAsset => ({
 function renderCard(asset: TokenAsset, statblockMissing: boolean): ReturnType<typeof vi.fn> {
   const onOpenStatblock = vi.fn();
   const handlers: AssetCardHandlers = {
-    onSelect: vi.fn(), onContextMenu: vi.fn(), onOpen: vi.fn(), onDragStart: vi.fn(), onDragEnd: vi.fn(),
+    onSelect: vi.fn(), onContextMenu: vi.fn(), onOpen: vi.fn(), onDelete: vi.fn(), onDragStart: vi.fn(), onDragEnd: vi.fn(),
     onSpawnCountChange: vi.fn(), onOpenStatblock, onArtNeeded: vi.fn(),
   };
   render(
@@ -40,10 +40,9 @@ describe('a token card whose statblock note is gone (#612)', () => {
     expect(onOpenStatblock).toHaveBeenCalledWith(asset);
   });
 
-  it('shows a link whose note is there as before', () => {
+  it('shows no badge for a link whose note is there: only what needs the GM is marked', () => {
     renderCard(token('goblin', KEPT), false);
-    expect(document.querySelector('.atlas-asset-statblock-indicator--missing')).toBeNull();
-    expect(document.querySelector('.atlas-asset-statblock-indicator')).not.toBeNull();
+    expect(document.querySelector('.atlas-asset-statblock-indicator')).toBeNull();
   });
 });
 

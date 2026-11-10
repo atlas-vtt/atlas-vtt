@@ -18,7 +18,7 @@ const CHOICES: RoleChoice[] = [
 ];
 
 /**
- * The Link Statblock dialog's chrome with "New statblock…" in its footer, mounted where each entry point puts it:
+ * The Link statblock dialog's chrome with "New statblock…" in its footer, mounted where each entry point puts it:
  * from a token on the map `StatblockDialogService` renders it into its own root in the portal host; the asset
  * manager renders it inside its own container there.
  */
@@ -27,14 +27,14 @@ function mountDialog(wrapperClass: string): HTMLElement {
   render(
     h('div', { className: 'atlas-modal-overlay' },
       h('div', { className: 'atlas-statblock-link', role: 'dialog', 'aria-modal': true },
-        h('div', { className: 'atlas-modal-footer' },
+        h('div', { className: 'atlas-statblock-link__footer' },
           h(NewStatblockButton, { choices: CHOICES, onChoose: () => undefined })))),
     { container: wrapper },
   );
   return wrapper;
 }
 
-describe('the role menu of "New statblock…" in the Link Statblock dialog', () => {
+describe('the role menu of "New statblock…" in the Link statblock dialog', () => {
   const style = document.createElement('style');
   style.textContent = `${mainCss}\n${menuCss}\n${roleCss}`;
 

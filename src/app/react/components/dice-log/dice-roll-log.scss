@@ -75,7 +75,7 @@ $log-width: 360px;
 }
 
 // ── Scrollable List ──────────────────────────────────────────────────────────
-.dice-roll-log__list {
+.atlas-dice-roll-log__list {
   display: flex;
   flex-direction: column;
   gap: $spacing-s;
@@ -84,12 +84,7 @@ $log-width: 360px;
   flex: 1;
   min-height: 0;
 
-  // Hidden scrollbar (still scrollable)
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  @include atlas-scrollbar-none;
 }
 
 // ── Empty State ──────────────────────────────────────────────────────────────

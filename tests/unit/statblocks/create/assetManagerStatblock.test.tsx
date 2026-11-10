@@ -64,7 +64,7 @@ describe('the token card\'s menu', () => {
     expect(cardMenu({ ...WARDEN, statblockPath: NATIVE }).labels).not.toContain('Create statblock');
 
     const { entries, onClose, labels } = cardMenu(WARDEN);
-    expect(labels.indexOf('Create statblock')).toBe(labels.indexOf('Link Statblock') + 1);
+    expect(labels.indexOf('Create statblock')).toBe(labels.indexOf('Link statblock…') + 1);
     const create = entries.find((entry) => entry.type === 'submenu' && entry.label === 'Create statblock');
     if (create?.type !== 'submenu' || typeof create.children === 'function') throw new Error('expected the role menu');
     const first = create.children[0];

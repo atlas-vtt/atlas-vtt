@@ -60,10 +60,11 @@ describe('the player\'s sheet in the GM\'s layout', () => {
   });
 
   it('lays the card out at the GM\'s panel width: a one-column card up to its feed width, a wider template the whole panel', () => {
-    expect(paneCardWidth(400, 1)).toBe(400 - 44);
+    // The panel's border and its padding on both sides; the overlay scrollbar takes no room.
+    expect(paneCardWidth(400, 1)).toBe(400 - 33);
     expect(paneCardWidth(1000, 1)).toBe(540);
-    expect(paneCardWidth(1000, 2)).toBe(956);
-    expect(draw(400).card?.width).toBe(356);
+    expect(paneCardWidth(1000, 2)).toBe(967);
+    expect(draw(400).card?.width).toBe(367);
     expect(draw(2000).card?.width).toBe(540);
   });
 });

@@ -44,7 +44,6 @@ $paste-padding: $spacing-l;
   @include atlas-flex-col($paste-padding);
   min-height: 0;
   padding: $paste-padding;
-  border-right: $border-width-s solid var(--divider-color);
 }
 
 .atlas-paste-table__row {
@@ -83,12 +82,11 @@ $paste-padding: $spacing-l;
   font-size: $font-ui-small;
   line-height: 1.5;
   resize: none;
-  @include atlas-scrollbar;
   @include atlas-input-focus;
 }
 
 .atlas-paste-table__preview {
-  @include atlas-scrollbar;
+  @include atlas-scroll-shadow;
   min-height: 0;
   padding: $paste-padding;
   overflow-y: auto;

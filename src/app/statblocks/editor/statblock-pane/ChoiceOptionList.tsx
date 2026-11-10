@@ -62,7 +62,7 @@ export function useOptionList(label: string, options: readonly ChoiceOption[], o
   const [active, setActive] = useState(-1);
   const shown = open && options.length > 0;
   const placement = useListPlacement(shown, anchor, listRef, body, options.length);
-  const { width: _width, ...placed } = placement.style;
+  const { minWidth: _minWidth, ...placed } = placement.style;
   // Placed below or above its field and as long as the room there; the shift keeps a list wider than its field in the window.
   const keepInView = useKeepInView(listRef, shown, placement.fit.up ? 'top' : 'bottom', `${placed.left}/${placed.top}/${placed.bottom}`);
   const current = active < 0 ? -1 : Math.min(active, options.length - 1);

@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import { ToggleLabel } from '../packages/components/primitives/Toggle';
 
 interface Props {
   label: string;
@@ -9,19 +10,13 @@ interface Props {
   onChange: (checked: boolean) => void;
 }
 
-/** Obsidian's native switch markup so the modal matches the toggles in Atlas settings. */
+/** A preference of the changelog: Atlas' switch with its text, and a hint only screen readers hear. */
 export function PreferenceToggle({ label, checked, disabled = false, hint, onChange }: Props): React.JSX.Element {
   const hintId = useId();
-  const switchClass = ['checkbox-container', checked && 'is-enabled', disabled && 'is-disabled'].filter(Boolean).join(' ');
-  // The hint lives outside the label so it describes the switch without joining its accessible name.
+  // The hint lives outside the switch's name, so it describes the switch without joining it.
   return <>
-    <label className="atlas-changelog-preference">
-      <span className={switchClass}>
-        <input type="checkbox" checked={checked} disabled={disabled} aria-describedby={hint ? hintId : undefined}
-          onChange={event => onChange(event.target.checked)} />
-      </span>
-      <span>{label}</span>
-    </label>
+    <ToggleLabel label={label} value={checked} disabled={disabled} onChange={() => onChange(!checked)}
+      {...(hint && { 'aria-describedby': hintId })} />
     {hint && <span id={hintId} className="atlas-changelog-visually-hidden">{hint}</span>}
   </>;
 }

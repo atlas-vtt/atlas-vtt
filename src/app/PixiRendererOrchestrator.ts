@@ -86,6 +86,7 @@ import { playerPointSight } from './pixi/lighting/playerLightingLayers';
 import type { Point } from './types/visionTypes';
 import { mapTokens } from './tokens/offMap';
 import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
+import { PlacementHand } from './pixi/tokenPlacement/placementHand';
 
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
@@ -94,6 +95,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private pinRenderer?: PinRenderer; // Add PinRenderer instance
   private hexLinkRenderer?: HexLinkRenderer;
   private tokenPlacer?: TokenPlacer;
+  /** How many spawned tokens are in the GM's hand on this view (`PlacementHint`). */
+  readonly placementHand = new PlacementHand();
   private hexLinkInteraction?: HexLinkInteraction;
   /** The stairs between levels: shown to the GM, edited with the stairs tool. */
   private levelLinks?: LevelLinkEditor;
@@ -1058,6 +1061,7 @@ export class PixiRendererOrchestrator { // Renamed class
       store: this.store,
       grid: () => this.gridSystem ?? null,
       previewToken: (token) => tokens.previewToken(token),
+      hand: this.placementHand,
     });
     return this.tokenPlacer;
   }

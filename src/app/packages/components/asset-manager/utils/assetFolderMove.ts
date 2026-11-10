@@ -5,6 +5,8 @@ import { saveOpenScene } from '../../../../services/sceneRename';
 import { primaryPathUpdate } from '../../../../services/vault-sync/assetFiles';
 import { assetFolderId, isTabAsset, placingFilePath, type TabServiceAsset } from './assetFormatters';
 import { vaultPathOfFolder } from './assetFolders';
+import { describeError } from '../../../../utils/errors';
+import { formatList, t } from '../../../../i18n';
 
 /** What moving assets into a folder did. */
 export interface FolderMoveResult {
@@ -12,8 +14,14 @@ export interface FolderMoveResult {
   moved: string[];
   /** Names of the assets left in place because the folder already holds a file of the same name. */
   nameClashes: string[];
-  /** Names of the assets whose file could not be moved. */
-  failed: string[];
+  /** The assets whose file could not be moved, and why. */
+  failed: FailedMove[];
+}
+
+/** An asset whose file could not be moved, by name, and the reason the vault gave. */
+export interface FailedMove {
+  name: string;
+  reason: string;
 }
 
 /** Points an asset at the new place of the file that places it in a folder. */
@@ -58,17 +66,17 @@ export async function moveAssetsIntoFolder(
         result.moved.push(id);
       } catch (error) {
         console.error(`[assetFolderMove] Failed to move ${file.path} to ${newPath}:`, error);
-        result.failed.push(asset.name);
+        result.failed.push({ name: asset.name, reason: describeError(error) });
       }
     }
   });
   return result;
 }
 
-/** What to tell the user about assets a move left in place, or null when every asset moved. */
-export function folderMoveProblem({ nameClashes, failed }: FolderMoveResult): string | null {
+/** What to tell the user about assets a move left in place, with the reason, or null when every asset moved. */
+export function folderMoveProblem({ nameClashes, failed }: Pick<FolderMoveResult, 'nameClashes' | 'failed'>): string | null {
   const problems: string[] = [];
-  if (nameClashes.length > 0) problems.push(`${nameClashes.join(', ')} stayed: the folder already holds a file of the same name.`);
-  if (failed.length > 0) problems.push(`Could not move ${failed.join(', ')}.`);
+  if (nameClashes.length > 0) problems.push(t('am.move.nameClash', { names: formatList(nameClashes) }));
+  for (const { name, reason } of failed) problems.push(t('am.move.failed', { name, reason }));
   return problems.length > 0 ? problems.join(' ') : null;
 }

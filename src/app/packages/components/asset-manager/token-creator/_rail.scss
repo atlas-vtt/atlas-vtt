@@ -1,24 +1,34 @@
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
+@use '../../../../../../styles/sidebar-dialog' as *;
+@use '../variables' as *;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Token Creator – Settings rail
 // ═══════════════════════════════════════════════════════════════════════════
 
 .atlas-token-creator__rail {
-  grid-column: 1;
-  grid-row: 1 / -1;
+  @include atlas-sidebar-dialog-side;
   @include atlas-flex-col($gap: $spacing-l);
   padding: $spacing-l;
-  background: var(--background-secondary);
-  border-right: $border-width-s solid var(--divider-color);
   overflow-y: auto;
-  min-height: 0;
-  @include atlas-scrollbar;
 }
 
 .atlas-token-ring-toggle.btn {
   flex-shrink: 0;
+}
+
+// The image sources: actions, a verb each, read from their icon on (left-aligned like a menu's rows).
+.atlas-token-creator__source.btn {
+  justify-content: flex-start;
+  gap: $spacing-s;
+
+  svg {
+    flex-shrink: 0;
+    width: $icon-s;
+    height: $icon-s;
+    color: var(--text-muted);
+  }
 }
 
 .atlas-token-creator__section {
@@ -39,14 +49,8 @@
   margin-left: $spacing-xs;
   font-size: $font-ui-smaller;
   font-weight: $font-weight-normal;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-}
-
-.atlas-token-creator__divider {
-  height: 1px;
-  background: var(--divider-color);
-  flex-shrink: 0;
 }
 
 // ── Drop zone ───────────────────────────────────────────────────────────────
@@ -109,14 +113,14 @@
 
   .atlas-token-creator__dropzone-hint {
     font-size: $font-ui-smaller;
-    color: var(--text-muted);
+    @include am-hint-text;
   }
 
   .atlas-token-creator__dropzone-formats {
     margin-top: $spacing-xs;
     font-size: $font-ui-smaller;
     letter-spacing: 0.02em;
-    color: var(--text-faint);
+    @include am-hint-text;
   }
 
   input[type='file'] {
@@ -137,12 +141,12 @@
 }
 
 .atlas-token-creator__danger.btn {
-  color: var(--text-error);
+  @include atlas-error-text;
 
   &:hover:not(:disabled) {
     background: color-mix(in oklch, var(--color-red) 12%, transparent);
     border-color: color-mix(in oklch, var(--color-red) 30%, transparent);
-    color: var(--text-error);
+    @include atlas-error-text;
   }
 }
 
@@ -150,7 +154,7 @@
   @include atlas-flex-row($gap: $spacing-s);
   justify-content: space-between;
   font-size: $font-ui-smaller;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -170,11 +174,12 @@
   height: var(--input-height);
   padding: 0 $spacing-xs 0 $spacing-s;
   background: var(--background-modifier-form-field);
-  border: $border-width-s solid var(--background-modifier-border);
+  // Found by its edge alone, as the header's search is (3:1 in both themes).
+  border: $border-width-s solid $am-control-border;
   border-radius: $radius-m;
 
   &:focus-within {
-    border-color: var(--background-modifier-border-focus);
+    border-color: $am-control-border-focus;
   }
 
   > svg {
@@ -243,12 +248,27 @@
 
   &.atlas-selected {
     background: color-mix(in oklch, var(--interactive-accent) 16%, transparent) !important;
-    color: var(--text-accent);
+    @include atlas-accent-text;
   }
 }
 
 .atlas-token-creator__empty-note {
+  margin: 0;
   font-size: $font-ui-smaller;
   line-height: var(--line-height-normal);
-  color: var(--text-faint);
+  @include am-hint-text;
+}
+
+// The rail's selects are found by their edge alone, as the header's search is (3:1 in both themes).
+.atlas-token-creator__rail :is(.atlas-select-trigger, .atlas-setting-dropdown.text-icon-button) {
+  border-color: $am-control-border !important;
+
+
+  &:hover {
+    border-color: var(--text-muted) !important;
+  }
+
+  &.atlas-open {
+    border-color: $am-control-border-focus !important;
+  }
 }

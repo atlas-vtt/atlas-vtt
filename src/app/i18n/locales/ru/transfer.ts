@@ -14,5 +14,13 @@ export const transfer: Translation = {
   'transfer.move.withoutLinks': 'Переместить без ссылок',
   'transfer.moveFailed': 'Не удалось переместить ({what}): {error}',
   'transfer.moved': 'Перемещено в «{target}»: {what}',
+  'transfer.openCollection': 'Открыть коллекцию',
+  'transfer.pick.confirm.copy': 'Копировать',
+  'transfer.pick.confirm.move': 'Переместить',
+  'transfer.pick.info.copy': 'Копирование: {what}',
+  'transfer.pick.info.move': 'Перемещение: {what}',
+  'transfer.pick.target': 'Целевая коллекция',
+  'transfer.pick.title.copy': 'Копировать в коллекцию',
+  'transfer.pick.title.move': 'Переместить в коллекцию',
   'transfer.selection': 'Выбранное',
 };

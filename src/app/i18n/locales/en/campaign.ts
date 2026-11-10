@@ -35,7 +35,7 @@ export const campaign = {
   'campaign.makeWorldMapScene': 'Make it a scene to place pins',
   'campaign.openWorldMapFailed': 'Could not open the world map: {error}',
   'campaign.gameSystem': 'Game system',
-  'campaign.systemTitle': '{name}: Game System',
+  'campaign.systemTitle': '{name}: Game system',
   'campaign.closeSystem': 'Close game system settings',
   'campaign.systemNoneSummary': "Every map plays by its collection's rules",
   'campaign.delete': 'Delete campaign',

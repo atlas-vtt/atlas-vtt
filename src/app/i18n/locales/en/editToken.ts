@@ -3,7 +3,7 @@ import type { Message } from '../../types';
 export const editToken = {
   'editToken.none': 'None',
   'editToken.statblockDefault': 'Statblock default: {value}',
-  'editToken.title': 'Edit Token',
+  'editToken.title': 'Edit token',
   'editToken.name': 'Name',
   'editToken.namePlaceholder': 'Token name',
   'editToken.showNameplate': 'Show nameplate',

@@ -20,4 +20,6 @@ export const token = {
   'token.linkFailed': 'Could not link the statblock',
   'token.ringColor': 'Ring Color',
   'token.reset': 'Reset (Full HP, Clear Status)',
+  'token.placeHint': 'Click to place · Esc to cancel',
+  'token.placeHintMany': 'Click to place all · Shift-click to place one at a time · Esc to cancel',
 } as const satisfies Record<string, Message>;

@@ -17,4 +17,6 @@ export const token: Translation = {
   'token.linkFailed': '无法关联属性块',
   'token.ringColor': '环颜色',
   'token.reset': '重置（满生命值，清除状态）',
+  'token.placeHint': '单击放置 · Esc 取消',
+  'token.placeHintMany': '单击全部放置 · Shift 单击逐个放置 · Esc 取消',
 };

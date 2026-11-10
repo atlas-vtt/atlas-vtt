@@ -1,21 +1,24 @@
 import React, { useRef } from 'react';
 import {
   Plus, ChevronLeft, ChevronRight, FolderPlus, PanelLeft,
-  Map as MapIcon, FolderOpen, Swords, Castle,
+  Map as MapIcon, Swords, Castle,
 } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
 import type { App } from 'obsidian';
 import type { Tab } from '../types';
 import type { SelectionState } from '../hooks/useSelectionHandlers';
-import { HeaderMenu } from './HeaderMenu';
+import { HeaderMenu, type HeaderMenuHandle } from './HeaderMenu';
+import { modShortcut } from '../utils/modShortcut';
 import { HeaderSearch } from './HeaderSearch';
 import type { FilterSearch } from '../hooks/useFilterSearch';
 import { useHeaderCompaction } from '../hooks/useHeaderCompaction';
 import { TabSwitcher } from './TabSwitcher';
+import { CollectionGlyph } from './collectionGlyph';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
 import { tabHasFolders } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
+import type { StarterTokensEntry } from '../hooks/useStarterTokensEntry';
 
 export interface HeaderProps {
   app: App;
@@ -26,6 +29,8 @@ export interface HeaderProps {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   assetCounts: Record<Tab, number> | null;
+  /** The collection could not be loaded: the tabs show no count and wait for none. */
+  countsFailed?: boolean;
   onCreateTokens?: () => void;
   onCreateMap?: () => void;
   /** Opens the dungeon generator in a tab of its own. */
@@ -33,6 +38,10 @@ export interface HeaderProps {
   onCreateEncounter?: () => void;
   onCreateCollection?: () => void;
   onCreateFolder: () => void;
+  /** Opens the Create menu from the manager's Cmd/Ctrl+N (`useAssetManagerShortcuts`). */
+  createMenu?: React.Ref<HeaderMenuHandle>;
+  /** The Tokens tab's "Get starter tokens…" in the Create menu, after Create tokens. */
+  starterTokens?: StarterTokensEntry | null;
   sidebarToggleLabel: string;
   onToggleSidebar: () => void;
   sel: Pick<
@@ -55,12 +64,15 @@ export function Header({
   activeTab,
   onTabChange,
   assetCounts,
+  countsFailed = false,
   onCreateTokens,
   onCreateMap,
   onGenerateDungeon,
   onCreateEncounter,
   onCreateCollection,
   onCreateFolder,
+  createMenu,
+  starterTokens = null,
   sidebarToggleLabel,
   onToggleSidebar,
   sel,
@@ -108,26 +120,32 @@ export function Header({
         </div>
 
         <div className="atlas-am-toolbar-center">
-          <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} assetCounts={assetCounts} />
+          <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} assetCounts={assetCounts} countsFailed={countsFailed} />
         </div>
 
         <div className="atlas-am-toolbar-right">
-          <HeaderSearch app={app} search={search} onSearch={onSearch} query={query} />
+          {/* Its Cmd/Ctrl+F lives in the manager's own key scope (`useAssetManagerShortcuts`), which a dialog over it lifts. */}
+          <HeaderSearch app={app} search={search} onSearch={onSearch} query={query} shortcut={false} shortcutShown />
           <HeaderMenu
             label={t('am.header.create')}
             triggerClassName="atlas-asset-manager-create-btn"
             triggerVariant="default"
             iconTrigger
             triggerContent={<Plus />}
+            shortcut={modShortcut('n')}
+            handle={createMenu}
             items={[
               { key: 'token', label: t('am.header.createToken'), icon: <TokenIcon />, onSelect: onCreateTokens },
+              ...(starterTokens ? [starterTokens.item] : []),
               { key: 'map', label: t('am.header.addMap'), icon: <MapIcon />, onSelect: onCreateMap },
               { key: 'dungeon', label: t('am.header.generateDungeon'), icon: <Castle />, onSelect: onGenerateDungeon },
               { key: 'encounter', label: t('am.header.createEncounter'), icon: <Swords />, onSelect: onCreateEncounter },
               { key: 'folder', label: t('am.header.newFolder'), icon: <FolderPlus />, disabled: !tabHasFolders(activeTab), onSelect: onCreateFolder },
-              { key: 'collection', label: t('am.header.createCollection'), icon: <FolderOpen />, separated: true, onSelect: onCreateCollection },
+              { key: 'collection', label: t('am.header.createCollection'), icon: <CollectionGlyph />, separated: true, onSelect: onCreateCollection },
             ]}
-          />
+          >
+            {starterTokens?.popover}
+          </HeaderMenu>
         </div>
       </div>
     </header>

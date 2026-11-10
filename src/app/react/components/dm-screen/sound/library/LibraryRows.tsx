@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { t } from '../../../../../i18n';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packages/components/primitives/Skeleton';
-import { useScrollbarGutter } from '../../../../../packages/components/primitives/useScrollbarGutter';
 import type { SoundKind, SoundRecord } from '../../../../../sound/soundTypes';
 import { soundsNow, type HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
@@ -80,8 +79,6 @@ function RowsSkeleton(): React.JSX.Element {
 /** What the library lists, or a search's hits: only those in view are mounted, so thousands scroll like ten. */
 export function LibraryRows({ rows, loading, preparing, emptyText, onClearSearch, library, director, actions, soundsByPath, shelves, held, onDropFiles }: LibraryRowsProps): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null);
-  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
-  useScrollbarGutter(scrollElement);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -210,10 +207,7 @@ export function LibraryRows({ rows, loading, preparing, emptyText, onClearSearch
 
   return (
     <div
-      ref={(element) => {
-        scroller.current = element;
-        setScrollElement(element);
-      }}
+      ref={scroller}
       className="atlas-sound-lib__rows"
       role="grid"
       aria-label={t('audio.library.rowsLabel')}

@@ -3,9 +3,10 @@ import { useMemo } from 'react';
 import type { App } from 'obsidian';
 import type { AnyAsset, SelectionEvent, TokenAsset } from '../types';
 import type { OpenAsset } from './useOpenAsset';
+import type { MenuAnchor } from '../utils/menuAnchor';
 import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 import { runInBackground } from '../../../../utils/backgroundTask';
-import { openStatblockNote } from '../../../../statblocks/editor/create/entryPoints';
+import { openTokenStatblock } from '../utils/openTokenStatblock';
 
 export interface DraggedItems {
   type: 'asset' | 'folder';
@@ -15,8 +16,10 @@ export interface DraggedItems {
 /** Everything an asset card can trigger; every function keeps one identity so memoized cards stay put. */
 export interface AssetCardHandlers {
   onSelect: (assetId: string, event?: SelectionEvent, toggle?: boolean) => void;
-  onContextMenu: (asset: AnyAsset, event: React.MouseEvent) => void;
+  onContextMenu: (asset: AnyAsset, anchor: MenuAnchor) => void;
   onOpen: (asset: AnyAsset, spawnCount: number) => void;
+  /** Asks to delete the selection, or the asset alone where it is not part of it (the Delete key). */
+  onDelete: (asset: AnyAsset) => void;
   onDragStart: (assetId: string, event: React.DragEvent) => void;
   onDragEnd: () => void;
   onSpawnCountChange: (assetId: string, count: number) => void;
@@ -33,6 +36,7 @@ interface AssetCardHandlerDeps {
   setDraggedItems: React.Dispatch<React.SetStateAction<DraggedItems | null>>;
   onAssetSelect: AssetCardHandlers['onSelect'];
   onAssetContextMenu: AssetCardHandlers['onContextMenu'];
+  onAssetDelete: AssetCardHandlers['onDelete'];
   onSpawnCountChange: AssetCardHandlers['onSpawnCountChange'];
   onArtNeeded: AssetCardHandlers['onArtNeeded'];
   /** Opens the dialog that links a token to a statblock. */
@@ -44,6 +48,7 @@ interface AssetCardHandlerDeps {
 export function useAssetCardHandlers(deps: AssetCardHandlerDeps): AssetCardHandlers {
   const onSelect = useStableCallback(deps.onAssetSelect);
   const onContextMenu = useStableCallback(deps.onAssetContextMenu);
+  const onDelete = useStableCallback(deps.onAssetDelete);
   const onSpawnCountChange = useStableCallback(deps.onSpawnCountChange);
   const onOpen = useStableCallback((asset: AnyAsset, spawnCount: number): void => {
     runInBackground(deps.openAsset(asset, spawnCount), `Opening asset ${asset.name}`, 'Could not open the asset');
@@ -55,16 +60,12 @@ export function useAssetCardHandlers(deps: AssetCardHandlerDeps): AssetCardHandl
   });
   const onDragEnd = useStableCallback((): void => deps.setDraggedItems(null));
   const onOpenStatblock = useStableCallback((asset: TokenAsset): void => {
-    if (!asset.statblockPath) return;
-    // The pane takes the collection from the tokens that link the note (§7.1).
-    const opened = openStatblockNote(deps.app, asset.statblockPath, { collectionId: null, from: 'asset-manager' });
-    if (opened === 'missing') deps.onLinkStatblock(asset);
-    else if (opened === 'editor') deps.onClose?.();
+    openTokenStatblock(deps.app, asset, { onMissing: deps.onLinkStatblock, onEditorOpened: deps.onClose });
   });
   const onArtNeeded = useStableCallback(deps.onArtNeeded);
 
   return useMemo(
-    () => ({ onSelect, onContextMenu, onOpen, onDragStart, onDragEnd, onSpawnCountChange, onOpenStatblock, onArtNeeded }),
-    [onSelect, onContextMenu, onOpen, onDragStart, onDragEnd, onSpawnCountChange, onOpenStatblock, onArtNeeded],
+    () => ({ onSelect, onContextMenu, onOpen, onDelete, onDragStart, onDragEnd, onSpawnCountChange, onOpenStatblock, onArtNeeded }),
+    [onSelect, onContextMenu, onOpen, onDelete, onDragStart, onDragEnd, onSpawnCountChange, onOpenStatblock, onArtNeeded],
   );
 }
