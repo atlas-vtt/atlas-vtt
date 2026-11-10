@@ -48,6 +48,8 @@ export interface BookSharePorts extends Timers {
   readStatblock(path: string): Promise<ResolvedStatblock | null>;
   /** Writes a checked edit of a player's own statblock into its note, through Atlas's note writer. */
   writeStatblock(path: string, patches: readonly NotePatch[]): Promise<StatblockWriteOutcome>;
+  /** The text a link in an ability's name of a statblock note names (a heading of the note, another note), or null where there is none. */
+  readStatblockLink?(path: string, link: string): Promise<string | null>;
   /** The width of the statblock panel beside a note on this device, which the players' cards are laid out at; unset, a default. */
   statblockPanelWidth?(): number | undefined;
   /** Atlas's recovery buttons of the characters players play: what each offers, a request checked, a rest taken. */

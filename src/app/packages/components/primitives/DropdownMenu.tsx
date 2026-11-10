@@ -101,7 +101,9 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     >
       {showTrigger && (
         triggerButton ? (
-          <span onClick={onToggle} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle(); }}>
+          // The trigger is a control of its own (a button): its click reaches this wrapper, which
+          // takes no focus and no keys, so no control nests in another and Enter toggles once.
+          <span onClick={onToggle}>
             {triggerButton}
           </span>
         ) : (

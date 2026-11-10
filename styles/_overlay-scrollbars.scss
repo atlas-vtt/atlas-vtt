@@ -1,0 +1,143 @@
+@use './tokens' as *;
+
+// Overlay scrollbars (`src/app/ui/overlayScrollbars/`). Chromium has no overlay scrollbars of its own any more
+// (`overflow: overlay` is `auto`) and Obsidian styles `::-webkit-scrollbar`, so a native scrollbar takes width from
+// the area and the padding beside it looks lopsided. In Atlas' own scroll areas it takes none: the native one is
+// hidden and a thin thumb is drawn over the content at the inner edge, shown while the area scrolls and when the
+// pointer enters it, gone a second later.
+
+// Atlas' scroll areas: an element with an `atlas-` class, of a tag that can hold a shadow root (`SCROLLBAR_HOST_TAGS`
+// in `scrollAreas.ts`, keep both alike). Obsidian's own scroll areas and text fields keep their scrollbars.
+:is(div, section, article, aside, nav, main, header, footer, span, p, blockquote):is([class^='atlas-'], [class*=' atlas-']) {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// What `atlas-scrollbar-none` sets: an area that scrolls with no scrollbar at all. Not inherited, so a scroll area
+// inside one still gets its own.
+@property --atlas-scrollbar {
+  syntax: 'none | auto';
+  inherits: false;
+  initial-value: auto;
+}
+
+// A thumb's grab band (`BAND_PX` in `OverlayScrollbar.ts`), the thumb drawn inside it at rest and under the pointer.
+$band: 12px;
+$edge: 2px;
+$thin: 5px;
+$wide: 8px;
+
+// The area. Its anchor and scroll timelines are what its overlay, a shadow part, is placed and moved by; it isolates
+// its stacking, so the overlay lies over everything in the area and under whatever lies over the area.
+[data-atlas-scrollbar] {
+  anchor-name: --atlas-scrollbar;
+  anchor-scope: --atlas-scrollbar;
+  scroll-timeline: --atlas-scrollbar-y y, --atlas-scrollbar-x x;
+  isolation: isolate;
+}
+
+// The frame covers the area's padding box. By default it lies outside the area's scrolling box (the area is not
+// the containing block of its positioned content), anchored to the area, and never moves.
+[data-atlas-scrollbar]::part(frame) {
+  position: absolute;
+  position-anchor: --atlas-scrollbar;
+  top: calc(anchor(top) + var(--atlas-scrollbar-border-top));
+  bottom: calc(anchor(bottom) + var(--atlas-scrollbar-border-bottom));
+  left: calc(anchor(left) + var(--atlas-scrollbar-border-left));
+  right: calc(anchor(right) + var(--atlas-scrollbar-border-right));
+  z-index: $z-sticky + 1;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity $transition-slow $transition-ease, visibility 0s linear $transition-slow;
+}
+
+[data-atlas-scrollbar]::part(frame shown) {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity $transition-fast $transition-ease;
+}
+
+// An area that is that containing block (positioned, transformed, contained): the frame lies in its scrolled content
+// and is moved back by what the area scrolled, on the compositor, so it holds still in the area's view.
+[data-atlas-scrollbar]::part(frame contained) {
+  position-anchor: none;
+  inset: 0;
+  animation: atlas-scrollbar-hold-y linear both, atlas-scrollbar-hold-x linear both;
+  animation-timeline: --atlas-scrollbar-y, --atlas-scrollbar-x;
+}
+
+[data-atlas-scrollbar]::part(thumb) {
+  position: absolute;
+  box-sizing: border-box;
+  border: $edge solid transparent;
+  border-radius: $radius-full;
+  background-color: var(--scrollbar-thumb-bg);
+  background-clip: padding-box;
+  pointer-events: auto;
+  touch-action: none;
+  transition: border-width $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
+}
+
+[data-atlas-scrollbar]::part(thumb-y) {
+  top: 0;
+  right: 0;
+  width: $band;
+  height: var(--atlas-scrollbar-thumb-y);
+  border-left-width: $band - $edge - $thin;
+  animation: atlas-scrollbar-travel-y linear both;
+  animation-timeline: --atlas-scrollbar-y;
+}
+
+[data-atlas-scrollbar]::part(thumb-x) {
+  bottom: 0;
+  left: 0;
+  width: var(--atlas-scrollbar-thumb-x);
+  height: $band;
+  border-top-width: $band - $edge - $thin;
+  animation: atlas-scrollbar-travel-x linear both;
+  animation-timeline: --atlas-scrollbar-x;
+}
+
+[data-atlas-scrollbar]::part(thumb-y):hover,
+[data-atlas-scrollbar]::part(thumb-y dragging) {
+  border-left-width: $band - $edge - $wide;
+  background-color: var(--scrollbar-active-thumb-bg);
+}
+
+[data-atlas-scrollbar]::part(thumb-x):hover,
+[data-atlas-scrollbar]::part(thumb-x dragging) {
+  border-top-width: $band - $edge - $wide;
+  background-color: var(--scrollbar-active-thumb-bg);
+}
+
+@keyframes atlas-scrollbar-hold-y {
+  from { translate: 0 0; }
+  to { translate: 0 var(--atlas-scrollbar-range-y); }
+}
+
+@keyframes atlas-scrollbar-hold-x {
+  from { transform: none; }
+  to { transform: translateX(var(--atlas-scrollbar-range-x)); }
+}
+
+@keyframes atlas-scrollbar-travel-y {
+  from { translate: 0 0; }
+  to { translate: 0 var(--atlas-scrollbar-travel-y); }
+}
+
+@keyframes atlas-scrollbar-travel-x {
+  from { translate: 0 0; }
+  to { translate: var(--atlas-scrollbar-travel-x) 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-atlas-scrollbar]::part(frame),
+  [data-atlas-scrollbar]::part(frame shown),
+  [data-atlas-scrollbar]::part(thumb) {
+    transition: none;
+  }
+}

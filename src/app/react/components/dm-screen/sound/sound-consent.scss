@@ -1,0 +1,13 @@
+@use '../../../../../../styles/tokens' as *;
+
+// The question Atlas asks before it converts a linked folder (Obsidian's modal, ATLAS_NATIVE_MODAL_CLASSES).
+.atlas-sound-consent {
+  .modal-content p {
+    margin: 0 0 $spacing-m;
+  }
+
+  .modal-button-container {
+    flex-wrap: wrap;
+    gap: $spacing-m;
+  }
+}

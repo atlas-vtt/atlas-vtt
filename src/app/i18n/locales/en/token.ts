@@ -13,10 +13,13 @@ export const token = {
   'token.saveEncounter': 'Save as Encounter',
   'token.addInitiative': 'Add to Initiative',
   'token.editStatblock': 'Edit Statblock',
+  'token.statblockMissing': "This token's statblock note is gone. Link another one in the asset manager.",
   'token.makePlayerCharacter': 'Make player character',
   'token.noLongerPlayerCharacter': 'No longer a player character',
   'token.playerCharacterFailed': 'Could not change whether this token is a player character.',
   'token.linkFailed': 'Could not link the statblock',
   'token.ringColor': 'Ring Color',
   'token.reset': 'Reset (Full HP, Clear Status)',
+  'token.placeHint': 'Click to place · Esc to cancel',
+  'token.placeHintMany': 'Click to place all · Shift-click to place one at a time · Esc to cancel',
 } as const satisfies Record<string, Message>;

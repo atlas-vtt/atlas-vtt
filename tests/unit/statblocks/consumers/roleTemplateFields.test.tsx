@@ -55,7 +55,7 @@ describe('the Resources tab\'s field chips', () => {
   });
 });
 
-describe('the Creature Filters tab\'s suggestions', () => {
+describe('the Creature filters tab\'s suggestions', () => {
   it('suggests a template\'s ratings, numbers, choices and lists first, by its names', () => {
     const fields = suggestedFilterFields([DRAW_STEEL], [creature({ name: 'Guard', level: 3, role: 'Brute', ev: 12, villainy: 'High' })]);
     expect(fields.slice(0, 4).map(({ field, label, kind }) => [field, label, kind])).toEqual([
@@ -83,7 +83,7 @@ describe('the Creature Filters tab\'s suggestions', () => {
     expect(within(list).getAllByRole('listitem').map((item) => item.querySelector('code')?.textContent)).toEqual(['size', 'ac', 'hp']);
     // Filters by themselves, so they are no suggestions any more.
     expect(screen.queryByRole('list', { name: 'Statblock fields' })).toBeNull();
-    fireEvent.click(within(list).getByRole('checkbox', { name: 'Filter by hit points' }));
+    fireEvent.click(within(list).getByRole('switch', { name: 'Filter by hit points' }));
     expect(hidden).toEqual(['hp']);
   });
 });

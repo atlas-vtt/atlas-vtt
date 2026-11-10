@@ -7,6 +7,6 @@ export const picker: Translation = {
   'picker.results': '结果',
   'picker.search.bases': '搜索 Base',
   'picker.search.notes': '搜索笔记',
-  'picker.searchPlaceholder.bases': '搜索 Base...',
-  'picker.searchPlaceholder.notes': '搜索笔记...',
+  'picker.searchPlaceholder.bases': '搜索 Base…',
+  'picker.searchPlaceholder.notes': '搜索笔记…',
 };

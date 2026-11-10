@@ -191,7 +191,6 @@ button.atlas-sound-who,
 // The system's scrollbar may show only while scrolling, so the side with more to come fades out (`useMoreToScroll`).
 // Only then: a mask makes a layer of the row, which holds the meters.
 .atlas-sound-strips__mix {
-  @include atlas-scrollbar;
   --atlas-strips-fade-start: 0px;
   --atlas-strips-fade-end: 0px;
   flex: 1;

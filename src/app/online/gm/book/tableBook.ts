@@ -91,6 +91,7 @@ export function tableBook(ports: TableBookPorts): TableBook {
     libraryStatblock: (placed) => gatedStatblocks.libraryStatblock(placed),
     readStatblock: (path) => gatedStatblocks.read(path),
     writeStatblock: (path, patches) => gatedStatblocks.write(path, patches),
+    readStatblockLink: async (path, link) => (await gatedStatblocks.readLink?.(path, link)) ?? null,
     statblockPanelWidth: () => gatedStatblocks.panelWidth?.(),
     rests: gatedRests,
     cards: ports.cards,

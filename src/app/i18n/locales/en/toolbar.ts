@@ -2,7 +2,7 @@ import type { Message } from '../../types';
 
 export const toolbar = {
   'toolbar.ambientSound': 'Ambient Sound',
-  'toolbar.assetManager': 'Asset Manager',
+  'toolbar.assetManager': 'Asset manager',
   'toolbar.bold': 'Bold',
   'toolbar.brushSize': 'Brush Size',
   'toolbar.circle': 'Circle/Sphere',
@@ -54,6 +54,8 @@ export const toolbar = {
   'toolbar.laserColour': 'Laser colour',
   'toolbar.laserSize': 'Laser size',
   'toolbar.lightingOptions': 'Lighting options',
+  'toolbar.lightingModes': 'Lighting modes',
+  'toolbar.modeTools': '{mode} tools',
   'toolbar.placeLights': 'Place lights',
   'toolbar.freehand': 'Freehand',
   'toolbar.moreTools': 'More tools',

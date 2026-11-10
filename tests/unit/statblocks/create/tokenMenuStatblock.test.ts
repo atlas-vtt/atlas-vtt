@@ -75,24 +75,24 @@ afterEach(() => {
 });
 
 describe('the map token menu and statblocks', () => {
-  it('shows only Link Statblock while the switch is off, and gives its dialog no New statblock', () => {
+  it('shows only Link statblock while the switch is off, and gives its dialog no New statblock', () => {
     const { app, rightClick } = setup(undefined, false);
     rightClick();
-    expect(labels()).toContain('Link Statblock');
+    expect(labels()).toContain('Link statblock…');
     expect(labels()).not.toContain('Create statblock');
 
-    const link = entryNamed('Link Statblock');
+    const link = entryNamed('Link statblock…');
     if (link?.type === 'item') void link.onClick();
     const dialog = vi.mocked(StatblockDialogService).mock.instances.at(-1) as unknown as { showStatblockDialog: ReturnType<typeof vi.fn> };
     expect(dialog.showStatblockDialog.mock.calls[0]?.[4]).toBeUndefined();
     TemplateLibrary.release(app);
   });
 
-  it('offers Create statblock beside Link Statblock, with the map\'s collection, linking the token on this map', async () => {
+  it('offers Create statblock beside Link statblock, with the map\'s collection, linking the token on this map', async () => {
     const { app, store, rightClick } = setup();
     rightClick();
     const names = labels();
-    expect(names.indexOf('Create statblock')).toBe(names.indexOf('Link Statblock') + 1);
+    expect(names.indexOf('Create statblock')).toBe(names.indexOf('Link statblock…') + 1);
 
     const create = entryNamed('Create statblock');
     if (create?.type !== 'submenu' || typeof create.children === 'function') throw new Error('expected the role menu');
@@ -105,7 +105,7 @@ describe('the map token menu and statblocks', () => {
     creation.onLinked?.(NATIVE);
     expect(store.getState().objects.tokens.w).toEqual(expect.objectContaining({ statblockPath: NATIVE }));
 
-    const link = entryNamed('Link Statblock');
+    const link = entryNamed('Link statblock…');
     if (link?.type === 'item') void link.onClick();
     const dialog = vi.mocked(StatblockDialogService).mock.instances.at(-1) as unknown as { showStatblockDialog: ReturnType<typeof vi.fn> };
     expect(dialog.showStatblockDialog.mock.calls[0]?.[4]).toEqual(expect.objectContaining({ choices: expect.any(Array) }));

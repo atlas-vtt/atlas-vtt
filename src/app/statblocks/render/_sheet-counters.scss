@@ -75,8 +75,9 @@ $cell-min: 5.5em;
   }
 }
 
-// Buttons in the card take none of the theme's button look: the pips are the control.
-.atlas-vtt-plugin .atlas-sb-sheet {
+// Buttons in the card take none of the theme's button look: the pips are the control. A linked statblock (a hover
+// preview, which stands outside Atlas' own elements, and the DM screen) presses them too.
+:is(.atlas-vtt-plugin, .atlas-linked-statblock) .atlas-sb-sheet {
   button.atlas-sb-counter__pip-button,
   button.atlas-sb-counter__step {
     display: inline-flex;

@@ -8,6 +8,8 @@ import { MeterThread } from './meterThread';
 import { OpusOutput, queueRoom } from './opusOutput';
 import { Resampler, SilenceTrim, toStereo } from './pcmStages';
 import { verifyOggOpus } from './soundVerify';
+import { CODEC_VERSION, tagCopy } from './atlasOpus';
+import { PeakCollector } from './soundPeaks';
 import type { GrowingPages, GrowingStart } from './growingCopy';
 import type { WrittenPage } from './oggOpusWriter';
 
@@ -21,6 +23,10 @@ const PADDING_REACH_FRAMES = 3072;
 
 export interface SoundImportJob {
   source: Blob;
+  /** The sound key, SHA-256 of the source, written into the copy. */
+  key: string;
+  /** The source's file name, written into the copy. */
+  from: string;
   kind: SoundImportKind;
   /** Marked as a loop: nothing but sound at either end, and a wrap that goes on as the sound does. */
   loop: boolean;
@@ -92,12 +98,17 @@ class PageStream {
 }
 
 export interface SoundImportResult extends LoudnessResult {
+  /** The copy with Atlas' facts in its comments. */
   bytes: Blob;
   frames: number;
   channels: number;
+  /** The waveform of music, `PEAK_BUCKETS` long; empty for ambience. */
+  peaks: Uint8Array<ArrayBuffer>;
   /** Of a sound marked as a loop: what was done about its wrap. */
   seam?: LoopSeam;
 }
+
+type EncodedCopy = Omit<SoundImportResult, 'peaks'>;
 
 export type ImportProgress = (share: number) => void;
 
@@ -154,7 +165,7 @@ class PcmPath {
     return waits.length === 0 ? null : Promise.all(waits).then(() => undefined);
   }
 
-  async finish(): Promise<SoundImportResult> {
+  async finish(): Promise<EncodedCopy> {
     const output = this.output;
     if (this.resampler) this.pass(this.resampler.flush());
     const loop: LoopFinish | null = this.ends ? this.ends.finish((piece) => this.write(piece)) : null;
@@ -274,8 +285,11 @@ export async function convertSound(job: SoundImportJob, onProgress: ImportProgre
     if (source.type === 'pcm') await readPcm(source, path, progress);
     else await decodeEncoded(source, path, job.loop, progress);
     const result = await path.finish();
-    await verifyOggOpus(result.bytes, result.frames, result.channels, (share) => onProgress(FILE_SHARE + (1 - FILE_SHARE) * share));
-    return result;
+    const collector = job.kind === 'music' ? new PeakCollector(result.frames) : undefined;
+    await verifyOggOpus(result.bytes, result.frames, result.channels, (share) => onProgress(FILE_SHARE + (1 - FILE_SHARE) * share), collector);
+    const peaks = collector?.result() ?? new Uint8Array(0);
+    const tags = { key: job.key, codec: CODEC_VERSION, from: job.from, lufs: result.lufs, truePeakDb: result.truePeakDb, peaks: collector ? peaks : null };
+    return { ...result, bytes: await tagCopy(result.bytes, tags), peaks };
   } finally {
     path.close();
   }

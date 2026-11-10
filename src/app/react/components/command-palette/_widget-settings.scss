@@ -5,7 +5,6 @@
 
 .atlas-command-palette-widget-list {
   @include atlas-flex-col($spacing-s);
-  @include atlas-scrollbar;
   max-height: 320px;
   overflow-y: auto;
 }

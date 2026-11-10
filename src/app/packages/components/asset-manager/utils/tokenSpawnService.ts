@@ -212,8 +212,9 @@ export async function spawnSelectedTokens(
 }
 
 /**
- * Runs `spawn` and calls `onClose` once: as soon as the tokens are in the GM's hand to be placed,
- * or once they were added, so the asset manager gets out of the way of the map.
+ * Runs `spawn` and calls `onClose` once: as soon as the scene the tokens go to is known, so the
+ * asset manager fades out while they are built and put in the GM's hand, or else once they were
+ * added. Nothing closes it when no scene can take them (the GM is told why).
  */
 export async function spawnAndClose(ctx: SpawnContext, onClose: () => void, spawn: (ctx: SpawnContext) => Promise<string[]>): Promise<string[]> {
   let closed = false;
@@ -222,7 +223,7 @@ export async function spawnAndClose(ctx: SpawnContext, onClose: () => void, spaw
     closed = true;
     onClose();
   };
-  const ids = await spawn({ ...ctx, onPlacing: close });
+  const ids = await spawn({ ...ctx, onTarget: close, onPlacing: close });
   if (ids.length > 0) close();
   return ids;
 }

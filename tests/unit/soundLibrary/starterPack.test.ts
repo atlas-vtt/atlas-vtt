@@ -32,6 +32,8 @@ function open(local: Partial<Record<SoundKind, string>>, shared: SharedSoundRoot
     onSharedChange: () => () => undefined,
     local: (kind) => local[kind] ?? null,
     setLocal: (kind, value) => { if (value) local[kind] = value; else delete local[kind]; },
+    localOriginals: () => null,
+    setLocalOriginals: () => undefined,
     vaultBase: () => '/vault',
     realPath: async (value) => value,
   });

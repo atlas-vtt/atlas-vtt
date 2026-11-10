@@ -17,6 +17,33 @@ export function useHeldInMix(director: SoundDirector): ReadonlyMap<string, HeldI
 }
 
 const SOUNDING_POLL_MS = 250;
+/** How long shelf changes gather before the rows hear of them: about a frame. */
+const SHELF_GATHER_MS = 16;
+
+/**
+ * The shelf's revision, taken at most once a frame: a background converting a folder changes it many times a frame
+ * (each copy's state and progress), and the rows rendered for every one of those changes scrolled at 15 frames a second.
+ */
+export function useShelfRevision(director: SoundDirector): number {
+  const [revision, setRevision] = useState(() => director.snapshot().shelfRevision);
+  useEffect(() => {
+    let timer = 0;
+    const take = (): void => {
+      timer = 0;
+      setRevision(director.snapshot().shelfRevision);
+    };
+    take();
+    const stop = director.subscribe(() => {
+      // The main window's timer, never a popout's: a popout that closes drops what it has pending.
+      if (timer === 0) timer = window.setTimeout(take, SHELF_GATHER_MS);
+    });
+    return () => {
+      window.clearTimeout(timer);
+      stop();
+    };
+  }, [director]);
+  return revision;
+}
 
 /** The track the music is on: a list goes on by itself, so this reads the clock too. Paused music (by the GM or by Stop all) stays on its track. */
 export function useSoundingKey(director: SoundDirector): string | null {

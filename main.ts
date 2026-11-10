@@ -53,6 +53,7 @@ import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSe
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { registerOverlayScrollbars } from './src/app/plugin/overlayScrollbars';
 import { registerPageListenerRelease } from './src/app/plugin/pageListenerRelease';
 import { releasePortalHosts } from './src/app/host/portalHost';
 import { supportSettingsSection } from './src/app/settings/supportSettingsSection';
@@ -186,6 +187,7 @@ export default class AtlasVTTPlugin extends Plugin {
     registerVaultSync(this);
     registerObsidianSyncNotice(this);
     registerDiceStageRelease(this);
+    registerOverlayScrollbars(this);
     registerMapProcessingStatus(this);
     registerAccentColorSync(this);
     // Views first, so workspace restore can resolve persisted Atlas tabs

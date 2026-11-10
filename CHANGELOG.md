@@ -2,6 +2,50 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.14.0 — Rooms, pin names and a tidier lighting tool
+
+2026-11-10
+
+### New
+
+- Rooms: place rooms with the lighting tool instead of drawing walls one by one. Contributed by ThatMattLatt
+- Pins can show their name on the map: the note's name or one you give them
+- Pins you show to players appear in the player window with their names
+- New button to pause audio asset conversion in Soundboard
+
+### Improved
+
+- The lighting tool's modes and tools sit in two small bars above the toolbar, and its menu is much shorter
+- Rooms are listed in their own panel at the top left of the map
+- Lighting settings are now a page in the command palette, like the grid and token settings
+- Right-click a wall to add a point where you clicked
+- Various improvements to the Asset Manager UI
+
+### Fixed
+
+- Defeated tokens no longer give their players sight under dynamic lighting
+- Fixed bug where hovering a token linked to a Fantasy Statblocks note showed its plain note without the statblock when FS wasn't done parsing the vault
+- A token whose statblock note is gone shows a red badge, and clicking it lets you link another
+- One-way walls no longer draw a dark line across passages when ray tracing is off
+- "New statblock…" in the Link Statblock dialog opens its menu in front of the dialog
+- Recovery buttons restore HP, Stress and other tracked numbers again when a resource has the same name
+- Tokens on an open map take the new maximum when a resource is pointed at another statblock field
+- Counters such as spell slots can be ticked off in statblock hover previews and the DM screen
+- Saved snapshots that were missing from the snapshot tray show again
+- The player window is live again when you reopen the scene it was showing
+- Statblocks with large tables no longer freeze Obsidian
+- Sound uses far less memory while preparing long files
+- Dice rolled from a statblock within the Asset Manager show in front of the AM instead of behind it 
+
+### Atlas Online
+
+- Abilities named with a link show their plain name and the linked text in the players' Abilities tab
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, Eskil Bolsøy, George Young, Giodude, Hannes Pingel, Ionazh, Joshua Herrin, Kevin Hait, Krangal, LittleBlueShyGuy, Markus Baumann, Michael Breuer, Nick, Pau Benazet Montobbio, Pavel Zinoviev, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
 ## 0.13.1 — Scene tab dragging, TrueScale staging and sound sync
 
 2026-11-06

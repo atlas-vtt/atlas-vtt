@@ -63,23 +63,19 @@ $changelog-scroll-fade: $spacing-xl;
   }
 
   // Only this region scrolls; the header and footer stay fixed. It reaches
-  // into the modal padding so the scrollbar lives in that gutter: the right
-  // padding is the modal padding minus the reserved scrollbar (measured by
-  // ChangelogContent, since CSS cannot read it), which keeps the cards flush
-  // with the header and footer on both sides. The bottom edge fades so a
-  // cut-off card reads as "more below", and the trailing padding lets the
-  // last card scroll clear of the fade.
+  // into the modal padding, so its overlay scrollbar lies over that padding and
+  // the cards stay flush with the header and footer on both sides. The bottom
+  // edge fades so a cut-off card reads as "more below", and the trailing
+  // padding lets the last card scroll clear of the fade.
   .atlas-changelog-history {
-    @include atlas-scrollbar;
     flex: 1 1 0;
     display: flex;
     flex-direction: column;
     gap: $spacing-s;
     min-height: 0;
     margin-inline: -$spacing-l;
-    padding: 0 calc(#{$spacing-l} - var(--atlas-scrollbar-size, 0px)) $changelog-scroll-fade $spacing-l;
+    padding: 0 $spacing-l $changelog-scroll-fade;
     overflow-y: auto;
-    scrollbar-gutter: stable;
     mask-image: linear-gradient(to bottom, black calc(100% - #{$changelog-scroll-fade}), transparent 100%);
   }
 
@@ -315,19 +311,6 @@ $changelog-scroll-fade: $spacing-xl;
     display: flex;
     flex-wrap: wrap;
     gap: $spacing-l;
-  }
-
-  .atlas-changelog-preference {
-    @include atlas-flex-row($gap: $spacing-s);
-    min-height: var(--input-height);
-    color: var(--text-normal);
-    font-size: $font-ui-small;
-    cursor: pointer;
-
-    &:has(input:disabled) {
-      color: var(--text-faint);
-      cursor: default;
-    }
   }
 
   .atlas-changelog-visually-hidden { @include atlas-visually-hidden; }

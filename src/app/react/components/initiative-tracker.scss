@@ -143,16 +143,12 @@ $collapse-height: 24px;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
+  @include atlas-scrollbar-none;
   // The list glides to the turn it follows
   scroll-behavior: smooth;
 
   @media (prefers-reduced-motion: reduce) {
     scroll-behavior: auto;
-  }
-
-  &::-webkit-scrollbar {
-    display: none;
   }
 }
 

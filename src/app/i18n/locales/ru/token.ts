@@ -13,10 +13,13 @@ export const token: Translation = {
   'token.saveEncounter': 'Сохранить как стычку',
   'token.addInitiative': 'Добавить в инициативу',
   'token.editStatblock': 'Изменить статблок',
+  'token.statblockMissing': 'Заметка статблока этого токена удалена. Привяжите другую в менеджере ресурсов.',
   'token.makePlayerCharacter': 'Сделать персонажем игрока',
   'token.noLongerPlayerCharacter': 'Больше не персонаж игрока',
   'token.playerCharacterFailed': 'Не удалось изменить, является ли этот токен персонажем игрока.',
   'token.linkFailed': 'Не удалось привязать статблок',
   'token.ringColor': 'Цвет кольца',
   'token.reset': 'Сбросить (полное HP, без состояний)',
+  'token.placeHint': 'Щёлкните, чтобы поставить · Esc — отмена',
+  'token.placeHintMany': 'Щёлкните, чтобы поставить всех · Shift-щелчок — по одному · Esc — отмена',
 };

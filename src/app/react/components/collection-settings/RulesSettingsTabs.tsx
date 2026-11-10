@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Dice5, Dices, Eye, Gauge, Grid3X3, LayoutGrid, ListFilter, ScrollText, ShieldAlert, Swords } from 'lucide-react';
 import { CoinIcon } from '../CoinIcon';
 import { Button } from '../../../packages/components/primitives/button';
@@ -19,6 +19,7 @@ import { GridMeasurementTab } from './GridMeasurementTab';
 import { InitiativeFields } from './InitiativeFields';
 import { ResourcesTab } from './ResourcesTab';
 import { SettingsContent } from './SettingsContent';
+import { SettingsTabSelect } from './SettingsTabSelect';
 import { SystemTab, type NoSystemChoice } from './SystemTab';
 import type { RulesDraft } from './useRulesDraft';
 import { VisionTab } from './VisionTab';
@@ -30,6 +31,24 @@ export type SettingsTab =
 /** The tabs of the game system's rules, which a played campaign's system replaces on every map. */
 export const RULES_TABS: readonly SettingsTab[] = ['system', 'dice', 'grid', 'vision', 'conditions', 'resources', 'initiative'];
 
+interface TabGroup {
+  id: 'rules' | 'content';
+  label: string;
+  tabs: readonly SettingsTab[];
+}
+
+/**
+ * The offered tabs in two groups, as an OS's settings group a long list: the game system's rules, then what the
+ * collection keeps beside them. A group without tabs is left out.
+ */
+function tabGroups(tabs: readonly SettingsTab[]): TabGroup[] {
+  const groups: TabGroup[] = [
+    { id: 'rules', label: t('csm.group.rules'), tabs: tabs.filter((tab) => RULES_TABS.includes(tab)) },
+    { id: 'content', label: t('csm.group.content'), tabs: tabs.filter((tab) => !RULES_TABS.includes(tab)) },
+  ];
+  return groups.filter((group) => group.tabs.length > 0);
+}
+
 const TAB_LABELS: Record<SettingsTab, { label: string; icon: React.ReactNode }> = {
   system: { label: t('csm.tab.system'), icon: <Dices size={16} /> },
   dice: { label: t('diceSettings.dice'), icon: <Dice5 size={16} /> },
@@ -37,9 +56,9 @@ const TAB_LABELS: Record<SettingsTab, { label: string; icon: React.ReactNode }> 
   vision: { label: t('csm.tab.vision'), icon: <Eye size={16} /> },
   widgets: { label: t('csm.tab.widgets'), icon: <LayoutGrid size={16} /> },
   conditions: { label: t('csm.tab.conditions'), icon: <ShieldAlert size={16} /> },
-  resources: { label: 'Resources', icon: <Gauge size={16} /> },
+  resources: { label: t('csm.tab.resources'), icon: <Gauge size={16} /> },
   initiative: { label: t('csm.tab.initiative'), icon: <Swords size={16} /> },
-  statblocks: { label: 'Statblocks', icon: <ScrollText size={16} /> },
+  statblocks: { label: t('csm.tab.statblocks'), icon: <ScrollText size={16} /> },
   creatureFilters: { label: t('csm.tab.creatureFilters'), icon: <ListFilter size={16} /> },
   loot: { label: t('csm.tab.loot'), icon: <CoinIcon size={16} /> },
 };
@@ -125,21 +144,36 @@ export function RulesSettingsTabs({
     }
   };
 
+  const navId = useId();
+  const groups = tabGroups(tabs);
+  const tabOptions = groups.flatMap((group) => group.tabs.map((tab) => ({
+    value: tab,
+    label: TAB_LABELS[tab].label,
+    ...(groups.length > 1 && { detail: group.label }),
+  })));
+
   return (
     <div className="atlas-collection-settings-body">
       <nav className="atlas-collection-settings-sidebar">
-        {tabs.map((tab) => (
-          <Button
-            key={tab}
-            variant="ghost"
-            className={`atlas-collection-settings-tab ${activeTab === tab ? 'atlas-active' : ''}`}
-            onClick={() => onTabChange(tab)}
-          >
-            {TAB_LABELS[tab].icon}
-            {TAB_LABELS[tab].label}
-          </Button>
+        {groups.map((group) => (
+          <div key={group.id} className="atlas-collection-settings-group" role="group" aria-labelledby={`${navId}-${group.id}`}>
+            {/* One group needs no heading: the dialog's title names it. */}
+            <div id={`${navId}-${group.id}`} className="atlas-collection-settings-group-title" hidden={groups.length < 2}>{group.label}</div>
+            {group.tabs.map((tab) => (
+              <Button
+                key={tab}
+                variant="ghost"
+                className={`atlas-collection-settings-tab ${activeTab === tab ? 'atlas-active' : ''}`}
+                onClick={() => onTabChange(tab)}
+              >
+                {TAB_LABELS[tab].icon}
+                <span className="atlas-collection-settings-tab-label">{TAB_LABELS[tab].label}</span>
+              </Button>
+            ))}
+          </div>
         ))}
       </nav>
+      <SettingsTabSelect value={activeTab} options={tabOptions} onChange={onTabChange} />
       <SettingsContent>
         {RULES_TABS.includes(activeTab) && rulesNotice}
         {content()}

@@ -33,7 +33,7 @@ export function buildFolderContextMenuEntries(
   // Rename
   entries.push({
     type: 'item',
-    label: t('common.rename'),
+    label: t('am.menu.rename'),
     icon: 'edit',
     onClick: () => {
       deps.setInputModalState({
@@ -70,7 +70,7 @@ export function buildFolderContextMenuEntries(
   // New Subfolder
   entries.push({
     type: 'item',
-    label: t('am.folder.newSubfolder'),
+    label: t('am.menu.newSubfolder'),
     icon: 'folder-plus',
     onClick: () => {
       deps.setInputModalState({

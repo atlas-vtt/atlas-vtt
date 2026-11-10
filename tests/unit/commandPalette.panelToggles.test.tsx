@@ -66,7 +66,7 @@ describe('Space command menu panel toggles', () => {
     const store = createPanelStore();
     const onClose = vi.fn();
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
-    const input = screen.getByPlaceholderText('Search commands...');
+    const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.change(input, { target: { value: 'dice log' } });
     const command = screen.getByRole('button', { name: /Open dice log/ });
 
@@ -88,7 +88,7 @@ describe('Space command menu panel toggles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Scene snapshots/ }));
     expect(screen.getByRole('heading', { name: 'Scene Snapshots' })).toBeTruthy();
-    expect(screen.queryByPlaceholderText('Search commands...')).toBeNull();
+    expect(screen.queryByPlaceholderText('Search commands…')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore snapshot' }));
     expect(onClose).toHaveBeenCalledTimes(1);

@@ -37,7 +37,7 @@ function open(overrides: Partial<Character> = {}): { store: ViewAtlasStore; save
 
 const save = (): void => act(() => screen.getByRole('button', { name: 'Save' }).click());
 
-describe('Edit Token writes senses, light and resources together', () => {
+describe('Edit token writes senses, light and resources together', () => {
   it('editing only a resource keeps a statblock-following vision without a senses list, and the light', () => {
     const { saved, input } = open({ vision: { enabled: true, range: 30, angle: 90 }, light: torch, resources: { hp: { current: 5, max: 8 } } });
     fireEvent.change(input('Max Ammo'), { target: { value: '6' } });
@@ -148,7 +148,7 @@ describe('Edit Token writes senses, light and resources together', () => {
   });
 });
 
-describe('Edit Token for a token that follows its statblock', () => {
+describe('Edit token for a token that follows its statblock', () => {
   const GOBLIN = 'Bestiary/Goblin.md';
   let current: CreatureVault;
 

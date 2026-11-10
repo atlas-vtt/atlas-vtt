@@ -123,7 +123,6 @@
     transform-origin: bottom left;
     @include atlas-elevated-surface;
     @include atlas-panel-radius($radius-2xl);
-    @include atlas-scrollbar;
 
     &[hidden] {
       display: none;

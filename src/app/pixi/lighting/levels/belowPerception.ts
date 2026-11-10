@@ -3,6 +3,7 @@ import { levelObjectsOn } from '../../../levels/levelObjects';
 import type { LevelStack } from '../../../levels/levelStack';
 import type { TokenEntity } from '../../../types';
 import type { Point } from '../../../types/visionTypes';
+import { perceptionOptions } from '../../../vision/perception';
 import type { SightRules } from '../../../vision/sightRules';
 import { belowTokenPerception, type FogCover } from '../../../vision/throughSight';
 import { PerceptionMemo, type TokenPerception } from '../../../vision/tokenPerception';
@@ -30,7 +31,7 @@ export class BelowPerception {
       this.memos.set(level.id, memo);
       perceived.push({
         tokens,
-        perceive: belowTokenPerception(below, tokens, { viewed: viewed.fog, below: level.fogCoverage() }, { conditions: rules?.conditions ?? [], held: heldForSight(state) }, memo,
+        perceive: belowTokenPerception(below, tokens, { viewed: viewed.fog, below: level.fogCoverage() }, perceptionOptions(rules, heldForSight(state)), memo,
           (at) => (viewed.roof?.(at) ?? false) || level.roofCovers(at)),
       });
     }

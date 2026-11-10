@@ -124,7 +124,6 @@
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    @include atlas-scrollbar;
   }
 
   // A player and their tokens, or those not assigned yet: rows close together, groups $spacing-s apart.

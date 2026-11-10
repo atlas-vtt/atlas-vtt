@@ -75,7 +75,7 @@ export function NewStatblockButton({ choices, onChoose, onMenuOpenChange, classN
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal container={portalHost(trigger?.ownerDocument)}>
         <DropdownMenu.Content
-          className="atlas-ctx-menu"
+          className="atlas-ctx-menu atlas-sb-role-menu"
           side="top"
           align="start"
           sideOffset={4}

@@ -113,7 +113,6 @@
   display: flex;
   flex-direction: column;
   @include atlas-panel-inset-radius($spacing-s);
-  @include atlas-scrollbar;
 }
 
 // Set once a note view or rendered markdown is mounted inside.

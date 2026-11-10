@@ -448,6 +448,21 @@ export class SettingsService {
     this.commit();
   }
 
+  /** Whether the GM hid the sidebar's starter tokens offer in the collection with this uid. */
+  isStarterOfferHidden(collectionUid: string): boolean {
+    return this.settings.hiddenStarterOffers?.includes(collectionUid) === true;
+  }
+
+  /** Hides or shows the sidebar's starter tokens offer in one collection; the list is left out of the file once empty. */
+  setStarterOfferHidden(collectionUid: string, hidden: boolean): void {
+    if (this.isStarterOfferHidden(collectionUid) === hidden) return;
+    const others = (this.settings.hiddenStarterOffers ?? []).filter((uid) => uid !== collectionUid);
+    const next = hidden ? [...others, collectionUid] : others;
+    // Kept as a key while empty, so a reload while the save waits still sees this change (`reload`).
+    this.settings.hiddenStarterOffers = next.length > 0 ? next : undefined;
+    this.commit();
+  }
+
   /** Whether the GM switched an experimental feature on: off unless the file says `true`. */
   isExperimentalOn(id: ExperimentalFeatureId): boolean {
     return this.settings.experimental[id] === true;

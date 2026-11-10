@@ -26,8 +26,12 @@ export interface SoundLocation {
   /** Null where the folder is not there (the root's disk unplugged, the folder gone). */
   list(folder: string): Promise<SoundListing | null>;
   exists(path: string): Promise<boolean>;
+  /** What a file measures; null where no file lies there. */
+  stat(path: string): Promise<{ size: number; mtime: number } | null>;
   /** `onStep` hears a read that comes in parts getting somewhere. */
   read(path: string, onStep?: () => void): Promise<Blob>;
+  /** The bytes of a file from `start` up to `end` or its end, reading no more of it where the system allows. */
+  readRange(path: string, start: number, end: number): Promise<Uint8Array<ArrayBuffer>>;
   /** A URL a media element can load; null where there is none. */
   resourceUrl(path: string): string | null;
   makeFolder(path: string): Promise<void>;
@@ -35,6 +39,12 @@ export interface SoundLocation {
   move(from: string, to: string): Promise<void>;
   /** Writes a new file. Refused where something lies at `path`. */
   write(path: string, content: Blob): Promise<void>;
+  /** Writes a file over the one at `path`: only for Atlas' own files, a copy left half written where the folder has no trash. */
+  replace(path: string, content: Blob): Promise<void>;
+  /** Whether `trash` can work here: false where this Obsidian has no system trash, or the vault deletes for good. */
+  canTrash(): boolean;
+  /** Whether Atlas may write into the folder now. */
+  canWrite(): Promise<boolean>;
   /** Moves a file or folder to the system's trash. Refused with `TrashUnavailableError` where there is none. */
   trash(path: string): Promise<void>;
   /** Calls back with the path that changed, or null where anything may have. Returns the release. */

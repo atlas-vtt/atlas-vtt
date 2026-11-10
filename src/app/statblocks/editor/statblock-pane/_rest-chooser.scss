@@ -65,7 +65,6 @@ $rest-inset: $spacing-m;
     min-height: 0;
     padding: calc(#{$rest-inset} - #{$close-button-gap}) $rest-inset 0;
     overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   .atlas-sb-rest-panel__footer {

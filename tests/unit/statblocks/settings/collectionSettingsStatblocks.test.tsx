@@ -79,11 +79,11 @@ describe('the collection settings\' Statblocks tab', () => {
     expect(tabNames()).toContain('Vision');
   });
 
-  it('sits between Resources and Creature Filters while the editor is switched on', () => {
+  it('sits between Default widgets and Creature filters while the editor is switched on', () => {
     open();
     const tabs = tabNames();
-    expect(tabs.indexOf('Statblocks')).toBe(tabs.indexOf('Resources') + 1);
-    expect(tabs.indexOf('Creature Filters')).toBe(tabs.indexOf('Statblocks') + 1);
+    expect(tabs.indexOf('Statblocks')).toBe(tabs.indexOf('Default widgets') + 1);
+    expect(tabs.indexOf('Creature filters')).toBe(tabs.indexOf('Statblocks') + 1);
   });
 
   it('saves an edited name as the collection\'s own roles', async () => {

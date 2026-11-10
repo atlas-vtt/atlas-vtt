@@ -19,6 +19,8 @@ export interface StatblockSharePorts {
   panelWidth?(): number | undefined;
   /** How players are handed the whole texts a statblock names. */
   readonly stored?: AssetStoring | undefined;
+  /** The text a link in an ability's name of a note names. */
+  readLink?(path: string, link: string): Promise<string | null>;
   /** The note at `path` was read or its statblock drawn anew, or an edit of it is under way: the books of its characters are looked at again. */
   changed(path: string): void;
   /**

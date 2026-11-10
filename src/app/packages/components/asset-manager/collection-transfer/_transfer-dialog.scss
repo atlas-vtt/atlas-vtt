@@ -1,5 +1,6 @@
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
+@use '../../../../../../styles/sidebar-dialog' as *;
 
 // Frame and key-art hero of the transfer dialogs: a wide surface tinted by the
 // collection's cover, the cover as a full-bleed banner with the name over it.
@@ -34,8 +35,10 @@ $hero-height: 288px;
     transform: translateY(8px) scale(0.985);
   }
 
+  // A dialog with a sidebar at its end (`_sidebar-dialog.scss`): the rail runs the full height beside the main pane
+  // and the actions under it. The hero opens the main pane in place of a title row.
   &[data-with-aside] {
-    grid-template-columns: minmax(0, 1fr) $aside-width;
+    @include atlas-sidebar-dialog(end, $aside-width);
     width: min(1120px, 100%);
   }
 
@@ -67,7 +70,12 @@ $hero-height: 288px;
     flex-direction: column;
     min-height: 0;
     overflow-y: auto;
-    @include atlas-scrollbar-while-scrolling;
+    @include atlas-scroll-shadow;
+  }
+
+  &[data-with-aside] > &__main {
+    grid-row: header / body;
+    grid-column: header;
   }
 
   &__content {
@@ -79,26 +87,33 @@ $hero-height: 288px;
     }
 
     .atlas-input-error {
-      color: var(--text-error);
+      @include atlas-error-text;
       font-size: $font-ui-smaller;
     }
   }
 
   &__aside {
+    @include atlas-sidebar-dialog-side;
     @include atlas-flex-col($gap: $spacing-l);
-    grid-row: 1;
-    grid-column: 2;
-    min-height: 0;
     padding: $spacing-l;
-    border-left: $border-width-s solid var(--background-modifier-border);
+    // Translucent: the cover's tint glows through it as through the main pane.
     background: color-mix(in oklch, var(--background-secondary) 84%, transparent);
   }
 
+  // In the window's bottom-right corner only without the rail (and stacked, `_transfer-narrow.scss`).
   &__footer {
-    @include atlas-modal-footer;
+    @include atlas-modal-footer(null);
     grid-column: 1 / -1;
     background: color-mix(in oklch, var(--background-primary) 88%, transparent);
     backdrop-filter: blur(12px);
+  }
+
+  &:not([data-with-aside]) > &__footer > .btn:last-child {
+    @include atlas-modal-corner-control(bottom-right);
+  }
+
+  &[data-with-aside] > &__footer {
+    grid-area: footer;
   }
 }
 
@@ -147,7 +162,8 @@ $hero-height: 288px;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: opacity 400ms $transition-ease-out, transform 600ms $transition-ease-out;
+      // Routine motion: the art settles with the dialog, no slower than it.
+      transition: opacity $transition-normal $transition-ease-out, transform $transition-normal $transition-ease-out;
 
       @starting-style {
         opacity: 0;
@@ -192,13 +208,14 @@ $hero-height: 288px;
   }
 
   .atlas-transfer-eyebrow {
-    color: var(--text-accent);
+    @include atlas-accent-text;
   }
 
   &__name {
     margin: 0;
     font-size: calc(var(--font-ui-large) * 1.6);
-    font-weight: $font-weight-bold;
+    // Large enough to lead at semibold; a fourth weight would be one too many in this dialog.
+    font-weight: $font-weight-semibold;
     line-height: 1.1;
     letter-spacing: -0.015em;
     overflow-wrap: anywhere;

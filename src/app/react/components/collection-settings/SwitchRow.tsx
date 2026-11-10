@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useId } from 'react';
+import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { InfoMark } from './InfoMark';
 
 interface SwitchRowProps {
@@ -11,16 +12,14 @@ interface SwitchRowProps {
 
 /** A setting of the dice lab that is on or off: its name and info mark, the switch at the row's end. */
 export function SwitchRow({ label, hint, checked, disabled, onChange }: SwitchRowProps): React.ReactElement {
+  const labelId = useId();
   return (
     <div className="atlas-dice-lab__option">
       <span className="atlas-dice-lab__option-label">
-        <span>{label}</span>
+        <span id={labelId}>{label}</span>
         <InfoMark label={hint} />
       </span>
-      <label className="atlas-csm-switch">
-        <input type="checkbox" aria-label={label} checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
-        <span className="atlas-csm-switch-track" />
-      </label>
+      <ToggleSwitch labelledBy={labelId} value={checked} disabled={disabled} onChange={() => onChange(!checked)} />
     </div>
   );
 }

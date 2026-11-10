@@ -192,7 +192,8 @@
 
 .atlas-tables-row__fact {
   flex-shrink: 0;
-  color: var(--text-faint);
+  // Informative (a count, a roll), so muted, never faint (AA in both themes).
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
   font-weight: $font-weight-normal;
   font-variant-numeric: tabular-nums;

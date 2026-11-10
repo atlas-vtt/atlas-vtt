@@ -79,7 +79,6 @@
 
 .campaign-description__input {
   @include atlas-flush-input;
-  @include atlas-scrollbar;
 
   &,
   &:hover,

@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Asset Manager – Sidebar rail
 // ═══════════════════════════════════════════════════════════════════════════
-// Docked: a tinted rail like an Obsidian side dock, flat with one divider.
+// Docked: a tinted rail like an Obsidian side dock, flat; its tint alone sets it apart from the grid (no divider line).
 // Floating (hidden by the user, or a window too narrow to dock it): a card that
 // slides in over the content from the window's left edge.
 
@@ -15,7 +15,6 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
 .atlas-asset-manager-sidebar {
   width: $sidebar-width;
   background-color: var(--background-secondary);
-  border-right: $border-width-s solid var(--divider-color);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -94,9 +93,7 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
 // ── Section title ───────────────────────────────────────────────────────────
 
 .atlas-asset-manager-sidebar .atlas-section-title {
-  font-size: $font-ui-small;
-  font-weight: $font-weight-medium;
-  color: var(--text-muted);
+  @include atlas-section-label;
   line-height: 1;
 }
 
@@ -153,7 +150,8 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
   }
 
   small {
-    color: var(--text-faint);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
     font-weight: $font-weight-normal;
     white-space: nowrap;
   }
@@ -162,6 +160,69 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
     cursor: progress;
     opacity: 1;
     color: var(--text-muted);
+  }
+}
+
+// The × that hides the offer in this collection, over the button's end: shown while the offer is hovered or holds
+// focus, and always for a finger, which has no hover.
+$offer-dismiss-size: 24px;
+
+.atlas-starter-anchor--dismissable {
+  // Room for the × at the end, where it lies over the button: the label (with its size) barely fits the sidebar's
+  // width, so the end alone takes it and the label centres in what is left.
+  .atlas-bestiary-offer--sidebar.btn {
+    padding-inline-end: $spacing-xs * 2 + $offer-dismiss-size;
+  }
+
+  // The × lies over the button: the row stays lit while the pointer is on either.
+  &:hover .atlas-bestiary-offer--sidebar.btn:not(:disabled) {
+    background-color: var(--background-modifier-hover);
+  }
+}
+
+.atlas-bestiary-offer__dismiss {
+  &.btn,
+  &.btn--icon {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: $spacing-xs;
+    width: $offer-dismiss-size;
+    height: $offer-dismiss-size;
+    margin-block: auto;
+    // $spacing-xs inside the offer's $radius-m corner: concentric at $radius-s.
+    border-radius: $radius-s;
+    @include atlas-corner-shape;
+    color: var(--text-faint);
+    opacity: 0;
+    transition: opacity $transition-fast $transition-ease-out, color $transition-fast $transition-ease-out;
+  }
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover {
+    color: var(--text-normal);
+  }
+
+  .atlas-starter-anchor--dismissable:is(:hover, :focus-within) &.btn {
+    opacity: 1;
+  }
+
+  @media (pointer: coarse) {
+    &.btn {
+      opacity: 1;
+    }
+
+    // A finger needs 44 px; the face stays small and a hit area drawn by nothing takes the rest. `inset` counts
+    // from the padding box, so the border comes off as well.
+    &::before {
+      position: absolute;
+      inset: calc(($offer-dismiss-size - $touch-target) / 2 - $border-width-s);
+      content: '';
+    }
   }
 }
 

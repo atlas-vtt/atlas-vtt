@@ -1,8 +1,22 @@
-.atlas-toast-container {
+// The control inside a toast: its height, so its radius can follow the toast's capsule (`atlas-panel-inset-radius-value`).
+$toast-action-height: 24px;
+
+// Toasts stand at the bottom of the asset manager's window while it is open, $spacing-l above its edge, and at the
+// bottom of the view otherwise (`anchor()`'s fallbacks): over the window they once straddled its border, half on the
+// window and half on the backdrop. Placed by CSS alone, so whatever shows a toast need not know the window is open.
+.atlas-asset-manager-window {
+  anchor-name: --atlas-toast-frame;
+}
+
+// The container carries `.atlas-vtt-plugin` itself (`AtlasToast.ts`): it lies in Atlas' host under <body>.
+&.atlas-toast-container {
   position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
+  position-anchor: --atlas-toast-frame;
+  // Within the window (or the view) less a gutter on each side, so a long message wraps at 320 px instead of
+  // leaving the screen.
+  left: calc(anchor(left, 0px) + #{$spacing-l});
+  right: calc(anchor(right, 0px) + #{$spacing-l});
+  bottom: calc(anchor(bottom, #{$spacing-s}) + #{$spacing-l});
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
@@ -11,19 +25,22 @@
   pointer-events: none;
 }
 
+// A floating surface like every panel: the elevated surface's border and shadow and the panels' corner, which a
+// one-line toast, shorter than that corner is wide, shows as a capsule.
 .atlas-toast {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+
+  max-width: 100%;
   padding: $spacing-s $spacing-l;
-  background: var(--background-secondary);
-  border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-l;
   color: var(--text-normal);
-  font-size: 13px;
+  font-size: $font-ui-small;
+  overflow-wrap: anywhere;
   opacity: 0;
   transform: translateY($spacing-s);
   transition: opacity $transition-normal $transition-ease,
               transform $transition-normal $transition-ease;
   pointer-events: auto;
-  white-space: nowrap;
 
   &.atlas-toast-visible {
     opacity: 1;
@@ -33,5 +50,63 @@
   &.atlas-toast-exiting {
     opacity: 0;
     transform: translateY(-$spacing-s);
+  }
+}
+
+// A toast with something to do about it: the message, then its action as a ghost button inside the toast's end,
+// $spacing-xs from the border, its corners concentric with the capsule's.
+.atlas-toast--action {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs;
+  padding-inline-start: $spacing-l;
+}
+
+.atlas-toast__text {
+  min-width: 0;
+  padding-block: $spacing-xs;
+}
+
+.atlas-toast__action {
+  @include atlas-ghost-button;
+  @include atlas-corner-shape;
+  // The accent at AA (4.5:1 light, APCA Lc 60 dark), as Atlas' other accent text: the theme's own accent read 3.9:1.
+  @include atlas-accent-text;
+
+  position: relative;
+  flex-shrink: 0;
+  height: $toast-action-height;
+  min-height: 0;
+  padding: 0 $spacing-s;
+  border: none;
+  border-radius: atlas-panel-inset-radius-value($spacing-xs, $toast-action-height * 0.5);
+  box-shadow: none;
+  font-size: inherit;
+  font-weight: $font-weight-semibold;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    @include atlas-accent-text;
+  }
+
+  // A touch reaches it over the 44 px a finger needs (WCAG 2.5.5); the toast's own size stays.
+  @media (pointer: coarse) {
+    &::before {
+      position: absolute;
+      inset: calc((#{$toast-action-height} - #{$touch-target}) / 2) 0;
+      content: '';
+    }
+  }
+}
+
+// Reduced motion: a toast only fades.
+@media (prefers-reduced-motion: reduce) {
+  .atlas-toast,
+  .atlas-toast.atlas-toast-visible,
+  .atlas-toast.atlas-toast-exiting {
+    transform: none;
+    transition: opacity $transition-normal $transition-ease;
   }
 }

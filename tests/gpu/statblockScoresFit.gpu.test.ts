@@ -1,6 +1,6 @@
 import '../setup/obsidianDom';
 import React from 'react';
-import { cleanup, render } from '@testing-library/react';
+import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
@@ -19,6 +19,9 @@ vi.mock('../../src/app/statblocks/render/shared/useStatblockDiceRolling', () => 
 
 const THEME = `body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; --font-ui-smaller: 12px; --font-ui-small: 13px; }`;
 const SLOTS = ['Accuracy', 'Communication', 'Constitution', 'Dexterity', 'Fighting', 'Intelligence', 'Perception', 'Strength', 'Willpower'];
+/** Tables are fitted into bands together, in a microtask after they are drawn and before the frame is painted. */
+const bandsFitted = (): Promise<void> => act(async () => { await Promise.resolve(); });
+
 const TEMPLATE: StatblockTemplate = {
   format: TEMPLATE_FORMAT,
   version: 1,
@@ -54,8 +57,9 @@ describe('a table with long column names in a narrow card', () => {
     return container.firstElementChild as HTMLElement;
   }
 
-  it('wraps into bands within the card, each name in its cell', () => {
+  it('wraps into bands within the card, each name in its cell', async () => {
     renderAt(240);
+    await bandsFitted();
     const tables = [...document.querySelectorAll<HTMLElement>('table.atlas-sb-sheet-table__grid')];
     expect(tables.length, 'the table wraps').toBeGreaterThan(1);
     const block = document.querySelector('[data-block-id="scores00"]')!.getBoundingClientRect();
@@ -74,15 +78,17 @@ describe('a table with long column names in a narrow card', () => {
     expect(room.scrollWidth, 'nothing to scroll').toBeLessThanOrEqual(room.clientWidth);
   });
 
-  it('keeps a table of short names in one band in the same card', () => {
+  it('keeps a table of short names in one band in the same card', async () => {
     const short: StatblockTemplate = { ...TEMPLATE, fields: [{ key: 'stats', label: 'Abilities', type: 'scores', slots: ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'] }] };
     render(React.createElement('div', { className: 'atlas-vtt-plugin', style: { width: 367 } },
       React.createElement(StatblockSheet, { template: short, name: 'Six slots', fields: { stats: [10, 12, 14, 8, 13, 9] }, variant: 'feed' })));
+    await bandsFitted();
     expect(document.querySelectorAll('table.atlas-sb-sheet-table__grid')).toHaveLength(1);
   });
 
   it('stands in one band where the card has room, and goes back to one when it grows', async () => {
     const card = renderAt(240);
+    await bandsFitted();
     expect(document.querySelectorAll('table.atlas-sb-sheet-table__grid').length).toBeGreaterThan(1);
     card.style.width = '1000px';
     await vi.waitFor(() => expect(document.querySelectorAll('table.atlas-sb-sheet-table__grid')).toHaveLength(1));
@@ -109,12 +115,13 @@ describe('the 5E 2024 ability table in a pane column', () => {
     style.remove();
   });
 
-  it('keeps its three groups on one line', () => {
+  it('keeps its three groups on one line', async () => {
     const scores = findBlock(FIVE_E_2024_MONSTER.template.layout.blocks, 'b5stats0')?.block;
     expect(scores?.type).toBe('scores');
     const template: StatblockTemplate = { ...FIVE_E_2024_MONSTER.template, layout: { maxColumns: 1, blocks: scores ? [scores] : [] } };
     render(React.createElement('div', { className: 'atlas-vtt-plugin', style: { width: 380 + 32 } },
       React.createElement(StatblockSheet, { template, name: '5E (2024 rules)', fields: { stats: [16, 14, 15, 7, 12, 8] }, variant: 'feed' })));
+    await bandsFitted();
     const groups = [...document.querySelectorAll<HTMLElement>('.atlas-sb-score-group')];
     expect(groups).toHaveLength(3);
     const tops = new Set(groups.map((group) => Math.round(group.getBoundingClientRect().top)));

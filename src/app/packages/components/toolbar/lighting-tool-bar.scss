@@ -1,0 +1,67 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The lighting tool's bars above the main toolbar: its modes, and beside them
+// the current mode's tools (`LightingToolBar`)
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The bars have the
+// toolbar's padding and corners with smaller buttons, so they read as its second level, and are
+// listed in main.scss' `$toolbars` for the buttons' look.
+
+@use 'sass:math';
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The toolbar's inset with smaller buttons, and the toolbar's corner scaled with the bar's height:
+// the toolbar's own radius on a shorter bar left almost no straight edge between its corners and
+// read as a capsule, so the bar is the toolbar drawn smaller.
+$bar-inset: $spacing-s;
+$bar-control: $button-height-m;
+$bar-height: $bar-control + 2 * $bar-inset + 2 * $border-width-m;
+$toolbar-height: $button-height-l + 2 * $spacing-s + 2 * $border-width-m;
+$bar-radius: calc(#{$radius-2xl} * #{math.div($bar-height, $toolbar-height)});
+$bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
+
+// The modes start at the toolbar's left edge and the tools follow them: the modes bar keeps its
+// width, so neither bar moves when the mode changes.
+.atlas-lighting-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: $spacing-s;
+}
+
+.atlas-lighting-bar {
+  display: flex;
+  align-items: center;
+  gap: $bar-inset;
+  padding: $bar-inset;
+  pointer-events: auto;
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($bar-radius);
+
+  > :nth-child(1 of :not([aria-hidden])) { --atlas-bar-start-radius: #{$bar-end-radius}; }
+  > :nth-last-child(1 of :not([aria-hidden])) { --atlas-bar-end-radius: #{$bar-end-radius}; }
+
+  .atlas-tool-button > span > .btn--icon {
+    width: $bar-control;
+    height: $bar-control;
+    border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
+      var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+    @include atlas-corner-shape;
+  }
+}
+
+// Groups are told apart by space alone (no divider lines): the break adds a gap to the gap.
+.atlas-lighting-bar__break {
+  flex: none;
+  width: 0;
+}
+
+// A mode is filled like a tool; the tools within it are tinted, so the two bars never read as one.
+.atlas-lighting-bar button.btn.atlas-lighting-bar__choice.is-active {
+  background: var(--background-modifier-active-hover) !important;
+  color: var(--text-accent) !important;
+
+  &:hover {
+    background: var(--background-modifier-active-hover) !important;
+    color: var(--text-accent-hover) !important;
+  }
+}

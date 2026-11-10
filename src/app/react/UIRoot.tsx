@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
 import { LevelSurfacePopoverHost } from '../pixi/levelSurfaces/LevelSurfacePopover';
-import { SceneLightingPanelHost } from '../pixi/lighting/SceneLightingPanel';
+import { RoomsPanelHost } from '../pixi/lighting/RoomsPanel';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
 import { MainToolbar } from '../packages/components/MainToolbar';
@@ -15,6 +15,7 @@ import { useViewStoreHook, useAtlasStore } from './ViewStoreContext';
 import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
+import { LightingToolBar } from '../packages/components/toolbar/LightingToolBar';
 import { DMScreenFromStore } from './components/DMScreen';
 import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
@@ -29,6 +30,7 @@ import { LevelLinkPopoverHost } from './components/levels/LevelLinkPopover';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
 import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
 import { usePresentedScene } from './hooks/usePresentedScene';
+import { PlacementHint } from './components/PlacementHint';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
@@ -193,7 +195,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                 {!isPlayerView && <PanelBoundary name="the player window bar"><PlayerWindowBar view={view} /></PanelBoundary>}
               </div>
             </div>
-            {/* Widgets and the DM's dice rolls share the right end; rolls hang below the widgets */}
+            {/* Widgets and the DM's dice rolls share the right end: the rolls stand over the widgets, in front of everything */}
             <div className="atlas-top-bar-end">
               <PanelBoundary name="the widgets">
                 <ResponsiveWidgetBar isPlayerView={isPlayerView} store={store} viewId={view?.viewId} />
@@ -206,7 +208,13 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           <BottomToolbarRow
             start={!isPlayerView && <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>}
             end={!isPlayerView && <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>}
-            above={!isPlayerView && <PanelBoundary name="the turn banner"><TurnAnnouncer /></PanelBoundary>}
+            above={!isPlayerView && (
+              <>
+                <PanelBoundary name="the turn banner"><TurnAnnouncer /></PanelBoundary>
+                <PanelBoundary name="the placing hint"><PlacementHint /></PanelBoundary>
+              </>
+            )}
+            options={!isPlayerView && <PanelBoundary name="the lighting tools"><LightingToolBar /></PanelBoundary>}
           >
             <PanelBoundary name="the toolbar"><MainToolbar viewId={view?.viewId} /></PanelBoundary>
           </BottomToolbarRow>
@@ -252,7 +260,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the players' glass"><GlassChip view={view} /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
-          {!isPlayerView && <PanelBoundary name="the scene lighting"><SceneLightingPanelHost /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the rooms"><RoomsPanelHost /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}
           

@@ -59,11 +59,10 @@ $picker-thumb-inset: 3px;
   flex-shrink: 0;
 }
 
-.world-map-picker__list {
+.atlas-world-map-picker__list {
   @include atlas-flex-col(2px);
   min-height: 0;
   overflow-y: auto;
-  @include atlas-scrollbar;
 }
 
 .world-map-picker__option {

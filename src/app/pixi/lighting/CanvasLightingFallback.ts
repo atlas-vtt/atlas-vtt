@@ -12,7 +12,7 @@ import { perceivedLevel, showsMap } from '../../gameSystems/senseRules';
 import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
 import { SEES_ALL, SightCache, sceneSight, sightSources, type AmbientLight, type LightReach, type Sight, type SightRegion } from '../../vision/sight';
 import { wallList } from '../../vision/wallList';
-import { seenSpots, type SeenSpot } from '../../vision/perception';
+import { perceptionOptions, seenSpots, type SeenSpot } from '../../vision/perception';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds, Polygon } from '../../vision/visibility';
 import type { HideableLayer } from '../playerSafeFrame';
@@ -25,6 +25,7 @@ import { sourcesInDarkness } from '../../vision/magicalDarkness';
 import { activeLights, engineLight } from '../../vision/lightSources';
 import type { SceneLightingView } from './sceneLightingView';
 import { everyLevelObjects, levelObjects, levelObjectsOn } from '../../levels/levelObjects';
+import { blockingWalls } from '../../lighting/rooms';
 import { levelStack, levelsBelow, stackGrid, type LevelStack } from '../../levels/levelStack';
 import { levelSurfaceList } from '../../levels/levelSurfaces';
 import { hasLevels, viewedLevelId } from '../../levels/sceneLevels';
@@ -131,7 +132,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     const measurement = this.deps.measurement();
     const held = heldForSight(state);
     const hasVision = sceneHasVision(mapTokens(everyLevelObjects(state)));
-    const inputs = [state.lighting, mapTokens(levelObjects(state)), hasVision, levelObjects(state).walls, levelObjects(state).lights, state.grid, held, rules, bounds?.width, bounds?.height, measurement.unitDistance, state.levels, state.viewedLevel, everyLevelObjects(state).levelSurfaces];
+    const inputs = [state.lighting, mapTokens(levelObjects(state)), hasVision, blockingWalls(levelObjects(state)), levelObjects(state).lights, state.grid, held, rules, bounds?.width, bounds?.height, measurement.unitDistance, state.levels, state.viewedLevel, everyLevelObjects(state).levelSurfaces];
     if (inputs.every((input, i) => input === this.inputs[i]) && inputs.length === this.inputs.length) return;
     this.inputs = inputs;
     if (!state.lighting.enabled || !bounds) {
@@ -143,7 +144,7 @@ export class CanvasLightingFallback implements SceneLightingView {
       return;
     }
     const scale = unitScaleOf(measurement, state.grid);
-    const walls = this.sealedWalls(levelObjects(state).walls, worldTexel(bounds));
+    const walls = this.sealedWalls(blockingWalls(levelObjects(state)), worldTexel(bounds));
     const tokens = this.sightTokens.read(state);
     const dark = activeLights(levelObjects(state).lights, tokens, state.lighting.ambient).filter((light) => light.emission.darkness).map((light) => engineLight(light, scale));
     // The same list while there is no darkness, so whoever compares it finds it unchanged.
@@ -154,7 +155,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     // The same regions are the same sight: what was worked out from it (who is seen) stays good.
     if (!sameSight(sight, this.sight)) this.sight = sight;
     this.sightBuilt = true;
-    const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, mapTokens(levelObjects(state)), scale.cellSize, walls, { conditions: rules?.conditions ?? [], held, policy: PLAYER_SIGHT_POLICY });
+    const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, mapTokens(levelObjects(state)), scale.cellSize, walls, perceptionOptions(rules, held));
     this.setDarkness(bounds, spots, this.openings(state, bounds));
     this.deps.onSightChange?.();
   }

@@ -69,7 +69,6 @@
 }
 
 .atlas-dm-notes-content {
-  @include atlas-scrollbar;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -125,7 +124,6 @@
 
 // Rows never animate in: the list re-renders on every keystroke.
 .atlas-linked-note-list {
-  @include atlas-scrollbar;
   @include atlas-flex-col(2px);
   flex: 1;
   min-height: 0;

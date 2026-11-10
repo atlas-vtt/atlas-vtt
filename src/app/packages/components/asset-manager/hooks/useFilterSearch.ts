@@ -62,11 +62,12 @@ interface FilterSearchOptions {
  */
 export function useFilterSearch({ keywords, setSearch, panel, tags, tagIds, setTagIds }: FilterSearchOptions): FilterSearch {
   const facets = panel?.result.facets ?? null;
+  const wordFacets = panel?.wordFacets ?? null;
   const selection = panel?.selection ?? null;
 
   const suggestionsFor = useCallback(
-    (text: string, cursor: number) => filterSuggestions(text, cursor, { keywords: keywords.keywords, lookup: keywords.lookup, facets, tags }),
-    [keywords, facets, tags],
+    (text: string, cursor: number) => filterSuggestions(text, cursor, { keywords: keywords.keywords, lookup: keywords.lookup, facets, wordFacets, tags }),
+    [keywords, facets, wordFacets, tags],
   );
 
   const commit = useCallback((text: string): string => {

@@ -51,6 +51,7 @@ import { elsewhereThanViewedLevel, firstLevelId, placedOnViewedLevel, placedOnVi
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
+import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
@@ -130,7 +131,7 @@ export interface ViewAtlasState extends ViewState {
 
   // Note Pin actions
   /** With `hex`, the note is linked to the hex containing (x, y) rather than pinned to the point. */
-  addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean; sceneLevel?: string }) => string;
+  addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean; sceneLevel?: string; showName?: boolean }) => string;
   /** A field given as undefined is removed. */
   updateNotePin: (id: string, updates: { [K in keyof Omit<NotePin, 'id' | 'kind'>]?: NotePin[K] | undefined }) => void;
   moveNotePin: (id: string, x: number, y: number) => void;
@@ -239,6 +240,21 @@ export interface ViewAtlasState extends ViewState {
   addMapFeatures: MapFeaturesSlice['addMapFeatures'];
   updateMapFeature: MapFeaturesSlice['updateMapFeature'];
   deleteMapFeature: MapFeaturesSlice['deleteMapFeature'];
+
+  // Rooms carved out of the rock, and the rooms mode's choices (from roomsSlice.ts)
+  activeRoomId: RoomsSlice['activeRoomId'];
+  roomSplit: RoomsSlice['roomSplit'];
+  roomTool: RoomsSlice['roomTool'];
+  setRoomTool: RoomsSlice['setRoomTool'];
+  setActiveRoom: RoomsSlice['setActiveRoom'];
+  setRoomSplit: RoomsSlice['setRoomSplit'];
+  carveRoom: RoomsSlice['carveRoom'];
+  fillRooms: RoomsSlice['fillRooms'];
+  splitRoom: RoomsSlice['splitRoom'];
+  updateRoom: RoomsSlice['updateRoom'];
+  deleteRoom: RoomsSlice['deleteRoom'];
+  mergeRoomIntoPrevious: RoomsSlice['mergeRoomIntoPrevious'];
+  joinRooms: RoomsSlice['joinRooms'];
   // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
   addLiquids: LiquidsSlice['addLiquids'];
   deleteLiquid: LiquidsSlice['deleteLiquid'];
@@ -301,7 +317,7 @@ export interface ViewAtlasState extends ViewState {
   closeLevelLinkPopover: UISlice['closeLevelLinkPopover'];
   openLevelSurfacePopover: UISlice['openLevelSurfacePopover'];
   closeLevelSurfacePopover: UISlice['closeLevelSurfacePopover'];
-  setSceneLightingPanelOpen: UISlice['setSceneLightingPanelOpen'];
+  setLightingTool: UISlice['setLightingTool'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
   setToolbarEditing: UISlice['setToolbarEditing'];
@@ -1005,6 +1021,9 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               if (options?.sceneLevel) {
                 newPin.sceneLevel = options.sceneLevel;
               }
+              if (options?.showName) {
+                newPin.showName = true;
+              }
               if (isPinLabelKind(icon)) {
                 newPin.label = nextPinLabel(draft.objects.pins, icon);
               }
@@ -1395,6 +1414,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.camera = { x: 0, y: 0, scale: 1 };
             draft.selectedIds = [];
             draft.dmNotePath = null;
+            draft.activeRoomId = null;
+            draft.roomSplit = null;
             // Maps without saved widgets must not inherit the previous map's
             draft.widgetSettings = createDefaultWidgets();
             draft.widgetValues = {};
@@ -1526,6 +1547,10 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createSceneLevelsActions(set, get),
           ...createLevelSurfacesActions(set),
           ...createMapFeaturesActions(set),
+          activeRoomId: null,
+          roomSplit: null,
+          roomTool: DEFAULT_ROOM_TOOL,
+          ...createRoomsSlice(set),
           ...createLiquidsActions(set),
           ...createPlayerFramesActions(set),
           setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),

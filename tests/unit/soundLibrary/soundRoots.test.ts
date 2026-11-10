@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { SoundRoots, type SoundRootFacts } from '../../../src/app/soundLibrary/SoundRoots';
+import { SoundRoots, type OriginalsChoice, type SoundRootFacts } from '../../../src/app/soundLibrary/SoundRoots';
 import { readSharedSoundRoots, type SharedSoundRoots } from '../../../src/app/soundLibrary/soundRootsStore';
 import type { SoundKind } from '../../../src/app/sound/soundTypes';
 
 function device(shared: { roots: SharedSoundRoots }, vaultBase: string | null = '/home/gm/vault'): SoundRoots {
   const local = new Map<SoundKind, string>();
+  const originals = new Map<SoundKind, OriginalsChoice>();
   const facts: SoundRootFacts = {
     shared: () => shared.roots,
     setShared: (roots) => { shared.roots = roots; },
     onSharedChange: () => () => undefined,
     local: (kind) => local.get(kind) ?? null,
     setLocal: (kind, path) => { if (path) local.set(kind, path); else local.delete(kind); },
+    localOriginals: (kind) => originals.get(kind) ?? null,
+    setLocalOriginals: (kind, choice) => { if (choice) originals.set(kind, choice); else originals.delete(kind); },
     vaultBase: () => vaultBase,
     realPath: async (path) => path.replace('/link-to-vault', '/home/gm/vault'),
   };
@@ -82,4 +85,54 @@ it('reads what a hand or a sync tool wrote as no link', () => {
   expect(readSharedSoundRoots({ music: { type: 'vault', path: '../x' }, ambience: { type: 'odd' } })).toEqual({});
   expect(readSharedSoundRoots('nope')).toEqual({});
   expect(readSharedSoundRoots({ ambience: { type: 'external', path: '/x' } })).toEqual({ ambience: { type: 'external' } });
+});
+
+describe('the choice about originals', () => {
+  it('a vault root keeps its choice for every device', () => {
+    const shared = { roots: {} };
+    const roots = device(shared);
+    roots.linkVault('music', 'Audio');
+    roots.setOriginals('music', 'keep');
+    expect(shared.roots).toEqual({ music: { type: 'vault', path: 'Audio', originals: 'keep' } });
+    expect(device(shared).originalsOf('music')).toBe('keep');
+  });
+
+  it('a disk root keeps its choice on this device only', async () => {
+    const shared = { roots: {} };
+    const roots = device(shared);
+    await roots.linkChosen('music', '/home/gm/Music');
+    roots.setOriginals('music', 'trash');
+    expect(roots.originalsOf('music')).toBe('trash');
+    expect(JSON.stringify(shared.roots)).not.toContain('trash');
+  });
+
+  it('a new link has no choice', () => {
+    const roots = device({ roots: {} });
+    roots.linkVault('music', 'Audio');
+    roots.setOriginals('music', 'trash');
+    roots.linkVault('music', 'Other');
+    expect(roots.originalsOf('music')).toBeNull();
+  });
+
+  it('unlink forgets the choice', async () => {
+    const roots = device({ roots: {} });
+    await roots.linkChosen('music', '/home/gm/Music');
+    roots.setOriginals('music', 'keep');
+    roots.unlink('music');
+    await roots.linkChosen('music', '/home/gm/Music');
+    expect(roots.originalsOf('music')).toBeNull();
+  });
+
+  it('a moved vault root keeps its choice', () => {
+    const roots = device({ roots: {} });
+    roots.linkVault('music', 'Audio/Music');
+    roots.setOriginals('music', 'trash');
+    roots.followVaultMove('Audio', 'Sound');
+    expect(roots.originalsOf('music')).toBe('trash');
+  });
+
+  it('an unreadable choice is no choice', () => {
+    expect(readSharedSoundRoots({ music: { type: 'vault', path: 'A', originals: 'delete' } })).toEqual({ music: { type: 'vault', path: 'A' } });
+    expect(readSharedSoundRoots({ music: { type: 'vault', path: 'A', originals: 'keep' } })).toEqual({ music: { type: 'vault', path: 'A', originals: 'keep' } });
+  });
 });

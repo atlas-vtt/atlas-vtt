@@ -5,8 +5,9 @@ import type { EntryExtraShape, EntryShape, FieldValue } from '../../../statblock
 import { deepEqual, findItemIndex, isFieldMap } from '../../../statblocks/notes/listIdentity';
 import type { NotePatch } from '../../../statblocks/notes/patchTypes';
 import { keyedEntryItems } from '../../../statblocks/values/entryKeys';
-import { entryNameKey, entryTextKey, entryTextKeyOf } from '../../../statblocks/values/entryValues';
+import { entryName, entryNameKey, entryTextKey, entryTextKeyOf } from '../../../statblocks/values/entryValues';
 import type { FieldRead } from '../../../statblocks/values/fieldValues';
+import { abilityLink } from './abilityLinks.ts';
 import { playerAccess } from './playerAccess.ts';
 import {
   amongOptions, clears, editableTemplate, inOptionOrder, isDice, isLine, isPlainList, playerReferences, referencesSafeIn, writtenValue, type CheckedEdit, type EditInputs, type PlayerReferences,
@@ -102,6 +103,16 @@ function listPatches(key: string, read: FieldRead, items: readonly FieldValue[],
 }
 
 /**
+ * Whether an edit writes a link as an ability's name: the player is shown what such a name links
+ * (`readEntry`), so only the GM writes one. A player keeps the link an ability's name holds, and
+ * may change everything else of it.
+ */
+function writesLink(items: readonly FieldValue[], shape: EntryShape | undefined, message: BookAbilityMessage, at: number): boolean {
+  if (message.op === 'remove' || abilityLink(message.entry.name) === null) return false;
+  return message.op === 'add' || entryName(items[at], shape) !== message.entry.name;
+}
+
+/**
  * A player's change of an ability list of their own character's statblock, checked: the statblock
  * is a native one whose template reads as it was written, the sheet last sent to them offered the
  * list for editing and the template still lets players change it, an ability it names is one the
@@ -124,7 +135,7 @@ export function checkAbilityEdit(inputs: EditInputs, message: BookAbilityMessage
   if (parts === null) return null;
   const items = Array.isArray(read.value) ? read.value : keyedEntryItems(read.value).map((entry) => entry.item);
   const next = editedList(items, read, field.entry, message, parts);
-  if (next === null) return null;
+  if (next === null || writesLink(items, field.entry, message, next.at)) return null;
   return {
     patches: listPatches(field.key, read, items, message, next),
     written: [writtenValue(field.key, read, next.list)],

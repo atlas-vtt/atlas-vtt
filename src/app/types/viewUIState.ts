@@ -1,4 +1,5 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
+import type { LightingToolOptions } from '../lighting/lightingTool';
 import type { Point } from './visionTypes';
 
 /** The tokens held at their starting positions. */
@@ -41,8 +42,8 @@ export interface ViewUIState {
   levelLinkPopover: string | null;
   /** The opening or floor (level surface) whose popover is open. */
   levelSurfacePopover: string | null;
-  /** The scene lighting settings panel, opened from the lighting tool's menu. */
-  isSceneLightingPanelOpen: boolean;
+  /** The lighting tool's mode and choices: the bar above the toolbar sets them, the controller hands them to its editors. */
+  lightingTool: LightingToolOptions;
   /** The tokens the pointer holds (pressed or dragged), each where it stood when taken; set through `holdTokens`. */
   heldTokens: HeldTokens;
   /** What the lighting tool's explored-memory mode does with a stroke: the one place the menu and the tool read it from. */

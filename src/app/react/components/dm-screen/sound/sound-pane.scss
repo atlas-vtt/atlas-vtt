@@ -65,8 +65,7 @@
 }
 
 .atlas-sound-moods {
-  @include atlas-scrollbar;
-  @include atlas-scroll-padding($card-inset);
+  padding: $card-inset;
   flex: 42 1 0;
   min-width: 0;
   min-height: 0;

@@ -37,6 +37,11 @@ export interface AtlasSettings {
   onboarding: { enabled: boolean; completed: Partial<Record<TutorialId, boolean>>; tokenImported: boolean };
   /** The starter tokens were added to the default collection once; deleted ones stay deleted. */
   starterTokensAdded: boolean;
+  /**
+   * Uids of the collections whose sidebar no longer offers the starter tokens: a uid outlives a rename of the
+   * collection's folder. Absent while none is hidden. Read with `isStarterOfferHidden`.
+   */
+  hiddenStarterOffers?: readonly string[] | undefined;
   /** A fact about this device, kept in its local storage and never in the plugin's data (`deviceSettings.ts`). */
   navigation: NavigationSettings;
   laserPointer: LaserPointerSettings;
@@ -177,10 +182,18 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
       tableTv: readTableTvSettings(record.tableTv),
+      hiddenStarterOffers: readUidList(record.hiddenStarterOffers),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),
   };
+}
+
+/** A list of collection uids as stored; anything else reads as none. */
+function readUidList(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const uids = value.filter((uid): uid is string => typeof uid === 'string' && uid !== '');
+  return uids.length > 0 ? [...new Set(uids)] : undefined;
 }
 
 /** What goes into the plugin's data: the preferences, with the bindings of a newer Atlas kept. */

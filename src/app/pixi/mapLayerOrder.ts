@@ -32,6 +32,11 @@ export const MAP_LAYER_Z = {
   groupRotate: 101,
   /** Text objects and the preview of the one being placed. */
   text: 500,
+  /**
+   * The names of pins: above the fog (1000), so a name is never cut off by it. A name shows only
+   * where its pin does: every pin for the GM, for players only pins out of the fog (`PlayerPins`).
+   */
+  pinNames: 1010,
   /** Tokens being placed by hand (GM only): above everything on the map but the laser. */
   placement: 1100,
 } as const;

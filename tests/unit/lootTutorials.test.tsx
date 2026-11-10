@@ -101,6 +101,6 @@ describe('the Random tables tab of the collection settings', () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add a base' }));
 
     expect(settings.shouldShowTutorial('lootSettings')).toBe(false);
-    expect(screen.getByPlaceholderText('Search bases...')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search bases…')).toBeTruthy();
   });
 });

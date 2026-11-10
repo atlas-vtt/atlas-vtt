@@ -1,4 +1,4 @@
-import { PLAYER_SIGHT_POLICY, type SightPolicy } from './tokenSightPolicy';
+import { PLAYER_SIGHT_POLICY, sightPolicyFor, type SightPolicy } from './tokenSightPolicy';
 import { perceivedLevel, showsMap } from '../gameSystems/senseRules';
 import { movedWhileHeld } from '../lighting/sightOnDrop';
 import type { HeldTokens } from '../types/viewUIState';
@@ -11,7 +11,7 @@ import type { WallSegment } from '../types/wallTypes';
 import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
 import { lightLevelAt } from './lightLevels';
 import type { AmbientLight, LightReach, Sight, SightRegion } from './sight';
-import { tokenEffects } from './sightRules';
+import { tokenEffects, type SightRules } from './sightRules';
 import { computeVisibility, pointInPolygon, type Polygon } from './visibility';
 import { coneContains } from './visionCone';
 
@@ -112,6 +112,14 @@ export interface PerceptionOptions {
   /** Which tokens the picture always shows; unset, the players'. */
   policy?: SightPolicy;
 }
+
+/** What perception reads on a map played by `rules`: their conditions, the held tokens and `policy` (unset, the players') as the rules have it (`sightPolicyFor`). */
+export function perceptionOptions(rules: SightRules | undefined, held: HeldTokens, policy: SightPolicy = PLAYER_SIGHT_POLICY): PerceptionOptions & { policy: SightPolicy } {
+  return { conditions: rules?.conditions ?? NO_CONDITIONS, held, policy: sightPolicyFor(policy, rules) };
+}
+
+/** One empty list, so perception kept for no conditions is kept from call to call (`PerceptionMemo`). */
+const NO_CONDITIONS: readonly ConditionDefinition[] = Object.freeze([]);
 
 /** The footprint of a token that is shown where the map around it is not, in world pixels. */
 export interface SeenSpot {
