@@ -1,21 +1,24 @@
 import type { App } from 'obsidian';
-import { comparedBytes } from './recordPayload';
 import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
-import { BUNDLE_MANIFEST, PRESET_ROLE, bundleFormatFor, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
-import { flushPresetEdits, packedPresetRecord, withSystemPresetFile } from './bundlePresetFiles';
-import { rewriteContent } from './bundleContent';
+import { collectionFolderPath } from '../assetPaths';
+import { BUNDLE_MANIFEST, bundleFormatFor, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
+import { withDiceSetFiles } from './bundleDiceSetFiles';
+import { BundlePacker } from './bundlePacking';
+import { withSystemPresetFile } from './bundlePresetFiles';
 import { selectContent } from './bundleContents';
-import { withLootBases } from './bundleSettings';
+import { exportedSettings, folderBelow } from './bundleSettings';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
 import { coverCandidates, coverFileFor, currentCover, type CoverCandidate, type CoverChoice, type CurrentCover } from './collectionCover';
-import { CollectionReferenceCollector, type MissingReference } from './collectionReferences';
+import { CollectionReferenceCollector, withStatblockTemplates, type MissingReference } from './collectionReferences';
 import { sha256 } from '../../utils/hashing';
-import { readInstallRecord, type InstalledPreset } from './installRecord';
+import { readInstallRecord } from './installRecord';
 import { withLinkedFiles } from './noteLinks';
 import { remapPaths } from './pathRemap';
+import { tableNotePaths } from '../../randomTables/tableSettings';
 import { originNames, recordRelease } from './releaseRecord';
-import { storeNamedWebps, thumbnailAsNamedWebp, type NamedWebp } from './webpNamedFiles';
-import { readVaultBinary, vaultFileSize } from '../../utils/hiddenVaultFiles';
+import { systemPresetsOf } from '../mapCollectionRules';
+import { storeNamedWebps } from './webpNamedFiles';
+import { vaultFileSize } from '../../utils/hiddenVaultFiles';
 import { t } from '../../i18n';
 
 /**
@@ -25,8 +28,8 @@ import { t } from '../../i18n';
  */
 const EXPORTED_TYPES: ReadonlySet<Asset['type']> = new Set<Asset['type']>(['token', 'map', 'scene', 'encounter']);
 
-/** Images and audio are already compressed; deflating them only costs time. */
-const STORED_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|mp3|ogg|wav|m4a|zip)$/i;
+/** Images, audio and video are already compressed; deflating them only costs time. */
+const STORED_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|mp3|ogg|wav|m4a|webm|mp4|m4v|zip)$/i;
 
 /** What an export would pack, shown before the user decides how to export. */
 export interface ExportPreview {
@@ -90,8 +93,10 @@ export async function prepareCollectionExport(app: App, assets: AssetService, co
   const collection = await assets.getCollection(collectionId);
   if (!collection) throw new Error(`Collection ${collectionId} not found`);
   const collectionAssets = (await assets.getAssets(collectionId)).filter((asset) => EXPORTED_TYPES.has(asset.type));
-  const { files: referenced, missing } = await new CollectionReferenceCollector(app, assets).collect(collectionAssets, collection.settings.lootBases);
-  const files = withSystemPresetFile(app, withLinkedFiles(app, referenced), collection.settings);
+  const { files: referenced, missing } = await new CollectionReferenceCollector(app, assets)
+    .collect(collectionAssets, collection.settings.lootBases, tableNotePaths(collection.settings));
+  const withTemplates = await withStatblockTemplates(app, withLinkedFiles(app, referenced), collection.settings);
+  const files = await withDiceSetFiles(app, withSystemPresetFile(app, withTemplates, collection.settings), collection.settings);
   const fileSizes = new Map<string, number>();
   for (const file of files) fileSizes.set(file.vaultPath, await vaultFileSize(app, file.vaultPath));
   const publisher = await publisherOf(app, assets, collection);
@@ -162,33 +167,27 @@ export async function exportCollectionBundle(
     : { collectionId: preview.collection.id, name: preview.collection.name, names: new Map<string, string>() };
   const named = (value: string): string => origin.names.get(value) ?? value;
   const exported = await exportedCollection(assets, preview, choice, exportedAt);
-  // The settings name only the loot bases that travel, as the bundle names them.
+  // The settings name only the loot bases that travel and the role folders of the collection, as the bundle names them.
   const packed = new Set(selected.files.map((file) => file.vaultPath));
   const collection: CollectionMetadata = {
     ...exported,
     id: origin.collectionId,
     name: choice.kind === 'share' ? origin.name : exported.name,
-    settings: withLootBases(exported.settings, (path) => (packed.has(path) ? named(path) : undefined)),
+    settings: exportedSettings(exported.settings, systemPresetsOf(app), {
+      file: (path) => (packed.has(path) ? named(path) : undefined),
+      folder: (folder) => folderBelow(folder, collectionFolderPath(preview.collection.id), collectionFolderPath(origin.collectionId)),
+    }),
   };
   if (cover) collection.coverPath = named(cover.path);
   else delete collection.coverPath;
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const files: BundleFile[] = [];
-  const presets: Record<string, InstalledPreset> = {};
-  const namedWebps: NamedWebp[] = [];
-  if (selected.files.some((file) => file.role === PRESET_ROLE)) await flushPresetEdits(app);
+  const packer = await BundlePacker.open(app, selected.files, origin.names);
   for (const [index, file] of selected.files.entries()) {
     reportFileStep(onProgress, 'bundle.step.adding', index, selected.files.length, 0, 0.6);
-    const content = await readVaultBinary(app, file.vaultPath);
-    if (!content) continue;
-    // A preset file that holds no preset stays behind.
-    const preset = file.role === PRESET_ROLE ? await packedPresetRecord(content) : null;
-    if (file.role === PRESET_ROLE && !preset) continue;
-    if (preset) presets[preset.localId] = preset;
-    const webp = file.role === 'thumbnail' ? await thumbnailAsNamedWebp(file.vaultPath, content) : null;
-    if (webp) namedWebps.push({ path: file.vaultPath, data: webp });
-    const data = webp ?? rewriteContent(file, comparedBytes(file.vaultPath, content), origin.names);
+    const data = await packer.pack(file);
+    if (!data) continue;
     const bundlePath = named(file.vaultPath);
     files.push({
       ...file,
@@ -223,8 +222,8 @@ export async function exportCollectionBundle(
     commit: async (): Promise<void> => {
       // A shared copy leaves the vault as its install record knows it.
       if (choice.kind === 'share') return;
-      await storeNamedWebps(app, namedWebps);
-      await recordRelease(app, assets, preview.collection, manifest, cover, presets);
+      await storeNamedWebps(app, packer.namedWebps);
+      await recordRelease(app, assets, preview.collection, manifest, cover, packer.byId);
     },
     fileName: bundleFileName(collection.name, collection.version),
     collectionName: collection.name,

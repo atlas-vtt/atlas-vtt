@@ -19,3 +19,13 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 is the native compiler: typescript-eslint (the lint and
+      # Obsidian's directory review) supports TypeScript below 6.1 only.
+      - dependency-name: typescript
+        versions: [">=7"]
+      # Tailwind 4 replaces the scoped JS config (`important: '.atlas-vtt-plugin'`)
+      # and changes the generated selectors; Tailwind is legacy here and gets no
+      # new use. Tailwind 3's postcss-selector-parser is overridden in package.json.
+      - dependency-name: tailwindcss
+        versions: [">=4"]

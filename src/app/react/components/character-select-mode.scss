@@ -191,17 +191,16 @@
   align-items: center;
   justify-content: center;
   gap: $spacing-xs;
-  border: $border-width-s dashed color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  border: $border-width-s solid transparent;
   border-radius: $radius-l;
-  background: var(--background-secondary);
+  background: var(--background-modifier-hover);
   color: var(--text-muted);
   cursor: pointer;
   transition: all $transition-fast $transition-ease;
 
   &:hover {
     color: var(--text-normal);
-    border-color: color-mix(in srgb, var(--interactive-accent) 55%, transparent);
-    background: var(--background-modifier-hover);
+    background: var(--background-modifier-active-hover);
   }
 }
 

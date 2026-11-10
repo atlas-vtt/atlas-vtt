@@ -1,7 +1,7 @@
 /**
  * Obsidian extends the DOM prototypes with element helpers (`createEl`,
- * `createDiv`, `empty`, ...). jsdom has none of them, so this setup file
- * installs the subset the plugin relies on.
+ * `createDiv`, `empty`, `win`, ...). Neither jsdom nor the browser tests'
+ * Chromium has them, so this setup file installs the subset the plugin relies on.
  */
 
 interface ElementOptions {
@@ -92,6 +92,9 @@ const helpers: Record<string, (this: HTMLElement, ...args: never[]) => unknown> 
   hasClass(this: HTMLElement, cls: string) {
     return this.classList.contains(cls);
   },
+  setCssProps(this: HTMLElement, props: Record<string, string>) {
+    for (const [name, value] of Object.entries(props)) this.style.setProperty(name, value);
+  },
   instanceOf(this: HTMLElement, type: new () => unknown) {
     return this instanceof type;
   },
@@ -136,8 +139,9 @@ if (typeof Element !== 'undefined') {
 // Obsidian's `node.win` / `node.doc` point at the window and document a node lives in (popouts included).
 if (typeof Node !== 'undefined' && !('win' in Node.prototype)) {
   Object.defineProperties(Node.prototype, {
-    doc: { get(this: Node) { return this.ownerDocument ?? document; } },
-    win: { get(this: Node) { return this.ownerDocument?.defaultView ?? window; } },
+    // Configurable, so a test can put a node in a window of its own.
+    doc: { configurable: true, get(this: Node) { return this.ownerDocument ?? document; } },
+    win: { configurable: true, get(this: Node) { return this.ownerDocument?.defaultView ?? window; } },
   });
 }
 

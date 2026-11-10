@@ -13,6 +13,9 @@ installDomHost({
     parent.appendChild(div);
     return div;
   },
+  createVideo(doc) {
+    return doc.adoptNode(document.createElement('video'));
+  },
   ownerWindow(node) {
     const doc = node.ownerDocument ?? (node as Document);
     return doc.defaultView ?? window;

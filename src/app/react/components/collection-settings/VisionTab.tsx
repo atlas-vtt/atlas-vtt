@@ -78,7 +78,7 @@ export function VisionTab({ gridDefaults, vision, onChange, senses, onSensesChan
         onChange={(rows) => update({ ...form, senses: rows ?? [] })}
         definitions={senses}
         unit={unit}
-        emptyText="New tokens start without senses."
+        emptyText={t('senses.emptyDefaults')}
       />
       <SenseDefinitionList senses={senses} unit={unit} onChange={onSensesChange} onDelete={dropDefault} />
     </>

@@ -1,0 +1,58 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Collection Settings: statblock field chips
+// The fields of the collection's statblocks, offered for a resource's field and
+// the initiative modifier's (StatblockFieldChips.tsx).
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../styles/tokens' as *;
+
+.atlas-csm-field-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+  max-height: 56px;
+  overflow-y: auto;
+}
+
+.atlas-csm-field-chip {
+  appearance: none;
+  height: auto;
+  padding: 2px $spacing-s;
+  border: $border-width-s solid var(--background-modifier-border) !important;
+  border-radius: $radius-full !important;
+  // A capsule, not Obsidian's squircle
+  corner-shape: round;
+  background: none !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  cursor: pointer;
+  transition: color $transition-fast $transition-ease, border-color $transition-fast $transition-ease;
+
+  &.atlas-selected {
+    color: var(--text-normal);
+    border-color: var(--text-muted) !important;
+    background: var(--background-modifier-hover) !important;
+  }
+}
+
+// A template's name for the field comes first; the path stored follows it
+.atlas-csm-field-chip__path {
+  margin-inline-start: $spacing-xs;
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-csm-field-chip:hover {
+    color: var(--text-normal);
+    border-color: var(--background-modifier-border-hover) !important;
+  }
+}
+
+// What a statblock of the collection holds there, after the name and path
+.atlas-csm-field-chip__sample {
+  margin-inline-start: $spacing-xs;
+  color: var(--text-normal);
+  font-variant-numeric: tabular-nums;
+}

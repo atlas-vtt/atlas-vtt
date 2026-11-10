@@ -3,6 +3,9 @@ import { barDimensions } from '../../../styles/designTokens';
 import type { VisibleResource } from '../../../resources/resourceTypes';
 import { ResourceBarView } from './ResourceBarView';
 
+/** Diameter of a bar's +/- button, in UI units: a bar's height. It stands `barDimensions.token.gap` beside the bar. */
+export const BAR_BUTTON_SIZE = 10;
+
 /** Where one resource sits on its token, in the units of its anchor; the click areas and +/- controls lay out from it. */
 export interface ResourceSlot {
   key: string;

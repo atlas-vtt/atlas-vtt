@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { canonicalJson, fnv1a32, hashJson, hashText, sha256 } from '../../src/app/utils/hashing';
 import { throwRandom } from '../../src/app/dice3d/throwSeed';

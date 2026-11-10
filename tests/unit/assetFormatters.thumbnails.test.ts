@@ -117,9 +117,10 @@ describe('formatServiceAsset thumbnails', () => {
 });
 
 describe('partitionByTab', () => {
-  it('groups the stored assets by tab and drops the types the manager does not show', () => {
+  it('groups the stored assets by tab, player characters apart from the other tokens, and drops the types the manager does not show', () => {
     const assets: Asset[] = [
       token('goblin', 'atlas-vtt/assets/goblin.png'),
+      { ...token('ranger', 'atlas-vtt/assets/ranger.png'), playerCharacter: true },
       { id: 'map', type: 'map', name: 'Cave', mapFilePath: 'atlas-vtt/assets/cave.webp', tags: [], collection: 'default', createdAt: 1, modifiedAt: 1 },
       { id: 'scene', type: 'scene', name: 'Cave', tags: [], collection: 'default', createdAt: 1, modifiedAt: 1 },
       { id: 'enc', type: 'encounter', name: 'Ambush', tokens: [], tags: [], collection: 'default', createdAt: 1, modifiedAt: 1 },
@@ -127,7 +128,7 @@ describe('partitionByTab', () => {
     ];
     const byTab = partitionByTab(assets);
     expect(Object.fromEntries(Object.entries(byTab).map(([tab, list]) => [tab, list.map((asset) => asset.id)]))).toEqual({
-      tokens: ['goblin'], maps: ['map'], scenes: ['scene'], encounters: ['enc'],
+      tokens: ['goblin'], party: ['ranger'], maps: ['map'], scenes: ['scene'], encounters: ['enc'],
     });
   });
 });

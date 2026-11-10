@@ -54,7 +54,7 @@ export async function renderDicePreviews(font: DiceFont, doc: Document = getDomH
     if (!renderer) return previews;
     const { offsets, radius } = layoutDice(1);
     renderer.setSize(PREVIEW_PX, PREVIEW_PX, 1, 0.5, restingFrame(offsets, radius).halfWidth);
-    renderer.setPlan([20]);
+    renderer.setPlan([{ sides: 20 }]);
     const geometry = dieGeometry(20);
     const anim = makeDie(Math.random, offsets[0], radius, renderer.stage(), lyingHeight(geometry));
     restImmediately(anim, restingQuaternion(geometry, faceIndexForValue(geometry, 20), REST_YAW / 2));

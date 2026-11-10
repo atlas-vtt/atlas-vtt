@@ -1,7 +1,6 @@
 import type { Message } from '../../types';
 
 export const sbCandidate = {
-  'sbCandidate.conflict': 'Multiple tokens already link to this note. Review their links first.',
   'sbCandidate.imported': 'An Atlas token already links to this note.',
   'sbCandidate.unresolved': 'The statblock could not be resolved. Check its name or note reference.',
   'sbCandidate.noImage': 'Add an image to this statblock to create a token.',

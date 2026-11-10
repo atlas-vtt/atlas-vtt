@@ -1,28 +1,22 @@
+// @vitest-environment jsdom
 import React, { useState } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { ConditionsTab } from '../../src/app/react/components/collection-settings/ConditionsTab';
-import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { CONDITION_EFFECTS, type ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
-import { withDynamicLighting } from '../mocks/experimentalFeatures';
-import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 const dnd5e = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!.rules.conditions;
 const own: ConditionDefinition = { id: 'own-1', name: 'Levitating', color: '#336699' };
 
-/** The tab in a vault whose GM switched dynamic lighting on, unless `lighting` is false. */
-function Harness({ initial, lighting = true }: { initial: ConditionDefinition[]; lighting?: boolean }): React.ReactElement {
+/** The tab with the conditions it was last handed. */
+function Harness({ initial }: { initial: ConditionDefinition[] }): React.ReactElement {
   const [conditions, setConditions] = useState(initial);
-  const [app] = useState(() => {
-    const { app: vault } = createInMemoryApp({ files: {} });
-    return lighting ? withDynamicLighting(vault) : vault;
-  });
   return (
-    <AtlasUIContext.Provider value={{ app, view: null, pixiApp: null, renderer: null }}>
+    <>
       <ConditionsTab conditions={conditions} onChange={setConditions} />
       <output data-testid="conditions">{JSON.stringify(conditions)}</output>
-    </AtlasUIContext.Provider>
+    </>
   );
 }
 
@@ -89,14 +83,6 @@ describe('ConditionsTab: effect on sight', () => {
     choose('Blinded', 'None');
     choose('Blinded', 'Blinded');
     expect(saved()).toEqual(stored);
-  });
-
-  it('offers no effect on sight while dynamic lighting is switched off, and keeps the stored ones', () => {
-    render(<Harness initial={[...dnd5e]} lighting={false} />);
-    expect(screen.queryByRole('combobox')).toBeNull();
-    expect(screen.queryByText(/Effects on sight/)).toBeNull();
-    fireEvent.change(screen.getAllByPlaceholderText('Condition name')[0]!, { target: { value: 'Sightless' } });
-    expect(saved().map(({ effect }) => effect)).toEqual(dnd5e.map(({ effect }) => effect));
   });
 
   it('names every row\'s select and has no native tooltip', () => {

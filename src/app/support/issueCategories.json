@@ -17,6 +17,7 @@
     "asset-manager": "Asset manager",
     "player-view": "Player view",
     "settings": "Settings, commands and updates",
+    "online": "Online play",
     "unknown": "Not sure / other"
   }
 }

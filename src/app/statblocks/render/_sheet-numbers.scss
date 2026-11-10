@@ -1,0 +1,166 @@
+@use '../../../../styles/tokens' as *;
+
+// Numbers in the native card: a Table of one row drawn as lines (the 5E 2024
+// look; the grid is `_sheet-table.scss`), and Tracks as boxes or a gauge.
+
+$track-box: 12px;
+$track-boxes-per-line: 12;
+
+.atlas-sb-sheet {
+  // ── Scores ────────────────────────────────────────────────────────────────
+  .atlas-sb-scores {
+    font-size: $font-ui-small;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .atlas-sb-score-label,
+  .atlas-sb-score-column-label {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-normal;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .atlas-sb-score {
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-sb-score-column {
+    color: var(--text-muted);
+  }
+
+  // Lines: up to `perLine` groups side by side, fewer where the width does
+  // not hold them; each group is "name · value · worked-out values" per column. The
+  // minimum is the group's own content width, so three groups of a 5E table
+  // still sit side by side in a pane's column and do not wrap two and one.
+  .atlas-sb-scores--table {
+    --atlas-sb-score-group-min: calc(3.75em + var(--atlas-sb-score-columns, 1) * 2.5em);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(var(--atlas-sb-score-group-min), 100%), 1fr));
+    gap: $spacing-s $spacing-m;
+  }
+
+  .atlas-sb-score-group {
+    width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+      padding: 1px 0;
+      border: none;
+      background: none;
+    }
+
+    td {
+      text-align: end;
+    }
+
+    th[scope='row'] {
+      text-align: start;
+    }
+
+    td + td,
+    th + td,
+    td + th,
+    th + th {
+      padding-left: $spacing-xs;
+    }
+
+    th[scope='col'] {
+      text-align: end;
+    }
+  }
+
+  // ── Track ─────────────────────────────────────────────────────────────────
+  .atlas-sb-track-value {
+    display: inline-flex;
+    vertical-align: middle;
+  }
+
+  .atlas-sb-track-boxes {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    max-width: calc(#{$track-boxes-per-line} * #{$track-box} + #{$track-boxes-per-line - 1} * #{$spacing-xs});
+  }
+
+  .atlas-sb-track-box {
+    width: $track-box;
+    height: $track-box;
+    box-sizing: border-box;
+    border: $border-width-s solid var(--text-muted);
+    border-radius: $radius-xs;
+
+    &.is-marked {
+      border-color: var(--text-accent);
+      background: var(--text-accent);
+    }
+  }
+
+  // Beside a player character's note a press on a box sets the current value: the box keeps its look, and
+  // Obsidian's button look stays off it.
+  button.atlas-sb-track-box {
+    display: block;
+    height: $track-box;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+    transition-property: border-color, background-color, scale;
+    transition-duration: $transition-fast;
+    transition-timing-function: $transition-ease;
+
+    &:hover {
+      border-color: var(--text-accent);
+    }
+
+    &.is-marked {
+      background: var(--text-accent);
+    }
+
+    &:active {
+      scale: 0.9;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--background-modifier-border-focus);
+      outline-offset: 1px;
+    }
+  }
+
+  // The maximum stands before a track whose boxes set the current value, edited as a value of its own
+  .atlas-sb-track-max {
+    margin-inline-end: $spacing-s;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .atlas-sb-gauge {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-s;
+  }
+
+  .atlas-sb-gauge-track {
+    display: block;
+    width: 96px;
+    height: 6px;
+    overflow: hidden;
+    border-radius: $radius-full;
+    background: var(--background-modifier-border);
+  }
+
+  // Scaled rather than sized, so a changing value moves on the compositor.
+  .atlas-sb-gauge-fill {
+    display: block;
+    height: 100%;
+    background: var(--text-accent);
+    transform: scaleX(var(--atlas-sb-gauge-share, 0));
+    transform-origin: left center;
+  }
+
+  .atlas-sb-gauge-value {
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -29,7 +29,8 @@ function darkAlong(walls: readonly WallSegment[], from: Point, y: number): numbe
   return dark;
 }
 
-describe('hedges that run together are one hedge', () => {
+// Seeded checks with a fixed workload: 3 to 4.5 s on a hosted runner, close to the 5 s default.
+describe('hedges that run together are one hedge', { timeout: 30_000 }, () => {
   const viewer = { x: 150, y: 200 };
 
   it.each<[string, WallSegment[]]>([

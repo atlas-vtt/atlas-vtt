@@ -1,0 +1,116 @@
+@use '../../../../styles/tokens' as *;
+
+// A Metric: a stat block's key numbers in one box (thresholds, an ability strip). The group's name over
+// them, then equal columns with a thin rule between two, each number's name small over a large value.
+// The box is an element inside the card: $radius-l, and its padding equals its gap.
+
+.atlas-sb-sheet {
+  .atlas-sb-metric {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: $spacing-s;
+    box-sizing: border-box;
+    height: 100%;
+    padding: $spacing-s;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-l;
+    text-align: center;
+  }
+
+  .atlas-sb-metric__heading {
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-bold;
+    letter-spacing: 0.08em;
+    line-height: var(--line-height-tight);
+    text-transform: uppercase;
+
+    &.atlas-sb-prompt {
+      color: var(--text-faint);
+    }
+  }
+
+  .atlas-sb-metric__numbers {
+    display: grid;
+    grid-template-columns: repeat(var(--atlas-sb-metric-numbers, 1), minmax(0, 1fr));
+  }
+
+  .atlas-sb-metric__number {
+    // Holds what the editors lay over one number; changes no box
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    padding: 0 $spacing-s;
+
+    + .atlas-sb-metric__number {
+      border-left: $border-width-s solid var(--background-modifier-border);
+    }
+
+    > .atlas-sb-label {
+      max-width: 100%;
+      overflow: hidden;
+      color: var(--text-muted);
+      font-size: $font-ui-smaller;
+      font-weight: $font-weight-semibold;
+      letter-spacing: 0.04em;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    > .atlas-sb-label.atlas-sb-prompt {
+      color: var(--text-faint);
+    }
+  }
+
+  // The value's line keeps the large number's height, so an empty number's prompt leaves the box as it is.
+  .atlas-sb-metric__value {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    min-height: calc(#{$font-ui-large} * var(--line-height-tight));
+    font-size: $font-ui-large;
+    font-variant-numeric: tabular-nums;
+    font-weight: $font-weight-bold;
+    line-height: var(--line-height-tight);
+
+    .atlas-sb-prompt {
+      font-size: $font-ui-smaller;
+    }
+  }
+
+  .atlas-sb-metric__blank {
+    color: var(--text-faint);
+  }
+
+  // A tracked number's maximum steps back behind its current value ("2 / 3")
+  .atlas-sb-tracked__max {
+    color: var(--text-muted);
+    font-size: 0.75em;
+    font-weight: $font-weight-normal;
+  }
+
+  // Beside a character's note: − and + around it step the current value, as a Counters row's do
+  .atlas-sb-tracked__stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  button.atlas-sb-tracked__step[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  // Side by side, a Metric's share of the row grows with its numbers: two take twice the room of one.
+  .atlas-sb-row > .atlas-sb-item[data-block='metric'] {
+    flex: var(--atlas-sb-metric-numbers, 1) var(--atlas-sb-metric-numbers, 1) calc(var(--atlas-sb-metric-numbers, 1) * 64px);
+    align-self: stretch;
+    min-width: 0;
+  }
+}

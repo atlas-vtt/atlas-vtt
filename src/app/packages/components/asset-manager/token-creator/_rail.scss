@@ -56,9 +56,9 @@
   align-items: center;
   justify-content: center;
   padding: $spacing-xl $spacing-l;
-  border: $border-width-m dashed var(--background-modifier-border);
+  border: $border-width-m solid transparent;
   border-radius: $radius-l;
-  background: var(--background-primary);
+  background: var(--background-modifier-hover);
   text-align: center;
   cursor: pointer;
   outline: none;
@@ -66,9 +66,12 @@
               background-color $transition-fast $transition-ease,
               transform $transition-press $transition-ease-out;
 
-  &:hover,
+  &:hover {
+    background: var(--background-modifier-active-hover);
+  }
+
   &:focus-visible {
-    border-color: var(--background-modifier-border-hover);
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
   }
 
   &:active {
@@ -76,12 +79,8 @@
   }
 
   &.atlas-dragging {
-    border-color: var(--interactive-accent);
+    border-color: color-mix(in oklch, var(--interactive-accent) 60%, transparent);
     background: color-mix(in oklch, var(--interactive-accent) 8%, transparent);
-
-    .atlas-token-creator__dropzone-icon {
-      transform: translateY(-2px);
-    }
   }
 
   .atlas-token-creator__dropzone-icon {

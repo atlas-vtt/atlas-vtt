@@ -1,0 +1,233 @@
+// What stands around the message field: who speaks and who sees rolls, their menus, the commands
+// offered while one is typed, the strip of a whisper, and the help.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+$composer-control: 28px;
+
+.atlas-online-log {
+  // The suggestions hang from the box's top edge.
+  .atlas-online-log__composer-box {
+    position: relative;
+  }
+
+  // ── The field's small buttons ──────────────────────────────────────────────
+  .atlas-online-log__menu-anchor {
+    display: flex;
+    flex: none;
+  }
+
+  .atlas-online-log__chip-button {
+    @include log-button;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: $composer-control;
+    height: $composer-control;
+    border-radius: $radius-m;
+    color: var(--text-muted);
+    transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+    @include log-button-states;
+
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+    &[aria-expanded='true'] {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+
+    #{$log-coarse} & {
+      width: 36px;
+      height: $log-target;
+    }
+  }
+
+  // A disc of the speaker's face: round all through, as the face is.
+  .atlas-online-log__speaker-chip {
+    border-radius: $radius-full;
+  }
+
+  .atlas-online-log__mode-button.is-private {
+    color: var(--interactive-accent);
+  }
+
+  // ── Menus above the field, in Atlas's dropdown look ────────────────────────
+  // Above the dropdown's own rules, which come later in the stylesheet.
+  .atlas-dropdown-content.atlas-online-log__menu {
+    left: 0;
+    margin-bottom: $spacing-s;
+  }
+
+  .atlas-dropdown-menu-item.atlas-online-log__speaker-item {
+    grid-template-columns: $icon-s $log-chip-face minmax(0, 1fr);
+
+    .atlas-dropdown-menu-item__check svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+  }
+
+  .atlas-online-log__speaker-item-name {
+    min-width: 0;
+    @include atlas-truncate;
+  }
+
+  // ── Commands and people offered while typed ─────────────────────────────────
+  .atlas-dropdown-content.atlas-online-log__suggestions {
+    left: 0;
+    right: 0;
+    min-width: 0;
+    max-height: 260px;
+    margin-bottom: $spacing-s;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .atlas-online-log__suggestion {
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-s;
+    min-width: 0;
+    padding: $spacing-xs $spacing-s;
+    color: var(--text-normal);
+    cursor: pointer;
+    @include atlas-panel-inset-radius($spacing-s);
+
+    &.is-active {
+      background: var(--background-modifier-hover);
+    }
+
+    #{$log-coarse} & {
+      min-height: $log-target;
+      align-items: center;
+    }
+  }
+
+  .atlas-online-log__suggestion-label {
+    flex: none;
+    font-family: var(--font-monospace);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-online-log__suggestion-hint {
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    @include atlas-truncate;
+  }
+
+  // ── Strips on top of the field ─────────────────────────────────────────────
+  .atlas-online-log__strip-lines {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .atlas-online-log__strip-whisper {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    color: color-mix(in oklch, var(--interactive-accent) 70%, var(--text-muted));
+
+    svg {
+      flex: none;
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  .atlas-online-log__strip--whisper {
+    background: color-mix(in oklch, var(--interactive-accent) 7%, transparent);
+    color: color-mix(in oklch, var(--interactive-accent) 70%, var(--text-normal));
+  }
+
+  .atlas-online-log__strip-icon {
+    flex: none;
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  // The first strip takes the box's upper corners.
+  .atlas-online-log__composer-box > .atlas-online-log__strip:first-child,
+  .atlas-online-log__composer-box > .atlas-online-log__suggestions + .atlas-online-log__strip {
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+  }
+
+  // ── The help ───────────────────────────────────────────────────────────────
+  .atlas-online-log__help {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-s;
+    max-height: 45vh;
+    padding: $spacing-s;
+    border: $border-width-s solid $log-hairline;
+    background: var(--background-secondary);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    @include atlas-panel-inset-radius($spacing-s);
+  }
+
+  .atlas-online-log__help-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-s;
+  }
+
+  .atlas-online-log__help-title {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .atlas-online-log__help-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    margin: 0;
+  }
+
+  .atlas-online-log__help-row {
+    display: grid;
+    grid-template-columns: minmax(0, 11em) minmax(0, 1fr);
+    gap: $spacing-s;
+    align-items: baseline;
+  }
+
+  .atlas-online-log__help-term {
+    color: var(--text-normal);
+    font-family: var(--font-monospace);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+
+  .atlas-online-log__help-text {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    line-height: var(--line-height-tight);
+  }
+}

@@ -1,8 +1,9 @@
+// @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React, { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ResourcesTab } from '../../src/app/react/components/collection-settings/ResourcesTab';
-import { HP_RESOURCE, isDraftResourceKey } from '../../src/app/resources/resourceDefinitions';
+import { HP_RESOURCE, isDraftResourceKey, savedResources } from '../../src/app/resources/resourceDefinitions';
 import { RESOURCE_COLORS } from '../../src/app/resources/resourceColors';
 import { slottedResources } from '../../src/app/resources/resourceSlots';
 import { STARTER_TOKENS } from '../../src/app/services/starterTokens';
@@ -17,7 +18,7 @@ function Editor({ initial, onChange = vi.fn(), fields = ['hp', 'stats.0', 'ammo'
   fields?: string[];
 }): React.ReactElement {
   const [resources, setResources] = useState(initial);
-  return <ResourcesTab resources={resources} fieldSuggestions={fields} onChange={(next) => { setResources(next); onChange(next); }} />;
+  return <ResourcesTab resources={resources} fieldSuggestions={fields.map((path) => ({ path }))} onChange={(next) => { setResources(next); onChange(next); }} />;
 }
 const sockets = (): HTMLElement[] => within(screen.getByRole('group', { name: 'Resource sockets' })).getAllByRole('button');
 const socket = (name: string | RegExp): HTMLElement => within(screen.getByRole('group', { name: 'Resource sockets' })).getByRole('button', { name });
@@ -158,11 +159,14 @@ describe('ResourcesTab', () => {
     expect(last(onChange)[0]!.direction).toBe('fills');
     fireEvent.click(screen.getByRole('button', { name: /^Fills/ }));
     expect(last(onChange)[0]).toMatchObject({ direction: 'static' });
-    // HP defeated its token; a static value never does
-    expect(last(onChange)[0]).not.toHaveProperty('defeatedWhenSpent', true);
-    expect((screen.getByRole('button', { name: 'A static value never defeats the token' }) as HTMLButtonElement).disabled).toBe(true);
+    // HP defeated its token; a static value never does, and is stored without it
+    expect(screen.getByRole('button', { name: 'A static value never defeats the token' }).getAttribute('aria-disabled')).toBe('true');
+    expect(savedResources(last(onChange))[0]).not.toHaveProperty('defeatedWhenSpent');
     fireEvent.click(screen.getByRole('button', { name: /^Static/ }));
     expect(last(onChange)[0]!.direction).toBe('drains');
+    // Counting again, it defeats its token as before: Kill stays on the token's menu
+    expect(last(onChange)[0]!.defeatedWhenSpent).toBe(true);
+    expect(screen.getByRole('button', { name: 'Defeats the token when spent' }).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('shows which of the curated colours a resource has, and gives a new resource one that is still free', () => {

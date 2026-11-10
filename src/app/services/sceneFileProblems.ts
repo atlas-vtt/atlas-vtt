@@ -1,5 +1,6 @@
-import { Notice, type App, type TFile } from 'obsidian';
+import { type App, type TFile } from 'obsidian';
 import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 /** Why an existing scene file cannot be loaded, in the words the GM reads. */
 export const SCENE_FILE_PROBLEM = {
@@ -31,7 +32,7 @@ export async function preserveDamagedSceneFile(app: App, file: TFile, error: Sce
   const backupPath = `${file.path}.${Date.now()}.bak`;
   try {
     await app.vault.copy(file, backupPath);
-    new Notice(t('map.readFailed', { file: file.name, reason, backup: backupPath }), 0);
+    showNotice(t('map.readFailed', { file: file.name, reason, backup: backupPath }), 0);
   } catch (copyError) {
     console.error(`[AtlasStorage] Could not back up ${file.path}:`, copyError);
   }

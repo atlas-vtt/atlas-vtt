@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 const collection = vi.hoisted(() => ({ resources: undefined as unknown }));
 vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => ({
   getCollectionForMap: () => 'collection',
@@ -37,7 +36,10 @@ function mapView(totals: number[], tokenIds: string[], isPlayerView = false) {
   return { view, rolls, updateTokens };
 }
 
-const appWith = (...views: unknown[]) => ({ workspace: { getLeavesOfType: () => views.map((view) => ({ view })) } }) as never;
+const appWith = (...views: unknown[]) => ({
+  workspace: { getLeavesOfType: () => views.map((view) => ({ view })) },
+  vault: { getFileByPath: () => null },
+}) as never;
 
 describe('rollHitPoints', () => {
   beforeEach(() => { collection.resources = [HP]; });

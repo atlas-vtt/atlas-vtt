@@ -1,5 +1,6 @@
 import type { EmbedContext, TFile } from 'obsidian';
 import { AssetService } from '../services/AssetService';
+import { tokenCountText } from '../encounters/encounterTokenCount';
 import { addArtIcon, AtlasLinkEmbed, type EmbedCardContent } from './AtlasLinkEmbed';
 import { encounterOfFile } from './atlasLinkAssets';
 import { placeEncounterFile } from './openAtlasLink';
@@ -49,7 +50,7 @@ export class EncounterEmbed extends AtlasLinkEmbed {
     return {
       title: encounter?.name ?? this.file.basename,
       meta: encounter
-        ? `${t('atlasLinks.tokenCount', { count: tokenCount })} · ${encounter.collection}`
+        ? `${tokenCountText(encounter.tokens)} · ${encounter.collection}`
         : t('atlasLinks.encounterMissing'),
       art: (artEl) => addTokenRow(artEl, tokens?.tokenPreviews ?? [], tokenCount),
       action: {
@@ -58,6 +59,10 @@ export class EncounterEmbed extends AtlasLinkEmbed {
         run: () => placeEncounterFile(app, this.file),
         failure: t('atlasLinks.placeFailed'),
       },
+      more: encounter === null ? [] : [
+        { label: t('atlasLinks.startFight'), icon: 'swords', run: () => placeEncounterFile(app, this.file, 'fight'), failure: t('atlasLinks.placeFailed') },
+        { label: t('atlasLinks.addBeside'), icon: 'list-plus', run: () => placeEncounterFile(app, this.file, 'beside'), failure: t('atlasLinks.placeFailed') },
+      ],
     };
   }
 }

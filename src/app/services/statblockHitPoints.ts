@@ -2,11 +2,11 @@ import { mapResources } from '../resources/collectionResources';
 import { isHitPointsKey } from '../resources/resourceFields';
 import { resourceUpdate } from '../resources/resourceValues';
 import type { App } from 'obsidian';
-import { ATLAS_VIEW_TYPE } from '../atlas-view';
+import { ATLAS_VIEW_TYPE } from '../atlasViewType';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { TokenUpdates } from '../types/viewState';
-import { rollStatblockDice } from './statblockDiceLinks';
-import { AssetService } from './AssetService';
+import { rollStatblockDice, type OffMapRolls } from './statblockRolls';
+import { rulesLookup } from './mapRules';
 import type { TokenVitals } from './statblockVitalsSync';
 import type { TokenRollContext } from '../types/diceRollOrigin';
 
@@ -29,8 +29,9 @@ function storeHoldingTokens(app: App, ids: readonly string[], viewId?: string): 
  * health with its own result. A rolled maximum is a deliberate choice, so it is
  * marked as overridden and survives later edits to the statblock. Without
  * placed tokens, or in a collection that tracks no hit points, this is an
- * ordinary roll. Each token's roll carries its origin from `originContext`, the
- * scene the statblock was opened for; finding the tokens on a map adds none.
+ * ordinary roll, shown on `offMap` where no map on screen shows it. Each
+ * token's roll carries its origin from `originContext`, the scene the
+ * statblock was opened for; finding the tokens on a map adds none.
  */
 export function rollHitPoints(
   app: App,
@@ -40,14 +41,15 @@ export function rollHitPoints(
   abilityName?: string,
   viewId?: string,
   originContext?: TokenRollContext,
+  offMap?: OffMapRolls | null,
 ): void {
   const placed = tokens.filter((token): token is PlacedToken => Boolean(token.id));
   const store = placed.length ? storeHoldingTokens(app, placed.map((token) => token.id), viewId) : null;
-  // The resource the collection fills from the statblock's hit points, whatever it is called.
-  const key = store && mapResources(AssetService.getInstance(app), store.getState().mapPath)
+  // The resource the map's rules fill from the statblock's hit points, whatever it is called.
+  const key = store && mapResources(rulesLookup(app), store.getState().mapPath)
     .find((definition) => isHitPointsKey(definition.field))?.key;
   if (!store || !key) {
-    rollStatblockDice(app, formula, { statblockPath, abilityName, viewId });
+    rollStatblockDice(app, formula, { statblockPath, abilityName, viewId }, offMap);
     return;
   }
 
@@ -61,7 +63,7 @@ export function rollHitPoints(
       tokenName: token.name,
       tokenImagePath: token.imagePath,
       abilityName,
-    });
+    }, offMap);
     if (!roll) continue;
     const hp = Math.max(1, roll.total);
     const held = store.getState().objects.tokens[token.id] ?? {};

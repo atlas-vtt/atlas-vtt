@@ -1,0 +1,310 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Random tables — the window's sidebar of tables and the selected table's summary
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss, after the
+// loot roller's sheets, whose window, bar and lists this one shares.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+.atlas-tables-sidebar {
+  @include atlas-flex-col($spacing-m);
+}
+
+.atlas-tables-search {
+  @include atlas-flex-row($spacing-s);
+  height: var(--input-height);
+  padding: 0 $spacing-s;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-m;
+  @include atlas-corner-shape;
+  background: var(--background-modifier-form-field);
+  color: var(--text-faint);
+  transition: border-color $transition-fast $transition-ease;
+
+  &:hover {
+    border-color: var(--background-modifier-border-hover);
+  }
+
+  &:focus-within {
+    border-color: var(--background-modifier-border-focus);
+  }
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+    flex-shrink: 0;
+  }
+
+  input[type='search'] {
+    @include atlas-flush-input;
+  }
+}
+
+.atlas-tables-group {
+  @include atlas-flex-col($spacing-xs);
+
+  > .atlas-loot-section-label {
+    margin: 0;
+    padding: 0 $spacing-s;
+  }
+
+  > ul {
+    @include atlas-flex-col(1px);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
+// A table to roll on: no fill at rest, the hover's fill on hover, the accent's while selected.
+.atlas-tables-row {
+  @include atlas-flex-row($spacing-s);
+  width: 100%;
+  min-height: $button-height-m;
+  height: auto;
+  padding: $spacing-xs $spacing-s;
+  border: none;
+  border-radius: $radius-m;
+  @include atlas-corner-shape;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color $transition-fast $transition-ease;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+
+  &.is-selected {
+    background: var(--background-modifier-active-hover);
+    color: var(--text-normal);
+    font-weight: $font-weight-medium;
+  }
+}
+
+// A row and its ⋯, which takes the fact's place while the row is pointed at, focused or selected.
+.atlas-tables-entry {
+  position: relative;
+
+  // Room for the ⋯ that takes the fact's place, so the name never runs under it.
+  .atlas-tables-row__fact {
+    min-width: $button-height-s;
+    text-align: right;
+  }
+
+  // Without hover (a touch screen) a row cannot be pointed at first: the ⋯ stands beside it.
+  @media (hover: none) {
+    display: flex;
+    align-items: center;
+
+    .atlas-tables-row {
+      min-width: 0;
+    }
+
+    .atlas-tables-entry__more {
+      position: static;
+      flex-shrink: 0;
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
+    }
+  }
+
+  @media (hover: hover) {
+    &:hover,
+    &:focus-within,
+    &:has(.is-selected) {
+      .atlas-tables-entry__more {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .atlas-tables-row__fact {
+        visibility: hidden;
+      }
+    }
+  }
+}
+
+// Concentric inside the row: the row's corner less its inset.
+.atlas-tables-entry__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 50%;
+  right: $spacing-xs;
+  width: $button-height-s;
+  height: $button-height-s;
+  padding: 0;
+  border: none;
+  border-radius: $radius-s;
+  @include atlas-corner-shape;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  cursor: pointer;
+  transition: opacity $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-tables-row--rename {
+  background: var(--background-modifier-form-field);
+  cursor: text;
+
+  &:focus-visible {
+    @include atlas-focus-ring;
+  }
+}
+
+.atlas-tables-row__name {
+  @include atlas-line-clamp(2);
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+.atlas-tables-row__fact {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-tables-row__problem {
+  width: $icon-xs;
+  height: $icon-xs;
+  flex-shrink: 0;
+  color: var(--color-orange);
+}
+
+.atlas-tables-sidebar__none {
+  margin: 0;
+  padding: 0 $spacing-s;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+}
+
+// The selected base's views, under its row.
+.atlas-tables-group .atlas-loot-tree {
+  @include atlas-flex-col(1px);
+  padding: 1px 0 $spacing-xs $spacing-s;
+}
+
+.atlas-tables-group .atlas-loot-tree__views {
+  padding: 0;
+}
+
+.atlas-loot-tree__all.atlas-loot-text-button {
+  align-self: flex-start;
+  padding: $spacing-xs $spacing-s;
+}
+
+// ── The selected table: how it rolls, its problems, No repeats, Open note ──
+.atlas-tables-summary {
+  @include atlas-flex-row($spacing-s);
+  flex-wrap: wrap;
+  min-height: $button-height-m;
+}
+
+.atlas-tables-chip {
+  @include atlas-flex-row($spacing-xs);
+  height: $button-height-s;
+  padding: 0 $spacing-s;
+  border-radius: $radius-full;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &--problem {
+    background: color-mix(in oklch, var(--color-orange) 14%, transparent);
+    color: var(--text-normal);
+
+    svg {
+      color: var(--color-orange);
+    }
+  }
+}
+
+.atlas-tables-summary__end {
+  @include atlas-flex-row($spacing-s);
+  margin-left: auto;
+}
+
+.atlas-tables-summary__switch-label {
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  white-space: nowrap;
+}
+
+.atlas-tables-summary__open.btn--icon {
+  width: $button-height-s;
+  height: $button-height-s;
+  color: var(--text-faint);
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover {
+    color: var(--text-normal);
+  }
+}
+
+// ── Empty state's two ways in ──────────────────────────────────────────────
+.atlas-loot-empty__actions {
+  @include atlas-flex-row($spacing-s);
+  margin-top: $spacing-s;
+}
+
+// ── Skeleton while the tables are read the first time ──────────────────────
+.atlas-tables-skeleton__search {
+  height: var(--input-height);
+  border-radius: $radius-m;
+}
+
+.atlas-tables-skeleton__bar {
+  flex-shrink: 0;
+  height: $button-height-m;
+  border-radius: $radius-m;
+}
+
+.atlas-tables-skeleton__card {
+  height: 112px;
+  border-radius: atlas-panel-inset-radius-value(calc(#{$spacing-m} + #{$border-width-m}));
+}

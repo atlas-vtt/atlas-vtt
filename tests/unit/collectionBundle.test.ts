@@ -1,8 +1,7 @@
-// @vitest-environment node
 // JSZip needs Node's ArrayBuffer realm; jsdom's differs and its Blob support is absent.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
-import { AtlasView } from '../../src/app/atlas-view';
+import { ATLAS_VIEW_TYPE } from '../../src/app/atlasViewType';
 import { AssetService } from '../../src/app/services/AssetService';
 import { transferAssets } from '../../src/app/services/assetTransfer/assetTransfer';
 import { groupContents } from '../../src/app/services/collectionBundle/bundleContents';
@@ -15,11 +14,6 @@ import { noteTree } from '../../src/app/services/collectionBundle/noteTree';
 import { createSnapshot } from '../../src/app/snapshots/sceneSnapshotFormat';
 import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
 import { createInMemoryApp, parseFrontmatter, type InMemoryApp } from '../mocks/inMemoryVault';
-
-vi.mock('../../src/app/atlas-view', () => ({
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-  AtlasView: class { async saveMap(): Promise<void> {} },
-}));
 
 // Covers are drawn on a canvas, which Node lacks.
 vi.mock('../../src/app/imageProcessing/imageProcessing', () => ({
@@ -296,6 +290,29 @@ describe('installing', () => {
     expect(fan.vault.files.has('atlas-vtt/collections/source/install.json')).toBe(true);
   });
 
+  it('carries the map of every floor of a scene, videos too, and points the installed scene at them', async () => {
+    const creator = await creatorVault();
+    const upper = 'Maps/Upper floor.webm';
+    await creator.vault.app.vault.create(upper, 'WEBM');
+    const map = JSON.parse(creator.vault.files.get(MAP_PATH)!) as { version: number; state: Record<string, unknown> };
+    map.version = 5;
+    map.state.levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: BACKGROUND },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: upper },
+    ];
+    creator.vault.files.set(MAP_PATH, JSON.stringify(map));
+
+    const blob = await exportFrom(creator);
+    expect((await manifestOf(blob)).files).toContainEqual(expect.objectContaining({ vaultPath: upper, role: 'background' }));
+
+    const fan = await emptyVault();
+    await importInto(fan, blob);
+    const levels = (JSON.parse(fan.vault.files.get(MAP_PATH)!) as { state: { levels: Array<{ background: string }> } }).state.levels;
+    const installed = levels[1]!.background;
+    expect(installed).toBe('atlas-vtt/collections/source/files/Upper floor.webm');
+    expect(fan.vault.files.get(installed)).toBe('WEBM');
+  });
+
   it('carries scene snapshots with their thumbnails and artwork into the installed collection', async () => {
     const creator = await creatorVault();
     const ogreImage = 'atlas-vtt/assets/ogre.webp';
@@ -552,10 +569,12 @@ describe('updating', () => {
     const { creator, fan } = await installedV1();
     creator.vault.files.set(MAP_PATH, mapFile(12));
     const steps: string[] = [];
-    const view = Object.assign(Object.create(AtlasView.prototype) as AtlasView, {
+    const view = {
+      getViewType: () => ATLAS_VIEW_TYPE,
+      atlasStore: {},
       getState: () => ({ file: MAP_PATH }),
       saveMap: vi.fn(async () => { steps.push('save'); }),
-    });
+    };
     const leaf = { view, detach: vi.fn(() => { steps.push('detach'); }) };
     fan.vault.app.workspace.getLeavesOfType = vi.fn(() => [leaf]);
     const modifyBinary = fan.vault.app.vault.modifyBinary.bind(fan.vault.app.vault);
@@ -1402,5 +1421,100 @@ describe('record files of an installed collection', () => {
     await importInto(fan, v1, { name: 'source (2)' });
 
     expect((await reviewImport(fan, v1)).review).toMatchObject({ relation: 'same', upToDate: true, canRestore: false, conflicts: [] });
+  });
+});
+
+describe('random tables and encounter folders', () => {
+  const OWN_TABLE = 'atlas-vtt/collections/source/tables/Weather.md';
+  const TABLE = 'Tables/Encounters.md';
+  const SUB_TABLE = 'Tables/Wolves.md';
+  const TABLE_BASE = 'Loot/Hoard.base';
+
+  /** The creator's collection rolling on a table note of its own and one elsewhere, which links a sub-table and a base view. */
+  async function tableVault(): Promise<Vault> {
+    const creator = await creatorVault();
+    const { vault, assets } = creator;
+    await vault.app.vault.create(OWN_TABLE, '| d4 | Weather |\n| - | - |\n| 1 | Rain |');
+    await vault.app.vault.create(TABLE, '| d6 | Encounter |\n| - | - |\n| 1 | [[Wolves]] |\n| 2 | [[Hoard.base#Gold]] |');
+    await vault.app.vault.create(SUB_TABLE, '| d4 | Wolves |\n| - | - |\n| 1 | Two |');
+    await vault.app.vault.create(TABLE_BASE, 'views: []');
+    lootItems.set(TABLE_BASE, []);
+    await assets.updateCollectionSettings('source', { randomTables: [
+      { path: OWN_TABLE, index: 0, kind: 'text', saveFolder: 'atlas-vtt/collections/source/Generated' },
+      { path: TABLE, index: 0, kind: 'text', label: 'Wilds', saveFolder: 'Elsewhere/Generated' },
+    ] });
+    return creator;
+  }
+
+  it('carries the notes the collection\'s tables are read from, what they link to, and points the installed tables at them', async () => {
+    const creator = await tableVault();
+    const blob = await exportFrom(creator);
+    const files = (await manifestOf(blob)).files;
+    for (const path of [OWN_TABLE, TABLE, SUB_TABLE]) expect(files).toContainEqual(expect.objectContaining({ vaultPath: path, role: 'linked-note' }));
+    expect(files).toContainEqual(expect.objectContaining({ vaultPath: TABLE_BASE, role: 'loot-base' }));
+
+    const fan = await emptyVault();
+    await fan.assets.createCollection('source');
+    // The name is taken: the review suggests "source (2)". Another name is that folder renamed afterwards, which the vault follows.
+    await importInto(fan, blob, { name: 'source (2)' });
+    const [installed] = (await fan.assets.getCollections()).filter((collection) => collection.name === 'source (2)');
+    const ownTable = 'atlas-vtt/collections/source (2)/tables/Weather.md';
+    const table = 'atlas-vtt/collections/source (2)/notes/Tables/Encounters.md';
+    expect(installed!.settings.randomTables).toEqual([
+      { path: ownTable, index: 0, kind: 'text', saveFolder: 'atlas-vtt/collections/source (2)/Generated' },
+      { path: table, index: 0, kind: 'text', label: 'Wilds' },
+    ]);
+    expect(fan.vault.files.get(ownTable)).toContain('Rain');
+    expect(fan.vault.app.metadataCache.resolvedLinks[table]).toEqual({
+      'atlas-vtt/collections/source (2)/notes/Tables/Wolves.md': 1,
+      'atlas-vtt/collections/source (2)/loot/Loot/Hoard.base': 1,
+    });
+  });
+
+  it('keeps a table whose note another kept note links to, and leaves out the table of a note the user excluded with the base it drew from', async () => {
+    const creator = await tableVault();
+    await pinNote(creator, 'Lore/Road.md', 'Roll on [[Encounters]].');
+    const preview = await prepareCollectionExport(creator.vault.app, creator.assets, 'source');
+    expect(preview.files.find((file) => file.vaultPath === TABLE)).toEqual({ vaultPath: TABLE, role: 'linked-note' });
+
+    const bundle = await exportCollectionBundle(creator.vault.app, creator.assets, preview, { kind: 'release', version: 2, excluded: new Set([`file:${TABLE}`]) });
+    const manifest = await manifestOf(bundle.blob);
+    expect(manifest.files.map((file) => file.vaultPath)).not.toContain(TABLE);
+    // The base only that table drew from stays behind with it.
+    expect(manifest.files.map((file) => file.vaultPath)).not.toContain(TABLE_BASE);
+    expect((manifest.collection.settings as { randomTables: Array<{ path: string }> }).randomTables.map((source) => source.path)).toEqual([OWN_TABLE]);
+  });
+
+  it('points a pin that rolls a folder of encounters at that folder in the collection it is installed as, under another name', async () => {
+    const creator = await creatorVault();
+    const [encounter] = await creator.assets.getAssets('source', 'encounter');
+    const encounters = creator.assets.getAssetFilePath(encounter!).replace(/\/[^/]+$/, '');
+    expect(encounters).toBe('atlas-vtt/collections/source/encounters');
+    const map = JSON.parse(creator.vault.files.get(MAP_PATH)!) as { state: { objects: { pins: Record<string, unknown> } } };
+    map.state.objects.pins = { p1: { id: 'p1', kind: 'pin', x: 0, y: 0, notePath: encounters } };
+    creator.vault.files.set(MAP_PATH, JSON.stringify(map));
+
+    const fan = await emptyVault();
+    await fan.assets.createCollection('source');
+    await importInto(fan, await exportFrom(creator), { name: 'source (2)' });
+    const installed = JSON.parse(fan.vault.files.get('atlas-vtt/collections/source (2)/scenes/Cave.atlasmap')!) as { state: { objects: { pins: Record<string, { notePath: string }> } } };
+    expect(installed.state.objects.pins.p1!.notePath).toBe('atlas-vtt/collections/source (2)/encounters');
+  });
+});
+
+describe('the level a scene was last shown on', () => {
+  it('goes with the scene to whoever imports the collection', async () => {
+    const creator = await creatorVault();
+    const levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: BACKGROUND },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: BACKGROUND },
+    ];
+    const file = JSON.parse(mapFile());
+    creator.vault.files.set(MAP_PATH, JSON.stringify({ version: 5, state: { ...file.state, version: 5, levels, viewedLevel: 'upper' } }));
+
+    const target = await emptyVault();
+    await importInto(target, await exportFrom(creator));
+
+    expect(JSON.parse(target.vault.files.get(MAP_PATH)!).state.viewedLevel).toBe('upper');
   });
 });

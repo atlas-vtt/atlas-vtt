@@ -3,18 +3,22 @@
  *
  * Manages PIXI-side visuals for the grid calibration tool: the 4-quadrant
  * "Intersections" mode and the grid preview the "Freehand" mode places.
- * Draws crosshair markers, connecting lines, quadrant dimming, and drives
+ * Owns the marks on the map (`AlignmentMarks`) and the scan that shows a
+ * detection while it runs (`GridScanLayer`), moves the camera, and drives
  * live grid preview through the existing GridSystem.
  */
 
-import { Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { GridSystem } from '../grid/GridSystem';
 import { NO_STRETCH, sameStretch, type MapStretch } from '../grid/mapStretch';
+import { prefersReducedMotion } from '../utils/motion';
+import { AlignmentMarks } from './gridAlignment/AlignmentMarks';
+import type { GridScanLayer } from './gridAlignment/GridScanLayer';
 import { getQuadrantBounds } from './gridAlignmentMath';
 import type { AlignmentPoint, AlignmentResult, MapBounds } from './gridAlignmentMath';
-import { MAP_LAYER_Z } from './mapLayerOrder';
-import type { DetectableMap } from './mapImage/mapImageView';
+import type { DetectionEvent, DetectionOutcome } from './spectralEngine/detectionJob';
+import type { DetectableMap } from './mosaicCanvas/mosaicCanvasView';
+import { glideViewport } from './utils/viewportGlide';
 
 /** The part of the view's map image an alignment reads and tries its stretch on. */
 export interface AlignedMap extends Pick<DetectableMap, 'worldRect'> {
@@ -25,43 +29,36 @@ export interface AlignedMap extends Pick<DetectableMap, 'worldRect'> {
 // Re-exports so consumers can import from one place
 export type { AlignmentPoint, AlignmentResult } from './gridAlignmentMath';
 
-// ---------------------------------------------------------------------------
-// Visual constants
-// ---------------------------------------------------------------------------
+/** How much room a rect brought into view gets around it, as a factor of its size. */
+const QUADRANT_PADDING = 1.2;
+const FULL_MAP_PADDING = 1.1;
 
-const CROSSHAIR_SIZE = 20;
-const CROSSHAIR_COLOR = 0x00ff88;
-const LINE_COLOR = 0x00ff88;
-const CIRCLE_RADIUS = 4;
-const LINE_WIDTH = 2;
-const DASH_LENGTH = 8;
-const GAP_LENGTH = 6;
-
-// ---------------------------------------------------------------------------
-// Controller
-// ---------------------------------------------------------------------------
+/**
+ * What a scan shows on the map: the engine at work and its answer being drawn (`working`), only the
+ * last of the answer's glow, which the eye no longer follows (`fading`), or nothing.
+ */
+export type ScanState = 'working' | 'fading' | 'none';
 
 export class GridAlignmentController {
-  private viewport: Viewport;
-  private gridSystem: GridSystem;
-  private canvasEl: HTMLCanvasElement;
-  private map: AlignedMap | null;
+  private readonly marks: AlignmentMarks;
+  /** A detection's answer waits behind the scan's locking wave: the grid shows once the wave has passed. */
+  private awaitingReveal = false;
+  /** Ends the camera's glide where it is. */
+  private endGlide: (() => void) | null = null;
+  /** Counts the scans begun, so that an earlier one's end says nothing about a later one. */
+  private scanRun = 0;
+  /** Hears what a scan shows on the map, from its start until it has nothing left to show. */
+  onScan: ((scan: ScanState) => void) | null = null;
 
-  private crosshairs: (Graphics | null)[] = [];
-  private connectingLines: (Graphics | null)[] = [];
-  private quadrantOverlay: Graphics | null = null;
-  private cursorPreview: Graphics | null = null;
-
+  /** `scan` shows detections on the map while they run; without one only their answers show. The controller owns it. */
   constructor(
-    viewport: Viewport,
-    gridSystem: GridSystem,
-    canvasEl: HTMLCanvasElement,
-    map: AlignedMap | null = null,
+    private readonly viewport: Viewport,
+    private readonly gridSystem: GridSystem,
+    private readonly canvasEl: HTMLCanvasElement,
+    private readonly map: AlignedMap | null = null,
+    private readonly scan: GridScanLayer | null = null,
   ) {
-    this.viewport = viewport;
-    this.gridSystem = gridSystem;
-    this.canvasEl = canvasEl;
-    this.map = map;
+    this.marks = new AlignmentMarks(viewport);
   }
 
   // -----------------------------------------------------------------------
@@ -86,116 +83,35 @@ export class GridAlignmentController {
   }
 
   // -----------------------------------------------------------------------
-  // Cursor preview (follows pointer during placement)
+  // Marks on the map
   // -----------------------------------------------------------------------
 
+  /** Moves the crosshair that follows the pointer during placement; `constrainY` holds it on one row. */
   updateCursorPreview(clientX: number, clientY: number, constrainY?: number): void {
     const point = this.screenToWorld(clientX, clientY);
     if (constrainY !== undefined) point.y = constrainY;
-
-    if (!this.cursorPreview) {
-      this.cursorPreview = new Graphics();
-      this.cursorPreview.eventMode = 'none';
-      this.cursorPreview.alpha = 0.5;
-      this.addMark(this.cursorPreview);
-    }
-
-    this.cursorPreview.clear();
-    this.drawCrosshairAt(this.cursorPreview, point, 0.4);
+    this.marks.showCursor(point);
   }
 
   hideCursorPreview(): void {
-    if (this.cursorPreview) {
-      this.removeGraphics(this.cursorPreview);
-      this.cursorPreview = null;
-    }
+    this.marks.hideCursor();
   }
-
-  // -----------------------------------------------------------------------
-  // Indexed crosshair markers
-  // -----------------------------------------------------------------------
 
   showMeasurementCrosshair(index: number, point: AlignmentPoint): void {
-    if (this.crosshairs[index]) {
-      this.removeGraphics(this.crosshairs[index]);
-    }
-
-    const g = new Graphics();
-    g.eventMode = 'none';
-    this.drawCrosshairAt(g, point, 0.6);
-
-    this.addMark(g);
-    this.crosshairs[index] = g;
+    this.marks.showCrosshair(index, point);
   }
-
-  // -----------------------------------------------------------------------
-  // Indexed connecting lines (dashed)
-  // -----------------------------------------------------------------------
 
   showMeasurementLine(index: number, a: AlignmentPoint, b: AlignmentPoint): void {
-    if (this.connectingLines[index]) {
-      this.removeGraphics(this.connectingLines[index]);
-    }
-
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 1) return;
-
-    const g = new Graphics();
-    g.eventMode = 'none';
-
-    const ux = dx / dist;
-    const uy = dy / dist;
-    let travelled = 0;
-    let drawing = true;
-
-    while (travelled < dist) {
-      const segLen = drawing ? DASH_LENGTH : GAP_LENGTH;
-      const end = Math.min(travelled + segLen, dist);
-      if (drawing) {
-        g.moveTo(a.x + ux * travelled, a.y + uy * travelled);
-        g.lineTo(a.x + ux * end, a.y + uy * end);
-      }
-      travelled = end;
-      drawing = !drawing;
-    }
-
-    g.stroke({ width: LINE_WIDTH, color: LINE_COLOR });
-    this.addMark(g);
-    this.connectingLines[index] = g;
+    this.marks.showLine(index, a, b);
   }
 
-  // -----------------------------------------------------------------------
-  // Quadrant dimming (Intersections tab)
-  // -----------------------------------------------------------------------
-
+  /** Dims the quadrants the Intersections tab is not measuring in. */
   showQuadrantDimming(quadrantIndex: 0 | 1 | 2 | 3, completedPairs: number): void {
-    this.clearQuadrantDimming();
-
-    const mapBounds = this.getMapBounds();
-    if (!mapBounds) return;
-
-    const g = new Graphics();
-    g.eventMode = 'none';
-
-    for (let i = 0; i < 4; i++) {
-      if (i === quadrantIndex) continue;
-      const qb = getQuadrantBounds(mapBounds, i as 0 | 1 | 2 | 3);
-      const alpha = i < completedPairs ? 0.15 : 0.35;
-      g.rect(qb.x, qb.y, qb.width, qb.height);
-      g.fill({ color: 0x000000, alpha });
-    }
-
-    this.addMark(g);
-    this.quadrantOverlay = g;
+    this.marks.dimQuadrants(this.getMapBounds(), quadrantIndex, completedPairs);
   }
 
   clearQuadrantDimming(): void {
-    if (this.quadrantOverlay) {
-      this.removeGraphics(this.quadrantOverlay);
-      this.quadrantOverlay = null;
-    }
+    this.marks.clearDimming();
   }
 
   // -----------------------------------------------------------------------
@@ -204,30 +120,94 @@ export class GridAlignmentController {
 
   zoomToQuadrant(quadrantIndex: 0 | 1 | 2 | 3): void {
     const mapBounds = this.getMapBounds();
-    if (!mapBounds) return;
-
-    const qb = getQuadrantBounds(mapBounds, quadrantIndex);
-    const padding = 1.2;
-    const scaleX = this.canvasEl.clientWidth / (qb.width * padding);
-    const scaleY = this.canvasEl.clientHeight / (qb.height * padding);
-
-    this.viewport.scale.set(Math.min(scaleX, scaleY));
-    this.viewport.moveCenter(qb.x + qb.width / 2, qb.y + qb.height / 2);
+    if (mapBounds) this.lookAt(getQuadrantBounds(mapBounds, quadrantIndex), QUADRANT_PADDING);
   }
 
   zoomToFullMap(): void {
     const mapBounds = this.getMapBounds();
-    if (!mapBounds) return;
+    if (mapBounds) this.lookAt(mapBounds, FULL_MAP_PADDING);
+  }
 
-    const padding = 1.1;
-    const scaleX = this.canvasEl.clientWidth / (mapBounds.width * padding);
-    const scaleY = this.canvasEl.clientHeight / (mapBounds.height * padding);
+  /** Brings `rect` into view with `padding` times its size of room: a glide, or a jump where motion is reduced. */
+  private lookAt(rect: MapBounds, padding: number): void {
+    const scale = Math.min(this.canvasEl.clientWidth / (rect.width * padding), this.canvasEl.clientHeight / (rect.height * padding));
+    const target = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, scale };
+    this.stopGlide();
+    // A canvas without a size (its tab is hidden) has no view to bring anything into.
+    if (!(scale > 0) || !Number.isFinite(scale)) return;
+    if (prefersReducedMotion(this.canvasEl)) {
+      this.viewport.scale.set(scale);
+      this.viewport.moveCenter(target.x, target.y);
+      return;
+    }
+    this.endGlide = glideViewport(this.viewport, this.canvasEl, target);
+  }
 
-    this.viewport.scale.set(Math.min(scaleX, scaleY));
-    this.viewport.moveCenter(
-      mapBounds.x + mapBounds.width / 2,
-      mapBounds.y + mapBounds.height / 2,
-    );
+  private stopGlide(): void {
+    this.endGlide?.();
+    this.endGlide = null;
+  }
+
+  // -----------------------------------------------------------------------
+  // Detections shown while they run
+  // -----------------------------------------------------------------------
+
+  /**
+   * Begins showing a detection whose waves run out from `origin`, or from the map's middle.
+   * Returns what its events are handed to.
+   */
+  beginScan(origin?: AlignmentPoint): (event: DetectionEvent) => void {
+    const { scan } = this;
+    if (!scan) return () => undefined;
+    scan.start(origin);
+    this.scanRun++;
+    this.onScan?.(scan.showing ? 'working' : 'none');
+    return (event) => scan.show(event);
+  }
+
+  /**
+   * Ends the scan with the detection's outcome. A grid found is drawn as the result has the map,
+   * and where no grid was showing it appears behind the scan's locking wave.
+   */
+  endScan({ result, hits }: DetectionOutcome): void {
+    const { scan } = this;
+    if (!scan) return;
+    if (!result) {
+      scan.miss();
+      this.sayWhenStill(scan);
+      return;
+    }
+    // The wave runs over the map as the result draws it.
+    this.takeStretch(result.mapStretch ?? NO_STRETCH);
+    this.awaitingReveal = this.gridSystem.getOptions().enabled !== true;
+    scan.lock(result, hits, () => {
+      if (!this.awaitingReveal) return;
+      this.awaitingReveal = false;
+      this.gridSystem.updateOptions({ enabled: true, isAligning: true });
+    });
+    this.sayWhenStill(scan);
+  }
+
+  /** Tells `onScan` how the scan under way ends: its last glow, then nothing. */
+  private sayWhenStill(scan: GridScanLayer): void {
+    const run = this.scanRun;
+    const say = (state: ScanState): void => {
+      if (run === this.scanRun) this.onScan?.(state);
+    };
+    if (!scan.showing) {
+      say('none');
+      return;
+    }
+    scan.whenQuiet(() => say('fading'));
+    scan.whenStill(() => say('none'));
+  }
+
+  /** Ends a scan nobody waits for any more. */
+  cancelScan(): void {
+    this.awaitingReveal = false;
+    this.scan?.cancel();
+    this.scanRun++;
+    this.onScan?.('none');
   }
 
   // -----------------------------------------------------------------------
@@ -236,19 +216,22 @@ export class GridAlignmentController {
 
   /** Shows the grid of `result` over the map as the result stretches it. */
   showPreview(result: AlignmentResult): void {
-    const stretch = result.mapStretch ?? NO_STRETCH;
-    // Marks stay where they were clicked in the world, which a map stretched otherwise has moved away under them.
-    if (this.map && !sameStretch(stretch, this.map.mapStretch)) this.clearMeasurements();
-    // The grid is drawn over the map's rect, so the map takes its stretch first.
-    this.map?.setStretch(stretch);
+    this.takeStretch(result.mapStretch ?? NO_STRETCH);
     this.gridSystem.updateOptions({
       size: result.cellSize,
       offsetX: result.offsetX,
       offsetY: result.offsetY,
-      enabled: true,
+      enabled: !this.awaitingReveal,
       isAligning: true,
       ...(result.gridType ? { type: result.gridType } : {}),
     });
+  }
+
+  /** Draws the map with `stretch`: the grid is drawn over the map's rect, so the map takes its stretch first. */
+  private takeStretch(stretch: MapStretch): void {
+    // Marks stay where they were clicked in the world, which a map stretched otherwise has moved away under them.
+    if (this.map && !sameStretch(stretch, this.map.mapStretch)) this.marks.clearMeasurements();
+    this.map?.setStretch(stretch);
   }
 
   /** Hides the grid while a new one is being placed; cancelling restores the scene's grid. */
@@ -261,51 +244,14 @@ export class GridAlignmentController {
   // -----------------------------------------------------------------------
 
   cleanupVisuals(): void {
-    this.clearMeasurements();
-    this.clearQuadrantDimming();
-    this.hideCursorPreview();
-  }
-
-  private clearMeasurements(): void {
-    for (const g of this.crosshairs) {
-      if (g) this.removeGraphics(g);
-    }
-    this.crosshairs = [];
-
-    for (const g of this.connectingLines) {
-      if (g) this.removeGraphics(g);
-    }
-    this.connectingLines = [];
+    this.marks.clear();
   }
 
   destroy(): void {
-    this.cleanupVisuals();
+    this.marks.destroy();
+    this.stopGlide();
+    this.awaitingReveal = false;
+    this.scan?.destroy();
     this.gridSystem.setAlignmentMode(false);
-  }
-
-  // -----------------------------------------------------------------------
-  // Private
-  // -----------------------------------------------------------------------
-
-  private drawCrosshairAt(g: Graphics, point: AlignmentPoint, fillAlpha: number): void {
-    const half = CROSSHAIR_SIZE / 2;
-    g.moveTo(point.x - half, point.y);
-    g.lineTo(point.x + half, point.y);
-    g.moveTo(point.x, point.y - half);
-    g.lineTo(point.x, point.y + half);
-    g.stroke({ width: LINE_WIDTH, color: CROSSHAIR_COLOR });
-    g.circle(point.x, point.y, CIRCLE_RADIUS);
-    g.fill({ color: CROSSHAIR_COLOR, alpha: fillAlpha });
-  }
-
-  /** Above the lighting, which would darken the marks like the map. */
-  private addMark(g: Graphics): void {
-    g.zIndex = MAP_LAYER_Z.gridAlignment;
-    this.viewport.addChild(g);
-  }
-
-  private removeGraphics(g: Graphics): void {
-    if (g.parent) g.parent.removeChild(g);
-    if (!g.destroyed) g.destroy();
   }
 }

@@ -67,6 +67,8 @@ function onlyMoved(from: Entries, to: Entries, key: string): boolean {
 export function restore(current: HistorySnapshot, from: HistorySnapshot, to: HistorySnapshot): HistorySnapshot {
   const result: HistorySnapshot = { ...current };
   for (const branch of TRACKED_BRANCHES) {
+    // A branch the store does not keep stays out of the slice it is written with.
+    if (current[branch] === undefined && from[branch] === undefined && to[branch] === undefined) continue;
     result[branch] = towards(current[branch], from[branch], to[branch], BRANCH_DEPTH[branch]);
   }
   return result;

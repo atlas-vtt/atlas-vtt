@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Notice, TFile } from 'obsidian';
+import { TFile } from 'obsidian';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore } from '../../ViewStoreContext';
 import { SceneSnapshotService, nextSnapshotName, type SceneSnapshotEntry } from '../../../snapshots/SceneSnapshotService';
@@ -10,6 +10,7 @@ import { confirmSnapshotRestore, restoreSnapshotInView } from '../../../snapshot
 import { copyAtlasLink } from '../../../links/atlasLinkText';
 import { SNAPSHOT_THUMBNAIL_SIZE } from '../../../services/MapThumbnailService';
 import { t } from '../../../i18n';
+import { showNotice } from '../../../ui/notice';
 
 export interface SceneSnapshotsController {
   entries: SceneSnapshotEntry[];
@@ -60,7 +61,7 @@ export function useSceneSnapshots(onRestore: () => void): SceneSnapshotsControll
       await task();
     } catch (error: unknown) {
       console.error(`[Atlas] ${failure}:`, error);
-      new Notice(failure);
+      showNotice(failure);
     } finally {
       setIsBusy(false);
       await refresh();

@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import type { BundleFileReader } from '../../../../services/collectionBundle/bundleReader';
+import type { LibraryTemplate } from '../../../../statblocks/model/resolvedTypes';
 import { resourceUrl } from '../utils/assetFormatters';
 
 /**
@@ -13,6 +14,8 @@ export interface ContentMedia {
   imageUrl(path: string): string | null | Promise<string | null>;
   /** Text of a statblock note that is not in the vault yet; undefined when the vault has it. */
   noteText(path: string): Promise<string | undefined>;
+  /** Templates that come with those notes (the bundle's own), found before the library's. */
+  templates?: readonly LibraryTemplate[] | undefined;
   /** Releases the object URLs handed out. */
   dispose(): void;
 }
@@ -48,6 +51,7 @@ export function bundleMedia(app: App, files: BundleFileReader): ContentMedia {
       return url;
     },
     noteText: async (path) => (await files.text(path)) ?? undefined,
+    templates: files.templates,
     dispose() {
       disposed = true;
       for (const url of resolved.values()) if (url) URL.revokeObjectURL(url);

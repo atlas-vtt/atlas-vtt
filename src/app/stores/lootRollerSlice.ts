@@ -1,6 +1,5 @@
 import { isFiniteNumber, isRecord, isStringArray } from '../utils/guards';
 import { readLootRoll, type LootRoll } from '../loot/lootHistory';
-import { isRarityTone, type RarityTone } from '../loot/lootRarity';
 import type { PanelArea, PanelPosition } from '../react/hooks/useDraggablePosition';
 
 /**
@@ -10,6 +9,10 @@ import type { PanelArea, PanelPosition } from '../react/hooks/useDraggablePositi
  */
 
 export const LOOT_MAX_COUNT = 10;
+/** A vault path and a table's place; anything longer is no table id. */
+const MAX_SELECTED_LENGTH = 1024;
+/** No collection names more rarity words. */
+const MAX_EXCLUDED = 32;
 
 /** The list on the right: the latest roll, or every roll of the collection. */
 export type LootPane = 'results' | 'history';
@@ -22,14 +25,16 @@ export interface LootRollerState {
   size?: PanelArea;
   /** Base views switched off in the source list, by view id (`lootViewId`). */
   disabledViews: string[];
-  /** Rarities switched off for rolls; every rarity is on by default. */
-  excludedRarities: RarityTone[];
+  /** The collection's rarity words switched off for rolls, in lower case; every word is on by default. */
+  excludedRarities: string[];
   count: number;
   pane: LootPane;
+  /** The table rolled on: a table of a note (`<path>#<index>`) or a loot base (its path); the first one while unset. */
+  selected?: string;
   lastRoll?: LootRoll;
 }
 
-export type LootRollerSettings = Partial<Pick<LootRollerState, 'position' | 'size' | 'disabledViews' | 'excludedRarities' | 'count' | 'pane'>>;
+export type LootRollerSettings = Partial<Pick<LootRollerState, 'position' | 'size' | 'disabledViews' | 'excludedRarities' | 'count' | 'pane' | 'selected'>>;
 
 export interface LootRollerSlice {
   lootRoller: LootRollerState;
@@ -54,7 +59,7 @@ function clampCount(value: number): number {
 export function readLootRollerState(value: unknown): LootRollerState {
   const state = createInitialLootRollerState();
   if (!isRecord(value)) return state;
-  const { open, position, size, disabledViews, excludedRarities, count, pane, lastRoll } = value;
+  const { open, position, size, disabledViews, excludedRarities, count, pane, selected, lastRoll } = value;
   const roll = readLootRoll(lastRoll);
   return {
     open: open === true,
@@ -63,9 +68,10 @@ export function readLootRollerState(value: unknown): LootRollerState {
     ...(isRecord(size) && isFiniteNumber(size.width) && isFiniteNumber(size.height) && size.width > 0 && size.height > 0
       && { size: { width: size.width, height: size.height } }),
     disabledViews: isStringArray(disabledViews) ? disabledViews : [],
-    excludedRarities: Array.isArray(excludedRarities) ? excludedRarities.filter(isRarityTone) : [],
+    excludedRarities: isStringArray(excludedRarities) ? excludedRarities.slice(0, MAX_EXCLUDED).map((name) => name.toLowerCase()) : [],
     count: isFiniteNumber(count) ? clampCount(count) : state.count,
     pane: pane === 'history' ? 'history' : 'results',
+    ...(typeof selected === 'string' && selected.length > 0 && selected.length <= MAX_SELECTED_LENGTH && { selected }),
     ...(roll && { lastRoll: roll }),
   };
 }

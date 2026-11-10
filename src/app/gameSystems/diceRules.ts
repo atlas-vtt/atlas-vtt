@@ -1,10 +1,10 @@
 /**
- * A collection's dice rules: reading them from the settings, checking and
- * comparing them.
+ * Dice rules as collections stored them before dice sets, and as sets keep
+ * their critical and exploding rules: checking and comparing them. Which set a
+ * collection rolls is `collectionDiceSet`'s.
  */
 
 import type { CritRule, DiceRules, ExplodeRule, ExplodeScope } from '../types/diceRulesTypes';
-import type { SystemPreset } from '../types/systemPresetTypes';
 
 /** Dice of a collection without a game system: a d20, natural 20 and natural 1. */
 export const DEFAULT_DICE_RULES: Readonly<DiceRules> = { defaultRoll: '1d20', crit: 'natural' };
@@ -31,14 +31,6 @@ export function parseExplodeRule(raw: unknown): ExplodeRule | null {
   if (!EXPLODE_SCOPES.includes(dice as ExplodeScope) || typeof repeats !== 'boolean') return null;
   if (!isFaceCount(highFaces, 1) || !isFaceCount(lowFaces, 0)) return null;
   return { dice: dice as ExplodeScope, repeats, highFaces, lowFaces };
-}
-
-/**
- * Whether dice rules can be saved as they stand. While they are edited they
- * may hold what was typed so far: half a default roll, or no face count yet.
- */
-export function isValidDiceRules(dice: DiceRules): boolean {
-  return isValidDefaultRoll(dice.defaultRoll) && (dice.explode === undefined || parseExplodeRule(dice.explode) !== null);
 }
 
 /** What the settings offer for exploding dice: none, or the dice that explode. */
@@ -70,19 +62,6 @@ export function parseDefaultRoll(defaultRoll: string): { count: number; sides: n
 
 export function isValidDefaultRoll(value: string): boolean {
   return parseDefaultRoll(value) !== null;
-}
-
-/**
- * The collection's dice rules: its own, else those of the preset it was set
- * from (collections saved before dice rules existed), else the default.
- */
-export function collectionDiceRules(
-  settings: { dice?: DiceRules | undefined; systemPresetId?: string | undefined },
-  presets: readonly SystemPreset[],
-): DiceRules {
-  return settings.dice
-    ?? presets.find((preset) => preset.id === settings.systemPresetId)?.rules.dice
-    ?? { ...DEFAULT_DICE_RULES };
 }
 
 export function sameDiceRules(a: DiceRules | undefined, b: DiceRules | undefined): boolean {

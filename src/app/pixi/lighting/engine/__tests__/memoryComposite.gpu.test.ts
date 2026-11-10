@@ -31,18 +31,20 @@ function scene(options: MemoryOptions & Partial<EngineScene>): EngineScene {
  * Hashes of this scene with no scene option set, on the maintainer's machine (Apple silicon,
  * Chromium through ANGLE on Metal). They pin the whole look: first taken from the composite
  * before the scene options existed (commit 55c33d23), and recorded anew each time the light
- * falloff changed (the dim range lit out to its edge, then held on dark maps). Another GPU or
+ * falloff changed (the dim range lit out to its edge, then held on dark maps, then the fade
+ * within the dim range and the senses' fade towards their range, 2026-10-23). Another GPU or
  * driver may round a channel differently: record them there from what the first test below
  * reports.
  */
-const RECORDED = { player: 'e6fb64f5', gm: 'fb04ade6' } as const;
+const RECORDED = { player: '016b47bc', gm: '62870fd9' } as const;
 /**
  * The same scene without its lights, under an ambient light of 0.2: sight, darkvision, explored
  * memory and the GM's ghosted map. Recorded on beta before the light falloff changed (commit
- * f1ae04bd, same machine): what no light touches must stay as it was.
+ * f1ae04bd, same machine), and anew when a sense came to fade towards the edge of its range
+ * (`SENSE_FADE`, 2026-10-23): what no light touches stays as it was but for that.
  */
 const UNLIT: Partial<EngineScene> = { lights: [], ambient: 0.2 };
-const UNLIT_RECORDED = { player: 'bb6aae6c', gm: 'c1acb236' } as const;
+const UNLIT_RECORDED = { player: '6b7d35a6', gm: 'fe953c1b' } as const;
 const DEFAULTS: MemoryOptions = { exploredMemory: true, exploredColor: '#ffffff', unexploredColor: '#000000' };
 
 /** Screen points: remembered but unseen (world 100, 100), never seen (900, 900), seen by the token (780, 300). */

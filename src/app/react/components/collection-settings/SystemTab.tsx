@@ -26,15 +26,24 @@ interface SystemTabProps {
   onPresetIdChange: (presetId: string | undefined) => void;
   /** Deletes a user preset; the collections that use it, this one included, lose their game system. */
   onDeletePreset: (preset: SystemPreset) => Promise<void>;
+  /** A choice of no game system at all, first in the list, for rules that may have none (a campaign's). */
+  none?: NoSystemChoice;
+}
+
+export interface NoSystemChoice {
+  summary: string;
+  isActive: boolean;
+  onSelect: () => void;
 }
 
 type PendingEdit = { kind: 'create' } | { kind: 'rename' | 'delete'; presetId: string };
 
 export function SystemTab({
-  service, presets, rules, presetId, onApplyPreset, onPresetIdChange, onDeletePreset,
+  service, presets, rules, presetId, onApplyPreset, onPresetIdChange, onDeletePreset, none,
 }: SystemTabProps): React.ReactElement {
   const [pending, setPending] = useState<PendingEdit | null>(null);
-  const active = findActivePreset(presets, presetId, rules);
+  const hasNone = none?.isActive === true;
+  const active = hasNone ? undefined : findActivePreset(presets, presetId, rules);
   const isEdited = active !== undefined && !sameSystemRules(active.rules, rules);
 
   const save = (name: string): void => {
@@ -111,6 +120,7 @@ export function SystemTab({
       </p>
 
       <div className="atlas-csm-preset-list" role="radiogroup" aria-label={t('csm.system.group')}>
+        {none && <SystemPresetRow name={t('csm.system.none')} summary={none.summary} isActive={hasNone} onSelect={none.onSelect} />}
         {presets.map((preset) => (
           <SystemPresetRow
             key={preset.id}
@@ -124,10 +134,10 @@ export function SystemTab({
             replacement={replacementFor(preset)}
           />
         ))}
-        {!active && <SystemPresetRow name={t('csm.system.custom')} rules={rules} isActive />}
+        {!active && !hasNone && <SystemPresetRow name={t('csm.system.custom')} rules={rules} isActive />}
       </div>
 
-      {pending?.kind === 'create' ? (
+      {hasNone ? null : pending?.kind === 'create' ? (
         <PresetNameInput
           initialName=""
           confirmLabel={t('csm.system.savePreset')}

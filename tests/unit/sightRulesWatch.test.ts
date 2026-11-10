@@ -1,4 +1,7 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';
+import { PlayedRules } from '../../src/app/campaigns/playedRules';
 import { CreatureIndex } from '../../src/app/creatures/CreatureIndex';
 import { tokenSensesResolver, type TokenSensesResolver } from '../../src/app/creatures/tokenSensesResolver';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
@@ -13,6 +16,7 @@ import type { TokenEntity } from '../../src/app/types';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 import { sightSources } from '../../src/app/vision/sight';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
+import { memoryCampaigns } from '../mocks/memoryCampaigns';
 import { memoryPresets } from '../mocks/memoryPresets';
 
 const MAP = 'atlas-vtt/collections/dungeon/scenes/cave.atlasmap';
@@ -105,5 +109,38 @@ describe('the watch and an asset index that loads after the map', () => {
     vi.restoreAllMocks();
     expect(rules.conditions.length).toBeGreaterThan(0);
     expect(rules.definitions.some((sense) => sense.id === 'dnd5e-darkvision')).toBe(true);
+  });
+});
+
+describe('the watch and the campaign being played', () => {
+  it('reads the campaign\'s rules when its system starts to apply, and the collection\'s again when play stops', async () => {
+    const current = creatureVault();
+    const state = { mapPath: MAP, grid: null };
+    const assets = AssetService.getInstance(current.app);
+    vi.spyOn(assets, 'getCollectionForMap').mockReturnValue('dungeon');
+    vi.spyOn(assets, 'getCollectionSettings').mockReturnValue({ systemPresetId: 'builtin:dnd5e', conditions: structuredClone(dnd.rules.conditions) });
+    const blinded = { id: 'blind', name: 'Blind', color: '#000000', effect: 'blinded' } as const;
+    const system = { systemPresetId: 'builtin:cairn', gridDefaults: dnd.rules.gridDefaults, conditions: [blinded] };
+    const play = CampaignPlay.forApp(current.app);
+    PlayedRules.open(current.app, memoryCampaigns([{ id: 'saga', name: 'Saga', createdAt: 1, system }]), play);
+    const resolver = tokenSensesResolver(CreatureIndex.forApp(current.app), mapSenseRulesSource(current.app, assets, () => state));
+    const rebuilt = vi.fn();
+    const watch = new SightRulesWatch({ obsApp: current.app, store: { getState: () => state } as unknown as ViewAtlasStore, senses: resolver, frames: () => window, onChange: rebuilt });
+    expect(watch.current().conditions.length).toBe(dnd.rules.conditions.length);
+
+    play.play('saga');
+    await nextFrame();
+    expect(rebuilt).toHaveBeenCalledTimes(1);
+    expect(watch.current().conditions).toEqual([blinded]);
+
+    play.stop();
+    await nextFrame();
+    const conditions = watch.current().conditions.length;
+    watch.destroy();
+    PlayedRules.release(current.app);
+    CreatureIndex.release(current.app);
+    vi.restoreAllMocks();
+    expect(rebuilt).toHaveBeenCalledTimes(2);
+    expect(conditions).toBe(dnd.rules.conditions.length);
   });
 });

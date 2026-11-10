@@ -1,0 +1,141 @@
+// A table's gates in the control: the cards of newcomers who wait for the GM (over the control, never
+// in the menu's or the panel's flow), the lines of a pause and of a table that closes for want of
+// access, and the join code's row.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'online' as *;
+
+.atlas-online-dock {
+  // One row each: what it says on the text edge, what to do about it at the row's end.
+  .atlas-online-knock,
+  .atlas-online-paused,
+  .atlas-online-closing,
+  .atlas-online-image-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    min-height: $online-control;
+
+    > .atlas-online-button {
+      flex: none;
+    }
+  }
+
+  // A card never grows: whatever the name holds, the row keeps its height and its buttons their place.
+  .atlas-online-knock {
+    flex: none;
+    height: $online-control;
+    overflow: hidden;
+  }
+
+  // The name gives way first: "wants to join" and the two buttons always show.
+  .atlas-online-knock__text {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    padding-left: $online-text-inset;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+    line-height: $online-control;
+  }
+
+  // The newcomer's own text: one line in a box of its own, cut with an ellipsis, its direction kept
+  // to itself, in the card's words' other colour and weight.
+  .atlas-online-knock__name {
+    min-width: 0;
+    color: var(--text-normal);
+    font-weight: $font-weight-semibold;
+    unicode-bidi: isolate;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-knock__rest {
+    flex: none;
+    white-space: pre;
+  }
+
+  // A line with more behind it (what a rest will do) shows it as a tooltip on hover or keyboard focus.
+  .atlas-online-knock__text--about {
+    border-radius: $radius-l;
+    cursor: default;
+    @include atlas-focus-ring;
+
+    // Inside the card, which clips: the ring is drawn within the line.
+    &:focus-visible {
+      outline-offset: -2px;
+    }
+  }
+
+  // That tooltip stands above the cards at their left edge, so it covers no card and moves none.
+  .atlas-online-tooltip--cards {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + #{$border-width-m} + 2 * #{$spacing-s} + var(--atlas-online-above, 0px) + var(--atlas-online-knocks-height, 0px));
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  // Not yet armed, or answered: it takes no press, and looks it.
+  .atlas-online-knock .atlas-online-button,
+  .atlas-online-paused > .atlas-online-button {
+    &[aria-disabled='true'] {
+      opacity: 0.5;
+      cursor: default;
+
+      &:active {
+        transform: none;
+      }
+    }
+  }
+
+  .atlas-online-paused__text,
+  .atlas-online-closing__text {
+    flex: 1;
+    min-width: 0;
+    padding-left: $online-text-inset;
+    color: var(--color-orange);
+    font-size: $font-ui-small;
+  }
+
+  // The digits stand as wide as each other, so a new code never moves the row's text.
+  .atlas-online-code-row {
+    font-variant-numeric: tabular-nums;
+  }
+
+  // The cards over the control: a panel of their own, its left edge on the control's, a bar's gap
+  // above it, or above the menu or panel open over it (`--atlas-online-above`, dockSurface.ts). The
+  // earliest card is the lowest and a later one goes above it, so a knock moves no card that was
+  // there; more than the view has room for scroll, the earliest in sight.
+  .atlas-online-knocks {
+    position: absolute;
+    left: calc(-1 * var(--atlas-online-dock-border, #{$border-width-m}));
+    bottom: calc(100% + var(--atlas-online-dock-border, #{$border-width-m}) + #{$spacing-s} + var(--atlas-online-above, 0px));
+    // Over the QR card, which a narrow view lays over the control's end: a knock is never hidden.
+    z-index: 2;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: $spacing-s;
+    box-sizing: border-box;
+    max-height: var(--atlas-online-knocks-max, none);
+    padding: $spacing-s;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform-origin: bottom left;
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($radius-2xl);
+    @include atlas-scrollbar;
+
+    &[hidden] {
+      display: none;
+    }
+
+    // Admit runs concentric with the corners it faces: the latest card's at the top, the earliest's at the bottom.
+    > .atlas-online-knock:last-child > .atlas-online-button:last-child {
+      @include atlas-panel-inset-radius($spacing-s, top-right);
+    }
+
+    > .atlas-online-knock:first-child > .atlas-online-button:last-child {
+      @include atlas-panel-inset-radius($spacing-s, bottom-right);
+    }
+  }
+}

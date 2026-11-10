@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +8,6 @@ import { DiceTool } from '../../src/app/tools/DiceTool';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { MAP_A, MAP_B, SCENE_B_TOKENS, lastCard, sceneState, setupPlayerDice, type PlayerDiceHarness } from '../helpers/playerDiceRolls';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 vi.mock('../../src/app/initiative/useMapInitiativeRules', () => ({
   useMapInitiativeRules: () => ({ mode: 'turn-order', roll: '1d20', firstSide: 'players' }),
@@ -15,6 +15,7 @@ vi.mock('../../src/app/initiative/useMapInitiativeRules', () => ({
 vi.mock('../../src/app/react/ViewStoreContext', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/app/react/ViewStoreContext')>(),
   useAtlasStore: (selector: (value: unknown) => unknown) => selector(gm.state),
+  useViewStoreHook: () => ({ getState: () => gm.state }),
 }));
 // jsdom has no WebGL: the player window shows result cards.
 vi.mock('../../src/app/dice3d/stagePool', async (importOriginal) => ({

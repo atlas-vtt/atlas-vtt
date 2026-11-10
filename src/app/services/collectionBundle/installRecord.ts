@@ -39,10 +39,23 @@ interface InstalledAsset extends InstalledItem {
 }
 
 /**
- * A user game system preset the collection brought, fingerprinted by content without its id
- * (`presetFingerprint`). Presets are found by id, wherever their file is.
+ * A statblock template the collection brought, fingerprinted by content without its id
+ * (`templateFingerprint`). Templates are found by id, so a later update finds the file wherever
+ * the user moved it.
  */
-export interface InstalledPreset extends InstalledItem {
+export interface InstalledTemplate extends InstalledItem {
+  /** Its id in this vault: the bundle's, or a copy's when the vault's own had changed. */
+  localId: string;
+  /** Where its file was after the import. */
+  target: string;
+}
+
+/**
+ * A library record the collection brought (a user game system preset, a dice set),
+ * fingerprinted by content without its id (`recordFingerprint`). Records are found by id,
+ * wherever their file is.
+ */
+export interface InstalledRecord extends InstalledItem {
   /** Its id in this vault: the bundle's, or a copy's when the vault's own had changed. */
   localId: string;
 }
@@ -63,9 +76,16 @@ export interface InstallRecord {
   /** Keyed by the asset's id in the bundle. */
   assets: Record<string, InstalledAsset>;
   fields: Partial<Record<CollectionField, InstalledItem>>;
+  /** Keyed by the template's id in the bundle; missing in records of bundles without templates. */
+  templates?: Record<string, InstalledTemplate>;
   /** Keyed by the preset's id in the bundle; missing in records of bundles without a user preset. */
-  presets?: Record<string, InstalledPreset>;
+  presets?: Record<string, InstalledRecord>;
+  /** Keyed by the dice set's id in the bundle; missing in records of bundles without dice sets. */
+  diceSets?: Record<string, InstalledRecord>;
 }
+
+/** What an install record keeps of the files a bundle matches by id. */
+export type InstalledById = Pick<InstallRecord, 'templates' | 'presets' | 'diceSets'>;
 
 /** Where versions before install records synced kept them, by collection uid. */
 const legacyRecordPath = (uid: string): string => `${LEGACY_INSTALLS_DIR}/${uid}.json`;

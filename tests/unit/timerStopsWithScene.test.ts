@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';

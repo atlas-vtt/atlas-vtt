@@ -1,5 +1,5 @@
 import React, { useId, useState } from 'react';
-import { ChevronDown, CircleUser, Clapperboard, Coins, Map as MapIcon, NotebookText, Paperclip, ScrollText, Swords, type LucideIcon } from 'lucide-react';
+import { ChevronDown, CircleUser, Clapperboard, Coins, LayoutTemplate, Map as MapIcon, NotebookText, Paperclip, ScrollText, Swords, type LucideIcon } from 'lucide-react';
 import type { ContentCategory, ContentGroup } from '../../../../services/collectionBundle/bundleContents';
 import type { ContentMedia } from './contentMedia';
 import { Checkbox, withKeys, type ContentSelection } from './contentSelection';
@@ -21,7 +21,7 @@ interface GroupRowProps {
 }
 
 const ICONS: Record<ContentCategory, LucideIcon> = {
-  scenes: Clapperboard, maps: MapIcon, tokens: CircleUser, encounters: Swords, statblocks: ScrollText, notes: NotebookText, attachments: Paperclip, loot: Coins,
+  scenes: Clapperboard, maps: MapIcon, tokens: CircleUser, encounters: Swords, statblocks: ScrollText, templates: LayoutTemplate, notes: NotebookText, attachments: Paperclip, loot: Coins,
 };
 
 function GroupRow({ group, media, selection }: GroupRowProps): React.JSX.Element {

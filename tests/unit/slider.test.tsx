@@ -1,7 +1,9 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Slider } from '../../src/app/packages/components/primitives/slider';
+import { DropdownSliderRow } from '../../src/app/packages/components/primitives/DropdownSliderRow';
 
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', class { observe(): void {} unobserve(): void {} disconnect(): void {} });
@@ -32,4 +34,11 @@ it('commits keyboard steps', () => {
   fireEvent.focus(highest);
   fireEvent.keyDown(highest, { key: 'ArrowLeft' });
   expect(commit).toHaveBeenLastCalledWith([0, 2]);
+});
+
+it('reads a menu slider\'s value as it is shown, with its unit', () => {
+  render(<DropdownSliderRow label="Music" value={100} min={0} max={100} unit="%" onChange={() => {}} />);
+  const thumb = screen.getByRole('slider', { name: 'Music' });
+  expect(thumb.getAttribute('aria-valuetext')).toBe('100%');
+  expect(screen.getByText('100%')).toBeTruthy();
 });

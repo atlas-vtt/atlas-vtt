@@ -1,3 +1,4 @@
+import { PERCENTILE_DICE_SET_ID } from '../builtInDiceSets';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { HP_RESOURCE } from '../../resources/resourceDefinitions';
 import { builtInPresetId, conditionsOf } from './presetHelpers';
@@ -24,6 +25,7 @@ export const CALL_OF_CTHULHU: SystemPreset = {
     },
     // Percentile skill rolls: 01 is a critical success, 100 a fumble.
     dice: { defaultRoll: '1d100', crit: 'roll-under' },
+    diceSetId: PERCENTILE_DICE_SET_ID,
     conditions: conditionsOf('coc7e', [
       { name: 'Major Wound', color: '#dc2626', icon: 'bleeding-wound' },
       { name: 'Dying', color: '#7f1d1d', icon: 'heartbeat' },
@@ -36,5 +38,9 @@ export const CALL_OF_CTHULHU: SystemPreset = {
       { name: 'Stunned', color: '#fbbf24', icon: 'knocked-out-stars' },
     ]),
     resources: [{ ...HP_RESOURCE }],
+    statblockRoles: [
+      { id: 'creature', name: 'Creature', templateId: 'builtin:percentile-creature' },
+      { id: 'character', name: 'Character', templateId: 'builtin:percentile-creature' },
+    ],
   },
 };

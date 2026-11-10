@@ -20,8 +20,11 @@ export interface SensedToken {
   statblockPath?: string | undefined;
 }
 
-/** A linked statblock as `CreatureIndex` holds it; a new record replaces it whenever the note is read again. */
-export type SensedCreature = Pick<IndexedCreature, 'fields'>;
+/**
+ * A linked statblock as `CreatureIndex` holds it; a new record replaces it whenever the note is
+ * read again. Its meanings say which field a native template keeps its senses in.
+ */
+export type SensedCreature = Pick<IndexedCreature, 'fields'> & Partial<Pick<IndexedCreature, 'meanings'>>;
 
 const NO_SENSES: ParsedSenses = deepFreeze({ senses: [], unknown: [] });
 
@@ -62,7 +65,7 @@ export function creatureSenses(creature: SensedCreature | null | undefined, defi
   const known = readings.get(creature) ?? [];
   const reading = known.find((candidate) => readBy(candidate, definitions, unit));
   if (reading) return reading.parsed;
-  const text = sensesTextOf(creature.fields);
+  const text = sensesTextOf(creature.fields, creature.meanings);
   const parsed = text === null ? NO_SENSES : deepFreeze(parseSenses(text, definitions, unit));
   const unitRead = { unitType: unit.unitType, ruleDistance: unit.ruleDistance };
   readings.set(creature, [{ definitions, unit: unitRead, parsed }, ...known].slice(0, MAX_READINGS));

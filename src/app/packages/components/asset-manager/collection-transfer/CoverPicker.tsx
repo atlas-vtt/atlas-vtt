@@ -1,9 +1,9 @@
 import React, { useId, useRef, useState } from 'react';
-import { Check, ImageOff, ImagePlus } from 'lucide-react';
+import { ImageOff, ImagePlus } from 'lucide-react';
 import type { CoverCandidate, CoverChoice, CurrentCover } from '../../../../services/collectionBundle/collectionCover';
-import { LabelTooltip } from '../../primitives/tooltip';
 import { RevealImage } from '../../primitives/RevealImage';
 import { useScrollActivity } from '../../primitives/useScrollActivity';
+import { CoverCard } from './CoverCard';
 import { t } from '../../../../i18n';
 
 interface CoverPickerProps {
@@ -14,36 +14,6 @@ interface CoverPickerProps {
   upload?: { image: Blob; url: string } | undefined;
   onUpload: (image: File) => void;
   onChange: (choice: CoverChoice) => void;
-}
-
-interface CardProps {
-  label: string;
-  /** Tooltip, when it should say more than the label; otherwise it shows the full, possibly truncated, label. */
-  hint?: string;
-  selected?: boolean;
-  /** Plain action cards (upload) are buttons, not options. */
-  isOption?: boolean;
-  variant?: 'art' | 'action';
-  onSelect: () => void;
-  children: React.ReactNode;
-}
-
-function Card({ label, hint, selected = false, isOption = true, variant = 'art', onSelect, children }: CardProps): React.JSX.Element {
-  return (
-    <LabelTooltip label={hint ?? label} side="left" describe>
-      <button
-        type="button"
-        className="atlas-transfer-cover-card"
-        data-variant={variant}
-        {...(isOption ? { role: 'radio', 'aria-checked': selected } : {})}
-        onClick={onSelect}
-      >
-        <span className="atlas-transfer-cover-card__art">{children}</span>
-        <span className="atlas-transfer-cover-card__label">{label}</span>
-        {selected && <span className="atlas-transfer-cover-card__badge" aria-hidden="true"><Check /></span>}
-      </button>
-    </LabelTooltip>
-  );
 }
 
 /** Side rail of large cover cards: upload an image, keep the current cover, use a map's or scene's artwork, or none. */
@@ -60,27 +30,27 @@ export function CoverPicker({ value, current, candidates, upload, onUpload, onCh
         <span className="atlas-transfer-covers__hint">{t('cover.hint')}</span>
       </div>
       <div ref={setList} className="atlas-transfer-covers__list" role="radiogroup" aria-labelledby={titleId}>
-        <Card label={t('cover.upload')} hint={t('cover.uploadHint')} variant="action" isOption={false} onSelect={() => inputRef.current?.click()}>
+        <CoverCard label={t('cover.upload')} hint={t('cover.uploadHint')} variant="action" isOption={false} onSelect={() => inputRef.current?.click()}>
           <ImagePlus aria-hidden="true" />
-        </Card>
+        </CoverCard>
         {upload && (
-          <Card label={t('cover.uploaded')} selected={value.kind === 'upload'} onSelect={() => onChange({ kind: 'upload', image: upload.image })}>
+          <CoverCard label={t('cover.uploaded')} selected={value.kind === 'upload'} onSelect={() => onChange({ kind: 'upload', image: upload.image })}>
             <img src={upload.url} alt="" draggable={false} />
-          </Card>
+          </CoverCard>
         )}
         {current && (
-          <Card label={t('cover.current')} selected={value.kind === 'current'} onSelect={() => onChange({ kind: 'current' })}>
+          <CoverCard label={t('cover.current')} selected={value.kind === 'current'} onSelect={() => onChange({ kind: 'current' })}>
             <RevealImage src={current.url} alt="" />
-          </Card>
+          </CoverCard>
         )}
         {candidates.map((candidate) => (
-          <Card key={candidate.sourcePath} label={candidate.name} selected={isArtwork(candidate.sourcePath)} onSelect={() => onChange({ kind: 'artwork', path: candidate.sourcePath })}>
+          <CoverCard key={candidate.sourcePath} label={candidate.name} selected={isArtwork(candidate.sourcePath)} onSelect={() => onChange({ kind: 'artwork', path: candidate.sourcePath })}>
             <RevealImage src={candidate.previewUrl} alt="" lazy />
-          </Card>
+          </CoverCard>
         ))}
-        <Card label={t('cover.none')} hint={t('cover.noneHint')} variant="action" selected={value.kind === 'none'} onSelect={() => onChange({ kind: 'none' })}>
+        <CoverCard label={t('cover.none')} hint={t('cover.noneHint')} variant="action" selected={value.kind === 'none'} onSelect={() => onChange({ kind: 'none' })}>
           <ImageOff aria-hidden="true" />
-        </Card>
+        </CoverCard>
       </div>
       <input
         ref={inputRef}

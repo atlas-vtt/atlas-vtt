@@ -1,6 +1,10 @@
 import type { EventEmitter } from 'events';
 import { useState, useEffect, useCallback } from 'react';
 import type { DiceRollResult } from '../../../types/diceTypes';
+import type { DiceRollOrigin } from '../../../types/diceRollOrigin';
+import type { RollOptions } from '../../../tools/DiceTool';
+
+type RollDice = (formula: string, source?: DiceRollResult['source'], origin?: DiceRollOrigin, options?: RollOptions) => DiceRollResult | null;
 
 const MAX_HISTORY = 20;
 
@@ -10,7 +14,7 @@ const MAX_HISTORY = 20;
  * back to the store for persistence across map close/reopen.
  */
 export function useDiceHistory(
-  getDiceTool: () => { rollDice: (formula: string, source?: DiceRollResult['source']) => DiceRollResult | null; clearHistory: () => void } | null,
+  getDiceTool: () => { rollDice: RollDice; clearHistory: () => void } | null,
   storeActions?: {
     diceLog: DiceRollResult[];
     addDiceLogEntry: (entry: DiceRollResult) => void;
@@ -20,7 +24,8 @@ export function useDiceHistory(
 ): {
   history: DiceRollResult[];
   clearHistory: () => void;
-  repeatRoll: (formula: string, source?: DiceRollResult['source']) => void;
+  /** Rolls a logged roll again, with the side of advantage it was rolled with. */
+  repeatRoll: (formula: string, source?: DiceRollResult['source'], advantage?: DiceRollResult['advantage']) => void;
 } {
   const [history, setHistory] = useState<DiceRollResult[]>(() =>
     storeActions?.diceLog ?? [],
@@ -61,11 +66,11 @@ export function useDiceHistory(
     getDiceTool()?.clearHistory();
   }, [getDiceTool]);
 
-  const repeatRoll = useCallback((formula: string, source?: DiceRollResult['source']): void => {
+  const repeatRoll = useCallback((formula: string, source?: DiceRollResult['source'], advantage?: DiceRollResult['advantage']): void => {
     const diceTool = getDiceTool();
-    if (diceTool) {
-      diceTool.rollDice(formula, source);
-    }
+    if (!diceTool) return;
+    if (advantage) diceTool.rollDice(formula, source, undefined, { advantage });
+    else diceTool.rollDice(formula, source);
   }, [getDiceTool]);
 
   return { history, clearHistory, repeatRoll };

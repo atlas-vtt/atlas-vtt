@@ -1,9 +1,9 @@
 /**
  * Shared hooks for the grid alignment tabs: cursor style, canvas clicks,
- * arrow-key nudging, cursor preview and alignment preview calculation.
+ * cursor preview and alignment preview.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { GridAlignmentController } from '../../pixi/GridAlignmentController';
 import type { AlignmentPoint, AlignmentResult } from '../../pixi/GridAlignmentController';
 import type { FitToLines } from './useGridFit';
@@ -20,26 +20,63 @@ import { t, type MessageKey } from '../../i18n';
 export interface AlignmentTabProps {
   controller: GridAlignmentController | null;
   view: AtlasView | null;
-  result: AlignmentResult | null;
   setResult: (r: AlignmentResult | null) => void;
   /** The grid type the GM picked in the panel. */
   gridType: GridType;
-  /** Fits what the tab measures to the map's lines; null while the GM has that switched off. */
-  fit: FitToLines | null;
+  /** Fits what the tab measures to the map's lines. */
+  fit: FitToLines;
 }
 
-/** Instructions for the two clicks of a measurement, per grid type; `first` takes the `{area}` to click in. */
+/** Instructions for the two clicks of a measurement, per grid type. */
 export function alignmentPointHints(gridType: GridType): { first: MessageKey; second: MessageKey } {
   if (isHexGridType(gridType)) {
-    return { first: 'align.clickHexCorner', second: 'align.nextHexCorner' };
+    return { first: 'align.hexCornerFirst', second: 'align.hexCornerNext' };
   }
-  return { first: 'align.clickIntersection', second: 'align.nextIntersection' };
+  return { first: 'align.cornerFirst', second: 'align.cornerNext' };
 }
 
 export function describeGridType(gridType: GridType): string {
   if (gridType === 'hex-vertical') return t('align.pointyHexes');
   if (gridType === 'hex-horizontal') return t('align.flatHexes');
   return t('align.squares');
+}
+
+// ---------------------------------------------------------------------------
+// useAlignmentEnds — what ends the alignment besides its own buttons
+// ---------------------------------------------------------------------------
+
+/** The part of a view's store an alignment watches for another scene. */
+interface SceneWatch {
+  getState(): { mapPath: string | null; isMapLoading: boolean };
+  subscribe(listener: (state: { mapPath: string | null; isMapLoading: boolean }) => void): () => void;
+}
+
+/**
+ * Ends the alignment with `end` when the view loads another scene (what was measured belongs to
+ * the map it was measured on), and closes it with `close` on Escape, as its close button does.
+ */
+export function useAlignmentEnds(store: SceneWatch | null | undefined, end: () => void, close: () => void): void {
+  useEffect(() => {
+    if (!store) return undefined;
+    const mapPath = store.getState().mapPath;
+    let ended = false;
+    return store.subscribe((state) => {
+      if (ended || (state.mapPath === mapPath && !state.isMapLoading)) return;
+      ended = true;
+      end();
+    });
+  }, [store, end]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [close]);
 }
 
 // ---------------------------------------------------------------------------
@@ -106,45 +143,6 @@ export function useCanvasClick(active: boolean, onClick: (event: PointerEvent) =
 }
 
 // ---------------------------------------------------------------------------
-// useArrowNudge — arrow key offset nudging during preview
-// ---------------------------------------------------------------------------
-
-export function useArrowNudge(isPreviewing: boolean): { dx: number; dy: number } {
-  const [offsetAdjust, setOffsetAdjust] = useState<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
-
-  useEffect(() => {
-    // A new preview starts without the previous one's nudges.
-    if (!isPreviewing) {
-      setOffsetAdjust(prev => (prev.dx === 0 && prev.dy === 0 ? prev : { dx: 0, dy: 0 }));
-      return;
-    }
-
-    const handler = (e: KeyboardEvent): void => {
-      const nudge = e.shiftKey ? 0.1 : 1;
-      let dx = 0;
-      let dy = 0;
-
-      switch (e.key) {
-        case 'ArrowLeft':  dx = -nudge; break;
-        case 'ArrowRight': dx = nudge;  break;
-        case 'ArrowUp':    dy = -nudge; break;
-        case 'ArrowDown':  dy = nudge;  break;
-        default: return;
-      }
-
-      e.preventDefault();
-      e.stopPropagation();
-      setOffsetAdjust(prev => ({ dx: prev.dx + dx, dy: prev.dy + dy }));
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isPreviewing]);
-
-  return offsetAdjust;
-}
-
-// ---------------------------------------------------------------------------
 // useCursorPreview — ghost crosshair that follows the pointer during placement
 // ---------------------------------------------------------------------------
 
@@ -178,28 +176,18 @@ export function useCursorPreview(
 }
 
 // ---------------------------------------------------------------------------
-// useAlignmentPreview — shows an alignment with the arrow-key nudges on top
+// useAlignmentPreview — shows an alignment on the map
 // ---------------------------------------------------------------------------
 
-/** Previews `alignment` moved by the nudges and reports it as the tab's result; null reports none and leaves the grid as it is shown. */
+/** Previews `alignment` and reports it as the tab's result; null reports none and leaves the grid as it is shown. */
 export function useAlignmentPreview(
   alignment: AlignmentResult | null,
-  offsetAdjust: { dx: number; dy: number },
   controller: GridAlignmentController | null,
   setResult: (r: AlignmentResult | null) => void,
 ): void {
   useEffect(() => {
     if (!controller) return;
-    if (!alignment) {
-      setResult(null);
-      return;
-    }
-    const nudged: AlignmentResult = {
-      ...alignment,
-      offsetX: alignment.offsetX + offsetAdjust.dx,
-      offsetY: alignment.offsetY + offsetAdjust.dy,
-    };
-    setResult(nudged);
-    controller.showPreview(nudged);
-  }, [alignment, offsetAdjust, controller, setResult]);
+    setResult(alignment);
+    if (alignment) controller.showPreview(alignment);
+  }, [alignment, controller, setResult]);
 }

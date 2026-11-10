@@ -1,0 +1,192 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The template's note (§2.2)
+// ═══════════════════════════════════════════════════════════════════════════
+// The note beside the template file, shown in Obsidian's own editor
+// (`.atlas-te-note__view`, a Markdown view moved in from a leaf of its own),
+// or the stand-in where the template has no note yet. Obsidian styles the
+// view; only what would make it read as a note of its own is hidden.
+// Imported by TemplateBodyColumn.tsx, so the rules take the scope themselves.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  .atlas-te-note {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  // Holds the layer over an empty text ("Start from a note…").
+  .atlas-te-note__editor {
+    position: relative;
+  }
+
+  // The note takes the column's height and scrolls itself, as a note does.
+  .atlas-te-note__editor,
+  .atlas-te-note__host {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  // The template's text, not a note of its own: no title, properties or backlinks.
+  // Properties hide through Obsidian's own variables (see note-statblock-panel.scss).
+  .atlas-te-note__view {
+    --metadata-display-editing: none;
+    --metadata-display-reading: none;
+
+    .inline-title,
+    .embedded-backlinks {
+      display: none;
+    }
+
+    // An empty note (one line holding only CodeMirror's <br>) says what it is for.
+    .cm-content > .cm-line:only-child:has(> br:only-child)::before {
+      content: var(--atlas-te-note-placeholder);
+      position: absolute;
+      color: var(--text-faint);
+      pointer-events: none;
+    }
+  }
+
+  // ── Where the template has no note yet: its text would start here ───────
+  .atlas-te-note__stand-in {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--p-spacing);
+    padding: var(--file-margins);
+    font-family: var(--font-text);
+    font-size: var(--font-text-size);
+    line-height: var(--line-height-normal);
+    color: var(--text-faint);
+    text-align: start;
+  }
+
+  .atlas-te-note__editor.is-readable-line-width .atlas-te-note__stand-in > * {
+    width: 100%;
+    max-width: var(--file-line-width);
+    margin-inline: auto;
+  }
+
+  // A click anywhere in the empty column starts the note, as in an empty note.
+  .atlas-te-note__start {
+    width: 100%;
+    height: auto;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    cursor: text;
+
+    &:hover {
+      background: none;
+    }
+
+    &:focus-visible {
+      outline: none;
+
+      .atlas-te-note__line {
+        color: var(--text-muted);
+      }
+    }
+  }
+
+  .atlas-te-note__line {
+    display: block;
+    margin: 0;
+  }
+
+  // ── A template without a file: its text, typed before the note exists ──
+  .atlas-te-note__draft {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: var(--file-margins);
+    cursor: text;
+  }
+
+  .atlas-te-note__draft-text {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    resize: none;
+    font-family: var(--font-text);
+    font-size: var(--font-text-size);
+    line-height: var(--line-height-normal);
+    color: var(--text-normal);
+
+    &::placeholder {
+      color: var(--text-faint);
+      opacity: 1;
+    }
+
+    &:focus,
+    &:focus-visible,
+    &:hover {
+      border: none;
+      background: none;
+      box-shadow: none;
+      outline: none;
+    }
+  }
+
+  .atlas-te-note__editor.is-readable-line-width .atlas-te-note__draft > *,
+  .atlas-te-note__editor.is-readable-line-width .atlas-te-note__empty > * {
+    width: 100%;
+    max-width: var(--file-line-width);
+    margin-inline: auto;
+  }
+
+  // ── Over an empty text: "Start from a note…" under the placeholder ─────
+  // The layer takes no press but its button's, so the text still takes the rest.
+  .atlas-te-note__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--p-spacing);
+    padding: var(--file-margins);
+    font-family: var(--font-text);
+    font-size: var(--font-text-size);
+    line-height: var(--line-height-normal);
+    pointer-events: none;
+  }
+
+  .atlas-te-note__spacer {
+    visibility: hidden;
+  }
+
+  // Nested: it outweighs the button's own padding and height (`.btn`).
+  .atlas-te-note__empty .atlas-te-note__from-note {
+    @include atlas-ghost-button;
+    @include atlas-corner-shape;
+    pointer-events: auto;
+    height: auto;
+    gap: $spacing-xs;
+    // Its icon starts where the text does.
+    margin-inline-start: calc(-1 * #{$spacing-s});
+    padding: $spacing-xs $spacing-s;
+    border: none;
+    border-radius: $radius-m;
+    box-shadow: none;
+    font-family: var(--font-interface);
+    font-size: $font-ui-small;
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+  }
+}

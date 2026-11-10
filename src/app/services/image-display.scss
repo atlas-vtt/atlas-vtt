@@ -5,6 +5,8 @@
 // The player display is always dark, so the scrim and controls use fixed
 // black/white tints rather than theme variables. Enter/exit motion lives in
 // imageDisplayMotion.ts; a replaced overlay briefly fades out above the new one.
+$shown-image-share: 0.9;
+
 .atlas-image-display {
   position: fixed;
   top: 0;
@@ -28,6 +30,27 @@
     pointer-events: none;
   }
 
+  // The window as a table TV turns it (the body's --atlas-tv-rotation, PlayerWindowService):
+  // sideways, its width is the window's height
+  .atlas-image-display__turn {
+    --atlas-image-layer-w: 100vw;
+    --atlas-image-layer-h: 100vh;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 100vw;
+    height: 100vh;
+    transform: translate(-50%, -50%) rotate(var(--atlas-tv-rotation, 0deg));
+  }
+
+  [data-tv-rotation='90'] & .atlas-image-display__turn,
+  [data-tv-rotation='270'] & .atlas-image-display__turn {
+    --atlas-image-layer-w: 100vh;
+    --atlas-image-layer-h: 100vw;
+    width: 100vh;
+    height: 100vw;
+  }
+
   // Animated by the entrance; the image inside keeps its own pan/zoom transform
   .atlas-image-display__stage {
     position: absolute;
@@ -37,9 +60,10 @@
     justify-content: center;
   }
 
+  // Centred, at most nine tenths of the view each way as the players see it; smaller images keep their own size
   .atlas-image-display__image {
-    max-width: 90%;
-    max-height: 90%;
+    max-width: calc(var(--atlas-image-layer-w) * #{$shown-image-share});
+    max-height: calc(var(--atlas-image-layer-h) * #{$shown-image-share});
     // The same corners as every floating surface; they scale with the image's zoom
     border-radius: $radius-2xl;
     @include atlas-corner-shape;

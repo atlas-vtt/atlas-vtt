@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { Modal, Notice, Setting, type App } from 'obsidian';
+import { Modal, Setting, type App } from 'obsidian';
 import { Select, type SelectOption } from '../packages/components/primitives/Select';
 import { runInBackground } from '../utils/backgroundTask';
 import { formatDiagnostics, type IssueDiagnostics } from './diagnostics';
@@ -9,6 +9,7 @@ import { ISSUE_AREAS, ISSUE_TYPES, type IssueArea, type IssueType } from './issu
 import { formatReportMarkdown, issueForm, type IssueForm, type IssueReport } from './issueReport';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 export interface IssueReportPreset {
   type?: IssueType;
@@ -195,7 +196,7 @@ export class IssueReportModal extends Modal {
 
   private validate(): IssueReport | null {
     if (!this.title.trim() || !this.description.trim()) {
-      new Notice(t('issue.missing'));
+      showNotice(t('issue.missing'));
       return null;
     }
     return {
@@ -213,7 +214,7 @@ export class IssueReportModal extends Modal {
     const report = this.validate();
     if (!report) return;
     await this.options.copyText(formatReportMarkdown(report));
-    new Notice(t('issue.copied'));
+    showNotice(t('issue.copied'));
   }
 
   private async submit(): Promise<void> {

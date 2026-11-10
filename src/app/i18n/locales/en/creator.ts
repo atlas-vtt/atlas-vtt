@@ -16,6 +16,7 @@ export const creator = {
   'creator.firstTag': 'Type a name to create your first tag.',
   'creator.imageSource': 'Image source',
   'creator.importPreviews': 'Import previews',
+  'creator.statblockNotes': 'Statblock notes',
   'creator.map.browse': 'or click to browse for map images',
   'creator.map.count': { one: '{count} map', other: '{count} maps' },
   'creator.map.create': 'Create maps',

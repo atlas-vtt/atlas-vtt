@@ -1,10 +1,13 @@
 import type { EventRef } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';
+import { PlayedRules } from '../../src/app/campaigns/playedRules';
 import { TokenCollectionSync } from '../../src/app/plugin/TokenCollectionSync';
 import { AssetService } from '../../src/app/services/AssetService';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { memoryCampaigns } from '../mocks/memoryCampaigns';
 import { HP, STRESS } from '../mocks/resourceFixtures';
 
 function setup() {
@@ -119,13 +122,12 @@ describe('TokenCollectionSync', () => {
     f.sync.destroy();
   });
 
-  it('reports initialization failure without refreshing rules', async () => {
+  // The vault check reports the failure (`registerVaultSync`); the tokens keep the rules they have.
+  it('refreshes no rules when initialization fails', async () => {
     const f = setup();
-    const error = new Error('index failed');
-    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-    f.rejectReady(error);
+    f.rejectReady(new Error('index failed'));
     await Promise.resolve();
-    expect(log).toHaveBeenCalledWith('[TokenRenderer] Failed to initialize AssetService:', error);
+    await Promise.resolve();
     expect(f.refreshRules).not.toHaveBeenCalled();
     f.sync.destroy();
   });
@@ -145,5 +147,31 @@ describe('TokenCollectionSync', () => {
     expect(f.refreshRules).not.toHaveBeenCalled();
     expect(f.app.workspace.offref).toHaveBeenCalledOnce();
     expect(f.app.vault.offref).toHaveBeenCalledOnce();
+  });
+
+  it('reads and refreshes the rules of the campaign being played, and its collection\'s again once play stops', () => {
+    const f = setup();
+    const gridDefaults = { unitType: 'feet', unitDistance: 10, measurementMode: 'metric' } as const;
+    const system = { gridDefaults, conditions: [{ id: 'deprived', name: 'Deprived', color: '#aa5500' }], resources: [STRESS] };
+    const play = CampaignPlay.forApp(f.app);
+    PlayedRules.open(f.app, memoryCampaigns([{ id: 'saga', name: 'Saga', createdAt: 1, system }]), play);
+    const refreshRules = vi.fn();
+    const sync = new TokenCollectionSync(f.app, f.store.getState, { refreshRules, refreshArt: vi.fn(async () => undefined) });
+
+    play.play('saga');
+    expect(refreshRules).toHaveBeenCalledTimes(1);
+    expect(sync.conditions()).toEqual(system.conditions);
+    expect(sync.resources()).toEqual([STRESS]);
+    expect(sync.measurement()).toMatchObject({ unitType: 'feet', ruleDistance: 10 });
+    // The collection's own saves no longer change what the map plays by.
+    f.changeCollection('a');
+    expect(refreshRules).toHaveBeenCalledTimes(1);
+
+    play.stop();
+    expect(refreshRules).toHaveBeenCalledTimes(2);
+    expect(sync.resources()).toEqual([HP]);
+    sync.destroy();
+    f.sync.destroy();
+    PlayedRules.release(f.app);
   });
 });

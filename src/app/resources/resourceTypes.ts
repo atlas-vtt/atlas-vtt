@@ -34,7 +34,11 @@ export interface ResourceValue {
   max: number;
 }
 
-export type ResourceViewer = 'dm' | 'player';
+/**
+ * Who looks at a token's resources: the GM, players at large (`visibleToPlayers` decides), or the
+ * player who plays the token as their character, who sees all of its own values.
+ */
+export type ResourceViewer = 'dm' | 'player' | 'owner';
 
 /** Supplies the resource definitions of the collection a map belongs to. */
 export type ResourceDefsProvider = () => readonly ResourceDefinition[];

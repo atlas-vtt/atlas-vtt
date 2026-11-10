@@ -1,9 +1,17 @@
-import React, { useId } from 'react';
+import React, { useId, useRef } from 'react';
 import { Button } from './button';
+import { LabelTooltip, TooltipProvider } from './tooltip';
 
 export interface SegmentedOption<T extends string> {
   value: T;
   label: string;
+  /** Drawn before the label. */
+  icon?: React.ReactNode;
+  /** Names an option whose icon stands alone (an empty `label`) for assistive technology. */
+  ariaLabel?: string;
+  /** Shown and focusable, but not to be chosen; `hint` says why. */
+  disabled?: boolean;
+  hint?: string;
 }
 
 interface SegmentedControlProps<T extends string> {
@@ -14,28 +22,69 @@ interface SegmentedControlProps<T extends string> {
   ariaLabel: string;
   /** Shown, but not to be chosen from right now. */
   disabled?: boolean;
+  /**
+   * One tab stop, the chosen option: the arrow keys, Home and End move focus between the options,
+   * and Enter or Space chooses, so passing an option never chooses it.
+   */
+  roving?: boolean;
   className?: string;
 }
 
+const STEPS: Readonly<Record<string, number>> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+
 /** A row of mutually exclusive choices, one of them active. */
-export function SegmentedControl<T extends string>({ value, options, onChange, ariaLabel, disabled = false, className }: SegmentedControlProps<T>): React.JSX.Element {
+export function SegmentedControl<T extends string>({ value, options, onChange, ariaLabel, disabled = false, roving = false, className }: SegmentedControlProps<T>): React.JSX.Element {
   const labelId = useId();
-  return (
-    <div className={`atlas-segmented${className ? ` ${className}` : ''}`} role="radiogroup" aria-labelledby={labelId} aria-disabled={disabled || undefined}>
+  const ref = useRef<HTMLDivElement>(null);
+
+  const onKeyDown = (event: React.KeyboardEvent): void => {
+    const step = STEPS[event.key];
+    if (step === undefined && event.key !== 'Home' && event.key !== 'End') return;
+    const all = [...(ref.current?.querySelectorAll<HTMLButtonElement>('.atlas-segmented__option') ?? [])];
+    const at = all.indexOf(event.target as HTMLButtonElement);
+    if (at < 0) return;
+    event.preventDefault();
+    let next = (at + (step ?? 0) + all.length) % all.length;
+    if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = all.length - 1;
+    all[next]?.focus();
+  };
+
+  const control = (
+    <div
+      ref={ref}
+      className={`atlas-segmented${className ? ` ${className}` : ''}`}
+      role="radiogroup"
+      aria-labelledby={labelId}
+      aria-disabled={disabled || undefined}
+      onKeyDown={roving ? onKeyDown : undefined}
+    >
       <span id={labelId} hidden>{ariaLabel}</span>
-      {options.map((option) => (
-        <Button
-          key={option.value}
-          variant="ghost"
-          role="radio"
-          aria-checked={option.value === value}
-          disabled={disabled}
-          className={`atlas-segmented__option${option.value === value ? ' atlas-active' : ''}`}
-          onClick={() => onChange(option.value)}
-        >
-          {option.label}
-        </Button>
-      ))}
+      {options.map((option) => {
+        const chosen = option.value === value;
+        const inert = disabled || option.disabled === true;
+        const button = (
+          <Button
+            key={option.value}
+            variant="ghost"
+            role="radio"
+            aria-checked={chosen}
+            aria-label={option.ariaLabel}
+            disabled={disabled}
+            aria-disabled={option.disabled || undefined}
+            tabIndex={roving && !chosen ? -1 : undefined}
+            className={`atlas-segmented__option${chosen ? ' atlas-active' : ''}${option.icon ? ' atlas-segmented__option--icon' : ''}`}
+            onClick={() => { if (!inert) onChange(option.value); }}
+          >
+            {option.icon && <span className="atlas-segmented__icon" aria-hidden="true">{option.icon}</span>}
+            {option.label}
+          </Button>
+        );
+        return option.hint ? <LabelTooltip key={option.value} label={option.hint} describe multiline>{button}</LabelTooltip> : button;
+      })}
     </div>
   );
+  // Hinted options share one provider: moving from one to the next opens its hint at once instead of
+  // after each option's own delay, which showed a hint only where the pointer rested.
+  return options.some((option) => option.hint) ? <TooltipProvider delayDuration={300} skipDelayDuration={600}>{control}</TooltipProvider> : control;
 }

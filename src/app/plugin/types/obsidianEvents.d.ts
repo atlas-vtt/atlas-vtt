@@ -11,5 +11,7 @@ declare module 'obsidian' {
     on(name: 'atlas-vtt:scene-opened', callback: (sceneId: string) => unknown, ctx?: unknown): EventRef;
     /** Triggered by Atlas VTT when a collection's settings (conditions, grid defaults, widgets…) changed. */
     on(name: 'atlas-vtt:collection-settings-changed', callback: (collectionId: string) => unknown, ctx?: unknown): EventRef;
+    /** Triggered by Atlas VTT when the statblock beside a note appeared or went (`NoteStatblockPanel`). */
+    on(name: 'atlas-vtt:statblock-panel-changed', callback: () => unknown, ctx?: unknown): EventRef;
   }
 }

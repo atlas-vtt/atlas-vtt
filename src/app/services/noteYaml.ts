@@ -8,6 +8,15 @@
  */
 
 import { parseYaml } from 'obsidian';
+import { Parser, parseDocument, type CST, type Document, type DocumentOptions, type ParseOptions } from 'yaml';
+
+/**
+ * The `yaml` library's node guards, node classes and types, for code that edits a note's
+ * frontmatter by its source (the statblock patcher). They parse nothing; text reaches the library's
+ * parser only through the functions of this file.
+ */
+export { Document, Scalar, isAlias, isCollection, isMap, isPair, isScalar, isSeq, visit } from 'yaml';
+export type { CST, Node, Pair, ToStringOptions, YAMLMap, YAMLSeq } from 'yaml';
 
 export const NOTE_YAML_LIMITS = {
   /** Characters of one text. A statblock's fence or frontmatter has a few thousand. */
@@ -81,7 +90,8 @@ export function aliasesOfAnchors(text: string): number {
   return aliases.filter((name) => anchors.has(name)).length;
 }
 
-function withinLimits(text: string): boolean {
+/** Whether a text is within `NOTE_YAML_LIMITS`: what Atlas reads as YAML. */
+export function withinNoteYamlLimits(text: string): boolean {
   return text.length <= NOTE_YAML_LIMITS.characters && aliasesOfAnchors(text) <= NOTE_YAML_LIMITS.aliases;
 }
 
@@ -91,6 +101,16 @@ function withinLimits(text: string): boolean {
  * caller does what it does for any text it cannot parse.
  */
 export function parseNoteYaml(text: string): unknown {
-  if (!withinLimits(text)) throw new Error('The text is beyond what Atlas reads as YAML.');
+  if (!withinNoteYamlLimits(text)) throw new Error('The text is beyond what Atlas reads as YAML.');
   return parseYaml(text);
+}
+
+/** The document a text parses to, its nodes, source tokens and errors; null for a text beyond `NOTE_YAML_LIMITS`. */
+export function parseNoteYamlDocument(text: string, options?: ParseOptions & DocumentOptions): Document.Parsed | null {
+  return withinNoteYamlLimits(text) ? parseDocument(text, options) : null;
+}
+
+/** The text's top-level source tokens. Reading tokens follows no alias, so it needs no limits. */
+export function noteYamlTokens(text: string): CST.Token[] {
+  return [...new Parser().parse(text)];
 }

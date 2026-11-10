@@ -3,6 +3,8 @@ import type { ShownRollToken } from '../services/playerRollSource';
 import type { TokenPerception } from '../vision/tokenPerception';
 import { seenByPlayers } from './token-renderer/PlayerSightTokens';
 import { tokenDisplayName } from './token-renderer/tokenDisplayName';
+import { levelObjects } from '../levels/levelObjects';
+import { mapTokens } from '../tokens/offMap';
 
 /** What of a view's store tells which scene it holds, and the tokens in it. */
 export interface RollSceneState {
@@ -10,6 +12,7 @@ export interface RollSceneState {
   mapLoaded: boolean;
   isMapLoading: boolean;
   objects: { tokens: Record<string, TokenEntity> };
+  tokenSettings?: { showNameplates?: boolean };
 }
 
 const NONE: ReadonlyMap<string, ShownRollToken> = new Map();
@@ -28,7 +31,7 @@ export function shownRollTokens(
   tokenIds?: readonly string[],
 ): ReadonlyMap<string, ShownRollToken> {
   if (scene.mapPath !== mapPath || !scene.mapLoaded || scene.isMapLoading) return NONE;
-  const tokens = scene.objects.tokens;
+  const tokens = mapTokens(levelObjects(scene));
   const seen = seenByPlayers(tokens, perception());
   const shown = new Map<string, ShownRollToken>();
   for (const id of tokenIds ?? Object.keys(tokens)) {
@@ -36,6 +39,8 @@ export function shownRollTokens(
     if (!token || !sprites[id] || !seen(id)) continue;
     shown.set(id, Object.freeze({
       name: tokenDisplayName(token),
+      ...(token.showNameplate === true ? { showNameplate: true } : {}),
+      mapShowsNameplates: scene.tokenSettings?.showNameplates ?? false,
       imagePath: token.imagePath || undefined,
       showRing: token.showRing !== false,
       ringColor: token.ringColor,

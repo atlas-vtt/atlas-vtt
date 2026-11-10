@@ -301,6 +301,25 @@ $log-width: 360px;
     background: color-mix(in oklch, var(--color-red) 15%, transparent);
     color: var(--color-red);
   }
+
+  &--success {
+    box-shadow: inset 0 0 0 1px var(--color-green);
+    color: var(--color-green);
+  }
+
+  &--failure {
+    box-shadow: inset 0 0 0 1px var(--color-red);
+    color: var(--color-red);
+  }
+
+  // Counted for nothing: dropped by keep or drop, or rolled again.
+  &--dropped,
+  &--rerolled {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+    color: var(--text-faint);
+    text-decoration: line-through;
+  }
 }
 
 .dice-log-entry__eq {

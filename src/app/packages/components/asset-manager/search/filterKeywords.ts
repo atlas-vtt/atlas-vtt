@@ -3,11 +3,12 @@ import type { CreatureFacets } from '../../../../creatures/creatureFilterEngine'
 import type { CreatureFilterDefinition, NumericRange } from '../../../../types/creatureFilterTypes';
 import type { QueryKeyword } from '../../../../search/querySyntax';
 import type { Tab } from '../types';
+import { isCharacterTab } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
 
 /** A keyword of the asset search and what it filters. */
 export type FilterKeyword = QueryKeyword & (
-  | { kind: 'name' | 'tag' | 'statblock' | 'layout' }
+  | { kind: 'name' | 'tag' | 'statblock' | 'template' | 'text' }
   | { kind: 'range' | 'options'; filterId: string }
 );
 
@@ -60,22 +61,23 @@ function creatureKeyword(definition: CreatureFilterDefinition, taken: Set<string
     : { kind: 'options', filterId: definition.id, prefix: names.prefix, aliases, numeric: false, negatable: true, description: definition.label };
 }
 
-/** The keywords the search of a tab understands: name and tag everywhere, statblock fields on the Characters tab. */
+/** The keywords the search of a tab understands: name and tag everywhere, statblock fields on the tabs of characters. */
 export function filterKeywords(tab: Tab, definitions: readonly CreatureFilterDefinition[]): FilterKeyword[] {
   const keywords: FilterKeyword[] = [
     { kind: 'name', prefix: 'name', aliases: ['n'], numeric: false, description: t('filters.keyword.name') },
     { kind: 'tag', prefix: 'tag', aliases: ['tags'], numeric: false, description: t('filters.tag') },
   ];
-  if (tab !== 'tokens') return keywords;
-  keywords.push(
-    { kind: 'statblock', prefix: 'statblock', aliases: ['sb'], numeric: false, description: t('filters.keyword.statblock'), accepts: (value) => statblockValue(value) !== null },
-    { kind: 'layout', prefix: 'layout', aliases: [], numeric: false, negatable: true, description: t('filters.keyword.layout') },
-  );
-  const taken = new Set(keywords.flatMap((keyword) => [keyword.prefix, ...keyword.aliases]));
+  if (!isCharacterTab(tab)) return keywords;
+  keywords.push({ kind: 'statblock', prefix: 'statblock', aliases: ['sb'], numeric: false, description: t('filters.keyword.statblock'), accepts: (value) => statblockValue(value) !== null });
+  // Last, so a typed "t" offers the type before them; `layout:` is the template's name from before native templates
+  const template: FilterKeyword = { kind: 'template', prefix: 'template', aliases: ['layout'], numeric: false, negatable: true, description: t('filters.keyword.template') };
+  const text: FilterKeyword = { kind: 'text', prefix: 'text', aliases: ['has'], numeric: false, negatable: true, phrase: true, description: t('filters.keyword.text') };
+  const taken = new Set([...keywords, template, text].flatMap((keyword) => [keyword.prefix, ...keyword.aliases]));
   for (const definition of definitions) {
     const keyword = creatureKeyword(definition, taken);
     if (keyword) keywords.push(keyword);
   }
+  keywords.push(template, text);
   return keywords;
 }
 
@@ -84,7 +86,8 @@ export function suggestedKeywords(keywords: readonly FilterKeyword[], facets: Cr
   return keywords.filter((keyword) => {
     switch (keyword.kind) {
       case 'tag': return hasTags;
-      case 'layout': return (facets?.layouts.length ?? 0) > 1;
+      case 'template': return (facets?.layouts.length ?? 0) > 1;
+      case 'text': return (facets?.statblock.linked ?? 0) > 0;
       case 'range': return facets?.ranges.some((facet) => facet.definition.id === keyword.filterId && facet.values.length > 0) ?? false;
       case 'options': return facets?.options.some((facet) => facet.definition.id === keyword.filterId && facet.options.length > 0) ?? false;
       default: return true;

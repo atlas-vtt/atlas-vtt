@@ -13,6 +13,7 @@ import * as THREE from 'three';
 
 import type { DieAssets } from './dieMesh';
 import type { DieAnim } from './dieMotion';
+import { isRetired } from './dieColours';
 
 const GHOSTS = 8;
 /** The arc the whole chain sweeps (rad). A good hand's breadth of smear. */
@@ -87,6 +88,12 @@ export class GhostTrail {
     }
     this.chains = [];
     this.materials = [];
+    // Copies of a coloured die that was let go would keep its atlas alive.
+    for (const [source, copies] of this.spare) {
+      if (!isRetired(source)) continue;
+      for (const copy of copies) copy.dispose();
+      this.spare.delete(source);
+    }
   }
 
   /** Adds the chain of the next die. Ghosts share mesh and textures, not opacity. */

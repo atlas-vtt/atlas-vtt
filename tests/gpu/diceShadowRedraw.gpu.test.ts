@@ -28,7 +28,7 @@ function stageWithRestingDie(): Stage {
   const renderer = new DiceRenderer(new DiceGpu(context), canvas);
   const resize = (): void => renderer.setSize(WIDTH, HEIGHT, 1);
   resize();
-  renderer.setPlan([20]);
+  renderer.setPlan([{ sides: 20 }]);
   const geometry = dieGeometry(20);
   const anim = makeDie(Math.random, [0, 0], 0.92, renderer.stage(), lyingHeight(geometry));
   restImmediately(anim, restingQuaternion(geometry, faceIndexForValue(geometry, 20), 0.2));

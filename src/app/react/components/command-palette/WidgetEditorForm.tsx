@@ -60,7 +60,7 @@ export function WidgetEditorForm({
 
   const trimmedLabel = label.trim();
 
-  const submit = (e: React.FormEvent): void => {
+  const submit = (e: React.SubmitEvent<HTMLFormElement>): void => {
     e.preventDefault();
     if (!trimmedLabel) return;
     onSubmit({ type, label: trimmedLabel, icon, color, scope, segments, showCount });

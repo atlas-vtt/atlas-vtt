@@ -65,8 +65,8 @@ describe('parsing stored filters', () => {
     expect(parseCreatureFilters(undefined)).toEqual([]);
   });
 
-  it('keeps only known catalog ids among the switched-off filters', () => {
-    expect(parseHiddenCreatureFilters(['source', 'source', 'gone', 3])).toEqual(['source']);
+  it('keeps every id among the switched-off filters, a template field\'s too, each once', () => {
+    expect(parseHiddenCreatureFilters(['source', 'source', 'ac', ' ', 3])).toEqual(['source', 'ac']);
     expect(parseHiddenCreatureFilters('source')).toEqual([]);
   });
 });

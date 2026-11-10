@@ -122,3 +122,20 @@
 .tooltip-content[data-side="right"] {
   animation: tooltip-fade-in 120ms ease-out, tooltip-zoom-in 120ms ease-out, tooltip-slide-in-from-left 120ms ease-out;
 }
+
+/* A confirmation holds no tooltips: one left open by the control whose menu opened it would stand over its question. */
+.atlas-portal-host:has(> .atlas-text-dialog-backdrop) .tooltip-content {
+  display: none;
+}
+
+/* Reduced motion: a tooltip only fades, in and out; no zoom and no slide (every Atlas tooltip). */
+@media (prefers-reduced-motion: reduce) {
+  .tooltip-content,
+  .tooltip-content[data-side] {
+    animation: tooltip-fade-in 120ms ease-out;
+  }
+
+  .tooltip-content[data-side][data-state="closed"] {
+    animation: tooltip-fade-out 100ms ease-in;
+  }
+}

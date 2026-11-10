@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -18,7 +19,7 @@ vi.mock('../../src/app/packages/components/primitives/tooltip', () => ({
   LabelTooltip: ({ children }: { children: React.ReactNode }): React.ReactNode => children,
 }));
 
-const diceTool = { rollDice: vi.fn(() => true) } as unknown as DiceTool;
+const diceTool = { rollDice: vi.fn(() => true), rollingDice: () => ({ dice: [{ count: 1, sides: 20 }], crit: 'natural' }) } as unknown as DiceTool;
 let settings: SettingsService;
 
 beforeEach(() => {

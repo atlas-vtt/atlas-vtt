@@ -1,79 +1,70 @@
 /**
- * DiceTab — The collection's default roll, critical rule and exploding dice.
+ * DiceTab — The dice set a bare bonus of the collection rolls with, picked
+ * from the vault's library, and the way into the dice lab, where the library's
+ * sets are made.
  */
 
-import React from 'react';
-import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
-import { isValidDefaultRoll } from '../../../gameSystems/diceRules';
-import { DefaultDiceInfo } from './DefaultDiceInfo';
-import { ExplodingDiceFields } from './ExplodingDiceFields';
-import type { CritRule, DiceRules } from '../../../types/diceRulesTypes';
+import React, { useId, useRef, useState } from 'react';
+import { FlaskConical } from 'lucide-react';
+import { COLLECTION_DICE_ID } from '../../../gameSystems/diceSetResolution';
+import { Button } from '../../../packages/components/primitives/button';
+import type { DiceSet } from '../../../types/diceSetTypes';
+import type { DiceSets } from '../../hooks/useDiceSets';
+import { t } from '../../../i18n';
+import { DiceLabDialog } from './dice-lab/DiceLabDialog';
+import { DiceSetPicker, type DiceSetChoice } from './dice-lab/DiceSetPicker';
+import { InfoMark } from './InfoMark';
 
 interface DiceTabProps {
-  dice: DiceRules;
-  onChange: (dice: DiceRules) => void;
+  /** What the collection rolls now: its pick, its own stored dice, or its system's. */
+  diceSet: DiceSet;
+  diceSets: DiceSets;
+  onPick: (set: DiceSet) => void;
 }
 
-const CRIT_OPTIONS: Record<CritRule, string> = {
-  natural: 'Natural',
-  'roll-under': 'Roll-under',
-  doubles: 'Doubles',
-  'high-total': 'High total',
-  none: 'None',
-};
+/** The sets to pick from, after the collection's own dice where it rolls dice no set of the library rolls. */
+export function diceSetChoices(current: DiceSet, sets: readonly DiceSet[]): DiceSetChoice[] {
+  const choices = sets.map((set): DiceSetChoice => ({ id: set.id, set }));
+  if (current.id !== COLLECTION_DICE_ID) return choices;
+  return [{ id: COLLECTION_DICE_ID, set: current, title: t('diceLab.ownDice') }, ...choices];
+}
 
-const CRIT_DESCRIPTIONS: Record<CritRule, string> = {
-  natural: 'The highest face is a critical success, a 1 a critical failure (natural 20 and natural 1).',
-  'roll-under': 'A 1 is a critical success, the highest face a critical failure (percentile systems).',
-  doubles: 'Default dice that all show the same number are a critical success (duality dice).',
-  'high-total': 'Default dice that add up to their highest total or one below it are a critical success (19 or 20 on 2d10 in Draw Steel).',
-  none: 'Rolls are never critical.',
-};
-
-export function DiceTab({ dice, onChange }: DiceTabProps): React.ReactElement {
-  const rollValid = isValidDefaultRoll(dice.defaultRoll);
+export function DiceTab({ diceSet, diceSets, onPick }: DiceTabProps): React.ReactElement {
+  const labelId = useId();
+  const labButton = useRef<HTMLButtonElement>(null);
+  const [labOpen, setLabOpen] = useState(false);
+  const choices = diceSetChoices(diceSet, diceSets.sets);
 
   return (
     <>
-      <p className="atlas-csm-hint">
-        A bonus without dice in a statblock, such as +3, is added to the default roll.
-        Only the default dice of a roll can be critical.
-      </p>
-
       <div className="atlas-csm-field">
-        <div className="atlas-csm-label-row">
-          <label className="atlas-csm-label" htmlFor="atlas-csm-default-roll">Default Roll</label>
-          <DefaultDiceInfo defaultRoll={dice.defaultRoll} />
-        </div>
-        <input
-          id="atlas-csm-default-roll"
-          type="text"
-          className="atlas-csm-input"
-          placeholder="1d20"
-          spellCheck={false}
-          aria-invalid={!rollValid || undefined}
-          value={dice.defaultRoll}
-          onChange={(e) => onChange({ ...dice, defaultRoll: e.target.value })}
+        <span id={labelId} className="atlas-csm-label">{t('diceLab.defaultDice')}</span>
+        <DiceSetPicker
+          choices={choices}
+          value={diceSet.id}
+          leading={diceSet.id === COLLECTION_DICE_ID ? 1 : 0}
+          labelledBy={labelId}
+          onPick={(id) => {
+            const set = diceSets.sets.find((entry) => entry.id === id);
+            if (set) onPick(set);
+          }}
         />
-        {!rollValid && (
-          <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
-            Enter one group of dice, such as 1d20 or 2d12.
-          </p>
-        )}
+        <p className="atlas-csm-hint">{t('diceLab.defaultDiceHint')}</p>
       </div>
 
-      <div className="atlas-csm-field">
-        <label className="atlas-csm-label">Critical Rule</label>
-        <ObsidianMenuDropdown
-          className="atlas-setting-dropdown atlas-csm-dropdown"
-          value={dice.crit}
-          options={CRIT_OPTIONS}
-          onChange={(value) => onChange({ ...dice, crit: value as CritRule })}
-        />
-        <p className="atlas-csm-hint">{CRIT_DESCRIPTIONS[dice.crit]}</p>
+      <div className="atlas-dice-lab__entry">
+        <span className="atlas-csm-label-row">
+          <span className="atlas-csm-label">{t('diceLab.sets')}</span>
+          <InfoMark label={t('diceLab.shared')} />
+        </span>
+        <Button ref={labButton} variant="outline" size="sm" onClick={() => setLabOpen(true)}>
+          <FlaskConical aria-hidden="true" />
+          {t('diceLab.open')}
+        </Button>
       </div>
-
-      <ExplodingDiceFields dice={dice} onChange={onChange} />
+      {labOpen && labButton.current && (
+        <DiceLabDialog anchor={labButton.current} diceSets={diceSets} initialId={diceSet.id || undefined} onClose={() => setLabOpen(false)} />
+      )}
     </>
   );
 }

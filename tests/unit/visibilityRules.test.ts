@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import type { TokenEntity } from '../../src/app/types';
 import type { Point } from '../../src/app/types/visionTypes';

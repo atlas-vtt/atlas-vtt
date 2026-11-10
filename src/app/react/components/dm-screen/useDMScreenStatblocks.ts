@@ -4,7 +4,7 @@ import type { TokenEntity } from '../../../types';
 import type { TokenRollContext } from '../../../types/diceRollOrigin';
 import { captureRollContext } from '../../../tools/diceRollOrigins';
 import { hasCreatureForNotePath } from '../../../services/FantasyStatblocksService';
-import { resolveStatblockNote } from '../../../services/statblockNoteSource';
+import { isStatblockNote } from '../../../statblocks/resolve/statblockNote';
 import { runInBackground } from '../../../utils/backgroundTask';
 
 /** A statblock the DM screen shows, with the map's tokens linked to it. */
@@ -31,7 +31,7 @@ function getStatblockPath(token: TokenEntity): string | undefined {
 /** Whether a note defines a statblock of its own. One that cannot be read defines none, so the other notes keep theirs. */
 async function definesStatblock(app: App, file: TFile): Promise<boolean> {
   try {
-    return (await resolveStatblockNote(app, file)) !== null;
+    return await isStatblockNote(app, file);
   } catch (error) {
     console.error(`[Atlas] Could not read the statblock note ${file.path}:`, error);
     return false;
@@ -103,15 +103,12 @@ export function useDMScreenStatblocks(isOpen: boolean, app: App, scene: DMScreen
         tokensByStatblock.set(path, existing);
       });
 
-      // Old Atlas notes can still be linked to tokens, but are not Fantasy
-      // Statblocks creatures. Only allocate cards for supported note sources.
+      // Old Atlas notes can still be linked to tokens, but define no statblock. Only allocate cards for statblock notes.
       try {
         for (const [path, pathTokens] of tokensByStatblock.entries()) {
           const file = app.vault.getAbstractFileByPath(path);
-          if (
-            file instanceof TFile &&
-            (hasCreatureForNotePath(path) || await definesStatblock(app, file))
-          ) {
+          // The bestiary is asked first: when it cannot be asked, the load fails here, before any statblock is shown.
+          if (file instanceof TFile && (hasCreatureForNotePath(path) || await definesStatblock(app, file))) {
             uniqueStatblocks.set(path, { path, tokens: pathTokens, originContext: contextOf(pathTokens) });
           }
         }

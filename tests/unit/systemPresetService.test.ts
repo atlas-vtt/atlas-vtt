@@ -77,7 +77,18 @@ describe('SystemPresetService', () => {
     expect(service.list().find((p) => p.id === preset.id)?.rules).not.toHaveProperty('lightPresets');
   });
 
+  it('saves and clears the statblock roles when a preset is edited', () => {
     const service = new SystemPresetService(memoryPresets());
+    const roles = structuredClone(rules.statblockRoles!);
+    const preset = service.create('Homebrew', rules);
+    expect(service.list().find((p) => p.id === preset.id)?.rules.statblockRoles).toEqual(roles);
+    service.update(preset.id, { ...rules, statblockRoles: roles.slice(0, 1) });
+    expect(service.list().find((p) => p.id === preset.id)?.rules.statblockRoles).toEqual(roles.slice(0, 1));
+    const { statblockRoles: _roles, ...withoutRoles } = rules;
+    service.update(preset.id, withoutRoles);
+    expect(service.list().find((p) => p.id === preset.id)?.rules).not.toHaveProperty('statblockRoles');
+  });
+
   it('keeps what a newer version stored in a sense until the preset is edited', () => {
     const future = { ...rules.senses![0]!, id: 'future', hears: true };
     const presets = memoryPresets([{ id: 'p1', name: 'Future', rules: { ...rules, senses: [future] } }]);

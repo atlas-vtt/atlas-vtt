@@ -1,8 +1,9 @@
-import { Notice, type App, type TFile } from 'obsidian';
+import { type App, type TFile } from 'obsidian';
 import type { AssetService } from '../services/AssetService';
 import { primaryPath } from '../services/vault-sync/assetFiles';
 import { linkSafeName } from './atlasLinkTargets';
 import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 export interface AtlasLinkOptions {
   /** The name the link shows; left out where it is the file's own name. */
@@ -26,11 +27,11 @@ export function atlasLink(app: App, file: TFile, sourcePath: string, options: At
 export async function copyAtlasLink(app: App, path: string, options: AtlasLinkOptions = {}): Promise<void> {
   const file = app.vault.getFileByPath(path);
   if (!file) {
-    new Notice(t('atlasLinks.fileMissing'));
+    showNotice(t('atlasLinks.fileMissing'));
     return;
   }
   await navigator.clipboard.writeText(atlasLink(app, file, '', options));
-  new Notice(t('atlasLinks.copied'));
+  showNotice(t('atlasLinks.copied'));
 }
 
 /** Copies a link to the file of the scene or encounter `assetId`, named like the asset. */
@@ -38,7 +39,7 @@ export async function copyAssetLink(app: App, assets: AssetService, assetId: str
   const asset = await assets.getAssetById(assetId);
   const path = asset ? primaryPath(asset) : null;
   if (!asset || !path) {
-    new Notice(t('atlasLinks.fileMissing'));
+    showNotice(t('atlasLinks.fileMissing'));
     return;
   }
   await copyAtlasLink(app, path, { name: asset.name });

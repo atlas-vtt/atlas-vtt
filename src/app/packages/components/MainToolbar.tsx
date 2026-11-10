@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { AnimatePresence, MotionConfig } from "framer-motion"
+import { createPortal } from "react-dom"
 import { useStore } from "zustand"
 import { Eye, EyeOff } from "lucide-react"
 
@@ -12,8 +13,6 @@ import AssetManager from "./asset-manager/AssetManager"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { Toggle } from "./primitives/Toggle"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
-import { useExperimentalFeature } from "../../react/hooks/useExperimentalFeature"
-import type { ExperimentalFeatureId } from "../../experimental/experimentalFeatures"
 import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER } from "../../toolbar/toolbarCatalog"
 import { ResponsiveToolbar } from "./toolbar/ResponsiveToolbar"
 import { useToolbarHotkeys } from "./toolbar/useToolbarHotkeys"
@@ -29,6 +28,7 @@ import type { Tool } from "./toolbar/toolFaces"
 import type { ToolbarContext, ToolMenu } from "./toolbar/toolbarContext"
 import type { ResponsiveToolbarItem } from "./toolbar/toolbarTypes"
 import { t } from '../../i18n';
+import { portalHost } from '../../host/portalHost';
 
 interface MainToolbarProps {
   viewId?: string;
@@ -42,9 +42,6 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const isGMView = useAtlasStore(state => state.isGMView)
   const setGMView = useAtlasStore(state => state.setGMView)
   const hotkeyLabel = useHotkeyLabels()
-  const experimentalOn: Record<ExperimentalFeatureId, boolean> = {
-    dynamicLighting: useExperimentalFeature('dynamicLighting'),
-  }
   const liveLayout = useToolbarLayout()
   // During a drag the bar keeps the layout it began with; changes made elsewhere wait for the drop.
   // The bottom row shares the drag state with the undo/redo bar, which the editor arranges too.
@@ -157,7 +154,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   }
 
   // The player view's bar ignores the GM's layout.
-  const available = availableToolbarControls(!dm, (feature) => experimentalOn[feature])
+  const available = availableToolbarControls(!dm)
   const order = (dm ? layout.order : DEFAULT_TOOLBAR_ORDER).filter((id) => available.has(id))
   const items: ResponsiveToolbarItem[] = order.map((id) => ({ id, ...TOOLBAR_CONTROL_ITEMS[id](ctx) }))
   const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, hotkeyLabel, editing, stop: stopEditing })
@@ -214,11 +211,20 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
         toolbarRef={toolbarRef}
         {...(dm && { onCustomizeToolbar: startEditing })}
       />
-      <AssetManager
-        isOpen={isAssetManagerOpen}
-        onClose={handleCloseAssetManager}
-        {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
-      />
+      {/* On the main window's body (the map lives there only), as the command palette opens it:
+          inside the map's leaf the overlay is composited with the map's WebGL canvas, which on
+          some Macs drew the manager without its backgrounds and cards. The element around it is
+          the scope the stylesheet's rules look for above the overlay, which alone is not fixed. */}
+      {createPortal(
+        <div className="atlas-vtt-plugin">
+          <AssetManager
+            isOpen={isAssetManagerOpen}
+            onClose={handleCloseAssetManager}
+            {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
+          />
+        </div>,
+        portalHost(),
+      )}
       {isDiceTrayOpen && !diceTool && (
         <div style={{
           position: 'fixed',

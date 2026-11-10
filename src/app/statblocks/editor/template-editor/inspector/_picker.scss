@@ -1,0 +1,85 @@
+// The field picker and its list: context-menu rows (§7.4, §7.10).
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// The context menu's geometry: 28 px capsule rows, $spacing-xs inside the border.
+$row-height: 28px;
+$menu-inset: $spacing-xs;
+$menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
+
+.atlas-vtt-plugin {
+  // ── Field picker ────────────────────────────────────────────────────────
+  .atlas-te-picker {
+    position: relative;
+    min-width: 0;
+  }
+
+  input.atlas-te-picker__input {
+    padding-inline-end: calc(#{$spacing-s} + #{$icon-xs} + #{$spacing-xs});
+  }
+
+  .atlas-te-picker__chevron {
+    position: absolute;
+    top: 50%;
+    right: $spacing-s;
+    width: $icon-xs;
+    height: $icon-xs;
+    color: var(--text-muted);
+    translate: 0 -50%;
+    pointer-events: none;
+  }
+
+  .atlas-te-choices {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($menu-radius);
+    @include atlas-flex-col(var(--size-2-1));
+    @include atlas-keep-in-view;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 4;
+    align-items: stretch;
+    box-sizing: border-box;
+    width: max(100%, 220px);
+    max-height: 280px;
+    margin-top: $spacing-xs;
+    padding: $menu-inset;
+    overflow-y: auto;
+    box-shadow: $shadow-md;
+    @include atlas-scrollbar;
+  }
+
+  .atlas-te-choices__group {
+    @include atlas-flex-col(var(--size-2-1));
+    align-items: stretch;
+  }
+
+  .atlas-te-choices__group-label {
+    padding: $spacing-xs $spacing-s 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-te-choices__label {
+    @include atlas-truncate;
+    min-width: 0;
+  }
+
+  .atlas-te-choices__hint {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-choices__hint--key {
+    font-family: var(--font-monospace);
+  }
+
+  .atlas-te-choices__empty {
+    padding: $spacing-s;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+}

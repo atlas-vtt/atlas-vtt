@@ -1,8 +1,9 @@
+import { portalHost } from '../../host/portalHost';
 /** Show a temporary toast notification styled to match Atlas VTT. */
 export function showAtlasToast(message: string, duration = 3000): void {
   const container =
-    document.querySelector<HTMLElement>('.atlas-toast-container') ??
-    document.body.createDiv({ cls: 'atlas-toast-container' });
+    portalHost().querySelector<HTMLElement>('.atlas-toast-container') ??
+    portalHost().createDiv({ cls: 'atlas-toast-container' });
   const toast = container.createDiv({ cls: 'atlas-toast', text: message });
 
   // Trigger enter animation

@@ -33,9 +33,12 @@ export function withLegacyBars(
   return kept;
 }
 
-/** `Hit Protection` → `hit-protection`, unique among `taken` (`ammo`, `ammo-2`, …). */
-export function resourceKey(name: string, taken: Iterable<string>): string {
-  const base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'resource';
+/**
+ * `Hit Protection` → `hit-protection`, unique among `taken` (`ammo`, `ammo-2`, …); `fallback`
+ * where the name has no letter or digit to key by. Statblock roles take their ids by this rule too.
+ */
+export function resourceKey(name: string, taken: Iterable<string>, fallback = 'resource'): string {
+  const base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
   const used = new Set(taken);
   if (!used.has(base)) return base;
   let n = 2;
@@ -67,6 +70,18 @@ export function withFinalKeys(resources: readonly ResourceDefinition[]): Resourc
     taken.push(key);
     return { ...resource, key };
   });
+}
+
+/** A definition without the defeat a static value cannot have; the dialog keeps it while the GM steps through the directions. */
+function withoutStaticDefeat(resource: ResourceDefinition): ResourceDefinition {
+  if (resource.direction !== 'static' || resource.defeatedWhenSpent === undefined) return resource;
+  const { defeatedWhenSpent: _defeats, ...rest } = resource;
+  return rest;
+}
+
+/** Resources as they are stored: names and fields trimmed, a static value defeating nothing, and resources added in a dialog keyed by their name. */
+export function savedResources(resources: readonly ResourceDefinition[]): ResourceDefinition[] {
+  return withFinalKeys(resources.map((resource) => withoutStaticDefeat({ ...resource, name: resource.name.trim(), field: resource.field.trim() })));
 }
 
 /** A stored or imported definition, or null when a required part is missing or invalid. */

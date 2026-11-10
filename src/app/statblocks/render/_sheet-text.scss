@@ -1,0 +1,207 @@
+@use '../../../../styles/tokens' as *;
+
+// Type in the native card: titles, lines, labelled values, prose, headings,
+// the editing mode's prompts and the marks of a template's problems. Sizes
+// come from Obsidian's interface ramp, so the card follows the user's font size.
+
+// ── Headings ────────────────────────────────────────────────────────────────
+// The companion theme sets its heading face on `.atlas-statblock .atlas-sb-heading`
+// and `.atlas-sb-section-heading` (two classes). The sheet's own heading rules
+// stay below that (one class and an element), so the theme keeps the face,
+// size and weight of a name; they still win over statblock.scss's one-class
+// rules. Only a level 2 or 3 title's smaller size outranks the theme, so it
+// stays below the name in the theme's face.
+:where(.atlas-sb-sheet) :is(h1, h2, h3).atlas-sb-heading {
+  margin: 0;
+  font-weight: $font-weight-semibold;
+  line-height: 1.2;
+
+  &[data-level='2'] {
+    font-size: $font-ui-medium;
+    letter-spacing: normal;
+  }
+
+  &[data-level='3'] {
+    font-size: $font-ui-small;
+    letter-spacing: normal;
+  }
+}
+
+// A heading with a control at its end ("Add ability").
+:where(.atlas-sb-sheet) .atlas-sb-section-heading__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-s;
+}
+
+:where(.atlas-sb-sheet) .atlas-sb-section-heading--minor {
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.atlas-sb-sheet {
+
+  // ── Line ──────────────────────────────────────────────────────────────────
+  .atlas-sb-line {
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+    font-style: italic;
+    text-wrap: pretty;
+  }
+
+  // ── Labelled values: Stats, Pairs, Tags, Tracks ───────────────────────────
+  .atlas-sb-labelled--run-in {
+    font-size: $font-ui-small;
+    font-variant-numeric: tabular-nums;
+    text-wrap: pretty;
+
+    > .atlas-sb-label {
+      margin-right: $spacing-s;
+      color: var(--text-normal);
+      font-weight: $font-weight-semibold;
+    }
+  }
+
+  .atlas-sb-labelled--stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    > .atlas-sb-label {
+      color: var(--text-muted);
+      font-size: $font-ui-smaller;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+  }
+
+  .atlas-sb-stat.atlas-sb-labelled--stacked .atlas-sb-value {
+    font-size: $font-ui-medium;
+    font-variant-numeric: tabular-nums;
+    font-weight: $font-weight-semibold;
+    line-height: var(--line-height-tight);
+  }
+
+  // ── Prose ─────────────────────────────────────────────────────────────────
+  .atlas-sb-prose,
+  .atlas-sb-entries-intro {
+    font-size: $font-ui-small;
+    line-height: var(--line-height-normal);
+    text-wrap: pretty;
+
+    p {
+      margin: 0;
+    }
+
+    p + p {
+      margin-top: $spacing-s;
+    }
+  }
+
+  // ── Folding sections ──────────────────────────────────────────────────────
+  // A folding section's heading is a button that looks like the heading.
+  .atlas-sb-section-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--interactive-accent);
+      outline-offset: 2px;
+      border-radius: $radius-s;
+    }
+  }
+
+  .atlas-sb-chevron {
+    width: $icon-xs;
+    height: $icon-xs;
+    flex: none;
+    transition: transform $transition-normal $transition-ease-out;
+  }
+
+  .atlas-sb-section-toggle[aria-expanded='true'] .atlas-sb-chevron {
+    transform: rotate(90deg);
+  }
+
+  .atlas-sb-collapse-clip {
+    overflow: hidden;
+  }
+
+  .atlas-sb-collapse-clip > .atlas-sb-stack {
+    padding-top: $spacing-s;
+  }
+
+  // ── Empty values while editing; problems ──────────────────────────────────
+  .atlas-sb-prompt {
+    color: var(--text-faint);
+    font-style: normal;
+    font-weight: $font-weight-normal;
+  }
+
+  // A name not given yet (a tile just placed): the label or heading it will have, faint, in its own type.
+  .atlas-sb-labelled > .atlas-sb-label.atlas-sb-placeholder,
+  .atlas-sb-section-heading.atlas-sb-placeholder {
+    color: var(--text-faint);
+  }
+
+  .atlas-sb-problem {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: $spacing-xs;
+    color: var(--text-faint);
+    cursor: help;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--interactive-accent);
+      outline-offset: 1px;
+      border-radius: $radius-full;
+    }
+  }
+
+  // A value that does not fit its field's type: "Not a number", in the
+  // chip shape of the card's lists, tinted as a warning.
+  .atlas-sb-misfit {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    margin-left: $spacing-xs;
+    padding: 0 $spacing-s;
+    vertical-align: middle;
+    border-radius: $radius-full;
+    background: color-mix(in oklch, var(--text-warning) 14%, transparent);
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    font-style: normal;
+    font-weight: $font-weight-normal;
+    white-space: nowrap;
+    cursor: help;
+
+    &:focus-visible {
+      outline: 2px solid var(--interactive-accent);
+      outline-offset: 1px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-sb-chevron {
+      transition: none;
+    }
+  }
+}

@@ -9,6 +9,35 @@ const inputs = { random: Math.random, rollId: (): string => 'test-roll', roller:
 /** Rolls every die at its highest face. */
 const highest = (): number => 0.999;
 
+/** Rolls the faces given, in turn, on dice of the sides given. */
+const faces = (...rolled: Array<[number, number]>) => {
+  const queue = [...rolled];
+  return (): number => {
+    const [face, sides] = queue.shift() ?? [1, 2];
+    return (face - 0.5) / sides;
+  };
+};
+
+describe('keeping dice', () => {
+  it('keeps the highest or lowest, marking the others dropped and leaving them out of the total', () => {
+    const high = rollFormula('2d20kh1+2', faces([5, 20], [14, 20]));
+    expect(high.rolls).toEqual([{ die: 'd20', value: 5, max: 20, dropped: true }, { die: 'd20', value: 14, max: 20 }]);
+    expect(high.total).toBe(16);
+    const low = rollFormula('4d6kl3', faces([6, 6], [2, 6], [3, 6], [5, 6]));
+    expect(low.rolls.map((die) => die.dropped === true)).toEqual([true, false, false, false]);
+    expect(low.total).toBe(10);
+  });
+
+  it('keeps the earlier of equal dice', () => {
+    const tie = rollFormula('2d20kh1', faces([9, 20], [9, 20]));
+    expect(tie.rolls.map((die) => die.dropped === true)).toEqual([false, true]);
+  });
+
+  it('keeps a subtracted term\'s best die and subtracts it', () => {
+    expect(rollFormula('10-2d6kh1', faces([2, 6], [5, 6])).total).toBe(5);
+  });
+});
+
 describe('rollFormula', () => {
   it('reads a signed dice term as dice, not as a modifier', () => {
     const result = rollFormula('d20+2d6', highest);

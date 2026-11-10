@@ -1,4 +1,4 @@
-import { Notice, type Setting, type ToggleComponent } from 'obsidian';
+import { type Setting, type ToggleComponent } from 'obsidian';
 import { availableHotkeys, DEFAULT_MAP_HOTKEYS, formatHotkey, hotkeyAction, hotkeyFromEvent } from '../keyboard/mapHotkeys';
 import type { HotkeyOrigin } from '../keyboard/hotkeyOverrides';
 import type { SettingsService } from '../services/SettingsService';
@@ -6,11 +6,12 @@ import type { AtlasSettingRow, AtlasSettingSection } from './settingSections';
 import type { ButtonComponent } from 'obsidian';
 import { TUTORIAL_IDS } from '../services/SettingsService';
 import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 type HotkeyAction = ReturnType<typeof availableHotkeys>[number];
 
 function notifyFailure(error: unknown, fallback: string): void {
-  new Notice(error instanceof Error ? error.message : fallback);
+  showNotice(error instanceof Error ? error.message : fallback);
 }
 
 /** The action's group, plus its default once changed or why it lost its default. */
@@ -83,7 +84,7 @@ export function hotkeySettingsSection(settings: SettingsService): AtlasSettingSe
           setting.addButton(button => button.setButtonText(t('settings.hotkeys.resetAll')).onClick(() => settings.resetHotkeys()));
         },
       },
-      ...availableHotkeys(false, feature => settings.isExperimentalOn(feature)).map(hotkeyRow),
+      ...availableHotkeys(false, (feature) => settings.isExperimentalOn(feature)).map(hotkeyRow),
     ],
   };
 }
@@ -129,7 +130,7 @@ export function onboardingSettingsSection(settings: SettingsService): AtlasSetti
             component.setButtonText(t('settings.tutorials.reset')).onClick(() => {
               settings.resetTutorials();
               tutorialToggle?.setValue(true);
-              new Notice(t('settings.tutorials.resetDone'));
+              showNotice(t('settings.tutorials.resetDone'));
             });
           });
           const sync = (): void => {

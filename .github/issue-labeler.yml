@@ -31,5 +31,7 @@
   - '### Which part of Atlas is affected\?\s+Player view'
 "area:settings":
   - '### Which part of Atlas is affected\?\s+Settings, commands and updates'
+"area:online":
+  - '### Which part of Atlas is affected\?\s+Online play'
 "area:unknown":
   - '### Which part of Atlas is affected\?\s+Not sure \/ other'

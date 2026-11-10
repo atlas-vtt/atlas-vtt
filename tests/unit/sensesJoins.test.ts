@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CreatureIndex } from '../../src/app/creatures/CreatureIndex';
 import { inheritedSensesOf } from '../../src/app/creatures/creatureSenses';
@@ -12,6 +13,7 @@ import { SightRulesWatch } from '../../src/app/pixi/lighting/SightRulesWatch';
 import { AssetService } from '../../src/app/services/AssetService';
 import { mapLightPresets } from '../../src/app/services/mapCollectionRules';
 import { mapMeasurementSettings } from '../../src/app/services/mapMeasurementSettings';
+import { rulesLookup } from '../../src/app/services/mapRules';
 import { mapSenseRules, mapSenseRulesSource } from '../../src/app/services/mapSenseRules';
 import type { ViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
@@ -48,12 +50,12 @@ describe('senses, from where they are edited to what sight does', () => {
   };
   const token = (extra: Partial<TokenEntity> = {}): TokenEntity => ({ id: 't', kind: 'character', name: 'Goblin', imagePath: 'g.png', x: 2000, y: 2000, vision: { enabled: true }, ...extra }) as TokenEntity;
   const sourceOf = (viewer: TokenEntity): SightSource => {
-    const measurement = mapMeasurementSettings(AssetService.getInstance(current.app), state);
+    const measurement = mapMeasurementSettings(rulesLookup(current.app), state);
     return sightSources({ [viewer.id]: viewer }, unitScaleOf(measurement, null), BOUNDS, watch.current())[0]!;
   };
   /** Sense ids with their reach in game units, as sight has them. */
   const reaches = (viewer: TokenEntity): [string, number][] => {
-    const { unitDistance } = mapMeasurementSettings(AssetService.getInstance(current.app), state);
+    const { unitDistance } = mapMeasurementSettings(rulesLookup(current.app), state);
     return sourceOf(viewer).senses.map(({ definition, range }) => [definition.id, Math.round((range / 70) * unitDistance)]);
   };
   const read = async (): Promise<void> => {
@@ -178,7 +180,7 @@ describe('senses, from where they are edited to what sight does', () => {
       const torch = mapLightPresets(current.app, state).find((preset) => preset.kind === 'torch')!;
       const emission = emissionOf(torch);
       // The popover shows `emission.dim`; the rings and the light's reach turn it into world pixels with the map's measurement.
-      const scale = unitScaleOf(mapMeasurementSettings(AssetService.getInstance(current.app), state), state.grid);
+      const scale = unitScaleOf(mapMeasurementSettings(rulesLookup(current.app), state), state.grid);
       return { dim: emission.dim, world: gameUnitsToWorld(emission.dim, scale) };
     };
     expect(reachOf()).toEqual({ dim: 40, world: 560 });

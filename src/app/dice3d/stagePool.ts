@@ -174,7 +174,7 @@ function whenQuiet(doc: Document, run: () => void): void {
 function warmUp(renderer: DiceRenderer, win: Window): void {
   const rem = parseFloat(win.getComputedStyle(win.document.documentElement).fontSize) || 16;
   renderer.setSize(Math.ceil(WARM_REM[0] * rem), Math.ceil(WARM_REM[1] * rem), stagePixelRatio(win));
-  renderer.setPlan(DIE_BODIES);
+  renderer.setPlan(DIE_BODIES.map((sides) => ({ sides })));
   renderer.render(DIE_BODIES.map((sides) => ({ sides, anim: { ...makeDie(Math.random), w: [...WARM_SPIN] } })), 0);
   renderer.reset();
 }

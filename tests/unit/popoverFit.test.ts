@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { POPOVER_FITS, fitPopover } from '../../src/app/packages/components/primitives/popoverFit';
+import { POPOVER_FITS, fitPopover, LIST_FITS, fitList } from '../../src/app/packages/components/primitives/popoverFit';
 
 const FRAME = { left: 0, top: 0, right: 800, bottom: 600 };
 const box = (left: number, width: number, top: number, height: number, contentHeight = height) =>
@@ -37,3 +37,24 @@ describe('fitPopover', () => {
     expect(fitPopover(box(100, 220, 8, 392, 500), FRAME, 'top').maxHeight).toBe(392);
   });
 });
+
+describe('fitList', () => {
+  const frame = { left: 0, top: 0, right: 800, bottom: 600 }
+  const GAP = 4
+
+  it('opens below its trigger where the list fits there', () => {
+    expect(fitList({ top: 100, bottom: 130 }, 240, frame, GAP)).toBe(LIST_FITS)
+  })
+
+  it('opens above where below is too short and above is roomier, whole where it fits there', () => {
+    expect(fitList({ top: 500, bottom: 530 }, 240, frame, GAP)).toEqual({ up: true, maxHeight: null })
+  })
+
+  it('stays below, shortened to the room, where above is no roomier', () => {
+    expect(fitList({ top: 100, bottom: 130 }, 600, frame, GAP)).toEqual({ up: false, maxHeight: 600 - 8 - 130 - GAP })
+  })
+
+  it('is shortened above too, where neither side holds it', () => {
+    expect(fitList({ top: 400, bottom: 430 }, 600, frame, GAP)).toEqual({ up: true, maxHeight: 400 - GAP - 8 })
+  })
+})

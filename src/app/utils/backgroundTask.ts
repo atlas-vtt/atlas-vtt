@@ -1,4 +1,5 @@
-import { Notice } from 'obsidian';
+import { showNotice } from '../ui/notice';
+
 
 /**
  * Runs a promise without awaiting it. A rejection is logged under `context`
@@ -8,6 +9,6 @@ import { Notice } from 'obsidian';
 export function runInBackground(task: Promise<unknown>, context: string, userMessage?: string): void {
   task.catch((error: unknown) => {
     console.error(`[Atlas] ${context} failed:`, error);
-    if (userMessage) new Notice(userMessage);
+    if (userMessage) showNotice(userMessage);
   });
 }

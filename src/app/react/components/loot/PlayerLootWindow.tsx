@@ -38,7 +38,7 @@ export function PlayerLootWindow({ items, onClose }: PlayerLootWindowProps): Rea
         </header>
         <ol className="atlas-player-loot__items" ref={listRef}>
           {items.map((item) => (
-            <li key={item.id} className="atlas-loot-card atlas-loot-card--large" data-rarity={rarityTone(item.rarity)}>
+            <li key={item.id} className="atlas-loot-card atlas-loot-card--large" data-rarity={item.tone ?? rarityTone(item.rarity)}>
               <LootItemContent draw={item} />
             </li>
           ))}

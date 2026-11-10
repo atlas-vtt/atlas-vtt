@@ -1,6 +1,8 @@
+// @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DiceTool } from '../DiceTool';
+import { FORMULA_LIMITS } from '../parseFormula';
 import { DEFAULT_DICE_RULES } from '../../gameSystems/diceRules';
 
 function setup(defaultRoll = '1d20') {
@@ -22,7 +24,7 @@ describe('DiceTool roll inputs', () => {
     expect(ambient).not.toHaveBeenCalled();
   });
 
-  it.each(['d20 garbage', '101d6', 'd1001', `+3${' '.repeat(63)}`, 'd20\n'])('rejects %j before randomness, history or events', (formula) => {
+  it.each(['d20 garbage', '101d6', 'd1001', `+3${' '.repeat(99)}`, 'd20\n'])('rejects %j before randomness, history or events', (formula) => {
     const { tool, inputs, bus } = setup();
     const emit = vi.spyOn(bus, 'emit');
     const dispatch = vi.spyOn(document, 'dispatchEvent');
@@ -44,8 +46,8 @@ describe('DiceTool roll inputs', () => {
   });
 
   it.each([
-    ['d20' + ' '.repeat(61), '+1', 'length'],
-    [Array(10).fill('d6').join('+'), '+1', 'terms'],
+    ['d20' + ' '.repeat(FORMULA_LIMITS.completed - 4), '+1', 'length'],
+    [Array(20).fill('d6').join('+'), '+1', 'terms'],
   ])('rejects default-roll completion beyond the %s budget', (defaultRoll, bonus, code) => {
     const { tool, inputs } = setup(defaultRoll);
     expect(tool.rollDice(bonus)).toBeNull();

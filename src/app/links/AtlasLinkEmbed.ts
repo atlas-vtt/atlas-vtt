@@ -1,6 +1,7 @@
-import { Component, setIcon, type EmbedContext, type FileEmbed, type TFile } from 'obsidian';
+import { Component, Menu, setIcon, type EmbedContext, type FileEmbed, type TFile } from 'obsidian';
 import { skeletonPhase } from '../packages/components/primitives/skeletonPhase';
 import { runInBackground } from '../utils/backgroundTask';
+import { t } from '../i18n';
 import './atlas-link-embed.scss';
 
 /** What an embed card shows once its file is read. */
@@ -11,6 +12,8 @@ export interface EmbedCardContent {
   /** Fills the art area; it shows a breathing placeholder until then. */
   art: (artEl: HTMLElement) => void;
   action: EmbedCardAction;
+  /** Further ways to hand the file to Atlas, in a menu beside the button. */
+  more?: readonly EmbedCardAction[];
 }
 
 export interface EmbedCardAction {
@@ -57,19 +60,38 @@ export abstract class AtlasLinkEmbed extends Component implements FileEmbed {
     text.createDiv({ cls: 'atlas-link-embed__title', text: content.title });
     if (content.meta) text.createDiv({ cls: 'atlas-link-embed__meta', text: content.meta });
     this.renderAction(content.action);
+    if (content.more?.length) this.renderMore(content.more);
   }
 
   private renderAction(action: EmbedCardAction): void {
     const button = this.captionEl.createEl('button', { cls: 'atlas-link-embed__action mod-cta' });
     setIcon(button.createSpan({ cls: 'atlas-link-embed__action-icon' }), action.icon);
     button.createSpan({ text: action.label });
-    // Live preview would place the cursor in the link's source on a press inside the embed
+    this.onPress(button, () => this.run(action));
+  }
+
+  private renderMore(actions: readonly EmbedCardAction[]): void {
+    const button = this.captionEl.createEl('button', { cls: 'atlas-link-embed__action atlas-link-embed__more', attr: { 'aria-label': t('atlasLinks.more'), 'aria-haspopup': 'menu' } });
+    setIcon(button.createSpan({ cls: 'atlas-link-embed__action-icon' }), 'more-horizontal');
+    this.onPress(button, (event) => {
+      const menu = new Menu();
+      for (const action of actions) menu.addItem((item) => item.setTitle(action.label).setIcon(action.icon).onClick(() => this.run(action)));
+      menu.showAtMouseEvent(event);
+    });
+  }
+
+  /** A press on `button` does `act` and nothing else: live preview would place the cursor in the link's source on a press inside the embed. */
+  private onPress(button: HTMLElement, act: (event: MouseEvent) => void): void {
     this.registerDomEvent(button, 'mousedown', (event) => event.stopPropagation());
     this.registerDomEvent(button, 'click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      runInBackground(action.run(), `Opening ${this.file.path} from a link`, action.failure);
+      act(event);
     });
+  }
+
+  private run(action: EmbedCardAction): void {
+    runInBackground(action.run(), `Opening ${this.file.path} from a link`, action.failure);
   }
 }
 

@@ -103,10 +103,6 @@ $toast-reveal-delay: 300ms;
   cursor: pointer;
   transition: transform $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
 
-  &:hover {
-    transform: translateY(-1px);
-  }
-
   &:active {
     transform: scale(0.98);
   }
@@ -305,6 +301,40 @@ $toast-reveal-delay: 300ms;
   &--min {
     background: color-mix(in oklch, var(--color-red) 15%, transparent);
     color: var(--color-red);
+  }
+
+  &--success {
+    box-shadow: inset 0 0 0 1px var(--color-green);
+    color: var(--color-green);
+  }
+
+  &--failure {
+    box-shadow: inset 0 0 0 1px var(--color-red);
+    color: var(--color-red);
+  }
+
+  // Counted for nothing: dropped by keep or drop, or rolled again.
+  &--dropped,
+  &--rerolled {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+    color: var(--text-faint);
+    text-decoration: line-through;
+  }
+}
+
+// A die a dice set coloured: its colour as a dot before its name, in the card and the log alike.
+.atlas-die-badge--coloured {
+  gap: $spacing-xs;
+
+  &::before {
+    content: '';
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--atlas-die-colour);
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--mono-100) 20%, transparent);
   }
 }
 

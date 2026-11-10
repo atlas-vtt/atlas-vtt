@@ -1,0 +1,115 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The world map picker of a campaign's page (WorldMapPicker.tsx): a list whose options carry a
+// thumbnail, searched by name, opening below the trigger the world map card gives it (above it where
+// the page has no room below).
+
+$picker-thumb-inset: 3px;
+
+.world-map-picker {
+  position: relative;
+  @include atlas-flex-row($spacing-xs);
+  flex: 1;
+  min-width: 0;
+
+  &.is-open {
+    z-index: $z-popover;
+  }
+}
+
+.world-map-thumb {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+  border-radius: calc(#{$radius-m} - #{$picker-thumb-inset});
+  background: var(--background-secondary);
+  color: var(--text-faint);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.world-map-picker__popover {
+  @include atlas-select-popover;
+  @include atlas-flex-col($spacing-xs);
+  left: auto;
+  width: min(320px, 100cqi);
+  max-height: 360px;
+  padding: $spacing-xs;
+  transform-origin: top right;
+}
+
+// Above the trigger, where the page leaves no room below (`useListPlacement`).
+.world-map-picker__popover--up {
+  top: auto;
+  bottom: calc(100% + #{$spacing-xs});
+  transform-origin: bottom right;
+}
+
+.world-map-picker__search {
+  @include atlas-text-input;
+  flex-shrink: 0;
+}
+
+.world-map-picker__list {
+  @include atlas-flex-col(2px);
+  min-height: 0;
+  overflow-y: auto;
+  @include atlas-scrollbar;
+}
+
+.world-map-picker__option {
+  @include atlas-select-option(32px);
+  flex-shrink: 0;
+  justify-content: flex-start;
+  padding: 4px;
+  padding-inline-end: $spacing-s;
+
+  .world-map-thumb {
+    border-radius: calc(#{$radius-m} - 4px);
+  }
+}
+
+.world-map-picker__name {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+}
+
+.world-map-picker__kind {
+  flex-shrink: 0;
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
+}
+
+.world-map-picker__check {
+  flex-shrink: 0;
+  width: $icon-xs;
+  height: $icon-xs;
+  color: var(--text-accent);
+  opacity: 0;
+}
+
+.world-map-picker__option[aria-selected='true'] .world-map-picker__check {
+  opacity: 1;
+}
+
+.world-map-picker__none {
+  padding: $spacing-s;
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-map-picker__popover {
+    transition: none;
+  }
+}

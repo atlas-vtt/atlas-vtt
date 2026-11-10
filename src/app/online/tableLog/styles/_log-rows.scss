@@ -1,0 +1,259 @@
+// The rows of the log: a chat message with its avatar, byline and text, what it answers above it,
+// and the line about who came or left.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+// An author's colour, from Obsidian's palette (`authorTone`); the GM has the accent.
+.atlas-online-log__tone--gm { --atlas-online-log-tone: var(--interactive-accent); }
+.atlas-online-log__tone--0 { --atlas-online-log-tone: var(--color-red); }
+.atlas-online-log__tone--1 { --atlas-online-log-tone: var(--color-orange); }
+.atlas-online-log__tone--2 { --atlas-online-log-tone: var(--color-yellow); }
+.atlas-online-log__tone--3 { --atlas-online-log-tone: var(--color-green); }
+.atlas-online-log__tone--4 { --atlas-online-log-tone: var(--color-cyan); }
+.atlas-online-log__tone--5 { --atlas-online-log-tone: var(--color-blue); }
+.atlas-online-log__tone--6 { --atlas-online-log-tone: var(--color-purple); }
+.atlas-online-log__tone--7 { --atlas-online-log-tone: var(--color-pink); }
+
+.atlas-online-log {
+  .atlas-online-log__row {
+    // The space above the row's content, which its tools climb back over to sit on its top edge.
+    --atlas-online-log-row-top: #{$spacing-xs};
+    position: relative;
+    padding: var(--atlas-online-log-row-top) $spacing-s 2px;
+    border-radius: $radius-m;
+    outline: none;
+    transition: background-color 600ms ease;
+    @include atlas-corner-shape;
+
+    &:focus-visible {
+      box-shadow: $log-focus-ring;
+    }
+
+    &.is-active {
+      background: var(--background-modifier-hover);
+      transition-duration: $transition-fast;
+    }
+
+    // A row a click opens the thread of: pressed, it darkens; never while a control in it is pressed.
+    &.is-opener {
+      cursor: pointer;
+
+      &:active:not(:has(button:active, textarea:active, input:active, a:active)) {
+        background: var(--background-modifier-active-hover);
+        transition-duration: 0ms;
+      }
+    }
+
+    // The answer the message field is set to, in a thread.
+    &.is-selected {
+      background: var(--background-modifier-active-hover);
+    }
+
+    // Where a reply's quote led: a wash of the accent that fades by itself.
+    &.is-highlighted {
+      background: $log-accent-wash;
+    }
+  }
+
+  // A new block of an author stands apart from what is above it; its further rows sit close.
+  .atlas-online-log__row--chat,
+  .atlas-online-log__row--roll {
+    margin-top: $spacing-s;
+  }
+
+  .atlas-online-log__row--continued {
+    --atlas-online-log-row-top: 2px;
+  }
+
+  .atlas-online-log__item:first-child > .atlas-online-log__row {
+    margin-top: 0;
+  }
+
+  .atlas-online-log__message {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-s;
+  }
+
+  .atlas-online-log__gutter {
+    flex: none;
+    width: $log-disc;
+  }
+
+  .atlas-online-log__disc {
+    display: grid;
+    flex: none;
+    place-items: center;
+    border-radius: $radius-full;
+    // Tinted, and the letter drawn towards the text colour, so it reads on every colour in light and dark.
+    background: color-mix(in oklch, var(--atlas-online-log-tone) 22%, transparent);
+    color: color-mix(in oklch, var(--atlas-online-log-tone) 75%, var(--text-normal));
+    font-weight: $font-weight-bold;
+    line-height: 1;
+    user-select: none;
+
+    // The GM's crown.
+    svg {
+      width: 55%;
+      height: 55%;
+    }
+  }
+
+  .atlas-online-log__disc--row {
+    width: $log-disc;
+    height: $log-disc;
+    font-size: $font-ui-small;
+  }
+
+  .atlas-online-log__disc--quote {
+    width: $log-quote-disc;
+    height: $log-quote-disc;
+    font-size: 9px;
+  }
+
+  .atlas-online-log__disc--roll {
+    width: $log-roll-disc;
+    height: $log-roll-disc;
+    font-size: 18px;
+  }
+
+  .atlas-online-log__content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .atlas-online-log__byline {
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-s;
+    min-width: 0;
+    line-height: var(--line-height-tight);
+  }
+
+  .atlas-online-log__name {
+    color: color-mix(in oklch, var(--atlas-online-log-tone) 75%, var(--text-normal));
+    font-weight: $font-weight-semibold;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__time {
+    flex: none;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-weight: $font-weight-normal;
+    white-space: nowrap;
+  }
+
+  // Shown as text only: line breaks kept, and a word longer than the panel broken.
+  .atlas-online-log__text {
+    color: var(--text-normal);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    user-select: text;
+    // Marks stacked on a letter stay in their own row.
+    overflow: hidden;
+  }
+
+  .atlas-online-log__edited {
+    color: var(--text-faint);
+    font-size: 11px;
+    user-select: none;
+  }
+
+  // ── What a reply answers ────────────────────────────────────────────────────
+  .atlas-online-log__quote {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: 20px;
+    margin-bottom: 2px;
+    padding-left: calc(#{$log-disc} + #{$spacing-s});
+
+    // The curved line from the avatar's middle up and over to the quote.
+    &::before {
+      content: '';
+      position: absolute;
+      left: calc(#{$log-disc} / 2 - #{$border-width-l} / 2);
+      top: 50%;
+      bottom: -2px;
+      width: calc(#{$log-disc} / 2 + #{$spacing-xs});
+      border-top: $border-width-l solid color-mix(in oklch, var(--mono-100) #{$border-opacity-default}, transparent);
+      border-left: $border-width-l solid color-mix(in oklch, var(--mono-100) #{$border-opacity-default}, transparent);
+      border-top-left-radius: $radius-m;
+    }
+  }
+
+  .atlas-online-log__quote-line {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    min-width: 0;
+    max-width: 100%;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    line-height: 20px;
+    text-align: left;
+  }
+
+  button.atlas-online-log__quote-line {
+    @include log-button;
+    display: flex;
+    max-width: 100%;
+    border-radius: $radius-s;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    line-height: 20px;
+    transition: color $transition-fast $transition-ease;
+    @include log-button-states;
+
+    @media (hover: hover) {
+      &:hover {
+        color: var(--text-normal);
+      }
+    }
+
+    #{$log-coarse} & {
+      @include log-wide-target;
+    }
+  }
+
+  .atlas-online-log__quote-name {
+    flex: none;
+    max-width: 45%;
+    color: color-mix(in oklch, var(--atlas-online-log-tone) 75%, var(--text-normal));
+    font-weight: $font-weight-semibold;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__quote-text {
+    min-width: 0;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__quote-text--gone {
+    color: var(--text-faint);
+    font-style: italic;
+  }
+
+  // ── Who came and left ───────────────────────────────────────────────────────
+  .atlas-online-log__presence {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0 $spacing-s;
+    margin-top: $spacing-s;
+    padding: 0 $spacing-s;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    line-height: var(--line-height-tight);
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+}

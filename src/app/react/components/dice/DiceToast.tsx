@@ -5,7 +5,8 @@ import type { DiceRollResult } from '../../../types/diceTypes';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import type { RollSourcePresentation, UseDiceAvatar } from './diceSourcePresentation';
 import { DICE_TOAST_KNOT_SYMBOL_ID } from './diceToastOrnament';
-import { dieLabel } from '../../../tools/diceLabels';
+import { dieLabel, dieStates, droppedAny, rollLine } from '../../../tools/diceLabels';
+import { AdvantageTag, listsDice, RolledDiceLine } from './RolledDiceLine';
 import { t } from '../../../i18n';
 
 export type ToastPhase = 'entering' | 'visible' | 'exiting';
@@ -27,6 +28,7 @@ export function DiceToast({ result, presentation, phase, onDismiss, useAvatar }:
 
   const crit = result.crit;
   const source = result.source;
+  const dropping = droppedAny(result.rolls);
   const avatar = useAvatar(source, presentation);
   const presented = presentation !== undefined;
   // A presented roll shows exactly its name, or none: no placeholder, initial or alt text stands in.
@@ -82,7 +84,10 @@ export function DiceToast({ result, presentation, phase, onDismiss, useAvatar }:
           {source?.abilityName && (
             <span className="atlas-dice-toast__ability">{source.abilityName}</span>
           )}
-          <span className="atlas-dice-toast__formula">{result.formula}</span>
+          <AdvantageTag side={result.advantage} />
+          {listsDice(result)
+            ? <RolledDiceLine result={result} className="atlas-dice-toast__formula" />
+            : <span className="atlas-dice-toast__formula">{rollLine(result)}</span>}
         </div>
         </div>
         <div className="atlas-dice-toast__details-toggle" onClick={handleToggleDetails}>
@@ -98,9 +103,11 @@ export function DiceToast({ result, presentation, phase, onDismiss, useAvatar }:
                 key={i}
                 className={cn(
                   'atlas-dice-toast__die-badge',
-                  roll.value === roll.max && 'atlas-dice-toast__die-badge--max',
-                  roll.value === 1 && 'atlas-dice-toast__die-badge--min',
+                  dieStates(roll).map((state) => `atlas-dice-toast__die-badge--${state}`),
+                  roll.colour && 'atlas-die-badge--coloured',
+                  dropping && !roll.dropped && !roll.rerolled && 'atlas-die-badge--kept',
                 )}
+                style={roll.colour ? { '--atlas-die-colour': roll.colour } as React.CSSProperties : undefined}
               >
                 {dieLabel(result.rolls, i)}
               </span>

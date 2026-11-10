@@ -139,7 +139,7 @@ export function StatblockImportContent({ app, queuedPaths, onAdd, onClose, contr
             </div>
             {filtered.length > 0
               ? <StatblockList app={app} rows={filtered} selected={selected} queued={queued} disabled={disabled} scrollElement={scrollElement} onToggle={toggle} />
-              : <p>{query ? t('sbImport.noMatch') : t('sbImport.noneFound')}</p>}
+              : <p>{query ? t('sbImport.noMatch') : t('sbImport.noneFoundInVault')}</p>}
           </>
         )}
       </div>

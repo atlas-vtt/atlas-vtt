@@ -1,6 +1,8 @@
+import type { OnLevels } from './sceneLevelTypes';
+
 export type SoundCategory = 'Nature' | 'Interior' | 'Action' | 'Atmosphere' | 'Custom';
 
-export interface AudioSource {
+export interface AudioSource extends OnLevels {
   id: string;
   kind: 'audio';
   x: number;                    // World pixels

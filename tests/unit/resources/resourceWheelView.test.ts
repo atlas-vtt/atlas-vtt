@@ -1,8 +1,10 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Graphics, Text } from 'pixi.js';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { BAR_LOOK } from '../../../src/app/pixi/token-renderer/resources/ResourceBarView';
-import { ResourceWheelView, WHEEL_SIZE } from '../../../src/app/pixi/token-renderer/resources/ResourceWheelView';
+import { ResourceWheelView } from '../../../src/app/pixi/token-renderer/resources/ResourceWheelView';
+import { WHEEL_SIZE } from '../../../src/app/pixi/token-renderer/resources/wheelGeometry';
 import { RESOURCE_NUMBER_STYLE } from '../../../src/app/pixi/ResourceBarLabel';
 import { AMMO, ARMOR } from '../../mocks/resourceFixtures';
 
@@ -72,5 +74,13 @@ describe('ResourceWheelView', () => {
     // No ticks: five is a number here, not five points to spend
     expect(drawn(wheel).filter(({ action, color: c, shapes }) => action === 'stroke' && c === BAR_LOOK.trackColor && shapes.includes('lineTo'))).toEqual([]);
     expect((wheel.view.children[1] as Text).text).toBe('5');
+  });
+
+  it('shows a static value of 0 as a whole ring around a 0', () => {
+    const wheel = new ResourceWheelView();
+    wheel.update({ definition: ARMOR, value: { current: 0, max: 0 }, slot: 2 }, 0, 0);
+    const color = Number.parseInt(ARMOR.color.slice(1), 16);
+    expect(drawn(wheel).find((shape) => shape.color === color)?.shapes).toContain('circle');
+    expect((wheel.view.children[1] as Text).text).toBe('0');
   });
 });

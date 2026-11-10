@@ -1,3 +1,4 @@
+import { holdsValue } from './resourceValues';
 import { slottedResources } from './resourceSlots';
 import { BAR_SLOTS, type ResourceDefinition, type ResourceHolder, type ResourceShape, type ResourceViewer, type VisibleResource } from './resourceTypes';
 
@@ -16,7 +17,7 @@ export function visibleResources(
   for (const { definition, slot } of slottedResources(definitions)) {
     if (viewer === 'player' && !definition.visibleToPlayers) continue;
     const value = token.resources?.[definition.key];
-    if (!value || !(value.max > 0)) continue;
+    if (!value || !holdsValue(definition, value)) continue;
     shown.push({ definition, value, slot });
   }
   return shown;

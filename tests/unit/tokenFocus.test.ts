@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { Viewport } from 'pixi-viewport';
 import type { EventSystem } from 'pixi.js';
-import { focusToken } from '../../src/app/pixi/tokenFocus';
+import { READABLE_TOKEN_PX, focusToken, panToToken } from '../../src/app/pixi/tokenFocus';
 import { computeTokenPixelSize } from '../../src/app/pixi/token-renderer/tokenSizing';
 
 const viewports: Viewport[] = [];
@@ -76,5 +77,42 @@ describe('focusToken', () => {
     focusToken(viewport, { x: 500, y: 600, size: 1 }, gridSize);
     finishAnimation(viewport);
     expect(viewport.scale.x).toBe(1);
+  });
+});
+
+describe('panToToken, for a click on an initiative card', () => {
+  it('brings the token to the middle at the zoom the GM chose', () => {
+    const viewport = createViewport();
+    viewport.setZoom(0.8);
+    panToToken(viewport, { x: 1500, y: 900, size: 1 }, 70);
+    finishAnimation(viewport);
+
+    expect(viewport.scale.x).toBeCloseTo(0.8);
+    expect(viewport.center.x).toBeCloseTo(1500);
+    expect(viewport.center.y).toBeCloseTo(900);
+  });
+
+  it('never zooms out of a close look', () => {
+    const viewport = createViewport();
+    viewport.setZoom(4);
+    panToToken(viewport, { x: 500, y: 600, size: 1 }, 70);
+    finishAnimation(viewport);
+    expect(viewport.scale.x).toBeCloseTo(4);
+  });
+
+  it('zooms in only so far that a token too small to make out is shown readable', () => {
+    const viewport = createViewport();
+    viewport.setZoom(0.1);
+    panToToken(viewport, { x: 500, y: 600, size: 1 }, 70);
+    finishAnimation(viewport);
+    expect(computeTokenPixelSize(70, 1) * viewport.scale.x).toBeCloseTo(READABLE_TOKEN_PX);
+  });
+
+  it.each([0, NaN])('keeps the zoom for invalid token geometry (%s)', (gridSize) => {
+    const viewport = createViewport();
+    viewport.setZoom(0.5);
+    panToToken(viewport, { x: 500, y: 600, size: 1 }, gridSize);
+    finishAnimation(viewport);
+    expect(viewport.scale.x).toBeCloseTo(0.5);
   });
 });

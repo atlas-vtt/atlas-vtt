@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Container, type Application } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
@@ -28,6 +29,7 @@ vi.mock('../../src/app/pixi/lighting/engine/LightingEngine', async () => {
       busy(): boolean { return false; }
       animate(): boolean { return false; }
       setEnabled(): void {}
+      setCoverage(): void {}
       setExplored(): void {}
       setMode(): void {}
       setView(): void {}
@@ -43,6 +45,7 @@ vi.mock('../../src/app/pixi/lighting/ExploredMemory', () => ({
   ExploredMemory: class {
     sync(): void {}
     record(): void {}
+    stampDue(): boolean { return false; }
     reload(): void {}
     reset(): void {}
     edit(): boolean { return false; }

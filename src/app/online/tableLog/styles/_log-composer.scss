@@ -1,0 +1,195 @@
+// The message field under the list: a frame with the field and Send, the strip that says what the
+// message answers on top of it, and the line a refusal shows above it.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+$composer-control: 28px;
+
+.atlas-online-log {
+  .atlas-online-log__composer {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  .atlas-online-log__notice {
+    padding: 0 $spacing-xs;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    line-height: var(--line-height-tight);
+  }
+
+  .atlas-online-log__notice--refused {
+    color: var(--text-error);
+  }
+
+  // Its lower corners face the panel's and run concentric with them.
+  .atlas-online-log__composer-box {
+    display: flex;
+    flex-direction: column;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-m;
+    @include atlas-panel-inset-radius($spacing-s, bottom-left, bottom-right);
+    background: var(--background-modifier-form-field);
+    transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+
+    &:focus-within {
+      border-color: var(--interactive-accent);
+      box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
+    }
+
+    &.is-disabled {
+      opacity: 0.6;
+    }
+  }
+
+  .atlas-online-log__strip {
+    display: flex;
+    align-items: center;
+    gap: $spacing-s;
+    padding: $spacing-xs $spacing-xs $spacing-xs $spacing-s;
+    border-bottom: $border-width-s solid var(--background-modifier-border);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-online-log__strip-text {
+    flex: 1;
+    min-width: 0;
+    @include atlas-truncate;
+  }
+
+  .atlas-online-log__strip-clear {
+    @include log-button;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: $button-height-s;
+    height: $button-height-s;
+    border-radius: $radius-s;
+    color: var(--text-muted);
+    transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+    @include log-button-states;
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+
+    #{$log-coarse} & {
+      @include log-wide-target;
+    }
+  }
+
+  .atlas-online-log__field {
+    display: flex;
+    align-items: flex-end;
+    gap: $spacing-s;
+    padding: $spacing-s;
+  }
+
+  // The field itself has no frame: the box around it has. One line tall, it stands level with
+  // Send; it grows with its text to five lines, then scrolls.
+  .atlas-online-log__input {
+    &,
+    &:hover,
+    &:focus,
+    &:focus-visible,
+    &:active {
+      flex: 1;
+      min-width: 0;
+      // `useGrowingField` sets the property to the text's height.
+      height: var(--atlas-online-log-input-height, #{$composer-control});
+      min-height: $composer-control;
+      max-height: calc(5 * 1.5em + #{$spacing-s});
+      margin: 0;
+      padding: $spacing-xs 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      outline: none;
+      color: var(--text-normal);
+      font-family: inherit;
+      font-size: $font-ui-small;
+      line-height: 1.5;
+      overflow-y: auto;
+      resize: none;
+      scrollbar-width: none;
+    }
+
+    &::placeholder {
+      color: var(--text-faint);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+
+    // Below 16px, iOS zooms the page into a focused field. One line stands level with the wider Send.
+    #{$log-coarse} & {
+      min-height: $log-target;
+      max-height: calc(5 * 1.5em + 2 * 10px);
+      padding: 10px 0;
+      font-size: 16px;
+    }
+  }
+
+  .atlas-online-log__counter {
+    flex: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: $composer-control;
+  }
+
+  .atlas-online-log__send {
+    @include log-button;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: $composer-control;
+    height: $composer-control;
+    border-radius: $radius-m;
+    color: $log-on-accent;
+    transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+    @include log-button-states(var(--interactive-accent));
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-accent-hover);
+      }
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    &:disabled,
+    &:disabled:hover {
+      background: var(--background-modifier-hover);
+      color: var(--text-faint);
+      cursor: default;
+      transform: none;
+    }
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+
+    #{$log-coarse} & {
+      width: $log-target;
+      height: $log-target;
+    }
+  }
+}

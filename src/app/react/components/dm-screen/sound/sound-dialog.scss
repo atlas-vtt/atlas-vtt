@@ -1,0 +1,185 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
+
+// The mood popover under its tile, its tone and crest, and the list of sounds in the library view.
+$tone-size: 22px;
+
+// The layer is itself the `.atlas-vtt-plugin` element its portal renders, and main.scss nests this file in that class:
+// as a descendant rule it matched nothing, and the popover stacked only by where its layer lay in <body>.
+&.atlas-sound-popover-layer {
+  position: fixed;
+  inset: 0;
+  z-index: $z-atlas-dropdown;
+  pointer-events: none;
+}
+
+.atlas-sound-popover {
+  @include atlas-elevated-surface;
+  @include sound-muted-text;
+  @include atlas-panel-radius($radius-2xl);
+  @include atlas-flex-col($spacing-m);
+  position: absolute;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 344px;
+  max-width: calc(100vw - #{$spacing-l});
+  padding: $spacing-m;
+  pointer-events: auto;
+  transform-origin: var(--atlas-sound-caret) 0;
+  animation: atlas-sound-popover-in $transition-normal $press-ease;
+
+  &[data-side='above'] {
+    transform-origin: var(--atlas-sound-caret) 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// A square turned on its corner, half of it showing past the edge, in the surface's colour and border.
+.atlas-sound-popover__caret {
+  position: absolute;
+  top: 0;
+  left: var(--atlas-sound-caret);
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border: inherit;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 2px 0 0;
+  translate: -50% calc(-50% - #{$border-width-m} / 2);
+  rotate: 45deg;
+
+  [data-side='above'] > & {
+    top: 100%;
+    rotate: 225deg;
+    translate: -50% calc(-50% + #{$border-width-m} / 2);
+  }
+}
+
+.atlas-sound-popover__name {
+  @include atlas-panel-inset-radius($spacing-m);
+  width: 100%;
+  font-size: $font-ui-medium;
+  font-weight: var(--font-semibold);
+}
+
+.atlas-sound-popover .atlas-sound-popover__save {
+  @include atlas-panel-inset-radius($spacing-m);
+  @include solid-accent;
+  width: 100%;
+}
+
+.atlas-sound-field {
+  @include atlas-flex-col($spacing-xs);
+  align-items: stretch;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+}
+
+@keyframes atlas-sound-popover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.atlas-sound-look {
+  @include atlas-flex-col($spacing-m);
+  align-items: stretch;
+}
+
+.atlas-sound-look__tones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: $spacing-xs;
+  padding: $border-width-l * 2;
+}
+
+.atlas-sound-look__tone {
+  @include bare-button;
+  --atlas-sound-tone: var(--atlas-sound-tone-light);
+  flex: none;
+  width: $tone-size;
+  height: $tone-size;
+  min-height: 0;
+  border-radius: $radius-full;
+  background: var(--atlas-sound-tone);
+  transition: box-shadow $transition-normal $press-ease;
+
+  .theme-dark & {
+    --atlas-sound-tone: var(--atlas-sound-tone-dark);
+  }
+
+  &[aria-checked='true'] {
+    box-shadow: 0 0 0 $border-width-l var(--background-primary), 0 0 0 calc(#{$border-width-l} * 2) var(--text-normal);
+  }
+}
+
+.atlas-sound-look__crests {
+  @include atlas-scrollbar;
+  @include atlas-flex-col($spacing-s);
+  --atlas-sound-tone: var(--atlas-sound-tone-light);
+  align-items: stretch;
+  max-height: 232px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  .theme-dark & {
+    --atlas-sound-tone: var(--atlas-sound-tone-dark);
+  }
+}
+
+.atlas-sound-look__group {
+  @include atlas-flex-col($spacing-xs);
+  align-items: stretch;
+}
+
+.atlas-sound-look__group-label {
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-sound-look__group-crests {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: $spacing-xs;
+}
+
+.atlas-sound-look__crest {
+  @include bare-button;
+  height: 36px;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  border-radius: $control-radius;
+  color: var(--atlas-sound-muted);
+  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+  }
+
+  &:hover {
+    background: $hairline;
+  }
+
+  &[aria-checked='true'] {
+    color: var(--atlas-sound-tone);
+    background: color-mix(in oklch, var(--atlas-sound-tone) 16%, transparent);
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--atlas-sound-tone) 55%, transparent);
+  }
+}
+
+// The space and music choices: on the popover's raised track a dark theme's muted grey reads at Lc 59.
+.atlas-sound-popover .atlas-segmented__option:not(.atlas-active) {
+  .theme-dark & {
+    color: color-mix(in srgb, var(--text-muted) 60%, var(--text-normal));
+  }
+}

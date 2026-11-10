@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { Point } from '../../src/app/types/visionTypes';
 import type { WallSegment } from '../../src/app/types/wallTypes';

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -67,7 +66,8 @@ const onRoot = (selector: string): string => `matches :has() on the document roo
 const notOwn = (selector: string): string => `matches :has() on an element that is not Atlas' own: ${selector}`;
 
 /** What the guard is for is told in `scripts/root-has.js`; `npm run preflight` holds the built stylesheet to it. */
-describe('`:has()` in the stylesheet Atlas adds to Obsidian', () => {
+// Reads and parses every stylesheet the plugin imports: about 3 s on a hosted runner, close to the 5 s default.
+describe('`:has()` in the stylesheet Atlas adds to Obsidian', { timeout: 30_000 }, () => {
   describe('is refused', () => {
     it.each([
       `body:has(${ARGUMENT}) > .menu`,

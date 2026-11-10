@@ -45,6 +45,18 @@
   overflow-y: auto;
 }
 
+// Above the trigger, where the view leaves no room below (`fitList`).
+.atlas-select-content--up {
+  top: auto;
+  bottom: calc(100% + #{$spacing-xs});
+  transform-origin: bottom left;
+}
+
+// In a layer over the view (`layer`): placed by the trigger's box, in px set inline.
+.atlas-select-content--layered {
+  right: auto;
+}
+
 .atlas-select-option {
   @include atlas-select-option;
 }
@@ -53,6 +65,12 @@
   @include atlas-truncate;
   flex: 1;
   min-width: 0;
+}
+
+.atlas-select-option-detail {
+  flex-shrink: 0;
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
 }
 
 .atlas-select-check {

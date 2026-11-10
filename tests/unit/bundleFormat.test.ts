@@ -63,6 +63,7 @@ describe('manifest checks', () => {
       .toBe('This collection export contains a file Atlas will not write: atlas-vtt/../.obsidian/app.json');
   });
 });
+
 describe('scene snapshots', () => {
   const scene = { id: 'scene-1', type: 'scene', name: 'Cave', tags: [], data: { mapPath: 'atlas-vtt/collections/source/scenes/Cave.atlasmap' } };
   const snapshot = (vaultPath: string, owners = ['scene-1']): Record<string, unknown> => ({ vaultPath, role: 'scene-snapshot', owners });
@@ -84,3 +85,22 @@ describe('scene snapshots', () => {
   });
 });
 
+describe('statblock templates, their notes and dice sets', () => {
+  const template = { vaultPath: 'atlas-vtt/statblock-templates/Marsh creature.atlastemplate', role: 'statblock-template', sha256: 'b'.repeat(64) } as const;
+  const body = { vaultPath: 'atlas-vtt/statblock-templates/Marsh creature.md', role: 'statblock-template-body', linkedFrom: [template.vaultPath] } as const;
+  const diceSet = { vaultPath: 'atlas-vtt/dice-sets/Duality.json', role: 'dice-set' } as const;
+  const preset = { vaultPath: 'atlas-vtt/system-presets/Marsh.json', role: 'system-preset' } as const;
+
+  it('travel in format 9, which a bundle says only when it packs one, so older versions still import the rest', () => {
+    expect(manifestProblem(manifest({ format: 9, files: [template, body, diceSet] }))).toBeNull();
+    expect(bundleFormatFor([template])).toBe(9);
+    expect(bundleFormatFor([body])).toBe(9);
+    expect(bundleFormatFor([preset, diceSet])).toBe(9);
+    expect(bundleFormatFor([preset])).toBe(8);
+    expect(bundleFormatFor([{ vaultPath: 'atlas-vtt/assets/goblin.webp', role: 'token-image' }])).toBe(6);
+  });
+
+  it('still reads templates in format 7, as development builds wrote them', () => {
+    expect(manifestProblem(manifest({ format: 7, files: [template] }))).toBeNull();
+  });
+});

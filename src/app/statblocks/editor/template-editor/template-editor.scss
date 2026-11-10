@@ -1,0 +1,105 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The template editor (§2)
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported by TemplateEditor.tsx, so not inside the `.atlas-vtt-plugin` scope of
+// styles/main.scss: the rules take that scope themselves. The view's element
+// carries `.atlas-vtt-plugin` and `.atlas-template-editor-view`.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'te-canvas';
+@use 'te-floating';
+@use 'te-dialogs';
+
+.atlas-vtt-plugin.atlas-template-editor-view {
+  padding: 0;
+  overflow: hidden;
+  background: var(--background-primary);
+}
+
+.atlas-vtt-plugin {
+  .atlas-statblock-editor[data-surface='template-editor'] {
+    height: 100%;
+  }
+
+  // The note view's row fills the editor; the dock and the panels float over it.
+  .atlas-te {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  // ── Lines about the template above the card ─────────────────────────────
+  // In the panel's state-bar slot, one step down the radius scale; padding equals the gap.
+  .atlas-te-bar {
+    @include atlas-flex-col($spacing-s);
+    padding: $spacing-s;
+    border-radius: $radius-l;
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-bar--warning {
+    background: color-mix(in oklch, var(--text-error) 8%, var(--background-secondary));
+    color: var(--text-normal);
+  }
+
+  .atlas-te-bar__line {
+    @include atlas-flex-row($spacing-s);
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .atlas-te-bar__text {
+    min-width: 0;
+    text-wrap: pretty;
+  }
+
+  .atlas-te-bar__actions {
+    @include atlas-flex-row($spacing-s);
+    flex-wrap: wrap;
+  }
+
+  .atlas-te-bar__detail {
+    margin: 0;
+    color: var(--text-error);
+  }
+
+  .atlas-te-bar__list {
+    max-height: 8em;
+    margin: 0;
+    padding-inline-start: $spacing-l;
+    overflow-y: auto;
+    @include atlas-scrollbar;
+  }
+
+  // What floats over the editor (the toolbar, the insert menu) is drawn here.
+  .atlas-te-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+
+    > * {
+      pointer-events: auto;
+    }
+  }
+
+  .atlas-te-live {
+    @include atlas-visually-hidden;
+  }
+
+  // Before the session opens: a card-shaped skeleton, or why the file can't be edited.
+  .atlas-te--waiting {
+    padding: $spacing-l;
+  }
+
+  .atlas-te-waiting-card {
+    width: 100%;
+    max-width: $statblock-feed-max-width;
+    margin-inline: auto;
+  }
+}

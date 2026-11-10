@@ -35,7 +35,7 @@ export interface TokenLightingContext {
  */
 function sightRangePlaceholder(inherited: InheritedSenses | null | undefined, fallback: string): string {
   if (!inherited?.blindBeyond) return fallback;
-  return `${inherited.blindBeyondRange === undefined ? 'None' : numberText(inherited.blindBeyondRange)}, from statblock`;
+  return inherited.blindBeyondRange === undefined ? t('vision.noneFromStatblock') : t('vision.rangeFromStatblock', { range: numberText(inherited.blindBeyondRange) });
 }
 
 interface TokenVisionSectionProps {
@@ -50,8 +50,8 @@ export function TokenVisionSection({ vision, onChange, context }: TokenVisionSec
   return (
     <EditTokenSection title={t('vision.toggle')}>
       <SwitchRow
-        label="Vision (party member)"
-        hint="The players see the map through this token. The token itself is always visible to them."
+        label={t('vision.partyMember')}
+        hint={t('vision.partyMemberHint')}
         value={vision.enabled}
         onChange={(enabled) => onChange({ ...vision, enabled })}
       />
@@ -77,7 +77,7 @@ export function TokenVisionSection({ vision, onChange, context }: TokenVisionSec
             onChange={(next) => onChange({ ...vision, senses: next })}
             definitions={context.senses}
             unit={unit}
-            emptyText="Sees by light only."
+            emptyText={t('senses.emptyToken')}
             {...(inherited && { inheritedSenses: inherited.senses, notRecognised: inherited.notRecognised })}
           />
         </>
@@ -97,8 +97,8 @@ export function TokenLightSection({ light, onChange, context }: TokenLightSectio
   return (
     <EditTokenSection title={t('vision.carriedLight')}>
       <SwitchRow
-        label="Carries a light"
-        hint="A torch or a lantern: its light moves with the token."
+        label={t('vision.carriesLight')}
+        hint={t('vision.carriesLightHint')}
         value={light.on}
         onChange={(on) => onChange({ ...light, on })}
       />

@@ -1,9 +1,14 @@
+import type { OnLevels } from './sceneLevelTypes';
+
 export type WallType = 'solid' | 'door' | 'secret-door';
 
 /** What a wall can stop: the sight of tokens, or light. */
 export type WallChannel = 'sight' | 'light';
 
-export interface WallSegment {
+/** What a wall stops when it stops one thing only: sight, light, or nothing but a token (a window). */
+export type WallBlocks = WallChannel | 'movement';
+
+export interface WallSegment extends OnLevels {
   id: string;
   kind: 'wall';
   type: WallType;
@@ -15,9 +20,10 @@ export interface WallSegment {
   locked?: boolean;
   /**
    * The one thing the wall stops: a curtain stops sight and lets light through, glass that glows
-   * stops light and lets sight through. Unset, it stops both. A door keeps its kind.
+   * stops light and lets sight through, a window (`movement`) stops a token and lets both through.
+   * Unset, it stops both. A door keeps its kind.
    */
-  blocks?: WallChannel | undefined;
+  blocks?: WallBlocks | undefined;
   /**
    * A hedge, a low wall, a fence: sight and light pass the first limited wall on their way and
    * stop at the second, so what stands at it or right behind it is seen, and nothing through

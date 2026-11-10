@@ -10,7 +10,7 @@ vi.mock('obsidian', async (importOriginal) => {
 
 import { TFile, parseYaml, type App } from 'obsidian';
 import { NOTE_YAML_LIMITS, aliasesOfAnchors, parseNoteYaml } from '../../src/app/services/noteYaml';
-import { parseStatblockFence, statblockSourceFromText } from '../../src/app/services/statblockNoteSource';
+import { parseStatblockFence, statblockSourceFromText } from '../../src/app/statblocks/notes/statblockSource';
 import { statblockTokenAppearance } from '../../src/app/plugin/statblockTokenAppearance';
 import { readBase } from '../../src/app/loot/LootBaseReader';
 import type { TokenEntity } from '../../src/app/types';
@@ -326,7 +326,7 @@ describe('every reader of a note\'s YAML', () => {
   it('takes frontmatter beyond the limits, in a note outside the vault, for frontmatter it cannot read', () => {
     expect(statblockSourceFromText(`---\nstatblock: true\n${beyond}---\n`)).toBeNull();
     expect(parser.calls).toEqual([]);
-    expect(statblockSourceFromText('---\nstatblock: true\nname: Goblin\n---\n')).toEqual({ kind: 'frontmatter', frontmatter: { statblock: true, name: 'Goblin' } });
+    expect(statblockSourceFromText('---\nstatblock: true\nname: Goblin\n---\n')).toEqual({ kind: 'fs-frontmatter' });
   });
 
   it('gives a token no name from a statblock whose frontmatter is beyond the limits', async () => {

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PlayerCameraState } from '../../src/app/local-player-view';
 import { PlayerFrameMirror, type PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';

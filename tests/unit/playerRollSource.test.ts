@@ -94,12 +94,17 @@ describe('which tokens a players frame shows for rolls', () => {
     ];
     const shown = shownRollTokens(scene(named), MAP, spritesOf(named), () => undefined);
     expect(Object.fromEntries(shown)).toEqual({
-      custom: { name: 'Grimfang', imagePath: 'tokens/custom.webp', showRing: true, ringColor: undefined },
-      statblock: { name: 'Dire Wolf', imagePath: 'tokens/statblock.webp', showRing: true, ringColor: undefined },
-      unread: { name: 'Unknown Creature', imagePath: 'tokens/unread.webp', showRing: true, ringColor: undefined },
-      plain: { name: null, imagePath: undefined, showRing: false, ringColor: '#00ff00' },
-      ringed: { name: null, imagePath: 'tokens/ringed.webp', showRing: true, ringColor: '#aa0000' },
+      custom: { name: 'Grimfang', imagePath: 'tokens/custom.webp', showRing: true, ringColor: undefined, mapShowsNameplates: false },
+      statblock: { name: 'Dire Wolf', imagePath: 'tokens/statblock.webp', showRing: true, ringColor: undefined, mapShowsNameplates: false },
+      unread: { name: 'Unknown Creature', imagePath: 'tokens/unread.webp', showRing: true, ringColor: undefined, mapShowsNameplates: false },
+      plain: { name: null, imagePath: undefined, showRing: false, ringColor: '#00ff00', mapShowsNameplates: false },
+      ringed: { name: null, imagePath: 'tokens/ringed.webp', showRing: true, ringColor: '#aa0000', mapShowsNameplates: false },
     });
+    // The map's Show nameplates and a token's own go with it, for the roll to decide what players read
+    const settings = scene(named, { tokenSettings: { showNameplates: true } });
+    const own = [token('own', { showNameplate: true })];
+    expect(shownRollTokens(settings, MAP, spritesOf(named), () => undefined).get('custom')?.mapShowsNameplates).toBe(true);
+    expect(shownRollTokens(scene(own), MAP, spritesOf(own), () => undefined).get('own')).toMatchObject({ showNameplate: true, mapShowsNameplates: false });
     // Plain data: a held picture keeps it without the store.
     expect(Object.isFrozen(shown.get('custom'))).toBe(true);
   });
@@ -118,7 +123,7 @@ function rawRoll(source: DiceRollResult['source'] | null = {
 }
 
 const origin: DiceRollOrigin = { viewId: 'view-a', mapPath: MAP, tokenId: 'canary-token-id' };
-const wolf: ShownRollToken = { name: 'Wolf', imagePath: 'tokens/wolf.webp', showRing: true, ringColor: '#aa0000' };
+const wolf: ShownRollToken = { name: 'Wolf', imagePath: 'tokens/wolf.webp', showRing: true, ringColor: '#aa0000', mapShowsNameplates: true };
 const view = { showNames: true, imageSrc: (path: string): string | null => `app://vault/${path}` };
 const sceneShowing = (shown: ShownRollToken | null) => ({ shownToken: vi.fn((_: DiceRollOrigin) => shown) });
 
@@ -180,6 +185,16 @@ describe('a roll as the player window shows it', () => {
     const prepared = rollForPlayers(rawRoll(), origin, sceneShowing(wolf), { ...view, showNames: false });
     expect(prepared.sourcePresentation).toEqual({ name: null, avatar: { src: 'app://vault/tokens/wolf.webp', showRing: true, ringColor: '#aa0000' } });
     expect(prepared.result.source?.abilityName).toBe('Canary Ability');
+  });
+
+  it('names a token the GM\'s map leaves unnamed with a placeholder, keeping portrait and ability', () => {
+    const unnamed = { ...wolf, mapShowsNameplates: false };
+    const prepared = rollForPlayers(rawRoll(), origin, sceneShowing(unnamed), view);
+    expect(prepared.sourcePresentation).toEqual({ name: 'Unknown Creature', avatar: { src: 'app://vault/tokens/wolf.webp', showRing: true, ringColor: '#aa0000' } });
+    expect(prepared.result.source?.abilityName).toBe('Canary Ability');
+    expect(JSON.stringify(prepared)).not.toContain('Wolf');
+    // A token that shows its own nameplate is named on a map that shows none
+    expect(rollForPlayers(rawRoll(), origin, sceneShowing({ ...unnamed, showNameplate: true }), view).sourcePresentation?.name).toBe('Wolf');
   });
 
   it('shows no portrait for a token without map artwork, or artwork that cannot be read, never another picture', () => {

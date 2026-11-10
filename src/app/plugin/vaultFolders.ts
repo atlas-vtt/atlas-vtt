@@ -30,6 +30,17 @@ export async function ensureFolder(app: App, path: string): Promise<TFolder> {
 }
 
 /**
+ * Whether a file or folder has this path, in any letter case: macOS and Windows do not tell names
+ * apart by it.
+ */
+export function isPathTaken(app: App, path: string): boolean {
+  if (app.vault.getAbstractFileByPath(path)) return true;
+  const lower = path.toLowerCase();
+  const siblings = app.vault.getFolderByPath(path.slice(0, Math.max(0, path.lastIndexOf('/'))) || '/')?.children ?? [];
+  return siblings.some((child) => child.path.toLowerCase() === lower);
+}
+
+/**
  * Creates `path` and its parents through the adapter, which also reaches hidden
  * folders the vault API does not index. `known` remembers folders that already
  * exist, so many files in one folder check it only once.

@@ -1,7 +1,7 @@
 /** Maximum number of undo steps kept per map. */
 export const HISTORY_LIMIT = 50;
 
-/** The tracked state: `objects`, `grid`, `background`, `widgetValues`, `exploredEdits` (references). */
+/** The tracked state: `objects`, `grid`, `background`, `widgetValues`, `exploredEdits`, `partyValues` (references). */
 export type HistorySnapshot = {
   objects: unknown;
   grid: unknown;
@@ -9,6 +9,10 @@ export type HistorySnapshot = {
   widgetValues: unknown;
   /** How many edits of the explored memory led to the state (`ViewAtlasState.exploredEdits`); stores without one leave it out. */
   exploredEdits?: unknown;
+  /** The played campaign's values of its player characters (`ViewAtlasState.partyValues`); stores without them leave it out. */
+  partyValues?: unknown;
+  /** How each level's image is fitted to the scene's grid (`ViewAtlasState.levelAlignments`); scenes without them leave it out. */
+  levelAlignments?: unknown;
 };
 
 /**
@@ -22,11 +26,12 @@ export interface HistoryStep {
 
 export type TrackedBranch = keyof HistorySnapshot;
 
-export const TRACKED_BRANCHES: readonly TrackedBranch[] = ['objects', 'grid', 'background', 'widgetValues', 'exploredEdits'];
+export const TRACKED_BRANCHES: readonly TrackedBranch[] = ['objects', 'grid', 'background', 'widgetValues', 'exploredEdits', 'partyValues', 'levelAlignments'];
 
 /**
  * How deep undo looks into each branch for the entities a step changed: `objects` holds
- * collections of entities, `widgetValues` one value per widget, the rest are written whole.
+ * collections of entities, `widgetValues` one value per widget, `partyValues` one value per
+ * character's resource, the rest are written whole.
  */
 export const BRANCH_DEPTH: Readonly<Record<TrackedBranch, number>> = {
   objects: 2,
@@ -34,6 +39,8 @@ export const BRANCH_DEPTH: Readonly<Record<TrackedBranch, number>> = {
   background: 0,
   widgetValues: 1,
   exploredEdits: 0,
+  partyValues: 1,
+  levelAlignments: 1,
 };
 
 /** The tracked branches of a state, by reference. */
@@ -44,6 +51,8 @@ export function trackedSliceOf(state: HistorySnapshot): HistorySnapshot {
     background: state.background,
     widgetValues: state.widgetValues,
     exploredEdits: state.exploredEdits,
+    partyValues: state.partyValues,
+    levelAlignments: state.levelAlignments,
   };
 }
 
@@ -57,6 +66,8 @@ export function sameTrackedSlice(a: HistorySnapshot, b: HistorySnapshot): boolea
     a.grid === b.grid &&
     a.background === b.background &&
     a.widgetValues === b.widgetValues &&
-    a.exploredEdits === b.exploredEdits
+    a.exploredEdits === b.exploredEdits &&
+    a.partyValues === b.partyValues &&
+    a.levelAlignments === b.levelAlignments
   );
 }

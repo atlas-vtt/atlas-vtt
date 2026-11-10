@@ -9,6 +9,8 @@ export interface ContentContextMenuDeps {
   setSortBy: (sort: SortOption) => void;
   sortOrder: SortOrder;
   setSortOrder: (order: SortOrder) => void;
+  /** Whether the tab has folders; the Player characters tab has none. */
+  canCreateFolder: boolean;
   handleCreateFolder: () => void;
   handleRefresh: () => unknown;
 }
@@ -18,12 +20,14 @@ export function buildContentContextMenuEntries(
 ): ContextMenuEntry[] {
   const entries: ContextMenuEntry[] = [];
 
-  entries.push({
-    type: 'item',
-    label: t('am.menu.newFolder'),
-    icon: 'folder-plus',
-    onClick: deps.handleCreateFolder,
-  });
+  if (deps.canCreateFolder) {
+    entries.push({
+      type: 'item',
+      label: t('am.menu.newFolder'),
+      icon: 'folder-plus',
+      onClick: deps.handleCreateFolder,
+    });
+  }
 
 
   entries.push({

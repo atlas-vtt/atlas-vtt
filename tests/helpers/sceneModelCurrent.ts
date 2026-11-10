@@ -13,7 +13,8 @@ export type Picture = 'players' | 'GM';
  * the controls reach the code only through here, so a module swapped in by a control is the one called.
  */
 export const current = {
-  builder: (): SceneModelBuilder => new SceneModelBuilder(),
+  // The frozen copies predate reflected light, which has tests of its own.
+  builder: (): SceneModelBuilder => new SceneModelBuilder({ reflectedLight: false }),
   /** The players' footprints are made with the default, the GM's with the GM's policy. */
   spots: (picture: Picture): SceneSpots => (picture === 'GM' ? new SceneSpots(GM_SIGHT_POLICY) : new SceneSpots()),
   activeLights,

@@ -1,0 +1,111 @@
+// An ability typed in place (§6.3, `EntryInlineEditor`), where it stands in its list.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  // An ability being typed: its name, its parts ("Type", "Range") and its text in one row, in the card's own type.
+  // The name starts at a comfortable width and grows with what is typed, never cut off; the text fills the
+  // rest of the row and grows downwards. Where the name leaves the text less than its least width, the
+  // text goes under the name.
+  .atlas-sb-sheet .atlas-sb-pane-entry-editor {
+    $name-min: 8em;
+    $text-min: 12em;
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: $spacing-s;
+
+    .atlas-sb-trait-name {
+      display: block;
+      flex: 0 1 auto;
+      min-width: 0;
+      max-width: 100%;
+      margin: 0;
+    }
+
+    input.atlas-sb-pane-entry__name {
+      font: inherit;
+      field-sizing: content;
+      min-width: min(#{$name-min}, 100%);
+      max-width: 100%;
+    }
+
+    .atlas-sb-pane-entry__text {
+      flex: 1 1 $text-min;
+    }
+  }
+
+  // An ability's parts between its name and its text: each its label and its control, wrapping as one line.
+  .atlas-sb-pane-entry__parts {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-s;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .atlas-sb-pane-entry__part {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  // A typed part keeps room to click into while empty.
+  .atlas-sb-sheet .atlas-sb-pane-entry-editor input.atlas-sb-pane-entry__control {
+    min-width: 4em;
+  }
+
+  // A dropdown's frame holds its input, its picks and its mark.
+  .atlas-sb-sheet .atlas-sb-pane-entry-editor .atlas-sb-pane-field.atlas-sb-pane-entry__control {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+
+    input {
+      cursor: pointer;
+    }
+
+    &:focus-within {
+      border-color: var(--interactive-accent);
+      box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
+    }
+  }
+
+  // Every field takes the form field's frame; the run-in name keeps its weight and slant.
+  .atlas-sb-sheet .atlas-sb-pane-entry-editor :is(input.atlas-sb-pane-entry__name, .atlas-sb-pane-entry__text, .atlas-sb-pane-entry__control) {
+    display: block;
+    box-sizing: border-box;
+    padding: $spacing-s;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-m;
+    background: var(--background-modifier-form-field);
+    transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+
+    &:hover:not(:focus, :focus-within) {
+      border-color: var(--background-modifier-border-hover);
+    }
+
+    @include atlas-input-focus;
+  }
+
+  // An ability's text: as high as the name to start with, growing with what is typed.
+  .atlas-sb-pane-entry__text {
+    min-width: 0;
+    min-height: calc(1lh + 2 * #{$spacing-s} + 2 * #{$border-width-s});
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    outline: none;
+    cursor: text;
+
+    &:empty::before {
+      content: attr(data-placeholder);
+      color: var(--text-faint);
+    }
+  }
+}

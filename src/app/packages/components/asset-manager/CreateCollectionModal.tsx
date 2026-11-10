@@ -1,5 +1,4 @@
-import { savedResources } from '../../../react/components/collection-settings/useCollectionSettingsDraft';
-import { HP_RESOURCE } from '../../../resources/resourceDefinitions';
+import { HP_RESOURCE, savedResources } from '../../../resources/resourceDefinitions';
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, FolderPlus } from 'lucide-react';

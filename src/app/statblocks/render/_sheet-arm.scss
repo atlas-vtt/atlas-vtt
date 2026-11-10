@@ -1,0 +1,35 @@
+@use 'sass:meta';
+@use '../../../../styles/tokens' as *;
+
+// "Add to next roll": a value and the switch that arms it for the next roll
+// (`ArmSwitch`, the `xs` switch). The line keeps the value's baseline, so a
+// run-in label and its value stay on one line with the switch centred beside
+// the number. The card brings the switch's styles itself: the hover preview
+// draws it outside the plugin's root, which scopes them in main.scss.
+
+.atlas-sb-sheet {
+  .atlas-sb-arm-line {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    max-width: 100%;
+  }
+
+  .atlas-sb-arm {
+    display: inline-flex;
+    flex: none;
+    line-height: 0;
+
+    // Outside the plugin's root nothing sets the box model the switch is sized in.
+    &,
+    * {
+      box-sizing: border-box;
+    }
+
+    @include meta.load-css('../../packages/components/primitives/toggle');
+  }
+
+  .atlas-sb-metric__value {
+    gap: $spacing-xs;
+  }
+}

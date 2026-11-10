@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { AssetService, type Asset, type EncounterAsset, type SceneAsset, type TokenAsset } from '../../src/app/services/AssetService';
@@ -8,10 +7,6 @@ import { createSnapshot } from '../../src/app/snapshots/sceneSnapshotFormat';
 import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
 import { createInMemoryApp, parseFrontmatter, type InMemoryApp } from '../mocks/inMemoryVault';
 
-vi.mock('../../src/app/atlas-view', () => ({
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-  AtlasView: class { async saveMap(): Promise<void> {} },
-}));
 
 const SOURCE = 'atlas-vtt/collections/source';
 const TARGET = 'atlas-vtt/collections/target';
@@ -150,6 +145,27 @@ describe('moving assets to another collection', () => {
     expect(mapState(vault, `${SOURCE}/scenes/Lair.atlasmap`).background).toBe(BACKGROUND);
   });
 
+  it('takes the map of every floor of a scene along and points the moved scene at it', async () => {
+    const vault = await seededVault();
+    const upper = `${SOURCE}/files/upper.webm`;
+    await vault.vault.app.vault.create(upper, 'WEBM');
+    const map = JSON.parse(vault.vault.files.get(MAP_PATH)!) as { version: number; state: Record<string, unknown> };
+    map.version = 5;
+    map.state.levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: BACKGROUND },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: upper },
+    ];
+    vault.vault.files.set(MAP_PATH, JSON.stringify(map));
+    const scene = await only(vault.assets, 'source', 'scene');
+
+    await move(vault, [scene.id]);
+
+    const levels = (mapState(vault, `${TARGET}/scenes/Cave.atlasmap`) as unknown as { levels: Array<{ background: string }> }).levels;
+    expect(levels.map((level) => level.background)).toEqual([`${TARGET}/files/cave.webp`, `${TARGET}/files/upper.webm`]);
+    expect(vault.vault.files.get(`${TARGET}/files/upper.webm`)).toBe('WEBM');
+    expect(vault.vault.files.has(upper)).toBe(false);
+  });
+
   it('gives a scene a free file name when the target already has one of that name', async () => {
     const vault = await seededVault();
     await vault.vault.app.vault.create(`${TARGET}/scenes/Cave.atlasmap`, mapFile());
@@ -245,9 +261,8 @@ describe('copying assets to another collection', () => {
     expect(vault.vault.files.get(copied.imagePath)).toBe('IMG');
     expect(vault.vault.files.get(copied.thumbnailPath!)).toBe('THUMB');
     expect(copied.thumbnailPath).not.toBe(TOKEN_THUMB);
-    // A statblock note links to one token, and the shared note shows the original's artwork.
-    expect(copied.statblockPath).toBeUndefined();
-    expect(result.unlinkedStatblocks).toEqual([copied]);
+    // A statblock may be linked by many tokens: the copy shares the original's.
+    expect(copied.statblockPath).toBe(STATBLOCK);
 
     // Deleting the copy must not take the original's artwork with it.
     await vault.assets.deleteAsset(copied.id);
@@ -288,10 +303,9 @@ describe('copying assets to another collection', () => {
     const orc = await vault.assets.addTokenAsset({ name: 'Orc', imagePath: 'atlas-vtt/assets/orc.webp', statblockPath: note, collection: 'source', tags: [] });
     await vault.vault.app.vault.process(new TFile(note), (text) => text.replace(TOKEN_IMAGE, orc.imagePath));
 
-    const result = await copy(vault, [orc.id]);
+    await copy(vault, [orc.id]);
 
     const copied = await only(vault.assets, 'target', 'token');
-    expect(result.unlinkedStatblocks).toEqual([]);
     expect(copied.statblockPath).toBe(`${TARGET}/statblocks/Orc.md`);
     expect(parseFrontmatter(vault.vault.files.get(copied.statblockPath!)!)?.image).toBe(copied.imagePath);
     expect(parseFrontmatter(vault.vault.files.get(note)!)?.image).toBe(orc.imagePath);

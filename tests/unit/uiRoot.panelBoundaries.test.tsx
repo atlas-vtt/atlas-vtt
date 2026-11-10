@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -19,7 +20,7 @@ vi.mock('../../src/app/react/components/ViewActionsMenu', () => ({ ViewActionsMe
 vi.mock('../../src/app/react/components/UndoRedoControls', () => ({ UndoRedoControls: surface('undo-redo') }));
 vi.mock('../../src/app/react/components/DMDashboard', () => ({ default: surface('dm-dashboard') }));
 vi.mock('../../src/app/react/components/dice-log/DiceRollLog', () => ({ DiceRollLog: surface('dice-log') }));
-vi.mock('../../src/app/react/components/loot/LootRollerPanel', () => ({ LootRoller: surface('loot') }));
+vi.mock('../../src/app/react/components/randomTables/RandomTablesPanel', () => ({ RandomTables: surface('loot') }));
 vi.mock('../../src/app/react/components/scene-switcher/SceneSwitcher', () => ({ SceneSwitcher: surface('scene-switcher') }));
 vi.mock('../../src/app/react/components/GridSettingsModalSimple', () => ({ GridSettingsModal: surface('grid-settings') }));
 vi.mock('../../src/app/react/components/GridAlignmentOverlay', () => ({ GridAlignmentOverlay: surface('grid-alignment') }));

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { App, Setting } from 'obsidian';
 import { SettingsService, TUTORIAL_IDS } from '../../src/app/services/SettingsService';

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -29,7 +30,7 @@ it('stages statblocks beside uploads and applies ring and tag edits to the same 
   const { container } = render(<AtlasUIContext.Provider value={{ app, view: null, pixiApp: null, renderer: null }}><TokenCreator isOpen onClose={vi.fn()} /></AtlasUIContext.Provider>);
   fireEvent.change(container.querySelector('input[type=file]')!, { target: { files: [new File(['art'], 'Wolf.png', { type: 'image/png' })] } });
   await screen.findByDisplayValue('Wolf');
-  fireEvent.click(screen.getByRole('button', { name: 'Fantasy Statblocks' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Statblock notes' }));
   await screen.findByLabelText('System / layout');
   fireEvent.click(screen.getByRole('button', { name: 'Add 1 to import' }));
   await screen.findByDisplayValue('Goblin');
@@ -78,4 +79,19 @@ it('Escape dismisses the layout menu before closing the importer over an active 
   fireEvent.keyDown(await screen.findByRole('menu'), { key: 'Escape' });
   expect(onClose).not.toHaveBeenCalled();
   await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+});
+
+it('makes maps of vault images through the same preview cards as uploads', async () => {
+  const { app } = createInMemoryApp({ files: { 'Maps/Cave.jpg': 'map', 'atlas-vtt/assets/cave.webp': 'own' } });
+  app.workspace = { trigger: vi.fn() };
+  const { container } = render(<AtlasUIContext.Provider value={{ app, view: null, pixiApp: null, renderer: null }}><TokenCreator isOpen mode="map" onClose={vi.fn()} /></AtlasUIContext.Provider>);
+  expect(screen.queryByRole('button', { name: 'Fantasy Statblocks' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'From vault' }));
+  expect(screen.queryByRole('checkbox', { name: 'Select cave' })).toBeNull();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Select Cave' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add 1 to import' }));
+  await screen.findByDisplayValue('Cave');
+  expect(container.querySelectorAll('.atlas-token-card')).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'From vault' }));
+  expect((screen.getByRole('checkbox', { name: 'Select Cave' }) as HTMLInputElement).disabled).toBe(true);
 });

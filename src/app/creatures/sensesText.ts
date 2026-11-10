@@ -1,5 +1,6 @@
 /** Reads the senses line out of a statblock's fields, whatever shape Fantasy Statblocks holds it in. */
 
+import { NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
 import { boundedText } from './statblockValues';
 
 function words(key: string): string {
@@ -36,17 +37,23 @@ function afterModifier(perception: unknown): string | null {
   return senses.length > 0 ? boundedText(senses.join(', ')) : null;
 }
 
+/** The phrases of a senses value: a text, a list of texts or named entries, or senses kept by name. */
+function phrasesOf(senses: unknown): string[] {
+  if (typeof senses === 'string') return senses.trim() ? [senses.trim()] : [];
+  if (Array.isArray(senses)) return senses.flatMap((entry) => phraseOf(entry) ?? []);
+  if (typeof senses === 'object' && senses !== null) return namedSenses(senses as Record<string, unknown>);
+  return [];
+}
+
 /**
  * The senses line of a statblock in any shape Fantasy Statblocks holds it: the `senses` text of
  * its Basic 5e and Pathfinder 2e Creature layouts (from frontmatter, a fence or the bestiary), a
  * list of such texts or of named entries, senses kept by name, or, without `senses`, what follows
- * the modifier in the `perception` trait of its Basic Pathfinder 2e layout. Null without one.
+ * the modifier in the `perception` trait of its Basic Pathfinder 2e layout. A native template's
+ * `senses` field (`meanings`) is read before all of them. Null without one.
  */
-export function sensesTextOf(fields: Readonly<Record<string, unknown>>): string | null {
-  const { senses } = fields;
-  let phrases: string[] = [];
-  if (typeof senses === 'string') phrases = senses.trim() ? [senses.trim()] : [];
-  else if (Array.isArray(senses)) phrases = senses.flatMap((entry) => phraseOf(entry) ?? []);
-  else if (typeof senses === 'object' && senses !== null) phrases = namedSenses(senses as Record<string, unknown>);
+export function sensesTextOf(fields: Readonly<Record<string, unknown>>, meanings: FieldMeanings = NO_MEANINGS): string | null {
+  const meant = meanings.senses === undefined ? [] : phrasesOf(fields[meanings.senses]);
+  const phrases = meant.length > 0 ? meant : phrasesOf(fields.senses);
   return phrases.length > 0 ? boundedText(phrases.join(', ')) : afterModifier(fields.perception);
 }

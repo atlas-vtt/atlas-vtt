@@ -20,7 +20,7 @@ const isToken = (item: ContentItem): item is TokenItem => item.token !== undefin
 /**
  * Tokens as cards, rendered only as far as the pane shows them. Holding Mod
  * over a token with a statblock opens the statblock as in the asset manager:
- * from the vault when exporting, from the file itself when importing.
+ * from the vault when exporting, from the file itself (with its own templates) when importing.
  */
 export function TokenGrid({ items, media, selection }: TokenGridProps): React.JSX.Element {
   const tokens = useMemo(() => items.filter(isToken), [items]);
@@ -36,6 +36,7 @@ export function TokenGrid({ items, media, selection }: TokenGridProps): React.JS
       return { key: item.key, notePath: item.token.statblockPath, token };
     },
     noteText: (path) => media.noteText(path),
+    bundleTemplates: media.templates,
   });
 
   const selectionRef = useRef(selection);

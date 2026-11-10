@@ -10,6 +10,7 @@ vi.mock('../../src/app/pixi/TokenUIRenderer', async () => {
   return { TokenUIRenderer: class {
     container = new Container();
     update = vi.fn();
+    setPlayersView = vi.fn();
     destroy = vi.fn();
     getContainer() { return this.container; }
   } };

@@ -1,0 +1,226 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'dashboard-mixins' as *;
+
+// Campaigns on the dashboard (CampaignCard.tsx, CampaignsSection.tsx) and the parts their page
+// shares with them: the party's faces, the playing mark, the panels and headings. Cards come from
+// dashboard.scss, the page from campaign-page.scss.
+
+/// The party's faces on a card and on a campaign's page.
+$campaign-row-face: 32px;
+$campaign-page-face: 40px;
+
+.campaign-field-error {
+  font-size: $font-ui-smaller;
+  color: var(--text-error);
+}
+
+// A label over a part of a campaign's page (Description, Quests, World map, Game system).
+.panel-heading {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+// A surface that holds a list (the quests).
+.dashboard-panel {
+  @include atlas-inset-surface;
+  @include atlas-flex-col($spacing-m);
+  padding: $spacing-m;
+  border-radius: $radius-xl;
+}
+
+.campaigns-empty {
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+}
+
+// ── A campaign's card ───────────────────────────────────────────────────────
+
+.campaign-card .dashboard-card__title {
+  @include dashboard-display-type;
+  font-size: calc(var(--font-ui-medium) * 1.1);
+  line-height: var(--line-height-tight);
+}
+
+.campaign-card__party {
+  position: absolute;
+  inset-inline-end: $spacing-s;
+  inset-block-end: $spacing-s;
+  z-index: 1;
+  display: flex;
+  // Faces stand on any map: a shadow parts them from it.
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 45%));
+}
+
+.campaign-card__badge {
+  position: absolute;
+  top: $spacing-s;
+  left: $spacing-s;
+  z-index: 1;
+  display: flex;
+  padding: $spacing-xs $spacing-s;
+  border-radius: $radius-full;
+  font-size: $font-ui-smaller;
+  background: color-mix(in oklch, var(--background-primary) 82%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+}
+
+// The art of a campaign without a world map: its own hue over the card's well, and a compass.
+.campaign-emblem {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 90% at 25% 15%, hsl(var(--campaign-hue, 220) 50% 55% / 0.26), transparent 70%),
+    linear-gradient(160deg, hsl(var(--campaign-hue, 220) 35% 50% / 0.14), hsl(calc(var(--campaign-hue, 220) + 40) 35% 40% / 0.08));
+}
+
+.campaign-emblem__icon {
+  width: 56px;
+  height: 56px;
+  color: hsl(var(--campaign-hue, 220) 30% 55% / 0.7);
+}
+
+// The card that begins a new campaign: an open card until pressed, then the name field in its place.
+.campaign-card--new {
+  justify-content: center;
+  align-items: center;
+  gap: $spacing-s;
+  min-height: 176px;
+  padding: $spacing-l;
+  color: var(--text-muted);
+  transition: transform $transition-press $transition-ease-out,
+              color $transition-fast $transition-ease,
+              border-color $transition-fast $transition-ease;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--text-normal);
+      // The hover tint is translucent, so it lies over the card's surface rather than replacing it.
+      background-image: linear-gradient(var(--background-modifier-hover), var(--background-modifier-hover));
+    }
+  }
+
+  &.is-naming {
+    align-items: stretch;
+    background: var(--background-secondary);
+    cursor: default;
+    transform: none;
+  }
+}
+
+.campaign-card__new-icon {
+  display: grid;
+  place-items: center;
+  width: $button-height-l;
+  height: $button-height-l;
+  border-radius: $radius-full;
+  background: var(--background-modifier-hover);
+
+  svg {
+    width: $icon-m;
+    height: $icon-m;
+  }
+}
+
+.campaign-card__new-label {
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+}
+
+.campaign-new {
+  @include atlas-flex-col($spacing-xs);
+  align-items: stretch;
+}
+
+.campaign-new__input {
+  @include atlas-text-input;
+}
+
+// ── Playing ─────────────────────────────────────────────────────────────────
+
+.campaign-playing {
+  @include atlas-flex-row($spacing-xs);
+  position: relative;
+  flex-shrink: 0;
+  color: var(--text-accent);
+  font-weight: $font-weight-medium;
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: $radius-full;
+    background: currentColor;
+    box-shadow: 0 0 0 0 currentColor;
+    animation: campaign-playing-pulse 1600ms $transition-ease-out infinite;
+  }
+}
+
+// A soft ring that leaves the dot, as on a live recording.
+@keyframes campaign-playing-pulse {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in oklch, currentColor 50%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campaign-playing::before {
+    animation: none;
+  }
+}
+
+// ── The party on a campaign's last scene ────────────────────────────────────
+
+.campaign-party {
+  --campaign-face-size: #{$campaign-row-face};
+  @include atlas-flex-row($spacing-s);
+  flex-shrink: 0;
+
+  &--page {
+    --campaign-face-size: #{$campaign-page-face};
+  }
+}
+
+.campaign-party__fan,
+.campaign-party__row {
+  display: flex;
+  align-items: center;
+}
+
+.campaign-party__row {
+  gap: $spacing-xs;
+}
+
+.campaign-face {
+  display: block;
+  flex-shrink: 0;
+  width: var(--campaign-face-size);
+  height: var(--campaign-face-size);
+
+  .atlas-token-portrait {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+// Ringed tokens lie on one another as stacked tokens do on a map, turned a little about a point
+// below them, so the stack opens as a fan; the later lies on top.
+.campaign-party__fan .campaign-face {
+  transform: rotate(var(--campaign-face-turn, 0deg));
+  transform-origin: 50% 160%;
+
+  // Not `+`: each face's tooltip label stands between it and the next.
+  &:not(:first-child) {
+    margin-inline-start: calc(var(--campaign-face-size) * -0.42);
+  }
+}

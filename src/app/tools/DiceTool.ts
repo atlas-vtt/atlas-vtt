@@ -2,9 +2,24 @@ import type { DiceRollResult } from '../types/diceTypes';
 import type { DiceRollOrigin } from '../types/diceRollOrigin';
 import { EventEmitter } from 'events';
 import type { DiceRules } from '../types/diceRulesTypes';
+import type { AdvantageSide, DiceSet, RolledWithSet, RollingDice } from '../types/diceSetTypes';
+import { rollingRules } from '../gameSystems/diceSets';
+import { completeFormula } from './completeFormula';
+import { withAdvantage } from './diceAdvantage';
 import { getDiceCrit } from './diceCrit';
 import { rollFormula } from './diceFormula';
-import { parseFormula, type FormulaError } from './parseFormula';
+import { dressSetDice } from './diceAppearance';
+import type { FormulaError } from './parseFormula';
+
+/** How a roll is made besides its formula. */
+export interface RollOptions {
+  /** Rolls a bare bonus with this set instead of the collection's (a statblock's template's). */
+  set?: DiceSet | undefined;
+  /** Rolls with advantage or disadvantage, as the set's rule for that side says. */
+  advantage?: AdvantageSide | undefined;
+  /** Gives an explicit matching pool the set’s names and colours; never changes its dice. */
+  setAppearance?: boolean | undefined;
+}
 
 export interface DiceToolState {
   isTrayOpen: boolean;
@@ -23,9 +38,11 @@ export interface DiceRollInputs {
 export class DiceTool {
   public state: DiceToolState;
   private eventBus: EventEmitter;
-  private readonly getDiceRules: () => DiceRules;
+  /** The dice this tool rolls a bare bonus with: its map's dice set. */
+  readonly getDiceRules: () => DiceRules | RollingDice;
 
-  constructor(eventBus: EventEmitter, getDiceRules: () => DiceRules, private readonly inputs: DiceRollInputs) {
+  /** `getDiceRules` gives the dice a bare bonus rolls with: the collection's dice set. */
+  constructor(eventBus: EventEmitter, getDiceRules: () => DiceRules | RollingDice, private readonly inputs: DiceRollInputs) {
     this.eventBus = eventBus;
     this.getDiceRules = getDiceRules;
     this.state = {
@@ -43,10 +60,11 @@ export class DiceTool {
 
   /**
    * Rolls `formula` for `source`. `origin` says which token of which scene the roll was
-   * made for; it goes out with the `dice-rolled` event and is kept nowhere.
+   * made for; it goes out with the `dice-rolled` event and is kept nowhere. `options` may
+   * name a dice set instead of the collection's and a side of advantage.
    */
-  public rollDice(formula: string, source?: DiceRollResult['source'], origin?: DiceRollOrigin): DiceRollResult | null {
-    const result = this.parseAndRoll(formula);
+  public rollDice(formula: string, source?: DiceRollResult['source'], origin?: DiceRollOrigin, options?: RollOptions): DiceRollResult | null {
+    const result = this.parseAndRoll(formula, options);
     if (!result) return null;
     if (source) {
       result.source = source;
@@ -65,35 +83,15 @@ export class DiceTool {
     return result;
   }
 
-  /** Rolls the formula; one without dice (`+3`) is added to the collection's default roll. */
-  private parseAndRoll(formula: string): DiceRollResult | null {
-    const rules = this.getDiceRules();
-    // An empty quick roll keeps the existing default-roll shortcut. Validate raw
-    // input first so completing a bonus cannot strip illegal text or evade caps.
-    const input = parseFormula(formula === '' ? rules.defaultRoll : formula);
-    if (!input.ok) {
-      this.inputs.onFormulaError(input);
-      return null;
-    }
-    const complete = input.terms.some(term => term.kind === 'dice') && formula !== ''
-      ? formula : withDefaultRoll(formula, rules.defaultRoll);
-    const parsed = parseFormula(complete);
-    if (!parsed.ok) {
-      this.inputs.onFormulaError(parsed);
-      return null;
-    }
-    const { rolls, modifiers, total } = rollFormula(parsed, this.inputs.random, rules);
+  /** Rolls the formula; one without dice (`+3`) is added to the dice of the set. */
+  private parseAndRoll(formula: string, options: RollOptions | undefined): DiceRollResult | null {
+    const { rules, shown } = rollingWith(this.getDiceRules(), options?.set);
+    return rollDiceFormula(formula, rules, this.inputs, shown, options?.advantage, options?.setAppearance);
+  }
 
-    return {
-      id: this.inputs.rollId(),
-      timestamp: Date.now(),
-      formula: complete,
-      rolls,
-      modifiers,
-      total,
-      crit: getDiceCrit(rolls, rules),
-      player: this.inputs.roller()
-    };
+  /** The dice a roll of `set` (else the collection's) is made with, and their rules: what advantage can do. */
+  public rollingDice(set?: DiceSet): RollingDice {
+    return rollingRules(rollingWith(this.getDiceRules(), set).rules);
   }
 
   public clearHistory(): void {
@@ -125,8 +123,60 @@ export class DiceTool {
   }
 }
 
-/** `+3` with `1d20` gives `1d20+3`; a bare number counts as a bonus. */
-function withDefaultRoll(modifier: string, defaultRoll: string): string {
-  const bonus = modifier.replace(/\s+/g, '');
-  return bonus === '' || /^[+-]/.test(bonus) ? `${defaultRoll}${bonus}` : `${defaultRoll}+${bonus}`;
+/**
+ * The dice a bare bonus rolls with: `set` where one is given (a statblock's
+ * template's), else the collection's. A roll names the set (`shown`) only
+ * where it is not the collection's own.
+ */
+export function rollingWith(
+  collection: DiceRules | RollingDice, set: DiceSet | undefined,
+): { rules: DiceRules | RollingDice; shown?: RolledWithSet } {
+  if (!set) return { rules: collection };
+  const own = 'id' in collection && collection.id === set.id;
+  return own ? { rules: collection } : { rules: set, shown: { id: set.id, name: set.name } };
+}
+
+/**
+ * Rolls a formula by a dice set (or a collection's dice rules), as the dice
+ * tool does but without telling anyone: one without dice (`+3`) is added to
+ * the set's dice, which take their names and colours, and an empty one rolls
+ * them alone. Dice written out roll as written. `advantage` rolls a roll of the
+ * set's dice as its rule for that side says. A formula it refuses (advantage
+ * taking it past a limit too) is reported to `inputs.onFormulaError` and rolls
+ * nothing (null). `shown` names the set on the result, where it is not the
+ * collection's own.
+ */
+export function rollDiceFormula(
+  formula: string, rules: DiceRules | RollingDice, inputs: DiceRollInputs, shown?: RolledWithSet, advantage?: AdvantageSide, setAppearance = false,
+): DiceRollResult | null {
+  const rolling = rollingRules(rules);
+  const complete = completeFormula(formula, rules);
+  if (!complete.ok) {
+    inputs.onFormulaError(complete);
+    return null;
+  }
+  const looks = complete.written ? [] : rolling.dice;
+  const helped = advantage ? withAdvantage(complete.parsed, looks, rolling, advantage) : null;
+  if (helped && 'ok' in helped) {
+    inputs.onFormulaError(helped);
+    return null;
+  }
+  const { rolls, modifiers, named, total, linear } = helped
+    ? rollFormula(helped.formula, inputs.random, helped.explodeRules, helped.looks)
+    : rollFormula(complete.parsed, inputs.random, rolling, looks);
+
+  return {
+    id: inputs.rollId(),
+    timestamp: Date.now(),
+    formula: complete.formula,
+    rolls: complete.written && setAppearance ? dressSetDice(rolls, rolling) : rolls,
+    modifiers,
+    ...(named.length > 0 && { namedModifiers: named }),
+    total,
+    ...(!linear && { linear: false as const }),
+    crit: getDiceCrit(rolls, rolling),
+    player: inputs.roller(),
+    ...(shown && { diceSet: shown }),
+    ...(helped && advantage && { advantage }),
+  };
 }

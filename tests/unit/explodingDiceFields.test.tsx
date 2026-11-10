@@ -1,8 +1,12 @@
+// @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { isValidDiceRules } from '../../src/app/gameSystems/diceRules';
+import { isValidDefaultRoll, parseExplodeRule } from '../../src/app/gameSystems/diceRules';
 import { ExplodingDiceFields } from '../../src/app/react/components/collection-settings/ExplodingDiceFields';
 import type { DiceRules } from '../../src/app/types/diceRulesTypes';
+
+/** Whether a set could be saved with these rules: its exploding rule complete. */
+const isValidDiceRules = (dice: DiceRules): boolean => isValidDefaultRoll(dice.defaultRoll) && (dice.explode === undefined || parseExplodeRule(dice.explode) !== null);
 
 const rules = (explode: Partial<NonNullable<DiceRules['explode']>> = {}): DiceRules => ({
   defaultRoll: '1d10',
@@ -42,7 +46,7 @@ describe('the face counts of exploding dice', () => {
 
   it('keeps the lowest faces switched on while their field is empty', () => {
     render(<ExplodingDiceFields dice={rules({ lowFaces: NaN })} onChange={vi.fn()} />);
-    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Lowest face rolls again and subtracts' }).checked).toBe(true);
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Lowest face subtracts' }).checked).toBe(true);
     expect(screen.getByLabelText<HTMLInputElement>('Lowest faces that subtract').value).toBe('');
   });
 

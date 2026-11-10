@@ -26,6 +26,7 @@ export const issue = {
   'issue.area.asset-manager': 'Asset manager',
   'issue.area.player-view': 'Player view',
   'issue.area.settings': 'Settings, commands and updates',
+  'issue.area.online': 'Online play',
   'issue.area.unknown': 'Not sure / other',
   'issue.intro': 'Submit your report directly from Atlas. Your report and included diagnostics will be posted publicly on GitHub. No GitHub account is needed.',
   'issue.typeLabel': 'Issue type',

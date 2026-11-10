@@ -9,6 +9,7 @@ import type { TagsAndCollectionsState } from './useTagsAndCollections';
 import type { StatblockLinkState } from './useStatblockLink';
 import { isShortcutScopeActive } from '../../../../utils/activeLeafGuard';
 import { matchesMapHotkey } from '../../../../keyboard/mapHotkeys';
+import { isTextEntryTarget } from '../../../../keyboard/textEntry';
 import { SettingsService } from '../../../../services/SettingsService';
 
 interface EffectDeps {
@@ -32,7 +33,7 @@ export function useAssetManagerEffects({
   data, sel, crud, tags, statblock,
 }: EffectDeps): void {
   const isAnySubModalOpen =
-    crud.isTokenCreatorOpen || crud.isMapCreatorOpen ||
+    crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isMapCreatorOpen ||
     crud.isCreateSceneModalOpen || crud.inputModalState.isOpen ||
     crud.isMoveModalOpen || crud.settingsModalCollectionId !== null || crud.isCreateCollectionModalOpen ||
     tags.isTagManagerOpen ||
@@ -52,8 +53,7 @@ export function useAssetManagerEffects({
       // Map shortcuts are suspended while this modal is open, so it owns closing
       // via the asset-manager binding. Consume the event before it reaches the map.
       if (!e.defaultPrevented && matchesMapHotkey(e, 'assets', SettingsService.forApp(data.app))) {
-        const target = e.target as Element | null;
-        if (target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .cm-editor, [role="textbox"]')) return;
+        if (isTextEntryTarget(e.target)) return;
         if (document.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-ctx-menu')) return;
         e.preventDefault();
         onClose();
@@ -78,7 +78,7 @@ export function useAssetManagerEffects({
         containerRef.current?.querySelector<HTMLInputElement>('.atlas-asset-manager-search input')?.select();
         return;
       }
-      if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '4') {
+      if ((e.metaKey || e.ctrlKey) && /^[1-9]$/.test(e.key)) {
         const idx = parseInt(e.key) - 1;
         if (idx < tabs.length) { changeTab(tabs[idx]!); e.preventDefault(); }
       }

@@ -1,0 +1,55 @@
+// The name a tile just placed asks for (NamePopover.tsx): a small popover
+// where the tile's toolbar would stand that is itself the field, one rounded
+// surface with the text typed straight into it. Imported by NamePopover.tsx,
+// so the rules take the `.atlas-vtt-plugin` scope themselves.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$name-width: 240px;
+$name-inset: $spacing-s;
+
+.atlas-vtt-plugin {
+  .atlas-te-naming {
+    position: absolute;
+    left: var(--atlas-te-naming-x);
+    top: var(--atlas-te-naming-y);
+    z-index: 4;
+
+    // Measured first, shown once it has its place.
+    &:not([data-placed]) {
+      visibility: hidden;
+    }
+
+    &[data-closing] {
+      pointer-events: none;
+    }
+  }
+
+  .atlas-te-naming__panel {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($radius-2xl);
+    display: flex;
+    box-sizing: border-box;
+    width: $name-width;
+    max-width: calc(100vw - #{2 * $spacing-l});
+    padding: $name-inset;
+    box-shadow: $shadow-md;
+    // It grows out of its tile's edge.
+    transform-origin: top left;
+
+    // Typing in it: the surface takes the focus ring an input would.
+    &:focus-within {
+      @include atlas-elevated-surface(editing);
+    }
+  }
+
+  .atlas-te-naming[data-side='above'] .atlas-te-naming__panel {
+    transform-origin: bottom left;
+  }
+
+  .atlas-te-naming__input {
+    @include atlas-flush-input;
+    line-height: var(--line-height-normal);
+  }
+}

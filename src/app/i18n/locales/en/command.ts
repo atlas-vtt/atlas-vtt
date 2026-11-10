@@ -7,6 +7,7 @@ export const command = {
   'command.displayImageOnPlayerView': 'Display image on player view',
   'command.importStatblockTokens': 'Import tokens from Fantasy Statblocks',
   'command.openDashboard': 'Open dashboard',
+  'command.generateDungeon': 'Generate dungeon',
   'command.openPlayerWindow': 'Open player window',
   'command.openSceneBrowser': 'Open scene browser',
   'command.reportIssue': 'Report an issue…',
@@ -14,6 +15,6 @@ export const command = {
   'command.showMapInPlayerWindow': 'Show current map in local player window',
   'command.toggleDiceLog': 'Toggle dice log',
   'command.toggleInitiativeTracker': 'Toggle initiative tracker',
-  'command.toggleLootRoller': 'Toggle loot roller',
+  'command.toggleLootRoller': 'Toggle random tables',
   'command.viewChangelog': 'View changelog',
 } as const satisfies Record<string, Message>;

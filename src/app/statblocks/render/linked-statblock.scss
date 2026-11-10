@@ -1,0 +1,33 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+// What a statblock card says about the template it is drawn with
+// (`LinkedSheet`): a muted line for the auto template, a bar for a template
+// that is missing or comes from a newer Atlas. Both stand above the blocks and
+// keep the card's rhythm: $spacing-l to the first block, as between blocks.
+
+.atlas-linked-statblock__caption {
+  margin: 0 0 $spacing-l;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+  text-wrap: pretty;
+}
+
+// An inner element of the padded card: one step down the radius scale, and
+// padding equal to the gap between its text and its button.
+.atlas-linked-statblock__bar {
+  @include atlas-flex-row($gap: $spacing-s);
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin: 0 0 $spacing-l;
+  padding: $spacing-s;
+  border-radius: $radius-l;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-linked-statblock__bar-text {
+  min-width: 0;
+  text-wrap: pretty;
+}

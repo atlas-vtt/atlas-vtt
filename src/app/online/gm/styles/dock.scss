@@ -1,0 +1,220 @@
+// The GM's control for online tables, at the bottom left of every Atlas map view. Built on Atlas's
+// own tokens and mixins.
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+// The menu's and the panel's content; their rhythm is `_online.scss`.
+@use 'controls';
+@use 'panel';
+@use 'panel-foot';
+@use 'gate';
+@use 'image-row';
+@use 'qr';
+@use 'campaign-picker';
+
+// The collapsed control stands as high as Atlas's bars: a 40 px control with $spacing-s around it,
+// inside the border, so its top and bottom edges run level with the undo/redo bar and the toolbar.
+// Sizes are content sizes: the browser snaps the border to device pixels, as it does the bars'.
+$dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
+
+// The room the control takes in the row: first in the start slot, so the undo/redo bar and the
+// toolbar always stand clear of the button. Its transparent border snaps like the control's.
+.atlas-online-room {
+  flex: none;
+  width: calc(#{$dock-inner} + #{$spacing-s});
+  border-inline: $border-width-m solid transparent;
+  pointer-events: none;
+}
+
+// Their sizes are content sizes, so they must win over the plugin's reset that makes every element
+// in `.atlas-vtt-plugin` border-box.
+.atlas-vtt-plugin :is(.atlas-online-room, .atlas-online-dock) {
+  box-sizing: content-box;
+}
+
+// The button, at the row's bottom left, as high as the bars. The menu or panel it opens hangs above
+// it (`.atlas-online-surface`), and the button stays as it is.
+.atlas-online-dock {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+  width: $dock-inner;
+  height: $dock-inner;
+  pointer-events: auto;
+  font-size: $font-ui-small;
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+}
+
+// Clips the button's fill to the corner; the badge lies outside it, over the corner.
+.atlas-online-dock__content {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  border-radius: var(--atlas-panel-inner-radius);
+  @include atlas-corner-shape;
+}
+
+// The button fills the control to its border, and takes the accent while its menu or panel is open.
+.atlas-online-dock .atlas-online-dock__button {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+  @include atlas-corner-shape;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &.is-active,
+  &.is-active:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+  }
+
+  &:focus {
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+  }
+}
+
+// The globe, centred in the button.
+.atlas-online-dock__face {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: $dock-inner;
+  height: $dock-inner;
+}
+
+// A box of the button's inner size: the badge and the tooltip hang from it.
+.atlas-online-dock__pin {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: $dock-inner;
+  height: $dock-inner;
+  pointer-events: none;
+
+  // Kept from Atlas's tooltip look; placed above the button, starting at its left edge so it stays in view.
+  .atlas-online-tooltip {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + #{$spacing-s} + 2px + #{$border-width-m});
+  }
+}
+
+// ── Badge ───────────────────────────────────────────────────────────────────
+
+.atlas-online-tone--green { --atlas-online-tone: var(--color-green); }
+.atlas-online-tone--amber { --atlas-online-tone: var(--color-orange); }
+.atlas-online-tone--red { --atlas-online-tone: var(--color-red); }
+.atlas-online-tone--muted { --atlas-online-tone: var(--text-faint); }
+
+// Where it sat on the toolbar-sized button: over that button's top-right corner, $spacing-xs out.
+.atlas-online-badge {
+  position: absolute;
+  top: calc(#{$spacing-s} - #{$spacing-xs});
+  right: calc(#{$spacing-s} - #{$spacing-xs});
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-radius: $radius-full;
+  background: var(--atlas-online-tone);
+  // A ring in the control's colour keeps it apart from the button under it.
+  box-shadow: 0 0 0 2px var(--background-primary);
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.atlas-online-badge--dot {
+  width: 10px;
+  height: 10px;
+}
+
+.atlas-online-badge--count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 $spacing-xs;
+  color: var(--text-on-accent);
+  font-size: 10px;
+  font-weight: $font-weight-bold;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.atlas-online-badge--pulse {
+  animation: atlas-online-pulse 1.6s $transition-ease-out infinite;
+}
+
+@keyframes atlas-online-pulse {
+  from { box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 2px color-mix(in oklch, var(--atlas-online-tone) 60%, transparent); }
+  to { box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 8px color-mix(in oklch, var(--atlas-online-tone) 0%, transparent); }
+}
+
+// ── Surface ─────────────────────────────────────────────────────────────────
+
+// The menu or panel: a surface of its own above the button, as the toolbar's tool menus hang above
+// theirs ($spacing-l above the button's content, `.atlas-dropdown-content--top`), its left edge on
+// the button's. It grows out of the button's corner (`animatePanelIn`); its width is set by
+// dockSurface.ts.
+.atlas-online-surface {
+  position: absolute;
+  left: calc(-1 * var(--atlas-online-dock-border, #{$border-width-m}));
+  bottom: calc(100% + #{$spacing-l} - #{$spacing-s});
+  z-index: 1;
+  box-sizing: border-box;
+  transform-origin: bottom left;
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+}
+
+// The menu's or panel's content.
+.atlas-online-layer {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  // The room there is (dockSurface.ts); the player list scrolls inside it.
+  max-height: var(--atlas-online-layer-max, none);
+
+  > * {
+    flex: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-online-badge--pulse {
+    animation: none;
+  }
+}
+
+// The players' marks over the GM's map (`MarkOverlay`): laid over Atlas's canvas, never in the way of a press.
+.atlas-online-marks {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}

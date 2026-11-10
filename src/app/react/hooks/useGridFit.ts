@@ -5,40 +5,42 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AtlasView } from '../../atlas-view';
-import type { AlignmentResult } from '../../pixi/gridAlignmentMath';
-import { readMapGray, snapGridToMapGray } from '../../pixi/gridDetection/detectGrid';
-import type { MapGray } from '../../pixi/gridDetection/detectGrid';
+import type { GridAlignmentController } from '../../pixi/GridAlignmentController';
+import type { AlignmentPoint, AlignmentResult } from '../../pixi/gridAlignmentMath';
+import { pictureOf } from '../../pixi/spectralEngine/detectGrid';
+import type { MapPicture } from '../../pixi/spectralEngine/detectGrid';
+import type { DetectOptions } from '../../pixi/spectralEngine/SpectralEngineClient';
+import { NO_GRID } from '../../pixi/spectralEngine/detectionJob';
+import type { DetectionOutcome } from '../../pixi/spectralEngine/detectionJob';
+import { detectGridInGray } from '../../pixi/spectralEngine/spectralEngineService';
 
-/** The grid among `candidates` (the likeliest first) that the map's lines support; null where they support none. */
-export type FitToLines = (candidates: AlignmentResult[]) => Promise<AlignmentResult | null>;
+/** Who watches a fit: hears what it finds on its way, and may end it. */
+export type FitWatch = Pick<DetectOptions, 'onEvent' | 'signal'>;
 
-/** Lets the "fitting" status paint before the fit, which is CPU-bound, holds the thread. */
-const PAINT_DELAY_MS = 30;
+/** The grid among `candidates` (the likeliest first) that the map's lines support, with its edges on them; no result where they support none. */
+export type FitToLines = (candidates: AlignmentResult[], watch?: FitWatch) => Promise<DetectionOutcome>;
 
 /** Fits grids to the lines of the view's map image, whose pixels are read once, with the first fit. */
 export function useGridFit(view: AtlasView | null): FitToLines {
-  const gray = useRef<Promise<MapGray | null> | null>(null);
+  // One picture for the panel's life: the detection's worker reads it once and keeps what it read.
+  const picture = useRef<MapPicture | null>(null);
   useEffect(() => {
-    gray.current = null;
+    picture.current = null;
   }, [view]);
 
-  return useCallback(async (candidates) => {
+  return useCallback(async (candidates, watch) => {
     const mapImage = view?.renderer?.getMapImage?.();
-    if (!mapImage) return null;
+    if (!mapImage) return NO_GRID;
+    picture.current ??= pictureOf(mapImage);
+    if (!picture.current) return NO_GRID;
     try {
-      gray.current ??= readMapGray(mapImage);
-      const read = await gray.current;
-      if (!read) {
-        // Not readable yet (its image still opening): the next fit reads again.
-        gray.current = null;
-        return null;
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, PAINT_DELAY_MS));
-      return snapGridToMapGray(read, candidates);
+      return await detectGridInGray(picture.current, { candidates, ...watch });
     } catch (error) {
-      gray.current = null;
+      // A fit its asker ended is no failure, and the map's pixels are as good as before.
+      if (watch?.signal?.aborted) return NO_GRID;
+      picture.current = null;
       console.error('[GridAlignment] The grid could not be fitted to the map image', error);
-      return null;
+      return NO_GRID;
     }
   }, [view]);
 }
@@ -52,26 +54,41 @@ export interface FittedAlignment {
 
 const NOTHING: FittedAlignment = { result: null, pending: false };
 
+/** Where a fit is shown while it runs: on the controller's map, from the point the GM clicked last. */
+export interface FitScan {
+  controller: GridAlignmentController | null;
+  origin: AlignmentPoint | null;
+}
+
 /**
  * The alignment `candidates` stand for (the likeliest first), fitted to the map's lines by `fit`
- * where they support one; without `fit` the first candidate. Pass the same array while the input is the same.
+ * where they support one. Pass the same array while the input is the same.
  */
-export function useFittedAlignment(candidates: AlignmentResult[], fit: FitToLines | null): FittedAlignment {
+export function useFittedAlignment(candidates: AlignmentResult[], fit: FitToLines, scan?: FitScan): FittedAlignment {
   const [fitted, setFitted] = useState<FittedAlignment>(NOTHING);
+  // Read when a fit begins: a scan belongs to the candidates it was begun for.
+  const shown = useRef(scan);
+  shown.current = scan;
 
   useEffect(() => {
     const measured = candidates[0] ?? null;
-    if (!measured || !fit) {
-      setFitted(measured ? { result: measured, pending: false } : NOTHING);
+    if (!measured) {
+      setFitted(NOTHING);
       return;
     }
-    let current = true;
+    // A fit nobody waits for any more ends with its worker, so the next one starts at once.
+    const asked = new AbortController();
+    const controller = shown.current?.controller ?? null;
+    const onEvent = controller?.beginScan(shown.current?.origin ?? undefined);
     setFitted({ result: measured, pending: true });
-    void fit(candidates).then((onLines) => {
-      if (current) setFitted({ result: onLines ?? measured, pending: false });
+    void fit(candidates, { signal: asked.signal, ...(onEvent ? { onEvent } : {}) }).then((outcome) => {
+      if (asked.signal.aborted) return;
+      controller?.endScan(outcome);
+      setFitted({ result: outcome.result ?? measured, pending: false });
     });
     return () => {
-      current = false;
+      asked.abort();
+      controller?.cancelScan();
     };
   }, [candidates, fit]);
 

@@ -1,0 +1,156 @@
+// The socket: the art, or an empty ring, as a button.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'socket-shared' as *;
+
+.atlas-vtt-plugin {
+  // ── The socket ──────────────────────────────────────────────────────────
+  // Obsidian dresses every <button>; the socket is the art itself.
+  button.atlas-sb-token-socket {
+    @include atlas-flex-col($spacing-xs);
+    align-items: center;
+    width: $socket-size;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--text-muted);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover,
+    &:active {
+      background: none;
+      box-shadow: none;
+    }
+
+    &:focus-visible {
+      outline: none;
+    }
+
+    &[data-shape='portrait'] {
+      width: 100%;
+    }
+  }
+
+  .atlas-sb-token-socket__frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: $radius-full;
+    transition: transform $transition-press $transition-ease-out;
+
+    // The accent ring of hover, press and focus, just outside the art.
+    &::after {
+      @include socket-layer;
+      inset: -($ring-width + 2px);
+      border: $ring-width solid var(--interactive-accent);
+      border-radius: inherit;
+    }
+
+    // A wash over the art, so the art itself says it can be pressed.
+    &::before {
+      @include socket-layer;
+      inset: 0;
+      z-index: 1;
+      border-radius: inherit;
+      background: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
+    }
+
+    .atlas-sb-token-image {
+      width: 100%;
+    }
+  }
+
+  .atlas-sb-token-socket[data-shape='portrait'] > .atlas-sb-token-socket__frame {
+    aspect-ratio: auto;
+    border-radius: $radius-l;
+  }
+
+  .atlas-sb-token-socket:hover .atlas-sb-token-socket__frame,
+  .atlas-sb-token-socket[aria-expanded='true'] .atlas-sb-token-socket__frame {
+    &::before {
+      opacity: 1;
+    }
+
+    &::after {
+      opacity: 0.6;
+    }
+  }
+
+  .atlas-sb-token-socket:focus-visible .atlas-sb-token-socket__frame::after {
+    opacity: 1;
+  }
+
+  .atlas-sb-token-socket:active .atlas-sb-token-socket__frame {
+    transform: scale(0.96);
+  }
+
+  // An empty socket: a soft disc holding a plus, deeper under the pointer.
+  .atlas-sb-token-socket--empty {
+    .atlas-sb-token-socket__frame {
+      border: $border-width-m solid transparent;
+      background: var(--background-modifier-hover);
+      transition: transform $transition-press $transition-ease-out, background-color $transition-fast $transition-ease;
+    }
+
+    &:hover .atlas-sb-token-socket__frame {
+      background: var(--background-modifier-active-hover);
+    }
+
+    &[data-shape='portrait'] > .atlas-sb-token-socket__frame {
+      aspect-ratio: 1;
+    }
+
+    &:hover {
+      color: var(--text-normal);
+    }
+  }
+
+  .atlas-sb-token-socket__plus {
+    width: $icon-m;
+    height: $icon-m;
+  }
+
+  .atlas-sb-token-socket__prompt {
+    font-size: $font-ui-smaller;
+    line-height: 1.2;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  // Says what a press does, in the ring's colour, where the art's edge meets the corner.
+  .atlas-sb-token-socket__badge {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: $radius-full;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    box-shadow: $shadow-md;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity $transition-fast $transition-ease, transform $transition-normal $transition-ease-out;
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  .atlas-sb-token-socket:is(:hover, :focus-visible, [aria-expanded='true']) .atlas-sb-token-socket__badge {
+    opacity: 1;
+    transform: none;
+  }
+}

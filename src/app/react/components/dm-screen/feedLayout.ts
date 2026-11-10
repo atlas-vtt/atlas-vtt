@@ -4,12 +4,14 @@
  * they are, so feeds can never wrap below each other.
  */
 
+import { STATBLOCK_FEED_MAX_WIDTH, STATBLOCK_FEED_MIN_WIDTH } from '../../../statblocks/render/statblockSurfaceWidths';
+
 /** Space between feeds and between the statblocks of one feed, in pixels. */
 export const FEED_GAP = 12;
 /** A statblock narrower than this becomes hard to read. */
-export const MIN_FEED_WIDTH = 340;
+export const MIN_FEED_WIDTH = STATBLOCK_FEED_MIN_WIDTH;
 /** A statblock wider than this only spreads its text out. */
-export const MAX_FEED_WIDTH = 540;
+export const MAX_FEED_WIDTH = STATBLOCK_FEED_MAX_WIDTH;
 
 export interface FeedLayout {
   count: number;

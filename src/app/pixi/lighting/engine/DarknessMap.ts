@@ -4,6 +4,7 @@ import type { MapBounds, Polygon } from '../../../vision/visibility';
 import { destroyTree } from '../../utils/destroyTree';
 import { ENGINE_SHADERS } from './engineShaders';
 import { createShader, createTarget, renderInto } from './gpu';
+import { fansGeometry, type Fan } from './polygonFans';
 
 /** A darkness source as it swallows light: the area the rule counts (`lightReach`), with its soft rim inside the radius. */
 export interface DrawnDarkness {
@@ -12,19 +13,31 @@ export interface DrawnDarkness {
   /** Width of the rim, in world pixels, over which the light comes back before the radius. */
   soft: number;
   polygon: Polygon;
+  darkness: true;
 }
 
-/** What a sense that sees in magical darkness perceives, and how: 1 as bright light, 0.5 as dim. */
+/** What a sense that sees in magical darkness perceives, and how: 1 as bright light, 0.5 as dim, 0 not at all. */
 export interface PierceShape {
   origin: Point;
   polygon: Polygon;
   level: number;
+  /** A token looks at the darkness here from outside it: 1 with a sense that perceives the dark, 0.5 with eyes alone (`sightFromOutside`). */
+  outside?: number;
 }
 
 /** Where a light would shine but for the darkness: the area the rule counts as lit by it. */
 export interface LitShape {
   origin: Point;
   polygon: Polygon;
+}
+
+/** What an area is written into the darkness map as: red, green, blue, alpha. */
+type Channels = readonly [number, number, number, number];
+
+/** All the areas that are written alike, in one mesh: a redraw is a draw per kind, not per polygon. */
+interface ShapeLayer {
+  mesh: Mesh<Geometry, Shader>;
+  fans: readonly Fan[];
 }
 
 /** One darkness source's coverage: its polygon as a fan, rebuilt only when the polygon is another. */
@@ -65,6 +78,15 @@ export function setDarknessMesh(slot: DarknessMesh, darkness: DrawnDarkness): vo
   slot.uniforms.uniforms.uSoft = darkness.soft;
 }
 
+function holdsDarkness(slot: DarknessMesh, darkness: DrawnDarkness): boolean {
+  return slot.polygon === darkness.polygon && slot.light[0] === Math.fround(darkness.origin.x) && slot.light[1] === Math.fround(darkness.origin.y)
+    && slot.uniforms.uniforms.uDim === darkness.dim && slot.uniforms.uniforms.uSoft === darkness.soft;
+}
+
+function sameFans(a: readonly Fan[], b: readonly Fan[]): boolean {
+  return a.length === b.length && a.every((fan, i) => fan.polygon === b[i]!.polygon && fan.origin.x === b[i]!.origin.x && fan.origin.y === b[i]!.origin.y);
+}
+
 export function destroyDarknessMesh({ mesh }: DarknessMesh): void {
   mesh.geometry.destroy(true);
   mesh.shader?.destroy();
@@ -75,11 +97,13 @@ export function destroyDarknessMesh({ mesh }: DarknessMesh): void {
  * Where the map is magically dark, in world space like the light map (`rgba8unorm`): red is how
  * much of the light the darkness sources swallow there, green what a sense that sees in magical
  * darkness perceives of it (0.5 as dim light, 1 as bright), blue where a light would shine
- * (the lights the darkness swallows are not in the light map, so nothing else tells). The
- * composite takes the ambient light, the bounce and the senses that do not see in magical
- * darkness out by red, lets the senses in green through, and shows the players the veil only
- * where something is swallowed (blue is one of the three things that can be). It exists only on
- * maps that have had a darkness source.
+ * (the lights the darkness swallows are not in the light map, so nothing else tells), alpha where
+ * a token looks at it from outside (1 with a sense that perceives the dark, 0.5 with eyes alone).
+ * The composite takes the ambient light, the bounce and the senses that do not see in magical
+ * darkness out by red, lets the senses in green through, and shows the players the veil only where
+ * something is swallowed (blue is one of the three things that can be) from outside. It exists
+ * only on maps that have had a darkness source, and is drawn only when what it holds changed: the
+ * players' window switches between two pictures on every mirrored frame.
  */
 export class DarknessMap {
   readonly texture: RenderTexture;
@@ -87,28 +111,62 @@ export class DarknessMap {
   private readonly scene = new Container();
   private readonly pierce = new Container();
   private readonly slots: DarknessMesh[] = [];
+  private readonly layers = new Map<string, ShapeLayer>();
+  private drawn = false;
 
-  constructor(private readonly renderer: Renderer, bounds: MapBounds, texel: number) {
+  constructor(private readonly renderer: Renderer, bounds: MapBounds, private readonly texel: number) {
     this.texture = createTarget(bounds.width / texel, bounds.height / texel, 'rgba8unorm');
     this.world = [this.texture.source.pixelWidth * texel, this.texture.source.pixelHeight * texel];
     this.scene.addChild(this.pierce);
   }
 
   draw(sources: readonly DrawnDarkness[], shapes: readonly PierceShape[], lit: readonly LitShape[] = []): void {
+    const sourcesChanged = this.placeSources(sources);
+    const shapesChanged = this.placeShapes(shapes, lit);
+    if (this.drawn && !sourcesChanged && !shapesChanged) return;
+    renderInto(this.renderer, this.scene, this.texture, [0, 0, 0, 0]);
+    this.drawn = true;
+  }
+
+  private placeSources(sources: readonly DrawnDarkness[]): boolean {
     while (this.slots.length < sources.length) this.slots.push(this.createSlot());
+    let changed = false;
     this.slots.forEach((slot, i) => {
       const source = sources[i];
+      if (slot.mesh.visible !== !!source || (source && !holdsDarkness(slot, source))) changed = true;
       slot.mesh.visible = !!source;
       if (source) setDarknessMesh(slot, source);
     });
-    this.releasePierce();
-    for (const shape of shapes) {
-      if (shape.polygon.length >= 3) this.pierce.addChild(this.createShape(shape, [0, shape.level, 0, 0]));
+    return changed;
+  }
+
+  private placeShapes(shapes: readonly PierceShape[], lit: readonly LitShape[]): boolean {
+    const wanted = new Map<string, Fan[]>();
+    const add = (out: Channels, fan: Fan): void => {
+      if (fan.polygon.length < 3) return;
+      const key = out.join();
+      if (!this.layers.has(key)) this.createLayer(key, out);
+      const fans = wanted.get(key);
+      if (fans) fans.push(fan);
+      else wanted.set(key, [fan]);
+    };
+    for (const shape of shapes) add([0, shape.level, 0, shape.outside ?? 0], shape);
+    for (const shape of lit) add([0, 0, 1, 0], shape);
+    let changed = false;
+    for (const [key, layer] of this.layers) {
+      if (this.fillLayer(layer, wanted.get(key) ?? [])) changed = true;
     }
-    for (const shape of lit) {
-      if (shape.polygon.length >= 3) this.pierce.addChild(this.createShape(shape, [0, 0, 1, 0]));
-    }
-    renderInto(this.renderer, this.scene, this.texture, [0, 0, 0, 0]);
+    return changed;
+  }
+
+  private fillLayer(layer: ShapeLayer, fans: readonly Fan[]): boolean {
+    if (sameFans(layer.fans, fans)) return false;
+    const previous = layer.mesh.geometry;
+    layer.mesh.geometry = fansGeometry(fans, this.texel);
+    previous.destroy(true);
+    layer.mesh.visible = fans.length > 0;
+    layer.fans = fans;
+    return true;
   }
 
   private createSlot(): DarknessMesh {
@@ -118,26 +176,25 @@ export class DarknessMap {
     return slot;
   }
 
-  private createShape({ origin, polygon }: LitShape, out: readonly [number, number, number, number]): Mesh<Geometry, Shader> {
+  private createLayer(key: string, out: Channels): void {
     const uniforms = new UniformGroup({
       uMapWorld: { value: new Float32Array(this.world), type: 'vec2<f32>' },
       uOut: { value: new Float32Array(out), type: 'vec4<f32>' },
     });
-    const mesh = new Mesh({ geometry: fanGeometry(origin, polygon), shader: createShader(ENGINE_SHADERS.pierce, { pierceUniforms: uniforms }) });
+    const mesh = new Mesh({ geometry: fansGeometry([], this.texel), shader: createShader(ENGINE_SHADERS.pierce, { pierceUniforms: uniforms }) });
     mesh.blendMode = 'max';
-    return mesh;
+    mesh.visible = false;
+    this.pierce.addChild(mesh);
+    this.layers.set(key, { mesh, fans: [] });
   }
 
-  private releasePierce(): void {
-    for (const mesh of this.pierce.removeChildren() as Mesh<Geometry, Shader>[]) {
+  destroy(): void {
+    for (const { mesh } of this.layers.values()) {
+      this.pierce.removeChild(mesh);
       mesh.geometry.destroy(true);
       mesh.shader?.destroy();
       mesh.destroy();
     }
-  }
-
-  destroy(): void {
-    this.releasePierce();
     for (const slot of this.slots) {
       this.scene.removeChild(slot.mesh);
       destroyDarknessMesh(slot);

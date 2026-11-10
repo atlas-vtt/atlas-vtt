@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 import { typeSpawnCountDigit, type TypedSpawnCount } from '../utils/spawnCount';
+import { isTextEntryTarget } from '../../../../keyboard/textEntry';
 
 const TOKEN_CARD = '.atlas-asset-card[data-type="tokens"][data-asset-id]';
-const EDITABLE = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]';
 
 function tokenCardId(target: EventTarget | null): string | null {
   return target instanceof Element ? target.closest<HTMLElement>(TOKEN_CARD)?.dataset.assetId ?? null : null;
@@ -33,7 +33,7 @@ export function useSpawnCountTyping(
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
       if (!/^[0-9]$/.test(event.key)) return;
-      if (event.target instanceof Element && event.target.closest(EDITABLE)) return;
+      if (isTextEntryTarget(event.target)) return;
       const assetId = hovered.current ?? tokenCardId(doc.activeElement);
       if (!assetId) return;
       const next = typeSpawnCountDigit(typed.current, assetId, event.key, Date.now());

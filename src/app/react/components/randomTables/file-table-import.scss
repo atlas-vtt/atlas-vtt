@@ -1,0 +1,99 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-file-tables__mode {
+  padding: $spacing-s;
+  border-bottom: $border-width-s solid var(--divider-color);
+  flex-shrink: 0;
+}
+
+.atlas-file-tables__file {
+  display: none;
+}
+
+.atlas-file-tables__input {
+  overflow-y: auto;
+  @include atlas-scrollbar;
+}
+
+.atlas-file-tables__choose {
+  @include atlas-flex-row($spacing-s);
+  flex-wrap: wrap;
+}
+
+.atlas-file-tables__filename {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: $font-ui-small;
+}
+
+.atlas-file-tables__hint,
+.atlas-file-tables__error {
+  margin: 0;
+  font-size: $font-ui-smaller;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.atlas-file-tables__hint {
+  color: var(--text-muted);
+}
+
+.atlas-file-tables__error {
+  color: var(--text-error);
+}
+
+.atlas-file-tables__list {
+  @include atlas-flex-col($spacing-xs);
+}
+
+.atlas-file-tables__candidate {
+  @include atlas-flex-row($spacing-s);
+  padding: $spacing-s;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-l;
+
+  &.is-active {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+  }
+
+  input {
+    flex-shrink: 0;
+  }
+}
+
+.atlas-file-tables__candidate-button.btn {
+  @include atlas-flex-col($spacing-xs);
+  align-items: flex-start;
+  height: auto;
+  min-width: 0;
+  flex: 1;
+  padding: $spacing-xs;
+  text-align: left;
+}
+
+.atlas-file-tables__name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.atlas-file-tables__location {
+  @include atlas-truncate;
+  max-width: 100%;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-file-tables__preview {
+  @include atlas-flex-col($spacing-l);
+}
+
+.atlas-file-tables__header-check {
+  @include atlas-flex-row($spacing-s);
+  color: var(--text-muted);
+  font-size: $font-ui-small;
+}

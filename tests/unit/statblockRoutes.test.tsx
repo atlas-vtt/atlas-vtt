@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +10,6 @@ vi.mock('obsidian', async (importOriginal) => {
   const actual = await importOriginal<typeof import('obsidian')>();
   return { ...actual, parseYaml: (text: string): unknown => (text.includes('AS HANDED OVER') ? parsed.value : actual.parseYaml(text)) };
 });
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import FantasyStatblock from '../../src/app/react/components/FantasyStatblock';
 import { STATBLOCK_LIMITS } from '../../src/app/creatures/statblockValues';

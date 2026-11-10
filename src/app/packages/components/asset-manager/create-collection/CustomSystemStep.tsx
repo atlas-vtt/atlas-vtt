@@ -82,6 +82,7 @@ export function CustomSystemStep({
           onChange={(defaultWidgets) => onRulesChange({ ...rules, defaultWidgets })}
           initiative={rules.initiative}
           onInitiativeChange={(initiative) => onRulesChange({ ...rules, initiative })}
+          initiativeFieldSuggestions={[]}
         />
       </section>
     </>

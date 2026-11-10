@@ -1,0 +1,238 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Dungeon generator – the controls of the wizard's steps
+// ═══════════════════════════════════════════════════════════════════════════
+
+.atlas-dungeon-fields {
+  @include atlas-flex-col($gap: $spacing-s);
+}
+
+.atlas-dungeon-field {
+  @include atlas-flex-row($gap: $spacing-s);
+  justify-content: space-between;
+  min-height: $input-height-s;
+
+  > .atlas-select {
+    flex: 0 1 160px;
+    min-width: 0;
+  }
+}
+
+.atlas-dungeon-field--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: $spacing-xs;
+}
+
+.atlas-dungeon-field__line {
+  @include atlas-flex-row($gap: $spacing-s);
+  justify-content: space-between;
+}
+
+.atlas-dungeon-field__label {
+  @include atlas-truncate;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+}
+
+.atlas-dungeon-field__value {
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
+.atlas-dungeon-field__reset.btn {
+  height: auto;
+  padding: 0 $spacing-xs;
+  font-size: $font-ui-smaller;
+}
+
+.atlas-dungeon-field__text {
+  @include atlas-text-input;
+}
+
+.atlas-dungeon-field__number {
+  @include atlas-text-input;
+  width: 72px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+// − count +, framed like the fields beside it; the buttons inset by the frame's padding.
+.atlas-dungeon-stepper {
+  @include atlas-flex-row($gap: 2px);
+  height: var(--input-height);
+  padding: 2px;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-m;
+  background: var(--background-modifier-form-field);
+
+  &[aria-disabled='true'] {
+    opacity: 0.5;
+  }
+}
+
+.atlas-dungeon-stepper__value {
+  min-width: 2ch;
+  font-size: $font-ui-small;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.atlas-dungeon-stepper__button.btn {
+  width: 24px;
+  height: 100%;
+  padding: 0;
+  border-radius: $radius-s;
+  box-shadow: none;
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &:hover:not(:disabled) {
+    color: var(--text-normal);
+  }
+}
+
+// ── Features ────────────────────────────────────────────────────────────────
+// One column: each group's name above what it holds, the choices of one spanning the panel, the
+// chips wrapping under their name.
+
+.atlas-dungeon-features,
+.atlas-dungeon-tags {
+  @include atlas-flex-col($gap: $spacing-l);
+}
+
+.atlas-dungeon-features__group,
+.atlas-dungeon-tags__group {
+  @include atlas-flex-col($gap: $spacing-s);
+}
+
+.atlas-dungeon-features__label,
+.atlas-dungeon-tags__label {
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+}
+
+.atlas-dungeon-tags__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+}
+
+.atlas-dungeon-tag {
+  height: auto;
+  padding: 2px $spacing-s;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-full;
+  background: var(--background-primary);
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  cursor: pointer;
+  transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+
+  &:hover {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+  }
+
+  &.atlas-active {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+  }
+
+  // A tag the chosen theme cannot take: in its place, plainly out of use, its tooltip says why.
+  &.atlas-dungeon-tag--refused,
+  &.atlas-dungeon-tag--refused:hover {
+    border-color: var(--background-modifier-border);
+    background: var(--background-primary);
+    color: var(--text-faint);
+    cursor: default;
+  }
+
+  @include atlas-focus-ring;
+}
+
+// ── Style gallery ───────────────────────────────────────────────────────────
+// Two picture cards a row (`_cards.scss`); each card's art is a window of the dungeon drawn by the
+// worker at the art's device pixels (`useThumbnailSize`).
+
+.atlas-dungeon-style-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $spacing-s;
+}
+
+.atlas-dungeon-style-card__picture,
+.atlas-dungeon-style-card__skeleton {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.atlas-dungeon-style-card__picture[hidden] {
+  display: none;
+}
+
+// ── View ────────────────────────────────────────────────────────────────────
+
+.atlas-dungeon-grid-choice,
+.atlas-dungeon-features__choice {
+  width: 100%;
+
+  // Five choices share the panel's width evenly, whatever their words.
+  > .atlas-segmented__option {
+    min-width: 0;
+    padding-inline: 0;
+  }
+}
+
+// Map options: the layers few change, folded under one line.
+.atlas-dungeon-more {
+  > summary {
+    @include atlas-flex-row($gap: $spacing-s);
+    list-style: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: $radius-s;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    // A chevron pointing at what opens.
+    &::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      margin-inline: 2px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(-45deg);
+      transition: transform $transition-fast $transition-ease;
+    }
+
+    &:hover {
+      color: var(--text-normal);
+    }
+
+    @include atlas-focus-ring;
+  }
+
+  &[open] > summary {
+    margin-bottom: $spacing-s;
+
+    &::before {
+      transform: rotate(45deg);
+    }
+  }
+}

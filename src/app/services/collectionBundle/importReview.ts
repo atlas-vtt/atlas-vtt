@@ -2,6 +2,7 @@ import type { Asset, CollectionMetadata } from '../AssetService';
 import type { BundleKind, CollectionBundleManifest } from './bundleFormat';
 import { groupContents, type ContentGroup } from './bundleContents';
 import type { CollectionField, InstallRecord } from './installRecord';
+import type { TemplateReview } from './importTemplates';
 import { planHasChanges, type ChangeStatus, type ConflictReason, type ImportPlan } from './importPlan';
 import { baseName } from '../../utils/pathUtils';
 import { t } from '../../i18n';
@@ -23,6 +24,8 @@ export interface ImportReview {
   description?: string | undefined;
   /** The collection's cover image, when the bundle carries one. */
   cover?: Blob | undefined;
+  /** The bundle's statblock templates that come in as copies, and the vault's notes that may switch to them. */
+  templates?: TemplateReview | undefined;
   /** Name of the vault's copy, when it has one. */
   localName?: string | undefined;
   author?: string | undefined;

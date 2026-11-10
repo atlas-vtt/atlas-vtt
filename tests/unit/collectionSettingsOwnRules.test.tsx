@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +10,6 @@ import { AssetService } from '../../src/app/services/AssetService';
 import { SystemPresetService } from '../../src/app/services/SystemPresetService';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { withDynamicLighting } from '../mocks/experimentalFeatures';
 import { memoryPresets } from '../mocks/memoryPresets';
 import { AMMO, HP } from '../mocks/resourceFixtures';
 
@@ -26,13 +26,13 @@ const witchSight = {
   seesInvisible: false, worksWhileBlinded: false, range: 'required', defaultRange: 30,
 } as const;
 const glowMoss = { id: 'home-light', name: 'Glow moss', bright: 5, dim: 15, color: '#7ee0a8', animation: 'none', kind: 'magical' } as const;
+const hag = { id: 'hag', name: 'Hag', templateId: 'marsh-hag-k7m2qa' };
 const fresh = (): CollectionSettings => ({ ...rulesOfPreset(dnd5e), systemPresetId: dnd5e.id }) as CollectionSettings;
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-function open(settings: CollectionSettings, lighting = true): { saved: () => Partial<CollectionSettings> | undefined } {
+function open(settings: CollectionSettings): { saved: () => Partial<CollectionSettings> | undefined } {
   const { app } = createInMemoryApp({ files: {} });
-  if (lighting) withDynamicLighting(app);
   let written: Partial<CollectionSettings> | undefined;
   const assets = {
     getCollectionSettings: () => settings,
@@ -71,6 +71,7 @@ describe('the collection settings modal and what a collection has of its own', (
     'light presets': { lightPresets: [glowMoss] },
     'default token vision': { defaultTokenVision: { range: 60, senses: [{ id: 'dnd5e-darkvision', range: 60 }] } },
     resources: { resources: [{ ...HP }, { ...AMMO }] },
+    'statblock roles': { statblockRoles: [...dnd5e.rules.statblockRoles!, hag] },
   };
 
   for (const [kind, patch] of Object.entries(edits)) {
@@ -93,19 +94,9 @@ describe('the collection settings modal and what a collection has of its own', (
     expect(saved()!.defaultWidgets).toMatchObject({ hpBar: true });
   });
 
-  it('has no Vision tab while dynamic lighting is switched off, and a save keeps what the collection has of its own', async () => {
+  it('applying the system again drops own senses, lights, default vision and roles, takes the system\'s resources, and is not edited', async () => {
     const all = Object.assign({}, ...Object.values(edits)) as Partial<CollectionSettings>;
-    const { saved } = open({ ...fresh(), ...all }, false);
-    await waitFor(() => expect(within(activeRow()).getByText('Edited')).toBeTruthy());
-    expect(screen.queryByRole('button', { name: 'Vision' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Conditions' })).toBeTruthy();
-    await save();
-    expect(saved()).toMatchObject(all);
-  });
-
-  it('applying the system again drops own senses, lights and default vision, takes the system\'s resources, and is not edited', async () => {
-    const all = Object.assign({}, ...Object.values(edits)) as Partial<CollectionSettings>;
-    const { saved } = open({ ...fresh(), ...all });
+    const { saved } = open({ ...fresh(), ...all, statblockRoleFolders: { hag: 'Bestiary/Hags' } });
     await waitFor(() => expect(within(activeRow()).getByText('Edited')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'Reset to D&D 5e' }));
     expect(within(activeRow()).queryByText('Edited')).toBeNull();
@@ -114,6 +105,28 @@ describe('the collection settings modal and what a collection has of its own', (
     expect(saved()).toHaveProperty('lightPresets', undefined);
     expect(saved()).toHaveProperty('defaultTokenVision', undefined);
     expect(saved()!.resources?.map((resource) => resource.key)).toEqual(['hp']);
+    expect(saved()).toHaveProperty('statblockRoles', undefined);
+    // Folders are the collection's own, never the system's
+    expect(saved()!.statblockRoleFolders).toEqual({ hag: 'Bestiary/Hags' });
+  });
+
+  it('keeps the roles inherited when only a role\'s folder is chosen', async () => {
+    const { saved } = open({ ...fresh(), statblockRoleFolders: { monster: 'Bestiary' } });
+    await waitFor(() => expect(activeRow()).toBeTruthy());
+    expect(within(activeRow()).queryByText('Edited')).toBeNull();
+    await save();
+    expect(saved()).toHaveProperty('statblockRoles', undefined);
+    expect(saved()!.statblockRoleFolders).toEqual({ monster: 'Bestiary' });
+  });
+
+  it('saves the collection\'s roles into a preset made from its rules', async () => {
+    open({ ...fresh(), statblockRoles: [hag] });
+    await waitFor(() => expect(within(activeRow()).getByText('Edited')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Save as Preset/ }));
+    const input = screen.getByPlaceholderText('Preset name');
+    fireEvent.change(input, { target: { value: 'Marsh hags' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(service.list().find((preset) => preset.name === 'Marsh hags')?.rules.statblockRoles).toEqual([hag]);
   });
 });
 
@@ -139,7 +152,7 @@ describe('the collection settings modal and the initiative rules', () => {
     type('1d10 ');
     expect(rollField().value).toBe('1d10 ');
     await save();
-    expect(saved()?.initiative).toEqual({ mode: 'turn-order', roll: '1d10', firstSide: 'players' });
+    expect(saved()?.initiative).toEqual({ mode: 'turn-order', roll: '1d10', firstSide: 'players', modifier: { field: 'initiative' }, modifierFallback: { field: 'stats.1', abilityScore: true } });
   });
 
   it('stores nothing once the rules are the game system\'s again', async () => {
@@ -157,7 +170,7 @@ describe('the collection settings modal and the initiative rules', () => {
     expect(within(cairnRow()).queryByText('Edited')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Default Widgets' }));
     expect(screen.queryByLabelText('Initiative Roll')).toBeNull();
-    expect(screen.getByText('Acts First')).toBeTruthy();
+    expect(screen.getByText('Sides', { selector: 'label' })).toBeTruthy();
     await save();
     expect(saved()).toHaveProperty('initiative', undefined);
   });

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { DAGGERHEART } from '../../src/app/gameSystems/presets/daggerheart';
 import { DND_5E } from '../../src/app/gameSystems/presets/dnd5e';

@@ -40,3 +40,11 @@ export function runUntracked<T>(store: HistoryHost, fn: () => T): T {
   const history = getHistoryStore(store);
   return history ? history.getState().untracked(fn) : fn();
 }
+
+/**
+ * Whether an undo or redo is writing the store right now. Its listeners hear of the write while
+ * it is; what they write then is Atlas's own (`runUntracked`), never the GM's next step.
+ */
+export function isHistoryTravelling(store: HistoryHost): boolean {
+  return getHistoryStore(store)?.getState().isTravelling() ?? false;
+}

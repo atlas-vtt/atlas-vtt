@@ -1,0 +1,192 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The rest chooser a recovery button with steps opens (RestChooserButton): it hangs
+// from the button in the window's body, its start under the button's start. Padding
+// equals the gap between its sections (spends, each step, the footer); the rows of a
+// section sit $spacing-s apart, as do a picked action's tile and its contents.
+
+$rest-panel-width: 340px;
+$rest-inset: $spacing-m;
+
+.atlas-vtt-plugin {
+  &.atlas-sb-rest-popover {
+    position: fixed;
+    top: var(--atlas-sb-socket-top, auto);
+    bottom: var(--atlas-sb-socket-bottom, auto);
+    left: var(--atlas-sb-socket-left, 0);
+    z-index: $z-popover;
+    width: min(#{$rest-panel-width}, calc(100vw - 2 * #{$spacing-s}));
+    translate: var(--atlas-keep-in-view-x);
+  }
+
+  .atlas-sb-rest-popover__motion {
+    transform-origin: top left;
+  }
+
+  &.atlas-sb-rest-popover[data-above] > .atlas-sb-rest-popover__motion {
+    transform-origin: bottom left;
+  }
+
+  .atlas-sb-rest-panel {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($radius-2xl);
+    display: flex;
+    flex-direction: column;
+    max-height: min(640px, var(--atlas-keep-in-view-max-height, 640px));
+    overflow: hidden;
+    color: var(--text-normal);
+    font-size: $font-ui-small;
+
+    // Holds the focus as it opens; it shows no ring of its own.
+    &:focus {
+      outline: none;
+    }
+  }
+
+  .atlas-sb-rest-panel__header {
+    @include atlas-flex-row($spacing-s);
+    @include atlas-close-header($rest-inset);
+    flex-shrink: 0;
+  }
+
+  .atlas-sb-rest-panel__title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: $font-ui-small;
+    font-weight: $font-weight-semibold;
+  }
+
+  // The header's own padding is the rest of the top's; the footer's is the bottom's.
+  .atlas-sb-rest-panel__body {
+    @include atlas-flex-col($rest-inset);
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: calc(#{$rest-inset} - #{$close-button-gap}) $rest-inset 0;
+    overflow-y: auto;
+    @include atlas-scrollbar;
+  }
+
+  .atlas-sb-rest-panel__footer {
+    @include atlas-flex-row($spacing-s);
+    flex-shrink: 0;
+    justify-content: flex-end;
+    padding: $rest-inset;
+
+    > .btn:last-child {
+      @include atlas-panel-inset-radius($rest-inset, bottom-right);
+    }
+  }
+
+  .atlas-sb-rest-panel__spends,
+  .atlas-sb-rest-step,
+  .atlas-sb-rest-step__actions,
+  .atlas-sb-rest-action,
+  .atlas-sb-rest-pick {
+    @include atlas-flex-col($spacing-s);
+  }
+
+  .atlas-sb-rest-step__head {
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-s;
+  }
+
+  .atlas-sb-rest-step__prompt {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: $font-ui-small;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-sb-rest-step__count,
+  .atlas-sb-rest-step__missing,
+  .atlas-sb-rest-row__detail,
+  .atlas-sb-rest-pick__label {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-sb-rest-step__count {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .atlas-sb-rest-step__missing {
+    margin: 0;
+  }
+
+  .atlas-sb-rest-step__actions {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  // An action is a tile; picked, it takes a quiet fill and holds whom it is for and what it spends.
+  .atlas-sb-rest-action {
+    padding: $spacing-s;
+    border-radius: $radius-l;
+    @include atlas-corner-shape;
+    transition: background-color $transition-fast $transition-ease;
+
+    &[data-picked] {
+      background: var(--background-modifier-hover);
+    }
+  }
+
+  .atlas-sb-rest-row {
+    @include atlas-flex-row($spacing-s);
+  }
+
+  .atlas-sb-rest-row__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .atlas-sb-rest-pick__for {
+    @include atlas-flex-row($spacing-s);
+
+    .atlas-select {
+      flex: 1;
+      width: auto;
+      min-width: 0;
+    }
+  }
+
+  .atlas-sb-rest-stepper {
+    @include atlas-flex-row($spacing-xs);
+    flex: none;
+  }
+
+  .atlas-sb-rest-stepper__button.btn {
+    @include atlas-icon-button('s');
+    padding: 0;
+    flex-shrink: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+
+    &:hover:not(:disabled) {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.4;
+    }
+  }
+
+  .atlas-sb-rest-stepper__value {
+    min-width: 5ch;
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+}

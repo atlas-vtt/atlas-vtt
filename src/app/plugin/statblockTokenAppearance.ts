@@ -9,7 +9,7 @@ import { parseNoteYaml } from '../services/noteYaml';
 export async function statblockTokenAppearance(
   app: App,
   token: TokenEntity,
-  links: Pick<TokenStatblockLinkService, 'getStatblockLinkedToToken'>,
+  links: Pick<TokenStatblockLinkService, 'getStatblockLinkedToToken' | 'readStatblockRecord'>,
   resourceDefsProvider: ResourceDefsProvider,
 ): Promise<TokenEntity> {
   let character: TokenEntity = token;
@@ -22,12 +22,10 @@ export async function statblockTokenAppearance(
       character = { ...token, statblockPath: linkedStatblockPath };
 
       try {
-        const statblockFile = app.vault.getAbstractFileByPath(linkedStatblockPath);
-        const frontmatter = statblockFile instanceof TFile
-          ? app.metadataCache.getFileCache(statblockFile)?.frontmatter
-          : undefined;
-        if (frontmatter) {
-          character = { ...character, ...buildStatblockLinkUpdates(frontmatter, token.name, resourceDefsProvider(), token.resources) };
+        // Read through the resolver, as every linked token is: renamed keys and a template's meanings count.
+        const statblock = await links.readStatblockRecord(linkedStatblockPath);
+        if (statblock) {
+          character = { ...character, ...buildStatblockLinkUpdates(statblock, token.name, resourceDefsProvider(), token.resources) };
         }
       } catch (error) {
         console.error(`[TokenRenderer] Failed to load statblock data for token ${token.id}:`, error);

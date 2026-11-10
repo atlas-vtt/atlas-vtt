@@ -1,5 +1,6 @@
-import { App, Notice, TFile } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 export interface MigrationMapping {
     oldPath: string | RegExp;
@@ -154,7 +155,7 @@ export class DataFileMigration {
      * Run the migration
      */
     async migrate(): Promise<void> {
-        new Notice(t('migration.running'));
+        showNotice(t('migration.running'));
 
         let migratedCount = 0;
         let errorCount = 0;
@@ -214,9 +215,9 @@ export class DataFileMigration {
         }
 
         if (errorCount > 0) {
-            new Notice(t('migration.errors', { count: errorCount }));
+            showNotice(t('migration.errors', { count: errorCount }));
         } else {
-            new Notice(t('migration.done', { count: migratedCount }));
+            showNotice(t('migration.done', { count: migratedCount }));
         }
     }
 

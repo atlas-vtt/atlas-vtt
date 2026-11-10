@@ -5,7 +5,8 @@ import type { DiceRollResult } from '../../../types/diceTypes';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import { useDiceAvatar } from '../dice/useDiceAvatar';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
-import { dieLabel } from '../../../tools/diceLabels';
+import { dieLabel, dieStates, droppedAny, rollLine } from '../../../tools/diceLabels';
+import { AdvantageTag, listsDice, RolledDiceLine } from '../dice/RolledDiceLine';
 import { t } from '../../../i18n';
 
 interface DiceRollEntryProps {
@@ -35,6 +36,7 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
     return () => window.clearInterval(interval);
   }, [result.timestamp]);
 
+  const dropping = droppedAny(result.rolls);
   const isCritSuccess = result.crit === 'high';
   const isCritFail = result.crit === 'low';
 
@@ -83,10 +85,13 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
         {source?.abilityName && (
           <span className="dice-log-entry__ability-name">{source.abilityName}</span>
         )}
+        <AdvantageTag side={result.advantage} />
 
         {/* Summary: formula = total */}
         <div className="dice-log-entry__summary">
-          <span className="dice-log-entry__formula">{result.formula}</span>
+          {listsDice(result)
+            ? <RolledDiceLine result={result} className="dice-log-entry__formula" />
+            : <span className="dice-log-entry__formula">{rollLine(result)}</span>}
           <span className="dice-log-entry__eq">=</span>
           <span className="dice-log-entry__total">{result.total}</span>
         </div>
@@ -115,9 +120,11 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
                 key={i}
                 className={cn(
                   'dice-log-entry__badge',
-                  roll.value === roll.max && 'dice-log-entry__badge--max',
-                  roll.value === 1 && 'dice-log-entry__badge--min',
+                  dieStates(roll).map((state) => `dice-log-entry__badge--${state}`),
+                  roll.colour && 'atlas-die-badge--coloured',
+                  dropping && !roll.dropped && !roll.rerolled && 'atlas-die-badge--kept',
                 )}
+                style={roll.colour ? { '--atlas-die-colour': roll.colour } as React.CSSProperties : undefined}
               >
                 {dieLabel(result.rolls, i)}
               </span>

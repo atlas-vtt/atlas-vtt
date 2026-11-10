@@ -124,6 +124,9 @@ export interface Report {
   beamRooms: number;
   beamInside: number;
   beamLeaks: number;
+  /** The pixels inside the room the same lights lit as moving lights (`EngineLight.moving`: coarse, quick tiles), and the lit ones past its walls. */
+  movingInside: number;
+  movingLeaks: number;
 }
 
 /** A white map under the lighting layer, seen through a camera at `scale` offset by (x, y). */

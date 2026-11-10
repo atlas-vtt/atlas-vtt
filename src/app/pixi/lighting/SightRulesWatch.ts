@@ -1,8 +1,7 @@
 import type { App } from 'obsidian';
 import type { TokenSensesResolver } from '../../creatures/tokenSensesResolver';
-import { AssetService } from '../../services/AssetService';
+import { onMapRulesChange } from '../../services/mapRules';
 import { mapSightRules } from '../../services/mapSightRules';
-import { SystemPresetFiles } from '../../services/systemPresets/SystemPresetFiles';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { sameSightRules, type SightRules } from '../../vision/sightRules';
 
@@ -18,12 +17,11 @@ export interface SightRulesWatchDeps {
 }
 
 /**
- * The sight rules of a view's map (the senses and conditions of its collection, and how each
- * token perceives), read once per map and again when they may have changed: the settings of the
- * map's collection, the user's presets (one the collection reads its senses from, edited here or
- * on another device), the asset index finishing its load (a map drawn before it has the generic
- * rules), or a statblock
- * that was read or edited, which the resolver announces. A change is looked at once, in the
+ * The sight rules of a view's map (the senses and conditions of the rules it plays by, and how
+ * each token perceives), read once per map and again when they may have changed
+ * (`onMapRulesChange`: the settings of the map's collection, the played campaign's system, the
+ * user's presets, the asset index finishing its load), or a statblock that was read or edited,
+ * which the resolver announces. A change is looked at once, in the
  * next frame, however many arrive until then (a bestiary announces its statblocks one by one),
  * and `onChange` is called only when the rules differ in what sight goes by (`sameSightRules`):
  * a save of other settings of the collection builds nothing, and the rules keep their senses,
@@ -40,20 +38,11 @@ export class SightRulesWatch {
 
   constructor(private readonly deps: SightRulesWatchDeps) {
     const { obsApp, store, senses } = deps;
-    // The collection's conditions decide sight too; its senses and the statblocks are the resolver's to announce.
-    const settingsChange = obsApp.workspace.on('atlas-vtt:collection-settings-changed', (collectionId) => {
-      const { mapPath } = store.getState();
-      if (mapPath && AssetService.getInstance(obsApp).getCollectionForMap(mapPath) === collectionId) this.schedule();
-    });
-    this.cleanups.push(() => obsApp.workspace.offref(settingsChange));
-    // The resolver announces changed rules only once a vision token was asked about; a preset edited before that is found here.
-    const stopPresets = SystemPresetFiles.forApp(obsApp)?.onChange(() => this.schedule());
-    if (stopPresets) this.cleanups.push(stopPresets);
+    // The rules' conditions decide sight too, and the resolver announces changed senses only once a
+    // vision token was asked about: a preset edited before that, a campaign switch or the loaded
+    // index is found here. The statblocks are the resolver's to announce.
+    this.cleanups.push(onMapRulesChange(obsApp, () => store.getState().mapPath, () => this.schedule()));
     this.cleanups.push(senses.subscribe(() => this.schedule(true)));
-    // A view built before the asset index was loaded read its map as outside every collection.
-    let live = true;
-    this.cleanups.push(() => { live = false; });
-    AssetService.getInstance(obsApp).initialize().then(() => { if (live) this.schedule(); }, () => undefined);
   }
 
   current(): SightRules {

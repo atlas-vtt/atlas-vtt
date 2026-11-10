@@ -1,0 +1,374 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Dice lab: the stage and the tray the open set's dice lie on (DiceTray,
+// TrayDie); their fans are in fan/radial-fan.scss, their steps in dice-step.scss.
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// Room around the dice for the fan over a die at the tray's edge (`dieFanSpots` in trayLayout.ts):
+// the fan of the smallest die reaches 89 px from its centre.
+$tray-padding: 64px;
+
+// ── Stage ──────────────────────────────────────────────────────────────────
+.atlas-dice-lab__stage {
+  @include atlas-flex-col($spacing-m);
+  grid-area: stage;
+  min-width: 0;
+  min-height: 0;
+  padding: $spacing-l;
+}
+
+.atlas-dice-lab__stage-head {
+  @include atlas-flex-row($spacing-m);
+  justify-content: space-between;
+  min-height: $button-height-m;
+}
+
+.atlas-dice-lab__stage-title {
+  @include atlas-flex-row($spacing-s);
+  align-items: baseline;
+  min-width: 0;
+
+  h3 {
+    @include atlas-truncate;
+    margin: 0;
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+    color: var(--text-normal);
+  }
+}
+
+.atlas-dice-lab__roll {
+  @include atlas-truncate;
+  flex: none;
+  font-family: var(--font-monospace);
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
+}
+
+.atlas-dice-lab__stage-hint {
+  @include atlas-truncate;
+  min-width: 0;
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
+}
+
+.atlas-dice-lab__locked {
+  @include atlas-flex-row($spacing-s);
+  flex: none;
+}
+
+.atlas-dice-lab__badge {
+  @include atlas-flex-row($spacing-xs);
+  height: $button-height-s;
+  padding-inline: $spacing-s;
+  border-radius: $radius-full;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  cursor: help;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+  }
+}
+
+// ── Tray ───────────────────────────────────────────────────────────────────
+// Holds the field and, beside it, the step panel of the open die, which the
+// field's scrolling must not cut (useTrayPlaces).
+.atlas-dice-lab__tray {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+// A felt tray: the secondary background, a light pooling in its middle and a soft
+// inner shadow along its rim, in the theme's own colours.
+.atlas-dice-lab__field {
+  @include atlas-scrollbar;
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  // Safe: dice that do not fit scroll from the tray's top, never past it
+  align-content: safe center;
+  justify-content: safe center;
+  gap: $spacing-m $spacing-l;
+  min-height: 0;
+  padding: $tray-padding;
+  overflow: auto;
+  border-radius: $radius-xl;
+  background:
+    radial-gradient(90% 75% at 50% 42%, color-mix(in oklch, var(--background-primary) 55%, transparent), transparent 72%),
+    var(--background-secondary);
+  box-shadow:
+    inset 0 0 0 $border-width-s var(--background-modifier-border),
+    // A tray is recessed whatever the theme: its shadow is dark in both
+    inset 0 2px 14px rgba(0, 0, 0, 0.2);
+}
+
+// A narrow lab scrolls as a whole (dice-lab.scss): the tray keeps the room of a few dice.
+@container atlas-dice-lab (max-width: 720px) {
+  .atlas-dice-lab__field {
+    min-height: 360px;
+  }
+}
+
+.atlas-dice-lab__field.atlas-dragging {
+  cursor: grabbing;
+}
+
+.atlas-dice-lab__cell {
+  @include atlas-flex-col($spacing-xs);
+  align-items: center;
+
+  // On the children: framer-motion sets the cell's own opacity as it arrives.
+  > * { transition: opacity $transition-normal $transition-ease; }
+  &.atlas-dimmed > * { opacity: 0.28; }
+  &.atlas-lifted > * { opacity: 0.4; }
+}
+
+// A die is its picture: no button chrome, a ring when it is open, a quieter ring under the pointer.
+.atlas-dice-lab__die {
+  appearance: none;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: $radius-full;
+  // Circles: Obsidian shapes every button as a squircle on macOS
+  corner-shape: round;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+  touch-action: none;
+  transition: box-shadow $transition-press $transition-ease, transform $transition-press $transition-ease-out;
+
+  &:active { transform: scale(0.96); }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+  }
+
+  &.atlas-selected {
+    box-shadow: 0 0 0 2px var(--background-secondary), 0 0 0 4px var(--interactive-accent);
+  }
+
+  &.atlas-drop-target {
+    box-shadow: 0 0 0 3px var(--interactive-accent);
+  }
+}
+
+span.atlas-dice-lab__die {
+  cursor: default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.atlas-dice-lab__die:not(.atlas-selected):hover {
+    box-shadow: 0 0 0 2px var(--background-secondary), 0 0 0 4px var(--background-modifier-border-hover);
+  }
+}
+
+.atlas-dice-lab__die-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.atlas-dice-lab__die-skeleton.atlas-skeleton {
+  width: 62%;
+  height: 62%;
+}
+
+// A die the renderer has no body for (a d7): a rounded tile in its colour, its sides on it.
+.atlas-dice-lab__plain-die {
+  display: grid;
+  place-items: center;
+  width: 64%;
+  height: 64%;
+  border-radius: 28%;
+  background:
+    radial-gradient(circle at 32% 28%, color-mix(in oklch, white 32%, transparent), transparent 60%),
+    var(--atlas-die-colour, #c9b28a);
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-family: $font-dice-display;
+  font-size: $font-ui-medium;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.atlas-dice-lab__die-label {
+  @include atlas-flex-row($spacing-xs);
+  justify-content: center;
+  min-width: 0;
+  min-height: 1.5em;
+  font-size: $font-ui-smaller;
+  white-space: nowrap;
+}
+
+.atlas-dice-lab__die-name {
+  @include atlas-truncate;
+  color: var(--text-normal);
+  font-weight: $font-weight-medium;
+
+  &.atlas-faint {
+    color: var(--text-faint);
+    font-weight: normal;
+  }
+}
+
+.atlas-dice-lab__die-sides {
+  flex: none;
+  font-family: var(--font-monospace);
+  color: var(--text-faint);
+}
+
+// ── The dice advantage and disadvantage roll ──────────────────────────────
+// A row of their own under the set's dice, set apart by room: they are not
+// part of the set's roll. Each lies in a soft pocket, marked + or −, its
+// caption in the accent; the pocket of the die whose fan is open is ringed.
+.atlas-dice-lab__edge-row {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $spacing-m $spacing-l;
+  margin-top: $spacing-s;
+}
+
+.atlas-dice-lab__cell--edge {
+  gap: $spacing-s;
+  padding: $spacing-s;
+  border-radius: $radius-xl;
+  @include atlas-corner-shape;
+  background: color-mix(in oklch, var(--interactive-accent) 8%, var(--background-modifier-hover));
+  transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+
+  .atlas-dice-lab__die-name {
+    color: var(--text-accent);
+  }
+
+  // The pocket takes the ring, so the die in it carries none of its own
+  &:has(.atlas-dice-lab__die.atlas-selected) {
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--interactive-accent) 70%, transparent);
+  }
+
+  .atlas-dice-lab__die.atlas-selected {
+    box-shadow: none;
+  }
+}
+
+.atlas-dice-lab__cell--disadvantage {
+  background: var(--background-modifier-hover);
+
+  .atlas-dice-lab__die-name {
+    color: var(--text-muted);
+  }
+}
+
+// + or − at the die's foot, clear of the fan over it: what the die does to the roll.
+.atlas-dice-lab__edge-mark {
+  position: absolute;
+  right: 6%;
+  bottom: 6%;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: $radius-full;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-bold;
+  line-height: 1;
+  pointer-events: none;
+}
+
+// Spelled out, not `.atlas-dice-lab__cell--disadvantage &`: these rules are nested in `.atlas-vtt-plugin`.
+.atlas-dice-lab__cell--disadvantage .atlas-dice-lab__edge-mark {
+  background: var(--text-muted);
+  color: var(--background-primary);
+}
+
+// ── The + socket ───────────────────────────────────────────────────────────
+.atlas-dice-lab__add {
+  appearance: none;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  outline: none;
+
+  // The socket: a soft disc the size of a die lying on the tray
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 18%;
+    border-radius: $radius-full;
+    background: var(--background-modifier-hover);
+    transition: background-color $transition-fast $transition-ease, box-shadow $transition-press $transition-ease,
+      transform $transition-press $transition-ease-out;
+  }
+
+  svg {
+    position: relative;
+    width: $icon-m;
+    height: $icon-m;
+    transition: transform $transition-normal $transition-ease-out;
+  }
+
+  &:active::before { transform: scale(0.95); }
+
+  &:focus-visible::before {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+  }
+
+  &[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-dice-lab__add:not([aria-disabled='true']):hover {
+    color: var(--text-normal);
+
+    &::before {
+      background: var(--background-modifier-active-hover);
+    }
+
+    svg { transform: rotate(90deg); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-dice-lab__cell--edge,
+  .atlas-dice-lab__cell > *,
+  .atlas-dice-lab__die,
+  .atlas-dice-lab__add::before,
+  .atlas-dice-lab__add svg {
+    transition: none;
+  }
+}

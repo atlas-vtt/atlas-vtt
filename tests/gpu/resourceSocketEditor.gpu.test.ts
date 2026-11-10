@@ -40,7 +40,7 @@ function Dialog(): React.ReactElement {
       h('div', { className: 'atlas-collection-settings-body' },
         h('div', { className: 'atlas-collection-settings-sidebar' }),
         h(SettingsContent, null,
-          h(ResourcesTab, { resources, onChange: setResources, fieldSuggestions: ['hp', 'ammo'] }))),
+          h(ResourcesTab, { resources, onChange: setResources, fieldSuggestions: [{ path: 'hp' }, { path: 'ammo' }] }))),
       h('div', { className: 'atlas-collection-settings-footer' }, h('button', null, 'Cancel'), h('button', null, 'Save'))));
 }
 

@@ -1,12 +1,13 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Platform, type App } from 'obsidian';
 import type { AnyAsset } from '../../src/app/packages/components/asset-manager/types';
 
-vi.mock('../../src/app/react/components/FantasyStatblock', () => ({
-  default: ({ notePath, noteContent, tokens }: { notePath: string; noteContent?: string; tokens: unknown[] }) => (
-    <div data-testid="statblock" data-tokens={JSON.stringify(tokens)} data-note={noteContent}>{notePath}</div>
+vi.mock('../../src/app/statblocks/render/LinkedStatblock', () => ({
+  LinkedStatblock: ({ path, noteText, tokens }: { path: string; noteText?: string; tokens: unknown[] }) => (
+    <div data-testid="statblock" data-tokens={JSON.stringify(tokens)} data-note={noteText}>{path}</div>
   ),
 }));
 

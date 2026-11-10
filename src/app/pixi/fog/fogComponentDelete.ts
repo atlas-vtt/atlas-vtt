@@ -1,3 +1,6 @@
+import type { FogOperation } from '../../types/fogTypes';
+import type { OnOneLevel } from '../../types/sceneLevelTypes';
+
 export interface PixelRect {
   x: number;
   y: number;
@@ -108,3 +111,19 @@ export function extractConnectedComponentRects(
   return rects;
 }
 
+
+/**
+ * The scene's fog with an erasing rectangle over each of `rects`, on `level` (the floor the GM
+ * sees): `fog` is every floor's, which the others keep as they are. Null where no rectangle has an area.
+ */
+export function fogWithErasers(fog: Readonly<Record<string, FogOperation>>, rects: readonly PixelRect[], now: number, level: OnOneLevel): Record<string, FogOperation> | null {
+  const next: Record<string, FogOperation> = { ...fog };
+  let added = 0;
+  rects.forEach((rect, index) => {
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const id = `fog_${now}_${Math.random().toString(36).slice(2, 9)}_${index}`;
+    next[id] = { id, kind: 'fog', timestamp: now + index, type: 'rectangle', isErasing: true, x: rect.x, y: rect.y, width: rect.width, height: rect.height, ...level };
+    added += 1;
+  });
+  return added > 0 ? next : null;
+}

@@ -1,4 +1,5 @@
 import type { TokenSense } from './senseTypes';
+import type { OnLevels } from './sceneLevelTypes';
 
 /** Dynamic lighting of one scene. Saved in the map file, never undo-tracked. */
 export interface SceneLighting {
@@ -45,7 +46,8 @@ export type SceneLightingChanges = Partial<Pick<SceneLighting, 'enabled' | 'ambi
 
 export const DEFAULT_SCENE_LIGHTING: SceneLighting = { enabled: false, ambient: 0.1 };
 
-export type LightAnimation = 'none' | 'torch' | 'candle' | 'pulse' | 'magic';
+/** How a light moves: steady, a flame's flicker, a pulse, a shimmer, or the slow glow of a smouldering surface (lava, embers). */
+export type LightAnimation = 'none' | 'torch' | 'candle' | 'pulse' | 'magic' | 'smoulder';
 
 /** What a placed light is: it picks the light's marker. `custom` is any other light. */
 export type LightKind = 'candle' | 'torch' | 'lantern' | 'magical' | 'darkness' | 'custom';
@@ -90,7 +92,7 @@ export interface LightEmission {
 }
 
 /** A light placed on the map. */
-export interface LightSource {
+export interface LightSource extends OnLevels {
   id: string;
   kind: 'light';
   x: number;
@@ -106,6 +108,13 @@ export interface LightSource {
    * `ambientGate` and `isLightOn`.
    */
   activeBelowAmbient?: number;
+  /**
+   * A light that glows from a whole surface, like lava: its corners in world pixels, at least
+   * three. Inside it everything is bright, and `bright` and `dim` are counted from its outline; `x`
+   * and `y` are its middle and the area moves with them. Such a light has no beam (`angle`) and no
+   * flame (`sourceRadius`). Read with `readLight`.
+   */
+  area?: { x: number; y: number }[];
 }
 
 export type LightInput = Omit<LightSource, 'id' | 'kind'>;
@@ -118,7 +127,7 @@ export type LightChanges = { [Field in keyof LightInput]?: LightInput[Field] | u
  * in a dark dungeon. Map geometry the GM draws like walls (undo-tracked, in `objects.lightZones`);
  * later zones lie over earlier ones. Read them with `lightZoneList`.
  */
-export interface LightZone {
+export interface LightZone extends OnLevels {
   id: string;
   kind: 'light-zone';
   name?: string;

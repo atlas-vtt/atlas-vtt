@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import {
-  X, Plus, ChevronLeft, ChevronRight, FolderPlus, RefreshCw, PanelLeft,
-  Map as MapIcon, FolderOpen,
+  Plus, ChevronLeft, ChevronRight, FolderPlus, PanelLeft,
+  Map as MapIcon, FolderOpen, Swords, Castle,
 } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
@@ -12,9 +12,9 @@ import { HeaderMenu } from './HeaderMenu';
 import { HeaderSearch } from './HeaderSearch';
 import type { FilterSearch } from '../hooks/useFilterSearch';
 import { useHeaderCompaction } from '../hooks/useHeaderCompaction';
-import { SortControls } from './SortControls';
 import { TabSwitcher } from './TabSwitcher';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
+import { tabHasFolders } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
 
 export interface HeaderProps {
@@ -28,24 +28,24 @@ export interface HeaderProps {
   assetCounts: Record<Tab, number> | null;
   onCreateTokens?: () => void;
   onCreateMap?: () => void;
+  /** Opens the dungeon generator in a tab of its own. */
+  onGenerateDungeon?: () => void;
+  onCreateEncounter?: () => void;
   onCreateCollection?: () => void;
   onCreateFolder: () => void;
-  onRefresh: () => void;
   sidebarToggleLabel: string;
   onToggleSidebar: () => void;
   sel: Pick<
     SelectionState,
-    'navigationHistory' | 'handleNavigateBack' | 'handleNavigateForward' |
-    'selectedAssetIds' | 'selectedFolderIds' | 'handleClearSelection' |
-    'sortBy' | 'sortOptions' | 'setSortBy' | 'sortOrder' | 'setSortOrder'
+    'navigationHistory' | 'handleNavigateBack' | 'handleNavigateForward'
   >;
 }
 
 /**
- * One-row toolbar: navigation and selection on the left, asset type in the
- * centre, search / sort / folder / create on the right. When its controls do
- * not fit, the tabs, the search and the sort fold into menus and buttons
- * (`useHeaderCompaction`), so they never overlap.
+ * One-row toolbar: navigation on the left, asset type in the
+ * centre, search and create on the right. When its controls do not fit, the
+ * tabs and the search fold into a menu and a button (`useHeaderCompaction`),
+ * so they never overlap.
  */
 export function Header({
   app,
@@ -57,14 +57,14 @@ export function Header({
   assetCounts,
   onCreateTokens,
   onCreateMap,
+  onGenerateDungeon,
+  onCreateEncounter,
   onCreateCollection,
   onCreateFolder,
-  onRefresh,
   sidebarToggleLabel,
   onToggleSidebar,
   sel,
 }: HeaderProps): React.JSX.Element {
-  const selectionCount = sel.selectedAssetIds.length + sel.selectedFolderIds.length;
   const toolbarRef = useRef<HTMLDivElement>(null);
   useHeaderCompaction(toolbarRef);
 
@@ -105,25 +105,6 @@ export function Header({
               <ChevronRight />
             </Button>
           </LabelTooltip>
-
-          {selectionCount > 0 && (
-            <>
-              <div className="atlas-am-toolbar-divider" />
-              <div className="atlas-selection-info">
-                <span>{selectionCount}<span className="atlas-selection-label"> {t('am.header.selected')}</span></span>
-                <LabelTooltip label={t('dice.clearSelection')}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="atlas-clear-selection-btn"
-                    onClick={sel.handleClearSelection}
-                  >
-                    <X />
-                  </Button>
-                </LabelTooltip>
-              </div>
-            </>
-          )}
         </div>
 
         <div className="atlas-am-toolbar-center">
@@ -132,27 +113,6 @@ export function Header({
 
         <div className="atlas-am-toolbar-right">
           <HeaderSearch app={app} search={search} onSearch={onSearch} query={query} />
-          <SortControls
-            sortBy={sel.sortBy}
-            sortOptions={sel.sortOptions}
-            setSortBy={sel.setSortBy}
-            sortOrder={sel.sortOrder}
-            setSortOrder={sel.setSortOrder}
-          />
-
-          <div className="atlas-am-toolbar-divider" />
-
-          <LabelTooltip label={t('am.header.newFolder')}>
-            <Button variant="ghost" size="icon" className="atlas-am-icon-btn" onClick={onCreateFolder}>
-              <FolderPlus />
-            </Button>
-          </LabelTooltip>
-          <LabelTooltip label={t('am.menu.refresh')}>
-            <Button variant="ghost" size="icon" className="atlas-am-icon-btn" onClick={onRefresh}>
-              <RefreshCw />
-            </Button>
-          </LabelTooltip>
-
           <HeaderMenu
             label={t('am.header.create')}
             triggerClassName="atlas-asset-manager-create-btn"
@@ -162,6 +122,9 @@ export function Header({
             items={[
               { key: 'token', label: t('am.header.createToken'), icon: <TokenIcon />, onSelect: onCreateTokens },
               { key: 'map', label: t('am.header.addMap'), icon: <MapIcon />, onSelect: onCreateMap },
+              { key: 'dungeon', label: t('am.header.generateDungeon'), icon: <Castle />, onSelect: onGenerateDungeon },
+              { key: 'encounter', label: t('am.header.createEncounter'), icon: <Swords />, onSelect: onCreateEncounter },
+              { key: 'folder', label: t('am.header.newFolder'), icon: <FolderPlus />, disabled: !tabHasFolders(activeTab), onSelect: onCreateFolder },
               { key: 'collection', label: t('am.header.createCollection'), icon: <FolderOpen />, separated: true, onSelect: onCreateCollection },
             ]}
           />

@@ -1,0 +1,83 @@
+// What floats over the template editor (§7.6, §7.10): the insert menu, the
+// delete dialog and the undo toast. The selected block's toolbar has its own
+// sheet (toolbar/selection-toolbar.scss).
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The context menu's geometry: 28 px capsule rows, $spacing-xs inside the border.
+$row-height: 28px;
+$menu-inset: $spacing-xs;
+$menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
+
+.atlas-vtt-plugin {
+  // ── Insert menu ─────────────────────────────────────────────────────────
+  .atlas-te-insert {
+    @include atlas-keep-in-view;
+    position: absolute;
+    left: var(--atlas-te-insert-x);
+    top: var(--atlas-te-insert-y);
+    z-index: 3;
+    margin-top: $spacing-xs;
+
+    &[data-above] {
+      top: auto;
+      bottom: calc(100% - var(--atlas-te-insert-y));
+      margin-top: 0;
+      margin-bottom: $spacing-xs;
+    }
+  }
+
+  .atlas-te-insert__panel {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($menu-radius);
+    display: grid;
+    grid-template-columns: 220px 260px;
+    gap: $menu-inset;
+    padding: $menu-inset;
+    box-shadow: $shadow-md;
+    transform-origin: top left;
+  }
+
+  .atlas-te-insert[data-above] .atlas-te-insert__panel {
+    transform-origin: bottom left;
+  }
+
+  .atlas-te-insert__menu {
+    @include atlas-flex-col($menu-inset);
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  // The search is one more row of the menu: a capsule of a row's height.
+  input.atlas-te-insert__search {
+    @include atlas-panel-inset-radius($menu-inset);
+    height: $row-height;
+    padding: 0 $spacing-s;
+    font-size: $font-ui-small;
+  }
+
+  .atlas-te-insert__list {
+    @include atlas-flex-col(var(--size-2-1));
+    align-items: stretch;
+    max-height: 320px;
+    overflow-y: auto;
+    @include atlas-scrollbar;
+  }
+
+  .atlas-te-insert__empty {
+    padding: $spacing-s;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+
+  // The hovered row drawn by the real renderer, a step down the radius scale.
+  .atlas-te-insert__preview {
+    max-height: 360px;
+    padding: $menu-inset;
+    overflow: hidden;
+    border-radius: $radius-l;
+    background: var(--background-secondary);
+    pointer-events: none;
+  }
+}

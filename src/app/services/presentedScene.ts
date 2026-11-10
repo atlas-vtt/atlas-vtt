@@ -1,11 +1,13 @@
 import type { App } from 'obsidian';
 
-/** The scene tab players are shown: picked with the eye on a scene tab or "Send current map to player view". */
+/** The scene tab players are shown: picked with the eye on a scene tab, on a level, or "Send current map to player view". */
 export interface PresentedScene {
   /** The scene tab, as its Atlas view's tabs name it (tab ids are saved with the view). */
   readonly tabId: string;
   /** The tab's map file, which finds the scene again when no open tab has the id. */
   readonly filePath: string;
+  /** The level of the scene players are shown; unset, or one the scene no longer has, is the first. */
+  readonly levelId?: string;
 }
 
 /** The presented scene for code that only reads it, such as the eye on each scene tab. */
@@ -34,7 +36,9 @@ export function readPresentedScene(value: unknown): PresentedScene | null {
   if (typeof value !== 'object' || value === null) return null;
   const tabId: unknown = 'tabId' in value ? value.tabId : undefined;
   const filePath: unknown = 'filePath' in value ? value.filePath : undefined;
-  return isText(tabId) && isText(filePath) ? { tabId, filePath } : null;
+  const levelId: unknown = 'levelId' in value ? value.levelId : undefined;
+  if (!isText(tabId) || !isText(filePath)) return null;
+  return isText(levelId) ? { tabId, filePath, levelId } : { tabId, filePath };
 }
 
 /**
@@ -76,8 +80,8 @@ export class PresentedSceneStore implements PresentedSceneSource {
 
   /** Present `scene`, or nothing for null. Only the presenter calls this. */
   set(scene: PresentedScene | null): void {
-    const next = scene ? { tabId: scene.tabId, filePath: scene.filePath } : null;
-    if (next?.tabId === this.scene?.tabId && next?.filePath === this.scene?.filePath) return;
+    const next = scene ? { tabId: scene.tabId, filePath: scene.filePath, ...(scene.levelId ? { levelId: scene.levelId } : {}) } : null;
+    if (next?.tabId === this.scene?.tabId && next?.filePath === this.scene?.filePath && next?.levelId === this.scene?.levelId) return;
     this.scene = next;
     this.write(next);
     this.listeners.forEach((listener) => listener(next));

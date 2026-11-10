@@ -17,6 +17,7 @@ export function stubLayout(viewport: Viewport): void {
   const stubs: Array<[object, string, PropertyDescriptor]> = [
     [Element.prototype, 'getBoundingClientRect', { configurable: true, value: rect }],
     [Element.prototype, 'clientWidth', { configurable: true, get: () => viewport.width }],
+    [Element.prototype, 'clientHeight', { configurable: true, get: () => viewport.height }],
     [HTMLElement.prototype, 'offsetWidth', { configurable: true, get: () => viewport.width }],
     [HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => viewport.height }],
   ];

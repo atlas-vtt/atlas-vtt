@@ -1,0 +1,80 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Creating a statblock (§7.3): the role menu without a control to open from,
+// and the one-field name popover of commands and the file menu.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// The DM screen's statblock with its menu: the feed's layout sees only the statblock.
+.atlas-dm-statblock-menu {
+  display: contents;
+}
+
+// The point a role menu hangs from: nothing to see or press.
+.atlas-sb-create-anchor {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+// Where the name popover grows out of: centred on the point the menu hung from.
+.atlas-sb-create-spot {
+  position: fixed;
+  z-index: $z-atlas-modal;
+  translate: -50% 0;
+}
+
+// One field under a line naming what is made; padding equals the gap, and the
+// field's lower corners run concentric with the popover's.
+.atlas-sb-new-popover {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+  @include atlas-flex-col($gap: $spacing-s);
+  width: min(320px, calc(100vw - #{$spacing-l * 2}));
+  padding: $spacing-s;
+  transform-origin: top center;
+
+  &__header {
+    @include atlas-flex-row($gap: $spacing-s);
+    justify-content: space-between;
+    min-width: 0;
+    // The text starts where the field's text does.
+    padding: 0 $spacing-s;
+    font-size: $font-ui-smaller;
+  }
+
+  &__label {
+    @include atlas-truncate;
+    color: var(--text-normal);
+    font-weight: $font-weight-semibold;
+  }
+
+  &__role {
+    @include atlas-truncate;
+    color: var(--text-muted);
+  }
+
+  // Obsidian styles every text input; the popover's class outweighs it.
+  & &__input {
+    @include atlas-text-input;
+    @include atlas-panel-inset-radius($spacing-s, bottom-left, bottom-right);
+  }
+}
+
+// "New statblock…": the templates to start from, in Obsidian's own suggestion modal (§12.2).
+.atlas-vtt-plugin.atlas-sb-template-choice {
+  .atlas-sb-template-choice__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--size-4-3);
+  }
+
+  .atlas-sb-template-choice__detail {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    white-space: nowrap;
+  }
+}

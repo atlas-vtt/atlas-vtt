@@ -1,0 +1,41 @@
+@use '../../../../styles/tokens' as *;
+
+// Art, rules and placeholders in the native card.
+
+// The card's token size, as the Fantasy Statblocks renderer pins its portrait.
+$portrait-size: 72px;
+
+.atlas-sb-sheet {
+  .atlas-sb-token-image {
+    width: $portrait-size;
+  }
+
+  // A portrait takes at most 40% of the card's width.
+  .atlas-sb-item[data-block='image'][data-look='portrait'] {
+    max-width: 40%;
+  }
+
+  .atlas-sb-portrait-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    // Inner radius steps down one level from the card's $radius-xl.
+    border-radius: $radius-l;
+    // Inset so the outline never changes the image's layout size.
+    outline: $border-width-s solid color-mix(in oklch, var(--mono-100) 10%, transparent);
+    outline-offset: -1px;
+  }
+
+  .atlas-sb-divider {
+    height: 0;
+    margin: 0;
+    border: none;
+    border-top: $border-width-s solid var(--background-modifier-border);
+  }
+
+  .atlas-sb-script {
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    font-style: italic;
+  }
+}

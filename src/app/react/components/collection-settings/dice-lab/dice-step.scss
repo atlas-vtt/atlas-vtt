@@ -1,0 +1,205 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Dice lab: what a die's fan opens beside the die (DieStepPanel: its sides, name
+// or colour), and what the fan's buttons show of the die (DieFan).
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$step-width: 264px;
+
+// ── Step panel: sides, name or colour, under the die ───────────────────────
+.atlas-dice-lab__step-panel {
+  @include atlas-elevated-surface;
+  @include atlas-scrollbar;
+  position: absolute;
+  z-index: 2;
+  width: $step-width;
+  padding: $spacing-m;
+  // Where the room runs out the panel takes a height cap and scrolls
+  overflow-y: auto;
+  transform-origin: top center;
+
+  // Takes focus only from the fan it replaces (DiceTray)
+  &:focus { outline: none; }
+
+  &[data-side='above'] { transform-origin: bottom center; }
+  &[data-side='right'] { transform-origin: left center; }
+  &[data-side='left'] { transform-origin: right center; }
+}
+
+.atlas-dice-lab__step {
+  @include atlas-flex-col($spacing-m);
+
+  .atlas-dropdown-swatches__label {
+    font-size: $font-ui-smaller;
+    color: var(--text-muted);
+  }
+
+  .atlas-csm-input {
+    height: $button-height-m;
+  }
+}
+
+// The common dice as tiles, each drawn as it will roll in the die's colour, its sides under it.
+.atlas-dice-lab__sides-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-xs;
+}
+
+button.atlas-dice-lab__side {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+  height: auto;
+  padding: $spacing-xs;
+  border: none;
+  border-radius: $radius-l;
+  @include atlas-corner-shape;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  outline: none;
+  transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+
+  .atlas-die-still {
+    transition: transform $transition-press $transition-ease-out;
+  }
+
+  &:active .atlas-die-still { transform: scale(0.94); }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+  }
+
+  &.atlas-selected {
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--interactive-accent) 70%, transparent);
+    color: var(--text-accent);
+
+    &:focus-visible {
+      box-shadow:
+        inset 0 0 0 $border-width-m color-mix(in oklch, var(--interactive-accent) 70%, transparent),
+        0 0 0 2px var(--background-modifier-border-focus);
+    }
+  }
+}
+
+.atlas-dice-lab__side-name {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.atlas-dice-lab__side.atlas-selected .atlas-dice-lab__side-name {
+  font-weight: $font-weight-semibold;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.atlas-dice-lab__side:not(.atlas-selected):hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+}
+
+// Any other number of sides: a row with the die as the tray shows a die without a body.
+.atlas-dice-lab__other {
+  @include atlas-flex-row($spacing-xs);
+  padding: $spacing-xs;
+  border-radius: $radius-l;
+  @include atlas-corner-shape;
+  transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+
+  &.atlas-selected {
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--interactive-accent) 70%, transparent);
+  }
+
+  .atlas-csm-input.atlas-dice-lab__number {
+    height: $input-height-s;
+  }
+}
+
+.atlas-dice-lab__other-label {
+  @include atlas-flex-row($spacing-s);
+  flex: 1;
+  min-width: 0;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+  cursor: text;
+}
+
+$other-die: 28px;
+
+.atlas-dice-lab__other-die {
+  display: grid;
+  flex: none;
+  width: $other-die;
+  height: $other-die;
+
+  .atlas-dice-lab__plain-die {
+    width: 100%;
+    height: 100%;
+    font-size: 10px;
+  }
+}
+
+// No other die yet: the tile's place, quiet.
+.atlas-dice-lab__other-blank {
+  display: grid;
+  place-items: center;
+  border-radius: 28%;
+  background: var(--background-modifier-hover);
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+  font-size: 10px;
+}
+
+// The colours seven to a row, the dice look last, sized as the Resources tab's: Obsidian gives
+// every button a height of its own.
+$swatch: 24px;
+
+.atlas-dice-lab__step--colour {
+  .atlas-swatch-grid {
+    grid-template-columns: repeat(7, $swatch);
+    justify-content: space-between;
+  }
+
+  .atlas-swatch {
+    width: $swatch;
+    height: $swatch;
+  }
+}
+
+.atlas-dice-lab__swatch-none {
+  background:
+    linear-gradient(135deg, transparent 45%, var(--text-faint) 46%, var(--text-faint) 54%, transparent 55%),
+    var(--background-primary);
+}
+
+// ── Inside the fan's buttons: the die's sides and its colour ───────────────
+.atlas-dice-lab__fan-sides {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  font-weight: $font-weight-semibold;
+  letter-spacing: -0.02em;
+}
+
+.atlas-dice-lab__fan-colour {
+  width: $icon-s;
+  height: $icon-s;
+  border-radius: $radius-full;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--mono-100) 25%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.atlas-dice-lab__side,
+  button.atlas-dice-lab__side .atlas-die-still,
+  .atlas-dice-lab__other {
+    transition: none;
+  }
+}

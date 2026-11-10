@@ -8,8 +8,9 @@ import type { AnyAsset, AssetManagerProps, Tab } from './types';
 
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
+import { BestiaryTokensOffer } from './components/BestiaryTokensOffer';
 import { Content } from './components/Content';
-import { Breadcrumb } from './components/Breadcrumb';
+import { LocationBar } from './components/LocationBar';
 import { ModalLayer } from './components/ModalLayer';
 import { useAssetData } from './hooks/useAssetData';
 import { useSelectionHandlers, type VisibleIds } from './hooks/useSelectionHandlers';
@@ -26,6 +27,7 @@ import { useOverlayBodyClass } from './hooks/useOverlayBodyClass';
 import { useLoadingReveal } from '../primitives/useLoadingReveal';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useRememberedPlace } from './hooks/useRememberedPlace';
+import { useLeaveHiddenFolder } from './hooks/useLeaveHiddenFolder';
 import { sortAssets } from './utils/assetSort';
 import { filterFolders, type AssetFilter } from './utils/assetFilter';
 import { useCreatureFilters } from './hooks/useCreatureFilters';
@@ -33,6 +35,8 @@ import { useCollectionFilterDefinitions } from './hooks/useCollectionFilterDefin
 import { useFilterSearch, useSearchKeywords } from './hooks/useFilterSearch';
 import { ActiveFilterBar } from './components/search/ActiveFilterBar';
 import { DIALOG_EXIT_DURATION, dialogBackdropVariants, useDialogWindowVariants } from '../primitives/dialogMotion';
+import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator';
+import { runInBackground } from '../../../utils/backgroundTask';
 import { t } from '../../../i18n';
 
 const NO_ASSETS: AnyAsset[] = [];
@@ -62,6 +66,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
 
   const visibleIds = useRef<VisibleIds>({ assets: [], folders: [] });
   const sel = useSelectionHandlers(visibleIds, data.folders, activeTab, isOpen);
+  useLeaveHiddenFolder(data, sel);
 
   const changeTab = useCallback((tab: Tab): void => {
     if (tab === activeTab) return;
@@ -162,7 +167,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
   const statblock = useStatblockLink(data.app);
 
   const { handleAssetContextMenu, handleFolderContextMenu, handleContentContextMenu } =
-    useContextMenus({ data, sel, crud, tags, statblock, selectedCollection, onClose });
+    useContextMenus({ data, sel, crud, tags, statblock, selectedCollection, activeTab, onClose });
 
   useAssetManagerEffects({
     isOpen, onClose,
@@ -171,7 +176,13 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
     data, sel, crud, tags, statblock,
   });
 
-  const anyModalOpen = crud.isTokenCreatorOpen || crud.isMapCreatorOpen;
+  const anyModalOpen = crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isMapCreatorOpen;
+
+  // The empty Tokens tab offers the starter tokens in place of its hint.
+  const offerService = data.assetService;
+  const emptyOffer = shown.tab === 'tokens' && offerService
+    ? (hint: React.ReactNode): React.ReactNode => <BestiaryTokensOffer app={data.app} assets={offerService} collection={selectedCollection} variant="empty" fallback={hint} />
+    : null;
 
   return (
     <>
@@ -224,6 +235,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onEditCollectionSettings={crud.setSettingsModalCollectionId}
                   onExportCollection={() => { void crud.handleExportCollection(); }}
                   onImportCollection={crud.handleImportCollection}
+                  footer={activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" /> : null}
                   layout={sidebar}
                 />
                 <Header
@@ -236,9 +248,13 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   assetCounts={data.assetCounts}
                   onCreateTokens={() => crud.setIsTokenCreatorOpen(true)}
                   onCreateMap={crud.handleCreateMap}
+                  onGenerateDungeon={() => {
+                    runInBackground(showDungeonGenerator(data.app, selectedCollection), 'Opening the dungeon generator');
+                    onClose();
+                  }}
+                  onCreateEncounter={() => crud.setIsEncounterBuilderOpen(true)}
                   onCreateCollection={crud.handleCreateCollection}
                   onCreateFolder={crud.handleCreateFolder}
-                  onRefresh={() => { void crud.handleRefresh(); }}
                   sidebarToggleLabel={sidebar.toggleLabel}
                   onToggleSidebar={sidebar.toggle}
                   sel={sel}
@@ -249,10 +265,11 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
                 >
                   <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
-                  <Breadcrumb
+                  <LocationBar
                     activeTab={shown.tab}
                     path={shown.folderPath}
                     onNavigateToFolder={sel.handleNavigateToFolder}
+                    sort={sel}
                   />
                   <div className="atlas-asset-manager-main">
                     <AssetTagMenuContext.Provider value={tagMenuActions}>
@@ -287,6 +304,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                         onDrop={crud.handleDrop}
                         view={data.view}
                         app={data.app}
+                        {...(emptyOffer && { emptyOffer })}
                         assetService={data.assetService}
                         spawnCounts={sel.spawnCounts}
                         onSpawnCountChange={sel.handleSpawnCountChange}

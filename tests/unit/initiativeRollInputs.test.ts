@@ -50,14 +50,14 @@ describe('initiative roll inputs', () => {
     expect(get().initiative.entries.map(e => [e.id, e.order])).toEqual([['b', 0], ['c', 1], ['a', 2]]);
   });
 
-  it('rolls just the named entry without reordering during an active fight', () => {
+  it('rolls just the named entry and reorders during an active fight', () => {
     const { actions, random, set, get } = setup();
     actions.startCombat();
     set.mockClear();
     actions.rollEntryInitiative('b', '2d6');
     expect(random).toHaveBeenCalledTimes(2);
     expect(set).toHaveBeenCalledOnce();
-    expect(get().initiative.entries.map(e => [e.id, e.initiative])).toEqual([['a', 0], ['b', 6]]);
+    expect(get().initiative.entries.map(e => [e.id, e.initiative])).toEqual([['b', 6], ['a', 0]]);
     expect(get().initiative.isActive).toBe(true);
   });
 
@@ -66,5 +66,38 @@ describe('initiative roll inputs', () => {
     actions.rollEntryInitiative('missing');
     actions.rollAllInitiative();
     expect(random).not.toHaveBeenCalled();
+  });
+});
+
+describe('initiative rolls with statblock modifiers', () => {
+  it('adds the statblock\'s modifier where the entry has none of its own, and keeps a hand-set one', () => {
+    const { actions, get } = setup([entry('own', 2), entry('linked'), entry('plain')], [0.5]);
+    actions.setInitiativeConfig({ autoSort: false });
+    actions.rollAllInitiative('1d20', new Map([['own', 9], ['linked', 5]]));
+    expect(get().initiative.entries.map(e => [e.id, e.initiative])).toEqual([['own', 13], ['linked', 16], ['plain', 11]]);
+  });
+
+  it('rolls one entry with its statblock\'s modifier, and keeps its own where the statblock gives none', () => {
+    const { actions, get } = setup([entry('linked'), entry('own', -1)], [0.5]);
+    actions.rollEntryInitiative('linked', '1d20', 4);
+    actions.rollEntryInitiative('own', '1d20', null);
+    expect(get().initiative.entries.map(e => [e.id, e.initiative])).toEqual([['linked', 15], ['own', 10]]);
+  });
+
+  it('never writes the statblock\'s modifier onto the entry', () => {
+    const { actions, get } = setup([entry('linked')], [0.5]);
+    actions.rollAllInitiative('1d20', new Map([['linked', 5]]));
+    expect(get().initiative.entries[0]!.initiativeModifier).toBe(0);
+  });
+});
+
+describe('a modifier the GM set on an entry', () => {
+  it('wins over the statblock\'s, an explicit 0 too, and a cleared one lets the statblock count again', () => {
+    const { actions, get } = setup([{ ...entry('zero'), modifierByHand: true }], [0.5]);
+    actions.rollAllInitiative('1d20', new Map([['zero', 5]]));
+    expect(get().initiative.entries[0]!.initiative).toBe(11);
+    actions.updateInitiativeEntry('zero', { initiativeModifier: 0, modifierByHand: undefined });
+    actions.rollAllInitiative('1d20', new Map([['zero', 5]]));
+    expect(get().initiative.entries[0]!.initiative).toBe(16);
   });
 });

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { createPinIconPalette, type PinIconPalette } from '../pinIconPalette';
 

@@ -1,0 +1,148 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'dashboard-mixins' as *;
+
+// The dashboard's cards (CampaignCard.tsx, RecentScenes.tsx, CardSkeleton.tsx): art on top, flush
+// with the card's corners, the name and one line below. Campaign cards add theirs in campaigns.scss.
+
+/// A campaign or scene: its art on top, flush with the card's corners, the name and a line below.
+.dashboard-card {
+  @include dashboard-button-reset;
+  @include dashboard-card-surface;
+  @include dashboard-art-zoom('.dashboard-card__art');
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-card__art {
+  @include dashboard-art-well;
+  flex-shrink: 0;
+  aspect-ratio: 16 / 9;
+  // A hairline where the art meets the card's text, so pale art keeps its edge.
+  box-shadow: inset 0 (-$border-width-s) 0 var(--background-modifier-border);
+}
+
+.dashboard-card__body {
+  @include atlas-flex-row($spacing-s);
+  flex: 1;
+  min-width: 0;
+  padding: $spacing-m;
+}
+
+.dashboard-card__text {
+  @include atlas-flex-col($spacing-xs);
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-card__title {
+  @include atlas-truncate;
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  line-height: var(--line-height-tight);
+  color: var(--text-normal);
+}
+
+.dashboard-card__meta {
+  @include atlas-flex-row($spacing-xs);
+  min-width: 0;
+  font-size: $font-ui-smaller;
+  line-height: var(--line-height-tight);
+  color: var(--text-muted);
+
+  > span {
+    @include atlas-truncate;
+  }
+}
+
+.dashboard-card__system,
+.dashboard-card__collection {
+  flex-shrink: 1;
+  min-width: 2em;
+  color: var(--text-normal);
+}
+
+.dashboard-card__separator {
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+// A scene's thumbnail is 4:3, as the map's card shows it.
+.scene-card .dashboard-card__art {
+  aspect-ratio: 4 / 3;
+}
+
+.scene-card .dashboard-card__title {
+  font-size: $font-ui-small;
+}
+
+.scene-card__glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+
+  svg {
+    width: $icon-l;
+    height: $icon-l;
+  }
+}
+
+// The scene opens with a press: a play button shows on the picture under the pointer or the keyboard.
+.scene-card__play {
+  position: absolute;
+  inset-inline-end: $spacing-s;
+  inset-block-end: $spacing-s;
+  display: grid;
+  place-items: center;
+  width: $button-height-m;
+  height: $button-height-m;
+  border-radius: $radius-full;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+  opacity: 0;
+  transition: opacity $transition-normal $transition-ease-out;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+    fill: currentColor;
+  }
+}
+
+.scene-card:hover .scene-card__play,
+.scene-card:focus-visible .scene-card__play {
+  opacity: 1;
+}
+
+// A loading card is shapes alone: the group's sheen passes over the page, not over a card surface.
+.atlas-skeleton-group .dashboard-card {
+  background: transparent;
+  border-color: transparent;
+
+  .dashboard-card__art {
+    border-radius: $radius-xl;
+    box-shadow: none;
+  }
+
+  .dashboard-card__body {
+    padding-inline: 0;
+  }
+}
+
+// The image that holds a card's art while the sharp picture is made (MapArt.tsx).
+.atlas-map-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.atlas-map-art__waiting {
+  border-radius: 0;
+}

@@ -51,7 +51,9 @@ describe('formatDistance', () => {
 
   it('multiplies cells by the unit distance and rounds', () => {
     expect(formatDistance(6, metric)).toBe('30ft');
-    expect(formatDistance(Math.SQRT2, metric)).toBe('7ft');
+    expect(formatDistance(Math.SQRT2, metric)).toBe('7.1ft');
+    expect(formatDistance(1, { ...metric, unitType: 'meters', unitDistance: 1.5 })).toBe('1.5m');
+    expect(formatDistance(3, { ...metric, unitType: 'meters', unitDistance: 1.5 })).toBe('4.5m');
   });
 
   it('labels each unit type', () => {
@@ -73,7 +75,7 @@ describe('resolveMeasurementSettings', () => {
       { unitType: 'meters', unitDistance: 2, measurementMode: 'metric', diagonalRule: 'alternating' },
       { ...grid, unitType: 'feet', unitDistance: 5, measurementType: 'abstract' },
     );
-    expect(settings).toEqual({ mode: 'metric', unitType: 'meters', unitDistance: 2, ruleDistance: 2, diagonalRule: 'alternating', rangeBands: [], coneAngle: 90 });
+    expect(settings).toEqual({ mode: 'metric', unitType: 'meters', unitDistance: 2, ruleDistance: 2, diagonalRule: 'alternating', difficultTerrain: 'none', rangeBands: [], coneAngle: 90 });
   });
 
   it('defaults collections without a diagonal rule to every diagonal counting 1', () => {
@@ -82,7 +84,7 @@ describe('resolveMeasurementSettings', () => {
 
   it('falls back to the map grid, measuring in range bands unless it asks for units', () => {
     expect(resolveMeasurementSettings(undefined, { ...grid, measurementType: 'units', unitType: 'meters', unitDistance: 3 }))
-      .toEqual({ mode: 'metric', unitType: 'meters', unitDistance: 3, ruleDistance: 3, diagonalRule: 'equidistant', rangeBands: [], coneAngle: 90 });
+      .toEqual({ mode: 'metric', unitType: 'meters', unitDistance: 3, ruleDistance: 3, diagonalRule: 'equidistant', difficultTerrain: 'none', rangeBands: [], coneAngle: 90 });
     expect(resolveMeasurementSettings(undefined, grid).mode).toBe('abstract');
     expect(resolveMeasurementSettings(undefined, null)).toMatchObject({ unitType: 'feet', unitDistance: 5 });
   });

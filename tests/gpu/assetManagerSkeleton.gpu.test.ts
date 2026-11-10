@@ -17,6 +17,8 @@ vi.mock('../../src/app/packages/components/asset-manager/hooks/useOpenAsset', ()
 vi.mock('../../src/app/packages/components/asset-manager/hooks/useAssetStatblockPreview', () => ({
   useAssetStatblockPreview: (): void => undefined,
 }));
+// The cards reach the token link service, which loads Node's events module.
+vi.mock('events', async () => import('eventemitter3'));
 
 /** The Obsidian variables the asset manager's sizes and colours come from, at their default values. */
 const OBSIDIAN = `
@@ -36,7 +38,8 @@ function assetsOf(tab: Tab, count: number): AnyAsset[] {
   return Array.from({ length: count }, (_, index): AnyAsset => {
     const base = { id: `${tab}-${index}`, name: `Asset ${index}`, thumbnailUrl: PIXEL, folderId: null, modifiedAt: 0 };
     switch (tab) {
-      case 'tokens': return { ...base, type: 'tokens', imageUrl: PIXEL };
+      case 'tokens':
+      case 'party': return { ...base, type: 'tokens', imageUrl: PIXEL };
       case 'maps': return { ...base, type: 'maps', imageUrl: PIXEL, mapFilePath: 'map.webp' };
       case 'scenes': return { ...base, type: 'scenes' };
       case 'encounters': return { ...base, type: 'encounters', tokens: [], tokenPreviews: [{ url: PIXEL }, { url: PIXEL }, { url: PIXEL }] };
@@ -137,7 +140,7 @@ describe('the asset manager while its content loads', () => {
     style.remove();
   });
 
-  it.each<Tab>(['tokens', 'maps', 'scenes', 'encounters'])('puts the %s where their placeholders stood', async (tab) => {
+  it.each<Tab>(['tokens', 'party', 'maps', 'scenes', 'encounters'])('puts the %s where their placeholders stood', async (tab) => {
     flushSync(() => root.render(React.createElement(Content, contentProps(tab, true))));
     await expect.poll(() => boxesOf(host, '.atlas-content-skeleton .atlas-asset-card').length).toBe(CARDS_COMPARED);
     const skeletonCards = boxesOf(host, '.atlas-content-skeleton .atlas-asset-card');
@@ -263,15 +266,15 @@ describe('the asset manager while its content loads', () => {
     const widthWith = async (assetCounts: Record<Tab, number> | null): Promise<number[]> => {
       flushSync(() => root.render(React.createElement('div', { className: 'atlas-asset-manager-header' },
         React.createElement(TabSwitcher, { activeTab: 'tokens', onTabChange: noop, assetCounts }))));
-      await expect.poll(() => host.querySelectorAll('.atlas-tab-button').length).toBe(4);
+      await expect.poll(() => host.querySelectorAll('.atlas-tab-button').length).toBe(5);
       await settled();
       return Array.from(host.querySelectorAll<HTMLElement>('.atlas-tab-button')).map((tab) => tab.getBoundingClientRect().width);
     };
 
     const counting = await widthWith(null);
-    const counted = await widthWith({ scenes: 12, maps: 34, encounters: 5, tokens: 87 });
+    const counted = await widthWith({ scenes: 12, maps: 34, encounters: 5, tokens: 87, party: 4 });
 
-    expect(counting).toHaveLength(4);
+    expect(counting).toHaveLength(5);
     counting.forEach((width, index) => expect(Math.abs(width - counted[index]!)).toBeLessThanOrEqual(SLACK));
   });
 });

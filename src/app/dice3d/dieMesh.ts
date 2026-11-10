@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { atlasLayout } from './atlasCell';
 import { buildTextures, diceArtworkReady, loadDiceArtwork } from './dieArtwork';
 import { dieGeometry, type DieSides } from './dieGeometry';
+import { colouredAssets, refreshColouredDice } from './dieColours';
 import { activeLook } from './dieSkin';
 import { FACE_CELL_REACH, faceFrame } from './faceFrame';
 import { vAdd, vCross, vDot, vNormalize, vScale, vSub, type Vec3 } from './vectorMath';
@@ -147,7 +148,12 @@ export function chamferedGeometry(sides: DieSides): THREE.BufferGeometry {
   return geometry;
 }
 
-export function dieAssets(sides: DieSides): DieAssets {
+/**
+ * The body and material of a die of `sides`, shared by every die of its kind;
+ * in `colour` (`#rrggbb`) its faces are painted in that colour (`dieColours.ts`).
+ */
+export function dieAssets(sides: DieSides, colour?: string): DieAssets {
+  if (colour !== undefined) return colouredAssets(dieAssets(sides), sides, colour);
   const cached = assetCache.get(sides);
   if (cached !== undefined) return cached;
 
@@ -180,9 +186,7 @@ export function dieAssets(sides: DieSides): DieAssets {
 
 /** Redraws the faces of every cached body, or of one: when the artwork arrives or the look changes. */
 export function refreshDieArtwork(sides?: DieSides): void {
-  if (sides !== undefined) {
-    assetCache.get(sides)?.redraw();
-    return;
-  }
-  for (const assets of assetCache.values()) assets.redraw();
+  if (sides !== undefined) assetCache.get(sides)?.redraw();
+  else for (const assets of assetCache.values()) assets.redraw();
+  refreshColouredDice(sides);
 }

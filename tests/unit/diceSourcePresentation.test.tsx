@@ -1,6 +1,7 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { DiceToast } from '../../src/app/react/components/dice/DiceToast';
@@ -8,9 +9,13 @@ import { DiceRollHeader } from '../../src/app/react/components/dice3d/DiceRollHe
 import { useDiceAvatar } from '../../src/app/react/components/dice/useDiceAvatar';
 import type { RollSourcePresentation } from '../../src/app/react/components/dice/diceSourcePresentation';
 import type { DiceRollResult } from '../../src/app/types/diceTypes';
+import { AssetService, type TokenAsset } from '../../src/app/services/AssetService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 /** A roll that still carries everything about its source, as the GM's window gets it. */
 const result: DiceRollResult = {
@@ -63,5 +68,28 @@ describe('who a shown roll names', () => {
     const [neither, header] = shown({ name: null, avatar: null }, app);
     expect(neither!.querySelector('.atlas-dice-toast__avatar, .atlas-dice-toast__name')).toBeNull();
     expect(header!.querySelector('img')).toBeNull();
+  });
+});
+
+describe('the portrait of a roll whose token is not on the map', () => {
+  const { app } = createInMemoryApp({
+    files: {
+      'Bestiary/Wolf.md': '---\nimage: Art/wolf.webp\n---\n',
+      'Art/wolf.webp': '',
+      'tokens/wolf.webp': '',
+    },
+  });
+
+  it('is the library token linked to the statblock, framed by its ring, not the statblock\'s raw art', () => {
+    const token = { id: 't', type: 'token', name: 'Wolf', imagePath: 'tokens/wolf.webp', statblockPath: 'Bestiary/Wolf.md', showRing: true } as TokenAsset;
+    vi.spyOn(AssetService, 'getInstance').mockReturnValue({
+      loadedTokenAssets: () => [token],
+      findTokenAssetByImagePath: (path: string) => (path === token.imagePath ? token : null),
+      initialize: async () => undefined,
+    } as unknown as AssetService);
+    const roll: DiceRollResult = { ...result, source: { type: 'statblock', statblockPath: 'Bestiary/Wolf.md', tokenName: 'Wolf', abilityName: 'Bite' } };
+    const header = inView(app, <DiceRollHeader result={roll} label="Bite" useAvatar={useDiceAvatar} />);
+    expect(header.querySelector('img')?.getAttribute('src')).toContain('tokens/wolf.webp');
+    expect(header.querySelector('.atlas-token-ring')).not.toBeNull();
   });
 });

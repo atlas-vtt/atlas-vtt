@@ -29,7 +29,7 @@ const THEME = `
   button { height: 30px; }
 `;
 const h = React.createElement;
-const diceTool = { rollDice: () => true } as unknown as DiceTool;
+const diceTool = { rollDice: () => true, rollingDice: () => ({ dice: [{ count: 1, sides: 20 }], crit: 'natural' }) } as unknown as DiceTool;
 
 describe('the show my rolls to players switch', () => {
   const style = document.createElement('style');

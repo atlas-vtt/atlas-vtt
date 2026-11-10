@@ -35,7 +35,7 @@ function fakeIndex(): CreatureSource & {
   const listeners = new Set<() => void>();
   const tell = (): void => { for (const listener of [...listeners]) listener(); };
   const put = (path: string, senses: string | null): void => {
-    entries.set(path, senses === null ? null : { path, fields: { senses }, layout: null });
+    entries.set(path, senses === null ? null : { path, fields: { senses }, templateId: null, meanings: {}, lookName: null });
   };
   return {
     listeners,

@@ -1,8 +1,8 @@
-import { Notice } from 'obsidian';
 import type { AtlasView } from '../atlas-view';
 import { confirmAction } from '../ui/confirmDialog';
 import { t } from '../i18n';
 import type { SceneSnapshotEntry, SceneSnapshotService } from './SceneSnapshotService';
+import { showNotice } from '../ui/notice';
 
 /** Asks before a snapshot replaces the map; restoring loses what changed since and cannot be undone. */
 export function confirmSnapshotRestore(entry: SceneSnapshotEntry): Promise<boolean> {
@@ -20,5 +20,5 @@ export function confirmSnapshotRestore(entry: SceneSnapshotEntry): Promise<boole
 /** Restores `entry` over the scene `view` shows and tells the GM. Throws when the rewrite fails. */
 export async function restoreSnapshotInView(view: AtlasView, service: SceneSnapshotService, entry: SceneSnapshotEntry): Promise<void> {
   await view.reloadActiveScene((file) => service.restoreInto(file, entry.snapshot));
-  new Notice(t('snapshots.restored', { name: entry.snapshot.name }));
+  showNotice(t('snapshots.restored', { name: entry.snapshot.name }));
 }

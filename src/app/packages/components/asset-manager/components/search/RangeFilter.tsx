@@ -4,6 +4,7 @@ import { formatRange, formatRating } from '../../../../../creatures/creatureValu
 import type { NumericRange } from '../../../../../types/creatureFilterTypes';
 import { Slider } from '../../../primitives/slider';
 import { FilterSection } from './FilterSection';
+import { RangeBoundInput } from './RangeBoundInput';
 import { t } from '../../../../../i18n';
 
 interface RangeFilterProps {
@@ -29,8 +30,9 @@ function indexOf(values: readonly number[], bound: number, edge: 'min' | 'max'):
 
 /**
  * A scale such as CR: bars show how many tokens have each value, the slider
- * steps through exactly those values. The list follows on release, so dragging
- * does not refilter at every step.
+ * steps through exactly those values, and its two ends are fields to type a
+ * bound into, which snaps to the nearest value the tokens have. The list
+ * follows on release, so dragging does not refilter at every step.
  */
 export function RangeFilter({ facet, onChange }: RangeFilterProps): React.JSX.Element | null {
   const values = useMemo(() => facet.values.map((entry) => entry.value), [facet.values]);
@@ -65,6 +67,15 @@ export function RangeFilter({ facet, onChange }: RangeFilterProps): React.JSX.El
     if (min === undefined || max === undefined) return;
     onChange(from === 0 && to === last ? null : { min, max });
   };
+  // A typed lower bound above the upper one moves the upper with it, and the other way round.
+  const commitLow = (bound: number): void => {
+    const from = indexOf(values, bound, 'min');
+    commit([from, Math.max(from, high)]);
+  };
+  const commitHigh = (bound: number): void => {
+    const to = indexOf(values, bound, 'max');
+    commit([Math.min(low, to), to]);
+  };
 
   return (
     <FilterSection title={label} summary={summary} active={Boolean(facet.selected)}>
@@ -92,9 +103,9 @@ export function RangeFilter({ facet, onChange }: RangeFilterProps): React.JSX.El
             getValueText={(index) => formatRating(values[index] ?? 0)}
           />
         )}
-        <div className="atlas-filter-range__ends" aria-hidden="true">
-          <span>{formatRating(values[0] ?? 0)}</span>
-          <span>{formatRating(values[last] ?? 0)}</span>
+        <div className="atlas-filter-range__ends">
+          <RangeBoundInput value={values[low] ?? 0} label={t('filters.lowest', { label })} align="start" onCommit={commitLow} />
+          <RangeBoundInput value={values[high] ?? 0} label={t('filters.highest', { label })} align="end" onCommit={commitHigh} />
         </div>
       </div>
     </FilterSection>

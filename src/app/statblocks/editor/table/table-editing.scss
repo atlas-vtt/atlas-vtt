@@ -1,0 +1,259 @@
+@use '../../../../../styles/tokens' as *;
+
+// A Table typed in place (`EditableTable`), as Obsidian's Live Preview table
+// widget draws its editing: its `--table-*` variables, its handles, add
+// buttons, selection and drop line. Everything here stands out of the flow
+// (in the room `_sheet-table.scss` keeps around the table) or changes no box,
+// so the card is laid out as the card at rest is.
+
+.atlas-vtt-plugin .atlas-sb-sheet {
+  --atlas-sb-sheet-table-selection: var(--table-selection, color-mix(in oklch, var(--interactive-accent) 10%, transparent));
+  --atlas-sb-sheet-table-ring: var(--table-selection-border-color, var(--interactive-accent));
+  --atlas-sb-sheet-table-ring-width: var(--table-selection-border-width, 2px);
+  --atlas-sb-sheet-table-ring-radius: var(--table-selection-border-radius, #{$radius-s});
+
+  [data-table-live] {
+    outline: none;
+
+    // The frame takes focus only for a selected row or column, which its selection shows; a keyboard that lands on it without one sees the frame.
+    &:focus-visible:not(.has-selection) {
+      outline: 2px solid var(--background-modifier-border-focus);
+      outline-offset: $spacing-xs;
+    }
+
+    :is(th, td)[data-table-row] {
+      position: relative;
+      cursor: text;
+    }
+  }
+
+  // ── The cell being typed ──────────────────────────────────────────────────
+  // The text's copy under the field gives the cell its size; the field lies
+  // over it in the same font, so the caret stands where the text stood.
+  .atlas-sb-sheet-table__typing {
+    position: relative;
+    display: block;
+  }
+
+  .atlas-sb-sheet-table__sizer {
+    display: block;
+    visibility: hidden;
+  }
+
+  textarea.atlas-sb-sheet-table__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
+    text-align: inherit;
+    text-transform: inherit;
+    white-space: inherit;
+    resize: none;
+    appearance: none;
+
+    &:focus,
+    &:focus-visible {
+      border: none;
+      outline: none;
+      box-shadow: none;
+    }
+
+    &::placeholder {
+      color: var(--text-faint);
+      font-weight: var(--font-normal, 400);
+      opacity: 1;
+    }
+  }
+
+  // The typed cell's ring, and a selected row's or column's wash with a ring round its outside: Obsidian's selection.
+  :is(th, td).is-typing::after,
+  :is(th, td).is-selected::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: calc(-1 * var(--table-border-width, 1px));
+    border: 0 solid var(--atlas-sb-sheet-table-ring);
+    pointer-events: none;
+  }
+
+  :is(th, td).is-typing::after {
+    border-width: var(--atlas-sb-sheet-table-ring-width);
+    border-radius: var(--atlas-sb-sheet-table-ring-radius);
+    inset: calc(-1 * var(--atlas-sb-sheet-table-ring-width));
+  }
+
+  :is(th, td).is-selected::after {
+    background-color: var(--atlas-sb-sheet-table-selection);
+    mix-blend-mode: var(--table-selection-blend-mode, normal);
+  }
+
+  :is(th, td).is-selected.is-top::after {
+    top: calc(-1 * var(--atlas-sb-sheet-table-ring-width));
+    border-top-width: var(--atlas-sb-sheet-table-ring-width);
+  }
+
+  :is(th, td).is-selected.is-bottom::after {
+    bottom: calc(-1 * var(--atlas-sb-sheet-table-ring-width));
+    border-bottom-width: var(--atlas-sb-sheet-table-ring-width);
+  }
+
+  :is(th, td).is-selected.is-start::after {
+    left: calc(-1 * var(--atlas-sb-sheet-table-ring-width));
+    border-left-width: var(--atlas-sb-sheet-table-ring-width);
+  }
+
+  :is(th, td).is-selected.is-end::after {
+    right: calc(-1 * var(--atlas-sb-sheet-table-ring-width));
+    border-right-width: var(--atlas-sb-sheet-table-ring-width);
+  }
+
+  :is(th, td).is-selected.is-top.is-start::after { border-top-left-radius: var(--atlas-sb-sheet-table-ring-radius); }
+  :is(th, td).is-selected.is-top.is-end::after { border-top-right-radius: var(--atlas-sb-sheet-table-ring-radius); }
+  :is(th, td).is-selected.is-bottom.is-start::after { border-bottom-left-radius: var(--atlas-sb-sheet-table-ring-radius); }
+  :is(th, td).is-selected.is-bottom.is-end::after { border-bottom-right-radius: var(--atlas-sb-sheet-table-ring-radius); }
+
+  // ── Handles and add buttons ──────────────────────────────────────────────
+  // Seen while pointed at, as Obsidian's; they take the pointer only while the
+  // table is pointed at, so the room they stand in never takes a click meant
+  // for the block beside the table.
+  :is(.atlas-sb-sheet-table__handle, .atlas-sb-sheet-table__add) {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--text-faint);
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
+
+    svg {
+      width: var(--icon-s, 16px);
+      height: var(--icon-s, 16px);
+      stroke-width: var(--icon-s-stroke-width, 2px);
+      pointer-events: none;
+    }
+  }
+
+  [data-table-live]:hover :is(.atlas-sb-sheet-table__handle, .atlas-sb-sheet-table__add) {
+    pointer-events: auto;
+  }
+
+  .atlas-sb-sheet-table__handle {
+    z-index: 2;
+    background-color: var(--table-drag-handle-background, transparent);
+    color: var(--table-drag-handle-color, var(--text-faint));
+    cursor: grab;
+    touch-action: none;
+
+    &:hover,
+    &[data-selected] {
+      opacity: 1;
+    }
+
+    &:active,
+    &[data-selected] {
+      background-color: var(--table-drag-handle-background-active, var(--atlas-sb-sheet-table-ring));
+      color: var(--table-drag-handle-color-active, var(--text-on-accent));
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  // A held handle follows the pointer along the table (`TableDrag`).
+  .atlas-sb-sheet-table__handle--row {
+    transform: translateY(var(--atlas-sb-sheet-table-drag-shift, 0));
+    top: 0;
+    right: 100%;
+    width: calc(var(--atlas-sb-sheet-table-handle) - var(--atlas-sb-sheet-table-ring-width));
+    height: 100%;
+    border-start-start-radius: $radius-s;
+    border-end-start-radius: $radius-s;
+  }
+
+  .atlas-sb-sheet-table__handle--column {
+    transform: translateX(var(--atlas-sb-sheet-table-drag-shift, 0));
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    height: calc(var(--atlas-sb-sheet-table-handle) - var(--atlas-sb-sheet-table-ring-width));
+    border-start-start-radius: $radius-s;
+    border-start-end-radius: $radius-s;
+  }
+
+  .atlas-sb-sheet-table__add {
+    border: var(--table-add-button-border-width, 1px) solid var(--table-add-button-border-color, var(--background-modifier-border));
+    background-color: var(--table-add-button-background, transparent);
+    transition: opacity 0s 0.1s;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .atlas-sb-sheet-table__add--row {
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: var(--atlas-sb-sheet-table-handle);
+    border-top: none;
+    cursor: s-resize;
+  }
+
+  .atlas-sb-sheet-table__add--column {
+    top: 0;
+    left: 100%;
+    width: var(--atlas-sb-sheet-table-handle);
+    height: 100%;
+    border-left: none;
+    cursor: e-resize;
+  }
+
+  // While a row or column is dragged, its handle alone shows.
+  .is-dragging :is(.atlas-sb-sheet-table__handle:not([data-selected]), .atlas-sb-sheet-table__add) {
+    visibility: hidden;
+  }
+
+  // ── The drop line ─────────────────────────────────────────────────────────
+  .atlas-sb-sheet-table__drop {
+    --atlas-sb-sheet-table-drop: var(--table-drop-indicator-half-width, 2px);
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    left: 0;
+    border-radius: 2px;
+    background-color: var(--interactive-accent);
+    pointer-events: none;
+  }
+
+  .atlas-sb-sheet-table__drop--row {
+    height: calc(2 * var(--atlas-sb-sheet-table-drop));
+    margin-top: calc(-1 * var(--atlas-sb-sheet-table-drop));
+  }
+
+  .atlas-sb-sheet-table__drop--column {
+    width: calc(2 * var(--atlas-sb-sheet-table-drop));
+    margin-left: calc(-1 * var(--atlas-sb-sheet-table-drop));
+  }
+}

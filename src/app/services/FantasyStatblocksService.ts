@@ -48,6 +48,39 @@ function getLayoutManager(app: App): LayoutManager | null {
   return plugin?.manager ?? null;
 }
 
+/**
+ * Every layout Fantasy Statblocks holds, its bundled ones among them; null
+ * while the plugin or its layout manager (not API) is missing or answers
+ * otherwise than expected.
+ */
+export function allLayouts(app: App): StatblockLayout[] | null {
+  const manager = getLayoutManager(app);
+  if (typeof manager?.getAllLayouts !== 'function') return null;
+  try {
+    const layouts: unknown = manager.getAllLayouts();
+    return Array.isArray(layouts) ? (layouts as StatblockLayout[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A layout of Fantasy Statblocks by its id, else its name; never the default in its place. */
+export function findLayout(app: App, idOrName: string): StatblockLayout | null {
+  const layouts = allLayouts(app) ?? [];
+  return layouts.find((layout) => layout.id === idOrName) ?? layouts.find((layout) => layout.name === idOrName) ?? null;
+}
+
+/** The layout Fantasy Statblocks draws a statblock with that names none; null without the plugin. */
+export function defaultLayout(app: App): StatblockLayout | null {
+  const manager = getLayoutManager(app);
+  if (typeof manager?.getDefaultLayout !== 'function') return null;
+  try {
+    return manager.getDefaultLayout() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Resolves a layout by name or id, falling back to the configured default. */
 export function resolveLayout(app: App, nameOrId?: string): StatblockLayout | null {
   const manager = getLayoutManager(app);

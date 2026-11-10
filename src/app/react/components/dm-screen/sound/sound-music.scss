@@ -1,0 +1,363 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
+
+// The music card: what plays, what comes next, the waveform, and a fader of its own.
+// It takes the room the strips leave, so Master never stands far from them.
+.atlas-sound-music {
+  flex: 1 1 500px;
+  min-width: 348px;
+  display: flex;
+  gap: $spacing-m;
+  padding: $spacing-m;
+
+  @container atlas-dm-screen (min-width: 1700px) {
+    min-width: 380px;
+  }
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    min-width: 320px;
+  }
+}
+
+.atlas-sound-music__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.atlas-sound-music__track {
+  @include atlas-truncate;
+  grid-column: 1 / -1;
+  min-height: 28px;
+  font-size: $font-ui-large;
+  font-weight: $font-weight-semibold;
+  letter-spacing: -0.01em;
+  color: var(--mono-100);
+}
+
+.atlas-sound-music__next {
+  @include atlas-truncate;
+  grid-column: 1 / -1;
+  min-height: 18px;
+  margin-top: $spacing-xs;
+  color: var(--atlas-sound-muted);
+}
+
+.atlas-sound-music__wave {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  position: relative;
+  align-self: end;
+  height: 62px;
+  max-height: 100%;
+  color: var(--interactive-accent);
+  cursor: pointer;
+  touch-action: none;
+
+  &[hidden] {
+    display: none;
+  }
+
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+// A card this narrow has room for its controls and the time, not the length as well.
+@container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+  .atlas-sound-music__total {
+    display: none;
+  }
+
+  .atlas-sound-music__actions {
+    gap: 0;
+    padding-inline-end: 0;
+
+    .atlas-sound-icon {
+      width: 28px;
+    }
+
+    // Side by side here, their boxes would overlap: the plain 28 px buttons (the wide rule comes later in the
+    // file, so this one outranks it).
+    .atlas-sound-icon.atlas-sound-music__transport {
+      width: 28px;
+      height: 32px;
+      margin: 0;
+      padding: 0;
+      border-radius: $control-radius;
+    }
+  }
+}
+
+.atlas-sound-music__unplayed {
+  color: $control-line;
+}
+
+.atlas-sound-music__clock {
+  grid-row: 4;
+  margin-top: $spacing-s;
+  color: var(--atlas-sound-muted);
+  font-variant-numeric: tabular-nums;
+  // "1:56 / 2:30" is one reading: it never breaks at the slash.
+  white-space: nowrap;
+}
+
+.atlas-sound-music__total {
+  margin-inline-start: $spacing-xs;
+}
+
+.atlas-sound-music__actions {
+  grid-row: 4;
+  grid-column: 2;
+  display: flex;
+  gap: $spacing-xs;
+  margin-top: $spacing-s;
+  // Skip's press area ends inside the card.
+  padding-inline-end: $spacing-xs;
+}
+
+// How the list goes on is the card's secondary row: a step narrower than the transport.
+.atlas-sound-music__actions .atlas-sound-music__quiet {
+  width: 28px;
+}
+
+// Back, Pause and Skip are the card's primary controls: each button is a 44 px box (what a press and an audit
+// meet), drawn as its 36 px middle (`background-clip`, the radius grown by the padding), and set into the row by
+// a negative margin of the same step, so every distance stays on the 4 px scale and no box reaches another control.
+$transport-pad: $spacing-xs;
+
+.atlas-sound-music__actions .atlas-sound-music__transport {
+  width: 36px + 2 * $transport-pad;
+  height: 36px + 2 * $transport-pad;
+  margin: (-$transport-pad) 0;
+  padding: $transport-pad;
+  // Drawn at 12 (the panels' step, these are the card's largest buttons), so the box rounds at the cards' 16.
+  border-radius: calc(#{$radius-xl} + #{$transport-pad});
+  background-clip: content-box;
+}
+
+// The list open: the waveform stays to seek on, shorter, and the list takes what is left of the card.
+.atlas-sound-music__body[data-list-open] {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+
+  .atlas-sound-music__wave {
+    height: 28px;
+    margin-top: $spacing-xs;
+  }
+
+  .atlas-sound-music__clock,
+  .atlas-sound-music__actions {
+    grid-row: 5;
+  }
+
+  // Where the desk is low the list says what comes.
+  @container atlas-dm-screen (max-height: 760px) {
+    .atlas-sound-music__next {
+      display: none;
+    }
+  }
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    .atlas-sound-music__next {
+      display: none;
+    }
+  }
+}
+
+// What says how the list goes on stays out of sight until it is wanted, as a strip's remove does, unless it is on.
+.atlas-sound-music__quiet {
+  opacity: 0;
+  transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+
+  &[aria-pressed='true'] {
+    opacity: 1;
+  }
+}
+
+.atlas-sound-music:hover .atlas-sound-music__quiet,
+.atlas-sound-music:focus-within .atlas-sound-music__quiet {
+  opacity: 1;
+}
+
+.atlas-sound-queue {
+  @include atlas-scrollbar;
+  grid-column: 1 / -1;
+  grid-row: 4;
+  align-self: stretch;
+  min-height: 0;
+  margin-top: $spacing-xs;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.atlas-sound-queue__head {
+  @include atlas-flex-row($spacing-xs);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  justify-content: space-between;
+  background: var(--background-primary-alt);
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+
+  .atlas-sound-icon {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+// Stop after this track, a word toggle beside what is left: pressed, it carries a tick.
+.atlas-sound-queue__stop {
+  @include bare-button;
+  height: 24px;
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: 0 $spacing-s;
+  border-radius: $control-radius;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  &:hover:not(:disabled) {
+    background: $hairline;
+    color: var(--text-normal);
+  }
+
+  &[aria-pressed='true'] {
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    color: var(--text-normal);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.atlas-sound-tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-sound-track {
+  @include atlas-flex-row($spacing-xs);
+  border-radius: $control-radius;
+  @include atlas-corner-shape;
+
+  .atlas-sound-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+  }
+
+  .atlas-sound-track__waiting {
+    flex: 0 0 auto;
+    padding-inline: $spacing-xs;
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
+  }
+
+  // The tint and the mark say which; the words stay the normal text's, which reads on the tint.
+  &[data-current] {
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    color: var(--text-normal);
+    font-weight: $font-weight-semibold;
+
+    .atlas-sound-track__length {
+      color: inherit;
+    }
+  }
+
+  &[data-dragging] {
+    opacity: 0.6;
+  }
+}
+
+.atlas-sound-track__name {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+}
+
+.atlas-sound-track__length {
+  flex-shrink: 0;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-sound-track__mark {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--interactive-accent);
+
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.8;
+  }
+}
+
+.atlas-sound-track .atlas-sound-track__grip {
+  width: 16px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.atlas-sound-track__grip,
+.atlas-sound-track__menu,
+.atlas-sound-track__remove {
+  opacity: 0;
+  transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+}
+
+.atlas-sound-track:hover .atlas-sound-track__grip,
+.atlas-sound-track:hover .atlas-sound-track__menu,
+.atlas-sound-track:hover .atlas-sound-track__remove,
+.atlas-sound-track:focus-within .atlas-sound-track__grip,
+.atlas-sound-track:focus-within .atlas-sound-track__menu,
+.atlas-sound-track:focus-within .atlas-sound-track__remove {
+  opacity: 1;
+}
+
+.atlas-sound-played__toggle {
+  @include bare-button;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: $spacing-xs;
+  margin-top: $spacing-xs;
+  border-radius: $radius-s;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+
+  svg {
+    width: 12px;
+    height: 12px;
+    transition: transform $transition-fast $press-ease;
+  }
+
+  &[aria-expanded='true'] svg {
+    transform: rotate(90deg);
+  }
+}

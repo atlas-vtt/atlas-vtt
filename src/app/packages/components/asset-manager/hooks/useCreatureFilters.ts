@@ -10,6 +10,7 @@ import {
   type CreatureFilterSelection,
 } from '../../../../types/creatureFilterTypes';
 import type { AnyAsset, Folder, TokenAsset } from '../types';
+import { isCharacterTab } from '../utils/tabKinds';
 import { filterAssets, type AssetFilter } from '../utils/assetFilter';
 
 /** The creature filters of the Characters tab, as the filter panel and the search show and edit them. */
@@ -60,7 +61,7 @@ const NO_PATHS: string[] = [];
  * dropped.
  */
 export function useCreatureFilters({ app, definitions, isOpen, assets, folders, filter }: CreatureFilteringOptions): CreatureFiltering {
-  const enabled = filter.tab === 'tokens';
+  const enabled = isCharacterTab(filter.tab);
   const [storedSelection, setStoredSelection] = useState<CreatureFilterSelection>(emptyCreatureSelection);
   const selection = useMemo(() => pruneSelection(storedSelection, definitions), [storedSelection, definitions]);
 

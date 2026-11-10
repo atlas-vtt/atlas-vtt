@@ -16,6 +16,37 @@ describe('statblock resource sync', () => {
     const token = { resources: { hp: { current: 3, max: 20 }, ammo: { current: 2, max: 6 } }, overriddenMax: ['hp'] };
     expect(syncedResources(token, { hp: 8 }, [HP_RESOURCE])).toEqual({ hp: { current: 3, max: 20 }, ammo: { current: 2, max: 6 } });
   });
+
+  it('follows a static value down to 0', () => {
+    const ac = { ...STR, key: 'ac', name: 'AC', field: 'ac', direction: 'static' as const };
+    expect(syncedResources({ resources: { ac: { current: 2, max: 2 } } }, { ac: 0 }, [ac])).toEqual({ ac: { current: 0, max: 0 } });
+  });
+  describe('a field the statblock empties', () => {
+    const token = { resources: { hp: { current: 10, max: 14 } } };
+
+    it.each([['emptied', null], ['blank', '  '], ['set to 0', 0]])('drops the resource when its field is %s', (_case, hp) => {
+      expect(syncedResources(token, { hp }, [HP_RESOURCE])).toEqual({});
+    });
+
+    it('keeps the value while the field is absent or holds no quantity yet', () => {
+      expect(syncedResources(token, { name: 'Troll' }, [HP_RESOURCE])).toEqual(token.resources);
+      expect(syncedResources(token, { hp: '2d6' }, [HP_RESOURCE])).toEqual(token.resources);
+    });
+
+    it('drops the resource when a field the statblock holds empty is missing from its record', () => {
+      expect(syncedResources(token, { name: 'Troll' }, [HP_RESOURCE], undefined, ['hp'])).toEqual({});
+    });
+
+    it('keeps a maximum set by hand', () => {
+      const byHand = { ...token, overriddenMax: ['hp'] };
+      expect(syncedResources(byHand, { hp: null }, [HP_RESOURCE])).toEqual(token.resources);
+    });
+
+    it('drops a static value only when its field is emptied', () => {
+      const ac = { ...STR, key: 'ac', name: 'AC', field: 'ac', direction: 'static' as const };
+      expect(syncedResources({ resources: { ac: { current: 2, max: 2 } } }, { ac: null }, [ac])).toEqual({});
+    });
+  });
 });
 
 describe('fillMissingResources', () => {
@@ -23,7 +54,7 @@ describe('fillMissingResources', () => {
   const statblocks: Record<string, Record<string, unknown>> = { 'Troll.md': { hp: 14, stats: [15, 12, 7] }, 'Rat.md': { hp: 2 } };
   const run = async (tokens: Record<string, object>, definitions = [HP_RESOURCE, STR]) => {
     const apply = vi.fn();
-    const read = vi.fn(async (path: string) => statblocks[path] ?? null);
+    const read = vi.fn(async (path: string) => (statblocks[path] ? { fields: statblocks[path] } : null));
     await fillMissingResources({ tokens: () => tokens as never, apply }, definitions, read);
     return { apply, read };
   };

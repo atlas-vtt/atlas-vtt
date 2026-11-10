@@ -3,11 +3,16 @@ import { vi } from 'vitest';
 import { TFile } from 'obsidian';
 import type { Character } from '../../src/app/types';
 import type { LinkChangeEvent } from '../../src/app/services/TokenStatblockLinkService';
+import type { TokenAsset } from '../../src/app/services/AssetService';
 import { createInMemoryApp } from './inMemoryVault';
 
 export function character(overrides: Partial<Character> = {}): Character {
   return { id: 'hero', kind: 'character', x: 10, y: 20, size: 1, imagePath: 'hero.png', layer: 0,
     isHidden: false, rotation: 0, statblockPath: 'Hero.md', name: 'Custom', ...overrides };
+}
+
+export function tokenAsset(overrides: Partial<TokenAsset> = {}): TokenAsset {
+  return { id: 'asset', name: 'Hero', type: 'token', imagePath: 'new.png', collection: 'Default', tags: [], createdAt: 0, modifiedAt: 0, ...overrides };
 }
 
 export function statblockFixture(): ReturnType<typeof makeFixture> {
@@ -21,12 +26,13 @@ function makeFixture() {
   const events = new EventEmitter();
   const links = Object.assign(events, {
     readStatblockImage: vi.fn((): string | null => null),
-    getTokenLinkedToStatblock: vi.fn(async (): Promise<string | null> => null),
+    findAssetByAnyPath: vi.fn(async (): Promise<TokenAsset | null> => null),
     getStatblockLinkedToToken: vi.fn(async (): Promise<string | null> => null),
-    arePathsEquivalent: vi.fn((left: string, right: string): boolean => left === right),
     linkTokenToStatblock: vi.fn(async (): Promise<boolean> => true),
-    unlinkToken: vi.fn(async (): Promise<boolean> => true),
-    readStatblockRecord: vi.fn(async (): Promise<Readonly<Record<string, unknown>> | null> => ({ hp: 20, stress: 6 })),
+    // What the statblock resolver reads from the note: its fields, as the note's frontmatter holds them.
+    readStatblockRecord: vi.fn(async (): Promise<{ fields: Readonly<Record<string, unknown>> } | null> => ({
+      fields: { name: 'Hero', hp: 20, stress: 6, difficulty: 15 },
+    })),
   });
   const ref = app.metadataCache.on('changed', () => {});
   let changed: (file: TFile) => Promise<void> = async () => {};

@@ -1,0 +1,232 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Dice sets to pick from (DiceSetPicker): the Dice tab's default dice and a
+// template's Dice rolls…, each set a row with its dice drawn before its name;
+// and a die drawn small (DieStill), which the rows and the Sides step share.
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// `STACK_WIDTH` and `DIE_HEIGHT` in SetDice.tsx
+$dice-stack-width: 80px;
+$dice-stack-height: 48px;
+$list-inset: $spacing-xs;
+
+// ── A die drawn small ──────────────────────────────────────────────────────
+.atlas-die-still {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.atlas-die-still__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+
+  // Drawn after the first paint: it settles in rather than popping
+  &.atlas-arriving {
+    animation: atlas-die-still-arrive 220ms $transition-ease-out both;
+  }
+}
+
+@keyframes atlas-die-still-arrive {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+
+.atlas-die-still__skeleton.atlas-skeleton {
+  width: auto;
+  height: 62%;
+  aspect-ratio: 1;
+}
+
+// No body (a d7, or no 3D dice): the tray's flat tile, its sides on it.
+.atlas-dice-lab__plain-die.atlas-die-still__plain {
+  width: auto;
+  height: 72%;
+  aspect-ratio: 1;
+  font-size: 11px;
+}
+
+// ── The list ───────────────────────────────────────────────────────────────
+.atlas-dice-picker {
+  @include atlas-flex-col($list-inset);
+  padding: $list-inset;
+  border-radius: $radius-xl;
+  @include atlas-corner-shape;
+  background: var(--background-secondary);
+}
+
+.atlas-dice-picker__rule {
+  height: $border-width-s;
+  margin-inline: $spacing-s;
+  background: var(--background-modifier-border);
+}
+
+// One set: its dice, its name over its facts, and a tick when it is chosen.
+.atlas-dice-picker__choice {
+  display: grid;
+  grid-template-columns: $dice-stack-width minmax(0, 1fr) $icon-s;
+  align-items: center;
+  gap: $spacing-s;
+  min-height: calc(#{$dice-stack-height} + 2 * #{$spacing-s});
+  padding: $spacing-s;
+  // Concentric with the list's corner: the list's radius less its inset
+  border-radius: calc(#{$radius-xl} - #{$list-inset});
+  @include atlas-corner-shape;
+  color: var(--text-normal);
+  cursor: pointer;
+  outline: none;
+  transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+  }
+
+  &.atlas-selected {
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--interactive-accent) 70%, transparent);
+
+    &:focus-visible {
+      box-shadow:
+        inset 0 0 0 $border-width-m color-mix(in oklch, var(--interactive-accent) 70%, transparent),
+        0 0 0 2px var(--background-modifier-border-focus);
+    }
+  }
+
+  &:active:not([aria-disabled='true']) .atlas-dice-picker__dice {
+    transform: scale(0.96);
+  }
+
+  &[aria-disabled='true'] {
+    cursor: default;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-dice-picker__choice:not(.atlas-selected):not([aria-disabled='true']):hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+// The dice overlap in a column of their own, so every name starts on one line.
+.atlas-dice-picker__dice {
+  position: relative;
+  width: $dice-stack-width;
+  height: $dice-stack-height;
+  transition: transform $transition-press $transition-ease-out;
+}
+
+.atlas-dice-picker__die {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+// How many of the set's dice the stack leaves out, at its corner.
+.atlas-dice-picker__more {
+  position: absolute;
+  inset-inline-end: 0;
+  bottom: 0;
+  min-width: 20px;
+  height: 16px;
+  padding-inline: $spacing-xs;
+  border-radius: $radius-full;
+  background: var(--background-primary);
+  box-shadow: 0 0 0 $border-width-s var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+}
+
+.atlas-dice-picker__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.atlas-dice-picker__title {
+  @include atlas-flex-row($spacing-s);
+  min-width: 0;
+}
+
+.atlas-dice-picker__name {
+  @include atlas-truncate;
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  line-height: var(--line-height-tight, 1.3);
+  color: var(--text-normal);
+}
+
+.atlas-dice-picker__lock {
+  flex: none;
+  width: $icon-xs;
+  height: $icon-xs;
+  color: var(--text-faint);
+}
+
+// The entry every other is measured against: the collection's dice.
+.atlas-dice-picker__badge {
+  flex: none;
+  padding: 1px $spacing-s;
+  border-radius: $radius-full;
+  background: color-mix(in oklch, var(--interactive-accent) 16%, transparent);
+  color: var(--text-accent);
+  font-size: 11px;
+  font-weight: $font-weight-medium;
+  line-height: 16px;
+}
+
+.atlas-dice-picker__facts {
+  @include atlas-line-clamp(2);
+  font-size: $font-ui-smaller;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+// A fact never breaks inside: the line wraps between facts, and one too long for it ends in an ellipsis.
+.atlas-dice-picker__fact {
+  @include atlas-truncate;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+
+.atlas-dice-picker__dot {
+  margin-inline: 0.4em;
+  color: var(--text-faint);
+}
+
+.atlas-dice-picker__check {
+  width: $icon-s;
+  height: $icon-s;
+  color: var(--interactive-accent);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity $transition-fast $transition-ease, transform $transition-normal $transition-ease-out;
+}
+
+// Spelled out, not `.atlas-selected &`: these rules are nested in `.atlas-vtt-plugin`.
+.atlas-dice-picker__choice.atlas-selected .atlas-dice-picker__check {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-die-still__image.atlas-arriving {
+    animation: none;
+  }
+
+  .atlas-dice-picker__choice,
+  .atlas-dice-picker__dice,
+  .atlas-dice-picker__check {
+    transition: none;
+  }
+}

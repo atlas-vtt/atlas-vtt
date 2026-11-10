@@ -19,11 +19,11 @@ describe('SelectionManager and tokens the canvas hides', () => {
     expect(store.getState().selectedIds).toEqual(['goblin']);
   });
 
-  it('draws no selection box around a selected token that is hidden', () => {
-    const { store, overlay } = setup();
+  it('highlights no selected token that is hidden', () => {
+    const { store, highlighted } = setup();
     store.setState({ selectedIds: ['lurker'] });
-    expect(overlay.context.instructions).toHaveLength(0);
+    expect(highlighted()).toBe(0);
     store.setState({ selectedIds: ['goblin'] });
-    expect(overlay.context.instructions.length).toBeGreaterThan(0);
+    expect(highlighted()).toBe(1);
   });
 });

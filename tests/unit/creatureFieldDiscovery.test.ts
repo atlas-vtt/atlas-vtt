@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { discoverCreatureFields } from '../../src/app/creatures/creatureFieldDiscovery';
 import type { IndexedCreature } from '../../src/app/creatures/CreatureIndex';
 
-const creature = (fields: Record<string, unknown>): IndexedCreature => ({ path: String(fields.name), layout: null, fields });
+const creature = (fields: Record<string, unknown>): IndexedCreature => ({ path: String(fields.name), templateId: null, meanings: {}, lookName: null, fields });
 
 const CREATURES = [
   creature({ name: 'Goblin', statblock: true, image: 'goblin.webp', cr: '1/4', type: 'humanoid', source: '5e SRD', hp: '7 (2d6)', stats: [8, 14, 10, 10, 8, 8], actions: [{ name: 'Scimitar', desc: '…' }] }),

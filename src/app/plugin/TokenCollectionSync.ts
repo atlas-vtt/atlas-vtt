@@ -1,9 +1,10 @@
 import type { App, EventRef } from 'obsidian';
+import { mapConditions } from '../gameSystems/mapRules';
 import type { MeasurementSettings } from '../grid/measurementFormat';
 import { mapResources } from '../resources/collectionResources';
 import type { ResourceDefinition } from '../resources/resourceTypes';
-import { AssetService } from '../services/AssetService';
 import { mapMeasurementSettings } from '../services/mapMeasurementSettings';
+import { onMapRulesChange, rulesLookup } from '../services/mapRules';
 import type { ViewAtlasState } from '../storeFactory';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 
@@ -12,10 +13,9 @@ interface CollectionCallbacks {
   refreshArt: (path: string) => Promise<void>;
 }
 
-/** Live collection rules and vault changes used by a map's tokens. */
+/** Live rules (the played campaign's system, else the map's collection's) and vault changes used by a map's tokens. */
 export class TokenCollectionSync {
-  private readonly assets: AssetService;
-  private readonly collectionRef: EventRef;
+  private readonly stopRules: () => void;
   private readonly fileRef: EventRef;
   private destroyed = false;
 
@@ -24,35 +24,21 @@ export class TokenCollectionSync {
     private readonly readState: () => Pick<ViewAtlasState, 'mapPath' | 'grid'>,
     callbacks: CollectionCallbacks,
   ) {
-    this.assets = AssetService.getInstance(app);
-    // Tokens drawn before the index loads need their collection's rules redrawn.
-    this.assets.initialize().then(() => {
-      if (!this.destroyed) callbacks.refreshRules();
-    }, (error: unknown) => {
-      console.error('[TokenRenderer] Failed to initialize AssetService:', error);
-    });
-    this.collectionRef = app.workspace.on('atlas-vtt:collection-settings-changed', (collectionId) => {
-      const { mapPath } = this.readState();
-      if (mapPath && this.assets.getCollectionForMap(mapPath) === collectionId) callbacks.refreshRules();
-    });
+    // Tokens drawn before the index loads need their rules redrawn, as do tokens whose rules changed.
+    this.stopRules = onMapRulesChange(app, () => this.readState().mapPath, () => callbacks.refreshRules());
     this.fileRef = app.vault.on('modify', (file) => { void callbacks.refreshArt(file.path); });
   }
 
-  readonly conditions = (): ConditionDefinition[] => {
-    const { mapPath } = this.readState();
-    if (!mapPath) return [];
-    const collectionId = this.assets.getCollectionForMap(mapPath);
-    return collectionId ? this.assets.getCollectionSettings(collectionId).conditions : [];
-  };
+  readonly conditions = (): ConditionDefinition[] => mapConditions(rulesLookup(this.app), this.readState().mapPath);
 
-  readonly resources = (): readonly ResourceDefinition[] => mapResources(this.assets, this.readState().mapPath);
+  readonly resources = (): readonly ResourceDefinition[] => mapResources(rulesLookup(this.app), this.readState().mapPath);
 
-  readonly measurement = (): MeasurementSettings => mapMeasurementSettings(this.assets, this.readState());
+  readonly measurement = (): MeasurementSettings => mapMeasurementSettings(rulesLookup(this.app), this.readState());
 
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    this.app.workspace.offref(this.collectionRef);
+    this.stopRules();
     this.app.vault.offref(this.fileRef);
   }
 }

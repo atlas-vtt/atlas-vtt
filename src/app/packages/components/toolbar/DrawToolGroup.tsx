@@ -80,7 +80,7 @@ export function DrawToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, cl
       </div>
 
       <div className="atlas-dropdown-section">
-        <div className="space-y-2">
+        <div className="atlas-dropdown-stack">
           <span className="atlas-dropdown-label">{t('toolbar.icons')}</span>
           <div className="atlas-icon-grid">
             {MAP_ICON_OPTIONS.map(({ key, icon: Icon }) => (
@@ -102,7 +102,7 @@ export function DrawToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, cl
       </div>
 
       <div className="atlas-dropdown-section">
-        <div className="space-y-3">
+        <div className="atlas-dropdown-stack atlas-dropdown-stack--loose">
           <DropdownModeSelector
             label={t('toolbar.ink')}
             value={drawColor}

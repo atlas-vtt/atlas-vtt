@@ -1,0 +1,64 @@
+@use '../../../../styles/tokens' as *;
+
+// The header every statblock has (`StatblockHeader`): the token art at the
+// right, at the left the name over the line with the level and the type, then
+// the hit points and the description. Parts that do not show take no room.
+
+// The card's token size, as the Fantasy Statblocks renderer pins its portrait.
+$header-art-size: 72px;
+
+.atlas-sb-sheet {
+  .atlas-sb-header {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-l;
+
+    > .atlas-sb-item[data-block='image'] {
+      flex: 0 0 $header-art-size;
+    }
+  }
+
+  // Blocks laid out below the header stand as far from it as from each other.
+  .atlas-sb-header + .atlas-sb-columns:not(:empty) {
+    margin-top: $spacing-l;
+  }
+
+  .atlas-sb-header__text {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: $spacing-s;
+    min-width: 0;
+  }
+
+  // The name and the line under it read as one heading.
+  .atlas-sb-header__heading {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  .atlas-sb-header__subtitle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 $spacing-xs;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+
+    // The level's label reads with its value ("Level 3"), as quiet as the rest of the line.
+    .atlas-sb-labelled--run-in {
+      color: inherit;
+
+      > .atlas-sb-label {
+        margin-right: $spacing-xs;
+        color: inherit;
+        font-weight: inherit;
+      }
+    }
+  }
+
+  .atlas-sb-header__dot {
+    color: var(--text-faint);
+  }
+}

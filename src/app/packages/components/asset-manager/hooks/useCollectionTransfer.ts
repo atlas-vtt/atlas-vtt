@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Notice, type App as ObsidianApp } from 'obsidian';
+import { type App as ObsidianApp } from 'obsidian';
 import type { AssetService } from '../../../../services/AssetService';
 import type { BundleProgress, BundleProgressListener } from '../../../../services/collectionBundle/bundleProgress';
 import { exportCollectionBundle, prepareCollectionExport, type ExportChoice, type ExportPreview } from '../../../../services/collectionBundle/collectionExport';
@@ -8,6 +8,7 @@ import type { BundleFileReader } from '../../../../services/collectionBundle/bun
 import type { ImportReview } from '../../../../services/collectionBundle/importReview';
 import { describeError } from '../../../../utils/errors';
 import { t } from '../../../../i18n';
+import { showNotice } from '../../../../ui/notice';
 
 /** Where an export or import stands; the asset manager blocks while one is set. */
 export type CollectionTransfer =
@@ -38,11 +39,12 @@ const IMPORTING = t('bundle.importing');
 
 function describeImport(result: CollectionImportResult): string {
   const name = t('bundle.nameVersion', { name: result.collectionName, version: result.version });
-  if (result.created) return t('bundle.imported', { name });
+  const switched = result.switchedNotes > 0 ? ` ${t('bundle.switchedNotes', { count: result.switchedNotes })}` : '';
+  if (result.created) return `${t('bundle.imported', { name })}${switched}`;
   const parts = [t('bundle.filesWritten', { count: result.written }), t('bundle.filesRemoved', { count: result.removed })];
   if (result.keptLocal > 0) parts.push(t('bundle.keptLocal', { count: result.keptLocal }));
   const backup = result.backupCount > 0 ? t('bundle.backedUp', { folder: result.backupFolder }) : '';
-  return t('bundle.updated', { name, parts: parts.join(', '), backup });
+  return `${t('bundle.updated', { name, parts: parts.join(', '), backup })}${switched}`;
 }
 
 function downloadBlob(blob: Blob, fileName: string): void {
@@ -78,7 +80,7 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     session.current = null;
     // An update can close the map view hosting this asset manager; the result must still reach the user.
     if (!isMounted.current) {
-      new Notice(message);
+      showNotice(message);
       return;
     }
     setTransfer({ step: 'done', title, message });

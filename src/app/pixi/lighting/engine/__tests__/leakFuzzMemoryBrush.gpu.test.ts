@@ -226,12 +226,15 @@ describe('leak fuzz: explored memory edited by hand', () => {
     expect(report).toMatchObject(CLEAN);
   });
 
+  // Few dabs fit the rooms of a map this large: their pixels are counted per dab drawn, not per trial
+  // (asked per trial it failed from 60 trials on: 108 pixels for 160, while no dab's pixel was missing).
   it.each(['balanced', 'saver'] as const)('holds at the %s lighting quality on a map whose texels it coarsens', { timeout: 600_000 }, async (level) => {
     const report = await fuzz({ seed: 13, trials: SIDE_TRIALS, bounds: { width: 8192, height: 8192 }, quality: LIGHTING_QUALITY[level] });
     console.info(`leak fuzz (memory brush, ${level}): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
     expect(report.revealed).toBeGreaterThan(SIDE_TRIALS * 40);
     expect(report.restored).toBe(report.revealed);
-    expect(report.dabbed).toBeGreaterThan(SIDE_TRIALS * 8);
+    expect(report.dab).toBeGreaterThan(0);
+    expect(report.dabbed).toBeGreaterThan(report.dab * 10);
     expect(report).toMatchObject(CLEAN);
   });
 

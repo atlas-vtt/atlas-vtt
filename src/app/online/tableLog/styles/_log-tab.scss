@@ -1,0 +1,64 @@
+// The tab a host shows while the log is closed and something in it is unread. It stands where the
+// host puts it: on the GM's map, in the top bar row directly below the scene tabs (main.scss).
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'log-base' as *;
+
+.atlas-online-log-tab {
+  display: flex;
+  pointer-events: auto;
+  animation: atlas-online-log-tab-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  .atlas-online-log-tab__button {
+    @include log-button;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: $button-height-l;
+    height: $button-height-l;
+    @include atlas-elevated-surface;
+    color: var(--text-muted);
+    transition: color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+    @include log-button-states(var(--background-primary), $shadow-elevated);
+
+    @media (hover: hover) {
+      &:hover {
+        background: linear-gradient(var(--background-modifier-hover), var(--background-modifier-hover)), var(--background-primary);
+        color: var(--text-normal);
+      }
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    svg {
+      width: $icon-m;
+      height: $icon-m;
+    }
+
+    #{$log-coarse} & {
+      width: $log-target;
+      height: $log-target;
+    }
+  }
+
+  .atlas-online-log-tab__count {
+    position: absolute;
+    top: calc(-1 * #{$spacing-s});
+    right: calc(-1 * #{$spacing-s});
+    box-sizing: border-box;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: $radius-full;
+    background: var(--interactive-accent);
+    color: $log-on-accent;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+    text-align: center;
+    pointer-events: none;
+  }
+}

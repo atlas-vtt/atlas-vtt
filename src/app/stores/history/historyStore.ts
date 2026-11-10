@@ -39,6 +39,11 @@ export interface HistoryState {
   transaction: <T>(fn: () => T) => T;
   /** Run `fn` as Atlas itself: nothing it writes becomes an undo step. */
   untracked: <T>(fn: () => T) => T;
+  /**
+   * Whether the store is being written by an undo or redo right now: true while the store's
+   * listeners hear of that write, so a listener can tell what undo put back from an edit.
+   */
+  isTravelling: () => boolean;
 }
 
 /** The store a history belongs to, as the history sees it. */
@@ -73,6 +78,7 @@ export function createHistory(tracked: TrackedStore): History {
   let start: HistorySnapshot | null = null;
   let mark: HistorySnapshot | null = null;
   let openWrites = 0;
+  let travelling = false;
   const store = createStore<HistoryState>()(() => ({
     pastStates: [],
     futureStates: [],
@@ -95,6 +101,7 @@ export function createHistory(tracked: TrackedStore): History {
       }
     },
     untracked: (fn) => attribution.asSystem(fn),
+    isTravelling: () => travelling,
   }));
   const get = (): HistoryState => store.getState();
 
@@ -175,7 +182,13 @@ export function createHistory(tracked: TrackedStore): History {
     const step = stacks[source][stacks[source].length - 1]!;
     store.setState({ ...stacks, [source]: stacks[source].slice(0, -1) });
     const slice = direction === 'undo' ? restore(current, step.after, step.before) : restore(current, step.before, step.after);
-    tracked.write(slice);
+    const wasTravelling = travelling;
+    travelling = true;
+    try {
+      tracked.write(slice);
+    } finally {
+      travelling = wasTravelling;
+    }
     const travelled: HistoryStep = direction === 'undo' ? { before: slice, after: current } : { before: current, after: slice };
     // After the write: a step its listeners recorded has cleared the redo stack first.
     store.setState({ [target]: [...get()[target], travelled] });

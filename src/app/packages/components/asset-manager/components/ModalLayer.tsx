@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { TokenCreator } from '../TokenCreator';
+import { EncounterBuilder } from '../encounter-builder/EncounterBuilder';
 import TagManager from '../TagManager';
 import CreateSceneModal from '../CreateSceneModal';
 import StatblockLinkModal from '../StatblockLinkModal';
@@ -17,7 +18,12 @@ import type { AssetCrudActions } from '../hooks/useAssetCrud';
 import type { TagsAndCollectionsState } from '../hooks/useTagsAndCollections';
 import type { StatblockLinkState } from '../hooks/useStatblockLink';
 import { useUvttImport } from '../hooks/useUvttImport';
+import { useFloorsChoice } from '../hooks/useFloorsChoice';
+import { UvttFloorsDialog } from './UvttFloorsDialog';
 import { tagGroupOfTab } from '../utils/assetTags';
+import { newStatblockOption } from '../../../../statblocks/editor/create/entryPoints';
+import { openTemplateEditor } from '../../../../statblocks/editor/openTemplateEditor';
+import { isCharacterTab } from '../utils/tabKinds';
 
 export interface ModalLayerProps {
   isOpen: boolean;
@@ -34,17 +40,25 @@ export interface ModalLayerProps {
 export function ModalLayer({
   isOpen, activeTab, selectedCollection, onClose, data, sel, crud, tags, statblock,
 }: ModalLayerProps): React.JSX.Element {
+  const floors = useFloorsChoice(isOpen);
+  const [droppedVideos, setDroppedVideos] = useState<File[]>([]);
+  const closeMapCreator = (): void => {
+    crud.setIsMapCreatorOpen(false);
+    setDroppedVideos([]);
+  };
   const importMaps = useUvttImport({
     app: data.app,
     assetService: data.assetService,
     isOpen,
     isMapCreatorOpen: crud.isMapCreatorOpen,
     // Every dialog of this layer but the map creator, which says for itself whether it stays
-    isBusy: crud.isTokenCreatorOpen || crud.isCreateSceneModalOpen || crud.isMoveModalOpen || crud.isCreateFolderModalOpen
+    isBusy: crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isCreateSceneModalOpen || crud.isMoveModalOpen || crud.isCreateFolderModalOpen
       || crud.inputModalState.isOpen || crud.isCreateCollectionModalOpen || crud.settingsModalCollectionId !== null
       || crud.transfer !== null || tags.isTagManagerOpen || statblock.linkingStatblockAsset !== null,
     collectionId: selectedCollection,
-    onSceneOpened: () => { crud.setIsMapCreatorOpen(false); onClose(); },
+    onVideos: (files) => { setDroppedVideos(files); crud.setIsMapCreatorOpen(true); },
+    onSceneOpened: () => { closeMapCreator(); onClose(); },
+    chooseFloors: floors.ask,
   });
 
   const closeMoveModal = (): void => {
@@ -83,10 +97,11 @@ export function ModalLayer({
           <TokenCreator
             isOpen={crud.isTokenCreatorOpen}
             selectedCollection={selectedCollection}
+            playerCharacters={activeTab === 'party'}
             onClose={() => {
               crud.setIsTokenCreatorOpen(false);
               crud.setEditingToken(null);
-              if (activeTab === 'tokens') void reloadAfterCreator();
+              if (isCharacterTab(activeTab)) void reloadAfterCreator();
             }}
             editToken={crud.editingToken ? {
               id: crud.editingToken.id,
@@ -108,11 +123,27 @@ export function ModalLayer({
             isOpen={crud.isMapCreatorOpen}
             mode="map"
             onImportMaps={importMaps}
+            initialFiles={droppedVideos}
             selectedCollection={selectedCollection}
             onClose={() => {
-              crud.setIsMapCreatorOpen(false);
+              closeMapCreator();
               if (activeTab === 'maps') void reloadAfterCreator();
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Encounter Builder */}
+      <AnimatePresence>
+        {isOpen && crud.isEncounterBuilderOpen && (
+          <EncounterBuilder
+            key={crud.editingEncounter?.id ?? 'new'}
+            app={data.app}
+            assetService={data.assetService}
+            collectionId={selectedCollection}
+            editEncounter={crud.editingEncounter}
+            onClose={crud.closeEncounterBuilder}
+            onSaved={() => { if (activeTab === 'encounters') void reloadAfterCreator(); }}
           />
         )}
       </AnimatePresence>
@@ -174,6 +205,16 @@ export function ModalLayer({
             asset={statblock.linkingStatblockAsset}
             onLink={(statblockPath) => { void statblock.handleLinkStatblock(statblockPath); }}
             app={data.app}
+            newStatblock={newStatblockOption(data.app, {
+              collectionId: selectedCollection,
+              from: 'asset-manager',
+              token: {
+                imagePath: statblock.linkingStatblockAsset.imagePath ?? statblock.linkingStatblockAsset.imageUrl,
+                name: statblock.linkingStatblockAsset.name,
+              },
+              // The pair opens in the workspace this window covers.
+              onStart: onClose,
+            })}
           />
         )}
       </AnimatePresence>
@@ -222,8 +263,18 @@ export function ModalLayer({
             isOpen={true}
             onClose={() => crud.setSettingsModalCollectionId(null)}
             collectionId={crud.settingsModalCollectionId}
+            // The template opens in a tab, which the asset manager would cover.
+            onEditTemplate={(templateId, collectionId) => {
+              onClose();
+              void openTemplateEditor(data.app, { templateId, collectionId });
+            }}
           />
         )}
+      </AnimatePresence>
+
+      {/* Map files as the floors of one scene: last, so it opens over the map creator that may hold them */}
+      <AnimatePresence>
+        {isOpen && floors.request && <UvttFloorsDialog request={floors.request} onChoose={floors.answer} />}
       </AnimatePresence>
     </>
   );

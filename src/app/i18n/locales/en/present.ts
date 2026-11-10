@@ -6,6 +6,7 @@ export const present = {
   'present.shows': 'Player view shows {name}',
   'present.shownElsewhere': 'Players see {name}; the local player window stays closed',
   'present.chosen': 'Players will see {name} when you open the player window',
+  'present.sceneLevel': '{scene}: {level}',
   'present.reconnect': 'Open the presented scene and send it to the player view to reconnect.',
   'present.loadFailed': 'The presented scene could not be loaded. Send a scene to reconnect.',
 } as const satisfies Record<string, Message>;

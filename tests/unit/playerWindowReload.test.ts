@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { Plugin } from 'obsidian';
 import { registerPlayerWindowReloadCleanup } from '../../src/app/plugin/playerWindowReload';

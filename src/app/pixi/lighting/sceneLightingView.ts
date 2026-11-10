@@ -3,6 +3,9 @@ import type { ExploredEdit } from '../../lighting/exploredEdits';
 import type { AmbientLight, LightReach, Sight } from '../../vision/sight';
 import type { HideableLayer } from '../playerSafeFrame';
 import type { SceneFrame } from './engine/types';
+import type { TokenPerception } from '../../vision/tokenPerception';
+import type { BelowRender } from './levels/LevelsBelow';
+import type { ArtFloors } from '../../levels/levelSurfaces';
 
 /** Who shows the GM the explored memory while it is edited (the lighting tool's overlay, `ExploredBrush`). */
 export interface ExploredMemoryWatcher {
@@ -45,5 +48,18 @@ export interface SceneLightingView {
   editExplored(edit: ExploredEdit): boolean;
   /** The view's map is about to unload: finish pending saves for it. */
   beforeMapUnload(): void;
+  /**
+   * Hands the composite the snapshots of the levels below the viewed level, seen through its
+   * openings (`LevelsBelow`), for a render of the stage about to happen through the camera the
+   * viewport holds now: the player window's frame, or without `picture` the canvas's own. Nothing
+   * where the view draws none.
+   */
+  prepareBelow?(picture?: BelowRender): void;
+  /** The player window's levels below are no longer drawn: the snapshots only it used go. */
+  releaseBelowPicture?(): void;
+  /** How the players perceive the tokens of the level below drawn through the openings; none without one. */
+  belowTokenPerception?(): TokenPerception;
+  /** Whether a level's map holds floor at a point as the view draws it, for a drop to fall through; none where the view lays out no levels. */
+  artFloors?(): ArtFloors | undefined;
   destroy(): void;
 }

@@ -1,0 +1,87 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The statblock beside a note: its host, resize edge and scroller (§2.1)
+// ═══════════════════════════════════════════════════════════════════════════
+// `.atlas-sb-note-panel` is the host in a note view (NoteStatblockPanel) and in
+// the template editor (PanelHost), so the card gets the same width in both.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// panelPrefs.ts holds the same numbers for the drag handle's clamp. The
+// panel's width comes from `--atlas-sb-panel-width`, which each host works
+// out (`panelWidth`); half the room stands in until then.
+$panel-min-width: 360px;
+$panel-default-width: 50%;
+$note-min-width: 360px;
+$handle-width: 6px;
+
+// While the panel's edge is dragged, the pointer crosses the note: it keeps
+// the resize cursor and selects no text.
+body.atlas-sb-panel-resizing,
+body.atlas-sb-panel-resizing * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+.atlas-vtt-plugin.atlas-sb-note-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: clamp(#{$panel-min-width}, var(--atlas-sb-panel-width, #{$panel-default-width}), calc(100% - #{$note-min-width}));
+  min-height: 0;
+  border-inline-start: $border-width-s solid var(--divider-color);
+  background: var(--background-primary);
+}
+
+.atlas-sb-note--stacked .atlas-vtt-plugin.atlas-sb-note-panel {
+  order: -1;
+  flex: 0 1 auto;
+  width: auto;
+  max-height: 50%;
+  border-inline-start: 0;
+  border-block-end: $border-width-s solid var(--divider-color);
+}
+
+.atlas-vtt-plugin {
+  // The scrollbar's room is kept whether or not the statblock scrolls, so the card's width never
+  // depends on how tall it is: the note view and the template editor draw it at one width.
+  .atlas-sb-note-panel__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+    @include atlas-scrollbar;
+  }
+
+  // The panel's left edge: a hit area inside the panel, so the editor's own
+  // scrollbar beside it keeps its clicks. The line shows on hover, drag and focus.
+  .atlas-sb-note-panel__handle {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 1;
+    width: $handle-width;
+    cursor: col-resize;
+    touch-action: none;
+    outline: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: -$border-width-s;
+      width: 2px;
+      background: transparent;
+      transition: background-color $transition-fast $transition-ease;
+    }
+
+    &:hover::after,
+    &:active::after,
+    &:focus-visible::after {
+      background: var(--interactive-accent);
+    }
+  }
+}
+

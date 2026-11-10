@@ -42,13 +42,13 @@ describe('captureWithLayerVisibility with a player camera', () => {
 });
 
 describe('SelectionManager.getPlayerViewLayers', () => {
-  it('hides the selection overlay and marquee for the player frame', () => {
+  it('hides the selection overlay, marquee and group rotate button for the player frame', () => {
     const viewport = new Container();
     const store = createStore(() => ({ selectedIds: [], activeTool: 'select', selectionMode: 'box', objects: { tokens: {}, drawings: {} } }));
     const manager = new SelectionManager(viewport as never, () => ({}), () => ({}), store as never, new EventEmitter());
     const layers = manager.getPlayerViewLayers();
 
-    expect(layers).toHaveLength(2);
+    expect(layers).toHaveLength(3);
     expect(layers.every(entry => !entry.visible && viewport.children.includes(entry.layer as Container))).toBe(true);
   });
 });

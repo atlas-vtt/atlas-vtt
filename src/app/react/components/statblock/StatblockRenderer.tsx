@@ -5,27 +5,20 @@ import { runCallback } from './layoutCallbacks';
 import { isVisible, slugify, stringify } from './statblockUtils';
 import { boundedStatblock } from '../../../creatures/statblockValues';
 import { linkDiceIn } from '../../../services/statblockDiceLinks';
-import { StatblockEditContext, type StatblockEditApi } from './statblockEditContext';
+import { StatblockEditContext, type StatblockEditApi } from '../../../statblocks/render/shared/statblockEditContext';
+import type { StatblockPortrait } from '../../../statblocks/render/shared/tokenPortrait';
 import {
   HeadingBlock,
   ImageBlock,
   PropertyBlock,
-  SavesBlock,
   SectionHeading,
-  SpellsBlock,
   SubheadingBlock,
   TableBlock,
   TextBlock,
-  TraitsBlock,
 } from './StatblockBlocks';
+import { SavesBlock, SpellsBlock, TraitsBlock } from './StatblockListBlocks';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import './statblock.scss';
-
-export interface StatblockPortrait {
-  src: string;
-  ringColor?: string | undefined;
-  showRing?: boolean | undefined;
-}
 
 export interface StatblockRendererProps {
   monster: StatblockMonster;

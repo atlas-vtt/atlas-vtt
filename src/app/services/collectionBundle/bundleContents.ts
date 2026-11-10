@@ -4,7 +4,7 @@ import { noteName, noteTree, type NoteOrigin } from './noteTree';
 import { baseName } from '../../utils/pathUtils';
 import { t } from '../../i18n';
 
-export type ContentCategory = 'scenes' | 'maps' | 'tokens' | 'encounters' | 'statblocks' | 'notes' | 'attachments' | 'loot';
+export type ContentCategory = 'scenes' | 'maps' | 'tokens' | 'encounters' | 'statblocks' | 'templates' | 'notes' | 'attachments' | 'loot';
 
 /** How a token looks when spawned, and the statblock it opens. Paths are the vault's when exporting and the bundle's when importing. */
 export interface TokenPreview {
@@ -47,6 +47,7 @@ const GROUPS: ReadonlyArray<{ category: ContentCategory; label: string; alwaysSh
   { category: 'tokens', label: t('bundle.group.tokens') },
   { category: 'encounters', label: t('bundle.group.encounters') },
   { category: 'statblocks', label: t('bundle.group.statblocks'), alwaysShown: true },
+  { category: 'templates', label: t('bundle.group.templates') },
   { category: 'notes', label: t('bundle.group.notes'), alwaysShown: true },
   { category: 'attachments', label: 'Images and PDFs' },
   { category: 'loot', label: 'Loot tables' },
@@ -54,7 +55,7 @@ const GROUPS: ReadonlyArray<{ category: ContentCategory; label: string; alwaysSh
 
 const byName = (a: ContentItem, b: ContentItem): number => a.name.localeCompare(b.name, undefined, { numeric: true });
 
-/** What a collection holds, grouped the way people think of it: scenes, maps, tokens, …, statblocks, notes and loot tables. */
+/** What a collection holds, grouped the way people think of it: scenes, maps, tokens, …, statblocks and their templates, notes and loot tables. */
 export function groupContents(assets: readonly Asset[], files: readonly BundleFile[]): ContentGroup[] {
   const items = new Map<ContentCategory, ContentItem[]>();
   const add = (category: ContentCategory, item: ContentItem): void => {
@@ -73,6 +74,7 @@ export function groupContents(assets: readonly Asset[], files: readonly BundleFi
   }
   for (const file of files) {
     if (file.role === 'statblock-note') add('statblocks', { key: fileKey(file.vaultPath), name: noteName(file.vaultPath) });
+    if (file.role === 'statblock-template') add('templates', { key: fileKey(file.vaultPath), name: baseName(file.vaultPath).replace(/\.atlastemplate$/i, '') });
     if (file.role === 'note-attachment') add('attachments', { key: fileKey(file.vaultPath), name: baseName(file.vaultPath) });
     if (file.role === 'loot-base') add('loot', { key: fileKey(file.vaultPath), name: baseName(file.vaultPath).replace(/\.base$/i, '') });
   }

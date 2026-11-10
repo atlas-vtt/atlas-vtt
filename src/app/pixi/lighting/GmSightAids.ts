@@ -3,7 +3,8 @@ import type { Viewport } from 'pixi-viewport';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { tokenVisionOn } from '../../lighting/sceneLightingOptions';
-import type { ViewAtlasStore } from '../../storeFactory';
+import type { SceneStore } from '../../lighting/shownTokens';
+import type { ViewAtlasState } from '../../storeFactory';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
 import { restingTokenUIScale } from '../token-renderer/tokenSizing';
@@ -12,13 +13,15 @@ import type { TokenPerception } from '../../vision/tokenPerception';
 import { PlayerSightMarks } from './PlayerSightMarks';
 import { SenseRangeRings } from './SenseRangeRings';
 import { sightMarks } from './sightMarks';
+import { levelObjects } from '../../levels/levelObjects';
+import { mapTokens } from '../../tokens/offMap';
 
 /** Above the lighting layer (90), the outlines of sensed tokens (95) and a light's range rings (96), below the token UI (100). */
 export const SIGHT_AIDS_Z_INDEX = 97;
 
 export interface GmSightAidsDeps {
   viewport: Viewport;
-  store: ViewAtlasStore;
+  store: SceneStore<ViewAtlasState>;
   measurement: () => MeasurementSettings;
   bounds: () => MapBounds | null;
   rules: () => SightRules;
@@ -53,7 +56,7 @@ export class GmSightAids {
     viewport.addChild(this.view);
     this.cleanups.push(store.subscribe((state, previous) => {
       if (
-        state.objects.tokens !== previous.objects.tokens || state.selectedIds !== previous.selectedIds || state.lighting !== previous.lighting
+        mapTokens(levelObjects(state)) !== mapTokens(levelObjects(previous)) || state.selectedIds !== previous.selectedIds || state.lighting !== previous.lighting
         || state.heldTokens !== previous.heldTokens || state.grid !== previous.grid || state.isMapLoading !== previous.isMapLoading
       ) this.schedule();
     }));
@@ -89,7 +92,7 @@ export class GmSightAids {
     const state = store.getState();
     const perceived = this.shown() ? perception() : undefined;
     const { cellSize } = unitScaleOf(measurement(), state.grid);
-    this.marks.sync(perceived ? sightMarks(state.objects.tokens, perceived, cellSize) : [], restingTokenUIScale(cellSize));
+    this.marks.sync(perceived ? sightMarks(mapTokens(levelObjects(state)), perceived, cellSize) : [], restingTokenUIScale(cellSize));
     this.rings.draw();
   }
 

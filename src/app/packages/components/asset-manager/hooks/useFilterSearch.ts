@@ -36,6 +36,16 @@ export interface FilterSearch {
   reset: () => void;
 }
 
+/** A search without filters: no keywords, suggestions, chips or panel; the text is searched as it is. */
+export const PLAIN_SEARCH: FilterSearch = {
+  suggestionsFor: () => null,
+  commit: (text) => text,
+  chips: [],
+  activeCount: 0,
+  panel: null,
+  reset: () => undefined,
+};
+
 interface FilterSearchOptions {
   keywords: SearchKeywords;
   setSearch: (search: string) => void;

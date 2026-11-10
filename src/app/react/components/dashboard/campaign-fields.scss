@@ -1,0 +1,150 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'dashboard-mixins' as *;
+
+// The fields of a campaign's page, edited where they stand (CampaignFields.tsx,
+// CampaignSystemSetting.tsx): the name as the page's heading, the description, the game system.
+
+.campaign-name {
+  @include atlas-flex-col($spacing-xs);
+  align-items: stretch;
+}
+
+// Reads as the page's heading; it shows itself as a field on hover and focus.
+.campaign-name__input,
+.campaign-name__input:hover,
+.campaign-name__input:focus,
+.campaign-name__input:focus-visible,
+.campaign-name__input:disabled {
+  box-sizing: border-box;
+  width: calc(100% + #{2 * $spacing-s});
+  height: auto;
+  margin-inline-start: -$spacing-s;
+  padding: $spacing-xs $spacing-s;
+  @include dashboard-display-type;
+  font-size: clamp(1.9rem, 4.4cqi, 3rem);
+  color: var(--text-normal);
+  text-shadow: 0 1px 2px color-mix(in oklch, var(--background-primary) 60%, transparent), 0 0 24px color-mix(in oklch, var(--background-primary) 70%, transparent);
+  background: transparent;
+  border: $border-width-s solid transparent;
+  border-radius: $radius-l;
+  box-shadow: none;
+  outline: none;
+  opacity: 1;
+  transition: background-color $transition-fast $transition-ease, border-color $transition-fast $transition-ease;
+}
+
+.campaign-name__input:hover:not(:focus):not(:disabled) {
+  background: color-mix(in oklch, var(--background-primary) 45%, var(--background-modifier-hover));
+}
+
+.campaign-name__input:focus,
+.campaign-name__input:focus-visible {
+  text-shadow: none;
+  background: var(--background-modifier-form-field);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
+}
+
+.campaign-description {
+  @include atlas-flex-col($spacing-s);
+  align-items: stretch;
+}
+
+// The description is prose: a surface like the quests' panel below it, holding a frameless field
+// that grows with its text and scrolls once it is taller than the room it may take.
+.campaign-description__field {
+  @include atlas-inset-surface;
+  display: flex;
+  border-radius: $radius-xl;
+  overflow: clip;
+  cursor: text;
+  transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
+
+  &:hover:not(:focus-within) {
+    border-color: var(--background-modifier-border-hover);
+  }
+
+  &:focus-within {
+    background: var(--background-primary);
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
+  }
+
+  &.is-disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.campaign-description__input {
+  @include atlas-flush-input;
+  @include atlas-scrollbar;
+
+  &,
+  &:hover,
+  &:focus,
+  &:focus-visible,
+  &:active,
+  &:disabled {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: calc(5lh + #{2 * $spacing-m});
+    max-height: min(60vh, 480px);
+    padding: $spacing-m;
+    font-family: var(--font-text);
+    font-size: $font-ui-medium;
+    line-height: var(--line-height-normal);
+    field-sizing: content;
+    resize: none;
+    opacity: 1;
+  }
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+}
+
+// ── The game system: a button that names it and opens its settings ─────────
+
+.campaign-system {
+  @include atlas-flex-col($spacing-s);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.campaign-system__trigger {
+  @include atlas-select-trigger;
+  @include atlas-focus-ring;
+  justify-content: flex-start;
+  font-weight: $font-weight-normal;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.campaign-system__name {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+
+  &.is-empty {
+    color: var(--text-muted);
+  }
+}
+
+.campaign-system__icon {
+  flex-shrink: 0;
+  width: $icon-s;
+  height: $icon-s;
+  color: var(--text-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campaign-name__input,
+  .campaign-description__field {
+    transition: none;
+  }
+}

@@ -170,7 +170,7 @@
   border-radius: inherit;
   background: color-mix(in oklch, var(--background-primary) 88%, transparent);
   backdrop-filter: blur(3px);
-  outline: $border-width-l dashed var(--interactive-accent);
+  outline: $border-width-m solid color-mix(in oklch, var(--interactive-accent) 60%, transparent);
   outline-offset: -$spacing-m;
   color: var(--text-normal);
   font-size: $font-ui-medium;

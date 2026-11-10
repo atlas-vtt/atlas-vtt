@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import css from '../../src/app/services/player-window.scss?inline';
+import { SCENE_DIP_MS } from '../../src/app/services/playerSceneFade';
 
 /**
  * The player window's canvas under the real stylesheet: a live frame is rendered for the
@@ -52,16 +53,16 @@ describe('the player window\'s canvas', () => {
     expect(computed.objectPosition).toBe('50% 50%');
   });
 
-  it('shows the crossfade\'s still frame the same way', () => {
-    const snapshot = document.createElement('canvas');
-    snapshot.className = 'atlas-scene-transition-snapshot';
-    document.body.appendChild(snapshot);
+  it('fades the curtain\'s sheet in the time the dip to black waits for it', () => {
+    const sheet = document.createElement('div');
+    sheet.className = 'atlas-player-curtain';
+    document.body.appendChild(sheet);
     try {
-      const computed = getComputedStyle(snapshot);
-      expect(computed.imageRendering).toBe('auto');
-      expect(computed.objectFit).toBe('cover');
+      const computed = getComputedStyle(sheet);
+      expect(computed.transitionProperty).toBe('opacity');
+      expect(parseFloat(computed.transitionDuration) * 1000).toBe(SCENE_DIP_MS);
     } finally {
-      snapshot.remove();
+      sheet.remove();
     }
   });
 });

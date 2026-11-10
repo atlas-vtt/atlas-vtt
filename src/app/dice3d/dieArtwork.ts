@@ -24,7 +24,8 @@ import { CELL, atlasLayout } from './atlasCell';
 import type { DiceFont } from './diceLook';
 import { dieGeometry, type DieSides } from './dieGeometry';
 import { loadImage, loadNumerals, numeralsReady, paintNumeral } from './dieNumerals';
-import { activeLook, paintCard, paintWear } from './dieSkin';
+import { activeLook, paintCard, paintWear, stockFor, type ResolvedLook } from './dieSkin';
+import { prepareDye } from './dyedCard';
 
 let cardStock: HTMLImageElement | null = null;
 let cardPending: Promise<void> | null = null;
@@ -43,6 +44,7 @@ export function loadDiceArtwork(font: DiceFont = activeLook().font): Promise<voi
   cardPending ??= loadImage(CARD_URL)
     .then((card) => {
       cardStock = card;
+      prepareDye(card);
     })
     .catch(() => undefined);
   return Promise.all([cardPending, loadNumerals(font)]).then(() => undefined);
@@ -80,6 +82,39 @@ export interface DieTextures {
   redraw: () => void;
 }
 
+/** The faces of a body as `look` paints them: card, wear and numerals. */
+function albedoAtlas(sides: DieSides, look: ResolvedLook): HTMLCanvasElement {
+  const stock = stockFor(cardStock, look.body);
+  return drawAtlas(sides, (ctx, { x, y, value }) => {
+    paintCard(ctx, x, y, sides * 31 + (value ?? 0) * 7 + 5, stock, look.body);
+    paintWear(ctx, x, y, value === null, look);
+    if (value !== null) paintNumeral(ctx, x, y, sides, value, look.font, look.ink);
+  });
+}
+
+/**
+ * The relief of a body: the card's tooth, and the numerals a touch deeper.
+ * The tooth is the bare card's whatever the look's colour: a dye does not
+ * change the paper's surface, and every colour of a kind shares this relief.
+ */
+function bumpAtlas(sides: DieSides, look: ResolvedLook): HTMLCanvasElement {
+  return drawAtlas(sides, (ctx, { x, y, value }) => {
+    ctx.fillStyle = '#8a8a8a';
+    ctx.fillRect(x - CELL / 2, y - CELL / 2, CELL, CELL);
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.filter = 'grayscale(1) contrast(2.1)';
+    paintCard(ctx, x, y, sides * 31 + (value ?? 0) * 7 + 5, cardStock, null);
+    ctx.restore();
+    if (value === null) return;
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    // The relief always takes the numeral dark: it is cut into the face whatever its colour.
+    paintNumeral(ctx, x, y, sides, value, look.font, null);
+    ctx.restore();
+  });
+}
+
 /**
  * The atlas of a body: one cell per face holding card and numeral. The last
  * cell stays bare card; it carries the chamfers and corners.
@@ -91,33 +126,9 @@ export interface DieTextures {
  */
 export function buildTextures(sides: DieSides): DieTextures {
   // Read at every redraw, so a new look reaches the faces with `refreshDieArtwork`.
-  const albedo = (look = activeLook()): HTMLCanvasElement =>
-    drawAtlas(sides, (ctx, { x, y, value }) => {
-      paintCard(ctx, x, y, sides * 31 + (value ?? 0) * 7 + 5, cardStock, look);
-      paintWear(ctx, x, y, value === null, look);
-      if (value !== null) paintNumeral(ctx, x, y, sides, value, look.font, look.ink);
-    });
-
-  const bump = (look = activeLook()): HTMLCanvasElement =>
-    drawAtlas(sides, (ctx, { x, y, value }) => {
-      ctx.fillStyle = '#8a8a8a';
-      ctx.fillRect(x - CELL / 2, y - CELL / 2, CELL, CELL);
-      ctx.save();
-      ctx.globalAlpha = 0.8;
-      ctx.filter = 'grayscale(1) contrast(2.1)';
-      paintCard(ctx, x, y, sides * 31 + (value ?? 0) * 7 + 5, cardStock, look);
-      ctx.restore();
-      if (value === null) return;
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      // The relief always takes the numeral dark: it is cut into the face whatever its colour.
-      paintNumeral(ctx, x, y, sides, value, look.font, null);
-      ctx.restore();
-    });
-
   const textures = {
-    map: new THREE.CanvasTexture(albedo()),
-    bumpMap: new THREE.CanvasTexture(bump()),
+    map: new THREE.CanvasTexture(albedoAtlas(sides, activeLook())),
+    bumpMap: new THREE.CanvasTexture(bumpAtlas(sides, activeLook())),
   };
   textures.map.colorSpace = THREE.SRGBColorSpace;
   for (const tex of Object.values(textures)) tex.anisotropy = 4;
@@ -125,9 +136,27 @@ export function buildTextures(sides: DieSides): DieTextures {
   return {
     ...textures,
     redraw: (): void => {
-      textures.map.image = albedo();
-      textures.bumpMap.image = bump();
+      textures.map.image = albedoAtlas(sides, activeLook());
+      textures.bumpMap.image = bumpAtlas(sides, activeLook());
       for (const tex of Object.values(textures)) tex.needsUpdate = true;
+    },
+  };
+}
+
+/**
+ * The faces of a body in a colour of its own (a dice set's): only the albedo,
+ * since the relief is cut alike whatever the colour, and the body shares its
+ * kind's. The font is the active look's, read at every redraw.
+ */
+export function buildColouredMap(sides: DieSides, look: () => ResolvedLook): { map: THREE.CanvasTexture; redraw: () => void } {
+  const map = new THREE.CanvasTexture(albedoAtlas(sides, look()));
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 4;
+  return {
+    map,
+    redraw: (): void => {
+      map.image = albedoAtlas(sides, look());
+      map.needsUpdate = true;
     },
   };
 }

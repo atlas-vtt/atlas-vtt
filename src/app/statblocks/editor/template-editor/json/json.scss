@@ -1,0 +1,78 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The template as JSON
+// ═══════════════════════════════════════════════════════════════════════════
+// Covers the note's column while it is open; the card beside it stays.
+// Imported by TemplateJsonEditor.tsx, so the rules take the scope themselves.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  // The note under it keeps its place (the panel's width follows its readable line) and leaves sight and keys.
+  .atlas-te-note[data-covered] .atlas-te-note__editor {
+    visibility: hidden;
+  }
+
+  .atlas-te-json {
+    @include atlas-flex-col($spacing-m);
+    position: absolute;
+    inset: 0;
+    padding: $spacing-m;
+    // The dock stands at the column's right edge: the text ends before it, as the note's does.
+    padding-inline-end: max(#{$spacing-m}, var(--atlas-te-dock-clearance, 0px));
+  }
+
+  .atlas-te-json__head {
+    @include atlas-flex-row($spacing-m);
+    justify-content: space-between;
+  }
+
+  .atlas-te-json__title {
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+    font-weight: var(--font-semibold);
+  }
+
+  .atlas-te-json__text {
+    flex: 1;
+    min-height: 0;
+    padding: $spacing-m;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-l;
+    background: var(--background-primary-alt);
+    color: var(--text-normal);
+    font-family: var(--font-monospace);
+    font-size: $font-ui-smaller;
+    line-height: 1.5;
+    tab-size: 2;
+    white-space: pre;
+    resize: none;
+
+    &:focus-visible {
+      border-color: var(--interactive-accent);
+      outline: none;
+    }
+  }
+
+  .atlas-te-json__note,
+  .atlas-te-json__problems {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-json__problems {
+    @include atlas-flex-col($spacing-xs);
+    max-height: 30%;
+    overflow-y: auto;
+
+    ul {
+      margin: 0;
+      padding-inline-start: $spacing-l;
+    }
+
+    &[data-refused] .atlas-te-json__state {
+      color: var(--text-error);
+    }
+  }
+}

@@ -1,0 +1,197 @@
+// Drag and drop in the template editor (§7.6). Nothing here changes a box:
+// lines, tints and outlines float in the stage over the card, the frames of
+// the starting list slide by transform only, and the copy under the pointer
+// lives in the document's own body.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$line-width: 2px;
+$dot-size: 6px;
+$empty-height: 28px;
+
+.atlas-vtt-plugin {
+  // The frames the starting list slides; the drag sets how far.
+  .atlas-te-stage [data-te-shift] {
+    transform: translate(var(--atlas-te-shift-x, 0px), var(--atlas-te-shift-y, 0px));
+    transition: transform $transition-normal $transition-ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  // The block being moved stays in its place, dimmed, until the drop; where
+  // it lands it waits for the copy to settle onto it.
+  .atlas-te-stage [data-te-dragging] {
+    opacity: 0.35;
+  }
+
+  .atlas-te-stage [data-te-landing] {
+    opacity: 0;
+  }
+
+  // While a drag runs, the editor's own chrome steps aside, and the cursor
+  // grabs, or says where the block may not go.
+  .atlas-te[data-dragging],
+  .atlas-te[data-dragging] *,
+  .atlas-te[data-dragging] .atlas-te-stage .atlas-sb-item[data-block-id] {
+    cursor: grabbing;
+  }
+
+  .atlas-te[data-dragging][data-drop-refused],
+  .atlas-te[data-dragging][data-drop-refused] *,
+  .atlas-te[data-dragging][data-drop-refused] .atlas-te-stage .atlas-sb-item[data-block-id] {
+    cursor: not-allowed;
+  }
+
+  .atlas-te[data-dragging] {
+    // The pressed handle stays in the document until the drop (§3.4), unseen.
+    .atlas-te-toolbar,
+    .atlas-sb-handle,
+    .atlas-te-chrome {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .atlas-te-stage .atlas-sb-item[data-sb-hover] {
+      outline-color: transparent;
+    }
+  }
+
+  .atlas-te-drop-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  // A 2 px accent line with a 6 px dot at each end.
+  .atlas-te-drop-line {
+    position: absolute;
+    left: var(--atlas-te-x);
+    top: var(--atlas-te-y);
+    border-radius: $radius-full;
+    background: var(--interactive-accent);
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      width: $dot-size;
+      height: $dot-size;
+      border-radius: $radius-full;
+      background: var(--interactive-accent);
+    }
+
+    &[data-orientation='horizontal'] {
+      width: var(--atlas-te-w);
+      height: $line-width;
+      margin-top: -$line-width * 0.5;
+
+      &::before,
+      &::after {
+        top: ($line-width - $dot-size) * 0.5;
+      }
+
+      &::before { left: -$dot-size * 0.5; }
+      &::after { right: -$dot-size * 0.5; }
+    }
+
+    &[data-orientation='vertical'] {
+      width: $line-width;
+      height: var(--atlas-te-h);
+      margin-left: -$line-width * 0.5;
+
+      &::before,
+      &::after {
+        left: ($line-width - $dot-size) * 0.5;
+      }
+
+      &::before { top: -$dot-size * 0.5; }
+      &::after { bottom: -$dot-size * 0.5; }
+    }
+  }
+
+  // An empty Section or Row: a soft accent ring, 6 % wash, "Drop blocks here"
+  // at its end, clear of a heading at its start.
+  .atlas-te-drop-into {
+    position: absolute;
+    left: var(--atlas-te-x);
+    top: var(--atlas-te-y);
+    display: grid;
+    align-items: center;
+    justify-items: end;
+    box-sizing: border-box;
+    padding: $spacing-xs;
+    width: var(--atlas-te-w);
+    height: var(--atlas-te-h);
+    min-height: $empty-height;
+    border: $border-width-m solid color-mix(in oklch, var(--interactive-accent) 60%, transparent);
+    border-radius: $radius-l;
+    background: color-mix(in oklch, var(--interactive-accent) 6%, transparent);
+    color: var(--text-accent);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-drop-landed {
+    position: absolute;
+    left: var(--atlas-te-x);
+    top: var(--atlas-te-y);
+    width: var(--atlas-te-w);
+    height: var(--atlas-te-h);
+  }
+
+  // As the inserted block's wash: around the block, on the selection's corner.
+  .atlas-te-drop-landed__fill {
+    position: absolute;
+    inset: -$spacing-xs;
+    border-radius: $radius-l;
+    background: color-mix(in oklch, var(--interactive-accent) 18%, transparent);
+  }
+
+  // ── The copy by the pointer ─────────────────────────────────────────────
+  // dnd-kit sizes and moves `.atlas-te-drag-overlay` (translated, never
+  // resized). It hangs off the pointer and takes no pointer events, so the
+  // canvas under the pointer keeps its wheel and its cursor.
+  .atlas-te-drag-overlay {
+    opacity: 0.92;
+  }
+
+  .atlas-te-drag-overlay__face {
+    position: absolute;
+    inset: 0;
+  }
+
+  // A block: lifted on an elevated surface that grows outward by its own
+  // padding, so the block inside keeps its width and wraps as on the card.
+  .atlas-te-drag-overlay .atlas-statblock.atlas-te-drag-sheet {
+    position: absolute;
+    inset: calc(-1 * (#{$spacing-xs} + #{$border-width-m}));
+    padding: $spacing-xs;
+  }
+
+  // A kind dragged from the dock: the tile it places, lifted like a block, at
+  // the width of a tile of the card. The overlay has the dock button's box, so
+  // the copy hangs from its corner instead of filling it.
+  .atlas-te-drag-overlay .atlas-te-drag-face--item .atlas-statblock.atlas-te-drag-sheet {
+    box-sizing: border-box;
+    inset: calc(-1 * (#{$spacing-xs} + #{$border-width-m})) auto auto;
+    width: calc(var(--atlas-te-tile-width, 260px) + 2 * (#{$spacing-xs} + #{$border-width-m}));
+  }
+
+  // The insert menu's preview: the tile alone, without the card's frame.
+  .atlas-te-insert__preview .atlas-te-item-preview .atlas-statblock {
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+// The layer the copy is drawn in, over the whole window.
+.atlas-vtt-plugin.atlas-te-drag-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-dragged-item, #{$z-atlas-modal});
+  pointer-events: none;
+}

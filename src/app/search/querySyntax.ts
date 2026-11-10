@@ -20,6 +20,8 @@ export interface QueryKeyword {
   negatable?: boolean;
   /** Rejects values the keyword cannot use, which then stay plain words. */
   accepts?: (value: string) => boolean;
+  /** An unquoted value runs on over spaces up to the next keyword or the end: `text:pack tactics`. */
+  phrase?: boolean;
 }
 
 export interface QueryToken<K extends QueryKeyword> {
@@ -82,6 +84,23 @@ function tokenHead<K extends QueryKeyword>(word: string, lookup: ReadonlyMap<str
   return { keyword, op, negated: minus || unequal, length: head[0].length };
 }
 
+function wordEnd(text: string, from: number): number {
+  let end = from;
+  while (end < text.length && !WHITESPACE.test(text[end]!)) end++;
+  return end;
+}
+
+/** Where a phrase starting at `from` ends: after its last word before the next keyword, or at the end. */
+function phraseEnd<K extends QueryKeyword>(text: string, from: number, lookup: ReadonlyMap<string, K>): number {
+  let end = wordEnd(text, from);
+  for (;;) {
+    let next = end;
+    while (next < text.length && WHITESPACE.test(text[next]!)) next++;
+    if (next >= text.length || tokenHead(text.slice(next), lookup)) return end;
+    end = wordEnd(text, next);
+  }
+}
+
 /** The token starting at `start`, or null when the word there is a plain word. */
 function tokenAt<K extends QueryKeyword>(text: string, start: number, lookup: ReadonlyMap<string, K>): QueryToken<K> | null {
   const head = tokenHead(text.slice(start), lookup);
@@ -96,11 +115,10 @@ function tokenAt<K extends QueryKeyword>(text: string, start: number, lookup: Re
     end = close < 0 ? text.length : close + 1;
     value = text.slice(valueStart + 1, close < 0 ? text.length : close);
   } else {
-    end = valueStart;
-    while (end < text.length && !WHITESPACE.test(text[end]!)) end++;
+    end = keyword.phrase ? phraseEnd(text, valueStart, lookup) : wordEnd(text, valueStart);
     value = text.slice(valueStart, end);
   }
-  value = value.trim();
+  value = value.trim().replace(/\s+/g, ' ');
   if (!value || (keyword.accepts && !keyword.accepts(value))) return null;
   return { keyword, op, value, negated, start, end };
 }
@@ -128,8 +146,20 @@ export function parseQuery<K extends QueryKeyword>(text: string, lookup: Readonl
   return { tokens, leftover: words.join(' '), incomplete };
 }
 
-/** What the word around `cursor` is being typed as. */
+/** What the word around `cursor` is being typed as; a word of a phrase is part of its value. */
 export function queryContextAt<K extends QueryKeyword>(text: string, cursor: number, lookup: ReadonlyMap<string, K>): QueryContext<K> {
+  for (const token of parseQuery(text, lookup).tokens) {
+    // Spaces after a phrase are where its next word goes.
+    const inside = cursor > token.start && (cursor <= token.end || text.slice(token.end, cursor).trim() === '');
+    if (!token.keyword.phrase || !inside) continue;
+    const head = tokenHead(text.slice(token.start), lookup);
+    if (!head || cursor < token.start + head.length) break;
+    const valueStart = token.start + head.length;
+    return {
+      kind: 'value', keyword: token.keyword, op: token.op, negated: token.negated,
+      fragment: text.slice(valueStart, token.end).replace(/^"/, ''), start: token.start, end: token.end, valueStart,
+    };
+  }
   let start = cursor;
   while (start > 0 && !WHITESPACE.test(text[start - 1]!)) start--;
   let end = cursor;

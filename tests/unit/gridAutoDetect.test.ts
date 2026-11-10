@@ -1,9 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
-import type { DetectableMap } from '../../src/app/pixi/gridDetection/detectGrid';
+import type { DetectableMap } from '../../src/app/pixi/spectralEngine/detectGrid';
 
 const detectGridFromMapImage = vi.fn();
-vi.mock('../../src/app/pixi/gridDetection/detectGrid', () => ({ detectGridFromMapImage: (map: DetectableMap) => detectGridFromMapImage(map) }));
+vi.mock('../../src/app/pixi/spectralEngine/spectralEngineService', () => ({
+  detectGridOfMap: async (map: DetectableMap) => ({ result: (await detectGridFromMapImage(map)) as unknown, hits: null }),
+}));
 
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { autoDetectGridOnFirstLoad } from '../../src/app/services/gridAutoDetect';
@@ -38,6 +40,18 @@ describe('autoDetectGridOnFirstLoad', () => {
     expect(detectGridFromMapImage).toHaveBeenCalledWith(mapImage);
     expect(store.getState().grid).toMatchObject({ type: 'hex-vertical', size: 83.21, offsetX: 40.2, offsetY: 17.7, visible: true, color: '#00FFFF' });
     expect(store.getState().grid).not.toHaveProperty('autoDetect');
+  });
+
+  it('snaps to a grid it found and to nothing where the map has none', async () => {
+    detectGridFromMapImage.mockResolvedValue({ gridType: 'square', cellSize: 64, offsetX: 0, offsetY: 0, confidence: 0.8 });
+    const found = setup({ ...NEW_GRID, snapToGrid: false });
+    await autoDetectGridOnFirstLoad(found, mapImage);
+    expect(found.getState().grid?.snapToGrid).toBe(true);
+
+    detectGridFromMapImage.mockResolvedValue(null);
+    const none = setup({ ...NEW_GRID, snapToGrid: true });
+    await autoDetectGridOnFirstLoad(none, mapImage);
+    expect(none.getState().grid).toMatchObject({ visible: false, snapToGrid: false });
   });
 
   it('writes the stretch a map with cells that are not regular needs, and none for a regular one', async () => {
@@ -107,5 +121,45 @@ describe('autoDetectGridOnFirstLoad', () => {
 
     expect(detectGridFromMapImage).not.toHaveBeenCalled();
     expect(store.getState().grid?.autoDetect).toBe(true);
+  });
+
+  it('shows the answer before it writes it, and writes nothing an undo could take back', async () => {
+    const found = { gridType: 'square' as const, cellSize: 64, offsetX: 3, offsetY: 5, confidence: 0.9 };
+    detectGridFromMapImage.mockResolvedValue(found);
+    const store = setup(NEW_GRID);
+    const steps = store.temporal.getState().pastStates.length;
+    let shown: (() => void) | null = null;
+    const events: string[] = [];
+
+    const detection = autoDetectGridOnFirstLoad(store, mapImage, () => true, {
+      found: (outcome) => new Promise((resolve) => {
+        events.push(`found ${outcome.result?.cellSize}`);
+        shown = resolve;
+      }),
+      none: () => events.push('none'),
+    });
+    await vi.waitFor(() => expect(shown).not.toBeNull());
+
+    // The scan has the answer; the scene's grid waits for it to be revealed.
+    expect(store.getState().grid).toHaveProperty('autoDetect', true);
+    shown!();
+    await expect(detection).resolves.toBe('found');
+    expect(events).toEqual(['found 64']);
+    expect(store.getState().grid).toMatchObject({ size: 64, offsetX: 3, offsetY: 5, visible: true });
+    expect(store.temporal.getState().pastStates).toHaveLength(steps);
+  });
+
+  it('tells the show where the map has no grid, and writes nothing once the scene was left while the answer showed', async () => {
+    detectGridFromMapImage.mockResolvedValue(null);
+    const none = vi.fn();
+    await expect(autoDetectGridOnFirstLoad(setup(NEW_GRID), mapImage, () => true, { none })).resolves.toBe('none');
+    expect(none).toHaveBeenCalledOnce();
+
+    detectGridFromMapImage.mockResolvedValue({ gridType: 'square', cellSize: 64, offsetX: 3, offsetY: 5, confidence: 0.9 });
+    const store = setup(NEW_GRID);
+    let current = true;
+    const left = autoDetectGridOnFirstLoad(store, mapImage, () => current, { found: () => { current = false; return Promise.resolve(); } });
+    await expect(left).resolves.toBe('skipped');
+    expect(store.getState().grid).toHaveProperty('autoDetect', true);
   });
 });

@@ -1,0 +1,95 @@
+// The template editor's dialogs (save, unsaved changes, delete) and its undo toast (§7.8, §7.10).
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  // ── Dialogs ─────────────────────────────────────────────────────────────
+  .atlas-te-dialog {
+    @include atlas-modal-window;
+    width: 440px;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  // Dice rolls…: room for a set's facts on one line beside its dice.
+  .atlas-te-dialog.atlas-te-dice {
+    width: 480px;
+  }
+
+  // Dice rolls…: what the choice is for, in one muted line over the sets.
+  .atlas-te-dice__intro {
+    @include atlas-flex-row($spacing-xs);
+    margin: 0;
+    font-size: $font-ui-smaller;
+    color: var(--text-muted);
+  }
+
+  .atlas-te-dialog__header {
+    @include atlas-modal-header;
+  }
+
+  .atlas-te-dialog__body {
+    @include atlas-modal-body;
+  }
+
+  .atlas-te-dialog__footer {
+    @include atlas-modal-footer;
+  }
+
+  .atlas-te-dialog__field {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+  }
+
+  .atlas-te-dialog__text {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  .atlas-te-dialog__label {
+    @include atlas-field-label;
+  }
+
+  // Save: the template's name, the line under it says what saving does or why it can't.
+  input.atlas-te-save__name {
+    @include atlas-corner-shape;
+    width: 100%;
+    height: var(--input-height);
+  }
+
+  .atlas-te-save__problem {
+    margin: 0;
+    color: var(--text-error);
+  }
+
+  // ── Undo toast: a capsule, its button concentric at the ends ────────────
+  .atlas-te-toast {
+    @include atlas-elevated-surface;
+    @include atlas-flex-row($spacing-xs);
+    position: absolute;
+    left: 50%;
+    bottom: $spacing-l;
+    z-index: 2;
+    translate: -50% 0;
+    padding: $spacing-xs;
+    border-radius: calc(var(--input-height) / 2 + #{$spacing-xs} + #{$border-width-m});
+    box-shadow: $shadow-md;
+    font-size: $font-ui-small;
+
+    .btn {
+      border-radius: calc(var(--input-height) / 2);
+    }
+  }
+
+  .atlas-te-toast__text {
+    padding-inline: $spacing-s;
+    white-space: nowrap;
+  }
+}
+
+.atlas-vtt-plugin.atlas-te-dialog-overlay {
+  @include atlas-modal-overlay($z-atlas-modal);
+}

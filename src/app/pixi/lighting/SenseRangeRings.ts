@@ -2,7 +2,8 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { formatReach, type MeasurementSettings } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
-import type { ViewAtlasStore } from '../../storeFactory';
+import type { SceneStore } from '../../lighting/shownTokens';
+import type { ViewAtlasState } from '../../storeFactory';
 import type { Point } from '../../types/visionTypes';
 import { GM_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
 import { sightSources } from '../../vision/sight';
@@ -12,6 +13,8 @@ import type { VisionCone } from '../../vision/visionCone';
 import { canvasBadgeColors } from '../utils/canvasBadgeColors';
 import { destroyTree } from '../utils/destroyTree';
 import { senseRings, type SenseRing, type SenseRings } from './senseRings';
+import { levelObjects } from '../../levels/levelObjects';
+import { mapTokens } from '../../tokens/offMap';
 
 /** Screen pixels. */
 const LINE_WIDTH = 1.25;
@@ -44,7 +47,7 @@ interface Rect {
 
 export interface SenseRangeRingsDeps {
   viewport: Viewport;
-  store: ViewAtlasStore;
+  store: SceneStore<ViewAtlasState>;
   /** A lit scene in the GM's view: else there are no rings. */
   shown: () => boolean;
   measurement: () => MeasurementSettings;
@@ -88,7 +91,7 @@ export class SenseRangeRings {
     const map = bounds();
     if (!shown() || !map) return [];
     const tokens = state.selectedIds.flatMap((id) => {
-      const token = state.objects.tokens[id];
+      const token = mapTokens(levelObjects(state))[id];
       return token && GM_SIGHT_POLICY.givesSight(token) ? [token] : [];
     });
     if (tokens.length === 0 || tokens.length > MAX_TOKENS) return [];

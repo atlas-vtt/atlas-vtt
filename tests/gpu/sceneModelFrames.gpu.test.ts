@@ -49,7 +49,9 @@ describe('the scene model through the lighting renderer', () => {
   it.each(CASES)('draws $name as its previous version did', async ({ options, then }) => {
     const h = await scene(options);
     then?.(h.store);
-    const reference = sceneModelReference(h.renderer, h.store.getState(), options.rules);
+    // The frozen model predates reflected light: the reference takes the reflections the rule traces now, light by light.
+    const reflections = h.lighting.lightReaches().map((reach) => reach.reflection);
+    const reference = sceneModelReference(h.renderer, h.store.getState(), options.rules, (lights) => lights.map((light, i) => (reflections[i]?.length ? { ...light, reflection: reflections[i] } : light)));
     try {
       expect(h.lighting.currentSight()).toEqual(reference.sight);
       reference.engine.setMode('gm');

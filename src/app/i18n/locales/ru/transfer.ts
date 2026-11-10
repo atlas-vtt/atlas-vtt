@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const transfer: Translation = {
   'transfer.andScenes': { one: '{what} и {count} связанная сцена', few: '{what} и {count} связанные сцены', many: '{what} и {count} связанных сцен', other: '{what} и {count} связанной сцены' },
-  'transfer.copied': 'Скопировано в «{target}»: {what}{note}',
+  'transfer.copied': 'Скопировано в «{target}»: {what}',
   'transfer.copy.withScenes': { one: 'Копировать с {count} связанной сценой', few: 'Копировать с {count} связанными сценами', many: 'Копировать с {count} связанными сценами', other: 'Копировать с {count} связанной сцены' },
   'transfer.copy.withoutLinks': 'Копировать без ссылок',
   'transfer.copyFailed': 'Не удалось скопировать ({what}): {error}',
@@ -13,8 +13,6 @@ export const transfer: Translation = {
   'transfer.move.withScenes': { one: 'Переместить с {count} связанной сценой', few: 'Переместить с {count} связанными сценами', many: 'Переместить с {count} связанными сценами', other: 'Переместить с {count} связанной сцены' },
   'transfer.move.withoutLinks': 'Переместить без ссылок',
   'transfer.moveFailed': 'Не удалось переместить ({what}): {error}',
-  'transfer.moved': 'Перемещено в «{target}»: {what}{note}',
+  'transfer.moved': 'Перемещено в «{target}»: {what}',
   'transfer.selection': 'Выбранное',
-  'transfer.unlinkedMany': { one: '. {count} персонаж перенесён без статблока, он остался у оригинала', few: '. {count} персонажа перенесены без статблоков, они остались у оригиналов', many: '. {count} персонажей перенесены без статблоков, они остались у оригиналов', other: '. {count} персонажа перенесены без статблоков, они остались у оригиналов' },
-  'transfer.unlinkedOne': '. «{name}» перенесён без статблока, он остался у оригинала',
 };

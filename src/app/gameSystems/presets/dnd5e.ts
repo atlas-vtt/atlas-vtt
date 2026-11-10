@@ -1,6 +1,8 @@
+import { D20_DICE_SET_ID } from '../builtInDiceSets';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { DND_5E_LIGHTS } from '../lightPresets/dnd5e';
 import { HP_RESOURCE } from '../../resources/resourceDefinitions';
+import { DEFAULT_ITEM_RARITIES } from '../itemRarities';
 import { DND_5E_SENSES } from '../senses/dnd5e';
 import { builtInPresetId, conditionsOf } from './presetHelpers';
 
@@ -15,11 +17,20 @@ export const DND_5E: SystemPreset = {
       unitDistance: 5,
       measurementMode: 'metric',
       diagonalRule: 'equidistant',
+      // Every foot moved in difficult terrain costs one more (2014 and 2024 rules)
+      difficultTerrain: 'double',
       // A cone is as wide as it is long at every point: 2 × atan(1/2)
       coneAngle: 53.13,
       abstractRangeBands: [],
     },
     dice: { defaultRoll: '1d20', crit: 'natural' },
+    diceSetId: D20_DICE_SET_ID,
+    // The statblock's Initiative is added to the d20; Fantasy Statblocks' SRD creatures have none,
+    // so their DEX, the second of their six scores, gives it instead.
+    initiative: {
+      mode: 'turn-order', roll: '1d20', firstSide: 'players',
+      modifier: { field: 'initiative' }, modifierFallback: { field: 'stats.1', abilityScore: true },
+    },
     conditions: conditionsOf('dnd5e', [
       { name: 'Blinded', color: '#475569', icon: 'blindfold', effect: 'blinded' },
       { name: 'Charmed', color: '#db2777', icon: 'heart' },
@@ -40,5 +51,12 @@ export const DND_5E: SystemPreset = {
     resources: [{ ...HP_RESOURCE }],
     senses: DND_5E_SENSES,
     lightPresets: DND_5E_LIGHTS,
+    // 5e writes NPCs in the monster statblock format.
+    statblockRoles: [
+      { id: 'monster', name: 'Monster', templateId: 'builtin:5e-2024-monster' },
+      { id: 'npc', name: 'NPC', templateId: 'builtin:5e-2024-monster' },
+    ],
+    // The classic ladder is 5e's own: Common to Legendary, and Artifact.
+    itemRarities: DEFAULT_ITEM_RARITIES,
   },
 };

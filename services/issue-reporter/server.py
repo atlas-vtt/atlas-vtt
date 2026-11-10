@@ -14,6 +14,12 @@ REPOSITORY = "atlas-vtt/atlas-vtt"
 # whose issue URLs GitHub redirects. Switch once those versions are gone.
 RECEIPT_REPOSITORY = "ByteMirror/atlas-vtt"
 MAX_BODY = 180000
+REPORTS_PATH = "/atlas/reports"
+
+
+def allowed_origins(value):
+    """Exact origins (scheme, host and port) of web pages that may submit reports from a browser."""
+    return frozenset(origin.strip() for origin in value.split(",") if origin.strip())
 
 
 def github_create(payload):
@@ -34,6 +40,8 @@ def github_create(payload):
 
 class Server(ThreadingHTTPServer):
     daemon_threads = True
+    # Browsers may read answers only on these pages; other clients send no Origin and need none.
+    origins = frozenset()
     slots = threading.BoundedSemaphore(16)
 
     def process_request(self, request, client_address):
@@ -64,9 +72,24 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass  # No IPs, report contents, credentials or request paths in access logs.
 
-    def reply(self, status, body):
+    def page_origin(self):
+        """The request's Origin when it is a page allowed to submit reports, else None."""
+        origin = self.headers.get("Origin")
+        return origin if origin in self.server.origins else None
+
+    def send_origin(self):
+        if not self.server.origins:
+            return
+        self.send_header("Vary", "Origin")
+        origin = self.page_origin()
+        if origin:
+            self.send_header("Access-Control-Allow-Origin", origin)
+
+    def reply(self, status, body, cors=True):
         data = json.dumps(body).encode()
         self.send_response(status)
+        if cors:
+            self.send_origin()
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
@@ -80,9 +103,23 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.reply(404, {"error": "Not found."})
 
+    def do_OPTIONS(self):
+        # A browser asks before it posts JSON from another origin. Only listed pages get a yes.
+        if (self.path != REPORTS_PATH or self.page_origin() is None
+                or self.headers.get("Access-Control-Request-Method") != "POST"):
+            self.reply(403, {"error": "Not allowed."}, cors=False)
+            return
+        self.send_response(204)
+        self.send_origin()
+        self.send_header("Access-Control-Allow-Methods", "POST")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "600")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def do_POST(self):
         try:
-            if self.path != "/atlas/reports":
+            if self.path != REPORTS_PATH:
                 raise ReportError(404, "Not found.")
             if self.headers.get("Transfer-Encoding") or self.headers.get_content_type() != "application/json":
                 raise ReportError(400, "Expected a JSON report.")
@@ -122,6 +159,7 @@ def main():
             output.write(secrets.token_bytes(32))
         rate_key.chmod(0o600)
     server = Server((os.environ.get("LISTEN_HOST", "127.0.0.1"), 8790), Handler)
+    server.origins = allowed_origins(os.environ.get("ATLAS_REPORT_ORIGINS", ""))
     server.reporter = Reporter(state / "reports.sqlite", github_create, rate_key.read_bytes())
     server.serve_forever()
 

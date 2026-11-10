@@ -2,6 +2,7 @@ import type JSZip from 'jszip';
 import { BUNDLE_MANIFEST, manifestProblem, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
 import { sha256 } from '../../utils/hashing';
+import type { LibraryTemplate } from '../../statblocks/model/resolvedTypes';
 import { baseName } from '../../utils/pathUtils';
 import { t } from '../../i18n';
 
@@ -63,6 +64,8 @@ export async function openBundle(data: Blob, onProgress: BundleProgressListener)
 export interface BundleFileReader {
   blob(path: string): Promise<Blob | null>;
   text(path: string): Promise<string | null>;
+  /** The bundle's statblock templates, read without code, which previews of its notes look up first. */
+  templates?: readonly LibraryTemplate[] | undefined;
 }
 
 export function bundleFileReader({ zip }: OpenedBundle): BundleFileReader {

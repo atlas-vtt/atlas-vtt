@@ -1,7 +1,6 @@
 import type { Translation } from '../../types';
 
 export const sbCandidate: Translation = {
-  'sbCandidate.conflict': 'К этой заметке уже привязано несколько токенов. Сначала проверьте привязки.',
   'sbCandidate.imported': 'К этой заметке уже привязан токен Atlas.',
   'sbCandidate.unresolved': 'Статблок не найден. Проверьте имя или ссылку на заметку.',
   'sbCandidate.noImage': 'Добавьте изображение в статблок, чтобы создать токен.',

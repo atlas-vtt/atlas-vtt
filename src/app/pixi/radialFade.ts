@@ -1,4 +1,4 @@
-import type { Segment } from './gridDetection/gridTemplate';
+import type { Segment } from './spectralEngine/gridTemplate';
 
 /** Opacity at a distance from the centre; stops are sorted by radius, and the last one holds beyond it. */
 export interface FadeStop {

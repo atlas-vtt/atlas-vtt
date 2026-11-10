@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -15,7 +16,9 @@ const service = {
   initialize: vi.fn().mockResolvedValue(undefined),
   getCollections: vi.fn().mockResolvedValue([{ id: 'default', name: 'Default' }]),
   getCollection: vi.fn(async (id: string) => (await service.getCollections()).find((c: { id: string }) => c.id === id) ?? null),
-  getAllTags: vi.fn().mockResolvedValue(['Existing']),
+  // The selected collection registers Existing; another collection still registers a tag deleted here.
+  getCollectionTags: vi.fn(async (collection: string, group: string) =>
+    collection === 'default' ? [{ id: 'existing', name: 'Existing', group }] : [{ id: 'deleted', name: 'Deleted', group }]),
   createTag: vi.fn(async (_collection: string, _group: string, name: string) => ({ name })),
   addAssets: vi.fn(async (assets: unknown[]) => assets),
   addAsset: vi.fn().mockResolvedValue({}),
@@ -53,7 +56,8 @@ function mount(child: React.ReactNode) {
 
 async function selectAndCreateTags(group: 'tokens' | 'maps') {
   fireEvent.click(await screen.findByRole('button', { name: 'Existing' }));
-  expect(service.getAllTags).toHaveBeenCalledWith(group);
+  expect(service.getCollectionTags).toHaveBeenCalledWith('default', group);
+  expect(screen.queryByRole('button', { name: 'Deleted' })).toBeNull();
   const input = screen.getByRole('textbox', { name: 'Search or create tags' });
   fireEvent.change(input, { target: { value: 'New tag' } });
   fireEvent.keyDown(input, { key: 'Enter' });

@@ -76,6 +76,16 @@
     background-color: var(--background-modifier-active-hover) !important;
   }
 
+  &:disabled {
+    color: var(--text-faint);
+    background-color: transparent !important;
+    cursor: default;
+
+    svg {
+      color: var(--text-faint);
+    }
+  }
+
   svg {
     width: $icon-s;
     height: $icon-s;

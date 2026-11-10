@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { TFile, App } from 'obsidian';
-import FantasyStatblock from './FantasyStatblock';
+import { LinkedStatblock } from '../../statblocks/render/LinkedStatblock';
 import type { TokenVitals } from '../../services/statblockVitalsSync';
 import type { TokenRollContext } from '../../types/diceRollOrigin';
-import { isModKey } from '../../keyboard/modKey';
+import { isModHeld, isModKey } from '../../keyboard/modKey';
 import { previewEdgeGaps, type PreviewEdgeGaps } from './statblock/previewEdgeGap';
+import { scrollOnCtrlWheel } from '../../services/previewWheel';
+import { holdPreviewShown } from './statblock/previewShown';
 import './statblock-hover-preview.scss';
+import { portalHost } from '../../host/portalHost';
 
 export interface StatblockHoverPreviewProps {
   /** Vault path of the linked statblock note */
@@ -167,6 +170,11 @@ export function StatblockHoverPreview({
     return;
   }, [isVisible, isClosing, notePath, updateMeasured]);
 
+  useEffect(() => (containerRef.current ? scrollOnCtrlWheel(containerRef.current) : undefined), [isVisible, isClosing, notePath]);
+
+  const shown = (isVisible || isClosing) && notePath !== null;
+  useEffect(() => (shown ? holdPreviewShown(document) : undefined), [shown]);
+
   const positionStyles = useMemo(() => {
     if (!isVisible && !isClosing) return {};
     // Fall back to rough defaults until the statblock has actually rendered.
@@ -185,10 +193,10 @@ export function StatblockHoverPreview({
   return createPortal(
     <div ref={containerRef} className={className} style={positionStyles}>
       {app && (
-        <FantasyStatblock notePath={notePath} app={app} tokens={vitals ? [vitals] : []} originContext={originContext} />
+        <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} />
       )}
     </div>,
-    document.body
+    portalHost()
   );
 }
 
@@ -278,10 +286,12 @@ export function useStatblockHoverPreview<TEntry>(
   }, [app]);
 
   const closePreview = useCallback((): void => {
-    if (!hoveredEntry) return;
+    // Already closing: a pointer that goes on moving starts no second fade
+    if (!hoveredEntry || closeTimeoutRef.current) return;
 
     setIsClosing(true);
     closeTimeoutRef.current = window.setTimeout(() => {
+      closeTimeoutRef.current = null;
       setHoveredEntry(null);
       setNotePath(null);
       setStatblockFile(null);
@@ -312,17 +322,25 @@ export function useStatblockHoverPreview<TEntry>(
     };
   }, []);
 
-  // Releasing Mod (Cmd on macOS, Ctrl elsewhere) closes the preview
+  // The preview lives while Mod (Cmd on macOS, Ctrl elsewhere) is held: releasing it closes the
+  // preview, and so does a pointer moving without it, should the release never have been heard.
+  // Heard in the capture phase, since a pinned note preview keeps every key inside itself.
   useEffect(() => {
+    if (!hoveredEntry) return undefined;
     const handleKeyUp = (e: KeyboardEvent): void => {
-      if (isModKey(e)) {
-        closePreview();
-      }
+      if (isModKey(e)) closePreview();
+    };
+    const handlePointerMove = (e: PointerEvent): void => {
+      if (!isModHeld(e)) closePreview();
     };
 
-    window.addEventListener('keyup', handleKeyUp);
-    return () => window.removeEventListener('keyup', handleKeyUp);
-  }, [closePreview]);
+    window.addEventListener('keyup', handleKeyUp, true);
+    window.addEventListener('pointermove', handlePointerMove, true);
+    return () => {
+      window.removeEventListener('keyup', handleKeyUp, true);
+      window.removeEventListener('pointermove', handlePointerMove, true);
+    };
+  }, [hoveredEntry, closePreview]);
 
   const state: StatblockHoverPreviewState<TEntry> = {
     isVisible,

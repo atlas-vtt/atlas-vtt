@@ -3,8 +3,10 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { setIcon } from 'obsidian';
 import { runInBackground } from '../../../utils/backgroundTask';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { useMenuFit } from './useMenuFit';
 import './atlas-context-menu.scss';
 import { t } from '../../../i18n';
+import { portalHost } from '../../../host/portalHost';
 
 // ── Entry descriptor (declarative menu definition) ──────────────────────────
 
@@ -20,10 +22,14 @@ export type ContextMenuEntry =
     destructive?: boolean;
     /** Drawn before the label, e.g. a condition's badge. */
     leading?: React.ReactNode;
+    /** Said after the label in a quieter tone, e.g. the character a player plays, a key, or the template a statblock role starts from. */
+    detail?: string;
     /** Choosing the item leaves the menu open, for toggles that are often picked several at a time. */
     keepOpen?: boolean;
     /** − value + controls after the label, also driven by the + and - keys while the item is highlighted. */
     stepper?: MenuStepper;
+    /** What choosing the row does, in a sentence or two: a tooltip beside the row while it is pointed at or focused. */
+    description?: string;
   }
   | {
     type: 'submenu';
@@ -44,8 +50,20 @@ export interface MenuStepper {
   canDecrement: boolean;
 }
 
+/** A line between two groups of rows. */
+export const MENU_SEPARATOR: ContextMenuEntry = {
+  type: 'custom',
+  render: () => <div className="atlas-ctx-separator" role="separator" />,
+};
+
 type ContextMenuItemEntry = Extract<ContextMenuEntry, { type: 'item' }>;
 type ContextMenuSubmenuEntry = Extract<ContextMenuEntry, { type: 'submenu' }>;
+
+/** Submenus share the document and visible view of the menu that opened them. */
+export interface ContextMenuPlacement {
+  collisionBoundary?: Element | null | undefined;
+  container?: HTMLElement | undefined;
+}
 
 /** Runs an entry's action; a rejected async action is logged rather than left unhandled. */
 function runEntryAction(entry: ContextMenuItemEntry): void {
@@ -56,6 +74,11 @@ function runEntryAction(entry: ContextMenuItemEntry): void {
 }
 
 // ── Icon helper ─────────────────────────────────────────────────────────────
+
+/** An Obsidian icon in a menu row's icon slot; an empty name keeps the slot, so labels line up. */
+export function MenuIcon({ name }: { name: string }): React.ReactElement {
+  return name ? <ObsidianIcon name={name} /> : <span className="atlas-ctx-icon-spacer" />;
+}
 
 function ObsidianIcon({ name }: { name: string }): React.ReactElement {
   const ref = useRef<HTMLSpanElement>(null);
@@ -73,11 +96,11 @@ function ObsidianIcon({ name }: { name: string }): React.ReactElement {
 }
 
 /** A submenu's entries, rebuilt whenever the submenu reports that they changed. */
-function SubmenuEntries({ entry, onClose }: { entry: ContextMenuSubmenuEntry; onClose: () => void }): React.ReactElement {
+function SubmenuEntries({ entry, onClose, placement }: { entry: ContextMenuSubmenuEntry; onClose: () => void; placement: ContextMenuPlacement }): React.ReactElement {
   const [, refresh] = useReducer((version: number) => version + 1, 0);
   useEffect(() => entry.subscribe?.(refresh), [entry]);
   const children = typeof entry.children === 'function' ? entry.children() : entry.children;
-  return <>{renderEntries(children, onClose)}</>;
+  return <>{renderEntries(children, onClose, placement)}</>;
 }
 
 /** Runs a stepper action from a click inside a menu item without choosing the item. */
@@ -91,15 +114,16 @@ function stepperClick(action: () => unknown): (event: React.MouseEvent) => void 
 
 function Stepper({ stepper }: { stepper: MenuStepper }): React.ReactElement {
   return (
+    // The item's name is its label and this value, and it steps with + and -; the buttons are for the pointer.
     <span className="atlas-ctx-stepper">
       <LabelTooltip label={t('menu.lower', { label: stepper.label })}>
-        <button type="button" tabIndex={-1} className="atlas-ctx-stepper__button" disabled={!stepper.canDecrement} onClick={stepperClick(stepper.onDecrement)}>
+        <button type="button" tabIndex={-1} aria-hidden="true" className="atlas-ctx-stepper__button" disabled={!stepper.canDecrement} onClick={stepperClick(stepper.onDecrement)}>
           <ObsidianIcon name="minus" />
         </button>
       </LabelTooltip>
       <span className="atlas-ctx-stepper__value">{stepper.value}</span>
       <LabelTooltip label={t('menu.raise', { label: stepper.label })}>
-        <button type="button" tabIndex={-1} className="atlas-ctx-stepper__button" onClick={stepperClick(stepper.onIncrement)}>
+        <button type="button" tabIndex={-1} aria-hidden="true" className="atlas-ctx-stepper__button" onClick={stepperClick(stepper.onIncrement)}>
           <ObsidianIcon name="plus" />
         </button>
       </LabelTooltip>
@@ -118,15 +142,47 @@ function stepperKeys(stepper: MenuStepper | undefined): ((event: React.KeyboardE
   };
 }
 
+/** The label, in an element of its own where something stands beside it that it has to make room for. */
+function itemLabel(entry: ContextMenuItemEntry): React.ReactNode {
+  const label = <span className="atlas-ctx-item__label">{entry.label}</span>;
+  if (entry.leading) {
+    return (
+      <span className="atlas-ctx-item__leading">
+        {entry.leading}
+        {label}
+      </span>
+    );
+  }
+  return entry.detail !== undefined ? label : entry.label;
+}
+
+/** A submenu, beside its row and sliding along it to stay in its room (`useMenuFit`). */
+function FittedSubmenu({ placement, children }: { placement: ContextMenuPlacement; children: React.ReactNode }): React.ReactElement {
+  const menu = useRef<HTMLDivElement>(null);
+  const boundary = useMenuFit(menu, placement.collisionBoundary);
+  return (
+    <DropdownMenu.SubContent
+      ref={menu}
+      className="atlas-ctx-menu"
+      sideOffset={4}
+      alignOffset={-4}
+      avoidCollisions
+      sticky="always"
+      collisionBoundary={boundary}
+      collisionPadding={8}
+    >
+      {children}
+    </DropdownMenu.SubContent>
+  );
+}
+
 function ItemContent({ entry }: { entry: ContextMenuItemEntry }): React.ReactElement {
   return (
     <>
-      {entry.leading ? (
-        <span className="atlas-ctx-item__leading">
-          {entry.leading}
-          <span className="atlas-ctx-item__label">{entry.label}</span>
-        </span>
-      ) : entry.label}
+      {itemLabel(entry)}
+      {/* The name read out runs "Loudness 0 dB", not "Loudness0 dB": a space a flex row does not draw. */}
+      {entry.stepper && ' '}
+      {entry.detail !== undefined && <span className="atlas-ctx-item__detail">{entry.detail}</span>}
       {(entry.stepper || entry.checked !== undefined) && (
         <span className="atlas-ctx-item__trailing">
           {entry.stepper && <Stepper stepper={entry.stepper} />}
@@ -146,6 +202,7 @@ function ItemContent({ entry }: { entry: ContextMenuItemEntry }): React.ReactEle
 export function renderEntries(
   entries: ContextMenuEntry[],
   onClose: () => void,
+  placement: ContextMenuPlacement = {},
 ): React.ReactNode[] {
   return entries.map((entry, idx) => {
     switch (entry.type) {
@@ -170,16 +227,10 @@ export function renderEntries(
                 <ObsidianIcon name="chevron-right" />
               </span>
             </DropdownMenu.SubTrigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.SubContent
-                className="atlas-ctx-menu"
-                sideOffset={4}
-                alignOffset={-4}
-                avoidCollisions
-                collisionPadding={8}
-              >
-                <SubmenuEntries entry={entry} onClose={onClose} />
-              </DropdownMenu.SubContent>
+            <DropdownMenu.Portal container={placement.container ?? portalHost()}>
+              <FittedSubmenu placement={placement}>
+                <SubmenuEntries entry={entry} onClose={onClose} placement={placement} />
+              </FittedSubmenu>
             </DropdownMenu.Portal>
           </DropdownMenu.Sub>
         );
@@ -193,18 +244,22 @@ export function renderEntries(
           else onClose();
         };
         const disabled = entry.disabled !== undefined ? { disabled: entry.disabled } : {};
-        if (entry.checked !== undefined) {
-          return (
-            <DropdownMenu.CheckboxItem key={`check-${idx}`} className={className} checked={entry.checked} {...disabled} onSelect={onSelect} onKeyDown={stepperKeys(entry.stepper)}>
+        const stepped = entry.stepper ? { 'aria-keyshortcuts': '+ -' } : {};
+        const row = entry.checked !== undefined
+          ? (
+            <DropdownMenu.CheckboxItem className={className} checked={entry.checked} {...disabled} {...stepped} onSelect={onSelect} onKeyDown={stepperKeys(entry.stepper)}>
               <ItemContent entry={entry} />
             </DropdownMenu.CheckboxItem>
+          )
+          : (
+            <DropdownMenu.Item className={className} {...disabled} {...stepped} onSelect={onSelect} onKeyDown={stepperKeys(entry.stepper)}>
+              <ItemContent entry={entry} />
+            </DropdownMenu.Item>
           );
-        }
-        return (
-          <DropdownMenu.Item key={`item-${idx}`} className={className} {...disabled} onSelect={onSelect} onKeyDown={stepperKeys(entry.stepper)}>
-            <ItemContent entry={entry} />
-          </DropdownMenu.Item>
-        );
+        const key = `${entry.checked !== undefined ? 'check' : 'item'}-${idx}`;
+        return entry.description
+          ? <LabelTooltip key={key} label={entry.description} side="right" describe multiline>{row}</LabelTooltip>
+          : <React.Fragment key={key}>{row}</React.Fragment>;
       }
     }
   });

@@ -208,6 +208,16 @@ $statblock-max-width: 560px;
 
   // ── Footer ─────────────────────────────────────────────────────────────────
 
+  // "New statblock…" and Unlink, at the footer's start; the first sits in the dialog's lower left corner.
+  &__start {
+    @include atlas-flex-row($gap: $spacing-s);
+    margin-right: auto;
+  }
+
+  &__new.btn {
+    @include atlas-modal-corner-control(bottom-left);
+  }
+
   &__unlink.btn {
     margin-right: auto;
 

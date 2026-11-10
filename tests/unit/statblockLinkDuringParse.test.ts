@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { TFile } from 'obsidian';
 import { AssetService } from '../../src/app/services/AssetService';
@@ -98,7 +99,7 @@ async function setup(statblock: Statblock): Promise<Linking> {
 async function linkedAfterParse(statblock: Statblock): Promise<Record<string, unknown>> {
   const { service, token, endParse } = await setup(statblock);
   await endParse();
-  await service.linkTokenToStatblock(image, statblock.note, { showConfirmation: false });
+  await service.linkTokenToStatblock(image, statblock.note);
   Reflect.set(AssetService, 'instance', null);
   Reflect.set(TokenStatblockLinkService, 'instance', null);
   return token();
@@ -117,13 +118,13 @@ describe('linking a token while Fantasy Statblocks parses the vault', () => {
     expect(afterParse).not.toHaveProperty('maxHpOverridden');
 
     const { service, token } = await setup(SELF_CONTAINED);
-    await expect(service.linkTokenToStatblock(image, SELF_CONTAINED.note, { showConfirmation: false })).resolves.toBe(true);
+    await expect(service.linkTokenToStatblock(image, SELF_CONTAINED.note)).resolves.toBe(true);
     expect(token()).toEqual(afterParse);
   });
 
   it.each(NEEDS_BESTIARY)('writes the link alone for $kind, also when the parse ends', async (statblock) => {
     const { service, token, endParse } = await setup(statblock);
-    await expect(service.linkTokenToStatblock(image, statblock.note, { showConfirmation: false })).resolves.toBe(true);
+    await expect(service.linkTokenToStatblock(image, statblock.note)).resolves.toBe(true);
     expect(token()).toEqual({ ...placed, statblockPath: statblock.note });
 
     await endParse();
@@ -136,7 +137,7 @@ describe('linking a token while Fantasy Statblocks parses the vault', () => {
 
   it('leaves a map alone that was changed after the link, when the parse ends', async () => {
     const { vault, service, token, endParse } = await setup(SELF_CONTAINED);
-    await service.linkTokenToStatblock(image, SELF_CONTAINED.note, { showConfirmation: false });
+    await service.linkTokenToStatblock(image, SELF_CONTAINED.note);
 
     // The map is played and saved: the token renamed, wounded, its maximum set by hand.
     const played = { ...token(), name: 'Grik the Bold', hp: { current: 5, max: 30 }, maxHpOverridden: true };

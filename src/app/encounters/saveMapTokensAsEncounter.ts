@@ -1,4 +1,4 @@
-import { App as ObsidianApp, Notice } from 'obsidian';
+import { App as ObsidianApp } from 'obsidian';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import type { TokenEntity, TokenStateSnapshot } from '../types';
@@ -8,6 +8,7 @@ import { AssetService } from '../services/AssetService';
 import { captureFormation, formationGridFromOptions } from './encounterFormation';
 import { saveEncounter, type EncounterTokenDraft } from './encounterSaveService';
 import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 /** Token nearest the group's centroid becomes the anchor, so the encounter spawns centred on the viewport. */
 function orderByCentroidDistance(tokens: TokenEntity[]): TokenEntity[] {
@@ -16,9 +17,9 @@ function orderByCentroidDistance(tokens: TokenEntity[]): TokenEntity[] {
   return [...tokens].sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
 }
 
-/** The token's state as the encounter's file holds it. */
+/** The token's state as the encounter's file holds it; where it is put down is the encounter's to say. */
 function snapshotTokenState(token: TokenEntity): TokenStateSnapshot {
-  const { id: _id, x: _x, y: _y, instanceNumber: _instanceNumber, ...state } = token;
+  const { id: _id, x: _x, y: _y, instanceNumber: _instanceNumber, offMap: _offMap, ...state } = token;
   return tokenToFile(state) as TokenStateSnapshot;
 }
 
@@ -38,7 +39,7 @@ export async function saveMapTokensAsEncounter(
     .filter((t): t is TokenEntity => !!t && typeof t.imagePath === 'string' && t.imagePath.length > 0);
 
   if (tokens.length === 0) {
-    new Notice(t('encounter.noImage'));
+    showNotice(t('encounter.noImage'));
     return;
   }
 

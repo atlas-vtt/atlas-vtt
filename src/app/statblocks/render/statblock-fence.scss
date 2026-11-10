@@ -1,0 +1,9 @@
+@use '../../../../styles/tokens' as *;
+
+// A note's `atlas-statblock` fence (D14): Edit statblock above the card, at
+// its end, the card's own gap away.
+.atlas-statblock-fence__bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: $spacing-s;
+}

@@ -79,11 +79,7 @@ export async function transferToCollection(
       context.setAssets((prev) => prev.filter((asset) => !moved.has(asset.id)));
       context.setSelectedAssetIds((prev) => prev.filter((id) => !moved.has(id)));
     }
-    const unlinked = result.unlinkedStatblocks.length;
-    const note = unlinked === 0 ? '' : unlinked === 1
-      ? t('transfer.unlinkedOne', { name: result.unlinkedStatblocks[0]!.name })
-      : t('transfer.unlinkedMany', { count: unlinked });
-    showAtlasToast(t(mode === 'move' ? 'transfer.moved' : 'transfer.copied', { what, target: target.name, note }), unlinked > 0 ? LONG_TOAST_DURATION : undefined);
+    showAtlasToast(t(mode === 'move' ? 'transfer.moved' : 'transfer.copied', { what, target: target.name }));
   } catch (error) {
     console.error(`[Atlas] Could not ${mode} assets to ${target.id}:`, error);
     showAtlasToast(t(`transfer.${mode}Failed`, { what, error: error instanceof Error ? error.message : String(error) }), LONG_TOAST_DURATION);

@@ -50,6 +50,16 @@ const VISION_ON_USES = [
   { selector: "ExportSpecifier[local.name='visionOn']", message: VISION_ON_MESSAGE },
   { selector: "MemberExpression[property.name='visionOn']", message: VISION_ON_MESSAGE },
 ];
+// What draws, hit-tests, sees or selects reads the objects of the level its view shows, through
+// `levelObjects` (levels/levelObjects.ts); a raw read would show every floor's tokens and walls at once.
+// The destructuring selectors catch `const { objects } = state` and `({ objects }) =>`.
+const LEVEL_OBJECTS_MESSAGE = "Read a view's objects with levelObjects(state) (levels/levelObjects.ts): only those on the level it shows.";
+const LEVEL_OBJECT_READS = [
+  { selector: "MemberExpression[property.name='objects']", message: LEVEL_OBJECTS_MESSAGE },
+  { selector: "ObjectPattern > Property[key.name='objects']", message: LEVEL_OBJECTS_MESSAGE },
+];
+const LEVEL_OBJECT_READERS = ["src/app/pixi/**/*.{ts,tsx}", "src/app/vision/**/*.{ts,tsx}", "src/app/lighting/**/*.{ts,tsx}", "src/app/fog/**/*.{ts,tsx}", "src/app/audio/**/*.{ts,tsx}"];
+
 // A note's text reaches the YAML parser only through the helper that checks it first. The import
 // is flagged rather than the call, so an alias cannot pass; the member selector catches a
 // namespace import, the export selector a re-export, the pattern selector a destructuring.
@@ -63,6 +73,34 @@ const PARSE_YAML_USES = [
   { selector: "CallExpression[callee.name='require'][arguments.0.value='yaml']", message: PARSE_YAML_MESSAGE },
 ];
 const NOTE_YAML_PARSER = "src/app/services/noteYaml.ts";
+// Atlas' messages are Obsidian's notices in Atlas' look, which only the helper gives them.
+const NATIVE_NOTICE = [
+  { selector: "NewExpression[callee.name='Notice']", message: "Show a message with showNotice (src/app/ui/notice.ts), which gives it Atlas' look." },
+];
+const ATLAS_NOTICE = "src/app/ui/notice.ts";
+
+// The map holds only the tokens that are not kept beside it (`tokens/offMap.ts`): code that draws,
+// hit-tests, selects, sees, lights, hears, measures, moves with the map or shares the map with
+// players reads them through `mapTokens`, and says so with `sceneTokens` where it means every token.
+const MAP_TOKEN_MESSAGE = "Read the map's tokens with mapTokens, or every token of the scene with sceneTokens (tokens/offMap.ts): tokens kept beside the map are no part of it.";
+const MAP_TOKEN_READS = [
+  { selector: "MemberExpression[property.name='tokens'][object.property.name='objects']", message: MAP_TOKEN_MESSAGE },
+  { selector: "MemberExpression[property.name='tokens'][object.name='objects']", message: MAP_TOKEN_MESSAGE },
+  { selector: "VariableDeclarator[init.property.name='objects'] > ObjectPattern > Property[key.name='tokens']", message: MAP_TOKEN_MESSAGE },
+  { selector: "VariableDeclarator[init.name='objects'] > ObjectPattern > Property[key.name='tokens']", message: MAP_TOKEN_MESSAGE },
+];
+const MAP_TOKEN_READERS = [
+  "src/app/pixi/**/*.{ts,tsx}",
+  "src/app/vision/**/*.{ts,tsx}",
+  "src/app/lighting/**/*.{ts,tsx}",
+  "src/app/audio/**/*.{ts,tsx}",
+  "src/app/fog/**/*.{ts,tsx}",
+  "src/app/grid/**/*.{ts,tsx}",
+  "src/app/clipboard/**/*.{ts,tsx}",
+  "src/app/PixiRendererOrchestrator.ts",
+  "src/app/react/useMapNavigationHotkeys.ts",
+  "src/app/online/gm/{TokenShare,sceneInputs,gmMarks,dragRulers,MapLayerShare,LiveShare,playerMoves,playerDrags,playerTokenVision}.ts",
+];
 
 // The two files that may ask `visionOn`: no source without vision on, whatever a policy says,
 // and the selection's check of every token.
@@ -83,7 +121,22 @@ export default defineConfig([
         "ts-nocheck": true,
         "ts-expect-error": true,
       }],
-      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...PARSE_YAML_USES],
+      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES],
+    },
+  },
+  {
+    files: MAP_TOKEN_READERS,
+    ignores: ["**/__tests__/**"],
+    rules: {
+      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...MAP_TOKEN_READS],
+    },
+  },
+  // A later block replaces the rule's options for the files it matches, so the level readers repeat the map's token reads.
+  {
+    files: LEVEL_OBJECT_READERS,
+    ignores: ["**/__tests__/**"],
+    rules: {
+      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...MAP_TOKEN_READS, ...LEVEL_OBJECT_READS],
     },
   },
   // Which tokens give sight and which a picture always shows is decided in one place,
@@ -93,19 +146,56 @@ export default defineConfig([
     files: ["src/app/vision/**/*.{ts,tsx}", "src/app/pixi/lighting/**/*.{ts,tsx}"],
     ignores: ["src/app/vision/tokenSightPolicy.ts", ...VISION_ON_ASKERS, "**/__tests__/**"],
     rules: {
-      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...VISION_FIELD_READS, ...VISION_ON_USES],
+      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...VISION_FIELD_READS, ...VISION_ON_USES, ...MAP_TOKEN_READS, ...LEVEL_OBJECT_READS],
     },
   },
   {
     files: VISION_ON_ASKERS,
     rules: {
-      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...VISION_FIELD_READS],
+      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...VISION_FIELD_READS, ...MAP_TOKEN_READS, ...LEVEL_OBJECT_READS],
     },
   },
   {
     files: [NOTE_YAML_PARSER],
     rules: {
-      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE],
+      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE],
+    },
+  },
+  {
+    files: [ATLAS_NOTICE],
+    rules: {
+      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...PARSE_YAML_USES],
+    },
+  },
+  // Statblocks: only the drag-and-drop wrapper may import dnd-kit, and the pure
+  // core (model, format, expressions, values, the patcher, the FS layout
+  // converter) imports neither Obsidian nor React. The core rule is used
+  // because the obsidianmd preset owns the TypeScript variant, and overriding
+  // it would drop its options.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/app/statblocks/editor/dnd/**"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{ group: ["@dnd-kit/*"], message: "Only statblocks/editor/dnd/ imports dnd-kit." }],
+      }],
+    },
+  },
+  {
+    files: [
+      "src/app/statblocks/{model,format,expressions,values}/**/*.{ts,tsx}",
+      "src/app/statblocks/notes/{frontmatterPatch,frontmatterBounds,frontmatterModel,yamlSplice,yamlDocument,yamlValueText,listIdentity,patchTypes}.ts",
+      "src/app/statblocks/fs/{fsLayoutToTemplate,fsBlocks,fsBlockParts,fsLeafBlocks,fsCallbackPatterns,fsCallbackSyntax,fsCallbackLexer,fsImportState,fsScripts,fsLayoutTypes,fsTrackReplacement}.ts",
+    ],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [
+          { name: "obsidian", message: "The statblock core is pure: no Obsidian." },
+          { name: "react", message: "The statblock core is pure: no React." },
+          { name: "react-dom", message: "The statblock core is pure: no React." },
+        ],
+        patterns: [{ group: ["@dnd-kit/*"], message: "Only statblocks/editor/dnd/ imports dnd-kit." }],
+      }],
     },
   },
   {

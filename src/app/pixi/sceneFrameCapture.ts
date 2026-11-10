@@ -21,6 +21,8 @@ export interface SceneFrameParts {
    * canvas; none on a view without lighting.
    */
   lighting: { gmOverlays(): GmOverlays; playerOnlyLayers?(): readonly HideableLayer[]; readonly renderer: Pick<SceneLightingView, 'renderForFrame'> } | undefined;
+  /** The roof of the level shown, drawn whole for the picture; none on a view without one. */
+  roofs?: { renderForFrame<T>(frame: SceneFrame, render: () => T): T } | undefined;
 }
 
 /** A picture is rendered off-screen: the canvas keeps the GM's frame, so nothing is drawn on it. */
@@ -33,7 +35,7 @@ const KEEP_CANVAS = (): void => undefined;
  * when this returns and the canvas is never drawn meanwhile, so the GM sees no frame without
  * them. The render consumes the stage's pending updates: the caller asks for a render after it.
  */
-export function captureSceneFrame<T>({ gmViewLayers, markerLayers, lighting }: SceneFrameParts, frame: SceneFrame, render: () => T): T {
+export function captureSceneFrame<T>({ gmViewLayers, markerLayers, lighting, roofs }: SceneFrameParts, frame: SceneFrame, render: () => T): T {
   const hidden = [...Object.values<HideableLayer>(lighting?.gmOverlays() ?? {}), ...(lighting?.playerOnlyLayers?.() ?? [])];
   const layers = [
     ...gmViewLayers,
@@ -42,7 +44,8 @@ export function captureSceneFrame<T>({ gmViewLayers, markerLayers, lighting }: S
   ];
   let picture!: T;
   captureWithLayerVisibility(layers, KEEP_CANVAS, () => {
-    picture = lighting ? lighting.renderer.renderForFrame(frame, render) : render();
+    const lit = (): T => (lighting ? lighting.renderer.renderForFrame(frame, render) : render());
+    picture = roofs ? roofs.renderForFrame(frame, lit) : lit();
   });
   return picture;
 }

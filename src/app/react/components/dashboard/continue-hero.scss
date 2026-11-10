@@ -1,0 +1,190 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use '../../../../../styles/skeleton' as *;
+@use 'dashboard-mixins' as *;
+
+// The start screen's main card (ContinueHero.tsx): the scene played last, its map filling the
+// card's far side and fading into the card where the text stands, and the one button that
+// continues it. Narrow panes stack the map above the text.
+
+$hero-narrow: 640px;
+$hero-cta-height: 40px;
+
+.continue-hero {
+  @include dashboard-button-reset;
+  @include dashboard-card-surface;
+  @include dashboard-art-zoom('.continue-hero__art');
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: clamp(240px, 26cqi, 320px);
+  overflow: hidden;
+  border-radius: $radius-2xl;
+
+  @container atlas-dashboard (max-width: #{$hero-narrow}) {
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+.continue-hero__art {
+  @include dashboard-art-well;
+  position: absolute;
+  inset: 0;
+  background: none;
+  // The map spans the whole card, which clips it to its corners, and fades out towards the text
+  // into the card's own surface. The fade starts inside the picture, never at an edge of a box,
+  // and follows smootherstep (no jump in slope at either end), so neither a dark nor a pale map
+  // shows where it begins.
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    transparent 28%,
+    rgb(0 0 0 / 0.2%) 31.25%,
+    rgb(0 0 0 / 1.6%) 34.5%,
+    rgb(0 0 0 / 4.9%) 37.75%,
+    rgb(0 0 0 / 10.4%) 41%,
+    rgb(0 0 0 / 18.0%) 44.25%,
+    rgb(0 0 0 / 27.5%) 47.5%,
+    rgb(0 0 0 / 38.4%) 50.75%,
+    rgb(0 0 0 / 50.0%) 54%,
+    rgb(0 0 0 / 61.6%) 57.25%,
+    rgb(0 0 0 / 72.5%) 60.5%,
+    rgb(0 0 0 / 82.0%) 63.75%,
+    rgb(0 0 0 / 89.6%) 67%,
+    rgb(0 0 0 / 95.1%) 70.25%,
+    rgb(0 0 0 / 98.4%) 73.5%,
+    rgb(0 0 0 / 99.8%) 76.75%,
+    #000 80%
+  );
+
+  > .atlas-map-art > img {
+    object-position: 70% center;
+  }
+
+  @container atlas-dashboard (max-width: #{$hero-narrow}) {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    mask-image: linear-gradient(to bottom, #000 50%, rgb(0 0 0 / 60%) 72%, rgb(0 0 0 / 20%) 88%, transparent 100%);
+  }
+}
+
+.continue-hero__body {
+  position: relative;
+  @include atlas-flex-col($spacing-s);
+  align-items: flex-start;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  width: 52%;
+  padding: $spacing-2xl;
+
+  @container atlas-dashboard (max-width: #{$hero-narrow}) {
+    width: 100%;
+    margin-top: -$spacing-2xl;
+    padding: $spacing-l;
+  }
+}
+
+.continue-hero__eyebrow {
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
+.continue-hero__title {
+  @include dashboard-display-type;
+  @include atlas-line-clamp(2);
+  font-size: clamp(1.6rem, 3.4cqi, 2.4rem);
+  color: var(--text-normal);
+  overflow-wrap: anywhere;
+}
+
+.continue-hero__meta {
+  @include atlas-truncate;
+  max-width: 100%;
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+}
+
+.continue-hero__cta {
+  @include atlas-flex-row($spacing-s);
+  height: $hero-cta-height;
+  margin-top: $spacing-m;
+  padding: 0 $spacing-l;
+  border-radius: $radius-l;
+  @include atlas-corner-shape;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 20%), 0 4px 14px color-mix(in oklch, var(--interactive-accent) 30%, transparent);
+  transition: background-color $transition-fast $transition-ease;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+    fill: currentColor;
+  }
+}
+
+.continue-hero:hover:not(:disabled) .continue-hero__cta {
+  background: var(--interactive-accent-hover);
+}
+
+// ── A vault without scenes: the card offers the first ───────────────────────
+
+.continue-hero--empty .continue-hero__art {
+  // A battle map's squares, faint, under the glyph.
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--text-normal) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--text-normal) 6%, transparent) 1px, transparent 1px);
+  background-size: 36px 36px;
+  background-position: center;
+}
+
+.continue-hero--empty .continue-hero__glyph {
+  // In the half of the card where the squares show, clear of the text.
+  inset-inline-start: 50%;
+
+  @container atlas-dashboard (max-width: #{$hero-narrow}) {
+    inset-inline-start: 0;
+  }
+}
+
+.continue-hero__glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+
+  svg {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+// ── Loading: the hero's shapes, the sheen in the card's own surface ─────────
+
+.continue-hero--loading {
+  --atlas-skeleton-surface: var(--background-secondary);
+  cursor: default;
+
+  .continue-hero__title,
+  .continue-hero__eyebrow,
+  .continue-hero__meta {
+    display: block;
+    width: 100%;
+  }
+
+  .continue-hero__cta {
+    width: 120px;
+    box-shadow: none;
+    @include atlas-skeleton-shape;
+  }
+}

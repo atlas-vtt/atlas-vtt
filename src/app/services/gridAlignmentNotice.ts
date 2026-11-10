@@ -1,7 +1,7 @@
-import { Notice } from 'obsidian';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 
 /** How long the offer stays: long enough to read and reach, short enough not to stand in the way of a map that has no grid. */
 const OFFER_MS = 12000;
@@ -15,7 +15,7 @@ export function offerGridAlignment(store: StoreApi<ViewAtlasState>): void {
   message.append(`${t('map.noGridFound')} `);
   const link = createEl('a', { text: t('map.alignGrid'), href: '#' });
   message.append(link);
-  const notice = new Notice(message, OFFER_MS);
+  const notice = showNotice(message, OFFER_MS);
   link.addEventListener('click', (event) => {
     event.preventDefault();
     store.getState().setGridAlignmentOpen(true);

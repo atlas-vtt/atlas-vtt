@@ -1,5 +1,8 @@
-import type { BundleFile, BundleFileRole } from './bundleFormat';
+import { NOTE_FILE_ROLES, type BundleFile, type BundleFileRole } from './bundleFormat';
 import { movedFolders, remapPaths, type PathMap } from './pathRemap';
+import { COLLECTIONS_DIR } from '../assetPaths';
+import { NO_TEMPLATE_IDS, rewriteNoteTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
+import { sha256 } from '../../utils/hashing';
 
 /** JSON files carry vault paths and asset ids that must follow the files and records they point at. */
 const JSON_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['asset-file', 'scene-map', 'scene-snapshot']);
@@ -21,10 +24,29 @@ function indentationOf(text: string): string | undefined {
   return /^[[{]\r?\n([ \t]+)\S/.exec(text)?.[1];
 }
 
+const withFoldersOf = new WeakMap<PathMap, PathMap>();
+
+/**
+ * `rewrites` with the collection folders that moved along with their files: a pin that rolls a
+ * folder of encounters names the folder (`…/encounters/Forest`), which follows its encounters into
+ * the collection's folder under another name. Only folders inside `atlas-vtt/collections/`: a
+ * folder elsewhere has a plain name (`NPCs`) that a label or tag may hold as well. Worked out once
+ * per map, since every JSON file asks.
+ */
+function withMovedFolders(rewrites: PathMap): PathMap {
+  let map = withFoldersOf.get(rewrites);
+  if (!map) {
+    const folders = [...movedFolders(rewrites)].filter(([folder]) => folder.startsWith(`${COLLECTIONS_DIR}/`));
+    map = new Map([...folders, ...rewrites]);
+    withFoldersOf.set(rewrites, map);
+  }
+  return map;
+}
+
 function rewriteJson(text: string, rewrites: PathMap): string {
   try {
     const parsed: unknown = JSON.parse(text);
-    const remapped = remapPaths(parsed, rewrites);
+    const remapped = remapPaths(parsed, withMovedFolders(rewrites));
     if (JSON.stringify(remapped) === JSON.stringify(parsed)) return text;
     return JSON.stringify(remapped, null, indentationOf(text)) + (text.endsWith('\n') ? '\n' : '');
   } catch {
@@ -82,13 +104,16 @@ export function rewriteText(file: BundleFile, text: string, rewrites: PathMap): 
 /**
  * `raw` with the paths and ids it refers to rewritten: JSON files follow moved
  * files and renamed records, statblock notes follow their artwork, loot bases
- * the folders of their items. Returns `raw` itself when nothing changes, so
- * unchanged files keep their exact bytes.
+ * the folders of their items, and notes name the templates they use by their id
+ * here (`templateIds`, the bundle's own notes only: callers pass none for notes
+ * the vault keeps). Returns `raw` itself when nothing changes, so unchanged files
+ * keep their exact bytes.
  */
-export function rewriteContent(file: BundleFile, raw: ArrayBuffer, rewrites: PathMap): ArrayBuffer {
-  if (!mayRewrite(file, rewrites)) return raw;
+export function rewriteContent(file: BundleFile, raw: ArrayBuffer, rewrites: PathMap, templateIds: TemplateIdMap = NO_TEMPLATE_IDS): ArrayBuffer {
+  if (!mayRewrite(file, rewrites, templateIds)) return raw;
   const text = decoder.decode(raw);
-  const rewritten = rewriteText(file, text, rewrites);
+  const relinked = refersToFiles(file) ? rewriteText(file, text, rewrites) : text;
+  const rewritten = namesTemplates(file) ? rewriteNoteTemplate(relinked, templateIds) : relinked;
   return rewritten === text ? raw : toBuffer(rewritten);
 }
 
@@ -96,5 +121,24 @@ export function rewriteContent(file: BundleFile, raw: ArrayBuffer, rewrites: Pat
 export const refersToFiles = (file: BundleFile): boolean =>
   JSON_ROLES.has(file.role) || file.role === 'loot-base' || (file.role === 'statblock-note' && file.statblockImage !== undefined);
 
+/** Whether the file is a Markdown note, which may name a statblock template; a loot item may be any file. */
+const namesTemplates = (file: BundleFile): boolean => NOTE_FILE_ROLES.has(file.role) && file.vaultPath.toLowerCase().endsWith('.md');
+
 /** Whether `rewriteContent` may change the file's bytes, so they must be read to know the result. */
-export const mayRewrite = (file: BundleFile, rewrites: PathMap): boolean => rewrites.size > 0 && refersToFiles(file);
+export const mayRewrite = (file: BundleFile, rewrites: PathMap, templateIds: TemplateIdMap = NO_TEMPLATE_IDS): boolean =>
+  (rewrites.size > 0 && refersToFiles(file)) || (templateIds.size > 0 && namesTemplates(file));
+
+const NO_PATHS: PathMap = new Map();
+
+/**
+ * Fingerprint of a bundle file as it reads in this vault: `hash` (the file's bytes), unless the
+ * file is a note naming a template that comes in under another id (`templateIds`), which then
+ * reads as naming that id. So a note follows its template into a copy though the bundle did
+ * not change the note.
+ */
+export async function hashHere(file: BundleFile, hash: string, raw: () => Promise<ArrayBuffer>, templateIds: TemplateIdMap): Promise<string> {
+  if (!mayRewrite(file, NO_PATHS, templateIds)) return hash;
+  const content = await raw();
+  const here = rewriteContent(file, content, NO_PATHS, templateIds);
+  return here === content ? hash : sha256(here);
+}

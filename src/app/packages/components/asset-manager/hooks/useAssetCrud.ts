@@ -1,7 +1,7 @@
 import type * as React from 'react';
 import { useState } from 'react';
 import { TFolder, App as ObsidianApp } from 'obsidian';
-import type { AnyAsset, CollectionOption, TokenAsset, Folder, Tab, InputModalState } from '../types';
+import type { AnyAsset, CollectionOption, EncounterAsset, TokenAsset, Folder, Tab, InputModalState } from '../types';
 import { saveEncounter, type EncounterTokenDraft } from '../../../../encounters/encounterSaveService';
 import type { AssetService } from '../../../../services/AssetService';
 import { showAtlasToast } from '../../../../react/components/AtlasToast';
@@ -10,6 +10,7 @@ import { useCollectionTransfer, type CollectionTransferActions } from './useColl
 import { t } from '../../../../i18n';
 import { folderIdOf, tabFolderPath } from '../utils/assetFolders';
 import { folderMoveProblem, moveAssetsIntoFolder } from '../utils/assetFolderMove';
+import { tabHasFolders } from '../utils/tabKinds';
 
 /** Background and name carried over when a scene is created from a map asset. */
 export interface CreateScenePrefill {
@@ -20,8 +21,11 @@ export interface CreateScenePrefill {
 export interface AssetCrudActions extends CollectionTransferActions {
   // Modal state
   isTokenCreatorOpen: boolean;
+  isEncounterBuilderOpen: boolean;
   isMapCreatorOpen: boolean;
   editingToken: AnyAsset | null;
+  /** The saved encounter the encounter builder changes; null while it builds a new one. */
+  editingEncounter: EncounterAsset | null;
   isCreateSceneModalOpen: boolean;
   createScenePrefill: CreateScenePrefill | null;
   isCreateFolderModalOpen: boolean;
@@ -35,8 +39,13 @@ export interface AssetCrudActions extends CollectionTransferActions {
   inputModalState: InputModalState;
   // Setters
   setIsTokenCreatorOpen: (open: boolean) => void;
+  setIsEncounterBuilderOpen: (open: boolean) => void;
   setIsMapCreatorOpen: (open: boolean) => void;
   setEditingToken: (asset: AnyAsset | null) => void;
+  /** Opens the encounter builder on a saved encounter. */
+  editEncounter: (encounter: EncounterAsset) => void;
+  /** Closes the encounter builder, whichever encounter it built. */
+  closeEncounterBuilder: () => void;
   setIsCreateSceneModalOpen: (open: boolean) => void;
   openCreateSceneModalFromMap: (prefill: CreateScenePrefill) => void;
   setIsCreateFolderModalOpen: (open: boolean) => void;
@@ -82,8 +91,18 @@ export function useAssetCrud(
 ): AssetCrudActions {
 
   const [isTokenCreatorOpen, setIsTokenCreatorOpen] = useState(false);
+  const [isEncounterBuilderOpen, setIsEncounterBuilderOpen] = useState(false);
   const [isMapCreatorOpen, setIsMapCreatorOpen] = useState(false);
   const [editingToken, setEditingToken] = useState<AnyAsset | null>(null);
+  const [editingEncounter, setEditingEncounter] = useState<EncounterAsset | null>(null);
+  const editEncounter = (encounter: EncounterAsset): void => {
+    setEditingEncounter(encounter);
+    setIsEncounterBuilderOpen(true);
+  };
+  const closeEncounterBuilder = (): void => {
+    setIsEncounterBuilderOpen(false);
+    setEditingEncounter(null);
+  };
   const [isCreateSceneModalOpen, setIsCreateSceneModalOpen] = useState(false);
   const [createScenePrefill, setCreateScenePrefill] = useState<CreateScenePrefill | null>(null);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
@@ -190,7 +209,8 @@ export function useAssetCrud(
   const handleDrop = (targetFolderId: string | null): void => {
     if (!draggedItems) return;
     if (draggedItems.type === 'asset') {
-      void moveAssetsToFolder(draggedItems.ids, targetFolderId);
+      // The party is shown flat: a card let go on its background stays in the folder it lies in.
+      if (tabHasFolders(activeTab)) void moveAssetsToFolder(draggedItems.ids, targetFolderId);
     } else {
       setFolders((prev) =>
         prev.map((f) =>
@@ -240,12 +260,12 @@ export function useAssetCrud(
   });
 
   return {
-    isTokenCreatorOpen, isMapCreatorOpen, editingToken,
+    isTokenCreatorOpen, isEncounterBuilderOpen, isMapCreatorOpen, editingToken, editingEncounter,
     isCreateSceneModalOpen, createScenePrefill,
     isCreateFolderModalOpen, isMoveModalOpen,
     moveTargetFolderId, moveFolderSearch, moveFolderListOpen,
     targetFolderName, settingsModalCollectionId, isCreateCollectionModalOpen, inputModalState,
-    setIsTokenCreatorOpen, setIsMapCreatorOpen, setEditingToken,
+    setIsTokenCreatorOpen, setIsEncounterBuilderOpen, setIsMapCreatorOpen, setEditingToken, editEncounter, closeEncounterBuilder,
     setIsCreateSceneModalOpen, openCreateSceneModalFromMap,
     setIsCreateFolderModalOpen, setIsMoveModalOpen,
     setMoveTargetFolderId, setMoveFolderSearch, setMoveFolderListOpen,

@@ -1,15 +1,12 @@
+// @vitest-environment jsdom
 import type { App } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
+vi.mock('../../src/app/atlasViewType', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
-import {
-  attachDiceRolling,
-  rollStatblockDice,
-  linkDiceIn,
-  splitDiceSegments,
-  toRollFormula,
-} from '../../src/app/services/statblockDiceLinks';
+import { attachDiceRolling, linkDiceIn } from '../../src/app/services/statblockDiceLinks';
+import { splitDiceSegments, toRollFormula } from '../../src/app/services/statblockDiceText';
+import { rollStatblockDice } from '../../src/app/services/statblockRolls';
 
 interface Roll {
   formula: string;
@@ -47,6 +44,13 @@ describe('toRollFormula', () => {
 
   it('leaves bare modifiers for the dice tool to add to the default roll', () => {
     expect(toRollFormula('+4')).toBe('+4');
+  });
+
+  it('writes a minus sign, an en dash and "+ -" as the minus the dice tool reads', () => {
+    expect(toRollFormula('1d4 \u2212 1')).toBe('1d4-1');
+    expect(toRollFormula('2d6 \u2013 1d4')).toBe('2d6-1d4');
+    expect(toRollFormula('3d6 + -1')).toBe('3d6-1');
+    expect(toRollFormula('\u22121')).toBe('-1');
   });
 
   it('strips an ATK label before rolling the bonus', () => {
@@ -105,7 +109,7 @@ describe('linkDiceIn + attachDiceRolling', () => {
 
     el.querySelector<HTMLElement>('.atlas-dice-link')!.click();
 
-    expect(rolls[0]).toEqual({ formula: '+3', source: { type: 'statblock', abilityName: 'STR' } });
+    expect(rolls[0]).toEqual({ formula: '+3[STR]', source: { type: 'statblock', abilityName: 'STR' } });
 
     dispose();
   });
@@ -163,6 +167,29 @@ describe('linkDiceIn + attachDiceRolling', () => {
       { text: '2d6', dice: true },
       { text: '!', dice: false },
     ]);
+  });
+
+  it('links dice and bonuses in brackets without the brackets', () => {
+    const linked = (text: string): string[] => splitDiceSegments(text).filter((segment) => segment.dice).map((segment) => segment.text);
+    expect(linked('Hit: 19 (2d10 + 8) slashing')).toEqual(['2d10 + 8']);
+    expect(linked('(2d6+3) piercing, bite (d8), claws (+5)')).toEqual(['2d6+3', 'd8', '+5']);
+    expect(linked('(3d6 + -1)')).toEqual(['3d6 + -1']);
+    expect(linked('(1d4 \u2212 1) or (\u22121)')).toEqual(['1d4 \u2212 1', '\u22121']);
+    expect(linked('Biss (+0, 1d2)')).toEqual(['+0', '1d2']);
+  });
+
+  it('takes every term of an expression, dice after dice too', () => {
+    expect(splitDiceSegments('2d6 - 1d4 fire')[0]).toEqual({ text: '2d6 - 1d4', dice: true });
+    expect(splitDiceSegments('4d6kh3 + 2')[0]).toEqual({ text: '4d6kh3 + 2', dice: true });
+  });
+
+  it('starts no die inside a word or a number', () => {
+    expect(splitDiceSegments('x2d6 and 5d')).toEqual([{ text: 'x2d6 and 5d', dice: false }]);
+    expect(splitDiceSegments('Recharge 5-6, levels 1\u20133')).toEqual([{ text: 'Recharge 5-6, levels 1\u20133', dice: false }]);
+  });
+
+  it('reads a capital D with a number as a die, as it always did (Dolmenwood saves link their D)', () => {
+    expect(splitDiceSegments('D12 R13 H14 B15 S16').filter((segment) => segment.dice)).toEqual([{ text: 'D12', dice: true }]);
   });
 
   it('splits text into plain and dice segments for the React renderer', () => {

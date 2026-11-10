@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,10 +11,11 @@ import type { ViewAtlasStore } from '../../src/app/storeFactory';
 
 vi.mock('../../src/app/services/FantasyStatblocksService', () => ({
   hasCreatureForNotePath: (): boolean => true,
+  getFantasyStatblocksApi: (): object => ({}),
 }));
 const statblockProps = vi.hoisted(() => [] as Array<Record<string, unknown>>);
-vi.mock('../../src/app/react/components/FantasyStatblock', () => ({
-  default: (props: Record<string, unknown>): null => {
+vi.mock('../../src/app/statblocks/render/LinkedStatblock', () => ({
+  LinkedStatblock: (props: Record<string, unknown>): null => {
     statblockProps.push(props);
     return null;
   },

@@ -50,6 +50,9 @@ interface DiceStageProps {
 
 /** How long the light takes to swell once the dice lie. */
 const GLEAM = 0.28;
+/** Dropped dice start to fade this long after the roll lies, and are faded this much later. */
+const DIM_AFTER = 0.18;
+const DIM_FOR = 0.36;
 
 /**
  * The longest the loop runs on after the dice came to rest: longer than the
@@ -90,6 +93,7 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   });
 
   const { offsets, radius } = useMemo(() => layoutDice(scene.plan.length), [scene]);
+  const drops = useMemo(() => scene.plan.some((die) => die.dropped), [scene]);
 
   // The canvas belongs to the pool, not to this panel: a canvas whose context
   // was lost never gives a live one again, so contexts are lent and returned.
@@ -115,18 +119,20 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
       burst: burstOf(scene.plan, i),
     }));
     stepRandoms.current = scene.plan.map((_, i) => throwRandom(seed, 1000 + i));
-    rendererRef.current?.setPlan(scene.plan.map((die) => die.sides));
+    rendererRef.current?.setPlan(scene.plan);
   }, [scene, offsets, radius, seed]);
 
   const paint = useCallback((): void => {
     const renderer = rendererRef.current;
     if (!renderer) return;
     const resting = diceRef.current.filter((die) => die.anim.phase === 'rest');
-    const emphasis = resting.length === diceRef.current.length && resting.length > 0
-      ? Math.min(1, Math.min(...resting.map((die) => die.anim.restFor)) / (GLEAM * speed))
-      : 0;
-    renderer.render(diceRef.current, emphasis, crit);
-  }, [crit, speed]);
+    const lying = resting.length === diceRef.current.length && resting.length > 0;
+    const rested = lying ? Math.min(...resting.map((die) => die.anim.restFor)) : 0;
+    const emphasis = lying ? Math.min(1, rested / (GLEAM * speed)) : 0;
+    // Reduced motion lays the dice down at once: what they show, faded included, is there at once.
+    const dim = !lying ? 0 : reduced ? 1 : Math.max(0, Math.min(1, (rested / speed - DIM_AFTER) / DIM_FOR));
+    renderer.render(diceRef.current, emphasis, crit, dim);
+  }, [crit, speed, reduced]);
 
   /** One frame on. Returns whether anything is left to do. */
   const advance = useCallback((dt: number): boolean => {
@@ -160,8 +166,9 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
     if (!allResting) return true;
     const rested = Math.min(...diceRef.current.map((die) => die.anim.restFor));
     if (rested < GLEAM * speed) return true;
+    if (drops && rested < (DIM_AFTER + DIM_FOR) * speed) return true;
     return rested < AFTERGLOW * speed && rendererRef.current?.isStill() !== true;
-  }, [muted, speed]);
+  }, [muted, speed, drops]);
 
   const start = useCallback((): void => {
     const holder = holderRef.current;

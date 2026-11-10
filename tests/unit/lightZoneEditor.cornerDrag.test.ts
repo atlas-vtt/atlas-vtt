@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { corners, setup, tearDown, type Setup } from './lightZoneEditorHarness';
 

@@ -6,14 +6,16 @@ import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import { axialToPixel, hexCellExtent, hexVertices, pixelToAxial } from '../../grid/hexGeometry';
 import type { AxialCoord, HexLayout, Point } from '../../grid/hexGeometry';
 import { hexLayoutOfGrid, hexLinkAt, isShownAsHex, linkedHexOf } from '../../grid/hexLinks';
+import { squareCellCentre, squareGridOf } from '../../grid/squareLattice';
 import { axialKey, hexLattice } from '../../grid/hexLattice';
-import { cellLabelsByKey, numberCells } from '../../grid/cellNumbering';
 import type { MapRect } from '../../grid/cellNumbering';
+import { cellNumberer, type CellNumberer } from '../../grid/cellNumbersInRect';
 import { noteLinkTitle } from '../../utils/pathUtils';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
 import { createHexLinkChip } from './hexLinkChip';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
+import { levelObjects } from '../../levels/levelObjects';
 
 const HOVER_FILL_ALPHA = 0.28;
 const PRESSED_FILL_ALPHA = 0.45;
@@ -40,7 +42,8 @@ export interface HexLinkRendererOptions {
  * Highlights linked hexes: the one under the pointer, the one being pressed,
  * and the one the note pin tool would link while Shift is held. It lights up
  * with a chip naming its number and note. At rest a linked hex shows only its
- * pin (drawn by `PinRenderer`). DM-only, like pins.
+ * pin (drawn by `PinRenderer`). On a square grid, which links no cells, it lights
+ * up only the square the note pin tool would put its pin in. DM-only, like pins.
  */
 export class HexLinkRenderer {
   readonly container = new Container({ label: 'hex-links', zIndex: MAP_LAYER_Z.hexLinks, eventMode: 'none', interactiveChildren: false });
@@ -50,7 +53,8 @@ export class HexLinkRenderer {
   private hoveredPinId: string | null = null;
   private pressedPinId: string | null = null;
   private previewPoint: Point | null = null;
-  private numbering: { key: string; labels: Map<string, string> } | null = null;
+  /** Numbers hexes one at a time, so a gigapixel map's numbering is never worked out whole. */
+  private numbering: { key: string; number: CellNumberer } | null = null;
   private readonly unsubscribers: Array<() => void> = [];
 
   constructor(private readonly options: HexLinkRendererOptions) {
@@ -58,7 +62,7 @@ export class HexLinkRenderer {
     this.container.addChild(this.highlightGraphics);
 
     this.unsubscribers.push(
-      store.subscribe((state: ViewAtlasState) => state.objects.pins, () => this.redraw()),
+      store.subscribe((state: ViewAtlasState) => levelObjects(state).pins, () => this.redraw()),
       store.subscribe((state: ViewAtlasState) => state.grid, () => this.redraw()),
       store.subscribe((state: ViewAtlasState) => state.isGMView, () => this.redraw()),
     );
@@ -95,7 +99,7 @@ export class HexLinkRenderer {
   hitTest(worldX: number, worldY: number): string | null {
     const layout = this.layout();
     if (!layout || this.isHidden()) return null;
-    return hexLinkAt(this.state.objects.pins, layout, { x: worldX, y: worldY })?.id ?? null;
+    return hexLinkAt(levelObjects(this.state).pins, layout, { x: worldX, y: worldY })?.id ?? null;
   }
 
   setHovered(pinId: string | null): void {
@@ -124,18 +128,20 @@ export class HexLinkRenderer {
     const format = this.state.grid?.cellNumbers ?? 'column-row';
     const key = JSON.stringify([layout, map, format]);
     if (this.numbering?.key !== key) {
-      this.numbering = { key, labels: cellLabelsByKey(numberCells(hexLattice(layout), map, format)) };
+      this.numbering = { key, number: cellNumberer(hexLattice(layout), map, format) };
     }
-    return this.numbering.labels.get(axialKey(hex));
+    const centre = axialToPixel(layout, hex);
+    const wanted = axialKey(hex);
+    return this.numbering.number({ x: centre.x - 1, y: centre.y - 1, width: 2, height: 2 }).find((cell) => cell.key === wanted)?.label;
   }
 
   private redraw(): void {
-    this.container.visible = !this.isHidden() && this.layout() !== null;
+    this.container.visible = !this.isHidden() && (this.layout() !== null || squareGridOf(this.state.grid) !== null);
     this.updateHighlight();
   }
 
   private currentHighlight(layout: HexLayout): Highlight | null {
-    const pins = this.state.objects.pins;
+    const pins = levelObjects(this.state).pins;
     const pinId = this.pressedPinId ?? this.hoveredPinId;
     const pin = pinId ? pins[pinId] : undefined;
     if (pin && isShownAsHex(pin, layout)) {
@@ -150,19 +156,21 @@ export class HexLinkRenderer {
 
   private updateHighlight(): void {
     const layout = this.layout();
-    const next = layout && !this.isHidden() ? this.currentHighlight(layout) : null;
+    if (!layout) {
+      this.drawSquarePreview();
+      return;
+    }
+    const next = this.isHidden() ? null : this.currentHighlight(layout);
     if (sameHighlight(next, this.highlight)) return;
     this.highlight = next;
 
     this.highlightGraphics.clear();
     this.clearChip();
-    if (!next || !layout) return;
+    if (!next) return;
 
-    const accent = accentColor();
     const strokeWidth = layout.size * 0.04;
     drawHex(this.highlightGraphics, layout, next.hex, strokeWidth);
-    this.highlightGraphics.fill({ color: accent, alpha: next.state === 'pressed' ? PRESSED_FILL_ALPHA : HOVER_FILL_ALPHA });
-    this.highlightGraphics.stroke({ width: strokeWidth, color: accent, alpha: 1 });
+    paintHighlight(this.highlightGraphics, strokeWidth, next.state);
 
     this.chip = createHexLinkChip({
       number: this.numberOf(next.hex),
@@ -175,6 +183,20 @@ export class HexLinkRenderer {
       this.container.addChild(this.chip);
       this.scaleChip();
     }
+  }
+
+  /** The square the note pin tool would put its pin in, inset like a hex; nothing on other grids. */
+  private drawSquarePreview(): void {
+    this.highlight = null;
+    this.highlightGraphics.clear();
+    this.clearChip();
+    const grid = squareGridOf(this.state.grid);
+    if (!grid || !this.previewPoint || this.isHidden()) return;
+    const centre = squareCellCentre(grid, this.previewPoint);
+    const strokeWidth = grid.size * 0.04;
+    const half = (grid.size - strokeWidth) / 2;
+    this.highlightGraphics.rect(centre.x - half, centre.y - half, half * 2, half * 2);
+    paintHighlight(this.highlightGraphics, strokeWidth, 'preview');
   }
 
   /** The chip keeps its screen size at every zoom, like pins. */
@@ -201,8 +223,11 @@ function sameHighlight(a: Highlight | null, b: Highlight | null): boolean {
   return a.hex.q === b.hex.q && a.hex.r === b.hex.r && a.state === b.state && a.pin === b.pin;
 }
 
-function accentColor(): number {
-  return cssColorToHexNumber(getObsidianAccentColor());
+/** Fills and strokes the outline just added in the accent colour. */
+function paintHighlight(graphics: Graphics, strokeWidth: number, state: HighlightState): void {
+  const accent = cssColorToHexNumber(getObsidianAccentColor());
+  graphics.fill({ color: accent, alpha: state === 'pressed' ? PRESSED_FILL_ALPHA : HOVER_FILL_ALPHA });
+  graphics.stroke({ width: strokeWidth, color: accent, alpha: 1 });
 }
 
 /** Adds the hex's outline, inset so the centred stroke stays inside it and neighbours don't overlap. */

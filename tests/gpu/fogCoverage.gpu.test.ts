@@ -134,23 +134,85 @@ describe('committed fog on Canvas', () => {
     expect(alpha(c, 32, 32)).toBe(255);
   });
 
-  it.each([0, Number.MIN_VALUE, Number.EPSILON])('treats a sub-grid multi-point brush as empty without an unbounded raster loop (radius=%s)', (radius) => {
+  it.each([0, Number.MIN_VALUE, Number.EPSILON])('treats a sub-grid brush as empty (radius=%s)', (radius) => {
     const c = compositor();
     const context = c.getCanvas().getContext('2d');
     if (!context) throw new Error('Missing Canvas context');
-    const original = context.arc.bind(context);
-    let calls = 0;
-    vi.spyOn(context, 'arc').mockImplementation((...args) => {
-      if (++calls > 100) throw new Error('Unbounded zero-radius brush');
-      original(...args);
-    });
-    expect(() => renderBrush(context, brush(radius), bounds, 1, 0, 0)).not.toThrow();
-    expect(calls).toBe(0);
+    const stroke = vi.spyOn(context, 'stroke');
+    renderBrush(context, brush(radius), bounds, 1, 0, 0);
+    expect(stroke).not.toHaveBeenCalled();
     const ops = { paint: rect('paint', 1, 0, 0, 64, 64) };
     for (const erasing of [false, true]) {
       c.composite({ ...ops, zero: brush(radius, erasing) }, brush(radius, erasing));
       expect(alpha(c, 32, 16)).toBe(255);
       expect(alpha(c, 88, 88)).toBe(0);
     }
+  });
+});
+
+/** A slow drag: many points a fraction of a pixel apart, as pointer moves deliver them. */
+function slowDrag(): { x: number; y: number }[] {
+  let seed = 7;
+  const next = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const points = [];
+  let x = 10;
+  let y = 32;
+  for (let i = 0; i < 1500; i++) {
+    x += next() * 0.08 - 0.01;
+    y += next() * 0.6 - 0.3;
+    points.push({ x, y });
+  }
+  return points;
+}
+
+function alphas(c: FogCanvasCompositor): Uint8ClampedArray {
+  const canvas = c.getCanvas();
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Missing Canvas context');
+  const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  return data.filter((_, index) => index % 4 === 3);
+}
+
+function distanceToPolyline(points: readonly { x: number; y: number }[], x: number, y: number): number {
+  let best = Infinity;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = dx * dx + dy * dy;
+    const t = length === 0 ? 0 : Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / length));
+    best = Math.min(best, Math.hypot(x - a.x - t * dx, y - a.y - t * dy));
+  }
+  return best;
+}
+
+describe('the brush stroke under way', () => {
+  it.each([false, true])('is drawn as it is committed, without a lattice inside (erase=%s)', (erasing) => {
+    const live = compositor();
+    const saved = compositor();
+    const base = erasing ? { paint: rect('paint', 1, -32, -32, 128, 128) } : {};
+    const op: FogBrushStroke = { ...brush(37.3, erasing), points: slowDrag() };
+    live.composite(base, op);
+    saved.composite({ ...base, brush: op });
+    const shown = alphas(live);
+    const committed = alphas(saved);
+    const width = live.getCanvas().width;
+    const stroked = erasing ? 0 : 255;
+    for (let i = 0; i < shown.length; i++) {
+      const distance = distanceToPolyline(op.points, bounds.x + (i % width) + 0.5, bounds.y + Math.floor(i / width) + 0.5);
+      const rim = Math.abs(distance - op.brushRadius) < 1.5;
+      if (!rim && distance < op.brushRadius) expect(shown[i]).toBe(stroked);
+      // Release must not move the stroke: off its anti-aliased rim both pictures agree.
+      if (!rim) expect(shown[i]).toBe(committed[i]);
+    }
+  });
+
+  it('draws a single point as the brush disc', () => {
+    const c = compositor();
+    c.composite({}, { ...brush(8), points: [{ x: 32, y: 32 }] });
+    expect(alpha(c, 32, 32)).toBe(255);
+    expect(alpha(c, 37, 32)).toBe(255);
+    expect(alpha(c, 42, 32)).toBe(0);
   });
 });

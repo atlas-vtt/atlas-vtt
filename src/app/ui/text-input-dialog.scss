@@ -1,8 +1,9 @@
 // Mounted on document.body, so the backdrop itself carries .atlas-vtt-plugin.
+// It opens from dialogs of up to $z-atlas-modal (Manage, collection settings) and must stand over them.
 &.atlas-text-dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: $z-modal;
+  z-index: $z-atlas-modal + 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,6 +27,7 @@
   &__title,
   &__message {
     margin: 0;
+    text-wrap: pretty;
   }
 
   &__input {
@@ -39,5 +41,14 @@
     flex-wrap: wrap;
     gap: $spacing-m;
     justify-content: flex-end;
+
+    // The confirm button is Atlas' own filled button, whose text reads on any accent.
+    button.mod-cta {
+      @include atlas-accent-fill;
+    }
+
+    button.mod-warning {
+      @include atlas-danger-fill;
+    }
   }
 }

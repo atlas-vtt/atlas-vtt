@@ -1,5 +1,6 @@
 import { hasAssetTag } from '../../../../services/tagGroups';
 import type { AnyAsset, Folder, Tab, Tag } from '../types';
+import { assetTypeOfTab } from './tabKinds';
 
 export interface AssetFilter {
   tab: Tab;
@@ -23,7 +24,7 @@ export function filterAssets(assets: readonly AnyAsset[], folders: readonly Fold
   const searchLower = filter.search.toLowerCase();
   const inScope = folderScope(folders, filter);
   return assets.filter((asset) =>
-    asset.type === filter.tab
+    asset.type === assetTypeOfTab(filter.tab)
     && inScope(asset.folderId)
     && (!searchLower || asset.name.toLowerCase().includes(searchLower))
     && filter.tags.every((tag) => hasAssetTag(asset.tags, tag)),

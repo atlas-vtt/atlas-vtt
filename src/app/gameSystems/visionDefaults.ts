@@ -3,12 +3,8 @@ import type { SenseDefinition, TokenSense } from '../types/senseTypes';
 import type { SystemPreset } from '../types/systemPresetTypes';
 import { positiveNumber } from '../utils/numberInput';
 import { coneAngle } from '../vision/visionCone';
+import { rulesForMap, type RulesLookup } from './mapRules';
 import { parseTokenSenses, readCollectionSenses } from './senseValidation';
-
-interface VisionDefaultsSource {
-  getCollectionForMap(mapPath: string): string | null;
-  getCollectionSettings(collectionId: string): { defaultTokenVision?: unknown; senses?: unknown; systemPresetId?: string | undefined };
-}
 
 /** The fields senses replaced: read only while the default has no list of senses, as on a token. */
 const OLD_SENSE_FIELDS = ['darkvision', 'tremorsense'] as const;
@@ -66,16 +62,15 @@ export function sameVisionDefaults(a: TokenVisionDefaults | undefined, b: TokenV
 }
 
 /**
- * The default vision of the collection that holds `mapPath`, with the senses the collection
- * knows (`collectionSenses`); undefined when it or the map has none.
+ * The default vision of the rules `mapPath` plays by (`rulesForMap`), with the senses they know
+ * (`collectionSenses`); undefined when they or the map have none.
  */
 export function mapVisionDefaults(
-  assetService: VisionDefaultsSource,
+  lookup: RulesLookup,
   mapPath: string | null | undefined,
   presets: readonly SystemPreset[],
 ): TokenVisionDefaults | undefined {
-  const collectionId = mapPath ? assetService.getCollectionForMap(mapPath) : null;
-  if (!collectionId) return undefined;
-  const settings = assetService.getCollectionSettings(collectionId);
+  const { settings } = rulesForMap(lookup, mapPath);
+  if (!settings) return undefined;
   return parseVisionDefaults(settings.defaultTokenVision, readCollectionSenses(settings, presets));
 }

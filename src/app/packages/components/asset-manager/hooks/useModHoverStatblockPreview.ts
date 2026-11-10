@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { App } from 'obsidian';
 import { StatblockPreviewWindow } from '../../../../services/StatblockPreviewWindow';
+import type { LibraryTemplate } from '../../../../statblocks/model/resolvedTypes';
 import type { TokenVitals } from '../../../../services/statblockVitalsSync';
 import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 import { isModHeld, isModKey } from '../../../../keyboard/modKey';
@@ -23,6 +24,8 @@ export interface ModHoverStatblockPreviewOptions {
   targetOf: (card: HTMLElement) => StatblockPreviewTarget | null;
   /** Reads a note that may not be in the vault, e.g. inside a collection being imported; undefined when the vault has it. */
   noteText?: ((path: string) => Promise<string | undefined>) | undefined;
+  /** Templates that come with the notes `noteText` reads (a bundle's own); keep the array while unchanged. */
+  bundleTemplates?: readonly LibraryTemplate[] | undefined;
   /** Set while Mod belongs to something else, such as a selection. */
   suspended?: boolean | undefined;
 }
@@ -65,8 +68,9 @@ export function useModHoverStatblockPreview(options: ModHoverStatblockPreviewOpt
     }
 
     hide();
-    const openWindow = (noteContent?: string): void => {
-      const preview = new StatblockPreviewWindow(options.app, target.notePath, target.token, null, { x, y }, noteContent);
+    const openWindow = (text?: string): void => {
+      const outsideNote = text === undefined ? undefined : { text, templates: options.bundleTemplates };
+      const preview = new StatblockPreviewWindow(options.app, target.notePath, target.token, null, { x, y }, outsideNote);
       preview.element?.addClass(OVER_MODAL);
       open.current = { key: target.key, preview };
     };

@@ -9,7 +9,7 @@ import { NotePinTool } from '../tools/NotePinTool';
 import { DiceTool } from '../tools/DiceTool';
 import { AudioTool } from '../tools/AudioTool';
 import { offlineDiceInputs } from './offlineDiceInputs';
-import { mapDiceRules } from './mapDiceRules';
+import { mapDiceSet } from './diceSets/collectionDiceSets';
 import type { App } from 'obsidian';
 
 export class ToolController {
@@ -32,7 +32,7 @@ export class ToolController {
     this.measureTool = new MeasureTool(eventBus);
     this.fogTool = new FogTool(eventBus);
     this.notePinTool = new NotePinTool(eventBus, app, store);
-    this.diceTool = new DiceTool(eventBus, () => mapDiceRules(app, store.getState().mapPath), offlineDiceInputs());
+    this.diceTool = new DiceTool(eventBus, () => mapDiceSet(app, store.getState().mapPath), offlineDiceInputs());
     this.audioTool = new AudioTool(eventBus);
   }
   

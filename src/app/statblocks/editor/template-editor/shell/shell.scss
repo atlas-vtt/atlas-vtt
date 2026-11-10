@@ -1,0 +1,99 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The template editor's shell: the note view's row (§2.1–2.4)
+// ═══════════════════════════════════════════════════════════════════════════
+// The note on the left (template-body.scss) and the panel beside it
+// (panel-frame/), the capsule, the state lines and the footer line.
+// Imported by TemplateNoteRow.tsx, so the rules take the scope themselves.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use '../../panel-frame/panel-row' as *;
+
+// The dock's width (32 px buttons, $spacing-xs inside its border) and the room on both sides of it.
+$dock-clearance: calc(32px + 2 * #{$spacing-xs} + 2 * #{$border-width-m} + 2 * #{$spacing-s});
+
+.atlas-vtt-plugin {
+  // ── The row: as a note view's content with its statblock ───────────────
+  .atlas-te-row {
+    @include atlas-sb-note-row('.atlas-te-note');
+    flex: 1;
+    min-height: 0;
+
+    &.atlas-sb-note--stacked {
+      @include atlas-sb-note-row-stacked('.atlas-te-note');
+    }
+  }
+
+  // The dock floats at the note column's right edge, beside the card (§2.5):
+  // the note's text ends before it, so no letter of the body sits under the
+  // dock. Not max() with Obsidian's --file-margins: that is a shorthand of two
+  // values, which makes the declaration invalid.
+  .atlas-te:not([data-width='stacked']) {
+    --atlas-te-dock-clearance: #{$dock-clearance};
+
+    .atlas-te-note__view .cm-scroller,
+    .atlas-te-note__stand-in,
+    .atlas-te-note__draft,
+    .atlas-te-note__empty {
+      padding-inline-end: $dock-clearance;
+    }
+  }
+
+  // ── The capsule (the note view's `.atlas-sb-pane-header`): name, Save, ⋯ ──
+  .atlas-te-capsule {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .atlas-te-capsule__name {
+    @include atlas-flex-row($spacing-xs);
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+
+    svg {
+      flex-shrink: 0;
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  // The name reads as the capsule's title; the file explorer renames it.
+  .atlas-te-name {
+    @include atlas-truncate;
+    min-width: 0;
+    padding: 0 $spacing-s;
+    color: var(--text-normal);
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+    line-height: var(--input-height);
+  }
+
+  // Save and ⋯ stand together at the capsule's end, the name alone at its start.
+  .atlas-te-capsule__end {
+    @include atlas-flex-row($spacing-s);
+    flex-shrink: 0;
+  }
+
+  .atlas-te-capsule__save.btn {
+    @include atlas-corner-shape;
+    height: var(--input-height);
+
+    // Shown, not removed or `disabled`, so its tooltip still says what Save covers.
+    &[aria-disabled='true'] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // ── The line under the card ─────────────────────────────────────────────
+  .atlas-te-footer-line {
+    @include atlas-flex-row($spacing-s);
+    justify-content: center;
+    flex-wrap: wrap;
+    min-height: var(--input-height);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    text-align: center;
+  }
+}

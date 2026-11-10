@@ -23,8 +23,6 @@ export interface AssetTransferRequest {
 export interface AssetTransferResult {
   /** The records as the target collection now holds them. */
   assets: Asset[];
-  /** Tokens whose statblock note stayed linked to the original, so they arrived without one. */
-  unlinkedStatblocks: Asset[];
 }
 
 /** The asset types the asset manager shows; only these go between collections. */
@@ -44,7 +42,7 @@ const decoder = new TextDecoder();
  * put back and no record changes.
  */
 export async function transferAssets(app: App, assetService: AssetService, request: AssetTransferRequest): Promise<AssetTransferResult> {
-  const result: AssetTransferResult = { assets: [], unlinkedStatblocks: [] };
+  const result: AssetTransferResult = { assets: [] };
   try {
     await assetService.runExclusive(() => runTransfer(app, assetService, request, result));
     return result;
@@ -116,7 +114,6 @@ async function transferGroup(app: App, assetService: AssetService, transfer: Gro
     await assetService.commitAssetTransfer({ collectionId: targetCollectionId, records, tags });
     if (mode === 'move') await removeEmptiedSnapshotFolders(app, assets);
     result.assets.push(...records);
-    result.unlinkedStatblocks.push(...records.filter((record, index) => lostStatblock(assets[index]!, record)));
   } catch (error) {
     const unrestored = await transferFiles.undo();
     const reason = (error instanceof Error ? error.message : String(error)).replace(/\.$/, '');
@@ -136,9 +133,6 @@ async function removeEmptiedSnapshotFolders(app: App, moved: readonly Asset[]): 
     }
   }
 }
-
-const lostStatblock = (asset: Asset, record: Asset): boolean =>
-  asset.type === 'token' && Boolean(asset.statblockPath) && record.type === 'token' && !record.statblockPath;
 
 /** Every file `assets` use; a move leaves these where they are for the assets staying behind. */
 async function filesUsedBy(app: App, assetService: AssetService, assets: readonly Asset[]): Promise<Set<string>> {

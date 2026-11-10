@@ -1,0 +1,98 @@
+// Level switcher - the floors of a scene with several levels, at the map's left edge
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// Floors are capsules like a context menu's rows; the panel's corner is set so every floor runs concentric with it.
+$level-switcher-inset: $spacing-xs;
+$level-height: 28px;
+
+.atlas-level-switcher {
+  position: absolute;
+  left: $spacing-s;
+  top: 50%;
+  transform: translateY(-50%);
+  // A bar of the map like the scene tabs, below the main toolbar's row: that row is the layer
+  // ($z-dropdown) of the toolbar's overlays (asset manager, map creator, command palette), and a
+  // bar of the same z-index after it in the page would be drawn over all of them.
+  z-index: $z-dropdown - 1;
+  display: flex;
+  flex-direction: column;
+  gap: $level-switcher-inset;
+  padding: $level-switcher-inset;
+  max-width: 180px;
+  pointer-events: auto;
+
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($level-height * 0.5 + $level-switcher-inset + $border-width-m);
+}
+
+.atlas-level-switcher__level {
+  display: flex;
+  align-items: center;
+  gap: $level-switcher-inset;
+  height: $level-height;
+  padding: 6px;
+  @include atlas-panel-inset-radius($level-switcher-inset);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background $transition-fast;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--text-accent);
+    outline-offset: -2px;
+  }
+
+  &--active {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    font-weight: 500;
+  }
+}
+
+.atlas-level-switcher__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atlas-level-switcher__eye {
+  // Hidden until hovered, keeping its space so a floor never resizes
+  display: flex;
+  visibility: hidden;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  // Concentric with the floor's capsule: its 6px padding leaves a circle
+  border-radius: 50%;
+  @include atlas-corner-shape;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &--active {
+    visibility: visible;
+    color: var(--text-accent);
+  }
+}
+
+.atlas-level-switcher__level:hover .atlas-level-switcher__eye,
+.atlas-level-switcher__level:focus-within .atlas-level-switcher__eye {
+  visibility: visible;
+}

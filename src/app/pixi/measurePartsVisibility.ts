@@ -12,11 +12,10 @@ export interface MeasurePlayersView {
   seenOnCanvas(): TokenSeen | null;
 }
 
-/** A drawn measurement: its shape, its label's pill and its label. */
+/** A drawn measurement: its shape and its distance label. */
 export interface MeasureParts {
-  readonly graphics: HideableLayer;
-  readonly pill: HideableLayer;
-  readonly text: HideableLayer;
+  readonly shape: HideableLayer;
+  readonly label: HideableLayer;
 }
 
 /**
@@ -93,13 +92,13 @@ export class MeasurePartsVisibility {
 
   private liveLayers(seen: TokenSeen | null): LayerVisibility[] {
     const shown = shownBy(this.liveOrigin, seen);
-    const { graphics, pill, text } = this.live;
-    return [{ layer: graphics, visible: shown }, { layer: pill, visible: this.label && shown }, { layer: text, visible: this.label && shown }];
+    const { shape, label } = this.live;
+    return [{ layer: shape, visible: shown }, { layer: label, visible: this.label && shown }];
   }
 
-  private keptLayers({ graphics, pill, text }: MeasureParts, origin: MeasureOrigin | null, seen: TokenSeen | null): LayerVisibility[] {
+  private keptLayers({ shape, label }: MeasureParts, origin: MeasureOrigin | null, seen: TokenSeen | null): LayerVisibility[] {
     const visible = shownBy(origin, seen);
-    return [{ layer: graphics, visible }, { layer: pill, visible }, { layer: text, visible }];
+    return [{ layer: shape, visible }, { layer: label, visible }];
   }
 }
 

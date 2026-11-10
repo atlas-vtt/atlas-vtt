@@ -26,6 +26,7 @@ export const issue: Translation = {
   'issue.area.asset-manager': 'Менеджер ресурсов',
   'issue.area.player-view': 'Экран игроков',
   'issue.area.settings': 'Настройки, команды и обновления',
+  'issue.area.online': 'Онлайн-игра',
   'issue.area.unknown': 'Не знаю / другое',
   'issue.intro': 'Отправьте отчёт прямо из Atlas. Отчёт и диагностика будут опубликованы на GitHub открыто. Аккаунт GitHub не нужен.',
   'issue.typeLabel': 'Тип обращения',

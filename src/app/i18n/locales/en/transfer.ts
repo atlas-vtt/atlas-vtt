@@ -2,7 +2,7 @@ import type { Message } from '../../types';
 
 export const transfer = {
   'transfer.andScenes': { one: '{what} and {count} linked scene', other: '{what} and {count} linked scenes' },
-  'transfer.copied': 'Copied {what} to {target}{note}',
+  'transfer.copied': 'Copied {what} to {target}',
   'transfer.copy.withScenes': { one: 'Copy with {count} linked scene', other: 'Copy with {count} linked scenes' },
   'transfer.copy.withoutLinks': 'Copy without links',
   'transfer.copyFailed': 'Could not copy {what}: {error}',
@@ -13,8 +13,6 @@ export const transfer = {
   'transfer.move.withScenes': { one: 'Move with {count} linked scene', other: 'Move with {count} linked scenes' },
   'transfer.move.withoutLinks': 'Move without links',
   'transfer.moveFailed': 'Could not move {what}: {error}',
-  'transfer.moved': 'Moved {what} to {target}{note}',
+  'transfer.moved': 'Moved {what} to {target}',
   'transfer.selection': 'The selection',
-  'transfer.unlinkedMany': { one: '. {count} character arrived without its statblock, which stays with the original', other: '. {count} characters arrived without their statblocks, which stay with the originals' },
-  'transfer.unlinkedOne': '. "{name}" arrived without its statblock, which stays with the original',
 } as const satisfies Record<string, Message>;

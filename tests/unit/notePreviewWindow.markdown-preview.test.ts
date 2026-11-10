@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { waitFor } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { MarkdownRenderer, MarkdownView, TFile, WorkspaceLeaf } from 'obsidian';
@@ -126,6 +127,48 @@ describe('NotePreviewWindow markdown previews', () => {
     expect(harness.setActiveLeaf).toHaveBeenLastCalledWith(harness.atlasLeaf, { focus: false });
     expect(renderSpy).not.toHaveBeenCalled();
     expect(harness.atlasLeafRoot.contains(preview.element!)).toBe(true);
+  });
+
+  it('keeps the keys typed in a note to itself, but lets the Mod key go, so what Mod shows hears it released (#501)', async () => {
+    const harness = createHarness(null);
+    const preview = openPreview(harness, 'atlas-vtt/notes/Pinned.md');
+    const heard: string[] = [];
+    const listen = (e: KeyboardEvent): void => {
+      heard.push(`${e.type} ${e.key}`);
+    };
+    document.addEventListener('keydown', listen);
+    document.addEventListener('keyup', listen);
+
+    const inside = preview.element!.createDiv();
+    inside.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    inside.dispatchEvent(new KeyboardEvent('keyup', { key: 'Control', bubbles: true }));
+
+    expect(heard).toEqual(['keyup Control']);
+    document.removeEventListener('keydown', listen);
+    document.removeEventListener('keyup', listen);
+  });
+
+  it('titles a heading as the note writes it, a # at its end included', async () => {
+    const harness = createHarness(null);
+    harness.app.metadataCache.getFileCache.mockReturnValue({
+      headings: [{ heading: 'C#', level: 2, position: { start: { line: 1 } } }],
+    });
+    const preview = openPreview(harness, 'atlas-vtt/notes/Languages.md#C#');
+    await waitFor(() => {
+      expect(preview.element?.querySelector('.atlas-note-preview-title')?.textContent).toBe('Languages > C#');
+    });
+  });
+
+  it('titles a repeated heading with the section that tells it apart', async () => {
+    const harness = createHarness(null);
+    const heading = (name: string, level: number, line: number): object => ({ heading: name, level, position: { start: { line } } });
+    harness.app.metadataCache.getFileCache.mockReturnValue({
+      headings: [heading('Silver Stag', 1, 1), heading('Overview', 2, 2), heading('Black Ivory', 1, 3), heading('Overview', 2, 4)],
+    });
+    const preview = openPreview(harness, 'atlas-vtt/notes/Chapter.md#Silver Stag#Overview');
+    await waitFor(() => {
+      expect(preview.element?.querySelector('.atlas-note-preview-title')?.textContent).toBe('Chapter > Silver Stag > Overview');
+    });
   });
 
   /** A note view on Tavern.md whose cache lists "Cellar" on line 3 and "Room #3" on line 12. */

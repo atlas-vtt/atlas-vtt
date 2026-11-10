@@ -1,8 +1,9 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { TFile } from 'obsidian';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import FantasyStatblock from '../../src/app/react/components/FantasyStatblock';
 
@@ -20,8 +21,11 @@ function fakeApp() {
       offref: () => undefined,
       trigger: (event: string) => handlers.get(event)?.forEach((handler) => handler()),
     },
-    vault: { getAbstractFileByPath: () => null },
-    metadataCache: { getFirstLinkpathDest: () => null },
+    vault: {
+      getAbstractFileByPath: (path: string) => (path === 'bestiary/toad.md' ? new TFile(path) : null),
+      cachedRead: () => Promise.resolve(''),
+    },
+    metadataCache: { getFirstLinkpathDest: () => null, getFileCache: () => null },
     plugins: {
       plugins: {
         'obsidian-5e-statblocks': {

@@ -5,6 +5,7 @@ import type { AnyAsset, SelectionEvent } from '../types';
 import type { OpenAsset } from './useOpenAsset';
 import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 import { runInBackground } from '../../../../utils/backgroundTask';
+import { editInStatblockPane } from '../../../../statblocks/editor/create/entryPoints';
 
 export interface DraggedItems {
   type: 'asset' | 'folder';
@@ -33,6 +34,8 @@ interface AssetCardHandlerDeps {
   onAssetContextMenu: AssetCardHandlers['onContextMenu'];
   onSpawnCountChange: AssetCardHandlers['onSpawnCountChange'];
   onArtNeeded: AssetCardHandlers['onArtNeeded'];
+  /** Closes the asset manager, which would cover a statblock pair opening behind it. */
+  onClose?: (() => void) | undefined;
 }
 
 export function useAssetCardHandlers(deps: AssetCardHandlerDeps): AssetCardHandlers {
@@ -49,6 +52,11 @@ export function useAssetCardHandlers(deps: AssetCardHandlerDeps): AssetCardHandl
   });
   const onDragEnd = useStableCallback((): void => deps.setDraggedItems(null));
   const onOpenStatblock = useStableCallback((statblockPath: string): void => {
+    // The pane takes the collection from the tokens that link the note (§7.1).
+    if (editInStatblockPane(deps.app, statblockPath, { collectionId: null, from: 'asset-manager' })) {
+      deps.onClose?.();
+      return;
+    }
     void deps.app.workspace.openLinkText('', statblockPath, true);
   });
   const onArtNeeded = useStableCallback(deps.onArtNeeded);

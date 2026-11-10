@@ -12,6 +12,7 @@ export function initiativeEntryForToken(token: TokenEntity): NewInitiativeEntry 
     tokenId: token.id,
     name: character ? character.name : t('initiative.token'),
     initiative: 0,
+    awaitingInitiative: true,
     initiativeModifier: 0,
     imagePath: token.imagePath,
     isNPC: true,

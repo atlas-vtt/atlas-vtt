@@ -41,8 +41,12 @@ export interface DiePlan {
    * is thrown only once that die has landed.
    */
   follows?: number;
-  /** The die of an explosion downwards: it subtracts. */
+  /** The die of an explosion downwards, or the die disadvantage rolls: it subtracts. */
   subtracts?: true;
+  /** `#rrggbb`: the colour a dice set gave the die. Unset: the dice look of the settings. */
+  colour?: string;
+  /** The roll did not keep the die (advantage's extra die): it fades once the roll lies. */
+  dropped?: true;
 }
 
 /**
@@ -65,6 +69,34 @@ function isBody(sides: number): sides is DieSides {
   return (DIE_BODIES as number[]).includes(sides);
 }
 
+type SceneDie = Pick<RolledDie, 'max' | 'min' | 'value' | 'negative' | 'exploded' | 'rerolled' | 'colour' | 'dropped' | 'advantage' | 'sharedUnits'>;
+
+/**
+ * A percentile roll as d10s, tens and units for each d100. A d100 that shares
+ * the units of the one before it (a bonus or penalty die) is a tens die alone,
+ * and the units die it shares fades with neither. Only d100s may stand in it,
+ * one of them kept: tens and units are read by their place.
+ */
+function percentileScene(rolls: readonly SceneDie[]): DiceScene | null {
+  if (rolls.some((roll) => roll.max !== 100 || roll.negative || roll.exploded)) return null;
+  if (rolls.filter((roll) => !roll.dropped).length !== 1) return null;
+  const shared = rolls.some((roll) => roll.sharedUnits);
+  const plan: DiePlan[] = [];
+  const faces: number[] = [];
+  for (const roll of rolls) {
+    const tens = Math.floor((roll.value % 100) / 10);
+    const units = roll.value % 10;
+    const look = { ...(roll.colour !== undefined && { colour: roll.colour }) };
+    const dropped = roll.dropped ? { dropped: true as const } : {};
+    plan.push({ sides: 10, role: 'tens', ...look, ...dropped });
+    faces.push(tens === 0 ? 10 : tens);
+    if (roll.sharedUnits) continue;
+    plan.push({ sides: 10, role: 'units', ...look, ...(shared ? {} : dropped) });
+    faces.push(units === 0 ? 10 : units);
+  }
+  return plan.length > MAX_DICE ? null : { plan, faces };
+}
+
 /**
  * The stage for Atlas' rolled dice, or null when they cannot all be shown as
  * real bodies.
@@ -72,32 +104,34 @@ function isBody(sides: number): sides is DieSides {
  * Subtracted dice are rejected: on the stage they would be a die whose pips
  * have to be subtracted without that being visible. The die of an explosion
  * downwards is the exception: the die before it bursts as a failure and the
- * die is thrown for it alone, which says what it does. A percentile roll only
- * stands alone, because its tens and units are read by their place.
+ * die is thrown for it alone, which says what it does; so is the die
+ * disadvantage subtracts, which the roll's line names. A percentile roll only
+ * stands with other percentile dice, because its tens and units are read by
+ * their place. Dropped dice are thrown with the others and fade once they lie.
  *
  * A mimicked die lands on the highest face of its band (a d2's 2 shows the
  * d6's 6), so the face always reads back as the value everyone sees.
+ *
+ * A die that was rolled again is not thrown: the die that took its place
+ * stands for it. A Fate die
+ * has no body: its faces read −1, 0 and +1.
  */
-export function sceneFromRolls(
-  rolls: readonly Pick<RolledDie, 'max' | 'value' | 'negative' | 'exploded'>[],
-): DiceScene | null {
-  if (rolls.length === 0) return null;
+export function sceneFromRolls(rolled: readonly SceneDie[]): DiceScene | null {
+  const rolls = rolled.filter((roll) => !roll.rerolled);
+  if (rolls.length === 0 || rolls.some((roll) => roll.min !== undefined)) return null;
+  if (rolls.some((roll) => roll.max === 100)) return percentileScene(rolls);
 
   const plan: DiePlan[] = [];
   const faces: number[] = [];
   for (const roll of rolls) {
     const follower = roll.exploded === true && plan.length > 0;
-    if (roll.negative && !follower) return null;
-    const chain = follower ? { follows: plan.length - 1, ...(roll.negative && { subtracts: true as const }) } : {};
-
-    if (roll.max === 100) {
-      if (rolls.length !== 1) return null;
-      const tens = Math.floor((roll.value % 100) / 10);
-      const units = roll.value % 10;
-      plan.push({ sides: 10, role: 'tens' }, { sides: 10, role: 'units' });
-      faces.push(tens === 0 ? 10 : tens, units === 0 ? 10 : units);
-      continue;
-    }
+    if (roll.negative && !follower && !roll.advantage) return null;
+    const chain = {
+      ...(follower && { follows: plan.length - 1 }),
+      ...(roll.negative && (follower || roll.advantage) && { subtracts: true as const }),
+      ...(roll.colour !== undefined && { colour: roll.colour }),
+      ...(roll.dropped && { dropped: true as const }),
+    };
 
     const mimic = MIMIC[roll.max];
     if (mimic !== undefined) {
@@ -185,4 +219,15 @@ export function restingFrame(offsets: readonly (readonly [number, number])[], ra
   const extentZ = Math.max(...offsets.map(([, z]) => Math.abs(z))) + edge;
   const aspect = Math.min(MAX_FIELD_ASPECT, Math.max(1, extentX / extentZ));
   return { halfWidth: Math.max(extentX, extentZ * aspect) * RESTING_MARGIN, aspect };
+}
+
+/**
+ * The width over the height of a die's still image (`dieImages`), known before
+ * it is drawn, so its place never changes as it arrives: 1 for a die, about 2
+ * for a d100's two d10s lying side by side.
+ */
+export function restingAspect(sides: number): number {
+  const bodies = sceneFromRolls([{ max: sides, value: sides }])?.plan.length ?? 1;
+  const { offsets, radius } = layoutDice(bodies);
+  return restingFrame(offsets, radius).aspect;
 }

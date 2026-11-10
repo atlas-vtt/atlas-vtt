@@ -11,8 +11,11 @@ import { DiceStage, type DiceStageHandle } from './DiceStage';
 import { DiceRollHeader } from './DiceRollHeader';
 import { DiceRollEngraving } from './DiceRollEngraving';
 import { DiceRollChip } from './DiceRollChip';
-import { hasBreakdown, rollBreakdown, rollLabel } from './diceRollText';
-import { useElementHeight } from './useElementHeight';
+import { advantageText, hasBreakdown, rollBreakdown, rollLabel } from './diceRollText';
+import { rollFormulaText } from '../../../tools/diceLabels';
+import { modifierSteps } from '../../../tools/namedModifiers';
+import { t } from '../../../i18n';
+import { useElementHeight } from '../../hooks/useElementHeight';
 
 interface DiceRollPanelProps {
   result: DiceRollResult;
@@ -97,8 +100,9 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
   });
   const close = useCallback((): void => closeCb.current(), []);
 
-  // Atlas knows the modifier only as one sum, so it clicks in as one step.
-  const stepCount = result.modifiers === 0 ? 0 : 1;
+  // The plain modifier clicks in as one step, then each labelled one on its own.
+  const steps = useMemo(() => modifierSteps(result, t('dice.modifier')), [result]);
+  const stepCount = steps.length;
 
   useEffect(() => {
     if (!leaving) return;
@@ -127,7 +131,7 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
     return (): void => timers.forEach((timer) => window.clearTimeout(timer));
   }, [landed, instant, stepCount, muted, style.speed]);
 
-  const counted = appliedSteps >= stepCount ? result.total : result.total - result.modifiers;
+  const counted = steps.slice(appliedSteps).reduce((sum, step) => sum - step.value, result.total);
   const shown = landed ? counted : null;
 
   // The clock runs from the start: if the dice never land, the ripcord pulls.
@@ -150,6 +154,7 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
     return restingFrame(offsets, radius);
   }, [scene]);
   const breakdown = rollBreakdown(result, scene);
+  const formula = [advantageText(result), rollFormulaText(result)].filter(Boolean).join(' · ');
   const slotRem = 3.2 + (hasBreakdown(result, scene) ? 1.05 : 0);
   const exit = reduced ? { opacity: 0 } : { opacity: 0, y: -14, scale: 0.96 };
   const transition = reduced ? { duration: 0.12 } : MORPH;
@@ -187,7 +192,7 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
         {!compact && (
           <CloseButton
             className="atlas-dice-roll__close"
-            aria-label="Hide roll"
+            aria-label={t('diceRoll.hide')}
             onClick={(e) => {
               e.stopPropagation();
               close();
@@ -205,7 +210,7 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
             {compact ? (
               <div className="atlas-dice-roll__row">
                 <DiceRollHeader result={result} presentation={presentation} label={label} useAvatar={useAvatar} />
-                <span className="atlas-dice-roll__total atlas-dice-roll__total--row">{shown ?? result.formula}</span>
+                <span className="atlas-dice-roll__total atlas-dice-roll__total--row">{shown ?? formula}</span>
               </div>
             ) : (
               <>
@@ -252,7 +257,7 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.16 }}
                     >
-                      {result.formula}
+                      {formula}
                     </motion.span>
                   )}
                 </div>
@@ -274,13 +279,17 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
             // The verdict belongs to the roll being watched; a displaced one reports silently.
             if (!muted && !displaced.current) reveal(result.crit ?? null);
           }}
-          label={shown === null ? `Rolling ${result.formula}` : `${label}: rolled ${shown}`}
+          label={shown === null ? t('diceRoll.rolling', { formula: result.formula }) : t('diceRoll.rolled', { label, total: String(shown) })}
           className="atlas-dice-roll__stage"
         />
       </div>
 
-      {!compact && result.modifiers !== 0 && (
-        <DiceRollChip amount={result.modifiers} applied={appliedSteps > 0} reduced={reduced} />
+      {!compact && stepCount > 0 && (
+        <div className="atlas-dice-roll__chips">
+          {steps.map((step, i) => (
+            <DiceRollChip key={i} label={step.label} amount={step.value} applied={appliedSteps > i} reduced={reduced} />
+          ))}
+        </div>
       )}
     </motion.div>
   );

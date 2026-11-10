@@ -72,3 +72,41 @@ describe('loot bases', () => {
     expect(rewriteContent(base, raw, moves)).toBe(raw);
   });
 });
+
+describe('notes naming statblock templates', () => {
+  const ids = new Map([['marsh-creature-k7m2qa', 'marsh-creature-c0py01']]);
+
+  it('name the template\'s id here, together with their moved artwork', () => {
+    const note: BundleFile = { vaultPath: 'B/g.md', role: 'statblock-note', statblockImage: { key: 'image', path: 'B/g.png' } };
+    const raw = '---\natlas-template: marsh-creature-k7m2qa\nimage: B/g.png\n---\n';
+    expect(decode(rewriteContent(note, encode(raw), new Map([['B/g.png', 'C/g.png']]), ids)))
+      .toBe('---\natlas-template: marsh-creature-c0py01\nimage: "C/g.png"\n---\n');
+    const pinned: BundleFile = { vaultPath: 'Lore/Hag.md', role: 'linked-note' };
+    expect(decode(rewriteContent(pinned, encode('---\natlas-template: marsh-creature-k7m2qa\n---\n'), new Map(), ids)))
+      .toBe('---\natlas-template: marsh-creature-c0py01\n---\n');
+  });
+
+  it('leave every other file and a note of another template byte for byte', () => {
+    const json = encode('{"atlas-template":"marsh-creature-k7m2qa"}');
+    expect(rewriteContent({ vaultPath: 'atlas-vtt/s.json', role: 'asset-file' }, json, new Map(), ids)).toBe(json);
+    const other = encode('---\natlas-template: bog-hag-b0g001\n---\n');
+    expect(rewriteContent({ vaultPath: 'Lore/Bog.md', role: 'linked-note' }, other, new Map(), ids)).toBe(other);
+  });
+});
+
+describe('folders in JSON files', () => {
+  const map: BundleFile = { vaultPath: 'atlas-vtt/collections/a/scenes/Cave.atlasmap', role: 'scene-map' };
+
+  it('follows a folder of encounters that moved with its files, and leaves other folders and plain words alone', () => {
+    const raw = JSON.stringify({ pins: [{ notePath: 'atlas-vtt/collections/a/encounters/Wilds/Forest' }, { notePath: 'Lore/Forest' }], label: 'Lore' });
+    const rewrites = new Map([
+      ['atlas-vtt/collections/a/encounters/Wilds/Forest/wolves.json', 'atlas-vtt/collections/b/encounters/Wilds/Forest/wolves.json'],
+      ['Lore/Forest/Inn.md', 'atlas-vtt/collections/b/notes/Lore/Inn.md'],
+      // A note copied under its own folder names: "Lore" stays a word, never a path.
+      ['Lore/Cave.md', 'atlas-vtt/collections/b/notes/Lore/Cave.md'],
+    ]);
+    expect(JSON.parse(decode(rewriteContent(map, encode(raw), rewrites)))).toEqual({
+      pins: [{ notePath: 'atlas-vtt/collections/b/encounters/Wilds/Forest' }, { notePath: 'Lore/Forest' }], label: 'Lore',
+    });
+  });
+});

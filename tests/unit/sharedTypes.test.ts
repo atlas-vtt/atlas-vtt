@@ -4,7 +4,9 @@ import ts from 'typescript';
 
 it('allows DOM types but not Obsidian DOM extensions, even with library declarations', () => {
   const project = ts.readConfigFile(resolve('tsconfig.shared.json'), ts.sys.readFile);
-  const { options } = ts.parseJsonConfigFileContent(project.config, ts.sys, process.cwd());
+  // Only the options are needed: a host that lists no directories skips expanding the include globs, which took seconds.
+  const optionsOnly: ts.ParseConfigHost = { ...ts.sys, readDirectory: () => [] };
+  const { options } = ts.parseJsonConfigFileContent(project.config, optionsOnly, process.cwd());
   const file = resolve('src/app/host/typecheck-fixture.ts');
   const source = `
     import type { Point } from 'pixi.js';

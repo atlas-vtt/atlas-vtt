@@ -92,7 +92,8 @@ $loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
   }
 }
 
-.atlas-loot-card__show.btn--icon {
+// The card's own controls at the end of its heading: hand it to a player, show it to all of them.
+.atlas-loot-card__action.btn--icon {
   width: $button-height-s;
   height: $button-height-s;
   flex-shrink: 0;
@@ -104,7 +105,9 @@ $loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
     height: 14px;
   }
 
-  &:hover {
+  // Its menu is open: the tooltip around the button owns `data-state`.
+  &:hover,
+  &[aria-expanded='true'] {
     color: var(--text-normal);
   }
 
@@ -118,6 +121,8 @@ $loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
   margin: 0;
   color: var(--text-muted);
   line-height: 1.45;
+  // A generator's item lists its parts one per line.
+  white-space: pre-line;
 }
 
 .atlas-loot-card__properties {

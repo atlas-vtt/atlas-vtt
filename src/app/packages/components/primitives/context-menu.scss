@@ -54,8 +54,12 @@
   @include ring-color-button;
   background: transparent;
   &:hover { transform: scale(1.1); }
+  // No ring: a quiet disc struck through.
   &.atlas-none {
-    background: transparent;
-    border: $border-width-l dashed color-mix(in oklch, var(--mono-0) 30%, transparent);
+    border-color: transparent;
+    background:
+      linear-gradient(135deg, transparent calc(50% - 0.75px), var(--text-faint) calc(50% - 0.75px),
+        var(--text-faint) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+      var(--background-modifier-hover);
   }
 }

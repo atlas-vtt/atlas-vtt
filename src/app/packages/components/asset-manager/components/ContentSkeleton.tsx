@@ -5,6 +5,7 @@ import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../primitives/Ske
 import { useScrollbarGutter } from '../../primitives/useScrollbarGutter';
 import { ENCOUNTER_PREVIEW_COUNT, encounterPreviewStyle } from '../utils/encounterPreviewLayout';
 import { useGridMetrics } from './useGridMetrics';
+import { assetTypeOfTab } from '../utils/tabKinds';
 
 export interface ContentSkeletonProps {
   tab: Tab;
@@ -80,7 +81,7 @@ export function ContentSkeleton({ tab, folderCount, assetCount }: ContentSkeleto
           <SectionHeaderSkeleton width={88} />
           <div ref={gridRef} className="atlas-asset-skeleton-grid">
             {Array.from({ length: cards }, (_, index) => (
-              <div key={index} className="atlas-asset-card" data-type={tab}>
+              <div key={index} className="atlas-asset-card" data-type={assetTypeOfTab(tab)}>
                 <div className="atlas-asset-card-thumb"><ArtSkeleton tab={tab} /></div>
                 <span className="atlas-asset-card-name"><Skeleton shape="text" width={skeletonTextWidth(index, 80)} /></span>
               </div>
