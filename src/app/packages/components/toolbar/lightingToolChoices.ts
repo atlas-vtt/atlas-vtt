@@ -16,10 +16,10 @@ export interface LightingChoice<Value extends string> {
   tip?: string
 }
 
-/** What the tool does with a click. */
+/** What the tool does with a click. Rooms come first: most walls are a room's, and single walls finish them. */
 export const LIGHTING_MODES: readonly LightingChoice<WallToolSubMode>[] = [
+  { value: 'rooms', icon: House, label: t('toolbar.drawRooms') },
   { value: 'draw', icon: BrickWall, label: t('toolbar.drawWalls') },
-  { value: 'rooms', icon: House, label: t('rooms.mode') },
   { value: 'place-light', icon: Lightbulb, label: t('toolbar.placeLights') },
   { value: 'light-zone', icon: SunMoon, label: t('sceneLight.mode.zones') },
   { value: 'level-surface', icon: ArrowDownToDot, label: t('openings.mode') },

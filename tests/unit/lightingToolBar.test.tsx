@@ -50,7 +50,7 @@ const names = (bar: HTMLElement): string[] => within(bar).getAllByRole('button')
 const button = (name: string): HTMLElement => screen.getByRole('button', { name });
 const pressed = (name: string): boolean => button(name).getAttribute('aria-pressed') === 'true';
 const inert = (name: string): boolean => button(name).getAttribute('aria-disabled') === 'true';
-const MODES = ['Draw walls', 'Rooms', 'Place lights', 'Light zones', 'Openings', 'Explored memory'];
+const MODES = ['Draw rooms', 'Draw walls', 'Place lights', 'Light zones', 'Openings', 'Explored memory'];
 
 describe('LightingToolBar', () => {
   it('shows while the lighting tool is chosen, and not while the toolbar is arranged or in the players\' view', async () => {
@@ -71,33 +71,38 @@ describe('LightingToolBar', () => {
     const store = renderBar();
     act(() => store.setState({ isGMView: false }));
     expect(names(modesBar())).toEqual(MODES);
-    expect([...MODES, 'Point to point', 'Freehand'].every(inert)).toBe(true);
+    expect([...MODES, 'Carve', 'Fill in', 'Rectangle'].every(inert)).toBe(true);
     // The chosen mode and tool still show as chosen.
-    expect(pressed('Draw walls')).toBe(true);
-    fireEvent.click(button('Rooms'));
-    fireEvent.click(button('Freehand'));
-    expect(store.getState().lightingTool).toMatchObject({ mode: 'draw', drawMode: 'point-to-point' });
+    expect(pressed('Draw rooms')).toBe(true);
+    fireEvent.click(button('Draw walls'));
+    fireEvent.click(button('Fill in'));
+    expect(store.getState().lightingTool.mode).toBe('rooms');
+    expect(store.getState().roomTool.action).toBe('carve');
     act(() => store.setState({ isGMView: true }));
     expect(MODES.slice(0, 3).some(inert)).toBe(false);
-    fireEvent.click(button('Freehand'));
-    expect(store.getState().lightingTool.drawMode).toBe('freeform');
+    fireEvent.click(button('Fill in'));
+    expect(store.getState().roomTool.action).toBe('fill');
   });
 
   it('keeps the modes in a bar of their own, the same in every mode, and the tools in another', async () => {
     const store = renderBar();
     act(() => store.getState().setSceneLighting({ enabled: true }));
     expect(names(modesBar())).toEqual(MODES);
-    expect(names(toolsBar('Draw walls'))).toEqual(['Point to point', 'Freehand']);
-    fireEvent.click(button('Rooms'));
-    expect(names(await toolsOf('Rooms'))).toEqual(['Carve', 'Fill in', 'Door', 'Rectangle', 'Points', 'Lasso', 'Brush']);
+    // The tool opens on rooms, the first of its modes; single walls come second.
+    expect(store.getState().lightingTool.mode).toBe('rooms');
+    expect(names(toolsBar('Draw rooms'))).toEqual(['Carve', 'Fill in', 'Door', 'Rectangle', 'Points', 'Lasso', 'Brush']);
+    fireEvent.click(button('Draw walls'));
+    expect(names(await toolsOf('Draw walls'))).toEqual(['Point to point', 'Freehand']);
     expect(names(modesBar())).toEqual(MODES);
     fireEvent.click(button('Explored memory'));
     expect(names(await toolsOf('Explored memory'))).toEqual(['Reveal', 'Forget', 'Brush', 'Lasso', 'Rectangle']);
     expect(names(modesBar())).toEqual(MODES);
   });
 
-  it('chooses how walls are drawn and keeps it in the store, tinted where a mode is filled', () => {
+  it('chooses how walls are drawn and keeps it in the store, tinted where a mode is filled', async () => {
     const store = renderBar();
+    fireEvent.click(button('Draw walls'));
+    await toolsOf('Draw walls');
     expect(pressed('Draw walls')).toBe(true);
     expect(pressed('Point to point')).toBe(true);
     fireEvent.click(button('Freehand'));
@@ -119,7 +124,7 @@ describe('LightingToolBar', () => {
     expect(inert('Explored memory')).toBe(true);
     expect(inert('Openings')).toBe(true);
     fireEvent.click(button('Explored memory'));
-    expect(store.getState().lightingTool.mode).toBe('draw');
+    expect(store.getState().lightingTool.mode).toBe('rooms');
     act(() => store.getState().setSceneLighting({ enabled: true }));
     expect(inert('Explored memory')).toBe(false);
   });
@@ -142,8 +147,7 @@ describe('LightingToolBar', () => {
 
   it('gives the rooms carve, fill and door, then the shapes, which a door does not use', async () => {
     const store = renderBar();
-    fireEvent.click(button('Rooms'));
-    await toolsOf('Rooms');
+    await toolsOf('Draw rooms');
     fireEvent.click(button('Points'));
     expect(store.getState().roomTool.shape).toBe('polygon');
     fireEvent.click(button('Door'));
@@ -151,8 +155,8 @@ describe('LightingToolBar', () => {
     fireEvent.click(button('Lasso'));
     expect(store.getState().roomTool.shape).toBe('polygon');
     // Groups are set apart by space, never a line.
-    expect(toolsBar('Rooms').querySelectorAll('.atlas-lighting-bar__break')).toHaveLength(1);
-    expect(toolsBar('Rooms').querySelector('hr, [role="separator"]')).toBeNull();
+    expect(toolsBar('Draw rooms').querySelectorAll('.atlas-lighting-bar__break')).toHaveLength(1);
+    expect(toolsBar('Draw rooms').querySelector('hr, [role="separator"]')).toBeNull();
   });
 
   it('gives the lights mode the lights of the map\'s collection to place, its torch chosen until another is', async () => {

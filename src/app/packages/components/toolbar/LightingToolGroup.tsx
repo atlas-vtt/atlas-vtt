@@ -1,6 +1,7 @@
 import React, { useEffect } from "react"
 import { t } from '../../../i18n';
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
+import { DEFAULT_LIGHTING_TOOL } from "../../../lighting/lightingTool"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { useUnavailableModes } from "./LightingToolBar"
@@ -27,11 +28,11 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
   const roomTool = useAtlasStore((state) => state.roomTool)
   const setRoomTool = useAtlasStore((state) => state.setRoomTool)
   const face = lightingToolFace(activeTool)
-  // A mode that can no longer be chosen (the scene stopped remembering, its last level went) is left for walls.
+  // A mode that can no longer be chosen (the scene stopped remembering, its last level went) is left for the tool's first.
   const unavailable = useUnavailableModes()
   const modeUnavailable = unavailable(mode) !== null
   useEffect(() => {
-    if (modeUnavailable) setLightingTool({ mode: 'draw' })
+    if (modeUnavailable) setLightingTool({ mode: DEFAULT_LIGHTING_TOOL.mode })
   }, [modeUnavailable, setLightingTool])
 
   return (

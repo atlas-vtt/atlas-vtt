@@ -46,6 +46,7 @@ export const toolbar = {
   'toolbar.lasso': 'Lasso',
   'toolbar.rectangle': 'Rectangle',
   'toolbar.icons': 'Icons',
+  'toolbar.drawRooms': 'Draw rooms',
   'toolbar.drawWalls': 'Draw walls',
   'toolbar.pointToPoint': 'Point to point',
   'toolbar.gmView': 'GM View ({key})',

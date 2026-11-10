@@ -2,7 +2,6 @@ import type { Message } from '../../types';
 
 /** The lighting tool's rooms mode: rooms carved out of the rock as walls. */
 export const rooms = {
-  'rooms.mode': 'Rooms',
   'rooms.carve': 'Carve',
   'rooms.fill': 'Fill in',
   'rooms.door': 'Door',
