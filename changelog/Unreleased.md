@@ -11,3 +11,4 @@
 ## Fixed
 
 - A roll you make as Public roll in the online table log now always reaches your players, even while "Show my rolls to players" is off
+- A statblock value that tracks a number now shows its own pattern, such as a rank looked up from the current Glory, instead of "current / max"
