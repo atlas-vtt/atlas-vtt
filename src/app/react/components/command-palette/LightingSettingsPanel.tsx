@@ -69,21 +69,24 @@ export function LightingSettingsPanel(): React.ReactElement {
         <SettingToggleRow label={t('sceneLight.dynamic')} value={lighting.enabled} onToggle={() => setSceneLighting({ enabled: !lighting.enabled })} />
         <SettingToggleRow
           label={t('sceneLight.tokenVision')}
-          hint={tokenVisionOn(lighting) ? t('sceneLight.tokenVisionOn') : t('sceneLight.tokenVisionOff')}
+          hint={t('sceneLight.tokenVisionOn')}
+          hintOff={t('sceneLight.tokenVisionOff')}
           value={tokenVisionOn(lighting)}
           disabled={off}
           onToggle={() => setSceneLighting({ tokenVision: !tokenVisionOn(lighting) })}
         />
         <SettingToggleRow
           label={t('sceneLight.memory')}
-          hint={exploredMemoryOn(lighting) ? t('sceneLight.memoryOn') : t('sceneLight.memoryOff')}
+          hint={t('sceneLight.memoryOn')}
+          hintOff={t('sceneLight.memoryOff')}
           value={exploredMemoryOn(lighting)}
           disabled={off}
           onToggle={() => setSceneLighting({ exploredMemory: !exploredMemoryOn(lighting) })}
         />
         <SettingToggleRow
           label={t('sceneLight.sightOnDrop')}
-          hint={sightOnDropOn(lighting) ? t('sceneLight.sightOnDropOn') : t('sceneLight.sightOnDropOff')}
+          hint={t('sceneLight.sightOnDropOn')}
+          hintOff={t('sceneLight.sightOnDropOff')}
           value={sightOnDropOn(lighting)}
           disabled={off}
           // Off is the default and is stored as no choice at all.

@@ -169,9 +169,13 @@ describe('the command palette\'s Lighting page', () => {
 
   it('says under each switch what it does as it stands', () => {
     const { store } = renderPanel();
-    expect(screen.getByText('Players see only what their tokens see')).toBeTruthy();
+    // The other state's sentence is there too, hidden: it keeps the row one size in both states.
+    const said = (text: string): boolean => !screen.getByText(text).hasAttribute('aria-hidden');
+    expect(said('Players see only what their tokens see')).toBe(true);
+    expect(said('Players see everything the light shows')).toBe(false);
     act(() => store.getState().setSceneLighting({ tokenVision: false }));
-    expect(screen.getByText('Players see everything the light shows')).toBeTruthy();
+    expect(said('Players see only what their tokens see')).toBe(false);
+    expect(said('Players see everything the light shows')).toBe(true);
   });
 
   it('switches dynamic lighting, and shows everything else disabled in its place while it is off', () => {

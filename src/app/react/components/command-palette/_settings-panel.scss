@@ -128,6 +128,20 @@
   color: var(--text-muted);
 }
 
+// A hint with the one its row shows in its other state: both lie in one cell and the other is
+// hidden, so the row is as tall as the longer of the two and never changes size with its switch.
+.atlas-setting-hints {
+  display: grid;
+
+  > .atlas-setting-hint {
+    grid-area: 1 / 1;
+
+    &[aria-hidden] {
+      visibility: hidden;
+    }
+  }
+}
+
 .atlas-setting-value {
   min-width: 40px;
   text-align: right;

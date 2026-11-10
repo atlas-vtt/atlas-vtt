@@ -32,7 +32,7 @@ describe('the command palette\'s Lighting page', () => {
     store.getState().setPersistenceEnabled(false);
     store.getState().setSceneLighting({ enabled: true });
     render(h('div', { className: 'atlas-vtt-plugin', style: { padding: 40 } },
-      h('div', { className: 'atlas-command-palette-container atlas-command-palette-container--expanded' },
+      h('div', { className: 'atlas-command-palette-container atlas-command-palette-container--expanded', id: 'palette' },
         h('div', { className: 'atlas-command-palette-options' },
           h(AtlasUIContext.Provider, { value: ui }, h(ViewStoreProvider, { store, children: h(LightingSettingsPanel) }))))));
   });
@@ -64,5 +64,21 @@ describe('the command palette\'s Lighting page', () => {
     const before = places();
     act(() => store.getState().setSceneLighting({ enabled: false }));
     expect(places()).toEqual(before);
+  });
+
+  it('keeps one size whatever is switched: a switch\'s line may say more in one state than in the other', () => {
+    // Narrow enough that the longer sentence of a switch takes a second line.
+    const palette = document.getElementById('palette')!;
+    palette.style.width = '560px';
+    const shape = (): number[] => [palette.getBoundingClientRect().height, ...all('.atlas-command-palette-panel-column > *').map((row) => row.getBoundingClientRect().top)];
+    const before = shape();
+    const lines = new Set<number>();
+    for (const change of [{ tokenVision: false }, { exploredMemory: false }, { sightOnDrop: true }, { darkSightLook: 'grey' as const }, { darkSightTint: '#40ff80' }]) {
+      act(() => store.getState().setSceneLighting(change));
+      expect(shape(), JSON.stringify(change)).toEqual(before);
+      for (const hint of all('.atlas-setting-hint:not([aria-hidden])')) lines.add(Math.round(hint.getBoundingClientRect().height));
+    }
+    // The test means something only where a sentence did wrap.
+    expect(lines.size).toBeGreaterThan(1);
   });
 });
