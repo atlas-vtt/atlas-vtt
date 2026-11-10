@@ -5,5 +5,6 @@
 - Rooms mode darkens everything outside your rooms, so you can see where they are
 - A room can be left open, as an entrance without a door: it stays a room, and what you carve through the opening joins it
 - In the lighting tool's Lights mode, the lights you can place are in the bar beside the modes instead of the menu
+- The lighting tool's bars stay in Session View, greyed out, and say that lighting is edited in GM View, instead of vanishing
 - Rooms saved with 0.14.0 turn into walls when you open the scene. The Rooms panel is gone: joining two rooms is deleting the wall between them
 - Fields, drop-downs and search bars in the asset manager and its dialogs have a quieter edge instead of a bright outline

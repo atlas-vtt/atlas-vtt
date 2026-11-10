@@ -7,7 +7,10 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 const lights = vi.hoisted(() => ({ current: null as readonly unknown[] | null }));
 
 // The bars are mounted inside the map's UI; no Obsidian app here.
-vi.mock('../../src/app/react/root/AtlasUIContext', () => ({ useAtlasUI: () => ({ app: undefined, view: null }) }));
+vi.mock('../../src/app/react/root/AtlasUIContext', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../src/app/react/root/AtlasUIContext')>(),
+  useAtlasUI: () => ({ app: undefined, view: null }),
+}));
 
 // Without an Obsidian app the hook gives the generic presets; a test sets a game system's.
 vi.mock('../../src/app/react/hooks/useMapLightPresets', async (importOriginal) => {
@@ -50,18 +53,34 @@ const inert = (name: string): boolean => button(name).getAttribute('aria-disable
 const MODES = ['Draw walls', 'Rooms', 'Place lights', 'Light zones', 'Openings', 'Explored memory'];
 
 describe('LightingToolBar', () => {
-  it('shows while the lighting tool is chosen in the GM\'s view, and not while the toolbar is arranged', async () => {
+  it('shows while the lighting tool is chosen, and not while the toolbar is arranged or in the players\' view', async () => {
     const store = renderBar();
     const gone = (): Promise<void> => waitFor(() => expect(screen.queryByRole('toolbar')).toBeNull());
     modesBar();
     act(() => store.setState({ isToolbarEditing: true }));
     await gone();
-    act(() => store.setState({ isToolbarEditing: false, isGMView: false }));
+    act(() => store.setState({ isToolbarEditing: false, isPlayerView: true }));
     await gone();
-    act(() => store.setState({ isGMView: true, activeTool: 'move' }));
+    act(() => store.setState({ isPlayerView: false, activeTool: 'move' }));
     await gone();
     act(() => store.setState({ activeTool: 'wall' }));
     modesBar();
+  });
+
+  it('stays in the session view, where no button takes a choice', () => {
+    const store = renderBar();
+    act(() => store.setState({ isGMView: false }));
+    expect(names(modesBar())).toEqual(MODES);
+    expect([...MODES, 'Point to point', 'Freehand'].every(inert)).toBe(true);
+    // The chosen mode and tool still show as chosen.
+    expect(pressed('Draw walls')).toBe(true);
+    fireEvent.click(button('Rooms'));
+    fireEvent.click(button('Freehand'));
+    expect(store.getState().lightingTool).toMatchObject({ mode: 'draw', drawMode: 'point-to-point' });
+    act(() => store.setState({ isGMView: true }));
+    expect(MODES.slice(0, 3).some(inert)).toBe(false);
+    fireEvent.click(button('Freehand'));
+    expect(store.getState().lightingTool.drawMode).toBe('freeform');
   });
 
   it('keeps the modes in a bar of their own, the same in every mode, and the tools in another', async () => {

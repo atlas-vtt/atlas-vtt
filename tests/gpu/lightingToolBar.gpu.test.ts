@@ -123,7 +123,8 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     const row = document.querySelector<HTMLElement>('.atlas-bottom-toolbar-row')!;
     expect(parseFloat(row.style.getPropertyValue('--atlas-toolbar-lift'))).toBeCloseTo(bar.height + 8, 0);
     const place = menu.bottom;
-    act(() => store.setState({ isGMView: false }));
+    // The menu stays open when another tool is chosen from the store, and the bars go.
+    act(() => store.setState({ activeTool: 'move' }));
     await vi.waitFor(() => expect(document.querySelector('.atlas-lighting-bars')).toBeNull());
     expect(rect('.atlas-dropdown-content').bottom).toBeCloseTo(place, 1);
   });
