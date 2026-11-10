@@ -13,3 +13,4 @@
 - A roll you make as Public roll in the online table log now always reaches your players, even while "Show my rolls to players" is off
 - Creating a statblock from a token no longer says it failed when only linking the token went wrong: the new note opens and a notice tells you to link the token from its menu
 - Online play: when you point a pin players already found at another note or heading, they now read the new one instead of the old note
+- A statblock value that tracks a number now shows its own pattern, such as a rank looked up from the current Glory, instead of "current / max"
