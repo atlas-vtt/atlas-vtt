@@ -31,6 +31,8 @@ export type RoomKeys = { altKey: boolean; shiftKey?: boolean };
 
 /** How far, in screen pixels, a door must be dragged to be one. */
 const DOOR_DRAG = 5;
+/** How long the walls must rest before the rock is darkened anew, in milliseconds. */
+const SHADE_REST_MS = 120;
 
 /**
  * The lighting tool's rooms mode: rooms are carved out of the rock with a rectangle, corner by
@@ -50,11 +52,13 @@ export class RoomEditor {
   private door: { from: Point; secret: boolean } | null = null;
   /** The stroke under way fills rock back in. */
   private filling = false;
+  /** The wait before the rock is darkened anew after the walls changed, or null. */
+  private shadeTimer: number | null = null;
   private readonly cleanups: Array<() => void> = [];
 
   constructor(private readonly deps: RoomEditorDeps) {
     const { viewport, store, eventBus } = deps;
-    this.overlay = new RoomOverlay(viewport, store);
+    this.overlay = new RoomOverlay(viewport, store, deps.bounds);
     const onSubMode = (subMode: WallToolSubMode): void => {
       const was = this.active;
       this.subMode = subMode;
@@ -70,14 +74,17 @@ export class RoomEditor {
       () => eventBus.off('wall-submode-changed', onSubMode),
       () => viewport.off('zoomed', redraw),
       store.subscribe((state, previous) => {
+        // A wall's end dragged in this mode changes the walls at every step: the rock follows once they rest.
+        if (levelObjects(state).walls !== levelObjects(previous).walls) this.shadeSoon();
         if (state.roomTool === previous.roomTool) return;
         this.stop();
         this.draw();
       }),
+      () => this.shadeNow(false),
     );
   }
 
-  /** The rock and the rooms' outlines (`GmOverlays`). */
+  /** The darkened rock and the shape under way (`GmOverlays`). */
   get view(): RoomOverlay['view'] {
     return this.overlay.view;
   }
@@ -231,6 +238,8 @@ export class RoomEditor {
       if (remove.length > 0) state.deleteWalls(remove);
       for (const wall of add) state.addWall(wall);
     });
+    // What was just carved shows at once.
+    this.shadeNow(true);
   }
 
   /** With Shift, a corner lands on the nearest crossing of a square grid. */
@@ -241,11 +250,28 @@ export class RoomEditor {
     return { x: snap(point.x, grid.offsetX), y: snap(point.y, grid.offsetY) };
   }
 
+  /** Darkens the rock anew once the walls have rested `SHADE_REST_MS`: finding the rooms of a large map takes tens of milliseconds. */
+  private shadeSoon(): void {
+    if (!this.shown || this.shadeTimer !== null) return;
+    const win = this.deps.canvas.ownerDocument.defaultView;
+    if (!win) return;
+    this.shadeTimer = win.setTimeout(() => this.shadeNow(true), SHADE_REST_MS);
+  }
+
+  /** Drops a darkening that waits, and with `draw` darkens the rock for the walls as they are. */
+  private shadeNow(draw: boolean): void {
+    if (this.shadeTimer !== null) this.deps.canvas.ownerDocument.defaultView?.clearTimeout(this.shadeTimer);
+    this.shadeTimer = null;
+    if (draw) this.overlay.drawShade();
+  }
+
   private zoom(): number {
     return this.deps.viewport.scale.x;
   }
 
   private draw(): void {
+    // The rock is darkened for the walls as they are; nothing is drawn anew where they did not change.
+    this.shadeNow(true);
     const preview = this.shown ? { stroke: this.stroke, draft: this.draft, pointer: this.pointer, door: this.door?.from ?? null, filling: this.filling } : null;
     this.overlay.draw(preview);
   }

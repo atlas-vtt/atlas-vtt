@@ -1,9 +1,13 @@
-import { Container, Graphics } from 'pixi.js';
+import { AlphaFilter, Container, Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { strokePolygons } from '../../lighting/exploredEdits';
+import { outlinesWithHoles, ringPoints, type RoomArea } from '../../lighting/rooms';
+import { wallSpaces } from '../../lighting/wallSpaces';
+import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { type ShapeStroke, STROKE_COLORS } from '../../tools/shapeStroke';
 import type { Point } from '../../types/visionTypes';
+import type { MapBounds } from '../../vision/visibility';
 import { FogCursorPreview } from '../fog/FogCursorPreview';
 import { destroyTree } from '../utils/destroyTree';
 import { drawStrokeArea } from '../utils/strokePreview';
@@ -11,6 +15,8 @@ import { lightMarkerTheme } from './lightMarker';
 
 /** Above the lighting (90) and the explored memory's overlay (91), below the light zones (94) and every marker. */
 export const ROOMS_Z_INDEX = 92;
+/** How dark the rock shows to the GM: the map stays readable through it. */
+const ROCK_ALPHA = 0.45;
 
 /** What the rooms mode is drawing now. */
 export interface RoomPreview {
@@ -24,20 +30,59 @@ export interface RoomPreview {
 }
 
 /**
- * The shape the rooms mode has under way, over the map: the stroke, the corners placed, a door
- * being dragged and the brush. The rooms themselves are walls, which the wall editor draws. A GM
- * overlay (`GmOverlays`); the players never see it.
+ * What the rooms mode shows the GM over the map: the rock darkened, so the rooms stand out as the
+ * floor that walls close in (`wallSpaces`), and the shape under way (the stroke, the corners
+ * placed, a door being dragged, the brush). The rooms themselves are walls, which the wall editor
+ * draws. A GM overlay (`GmOverlays`); the players never see it.
  */
 export class RoomOverlay {
   readonly view = new Container({ label: 'rooms', zIndex: ROOMS_Z_INDEX, eventMode: 'none', interactiveChildren: false });
+  private readonly shade = new Container();
+  private readonly rock = new Graphics();
+  private readonly floor = new Graphics();
   private readonly preview = new Graphics();
   private readonly cursor: FogCursorPreview;
+  private readonly fade = new AlphaFilter({ alpha: ROCK_ALPHA, resolution: 'inherit' });
+  /** What the shade was last drawn for: the rooms and the map's size; null while it shows nothing. */
+  private shaded: { spaces: readonly RoomArea[]; width: number; height: number } | null = null;
 
-  constructor(private readonly viewport: Viewport, private readonly store: ViewAtlasStore) {
+  constructor(private readonly viewport: Viewport, private readonly store: ViewAtlasStore, private readonly bounds: () => MapBounds | null) {
     this.cursor = new FogCursorPreview(viewport);
-    this.view.addChild(this.preview, this.cursor.getDisplayObject());
+    this.floor.blendMode = 'erase';
+    this.shade.filters = [this.fade];
+    this.shade.addChild(this.rock, this.floor);
+    this.view.addChild(this.shade, this.preview, this.cursor.getDisplayObject());
     this.view.visible = false;
     viewport.addChild(this.view);
+  }
+
+  /**
+   * Darkens the rock: the whole map but the floor of its rooms. Drawn anew only when the rooms or
+   * the map's size changed, so a pointer's move redraws nothing of it.
+   */
+  drawShade(): void {
+    if (this.view.destroyed) return;
+    const bounds = this.view.visible ? this.bounds() : null;
+    if (!bounds) {
+      if (this.shaded) {
+        this.rock.clear();
+        this.floor.clear();
+        this.shaded = null;
+      }
+      return;
+    }
+    const spaces = wallSpaces(levelObjects(this.store.getState()).walls);
+    if (this.shaded && this.shaded.spaces === spaces && this.shaded.width === bounds.width && this.shaded.height === bounds.height) return;
+    this.shaded = { spaces, width: bounds.width, height: bounds.height };
+    this.rock.clear().rect(0, 0, bounds.width, bounds.height).fill({ color: 0x000000 });
+    this.floor.clear();
+    // PIXI cuts a hole only from the shape drawn just before it, so each outline is drawn with its own holes.
+    for (const space of spaces) {
+      for (const { outline, holes } of outlinesWithHoles(space)) {
+        this.floor.poly(ringPoints(outline)).fill({ color: 0xffffff });
+        for (const hole of holes) this.floor.poly(ringPoints(hole)).cut();
+      }
+    }
   }
 
   /** Draws the shape under way, or clears it. */
@@ -71,6 +116,8 @@ export class RoomOverlay {
   }
 
   destroy(): void {
+    this.shade.filters = null;
+    this.fade.destroy();
     this.cursor.destroy();
     destroyTree(this.view);
   }

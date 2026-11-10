@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { EventEmitter } from 'events';
-import { afterEach, describe, expect, it } from 'vitest';
-import type { EventSystem } from 'pixi.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Graphics, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { levelObjects } from '../../src/app/levels/levelObjects';
 import { sealedWalls } from '../../src/app/lighting/sealWalls';
@@ -16,9 +16,13 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
 let cleanup: (() => void) | null = null;
+beforeEach(() => {
+  vi.useFakeTimers();
+});
 afterEach(() => {
   cleanup?.();
   cleanup = null;
+  vi.useRealTimers();
 });
 
 type P = { x: number; y: number };
@@ -119,6 +123,31 @@ describe('a room carved with the rooms mode', () => {
     expect([door.p1, door.p2]).toEqual([{ x: 0, y: 200 }, { x: 100, y: 200 }]);
     const curtain = walls(store).find((wall) => wall.blocks === 'sight')!;
     expect([curtain.p1, curtain.p2]).toEqual([{ x: 0, y: 260 }, { x: 100, y: 260 }]);
+  });
+});
+
+describe('the rock around the rooms', () => {
+  it('is darkened in the rooms mode, all of the map but the floor walls close in, and follows what is carved', () => {
+    const { store, rect } = setup();
+    const filled: string[] = [];
+    const proto = Graphics.prototype;
+    const [rectOf, polyOf, fillOf] = [proto.rect, proto.poly, proto.fill];
+    let shape = '';
+    proto.rect = function (this: Graphics, x: number, y: number, w: number, h: number): Graphics { shape = `rect ${x},${y} ${w}x${h}`; return this; };
+    proto.poly = function (this: Graphics, points: number[]): Graphics { shape = `poly ${points.length / 2}`; return this; } as never;
+    proto.fill = function (this: Graphics): Graphics { filled.push(shape); return this; } as never;
+    try {
+      rect({ x: 100, y: 100 }, { x: 400, y: 300 });
+      // The whole map as rock, then the room's four corners cut out of it.
+      expect(filled).toContain('rect 0,0 2000x2000');
+      expect(filled[filled.length - 1]).toBe('poly 4');
+      filled.length = 0;
+      store.temporal.getState().undo();
+      vi.advanceTimersByTime(200);
+      expect(filled).toEqual(['rect 0,0 2000x2000']);
+    } finally {
+      Object.assign(proto, { rect: rectOf, poly: polyOf, fill: fillOf });
+    }
   });
 });
 
