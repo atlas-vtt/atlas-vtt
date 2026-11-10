@@ -5,6 +5,7 @@ import { Graphics, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { levelObjects } from '../../src/app/levels/levelObjects';
 import { sealedWalls } from '../../src/app/lighting/sealWalls';
+import { shapeContains } from '../../src/app/lighting/shapeContains';
 import { wallSpaces } from '../../src/app/lighting/wallSpaces';
 import { RoomEditor } from '../../src/app/pixi/lighting/RoomEditor';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
@@ -91,18 +92,46 @@ describe('a room carved with the rooms mode', () => {
     expect(spans(store)).not.toContain('250,150 - 250,250');
   });
 
-  it('stands beside a room it only touches, the wall between them the one wall there is', () => {
+  it('joins a room it only touches: drawn from one room\'s wall to another\'s, a corridor opens into both', () => {
     const { store, rect } = setup();
     rect({ x: 100, y: 100 }, { x: 300, y: 300 });
-    rect({ x: 300, y: 100 }, { x: 500, y: 300 });
-    expect(rooms(store)).toBe(2);
-    expect(spans(store).filter((span) => span === '300,100 - 300,300')).toHaveLength(1);
-    expect(sees(store, { x: 200, y: 200 }, { x: 400, y: 200 })).toBe(false);
-    // Joining is deleting the wall between, as with any wall.
-    const between = walls(store).find(({ p1, p2 }) => p1.x === 300 && p2.x === 300)!;
-    store.getState().deleteWalls([between.id]);
+    rect({ x: 500, y: 100 }, { x: 700, y: 300 });
+    rect({ x: 300, y: 180 }, { x: 500, y: 220 });
     expect(rooms(store)).toBe(1);
-    expect(sees(store, { x: 200, y: 200 }, { x: 400, y: 200 })).toBe(true);
+    expect(sees(store, { x: 200, y: 200 }, { x: 600, y: 200 })).toBe(true);
+    // Only its two long sides are new: nothing stands across its ends, and nothing reaches into the rooms.
+    expect(spans(store)).toContain('300,180 - 500,180');
+    expect(spans(store)).toContain('300,220 - 500,220');
+    expect(spans(store)).not.toContain('300,180 - 300,220');
+    expect(spans(store)).not.toContain('500,180 - 500,220');
+    expect(walls(store)).toHaveLength(12);
+  });
+
+  it('drawn over two rooms, only walls the rock between them', () => {
+    const { store, rect } = setup();
+    rect({ x: 100, y: 100 }, { x: 300, y: 300 });
+    rect({ x: 500, y: 100 }, { x: 700, y: 300 });
+    rect({ x: 200, y: 180 }, { x: 600, y: 220 });
+    expect(rooms(store)).toBe(1);
+    expect(spans(store).filter((span) => /^(2|6)00,/.test(span))).toEqual([]);
+    expect(spans(store)).toContain('300,180 - 500,180');
+    expect(spans(store)).toContain('300,220 - 500,220');
+    expect(walls(store)).toHaveLength(12);
+  });
+
+  it('walls its end in rock that rooms close in between them, which is no room', () => {
+    const { store, rect } = setup();
+    // A ring of four rooms round a block of rock.
+    rect({ x: 100, y: 100 }, { x: 700, y: 200 });
+    rect({ x: 100, y: 500 }, { x: 700, y: 600 });
+    rect({ x: 100, y: 200 }, { x: 200, y: 500 });
+    rect({ x: 600, y: 200 }, { x: 700, y: 500 });
+    expect(rooms(store)).toBe(1);
+    // A corridor from the top room down into the rock ends in a wall there.
+    rect({ x: 380, y: 200 }, { x: 420, y: 350 });
+    expect(spans(store)).toContain('380,350 - 420,350');
+    expect(sees(store, { x: 400, y: 300 }, { x: 400, y: 450 })).toBe(false);
+    expect(rooms(store)).toBe(1);
   });
 
   it('extends a room drawn with walls, and takes the walls it covers', () => {
@@ -123,6 +152,37 @@ describe('a room carved with the rooms mode', () => {
     expect([door.p1, door.p2]).toEqual([{ x: 0, y: 200 }, { x: 100, y: 200 }]);
     const curtain = walls(store).find((wall) => wall.blocks === 'sight')!;
     expect([curtain.p1, curtain.p2]).toEqual([{ x: 0, y: 260 }, { x: 100, y: 260 }]);
+  });
+});
+
+describe('shapes carved one after another', () => {
+  it('always leave every one of them floor, with no wall inside any', () => {
+    const next = (seed: number): (() => number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+    for (let seed = 1; seed <= 24; seed++) {
+      const random = next(seed);
+      // Every second run on a grid, as Shift snaps: shapes then share edges and corners.
+      const at = (): number => (seed % 2 === 0 ? Math.round(random() * 10) * 75 : random() * 750);
+      const { store, rect } = setup();
+      const carved: { a: P; b: P }[] = [];
+      for (let step = 0; step < 6; step++) {
+        const [x1, y1, x2, y2] = [at(), at(), at(), at()];
+        if (Math.abs(x1 - x2) < 30 || Math.abs(y1 - y2) < 30) continue;
+        const [a, b] = [{ x: Math.min(x1, x2), y: Math.min(y1, y2) }, { x: Math.max(x1, x2), y: Math.max(y1, y2) }];
+        rect(a, b);
+        carved.push({ a, b });
+        const floor = wallSpaces(levelObjects(store.getState()).walls);
+        for (const { a: p, b: q } of carved) {
+          for (const share of [0.2, 0.5, 0.8]) {
+            const probe = { x: p.x + share * (q.x - p.x), y: p.y + (1 - share) * (q.y - p.y) };
+            expect(floor.some((space) => shapeContains(space, probe)), `seed ${seed} step ${step}: ${JSON.stringify(carved)}`).toBe(true);
+          }
+        }
+        const inside = walls(store).filter(({ p1, p2 }) => carved.some(({ a: p, b: q }) => (p1.x + p2.x) / 2 > p.x + 3 && (p1.x + p2.x) / 2 < q.x - 3 && (p1.y + p2.y) / 2 > p.y + 3 && (p1.y + p2.y) / 2 < q.y - 3));
+        expect(inside, `seed ${seed} step ${step}: ${JSON.stringify(carved)}`).toEqual([]);
+      }
+      cleanup?.();
+      cleanup = null;
+    }
   });
 });
 

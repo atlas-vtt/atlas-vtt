@@ -2,6 +2,7 @@ import { Q_SCALE, type QShape } from '../types/shapeTypes';
 import type { WallSegment } from '../types/wallTypes';
 import { isRecord } from '../utils/guards';
 import { unionShapes } from './polygonClip';
+import { edgesWithShapeOnLeft } from './wallSides';
 
 /**
  * Rooms as Atlas 0.14.0 saved them (`objects.rooms`): areas of their own, whose outline stood as
@@ -36,17 +37,11 @@ export function wallsOfSavedRooms(rooms: unknown): Record<string, WallSegment> {
   const read = Object.values(rooms).flatMap((room) => readRoom(room) ?? []);
   const levels = new Set(read.map((room) => room.level));
   const add = (area: QShape, level: string | undefined): void => {
-    for (const ring of area) {
-      for (let i = 0; i < ring.length; i += 2) {
-        const next = (i + 2) % ring.length;
-        const [x1, y1, x2, y2] = [ring[i]!, ring[i + 1]!, ring[next]!, ring[next + 1]!];
-        const id = `room_${level ?? ''}_${x1}_${y1}_${x2}_${y2}`;
-        walls[id] = {
-          id, kind: 'wall', type: 'solid', closed: true, chainId: `rooms_${level ?? ''}`,
-          p1: { x: x1 / Q_SCALE, y: y1 / Q_SCALE }, p2: { x: x2 / Q_SCALE, y: y2 / Q_SCALE },
-          ...(level !== undefined && { levels: [level] }),
-        };
-      }
+    // The room lies to the left of each edge, which the walls then say of their floor.
+    for (const { p1, p2 } of edgesWithShapeOnLeft(area)) {
+      const [x1, y1, x2, y2] = [p1.x, p1.y, p2.x, p2.y].map((value) => Math.round(value * Q_SCALE));
+      const id = `room_${level ?? ''}_${x1}_${y1}_${x2}_${y2}`;
+      walls[id] = { id, kind: 'wall', type: 'solid', closed: true, chainId: `rooms_${level ?? ''}`, floor: 'left', p1, p2, ...(level !== undefined && { levels: [level] }) };
     }
   };
   try {

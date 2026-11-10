@@ -31,13 +31,14 @@ export function concerns(wall: WallSegment, channel: WallChannel): boolean {
   return wall.blocks === undefined || wall.blocks === channel;
 }
 
-/** What the parts of a wall that is cut up keep of it (a door placed in it, and what is left on either side): its chain, its direction, what it blocks, limited or not. */
-export function keptByParts(wall: WallSegment): Pick<WallSegment, 'chainId' | 'direction' | 'blocks' | 'limited'> {
+/** What the parts of a wall that is cut up keep of it (a door placed in it, and what is left on either side): its chain, its direction, what it blocks, limited or not, and the side a room's floor lies on. */
+export function keptByParts(wall: WallSegment): Pick<WallSegment, 'chainId' | 'direction' | 'blocks' | 'limited' | 'floor'> {
   return {
     ...(wall.chainId !== undefined && { chainId: wall.chainId }),
     ...(wall.direction !== undefined && { direction: wall.direction }),
     ...(wall.blocks !== undefined && { blocks: wall.blocks }),
     ...(wall.limited === true && { limited: true }),
+    ...(wall.floor !== undefined && { floor: wall.floor }),
   };
 }
 

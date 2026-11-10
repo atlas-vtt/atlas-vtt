@@ -42,7 +42,9 @@ describe('the spaces walls close in', () => {
     const el = [wall(0, 0, 300, 0), wall(300, 0, 300, 100), wall(300, 100, 100, 100), wall(100, 100, 100, 300), wall(100, 300, 0, 300), wall(0, 300, 0, 0)];
     const [space] = enclosedSpaces(el);
     expect(size(space!)).toBeCloseTo(50_000, 0);
-    expect(corners(space!)[0]).toHaveLength(12);
+    // The inner corner is the room's own: what lies beyond it is no part of the room.
+    expect(spaceAt([space!], { x: 105, y: 105 })).toBeNull();
+    expect(spaceAt([space!], { x: 95, y: 95 })).toBe(space);
     const [hall, pillar] = enclosedSpaces([...box(0, 0, 400, 400), ...box(150, 150, 100, 100)]).sort((a, b) => size(b) - size(a));
     expect(size(hall!)).toBeCloseTo(150_000, 0);
     expect(size(pillar!)).toBeCloseTo(10_000, 0);
