@@ -92,41 +92,10 @@ describe('LightingToolGroup', () => {
     row('Lighting settings…');
   });
 
-  it('offers the light presets in the lights mode and keeps the chosen one in the store', () => {
-    const { store } = renderGroup('wall');
-    expect(screen.queryByText('Torch')).toBeNull();
-    mode(store, 'place-light');
-    for (const label of ['Candle', 'Torch', 'Lantern', 'Magical light']) row(label);
-    expect(checked('Torch')).toBe(true);
-    fireEvent.click(row('Lantern'));
-    expect(store.getState().lightingTool.lightPreset).toBe('lantern');
-    expect(checked('Lantern')).toBe(true);
-    expect(checked('Torch')).toBe(false);
-  });
-
-  it('offers the light presets of the map\'s collection, its torch chosen until another is', () => {
-    const dnd5e = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!.rules.lightPresets!;
-    lights.current = dnd5e;
+  it('keeps the lights to place out of the menu: they are the tools of the lights mode in the bar', () => {
     const { store } = renderGroup('wall');
     mode(store, 'place-light');
-    for (const preset of dnd5e) row(preset.name);
-    expect(screen.queryByText('Magical light')).toBeNull();
-    expect(checked('Torch')).toBe(true);
-    fireEvent.click(row('Daylight'));
-    expect(store.getState().lightingTool.lightPreset).toBe('dnd5e-daylight');
-    expect(checked('Daylight')).toBe(true);
-  });
-
-  it('goes back to the collection\'s torch when the chosen preset is no longer one of its lights', () => {
-    const systems = BUILT_IN_SYSTEM_PRESETS.filter((preset) => preset.name === 'D&D 5e' || preset.name === 'Cairn');
-    lights.current = systems.find((preset) => preset.name === 'D&D 5e')!.rules.lightPresets!;
-    const { store, rerender } = renderGroup('wall');
-    mode(store, 'place-light');
-    fireEvent.click(row('Daylight'));
-    lights.current = systems.find((preset) => preset.name === 'Cairn')!.rules.lightPresets!;
-    rerender('wall');
-    expect(screen.queryByText('Daylight')).toBeNull();
-    expect(checked('Torch')).toBe(true);
+    for (const label of ['Candle', 'Torch', 'Lantern', 'Magical light']) expect(screen.queryByText(label)).toBeNull();
   });
 
   it('switches the scene\'s lighting with a named switch and has no preview of its own', () => {

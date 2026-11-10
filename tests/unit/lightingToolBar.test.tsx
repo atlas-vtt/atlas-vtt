@@ -2,7 +2,20 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+
+const lights = vi.hoisted(() => ({ current: null as readonly unknown[] | null }));
+
+// The bars are mounted inside the map's UI; no Obsidian app here.
+vi.mock('../../src/app/react/root/AtlasUIContext', () => ({ useAtlasUI: () => ({ app: undefined, view: null }) }));
+
+// Without an Obsidian app the hook gives the generic presets; a test sets a game system's.
+vi.mock('../../src/app/react/hooks/useMapLightPresets', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../src/app/react/hooks/useMapLightPresets')>();
+  return { useMapLightPresets: () => lights.current ?? original.useMapLightPresets() };
+});
+
+import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { LightingToolBar } from '../../src/app/packages/components/toolbar/LightingToolBar';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
@@ -11,7 +24,10 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 // The bars' motion is measured in the browser (tests/gpu/lightingToolBar.gpu.test.ts); here a mode's tools follow at once.
 beforeAll(() => { MotionGlobalConfig.skipAnimations = true; });
 afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  lights.current = null;
+});
 
 function renderBar(): ViewAtlasStore {
   const { app } = createInMemoryApp({ files: {} });
@@ -72,14 +88,11 @@ describe('LightingToolBar', () => {
     expect(button('Draw walls').classList.contains('atlas-lighting-bar__choice')).toBe(false);
   });
 
-  it('leaves the tools bar out for lights and zones: a click places one, the light to place is in the menu', async () => {
+  it('leaves the tools bar out for zones, where a click places a corner and there is nothing to choose', async () => {
     const store = renderBar();
-    fireEvent.click(button('Place lights'));
-    expect(store.getState().lightingTool.mode).toBe('place-light');
-    await waitFor(() => expect(screen.getAllByRole('toolbar')).toHaveLength(1));
     fireEvent.click(button('Light zones'));
     expect(store.getState().lightingTool.mode).toBe('light-zone');
-    expect(screen.getAllByRole('toolbar')).toHaveLength(1);
+    await waitFor(() => expect(screen.getAllByRole('toolbar')).toHaveLength(1));
   });
 
   it('offers memory and openings only where they can be used', () => {
@@ -121,5 +134,37 @@ describe('LightingToolBar', () => {
     // Groups are set apart by space, never a line.
     expect(toolsBar('Rooms').querySelectorAll('.atlas-lighting-bar__break')).toHaveLength(1);
     expect(toolsBar('Rooms').querySelector('hr, [role="separator"]')).toBeNull();
+  });
+
+  it('gives the lights mode the lights of the map\'s collection to place, its torch chosen until another is', async () => {
+    const store = renderBar();
+    fireEvent.click(button('Place lights'));
+    expect(names(await toolsOf('Place lights'))).toEqual(['Candle', 'Torch', 'Lantern', 'Magical light', 'Darkness']);
+    expect(pressed('Torch')).toBe(true);
+    fireEvent.click(button('Lantern'));
+    expect(store.getState().lightingTool.lightPreset).toBe('lantern');
+    expect(pressed('Lantern')).toBe(true);
+    expect(pressed('Torch')).toBe(false);
+  });
+
+  it('offers a game system\'s own lights, and goes back to its torch when the chosen light is no longer one of them', async () => {
+    const systems = BUILT_IN_SYSTEM_PRESETS.filter((preset) => preset.name === 'D&D 5e' || preset.name === 'Cairn');
+    const dnd5e = systems.find((preset) => preset.name === 'D&D 5e')!.rules.lightPresets!;
+    lights.current = dnd5e;
+    const store = renderBar();
+    fireEvent.click(button('Place lights'));
+    expect(names(await toolsOf('Place lights'))).toEqual(dnd5e.map((preset) => preset.name));
+    expect(pressed('Torch')).toBe(true);
+    fireEvent.click(button('Daylight'));
+    expect(store.getState().lightingTool.lightPreset).toBe('dnd5e-daylight');
+    expect(pressed('Daylight')).toBe(true);
+    lights.current = systems.find((preset) => preset.name === 'Cairn')!.rules.lightPresets!;
+    // The collection's lights changed while another mode was in use.
+    fireEvent.click(button('Light zones'));
+    await waitFor(() => expect(screen.getAllByRole('toolbar')).toHaveLength(1));
+    fireEvent.click(button('Place lights'));
+    await toolsOf('Place lights');
+    expect(screen.queryByRole('button', { name: 'Daylight' })).toBeNull();
+    expect(pressed('Torch')).toBe(true);
   });
 });

@@ -3,12 +3,14 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { t } from "../../../i18n"
 import { hasLevels } from "../../../levels/sceneLevels"
 import type { WallToolSubMode } from "../../../lighting/lightingTool"
+import { chosenLightPreset } from "../../../lighting/lightPresetChoice"
 import { exploredMemoryEditable } from "../../../lighting/sceneLightingOptions"
+import { useMapLightPresets } from "../../../react/hooks/useMapLightPresets"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { MOTION_FAST_MS, PANEL_ENTER_MS, easeOut } from "../../../utils/motion"
 import { ToolButton } from "../primitives/ToolButton"
 import { TooltipProvider } from "../primitives/tooltip"
-import { DRAW_MODES, LIGHTING_MODES, MEMORY_ACTIONS, MEMORY_SHAPES, ROOM_ACTIONS, ROOM_SHAPES, type LightingChoice } from "./lightingToolChoices"
+import { DRAW_MODES, LIGHTING_MODES, MEMORY_ACTIONS, MEMORY_SHAPES, ROOM_ACTIONS, ROOM_SHAPES, lightChoices, type LightingChoice } from "./lightingToolChoices"
 
 /** Why a mode cannot be chosen now, or null where it can. */
 export function useUnavailableModes(): (mode: WallToolSubMode) => string | null {
@@ -60,9 +62,11 @@ function GroupBreak(): React.ReactElement {
   return <span className="atlas-lighting-bar__break" aria-hidden="true" />
 }
 
-/** The current mode's tools, in groups; none for a mode where a click only places something. */
+/** The current mode's tools, in groups; none for a mode where a click only places one thing. */
 function useModeTools(mode: WallToolSubMode): React.ReactElement[] {
   const drawMode = useAtlasStore((state) => state.lightingTool.drawMode)
+  const lightPreset = useAtlasStore((state) => state.lightingTool.lightPreset)
+  const presets = useMapLightPresets()
   const setLightingTool = useAtlasStore((state) => state.setLightingTool)
   const roomTool = useAtlasStore((state) => state.roomTool)
   const setRoomTool = useAtlasStore((state) => state.setRoomTool)
@@ -82,7 +86,11 @@ function useModeTools(mode: WallToolSubMode): React.ReactElement[] {
     <ChoiceButtons key="action" kind="choice" choices={MEMORY_ACTIONS} value={brush.mode} onChange={(value) => setBrush({ mode: value })} />,
     <ChoiceButtons key="shape" kind="choice" choices={MEMORY_SHAPES} value={brush.shape} onChange={(shape) => setBrush({ shape })} />,
   ]
-  // Lights, zones and openings: a click places one, and the light to place is in the tool's menu.
+  if (mode === 'place-light') return [
+    // The collection's torch until a light is chosen, and again once the collection no longer has the chosen one.
+    <ChoiceButtons key="light" kind="choice" choices={lightChoices(presets)} value={chosenLightPreset(presets, lightPreset).id} onChange={(id) => setLightingTool({ lightPreset: id })} />,
+  ]
+  // Zones and openings: a click places a corner, and there is nothing to choose.
   return []
 }
 

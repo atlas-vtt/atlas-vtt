@@ -1,10 +1,12 @@
-import { ArrowDownToDot, BrickWall, Brush, DoorOpen, Eye, EyeOff, Footprints, House, Lasso, Lightbulb, MousePointer2, PaintBucket, PenTool, Pencil, Pickaxe, Square, SunMoon } from "lucide-react"
+import { ArrowDownToDot, BrickWall, Brush, DoorOpen, Eye, EyeOff, Flame, FlameKindling, Footprints, House, Lamp, Lasso, Lightbulb, Moon, MousePointer2, PaintBucket, PenTool, Pencil, Pickaxe, Sparkles, Square, SunMoon } from "lucide-react"
 import type React from "react"
 import { t } from "../../../i18n"
 import type { ExploredEditMode } from "../../../lighting/exploredEdits"
 import type { WallToolMode, WallToolSubMode } from "../../../lighting/lightingTool"
 import type { RoomToolOptions } from "../../../stores/roomsSlice"
 import type { StrokeMode } from "../../../tools/shapeStroke"
+import type { LightKind } from "../../../types/lightingTypes"
+import type { LightPresetDefinition } from "../../../types/lightPresetTypes"
 
 /** One button of the lighting tool's bar: its icon, its name, and what its tooltip adds (the keys that turn it around). */
 export interface LightingChoice<Value extends string> {
@@ -23,6 +25,21 @@ export const LIGHTING_MODES: readonly LightingChoice<WallToolSubMode>[] = [
   { value: 'level-surface', icon: ArrowDownToDot, label: t('openings.mode') },
   { value: 'explored-memory', icon: Footprints, label: t('sceneLight.mode.memory') },
 ]
+
+/** The icon of each kind of light a preset can be. */
+const LIGHT_KIND_ICONS: Record<LightKind, LightingChoice<string>['icon']> = {
+  candle: Flame,
+  torch: FlameKindling,
+  lantern: Lamp,
+  magical: Sparkles,
+  darkness: Moon,
+  custom: Lightbulb,
+}
+
+/** The lights of the map's collection as choices of what a click places, each by the icon of its kind and its own name. */
+export function lightChoices(presets: readonly LightPresetDefinition[]): LightingChoice<string>[] {
+  return presets.map(({ id, name, kind }) => ({ value: id, icon: LIGHT_KIND_ICONS[kind], label: name }))
+}
 
 export const DRAW_MODES: readonly LightingChoice<WallToolMode>[] = [
   { value: 'point-to-point', icon: MousePointer2, label: t('toolbar.pointToPoint') },

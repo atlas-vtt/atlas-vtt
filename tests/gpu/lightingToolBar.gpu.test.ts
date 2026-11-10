@@ -96,6 +96,10 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     // Carve, fill and door, then the shapes, a doubled gap between them.
     const buttons = [...document.querySelectorAll('.atlas-lighting-bar--tools .atlas-tool-button')].map((button) => button.getBoundingClientRect());
     expect(buttons.slice(1).map((button, index) => Math.round(button.left - buttons[index]!.right))).toEqual([8, 8, 16, 8, 8, 8]);
+    // The lights mode has the lights to place as its tools.
+    act(() => store.getState().setLightingTool({ mode: 'place-light' }));
+    await vi.waitFor(() => expect(document.querySelectorAll('.atlas-lighting-bar--tools .atlas-tool-button')).toHaveLength(5), { timeout: 2000 });
+    expect(rect('.atlas-lighting-bar--modes')).toEqual(modes);
     act(() => store.getState().setLightingTool({ mode: 'light-zone' }));
     await vi.waitFor(() => expect(document.querySelector('.atlas-lighting-bar--tools')).toBeNull(), { timeout: 2000 });
     expect(rect('.atlas-lighting-bar--modes')).toEqual(modes);
