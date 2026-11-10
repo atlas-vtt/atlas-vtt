@@ -19,6 +19,11 @@ export function beside(segment: Segment, share: number, side: Side, distance: nu
   return { x: at.x + (sign * (segment.p2.y - segment.p1.y) * distance) / length, y: at.y - (sign * (segment.p2.x - segment.p1.x) * distance) / length };
 }
 
+/** The side of `segment` that `point` lies on, as `beside` names them. */
+export function sideOf(segment: Segment, point: Point): Side {
+  return (point.x - segment.p1.x) * (segment.p2.y - segment.p1.y) - (point.y - segment.p1.y) * (segment.p2.x - segment.p1.x) > 0 ? 'left' : 'right';
+}
+
 export function distanceTo(segment: Segment, point: Point): number {
   const [dx, dy] = [segment.p2.x - segment.p1.x, segment.p2.y - segment.p1.y];
   const lengthSq = dx * dx + dy * dy;

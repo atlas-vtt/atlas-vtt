@@ -155,6 +155,65 @@ describe('a room carved with the rooms mode', () => {
   });
 });
 
+describe('a room with an opening and no door', () => {
+  const isFloor = (store: ViewAtlasStore, point: P): boolean => wallSpaces(levelObjects(store.getState()).walls).some((space) => shapeContains(space, point));
+  const without = (store: ViewAtlasStore, span: string): void => {
+    const wall = walls(store).find(({ p1, p2 }) => [`${p1.x},${p1.y} - ${p2.x},${p2.y}`, `${p2.x},${p2.y} - ${p1.x},${p1.y}`].includes(span));
+    if (!wall) throw new Error(`No wall ${span}`);
+    store.getState().deleteWalls([wall.id]);
+  };
+
+  it('is still a room: its floor reaches the line across the opening, and no further', () => {
+    const { store, rect } = setup();
+    rect({ x: 100, y: 100 }, { x: 400, y: 300 });
+    // A whole side goes.
+    without(store, '400,100 - 400,300');
+    expect(isFloor(store, { x: 250, y: 200 })).toBe(true);
+    expect(isFloor(store, { x: 390, y: 200 })).toBe(true);
+    expect(isFloor(store, { x: 420, y: 200 })).toBe(false);
+    expect(isFloor(store, { x: 250, y: 50 })).toBe(false);
+    // Light and sight still pass the opening.
+    expect(sees(store, { x: 250, y: 200 }, { x: 600, y: 200 })).toBe(true);
+  });
+
+  it('with an entrance in one wall, and with the opening running to a corner another room stands at', () => {
+    const { store, rect } = setup();
+    rect({ x: 100, y: 100 }, { x: 400, y: 300 });
+    // An entrance: the wall goes and two jambs come back.
+    without(store, '400,100 - 400,300');
+    store.getState().addWall({ type: 'solid', closed: true, floor: 'left', p1: { x: 400, y: 300 }, p2: { x: 400, y: 240 } });
+    store.getState().addWall({ type: 'solid', closed: true, floor: 'left', p1: { x: 400, y: 160 }, p2: { x: 400, y: 100 } });
+    expect(isFloor(store, { x: 250, y: 200 })).toBe(true);
+    expect(isFloor(store, { x: 430, y: 200 })).toBe(false);
+    // A second room carved against the first room's corner: the opening now ends at a corner that is no loose end.
+    const other = setup();
+    other.rect({ x: 100, y: 100 }, { x: 400, y: 300 });
+    without(other.store, '100,100 - 100,300');
+    other.rect({ x: 0, y: 300 }, { x: 100, y: 500 });
+    expect(isFloor(other.store, { x: 250, y: 200 })).toBe(true);
+    expect(isFloor(other.store, { x: 50, y: 200 })).toBe(false);
+  });
+
+  it('takes a corridor carved out through its opening: nothing is walled inside the room', () => {
+    const { store, rect } = setup();
+    rect({ x: 100, y: 100 }, { x: 400, y: 300 });
+    without(store, '400,100 - 400,300');
+    rect({ x: 300, y: 180 }, { x: 600, y: 220 });
+    // Inside the room the corridor left no wall; beyond the opening it has its sides and its end.
+    expect(walls(store).filter(({ p1, p2 }) => (p1.x + p2.x) / 2 < 395 && (p1.x + p2.x) / 2 > 105 && (p1.y + p2.y) / 2 > 105 && (p1.y + p2.y) / 2 < 295)).toEqual([]);
+    expect(spans(store)).toContain('400,180 - 600,180');
+    expect(spans(store)).toContain('400,220 - 600,220');
+    expect(spans(store)).toContain('600,180 - 600,220');
+    expect(sees(store, { x: 150, y: 200 }, { x: 580, y: 200 })).toBe(true);
+  });
+
+  it('is rock again where the walls were drawn by hand and say nothing of their floor', () => {
+    const side = (x1: number, y1: number, x2: number, y2: number): WallInput => ({ type: 'solid', p1: { x: x1, y: y1 }, p2: { x: x2, y: y2 }, closed: true });
+    const { store } = setup([side(100, 100, 400, 100), side(400, 300, 100, 300), side(100, 300, 100, 100)]);
+    expect(isFloor(store, { x: 250, y: 200 })).toBe(false);
+  });
+});
+
 describe('shapes carved one after another', () => {
   it('always leave every one of them floor, with no wall inside any', () => {
     const next = (seed: number): (() => number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
