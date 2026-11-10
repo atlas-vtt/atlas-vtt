@@ -85,6 +85,21 @@ describe('the asset manager gets out of the way', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('starts closing as soon as the scene is known, before the tokens are built and in the hand', async () => {
+    const { ctx, requests } = scene((request) => request.commit([...request.tokens]));
+    const onClose = vi.fn(() => { expect(requests).toHaveLength(0); });
+    await spawnAndClose(ctx, onClose, (spawnCtx) => spawnTokenAsset(spawnCtx, goblin, 1));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(requests).toHaveLength(1);
+  });
+
+  it('stays open when no scene can take the tokens', async () => {
+    const { ctx } = scene(() => []);
+    const onClose = vi.fn();
+    await spawnAndClose({ ...ctx, view: null }, onClose, (spawnCtx) => spawnTokenAsset(spawnCtx, goblin, 1));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('stays open when nothing could be spawned', async () => {
     const { ctx } = scene(() => []);
     const onClose = vi.fn();

@@ -7,6 +7,7 @@
 
 import type { App } from 'obsidian';
 import { experimentalFeatureOn } from '../../../experimental/experimentalFeatures';
+import { t } from '../../../i18n';
 import type { ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 import { runInBackground } from '../../../utils/backgroundTask';
 import { cachedTemplateId } from '../../notes/statblockSource';
@@ -56,6 +57,22 @@ export function editInStatblockPane(app: App, path: string, context: EntryContex
     "Couldn't open the statblock",
   );
   return true;
+}
+
+/** How `openStatblockNote` opened a statblock note. */
+export type StatblockNoteOpening = 'editor' | 'note' | 'missing';
+
+/**
+ * Opens a token's statblock note: with its statblock beside it where
+ * `editInStatblockPane` does, else as the note in a new tab. A note that is
+ * gone opens nothing (`missing`): Obsidian would make a new, empty one in its place.
+ */
+export function openStatblockNote(app: App, path: string, context: EntryContext): StatblockNoteOpening {
+  const file = app.vault.getFileByPath(path);
+  if (!file) return 'missing';
+  if (editInStatblockPane(app, path, context)) return 'editor';
+  runInBackground(app.workspace.openLinkText(file.path, '', true), `Opening ${path}`, t('statblockEditor.openNoteFailed'));
+  return 'note';
 }
 
 function createForToken(app: App, context: TokenCreationContext, roleId: string): void {

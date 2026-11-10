@@ -11,7 +11,9 @@ import type { FieldSuggestion } from '../../../resources/resourceFieldSuggestion
 import { modifierPreview, type NamedModifierStatblock } from '../../../initiative/modifierPreview';
 import type { InitiativeModifierSource, InitiativeRules } from '../../../types/initiativeRulesTypes';
 import { t } from '../../../i18n';
-import { StatblockFieldChips } from './StatblockFieldChips';
+import { SettingRow } from './SettingRow';
+import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
+import { StatblockFieldSelect } from './StatblockFieldSelect';
 
 interface InitiativeModifierFieldsProps {
   initiative: InitiativeRules;
@@ -40,52 +42,40 @@ export function InitiativeModifierFields({ initiative, onChange, fieldSuggestion
   };
 
   return (
-    <div className="atlas-csm-field">
-      <label className="atlas-csm-label" htmlFor="atlas-csm-initiative-modifier">{t('initiative.modifierField')}</label>
-      <input
-        id="atlas-csm-initiative-modifier"
-        type="text"
-        className="atlas-csm-input"
-        placeholder={t('initiative.modifierPlaceholder')}
-        spellCheck={false}
-        aria-describedby="atlas-csm-initiative-modifier-hint"
-        value={field}
-        onChange={(e) => setModifier({ field: e.target.value })}
+    <>
+      <SettingRow
+        label={t('initiative.modifierShort')}
+        info={t('initiative.modifierHint')}
+        control={(labelId) => (
+          // A score's slot is picked as a score: DEX 16 adds +3, never +16.
+          <StatblockFieldSelect suggestions={fieldSuggestions} value={field} labelledBy={labelId}
+            onChange={(path, suggestion) => setModifier({ field: path, ...(suggestion && { abilityScore: suggestion.score === true }) })} />
+        )}
+      >
+        {statblocks && statblocks.length > 0 && field !== '' && <ModifierPreviewLine statblocks={statblocks} initiative={initiative} />}
+      </SettingRow>
+      <SettingRow
+        label={t('initiative.abilityScoreShort')}
+        info={t('initiative.abilityScoreHint')}
+        control={(labelId) => <ToggleSwitch labelledBy={labelId} value={abilityScore} disabled={field === ''} onChange={() => setModifier({ abilityScore: !abilityScore })} />}
       />
-      {/* A score's slot is picked as a score: DEX 16 adds +3, never +16 */}
-      <StatblockFieldChips suggestions={fieldSuggestions} value={field}
-        onPick={(path, suggestion) => setModifier({ field: path, abilityScore: suggestion?.score === true })} />
-      <p id="atlas-csm-initiative-modifier-hint" className="atlas-csm-hint">{t('initiative.modifierHint')}</p>
-      {statblocks && statblocks.length > 0 && <ModifierPreviewLine statblocks={statblocks} initiative={initiative} />}
-      <div className="atlas-csm-toggle-row">
-        <div>
-          <div className="atlas-csm-toggle-label">{t('initiative.abilityScore')}</div>
-          <div className="atlas-csm-hint">{t('initiative.abilityScoreHint')}</div>
-        </div>
-        <label className="atlas-csm-switch">
-          <input
-            type="checkbox"
-            aria-label={t('initiative.abilityScore')}
-            checked={abilityScore}
-            disabled={field === ''}
-            onChange={(e) => setModifier({ abilityScore: e.target.checked })}
-          />
-          <span className="atlas-csm-switch-track" />
-        </label>
-      </div>
       {fallback && (
-        <div className="atlas-csm-toggle-row">
-          <div className="atlas-csm-hint">
-            {t(fallback.abilityScore ? 'initiative.fallbackScore' : 'initiative.fallback', { field: fallback.field })}
-          </div>
-          <LabelTooltip label={t('initiative.removeFallback')}>
-            <Button variant="ghost" size="icon" aria-label={t('initiative.removeFallback')} onClick={() => onChange(withSources(initiative, initiative.modifier, undefined))}>
-              <X />
-            </Button>
-          </LabelTooltip>
-        </div>
+        <SettingRow
+          label={t('initiative.fallbackLabel')}
+          info={t('initiative.fallbackInfo')}
+          control={() => (
+            <span className="atlas-csm-setting__value">
+              <span className="atlas-csm-setting__text">{t(fallback.abilityScore ? 'initiative.fallbackScoreValue' : 'initiative.fallbackValue', { field: fallback.field })}</span>
+              <LabelTooltip label={t('initiative.removeFallback')}>
+                <Button variant="ghost" size="icon" aria-label={t('initiative.removeFallback')} onClick={() => onChange(withSources(initiative, initiative.modifier, undefined))}>
+                  <X />
+                </Button>
+              </LabelTooltip>
+            </span>
+          )}
+        />
       )}
-    </div>
+    </>
   );
 }
 

@@ -4,6 +4,7 @@
 
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
+@use '../../../../styles/sidebar-dialog' as *;
 
 // The widest a form tab's page grows in the fullscreen dialog: its lines stay readable.
 $settings-page-width: 760px;
@@ -24,16 +25,20 @@ $settings-page-width: 760px;
   @include atlas-elevated-surface;
   @include atlas-panel-radius($radius-2xl);
   position: relative;
-  display: flex;
-  flex-direction: column;
+  // A dialog with a sidebar (`_sidebar-dialog.scss`). The tabs' body (`RulesSettingsTabs`) lends its parts to the
+  // window's grid. Where the sidebar gives way to a select, the sidebar's column takes no room and the select stands
+  // in the `top` row under the title (both are `auto`). Its parts ask its width.
+  @include atlas-sidebar-dialog($container: atlas-settings-dialog);
   // Tall rather than wide: condition and system lists grow downwards. On short
   // screens the window takes the height the overlay leaves instead of scrolling early.
   width: 660px;
   max-width: 100%;
   height: 760px;
   max-height: 100%;
-  overflow: hidden;
 }
+
+// Narrower than this the sidebar (180 px and more) leaves a page too narrow for its forms.
+$settings-stack-below: 520px;
 
 // Fills the Obsidian window but for the overlay's margin ($spacing-2xl), so the Resources tab has
 // room for the template's card beside the token.
@@ -44,46 +49,65 @@ $settings-page-width: 760px;
 
 // ── Header ─────────────────────────────────────────────────────────────────
 .atlas-collection-settings-header {
-  @include atlas-modal-header;
-
-  h3 {
-    margin: 0;
-    font-size: $font-ui-medium;
-    font-weight: $font-weight-semibold;
-    color: var(--text-normal);
-  }
-
+  // The title takes every dialog's title style (atlas-modal-header).
+  @include atlas-sidebar-dialog-header($container: atlas-settings-dialog);
 }
 
 // ── Body (sidebar + content) ───────────────────────────────────────────────
+// No box of its own: its sidebar, select and page are placed in the window's grid.
 .atlas-collection-settings-body {
-  display: flex;
-  flex: 1;
-  min-height: 0; // allow flex shrink
+  display: contents;
 }
 
 // ── Vertical Tab Sidebar ───────────────────────────────────────────────────
+// Rows like Obsidian's own settings sidebar: grouped under small headings, left-aligned, one icon column, one line.
+// The column is as wide as its longest label (in any language), so no label wraps; past the cap one is cut.
 .atlas-collection-settings-sidebar {
-  width: 160px;
+  @include atlas-sidebar-dialog-side($container: atlas-settings-dialog);
+  width: max-content;
+  min-width: 180px;
+  max-width: 260px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: $spacing-s;
+  gap: $spacing-l;
   padding: $spacing-s;
-  border-right: $border-width-s solid var(--background-modifier-border);
-  background: var(--background-secondary);
+  overflow-y: auto;
 }
 
-.atlas-collection-settings-tab {
-  // Override Button component defaults for sidebar tab sizing
-  height: auto;
-  padding: $spacing-s;
-  gap: $spacing-s;
+.atlas-collection-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+// A section label, told from its rows by size, weight and colour, not colour alone.
+.atlas-collection-settings-group-title {
+  padding: 0 $spacing-s $spacing-xs;
+  @include atlas-section-label;
+}
+
+// Without group headings the first tab stands in the window's top-left corner, concentric with it.
+.atlas-collection-settings-sidebar
+  > .atlas-collection-settings-group:first-child
+  > .atlas-collection-settings-group-title[hidden]
+  + .atlas-collection-settings-tab.btn {
+  @include atlas-panel-inset-radius($spacing-s, top-left);
+}
+
+// `.atlas-vtt-plugin .btn` centres a button's content with wide side padding; a tab row starts at its icon.
+.atlas-collection-settings-sidebar .atlas-collection-settings-tab.btn {
   justify-content: flex-start;
+  width: 100%;
+  height: $button-height-m;
+  padding: 0 $spacing-s;
+  gap: $spacing-s;
   border-radius: $radius-m;
   color: var(--text-muted);
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;
+  text-align: start;
+  white-space: nowrap;
 
   svg {
     width: $icon-s;
@@ -103,24 +127,33 @@ $settings-page-width: 760px;
   }
 }
 
-// `.atlas-vtt-plugin .btn` gives every button wide side padding, a fixed height and
-// one line. A tab label longer than the column (other languages) wraps inside its tab
-// and the tab grows; labels that fit keep their place, since they are centred.
-.atlas-collection-settings-sidebar .atlas-collection-settings-tab.btn {
-  height: auto;
-  min-height: $button-height-l;
-  padding-inline: $spacing-s;
-  white-space: normal;
-  text-align: center;
+.atlas-collection-settings-tab-label {
+  min-width: 0;
+  @include atlas-truncate;
+}
+
+// ── Narrow (WCAG 1.4.10 Reflow): the tabs as one select over the page ──────
+.atlas-collection-settings-tab-select {
+  @include atlas-sidebar-dialog-top($container: atlas-settings-dialog);
+  display: none;
+}
+
+@container atlas-settings-dialog (max-width: #{$settings-stack-below}) {
+  .atlas-collection-settings-sidebar {
+    display: none;
+  }
+
+  .atlas-collection-settings-tab-select {
+    display: block;
+    flex-shrink: 0;
+    padding: $spacing-l $spacing-l 0;
+  }
 }
 
 // ── Content Area ───────────────────────────────────────────────────────────
 .atlas-collection-settings-content {
-  flex: 1;
-  min-width: 0;
-  overflow-y: auto;
-  @include atlas-scroll-padding($spacing-l);
-  @include atlas-scrollbar;
+  @include atlas-sidebar-dialog-body($container: atlas-settings-dialog);
+  padding: $spacing-l;
   @include atlas-flex-col($spacing-l);
 }
 
@@ -158,7 +191,7 @@ $settings-page-width: 760px;
 
 // ── Footer ─────────────────────────────────────────────────────────────────
 .atlas-collection-settings-footer {
-  @include atlas-modal-footer;
+  @include atlas-sidebar-dialog-footer($container: atlas-settings-dialog);
 
   // Button component handles variant styling; just ensure compact sizing
   .atlas-csm-cancel,
@@ -208,12 +241,14 @@ $settings-page-width: 760px;
 
 .atlas-csm-hint {
   font-size: $font-ui-smaller;
-  color: var(--text-faint);
+  color: var(--text-muted);
   margin: 0;
+  // A readable measure, also where the page is wide.
+  max-width: 70ch;
 }
 
 .atlas-csm-hint--error {
-  color: var(--text-error);
+  @include atlas-error-text;
 }
 
 .atlas-csm-dropdown.atlas-setting-dropdown {
@@ -227,7 +262,8 @@ $settings-page-width: 760px;
   padding: $spacing-xs $spacing-s;
   background: var(--background-modifier-form-field);
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-l;
+  // The corner of Atlas' select (`atlas-select-trigger`), so fields and selects side by side match.
+  border-radius: $radius-m;
   color: var(--text-normal);
   font-size: $font-ui-small;
   @include atlas-input-focus;
@@ -256,50 +292,6 @@ $settings-page-width: 760px;
 .atlas-csm-toggle-label {
   font-size: $font-ui-small;
   color: var(--text-normal);
-}
-
-// Simple toggle switch
-.atlas-csm-switch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  flex-shrink: 0;
-
-  input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-    position: absolute;
-  }
-
-  .atlas-csm-switch-track {
-    position: absolute;
-    inset: 0;
-    background: var(--background-modifier-border);
-    border-radius: $radius-full;
-    cursor: pointer;
-    transition: background-color $transition-fast $transition-ease;
-
-    &::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 16px;
-      height: 16px;
-      background: var(--background-primary);
-      border-radius: 50%;
-      transition: transform $transition-fast $transition-ease;
-    }
-  }
-
-  input:checked + .atlas-csm-switch-track {
-    background: var(--interactive-accent);
-
-    &::after {
-      transform: translateX(16px);
-    }
-  }
 }
 
 // ── Folded-away fields: settings few collections change ────────────────────

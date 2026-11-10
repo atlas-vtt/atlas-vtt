@@ -77,8 +77,8 @@ describe('import review', () => {
     };
     render(<ImportReviewDialog media={media} review={review({ templates })} onConfirm={onConfirm} onCancel={vi.fn()} />);
     expect(screen.getByText('Marsh creature → Marsh creature (Fen)')).toBeTruthy();
-    const choice = screen.getByRole('checkbox', { name: 'Switch 1 statblock you already had to the copies: Hag' });
-    expect((choice as HTMLInputElement).checked).toBe(false);
+    const choice = screen.getByRole('switch', { name: 'Switch 1 statblock you already had to the copies: Hag' });
+    expect(choice.getAttribute('aria-checked')).toBe('false');
 
     fireEvent.click(choice);
     fireEvent.click(screen.getByRole('button', { name: 'Update' }));
@@ -99,13 +99,13 @@ describe('import review', () => {
     const { rerender } = render(<ImportReviewDialog media={media} review={review({ relation: 'same', installedVersion: 3, upToDate: true, counts })} onConfirm={vi.fn()} onCancel={onCancel} />);
     expect(screen.getByRole('dialog', { name: '“Dragon Pack” is up to date' })).toBeTruthy();
     expect(screen.getByText('Up to date')).toBeTruthy();
-    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByRole('switch')).toBeNull();
     fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).at(-1)!);
     expect(onCancel).toHaveBeenCalled();
 
     const onConfirm = vi.fn();
     rerender(<ImportReviewDialog media={media} review={review({ relation: 'same', installedVersion: 3, upToDate: true, canRestore: true, counts })} onConfirm={onConfirm} onCancel={onCancel} />);
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('switch'));
     fireEvent.click(screen.getByRole('button', { name: 'Restore original' }));
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ restore: true }));
   });

@@ -132,7 +132,7 @@ describe('the toolbar editor\'s card', () => {
   it('opens no card for the focus edit mode puts on the bar when started from the keyboard', async () => {
     const { container, store } = renderToolbar();
     act(() => store.getState().setCommandPaletteOpen(true));
-    const input = screen.getByPlaceholderText('Search commands...');
+    const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.change(input, { target: { value: 'Customize toolbar' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(document.activeElement).toBe(handle(container, 'move'));

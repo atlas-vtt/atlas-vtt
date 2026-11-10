@@ -12,7 +12,6 @@ function renderSection(overrides: Partial<React.ComponentProps<typeof SceneLight
   const props = {
     lighting: { ...DEFAULT_SCENE_LIGHTING, enabled: true },
     onChange: vi.fn(),
-    onResetExplored: vi.fn(),
     onOpenSettings: vi.fn(),
     ...overrides,
   };
@@ -49,16 +48,15 @@ describe('SceneLightingSection', () => {
     const controls = [
       ...screen.getAllByRole('radio'),
       screen.getByLabelText('Ambient colour'),
-      ...['Mark all areas explored', 'Forget explored areas', 'Lighting settings…'].map((label) => screen.getByText(label).closest('button')!),
+      ...['Mark all areas explored', 'Lighting settings…'].map((label) => screen.getByText(label).closest('button')!),
     ] as (HTMLButtonElement | HTMLInputElement)[];
-    expect(controls).toHaveLength(TIMES_OF_DAY.length + 4);
+    expect(controls).toHaveLength(TIMES_OF_DAY.length + 3);
     expect(controls.filter((control) => !control.disabled)).toEqual([]);
     expect(screen.getByRole('slider', { name: 'Ambient light' }).hasAttribute('data-disabled')).toBe(true);
     expect(screen.getByRole('radiogroup', { name: 'Time of day' }).getAttribute('aria-disabled')).toBe('true');
     for (const control of controls) fireEvent.click(control);
     fireEvent.keyDown(screen.getByRole('slider', { name: 'Ambient light' }), { key: 'ArrowLeft' });
     expect(props.onChange).not.toHaveBeenCalled();
-    expect(props.onResetExplored).not.toHaveBeenCalled();
     expect(props.onOpenSettings).not.toHaveBeenCalled();
     // The switch is what brings them back.
     fireEvent.click(screen.getByRole('switch', { name: 'Dynamic lighting' }));
@@ -73,12 +71,6 @@ describe('SceneLightingSection', () => {
     expect(screen.getByRole('radiogroup', { name: 'Time of day' }).hasAttribute('aria-disabled')).toBe(false);
   });
 
-  it('forgets explored areas', () => {
-    const props = renderSection();
-    fireEvent.click(screen.getByText('Forget explored areas'));
-    expect(props.onResetExplored).toHaveBeenCalled();
-  });
-
   it('has no preview of its own: the GM view switch shows the players\' lighting', () => {
     renderSection();
     expect(screen.queryByText('Preview player view')).toBeNull();
@@ -86,20 +78,21 @@ describe('SceneLightingSection', () => {
   });
 
   it('keeps its actions in a section of their own, as rows like every other menu\'s, and the switch last', () => {
-    const { container } = render(<SceneLightingSection lighting={DEFAULT_SCENE_LIGHTING} onChange={vi.fn()} onResetExplored={vi.fn()} onOpenSettings={vi.fn()} />);
+    const { container } = render(<SceneLightingSection lighting={DEFAULT_SCENE_LIGHTING} onChange={vi.fn()} onOpenSettings={vi.fn()} />);
     const sections = [...container.querySelectorAll('.atlas-dropdown-section')];
     const controls = screen.getByRole('radiogroup', { name: 'Time of day' }).closest('.atlas-dropdown-section');
-    const actions = screen.getByText('Forget explored areas').closest('.atlas-dropdown-section');
+    const actions = screen.getByText('Lighting settings…').closest('.atlas-dropdown-section');
     const toggle = screen.getByRole('switch').closest('.atlas-dropdown-section');
     expect(sections).toEqual([controls, actions, toggle]);
-    expect(screen.getByText('Lighting settings…').closest('.atlas-dropdown-section')).toBe(actions);
-    expect(screen.getByText('Forget explored areas').closest('button')?.classList.contains('atlas-dropdown-menu-item')).toBe(true);
+    expect(screen.getByText('Lighting settings…').closest('button')?.classList.contains('atlas-dropdown-menu-item')).toBe(true);
+    // Forgetting explored areas lives in the Lighting settings panel, not in the menu
+    expect(screen.queryByText('Forget explored areas')).toBeNull();
   });
 
   it('has the same rows in the same places whether lighting is on or off, so the switch never moves', () => {
     /** The rows of each section in order: a row's classes and its text. */
     const shape = (lighting: SceneLighting): string[][] => {
-      const { container } = render(<SceneLightingSection lighting={lighting} onChange={vi.fn()} onResetExplored={vi.fn()} onOpenSettings={vi.fn()} />);
+      const { container } = render(<SceneLightingSection lighting={lighting} onChange={vi.fn()} onOpenSettings={vi.fn()} />);
       const sections = [...container.querySelectorAll('.atlas-dropdown-section')]
         .map((section) => [...section.children].map((row) => `${row.className}: ${row.textContent}`));
       cleanup();
@@ -107,7 +100,7 @@ describe('SceneLightingSection', () => {
     };
     const off = shape(DEFAULT_SCENE_LIGHTING);
     expect(off).toEqual(shape({ ...DEFAULT_SCENE_LIGHTING, enabled: true }));
-    expect(off.map((rows) => rows.length)).toEqual([2, 2, 1]);
+    expect(off.map((rows) => rows.length)).toEqual([2, 1, 1]);
   });
 
   it('tints the ambient light with the colour beside its slider', () => {

@@ -136,6 +136,14 @@ if (typeof Element !== 'undefined') {
   }
 }
 
+// Obsidian puts the creating helpers on every node, so a shadow root (a fragment) has them too.
+if (typeof DocumentFragment !== 'undefined') {
+  const prototype = DocumentFragment.prototype as unknown as Record<string, unknown>;
+  for (const name of ['createEl', 'createDiv', 'createSpan']) {
+    if (!(name in prototype)) prototype[name] = helpers[name];
+  }
+}
+
 // Obsidian's `node.win` / `node.doc` point at the window and document a node lives in (popouts included).
 if (typeof Node !== 'undefined' && !('win' in Node.prototype)) {
   Object.defineProperties(Node.prototype, {
@@ -152,6 +160,10 @@ if (typeof Element !== 'undefined' && typeof Element.prototype.animate !== 'func
     cancel: () => undefined, finish: () => undefined, pause: () => undefined, play: () => undefined,
     onfinish: null, finished: Promise.resolve() as Promise<Animation>,
   });
+}
+// The stubbed `animate` leaves nothing running, so an element has no animations to list.
+if (typeof Element !== 'undefined' && typeof Element.prototype.getAnimations !== 'function') {
+  Object.defineProperty(Element.prototype, 'getAnimations', { value: (): Animation[] => [], configurable: true, writable: true });
 }
 // jsdom never decodes images
 if (typeof HTMLImageElement !== 'undefined' && typeof HTMLImageElement.prototype.decode !== 'function') {

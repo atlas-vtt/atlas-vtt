@@ -13,7 +13,6 @@ $tray-padding: 64px;
 // ── Stage ──────────────────────────────────────────────────────────────────
 .atlas-dice-lab__stage {
   @include atlas-flex-col($spacing-m);
-  grid-area: stage;
   min-width: 0;
   min-height: 0;
   padding: $spacing-l;
@@ -94,7 +93,6 @@ $tray-padding: 64px;
 // A felt tray: the secondary background, a light pooling in its middle and a soft
 // inner shadow along its rim, in the theme's own colours.
 .atlas-dice-lab__field {
-  @include atlas-scrollbar;
   position: relative;
   display: flex;
   flex: 1;

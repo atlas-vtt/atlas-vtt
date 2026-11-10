@@ -10,6 +10,8 @@ import { STATBLOCK_IMAGE_KEYS } from './statblockImageKeys';
 import { NoteFieldWriter } from '../statblocks/notes/NoteFieldWriter';
 import type { NotePatch } from '../statblocks/notes/patchTypes';
 import { withMovedTableNotes } from '../randomTables/tableSettings';
+import { workSlices } from '../utils/workSlices';
+import { mayNameMoves } from './movedPathNeedles';
 
 /**
  * Propagates file path changes (renames/moves) across all storage layers:
@@ -45,7 +47,7 @@ export class FileReferenceService {
     await this.updateAssetMetadata(moved);
     await this.updateScenes(moved);
     for (const { from, to } of fileMoves) await this.renameMapThumbnail(from, to);
-    await this.updateMapFiles(moved);
+    await this.updateMapFiles(moved, fileMoves);
     await this.updateStatblockFrontmatter(moved);
     await this.updateRandomTableSources(moved);
   }
@@ -64,7 +66,7 @@ export class FileReferenceService {
 
   /** Points what maps and snapshots name at or below moved folders (pins rolling a folder of encounters) at the folders' new places. */
   async followMovedFolders(moves: readonly PathMove[]): Promise<void> {
-    if (moves.length > 0) await this.updateMapFiles(movedFolderPathOf(moves));
+    if (moves.length > 0) await this.updateMapFiles(movedFolderPathOf(moves), moves);
   }
 
   // ---------------------------------------------------------------------------
@@ -147,19 +149,28 @@ export class FileReferenceService {
   // .atlasmap files
   // ---------------------------------------------------------------------------
 
-  private async updateMapFiles(moved: MovedPath): Promise<boolean> {
+  /**
+   * Rewrites every map and snapshot that names a moved path. Only texts that can name
+   * one are parsed (`mayNameMoves`), and the maps are read in slices, so following
+   * a move costs the frames after it little however large the library.
+   */
+  private async updateMapFiles(moved: MovedPath, moves: readonly PathMove[]): Promise<boolean> {
     const mapFiles = this.app.vault.getFiles().filter(f => f.extension === 'atlasmap');
     const snapshots = new SceneSnapshotService(this.app);
+    const mayName = mayNameMoves(moves);
+    const pause = workSlices();
     let anyChanged = false;
 
     /** Returns the rewritten map JSON, or null when the map references none of the moved files. */
     const rewriteMap = (content: string): string | null => {
+      if (!mayName(content)) return null;
       const mapData: unknown = JSON.parse(content);
       if (!isPersistedMapEnvelope(mapData)) return null;
       return rewriteMapReferences(mapData.state, moved) ? JSON.stringify(mapData, null, 2) : null;
     };
 
     for (const mapFile of mapFiles) {
+      await pause();
       try {
         if (rewriteMap(await this.app.vault.read(mapFile)) !== null) {
           await this.app.vault.process(mapFile, (latest) => rewriteMap(latest) ?? latest);

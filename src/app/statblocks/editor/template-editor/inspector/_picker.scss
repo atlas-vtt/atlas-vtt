@@ -47,7 +47,6 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     padding: $menu-inset;
     overflow-y: auto;
     box-shadow: $shadow-md;
-    @include atlas-scrollbar;
   }
 
   .atlas-te-choices__group {

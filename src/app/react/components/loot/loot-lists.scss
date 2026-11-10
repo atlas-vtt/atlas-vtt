@@ -27,7 +27,6 @@ $loot-padding: $spacing-m;
 
 // ── List ───────────────────────────────────────────────────────────────────
 .atlas-loot-list {
-  @include atlas-scrollbar;
   flex: 1;
   min-height: 0;
   margin: 0 (-$loot-padding);

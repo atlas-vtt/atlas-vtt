@@ -1,0 +1,105 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ── ⋯ button ────────────────────────────────────────────────────────────────
+// Beside the card's option in the grid cell, never inside it (`CardMoreButton`). A box laid exactly over the
+// art well (the card's padding in from the cell's sides, square) holds it in the well's bottom end, opposite the
+// tag button; the box takes no pointer, so the card under it keeps every press but the button's. It changes no
+// layout. Hidden, it is not drawn at all (`display: none`): a fling mounts a row of cards a frame and passes them under
+// the pointer, and buttons kept at opacity 0 each started their transitions and held a blurred backdrop on the
+// compositor (8.1 % of the fling's frames dropped). It fades in when shown and leaves at once.
+
+.atlas-asset-card-actions {
+  position: absolute;
+  top: $spacing-xs;
+  right: $spacing-xs;
+  left: $spacing-xs;
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.atlas-asset-card:is([data-type='tokens'], [data-type='encounters']) + .atlas-asset-card-actions {
+  top: $spacing-s;
+  right: $spacing-s;
+  left: $spacing-s;
+}
+
+.atlas-asset-card-more {
+  &.btn,
+  &.btn--icon {
+    position: absolute;
+    right: $spacing-s;
+    bottom: $spacing-s;
+    z-index: 2;
+    width: $button-height-s;
+    height: $button-height-s;
+    padding: 0;
+    border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+    border-radius: $radius-full;
+    // Over art, as the tag button: a ghost button with nothing under it would vanish into the picture.
+    background: color-mix(in oklch, var(--background-primary) 82%, transparent);
+    backdrop-filter: blur(6px);
+    box-shadow: $shadow-sm;
+    color: var(--text-muted);
+    pointer-events: auto;
+  }
+
+  // Above the shared `.btn` display, whichever stylesheet comes first.
+  .atlas-asset-card-actions &.btn {
+    display: none;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &.btn:hover {
+    background: var(--background-primary);
+    color: var(--text-normal);
+  }
+
+  .atlas-asset-grid-cell:hover &.btn,
+  .atlas-asset-card:is(:focus, .atlas-selected) + .atlas-asset-card-actions &.btn {
+    display: inline-flex;
+    transition:
+      opacity $transition-fast $transition-ease,
+      transform $transition-press $transition-ease-out,
+      background-color $transition-fast $transition-ease,
+      color $transition-fast $transition-ease;
+
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+  }
+
+  .atlas-asset-grid-cell &.btn:active {
+    transform: scale(0.94);
+  }
+
+  // Touch has no hover and no right-click: the button is always there. A finger needs 44 px, but a 44 px disc would
+  // hide a corner of every card's art: the face grows only to 28 px, and a hit area around it, drawn by nothing, takes
+  // the rest (the open window's 44 px floor for every button leaves this one out, `_open-window.scss`).
+  @media (pointer: coarse) {
+    &.btn,
+    &.btn--icon {
+      width: $input-height-s;
+      height: $input-height-s;
+    }
+
+    .atlas-asset-card-actions &.btn {
+      display: inline-flex;
+      transition: transform $transition-press $transition-ease-out;
+    }
+
+    // `inset` counts from the padding box, inside the button's border: the border is taken off as well, so the
+    // area reaches 44 px from the border box's edges.
+    &::before {
+      position: absolute;
+      inset: calc(($input-height-s - $touch-target) / 2 - $border-width-s);
+      border-radius: $radius-full;
+      content: '';
+    }
+  }
+}

@@ -86,10 +86,18 @@ describe('useAssetData while it loads', () => {
 
   it('gives only the card whose thumbnail arrived a new asset, without loading the list again', async () => {
     const { assets, goblin, finishThumbnail } = await library();
+    const refresh = vi.spyOn(assets, 'refreshMetadata');
+    const loads = vi.spyOn(assets, 'getAssets');
     const { result } = open();
     await waitFor(() => expect(result.current.assetsLoading).toBe(false));
+    // The window reads the library from disk once it has opened, and loads the list after that read: let it finish.
+    await waitFor(() => {
+      const read = refresh.mock.invocationCallOrder[0] ?? Infinity;
+      expect(loads.mock.invocationCallOrder.some((order) => order > read)).toBe(true);
+    });
+    await act(async () => { await Promise.all(loads.mock.results.map((load) => load.value)); });
     const before = result.current.assets;
-    const loads = vi.spyOn(assets, 'getAssets');
+    loads.mockClear();
 
     await act(async () => { finishThumbnail(); });
     await waitFor(() => expect(result.current.assets[0]?.thumbnailPending).toBeUndefined());

@@ -1,6 +1,7 @@
 import { align } from './align';
 import { atlasLinks } from './atlasLinks';
 import { am } from './am';
+import { assetGrid } from './assetGrid';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
 import { clock } from './clock';
@@ -43,6 +44,7 @@ import { settings } from './settings';
 import { snapshots } from './snapshots';
 import { levels } from './levels';
 import { openings } from './openings';
+import { rooms } from './rooms';
 import { statblock } from './statblock';
 import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
@@ -113,6 +115,7 @@ export const en = {
   ...align,
   ...atlasLinks,
   ...am,
+  ...assetGrid,
   ...bundle,
   ...cleanup,
   ...clock,
@@ -155,6 +158,7 @@ export const en = {
   ...snapshots,
   ...levels,
   ...openings,
+  ...rooms,
   ...statblock,
   ...statblockEditor,
   ...switcher,

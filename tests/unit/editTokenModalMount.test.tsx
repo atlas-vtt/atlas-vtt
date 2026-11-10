@@ -39,7 +39,7 @@ describe('openEditTokenModal', () => {
   it('opens with its vision switch through its own React root, outside every tooltip provider', () => {
     open({ vision: { enabled: true } });
     expect(vision().getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     act(() => screen.getByRole('button', { name: 'Cancel' }).click());
     expect(document.body.querySelector('.atlas-vtt-root')).toBeNull();
   });
@@ -136,10 +136,10 @@ describe('openEditTokenModal', () => {
     open({ vision: { enabled: true } });
     fireEvent.keyDown(screen.getByRole('button', { name: 'Add sense' }), { key: 'ArrowDown' });
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     expect(screen.queryByRole('menu')).toBeNull();
     fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(screen.queryByText('Edit Token')).toBeNull();
+    expect(screen.queryByText('Edit token')).toBeNull();
   });
 });
 
@@ -216,10 +216,10 @@ describe('openEditTokenModal: the carried light', () => {
     const tooltip = render(<TooltipProvider><Tooltip open><TooltipTrigger>Hovered</TooltipTrigger><TooltipContent>Tip</TooltipContent></Tooltip></TooltipProvider>);
     fireEvent.keyDown(screen.getByRole('option', { name: 'Pulse' }), { key: 'Escape' });
     expect(screen.queryByRole('listbox')).toBeNull();
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     tooltip.unmount();
     fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(screen.queryByText('Edit Token')).toBeNull();
+    expect(screen.queryByText('Edit token')).toBeNull();
   });
 
   it('commits a typed range with Enter without saving the token', () => {
@@ -227,7 +227,7 @@ describe('openEditTokenModal: the carried light', () => {
     const dim = screen.getByLabelText('Dim') as HTMLInputElement;
     fireEvent.change(dim, { target: { value: '50' } });
     fireEvent.keyDown(dim, { key: 'Enter' });
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     expect(saved().light).toEqual(emissionOf(torch));
     save();
     expect(saved().light).toMatchObject({ bright: 20, dim: 50 });
@@ -237,7 +237,7 @@ describe('openEditTokenModal: the carried light', () => {
     const { saved } = open({ light: emissionOf(torch) });
     fireEvent.click(screen.getByRole('button', { name: 'Arcane blue' }));
     fireEvent.keyDown(screen.getByLabelText('Custom colour'), { key: 'Enter' });
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     expect(saved().light).toEqual(emissionOf(torch));
   });
 

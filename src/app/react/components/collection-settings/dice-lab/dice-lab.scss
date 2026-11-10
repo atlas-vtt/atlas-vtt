@@ -7,11 +7,14 @@
 
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
+@use '../../../../../../styles/sidebar-dialog' as *;
 
 $sidebar-width: 304px;
-// The list of sets keeps its height, so the options under it never move it.
-$library-height: 272px;
+// The list of sets keeps its height (beside the title row too), so the options under it never move it.
+$library-height: calc(272px + #{$close-button-size} + 2 * #{$close-button-gap});
 $set-row-height: 36px;
+// Narrower than this the sidebar goes above the tray and the lab scrolls as a whole.
+$lab-stack-below: 720px;
 
 // ── Dialog ─────────────────────────────────────────────────────────────────
 // Portaled to the document's body, so the overlay itself carries .atlas-vtt-plugin.
@@ -19,9 +22,11 @@ $set-row-height: 36px;
   @include atlas-modal-overlay($z-atlas-modal);
 }
 
+// A dialog with a sidebar (`_sidebar-dialog.scss`): the library and the open set's options make the full-height
+// sidebar, the title row, the stage and Done stand beside it. The lab (`DiceLab`) lends its parts to the window's grid.
 .atlas-dice-lab-dialog {
   @include atlas-modal-window;
-  container: atlas-dice-lab / inline-size;
+  @include atlas-sidebar-dialog($side-track: $sidebar-width, $container: atlas-dice-lab);
   width: 960px;
   height: 700px;
 
@@ -31,60 +36,76 @@ $set-row-height: 36px;
 }
 
 .atlas-dice-lab-dialog__header {
-  @include atlas-modal-header;
+  @include atlas-sidebar-dialog-header($lab-stack-below, atlas-dice-lab);
 }
 
 .atlas-dice-lab-dialog__footer {
-  @include atlas-modal-footer;
+  @include atlas-sidebar-dialog-footer(start, $lab-stack-below, atlas-dice-lab);
 }
 
 // ── Layout ─────────────────────────────────────────────────────────────────
 .atlas-dice-lab {
-  display: grid;
-  flex: 1;
-  min-height: 0;
-  grid-template-columns: $sidebar-width minmax(0, 1fr);
-  grid-template-rows: $library-height minmax(0, 1fr);
-  grid-template-areas:
-    'library stage'
-    'options stage';
+  display: contents;
 }
 
-// A narrow window: the sidebar above the tray, all of it scrolling as one.
-@container atlas-dice-lab (max-width: 720px) {
+// The library over the options, the two filling the sidebar's area together.
+.atlas-dice-lab__library,
+.atlas-dice-lab__options {
+  @include atlas-sidebar-dialog-side($container: atlas-dice-lab);
+}
+
+.atlas-dice-lab__library {
+  align-self: start;
+  height: $library-height;
+}
+
+.atlas-dice-lab__options {
+  align-self: end;
+  height: calc(100% - #{$library-height});
+}
+
+.atlas-dice-lab__stage {
+  @include atlas-sidebar-dialog-area(body, $container: atlas-dice-lab);
+}
+
+// A narrow window: the sidebar above the tray, all of it scrolling as one between the title row and Done.
+@container atlas-dice-lab (max-width: #{$lab-stack-below}) {
   .atlas-dice-lab {
-    @include atlas-scrollbar;
+    @include atlas-scroll-shadow;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    min-height: 0;
     overflow-y: auto;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
+    // Each part as tall as its content: `auto` rows would shrink to the lab's height and lay them over each other.
+    grid-template-rows: repeat(3, max-content);
     grid-template-areas: 'library' 'options' 'stage';
   }
 
-  .atlas-dice-lab__library,
+  .atlas-dice-lab__library {
+    grid-area: library;
+    height: auto;
+  }
+
   .atlas-dice-lab__options {
-    border-inline-end: none;
+    grid-area: options;
+    height: auto;
+    overflow: visible;
+  }
+
+  .atlas-dice-lab__stage {
+    grid-area: stage;
   }
 
   .atlas-dice-lab__sets {
     max-height: 184px;
   }
-
-  .atlas-dice-lab__options {
-    overflow: visible;
-  }
-
 }
 
 // ── Sidebar: the library ───────────────────────────────────────────────────
-.atlas-dice-lab__library,
-.atlas-dice-lab__options {
-  background: var(--background-secondary);
-  border-inline-end: $border-width-s solid var(--divider-color);
-}
-
 .atlas-dice-lab__library {
   @include atlas-flex-col($spacing-xs);
-  grid-area: library;
   min-height: 0;
   padding: $spacing-s;
 }
@@ -116,7 +137,6 @@ $set-row-height: 36px;
 
 .atlas-dice-lab__sets {
   @include atlas-flex-col(2px);
-  @include atlas-scrollbar;
   flex: 1;
   min-height: 0;
   margin: 0;

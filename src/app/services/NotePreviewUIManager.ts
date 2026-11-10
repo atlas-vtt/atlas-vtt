@@ -5,7 +5,7 @@ import type { NotePin } from '../types';
 import { toTokenVitals, type TokenVitals } from './statblockVitalsSync';
 import { NotePreviewWindow } from './NotePreviewWindow';
 import { StatblockPreviewWindow } from './StatblockPreviewWindow';
-import { isStatblockNote, statblockNoteKnown, unparsedFrontmatterStatblock } from '../statblocks/resolve/statblockNote';
+import { isStatblockNote, statblockNoteKnown } from '../statblocks/resolve/statblockNote';
 import { MapLinkPreview } from './MapLinkPreview';
 import { EncounterFolderPreview } from './EncounterFolderPreview';
 import { isEncounterFolderLink } from '../links/atlasLinkTargets';
@@ -367,10 +367,9 @@ export class NotePreviewUIManager {
     const file = this.app.vault.getAbstractFileByPath(linkedFilePath(pin.notePath));
     if (file instanceof TFile && 'type' in pin && pin.type === 'token') {
       // Only a note whose statblock is in a fence is read; a hide or another hover meanwhile wins.
-      // A frontmatter statblock Fantasy Statblocks has not parsed shows as the note, where the plugin draws any fence it holds.
+      // The same predicate as the asset manager's and the DM screen's, so all three draw a note alike.
       const hides = this.hideCount;
-      const isStatblock = !unparsedFrontmatterStatblock(this.app, file)
-        && (statblockNoteKnown(this.app, file) || await isStatblockNote(this.app, file));
+      const isStatblock = statblockNoteKnown(this.app, file) || await isStatblockNote(this.app, file);
       if (hides !== this.hideCount) return;
 
       if (isStatblock) {

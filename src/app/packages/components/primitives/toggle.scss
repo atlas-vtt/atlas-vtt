@@ -100,3 +100,24 @@
 .atlas-toggle--xs {
   @include atlas-toggle-pill(28px, 16px);
 }
+
+// A small switch with its text after it (`ToggleLabel`); the text toggles it as well.
+.atlas-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+}
+
+.atlas-toggle-label__text {
+  cursor: pointer;
+}
+
+.atlas-toggle-label--disabled {
+  color: var(--text-faint);
+
+  .atlas-toggle-label__text {
+    cursor: default;
+  }
+}

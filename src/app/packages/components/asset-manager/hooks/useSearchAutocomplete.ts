@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type InputHTMLAttributes, 
 import { nextHighlight } from '../../../../search/querySyntax';
 import type { FilterSuggestion, FilterSuggestions } from '../search/filterSuggestions';
 import type { FilterSearch } from './useFilterSearch';
+import { isSearchUntouched, touchSearch } from '../components/search/searchFocus';
 
 /** How long after the field loses focus its typed filters are committed; a click on a suggestion lands first. */
 const COMMIT_ON_BLUR_MS = 150;
@@ -13,7 +14,7 @@ export interface SearchAutocomplete {
   highlight: number;
   setHighlight: (index: number) => void;
   pick: (item: FilterSuggestion) => void;
-  inputProps: Pick<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onFocus' | 'onBlur' | 'onSelect' | 'role' | 'aria-autocomplete' | 'aria-expanded' | 'aria-controls' | 'aria-activedescendant'>;
+  inputProps: Pick<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onFocus' | 'onBlur' | 'onSelect' | 'onPointerDown' | 'role' | 'aria-autocomplete' | 'aria-expanded' | 'aria-controls' | 'aria-activedescendant'>;
   /** Handles the keys the suggestions use; returns whether it did. */
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => boolean;
 }
@@ -68,8 +69,11 @@ export function useSearchAutocomplete(
       placeCursor(context.start + replacement.length);
       return;
     }
-    if (context.kind !== 'value') return;
-    const text = search.slice(0, context.valueStart) + item.insert + search.slice(context.end);
+    // A word that names a filter's value becomes that filter in its place.
+    const text = item.kind === 'filter'
+      ? search.slice(0, context.start) + item.insert + search.slice(context.end)
+      : context.kind === 'value' ? search.slice(0, context.valueStart) + item.insert + search.slice(context.end) : null;
+    if (text === null) return;
     const remaining = query.commit(text);
     onSearch(remaining);
     setHighlight(0);
@@ -118,6 +122,7 @@ export function useSearchAutocomplete(
       ...(count > 0 && { 'aria-controls': listId }),
       ...(activeId && { 'aria-activedescendant': activeId }),
       onChange: (event) => {
+        touchSearch(event.target);
         onSearch(event.target.value);
         setCursor(event.target.selectionStart ?? event.target.value.length);
         setHighlight(0);
@@ -126,10 +131,16 @@ export function useSearchAutocomplete(
       onFocus: (event) => {
         if (blurTimer.current !== null) window.clearTimeout(blurTimer.current);
         setCursor(event.target.selectionStart ?? 0);
+        // Focused as the window opened: the suggestions wait for the first key or press (decision #38).
+        if (!isSearchUntouched(event.target)) setOpen(true);
+      },
+      onPointerDown: (event) => {
+        touchSearch(event.currentTarget);
         setOpen(true);
       },
       onSelect: (event) => setCursor(event.currentTarget.selectionStart ?? 0),
-      onBlur: () => {
+      onBlur: (event) => {
+        touchSearch(event.target);
         blurTimer.current = window.setTimeout(() => {
           blurTimer.current = null;
           commit(latest.current.search);

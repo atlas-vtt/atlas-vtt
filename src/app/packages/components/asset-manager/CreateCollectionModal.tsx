@@ -1,7 +1,8 @@
 import { HP_RESOURCE, savedResources } from '../../../resources/resourceDefinitions';
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, FolderPlus } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { CollectionGlyph } from './components/collectionGlyph';
 import { DEFAULT_GRID_DEFAULTS } from '../../../gameSystems/systemRules';
 import { areRangeBandsValid } from '../../../grid/measurementFormat';
 import { isUnitDistance } from '../../../grid/unitDistance';
@@ -16,6 +17,7 @@ import { LabelTooltip } from '../primitives/tooltip';
 import { showAtlasToast } from '../../../react/components/AtlasToast';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../primitives/dialogMotion';
 import { useDialogEscape } from '../primitives/useDialogEscape';
+import { useFocusTrap } from '../primitives/useFocusTrap';
 import { DEFAULT_INITIATIVE_RULES, isValidInitiativeRules, savedInitiativeRules } from '../../../gameSystems/initiativeRules';
 import { CustomSystemStep, type CustomSystemRules } from './create-collection/CustomSystemStep';
 import { SystemChoiceList, type SystemChoice } from './create-collection/SystemChoiceList';
@@ -56,6 +58,7 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
 
   useEffect(() => { if (step === 'details') nameRef.current?.focus(); }, [step]);
   useDialogEscape(dialogRef, step === 'custom' ? () => setStep('details') : onClose);
+  useFocusTrap(dialogRef);
 
   const trimmedName = name.trim();
   // The name is also the collection's folder name, so it must be a valid one.
@@ -63,6 +66,8 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
     ?? (existingNames.some((existing) => existing.toLowerCase() === trimmedName.toLowerCase())
       ? t('am.collection.nameTaken', { name: trimmedName })
       : null);
+  // Said beside the field as it is typed, as Create folder does; an empty name only keeps the primary disabled.
+  const shownNameError = trimmedName === '' ? null : nameError;
   const presetNameError = service?.nameError(presetName) ?? null;
   const rulesValid = areRangeBandsValid(rules.gridDefaults.abstractRangeBands)
     && isUnitDistance(rules.gridDefaults.unitDistance)
@@ -137,7 +142,7 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
                   <ArrowLeft />
                 </Button>
               </LabelTooltip>
-            ) : <FolderPlus />}
+            ) : <CollectionGlyph />}
             {isCustomStep ? t('am.create.newSystem') : t('am.create.newCollection')}
           </h3>
           <CloseButton onClick={onClose} />
@@ -161,16 +166,16 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
                   id="atlas-new-collection-name"
                   type="text"
                   className="atlas-csm-input"
-                  placeholder="e.g. Curse of the Crimson Throne"
+                  placeholder={t('am.create.namePlaceholder')}
                   value={name}
-                  aria-invalid={(showErrors && nameError !== null) || undefined}
+                  aria-invalid={shownNameError !== null || undefined}
                   onChange={(e) => setName(e.target.value)}
                 />
-                {showErrors && nameError && <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">{nameError}</p>}
+                {shownNameError && <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">{shownNameError}</p>}
               </div>
               <section className="atlas-create-collection__section" aria-labelledby="atlas-new-collection-system">
                 <h4 id="atlas-new-collection-system" className="atlas-create-collection__heading">{t('am.create.system')}</h4>
-                <p className="atlas-csm-hint">Sets how distances are measured and which conditions tokens can have. You can change it later in the collection&apos;s settings.</p>
+                <p className="atlas-csm-hint">{t('am.create.systemHint')}</p>
                 <SystemChoiceList presets={presets} choice={choice} onChange={setChoice} />
               </section>
             </>
@@ -181,7 +186,7 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
           <Button variant="outline" size="sm" onClick={isCustomStep ? () => setStep('details') : onClose}>
             {isCustomStep ? t('common.back') : t('common.cancel')}
           </Button>
-          <Button variant="default" size="sm" disabled={isCreating || !service} onClick={primary}>
+          <Button variant="default" size="sm" disabled={isCreating || !service || (!isCustomStep && nameError !== null)} onClick={primary}>
             {primaryLabel}
           </Button>
         </div>

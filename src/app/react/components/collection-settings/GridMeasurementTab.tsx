@@ -1,16 +1,17 @@
 /**
- * GridMeasurementTab — Grid unit, distance, measurement mode, and range bands
- * for collection settings.
+ * GridMeasurementTab — How the collection measures: what its ruler shows, what one square spans,
+ * diagonals, difficult terrain and cones, and the range bands of a ruler that names distances.
  */
 
-import React, { useId } from 'react';
+import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { SegmentedControl, type SegmentedOption } from '../../../packages/components/primitives/SegmentedControl';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
-import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
+import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
 import { UnitDistanceField } from './UnitDistanceField';
+import { SettingRow } from './SettingRow';
 import { areRangeBandsValid, DEFAULT_CONE_ANGLE, isValidConeAngle, isValidRangeBandThreshold } from '../../../grid/measurementFormat';
 import { isUnitDistance } from '../../../grid/unitDistance';
 import type {
@@ -46,11 +47,13 @@ export const UNIT_OPTIONS: Record<GridUnitType, string> = {
   custom: t('csm.grid.unit.custom'),
 };
 
-const DIAGONAL_OPTIONS: Record<DiagonalRule, string> = {
-  equidistant: t('csm.grid.diagonal.equidistant'),
-  alternating: t('csm.grid.diagonal.alternating'),
-  euclidean: t('csm.grid.diagonal.euclidean'),
-};
+const UNIT_SELECT: SelectOption<GridUnitType>[] = (Object.keys(UNIT_OPTIONS) as GridUnitType[]).map((value) => ({ value, label: UNIT_OPTIONS[value] }));
+
+const DIAGONAL_OPTIONS: SelectOption<DiagonalRule>[] = [
+  { value: 'equidistant', label: t('csm.grid.diagonal.equidistant') },
+  { value: 'alternating', label: t('csm.grid.diagonal.alternating') },
+  { value: 'euclidean', label: t('csm.grid.diagonal.euclidean') },
+];
 
 export function GridMeasurementTab({
   gridDefaults,
@@ -58,7 +61,6 @@ export function GridMeasurementTab({
   difficultTerrain,
   onChange,
 }: GridMeasurementTabProps): React.ReactElement {
-  const difficultLabelId = useId();
   const difficultDoubles = (difficultTerrain ?? gridDefaults.difficultTerrain ?? 'none') === 'double';
   const updateField = <K extends keyof CollectionGridDefaults>(
     key: K,
@@ -67,159 +69,140 @@ export function GridMeasurementTab({
     onChange({ ...gridDefaults, [key]: value });
   };
 
-  const bands = gridDefaults.abstractRangeBands ?? [];
+  return (
+    <>
+      <section className="atlas-csm-section" aria-labelledby="atlas-csm-grid-title">
+        <h4 id="atlas-csm-grid-title" className="atlas-csm-section-title">{t('csm.grid.title')}</h4>
+        <SettingRow
+          label={t('csm.grid.mode')}
+          info={t('csm.grid.modeInfo')}
+          control={() => (
+            <SegmentedControl
+              ariaLabel={t('csm.grid.mode')}
+              value={gridDefaults.measurementMode}
+              options={MEASUREMENT_MODES}
+              onChange={(mode) => updateField('measurementMode', mode)}
+            />
+          )}
+        />
+        <SettingRow
+          label={t('csm.grid.distance')}
+          info={t('csm.grid.distanceInfo')}
+          control={(labelId) => (
+            <span className="atlas-csm-square">
+              <UnitDistanceField labelledBy={labelId} value={gridDefaults.unitDistance} onChange={(distance) => updateField('unitDistance', distance)} />
+              <span className="atlas-csm-square__unit">
+                <Select value={gridDefaults.unitType} options={UNIT_SELECT} labelledBy={labelId} onChange={(unit) => updateField('unitType', unit)} />
+              </span>
+            </span>
+          )}
+        >
+          {!isUnitDistance(gridDefaults.unitDistance) && (
+            <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">{t('csm.grid.distanceInvalid')}</p>
+          )}
+        </SettingRow>
+        <SettingRow
+          label={t('csm.grid.diagonal')}
+          info={t('csm.grid.diagonalInfo')}
+          control={(labelId) => (
+            <Select value={gridDefaults.diagonalRule ?? 'equidistant'} options={DIAGONAL_OPTIONS} labelledBy={labelId}
+              onChange={(rule) => updateField('diagonalRule', rule)} />
+          )}
+        />
+        <SettingRow
+          label={t('csm.grid.difficultTerrain')}
+          info={t('csm.grid.difficultTerrainHint')}
+          control={(labelId) => (
+            <ToggleSwitch labelledBy={labelId} value={difficultDoubles}
+              onChange={() => updateField('difficultTerrain', difficultDoubles ? 'none' : 'double')} />
+          )}
+        />
+        <SettingRow
+          label={t('csm.grid.coneAngle')}
+          info={t('csm.grid.coneAngleInfo')}
+          control={(labelId) => (
+            <span className="atlas-csm-suffixed">
+              <input
+                type="number"
+                className="atlas-csm-input atlas-csm-input--number"
+                aria-labelledby={labelId}
+                min={1}
+                max={360}
+                value={coneAngle ?? gridDefaults.coneAngle ?? DEFAULT_CONE_ANGLE}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (isValidConeAngle(val)) updateField('coneAngle', val);
+                }}
+              />
+              <span aria-hidden="true" className="atlas-csm-suffixed__unit">°</span>
+            </span>
+          )}
+        />
+      </section>
+
+      {gridDefaults.measurementMode === 'abstract' && (
+        <RangeBandsSection bands={gridDefaults.abstractRangeBands ?? []} onChange={(bands) => updateField('abstractRangeBands', bands)} />
+      )}
+    </>
+  );
+}
+
+/** The names a ruler that names distances gives, each up to a number of squares. */
+function RangeBandsSection({ bands, onChange }: { bands: RangeBand[]; onChange: (bands: RangeBand[]) => void }): React.ReactElement {
   const bandsValid = areRangeBandsValid(bands);
-
   const updateBand = (index: number, partial: Partial<RangeBand>): void => {
-    const updated = bands.map((b, i) => (i === index ? { ...b, ...partial } : b));
-    updateField('abstractRangeBands', updated);
-  };
-
-  const addBand = (): void => {
-    updateField('abstractRangeBands', [...bands, { name: '', maxSquares: 1 }]);
-  };
-
-  const removeBand = (index: number): void => {
-    updateField(
-      'abstractRangeBands',
-      bands.filter((_, i) => i !== index),
-    );
+    onChange(bands.map((b, i) => (i === index ? { ...b, ...partial } : b)));
   };
 
   return (
-    <>
-      {/* Unit type */}
-      <div className="atlas-csm-field">
-        <label className="atlas-csm-label">{t('csm.grid.unitType')}</label>
-        <ObsidianMenuDropdown
-          className="atlas-setting-dropdown atlas-csm-dropdown"
-          value={gridDefaults.unitType}
-          options={UNIT_OPTIONS}
-          onChange={(value) => updateField('unitType', value as GridUnitType)}
-        />
-      </div>
-
-      {/* Distance per square */}
-      <div className="atlas-csm-field">
-        <label className="atlas-csm-label">{t('csm.grid.distance')}</label>
-        <UnitDistanceField value={gridDefaults.unitDistance} onChange={(distance) => updateField('unitDistance', distance)} />
-        {!isUnitDistance(gridDefaults.unitDistance) && (
-          <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
-            {t('csm.grid.distanceInvalid')}
-          </p>
-        )}
-      </div>
-
-      {/* Diagonal rule (square grids; hex grids always count hex steps) */}
-      <div className="atlas-csm-field">
-        <label className="atlas-csm-label">{t('csm.grid.diagonal')}</label>
-        <ObsidianMenuDropdown
-          className="atlas-setting-dropdown atlas-csm-dropdown"
-          value={gridDefaults.diagonalRule ?? 'equidistant'}
-          options={DIAGONAL_OPTIONS}
-          onChange={(value) => updateField('diagonalRule', value as DiagonalRule)}
-        />
-      </div>
-
-      {/* Difficult terrain: what the token drag ruler counts for a cell in a map feature marked so */}
-      <div className="atlas-csm-toggle-row">
-        <div>
-          <div id={difficultLabelId} className="atlas-csm-toggle-label">{t('csm.grid.difficultTerrain')}</div>
-          <div className="atlas-csm-hint">{t('csm.grid.difficultTerrainHint')}</div>
+    <section className="atlas-csm-section" aria-labelledby="atlas-csm-bands-title">
+      <h4 id="atlas-csm-bands-title" className="atlas-csm-section-title">{t('csm.grid.bands')}</h4>
+      {bands.length > 0 ? (
+        <div className="atlas-csm-band-list">
+          {bands.map((band, i) => {
+            const thresholdValid = isValidRangeBandThreshold(band.maxSquares);
+            return (
+              <div key={i} className="atlas-csm-band-row">
+                <input
+                  type="text"
+                  className="atlas-csm-input"
+                  placeholder={t('csm.grid.bandName')}
+                  value={band.name}
+                  onChange={(e) => updateBand(i, { name: e.target.value })}
+                />
+                <input
+                  type="number"
+                  className="atlas-csm-input atlas-csm-input--number"
+                  min={1}
+                  step={1}
+                  placeholder={t('csm.grid.max')}
+                  aria-invalid={!thresholdValid || undefined}
+                  value={Number.isNaN(band.maxSquares) ? '' : band.maxSquares}
+                  onChange={(e) => {
+                    // Keep whatever was typed, even an empty field; Save stays disabled until it is valid.
+                    const raw = e.target.value.trim();
+                    updateBand(i, { maxSquares: raw === '' ? NaN : Number(raw) });
+                  }}
+                />
+                <LabelTooltip label={t('csm.grid.removeBand')}>
+                  <Button variant="ghost" size="icon" className="atlas-csm-band-delete" onClick={() => onChange(bands.filter((_, j) => j !== i))}>
+                    <Trash2 />
+                  </Button>
+                </LabelTooltip>
+              </div>
+            );
+          })}
         </div>
-        <ToggleSwitch
-          value={difficultDoubles}
-          labelledBy={difficultLabelId}
-          onChange={() => updateField('difficultTerrain', difficultDoubles ? 'none' : 'double')}
-        />
-      </div>
-
-      {/* Cone measurement opening (5e: as wide as long, about 53°) */}
-      <div className="atlas-csm-field">
-        <label className="atlas-csm-label">Cone Angle (°)</label>
-        <input
-          type="number"
-          className="atlas-csm-input atlas-csm-input--number"
-          min={1}
-          max={360}
-          value={coneAngle ?? gridDefaults.coneAngle ?? DEFAULT_CONE_ANGLE}
-          onChange={(e) => {
-            const val = Number(e.target.value);
-            if (isValidConeAngle(val)) updateField('coneAngle', val);
-          }}
-        />
-      </div>
-
-      {/* Measurement mode */}
-      <div className="atlas-csm-field">
-        <label className="atlas-csm-label">{t('csm.grid.mode')}</label>
-        <SegmentedControl
-          ariaLabel={t('csm.grid.modeAria')}
-          value={gridDefaults.measurementMode}
-          options={MEASUREMENT_MODES}
-          onChange={(mode) => updateField('measurementMode', mode)}
-        />
-      </div>
-
-      {/* Range Bands — only visible in abstract mode */}
-      {gridDefaults.measurementMode === 'abstract' && (
-        <div className="atlas-csm-field">
-          <label className="atlas-csm-label">{t('csm.grid.bands')}</label>
-          {bands.length > 0 ? (
-            <div className="atlas-csm-band-list">
-              {bands.map((band, i) => {
-                const thresholdValid = isValidRangeBandThreshold(band.maxSquares);
-                return (
-                  <div key={i} className="atlas-csm-band-row">
-                    <input
-                      type="text"
-                      className="atlas-csm-input"
-                      placeholder={t('csm.grid.bandName')}
-                      value={band.name}
-                      onChange={(e) => updateBand(i, { name: e.target.value })}
-                    />
-                    <input
-                      type="number"
-                      className="atlas-csm-input atlas-csm-input--number"
-                      min={1}
-                      step={1}
-                      placeholder={t('csm.grid.max')}
-                      aria-invalid={!thresholdValid || undefined}
-                      value={Number.isNaN(band.maxSquares) ? '' : band.maxSquares}
-                      onChange={(e) => {
-                        // Keep whatever was typed, even an empty field; Save stays disabled until it is valid.
-                        const raw = e.target.value.trim();
-                        updateBand(i, { maxSquares: raw === '' ? NaN : Number(raw) });
-                      }}
-                    />
-                    <LabelTooltip label={t('csm.grid.removeBand')}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="atlas-csm-band-delete"
-                        onClick={() => removeBand(i)}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </LabelTooltip>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="atlas-csm-empty">{t('csm.grid.noBands')}</div>
-          )}
-          {!bandsValid && (
-            <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
-              {t('csm.grid.bandsInvalid')}
-            </p>
-          )}
-          <Button variant="ghost" className="atlas-csm-add-btn" onClick={addBand}>
-            <Plus />
-            {t('csm.grid.addBand')}
-          </Button>
-        </div>
+      ) : (
+        <div className="atlas-csm-empty">{t('csm.grid.noBands')}</div>
       )}
-    </>
+      {!bandsValid && (
+        <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">{t('csm.grid.bandsInvalid')}</p>
+      )}
+      <Button variant="ghost" className="atlas-csm-add-btn" onClick={() => onChange([...bands, { name: '', maxSquares: 1 }])}>
+        <Plus />
+        {t('csm.grid.addBand')}
+      </Button>
+    </section>
   );
 }

@@ -20,6 +20,8 @@ import { DiceToast } from './DiceToast';
 import { DICE_TOAST_KNOT_PATHS, DICE_TOAST_KNOT_SYMBOL_ID } from './diceToastOrnament';
 import { useDiceToasts } from './useDiceToasts';
 import { useDiceAvatar } from './useDiceAvatar';
+import { useMapRollLayer } from './useMapRollLayer';
+import { portalHost } from '../../../host/portalHost';
 
 /** What comes with a roll to show: `muted` where another display plays its sounds, `origin` the token and scene it was made for. */
 export interface RollOptions {
@@ -64,8 +66,10 @@ interface DiceRollDisplayProps {
 const CARD_VOLUME = 0.7;
 
 /**
- * Every dice roll, at the top centre of the map: thrown as 3D dice, or as a
- * result card when 3D dice are off or the roll holds dice no real body shows.
+ * Every dice roll: a map's at the top right of its view and in front of every
+ * other Atlas surface (`useMapRollLayer`), otherwise in `container`. Thrown as
+ * 3D dice, or as a result card when 3D dice are off or the roll holds dice no
+ * real body shows.
  */
 export function DiceRollDisplay({ container, prepare, muted: windowMuted = false, eventBus: suppliedBus, subscribe, cardSounds = false }: DiceRollDisplayProps): React.ReactElement | null {
   const { app, view } = useAtlasUI();
@@ -81,6 +85,7 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
   const [rolls, setRolls] = useState<readonly StackedRoll[]>([]);
   /** Where the dice stages live: a canvas and its context belong to one document. */
   const stageDoc = container?.ownerDocument ?? view?.containerEl.doc ?? document;
+  const layer = useMapRollLayer();
 
   useEffect(() => {
     const show = (raw: DiceRollResult, options: RollOptions): void => {
@@ -129,11 +134,15 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
   const close = useCallback((id: string): void => setRolls((prev) => closeRoll(prev, id)), []);
   const dismiss = useCallback((id: string): void => setRolls((prev) => dismissRoll(prev, id)), []);
 
-  if (toasts.length === 0 && rolls.length === 0) return null;
+  const empty = toasts.length === 0 && rolls.length === 0;
+  if (empty && container) return null;
 
-  const content = (
-    // Carries the plugin class itself: in the player window no ancestor does.
-    <div className={cn('atlas-dice-rolls atlas-vtt-plugin', diceFontClass(look))}>
+  const content = !empty && (
+    // Carries the plugin class itself: in the player window and the portal host no ancestor does.
+    <div
+      className={cn('atlas-dice-rolls atlas-vtt-plugin', !container && 'atlas-dice-rolls--front', !container && !layer.shown && 'atlas-dice-rolls--away', diceFontClass(look))}
+      style={container ? undefined : layer.style}
+    >
       {toasts.length > 0 && (
         // Knotwork defined once; every toast corner draws it with <use>.
         <svg className="atlas-dice-rolls__defs" aria-hidden="true">
@@ -150,5 +159,11 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
       ))}
     </div>
   );
-  return container ? createPortal(content, container) : content;
+  if (container) return createPortal(content, container);
+  return (
+    <>
+      {layer.anchor}
+      {content && createPortal(content, portalHost(stageDoc))}
+    </>
+  );
 }

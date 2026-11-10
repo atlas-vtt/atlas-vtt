@@ -18,7 +18,8 @@ import { wallList } from '../../vision/wallList';
 import type { SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
 import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
-import { sceneHasVision } from '../../vision/tokenSightPolicy';
+import { blockingWalls } from '../../lighting/rooms';
+import { GM_SIGHT_POLICY, sceneHasVision, sightPolicyFor, type SightPolicy } from '../../vision/tokenSightPolicy';
 import { mapTokens } from '../../tokens/offMap';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
@@ -70,7 +71,7 @@ export function sharedLightingScene(state: SceneState, rules: SightRules, measur
     cellSize,
     unitDistance,
     // A window stops a token and nothing players see by, so their lighting never gets it.
-    walls: wallList(levelObjects(state).walls).filter((wall) => wall.blocks !== 'movement').map(sharedWall),
+    walls: wallList(blockingWalls(levelObjects(state))).filter((wall) => wall.blocks !== 'movement').map(sharedWall),
     zones: lightZoneList(levelObjects(state).lightZones).map((zone) => ({
       polygon: zone.polygon.flatMap((corner) => [corner.x, corner.y]), ambient: zone.ambient, ...(zone.ambientColor && { colour: zone.ambientColor }),
     })),
@@ -101,13 +102,14 @@ export interface SightInputs {
 
 /**
  * One token as sight and light read it, or null for one players get nothing of: a hidden token,
- * or an unseen one that neither sees nor shines. An unseen token goes out with its place, size,
+ * or an unseen one that neither sees nor shines. A defeated token goes out without vision (`givesSight`, `sightPolicyFor`):
+ * it sees nothing and is not the party's. An unseen token goes out with its place, size,
  * vision, light and blindness only.
  */
-function sightToken(token: TokenEntity, inputs: SightInputs): SightToken | null {
+function sightToken(token: TokenEntity, inputs: SightInputs, givesSight: SightPolicy['givesSight']): SightToken | null {
   if (token.isHidden === true || !finite(token.x) || !finite(token.y)) return null;
   const seen = inputs.shown.has(token.id);
-  const vision = token.vision?.enabled === true ? token.vision : undefined;
+  const vision = givesSight(token) ? token.vision : undefined;
   const light = readEmission(token.light);
   if (!seen && vision === undefined && light === null) return null;
   const effects: SharedEffect[] = [...tokenEffects(token, inputs.rules.conditions)].filter((effect) => seen || effect === 'blinded');
@@ -136,8 +138,9 @@ function sharedEmission(emission: LightEmission): JsonRecord {
 /** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on, its tokens and the held ones. */
 export function sharedSight(inputs: SightInputs): SharedSight {
   const { state } = inputs;
+  const { givesSight } = sightPolicyFor(GM_SIGHT_POLICY, inputs.rules);
   const every = Object.values(mapTokens(levelObjects(state))).flatMap((token) => {
-    const entry = sightToken(token, inputs);
+    const entry = sightToken(token, inputs, givesSight);
     return entry === null ? [] : [{ entry, id: token.id }];
   });
   // In the store's order, which sight keeps; past the limit those that see come first.

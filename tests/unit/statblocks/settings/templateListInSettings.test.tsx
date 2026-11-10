@@ -71,7 +71,7 @@ describe('the template list inside the collection settings', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New template' }));
     fireEvent.keyDown(screen.getByRole('radio', { name: '5E (2024 rules)' }), { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New template' })).toBeNull());
-    expect(screen.getByRole('dialog', { name: /Settings/ })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: /settings/i })).toBeTruthy();
     expect(events).toEqual([]);
   });
 });

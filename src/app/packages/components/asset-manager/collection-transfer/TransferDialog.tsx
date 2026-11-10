@@ -1,7 +1,7 @@
 import React, { useId, useRef, useState } from 'react';
 import { CloseButton } from '../../primitives/CloseButton';
 import { useDialogEscape } from '../../primitives/useDialogEscape';
-import { useScrollActivity } from '../../primitives/useScrollActivity';
+import { useFocusTrap } from '../../primitives/useFocusTrap';
 import { TransferScrollContext } from './transferScroll';
 
 interface TransferDialogProps {
@@ -27,7 +27,7 @@ export function TransferDialog({ label, onClose, hero, ambientUrl, aside, summar
   // State rather than a ref: lists inside need the pane once it exists.
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   useDialogEscape(dialogRef, onClose);
-  useScrollActivity(scroller);
+  useFocusTrap(dialogRef);
   return (
     <div className="atlas-transfer-overlay" onClick={onClose}>
       <div
@@ -48,7 +48,8 @@ export function TransferDialog({ label, onClose, hero, ambientUrl, aside, summar
             <div className="atlas-transfer-dialog__content">{children}</div>
           </TransferScrollContext.Provider>
         </div>
-        {aside && <aside className="atlas-transfer-dialog__aside">{aside}</aside>}
+        {/* A plain group: the asset manager behind already has the page's one sidebar landmark. */}
+        {aside && <div className="atlas-transfer-dialog__aside">{aside}</div>}
         <div className="atlas-transfer-dialog__footer">
           <span className="atlas-transfer-summary">{summary}</span>
           {actions}

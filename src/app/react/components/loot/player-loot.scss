@@ -91,7 +91,6 @@ $player-loot-top: 2 * $spacing-2xl;
 
 .atlas-player-loot__items {
   @include atlas-flex-col($player-loot-padding);
-  @include atlas-scrollbar;
   min-height: 0;
   margin: 0;
   padding: $player-loot-padding;

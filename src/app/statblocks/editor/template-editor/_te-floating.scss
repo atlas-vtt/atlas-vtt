@@ -62,7 +62,6 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     align-items: stretch;
     max-height: 320px;
     overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   .atlas-te-insert__empty {

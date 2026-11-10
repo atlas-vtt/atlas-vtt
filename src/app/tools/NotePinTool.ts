@@ -7,6 +7,7 @@ import { runInBackground } from '../utils/backgroundTask';
 import { resolvePinIcon } from '../types/pinIcons';
 import { createPinIconPalette, type PinIconPalette } from './pinIconPalette';
 import { createPinNoteSearch } from './pinNoteSearch';
+import { createPinNameSwitch } from './pinNameSwitch';
 import { dungeonCreateEntry, noteCreateEntry, type PinCreateEntry } from './pinCreateEntries';
 import type { PinActionEventDetail } from '../types/atlasWindowEvents';
 import { animatePanelIn, animatePanelOutAndRemove } from '../ui/panelMotion';
@@ -32,6 +33,8 @@ interface NotePinDropdownResult {
   icon?: string;
   /** The floor a scene made for the pin opens on. */
   sceneLevel?: string;
+  /** The new pin shows its name. */
+  showName?: boolean;
 }
 
 /**
@@ -45,6 +48,8 @@ export class NotePinTool {
   private iconPalette: PinIconPalette | null = null;
   private store: StoreApi<ViewAtlasState>;
   private currentPreviewIcon: string = 'pin';
+  /** Whether new pins show their name: the last choice, so a map of place names needs it once. */
+  private nextShowName = false;
   private storeUnsubscribe: (() => void) | null = null;
   private pinActionHandler: ((e: CustomEvent<PinActionEventDetail>) => void) | null = null;
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -186,6 +191,14 @@ export class NotePinTool {
         },
       });
 
+      // ── Show name: applies at once to a pin being edited, else to the pins placed next ──
+      let showName = editedPin ? editedPin.showName === true : this.nextShowName;
+      createPinNameSwitch(dropdown, () => showName, () => {
+        showName = !showName;
+        if (editedPin) this.store.getState().updateNotePin(editedPin.id, { showName: showName ? true : undefined });
+        else this.nextShowName = showName;
+      });
+
       // ── Search, results and key hints ──
       const mapPath = this.store.getState().mapPath;
       const noteSearch = createPinNoteSearch(dropdown, {
@@ -194,7 +207,7 @@ export class NotePinTool {
         createEntries: this.createEntries(mapPath),
         onPick: (notePath, sceneLevel) => {
           this.closeDropdown();
-          resolve({ accepted: true, notePath, icon: selectedIcon, ...(sceneLevel && { sceneLevel }) });
+          resolve({ accepted: true, notePath, icon: selectedIcon, showName, ...(sceneLevel && { sceneLevel }) });
         },
         onCancel: () => {
           this.closeDropdown();
@@ -347,7 +360,7 @@ export class NotePinTool {
     const result = await this.showNotePinDropdown(worldX, worldY);
 
     if (result.accepted && result.notePath) {
-      this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
+      this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
     }
     this.releasePreviewAfterDropdown();
   }
@@ -367,7 +380,7 @@ export class NotePinTool {
     } else {
       const result = await this.showNotePinDropdown(center.x, center.y);
       if (result.accepted && result.notePath) {
-        this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
+        this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
       }
     }
     this.releasePreviewAfterDropdown();

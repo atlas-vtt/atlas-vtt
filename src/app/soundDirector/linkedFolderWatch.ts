@@ -1,7 +1,7 @@
 import type { SoundKind } from '../sound/soundTypes';
 import type { RecordsSeam } from '../soundLibrary/libraryRecords';
 import type { LibraryFile, SoundLibrary } from '../soundLibrary/SoundLibrary';
-import { MOOD_LIMITS } from '../soundLibrary/moodFile';
+import type { OriginalsChoice } from '../soundLibrary/SoundRoots';
 import { runInBackground } from '../utils/backgroundTask';
 import { requestCopies } from './libraryDesk';
 import type { SoundDirector } from './SoundDirector';
@@ -19,12 +19,15 @@ export interface LinkedFolderDeps {
 /**
  * Makes copies of what the linked folders hold without being asked: everything in a folder the moment it is
  * linked, and every file that turns up in one later, from Atlas, the file manager or a sync tool. Each file
- * is asked for once, the first a list can hold of each arrival (the copies' cache would churn past that),
- * newest arrivals in the order the folder lists them. The queue makes a few at once in the background; a
- * press still goes first. Runs while sound is switched on; switching it on looks at everything again.
+ * is asked for once, in the order the folder lists it, and the whole folder again once the GM gives its choice
+ * (until then nothing in it is converted, only read for what it says of itself). The queue converts a few at
+ * once in the background; a press still goes first. Runs while sound is switched on; switching it on looks at
+ * everything again.
  */
 export class LinkedFolderWatch {
   private seen = new Set<string>();
+  /** Each root's choice at the last look: one given since asks for the whole folder again. */
+  private choices: Partial<Record<SoundKind, OriginalsChoice | null>> = {};
   private timer = 0;
   private wasOn = false;
   private readonly stops: Array<() => void>;
@@ -32,6 +35,7 @@ export class LinkedFolderWatch {
   constructor(private readonly deps: LinkedFolderDeps) {
     this.stops = [
       deps.library.onChange(() => this.schedule()),
+      deps.library.roots.onChange(() => this.schedule()),
       deps.director.subscribe(() => {
         if (deps.director.isOn !== this.wasOn) this.schedule();
       }),
@@ -54,20 +58,25 @@ export class LinkedFolderWatch {
     this.wasOn = director.isOn;
     if (!director.isOn) {
       this.seen = new Set();
+      this.choices = {};
       return;
     }
     const listed = new Set<string>();
-    const fresh: LibraryFile[] = [];
+    const asked: LibraryFile[] = [];
     for (const kind of KINDS) {
+      const choice = library.roots.originalsOf(kind);
+      // What was looked at while the folder had no choice was not converted then, and may be now.
+      const agreedNow = choice !== null && choice !== this.choices[kind];
+      this.choices[kind] = choice;
       for (const { entry } of library.filesOf(kind)) {
         const key = `${kind}:${entry.path}`;
         listed.add(key);
-        if (!this.seen.has(key)) fresh.push({ ...entry, kind });
+        if (agreedNow || !this.seen.has(key)) asked.push({ ...entry, kind });
       }
     }
     // What left the listing is forgotten, so a folder linked again, or a file put back, is looked at again.
     this.seen = listed;
-    if (fresh.length === 0) return;
-    runInBackground(requestCopies(this.deps, fresh.slice(0, MOOD_LIMITS.tracks)), 'Preparing new sounds in a linked folder');
+    if (asked.length === 0) return;
+    runInBackground(requestCopies(this.deps, asked), 'Preparing the sounds of a linked folder');
   }
 }

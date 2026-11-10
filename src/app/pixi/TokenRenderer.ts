@@ -427,7 +427,7 @@ export class TokenRenderer {
       this.evictUnusedArt();
       runInBackground(this.syncTokens(currentTokens, {}), 'Token sync after map change');
       this.onWhenAllTokensLoaded(() => this.updateAllTokenSizes());
-      this.fillMissingResources();
+      this.statblockSync.followRules();
     };
     
     this.eventBus.on('map-loaded', handleMapLoaded);
@@ -1373,17 +1373,13 @@ export class TokenRenderer {
     }
   }
 
-  /** Redraws what tokens show of their collection's rules (conditions, resources) and starts the resources they lack. */
+  /** Redraws what tokens show of their collection's rules (conditions, resources), and linked tokens follow their resources. */
   private refreshCollectionRules(): void {
     if (this.isDestroyed) return;
     this.turnMarkers.refresh();
     this.uiManager.refreshConditions();
     this.uiManager.refreshResources();
-    this.fillMissingResources();
-  }
-
-  private fillMissingResources(): void {
-    this.statblockSync.fillMissingResources();
+    this.statblockSync.followRules();
   }
 
   /**

@@ -7,6 +7,7 @@ import {
   createStatblockEntry,
   editInStatblockPane,
   newStatblockOption,
+  openStatblockNote,
 } from '../../../../src/app/statblocks/editor/create/entryPoints';
 import { registerStatblockEditorCommands, registerStatblockFileMenu } from '../../../../src/app/statblocks/editor/create/statblockCommands';
 import { openStatblockEditor } from '../../../../src/app/statblocks/editor/openStatblockEditor';
@@ -99,6 +100,17 @@ describe('Edit statblock (D9)', () => {
     expect(editInStatblockPane(app(), PLAIN, { collectionId: null, from: 'map' })).toBe(false);
     expect(editInStatblockPane(app(), 'Bestiary/Missing.md', { collectionId: null, from: 'map' })).toBe(false);
     expect(openStatblockEditor).not.toHaveBeenCalled();
+  });
+
+  it('opens a token\'s statblock note, and never a note that is gone, which Obsidian would make anew (#612)', () => {
+    const openLinkText = vi.fn(async () => undefined);
+    Object.assign(harness.app.workspace, { openLinkText });
+    withStatblockEditor(app());
+    expect(openStatblockNote(app(), NATIVE, { collectionId: 'marsh', from: 'map' })).toBe('editor');
+    expect(openStatblockNote(app(), FANTASY, { collectionId: 'marsh', from: 'map' })).toBe('note');
+    expect(openLinkText).toHaveBeenCalledWith(FANTASY, '', true);
+    expect(openStatblockNote(app(), 'Bestiary/Gone.md', { collectionId: 'marsh', from: 'map' })).toBe('missing');
+    expect(openLinkText).toHaveBeenCalledTimes(1);
   });
 });
 

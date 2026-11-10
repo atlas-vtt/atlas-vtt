@@ -474,9 +474,14 @@
   align-items: center;
   justify-content: center;
   padding: $spacing-2xl;
-  background-color: color-mix(in oklch, var(--mono-0) 40%, transparent);
+  background-color: $scrim;
   backdrop-filter: blur(6px);
   pointer-events: auto;
+
+  // A window as narrow as a phone's (or 400 % zoom, WCAG 1.4.10) gives the dialog its room, not the margin.
+  @media (max-width: 480px) {
+    padding: $spacing-s;
+  }
 }
 
 // ── Panel close button ──────────────────────────────────────────────────────
@@ -642,12 +647,12 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   font-size: $font-ui-small;
 }
 
-/// Standard modal header — title left, close button right, bottom divider.
+/// Standard modal header — title left, close button right. No divider line: its padding sets it apart from the
+/// body, and a body that scrolls casts the scroll shadow (`atlas-scroll-shadow`).
 @mixin atlas-modal-header {
   @include atlas-flex-row($gap: $spacing-m);
   @include atlas-close-header;
   justify-content: space-between;
-  border-bottom: $border-width-s solid var(--divider-color);
   flex-shrink: 0;
 
   h2,
@@ -669,25 +674,28 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   }
 }
 
-/// Modal body — uniform padding, stacked sections.
+/// Modal body — uniform padding, stacked sections; content scrolled past its edges lies under the scroll shadow.
 @mixin atlas-modal-body {
   @include atlas-flex-col($gap: $spacing-l);
   padding: $spacing-l;
   overflow-y: auto;
   min-height: 0;
-  @include atlas-scrollbar;
+  @include atlas-scroll-shadow;
 }
 
-/// Standard modal footer — right-aligned actions, top divider.
-@mixin atlas-modal-footer {
+/// Standard modal footer — right-aligned actions. No divider line: its padding sets it apart from the body.
+/// @param {String} $corner - the window's corner its last button stands in (null where it stands in none, as beside
+///   a sidebar on the window's end)
+@mixin atlas-modal-footer($corner: bottom-right) {
   @include atlas-flex-row($gap: $spacing-s);
   justify-content: flex-end;
   padding: $spacing-l;
-  border-top: $border-width-s solid var(--divider-color);
   flex-shrink: 0;
 
-  > .btn:last-child {
-    @include atlas-modal-corner-control(bottom-right);
+  @if $corner {
+    > .btn:last-child {
+      @include atlas-modal-corner-control($corner);
+    }
   }
 }
 
@@ -729,6 +737,14 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   color: var(--text-normal);
 }
 
+/// The label of a section of rows or items (a sidebar group, a list's heading): smaller and heavier than the items it
+/// heads, so it is told from them by more than colour.
+@mixin atlas-section-label {
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-semibold;
+  color: var(--text-muted);
+}
+
 /// Secondary explanatory text.
 @mixin atlas-help-text {
   font-size: $font-ui-small;
@@ -736,12 +752,52 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   line-height: var(--line-height-normal);
 }
 
+/// Accent-coloured text at WCAG AA (4.5:1) in both themes, without touching Obsidian's variables: the light accent reads
+/// 3.2–4.3:1 on white and on its own tint, so light takes it darker. Dark takes it lighter, to APCA Lc 60 on the
+/// panels, on a hovered row and on an accent tint (64 there; at 85 % the accent gave 51–55). Icons, borders and fills
+/// keep the accent itself (3:1 is theirs).
+@mixin atlas-accent-text {
+  color: color-mix(in srgb, var(--text-accent) 60%, white);
+
+  // On the element itself: rules nested in `.atlas-vtt-plugin` cannot put a `.theme-light` above it.
+  &:is(.theme-light *) {
+    color: color-mix(in srgb, var(--text-accent) 76%, black);
+  }
+}
+
+/// Error-coloured text (a message, an excluded filter, a destructive action) at WCAG AA in both themes: Obsidian's red
+/// reads 4.2:1 on white and 3.4–4.3:1 on its own tint, so light takes it darker. Dark takes it lighter, to APCA Lc 60 on
+/// the panels, a hovered row and a red tint (at 80 % Obsidian's red gave 43–47).
+@mixin atlas-error-text {
+  color: color-mix(in srgb, var(--text-error) 50%, white);
+
+  &:is(.theme-light *) {
+    color: color-mix(in srgb, var(--text-error) 72%, black);
+  }
+}
+
+// ── Checkbox hit area ───────────────────────────────────────────────────────
+
+/// Under a coarse pointer the native checkboxes inside take a 44 px hit area (WCAG 2.5.5): a `::before` around Obsidian's
+/// box, which keeps its size, colours and place (its tick is the `::after`), so the row's layout does not change.
+@mixin atlas-coarse-checkbox-hit {
+  @media (pointer: coarse) {
+    input[type='checkbox']::before {
+      position: absolute;
+      // From the padding box, which `100%` measures too: the area reaches 44 px from the border box's edges.
+      inset: calc((100% - #{$touch-target}) / 2);
+      content: '';
+    }
+  }
+}
+
 // ── Tab Switcher ────────────────────────────────────────────────────────────
 
-/// Segmented-control container for tab buttons (matches the asset manager header).
+/// Segmented-control container for tab buttons (matches the asset manager header). Its tabs sit $spacing-xs inside
+/// the track and apart, concentric with its corner (`atlas-tab-button`).
 @mixin atlas-tab-switcher {
-  @include atlas-flex-row($gap: 2px);
-  padding: 2px;
+  @include atlas-flex-row($gap: $spacing-xs);
+  padding: $spacing-xs;
   background-color: var(--background-secondary);
   border-radius: $radius-m;
 }
@@ -756,9 +812,10 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   display: flex;
   align-items: center;
   gap: $spacing-xs;
-  height: calc(var(--input-height) - 4px);
+  // Never under the 24 px WCAG 2.2 asks of a target (2.5.8): at Obsidian's 30 px control height the track grows to 32.
+  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$spacing-xs}));
   padding: 0 $spacing-m;
-  border-radius: calc(#{$radius-m} - 2px);
+  border-radius: calc(#{$radius-m} - #{$spacing-xs});
   color: var(--text-muted);
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;
@@ -796,64 +853,64 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
 
 // ── Scrollbars ───────────────────────────────────────────────────────────────
 
-/// Custom scrollbar styling matching Obsidian's design. Obsidian sets
-/// `scrollbar-color` on the body, which makes Chromium ignore the
-/// `::-webkit-scrollbar` rules, so the standard properties carry the look.
-@mixin atlas-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb-bg) transparent;
+/// A scroll area that scrolls with no scrollbar at all, not even Atlas' overlay one (`_overlay-scrollbars.scss`): a
+/// strip of tabs or cards whose edges fade or whose shadows reach past its box, where a thumb would stand apart.
+@mixin atlas-scrollbar-none {
+  --atlas-scrollbar: none;
+}
 
-  &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+/// Scroll shadow of a scroll area, where a divider line used to set it apart from a header or footer: a narrow dark
+/// shadow lies over the content at the top edge while the area is scrolled away from its top, and at the bottom edge
+/// while more lies below; at rest, and in an area that does not scroll, there is none. Always dark, in both themes
+/// (`--atlas-scroll-shadow`, set per theme in `main.scss`), never a light or background-coloured gradient.
+/// No script: the area is a scroll-state container its own pseudo-elements query (it follows the area's overflow
+/// as it changes, where a scroll-driven animation held its last value once the area stopped scrolling), and they are
+/// anchored to the area's edges (their implicit anchor, the area itself: the area's own anchor name belongs to its
+/// overlay scrollbar), so they neither scroll with the content
+/// nor take part in its flex or grid layout. The area isolates its stacking, so the shadow lies over every layer of
+/// its content (a card's badges) and under whatever lies over the area itself (a floating sidebar).
+/// @param {String} $layer - `absolute` for an area that is not positioned itself: the shadow is clipped by the
+///   dialog around it. An area that is positioned (the containing block of virtual lists) takes `fixed`, since an
+///   element can not be anchored to its own containing block.
+@mixin atlas-scroll-shadow($layer: absolute) {
+  container: atlas-scroll-shadow / scroll-state;
+  isolation: isolate;
+
+  &::before,
+  &::after {
+    content: '';
+    position: $layer;
+    position-anchor: auto;
+    left: anchor(left);
+    right: anchor(right);
+    z-index: $z-sticky;
+    height: $spacing-s;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity $transition-fast;
   }
 
-  &::-webkit-scrollbar-track {
-    background: transparent;
+  &::before {
+    top: anchor(top);
+    background: linear-gradient(to bottom, var(--atlas-scroll-shadow), transparent);
   }
 
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb-bg);
-    border-radius: $radius-full;
+  &::after {
+    bottom: anchor(bottom);
+    background: linear-gradient(to top, var(--atlas-scroll-shadow), transparent);
+  }
 
-    &:hover {
-      background: var(--scrollbar-active-thumb-bg);
+  @container atlas-scroll-shadow scroll-state(scrollable: top) {
+    &::before {
+      opacity: 1;
     }
   }
-}
 
-/// Thin scrollbar that shows only while the area scrolls: it fades in at once
-/// and out a moment after scrolling stops. `useScrollActivity` marks the
-/// element with `data-scrolling`. Its space stays reserved, so content never shifts.
-/// The thumb colour `--atlas-scrollbar-thumb` is registered in `main.scss`, so it can transition.
-@mixin atlas-scrollbar-while-scrolling {
-  @include atlas-scrollbar;
-  --atlas-scrollbar-thumb: transparent;
-  scrollbar-color: var(--atlas-scrollbar-thumb) transparent;
-  transition: --atlas-scrollbar-thumb $transition-slow $transition-ease;
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--atlas-scrollbar-thumb);
+  @container atlas-scroll-shadow scroll-state(scrollable: bottom) {
+    &::after {
+      opacity: 1;
+    }
   }
-
-  &[data-scrolling] {
-    --atlas-scrollbar-thumb: var(--scrollbar-thumb-bg);
-    transition-duration: $transition-fast;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-}
-
-/// Equal padding on both sides of a scroll area: the scrollbar sits inside the
-/// inline-end padding instead of adding to it. `useScrollbarGutter` measures the
-/// gutter, which stays reserved, so content never shifts when overflow starts.
-/// @param {Number} $padding - Padding on every side
-@mixin atlas-scroll-padding($padding) {
-  scrollbar-gutter: stable;
-  padding: $padding;
-  padding-inline-end: max(0px, #{$padding} - var(--atlas-scrollbar-gutter, 0px));
 }
 
 // ── Text ─────────────────────────────────────────────────────────────────────

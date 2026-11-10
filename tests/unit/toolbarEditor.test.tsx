@@ -53,7 +53,7 @@ describe('entering the toolbar editor', () => {
   it('is not offered in the player view', () => {
     const harness = renderToolbar({ player: true });
     act(() => harness.store.getState().setCommandPaletteOpen(true));
-    expect(screen.getByPlaceholderText('Search commands...')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search commands…')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^Customize toolbar/ })).toBeNull();
     expect(harness.container.querySelector('[role="status"]')).toBeNull();
   });
@@ -61,7 +61,7 @@ describe('entering the toolbar editor', () => {
   it('moves focus onto the bar only when the palette action was chosen with the keyboard', () => {
     const harness = renderToolbar();
     act(() => harness.store.getState().setCommandPaletteOpen(true));
-    const input = screen.getByPlaceholderText('Search commands...');
+    const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.change(input, { target: { value: 'Customize toolbar' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(harness.store.getState().isToolbarEditing).toBe(true);
@@ -172,7 +172,7 @@ describe('the editor menu', () => {
     startEditing(harness);
     fireEvent.click(screen.getByRole('button', { name: 'More tools' }));
     const overflow = screen.getByRole('menu', { name: 'More tools' });
-    fireEvent.click(within(overflow).getByRole('menuitem', { name: /^Asset Manager/ }));
+    fireEvent.click(within(overflow).getByRole('menuitem', { name: /^Asset manager/ }));
     expect(harness.store.getState().isAssetManagerOpen).toBe(false);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
     expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['assets'] });

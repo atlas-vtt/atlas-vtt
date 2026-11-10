@@ -1,0 +1,33 @@
+import type { Message } from '../../types';
+
+/** The lighting tool's rooms mode: rooms carved out of the rock, whose outline stands as walls. */
+export const rooms = {
+  'rooms.mode': 'Rooms',
+  'rooms.carve': 'Carve',
+  'rooms.fill': 'Fill in',
+  'rooms.door': 'Door',
+  'rooms.rectangle': 'Rectangle',
+  'rooms.points': 'Points',
+  'rooms.lasso': 'Lasso',
+  'rooms.brush': 'Brush',
+  'rooms.brushSize': 'Brush size',
+  'rooms.carveTip': 'Carve open floor out of the rock, into the highlighted room. Hold Alt to fill in instead',
+  'rooms.fillTip': 'Fill rock back in. Hold Alt to carve instead',
+  'rooms.rectangleTip': 'Rectangle. Hold Shift to snap its corners to the grid',
+  'rooms.pointsTip': 'Points, closed by clicking the first again. Hold Shift to snap them to the grid',
+  'rooms.doorHint': 'Drag across an opening. Alt makes a secret door. Click a door\'s badge to open or close it.',
+  'rooms.splitHint': 'Draw the part to split off {name}. Escape stops.',
+  'rooms.list': 'Rooms',
+  'rooms.count': '{count} of {max}',
+  'rooms.unnamed': 'Room {number}',
+  'rooms.new': 'New room',
+  'rooms.newTip': 'New room: the next shape you carve starts one',
+  'rooms.empty': 'Carve a room on the map to start',
+  'rooms.joinAll': 'Join all rooms',
+  'rooms.rename': 'Name of the room',
+  'rooms.hide': 'Turn back to rock',
+  'rooms.show': 'Open the room again',
+  'rooms.split': 'Split along a shape you draw',
+  'rooms.merge': 'Join into the room above',
+  'rooms.delete': 'Delete room',
+} as const satisfies Record<string, Message>;

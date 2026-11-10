@@ -4,9 +4,12 @@
 //
 // The table's frame stands in a room one handle wider than the table on every
 // side (Obsidian's table widget does the same): the editors draw their handles
-// and add buttons there. The room's negative margin gives that space back,
-// inside a flow root so the margin collapses with nothing, which keeps the
-// card laid out the same with and without an editor around it.
+// and add buttons there. The room's negative margins give that space back,
+// inside a flow root so they collapse with nothing, which keeps the card laid
+// out the same with and without an editor around it. Above the table the room
+// is shifted rather than pulled up by a negative top margin: in the card's
+// columns Chromium lays out a table under a negative top margin again and
+// again, half a second per resize for a few tables (#514).
 //
 // A table never scrolls: one too wide for its card wraps into bands, tables
 // one under another (`useTableBands`), as Fantasy Statblocks wraps its own.
@@ -18,7 +21,9 @@
   }
 
   .atlas-sb-sheet-table__room {
-    margin: calc(-1 * var(--atlas-sb-sheet-table-handle));
+    position: relative;
+    inset-block-start: calc(-1 * var(--atlas-sb-sheet-table-handle));
+    margin: 0 calc(-1 * var(--atlas-sb-sheet-table-handle)) calc(-2 * var(--atlas-sb-sheet-table-handle));
     padding: var(--atlas-sb-sheet-table-handle);
     // The room around the table reaches over its neighbours: only the table and what an editor draws take the pointer.
     pointer-events: none;

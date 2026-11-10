@@ -33,6 +33,21 @@ export function isDefeated(token: ResourceHolder, definitions: readonly Resource
   });
 }
 
+const defeatTests = new Map<string, (token: ResourceHolder) => boolean>();
+
+/**
+ * `isDefeated` by `definitions` as one function, or undefined where none defeats a token. Definitions that defeat
+ * alike (the same keys and directions) give the same function, so rules that hold it compare by identity.
+ */
+export function defeatTest(definitions: readonly ResourceDefinition[]): ((token: ResourceHolder) => boolean) | undefined {
+  const defeating = definitions.filter((definition) => definition.defeatedWhenSpent === true);
+  if (defeating.length === 0) return undefined;
+  const key = JSON.stringify(defeating.map(({ key: resource, direction }) => [resource, direction]));
+  let test = defeatTests.get(key);
+  if (!test) defeatTests.set(key, test = (token) => isDefeated(token, defeating));
+  return test;
+}
+
 /** Whether the token holds a resource that defeats it when spent. */
 export function isKillable(token: ResourceHolder, definitions: readonly ResourceDefinition[]): boolean {
   return definitions.some((definition) => definition.defeatedWhenSpent === true && token.resources?.[definition.key] !== undefined);

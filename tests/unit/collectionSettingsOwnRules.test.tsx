@@ -88,7 +88,7 @@ describe('the collection settings modal and what a collection has of its own', (
     const { saved } = open({ ...fresh(), ...all });
     await waitFor(() => expect(within(activeRow()).getByText('Edited')).toBeTruthy());
     // Visit the tabs of both features without changing anything.
-    for (const tab of ['Vision', 'Resources', 'Conditions', 'Game System']) fireEvent.click(screen.getByRole('button', { name: tab }));
+    for (const tab of ['Vision', 'Resources', 'Conditions', 'Game system']) fireEvent.click(screen.getByRole('button', { name: tab }));
     await save();
     expect(saved()).toMatchObject(all);
     expect(saved()!.defaultWidgets).toMatchObject({ hpBar: true });
@@ -122,7 +122,7 @@ describe('the collection settings modal and what a collection has of its own', (
   it('saves the collection\'s roles into a preset made from its rules', async () => {
     open({ ...fresh(), statblockRoles: [hag] });
     await waitFor(() => expect(within(activeRow()).getByText('Edited')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /Save as Preset/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Save as preset/ }));
     const input = screen.getByPlaceholderText('Preset name');
     fireEvent.change(input, { target: { value: 'Marsh hags' } });
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -132,12 +132,12 @@ describe('the collection settings modal and what a collection has of its own', (
 
 describe('the collection settings modal and the initiative rules', () => {
   const cairn = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'Cairn')!;
-  const rollField = (): HTMLInputElement => screen.getByLabelText<HTMLInputElement>('Initiative Roll');
+  const rollField = (): HTMLInputElement => screen.getByRole<HTMLInputElement>('textbox', { name: 'Roll' });
   const type = (value: string): void => { fireEvent.change(rollField(), { target: { value } }); };
   const openWidgets = async (settings: CollectionSettings): Promise<{ saved: () => Partial<CollectionSettings> | undefined }> => {
     const opened = open(settings);
     await waitFor(() => expect(activeRow()).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Default Widgets' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Default widgets' }));
     return opened;
   };
 
@@ -168,8 +168,8 @@ describe('the collection settings modal and the initiative rules', () => {
     const cairnRow = (): HTMLElement => screen.getByRole('radio', { name: /Cairn/, checked: true });
     await waitFor(() => expect(cairnRow()).toBeTruthy());
     expect(within(cairnRow()).queryByText('Edited')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Default Widgets' }));
-    expect(screen.queryByLabelText('Initiative Roll')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Default widgets' }));
+    expect(screen.queryByRole('textbox', { name: 'Roll' })).toBeNull();
     expect(screen.getByText('Sides', { selector: 'label' })).toBeTruthy();
     await save();
     expect(saved()).toHaveProperty('initiative', undefined);
@@ -183,7 +183,7 @@ describe('the collection settings modal and the distance per square', () => {
   it('cannot save text that is no distance, also after the field and the tab were left, and saves a distance below 1', async () => {
     const { saved } = open(fresh());
     await waitFor(() => expect(activeRow()).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Grid & Measure' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Grid and measurement' }));
     expect(distanceField().value).toBe('5');
 
     fireEvent.change(distanceField(), { target: { value: '0' } });
@@ -191,7 +191,7 @@ describe('the collection settings modal and the distance per square', () => {
     expect(saveButton().disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Conditions' }));
     expect(saveButton().disabled).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Grid & Measure' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Grid and measurement' }));
     expect(distanceField().getAttribute('aria-invalid')).toBe('true');
 
     fireEvent.change(distanceField(), { target: { value: '0,5' } });

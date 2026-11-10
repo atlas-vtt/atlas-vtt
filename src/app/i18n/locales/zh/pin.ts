@@ -87,7 +87,7 @@ export const pin: Translation = {
   'pin.crossCollection': '此图钉链向另一个合集的场景。请改为链到本合集的场景。',
   'pin.openMapFailed': '无法打开链接的地图',
   'pin.iconGroup': '图钉图标',
-  'pin.search.placeholder': '搜索笔记和地图...',
+  'pin.search.placeholder': '搜索笔记和地图…',
   'pin.search.label': '搜索笔记和地图',
   'pin.search.navigate': '移动',
   'pin.search.select': '选择',

@@ -129,7 +129,7 @@ export function WorldMapPicker({ choices, value, onChange, labelledBy, disabled,
             aria-controls={listId}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <div id={listId} role="listbox" aria-labelledby={labelledBy} className="world-map-picker__list" {...STANDING_LIST}>
+          <div id={listId} role="listbox" aria-labelledby={labelledBy} className="atlas-world-map-picker__list" {...STANDING_LIST}>
             {shown.map((choice) => (
               <button
                 key={choice.id}

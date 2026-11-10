@@ -1,5 +1,8 @@
 /* tooltip.css
  * Modern tooltip styles using Obsidian theme CSS variables
+ *
+ * Tooltips live in a portal outside Atlas' token scope, so their curve is written out: it is the motion tokens'
+ * `$transition-ease-out` (`MOTION_EASE_OUT`), for the entrance and the exit alike, as the tokens ask of UI motion.
  */
 
 .tooltip-content {
@@ -20,7 +23,7 @@
     0 4px 12px rgba(0, 0, 0, 0.15),
     0 1px 3px rgba(0, 0, 0, 0.1);
   will-change: transform, opacity;
-  animation: tooltip-fade-in 120ms ease-out, tooltip-zoom-in 120ms ease-out;
+  animation: tooltip-fade-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-zoom-in 120ms cubic-bezier(0.23, 1, 0.32, 1);
   pointer-events: none;
 }
 
@@ -49,7 +52,7 @@
   justify-content: center;
   min-width: 20px;
   height: 20px;
-  padding: 0 5px;
+  padding: 0 4px;
   border-radius: 4px;
   border: 1px solid var(--background-modifier-border);
   background-color: var(--background-primary);
@@ -104,27 +107,31 @@
   to { transform: translateY(0); }
 }
 
-/* State-based animation overrides */
-.tooltip-content[data-state="closed"] {
-  animation: tooltip-fade-out 100ms ease-in, tooltip-zoom-out 100ms ease-in;
-}
-
 /* Side-based slide animations */
 .tooltip-content[data-side="bottom"] {
-  animation: tooltip-fade-in 120ms ease-out, tooltip-zoom-in 120ms ease-out, tooltip-slide-in-from-top 120ms ease-out;
+  animation: tooltip-fade-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-zoom-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-slide-in-from-top 120ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .tooltip-content[data-side="top"] {
-  animation: tooltip-fade-in 120ms ease-out, tooltip-zoom-in 120ms ease-out, tooltip-slide-in-from-bottom 120ms ease-out;
+  animation: tooltip-fade-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-zoom-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-slide-in-from-bottom 120ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .tooltip-content[data-side="left"] {
-  animation: tooltip-fade-in 120ms ease-out, tooltip-zoom-in 120ms ease-out, tooltip-slide-in-from-right 120ms ease-out;
+  animation: tooltip-fade-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-zoom-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-slide-in-from-right 120ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .tooltip-content[data-side="right"] {
-  animation: tooltip-fade-in 120ms ease-out, tooltip-zoom-in 120ms ease-out, tooltip-slide-in-from-left 120ms ease-out;
+  animation: tooltip-fade-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-zoom-in 120ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-slide-in-from-left 120ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* A confirmation holds no tooltips: one left open by the control whose menu opened it would stand over its question. */
-.atlas-portal-host:has(> .atlas-text-dialog-backdrop) .tooltip-content {
+/* The exit, after the entrances: Radix gives every tooltip a side, and a side's entrance of the same specificity
+   written later took the closing tooltip's animation, so none ever faded out. */
+.tooltip-content[data-state="closed"],
+.tooltip-content[data-side][data-state="closed"] {
+  animation: tooltip-fade-out 100ms cubic-bezier(0.23, 1, 0.32, 1), tooltip-zoom-out 100ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* A confirmation holds no tooltips: one left open by the control whose menu opened it would stand over its question.
+   The host is marked while it holds one (`dialogShell.ts`): a `:has()` on the host had every element put into it (a
+   menu row, a card scrolled in) restyle everything the host holds, the asset manager's window included. */
+.atlas-portal-host.atlas-portal-host--dialog .tooltip-content {
   display: none;
 }
 
@@ -132,10 +139,10 @@
 @media (prefers-reduced-motion: reduce) {
   .tooltip-content,
   .tooltip-content[data-side] {
-    animation: tooltip-fade-in 120ms ease-out;
+    animation: tooltip-fade-in 120ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
   .tooltip-content[data-side][data-state="closed"] {
-    animation: tooltip-fade-out 100ms ease-in;
+    animation: tooltip-fade-out 100ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 }

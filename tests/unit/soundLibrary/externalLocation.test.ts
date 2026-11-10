@@ -113,6 +113,14 @@ describe('reading and writing', () => {
     expect(Buffer.compare(Buffer.from(await blob.arrayBuffer()), bytes)).toBe(0);
   });
 
+  it('reads a range of a file, and only that', async () => {
+    write('a.opus', '0123456789');
+    expect(new TextDecoder().decode(await location().readRange('a.opus', 2, 5))).toBe('234');
+    expect(new TextDecoder().decode(await location().readRange('a.opus', 8, 64))).toBe('89');
+    expect(await location().stat('a.opus')).toMatchObject({ size: 10 });
+    expect(await location().stat('gone.opus')).toBeNull();
+  });
+
   it('writes a new file and never over one', async () => {
     const place = location();
     await place.write('new.mp3', new Blob(['NEW']));
@@ -159,4 +167,18 @@ it('without a recursive watch on this system falls back on rescans', () => {
   const thrower = { ...fs, watch: () => { throw new Error('ERR_FEATURE_UNAVAILABLE_ON_PLATFORM'); } };
   const place = new ExternalLocation(root, { files: { fs: thrower as unknown as NodeFsModule, sep: path.sep, home: '' }, trashItem: null, resourceUrl: null });
   expect(() => place.watch(() => undefined)()).not.toThrow();
+});
+
+describe('what a folder on disk can do', () => {
+  it('cannot trash without a system trash', () => {
+    expect(location(false).canTrash()).toBe(false);
+    expect(location(true).canTrash()).toBe(true);
+  });
+
+  it('can write into a folder it may write to, and not where access is refused', async () => {
+    await expect(location().canWrite()).resolves.toBe(true);
+    const refused = { ...fs, constants: fs.constants, promises: { ...fs.promises, access: () => Promise.reject(new Error('EACCES')) } };
+    const place = new ExternalLocation(root, { files: { fs: refused as unknown as NodeFsModule, sep: path.sep, home: '' }, trashItem: null, resourceUrl: null, vaultFolder: null });
+    await expect(place.canWrite()).resolves.toBe(false);
+  });
 });

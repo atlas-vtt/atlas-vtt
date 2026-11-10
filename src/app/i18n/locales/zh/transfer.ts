@@ -14,5 +14,13 @@ export const transfer: Translation = {
   'transfer.move.withoutLinks': '移动但不保留链接',
   'transfer.moveFailed': '无法移动{what}：{error}',
   'transfer.moved': '已把{what}移动到{target}',
+  'transfer.openCollection': '打开合集',
+  'transfer.pick.confirm.copy': '复制',
+  'transfer.pick.confirm.move': '移动',
+  'transfer.pick.info.copy': '正在复制{what}',
+  'transfer.pick.info.move': '正在移动{what}',
+  'transfer.pick.target': '目标合集',
+  'transfer.pick.title.copy': '复制到合集',
+  'transfer.pick.title.move': '移动到合集',
   'transfer.selection': '所选内容',
 };

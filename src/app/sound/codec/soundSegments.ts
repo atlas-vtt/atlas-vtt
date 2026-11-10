@@ -25,9 +25,9 @@ export function segmentIndexOf(granule: number, preSkip: number, segmentFrames =
   return Math.max(0, Math.floor((granule - preSkip) / segmentFrames));
 }
 
-const toBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
+export const toBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
 
-function fromBase64(text: string): Uint8Array<ArrayBuffer> {
+export function fromBase64(text: string): Uint8Array<ArrayBuffer> {
   const raw = atob(text);
   return Uint8Array.from(raw, (char) => char.charCodeAt(0));
 }

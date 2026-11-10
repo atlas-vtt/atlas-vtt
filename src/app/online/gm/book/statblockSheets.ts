@@ -26,6 +26,8 @@ export interface StatblockSheetPorts {
   panelWidth?(): number | undefined;
   /** How players are handed the whole texts a statblock names; without it they get each text's opening alone. */
   readonly stored?: AssetStoring | undefined;
+  /** The text a link in an ability's name of the note at `path` names (`readLink`); unset, links are not followed. */
+  readLink?(path: string, link: string): Promise<string | null>;
   /** The note at `path` was read or its statblock drawn anew: the books of its characters are looked at again. */
   changed(path: string): void;
 }
@@ -102,7 +104,12 @@ export class StatblockSheets {
     const asked: Drawing = { source, inputs };
     entry.asked = asked;
     entry.drawn = undefined;
-    void drawnStatblock({ resolved: source, definitions, resources, ...(panelWidth !== undefined && { panelWidth }) }, this.ports.stored).then((drawn) => {
+    const readLink = this.ports.readLink?.bind(this.ports);
+    void drawnStatblock({
+      resolved: source, definitions, resources,
+      ...(panelWidth !== undefined && { panelWidth }),
+      ...(readLink !== undefined && { readLink: (link: string) => readLink(path, link) }),
+    }, this.ports.stored).then((drawn) => {
       if (entry.asked !== asked || this.entries.get(path) !== entry) return;
       entry.drawn = drawn;
       this.ports.changed(path);

@@ -1,0 +1,124 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Dialog with a sidebar
+// ═══════════════════════════════════════════════════════════════════════════
+// Laid out like an OS's settings window: the tinted sidebar runs the window's full height, flush to its top, bottom
+// and outer edge, so the window's corners clip it; the title row (title, its meta, the close button), the page and the
+// actions stand in the column beside it. A sidebar never floats between a title row above it and a footer strip
+// below it. Include `atlas-sidebar-dialog` on the window and one part mixin on each of its parts; a part nested
+// deeper is lifted into the window's grid by `display: contents` on what holds it.
+//
+// Below `$stack-below` (a part mixin's argument, the same on every part of a dialog) the parts stack in one column:
+// title row, sidebar, page, actions. A dialog whose sidebar gives way to something else there (the collection
+// settings' select) hides the sidebar and puts that in the `top` part, which shares the sidebar's row.
+
+@use 'sass:map';
+@use 'tokens' as *;
+@use 'mixins' as *;
+
+// The row of each part while the window stacks its parts in one column.
+$_stacked-rows: (header: 1, top: 2, side: 2, body: 3, footer: 4);
+
+/// The window: a grid of the sidebar beside a column of title row, `top`, page and actions. The window clips the
+/// sidebar with its own corners (`overflow: hidden`) and is the container its parts' stacking asks.
+/// @param {String} $side       - `start` (left) or `end` (right)
+/// @param {Length} $side-track - the sidebar's column (`auto`: as wide as the sidebar makes itself)
+/// @param {Length} $main-track - the column beside it
+/// @param {String} $container  - the container name the parts' stacking asks
+@mixin atlas-sidebar-dialog($side: start, $side-track: auto, $main-track: minmax(0, 1fr), $container: atlas-sidebar-dialog) {
+  display: grid;
+  // The `top` row is empty, and takes no height, while the window does not stack.
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  container: #{$container} / inline-size;
+
+  @if $side == start {
+    grid-template-columns: $side-track $main-track;
+    grid-template-areas:
+      'side header'
+      'side top'
+      'side body'
+      'side footer';
+  } @else {
+    grid-template-columns: $main-track $side-track;
+    grid-template-areas:
+      'header side'
+      'top side'
+      'body side'
+      'footer side';
+  }
+}
+
+/// Places a part in its area, and in its row of the one column below $stack-below. Every part spans both columns
+/// there, which leaves the sidebar's `auto` column no width.
+@mixin atlas-sidebar-dialog-area($area, $stack-below: null, $container: atlas-sidebar-dialog) {
+  grid-area: $area;
+  min-width: 0;
+
+  @if $stack-below {
+    @container #{$container} (max-width: #{$stack-below}) {
+      grid-column: 1 / -1;
+      grid-row: map.get($_stacked-rows, $area);
+    }
+  }
+}
+
+/// The sidebar: tinted, full height. Elements in its corners at the window's corners take
+/// `atlas-panel-inset-radius($inset, <corner>)`.
+@mixin atlas-sidebar-dialog-side($stack-below: null, $container: atlas-sidebar-dialog) {
+  @include atlas-sidebar-dialog-area(side, $stack-below, $container);
+  min-height: 0;
+  background: var(--background-secondary);
+}
+
+/// The title row of the column beside the sidebar: title and meta, the close button in the window's corner (with the
+/// sidebar at the end, the corner is the sidebar's: see `atlas-sidebar-dialog-corner-close`).
+@mixin atlas-sidebar-dialog-header($stack-below: null, $container: atlas-sidebar-dialog) {
+  @include atlas-modal-header;
+  @include atlas-sidebar-dialog-area(header, $stack-below, $container);
+}
+
+/// The row under the title that only a stacked window fills (with what stands in for its sidebar).
+@mixin atlas-sidebar-dialog-top($stack-below: null, $container: atlas-sidebar-dialog) {
+  @include atlas-sidebar-dialog-area(top, $stack-below, $container);
+}
+
+/// The page: scrolls on its own, casting the shared dark scroll shadow at an edge where more lies beyond.
+/// @param {String} $layer - `atlas-scroll-shadow`'s layer: `fixed` for a page that is positioned itself
+@mixin atlas-sidebar-dialog-body($stack-below: null, $container: atlas-sidebar-dialog, $layer: absolute) {
+  @include atlas-sidebar-dialog-area(body, $stack-below, $container);
+  min-height: 0;
+  overflow-y: auto;
+  @include atlas-scroll-shadow($layer);
+}
+
+/// The actions at the foot of the column beside the sidebar. With the sidebar at the window's end its last button
+/// stands in no corner of the window, unless the window stacks.
+@mixin atlas-sidebar-dialog-footer($side: start, $stack-below: null, $container: atlas-sidebar-dialog) {
+  @if $side == start {
+    @include atlas-modal-footer;
+  } @else {
+    @include atlas-modal-footer(null);
+  }
+  @include atlas-sidebar-dialog-area(footer, $stack-below, $container);
+
+  @if $side == end and $stack-below {
+    @container #{$container} (max-width: #{$stack-below}) {
+      > .btn:last-child {
+        @include atlas-modal-corner-control(bottom-right);
+      }
+    }
+  }
+}
+
+/// The close button where the sidebar stands at the window's end: in the window's corner over the sidebar, out of
+/// the title row's flow. The window is its containing block (`position: relative`). Stacked, it is back in the title
+/// row, which then spans the window.
+@mixin atlas-sidebar-dialog-corner-close($stack-below: null, $container: atlas-sidebar-dialog) {
+  @include atlas-close-corner;
+
+  @if $stack-below {
+    @container #{$container} (max-width: #{$stack-below}) {
+      position: static;
+    }
+  }
+}

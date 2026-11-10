@@ -1,0 +1,118 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Collection Settings: compact setting rows (SettingRow.tsx)
+// A section heading, then one row per setting: a short label with its info mark
+// at the start, the control at the end, an optional quiet line under it. What a
+// setting does lives behind the info mark, not in paragraphs on the page.
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-csm-section {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+
+  & + & {
+    margin-top: $spacing-m;
+  }
+}
+
+.atlas-csm-section-title {
+  margin: 0;
+  @include atlas-section-label;
+}
+
+.atlas-csm-setting {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  padding: $spacing-s $spacing-m;
+  border-radius: $radius-l;
+  background: var(--background-secondary);
+  border: $border-width-s solid var(--background-modifier-border);
+}
+
+.atlas-csm-setting__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-m;
+  min-height: $input-height-m;
+}
+
+// Every control of a row ends on one edge and shares one width, so the column of controls reads as one; on a
+// narrow page the control shrinks rather than wrapping under its label.
+.atlas-csm-setting__control {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 1 280px;
+  min-width: 0;
+}
+
+.atlas-csm-field-select {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  width: 100%;
+}
+
+// A value shown rather than chosen (the fallback field), with its remove button.
+.atlas-csm-setting__value {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  min-width: 0;
+}
+
+.atlas-csm-setting__text {
+  @include atlas-truncate;
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+}
+
+// A quiet line under the row (a preview, an error) starts on the label's edge.
+.atlas-csm-setting > .atlas-csm-hint {
+  margin: 0;
+}
+
+// Two controls that read as one value: "One square is [5] [Feet]".
+.atlas-csm-square {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  min-width: 0;
+}
+
+.atlas-csm-square__unit {
+  flex: none;
+  width: 128px;
+}
+
+// A number with its unit after it, inside the field ("53 °").
+.atlas-csm-suffixed {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  .atlas-csm-input {
+    padding-inline-end: calc(#{$spacing-s} + 1ch);
+  }
+}
+
+.atlas-csm-suffixed__unit {
+  position: absolute;
+  inset-inline-end: $spacing-s;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+// A select in a row stands as tall as the row's text and number fields, so the controls of a row line up.
+.atlas-csm-setting .atlas-select-trigger {
+  height: $input-height-m;
+}
+
+// A segmented choice spans the control column, as a select does.
+.atlas-csm-setting__control > .atlas-segmented {
+  flex: 1;
+}

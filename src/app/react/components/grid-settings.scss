@@ -337,23 +337,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.atlas-grid-visibility-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  
-  input[type="checkbox"] {
-    width: 1.25rem;
-    height: 1.25rem;
-    cursor: pointer;
-  }
-  
-  span {
-    color: var(--text-normal);
-  }
-}
-
 .atlas-grid-settings-footer {
   display: flex;
   align-items: center;

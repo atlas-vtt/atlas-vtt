@@ -26,20 +26,19 @@
 
 .atlas-am-filters-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 $spacing-xs;
   border-radius: $radius-full;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  font-size: 10px;
+  font-size: $font-ui-smaller;
   font-weight: $font-weight-semibold;
   font-variant-numeric: tabular-nums;
-  line-height: 14px;
+  line-height: 16px;
   text-align: center;
   pointer-events: none;
+  @include atlas-accent-fill;
 }
 
 // ── Suggestions under the search: keywords, then the values in view ─────────
@@ -53,7 +52,8 @@
   @include atlas-flex-col($gap: $spacing-xs);
   // As wide as the descriptions need, within the window; long ones wrap rather than being cut.
   width: max-content;
-  min-width: max(100%, 320px);
+  // Never wider than the window allows: a min-width above the max-width would win and push it off the edge.
+  min-width: min(max(100%, 320px), calc(100vw - 2 * #{$spacing-l}));
   max-width: min(600px, calc(100vw - 2 * #{$spacing-l}));
   padding: $spacing-xs;
   background: var(--menu-background);
@@ -62,6 +62,7 @@
   box-shadow: var(--menu-shadow, #{$shadow-md});
   transform-origin: top right;
   transition: opacity 150ms $transition-ease-out, transform 150ms $transition-ease-out;
+  @include atlas-keep-in-view;
 
   @starting-style {
     opacity: 0;
@@ -73,7 +74,7 @@
   @include atlas-flex-row($gap: $spacing-s);
   justify-content: space-between;
   padding: $spacing-xs $spacing-s 0;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
 
   kbd {
@@ -81,7 +82,7 @@
     border: $border-width-s solid var(--background-modifier-border);
     border-radius: $radius-s;
     font-family: var(--font-monospace);
-    font-size: 10px;
+    font-size: $font-ui-smaller;
   }
 }
 
@@ -128,7 +129,7 @@
 
 .atlas-search-suggestion__aliases {
   margin-left: $spacing-xs;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-family: var(--font-monospace);
   font-size: $font-ui-smaller;
 }
@@ -140,7 +141,7 @@
 
 .atlas-search-suggestion__count {
   justify-self: end;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -183,15 +184,14 @@
   padding: 0 $spacing-l;
 }
 
-// The filters of the statblock template's own fields, under a rule after the shared ones.
+// The filters of the statblock template's own fields, set apart from the shared ones by the space above them.
 .atlas-filter-panel__group {
   @include atlas-flex-col($gap: $spacing-l);
   padding-top: $spacing-l;
-  border-top: $border-width-s solid var(--background-modifier-border);
 }
 
 .atlas-filter-panel__group-label {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
   font-weight: $font-weight-medium;
 }
@@ -210,7 +210,7 @@
 
 .atlas-filter-panel__hint {
   margin: 0;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
 }
 
@@ -231,9 +231,11 @@
   flex: 1;
   min-width: 0;
   padding-left: $spacing-s;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
-  @include atlas-truncate;
+  line-height: var(--line-height-tight);
+  // Wraps rather than cuts: it is the only place that counts the hidden assets.
+  text-wrap: pretty;
 }
 
 // The footer's end control sits in the panel's bottom-right corner.
@@ -251,24 +253,23 @@
   @include atlas-flex-row($gap: $spacing-s);
   justify-content: space-between;
   // As tall as its search, so opening the search moves nothing below it.
-  min-height: 24px;
-  color: var(--text-muted);
-  font-size: $font-ui-smaller;
-  font-weight: $font-weight-medium;
+  min-height: $filter-search-height;
+  @include atlas-section-label;
 }
 
 // An options filter's search: an icon at the header's end, then a field beside the title.
 .atlas-filter-section__header .atlas-filter-section__search-button.btn,
 .atlas-filter-section__search .atlas-filter-section__search-close.btn {
-  width: 20px;
-  height: 20px;
+  width: $search-button-size;
+  height: $search-button-size;
+  flex-shrink: 0;
   padding: 0;
   border-radius: $radius-s;
-  color: var(--text-faint);
+  color: var(--text-muted);
 
   svg {
-    width: 12px;
-    height: 12px;
+    width: $icon-xs;
+    height: $icon-xs;
   }
 
   &:hover {
@@ -282,9 +283,9 @@
   align-items: center;
   gap: $spacing-xs;
   min-width: 0;
-  height: 24px;
-  padding: 0 2px 0 $spacing-xs;
-  border: $border-width-s solid var(--background-modifier-border-focus);
+  height: $filter-search-height;
+  padding: 0 1px 0 $spacing-xs;
+  border: $border-width-s solid $am-control-border;
   border-radius: $radius-s;
   background: var(--background-modifier-form-field);
 
@@ -308,9 +309,20 @@
   }
 }
 
+// A glyph before a title tells filters apart whose values share words (the type "Beast", the tag "Beast": `filterGlyph`).
+.atlas-filter-section__title {
+  @include atlas-flex-row($gap: $spacing-xs);
+
+  svg {
+    flex-shrink: 0;
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}
+
 .atlas-filter-section.atlas-active .atlas-filter-section__title,
 .atlas-filter-section__summary {
-  color: var(--text-accent);
+  @include atlas-accent-text;
 }
 
 .atlas-filter-section__summary {
@@ -341,13 +353,13 @@
   &.atlas-active {
     border-color: transparent;
     background-color: color-mix(in oklch, var(--interactive-accent) 18%, transparent);
-    color: var(--text-accent);
+    @include atlas-accent-text;
   }
 
   &.atlas-excluded {
     border-color: transparent;
     background-color: color-mix(in oklch, var(--text-error) 14%, transparent);
-    color: var(--text-error);
+    @include atlas-error-text;
 
     .atlas-filter-chip__label {
       text-decoration: line-through;
@@ -359,12 +371,20 @@
   }
 }
 
+// The tick of a required option, before its label; the chip keeps its padding, so the tick narrows nothing else.
+.atlas-filter-chip__tick {
+  flex-shrink: 0;
+  width: $icon-xs;
+  height: $icon-xs;
+  stroke-width: 2.5;
+}
+
 .atlas-filter-chip__count {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 
   .atlas-filter-chip.atlas-active & {
-    color: var(--text-accent);
+    @include atlas-accent-text;
   }
 
   .atlas-filter-chip.atlas-excluded & {
@@ -376,7 +396,7 @@
   height: 24px;
   padding: 0 $spacing-s;
   border-radius: $radius-full;
-  color: var(--text-accent);
+  @include atlas-accent-text;
   font-size: $font-ui-smaller;
 }
 
@@ -394,21 +414,41 @@
   height: 32px;
 }
 
+// A bar grows from its base on the compositor: it is the histogram's full height, scaled to its share
+// (`--atlas-bar-scale`, 0 to 1). Its top corners are drawn that many times taller, so they stay round once scaled.
 .atlas-filter-range__bar {
   flex: 1;
   min-width: 1px;
-  height: var(--atlas-bar-height);
-  border-radius: 2px 2px 0 0;
+  height: 100%;
+  border-radius: 2px 2px 0 0 / calc(2px / var(--atlas-bar-scale)) calc(2px / var(--atlas-bar-scale)) 0 0;
   background-color: var(--background-modifier-border);
-  transition: background-color $transition-fast $transition-ease, height $transition-fast $transition-ease;
+  transform: scaleY(var(--atlas-bar-scale));
+  transform-origin: bottom;
+  transition: background-color $transition-fast $transition-ease, transform $transition-fast $transition-ease;
 
   &.atlas-in-range {
     background-color: color-mix(in oklch, var(--interactive-accent) 55%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: background-color $transition-fast $transition-ease;
   }
 }
 
 .atlas-filter-range__slider {
   height: 20px;
+
+  // As tall as the 44 px thumbs a finger gets (primitives/slider.css), so they cover nothing around them.
+  @media (pointer: coarse) {
+    height: $touch-target;
+  }
+
+  // The thumbs are what is dragged, so their edge must be found against the panel (WCAG 1.4.11, 3:1): an accent
+  // ring, 4.3:1 on white and 5:1 on the dark panel, where the border colour gave 1.3:1.
+  .slider-thumb {
+    --atlas-slider-thumb-border: #{$border-width-m} solid var(--text-accent);
+    --atlas-slider-thumb-bg: var(--background-primary);
+  }
 }
 
 .atlas-filter-range__ends {
@@ -417,12 +457,12 @@
   gap: $spacing-s;
 }
 
-// The two ends of a range, typed into: quiet until hovered or focused, as wide as a few digits.
+// The two ends of a range, typed into, as wide as a few digits: framed as every field is (decision #60).
 input.atlas-filter-range__input {
   width: 7ch;
   height: 24px;
   padding: 0 $spacing-xs;
-  border: $border-width-s solid transparent;
+  border: $border-width-s solid $am-control-border;
   border-radius: $radius-s;
   background: transparent;
   color: var(--text-muted);
@@ -431,11 +471,11 @@ input.atlas-filter-range__input {
   transition: border-color $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
 
   &:hover {
-    border-color: var(--background-modifier-border);
+    border-color: var(--text-muted);
   }
 
   &:focus {
-    border-color: var(--background-modifier-border-focus);
+    border-color: $am-control-border-focus;
     background: var(--background-modifier-form-field);
     color: var(--text-normal);
     box-shadow: none;
@@ -487,13 +527,18 @@ input.atlas-filter-range__input {
   color: var(--text-muted);
 }
 
+// The chip's own glyph keeps the text's muted colour; the remove ×, also an svg, stays faint.
+.atlas-active-filters .atlas-active-filter.btn .atlas-active-filter__glyph {
+  color: var(--text-muted);
+}
+
 .atlas-active-filter__value {
-  color: var(--text-accent);
+  @include atlas-accent-text;
   font-weight: $font-weight-medium;
   font-variant-numeric: tabular-nums;
 
   &.atlas-excluded {
-    color: var(--text-error);
+    @include atlas-error-text;
   }
 }
 
@@ -519,7 +564,7 @@ input.atlas-filter-range__input {
   @include atlas-flex-row($gap: $spacing-s);
   justify-content: space-between;
   padding: 0 0 0 $spacing-s;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
 }
 
@@ -527,7 +572,7 @@ input.atlas-filter-range__input {
   height: 24px;
   padding: 0 $spacing-s;
   border-radius: $radius-m;
-  color: var(--text-error);
+  @include atlas-error-text;
   font-size: $font-ui-smaller;
 }
 
@@ -553,7 +598,7 @@ input.atlas-filter-range__input {
   height: 24px;
   padding: 0 $spacing-s;
   border-radius: $radius-full;
-  color: var(--text-accent);
+  @include atlas-accent-text;
   font-size: $font-ui-smaller;
 }
 

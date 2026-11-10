@@ -34,7 +34,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); document.body.empty(); });
 
 describe('the asset manager', () => {
-  it('offers Generate Dungeon beside Add Map in its Add menu', () => {
+  it('offers Create dungeon beside Create maps in its Add menu', () => {
     const onGenerateDungeon = vi.fn();
     const onCreateMap = vi.fn();
     const { app } = createInMemoryApp({ files: {} });
@@ -57,8 +57,8 @@ describe('the asset manager', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
     const labels = screen.getAllByRole('menuitem').map((item) => item.textContent);
-    expect(labels.indexOf('Generate Dungeon')).toBe(labels.indexOf('Add Map') + 1);
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Generate Dungeon' }));
+    expect(labels.indexOf('Create dungeon…')).toBe(labels.indexOf('Create maps…') + 1);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Create dungeon…' }));
     expect(onGenerateDungeon).toHaveBeenCalledTimes(1);
     expect(onCreateMap).not.toHaveBeenCalled();
   });

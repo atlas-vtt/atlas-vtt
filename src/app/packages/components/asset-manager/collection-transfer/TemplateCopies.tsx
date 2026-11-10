@@ -1,4 +1,5 @@
 import React from 'react';
+import { ToggleLabel } from '../../primitives/Toggle';
 import type { TemplateReview } from '../../../../services/collectionBundle/importTemplates';
 import { plural } from '../../../../utils/plural';
 
@@ -36,12 +37,11 @@ export function TemplateCopies({ templates, switchNotes, onSwitchNotesChange }: 
         {copies.length > SHOWN && <li>and {copies.length - SHOWN} more</li>}
       </ul>
       {reusedNotes.length > 0 && (
-        <label className="atlas-transfer-checkbox">
-          <input type="checkbox" checked={switchNotes} onChange={(event) => onSwitchNotesChange(event.target.checked)} />
-          <span>
-            Switch {plural(reusedNotes.length, 'statblock')} you already had to the copies: {namesOf(reusedNotes.map((note) => note.name))}
-          </span>
-        </label>
+        <ToggleLabel
+          label={<>Switch {plural(reusedNotes.length, 'statblock')} you already had to the copies: {namesOf(reusedNotes.map((note) => note.name))}</>}
+          value={switchNotes}
+          onChange={() => onSwitchNotesChange(!switchNotes)}
+        />
       )}
     </div>
   );

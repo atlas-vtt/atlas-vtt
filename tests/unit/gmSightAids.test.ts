@@ -83,7 +83,7 @@ describe('the ranges of a selected vision token', () => {
     expect(aids.rings.rings()[0]!.rings.map((ring) => [ring.radius, ring.style])).toEqual([[840, 'sight'], [420, 'sense'], [210, 'creatures']]);
     store.getState().setSelection([add(900, { enabled: true, senses: [{ id: 'low-light-vision' }, { id: 'darkvision', range: 30 }] })]);
     aids.update();
-    // What has no limit has neither ring nor label: Edit Token says it.
+    // What has no limit has neither ring nor label: Edit token says it.
     expect(labels(aids)).toEqual(['Darkvision 30ft']);
   });
 
