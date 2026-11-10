@@ -6,11 +6,13 @@ export interface TextInputDialogOptions {
   confirmLabel: string;
   initialValue?: string;
   placeholder?: string;
+  /** Confirming an empty field resolves with `''` instead of `null`: empty means something (a name falling back to its note's). */
+  allowEmpty?: boolean;
 }
 
 /**
  * Small centred dialog with a textarea. Resolves with the trimmed text, or
- * `null` when cancelled or left empty. Enter confirms, Shift+Enter adds a line.
+ * `null` when cancelled or left empty (`''` for empty with `allowEmpty`). Enter confirms, Shift+Enter adds a line.
  */
 export function promptForText(options: TextInputDialogOptions): Promise<string | null> {
   return new Promise((resolve) => {
@@ -28,7 +30,10 @@ export function promptForText(options: TextInputDialogOptions): Promise<string |
       root.remove();
       resolve(result);
     };
-    const confirm = (): void => close(textarea.value.trim() || null);
+    const confirm = (): void => {
+      const text = textarea.value.trim();
+      close(text !== '' || options.allowEmpty === true ? text : null);
+    };
 
     confirmButton.addEventListener('click', confirm);
     cancelButton.addEventListener('click', () => close(null));

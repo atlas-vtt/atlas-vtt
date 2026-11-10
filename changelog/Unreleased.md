@@ -3,6 +3,10 @@
 - Rooms: in the lighting tool's Rooms mode, carve rooms out of solid rock instead of drawing walls one by one. Their outline stops sight, light, sound and tokens like walls, and a door dragged across an opening reaches the walls. Contributed by ThatMattLatt
 - Sounds in a linked folder become Opus files in that folder once you agree (originals go to the trash or stay), so they are never converted again and Atlas keeps no hidden copy of your sound library
 - The Sound page shows how far the conversion has got, with a button to pause it
+- Pins can show their name under them on the map: the note's name or one you give them. Switch it on in the pin menu, or once for every new pin when placing them
+- Pins you show to players appear in the player window with their names, where the players can see the map
+- Names that would crowd each other hide until you zoom in
+- Pins shrink with the map when you zoom far out instead of covering it, and become dots when the whole map fits on screen
 
 ## Fixed
 
