@@ -77,7 +77,7 @@ describe('Atlas search actions', () => {
   it('finds the Lighting page by what it holds', () => {
     const store = create(() => ({}));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>);
-    fireEvent.change(screen.getByPlaceholderText('Search commands...'), { target: { value: 'darkvision' } });
+    fireEvent.change(screen.getByPlaceholderText('Search commands…'), { target: { value: 'darkvision' } });
     fireEvent.click(screen.getByText('Lighting settings'));
     expect(screen.getByTestId('lighting-page')).toBeTruthy();
   });

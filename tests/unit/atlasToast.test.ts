@@ -9,10 +9,14 @@ describe('showAtlasToast', () => {
   });
 
   it('puts its container under Atlas\' style scope so the toast is styled and on screen', () => {
+    vi.useFakeTimers();
     showAtlasToast('Saved');
     const container = document.querySelector('.atlas-toast-container');
     expect(container?.classList.contains('atlas-vtt-plugin')).toBe(true);
-    expect(container?.getAttribute('aria-live')).toBe('polite');
+    // The message alone is the live region, and its text comes once the region is in the document.
+    const text = container?.querySelector('.atlas-toast__text');
+    expect(text?.getAttribute('aria-live')).toBe('polite');
+    vi.advanceTimersToNextFrame();
     expect(container?.textContent).toBe('Saved');
   });
 
