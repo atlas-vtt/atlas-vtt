@@ -474,7 +474,7 @@
   align-items: center;
   justify-content: center;
   padding: $spacing-2xl;
-  background-color: color-mix(in oklch, var(--mono-0) 40%, transparent);
+  background-color: $scrim;
   backdrop-filter: blur(6px);
   pointer-events: auto;
 }

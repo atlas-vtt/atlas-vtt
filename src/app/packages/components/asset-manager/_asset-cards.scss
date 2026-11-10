@@ -260,7 +260,7 @@
   border-radius: $radius-full;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
-  box-shadow: 0 1px 3px color-mix(in oklch, var(--mono-0) 40%, transparent);
+  box-shadow: 0 1px 3px color-mix(in oklch, #{$shadow-color} 40%, transparent);
   overflow: hidden;
 
   .atlas-spawn-btn {
