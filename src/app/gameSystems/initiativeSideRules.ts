@@ -78,9 +78,10 @@ export function sideParts(rawSides: unknown, firstSide: InitiativeSide): Pick<In
   return isDefaultList(sides) ? { firstSide: first } : { firstSide: first, sides };
 }
 
-/** The dice each side rolls at a round's start, trimmed; undefined where none or not one group of dice. */
-export function parseSideRoll(raw: unknown): string | undefined {
-  return typeof raw === 'string' && isValidDefaultRoll(raw) ? raw.trim() : undefined;
+/** The side roll as stored. A legacy roll without a timing flag still rolls every round. */
+export function sideRollParts(raw: unknown, once: unknown): Pick<InitiativeRules, 'sideRoll' | 'sideRollOnce'> {
+  if (typeof raw !== 'string' || !isValidDefaultRoll(raw)) return {};
+  return { sideRoll: raw.trim(), ...(once === true && { sideRollOnce: true }) };
 }
 
 /** Whether a list of sides being edited can be saved: every named side has a name. */
@@ -89,9 +90,8 @@ export function areSidesValid(sides: readonly SideRef[] | undefined): boolean {
 }
 
 /** The side parts of rules as they are stored: the list read again (and the first built-in side in it), the roll trimmed. */
-export function savedSideParts(rules: InitiativeRules): Pick<InitiativeRules, 'firstSide' | 'sides' | 'sideRoll'> {
-  const sideRoll = parseSideRoll(rules.sideRoll);
-  return { ...sideParts(rules.sides, rules.firstSide), ...(sideRoll && { sideRoll }) };
+export function savedSideParts(rules: InitiativeRules): Pick<InitiativeRules, 'firstSide' | 'sides' | 'sideRoll' | 'sideRollOnce'> {
+  return { ...sideParts(rules.sides, rules.firstSide), ...sideRollParts(rules.sideRoll, rules.sideRollOnce) };
 }
 
 function sideKey(rules: Pick<InitiativeRules, 'firstSide' | 'sides'>): string {
@@ -101,13 +101,14 @@ function sideKey(rules: Pick<InitiativeRules, 'firstSide' | 'sides'>): string {
 /** Whether two rules have the same sides in the same order and roll the same dice for it; unset lists read as `firstSide`'s. */
 export function sameSideParts(a: InitiativeRules, b: InitiativeRules): boolean {
   return sideKey(a) === sideKey(b)
+    && a.sideRollOnce === b.sideRollOnce
     && (a.sideRoll?.trim().toLowerCase() ?? '') === (b.sideRoll?.trim().toLowerCase() ?? '');
 }
 
 /** Whether two rules' sides are the same as typed: a space is a difference. */
 export function sameTypedSideParts(a: InitiativeRules, b: InitiativeRules): boolean {
   const typed = (rules: InitiativeRules): string => sidesOfRules(rules).map((side) => `${side.id}:${side.name ?? ''}`).join('|');
-  return typed(a) === typed(b) && (a.sideRoll ?? '') === (b.sideRoll ?? '');
+  return typed(a) === typed(b) && a.sideRollOnce === b.sideRollOnce && (a.sideRoll ?? '') === (b.sideRoll ?? '');
 }
 
 /** An id for a new named side, unlike every id in `taken`. Ids never change once given: tokens store them. */

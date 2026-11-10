@@ -7,7 +7,7 @@ import type { InitiativeMode, InitiativeRules, InitiativeSide } from '../types/i
 import type { SystemPreset } from '../types/systemPresetTypes';
 import { isValidDefaultRoll } from './diceRules';
 import { modifierSources, sameModifierSources } from './initiativeModifierSources';
-import { BUILT_IN_SIDES, areSidesValid, parseSideRoll, sameSideParts, savedSideParts, sideParts } from './initiativeSideRules';
+import { BUILT_IN_SIDES, areSidesValid, sameSideParts, savedSideParts, sideParts, sideRollParts } from './initiativeSideRules';
 import { cardParts, isCardPartValid, sameCardParts } from './initiativeCardRules';
 
 /** Initiative of a collection without a game system: a d20 each, highest first. */
@@ -27,13 +27,12 @@ export function parseInitiativeRules(raw: unknown): InitiativeRules | undefined 
   const { mode, roll, firstSide } = fields;
   if (!INITIATIVE_MODES.includes(mode as InitiativeMode) || !INITIATIVE_SIDES.includes(firstSide as InitiativeSide)) return undefined;
   if (typeof roll !== 'string' || !isValidDefaultRoll(roll)) return undefined;
-  const sideRoll = parseSideRoll(fields.sideRoll);
   return {
     mode: mode as InitiativeMode,
     roll: roll.trim(),
     ...sideParts(fields.sides, firstSide as InitiativeSide),
     ...modifierSources(fields),
-    ...(sideRoll && { sideRoll }),
+    ...sideRollParts(fields.sideRoll, fields.sideRollOnce),
     ...cardParts(fields),
     ...hitPointRolls(fields.rollHitPoints),
   };
@@ -41,7 +40,7 @@ export function parseInitiativeRules(raw: unknown): InitiativeRules | undefined 
 
 /**
  * Whether the rules can be saved as they stand; while they are edited the roll may be half
- * typed. By sides nothing is rolled, so the roll does not matter there.
+ * typed. By sides only the side roll matters, if set.
  */
 export function isValidInitiativeRules(rules: InitiativeRules): boolean {
   if (rules.mode === 'turn-order') return isValidDefaultRoll(rules.roll);
