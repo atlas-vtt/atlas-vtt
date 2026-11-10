@@ -87,9 +87,10 @@ function useModeTools(mode: WallToolSubMode): React.ReactElement[] {
 }
 
 /**
- * The lighting tool's bars above the main toolbar while the tool is chosen, both smaller than the
- * toolbar: its modes, ending at the toolbar's middle so they never move, and beside them a bar of
- * the current mode's tools, which a mode with none leaves out. The tool's menu keeps the sizes, the
+ * The lighting tool's bars above the main toolbar while the tool is chosen, with the toolbar's
+ * corners and smaller buttons: its modes, from the toolbar's left edge, and after them a bar of
+ * the current mode's tools, which a mode with none leaves out. The modes bar keeps its width, so
+ * neither bar moves when the mode changes. The tool's menu keeps the sizes, the
  * light to place and the scene's lighting. Hidden in the players' view and while the toolbar is arranged.
  */
 export function LightingToolBar(): React.ReactElement {

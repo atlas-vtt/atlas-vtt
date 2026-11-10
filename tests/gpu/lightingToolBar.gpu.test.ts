@@ -18,7 +18,7 @@ vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({ useHotkeyLabels: () => 
 const THEME = `
   body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1e1e1e; --background-primary: #1e1e1e; --background-secondary: #262626;
     --background-modifier-border: #363636; --background-modifier-hover: rgba(255, 255, 255, 0.075); --text-normal: #dadada; --text-muted: #b3b3b3; --text-faint: #777;
-    --text-on-accent: #fff; --interactive-accent: #7f6df2; --mono-100: #fff; --divider-color: #363636; --radius-s: 4px; --radius-m: 8px; --radius-l: 12px; --radius-xl: 16px;
+    --text-on-accent: #fff; --interactive-accent: #7f6df2; --mono-100: #fff; --divider-color: #363636; --radius-s: 4px; --radius-m: 8px; --radius-l: 12px; --radius-xl: 24px;
     --font-ui-smaller: 12px; --font-ui-small: 13px; }
 `;
 const h = React.createElement;
@@ -63,21 +63,24 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     expect(Math.abs(rect('.atlas-main-toolbar').top - 8 - rect('.atlas-lighting-bar--modes').bottom)).toBeLessThan(0.05);
   });
 
-  it('puts the modes and the tools in two bars smaller than the toolbar, meeting at its middle', async () => {
+  it('puts the modes and the tools in two bars from the toolbar\'s left edge, smaller than the toolbar, with its corners', async () => {
     mount(false);
     await settled();
     const toolbar = rect('.atlas-main-toolbar');
-    const middle = (toolbar.left + toolbar.right) / 2;
     const modes = rect('.atlas-lighting-bar--modes');
     const tools = rect('.atlas-lighting-bar--tools');
-    expect(modes.right).toBeCloseTo(middle - 4, 0);
-    expect(tools.left).toBeCloseTo(middle + 4, 0);
+    expect(modes.left).toBeCloseTo(toolbar.left, 0);
+    expect(tools.left).toBeCloseTo(modes.right + 8, 0);
     expect(tools.bottom).toBeCloseTo(modes.bottom, 0);
-    // A second level: buttons of 32 px in 4 px of padding, against the toolbar's 40 in 8.
-    expect(modes.height).toBeCloseTo(42, 0);
-    expect(modes.height).toBeLessThan(toolbar.height - 12);
+    // A second level: buttons of 32 px against the toolbar's 40, in the toolbar's 8 px of padding.
+    expect(modes.height).toBeCloseTo(50, 0);
+    expect(modes.height).toBeLessThan(toolbar.height - 6);
     const buttons = [...document.querySelectorAll('.atlas-lighting-bar--modes .atlas-tool-button')].map((button) => button.getBoundingClientRect());
     expect(buttons.map((button) => Math.round(button.width))).toEqual([32, 32, 32, 32, 32, 32]);
+    // The toolbar's corner, which a bar too short for it would round into a capsule.
+    const corner = (selector: string): string => getComputedStyle(document.querySelector(selector)!).borderTopLeftRadius;
+    expect(corner('.atlas-lighting-bar--modes')).toBe(corner('.atlas-main-toolbar'));
+    expect(modes.height).toBeGreaterThanOrEqual(2 * parseFloat(corner('.atlas-main-toolbar')));
   });
 
   it('moves nothing of the modes when another mode brings other tools', async () => {
@@ -91,7 +94,7 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     expect(rect('.atlas-lighting-bar--modes')).toEqual(modes);
     // Carve, fill and door, then the shapes, a doubled gap between them.
     const buttons = [...document.querySelectorAll('.atlas-lighting-bar--tools .atlas-tool-button')].map((button) => button.getBoundingClientRect());
-    expect(buttons.slice(1).map((button, index) => Math.round(button.left - buttons[index]!.right))).toEqual([4, 4, 8, 4, 4, 4]);
+    expect(buttons.slice(1).map((button, index) => Math.round(button.left - buttons[index]!.right))).toEqual([8, 8, 16, 8, 8, 8]);
     act(() => store.getState().setLightingTool({ mode: 'light-zone' }));
     await vi.waitFor(() => expect(document.querySelector('.atlas-lighting-bar--tools')).toBeNull(), { timeout: 2000 });
     expect(rect('.atlas-lighting-bar--modes')).toEqual(modes);

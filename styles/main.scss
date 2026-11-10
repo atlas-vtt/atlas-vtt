@@ -432,7 +432,7 @@
     --atlas-toolbar-lift: 0px;
   }
 
-  // The active tool's own bar, centred on the toolbar's column (absolute, so the row's
+  // The active tool's own bars, from the toolbar's left edge (absolute, so the row's
   // lines are named: an absolute grid child's auto line is the row's edge). Its height,
   // gap included, is the lift of whatever hangs above the toolbar (BottomToolbarRow).
   .atlas-bottom-toolbar-row__options {
@@ -442,7 +442,7 @@
     right: 0;
     bottom: 100%;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     padding-bottom: $spacing-s;
     pointer-events: none;
 

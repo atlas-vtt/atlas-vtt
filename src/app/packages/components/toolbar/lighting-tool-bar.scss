@@ -2,27 +2,25 @@
 // The lighting tool's bars above the main toolbar: its modes, and beside them
 // the current mode's tools (`LightingToolBar`)
 // ═══════════════════════════════════════════════════════════════════════════
-// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The bars are
-// built like the toolbar editor's tray: smaller than the toolbar, so they read as
-// its second level, and listed in main.scss' `$toolbars` for the buttons' look.
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The bars have the
+// toolbar's padding and corners with smaller buttons, so they read as its second level, and are
+// listed in main.scss' `$toolbars` for the buttons' look.
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-$bar-inset: $spacing-xs;
+// The toolbar's inset: a bar of 32 px buttons in it is tall enough for the toolbar's own corner
+// (a shorter one rendered as a capsule, rounder than the toolbar under it).
+$bar-inset: $spacing-s;
 $bar-control: $button-height-m;
-// Shorter than its radius allows, a bar renders as a capsule: its end controls run concentric
-// with the capsule's ends, which caps their radius at half their height.
 $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
 
-// Two equal halves over the toolbar: the modes end at its middle and the tools begin there, so
-// neither bar moves when the other changes.
+// The modes start at the toolbar's left edge and the tools follow them: the modes bar keeps its
+// width, so neither bar moves when the mode changes.
 .atlas-lighting-bars {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: end;
-  column-gap: $spacing-s;
+  display: flex;
+  align-items: flex-end;
+  gap: $spacing-s;
 }
 
 .atlas-lighting-bar {
@@ -44,16 +42,6 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
       var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
     @include atlas-corner-shape;
   }
-}
-
-.atlas-lighting-bar--modes {
-  grid-column: 1;
-  justify-self: end;
-}
-
-.atlas-lighting-bar--tools {
-  grid-column: 2;
-  justify-self: start;
 }
 
 // Groups are told apart by space alone (no divider lines): the break adds a gap to the gap.
