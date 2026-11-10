@@ -6,13 +6,18 @@
 // toolbar's padding and corners with smaller buttons, so they read as its second level, and are
 // listed in main.scss' `$toolbars` for the buttons' look.
 
+@use 'sass:math';
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// The toolbar's inset: a bar of 32 px buttons in it is tall enough for the toolbar's own corner
-// (a shorter one rendered as a capsule, rounder than the toolbar under it).
+// The toolbar's inset with smaller buttons, and the toolbar's corner scaled with the bar's height:
+// the toolbar's own radius on a shorter bar left almost no straight edge between its corners and
+// read as a capsule, so the bar is the toolbar drawn smaller.
 $bar-inset: $spacing-s;
 $bar-control: $button-height-m;
+$bar-height: $bar-control + 2 * $bar-inset + 2 * $border-width-m;
+$toolbar-height: $button-height-l + 2 * $spacing-s + 2 * $border-width-m;
+$bar-radius: calc(#{$radius-2xl} * #{math.div($bar-height, $toolbar-height)});
 $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
 
 // The modes start at the toolbar's left edge and the tools follow them: the modes bar keeps its
@@ -30,7 +35,7 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
   padding: $bar-inset;
   pointer-events: auto;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($bar-radius);
 
   > :nth-child(1 of :not([aria-hidden])) { --atlas-bar-start-radius: #{$bar-end-radius}; }
   > :nth-last-child(1 of :not([aria-hidden])) { --atlas-bar-end-radius: #{$bar-end-radius}; }
