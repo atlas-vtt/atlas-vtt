@@ -42,6 +42,7 @@ export const toolbar: Translation = {
   'toolbar.lasso': '套索',
   'toolbar.rectangle': '矩形',
   'toolbar.icons': '图标',
+  'toolbar.drawRooms': '画房间',
   'toolbar.drawWalls': '画墙',
   'toolbar.pointToPoint': '点到点',
   'toolbar.gmView': '主持人视图（{key}）',

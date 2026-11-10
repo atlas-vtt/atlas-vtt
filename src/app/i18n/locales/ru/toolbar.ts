@@ -43,6 +43,7 @@ export const toolbar: Translation = {
   'toolbar.lasso': 'Лассо',
   'toolbar.rectangle': 'Прямоугольник',
   'toolbar.icons': 'Значки',
+  'toolbar.drawRooms': 'Рисовать комнаты',
   'toolbar.drawWalls': 'Рисовать стены',
   'toolbar.pointToPoint': 'По точкам',
   'toolbar.gmView': 'Вид мастера ({key})',

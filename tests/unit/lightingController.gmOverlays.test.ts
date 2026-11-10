@@ -65,6 +65,7 @@ describe('a picture of the scene (a thumbnail)', () => {
   it('leaves the wall editor out with the lighting tool', () => {
     const { controller, store } = setup();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     const { before, during, after } = picture(controller);
     // The rooms layer holds only a shape under way in the rooms mode.
     expect(before).toEqual({ wallEditor: true, lightZones: false, levelSurfaces: false, exploredMemory: false, rooms: false, doorBadges: true, lightMarkers: true, rangeRings: false, sightAids: true });
