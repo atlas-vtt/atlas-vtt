@@ -2,6 +2,11 @@
   "version": "0.14.1-beta.0",
   "releases": [
     {
+      "version": "0.14.1-beta.0",
+      "title": "Coming in 0.14.1",
+      "markdown": "## New\n\n- 'Hidden' status for campaign quests, hiding them from players until they are revealed."
+    },
+    {
       "version": "0.14.0",
       "date": "2026-11-10",
       "title": "Rooms, pin names and a tidier lighting tool",
