@@ -34,7 +34,7 @@
   position: absolute;
   bottom: 100%;
   left: 50%;
-  margin-bottom: calc(#{$spacing-l} + var(--atlas-toolbar-lift, 0px));
+  margin-bottom: $spacing-l;
   transform: translateX(-50%);
   z-index: $z-atlas-dropdown;
   pointer-events: auto;

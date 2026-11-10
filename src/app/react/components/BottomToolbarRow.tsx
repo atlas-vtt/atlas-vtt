@@ -10,7 +10,7 @@ interface BottomToolbarRowProps {
   end?: React.ReactNode;
   /** Centred above the row (the turn banner); it takes no room in the row. */
   above?: React.ReactNode;
-  /** The active tool's own bars, above the toolbar from its left edge; the menus and the banner above stand clear of them. */
+  /** The active tool's own bars, above the toolbar from its left edge; the banner above stands clear of them, the toolbar's menus open over them. */
   options?: React.ReactNode;
   /** The main toolbar, centred on the view. */
   children: React.ReactNode;
@@ -40,7 +40,7 @@ export function BottomToolbarRow({ start, end, above, options, children }: Botto
     if (!row || !startSlot || !endSlot || !optionsSlot) return undefined;
 
     const measure = (): void => {
-      // What hangs above the toolbar (its menus, the dice tray, the turn banner) is lifted over the tool's bar.
+      // The turn banner is lifted over the tool's bars; menus and the dice tray open over them.
       row.style.setProperty('--atlas-toolbar-lift', `${optionsSlot.getBoundingClientRect().height}px`);
       // A row that is not laid out (hidden leaf, tests) constrains nothing.
       if (row.clientWidth === 0) {

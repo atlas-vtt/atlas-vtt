@@ -72,6 +72,8 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     expect(modes.left).toBeCloseTo(toolbar.left, 0);
     expect(tools.left).toBeCloseTo(modes.right + 8, 0);
     expect(tools.bottom).toBeCloseTo(modes.bottom, 0);
+    // Below whatever hangs from the toolbar, and still the bars' own to click.
+    expect(document.elementFromPoint(modes.left + 24, modes.top + modes.height / 2)?.closest('.atlas-lighting-bar--modes')).not.toBeNull();
     // A second level: buttons of 32 px against the toolbar's 40, in the toolbar's 8 px of padding.
     expect(modes.height).toBeCloseTo(50, 0);
     expect(modes.height).toBeLessThan(toolbar.height - 6);
@@ -99,14 +101,26 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     expect(rect('.atlas-lighting-bar--modes')).toEqual(modes);
   });
 
-  it('lifts the tool\'s menu by the bars and their gap, and lets it down again when they go', async () => {
+  it('opens the tool\'s menu in its own place, over the bars, and sets the lift the turn banner stands clear by', async () => {
     mount(true);
     await settled();
     const bar = rect('.atlas-lighting-bar--modes');
-    const lifted = rect('.atlas-dropdown-content').bottom;
-    expect(lifted).toBeLessThan(bar.top - 6);
+    const menu = rect('.atlas-dropdown-content');
+    const toolbar = rect('.atlas-main-toolbar');
+    // As without the bars: the menu's foot is where every toolbar menu's is, below the bars' top.
+    expect(menu.bottom).toBeGreaterThan(bar.top);
+    expect(menu.bottom).toBeLessThan(toolbar.top);
+    // Where the two overlap, the menu is on top and takes the pointer.
+    const x = Math.max(menu.left, bar.left) + 6;
+    const y = Math.max(menu.top, bar.top) + 6;
+    expect(x).toBeLessThan(Math.min(menu.right, bar.right));
+    expect(y).toBeLessThan(Math.min(menu.bottom, bar.bottom));
+    expect(document.elementFromPoint(x, y)?.closest('.atlas-dropdown-content')).not.toBeNull();
+    const row = document.querySelector<HTMLElement>('.atlas-bottom-toolbar-row')!;
+    expect(parseFloat(row.style.getPropertyValue('--atlas-toolbar-lift'))).toBeCloseTo(bar.height + 8, 0);
+    const place = menu.bottom;
     act(() => store.setState({ isGMView: false }));
     await vi.waitFor(() => expect(document.querySelector('.atlas-lighting-bars')).toBeNull());
-    expect(rect('.atlas-dropdown-content').bottom - lifted).toBeCloseTo(bar.height + 8, 0);
+    expect(rect('.atlas-dropdown-content').bottom).toBeCloseTo(place, 1);
   });
 });
