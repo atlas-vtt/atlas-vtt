@@ -12,6 +12,11 @@ import { trackerSegments } from '../../initiative/trackerSegments';
 import { useInitiativeLayout } from '../../initiative/useInitiativeLayout';
 import { useMapResources } from '../../resources/useMapResources';
 import { useInitiativeTokenSync } from '../../initiative/useInitiativeTokenSync';
+import { missingPartyEntries } from '../../initiative/party';
+import { mapEnemyImage } from '../../initiative/mapParty';
+import { useMapParty, usePartyEntrySync } from '../../initiative/useMapParty';
+import { useMapCollectionId } from '../hooks/useMapCollectionId';
+import { CollectionSettingsModal } from './CollectionSettingsModal';
 import { useMapInitiativeRules } from '../../initiative/useMapInitiativeRules';
 import { useInitiativeRolls } from '../../initiative/useInitiativeRolls';
 import { useEditInitiativePopup } from './useEditInitiativePopup';
@@ -20,6 +25,7 @@ import { useInitiativeCardMenu } from './useInitiativeCardMenu';
 import { initiativeTrackerOptions } from './initiativeTrackerOptions';
 import { DEFAULT_TURN_OPTIONS } from '../../initiative/turnOptions';
 import { clearCombatants } from '../../initiative/offMapCombatants';
+import { nextTokenlessEnemy } from '../../initiative/tokenlessEnemies';
 import { InitiativeTrackerList } from './InitiativeTrackerList';
 import { InitiativeTrackerHeader } from './InitiativeTrackerHeader';
 import { InitiativeTurnControls } from './InitiativeTurnControls';
@@ -58,6 +64,10 @@ export const InitiativeTracker: React.FC = () => {
   const isMapLoading = useAtlasStore((s) => s.isMapLoading);
   const rules = useMapInitiativeRules();
   const { roll, rolling } = useInitiativeRolls(app, rules);
+  // The players at the table, from the collection's party
+  const party = useMapParty();
+  const collectionId = useMapCollectionId();
+  const [partySettingsOpen, setPartySettingsOpen] = useState(false);
   const bySides = listedBySides(initiative, rules);
   const byCards = listedByCards(initiative, rules);
   const sides = useMemo(() => listedSides(initiative, rules), [initiative, rules]);
@@ -70,6 +80,7 @@ export const InitiativeTracker: React.FC = () => {
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
   const openAssetManager = useAtlasStore((s) => s.openAssetManager);
   const setInitiativeConfig = useAtlasStore((s) => s.setInitiativeConfig);
+  const addToInitiative = useAtlasStore((s) => s.addToInitiative);
 
   // Turns pass defeated combatants by, as their cards show them now
   const store = useViewStoreHook();
@@ -89,6 +100,9 @@ export const InitiativeTracker: React.FC = () => {
   const [previewState, previewActions] = useStatblockHoverPreview<PreviewedEntry>({ app });
 
   useInitiativeTokenSync(tokens, initiative.entries);
+  usePartyEntrySync(party, initiative.entries);
+  // The players at the table who are not in the fight yet
+  const missingParty = missingPartyEntries(party, initiative.entries);
 
   // Sorted entries by order
   const sortedEntries = useMemo(() => {
@@ -149,6 +163,7 @@ export const InitiativeTracker: React.FC = () => {
         setTurn: (changes) => settings?.setInitiativeTurnOptions(changes),
         clear: () => clearCombatants(store),
         addCombatant: () => openAssetManager('tokens'),
+        addEnemy: () => addToInitiative(nextTokenlessEnemy(store.getState().initiative.entries, app ? mapEnemyImage(app, store.getState().mapPath) : '')),
       },
     );
     openContextMenuGlobal(entries, { x: rect.left, y: rect.bottom }, { returnFocus: button, doc: button.ownerDocument });
@@ -164,7 +179,7 @@ export const InitiativeTracker: React.FC = () => {
       if (!entry.statblockPath) return;
 
       // The scene this list was drawn from goes with the preview, whatever loads while it stays open
-      const originContext = captureRollContext(view?.viewId, { mapPath, mapLoaded, isMapLoading, objects: { tokens } }, [entry.tokenId]);
+      const originContext = captureRollContext(view?.viewId, { mapPath, mapLoaded, isMapLoading, objects: { tokens } }, entry.tokenId !== undefined ? [entry.tokenId] : []);
       previewActions.showPreview({ entry, originContext }, entry.statblockPath, cardElement);
     },
     [previewActions, view, mapPath, mapLoaded, isMapLoading, tokens]
@@ -219,12 +234,17 @@ export const InitiativeTracker: React.FC = () => {
         onEnd={endCombat}
         onOptions={openOptions}
         onToggleCollapsed={() => setLayout({ collapsed: !layout.collapsed })}
+        // Adds the players at the table; with none to add, opens the collection's party to set it up
+        party={collectionId === null ? null : {
+          label: party.length === 0 ? t('initiative.partySetUp') : missingParty.length > 0 ? t('initiative.partyAdd') : t('initiative.partyEdit'),
+          onClick: () => (missingParty.length > 0 ? missingParty.forEach((entry) => addToInitiative(entry)) : setPartySettingsOpen(true)),
+        }}
       />
 
       {/* The combatants, in the order the list shows them */}
       <div ref={contentRef} className="atlas-initiative-tracker__content">
         {sortedEntries.length === 0 && (
-          <p className="atlas-initiative-tracker__empty">{t('initiative.empty')}</p>
+          <p className="atlas-initiative-tracker__empty">{collectionId !== null ? t('initiative.emptyWithParty') : t('initiative.empty')}</p>
         )}
         {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} />}
       </div>
@@ -238,6 +258,10 @@ export const InitiativeTracker: React.FC = () => {
         onPrevious={() => previousTurn(defeated())}
         onNext={() => nextTurn(defeated())}
       />
+
+      {partySettingsOpen && collectionId !== null && (
+        <CollectionSettingsModal isOpen collectionId={collectionId} initialTab="party" onClose={() => setPartySettingsOpen(false)} />
+      )}
 
       {editPopup}
     </div>

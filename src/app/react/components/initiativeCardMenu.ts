@@ -55,6 +55,9 @@ export function initiativeCardMenu(
   mode: CardMenuMode,
   actions: CardMenuActions,
 ): ContextMenuEntry[] {
+  // A player at the table rolls their own number and is always on the players' side; an enemy added by name
+  // has no token either, so it is never moved to another side
+  const isParty = entry.partyMemberId !== undefined;
   const hidden = token?.isHidden ?? false;
   const current = sideOf(token, mode.sides.map((side) => side.id));
   const item = (label: string, icon: string, onClick: () => void): ContextMenuEntry => ({ type: 'item', label, icon, onClick });
@@ -95,10 +98,10 @@ export function initiativeCardMenu(
   const numbered = !mode.bySides && !mode.cards;
 
   return [
-    ...(numbered ? [item(t('initiative.roll'), 'dice', actions.roll)] : []),
+    ...(numbered && !isParty ? [item(t('initiative.roll'), 'dice', actions.roll)] : []),
     item(t('initiative.toFront'), 'arrow-up-to-line', actions.moveToFront),
     item(t('initiative.toBack'), 'arrow-down-to-line', actions.moveToBack),
-    ...(mode.bySides ? [moveToSide] : []),
+    ...(mode.bySides && token ? [moveToSide] : []),
     ...(numbered ? [item(t('initiative.edit'), 'pencil', actions.edit)] : []),
     ...(mode.cards && entry.card !== undefined && mode.swapTargets.length > 0 ? [swapCard] : []),
     ...(mode.fightRuns ? [sitOut, ...(numbered ? [delay] : [])] : []),

@@ -33,6 +33,8 @@ interface TrackerOptionsActions {
   clear: () => void;
   /** Opens the library on its tokens, whose menu adds them to the tracker beside the map. */
   addCombatant: () => void;
+  /** Adds an enemy without a token, named by number. */
+  addEnemy: () => void;
 }
 
 /**
@@ -120,6 +122,13 @@ export function initiativeTrackerOptions(state: TrackerOptionsState, actions: Tr
       icon: 'list-plus',
       description: t('initiative.addCombatantHint'),
       onClick: actions.addCombatant,
+    },
+    {
+      type: 'item',
+      label: t('initiative.addEnemy'),
+      icon: 'swords',
+      description: t('initiative.addEnemyHint'),
+      onClick: actions.addEnemy,
     },
     {
       type: 'item',

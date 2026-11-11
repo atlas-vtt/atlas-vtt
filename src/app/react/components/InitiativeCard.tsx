@@ -22,6 +22,8 @@ import { combatantConditions } from '../../utils/activeConditions';
 import { useCardPreviewHover } from './useCardPreviewHover';
 import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
+import { entryToken } from '../../initiative/party';
+import { combatantColor, turnColor } from '../../initiative/combatantColor';
 
 interface InitiativeCardProps {
   entry: InitiativeEntry;
@@ -86,7 +88,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   // Read live from the token: the resources that defeat it (hit points), and whether one of them has
   const definitions = useMapResources();
   const conditionDefinitions = useMapConditions();
-  const token = tokens[entry.tokenId];
+  const token = entryToken(tokens, entry);
   const bars = token ? visibleResources(token, definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent) : [];
   const defeated = combatantDefeated(token, definitions);
   const conditions = combatantConditions(token, conditionDefinitions);
@@ -95,6 +97,13 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   // Kept beside the map: in the tracker only, until the GM places it
   const offMap = isOffMap(token);
   const name = (token && tokenDisplayName(token)) || entry.name;
+  // The colour the GM gave the card, and the one its turn pulses in
+  const color = combatantColor(entry);
+  const turn = turnColor(entry, token);
+  const colours = {
+    ...(color ? { '--atlas-combatant-color': color } : {}),
+    ...(turn ? { '--atlas-turn-color': turn } : {}),
+  } as React.CSSProperties;
 
   // Get image URL from vault path
   const getImageUrl = useCallback((imagePath: string): string => {
@@ -155,14 +164,38 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     }
   };
 
-  // A click selects the token as a click on the map does (Shift adds) and brings it into view
+  // A click selects the token as a click on the map does (Shift adds) and brings it into view; on a
+  // player at the table, who has no token, it types in the number they rolled
   const handleClick = (e: React.MouseEvent): void => {
-    focusCombatant(view, store.getState(), entry.tokenId, e.shiftKey);
+    if (entry.tokenId !== undefined) focusCombatant(view, store.getState(), entry.tokenId, e.shiftKey);
+    else if (!bySides && !byCards) onStartNumberEdit(entry);
   };
+
+  // Its badge number and what the players do not see of it, at the portrait's corners or beside the name
+  const marks = (
+    <>
+      {instanceBadge != null && (
+        <span className="atlas-initiative-card__instance-badge">{instanceBadge}</span>
+      )}
+
+      {hiddenFromPlayers && (
+        <LabelTooltip label={t('initiative.hiddenFromPlayers')} side={tooltipSide}>
+          <span className="atlas-initiative-card__hidden-badge"><EyeOff /></span>
+        </LabelTooltip>
+      )}
+
+      {offMap && (
+        <LabelTooltip label={t('initiative.offMap')} side={tooltipSide}>
+          <span className="atlas-initiative-card__off-map-badge"><OffMapIcon /></span>
+        </LabelTooltip>
+      )}
+    </>
+  );
 
   // Build class names
   const cardClasses = [
     'atlas-initiative-card',
+    color && 'atlas-initiative-card--coloured',
     entry.isActive && !bySides && 'atlas-initiative-card--active',
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
@@ -177,6 +210,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     <div
       ref={cardRef}
       className={cardClasses}
+      style={color || turn ? colours : undefined}
       // A field being typed in keeps its text selection to itself
       draggable={!isEditingNumber}
       onClick={handleClick}
@@ -218,21 +252,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
           </div>
         )}
 
-        {instanceBadge != null && (
-          <span className="atlas-initiative-card__instance-badge">{instanceBadge}</span>
-        )}
-
-        {hiddenFromPlayers && (
-          <LabelTooltip label={t('initiative.hiddenFromPlayers')} side={tooltipSide}>
-            <span className="atlas-initiative-card__hidden-badge"><EyeOff /></span>
-          </LabelTooltip>
-        )}
-
-        {offMap && (
-          <LabelTooltip label={t('initiative.offMap')} side={tooltipSide}>
-            <span className="atlas-initiative-card__off-map-badge"><OffMapIcon /></span>
-          </LabelTooltip>
-        )}
+        {marks}
       </div>
 
       {showName && <span className="atlas-initiative-card__name" aria-hidden="true">{name}</span>}
@@ -249,7 +269,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
         />
       ))}
 
-      {bars.length > 0 && <CardResourceBars tokenId={entry.tokenId} bars={bars} />}
+      {token && bars.length > 0 && <CardResourceBars tokenId={token.id} bars={bars} />}
 
       <CardConditions conditions={conditions} tooltipSide={tooltipSide} />
     </div>

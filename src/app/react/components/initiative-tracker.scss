@@ -256,14 +256,22 @@ $collapse-height: 24px;
     transform: scale(0.96);
   }
 
+  // The colour the GM gave the card: its border and a wash of its fill; the turn's accent wins
+  &--coloured,
+  &--coloured:hover {
+    border-color: var(--atlas-combatant-color);
+    background: color-mix(in srgb, var(--atlas-combatant-color) 22%, var(--background-modifier-hover));
+  }
+
   // Active turn state
   // Ring and glow are inset: the list scrolls, so anything drawn outside the
   // card box is clipped on the straight edges and leaves ragged corners.
+  // In the combatant's own colour (`--atlas-turn-color`, `turnColor`), else the accent
   &--active {
-    border-color: var(--interactive-accent);
+    border-color: var(--atlas-turn-color, var(--interactive-accent));
     box-shadow:
-      inset 0 0 0 1px var(--interactive-accent),
-      inset 0 0 12px color-mix(in oklch, var(--interactive-accent) 25%, transparent);
+      inset 0 0 0 1px var(--atlas-turn-color, var(--interactive-accent)),
+      inset 0 0 12px color-mix(in oklch, var(--atlas-turn-color, var(--interactive-accent)) 25%, transparent);
     animation: atlas-initiative-pulse 2s ease-in-out infinite;
   }
 
@@ -319,8 +327,8 @@ $collapse-height: 24px;
 @keyframes atlas-initiative-pulse {
   50% {
     box-shadow:
-      inset 0 0 0 1px var(--interactive-accent),
-      inset 0 0 16px color-mix(in oklch, var(--interactive-accent) 45%, transparent);
+      inset 0 0 0 1px var(--atlas-turn-color, var(--interactive-accent)),
+      inset 0 0 16px color-mix(in oklch, var(--atlas-turn-color, var(--interactive-accent)) 45%, transparent);
   }
 }
 
@@ -711,3 +719,4 @@ $collapse-height: 24px;
     transform: translateX(0) scale(1);
   }
 }
+

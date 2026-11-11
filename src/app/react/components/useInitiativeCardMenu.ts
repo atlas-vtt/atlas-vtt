@@ -9,6 +9,7 @@ import type { TokenEntity } from '../../types';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import type { ListedSide } from '../../initiative/sides';
 import { initiativeCardMenu, type CardMenuMode } from './initiativeCardMenu';
+import { entryToken } from '../../initiative/party';
 
 interface CardMenuInputs {
   tokens: Readonly<Record<string, TokenEntity>>;
@@ -51,17 +52,17 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
 
   return useCallback((event: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement): void => {
     const targets = cards ? swapTargets(store.getState().initiative.entries, entry) : [];
-    const entries = initiativeCardMenu(entry, tokens[entry.tokenId], { bySides, sides, cards, fightRuns, swapTargets: targets }, {
+    const entries = initiativeCardMenu(entry, entryToken(tokens, entry), { bySides, sides, cards, fightRuns, swapTargets: targets }, {
       roll: () => roll(entry.id),
       moveToFront: () => moveToFront(entry.id),
       moveToBack: () => moveToBack(entry.id),
       edit: () => edit(entry, cardElement),
-      updateToken: (changes) => updateTokens([{ id: entry.tokenId, changes }]),
+      updateToken: (changes) => { if (entry.tokenId !== undefined) updateTokens([{ id: entry.tokenId, changes }]); },
       setSitsOut: (sitsOut) => setInitiativeSitsOut(entry.id, sitsOut),
       swapCard: (withId) => swapInitiativeCards(entry.id, withId),
       delay: () => delayInitiativeTurn(entry.id, defeated()),
       actNow: () => actNowInInitiative(entry.id),
-      placeOnMap: () => { if (view) placeCombatantOnMap(view, entry.tokenId); },
+      placeOnMap: () => { if (view && entry.tokenId !== undefined) placeCombatantOnMap(view, entry.tokenId); },
       remove: () => removeCombatant(store, entry, defeated()),
     });
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });

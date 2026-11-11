@@ -6,6 +6,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
 import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, sideIdsOf, type EntryToken } from './playerInitiativeList';
 import { mapInitiativeRules } from './mapInitiativeRules';
+import { entryToken } from '../initiative/party';
 import { mapConditions } from '../gameSystems/mapRules';
 import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
@@ -95,12 +96,12 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     // The conditions the map draws on the tokens, as players see them there
     const conditions = lookup ? mapConditions(lookup, mapPath) : [];
     const visibleTokenIds = entries
-      .filter((entry) => listedForPlayers(tokens?.[entry.tokenId]))
+      .filter((entry) => listedForPlayers(entryToken(tokens, entry)))
       .map((entry) => entry.tokenId)
       .join(TOKEN_ID_SEPARATOR);
     // A token's side counts where the fight or the rules know it
     const sides = entries.length > 0 && initiative ? sideIdsOf(initiative, mapInitiativeRules(this.app, mapPath ?? null)) : undefined;
-    const entryTokens = JSON.stringify(entries.map((entry): EntryToken => entryTokenOf(tokens?.[entry.tokenId], definitions, conditions, sides)));
+    const entryTokens = JSON.stringify(entries.map((entry): EntryToken => entryTokenOf(entryToken(tokens, entry), definitions, conditions, sides)));
     return { initiative, initiativeTrackerOpen, visibleTokenIds, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false };
   }
 
@@ -113,7 +114,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     const hpVisible = mapResources(rulesLookup(this.app), scene.mapPath).some((definition) => definition.key === 'hp' && definition.visibleToPlayers);
     const list = playerInitiativeList(
       initiative,
-      (entry, index) => (visibleTokenIds.has(entry.tokenId) ? tokenOf[index] ?? { hp: null, showRing: true, side: 'opponents', defeated: false } : null),
+      (entry, index) => (entry.tokenId !== undefined && visibleTokenIds.has(entry.tokenId) ? tokenOf[index] ?? { hp: null, showRing: true, side: 'opponents', defeated: false } : null),
       mapInitiativeRules(this.app, scene.mapPath),
       hpVisible,
     );
@@ -121,6 +122,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     const held = this.shownNumbers;
     const shown = new Map<string, number>();
     for (const { entry } of list.combatants) {
+      if (entry.tokenId === undefined) continue;
       const number = live ? live.numberOf(entry.tokenId) : held.get(entry.tokenId) ?? null;
       if (number !== null) shown.set(entry.tokenId, number);
     }

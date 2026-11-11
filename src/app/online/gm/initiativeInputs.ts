@@ -6,6 +6,7 @@ import { mapConditions, rulesForMap, type RulesLookup } from '../../gameSystems/
 import { mapResources } from '../../resources/collectionResources';
 import { entryTokenOf, listedForPlayers, playerInitiativeList, playerSegments, sideIdsOf, type PlayerInitiativeList } from '../../services/playerInitiativeList';
 import { sharedConditions } from './tokenUI.ts';
+import { entryToken } from '../../initiative/party';
 import type { TokenEntity } from '../../types';
 import type { InitiativeRules } from '../../types/initiativeRulesTypes';
 import type { ViewState } from '../../types/viewState';
@@ -98,7 +99,7 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
   const sides = sideIdsOf(initiative, initiativeRules);
   const list = playerInitiativeList(
     initiative,
-    (entry) => (listedForPlayers(tokens[entry.tokenId]) ? entryTokenOf(tokens[entry.tokenId], definitions, conditions, sides) : null),
+    (entry) => (listedForPlayers(entryToken(tokens, entry)) ? entryTokenOf(entryToken(tokens, entry), definitions, conditions, sides) : null),
     initiativeRules,
     hpVisible,
   );
@@ -129,8 +130,8 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
       hp: token.hp !== null && finite(token.hp.current) && finite(token.hp.max) ? { current: token.hp.current, max: token.hp.max } : null,
       ...(nextRound.has(combatant) ? { nextRound: true } : {}),
       ...(token.conditions?.length ? { conditions: sharedConditions(token.conditions) } : {}),
-      ...instanceOf(inputs.badge?.(entry.tokenId) ?? null),
-      ...aliasOf(inputs.tokenAlias?.(entry.tokenId)),
+      ...instanceOf(entry.tokenId === undefined ? null : inputs.badge?.(entry.tokenId) ?? null),
+      ...aliasOf(entry.tokenId === undefined ? undefined : inputs.tokenAlias?.(entry.tokenId)),
     };
   });
   return {

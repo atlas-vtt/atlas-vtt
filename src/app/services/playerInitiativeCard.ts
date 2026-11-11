@@ -34,7 +34,7 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   const portrait = src
     ? createTokenPortrait(card, { src, alt: name === entry.name ? name : '', cls: 'atlas-player-initiative__avatar', showRing: token.showRing, ringColor: token.ringColor })
     : null;
-  const badge = look.badgeNumber?.(entry.tokenId) ?? null;
+  const badge = entry.tokenId === undefined ? null : look.badgeNumber?.(entry.tokenId) ?? null;
   if (badge !== null) (portrait ?? card).createSpan({ cls: 'atlas-player-initiative__badge', text: String(badge) });
   if (token.defeated) renderDefeated(card, src !== null);
   // A combatant without a number yet shows a dash, not a 0 nobody rolled

@@ -20,11 +20,17 @@ export interface InitiativeEntry {
   /** Unique identifier for this entry */
   id: string;
 
-  /** Reference to the token on the map */
-  tokenId: string;
+  /** The token on the map; none for a player at the table (`partyMemberId`) or an enemy added by name (`isTokenlessEnemy`). */
+  tokenId?: string;
+
+  /** The collection's party member this entry is (`PartyMember.id`); such an entry has no token. */
+  partyMemberId?: string;
 
   /** Display name */
   name: string;
+
+  /** The colour the GM gave the card, `#rrggbb`; read with `combatantColor`. Older versions ignore it. */
+  color?: string | undefined;
 
   /** Rolled initiative value (after modifiers) */
   initiative: number;
