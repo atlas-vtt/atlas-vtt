@@ -54,9 +54,41 @@ function setup(initiativeTrackerOpen = true): { service: PlayerWindowService; se
 }
 
 describe('player initiative panel', () => {
+  it('sizes the list and the turn banner by the player view settings', () => {
+    const { settings, doc } = setup();
+    const overlays = (): HTMLElement => doc.querySelector<HTMLElement>('.atlas-player-overlays')!;
+    expect(overlays().style.getPropertyValue('--atlas-player-initiative-scale')).toBe('1');
+    expect(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale')).toBe('2');
+    settings.setLocalPlayerViewSettings({ initiativeScale: 2, turnBannerScale: 3 });
+    expect(overlays().style.getPropertyValue('--atlas-player-initiative-scale')).toBe('2');
+    expect(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale')).toBe('3');
+  });
+
+  it('flashes the border of who holds a turn that begins, not of a fight seen running', () => {
+    const { store, doc } = setup();
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
+    const flashing = (): Element[] => [...doc.querySelectorAll('.atlas-player-initiative__card--turn-flash')];
+    expect(flashing()).toEqual([]);
+    const ara: InitiativeEntry = {
+      id: 'ara', partyMemberId: 'member-ara', name: 'Ara', initiative: 12, initiativeModifier: 0,
+      imagePath: '', isActive: true, isNPC: false, order: 1,
+    };
+    const [hero] = store.getState().initiative.entries;
+    store.setState({ initiative: { ...store.getState().initiative, entries: [{ ...hero!, isActive: false }, ara] } });
+    expect(flashing()).toHaveLength(1);
+    expect(flashing()[0]?.textContent).toContain('Ara');
+    // A redraw during the flash takes it up where it was; once it is over, nothing flashes
+    now.mockReturnValue(1400);
+    store.setState({ initiative: { ...store.getState().initiative, entries: [{ ...hero!, isActive: false }, { ...ara, initiative: 13 }] } });
+    expect((flashing()[0] as HTMLElement | undefined)?.style.getPropertyValue('--atlas-turn-flash-delay')).toBe('-400ms');
+    now.mockReturnValue(3000);
+    store.setState({ initiative: { ...store.getState().initiative } });
+    expect(flashing()).toEqual([]);
+  });
+
   it('gates player sharing independently of other widgets and follows combat changes', () => {
     const { settings, store, doc } = setup();
-    const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]');
+    const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     expect(panel()).not.toBeNull();
     expect(panel()?.textContent).toContain('18');
     expect(panel()?.textContent).toContain('Round 1');
@@ -71,9 +103,28 @@ describe('player initiative panel', () => {
     expect(store.getState().initiativeTrackerOpen).toBe(true);
   });
 
+  it('lists the players at the table, who have no token, with the number the GM typed in', () => {
+    const { store, doc } = setup();
+    const ara: InitiativeEntry = {
+      id: 'ara', partyMemberId: 'member-ara', name: 'Ara', initiative: 21, initiativeModifier: 0,
+      imagePath: '', isActive: false, isNPC: false, order: 1,
+    };
+    store.setState({ initiative: { ...store.getState().initiative, entries: [...store.getState().initiative.entries, ara] } });
+    const values = [...doc.querySelectorAll('.atlas-player-initiative__value')].map((value) => value.textContent);
+    expect(values).toEqual(['18', '21']);
+
+    // By sides a player at the table is on the players' side
+    initiativeRules.value = { ...TURN_ORDER, mode: 'sides' };
+    store.setState({ initiative: { ...store.getState().initiative, sides: { first: 'players', active: 'players' } } });
+    // (the harness' token has no vision, so it is an opponent)
+    const players = doc.querySelector('.atlas-player-initiative__side[aria-label="Players"]');
+    expect(players?.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(1);
+    expect(doc.querySelectorAll('.atlas-player-initiative__side[aria-label="Opponents"] .atlas-player-initiative__card')).toHaveLength(1);
+  });
+
   it('requires the DM tracker to be open and reacts immediately to visibility changes', () => {
     const { settings, store, doc } = setup(false);
-    const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]');
+    const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     expect(settings.getLocalPlayerViewSettings().showInitiative).toBe(true);
     expect(panel()).toBeNull();
     store.setState({ initiativeTrackerOpen: true });
@@ -92,7 +143,7 @@ describe('player initiative panel', () => {
 
   it('excludes hidden and deleted tokens, and shows names and HP only where players may see them', () => {
     const { settings, store, doc } = setup();
-    const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]');
+    const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     expect(panel()?.textContent).not.toContain('Hero');
     expect(panel()?.querySelector('progress')).toBeNull();
     settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
@@ -137,7 +188,7 @@ describe('player initiative panel', () => {
 
     expect(() => store.setState({ objects: { ...objects, tokens: { hero: withoutHp as typeof objects.tokens.hero } } })).not.toThrow();
 
-    const panel = doc.querySelector('[aria-label="Initiative order"]');
+    const panel = doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     expect(panel?.textContent).toContain('Hero');
     expect(panel?.querySelector('progress')).toBeNull();
   });
@@ -165,7 +216,7 @@ describe('player initiative panel', () => {
 
   it('keeps the presented map\'s tracker visibility while the DM browses another map', () => {
     const { service, store, doc, source } = setup(false);
-    const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]');
+    const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     service.holdCurrentFrame();
     // Switching tabs loads the other map into the same view store.
     store.setState({ initiativeTrackerOpen: true, initiative: { ...store.getState().initiative, round: 5 } });
@@ -185,7 +236,7 @@ describe('player initiative panel', () => {
     const { service, store, doc } = setup();
     service.holdCurrentFrame();
     store.setState({ initiativeTrackerOpen: false, objects: { tokens: {} } });
-    expect(doc.querySelector('[aria-label="Initiative order"]')?.textContent).toContain('Round 1');
+    expect(doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])')?.textContent).toContain('Round 1');
   });
 
   it('keeps the initiative of a closed presented map without following its store', () => {
@@ -229,7 +280,7 @@ describe('player initiative panel', () => {
 
     store.setState({ initiative: { ...initiative, round: 2 } });
 
-    expect(scrolls.calls).toEqual([[doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__card--active'), 'nearest', 2]]);
+    expect(scrolls.calls).toEqual([[doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__card--active'), 'nearest', 2, 'y']]);
     expect(scrolls.calls[0]?.[1]).not.toBeNull();
   });
 
@@ -279,6 +330,7 @@ describe('player initiative panel of a collection that fights by sides', () => {
     const service = new PlayerWindowService(app, store, settings);
     return { doc: attachFakePlayerWindow(service, { canvas: createEl('canvas'), withPlayerSafeFrame: vi.fn(), store }), store };
   }
+  const FIGHT = { isActive: true, round: 1, sides: { first: 'players', active: 'players' } } as const;
   const groups = (doc: Document): Array<{ side: string | null; names: string[]; active: boolean }> =>
     [...doc.querySelectorAll('.atlas-player-initiative__side')].map((group) => ({
       side: group.getAttribute('aria-label'),
@@ -287,9 +339,9 @@ describe('player initiative panel of a collection that fights by sides', () => {
     }));
 
   it('lists the combatants under their side, the first side on top, without numbers', () => {
-    const { doc } = sides();
+    const { doc } = sides(FIGHT);
     expect(groups(doc)).toEqual([
-      { side: 'Players', names: ['hero', 'cleric'], active: false },
+      { side: 'Players', names: ['hero', 'cleric'], active: true },
       { side: 'Opponents', names: ['goblin', 'rat'], active: false },
     ]);
     expect(doc.querySelector('.atlas-player-initiative__value')).toBeNull();
@@ -299,7 +351,7 @@ describe('player initiative panel of a collection that fights by sides', () => {
   it('marks the side whose turn it is and the combatant who sits the round out', () => {
     const { doc, store } = sides({ isActive: true, round: 2, sides: { first: 'opponents', active: 'players' } }, 'opponents');
     // The side whose turn it is is brought into view
-    expect(scrolls.calls.at(-1)).toEqual([doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__side--active'), 'start']);
+    expect(scrolls.calls.at(-1)).toEqual([doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__side--active'), 'start', 0, 'y']);
     // No single combatant has the turn, whatever its entry says
     const { initiative } = store.getState();
     store.setState({ initiative: { ...initiative, entries: initiative.entries.map((each) => ({ ...each, isActive: true })) } });
@@ -312,10 +364,10 @@ describe('player initiative panel of a collection that fights by sides', () => {
   });
 
   it('follows a token that changes sides, and leaves out a side the players see nobody of', () => {
-    const { doc, store } = sides();
+    const { doc, store } = sides(FIGHT);
     const { objects } = store.getState();
     store.setState({ objects: { ...objects, tokens: { ...objects.tokens, goblin: { ...objects.tokens.goblin!, side: 'players' }, rat: { ...objects.tokens.rat!, isHidden: true } } } });
-    expect(groups(doc)).toEqual([{ side: 'Players', names: ['goblin', 'hero', 'cleric'], active: false }]);
+    expect(groups(doc)).toEqual([{ side: 'Players', names: ['goblin', 'hero', 'cleric'], active: true }]);
   });
 
   it('keeps a fight that was started in turn order in turn order', () => {

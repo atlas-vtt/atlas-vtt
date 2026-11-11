@@ -34,7 +34,7 @@ function setup(badgeNumbers: PlayerBadgeNumbers): { service: PlayerWindowService
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
   const { app } = createInMemoryApp();
   const store = createStore(() => ({
-    initiative: { ...createDefaultInitiativeState(), entries: [entryOf('g1', 0), entryOf('g2', 1), entryOf('g3', 2, { initiative: 0, awaitingInitiative: true })] },
+    initiative: { ...createDefaultInitiativeState(), entries: [entryOf('g1', 0), entryOf('g2', 1), entryOf('g3', 2, { initiative: 0, awaitingInitiative: true })], isActive: true, round: 1 },
     objects: { tokens: { g1: goblin('g1'), g2: goblin('g2'), g3: goblin('g3') } },
     initiativeTrackerOpen: true,
   })) as StoreApi<ViewAtlasState>;
@@ -73,8 +73,8 @@ describe('look-alikes in the players\' initiative list', () => {
     expect(badges(doc)).toEqual(['2', '1', null]);
   });
 
-  it('show a dash for a combatant without a number yet', () => {
+  it('leave the number blank for a combatant without one yet', () => {
     const { doc } = setup(badgesOnTheMap({}));
-    expect([...doc.querySelectorAll('.atlas-player-initiative__value')].map((value) => value.textContent)).toEqual(['10', '9', '–']);
+    expect([...doc.querySelectorAll('.atlas-player-initiative__value')].map((value) => value.textContent)).toEqual(['10', '9', '\u00a0']);
   });
 });

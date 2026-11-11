@@ -3,7 +3,7 @@ import { MENU_SEPARATOR } from './context-menu/AtlasContextMenu';
 import { confirmAction } from '../../ui/confirmDialog';
 import { runInBackground } from '../../utils/backgroundTask';
 import { t } from '../../i18n';
-import type { InitiativeDock } from '../../initiative/initiativeLayout';
+import { PLAYERS_LIST_EDGES, toggledEdge, type InitiativeDock, type PlayersListEdge } from '../../initiative/initiativeLayout';
 import type { InitiativeTurnOptions } from '../../initiative/turnOptions';
 
 interface TrackerOptionsState {
@@ -18,8 +18,15 @@ interface TrackerOptionsState {
   compact: boolean;
   /** During a fight the lists start at the turn (Atlas' setting, followed by the players' list). */
   fromTurn: boolean;
-  /** The edge the players' list stands at. */
-  dock: InitiativeDock;
+  /** The edge the players' list stands at (also across the top or bottom). */
+  dock: PlayersListEdge;
+  /**
+   * Every edge the players' list stands at, and whether each copy faces its edge, as they are now: the submenu
+   * stays open while the GM ticks several, so it reads them again on every change (`subscribeSettings`).
+   */
+  playersList: () => { edges: readonly PlayersListEdge[]; facesPlayers: boolean };
+  /** Reports a change of Atlas' settings; returns the function that stops it. */
+  subscribeSettings?: (onChange: () => void) => () => void;
   /** The edge the GM's tracker stands at. */
   gmDock: InitiativeDock;
   /** What a turn change does (Atlas' settings). */
@@ -33,7 +40,8 @@ interface TrackerOptionsActions {
   setShowNames: (showNames: boolean) => void;
   setCompact: (compact: boolean) => void;
   setFromTurn: (fromTurn: boolean) => void;
-  setDock: (dock: InitiativeDock) => void;
+  setEdges: (edges: PlayersListEdge[]) => void;
+  setFacesPlayers: (on: boolean) => void;
   setGmDock: (dock: InitiativeDock) => void;
   setTurn: (changes: Partial<InitiativeTurnOptions>) => void;
   clear: () => void;
@@ -108,12 +116,34 @@ export function initiativeTrackerOptions(state: TrackerOptionsState, actions: Tr
       onClick: () => actions.setGmDock(state.gmDock === 'left' ? 'right' : 'left'),
     },
     {
-      type: 'item',
-      label: t('initiative.playersListLeft'),
+      type: 'submenu',
+      label: t('initiative.playersList'),
       icon: 'tv',
-      checked: state.dock === 'left',
-      description: t('initiative.playersListLeftHint'),
-      onClick: () => actions.setDock(state.dock === 'left' ? 'right' : 'left'),
+      // Any edges at once, for players around a table TV; the last one stays. Each tick reads the edges as they are
+      // now, since the submenu stays open
+      children: () => {
+        const { edges, facesPlayers } = state.playersList();
+        return [
+          ...PLAYERS_LIST_EDGES.map((edge): ContextMenuEntry => ({
+            type: 'item',
+            label: t(`initiative.playersList.${edge}`),
+            checked: edges.includes(edge),
+            disabled: edges.length === 1 && edges[0] === edge,
+            keepOpen: true,
+            onClick: () => actions.setEdges(toggledEdge(state.playersList().edges, edge)),
+          })),
+          MENU_SEPARATOR,
+          {
+            type: 'item',
+            label: t('initiative.playersList.faces'),
+            checked: facesPlayers,
+            description: t('initiative.playersList.facesHint'),
+            keepOpen: true,
+            onClick: () => actions.setFacesPlayers(!state.playersList().facesPlayers),
+          },
+        ];
+      },
+      ...(state.subscribeSettings && { subscribe: state.subscribeSettings }),
     },
     MENU_SEPARATOR,
     {

@@ -157,13 +157,16 @@ export const InitiativeTracker: React.FC = () => {
     const entries = initiativeTrackerOptions(
       // Cards keep the order they were dealt in, so the Auto sort switch is disabled there as by sides
       { autoSort: initiative.config.autoSort, bySides: bySides || byCards, empty: initiative.entries.length === 0, showNames, compact, fromTurn: layout.fromTurn, dock: layout.dock, gmDock: layout.gmDock,
+        playersList: () => settings?.initiativeLayout() ?? layout,
+        ...(settings && { subscribeSettings: (onChange: () => void) => settings.onChange(onChange) }),
         turn: settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS, online: settings?.isExperimentalOn('onlinePlay') ?? false },
       {
         setAutoSort: (autoSort) => setInitiativeConfig({ autoSort }),
         setShowNames: (on) => settings?.setInitiativeNames(on),
         setCompact: (on) => settings?.setCompactInitiative(on),
         setFromTurn: (fromTurn) => setLayout({ fromTurn }),
-        setDock: (dock) => setLayout({ dock }),
+        setEdges: (edges) => setLayout({ edges }),
+        setFacesPlayers: (facesPlayers) => setLayout({ facesPlayers }),
         setGmDock: (gmDock) => setLayout({ gmDock }),
         setTurn: (changes) => settings?.setInitiativeTurnOptions(changes),
         clear: () => clearCombatants(store),

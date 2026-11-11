@@ -148,7 +148,7 @@ describe('a collapsed tracker', () => {
 });
 
 describe('where the tracker stands', () => {
-  it('docks at the left edge from its options', () => {
+  it('docks at the left edge from its options, whatever edge the players\' list stands at', () => {
     const { container, rerender } = render(<InitiativeTracker />);
     expect(container.querySelector('.atlas-initiative-tracker--left')).toBeNull();
     const item = option('Tracker on the left');
@@ -158,6 +158,25 @@ describe('where the tracker stands', () => {
     layout.gmDock = 'left';
     rerender(<InitiativeTracker />);
     expect(container.querySelector('.atlas-initiative-tracker--left')).not.toBeNull();
+    // The players' list has its own place, along any edge, and moving it leaves the tracker where it is
+    fireEvent.click(screen.getByRole('button', { name: 'Tracker options' }));
+    const list = opened.entries.find((entry) => entry.type === 'submenu' && entry.label === 'Players\' list');
+    if (list?.type !== 'submenu') throw new Error('no "Players\' list" choice');
+    // Read again on every change while the submenu stays open
+    const children = typeof list.children === 'function' ? list.children() : list.children;
+    expect(children.map((entry) => (entry.type === 'item' ? [entry.label, entry.checked] : null))).toEqual([
+      ['Left, top to bottom', false], ['Right, top to bottom', true], ['Top, side by side', false], ['Bottom, side by side', false],
+      null, ['Turn toward the players at each edge', false],
+    ]);
+    const top = children[2];
+    if (top?.type !== 'item') throw new Error('no top');
+    void top.onClick?.();
+    // Any edges at once: the top joins the right
+    expect(layout.set).toHaveBeenCalledWith({ edges: ['right', 'top'] });
+    layout.gmDock = 'right';
+    layout.dock = 'left';
+    rerender(<InitiativeTracker />);
+    expect(container.querySelector('.atlas-initiative-tracker--left')).toBeNull();
   });
 
   it('moves beside the dice log while it is open at the same edge, and only there', () => {
