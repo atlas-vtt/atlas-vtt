@@ -295,6 +295,8 @@ export interface ViewAtlasState extends ViewState {
   delayInitiativeTurn: InitiativeTurnActions['delayInitiativeTurn'];
   actNowInInitiative: InitiativeTurnActions['actNowInInitiative'];
   swapInitiativeCards: InitiativeTurnActions['swapInitiativeCards'];
+  setCombatantCondition: InitiativeTurnActions['setCombatantCondition'];
+  setCombatantConditionTurns: InitiativeTurnActions['setCombatantConditionTurns'];
   resetInitiative: () => void;
   setInitiativeConfig: (config: Partial<InitiativeConfig>) => void;
   addDiceLogEntry: (entry: DiceRollResult) => void;

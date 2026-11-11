@@ -10,6 +10,8 @@ import type { InitiativeEntry } from '../../types/initiativeTypes';
 import type { ListedSide } from '../../initiative/sides';
 import { initiativeCardMenu, type CardMenuMode } from './initiativeCardMenu';
 import { entryToken } from '../../initiative/party';
+import { useMapConditions } from '../hooks/useMapConditions';
+import { combatantConditionsMenu } from './context-menu/combatantConditionsMenu';
 
 interface CardMenuInputs {
   tokens: Readonly<Record<string, TokenEntity>>;
@@ -50,6 +52,7 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
   const delayInitiativeTurn = useAtlasStore((s) => s.delayInitiativeTurn);
   const actNowInInitiative = useAtlasStore((s) => s.actNowInInitiative);
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
+  const conditionDefinitions = useMapConditions();
 
   return useCallback((event: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement): void => {
     const targets = cards ? swapTargets(store.getState().initiative.entries, entry) : [];
@@ -67,7 +70,7 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
       remove: () => removeCombatant(store, entry, defeated()),
       setColor: (color) => updateInitiativeEntry(entry.id, { color }),
       setHiddenFromPlayers: (hidden) => updateInitiativeEntry(entry.id, { hiddenFromPlayers: hidden ? true : undefined }),
-    });
+    }, conditionDefinitions.length > 0 ? combatantConditionsMenu(store, conditionDefinitions, entry.id) : null);
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
-  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative, updateInitiativeEntry]);
+  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative, updateInitiativeEntry, conditionDefinitions]);
 }

@@ -18,7 +18,7 @@ import { CardResourceBars } from './CardResourceBars';
 import { OffMapIcon } from './OffMapIcon';
 import { CardConditions } from './CardConditions';
 import { useMapConditions } from '../hooks/useMapConditions';
-import { combatantConditions } from '../../utils/activeConditions';
+import { entryConditions } from '../../initiative/combatantConditions';
 import { useCardPreviewHover } from './useCardPreviewHover';
 import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
@@ -94,7 +94,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const token = entryToken(tokens, entry);
   const bars = token ? visibleResources(token, definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent) : [];
   const defeated = combatantDefeated(token, definitions);
-  const conditions = combatantConditions(token, conditionDefinitions);
+  // Its token's, else its own, each with the turns it lasts
+  const conditions = entryConditions(entry, token, conditionDefinitions);
   // A hidden token's entry, or one the GM hid, is left out of the players' list (`PlayerInitiativePanel`)
   const hiddenFromPlayers = token?.isHidden === true || entry.hiddenFromPlayers === true;
   // Kept beside the map: in the tracker only, until the GM places it

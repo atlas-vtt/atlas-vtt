@@ -591,7 +591,28 @@ $collapse-height: 24px;
 }
 
 .atlas-initiative-card__condition {
+  position: relative;
   display: flex;
+}
+
+// The turns a condition still lasts, at the badge's foot, as a valued condition's number sits at its top
+.atlas-initiative-card__condition-turns {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 12px;
+  height: 12px;
+  padding-inline: 2px;
+  box-sizing: border-box;
+  border-radius: $radius-full;
+  background: var(--background-primary);
+  box-shadow: 0 0 0 1px var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 // Note: Statblock preview styles are in statblock-hover-preview.scss (shared component)

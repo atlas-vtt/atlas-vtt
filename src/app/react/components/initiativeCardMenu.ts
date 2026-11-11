@@ -81,6 +81,8 @@ export function initiativeCardMenu(
   token: TokenEntity | undefined,
   mode: CardMenuMode,
   actions: CardMenuActions,
+  /** The combatant's conditions (`combatantConditionsMenu`); none where the map defines none. */
+  conditions: ContextMenuEntry | null = null,
 ): ContextMenuEntry[] {
   // A player at the table rolls their own number and is always on the players' side; an enemy added by name
   // has no token either, so it is never moved to another side. Any of them can be hidden from the players' list
@@ -140,6 +142,7 @@ export function initiativeCardMenu(
     ...(mode.fightRuns ? [sitOut, ...(numbered ? [delay] : [])] : []),
     ...(isOffMap(token) ? [item(t('initiative.placeOnMap'), 'map-pin', actions.placeOnMap)] : []),
     item(hidden ? t('initiative.showToPlayers') : t('initiative.hideFromPlayers'), hidden ? 'eye' : 'eye-off', toggleHidden),
+    ...(conditions ? [conditions] : []),
     // Combatants who are not the players' are told apart by colour; one moved to the players' side can still lose its colour
     ...(isParty || (current === 'players' && combatantColor(entry) === null) ? [] : [colourMenu(entry, actions.setColor)]),
     { type: 'item', label: t('initiative.remove'), icon: 'trash-2', destructive: true, onClick: actions.remove },
