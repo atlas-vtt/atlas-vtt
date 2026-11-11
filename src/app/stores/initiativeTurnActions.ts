@@ -11,6 +11,21 @@ import { nextSideTurn, previousSideTurn, type SideTurnInputs } from '../initiati
 import { actNow, delayTurn, endDelays, firstTurn, nextOrderTurn, previousOrderTurn } from '../initiative/turnOrder';
 import { swapCards } from '../initiative/cardDeal';
 import { fightDraws, roundChangesOf, sideInputs, startFight, type FightDraws } from './initiativeFightStart';
+import { clearCombatantConditions, countBackConditions, countDownConditions, setCombatantCondition, setCombatantConditionTurns, turnHoldersNow } from '../initiative/combatantConditions';
+
+/** No fight runs any more: no turn, round, sides or cards, nobody sitting out or delayed. */
+function endFight(initiative: InitiativeState): void {
+  initiative.isActive = false;
+  initiative.round = 0;
+  initiative.currentIndex = -1;
+  initiative.entries.forEach((entry) => { entry.isActive = false; });
+  delete initiative.sides;
+  delete initiative.cards;
+  for (const entry of initiative.entries) delete entry.card;
+  clearSittingOut(initiative);
+  endDelays(initiative);
+  delete initiative.conditionCountdowns;
+}
 
 /** Entry ids whose combatant is defeated (the card's skull): turns pass them by. */
 export type DefeatedCombatants = ReadonlySet<string>;
@@ -23,6 +38,8 @@ export interface InitiativeTurnActions {
   /** Starts a fight as `rules` say (in turn order when left out); it keeps that mode until it ends. */
   startCombat: (rules?: InitiativeRules, defeated?: DefeatedCombatants) => void;
   endCombat: () => void;
+  /** Ends the fight and takes every combatant's number and conditions away: they stay in the tracker, waiting for a new roll. */
+  resetInitiativeNumbers: () => void;
   /** Whether a combatant sits the running round out. */
   setInitiativeSitsOut: (id: string, sitsOut: boolean) => void;
   /** The combatant delays its turn and waits outside the order (turn order). */
@@ -31,6 +48,10 @@ export interface InitiativeTurnActions {
   actNowInInitiative: (id: string) => void;
   /** Two combatants of a fight by cards swap their cards; the turn stays with the card that had it. */
   swapInitiativeCards: (id: string, withId: string) => void;
+  /** Gives a combatant a condition or takes it away: on its token, or on an entry without one. */
+  setCombatantCondition: (id: string, conditionId: string, on: boolean) => void;
+  /** How many of its turns a combatant's condition lasts; null, until taken away. */
+  setCombatantConditionTurns: (id: string, conditionId: string, turns: number | null) => void;
 }
 
 export interface TurnStoreState {
@@ -43,6 +64,16 @@ type ImmerSet = (fn: (draft: TurnStoreState) => void) => void;
 const NOBODY: DefeatedCombatants = new Set();
 
 function step(draft: TurnStoreState, defeated: DefeatedCombatants, draws: FightDraws, forward: boolean): void {
+  const before = turnHoldersNow(draft);
+  move(draft, defeated, draws, forward);
+  const after = turnHoldersNow(draft);
+  if (before.key === after.key) return;
+  // A turn that ends counts down the conditions of whoever held it; a step back to it gives that back
+  if (forward) countDownConditions(draft, before.ids, before.key);
+  else countBackConditions(draft, after.key);
+}
+
+function move(draft: TurnStoreState, defeated: DefeatedCombatants, draws: FightDraws, forward: boolean): void {
   const { initiative } = draft;
   if (initiative.sides) {
     const inputs: SideTurnInputs = sideInputs(draft, defeated, draws.sideRolls);
@@ -85,15 +116,18 @@ export function createInitiativeTurnActions(set: ImmerSet, get: () => TurnStoreS
     },
 
     endCombat: () => set((draft) => {
-      draft.initiative.isActive = false;
-      draft.initiative.round = 0;
-      draft.initiative.currentIndex = -1;
-      draft.initiative.entries.forEach((entry) => { entry.isActive = false; });
-      delete draft.initiative.sides;
-      delete draft.initiative.cards;
-      for (const entry of draft.initiative.entries) delete entry.card;
-      clearSittingOut(draft.initiative);
-      endDelays(draft.initiative);
+      endFight(draft.initiative);
+    }),
+
+    resetInitiativeNumbers: () => set((draft) => {
+      endFight(draft.initiative);
+      for (const entry of draft.initiative.entries) {
+        entry.initiative = 0;
+        entry.awaitingInitiative = true;
+        delete entry.rolledModifier;
+        delete entry.tieBreak;
+      }
+      clearCombatantConditions(draft);
     }),
 
     setInitiativeSitsOut: (id, sitsOut) => set((draft) => {
@@ -114,5 +148,9 @@ export function createInitiativeTurnActions(set: ImmerSet, get: () => TurnStoreS
     swapInitiativeCards: (id, withId) => set((draft) => {
       if (draft.initiative.cards) swapCards(draft.initiative, id, withId);
     }),
+
+    setCombatantCondition: (id, conditionId, on) => set((draft) => setCombatantCondition(draft, id, conditionId, on)),
+
+    setCombatantConditionTurns: (id, conditionId, turns) => set((draft) => setCombatantConditionTurns(draft, id, conditionId, turns)),
   };
 }

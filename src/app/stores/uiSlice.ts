@@ -19,7 +19,8 @@ export interface UISlice extends ViewUIState {
   setDMScreenPage: (page: DMScreenPage) => void;
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
-  openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
+  /** `addsCombatants`: opening a token or an encounter there adds it to initiative beside the map. */
+  openAssetManager: (tab?: UISlice['assetManagerInitialTab'], addsCombatants?: boolean) => void;
   closeAssetManager: () => void;
   /** Opens or closes the palette; `page` names the page it opens on. */
   setCommandPaletteOpen: (open: boolean, page?: string) => void;
@@ -54,6 +55,7 @@ export function createInitialUIState(): Pick<
   | 'isDiceLogOpen'
   | 'isAssetManagerOpen'
   | 'assetManagerInitialTab'
+  | 'assetManagerAddsCombatants'
   | 'isCommandPaletteOpen'
   | 'commandPalettePage'
   | 'isDiceTrayOpen'
@@ -76,6 +78,7 @@ export function createInitialUIState(): Pick<
     isDiceLogOpen: false,
     isAssetManagerOpen: false,
     assetManagerInitialTab: undefined,
+    assetManagerAddsCombatants: false,
     isCommandPaletteOpen: false,
     commandPalettePage: null,
     isDiceTrayOpen: false,
@@ -129,14 +132,16 @@ export function createUIActions(
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
     // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
-    openAssetManager: (tab) => set((draft) => {
+    openAssetManager: (tab, addsCombatants = false) => set((draft) => {
       draft.isAssetManagerOpen = true;
       draft.assetManagerInitialTab = tab;
+      draft.assetManagerAddsCombatants = addsCombatants;
       draft.isToolbarEditing = false;
     }),
     closeAssetManager: () => set((draft) => {
       draft.isAssetManagerOpen = false;
       draft.assetManagerInitialTab = undefined;
+      draft.assetManagerAddsCombatants = false;
     }),
     setCommandPaletteOpen: (open, page) => set((draft) => {
       draft.isCommandPaletteOpen = open;

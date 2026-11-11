@@ -44,8 +44,6 @@ export const initiative: Translation = {
   'initiative.defeated': 'Повержен',
   'initiative.delay': 'Подождать',
   'initiative.delayed': 'Ждёт',
-  'initiative.dockLeft': 'Закрепить слева',
-  'initiative.dockLeftHint': 'Ставит трекер и список игроков у левого края карты',
   'initiative.editNumber': 'Инициатива {value}, нажмите, чтобы ввести',
   'initiative.expand': 'Показать всех участников',
   'initiative.fantasyDex': 'Лов',

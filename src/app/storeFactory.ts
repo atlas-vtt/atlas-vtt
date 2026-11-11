@@ -290,10 +290,13 @@ export interface ViewAtlasState extends ViewState {
   moveToBack: (id: string) => void;
   startCombat: InitiativeTurnActions['startCombat'];
   endCombat: () => void;
+  resetInitiativeNumbers: InitiativeTurnActions['resetInitiativeNumbers'];
   setInitiativeSitsOut: (id: string, sitsOut: boolean) => void;
   delayInitiativeTurn: InitiativeTurnActions['delayInitiativeTurn'];
   actNowInInitiative: InitiativeTurnActions['actNowInInitiative'];
   swapInitiativeCards: InitiativeTurnActions['swapInitiativeCards'];
+  setCombatantCondition: InitiativeTurnActions['setCombatantCondition'];
+  setCombatantConditionTurns: InitiativeTurnActions['setCombatantConditionTurns'];
   resetInitiative: () => void;
   setInitiativeConfig: (config: Partial<InitiativeConfig>) => void;
   addDiceLogEntry: (entry: DiceRollResult) => void;

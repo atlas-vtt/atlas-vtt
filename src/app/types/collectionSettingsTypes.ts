@@ -146,4 +146,19 @@ export interface CollectionSettings {
    * it takes those of its preset; read with `collectionItemRarities`.
    */
   itemRarities?: readonly RarityOption[] | undefined;
+  /** The players at the table, for the initiative tracker. Read with `collectionParty`. */
+  party?: PartyMember[];
+  /** Vault path of the picture an enemy added by name starts with. Read with `collectionEnemyImage`. */
+  enemyImagePath?: string | undefined;
+}
+
+/** A player at the table: in the initiative tracker without a token, with the number they rolled themselves. */
+export interface PartyMember {
+  /** Never changes: initiative entries point at it. */
+  id: string;
+  name: string;
+  /** Vault path of the player's picture. */
+  imagePath?: string;
+  /** The colour of the player's card in initiative, `#rrggbb`. */
+  color?: string | undefined;
 }

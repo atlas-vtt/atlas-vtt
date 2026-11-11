@@ -12,6 +12,8 @@ import type { TokenEntity } from '../../types';
 import type { InitiativeState } from '../../types/initiativeTypes';
 import { currentTurn, turnKey } from '../turnHolders';
 import { fightSides, sideName } from '../sides';
+import { entryToken } from '../party';
+import { turnColor } from '../combatantColor';
 
 /** The portrait of the combatant whose turn it is, drawn as the map draws its token. */
 export interface TurnBannerPortrait {
@@ -21,6 +23,8 @@ export interface TurnBannerPortrait {
 }
 
 export interface TurnBanner {
+  /** A fight's own banner, its start or end (`fightBanner`); unset for a turn's. */
+  readonly kind?: 'fight-start' | 'fight-end';
   /** The turn it names (`turnKey`). */
   readonly key: string;
   /** The round, where this turn began one (or the fight); null otherwise. */
@@ -28,6 +32,8 @@ export interface TurnBanner {
   /** The combatant's or the side's name; null where the viewer is shown none. */
   readonly title: string | null;
   readonly portrait: TurnBannerPortrait | null;
+  /** The colour its border flashes in (`turnColor`); unset for the accent. */
+  readonly color?: string;
 }
 
 /**
@@ -66,11 +72,17 @@ export function turnBannerOf(
     return { key, round, title, portrait: null };
   }
   const { entry } = turn;
-  const token = tokens[entry.tokenId];
-  if (viewer.kind === 'players' && (!token || token.isHidden)) return null;
-  const title = viewer.kind === 'gm' ? (token ? tokenDisplayName(token) : null) ?? entry.name : nameShownToPlayers(entry.name, token ?? {}, viewer.mapShowsNameplates, viewer.showNames);
+  const token = entryToken(tokens, entry);
+  // A player at the table and an enemy added by name have no token, and are always shown
+  if (viewer.kind === 'players' && entry.tokenId !== undefined && (!token || token.isHidden)) return null;
+  // Nor one the GM hid from the players
+  if (viewer.kind === 'players' && entry.hiddenFromPlayers) return null;
+  const title = viewer.kind === 'gm'
+    ? (token ? tokenDisplayName(token) : null) ?? entry.name
+    : token ? nameShownToPlayers(entry.name, token, viewer.mapShowsNameplates, viewer.showNames) : viewer.showNames ? entry.name : null;
   const portrait = entry.imagePath ? { imagePath: entry.imagePath, showRing: token?.showRing !== false, ringColor: token?.ringColor } : null;
-  return { key, round, title: title || null, portrait };
+  const color = turnColor(entry, token);
+  return { key, round, title: title || null, portrait, ...(color ? { color } : {}) };
 }
 
 /**

@@ -21,8 +21,9 @@ import { SettingsService } from '../../src/app/services/SettingsService';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { Character } from '../../src/app/types';
+import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
 import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
-import type { InitiativeLayout } from '../../src/app/initiative/initiativeLayout';
+import type { InitiativeLayout, PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 /** Obsidian's theme as the lists meet it: its sizes, and its own look of every button, which the tracker's controls must undo. */
@@ -83,12 +84,12 @@ async function showTracker({ names = false, layout = {}, sides = false, turn = 3
   return document.querySelector<HTMLElement>('.atlas-initiative-tracker')!;
 }
 
-interface PlayerView { names?: boolean; fromTurn?: boolean; dock?: 'left' | 'right'; sides?: boolean }
+interface PlayerView { names?: boolean; fromTurn?: boolean; dock?: PlayersListEdge; sides?: boolean; width?: number; height?: number; pulse?: boolean }
 
-function showPlayers({ names = false, fromTurn = true, dock = 'right', sides = false }: PlayerView = {}): HTMLElement {
+function showPlayers({ names = false, fromTurn = true, dock = 'right', sides = false, width = 420, height = 1000, pulse = false }: PlayerView = {}): HTMLElement {
   document.body.innerHTML = '';
   const host = document.body.createDiv({ cls: 'atlas-vtt-plugin' });
-  Object.assign(host.style, { position: 'relative', width: '420px', height: '1000px' });
+  Object.assign(host.style, { position: 'relative', width: `${width}px`, height: `${height}px` });
   const entries: PlayerInitiativeEntry[] = [0, 1, 2, 3, 4].map((index) => entryOf(index, sides ? -1 : 3));
   const list = playerInitiativeList(
     { entries, isActive: true, round: 2, ...(sides ? { sides: { first: 'players' as const, active: 'opponents' as const } } : {}) },
@@ -96,7 +97,7 @@ function showPlayers({ names = false, fromTurn = true, dock = 'right', sides = f
     { mode: sides ? 'sides' : 'turn-order', roll: '1d20', firstSide: 'players' },
     true,
   );
-  renderPlayerInitiative(host, list, { showNames: names, mapShowsNameplates: true, portraitSrc: (src) => src, fromTurn, dock });
+  renderPlayerInitiative(host, list, { showNames: names, mapShowsNameplates: true, portraitSrc: (src) => src, fromTurn, dock, pulse });
   return host.querySelector<HTMLElement>('.atlas-player-initiative')!;
 }
 
@@ -106,7 +107,8 @@ const shown = (element: Element): boolean => getComputedStyle(element).display !
 /** The panel's padding on all sides and the gaps between its parts are one value. */
 function expectUniform(panel: HTMLElement, value: number): void {
   const border = parseFloat(getComputedStyle(panel).borderTopWidth);
-  const parts = [...panel.children].filter(shown).map(box);
+  // The panel's surface is a layer behind its parts, not one of them
+  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface')).map(box);
   const frame = box(panel);
   expect(parts[0]!.top - frame.top - border).toBeCloseTo(value, 0);
   expect(frame.bottom - border - parts.at(-1)!.bottom).toBeCloseTo(value, 0);
@@ -232,6 +234,32 @@ describe('the players\' initiative list', () => {
     }
   });
 
+  it('runs as a row across the top or the bottom, in the middle, the cards side by side inside the panel', async () => {
+    await page.viewport(1300, 600);
+    for (const dock of ['top', 'bottom'] as const) {
+      for (const sides of [false, true]) {
+        const panel = showPlayers({ dock, sides, names: true, width: 1200, height: 500 });
+        const host = box(panel.parentElement!);
+        const frame = box(panel);
+        // Along the chosen edge, in its middle, clear of the widget bar's corner
+        expect(Math.abs((frame.left + frame.right) / 2 - (host.left + host.right) / 2)).toBeLessThan(1);
+        if (dock === 'top') expect(frame.top - host.top).toBeCloseTo(12, 0);
+        else expect(host.bottom - frame.bottom).toBeCloseTo(12, 0);
+        expect(frame.width).toBeLessThanOrEqual(host.width - 320 + 0.5);
+        const cards = [...panel.querySelectorAll('.atlas-player-initiative__card')].map(box);
+        expect(cards.length).toBe(5);
+        // Side by side, left to right, each inside the panel
+        for (let i = 1; i < cards.length; i++) expect(cards[i]!.left).toBeGreaterThan(cards[i - 1]!.right - 0.5);
+        for (const card of cards) {
+          expect(card.top).toBeGreaterThanOrEqual(frame.top);
+          expect(card.bottom).toBeLessThanOrEqual(frame.bottom);
+        }
+        expectNoOverflow(panel.querySelector('.atlas-player-initiative__list')!, '.atlas-player-initiative__card');
+        await page.screenshot({ path: `${SHOTS}/players-${dock}${sides ? '-sides' : ''}.png`, element: panel });
+      }
+    }
+  });
+
   it('follows the GM: docked left, in turn order, and by sides', async () => {
     await page.viewport(1200, 1000);
     const left = showPlayers({ dock: 'left' });
@@ -245,5 +273,20 @@ describe('the players\' initiative list', () => {
     const sides = showPlayers({ sides: true });
     expectUniform(sides, 8);
     await page.screenshot({ path: `${SHOTS}/players-sides.png`, element: sides });
+  });
+
+  it('pulses the turn\'s border as thick as the turn banner\'s flash, at the banner\'s size', async () => {
+    await page.viewport(1200, 1000);
+    const panel = showPlayers({ pulse: true });
+    panel.parentElement!.style.setProperty('--atlas-player-turn-banner-scale', '2');
+    const host = panel.parentElement!.createDiv({ cls: 'atlas-player-turn-banner' });
+    const banner = renderTurnBanner(host, { key: 'k', round: null, title: 'Goblin', portrait: null }, (src) => src);
+    const ring = parseFloat(getComputedStyle(panel.querySelector('.atlas-player-initiative__card--active')!, '::after').borderTopWidth);
+    // The banner is zoomed: its flash's 2 px are drawn twice as wide
+    const flash = parseFloat(getComputedStyle(banner, '::before').borderTopWidth) * parseFloat(getComputedStyle(banner).zoom);
+    expect(ring).toBe(4);
+    expect(flash).toBe(ring);
+    host.remove();
+    await page.screenshot({ path: `${SHOTS}/players-pulse.png`, element: panel });
   });
 });

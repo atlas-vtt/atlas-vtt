@@ -10,11 +10,11 @@ import { dealGroupOf } from '../initiative/cardGroups';
 import { shuffledDeck } from '../initiative/initiativeDice';
 import type { RoundChanges } from '../initiative/rounds';
 import { enterSideRound, fightSideIds, rollSides } from '../initiative/sideOrder';
-import { sideOf } from '../initiative/sides';
 import { firstActingSide, type SideTurnInputs } from '../initiative/turns';
 import type { InitiativeRules, SideId } from '../types/initiativeRulesTypes';
 import type { CardsFight, InitiativeState, SidesFight } from '../types/initiativeTypes';
 import type { TokenEntity } from '../types';
+import { entrySide } from '../initiative/party';
 
 /** What a fight draws before a write that may begin a round. */
 export interface FightDraws {
@@ -48,7 +48,7 @@ export function fightDraws(initiative: InitiativeState, random: () => number, ru
 /** How the turns of a fight by sides read its combatants; `fresh` rolls a round that begins takes. */
 export function sideInputs(draft: FightDraft, defeated: ReadonlySet<string>, fresh?: Record<SideId, number>): SideTurnInputs {
   const known = draft.initiative.sides ? fightSideIds(draft.initiative.sides) : undefined;
-  return { sideOf: (entry) => sideOf(draft.objects.tokens[entry.tokenId], known), defeated, ...(fresh && { fresh }) };
+  return { sideOf: (entry) => entrySide(entry, draft.objects.tokens, known), defeated, ...(fresh && { fresh }) };
 }
 
 /** What a running fight by cards does at a round's boundary, dealing from `deck`; nothing for another fight. */

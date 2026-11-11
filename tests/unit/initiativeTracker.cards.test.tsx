@@ -29,7 +29,7 @@ const state = vi.hoisted(() => ({
   updateInitiativeEntry: vi.fn(),
   updateTokens: vi.fn(),
 }));
-const settings = vi.hoisted(() => ({ names: false, setInitiativeNames: vi.fn() }));
+const settings = vi.hoisted(() => ({ names: false, compact: false, setInitiativeNames: vi.fn(), setCompactInitiative: vi.fn() }));
 
 const opened = vi.hoisted(() => ({ entries: [] as ContextMenuEntry[] }));
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({
@@ -43,7 +43,8 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
 vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({
   useAtlasSettings: () => ({
     showsInitiativeNames: () => settings.names, setInitiativeNames: settings.setInitiativeNames,
-    initiativeLayout: () => ({ fromTurn: false, dock: 'right', collapsed: false }), setInitiativeLayout: vi.fn(),
+    showsCompactInitiative: () => settings.compact, setCompactInitiative: settings.setCompactInitiative,
+    initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false, gmDock: 'right', collapsed: false }), setInitiativeLayout: vi.fn(),
     initiativeTurnOptions: () => ({ banner: true, followTurn: false, movesOnTurn: false }), setInitiativeTurnOptions: vi.fn(), isExperimentalOn: () => false,
   }),
 }));
@@ -215,5 +216,20 @@ describe('names on the GM\'s cards', () => {
 
     expect(container.querySelector('.atlas-initiative-tracker--named')).not.toBeNull();
     expect([...container.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent)).toEqual(['Bandit Captain', 'b']);
+  });
+
+  it('is a plain list of names without portraits in the compact view', () => {
+    settings.names = false;
+    settings.compact = true;
+    state.objects.tokens = { a: token('a', 'Bandit Captain'), b: token('b') };
+    state.initiative.entries = [entryOf('a', 0, 10), entryOf('b', 1, 8)];
+
+    const { container } = render(<InitiativeTracker />);
+
+    expect(container.querySelector('.atlas-initiative-tracker--compact')).not.toBeNull();
+    expect(container.querySelector('.atlas-initiative-card__avatar-wrapper')).toBeNull();
+    expect(container.querySelectorAll('.atlas-initiative-card__marks')).toHaveLength(2);
+    expect([...container.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent)).toEqual(['Bandit Captain', 'b']);
+    settings.compact = false;
   });
 });

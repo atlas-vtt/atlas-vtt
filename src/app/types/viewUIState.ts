@@ -30,6 +30,8 @@ export interface ViewUIState {
   isDiceLogOpen: boolean;
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
+  /** The tracker's Add combatant opened the asset manager: a token or encounter opened there joins initiative beside the map. */
+  assetManagerAddsCombatants: boolean;
   isCommandPaletteOpen: boolean;
   /** The page the palette opens on when it opens next (a menu's "Graphics settings…" row); taken when it opens. */
   commandPalettePage: string | null;

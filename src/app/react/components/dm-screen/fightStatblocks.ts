@@ -1,5 +1,6 @@
 import type { TokenEntity } from '../../../types';
 import type { InitiativeEntry } from '../../../types/initiativeTypes';
+import { entryToken } from '../../../initiative/party';
 
 /** Which statblocks the DM screen shows while a fight runs: the fight's alone, or all with the fight's first. */
 export type StatblockScope = 'fight' | 'all';
@@ -9,7 +10,7 @@ export function fightStatblockPaths(entries: readonly InitiativeEntry[], tokens:
   const paths = [...entries]
     .sort((a, b) => a.order - b.order)
     .flatMap((entry) => {
-      const token = tokens[entry.tokenId];
+      const token = entryToken(tokens, entry);
       return token?.kind === 'character' && token.statblockPath ? [token.statblockPath] : [];
     });
   return [...new Set(paths)];

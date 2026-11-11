@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronsDownUp, ChevronsUpDown, Dices, Ellipsis, Swords } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown, Dices, Ellipsis, Swords, Users } from 'lucide-react';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { EndCombatIcon } from './EndCombatIcon';
 import { t } from '../../i18n';
@@ -20,12 +20,14 @@ interface InitiativeTrackerHeaderProps {
   onEnd: () => void;
   onOptions: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onToggleCollapsed: () => void;
+  /** The party button: adds the players at the table, or opens the collection's party; none outside a collection. */
+  party?: { label: string; onClick: () => void } | null;
 }
 
 /**
  * The tracker's head: the toggle that collapses it to the turn and the next combatants, then
- * Roll, Start or End combat and the options. Four buttons side by side do not fit the narrow
- * tracker, so the toggle has a row of its own.
+ * Roll, Start or End combat, the party and the options. Five buttons side by side do not
+ * fit the narrow tracker, so the toggle has a row of its own.
  */
 export function InitiativeTrackerHeader(props: InitiativeTrackerHeaderProps): React.ReactElement {
   const { rolls, fightRuns, empty, rolling, collapsed, leftOut, tooltipSide } = props;
@@ -62,6 +64,14 @@ export function InitiativeTrackerHeader(props: InitiativeTrackerHeaderProps): Re
           <LabelTooltip label={t('initiative.endCombat')}>
             <button className="clickable-icon atlas-initiative-tracker__btn atlas-initiative-tracker__btn--end" onClick={props.onEnd}>
               <EndCombatIcon />
+            </button>
+          </LabelTooltip>
+        )}
+
+        {props.party && (
+          <LabelTooltip label={props.party.label}>
+            <button className="clickable-icon atlas-initiative-tracker__btn" onClick={props.party.onClick}>
+              <Users />
             </button>
           </LabelTooltip>
         )}

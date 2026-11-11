@@ -946,6 +946,36 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   border: 0;
 }
 
+// ── The Atlas VTT theme ──────────────────────────────────────────────────────
+
+/// The Atlas VTT theme's corner ivy over two opposite corners, placed as on its asset manager (its point
+/// on the element's corner), where `lendThemeIvy` lent its drawings and at `--atlas-theme-ivy-scale`:
+/// the whole vine behind at `$back-z`, the stretches that lie on the element in front. Without the
+/// theme nothing is drawn.
+@mixin atlas-theme-ivy-corners($back-z: -1) {
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: calc(-132px * var(--atlas-theme-ivy-scale));
+    left: calc(-142px * var(--atlas-theme-ivy-scale));
+    z-index: 1;
+    width: calc(100% / var(--atlas-theme-ivy-scale) + 284px);
+    height: calc(100% / var(--atlas-theme-ivy-scale) + 264px);
+    scale: var(--atlas-theme-ivy-scale);
+    transform-origin: 0 0;
+    background: var(--atlas-theme-ivy-corner-front, none) no-repeat 0 0 / 100% 100%;
+    // A clip at rest, so the exit draws the ivy back from it: from none it would vanish at once
+    clip-path: inset(0 0 0 0);
+    pointer-events: none;
+  }
+
+  &::before {
+    z-index: $back-z;
+    background-image: var(--atlas-theme-ivy-corner-back, none);
+  }
+}
+
 // What a page that fills its view keeps from the edges (`$dm-screen-inset`), on the 4 px scale where the browser can
 // round it (`round()`, Chromium 125); older ones keep the unrounded share of the width.
 @mixin atlas-dm-screen-inset {

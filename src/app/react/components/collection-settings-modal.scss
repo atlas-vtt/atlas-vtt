@@ -489,6 +489,143 @@ $settings-stack-below: 520px;
   @include atlas-flex-col($spacing-xs);
 }
 
+// Party: one row per player, the picker opening under its row
+.atlas-csm-party-list {
+  @include atlas-flex-col($spacing-xs);
+}
+
+.atlas-csm-party-enemy-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+}
+
+.atlas-csm-party-member {
+  @include atlas-inset-surface;
+  @include atlas-flex-row($gap: $spacing-s);
+  padding: $spacing-s;
+  min-width: 0;
+
+  .atlas-csm-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+// A player's picture: search and upload above a grid of thumbnails
+.atlas-csm-party-picker {
+  @include atlas-inset-surface;
+  @include atlas-flex-col($spacing-s);
+  height: 320px;
+  padding: $spacing-s;
+  min-width: 0;
+}
+
+.atlas-csm-party-picker-bar {
+  @include atlas-flex-row($gap: $spacing-s);
+  flex-shrink: 0;
+
+  .atlas-csm-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-csm-party-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: $spacing-s;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.atlas-csm-party-image {
+  // Holds the loading placeholder (`.atlas-image-placeholder`, absolute): without it, it breathed over the whole window
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border-radius: $radius-l;
+  color: var(--text-faint);
+
+  img,
+  .atlas-image-placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:hover,
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+  }
+}
+
+// A player's colour in initiative: a dot beside the picture, the palette under the row
+.atlas-csm-party-colour {
+  flex-shrink: 0;
+  width: $icon-m;
+  height: $icon-m;
+  padding: 0;
+  border-radius: 50%;
+  border: $border-width-m solid var(--background-modifier-border);
+
+  // No colour yet: only the ring
+  &[data-empty] {
+    background: transparent;
+  }
+}
+
+.atlas-csm-party-colours {
+  @include atlas-inset-surface;
+  padding: $spacing-s;
+}
+
+.atlas-csm-party-no-colour {
+  background: transparent;
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}
+
+.atlas-csm-party-picture {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--text-muted);
+
+  .atlas-token-portrait {
+    width: 100%;
+    height: 100%;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
 .atlas-csm-loot-base {
   @include atlas-inset-surface;
   @include atlas-flex-row($gap: $spacing-s);

@@ -5,7 +5,9 @@ import type { StatblockRole, StatblockRoleFolders } from '../../../statblocks/mo
 import {
   parseStatblockRoleFolders, parseStatblockRoles, savedRoleFolders, savedStatblockRoles,
 } from '../../../statblocks/roles/roleValidation';
-import type { CollectionSettings } from '../../../types/collectionSettingsTypes';
+import type { CollectionSettings, PartyMember } from '../../../types/collectionSettingsTypes';
+import { collectionParty } from '../../../initiative/party';
+import { collectionEnemyImage } from '../../../initiative/tokenlessEnemies';
 import type { CreatureFilterDefinition } from '../../../types/creatureFilterTypes';
 import type { RandomTableSource, RarityOption } from '../../../types/randomTableTypes';
 import type { SystemPreset } from '../../../types/systemPresetTypes';
@@ -37,6 +39,11 @@ export interface CollectionSettingsDraft extends Omit<RulesDraft, 'toSettings'> 
   /** The collection's own folder per role id; a preset neither sets nor clears them. */
   statblockRoleFolders: StatblockRoleFolders;
   setStatblockRoleFolders: (folders: StatblockRoleFolders) => void;
+  /** The players at the table, as typed; members without a name are dropped on save. */
+  party: PartyMember[];
+  setParty: (party: PartyMember[]) => void;
+  enemyImagePath: string;
+  setEnemyImagePath: (path: string) => void;
   /** The draft as the settings to save. */
   toSettings: () => Partial<CollectionSettings>;
 }
@@ -56,6 +63,8 @@ export function useCollectionSettingsDraft(
   const [hiddenCreatureFilters, setHiddenCreatureFilters] = useState<string[]>([]);
   const [statblockRoles, setStatblockRoles] = useState<readonly StatblockRole[] | undefined>(undefined);
   const [statblockRoleFolders, setStatblockRoleFolders] = useState<StatblockRoleFolders>({});
+  const [party, setParty] = useState<PartyMember[]>([]);
+  const [enemyImagePath, setEnemyImagePath] = useState('');
   const { load } = rules;
 
   useEffect(() => {
@@ -64,6 +73,8 @@ export function useCollectionSettingsDraft(
     load(settings);
     setLootBases(settings.lootBases ?? []);
     setLootCurrency(settings.lootCurrency ?? '');
+    setParty(collectionParty(settings));
+    setEnemyImagePath(collectionEnemyImage(settings));
     // Kept as stored until the GM changes them, so nothing a newer Atlas wrote is lost by saving.
     setRandomTables(Array.isArray(settings.randomTables) ? settings.randomTables : []);
     setItemRarities(Array.isArray(settings.itemRarities) ? settings.itemRarities : undefined);
@@ -96,6 +107,8 @@ export function useCollectionSettingsDraft(
     itemRarities, setItemRarities,
     statblockRoles, setStatblockRoles,
     statblockRoleFolders, setStatblockRoleFolders,
+    party, setParty,
+    enemyImagePath, setEnemyImagePath,
     toSettings: () => {
       const system = rules.toSettings();
       return {
@@ -109,6 +122,8 @@ export function useCollectionSettingsDraft(
         itemRarities,
         statblockRoles: statblockRoles?.length ? savedStatblockRoles(statblockRoles) : undefined,
         statblockRoleFolders: savedRoleFolders(statblockRoleFolders, statblockRoles),
+        party: collectionParty({ party }),
+        enemyImagePath: enemyImagePath || undefined,
       };
     },
   };

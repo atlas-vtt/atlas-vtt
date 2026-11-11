@@ -5,7 +5,7 @@ import type { DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
-import type { InitiativeDock } from '../initiative/initiativeLayout';
+import type { InitiativeDock, PlayersListEdge } from '../initiative/initiativeLayout';
 import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
 import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
@@ -65,8 +65,16 @@ export interface AtlasSettings {
   initiativeNames: boolean;
   /** Whether the initiative lists start at the turn during a fight. Read with `initiativeLayout`. */
   initiativeFromTurn: boolean;
-  /** The edge of the map the initiative lists stand at. Read with `initiativeLayout`. */
-  initiativeDock: InitiativeDock;
+  /** The GM's tracker is a compact list without portraits. Read with `showsCompactInitiative`. */
+  initiativeCompact?: boolean;
+  /** The edge the players' list stands at; `top` and `bottom` run it as a row. Read with `initiativeLayout`. */
+  initiativeDock: PlayersListEdge;
+  /** The edge the GM's tracker stands at; unset, the players' list's (`initiativeDock`). */
+  initiativeGmDock?: InitiativeDock;
+  /** Every edge the players' list stands at; unset, `initiativeDock` alone, which stays the first of them for older versions. */
+  initiativeEdges?: PlayersListEdge[];
+  /** Whether each copy of the players' list turns to face its edge; unset, upright. */
+  initiativeFacesPlayers?: boolean;
   /** Whether a turn change shows the turn banner. Read with `initiativeTurnOptions`. */
   initiativeBanner: boolean;
   /** Whether the GM's view pans to the combatant whose turn begins. Read with `initiativeTurnOptions`. */
@@ -91,6 +99,22 @@ export interface AtlasSettings {
     showCommandPalette: boolean;
     /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
     showCursors: boolean;
+    /** The initiative list shows names even where the tokens show no nameplates. */
+    showInitiativeNames: boolean;
+    /** How large the initiative list is drawn, 1 to `MAX_INITIATIVE_SCALE`. Read with `initiativeScaleOf`. */
+    initiativeScale: number;
+    /** The border of the combatant whose turn it is pulses instead of standing still. */
+    initiativePulse: boolean;
+    /** How large the turn banner is drawn, 1 to `MAX_TURN_BANNER_SCALE`. */
+    turnBannerScale: number;
+    /** How long the turn banner stands, in seconds. */
+    turnBannerSeconds: number;
+    /** The turn banner stands just above each initiative list, turned with it, instead of in the middle. */
+    turnBannerAtLists: boolean;
+    /** A turn dims the table instead of showing its banner, the initiative lists left lit. A fight's start and end keep theirs. */
+    turnDim: boolean;
+    /** The most cards each initiative list shows, 0 for all. Read with `initiativeMaxCardsOf`. */
+    initiativeMaxCards: number;
   };
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
@@ -134,6 +158,14 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showDiceRolls: false,
     showCommandPalette: false, // Hide command palette
     showCursors: false,
+    showInitiativeNames: false,
+    initiativeScale: 1,
+    initiativePulse: false,
+    turnBannerScale: 2,
+    turnBannerSeconds: 4,
+    turnBannerAtLists: false,
+    turnDim: false,
+    initiativeMaxCards: 0,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };

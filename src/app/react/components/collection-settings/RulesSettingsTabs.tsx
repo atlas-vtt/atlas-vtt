@@ -1,5 +1,5 @@
 import React, { useId } from 'react';
-import { Dice5, Dices, Eye, Gauge, Grid3X3, LayoutGrid, ListFilter, ScrollText, ShieldAlert, Swords } from 'lucide-react';
+import { Dice5, Dices, Eye, Gauge, Grid3X3, LayoutGrid, ListFilter, ScrollText, ShieldAlert, Swords, Users } from 'lucide-react';
 import { CoinIcon } from '../CoinIcon';
 import { Button } from '../../../packages/components/primitives/button';
 import { collectionConeAngle } from '../../../gameSystems/coneAngle';
@@ -26,7 +26,7 @@ import { VisionTab } from './VisionTab';
 
 /** The tabs of a settings dialog: the game system's rules, and what a collection keeps beside them. */
 export type SettingsTab =
-  'system' | 'dice' | 'grid' | 'vision' | 'widgets' | 'conditions' | 'resources' | 'initiative' | 'statblocks' | 'creatureFilters' | 'loot';
+  'system' | 'dice' | 'grid' | 'vision' | 'widgets' | 'conditions' | 'resources' | 'initiative' | 'statblocks' | 'creatureFilters' | 'loot' | 'party';
 
 /** The tabs of the game system's rules, which a played campaign's system replaces on every map. */
 export const RULES_TABS: readonly SettingsTab[] = ['system', 'dice', 'grid', 'vision', 'conditions', 'resources', 'initiative'];
@@ -61,6 +61,7 @@ const TAB_LABELS: Record<SettingsTab, { label: string; icon: React.ReactNode }> 
   statblocks: { label: t('csm.tab.statblocks'), icon: <ScrollText size={16} /> },
   creatureFilters: { label: t('csm.tab.creatureFilters'), icon: <ListFilter size={16} /> },
   loot: { label: t('csm.tab.loot'), icon: <CoinIcon size={16} /> },
+  party: { label: t('csm.tab.party'), icon: <Users size={16} /> },
 };
 
 interface RulesSettingsTabsProps {

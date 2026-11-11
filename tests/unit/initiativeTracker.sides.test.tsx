@@ -52,7 +52,7 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
 }));
 const layout = vi.hoisted(() => ({ fromTurn: false, dock: 'right' as 'left' | 'right', collapsed: false, set: vi.fn() }));
 vi.mock('../../src/app/initiative/useInitiativeLayout', () => ({
-  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, collapsed: layout.collapsed }, setLayout: layout.set }),
+  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, edges: [layout.dock], facesPlayers: false, collapsed: layout.collapsed }, setLayout: layout.set }),
 }));
 const resources = vi.hoisted(() => ({ definitions: [] as unknown[] }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => resources.definitions }));

@@ -1,4 +1,5 @@
 import { App } from 'obsidian';
+import { initiativeScaleOf } from './playerInitiativeList';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import type { SettingsService } from './SettingsService';
@@ -582,6 +583,10 @@ export class PlayerWindowService {
       const applyTurn = (): void => {
         const tv = this.tableTv();
         if (tv) applyTableTvLook(body, overlayLayer, tv);
+        // How large the initiative lists and the turn banner are drawn
+        const { initiativeScale, turnBannerScale } = this.settingsService.getLocalPlayerViewSettings();
+        overlayLayer.style.setProperty('--atlas-player-initiative-scale', String(initiativeScaleOf(initiativeScale)));
+        overlayLayer.style.setProperty('--atlas-player-turn-banner-scale', String(turnBannerScale));
       };
       applyTurn();
       this.sceneOverlays.forEach((overlay) => overlay.mount(overlayLayer));
