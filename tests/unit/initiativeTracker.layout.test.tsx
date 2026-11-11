@@ -19,7 +19,7 @@ const state = vi.hoisted(() => ({
 }));
 const collection = vi.hoisted(() => ({ rules: { mode: 'turn-order', roll: '1d20', firstSide: 'players' } as InitiativeRules }));
 const opened = vi.hoisted(() => ({ entries: [] as ContextMenuEntry[] }));
-const layout = vi.hoisted(() => ({ fromTurn: true, dock: 'right' as 'left' | 'right', collapsed: false, set: vi.fn() }));
+const layout = vi.hoisted(() => ({ fromTurn: true, dock: 'right' as 'left' | 'right', gmDock: 'right' as 'left' | 'right', collapsed: false, set: vi.fn() }));
 const conditions = vi.hoisted(() => ({ definitions: [] as ConditionDefinition[] }));
 
 vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: vi.fn() }));
@@ -34,7 +34,7 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useViewStoreHook: () => ({ getState: () => state }),
 }));
 vi.mock('../../src/app/initiative/useInitiativeLayout', () => ({
-  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, collapsed: layout.collapsed }, setLayout: layout.set }),
+  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, edges: [layout.dock], facesPlayers: false, gmDock: layout.gmDock, collapsed: layout.collapsed }, setLayout: layout.set }),
 }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 vi.mock('../../src/app/react/hooks/useMapConditions', () => ({ useMapConditions: () => conditions.definitions }));
@@ -81,7 +81,7 @@ beforeEach(() => {
   opened.entries = [];
   conditions.definitions = [];
   state.isDiceLogOpen = false;
-  Object.assign(layout, { fromTurn: true, dock: 'right', collapsed: false });
+  Object.assign(layout, { fromTurn: true, dock: 'right', gmDock: 'right', collapsed: false });
   collection.rules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
   fight();
 });
@@ -151,11 +151,11 @@ describe('where the tracker stands', () => {
   it('docks at the left edge from its options', () => {
     const { container, rerender } = render(<InitiativeTracker />);
     expect(container.querySelector('.atlas-initiative-tracker--left')).toBeNull();
-    const item = option('Dock on the left');
+    const item = option('Tracker on the left');
     expect(item.checked).toBe(false);
     void item.onClick?.();
-    expect(layout.set).toHaveBeenCalledWith({ dock: 'left' });
-    layout.dock = 'left';
+    expect(layout.set).toHaveBeenCalledWith({ gmDock: 'left' });
+    layout.gmDock = 'left';
     rerender(<InitiativeTracker />);
     expect(container.querySelector('.atlas-initiative-tracker--left')).not.toBeNull();
   });
@@ -164,7 +164,7 @@ describe('where the tracker stands', () => {
     state.isDiceLogOpen = true;
     const { container, rerender } = render(<InitiativeTracker />);
     expect(container.querySelector('.atlas-initiative-tracker--beside-log')).toBeNull();
-    layout.dock = 'left';
+    layout.gmDock = 'left';
     rerender(<InitiativeTracker />);
     expect(container.querySelector('.atlas-initiative-tracker--beside-log')).not.toBeNull();
     state.isDiceLogOpen = false;

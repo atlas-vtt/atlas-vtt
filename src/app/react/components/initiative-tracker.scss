@@ -720,3 +720,11 @@ $collapse-height: 24px;
   }
 }
 
+// A colour's swatch in the card menu's Colour submenu
+.atlas-initiative-colour-dot {
+  display: block;
+  width: $icon-s;
+  height: $icon-s;
+  border-radius: 50%;
+  border: $border-width-s solid var(--background-modifier-border);
+}

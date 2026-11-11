@@ -14,10 +14,14 @@ interface TrackerOptionsState {
   empty: boolean;
   /** The GM's cards show names (Atlas' setting, the same in every scene). */
   showNames: boolean;
+  /** The GM's tracker is the compact list (Atlas' setting); it always shows names. */
+  compact: boolean;
   /** During a fight the lists start at the turn (Atlas' setting, followed by the players' list). */
   fromTurn: boolean;
-  /** The edge the tracker and the players' list stand at. */
+  /** The edge the players' list stands at. */
   dock: InitiativeDock;
+  /** The edge the GM's tracker stands at. */
+  gmDock: InitiativeDock;
   /** What a turn change does (Atlas' settings). */
   turn: InitiativeTurnOptions;
   /** Online play is switched on: the switch for players' moves shows. */
@@ -27,11 +31,15 @@ interface TrackerOptionsState {
 interface TrackerOptionsActions {
   setAutoSort: (autoSort: boolean) => void;
   setShowNames: (showNames: boolean) => void;
+  setCompact: (compact: boolean) => void;
   setFromTurn: (fromTurn: boolean) => void;
   setDock: (dock: InitiativeDock) => void;
+  setGmDock: (dock: InitiativeDock) => void;
   setTurn: (changes: Partial<InitiativeTurnOptions>) => void;
   clear: () => void;
-  /** Opens the library on its tokens, whose menu adds them to the tracker beside the map. */
+  /** Ends the fight and empties every combatant's number and conditions, keeping them in the tracker. */
+  resetNumbers: () => void;
+  /** Opens the library on its tokens: opening one there adds it to the tracker beside the map. */
   addCombatant: () => void;
   /** Adds an enemy without a token, named by number. */
   addEnemy: () => void;
@@ -72,7 +80,16 @@ export function initiativeTrackerOptions(state: TrackerOptionsState, actions: Tr
       icon: 'tag',
       checked: state.showNames,
       description: t('initiative.showNamesHint'),
+      disabled: state.compact,
       onClick: () => actions.setShowNames(!state.showNames),
+    },
+    {
+      type: 'item',
+      label: t('initiative.compact'),
+      icon: 'list',
+      checked: state.compact,
+      description: t('initiative.compactHint'),
+      onClick: () => actions.setCompact(!state.compact),
     },
     {
       type: 'item',
@@ -84,10 +101,18 @@ export function initiativeTrackerOptions(state: TrackerOptionsState, actions: Tr
     },
     {
       type: 'item',
-      label: t('initiative.dockLeft'),
+      label: t('initiative.gmDockLeft'),
       icon: 'panel-left',
+      checked: state.gmDock === 'left',
+      description: t('initiative.gmDockLeftHint'),
+      onClick: () => actions.setGmDock(state.gmDock === 'left' ? 'right' : 'left'),
+    },
+    {
+      type: 'item',
+      label: t('initiative.playersListLeft'),
+      icon: 'tv',
       checked: state.dock === 'left',
-      description: t('initiative.dockLeftHint'),
+      description: t('initiative.playersListLeftHint'),
       onClick: () => actions.setDock(state.dock === 'left' ? 'right' : 'left'),
     },
     MENU_SEPARATOR,
@@ -129,6 +154,14 @@ export function initiativeTrackerOptions(state: TrackerOptionsState, actions: Tr
       icon: 'swords',
       description: t('initiative.addEnemyHint'),
       onClick: actions.addEnemy,
+    },
+    {
+      type: 'item',
+      label: t('initiative.resetNumbers'),
+      icon: 'rotate-ccw',
+      description: t('initiative.resetNumbersHint'),
+      disabled: state.empty,
+      onClick: actions.resetNumbers,
     },
     {
       type: 'item',

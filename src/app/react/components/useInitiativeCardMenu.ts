@@ -49,6 +49,7 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
   const setInitiativeSitsOut = useAtlasStore((s) => s.setInitiativeSitsOut);
   const delayInitiativeTurn = useAtlasStore((s) => s.delayInitiativeTurn);
   const actNowInInitiative = useAtlasStore((s) => s.actNowInInitiative);
+  const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
 
   return useCallback((event: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement): void => {
     const targets = cards ? swapTargets(store.getState().initiative.entries, entry) : [];
@@ -64,7 +65,9 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
       actNow: () => actNowInInitiative(entry.id),
       placeOnMap: () => { if (view && entry.tokenId !== undefined) placeCombatantOnMap(view, entry.tokenId); },
       remove: () => removeCombatant(store, entry, defeated()),
+      setColor: (color) => updateInitiativeEntry(entry.id, { color }),
+      setHiddenFromPlayers: (hidden) => updateInitiativeEntry(entry.id, { hiddenFromPlayers: hidden ? true : undefined }),
     });
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
-  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative]);
+  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative, updateInitiativeEntry]);
 }

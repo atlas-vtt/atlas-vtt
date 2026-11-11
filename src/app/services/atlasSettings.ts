@@ -65,8 +65,12 @@ export interface AtlasSettings {
   initiativeNames: boolean;
   /** Whether the initiative lists start at the turn during a fight. Read with `initiativeLayout`. */
   initiativeFromTurn: boolean;
-  /** The edge of the map the initiative lists stand at. Read with `initiativeLayout`. */
+  /** The GM's tracker is a compact list without portraits. Read with `showsCompactInitiative`. */
+  initiativeCompact?: boolean;
+  /** The edge of the map the players' initiative list stands at. Read with `initiativeLayout`. */
   initiativeDock: InitiativeDock;
+  /** The edge the GM's tracker stands at; unset, the players' list's (`initiativeDock`). */
+  initiativeGmDock?: InitiativeDock;
   /** Whether a turn change shows the turn banner. Read with `initiativeTurnOptions`. */
   initiativeBanner: boolean;
   /** Whether the GM's view pans to the combatant whose turn begins. Read with `initiativeTurnOptions`. */

@@ -56,6 +56,12 @@ export interface InitiativeEntry {
   /** Path to linked statblock note (for CMD+hover preview); `undefined` clears it when patched */
   statblockPath?: string | undefined;
 
+  /**
+   * The GM hides the combatant from the players' list, whatever it is, without hiding a token on the map
+   * (`playersEntryToken`); the GM's card shows it as a hidden token's. `undefined` clears it when patched; older versions ignore it.
+   */
+  hiddenFromPlayers?: true | undefined;
+
   /** Whether this entry has the current turn */
   isActive: boolean;
 

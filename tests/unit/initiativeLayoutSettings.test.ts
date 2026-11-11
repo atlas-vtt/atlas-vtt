@@ -16,7 +16,23 @@ async function loaded(stored: unknown = null): Promise<{ settings: SettingsServi
 describe('the initiative lists\' layout', () => {
   it('starts at the turn, at the right edge and expanded until the GM chooses otherwise', async () => {
     const { settings } = await loaded();
-    expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', collapsed: false });
+    expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', gmDock: 'right', collapsed: false });
+  });
+
+  it('puts the GM\'s tracker where the players\' list stands until the GM chooses its own edge', async () => {
+    const { settings, data } = await loaded();
+    settings.setInitiativeLayout({ dock: 'left' });
+    expect(settings.initiativeLayout()).toMatchObject({ dock: 'left', gmDock: 'left' });
+    // Another choice leaves the tracker following the list
+    settings.setInitiativeLayout({ fromTurn: false });
+    await settings.saveSettingsNow();
+    expect(data.stored()).not.toHaveProperty('initiativeGmDock');
+    settings.setInitiativeLayout({ gmDock: 'right' });
+    expect(settings.initiativeLayout()).toMatchObject({ dock: 'left', gmDock: 'right' });
+    // Its own edge stays when the players' list moves
+    settings.setInitiativeLayout({ dock: 'right' });
+    settings.setInitiativeLayout({ dock: 'left' });
+    expect(settings.initiativeLayout()).toMatchObject({ dock: 'left', gmDock: 'right' });
   });
 
   it('keeps the GM\'s choices in the synced settings and reads what it does not know as the default', async () => {
@@ -29,7 +45,7 @@ describe('the initiative lists\' layout', () => {
     await reopened.initialize();
     expect(reopened.initiativeLayout()).toMatchObject({ fromTurn: false, dock: 'left' });
 
-    expect((await loaded({ initiativeDock: 'top', initiativeFromTurn: 'yes' })).settings.initiativeLayout()).toMatchObject({ dock: 'right', fromTurn: true });
+    expect((await loaded({ initiativeDock: 'middle', initiativeFromTurn: 'yes' })).settings.initiativeLayout()).toMatchObject({ dock: 'right', fromTurn: true });
   });
 
   it('keeps a collapsed tracker on this device alone, never in the synced settings', async () => {

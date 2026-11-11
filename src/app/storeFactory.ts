@@ -290,6 +290,7 @@ export interface ViewAtlasState extends ViewState {
   moveToBack: (id: string) => void;
   startCombat: InitiativeTurnActions['startCombat'];
   endCombat: () => void;
+  resetInitiativeNumbers: InitiativeTurnActions['resetInitiativeNumbers'];
   setInitiativeSitsOut: (id: string, sitsOut: boolean) => void;
   delayInitiativeTurn: InitiativeTurnActions['delayInitiativeTurn'];
   actNowInInitiative: InitiativeTurnActions['actNowInInitiative'];

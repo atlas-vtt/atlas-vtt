@@ -35,6 +35,8 @@ interface InitiativeCardProps {
   byCards?: boolean;
   /** The GM chose to see names on the cards. */
   showName?: boolean;
+  /** The compact list: no portrait, its marks beside the name. */
+  compact?: boolean;
   /** The side tooltips open on: away from the edge the tracker stands at. */
   tooltipSide?: 'left' | 'right';
   /** The card's number is being typed in place. */
@@ -62,6 +64,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   bySides = false,
   byCards = false,
   showName = false,
+  compact = false,
   tooltipSide = 'left',
   isEditingNumber = false,
   onStartNumberEdit = NOTHING,
@@ -92,8 +95,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const bars = token ? visibleResources(token, definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent) : [];
   const defeated = combatantDefeated(token, definitions);
   const conditions = combatantConditions(token, conditionDefinitions);
-  // A hidden token's entry is left out of the players' list (`PlayerInitiativePanel`)
-  const hiddenFromPlayers = token?.isHidden === true;
+  // A hidden token's entry, or one the GM hid, is left out of the players' list (`PlayerInitiativePanel`)
+  const hiddenFromPlayers = token?.isHidden === true || entry.hiddenFromPlayers === true;
   // Kept beside the map: in the tracker only, until the GM places it
   const offMap = isOffMap(token);
   const name = (token && tokenDisplayName(token)) || entry.name;
@@ -229,7 +232,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
         <GripVertical />
       </div>
 
-      {/* Avatar with optional instance badge */}
+      {/* Avatar with optional instance badge; the compact list shows the marks alone, beside the name */}
+      {compact ? <span className="atlas-initiative-card__marks">{defeated && <Skull className="atlas-initiative-card__defeated-mark" />}{marks}</span> : (
       <div className="atlas-initiative-card__avatar-wrapper">
         {entry.imagePath ? (
           <TokenPortrait
@@ -254,6 +258,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
 
         {marks}
       </div>
+      )}
 
       {showName && <span className="atlas-initiative-card__name" aria-hidden="true">{name}</span>}
 

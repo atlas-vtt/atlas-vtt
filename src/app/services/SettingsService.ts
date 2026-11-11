@@ -350,11 +350,23 @@ export class SettingsService {
     this.commit();
   }
 
+  /** Whether the GM's tracker is the compact list: off unless the file says `true`. */
+  showsCompactInitiative(): boolean {
+    return this.settings.initiativeCompact === true;
+  }
+
+  setCompactInitiative(on: boolean): void {
+    if (this.showsCompactInitiative() === on) return;
+    this.settings.initiativeCompact = on;
+    this.commit();
+  }
+
   /** How the initiative lists are laid out: the GM's choices, and whether this device collapsed the tracker. */
   initiativeLayout(): InitiativeLayout {
     return {
       fromTurn: this.settings.initiativeFromTurn !== false,
       dock: readDock(this.settings.initiativeDock),
+      gmDock: readDock(this.settings.initiativeGmDock ?? this.settings.initiativeDock),
       collapsed: loadInitiativeCollapsed(this.app),
     };
   }
@@ -362,14 +374,16 @@ export class SettingsService {
   /** The GM's choices go into the synced settings, the collapsed tracker into this device's local storage. */
   setInitiativeLayout(changes: Partial<InitiativeLayout>): void {
     const current = this.initiativeLayout();
-    const { fromTurn = current.fromTurn, dock = current.dock, collapsed = current.collapsed } = changes;
+    const { fromTurn = current.fromTurn, dock = current.dock, gmDock = current.gmDock, collapsed = current.collapsed } = changes;
     if (collapsed !== current.collapsed) saveInitiativeCollapsed(this.app, collapsed);
-    if (fromTurn === current.fromTurn && dock === current.dock) {
+    if (fromTurn === current.fromTurn && dock === current.dock && gmDock === current.gmDock) {
       if (collapsed !== current.collapsed) this.notify();
       return;
     }
     this.settings.initiativeFromTurn = fromTurn;
     this.settings.initiativeDock = dock;
+    // Stored once the GM chooses the tracker's own edge; until then it follows the players' list
+    if (changes.gmDock !== undefined || this.settings.initiativeGmDock !== undefined) this.settings.initiativeGmDock = gmDock;
     this.commit();
   }
 

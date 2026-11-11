@@ -12,6 +12,19 @@ import { actNow, delayTurn, endDelays, firstTurn, nextOrderTurn, previousOrderTu
 import { swapCards } from '../initiative/cardDeal';
 import { fightDraws, roundChangesOf, sideInputs, startFight, type FightDraws } from './initiativeFightStart';
 
+/** No fight runs any more: no turn, round, sides or cards, nobody sitting out or delayed. */
+function endFight(initiative: InitiativeState): void {
+  initiative.isActive = false;
+  initiative.round = 0;
+  initiative.currentIndex = -1;
+  initiative.entries.forEach((entry) => { entry.isActive = false; });
+  delete initiative.sides;
+  delete initiative.cards;
+  for (const entry of initiative.entries) delete entry.card;
+  clearSittingOut(initiative);
+  endDelays(initiative);
+}
+
 /** Entry ids whose combatant is defeated (the card's skull): turns pass them by. */
 export type DefeatedCombatants = ReadonlySet<string>;
 
@@ -23,6 +36,8 @@ export interface InitiativeTurnActions {
   /** Starts a fight as `rules` say (in turn order when left out); it keeps that mode until it ends. */
   startCombat: (rules?: InitiativeRules, defeated?: DefeatedCombatants) => void;
   endCombat: () => void;
+  /** Ends the fight and takes every combatant's number away: they stay in the tracker, waiting for a new roll. */
+  resetInitiativeNumbers: () => void;
   /** Whether a combatant sits the running round out. */
   setInitiativeSitsOut: (id: string, sitsOut: boolean) => void;
   /** The combatant delays its turn and waits outside the order (turn order). */
@@ -85,15 +100,17 @@ export function createInitiativeTurnActions(set: ImmerSet, get: () => TurnStoreS
     },
 
     endCombat: () => set((draft) => {
-      draft.initiative.isActive = false;
-      draft.initiative.round = 0;
-      draft.initiative.currentIndex = -1;
-      draft.initiative.entries.forEach((entry) => { entry.isActive = false; });
-      delete draft.initiative.sides;
-      delete draft.initiative.cards;
-      for (const entry of draft.initiative.entries) delete entry.card;
-      clearSittingOut(draft.initiative);
-      endDelays(draft.initiative);
+      endFight(draft.initiative);
+    }),
+
+    resetInitiativeNumbers: () => set((draft) => {
+      endFight(draft.initiative);
+      for (const entry of draft.initiative.entries) {
+        entry.initiative = 0;
+        entry.awaitingInitiative = true;
+        delete entry.rolledModifier;
+        delete entry.tieBreak;
+      }
     }),
 
     setInitiativeSitsOut: (id, sitsOut) => set((draft) => {

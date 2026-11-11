@@ -36,6 +36,7 @@ import { captureRollContext } from '../../tools/diceRollOrigins';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';
 import './initiative-tracker.scss';
+import './initiative-tracker-compact.scss';
 
 /**
  * Initiative Tracker Panel
@@ -48,10 +49,12 @@ import './initiative-tracker.scss';
 export const InitiativeTracker: React.FC = () => {
   const { app, view } = useAtlasUI();
   const settings = useAtlasSettings();
-  const showNames = settings?.showsInitiativeNames() ?? false;
+  const compact = settings?.showsCompactInitiative() ?? false;
+  // The compact list is all names
+  const showNames = compact || (settings?.showsInitiativeNames() ?? false);
   const { layout, setLayout } = useInitiativeLayout();
   // Popups and tooltips open away from the edge the tracker stands at
-  const inward = layout.dock === 'left' ? 'right' : 'left';
+  const inward = layout.gmDock === 'left' ? 'right' : 'left';
 
   // Store state
   const isOpen = useAtlasStore((s) => s.initiativeTrackerOpen);
@@ -153,16 +156,19 @@ export const InitiativeTracker: React.FC = () => {
     const rect = button.getBoundingClientRect();
     const entries = initiativeTrackerOptions(
       // Cards keep the order they were dealt in, so the Auto sort switch is disabled there as by sides
-      { autoSort: initiative.config.autoSort, bySides: bySides || byCards, empty: initiative.entries.length === 0, showNames, fromTurn: layout.fromTurn, dock: layout.dock,
+      { autoSort: initiative.config.autoSort, bySides: bySides || byCards, empty: initiative.entries.length === 0, showNames, compact, fromTurn: layout.fromTurn, dock: layout.dock, gmDock: layout.gmDock,
         turn: settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS, online: settings?.isExperimentalOn('onlinePlay') ?? false },
       {
         setAutoSort: (autoSort) => setInitiativeConfig({ autoSort }),
         setShowNames: (on) => settings?.setInitiativeNames(on),
+        setCompact: (on) => settings?.setCompactInitiative(on),
         setFromTurn: (fromTurn) => setLayout({ fromTurn }),
         setDock: (dock) => setLayout({ dock }),
+        setGmDock: (gmDock) => setLayout({ gmDock }),
         setTurn: (changes) => settings?.setInitiativeTurnOptions(changes),
         clear: () => clearCombatants(store),
-        addCombatant: () => openAssetManager('tokens'),
+        resetNumbers: () => store.getState().resetInitiativeNumbers(),
+        addCombatant: () => openAssetManager('tokens', true),
         addEnemy: () => addToInitiative(nextTokenlessEnemy(store.getState().initiative.entries, app ? mapEnemyImage(app, store.getState().mapPath) : '')),
       },
     );
@@ -196,6 +202,7 @@ export const InitiativeTracker: React.FC = () => {
       bySides={bySides}
       byCards={byCards}
       showName={showNames}
+      compact={compact}
       tooltipSide={inward}
       isEditingNumber={numberEditing.editingId === entry.id}
       onStartNumberEdit={numberEditing.start}
@@ -213,8 +220,9 @@ export const InitiativeTracker: React.FC = () => {
   const trackerClasses = [
     'atlas-initiative-tracker',
     showNames && 'atlas-initiative-tracker--named',
-    layout.dock === 'left' && 'atlas-initiative-tracker--left',
-    layout.dock === 'left' && diceLogOpen && 'atlas-initiative-tracker--beside-log',
+    compact && 'atlas-initiative-tracker--compact',
+    layout.gmDock === 'left' && 'atlas-initiative-tracker--left',
+    layout.gmDock === 'left' && diceLogOpen && 'atlas-initiative-tracker--beside-log',
     layout.collapsed && 'atlas-initiative-tracker--collapsed',
   ].filter(Boolean).join(' ');
 

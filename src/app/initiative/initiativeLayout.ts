@@ -10,6 +10,8 @@ export interface InitiativeLayout {
   /** During a fight the lists start at the combatant whose turn it is and run on into the next round. */
   fromTurn: boolean;
   dock: InitiativeDock;
+  /** The edge the GM's tracker stands at: the players' list's unless the GM chose another. */
+  gmDock: InitiativeDock;
   /** The GM's tracker shows only the turn and the next combatants. */
   collapsed: boolean;
 }
@@ -23,4 +25,4 @@ export function readDock(value: unknown): InitiativeDock {
 }
 
 /** The layout before any choice: the turn on top, at the right edge, expanded. */
-export const DEFAULT_INITIATIVE_LAYOUT: InitiativeLayout = { fromTurn: true, dock: 'right', collapsed: false };
+export const DEFAULT_INITIATIVE_LAYOUT: InitiativeLayout = { fromTurn: true, dock: 'right', gmDock: 'right', collapsed: false };
