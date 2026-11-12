@@ -61,6 +61,52 @@ describe('StatblockHoverPreview live positioning', () => {
     expect(preview.style.top).toBe('16px');
   });
 
+  it('limits its height by the window alone, wherever its card stands (#720)', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 1000, configurable: true });
+
+    // A card at the window's lower edge.
+    const anchorRect = new DOMRect(1200, 920, 96, 72);
+
+    const { container } = render(
+      <StatblockHoverPreview
+        notePath="bestiary/bandit-captain.md"
+        isVisible={true}
+        isClosing={false}
+        position={null}
+        anchorRect={anchorRect}
+        preferredSide="left"
+      />,
+    );
+
+    const preview = container.ownerDocument.body.querySelector('.statblock-hover-preview') as HTMLElement | null;
+    expect(preview).not.toBeNull();
+    if (!resizeObserverCallback || !preview) return;
+    const resizedTo = (height: number): void => {
+      act(() => {
+        resizeObserverCallback?.(
+          [{ target: preview, contentRect: new DOMRectReadOnly(0, 0, 482, height) } as ResizeObserverEntry],
+          {} as ResizeObserver,
+        );
+      });
+    };
+
+    // The skeleton: against the lower edge, and free to grow to the window's height less its two gaps.
+    resizedTo(325);
+    expect(preview.style.top).toBe('659px');
+    expect(preview.style.maxHeight).toBe('968px');
+
+    // The statblock that takes its place moves the preview up; the limit stays.
+    resizedTo(552);
+    expect(preview.style.top).toBe('432px');
+    expect(preview.style.maxHeight).toBe('968px');
+
+    // As tall as the limit: it fills the window between the gaps.
+    resizedTo(968);
+    expect(preview.style.top).toBe('16px');
+    expect(preview.style.maxHeight).toBe('968px');
+  });
+
   it('flips to the right of the anchor when the left side has no room', () => {
     Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true });
     Object.defineProperty(window, 'innerHeight', { value: 1000, configurable: true });
