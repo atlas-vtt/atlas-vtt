@@ -91,8 +91,6 @@ export const am: Translation = {
   'am.header.newFolder': 'Создать папку…',
   'am.bestiary.hide': 'Скрыть для этой коллекции',
   'am.bestiary.hidden': 'Стартовые токены скрыты для этой коллекции',
-  'am.bestiary.inCollection': 'Добавлены',
-  'am.header.getStarterTokens': 'Получить стартовые токены…',
   'am.header.create': 'Создать',
   'am.header.createToken': 'Создать токены…',
   'am.header.addMap': 'Создать карты…',

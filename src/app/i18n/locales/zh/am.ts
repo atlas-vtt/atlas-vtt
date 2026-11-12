@@ -91,8 +91,6 @@ export const am: Translation = {
   'am.header.newFolder': '创建文件夹…',
   'am.bestiary.hide': '在此合集中隐藏',
   'am.bestiary.hidden': '已在此合集中隐藏入门棋子',
-  'am.bestiary.inCollection': '已添加',
-  'am.header.getStarterTokens': '获取入门棋子…',
   'am.header.create': '创建',
   'am.header.createToken': '创建棋子…',
   'am.header.addMap': '创建地图…',
