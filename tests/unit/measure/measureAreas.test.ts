@@ -2,6 +2,7 @@
 import { Container } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { MeasurementSettings } from '../../../src/app/grid/measurementFormat';
+import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MAP_LAYER_Z } from '../../../src/app/pixi/mapLayerOrder';
 import { placeUnderTokens } from '../../../src/app/pixi/measure/MeasureLayer';
 import type { MeasurePlayersView } from '../../../src/app/pixi/measurePartsVisibility';
@@ -70,6 +71,8 @@ describe('an area\'s size', () => {
 
 describe('the tokens in an area', () => {
   const PARTY = [token('hero', 2, 2), token('goblin', 4, 2), token('ghost', 3, 3, { isHidden: true }), token('far', 9, 9)];
+  /** The badge of a kept area that starts on the ghost's cell: on the ghost's rim, where the token's middle stays the token's. */
+  const BADGE = auraBadgePoint(cell(3, 3), { size: GRID });
 
   it('are ringed and counted while the area is made, hidden ones too, and no longer once it is gone', () => {
     const s = scene(PARTY);
@@ -114,7 +117,7 @@ describe('the tokens in an area', () => {
     const [id] = Object.keys(s.store.getState().objects.measures ?? {});
     expect(rings(s)).toHaveLength(0);
     expect(s.measure.tokensIn(id!)).toEqual(['hero', 'goblin', 'ghost']);
-    s.measure.handles.pointer.cursorAt(245, 245);
+    s.measure.handles.pointer.cursorAt(BADGE.x, BADGE.y);
     expect(rings(s)).toHaveLength(3);
     s.measure.handles.pointer.leave();
     expect(rings(s)).toHaveLength(0);
@@ -148,7 +151,7 @@ describe('the tokens in an area', () => {
       });
       return shown;
     };
-    for (const point of [(): void => { s.measure.handles.pointer.cursorAt(245, 245); }, (): void => s.store.getState().openMeasurePopover(id!)]) {
+    for (const point of [(): void => { s.measure.handles.pointer.cursorAt(BADGE.x, BADGE.y); }, (): void => s.store.getState().openMeasurePopover(id!)]) {
       point();
       expect(rings(s).filter((ring) => ring.visible)).toHaveLength(3);
       expect(kept()).toEqual(['10ft · 3']);
@@ -175,6 +178,24 @@ describe('an area and the walls', () => {
     expect(labels(s)).toEqual(['15ft · 1']);
     s.store.getState().updateWall(door, { closed: false });
     expect(labels(s)).toEqual(['15ft · 2']);
+  });
+
+  it('counts the tokens anew for the players when a door closes on the last one: in session view the label loses its number at once', () => {
+    const s = scene([token('goblin', 4, 2), token('ghost', 4, 3)]);
+    const door = s.store.getState().addWall({ ...wall, type: 'door', closed: false });
+    // The canvas shows what the players see: the goblin, and not the ghost.
+    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => (id) => id === 'goblin' };
+    s.store.getState().setMeasureTool({ mode: 'circle' });
+    s.pointer('pointerdown', 245, 245);
+    s.pointer('pointermove', 245, 455);
+    expect(labels(s)).toEqual(['15ft · 1']);
+    expect(rings(s).filter((ring) => ring.visible)).toHaveLength(1);
+    s.store.getState().updateWall(door, { closed: true });
+    expect(rings(s)).toHaveLength(0);
+    expect(labels(s)).toEqual(['15ft']);
+    // And back: the door opens, and the players' count is theirs again.
+    s.store.getState().updateWall(door, { closed: false });
+    expect(labels(s)).toEqual(['15ft · 1']);
   });
 
   it('passes them once its switch is off, kept', () => {

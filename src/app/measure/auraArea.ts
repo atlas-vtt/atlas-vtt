@@ -32,8 +32,10 @@ export type AuraRules = Pick<MeasurementSettings, 'unitDistance' | 'diagonalRule
 
 /** The least an aura reaches where it is sized freely, in cells; on cells it reaches one at least. */
 const LEAST_FREE_REACH = 0.5;
-/** Where the badge of an aura stands on its token's rim: lower left, clear of the token's own controls and marks. */
+/** Where the first badge on a token's rim stands: lower left, clear of the token's own controls and marks. */
 const BADGE_DIRECTION: Point = { x: -Math.SQRT1_2, y: Math.SQRT1_2 };
+/** How far along the rim each further badge of one token stands from the one before, as an angle: ten go around it. */
+const BADGE_STEP = Math.PI / 5;
 /** Where the far handle of an aura stands that was given no direction: to its token's right. */
 const RIGHT: Point = { x: 1, y: 0 };
 const UP = -Math.PI / 2;
@@ -58,10 +60,16 @@ export function steppedAura(aura: number, steps: number, step: number): number {
   return Math.min(MAX_AURA, Math.max(0, Math.round((aura + steps * step) * 1000) / 1000));
 }
 
-/** Where the badge of `token`'s aura stands: on the rim of the token's space. */
-export function auraBadgePoint(token: AuraToken, grid: Pick<TokenGrid, 'size'>): Point {
+/**
+ * Where a badge on `token` stands: on the rim of the token's space. An aura's, and that of any
+ * kept measurement that starts on the token (`rimSpots`); the `place`-th of several on one token
+ * stands that many steps along the rim, so they lie beside each other.
+ */
+export function auraBadgePoint(token: AuraToken, grid: Pick<TokenGrid, 'size'>, place = 0): Point {
   const rim = spaceRadius(token, grid);
-  return { x: token.x + BADGE_DIRECTION.x * rim, y: token.y + BADGE_DIRECTION.y * rim };
+  const cos = Math.cos(place * BADGE_STEP);
+  const sin = Math.sin(place * BADGE_STEP);
+  return { x: token.x + (BADGE_DIRECTION.x * cos - BADGE_DIRECTION.y * sin) * rim, y: token.y + (BADGE_DIRECTION.x * sin + BADGE_DIRECTION.y * cos) * rim };
 }
 
 /** The way an aura's far handle lies from its token, one pixel long: the way its two points lie, and to the right where they say none. */

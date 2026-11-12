@@ -1,3 +1,4 @@
+import type { SceneSource } from '../../host/sceneSource';
 import type { KeptMeasure, Measurement } from '../../measure/measureTypes';
 import type { Point } from '../../types/visionTypes';
 
@@ -30,3 +31,28 @@ export interface Measurements {
 }
 
 export const NO_MEASUREMENTS: Measurements = Object.freeze({ live: null, kept: Object.freeze([]), walled: false });
+
+/** The measurements on a map as whoever passes them on reads and follows them, and as their owner sets them. */
+export class MeasurementsSource implements SceneSource<Measurements> {
+  private current: Measurements = NO_MEASUREMENTS;
+  private readonly listeners = new Set<(next: Measurements, previous: Measurements) => void>();
+
+  readonly get = (): Measurements => this.current;
+
+  readonly subscribe = (listener: (next: Measurements, previous: Measurements) => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  };
+
+  /** Records what of the measurements is another, and tells whoever follows them. */
+  set(changes: Partial<Measurements>): void {
+    const previous = this.current;
+    this.current = { ...previous, ...changes };
+    for (const listener of [...this.listeners]) listener(this.current, previous);
+  }
+
+  /** Nobody follows them any more. */
+  release(): void {
+    this.listeners.clear();
+  }
+}

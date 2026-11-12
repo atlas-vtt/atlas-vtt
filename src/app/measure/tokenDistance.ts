@@ -80,9 +80,10 @@ export function distanceBetweenTokens(
  * The token standing at `point`, the one lying on top where several do (the last of the highest
  * `layer`, as a click picks it); null where none stands. On a grid a token stands at every point
  * of the cells of its footprint, so a point snapped to a cell of a large token is on it; where
- * tokens stand anywhere, within the circle of its space.
+ * tokens stand anywhere, within the circle of its space. With `counts`, the one on top of those
+ * it says yes to, asked only of the tokens that stand there.
  */
-export function tokenStandingAt<T extends PlacedToken>(point: Point, tokens: Iterable<T>, grid: TokenGrid): T | null {
+export function tokenStandingAt<T extends PlacedToken>(point: Point, tokens: Iterable<T>, grid: TokenGrid, counts?: (token: T) => boolean): T | null {
   const cells = countsCells(grid);
   const placement = cells ? placementGridOf(grid) : null;
   const key = cells ? cellKeyAt(grid, point) : null;
@@ -98,6 +99,7 @@ export function tokenStandingAt<T extends PlacedToken>(point: Point, tokens: Ite
       if (Math.abs(dx) > radius + grid.size || Math.abs(dy) > radius + grid.size) continue;
       if (!cellsStoodOn(token, token.size || 1, placement).some((cell) => cellKeyAt(grid, cell) === key)) continue;
     } else if (dx * dx + dy * dy > radius * radius) continue;
+    if (counts && !counts(token)) continue;
     top = token;
   }
   return top;

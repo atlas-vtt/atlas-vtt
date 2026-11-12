@@ -72,8 +72,12 @@ export function heightChipText(token: HasHeight, settings: MeasurementSettings):
   return `${height > 0 ? '↑' : '↓'} ${formatHeight(height, settings)}`;
 }
 
-/** The height in game units of what stands at a world point: the token there, 0 on the floor. */
-export type HeightAt = (point: Point) => number;
+/**
+ * The height in game units of what stands at a world point: the token there, 0 on the floor. With
+ * `seen`, of what a viewer sees standing there: the token on top of those `seen` says yes to, so a
+ * token the players do not see adds nothing to a distance they read.
+ */
+export type HeightAt = (point: Point, seen?: (tokenId: string) => boolean) => number;
 
 /**
  * How far apart in height a path's two ends are, in cells: each end is as high as the token it

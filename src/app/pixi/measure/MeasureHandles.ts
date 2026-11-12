@@ -59,12 +59,13 @@ function sameTheme(a: CanvasBadgeTheme, b: CanvasBadgeTheme): boolean {
 }
 
 /**
- * A handle on every kept measurement of the level shown, at its origin: a badge in the light
+ * A handle on every kept measurement of the level shown, at its origin, or on the rim of the token
+ * it lies on (`place`), which leaves the token's middle to the token: a badge in the light
  * markers' language and a size smaller, with the shape's glyph and a thin ring in the
  * measurement's colour. An area has a second one at its far end, a plain dot with the same ring,
  * which resizes and turns it. They are all of a kept measurement that takes the pointer. Handles
- * keep their size on screen, move in place when their measurement changes or, an aura's, when its
- * token moves (`place` says where they stand; `moved` asks again), and are drawn again only when
+ * keep their size on screen, move in place when their measurement changes or the token they stand
+ * on moves (`place` says where they stand; `moved` asks again), and are drawn again only when
  * their look is another. They are the GM's controls: `MeasurePartsVisibility` shows the
  * layer on the GM's canvas alone.
  */
@@ -100,7 +101,7 @@ export class MeasureHandles {
     this.sync();
   }
 
-  /** The handles may stand elsewhere: the tokens that auras follow moved. */
+  /** The handles may stand elsewhere: the tokens they stand on moved, came or went. */
   moved(): void {
     this.sync();
   }

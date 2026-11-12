@@ -4,6 +4,7 @@ import { sealedWalls } from '../../lighting/sealWalls';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { computeVisibility } from '../../vision/visibility';
+import { areaOnMap, AreaOnMapMemo, wallSlack, type AreaMap } from '../areaOnMap';
 import { shapedArea, type ShapedArea } from '../measureGeometry';
 import type { Measurement } from '../measureTypes';
 import { areaWithinWalls, shapesWithinWalls, wallSweepPoint } from '../measureWalls';
@@ -220,5 +221,110 @@ describe('shapesWithinWalls', () => {
   it('hands the shapes back where no wall stands near', () => {
     const tiles = [square(0, 0, 70)];
     expect(shapesWithinWalls(circle(90), [wall('far', { x: 5000, y: 0 }, { x: 5000, y: 100 })], tiles, 100)).toBe(tiles);
+  });
+});
+
+describe('an area whose origin lies beside a wall', () => {
+  // Origins snap to the lines of the grid; a wall drawn by hand along a line passes a few pixels beside them.
+  const map = (walls: readonly WallSegment[], more: Partial<AreaMap> = {}): AreaMap => ({
+    grid: { type: 'square', size: 70, offsetX: 0, offsetY: 0 }, cells: true, coneAngle: 53.13, coneEnd: 'round', cellRule: 'half', diagonalRule: 'equidistant', walls, ...more,
+  });
+  // The middle of a cell's edge: a square and a line from there lie on whole cells.
+  const ORIGIN = { x: 210, y: 245 };
+  const along = (x: number): WallSegment[] => [wall('w', { x, y: -400 }, { x, y: 900 })];
+  const made = (shape: Measurement['shape'], end: Point, walls: readonly WallSegment[], more: Partial<AreaMap> = {}): NonNullable<ReturnType<typeof areaOnMap>> => {
+    const onMap = areaOnMap({ shape, points: [ORIGIN, end] }, map(walls, more));
+    if (!onMap) throw new Error('no area');
+    return onMap;
+  };
+  const size = (onMap: ReturnType<typeof made>): number => onMap.area.rings.reduce((sum, ring) => sum + ringArea(ring), 0);
+  const RIGHT = { x: 420, y: 245 };
+  const LEFT = { x: 0, y: 245 };
+
+  it('counts a wall within a twelfth of a cell as the one its origin lies on, four pixels at least', () => {
+    expect(wallSlack(map([]))).toBeCloseTo(70 / 12, 6);
+    expect(wallSlack(map([], { grid: { type: 'square', size: 24, offsetX: 0, offsetY: 0 } }))).toBe(4);
+    expect(wallSlack(map([], { cells: false }))).toBe(4);
+  });
+
+  for (const shape of AREA_SHAPES) {
+    const onWall = made(shape, RIGHT, along(210));
+    // What a wall on the line itself leaves of the shape pointing right: all of it for a cone, a square and a line, the right half of a circle.
+    const whole = size(onWall);
+
+    for (const off of [1, 2, 5]) {
+      it(`${shape}: a wall ${off} px past the line is the wall on the line, for an area that points across it`, () => {
+        const beyond = made(shape, RIGHT, along(210 + off));
+        expect(size(beyond)).toBeGreaterThan(whole * 0.93);
+        expect(size(beyond)).toBeLessThanOrEqual(whole + 1);
+        expect(beyond.area.contains({ x: 330, y: 245 })).toBe(true);
+        // Nothing of it lies before the wall it starts at.
+        expect(beyond.area.bounds.minX).toBeGreaterThanOrEqual(210 + off - 0.2);
+        expect(beyond.cells?.map((cell) => cell.key).sort()).toEqual(onWall.cells?.map((cell) => cell.key).sort());
+      });
+
+      it(`${shape}: a wall ${off} px before the line stands behind an area that points away from it, and stops nothing of it`, () => {
+        const behind = made(shape, RIGHT, along(210 - off));
+        expect(size(behind)).toBeGreaterThan(whole * 0.99);
+        expect(behind.area.contains({ x: 330, y: 245 })).toBe(true);
+        expect(behind.area.bounds.minX).toBeGreaterThanOrEqual(210 - off - 0.2);
+        expect(behind.cells?.map((cell) => cell.key).sort()).toEqual(onWall.cells?.map((cell) => cell.key).sort());
+      });
+
+      it(`${shape}: dragged the other way it lies on the other side of a wall ${off} px off, either side`, () => {
+        for (const x of [210 + off, 210 - off]) {
+          const left = made(shape, LEFT, along(x));
+          expect(size(left), `wall at ${x}`).toBeGreaterThan(whole * 0.93);
+          expect(left.area.contains({ x: 90, y: 245 }), `wall at ${x}`).toBe(true);
+          expect(left.area.bounds.maxX, `wall at ${x}`).toBeLessThanOrEqual(x + 0.2);
+        }
+      });
+    }
+
+    it(`${shape}: a wall farther off than that is a wall between the origin and the area`, () => {
+      const stopped = made(shape, RIGHT, along(222));
+      expect(stopped.area.contains({ x: 330, y: 245 })).toBe(false);
+      expect(stopped.area.bounds.maxX).toBeLessThanOrEqual(222.2);
+      // A circle keeps its half on the origin's side; the others only the strip before the wall.
+      if (shape !== 'circle') expect(size(stopped)).toBeLessThan(whole * 0.1);
+      else expect(stopped.area.contains({ x: 90, y: 245 })).toBe(true);
+    });
+  }
+
+  it('leaves a wall beside the area where it is: one the area points along stops what lies beyond it', () => {
+    // The wall runs 2 px right of the origin; the line points straight down, along it.
+    const down = made('line', { x: 210, y: 455 }, along(212));
+    expect(down.area.contains({ x: 190, y: 330 })).toBe(true);
+    expect(down.area.contains({ x: 230, y: 330 })).toBe(false);
+    // And one that ends before the area's way is no wall in its way: what passes its end is reached from the origin itself.
+    const past = made('cone', RIGHT, [wall('short', { x: 212, y: -400 }, { x: 212, y: 205 })]);
+    expect(wallSweepPoint(past.shaped, [wall('short', { x: 212, y: -400 }, { x: 212, y: 205 })], 70 / 12)).toEqual(ORIGIN);
+    expect(past.area.contains({ x: 330, y: 250 })).toBe(true);
+  });
+
+  it('passes two walls drawn side by side within the slack, and no wall beyond it', () => {
+    const cut = made('cone', RIGHT, [...along(211), wall('second', { x: 214, y: -400 }, { x: 214, y: 900 }), wall('far', { x: 300, y: -400 }, { x: 300, y: 900 })]);
+    expect(cut.area.contains({ x: 260, y: 245 })).toBe(true);
+    expect(cut.area.contains({ x: 330, y: 245 })).toBe(false);
+    expect(cut.area.bounds.minX).toBeGreaterThanOrEqual(213.8);
+  });
+
+  it('is kept apart by the side a circle was dragged to, and swept once for each side', () => {
+    const walls = along(212);
+    const memo = new AreaOnMapMemo();
+    const sweeps = (): number => vi.mocked(computeVisibility).mock.calls.length;
+    const dragged = (end: Point): boolean => memo.get({ shape: 'circle', points: [ORIGIN, end] }, map(walls))!.area.contains({ x: 300, y: 245 });
+    // One size, dragged around: right of the wall, then left of it, then right again.
+    expect(dragged({ x: 350, y: 245 })).toBe(true);
+    expect(dragged({ x: 210, y: 385 })).toBe(false);
+    expect(dragged({ x: 70, y: 245 })).toBe(false);
+    expect(dragged({ x: 350, y: 245 })).toBe(true);
+    expect(sweeps()).toBe(2);
+  });
+
+  it('is asked of a placed area alone: without a slack only a wall the origin lies on is one', () => {
+    const cone = area({ shape: 'cone', points: [ORIGIN, RIGHT] });
+    expect(wallSweepPoint(cone, along(212))).toEqual(ORIGIN);
+    expect(areaWithinWalls(cone, along(212)).contains({ x: 330, y: 245 })).toBe(false);
   });
 });

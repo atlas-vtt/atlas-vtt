@@ -1282,7 +1282,9 @@ export class PixiRendererOrchestrator { // Renamed class
     // Areas stop at the walls as the lighting seals them, which goes by the map's size.
     measure.mapBounds = () => this.getMapRect();
     this.stopMeasuresFollowingLeaving?.();
-    this.stopMeasuresFollowingLeaving = onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => measure.handles.leave());
+    this.stopMeasuresFollowingLeaving = onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => measure.leave());
+    // A measurement placed click by click holds Space, Enter, Backspace and Escape: only while they are this map's
+    measure.keysBelongToMap = (event) => canRunMapHotkeys(event, this.viewId);
   }
 
   /** The ids of the tokens in the kept area `measureId`, the ones it rings while it is pointed at; none for a ruler. */

@@ -8,6 +8,8 @@ import { legDistances, measureDistance } from '../../../src/app/pixi/measure/mea
 import type { HeightAt } from '../../../src/app/measure/tokenHeight';
 import { followTokenHeights, measureHeightAt } from '../../../src/app/pixi/measureTokenHeights';
 import type { DiagonalRule } from '../../../src/app/types/collectionSettingsTypes';
+import type { MeasurePlayersView } from '../../../src/app/pixi/measurePartsVisibility';
+import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
 import type { TokenEntity } from '../../../src/app/types';
 import { measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';
 
@@ -157,5 +159,103 @@ describe('the measure tool on a map with fliers', () => {
     s.stop();
     s.store.getState().updateTokens([{ id: 'goblin', changes: { elevation: 50 } }]);
     expect(s.redraws()).toBe(2);
+  });
+  /** The labels that show on the canvas now: a label hidden within its measurement is none. */
+  const shown = (s: MeasureScene): string[] => {
+    const found: string[] = [];
+    const walk = (node: Container): void => {
+      if (!node.visible) return;
+      if (node instanceof Text && node.text !== '') found.push(node.text);
+      node.children.forEach(walk);
+    };
+    walk(s.viewport.getChildByLabel('measure-labels')!);
+    return found;
+  };
+  /** What a players' frame shows of the labels, by the tokens the players see. */
+  const inFrame = (s: MeasureScene, seen: (id: string) => boolean): string[] => {
+    let framed: string[] = [];
+    captureWithLayerVisibility(s.measure.getPlayerViewLayers(seen), () => undefined, () => { framed = shown(s); });
+    return framed;
+  };
+  const view = (onCanvas: ((id: string) => boolean) | null): MeasurePlayersView => ({ footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => onCanvas });
+
+  it('counts for the players only the height of a token they see: a hidden flier adds nothing to their label', () => {
+    // A flier 30 ft up, three cells from the hero: 15 ft on the floor.
+    const s = sceneWith([token('hero', 0, 0), token('wyvern', 3, 0, { elevation: 30, isHidden: true })]);
+    s.measure.playersView = view(null);
+    s.pointer('pointerdown', 20, 20);
+    s.pointer('pointermove', 230, 40);
+    expect(shown(s)).toEqual(['35ft']);
+    expect(inFrame(s, (id) => id !== 'wyvern')).toEqual(['15ft']);
+    // Once they see it, their label is the GM's.
+    expect(inFrame(s, () => true)).toEqual(['35ft']);
+    // The frame leaves the GM's canvas as it was.
+    expect(shown(s)).toEqual(['35ft']);
+    // Moved on to the floor beside it, both read the same again.
+    s.pointer('pointermove', 300, 40);
+    expect(shown(s)).toEqual(['20ft']);
+    expect(inFrame(s, (id) => id !== 'wyvern')).toEqual(['20ft']);
+  });
+
+  it('reads the token the players see under a ruler\'s end where one they do not see lies on top of it', () => {
+    const s = sceneWith([token('hero', 0, 0), token('wyvern', 3, 0, { elevation: 30 }), token('ghost', 3, 0, { elevation: 10, isHidden: true, layer: 2 })]);
+    s.pointer('pointerdown', 20, 20);
+    s.pointer('pointermove', 230, 40);
+    expect(shown(s)).toEqual(['20ft']);
+    expect(inFrame(s, (id) => id !== 'ghost')).toEqual(['35ft']);
+  });
+
+  it('keeps a kept ruler\'s label for the players as it is when a flier they do not see moves under its end, in a frame and in session view', () => {
+    const s = sceneWith([token('hero', 0, 0), token('wyvern', 7, 5, { elevation: 30, isHidden: true })]);
+    let onCanvas: ((id: string) => boolean) | null = null;
+    s.measure.playersView = { ...view(null), seenOnCanvas: () => onCanvas };
+    s.store.getState().setMeasureTool({ keep: true });
+    measureFrom(s, 20, 20, 230, 40);
+    expect(shown(s)).toEqual(['15ft']);
+
+    s.store.getState().updateTokens([{ id: 'wyvern', changes: cell(3, 0) }]);
+    expect(shown(s)).toEqual(['35ft']);
+    const players = (id: string): boolean => id !== 'wyvern';
+    expect(inFrame(s, players)).toEqual(['15ft']);
+    expect(shown(s)).toEqual(['35ft']);
+
+    // Session view: the canvas shows what the players see.
+    onCanvas = players;
+    s.measure.refreshVisibility();
+    expect(shown(s)).toEqual(['15ft']);
+    s.store.getState().updateTokens([{ id: 'wyvern', changes: { elevation: 60 } }]);
+    expect(shown(s)).toEqual(['15ft']);
+    // Shown to the players, the flier counts for them from then on.
+    onCanvas = () => true;
+    s.measure.refreshVisibility();
+    expect(shown(s)).toEqual(['65ft']);
+    onCanvas = null;
+    s.measure.refreshVisibility();
+    expect(shown(s)).toEqual(['65ft']);
+    s.stop();
+  });
+
+  it('writes the players\' label once for one height, however many frames ask for it', () => {
+    const s = sceneWith([token('hero', 0, 0), token('wyvern', 3, 0, { elevation: 30, isHidden: true })]);
+    s.store.getState().setMeasureTool({ keep: true });
+    measureFrom(s, 20, 20, 230, 40);
+    const players = (id: string): boolean => id !== 'wyvern';
+    expect(inFrame(s, players)).toEqual(['15ft']);
+    const labels = s.viewport.getChildByLabel('measure-labels')!;
+    const written = (): Text[] => {
+      const found: Text[] = [];
+      const walk = (node: Container): void => {
+        if (node instanceof Text) found.push(node);
+        node.children.forEach(walk);
+      };
+      walk(labels);
+      return found;
+    };
+    const before = written().map((text) => text.text);
+    const sets = written().map((text) => vi.spyOn(text, 'text', 'set'));
+    for (let frame = 0; frame < 5; frame++) expect(inFrame(s, players)).toEqual(['15ft']);
+    expect(sets.every((set) => set.mock.calls.length === 0)).toBe(true);
+    expect(written().map((text) => text.text)).toEqual(before);
+    s.stop();
   });
 });

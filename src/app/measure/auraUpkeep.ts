@@ -6,6 +6,7 @@
  */
 
 import { isRecord } from '../utils/guards';
+import { followedToken } from './keptMeasures';
 
 /** A scene's objects, as far as auras go: the kept measurements and the tokens they may follow. */
 export interface AuraHolder {
@@ -13,12 +14,16 @@ export interface AuraHolder {
   tokens: Record<string, { level?: string | undefined } | undefined>;
 }
 
-/** The ids of the kept measurements that follow one of `tokenIds`, in the order they were kept. */
+/**
+ * The ids of the auras of `tokenIds`, in the order they were kept. What is an aura is the reader's
+ * to say (`followedToken`): an entry that names a token and is read as a plain measurement (a
+ * ruler, a circle without a reach) is none, and stays whatever becomes of that token.
+ */
 export function aurasOf(measures: Readonly<Record<string, unknown>> | undefined, tokenIds: ReadonlySet<string>): string[] {
   if (!isRecord(measures) || tokenIds.size === 0) return [];
   return Object.keys(measures).filter((id) => {
-    const measure = measures[id];
-    return isRecord(measure) && typeof measure.follows === 'string' && tokenIds.has(measure.follows);
+    const bearer = followedToken(id, measures[id]);
+    return bearer !== null && tokenIds.has(bearer);
   });
 }
 
@@ -37,8 +42,9 @@ export function aurasToTokenLevels(objects: AuraHolder, tokenIds: Iterable<strin
   const { measures, tokens } = objects;
   for (const id of aurasOf(measures, new Set(tokenIds))) {
     const measure = measures?.[id];
-    if (!isRecord(measure) || typeof measure.follows !== 'string') continue;
-    const level = tokens[measure.follows]?.level;
+    const bearer = followedToken(id, measure);
+    if (!isRecord(measure) || bearer === null) continue;
+    const level = tokens[bearer]?.level;
     if (measure.level === level) continue;
     if (level === undefined) delete measure.level;
     else measure.level = level;

@@ -20,7 +20,7 @@ export interface KeptDrawings {
   kept(parts: MeasureParts, audience: MeasureAudience): void;
   /** The drawing in `parts` is gone. */
   forgotten(parts: MeasureParts): void;
-  /** The marks on the tokens of the measurement in `parts`, live or kept, were drawn anew. */
+  /** The measurement in `parts`, live or kept, was drawn anew: its rings on tokens and what its label says of them show to whoever may see them. */
   marked(parts: MeasureParts): void;
 }
 
@@ -190,7 +190,8 @@ export class MeasureLayer {
   wallsChanged(): void {
     const look = this.look();
     for (const [drawn, parts] of this.all()) {
-      if (drawn.redrawArea(look) && parts.marks.rings.length > 0) this.drawings.marked(parts);
+      // Also an area the walls left without a token: its rings are gone, and its label counts none.
+      if (drawn.redrawArea(look)) this.drawings.marked(parts);
     }
   }
 
@@ -201,8 +202,8 @@ export class MeasureLayer {
     const look = this.look();
     for (const [drawn, parts] of this.all()) {
       drawn.redraw(look);
-      // Rings drawn anew show to whoever may see them, and the players' label is written again.
-      if (parts.marks.rings.length > 0) this.drawings.marked(parts);
+      // Rings drawn anew show to whoever may see them, and the players' label is written again: a ruler's too, which rings nothing.
+      this.drawings.marked(parts);
     }
     if (this.pin.view.visible) this.pin.place(this.live.distance, look.zoom);
     return moved;

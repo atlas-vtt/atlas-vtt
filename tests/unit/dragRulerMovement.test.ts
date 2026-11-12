@@ -58,7 +58,7 @@ function table(rules: MovementRules, options: { shown?: boolean; fight?: boolean
     return entry ? { position: { x: entry.x, y: entry.y, set: vi.fn() }, getChildByLabel: () => null } as never : null;
   });
   const draw = vi.fn();
-  const view = { draw, clear: vi.fn(), destroy: vi.fn(), layers: [] };
+  const view = { draw, clear: vi.fn(), destroy: vi.fn(), layers: [], playersLayers: [] };
   controller.setDragRuler(new DragRuler(
     view as unknown as DragRulerView, gridSystem as never, store, () => FEET, () => true, () => options.shown ?? true,
     { rules: () => rules, speedOf: (dragged) => (typeof dragged.speed === 'number' ? dragged.speed : null) },
@@ -124,7 +124,8 @@ describe('what a dropped token moved in its turn', () => {
     drag('a', 4);
     press('a');
     moveTo(center(7, 0));
-    expect(draw.mock.lastCall?.slice(1)).toEqual(['35 / 30ft', expect.any(Number), CELL, DASH.color]);
+    // The GM reads the turn's 35 ft against the speed; the players, whose token it is not, this drag's 15 ft.
+    expect(draw.mock.lastCall?.slice(1)).toEqual(['35 / 30ft', expect.any(Number), CELL, DASH.color, '15ft']);
     release(center(7, 0));
   });
 

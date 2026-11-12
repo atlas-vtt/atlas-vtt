@@ -37,11 +37,20 @@ export interface MeasureInputHost {
  * one: in the capture phase, as a token drag does, so Space adds a corner before the map's hotkeys
  * open the command palette. The primary button measures; any other is left to the viewport (a
  * right-drag pans).
+ *
+ * A measurement placed click by click waits between its clicks, and must not outlast the GM's
+ * attention: it holds keys, and Enter finishes it. So it is dropped, leaving nothing, as soon as
+ * the map is no longer what the GM works on: the window loses focus, a press lands anywhere but on
+ * the canvas, focus goes to something outside the map's tab (a dialog), or a key is pressed that
+ * is not the map's (`keysAreMaps`: another tab in front, a dialog, a menu or the DM screen over
+ * the map). A key typed into a field is that field's and changes nothing. All of it is heard in
+ * the canvas's own window and document, so a map in a popout is followed there.
  */
 export class MeasureInput {
   private readonly gesture = new MeasureGesture();
   private enabled = false;
-  private keyWindow: Window | null = null;
+  /** Stops listening for what a measurement under way hears beyond the viewport; null while none is. */
+  private letGo: (() => void) | null = null;
   /** Where the pointer was last, unsnapped, and whether Alt freed it: a change of Alt places the end again. */
   private pointer: { world: Point; screen: Point; free: boolean } | null = null;
   /** Where the button went down, in screen pixels, while it is down for a measurement. */
@@ -52,6 +61,8 @@ export class MeasureInput {
   constructor(
     private readonly viewport: Viewport,
     private readonly host: MeasureInputHost,
+    /** Whether a key pressed now is the map's to take (`canRunMapHotkeys`). */
+    private readonly keysAreMaps: (event: KeyboardEvent) => boolean = () => true,
     private readonly now: () => number = () => performance.now(),
   ) {}
 
@@ -80,7 +91,7 @@ export class MeasureInput {
 
   destroy(): void {
     this.setEnabled(false);
-    this.releaseKeys();
+    this.release();
   }
 
   private readonly onPointerDown = (e: FederatedPointerEvent): void => {
@@ -135,9 +146,29 @@ export class MeasureInput {
   /** The browser took the pointer away (a touch that became a system gesture): its measurement is dropped. */
   private readonly onPointerCancel = (): void => this.cancel();
 
+  /** The window lost focus, or the GM turned to something else: the measurement under way is dropped. */
+  private readonly drop = (): void => this.cancel();
+
+  /** A press anywhere but on the canvas (a toolbar, a panel, another tab) is not the measurement's. */
+  private readonly onPressInDocument = (event: PointerEvent): void => {
+    if (event.target !== this.canvas) this.cancel();
+  };
+
+  /** Focus went to something outside the map's tab: a dialog opened over it, by a key or by itself. */
+  private readonly onFocusIn = (event: FocusEvent): void => {
+    const tab = this.canvas.closest('.workspace-leaf');
+    const target = event.target as Node | null;
+    if (tab && target && !tab.contains(target)) this.cancel();
+  };
+
   /** The keys of a measurement under way, taken before the map's hotkeys see them. */
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (!this.gesture.active || isTextEntryTarget(event.target)) return;
+    // Not the map's key: what was being measured is dropped, and the key left to whoever it belongs to.
+    if (!this.keysAreMaps(event)) {
+      this.cancel();
+      return;
+    }
     if (event.key === 'Alt') {
       this.replace(true);
       return;
@@ -183,8 +214,8 @@ export class MeasureInput {
 
   private apply(result: GestureResult, shift: boolean): void {
     if (result.kind === 'none') return;
-    if (this.gesture.active) this.holdKeys();
-    else this.releaseKeys();
+    if (this.gesture.active) this.hold();
+    else this.release();
     const live = this.gesture.measurement;
     if (result.kind === 'live') {
       if (live) this.host.changed(live);
@@ -196,16 +227,32 @@ export class MeasureInput {
     }
   }
 
-  private holdKeys(): void {
-    if (this.keyWindow) return;
-    this.keyWindow = activeWindow;
-    this.keyWindow.addEventListener('keydown', this.onKeyDown, true);
-    this.keyWindow.addEventListener('keyup', this.onKeyUp, true);
+  /** The canvas the viewport takes its pointer from. */
+  private get canvas(): HTMLElement {
+    return this.viewport.options.events.domElement;
   }
 
-  private releaseKeys(): void {
-    this.keyWindow?.removeEventListener('keydown', this.onKeyDown, true);
-    this.keyWindow?.removeEventListener('keyup', this.onKeyUp, true);
-    this.keyWindow = null;
+  /** Listens, for as long as a measurement is under way, to its keys and to what ends it. */
+  private hold(): void {
+    if (this.letGo) return;
+    const doc = this.canvas.ownerDocument;
+    const win = doc.defaultView;
+    win?.addEventListener('keydown', this.onKeyDown, true);
+    win?.addEventListener('keyup', this.onKeyUp, true);
+    win?.addEventListener('blur', this.drop);
+    doc.addEventListener('pointerdown', this.onPressInDocument, true);
+    doc.addEventListener('focusin', this.onFocusIn);
+    this.letGo = (): void => {
+      win?.removeEventListener('keydown', this.onKeyDown, true);
+      win?.removeEventListener('keyup', this.onKeyUp, true);
+      win?.removeEventListener('blur', this.drop);
+      doc.removeEventListener('pointerdown', this.onPressInDocument, true);
+      doc.removeEventListener('focusin', this.onFocusIn);
+    };
+  }
+
+  private release(): void {
+    this.letGo?.();
+    this.letGo = null;
   }
 }

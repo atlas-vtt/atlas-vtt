@@ -21,15 +21,40 @@ interface RulerOptions {
   movement?: Pick<TokenMovement, 'rules' | 'speedOf'>;
   state?: Record<string, unknown>;
   settings?: Partial<MeasurementSettings>;
+  /** Whether the canvas shows the players' view. */
+  playersView?: () => boolean;
 }
 
-function makeRuler(token: { isHidden?: boolean; speed?: number } = {}, shown: () => boolean = () => true, options: RulerOptions = {}): { ruler: DragRuler; view: { draw: ReturnType<typeof vi.fn>; clear: ReturnType<typeof vi.fn>; layers: { visible: boolean }[] } } {
-  const view = { draw: vi.fn(), clear: vi.fn(), destroy: vi.fn(), layers: [{ visible: true }, { visible: true }] };
+interface FakeLayer { visible: boolean }
+interface FakeView {
+  draw: ReturnType<typeof vi.fn>;
+  clear: ReturnType<typeof vi.fn>;
+  layers: FakeLayer[];
+  /** The players' reading, held like the real view: there once a drag was drawn with one. */
+  playersLayers: FakeLayer[];
+}
+
+/** A view that keeps its two readings as the real one does: the GM's, and the players' while the last drawing had one. */
+function fakeView(): FakeView & { destroy: ReturnType<typeof vi.fn> } {
+  const theirs = [{ visible: false }, { visible: false }];
+  const view = {
+    draw: vi.fn((_points: unknown, _distance: string, _radius: number, _grid: number, _color?: string, forPlayers?: string) => { view.playersLayers = forPlayers === undefined ? [] : theirs; }),
+    clear: vi.fn(() => { view.playersLayers = []; }),
+    destroy: vi.fn(),
+    layers: [{ visible: true }, { visible: true }],
+    playersLayers: [] as FakeLayer[],
+  };
+  return view;
+}
+
+/** A ruler for the token `t1`, by default one of the players' own (it sees), whose speed they may read. */
+function makeRuler(token: { isHidden?: boolean; speed?: number; vision?: { enabled: boolean }; side?: string } = {}, shown: () => boolean = () => true, options: RulerOptions = {}): { ruler: DragRuler; view: FakeView } {
+  const view = fakeView();
   const gridSystem = {
     getOptions: () => ({ type: 'square', size: CELL, offsetX: 0, offsetY: 0 }),
     snapTokenCenter: (x: number, y: number) => center(Math.floor(x / CELL), Math.floor(y / CELL)),
   };
-  const state = { grid: { snapToGrid: true }, objects: { tokens: { t1: { id: 't1', size: 1, ...token } } }, ...options.state };
+  const state = { grid: { snapToGrid: true }, objects: { tokens: { t1: { id: 't1', size: 1, vision: { enabled: true }, ...token } } }, ...options.state };
   const settings = { mode: 'metric', unitType: 'feet', unitDistance: 5, diagonalRule: 'equidistant', rangeBands: [], ...options.settings } as MeasurementSettings;
   const ruler = new DragRuler(
     view as unknown as DragRulerView,
@@ -39,6 +64,7 @@ function makeRuler(token: { isHidden?: boolean; speed?: number } = {}, shown: ()
     () => true,
     shown,
     options.movement ?? null,
+    options.playersView,
   );
   return { ruler, view };
 }
@@ -237,6 +263,78 @@ describe('DragRuler', () => {
         expect(view.draw, name).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], name === 'range bands' ? 'Close' : '15ft', TOKEN_RADIUS, CELL);
         ruler.end();
       }
+    });
+
+    describe('of a token that is not the players\' own', () => {
+      const CREATURES: Array<[string, { vision?: { enabled: boolean }; side?: string }]> = [
+        ['a creature without sight', { vision: { enabled: false } }],
+        ['a seeing token the GM put on the opponents\' side', { side: 'opponents' }],
+      ];
+
+      for (const [name, creature] of CREATURES) {
+        it(`hands the view the plain distance for the players beside the GM's reading: ${name}`, () => {
+          const { ruler, view } = makeRuler({ speed: 30, ...creature }, () => true, { movement: movement(steps(true)), state: fightWith(20) });
+          ruler.begin('t1', center(0, 0));
+          ruler.update(center(3, 0));
+          // The GM reads 35 of 30 ft in the Dash colour; the players 15 ft, in the accent.
+          expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '35 / 30ft', TOKEN_RADIUS, CELL, DASH.color, '15ft');
+          ruler.end();
+        });
+      }
+
+      it('shows the GM\'s reading on the GM\'s canvas and the players\' in their frame, which leaves out the GM\'s', () => {
+        const { ruler, view } = makeRuler({ speed: 30, vision: { enabled: false } }, () => true, { movement: movement(steps()) });
+        ruler.begin('t1', center(0, 0));
+        ruler.update(center(3, 0));
+        expect(view.layers.map((layer) => layer.visible)).toEqual([true, true]);
+        expect(view.playersLayers.map((layer) => layer.visible)).toEqual([false, false]);
+        expect(ruler.getPlayerViewLayers(() => true)).toEqual([
+          ...view.layers.map((layer) => ({ layer, visible: false })),
+          ...view.playersLayers.map((layer) => ({ layer, visible: true })),
+        ]);
+        // Of a token they do not see they have neither.
+        expect(ruler.getPlayerViewLayers(() => false)).toEqual([...view.layers, ...view.playersLayers].map((layer) => ({ layer, visible: false })));
+        ruler.end();
+      });
+
+      it('shows the players\' reading on the canvas while it shows their view, and the GM\'s again after', () => {
+        let players = true;
+        const { ruler, view } = makeRuler({ speed: 30, vision: { enabled: false } }, () => true, { movement: movement(steps()), playersView: () => players });
+        ruler.begin('t1', center(0, 0));
+        ruler.update(center(3, 0));
+        expect(view.layers.map((layer) => layer.visible)).toEqual([false, false]);
+        expect(view.playersLayers.map((layer) => layer.visible)).toEqual([true, true]);
+        // A frame taken then shows the same.
+        expect(ruler.getPlayerViewLayers(() => true)).toEqual([
+          ...view.layers.map((layer) => ({ layer, visible: false })),
+          ...view.playersLayers.map((layer) => ({ layer, visible: true })),
+        ]);
+        players = false;
+        ruler.refreshVisibility();
+        expect(view.layers.map((layer) => layer.visible)).toEqual([true, true]);
+        expect(view.playersLayers.map((layer) => layer.visible)).toEqual([false, false]);
+        ruler.end();
+      });
+
+      it('has one reading for everyone where the GM reads a plain distance too: no steps, no speed', () => {
+        const { ruler, view } = makeRuler({ vision: { enabled: false } }, () => true, { movement: movement(steps()), playersView: () => true });
+        ruler.begin('t1', center(0, 0));
+        ruler.update(center(3, 0));
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '15ft', TOKEN_RADIUS, CELL);
+        expect(view.layers.map((layer) => layer.visible)).toEqual([true, true]);
+        expect(ruler.getPlayerViewLayers(() => true)).toEqual([]);
+        ruler.end();
+      });
+    });
+
+    it('shows the players their own token\'s move against its speed, as the GM reads it', () => {
+      const { ruler, view } = makeRuler({ speed: 30 }, () => true, { movement: movement(steps()), playersView: () => true });
+      ruler.begin('t1', center(0, 0));
+      ruler.update(center(5, 0));
+      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(5, 0)], '25 / 30ft', TOKEN_RADIUS, CELL, MOVE.color);
+      expect(view.layers.map((layer) => layer.visible)).toEqual([true, true]);
+      expect(ruler.getPlayerViewLayers(() => true)).toEqual([]);
+      ruler.end();
     });
 
     it('shows nothing while distances are switched off, whatever the rules say', () => {

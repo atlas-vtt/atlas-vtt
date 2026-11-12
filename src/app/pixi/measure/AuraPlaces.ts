@@ -1,8 +1,9 @@
 import { placeAura, type PlacedAura } from '../../measure/auraArea';
 import { isAura } from '../../measure/keptMeasures';
 import type { KeptMeasure } from '../../measure/measureTypes';
+import type { Point } from '../../types/visionTypes';
 import type { MeasureLook } from './DrawnMeasure';
-import { handlesAtPoints, type MeasureHandlePlace } from './measureHandle';
+import { handlesAtPoints, measureEndHandlePoint, type MeasureHandlePlace } from './measureHandle';
 import type { AuraDragSetting } from './measureHandleDrag';
 
 /**
@@ -29,14 +30,17 @@ export class AuraPlaces {
   }
 
   /**
-   * Where the handles of `measure` stand: an aura's around its token as it was last placed, its
-   * badge on the rim of the token's space and its far handle on its outline, and none while it has
-   * no place; any other measurement's where its points say.
+   * Where the handles of `measure` stand. Its badge stands on the rim of the token it lies on
+   * (`rims`, by `rimSpots`: the token an aura follows, the token another measurement starts on),
+   * so that the token's middle stays the token's; on its origin where it lies on none. An aura's
+   * far handle stands on its outline, around its token as it was last placed, and it has no
+   * handles while it has no place; any other measurement's far handle stands where its points say.
    */
-  handlesOf(measure: KeptMeasure): MeasureHandlePlace | null {
-    if (!isAura(measure)) return handlesAtPoints(measure);
+  handlesOf(measure: KeptMeasure, rims: ReadonlyMap<string, Point>): MeasureHandlePlace | null {
+    const rim = rims.get(measure.id);
+    if (!isAura(measure)) return rim ? { origin: rim, end: measureEndHandlePoint(measure) } : handlesAtPoints(measure);
     const placed = this.placed.get(measure.id);
-    return placed ? { origin: placed.handle, end: placed.end } : null;
+    return placed ? { origin: rim ?? placed.handle, end: placed.end } : null;
   }
 
   /** What the far handle of the aura `measure` is dragged by; null while it has no place. */

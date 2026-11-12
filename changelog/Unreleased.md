@@ -13,6 +13,7 @@
 - A measurement you keep is saved with the scene, and undo takes it back
 - A measurement you let go shows a pin beside its distance for two seconds: click the pin to keep it
 - A kept measurement has a small handle at its start, shown only to you. Drag the handle to move the measurement with any tool; its line and area take no clicks, so tokens under them stay in reach
+- A measurement that starts on a token has its handle on the token's rim, like an aura's, so the token itself stays in reach
 - Click the handle to change the measurement's colour, hide it from players or delete it
 - Delete or Backspace with the pointer over a handle removes that measurement
 - Hold Shift as you let go to do the opposite of Keep for that one measurement

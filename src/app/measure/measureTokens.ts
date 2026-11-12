@@ -14,8 +14,8 @@ import type { AreaCell } from './measureCells';
 import type { MeasureArea } from './measureGeometry';
 import { cellCentreAt, cellKeyAt, cellOutline, hexLayoutOf } from './measureGrid';
 
-/** What the rule reads of a token: where it stands, its size and whether it is hidden. */
-export type AreaToken = Pick<TokenEntity, 'id' | 'x' | 'y' | 'size' | 'isHidden'>;
+/** What the rules read of a token: where it stands, its size, whether it is hidden and its place in the pile. */
+export type AreaToken = Pick<TokenEntity, 'id' | 'x' | 'y' | 'size' | 'isHidden' | 'layer'>;
 
 /** `grid` as token placement reads it, for a token's footprint. */
 export function placementGridOf(grid: GridGeometry): PlacementGrid {

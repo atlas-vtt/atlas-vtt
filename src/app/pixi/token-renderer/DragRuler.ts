@@ -9,6 +9,10 @@
  * Where the collection names movement steps and the token has a speed (`movement`), the line
  * takes the colour of the step the move lies in and the label sets the distance against the
  * speed; the drop counts what each token moved in the running turn (`countDrop`).
+ * That reading is the GM's, and the players' for their own tokens (`sideOf`): of any other token
+ * it would tell them a creature's speed and what it moved this turn, so their picture (a frame,
+ * and the canvas while it shows their view, `playersView`) has the plain distance in the accent
+ * in its place (`DragRulerView.playersLayers`).
  */
 
 import type { StoreApi } from 'zustand';
@@ -19,6 +23,7 @@ import { tokenCenterShift } from '../../grid/gridPlacement';
 import type { Point } from '../../grid/hexGeometry';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
 import { movedThisTurn } from '../../initiative/movedThisTurn';
+import { sideOf } from '../../initiative/sides';
 import { dragMove, movedGameUnits, type DragMove } from '../../measure/dragMovement';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { LayerVisibility } from '../playerSafeFrame';
@@ -61,6 +66,8 @@ export class DragRuler {
     private readonly tokenVisible: (tokenId: string) => boolean = () => true,
     private readonly shown: () => boolean = () => true,
     private readonly movement: Pick<TokenMovement, 'rules' | 'speedOf'> | null = null,
+    /** Whether the canvas shows the players' view (session view, the peek, the palette's player mode). */
+    private readonly playersView: () => boolean = () => false,
   ) {}
 
   /** Starts measuring a drag of `tokenId`, which started at `origin`. */
@@ -125,19 +132,32 @@ export class DragRuler {
     for (const [distance, tokenIds] of moved) this.store.getState().countTurnMove(tokenIds, distance);
   }
 
-  /** Players never see the ruler of a token hidden from them, or of one they do not see (`isSeen`, with dynamic lighting). */
+  /**
+   * Players never see the ruler of a token hidden from them, or of one they do not see (`isSeen`,
+   * with dynamic lighting). Of a token that is not theirs they see the plain distance, where the
+   * GM reads it against the token's speed.
+   */
   getPlayerViewLayers(isSeen: (tokenId: string) => boolean = () => true): LayerVisibility[] {
     const token = this.token();
+    const own = this.view.layers;
+    const theirs = this.view.playersLayers;
     const shown = !token || (!token.isHidden && isSeen(token.id));
-    return shown ? [] : this.view.layers.map(layer => ({ layer, visible: false }));
+    if (!shown) return [...own, ...theirs].map(layer => ({ layer, visible: false }));
+    if (theirs.length === 0) return [];
+    // Their reading stands where the ruler shows, whichever of the two the canvas has.
+    const showing = [...own, ...theirs].some(layer => layer.visible);
+    return [...own.map(layer => ({ layer, visible: false })), ...theirs.map(layer => ({ layer, visible: showing }))];
   }
 
-  /** A held token can enter fog without ending its measured drag. */
+  /** A held token can enter fog without ending its measured drag; and the canvas shows the reading of whoever looks at it. */
   refreshVisibility(): void {
     const landing = this.landing;
     if (!this.tokenId || !landing) return;
     const visible = this.shown() && this.tokenVisible(this.tokenId) && this.waypoints.some((point) => !samePoint(point, landing));
-    for (const layer of this.view.layers) layer.visible = visible;
+    const theirs = this.view.playersLayers;
+    const forPlayers = theirs.length > 0 && this.playersView();
+    for (const layer of this.view.layers) layer.visible = visible && !forPlayers;
+    for (const layer of theirs) layer.visible = visible && forPlayers;
   }
 
   destroy(): void {
@@ -168,9 +188,11 @@ export class DragRuler {
     const move = this.moveOf(cells, settings);
     const drawn = this.tip ? [...points.slice(0, -1), this.tip] : points;
     const tokenRadius = computeTokenPixelSize(grid.size, this.tokenSize()) / 2;
-    if (move) this.view.draw(drawn, move.label, tokenRadius, grid.size, move.color);
+    const plain = formatDistance(cells, settings);
     // A drag that reads as a plain distance is drawn as it always was: in the accent, no colour named.
-    else this.view.draw(drawn, formatDistance(cells, settings), tokenRadius, grid.size);
+    if (!move) this.view.draw(drawn, plain, tokenRadius, grid.size);
+    else if (this.isPlayersOwn()) this.view.draw(drawn, move.label, tokenRadius, grid.size, move.color);
+    else this.view.draw(drawn, move.label, tokenRadius, grid.size, move.color, plain);
     this.refreshVisibility();
   }
 
@@ -209,6 +231,11 @@ export class DragRuler {
 
   private snapsToGrid(): boolean {
     return this.store.getState().grid?.snapToGrid ?? true;
+  }
+
+  /** Whether the dragged token is one of the players' own: they may read its speed and what it moved. */
+  private isPlayersOwn(): boolean {
+    return sideOf(this.token()) === 'players';
   }
 
   /** The dragged token as the store holds it now. */

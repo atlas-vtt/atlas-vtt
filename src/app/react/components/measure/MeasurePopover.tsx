@@ -5,8 +5,9 @@ import { formatDistance, rangeBandName } from '../../../grid/measurementFormat';
 import { t } from '../../../i18n';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { levelObjects } from '../../../levels/levelObjects';
-import { auraBadgePoint, auraCells } from '../../../measure/auraArea';
-import { isAura } from '../../../measure/keptMeasures';
+import { auraCells } from '../../../measure/auraArea';
+import { rimSpots } from '../../../measure/handleSpots';
+import { isAura, measureList } from '../../../measure/keptMeasures';
 import { lengthInCells } from '../../../measure/measureGrid';
 import { auraLabelText } from '../../../measure/measureLabelText';
 import { MAX_LINE_WIDTH, type KeptMeasure, type MeasureChanges, type MeasureShapeKind } from '../../../measure/measureTypes';
@@ -64,7 +65,7 @@ export function MeasurePopoverHost(): React.ReactElement {
  * and the light it gives (`MeasureLook`), its switches
  * (an area's also whether walls stop it, a circle's whether it follows the token it lies on, and a
  * line's width) and, last, what is done with it: an area's tokens selected, and the measurement
- * deleted. An aura's stands beside its badge on its token's rim. Every control writes to the store at once,
+ * deleted. It stands beside the measurement's badge: on the rim of the token it lies on, else on its origin. Every control writes to the store at once,
  * one undo step each.
  */
 function MeasurePopover({ measureId }: { measureId: string }): React.ReactElement | null {
@@ -80,8 +81,9 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
   useMapPopoverPosition(ref, measureId, (state, id, zoom) => {
     const target = keptMeasure(state, id);
     if (!target) return null;
-    const token = isAura(target) ? mapTokens(levelObjects(state))[target.follows] : undefined;
-    const at = token && state.grid ? auraBadgePoint(token, state.grid) : measureHandlePoint(target);
+    // Beside its badge: on the rim of the token it lies on, else on its origin.
+    const objects = levelObjects(state);
+    const at = (state.grid && rimSpots(measureList(objects.measures), mapTokens(objects), state.grid).get(id)) ?? measureHandlePoint(target);
     return { ...at, bright: 0, dim: 0, marker: MEASURE_HANDLE_RADIUS * mapMarkerScale(zoom) * zoom };
   }, { growsDown: true });
   useFocusWhileOpen(ref, present);

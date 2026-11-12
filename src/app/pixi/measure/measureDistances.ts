@@ -14,8 +14,16 @@ import type { Point } from '../../types/visionTypes';
  * floor); an area's size, with the number of `tokens` in it.
  */
 export function measureDistance(grid: GridGeometry, measurement: Measurement, settings: MeasurementSettings, heightAt?: HeightAt | null, tokens = 0): string {
-  const rise = measurement.shape === 'ruler' && heightAt ? riseBetweenEnds(measurement.points, heightAt, settings) : 0;
-  return measureLabelText(measurement, grid, settings, tokens, rise);
+  return measureLabelText(measurement, grid, settings, tokens, rulerRise(measurement, settings, heightAt));
+}
+
+/**
+ * The height a ruler counts, in cells: between the tokens under its two ends as `heightAt` reads
+ * them, and with `seen` only the tokens a viewer sees there. None for an area, and without `heightAt`.
+ */
+export function rulerRise(measurement: Measurement, settings: MeasurementSettings, heightAt?: HeightAt | null, seen?: (tokenId: string) => boolean): number {
+  if (measurement.shape !== 'ruler' || !heightAt) return 0;
+  return riseBetweenEnds(measurement.points, seen ? (point) => heightAt(point, seen) : heightAt, settings);
 }
 
 /**

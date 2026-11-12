@@ -49,6 +49,17 @@ export function isAura(measure: KeptMeasure): measure is KeptAura {
   return measure.shape === 'circle' && typeof measure.follows === 'string' && measure.follows !== '' && isAuraReach(measure.aura);
 }
 
+/**
+ * The token the entry `value` of a measures record follows: the reader's own answer to whether it
+ * is an aura, for whoever keeps auras with their tokens. Null for everything `readMeasure` does
+ * not read as one: a ruler or another area that names a token, a circle without a reach, an entry
+ * that is no measurement. Read anew at every call, so it may be asked of a store draft.
+ */
+export function followedToken(id: string, value: unknown): string | null {
+  const measure = isRecord(value) ? measureOf(id, value) : null;
+  return measure && isAura(measure) ? measure.follows : null;
+}
+
 function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | null {
   const { shape, points } = value;
   if (!isShape(shape) || !isPath(points, shape)) return null;

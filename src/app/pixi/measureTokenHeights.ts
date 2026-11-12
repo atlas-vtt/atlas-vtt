@@ -23,15 +23,16 @@ const shownTokens = (state: HeightsState): Readonly<Record<string, TokenEntity>>
 
 /**
  * How high the token at a point of the level shown stands, for the rulers that start or end on
- * one: the token lying on top there, hidden ones too, where the store has it. While no token is
- * off the floor it asks nothing of them.
+ * one: the token lying on top there, where the store has it. The GM's reading counts every token,
+ * hidden ones too; the players' (`seen`) only the tokens they see, so their label tells of no
+ * flier they do not. While no token is off the floor it asks nothing of them.
  */
 export function measureHeightAt(store: Pick<HeightsStore, 'getState'>, grid: { getOptions(): GridGeometry }): HeightAt {
-  return (point) => {
+  return (point, seen) => {
     const state = store.getState();
     const tokens = shownTokens(state);
     if (raisedTokens(tokens).length === 0) return 0;
-    return tokenHeight(tokenStandingAt(point, Object.values(tokens), { ...grid.getOptions(), snapToGrid: state.grid?.snapToGrid }));
+    return tokenHeight(tokenStandingAt(point, Object.values(tokens), { ...grid.getOptions(), snapToGrid: state.grid?.snapToGrid }, seen && ((token) => seen(token.id))));
   };
 }
 

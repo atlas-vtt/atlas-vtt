@@ -4,21 +4,22 @@ import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { AreaOnMapMemo, type AreaMap, type AreaOnMap } from '../../measure/areaOnMap';
 import { AuraOnMapMemo, type PlacedAura } from '../../measure/auraArea';
 import type { MeasureEffect } from '../../measure/measureEffects';
-import { auraLabelText } from '../../measure/measureLabelText';
+import { auraLabelText, measureLabelText } from '../../measure/measureLabelText';
 import { tokensInArea, type AreaToken } from '../../measure/measureTokens';
 import type { Measurement } from '../../measure/measureTypes';
 import type { HeightAt } from '../../measure/tokenHeight';
+import type { TokenSeen } from '../../vision/measureOrigin';
 import type { MeasureParts } from '../measurePartsVisibility';
-import { computeTokenPixelSize } from '../token-renderer/tokenSizing';
 import { destroyTree } from '../utils/destroyTree';
 import { drawMeasurement, drawMeasureOutline, drawMeasurePoint, measureLabelTarget } from '../utils/measureDrawing';
 import { MeasureInk, type MeasureInkLayer } from '../utils/measureInk';
 import { MeasureLabel } from '../utils/measureLabel';
 import type { LabelTarget } from '../utils/measureLabelLayout';
 import { AreaBody, type BodyLook } from './AreaBody';
-import { AreaTokenRings, type MarkedToken } from './AreaTokenRings';
+import { AreaTokenRings, markedTokens } from './AreaTokenRings';
 import type { AreaEffects } from './effects/AreaEffects';
-import { legDistances, measureDistance } from './measureDistances';
+import { legDistances, rulerRise } from './measureDistances';
+import { PlayersLabel } from './PlayersLabel';
 
 /** A leg's label beside the distance's: the same pill, smaller. */
 const LEG_LABEL_SIZE = 0.8;
@@ -31,7 +32,7 @@ export interface MeasureLook {
   readonly settings: MeasurementSettings;
   /** The colour of a measurement that names none. */
   readonly accent: number;
-  /** How high the token at a point stands: a ruler counts the height between its two ends. Without it, none. */
+  /** How high the token at a point stands, for the GM and for who sees only some tokens: a ruler counts the height between its two ends. Without it, none. */
   readonly heightAt?: HeightAt | null;
   /** What of the map shapes an area: its walls, its rules, and whether its cells are counted. */
   readonly map: AreaMap;
@@ -82,7 +83,9 @@ interface Inked {
  * on every token in it and their number on its label. An aura is the area around its token
  * (`PlacedAura`): it says how far it reaches above its top edge, has no dot where it starts, since
  * its token stands there, and never marks or counts that token. The labels are one part, shown and
- * hidden together.
+ * hidden together. What its distance says of tokens (their number in an area, the height of those
+ * under a ruler's ends) is the GM's reading; where the players' differs, a label of their own
+ * stands in its place in their picture (`labelForPlayers`).
  */
 export class DrawnMeasure {
   readonly distance = new MeasureLabel();
@@ -95,9 +98,13 @@ export class DrawnMeasure {
   private readonly auraArea = new AuraOnMapMemo();
   private readonly labels = new Container({ label: 'measure-labels-of-one', eventMode: 'none', interactiveChildren: false });
   private readonly legs: MeasureLabel[] = [];
-  /** The distance with the number of tokens the players see, in the GM's label's place in their picture. */
-  private playersLabel: MeasureLabel | null = null;
-  private playersCount: number | null = null;
+  /** The distance as the players read it, in the GM's label's place in their picture. */
+  private readonly playersLabel = new PlayersLabel(this.labels, this.distance.view);
+  /** The GM's distance, and the height it counts between a ruler's ends (cells). */
+  private gmText = '';
+  private gmRise = 0;
+  /** The height the players' reading was last worked out for, and what it came to: asked at every frame, written at none while it stays. */
+  private playersRise: { readonly rise: number; readonly text: string } | null = null;
   private drawn: Drawn | null = null;
   /** The area as it is drawn now; null for a ruler and while nothing is drawn. */
   private inked: Inked | null = null;
@@ -112,8 +119,7 @@ export class DrawnMeasure {
     this.rings = new AreaTokenRings(surfaces.shapes);
     this.labels.addChild(this.distance.view);
     surfaces.labels.addChild(this.labels);
-    const { ink, body, rings, distance } = this;
-    const shown = (): MeasureLabel | null => this.playersLabel;
+    const { ink, body, rings, distance, playersLabel } = this;
     this.parts = {
       shape: {
         get visible(): boolean { return ink.shape.visible; },
@@ -125,9 +131,9 @@ export class DrawnMeasure {
       label: this.labels,
       marks: {
         get rings() { return rings.rings; },
-        gmCount: distance.view,
-        get playersCount() { return shown()?.view ?? null; },
-        countForPlayers: (count) => this.countForPlayers(count),
+        gmLabel: distance.view,
+        get playersLabel() { return playersLabel.view; },
+        labelForPlayers: (count, seen) => this.labelForPlayers(count, seen),
       },
     };
   }
@@ -162,7 +168,8 @@ export class DrawnMeasure {
     const ruler = measurement.shape === 'ruler';
     const onMap = this.onMap(look);
     const tokens = onMap && this.marked ? this.tokensIn(onMap, look) : NO_TOKENS;
-    const text = this.text(drawn, look, tokens.length, look.heightAt);
+    const rise = rulerRise(measurement, settings, look.heightAt);
+    const text = this.text(drawn, look, tokens.length, rise);
     const effect = drawn.look?.effect ?? null;
     const inked: Inked | null = onMap && { onMap, tint, zoom, tokens, text, effect };
     const before = this.inked;
@@ -180,8 +187,11 @@ export class DrawnMeasure {
       const origin = measurement.points[0];
       if (origin && !drawn.aura) drawMeasurePoint(this.ink, tint, origin, true);
     }
-    this.rings.show(ringed(tokens, look), tint, zoom);
-    this.playersCount = null;
+    this.rings.show(tokens.length > 0 ? markedTokens(tokens, look.tokens(), grid.size, look.ringScale) : [], tint, zoom);
+    this.gmText = text;
+    this.gmRise = rise;
+    this.playersLabel.drawnAnew();
+    this.playersRise = null;
     this.distance.show(text, labelTarget(drawn), zoom, grid.size);
     const legs = ruler ? legDistances(grid, measurement.points, settings) : [];
     this.fitLegs(legs.length);
@@ -242,9 +252,9 @@ export class DrawnMeasure {
     return drawn.aura ? this.auraArea.get(drawn.aura, look.map, drawn.walls) : this.area.get(drawn.measurement, look.map, drawn.walls);
   }
 
-  /** What its label says: with `tokens` in an area, and a ruler with the height between the tokens under its ends. */
-  private text({ measurement, aura }: Drawn, look: MeasureLook, tokens: number, heightAt?: HeightAt | null): string {
-    return aura ? auraLabelText(aura.cells, look.settings, tokens) : measureDistance(look.grid, measurement, look.settings, heightAt, tokens);
+  /** What its label says: with `tokens` in an area, and a ruler with `rise` cells of height between the tokens under its ends. */
+  private text({ measurement, aura }: Drawn, look: MeasureLook, tokens: number, rise: number): string {
+    return aura ? auraLabelText(aura.cells, look.settings, tokens) : measureLabelText(measurement, look.grid, look.settings, tokens, rise);
   }
 
   /** Counted again only for another area or other tokens. */
@@ -258,17 +268,28 @@ export class DrawnMeasure {
     return ids;
   }
 
-  /** Writes the players' label, where the GM's stands: the size with the `count` tokens the players see. */
-  private countForPlayers(count: number): void {
+  /**
+   * The distance as the players read it: an area's size with the `count` tokens they see in it, a
+   * ruler's length with the height only of the tokens they see under its ends (`seen`). Where that
+   * is what the GM's label says, false: that label is theirs too. Else their own label is written
+   * where the GM's stands (`PlayersLabel`), and true.
+   */
+  private labelForPlayers(count: number, seen: TokenSeen): boolean {
     const { drawn, look } = this;
-    if (!drawn || !look || count === this.playersCount) return;
-    this.playersCount = count;
-    if (!this.playersLabel) {
-      this.playersLabel = new MeasureLabel();
-      this.playersLabel.view.visible = false;
-      this.labels.addChildAt(this.playersLabel.view, this.labels.getChildIndex(this.distance.view) + 1);
-    }
-    this.playersLabel.show(this.text(drawn, look, count), labelTarget(drawn), look.zoom, look.grid.size);
+    if (!drawn || !look) return false;
+    const text = this.textForPlayers(drawn, look, count, seen);
+    if (text === this.gmText) return false;
+    this.playersLabel.write(text, labelTarget(drawn), look.zoom, look.grid.size);
+    return true;
+  }
+
+  /** The players' distance. A ruler's is asked at every frame, so it is written out only for another height than last time. */
+  private textForPlayers(drawn: Drawn, look: MeasureLook, count: number, seen: TokenSeen): string {
+    if (drawn.measurement.shape !== 'ruler') return this.rings.rings.length > 0 ? this.text(drawn, look, count, 0) : this.gmText;
+    const rise = rulerRise(drawn.measurement, look.settings, look.heightAt, seen);
+    if (rise === this.gmRise) return this.gmText;
+    if (this.playersRise?.rise !== rise) this.playersRise = { rise, text: this.text(drawn, look, 0, rise) };
+    return this.playersRise.text;
   }
 
   /** As many leg labels as legs to name. */
@@ -285,16 +306,4 @@ export class DrawnMeasure {
 /** Where its distance goes: above an aura's top edge, since its token stands in its middle. */
 function labelTarget({ measurement, aura }: Drawn): LabelTarget {
   return aura ? { beside: [aura.top] } : measureLabelTarget(measurement);
-}
-
-/** The tokens to ring, each with the circle its ring is drawn around. */
-function ringed(ids: readonly string[], look: MeasureLook): MarkedToken[] {
-  if (ids.length === 0) return [];
-  const record = look.tokens();
-  return ids.flatMap((id) => {
-    const token = record[id];
-    if (!token) return [];
-    const radius = (computeTokenPixelSize(look.grid.size, token.size || 1) / 2) * Math.max(1, look.ringScale);
-    return [{ id, x: token.x, y: token.y, radius }];
-  });
 }

@@ -16,6 +16,7 @@ import { EventEmitter } from 'events';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
 import { DrawingRenderer } from '../../../src/app/pixi/DrawingRenderer';
+import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
@@ -1485,7 +1486,7 @@ describe('TokenRenderer Integration Tests', () => {
       expect(onCanvas()).toEqual([true, false, true, true, true, true]);
     });
 
-    it('hands a press on a kept ruler\'s handle to it before the token under it, with any tool, and to the token in the players\' view', async () => {
+    it('puts the handle of a kept ruler that starts on a token on the token\'s rim: a press there is the handle\'s with any tool, the token\'s middle is the token\'s, and so is all of it in the players\' view', async () => {
       store.getState().addToken(token({ id: 'goblin', x: 105, y: 105 }));
       await waitForTokens('goblin');
       keepRuler(105);
@@ -1494,24 +1495,27 @@ describe('TokenRenderer Integration Tests', () => {
         viewport.emit('pointerdown', pointerEvent(x, y));
         viewport.emit('pointerup', pointerEvent(x, y));
       };
+      // The badge stands on the rim of the goblin's space; pressed a little within it, the press is on the token and on the badge.
+      const rim = auraBadgePoint({ x: 105, y: 105 }, { size: gridSize });
+      const onBadge = { x: rim.x + (105 - rim.x) * 0.15, y: rim.y + (105 - rim.y) * 0.15 };
       // With the measure tool the handle's press measures nothing.
-      click(105, 105);
+      click(onBadge.x, onBadge.y);
       expect(measure.measurements.get().live).toBeNull();
       expect(store.getState().measurePopover).toBe(id);
       store.getState().closeMeasurePopover();
       store.getState().setActiveTool('select');
-      click(105, 105);
+      click(onBadge.x, onBadge.y);
       expect(store.getState().measurePopover).toBe(id);
       expect(store.getState().selectedIds).toEqual([]);
-      // Beside the handle the token is the token's.
+      // The token's middle, where the ruler starts, is the token's.
       store.getState().closeMeasurePopover();
-      click(125, 120);
+      click(105, 105);
       expect(store.getState().measurePopover).toBeNull();
       expect(store.getState().selectedIds).toEqual(['goblin']);
       store.getState().clearSelection();
-      // The players' view has no handles: the press there is the token's.
+      // The players' view has no handles: the press on the badge's place is the token's.
       store.getState().setGMView(false);
-      click(105, 105);
+      click(onBadge.x, onBadge.y);
       expect(store.getState().measurePopover).toBeNull();
       expect(store.getState().selectedIds).toEqual(['goblin']);
     });

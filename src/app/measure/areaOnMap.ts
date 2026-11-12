@@ -45,6 +45,21 @@ export interface AreaOnMap {
   readonly withinWalls: ((shapes: readonly (readonly Point[])[], beyond: number) => readonly (readonly Point[])[]) | null;
 }
 
+/** The least an origin may lie from a wall and still count as on it, world pixels: a wall drawn by hand is that far off the line it follows. */
+const LEAST_WALL_SLACK = 4;
+/** The same as a share of a cell, where origins snap to the grid: a wall this near a grid line is drawn along it. */
+const WALL_SLACK_OF_CELL = 1 / 12;
+
+/**
+ * How near a wall the origin of an area made on `map` lies and counts as on it (`wallSweepPoint`).
+ * Origins snap to the grid's lines and walls never do, so a wall drawn along a line passes a few
+ * pixels beside the origins on it: a twelfth of a cell and four pixels at least where cells are
+ * counted, four pixels where an origin lies anywhere.
+ */
+export function wallSlack({ grid, cells }: Pick<AreaMap, 'grid' | 'cells'>): number {
+  return cells && grid.size > 0 ? Math.max(LEAST_WALL_SLACK, grid.size * WALL_SLACK_OF_CELL) : LEAST_WALL_SLACK;
+}
+
 /**
  * The area of `measurement` on `map`: cut by the map's walls unless it does not stop at them
  * (`stopsAtWalls`). Null for a ruler and for an area without a size. A map without walls costs no
@@ -52,19 +67,23 @@ export interface AreaOnMap {
  */
 export function areaOnMap(measurement: Measurement, map: AreaMap, stopsAtWalls = true): AreaOnMap | null {
   const shaped = shapedArea(measurement, { coneAngle: map.coneAngle, coneEnd: map.coneEnd, lineWidth: map.grid.size });
-  return shaped && shapeOnMap(shaped, map, stopsAtWalls);
+  return shaped && shapeOnMap(shaped, map, stopsAtWalls, wallSlack(map));
 }
 
-/** `shaped` as it lies on `map`: cut by the map's walls unless it does not stop at them, with the cells it covers. */
-export function shapeOnMap(shaped: ShapedArea, map: AreaMap, stopsAtWalls = true): AreaOnMap {
+/**
+ * `shaped` as it lies on `map`: cut by the map's walls unless it does not stop at them, with the
+ * cells it covers. `slack` is how near a wall its origin counts as on it: an area the GM places
+ * says `wallSlack`; one that lies where its token stands (an aura) has none.
+ */
+export function shapeOnMap(shaped: ShapedArea, map: AreaMap, stopsAtWalls = true, slack = 0): AreaOnMap {
   const { walls } = map;
   const stops = stopsAtWalls && walls.length > 0;
-  const area = stops ? areaWithinWalls(shaped, walls) : shaped;
+  const area = stops ? areaWithinWalls(shaped, walls, slack) : shaped;
   return {
     shaped,
     area,
     cells: map.cells ? cellsInArea(map.grid, area, map.cellRule) : null,
-    withinWalls: stops ? (shapes, beyond) => shapesWithinWalls(shaped, walls, shapes, beyond) : null,
+    withinWalls: stops ? (shapes, beyond) => shapesWithinWalls(shaped, walls, shapes, beyond, slack) : null,
   };
 }
 
@@ -89,15 +108,15 @@ interface Asked {
 /**
  * The area of one measurement, worked out again only when it is another area. A circle is the same
  * whichever way its end lies from its centre, so one dragged around at one size (a snapped size
- * changes only every cell) is worked out once: unless its centre lies on a wall, where the side it
- * is dragged to decides (`wallSweepPoint`).
+ * changes only every cell) is worked out once: unless its centre lies on a wall or just beside
+ * one, where the side it is dragged to decides (`wallSweepPoint`).
  */
 export class AreaOnMapMemo {
   private last: Asked | null = null;
 
   get(measurement: Measurement, map: AreaMap, stopsAtWalls = true): AreaOnMap | null {
     const cut = stopsAtWalls && map.walls.length > 0;
-    const sweptFrom = cut ? circleSweptFrom(measurement, map.walls) : null;
+    const sweptFrom = cut ? circleSweptFrom(measurement, map.walls, wallSlack(map)) : null;
     const last = this.last;
     if (last && last.stops === stopsAtWalls && sameAreaMap(last.map, map) && sameArea(last, measurement, sweptFrom)) return last.value;
     const value = areaOnMap(measurement, map, stopsAtWalls);
@@ -111,13 +130,13 @@ export class AreaOnMapMemo {
 }
 
 /** Where the walls of a circle are swept from; null for any other shape, and for a circle without a size. */
-function circleSweptFrom({ shape, points }: Measurement, walls: readonly WallSegment[]): Point | null {
+function circleSweptFrom({ shape, points }: Measurement, walls: readonly WallSegment[], slack: number): Point | null {
   const [origin, end] = points;
   if (shape !== 'circle' || !origin || !end) return null;
   const x = end.x - origin.x;
   const y = end.y - origin.y;
   const length = Math.hypot(x, y);
-  return length > 0 ? wallSweepPoint({ origin, towards: { x: x / length, y: y / length } }, walls) : null;
+  return length > 0 ? wallSweepPoint({ origin, towards: { x: x / length, y: y / length } }, walls, slack) : null;
 }
 
 function sameArea(last: Asked, measurement: Measurement, sweptFrom: Point | null): boolean {

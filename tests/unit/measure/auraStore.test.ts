@@ -152,28 +152,38 @@ describe('the auras of tokens in the store', () => {
 });
 
 describe('what keeps auras with their tokens', () => {
+  const aura = (id: string, follows: string, more: Record<string, unknown> = {}): Record<string, unknown> => ({ id, kind: 'measure', shape: 'circle', points: POINTS, follows, aura: 10, ...more });
   const objects = (): { measures: Record<string, unknown>; tokens: Record<string, { level?: string }> } => ({
     measures: {
-      a: { id: 'a', follows: 'hero', level: 'ground' },
+      a: aura('a', 'hero', { level: 'ground' }),
       text: 'circle',
-      b: { id: 'b', follows: 'goblin' },
-      c: { id: 'c', follows: 'hero' },
-      plain: { id: 'plain' },
+      b: aura('b', 'goblin'),
+      c: aura('c', 'hero'),
+      plain: { id: 'plain', kind: 'measure', shape: 'circle', points: POINTS },
+      // What names a token and is read as a plain measurement: a ruler, a circle without a reach, a cone.
+      ruler: { id: 'ruler', kind: 'measure', shape: 'ruler', points: POINTS, follows: 'hero' },
+      reachless: { id: 'reachless', kind: 'measure', shape: 'circle', points: POINTS, follows: 'hero' },
+      cone: { id: 'cone', kind: 'measure', shape: 'cone', points: POINTS, follows: 'hero', aura: 10 },
+      // No measurement at all: nothing reads it.
+      broken: { id: 'broken', follows: 'hero', aura: 10 },
     },
     tokens: { hero: { level: 'upper' }, goblin: {} },
   });
 
-  it('finds the measurements that follow a token, whatever else the record holds', () => {
+  it('finds the auras of a token as the reader reads them, whatever else the record holds', () => {
     expect(aurasOf(objects().measures, new Set(['hero']))).toEqual(['a', 'c']);
     expect(aurasOf(objects().measures, new Set())).toEqual([]);
     expect(aurasOf(undefined, new Set(['hero']))).toEqual([]);
     expect(aurasOf('measures' as never, new Set(['hero']))).toEqual([]);
+    // The one predicate: an entry is an aura here exactly when the reader's list holds it as one.
+    const read = measureList(objects().measures as Record<string, KeptMeasure>).filter(isAura).map((measure) => measure.id);
+    expect(aurasOf(objects().measures, new Set(['hero', 'goblin']))).toEqual(read);
   });
 
   it('drops the auras of tokens that are gone and leaves every other entry', () => {
     const held = objects();
     expect(dropAurasOf(held, ['hero', 'nobody'])).toEqual(['a', 'c']);
-    expect(Object.keys(held.measures)).toEqual(['text', 'b', 'plain']);
+    expect(Object.keys(held.measures)).toEqual(['text', 'b', 'plain', 'ruler', 'reachless', 'cone', 'broken']);
     expect(dropAurasOf({ tokens: {} }, ['hero'])).toEqual([]);
   });
 
@@ -182,8 +192,31 @@ describe('what keeps auras with their tokens', () => {
     held.tokens.goblin = {};
     (held.measures.b as { level?: string }).level = 'ground';
     aurasToTokenLevels(held, ['hero', 'goblin']);
-    expect(held.measures.a).toEqual({ id: 'a', follows: 'hero', level: 'upper' });
-    expect(held.measures.c).toEqual({ id: 'c', follows: 'hero', level: 'upper' });
-    expect(held.measures.b).toEqual({ id: 'b', follows: 'goblin' });
+    expect(held.measures.a).toEqual(aura('a', 'hero', { level: 'upper' }));
+    expect(held.measures.c).toEqual(aura('c', 'hero', { level: 'upper' }));
+    expect(held.measures.b).toEqual(aura('b', 'goblin'));
+    expect(held.measures.ruler).not.toHaveProperty('level');
+  });
+});
+
+describe('a measurement that names a token and is no aura', () => {
+  const ruler = (): KeptMeasure => ({ id: 'ruler', kind: 'measure', shape: 'ruler', points: POINTS, follows: 'hero' } as unknown as KeptMeasure);
+
+  it('stays when its token is deleted', () => {
+    const { store } = setup();
+    store.setState({ objects: { ...store.getState().objects, measures: { ruler: ruler() } } });
+    store.getState().deleteToken('hero');
+    expect(store.getState().objects.tokens.hero).toBeUndefined();
+    expect(store.getState().objects.measures).toEqual({ ruler: ruler() });
+  });
+
+  it('is left alone when the token is given an aura: the aura is a measurement of its own', () => {
+    const { store, auras } = setup();
+    store.setState({ objects: { ...store.getState().objects, measures: { ruler: ruler() } } });
+    const wider = [{ x: 105, y: 105 }, { x: 350, y: 105 }];
+    expect(store.getState().setTokenAuras([{ tokenId: 'hero', aura: 15, points: wider }])).toBe(true);
+    expect(store.getState().objects.measures?.ruler).toEqual(ruler());
+    expect(auras().filter(isAura)).toHaveLength(1);
+    expect(auras().find(isAura)).toMatchObject({ shape: 'circle', follows: 'hero', aura: 15, points: wider });
   });
 });

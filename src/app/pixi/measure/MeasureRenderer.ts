@@ -2,13 +2,14 @@ import type { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand/vanilla';
 import { resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
-import type { SceneSource } from '../../host/sceneSource';
 import { levelObjects } from '../../levels/levelObjects';
+import { rimSpots } from '../../measure/handleSpots';
 import { isAura, measureList } from '../../measure/keptMeasures';
 import type { KeptMeasure } from '../../measure/measureTypes';
 import type { HeightAt } from '../../measure/tokenHeight';
 import type { MeasuresSlice } from '../../stores/measuresSlice';
 import type { ViewState } from '../../types/viewState';
+import type { Point } from '../../types/visionTypes';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import type { MapBounds } from '../../vision/visibility';
 import { MeasurePartsVisibility, type MeasurePlayersView } from '../measurePartsVisibility';
@@ -24,18 +25,23 @@ import { MeasureInput } from './MeasureInput';
 import { MeasureLayer } from './MeasureLayer';
 import { MeasuredScene } from './MeasuredScene';
 import { showMeasuresFullNotice } from './measureNotices';
-import { NO_MEASUREMENTS, type LiveMeasure, type Measurements } from './measurements';
+import { PointedMeasures } from './PointedMeasures';
+import { MeasurementsSource, type LiveMeasure } from './measurements';
 import { RangeMarks, type RangeSources } from './RangeMarks';
 
 export { MEASURE_FADE_MS, type MeasureGrid } from './LiveMeasuring';
 
-type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting'> & Pick<MeasuresSlice, 'addMeasure'>
+type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting' | CoversMap> & Pick<MeasuresSlice, 'addMeasure'>
   & ReturnType<MeasureHandleStore['getState']>;
 
 /** What the measure tool reads of its view's state, and what it writes: a measurement to keep, and what the handles of the kept ones change. */
 export type MeasureStore = Pick<StoreApi<MeasureState>, 'getState' | 'subscribe'>;
 
 const sameList = (a: readonly KeptMeasure[], b: readonly KeptMeasure[]): boolean => a.length === b.length && a.every((measure, index) => measure === b[index]);
+
+/** What lies over the whole map once it is open: the GM then works there, and no longer on what was being measured. */
+const COVERS_MAP = ['isDMScreenOpen', 'isCommandPaletteOpen', 'isAssetManagerOpen'] as const;
+type CoversMap = (typeof COVERS_MAP)[number];
 
 /**
  * The measure tool on one map view: owns its input (`MeasureInput`), the measurement being made
@@ -54,6 +60,8 @@ export class MeasureRenderer {
   public measurementSettingsProvider: (() => MeasurementSettings) | null = null;
   /** How high the token at a point stands, for the rulers that start or end on one; `rulesChanged` writes them again. */
   public heightAt: HeightAt | null = null;
+  /** Whether a key pressed now is this map's to take (`canRunMapHotkeys`); unset, every key outside a text field is. */
+  public keysBelongToMap: ((event: KeyboardEvent) => boolean) | null = null;
   /** The token under the pointer and the tokens' speeds, for the range check and the rings of Ranges; without them no token is hovered. */
   public rangeSources: RangeSources | null = null;
 
@@ -67,29 +75,20 @@ export class MeasureRenderer {
   public readonly ranges: RangeMarks;
   /** What plays the effects of the kept areas: told the map's playback mode, and asked for stills. */
   public readonly effects: AreaEffects;
-  private current: Measurements = NO_MEASUREMENTS;
-  private readonly listeners = new Set<(next: Measurements, previous: Measurements) => void>();
-  /** The record the kept measurements were last read from. */
+  /** The record the kept measurements were last read from, and what it reads as. */
   private keptRecord: unknown = null;
+  private keptList: readonly KeptMeasure[] = [];
   /** The walls and the tokens of the level shown, which areas stop at, ring and count. */
   private readonly scene: MeasuredScene;
-  /** The kept measurement whose handle the pointer is over, and the one whose popover is open. */
-  private hovered: string | null = null;
-  private opened: string | null = null;
-  private shownHovered: string | null = null;
+  /** The kept areas pointed at mark the tokens in them. */
+  private readonly pointed: PointedMeasures;
   /** The zoom everything is drawn at: shapes and labels keep their size on screen. */
   private drawnZoom = 1;
   private readonly stops: (() => void)[] = [];
   private view: MeasurePlayersView | null = null;
 
-  /** The measurements as data, read-only: the live one and the kept ones players may see. */
-  public readonly measurements: SceneSource<Measurements> = {
-    get: () => this.current,
-    subscribe: (listener) => {
-      this.listeners.add(listener);
-      return () => { this.listeners.delete(listener); };
-    },
-  };
+  /** The measurements as data, for whoever passes them on: the live one and the kept ones players may see. */
+  public readonly measurements = new MeasurementsSource();
 
   constructor(
     private readonly viewport: Viewport,
@@ -106,6 +105,7 @@ export class MeasureRenderer {
       forgotten: (parts) => this.parts.forget(parts),
       marked: (parts) => this.parts.marked(parts),
     }, this.effects);
+    this.pointed = new PointedMeasures((ids) => this.layer.setPointed(ids));
     this.ranges = new RangeMarks({ viewport, store, look: () => this.look(), measuring: () => this.input.measuring, sources: () => this.rangeSources });
     // Made after the layer: the handles stand above every measurement and label.
     this.handles = new MeasureHandleInteraction({
@@ -113,11 +113,8 @@ export class MeasureRenderer {
       store,
       snapGrid: () => ((this.store.getState().grid?.snapToGrid ?? true) ? this.gridSystem.getOptions() : null),
       yields: () => this.input.measuring || this.store.getState().activeTool === 'wall',
-      pointedAt: (id) => {
-        this.hovered = id;
-        this.showPointed();
-      },
-      place: (measure) => this.layer.places.handlesOf(measure),
+      pointedAt: (id) => this.pointed.hover(id, this.store.getState().measurePopover ?? null),
+      place: (measure) => this.layer.places.handlesOf(measure, this.rims()),
       aura: (measure) => this.layer.places.dragSetting(measure, this.look()),
     });
     this.parts = new MeasurePartsVisibility(this.layer.liveParts, () => this.view, [this.handles.layer, this.layer.gmMarks, this.ranges.view]);
@@ -131,7 +128,7 @@ export class MeasureRenderer {
       full: this.onFull,
       look: () => this.look(),
     });
-    this.input = new MeasureInput(viewport, this.live);
+    this.input = new MeasureInput(viewport, this.live, (event) => this.keysBelongToMap?.(event) ?? true);
 
     // Shapes and labels keep their size on screen, so a new zoom draws them again; a pan changes nothing.
     const onZoom = (): void => {
@@ -197,6 +194,16 @@ export class MeasureRenderer {
     this.layer.wallsChanged();
   }
 
+  /**
+   * The map is no longer what the GM looks at (another tab came to the front, the scene unloads):
+   * a measurement under way is dropped and leaves nothing, a handle's drag is put back, and the
+   * popover closes without the press that would close it.
+   */
+  public leave(): void {
+    this.input.cancel();
+    this.handles.leave();
+  }
+
   /** The map's measurement rules may have changed: every distance is written again. */
   public rulesChanged(): void {
     this.ranges.rulesChanged();
@@ -212,7 +219,7 @@ export class MeasureRenderer {
     this.ranges.destroy();
     this.layer.destroy();
     this.effects.destroy();
-    this.listeners.clear();
+    this.measurements.release();
   }
 
   private follow(state: MeasureState, previous: MeasureState): void {
@@ -224,13 +231,18 @@ export class MeasureRenderer {
       this.input.cancel();
       this.live.clear();
     }
+    // The DM screen, the command palette or the asset manager opened over the map, by a key too: nothing waits for its next click under them.
+    if (COVERS_MAP.some((open) => state[open] && !previous[open])) this.input.cancel();
     this.input.setEnabled(measuring);
     if (state.measureTool.players !== previous.measureTool.players) this.live.setHidden(!state.measureTool.players);
     this.readKept(state);
     this.readScene(state);
     this.handles.follow(state);
-    this.showPointed();
-    if (state.grid !== previous.grid) this.redraw();
+    this.pointed.follow(this.store.getState().measurePopover ?? null);
+    if (state.grid === previous.grid) return;
+    this.redraw();
+    // Another cell size is another rim for the badges that stand on one.
+    this.handles.placesChanged();
   }
 
   /** Draws the kept measurements of the level shown, and tells those players may see, when their record is another. */
@@ -239,44 +251,38 @@ export class MeasureRenderer {
     if (record === this.keptRecord) return;
     this.keptRecord = record;
     const list = measureList(record);
+    this.keptList = list;
     this.layer.setKept(list);
     this.handles.setKept(list);
     // An aura is told to nobody yet: what is passed on says a circle where it was last edited, not where its token stands.
     const kept = list.filter((measure) => measure.hidden !== true && !isAura(measure));
-    if (!sameList(kept, this.current.kept)) this.setMeasurements({ ...this.current, kept });
+    if (!sameList(kept, this.measurements.get().kept)) this.measurements.set({ kept });
   }
 
   /** Follows the walls and the tokens of the level shown, asked of their records alone: other walls cut the areas again, other tokens move the auras and are counted again. */
   private readScene(state: MeasureState): void {
     const changed = this.scene.follow(state);
     if (changed.walls) this.layer.wallsChanged();
-    // Auras first: one that moved marks and counts its tokens where it lies now.
-    if (changed.tokens && this.layer.aurasMoved()) this.handles.placesChanged();
-    if (changed.tokens) this.layer.tokensChanged();
+    if (changed.tokens) {
+      // Auras first: one that moved marks and counts its tokens where it lies now.
+      this.layer.aurasMoved();
+      // A badge stands on the rim of the token its measurement lies on: tokens that moved, came or went place the badges anew.
+      if (this.keptList.length > 0) this.handles.placesChanged();
+      this.layer.tokensChanged();
+    }
     const walled = this.scene.walled(state);
-    if (walled !== (this.current.walled ?? false)) this.setMeasurements({ ...this.current, walled });
-  }
-
-  /** The kept areas pointed at mark the tokens in them: the one under the pointer and the one whose popover is open. */
-  private showPointed(): void {
-    const opened = this.store.getState().measurePopover ?? null;
-    if (opened === this.opened && this.hovered === this.shownHovered) return;
-    this.opened = opened;
-    this.shownHovered = this.hovered;
-    this.layer.setPointed(new Set([this.hovered, opened].filter((id): id is string => id !== null)));
+    if (walled !== (this.measurements.get().walled ?? false)) this.measurements.set({ walled });
   }
 
   /** The live measurement is another, or gone: it is drawn at the zoom the view has now. */
   private liveChanged(live: LiveMeasure | null): void {
-    this.setMeasurements({ ...this.current, live });
+    this.measurements.set({ live });
     if (live) this.drawnZoom = this.viewport.scale.x;
   }
 
-  /** Records the measurements on the map and tells whoever follows them. */
-  private setMeasurements(next: Measurements): void {
-    const previous = this.current;
-    this.current = next;
-    for (const listener of [...this.listeners]) listener(next, previous);
+  /** Where the badges stand that lie on a token of the level shown (`rimSpots`): worked out once for the same measurements and tokens. */
+  private rims(): ReadonlyMap<string, Point> {
+    return rimSpots(this.keptList, this.scene.tokens(), this.gridSystem.getOptions());
   }
 
   /** Draws every measurement again at the current zoom, in the current theme and by the current rules. */

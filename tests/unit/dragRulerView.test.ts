@@ -84,6 +84,49 @@ describe('DragRulerView', () => {
     vi.restoreAllMocks();
   });
 
+  it('holds a second drawing for the players where they read another distance: plain, in the accent, in the same place, hidden until it is swapped in', () => {
+    vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 16));
+    forgetObsidianAccentColor();
+    document.body.style.setProperty('--interactive-accent', 'rgb(10, 20, 30)');
+    const { viewport, tokens, view } = makeScene();
+    const points = [{ x: 0, y: 0 }, { x: 70, y: 0 }];
+    const textOf = (label: Container): string => (label.children.find((child): child is Text => child instanceof Text)?.text ?? '');
+    const colorsOf = (path: Container): number[] => [...new Set((path.getChildByLabel('measure-accent', true) as Graphics).context.instructions.flatMap((instruction) =>
+      instruction.action === 'texture' ? [] : [(instruction.data.style as { color: number }).color]))];
+
+    view.draw(points, '5ft', 35, 70);
+    expect(view.playersLayers).toEqual([]);
+
+    view.draw(points, '35 / 30ft', 35, 70, '#f59e0b', '5ft');
+    const [path, label] = view.layers as Container[];
+    const [playersPath, playersLabel] = view.playersLayers as Container[];
+    expect(textOf(label!)).toBe('35 / 30ft');
+    expect(colorsOf(path!)).toEqual([0xf59e0b, 0xffffff]);
+    expect(textOf(playersLabel!)).toBe('5ft');
+    expect(colorsOf(playersPath!)).toEqual([0x0a141e, 0xffffff]);
+    expect([playersPath!.visible, playersLabel!.visible]).toEqual([false, false]);
+    expect([path!.visible, label!.visible]).toEqual([true, true]);
+    // Under the tokens and above the token UI, like the GM's.
+    viewport.sortChildren();
+    expect(viewport.getChildIndex(playersPath!)).toBeLessThan(viewport.getChildIndex(tokens));
+    expect(playersLabel!.zIndex).toBe(label!.zIndex);
+
+    // A zoom draws both again; a drag that reads the same for everyone has none for the players.
+    playersLabel!.visible = true;
+    viewport.scale.set(2);
+    viewport.emit('zoomed', {});
+    expect(playersLabel!.scale.x).toBe(label!.scale.x);
+    view.draw(points, '5ft', 35, 70);
+    expect(view.playersLayers).toEqual([]);
+    expect([playersPath!.visible, playersLabel!.visible]).toEqual([false, false]);
+    view.clear();
+    expect(view.layers.every((layer) => !layer.visible)).toBe(true);
+
+    document.body.style.removeProperty('--interactive-accent');
+    forgetObsidianAccentColor();
+    vi.restoreAllMocks();
+  });
+
   it('stays hidden until a drag draws it', () => {
     const { view } = makeScene();
     expect(view.layers.every(layer => !layer.visible)).toBe(true);

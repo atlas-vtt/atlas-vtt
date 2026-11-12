@@ -19,17 +19,22 @@ export interface TokenRingPart {
 }
 
 /**
- * What marks the tokens in an area while it is drawn or pointed at: a ring on each, and their
- * number on its label. One object for the measurement's life, without rings while it marks none.
+ * What of a measurement tells of tokens: the rings on the tokens in an area while it is drawn or
+ * pointed at, and what its label counts of them, their number in an area and the height of the
+ * tokens under a ruler's ends. One object for the measurement's life, without rings while it marks none.
  */
 export interface TokenMarkParts {
   readonly rings: readonly TokenRingPart[];
-  /** The distance as the GM reads it, with the number of tokens in the area. */
-  readonly gmCount: HideableLayer;
+  /** The distance as the GM reads it: with every token in the area, and the height of whatever stands under a ruler's ends. */
+  readonly gmLabel: HideableLayer;
   /** The label that stands in its place in the players' picture; null until one was written. */
-  readonly playersCount: HideableLayer | null;
-  /** Writes the players' label: the area holds `count` tokens the players see. */
-  countForPlayers(count: number): void;
+  readonly playersLabel: HideableLayer | null;
+  /**
+   * Writes the players' label where it reads another than the GM's: an area holds `count` tokens
+   * they see, and a ruler counts the height only of the tokens `seen` says they see. False where
+   * the GM's label tells them nothing they do not see, and stands for both.
+   */
+  labelForPlayers(count: number, seen: TokenSeen): boolean;
 }
 
 /**
@@ -62,7 +67,8 @@ interface Viewer {
  * whose start lies on tokens the players do not see. An area's body follows the same rule, and the
  * lighting above it decides where players see it. Of the tokens an area marks while it is made, the
  * players' picture rings and counts only those the players see; the marks of a kept area the GM
- * points at are the GM's own look, and the players' picture has none of them. The pin, the kept measurements' handles and the unlit
+ * points at are the GM's own look, and the players' picture has none of them. A ruler's distance
+ * counts, for the players, the height only of the tokens they see under its ends. The pin, the kept measurements' handles and the unlit
  * outlines that let the GM read an area in the dark (`gmLayers`) are the GM's own: the pin is never
  * in a frame, and the others show on the GM's view of the canvas alone, never in a frame or a
  * picture of the scene.
@@ -208,19 +214,20 @@ function shownBy(audience: MeasureAudience | null, seen: TokenSeen | null): bool
 }
 
 /**
- * The marks on the tokens in an area as `viewer` sees them. The GM's canvas rings every token in
- * it and its label counts them all. The players' picture rings the tokens the players see, of a
- * measurement they see that is being made (`live`), and a label of its own counts those: neither
- * tells of a token they do not see. A kept area marks its tokens only while the GM points at it:
- * the players' picture then has no ring, and its label counts none. A picture of the scene has no
- * rings: they belong to what the GM points at.
+ * What a measurement tells of tokens as `viewer` sees it. The GM's canvas rings every token in an
+ * area, its label counts them all, and a ruler's counts the height of whatever stands under its
+ * ends. The players' picture rings the tokens the players see, of a measurement they see that is
+ * being made (`live`), and where that reads another than the GM's label, a label of its own stands
+ * in its place (`labelForPlayers`): neither tells of a token they do not see. A kept area marks
+ * its tokens only while the GM points at it: the players' picture then has no ring, and its label
+ * counts none. A picture of the scene has no rings: they belong to what the GM points at.
  */
 function markLayers(marks: TokenMarkParts, audience: MeasureAudience | null, { seen, picture }: Viewer, live: boolean): LayerVisibility[] {
   const shown = !picture && shownBy(audience, seen);
   const ringed = (tokenId: string): boolean => !seen || (live && seen(tokenId));
   const layers: LayerVisibility[] = marks.rings.map(({ tokenId, layer }) => ({ layer, visible: shown && ringed(tokenId) }));
-  const forPlayers = seen !== null && marks.rings.length > 0;
-  if (forPlayers) marks.countForPlayers(marks.rings.filter(({ tokenId }) => ringed(tokenId)).length);
-  if (marks.playersCount) layers.push({ layer: marks.gmCount, visible: !forPlayers }, { layer: marks.playersCount, visible: forPlayers });
+  const counted = seen !== null && marks.rings.length > 0 ? marks.rings.filter(({ tokenId }) => ringed(tokenId)).length : 0;
+  const forPlayers = seen !== null && marks.labelForPlayers(counted, seen);
+  if (marks.playersLabel) layers.push({ layer: marks.gmLabel, visible: !forPlayers }, { layer: marks.playersLabel, visible: forPlayers });
   return layers;
 }

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import type { Container } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
+import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import type { KeptMeasure } from '../../../src/app/measure/measureTypes';
 import { mayEditMeasure } from '../../../src/app/pixi/measure/measurePopoverGuard';
 import { getHistoryStore } from '../../../src/app/stores/history';
-import { measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';
+import type { TokenEntity } from '../../../src/app/types';
+import { GRID, measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';
 import { genericLight } from '../../mocks/lights';
 
 let current: MeasureScene | undefined;
@@ -376,6 +378,80 @@ describe('the handles and the players', () => {
     s.store.getState().deleteMeasure(other);
     expect(layer.children).toHaveLength(0);
     expect(ends(s)).toHaveLength(0);
+  });
+});
+
+describe('the handle of a measurement that starts on a token', () => {
+  const tokenAt = (id: string, x: number, y: number, more: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'character', name: id, imagePath: '', x, y, ...more });
+  const places = (s: MeasureScene): number[][] => badges(s).map(({ position }) => [position.x, position.y]);
+  const near = ([x, y]: number[], at: { x: number; y: number }): void => {
+    expect(x).toBeCloseTo(at.x, 9);
+    expect(y).toBeCloseTo(at.y, 9);
+  };
+  /** The scene's ruler, which starts at (105, 105), with a token standing there. */
+  function onToken(more: Partial<TokenEntity> = {}): Kept & { rim: (place?: number) => { x: number; y: number } } {
+    const made = scene();
+    const hero = tokenAt('hero', 105, 105, more);
+    made.s.store.setState({ objects: { ...made.s.store.getState().objects, tokens: { hero } } });
+    getHistoryStore(made.s.store)!.getState().clear();
+    return { ...made, rim: (place = 0) => auraBadgePoint(made.s.store.getState().objects.tokens.hero!, { size: GRID }, place) };
+  }
+
+  it('stands on the token\'s rim, and leaves the token\'s middle to the token', () => {
+    const { s, press, rim, up } = onToken();
+    near(places(s)[0]!, rim());
+    expect(Math.hypot(rim().x - 105, rim().y - 105)).toBeCloseTo(GRID / 2, 9);
+    // A press on the token's middle is the token's: no handle takes it, and no popover opens.
+    expect(press(105, 105)).toBe(false);
+    expect(s.measure.handles.pointer.cursorAt(105, 105)).toBeNull();
+    expect(s.store.getState().measurePopover).toBeNull();
+    // On the rim it is the measurement's.
+    expect(s.measure.handles.pointer.cursorAt(rim().x, rim().y)).toBe('pointer');
+    expect(press(rim().x, rim().y)).toBe(true);
+    up();
+    expect(s.store.getState().measurePopover).not.toBeNull();
+  });
+
+  it('goes with the token as it moves and grows, and back to the origin once the token has left it', () => {
+    const { s, rim } = onToken();
+    // Moved within its cell, the token still holds the origin: the badge goes along on its rim.
+    s.store.getState().updateTokens([{ id: 'hero', changes: { x: 115, y: 100 } }]);
+    near(places(s)[0]!, rim());
+    s.store.getState().updateTokens([{ id: 'hero', changes: { x: 105, y: 105, size: 2 } }]);
+    near(places(s)[0]!, rim());
+    expect(Math.hypot(rim().x - 105, rim().y - 105)).toBeCloseTo(GRID * 1.5, 9);
+    s.store.getState().updateTokens([{ id: 'hero', changes: { x: 525, y: 525, size: 1 } }]);
+    expect(places(s)).toEqual([[105, 105]]);
+    s.store.getState().deleteToken('hero');
+    expect(places(s)).toEqual([[105, 105]]);
+  });
+
+  it('moves the whole measurement when it is dragged from the rim, and stands on the origin once that lies on no token', () => {
+    const { s, ruler, press, move, up, rim, steps } = onToken();
+    const from = rim();
+    press(from.x, from.y);
+    move(from.x + 140, from.y + 70);
+    up();
+    expect(ruler()?.points).toEqual([{ x: 245, y: 175 }, { x: 455, y: 175 }]);
+    expect(steps()).toBe(1);
+    expect(places(s)).toEqual([[245, 175]]);
+  });
+
+  it('stands beside the others of the same token: several measurements and an aura fan out along the rim', () => {
+    const { s, id, rim, press } = onToken();
+    const second = s.store.getState().addMeasure({ shape: 'ruler', points: [{ x: 105, y: 105 }, { x: 105, y: 315 }] })!;
+    s.store.getState().setTokenAuras([{ tokenId: 'hero', aura: 10, points: [{ x: 105, y: 105 }, { x: 280, y: 105 }] }]);
+    const spots = places(s);
+    expect(spots).toHaveLength(3);
+    [0, 1, 2].forEach((place) => near(spots[place]!, rim(place)));
+    // Each is pressed on its own spot.
+    const aura = Object.keys(s.store.getState().objects.measures ?? {}).find((key) => key !== id && key !== second)!;
+    for (const [place, measureId] of [id, second, aura].entries()) {
+      expect(press(rim(place).x, rim(place).y)).toBe(true);
+      s.pointer('pointerup', 0, 0);
+      expect(s.store.getState().measurePopover).toBe(measureId);
+    }
+    expect(press(105, 105)).toBe(false);
   });
 });
 

@@ -1,4 +1,6 @@
+import type { AreaToken } from '../../measure/measureTokens';
 import type { TokenRingPart } from '../measurePartsVisibility';
+import { computeTokenPixelSize } from '../token-renderer/tokenSizing';
 import { MeasureInk, type MeasureInkLayer } from '../utils/measureInk';
 
 /** Screen pixels between a token's rim and the ring around it. */
@@ -10,6 +12,15 @@ export interface MarkedToken {
   readonly x: number;
   readonly y: number;
   readonly radius: number;
+}
+
+/** The tokens `ids` of `tokens` as an area marks them: each with the circle its ring is drawn around, its art or its ring where that is wider (`ringScale`). */
+export function markedTokens(ids: readonly string[], tokens: Readonly<Record<string, AreaToken>>, gridSize: number, ringScale: number): MarkedToken[] {
+  return ids.flatMap((id) => {
+    const token = tokens[id];
+    if (!token) return [];
+    return [{ id, x: token.x, y: token.y, radius: (computeTokenPixelSize(gridSize, token.size || 1) / 2) * Math.max(1, ringScale) }];
+  });
 }
 
 /**

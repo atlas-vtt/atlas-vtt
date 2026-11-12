@@ -41,7 +41,7 @@ export interface MeasureHandleDeps {
   yields: () => boolean;
   /** The measurement whose handle the pointer is over is another, or none (null). */
   pointedAt?: (id: string | null) => void;
-  /** Where each measurement's handles stand; unset, where its points say. */
+  /** Where each measurement's handles stand (its badge on the rim of the token it lies on); unset, where its points say. */
   place?: MeasureHandlePlacer;
   /** What the far handle of the aura `measure` is dragged by; null while its token is not on the map shown. */
   aura?: (measure: KeptMeasure) => AuraDragSetting | null;
@@ -94,7 +94,7 @@ export class MeasureHandleInteraction {
     this.handles.redraw();
   }
 
-  /** The tokens that auras follow moved: their handles stand elsewhere. */
+  /** The tokens of the level shown moved, came or went: the handles that stand on one stand elsewhere. */
   placesChanged(): void {
     this.handles.moved();
   }

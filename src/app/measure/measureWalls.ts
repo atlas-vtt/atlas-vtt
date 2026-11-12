@@ -40,8 +40,16 @@ interface Sweep {
   readonly ring: QPolygon | null;
 }
 
+/** The walls about an area's origin: what it is swept from depends on them and on nothing farther off. */
+interface WallsAbout {
+  /** The ways the walls the origin lies on lead away from it, as angles in rising order. */
+  readonly rays: readonly number[];
+  /** The walls that pass it within the slack asked for, without those it lies on. */
+  readonly beside: readonly WallSegment[];
+}
+
 const sweeps = new WeakMap<readonly WallSegment[], Map<string, Sweep | null>>();
-const raysAt = new WeakMap<readonly WallSegment[], Map<string, readonly number[]>>();
+const wallsAt = new WeakMap<readonly WallSegment[], Map<string, WallsAbout>>();
 const NOTHING: MeasureArea = { rings: [], bounds: ringBounds([]), contains: () => false };
 
 function quantized(ring: readonly Point[]): QPolygon | null {
@@ -62,40 +70,103 @@ function remember<T>(kept: Map<string, T>, key: string, value: T): void {
 }
 
 /**
- * The ways the walls that `origin` lies on lead away from it, as angles in rising order: one for a
- * wall that ends there, two for one that passes. None where it lies on no wall that stops anything.
- * Kept by the walls and the origin, so asking again while an area is dragged looks at no wall.
+ * The walls about `origin`: the ways those it lies on lead away from it (one for a wall that ends
+ * there, two for one that passes), and those that pass within `slack` of it. Neither where no wall
+ * that stops anything is that near. Kept by the walls, the origin and the slack, so asking again
+ * while an area is dragged looks at no wall.
  */
-function wallRaysAt(origin: Point, walls: readonly WallSegment[]): readonly number[] {
-  let kept = raysAt.get(walls);
-  if (!kept) raysAt.set(walls, (kept = new Map<string, readonly number[]>()));
-  const key = `${origin.x},${origin.y}`;
-  let rays = kept.get(key);
-  if (!rays) {
-    const found: number[] = [];
+function wallsAbout(origin: Point, walls: readonly WallSegment[], slack: number): WallsAbout {
+  let kept = wallsAt.get(walls);
+  if (!kept) wallsAt.set(walls, (kept = new Map<string, WallsAbout>()));
+  const key = `${origin.x},${origin.y},${slack}`;
+  let about = kept.get(key);
+  if (!about) {
+    const rays: number[] = [];
+    const beside: WallSegment[] = [];
     for (const wall of walls) {
-      if (blocksNothing(wall) || distToSeg(origin.x, origin.y, segOf(wall)) > ON_WALL) continue;
+      if (blocksNothing(wall)) continue;
+      const distance = distToSeg(origin.x, origin.y, segOf(wall));
+      if (distance > ON_WALL) {
+        if (distance <= slack) beside.push(wall);
+        continue;
+      }
       for (const end of [wall.p1, wall.p2]) {
         const x = end.x - origin.x;
         const y = end.y - origin.y;
-        if (Math.hypot(x, y) > ON_WALL) found.push(Math.atan2(y, x));
+        if (Math.hypot(x, y) > ON_WALL) rays.push(Math.atan2(y, x));
       }
     }
-    rays = found.sort((a, b) => a - b);
-    remember(kept, key, rays);
+    about = { rays: rays.sort((a, b) => a - b), beside };
+    remember(kept, key, about);
   }
-  return rays;
+  return about;
+}
+
+/** How far along the way `towards` from `from` the wall is crossed; null where it is not, or lies along the way. */
+function crossedAt(from: Point, towards: Point, { p1, p2 }: WallSegment): number | null {
+  const wallX = p2.x - p1.x;
+  const wallY = p2.y - p1.y;
+  const across = towards.x * wallY - towards.y * wallX;
+  if (across === 0) return null;
+  const x = p1.x - from.x;
+  const y = p1.y - from.y;
+  const along = (x * wallY - y * wallX) / across;
+  const onWall = (x * towards.y - y * towards.x) / across;
+  return along >= 0 && onWall >= 0 && onWall <= 1 ? along : null;
+}
+
+/**
+ * `from` taken past the walls of `beside` that stand in the area's way within `slack` of it: an
+ * origin that near a wall the area points across lies on that wall, and the area on its far side.
+ * Each wall crossed puts the point just beyond it, and the next is looked for from there within
+ * what is left of the slack. A wall the area does not point across is left where it is: it stands
+ * beside the area or behind it, and stops what it stops.
+ */
+function pastWallsInTheWay(from: Point, towards: Point, beside: readonly WallSegment[], slack: number): Point {
+  let point = from;
+  let left = slack;
+  const ahead = new Set(beside);
+  while (ahead.size > 0) {
+    let next: WallSegment | null = null;
+    let nearest = left;
+    for (const wall of ahead) {
+      const at = crossedAt(point, towards, wall);
+      if (at !== null && at <= nearest) {
+        nearest = at;
+        next = wall;
+      }
+    }
+    if (!next) break;
+    ahead.delete(next);
+    left -= nearest;
+    // Straight off the wall, so the point clears it by the same margin at whatever angle the way meets it.
+    const wallX = next.p2.x - next.p1.x;
+    const wallY = next.p2.y - next.p1.y;
+    const length = Math.hypot(wallX, wallY);
+    const side = Math.sign(towards.y * wallX - towards.x * wallY) || 1;
+    point = { x: point.x + towards.x * nearest - (wallY / length) * side * INSIDE, y: point.y + towards.y * nearest + (wallX / length) * side * INSIDE };
+  }
+  return point;
 }
 
 /**
  * The point the walls are swept from for an area: its origin. Where that lies on walls, they part
  * the ground around it, and the area is reached from just inside the part it points into, halfway
  * between the two walls beside its direction. Every direction into one part gives the same point,
- * so an area turned or resized there is swept once.
+ * so an area turned or resized there is swept once. Origins lie on the grid's lines and walls are
+ * drawn by hand beside them: a wall that passes within `slack` of the origin and that the area
+ * points across counts as one the origin lies on, and the area is reached from just beyond it
+ * (`pastWallsInTheWay`).
  */
-export function wallSweepPoint({ origin, towards }: Pick<ShapedArea, 'origin' | 'towards'>, walls: readonly WallSegment[]): Point {
-  const rays = wallRaysAt(origin, walls);
-  if (rays.length === 0) return origin;
+export function wallSweepPoint({ origin, towards }: Pick<ShapedArea, 'origin' | 'towards'>, walls: readonly WallSegment[], slack = 0): Point {
+  const { rays, beside } = wallsAbout(origin, walls, slack);
+  if (rays.length === 0 && beside.length === 0) return origin;
+  const from = rays.length === 0 ? origin : intoPart(origin, towards, rays);
+  return beside.length === 0 ? from : pastWallsInTheWay(from, towards, beside, slack);
+}
+
+/** `origin`, which lies on walls that lead away from it along `rays`, moved just into the part of the ground `towards` points into. */
+function intoPart(origin: Point, towards: Point, rays: readonly number[]): Point {
   const angle = Math.atan2(towards.y, towards.x);
   let before = 0;
   while (before < rays.length && rays[before]! <= angle) before++;
@@ -165,15 +236,16 @@ function cutBy(sweep: Sweep, shapes: readonly (readonly Point[])[]): Point[][] |
 
 /**
  * `area` as `walls` leave it: what of it a straight way from its origin reaches (from just beside
- * the walls its origin lies on, `wallSweepPoint`). Its outline is
+ * the walls its origin lies on, or within `slack` of, `wallSweepPoint`). Its outline is
  * the shape's cut with the sweep's (to an eighth of a pixel), a point is in it when it is in the
  * shape and reached, and a line's middle line ends where the sweep does. The area itself where no
  * wall stands in its reach, and nothing where it lies beyond what clipping can hold (two million
  * pixels from the map's corner).
  */
-export function areaWithinWalls(area: ShapedArea, walls: readonly WallSegment[]): MeasureArea {
-  const from = wallSweepPoint(area, walls);
-  const sweep = sweepFrom(from, area.reach + INSIDE, walls);
+export function areaWithinWalls(area: ShapedArea, walls: readonly WallSegment[], slack = 0): MeasureArea {
+  const from = wallSweepPoint(area, walls, slack);
+  // The sweep starts up to `slack` from the origin, and must still hold all of the area.
+  const sweep = sweepFrom(from, area.reach + slack + INSIDE, walls);
   if (!sweep) return area;
   const rings = cutBy(sweep, area.rings);
   if (!rings) return NOTHING;
@@ -191,7 +263,7 @@ export function areaWithinWalls(area: ShapedArea, walls: readonly WallSegment[])
  * area's origin reaches of them, by the sweep the area itself is cut with, taken that much farther
  * so that its own edge cuts nothing. The shapes themselves where no wall stands that near.
  */
-export function shapesWithinWalls(area: ShapedArea, walls: readonly WallSegment[], shapes: readonly (readonly Point[])[], beyond: number): readonly (readonly Point[])[] {
-  const sweep = sweepFrom(wallSweepPoint(area, walls), area.reach + beyond + INSIDE, walls);
+export function shapesWithinWalls(area: ShapedArea, walls: readonly WallSegment[], shapes: readonly (readonly Point[])[], beyond: number, slack = 0): readonly (readonly Point[])[] {
+  const sweep = sweepFrom(wallSweepPoint(area, walls, slack), area.reach + beyond + slack + INSIDE, walls);
   return sweep ? cutBy(sweep, shapes) ?? [] : shapes;
 }
