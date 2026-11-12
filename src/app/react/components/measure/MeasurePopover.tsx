@@ -29,6 +29,7 @@ import { mapTokens } from '../../../tokens/offMap';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore, useViewStoreHook } from '../../ViewStoreContext';
 import { FollowsToken } from './FollowsToken';
+import { MeasureLook } from './MeasureLook';
 import { SwitchRow } from './SwitchRow';
 
 /**
@@ -59,7 +60,8 @@ export function MeasurePopoverHost(): React.ReactElement {
 }
 
 /**
- * What it holds, top to bottom: what the measurement is and measures, its colour, its switches
+ * What it holds, top to bottom: what the measurement is and measures, its colour, an area's look
+ * and the light it gives (`MeasureLook`), its switches
  * (an area's also whether walls stop it, a circle's whether it follows the token it lies on, and a
  * line's width) and, last, what is done with it: an area's tokens selected, and the measurement
  * deleted. An aura's stands beside its badge on its token's rim. Every control writes to the store at once,
@@ -81,7 +83,7 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
     const token = isAura(target) ? mapTokens(levelObjects(state))[target.follows] : undefined;
     const at = token && state.grid ? auraBadgePoint(token, state.grid) : measureHandlePoint(target);
     return { ...at, bright: 0, dim: 0, marker: MEASURE_HANDLE_RADIUS * mapMarkerScale(zoom) * zoom };
-  });
+  }, { growsDown: true });
   useFocusWhileOpen(ref, present);
 
   if (!measure) return null;
@@ -120,6 +122,7 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
         value={swatchOfMeasureColor(measure.color)}
         onChange={(swatch) => update({ color: measureColorOfSwatch(swatch) ?? undefined })}
       />
+      {area && <MeasureLook measure={measure} />}
       <div className="atlas-light-popover__section">
         <SwitchRow label={t('toolbar.measurePlayers')} value={measure.hidden !== true} onChange={(players) => update({ hidden: players ? undefined : true })} />
         {area && <SwitchRow label={t('measure.stopsAtWalls')} value={measure.walls !== false} onChange={(stops) => update({ walls: stops ? undefined : false })} />}

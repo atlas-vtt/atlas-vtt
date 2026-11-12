@@ -282,6 +282,34 @@ describe('keeping a measurement', () => {
     expect(s.measure.getPlayerViewLayers(() => true).slice(2, 4).map((entry) => entry.visible)).toEqual([false, false]);
   });
 
+  it('gives a kept area the look chosen in the bar, with the light it starts with on a lit scene, in the same undo step; a ruler takes neither', () => {
+    const s = scene();
+    const history = getHistoryStore(s.store)!;
+    s.store.getState().setSceneLighting({ enabled: true });
+    s.store.getState().setMeasureTool({ keep: true, mode: 'circle', effect: 'fire', color: '#ec7500' });
+    history.getState().clear();
+    measureFrom(s, 35, 35, 175, 35);
+    const [fire] = kept(s);
+    expect(fire).toMatchObject({ shape: 'circle', effect: 'fire', color: '#ec7500', light: { color: '#ec7500', animation: 'torch' } });
+    expect(fire!.light!.dim).toBe(2 * fire!.light!.bright);
+    expect(history.getState().pastStates).toHaveLength(1);
+    // Frost starts without light; on an unlit scene no area is given one; a ruler has no look.
+    s.store.getState().setMeasureTool({ effect: 'frost', color: '#8ad1f8' });
+    measureFrom(s, 35, 315, 175, 315);
+    expect(kept(s)[1]).toMatchObject({ effect: 'frost' });
+    expect(kept(s)[1]).not.toHaveProperty('light');
+    s.store.getState().setSceneLighting({ enabled: false });
+    s.store.getState().setMeasureTool({ effect: 'fire' });
+    measureFrom(s, 315, 35, 455, 35);
+    expect(kept(s)[2]).toMatchObject({ effect: 'fire' });
+    expect(kept(s)[2]).not.toHaveProperty('light');
+    s.store.getState().setMeasureTool({ mode: 'ruler' });
+    measureFrom(s, 35, 525, 175, 525);
+    expect(kept(s)[3]).toMatchObject({ shape: 'ruler' });
+    expect(kept(s)[3]).not.toHaveProperty('effect');
+    expect(kept(s)[3]).not.toHaveProperty('light');
+  });
+
   it('tells the GM when the level keeps no more, and lets the measurement fade instead', () => {
     const s = scene();
     const full: Record<string, KeptMeasure> = {};

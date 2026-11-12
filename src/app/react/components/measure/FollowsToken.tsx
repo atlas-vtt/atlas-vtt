@@ -1,12 +1,10 @@
-import React, { useId, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { t } from '../../../i18n';
 import { levelObjects } from '../../../levels/levelObjects';
 import { auraCells, auraCellsOfCircle, auraDirection, auraOfCells, auraPoints } from '../../../measure/auraArea';
 import { isAura } from '../../../measure/keptMeasures';
 import type { KeptMeasure } from '../../../measure/measureTypes';
 import { tokenStandingAt } from '../../../measure/tokenDistance';
-import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
-import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { mapMeasurementSettings } from '../../../services/mapMeasurementSettings';
 import { rulesLookup } from '../../../services/mapRules';
 import { mapTokens } from '../../../tokens/offMap';
@@ -22,7 +20,6 @@ import { SwitchRow } from './SwitchRow';
  * way, so one undo step.
  */
 export function FollowsToken({ measure }: { measure: KeptMeasure }): React.ReactElement {
-  const id = useId();
   const { app } = useAtlasUI();
   const store = useViewStoreHook();
   const rules = useMemo(() => rulesLookup(app), [app]);
@@ -48,13 +45,5 @@ export function FollowsToken({ measure }: { measure: KeptMeasure }): React.React
     state.updateMeasure(measure.id, on ? { follows: token.id, aura: auraOfCells(cells, unitDistance), points } : { follows: undefined, aura: undefined, points });
   };
 
-  if (follows || under !== null) return <SwitchRow label={t('measure.followsToken')} value={follows} onChange={change} />;
-  return (
-    <div className="atlas-light-popover__flicker">
-      <span id={id}>{t('measure.followsToken')}</span>
-      <LabelTooltip label={t('measure.noTokenUnder')} describe>
-        <ToggleSwitch size="s" value={false} labelledBy={id} disabled onChange={() => undefined} />
-      </LabelTooltip>
-    </div>
-  );
+  return <SwitchRow label={t('measure.followsToken')} value={follows} onChange={change} unavailable={follows || under !== null ? null : t('measure.noTokenUnder')} />;
 }

@@ -13,9 +13,11 @@ import type { TokenSeen } from '../../vision/measureOrigin';
 import type { MapBounds } from '../../vision/visibility';
 import { MeasurePartsVisibility, type MeasurePlayersView } from '../measurePartsVisibility';
 import type { LayerVisibility } from '../playerSafeFrame';
+import type { ViewPlayback } from '../liquids/viewLiquids';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { watchMeasureLabelTheme } from '../utils/measureLabel';
 import type { MeasureLook } from './DrawnMeasure';
+import { AreaEffects } from './effects/AreaEffects';
 import { LiveMeasuring, type MeasureGrid } from './LiveMeasuring';
 import { MeasureHandleInteraction, type MeasureHandleStore } from './MeasureHandleInteraction';
 import { MeasureInput } from './MeasureInput';
@@ -27,7 +29,7 @@ import { RangeMarks, type RangeSources } from './RangeMarks';
 
 export { MEASURE_FADE_MS, type MeasureGrid } from './LiveMeasuring';
 
-type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings'> & Pick<MeasuresSlice, 'addMeasure'>
+type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting'> & Pick<MeasuresSlice, 'addMeasure'>
   & ReturnType<MeasureHandleStore['getState']>;
 
 /** What the measure tool reads of its view's state, and what it writes: a measurement to keep, and what the handles of the kept ones change. */
@@ -44,7 +46,8 @@ const sameList = (a: readonly KeptMeasure[], b: readonly KeptMeasure[]): boolean
  * of the level shown, as light is traced through them, and is cut again when they change; while it
  * is made or pointed at, the tokens in it are marked, and counted again when the tokens change. An
  * aura lies around its token as the store has it, so it follows a dragged token with every move of
- * the pointer, and only it is drawn again.
+ * the pointer, and only it is drawn again. The effects of kept areas play by the view's `playback`
+ * (`effects`); without one the areas keep their wash.
  */
 export class MeasureRenderer {
   /** Measurement settings of the current map, from its collection when it has one. */
@@ -62,6 +65,8 @@ export class MeasureRenderer {
   public readonly handles: MeasureHandleInteraction;
   /** The range check and the rings of the Ranges mode: marks that are no measurements, and the GM's own. */
   public readonly ranges: RangeMarks;
+  /** What plays the effects of the kept areas: told the map's playback mode, and asked for stills. */
+  public readonly effects: AreaEffects;
   private current: Measurements = NO_MEASUREMENTS;
   private readonly listeners = new Set<(next: Measurements, previous: Measurements) => void>();
   /** The record the kept measurements were last read from. */
@@ -92,13 +97,15 @@ export class MeasureRenderer {
     private readonly gridSystem: MeasureGrid,
     /** Tells the GM that no further measurement can be kept. */
     private readonly onFull: () => void = showMeasuresFullNotice,
+    playback: ViewPlayback | null = null,
   ) {
     this.scene = new MeasuredScene(store);
+    this.effects = new AreaEffects(playback);
     this.layer = new MeasureLayer(viewport, () => this.look(), {
       kept: (parts, audience) => this.parts.keep(parts, audience),
       forgotten: (parts) => this.parts.forget(parts),
       marked: (parts) => this.parts.marked(parts),
-    });
+    }, this.effects);
     this.ranges = new RangeMarks({ viewport, store, look: () => this.look(), measuring: () => this.input.measuring, sources: () => this.rangeSources });
     // Made after the layer: the handles stand above every measurement and label.
     this.handles = new MeasureHandleInteraction({
@@ -122,6 +129,7 @@ export class MeasureRenderer {
       measuring: () => this.input.measuring,
       changed: (live) => this.liveChanged(live),
       full: this.onFull,
+      look: () => this.look(),
     });
     this.input = new MeasureInput(viewport, this.live);
 
@@ -203,6 +211,7 @@ export class MeasureRenderer {
     this.handles.destroy();
     this.ranges.destroy();
     this.layer.destroy();
+    this.effects.destroy();
     this.listeners.clear();
   }
 

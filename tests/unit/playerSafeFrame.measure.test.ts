@@ -27,7 +27,7 @@ function harness(options: { tokens?: boolean; lighting?: boolean } = {}): {
     pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport },
     playerFrames: fakePlayerFrames(),
     tokenRenderer: options.tokens === false ? undefined : { getPlayerViewLayers: () => [], getGmViewLayers: () => [], playersSeeInFrame },
-    measureRenderer: { getPlayerViewLayers, getGmViewLayers: (): LayerVisibility[] => [{ layer: part, visible: true }] },
+    measureRenderer: { getPlayerViewLayers, getGmViewLayers: (): LayerVisibility[] => [{ layer: part, visible: true }], effects: { stillFor: () => () => undefined } },
     dmScreenOverlays: new Set(),
     lighting: options.lighting ? { renderer: {}, playerSight: () => sight, playerLayers: (): LayerVisibility[] => [] } : undefined,
   });
@@ -75,7 +75,7 @@ describe('the measure renderer\'s wiring', () => {
       store: { getState: () => ({ objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 } }), subscribe: vi.fn(() => stopHeights) },
       gridSystem: { getOptions: () => ({ size: 70 }) },
       tokenRenderer: { onPlayersViewChange: vi.fn((listener: () => void) => { listeners.push(listener); return unsubscribe; }), setMeasureHandlers: vi.fn() },
-      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), playersView: null, handles: { pointer: {}, leave: vi.fn() }, ranges: {} },
+      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), playersView: null, handles: { pointer: {}, leave: vi.fn() }, ranges: {}, effects: { setMode: vi.fn() } },
       // The popover of a kept measurement closes when the view is left
       eventBus: { on: busOn, off: busOff },
       viewId: 'view',

@@ -3,6 +3,7 @@ import type { GridGeometry } from '../../grid/gridDistance';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { AreaOnMapMemo, type AreaMap, type AreaOnMap } from '../../measure/areaOnMap';
 import { AuraOnMapMemo, type PlacedAura } from '../../measure/auraArea';
+import type { MeasureEffect } from '../../measure/measureEffects';
 import { auraLabelText } from '../../measure/measureLabelText';
 import { tokensInArea, type AreaToken } from '../../measure/measureTokens';
 import type { Measurement } from '../../measure/measureTypes';
@@ -14,8 +15,9 @@ import { drawMeasurement, drawMeasureOutline, drawMeasurePoint, measureLabelTarg
 import { MeasureInk, type MeasureInkLayer } from '../utils/measureInk';
 import { MeasureLabel } from '../utils/measureLabel';
 import type { LabelTarget } from '../utils/measureLabelLayout';
-import { AreaBody } from './AreaBody';
+import { AreaBody, type BodyLook } from './AreaBody';
 import { AreaTokenRings, type MarkedToken } from './AreaTokenRings';
+import type { AreaEffects } from './effects/AreaEffects';
 import { legDistances, measureDistance } from './measureDistances';
 
 /** A leg's label beside the distance's: the same pill, smaller. */
@@ -43,6 +45,8 @@ export interface MeasureLook {
 export interface MeasureSurfaces {
   /** Under the tokens and the lighting: the bodies of areas. */
   readonly bodies: Container;
+  /** What plays the effects of the bodies; without it every body keeps its wash. */
+  readonly effects?: AreaEffects;
   /** Above the lighting, for everyone: rulers, and the rings on the tokens in an area. */
   readonly shapes: MeasureInkLayer;
   /** Above the lighting, for the GM alone: the outline of every area, which must be read in a dark room too. */
@@ -57,6 +61,8 @@ interface Drawn {
   readonly walls: boolean;
   /** Where an aura lies around its token now; null for every other measurement. */
   readonly aura: PlacedAura | null;
+  /** The look its body is drawn with, and what tells its pattern from another's; null for the plain wash. */
+  readonly look: BodyLook | null;
 }
 
 /** What an area's drawing is made from: drawn from the same again, it is the same drawing. */
@@ -66,6 +72,7 @@ interface Inked {
   readonly zoom: number;
   readonly tokens: readonly string[];
   readonly text: string;
+  readonly effect: MeasureEffect | null;
 }
 
 /**
@@ -101,7 +108,7 @@ export class DrawnMeasure {
   /** `marked`: an area drawn here marks the tokens in it from the start. */
   constructor(private readonly surfaces: MeasureSurfaces, private marked = false) {
     this.ink = new MeasureInk(surfaces.shapes);
-    this.body = new AreaBody(surfaces.bodies);
+    this.body = new AreaBody(surfaces.bodies, surfaces.effects);
     this.rings = new AreaTokenRings(surfaces.shapes);
     this.labels.addChild(this.distance.view);
     surfaces.labels.addChild(this.labels);
@@ -132,12 +139,12 @@ export class DrawnMeasure {
 
   /**
    * Draws `measurement` in `color` (null: the accent); an area stops at walls unless `walls` is
-   * false, and an aura lies where `aura` places it. An area that comes out the same as the one
-   * drawn (a circle dragged around at one size, an aura whose token stands on the same cells) is
-   * left as it is.
+   * false, an aura lies where `aura` places it, and a body takes the look `effect` names. An area
+   * that comes out the same as the one drawn (a circle dragged around at one size, an aura whose
+   * token stands on the same cells) is left as it is.
    */
-  draw(measurement: Measurement, color: number | null, look: MeasureLook, walls = true, aura: PlacedAura | null = null): void {
-    this.drawn = { measurement, color, walls, aura };
+  draw(measurement: Measurement, color: number | null, look: MeasureLook, walls = true, aura: PlacedAura | null = null, effect: BodyLook | null = null): void {
+    this.drawn = { measurement, color, walls, aura, look: effect };
     this.redraw(look, false);
   }
 
@@ -156,11 +163,14 @@ export class DrawnMeasure {
     const onMap = this.onMap(look);
     const tokens = onMap && this.marked ? this.tokensIn(onMap, look) : NO_TOKENS;
     const text = this.text(drawn, look, tokens.length, look.heightAt);
-    const inked: Inked | null = onMap && { onMap, tint, zoom, tokens, text };
+    const effect = drawn.look?.effect ?? null;
+    const inked: Inked | null = onMap && { onMap, tint, zoom, tokens, text, effect };
     const before = this.inked;
     this.inked = inked;
-    if (!anew && inked && before && before.onMap === onMap && before.tint === tint && before.zoom === zoom && before.tokens === tokens && before.text === text) return;
-    this.body.draw(onMap, tint, grid);
+    if (!anew && inked && before && before.onMap === onMap && before.tint === tint && before.zoom === zoom && before.tokens === tokens && before.text === text && before.effect === effect) return;
+    // Its pattern holds on to where the area starts: an aura's to the middle of its shape, which goes with its token.
+    const origin = drawn.aura?.shaped.origin ?? measurement.points[0];
+    this.body.draw(onMap, tint, grid, drawn.look && origin ? { ...drawn.look, origin } : null);
     this.ink.onto(ruler ? this.surfaces.shapes : this.surfaces.outlines);
     this.ink.begin(zoom);
     if (ruler) {

@@ -11,6 +11,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { MeasureInkLayer } from '../utils/measureInk';
 import { AuraPlaces } from './AuraPlaces';
 import { DrawnMeasure, type MeasureLook, type MeasureSurfaces } from './DrawnMeasure';
+import type { AreaEffects } from './effects/AreaEffects';
 import { MeasurePin } from './MeasurePin';
 
 /** Told which kept measurements have a drawing, so that what shows them to players can follow. */
@@ -46,7 +47,8 @@ export function placeUnderTokens(parent: Container, layer: Container): void {
  * it fades, and every kept one of the level shown. The bodies of areas lie under the tokens and the
  * lighting (`MAP_LAYER_Z.measureBodies`); everything else stands above the lighting: the rulers and
  * the rings on tokens, composed in one pass, the areas' outlines for the GM in a second (`gmMarks`),
- * and every label above all of them. A kept measurement is drawn again only when its record is
+ * and every label above all of them. A kept area with an effect is drawn with it, in its wash's
+ * place (`AreaBody`). A kept measurement is drawn again only when its record is
  * another object, so a pointer move draws the live one alone; an aura also when its token stands
  * elsewhere (`AuraPlaces`), so a token that moves draws its own auras and nothing else.
  */
@@ -67,7 +69,8 @@ export class MeasureLayer {
   /** The kept areas that mark the tokens in them: the ones pointed at. */
   private pointed: ReadonlySet<string> = NO_IDS;
 
-  constructor(parent: Container, private readonly look: () => MeasureLook, private readonly drawings: KeptDrawings) {
+  /** `effects` plays the looks of the kept areas' bodies; without it they keep their wash. */
+  constructor(parent: Container, private readonly look: () => MeasureLook, private readonly drawings: KeptDrawings, private readonly effects?: AreaEffects) {
     placeUnderTokens(parent, this.bodies);
     // Same zIndex, added in this order: the stable sort keeps the outlines above the rulers and every label above every shape.
     this.shapes.view.zIndex = MAP_LAYER_Z.measure;
@@ -144,7 +147,7 @@ export class MeasureLayer {
       const drawn = known?.drawn ?? new DrawnMeasure(this.surfaces);
       look ??= this.look();
       drawn.setMarked(this.pointed.has(measure.id), look);
-      drawn.draw(measure, colorOf(measure.color), look, measure.walls !== false, aura);
+      drawn.draw(measure, colorOf(measure.color), look, measure.walls !== false, aura, measure.effect ? { effect: measure.effect, seed: measure.id } : null);
       this.kept.set(measure.id, { measure, aura, drawn });
       this.drawings.kept(drawn.parts, keptAudience(measure));
     }
@@ -217,7 +220,7 @@ export class MeasureLayer {
   }
 
   private get surfaces(): MeasureSurfaces {
-    return { bodies: this.bodies, shapes: this.shapes, outlines: this.outlines, labels: this.labels };
+    return { bodies: this.bodies, shapes: this.shapes, outlines: this.outlines, labels: this.labels, ...(this.effects && { effects: this.effects }) };
   }
 
   /** Every drawing with the parts it is shown and hidden by: the live one's are `liveParts`. */

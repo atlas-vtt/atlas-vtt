@@ -3,8 +3,10 @@
  * tool's choices. Pure types and limits, shared with whatever draws or sends them.
  */
 
+import type { LightEmission } from '../types/lightingTypes';
 import type { OnOneLevel } from '../types/sceneLevelTypes';
 import type { Point } from '../types/visionTypes';
+import type { MeasureEffect } from './measureEffects';
 
 /** What a measurement is drawn as. A ruler is a path with corners; the others are areas. */
 export type MeasureShapeKind = 'ruler' | 'circle' | 'cone' | 'square' | 'line';
@@ -74,6 +76,13 @@ export interface KeptMeasure extends Measurement, OnOneLevel {
    * grow or shrink and its aura still reaches as far. Only with `follows`.
    */
   aura?: number;
+  /**
+   * The light an area gives, in the engine's own words; unset, none. Where it shines from and how
+   * (a point, a beam, the whole area, a darkness) is the area's shape: read it with `measureLights`.
+   */
+  light?: LightEmission;
+  /** The look an area is drawn with, in its own colour; unset, the plain wash. */
+  effect?: MeasureEffect;
 }
 
 /** A kept circle that follows a token. */
@@ -98,9 +107,11 @@ export interface MeasureToolOptions {
   color: string | null;
   /** How wide the next line is, in cells: the width the last line was given. */
   lineWidth: number;
+  /** The look the next kept area takes, with the light it starts with; null is none. */
+  effect: MeasureEffect | null;
 }
 
 /** The widest a line is made with the tool or its popover, in cells. */
 export const MAX_LINE_WIDTH = 20;
 
-export const DEFAULT_MEASURE_TOOL: MeasureToolOptions = { mode: 'ruler', keep: false, players: true, color: null, lineWidth: 1 };
+export const DEFAULT_MEASURE_TOOL: MeasureToolOptions = { mode: 'ruler', keep: false, players: true, color: null, lineWidth: 1, effect: null };

@@ -48,7 +48,7 @@ const inert = (name: string): boolean => button(name).getAttribute('aria-disable
 const MODES = ['Ruler', 'Circle', 'Cone', 'Square', 'Line'];
 /** The GM's bar ends with Ranges, which the players' view has not. */
 const GM_MODES = [...MODES, 'Ranges'];
-const CHOICES = ['Keep', 'Players see it', 'Colour', 'Clear'];
+const CHOICES = ['Keep', 'Players see it', 'Look', 'Clear'];
 
 describe('MeasureToolBar', () => {
   it('shows while the measure tool is chosen, and not while the toolbar is arranged or a scene loads', async () => {
@@ -98,7 +98,7 @@ describe('MeasureToolBar', () => {
   it('stays as it is in the session view, where measuring is the same', () => {
     const store = renderBar();
     act(() => store.setState({ isGMView: false }));
-    expect([...MODES, 'Keep', 'Players see it', 'Colour'].some(inert)).toBe(false);
+    expect([...MODES, 'Keep', 'Players see it', 'Look'].some(inert)).toBe(false);
     fireEvent.click(button('Keep'));
     expect(store.getState().measureTool.keep).toBe(true);
   });
@@ -151,7 +151,7 @@ describe('MeasureToolBar', () => {
     const store = renderBar();
     const colours = (): HTMLElement | null => screen.queryByRole('group', { name: 'Colour' });
     expect(colours()).toBeNull();
-    fireEvent.click(button('Colour'));
+    fireEvent.click(button('Look'));
     const swatches = within(colours()!).getAllByRole('button');
     expect(swatches.map((swatch) => swatch.getAttribute('aria-label'))).toEqual(['Default', 'White', 'Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Purple']);
     expect(swatches[0]!.getAttribute('aria-pressed')).toBe('true');
@@ -161,20 +161,43 @@ describe('MeasureToolBar', () => {
     // A choice closes the colours.
     expect(colours()).toBeNull();
 
-    fireEvent.click(button('Colour'));
+    fireEvent.click(button('Look'));
     expect(within(colours()!).getByRole('button', { name: 'Red' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(within(colours()!).getByRole('button', { name: 'Default' }));
     expect(store.getState().measureTool.color).toBeNull();
   });
 
+  it('offers the looks under the colours: an effect brings its usual colour and stays open for another, none takes the look away', () => {
+    const store = renderBar();
+    const effects = (): HTMLElement => screen.getByRole('group', { name: 'Effect' });
+    fireEvent.click(button('Look'));
+    expect(within(effects()).getAllByRole('button').map((chip) => chip.getAttribute('aria-label'))).toEqual(['None', 'Fire', 'Frost', 'Lightning', 'Mist', 'Radiance', 'Shadow']);
+    expect(within(effects()).getByRole('button', { name: 'None' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(within(effects()).getByRole('button', { name: 'Fire' }));
+    expect(store.getState().measureTool).toMatchObject({ effect: 'fire', color: '#ec7500' });
+    expect(within(effects()).getByRole('button', { name: 'Fire' }).getAttribute('aria-pressed')).toBe('true');
+    // Still fire's own colour: frost brings its own. A colour chosen for the look stays with the next look.
+    fireEvent.click(within(effects()).getByRole('button', { name: 'Frost' }));
+    expect(store.getState().measureTool).toMatchObject({ effect: 'frost', color: '#8ad1f8' });
+    fireEvent.click(within(screen.getByRole('group', { name: 'Colour' })).getByRole('button', { name: 'Green' }));
+    fireEvent.click(button('Look'));
+    fireEvent.click(within(effects()).getByRole('button', { name: 'Lightning' }));
+    expect(store.getState().measureTool).toMatchObject({ effect: 'lightning', color: '#08b94e' });
+    fireEvent.click(within(effects()).getByRole('button', { name: 'None' }));
+    expect(store.getState().measureTool).toMatchObject({ effect: null, color: '#08b94e' });
+    // The bar keeps its four controls whatever the look.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(names(choicesBar())).toEqual(CHOICES);
+  });
+
   it('closes the colours on Escape and on a press outside them', () => {
     renderBar();
     const colours = (): HTMLElement | null => screen.queryByRole('group', { name: 'Colour' });
-    fireEvent.click(button('Colour'));
+    fireEvent.click(button('Look'));
     expect(colours()).not.toBeNull();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(colours()).toBeNull();
-    fireEvent.click(button('Colour'));
+    fireEvent.click(button('Look'));
     fireEvent.mouseDown(document.body);
     expect(colours()).toBeNull();
   });

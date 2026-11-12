@@ -1,11 +1,15 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { GridSystem } from '../../grid/GridSystem';
+import { unitScaleOf } from '../../lighting/lightingUnits';
+import { toolLook } from '../../measure/measureLights';
 import { snapAreaEnd, snapAreaOrigin } from '../../measure/measureSnap';
-import type { Measurement, MeasureShapeKind } from '../../measure/measureTypes';
+import type { MeasureInput, Measurement, MeasureShapeKind } from '../../measure/measureTypes';
 import type { MeasuresSlice } from '../../stores/measuresSlice';
 import type { ViewState } from '../../types/viewState';
 import type { Point } from '../../types/visionTypes';
 import type { MeasurePartsVisibility } from '../measurePartsVisibility';
+import { hexColorOf } from '../utils/colorUtils';
+import type { MeasureLook } from './DrawnMeasure';
 import type { MeasureInputHost } from './MeasureInput';
 import type { MeasureLayer } from './MeasureLayer';
 import type { LiveMeasure } from './measurements';
@@ -19,7 +23,7 @@ export const MEASURE_FADE_MS = 2000;
 /** The shapes the tool measures with; its other modes measure nothing. */
 const OFFERED: readonly MeasureShapeKind[] = ['ruler', 'circle', 'cone', 'square', 'line'];
 
-type LiveState = Pick<ViewState, 'grid' | 'measureTool'> & Pick<MeasuresSlice, 'addMeasure'>;
+type LiveState = Pick<ViewState, 'grid' | 'measureTool' | 'lighting'> & Pick<MeasuresSlice, 'addMeasure'>;
 
 export interface LiveMeasuringDeps {
   store: Pick<StoreApi<LiveState>, 'getState'>;
@@ -32,12 +36,14 @@ export interface LiveMeasuringDeps {
   changed: (live: LiveMeasure | null) => void;
   /** Tells the GM that no further measurement can be kept. */
   full: () => void;
+  /** The map's rules and the theme's accent: a kept area takes the tool's effect, and the light that starts with, by them (`toolLook`); unset, neither. */
+  look?: () => Pick<MeasureLook, 'settings' | 'accent'>;
 }
 
 /**
  * The measurement being made, from its first press to its end: what the measure tool's input asks
  * and tells (`MeasureInputHost`). The tool's choices are read from `measureTool` when they matter:
- * the mode at a press, Keep and the colour at the release. A released measurement is kept as a
+ * the mode at a press, Keep, the colour and the look at the release. A released measurement is kept as a
  * scene object (`addMeasure`, one undo step) or fades after `MEASURE_FADE_MS`, during which the pin
  * beside its label keeps it.
  */
@@ -155,9 +161,18 @@ export class LiveMeasuring implements MeasureInputHost {
       ...(color !== null && { color }),
       ...(!players && { hidden: true }),
       ...(origin && origin.tokenIds.length > 0 && { origin: { tokenIds: [...origin.tokenIds], unseenAtStart: origin.unseenAtStart } }),
+      ...this.look(measurement),
     });
     if (id === null) full();
     return id !== null;
+  }
+
+  /** What a kept area takes from the tool's look: its effect and, on a lit scene, the light that starts with. */
+  private look(measurement: Measurement): Pick<MeasureInput, 'effect' | 'light'> {
+    const look = this.deps.look?.();
+    if (!look) return {};
+    const state = this.deps.store.getState();
+    return toolLook(measurement, state.measureTool, { scale: unitScaleOf(look.settings, state.grid), lit: state.lighting.enabled, accent: hexColorOf(look.accent) });
   }
 
   /** Leaves the released measurement on the map for a while, its pin beside its label. */

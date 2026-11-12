@@ -19,6 +19,11 @@ export function hslToRgb(h: number, s: number, l: number): [number, number, numb
   return [R, G, B];
 }
 
+/** A colour number as '#rrggbb'. */
+export function hexColorOf(color: number): string {
+  return `#${(color & 0xffffff).toString(16).padStart(6, '0')}`;
+}
+
 export function cssColorToHexNumber(color: string): number {
   const FALLBACK = 0x00ffff; // bright cyan
   if (!color) return FALLBACK;

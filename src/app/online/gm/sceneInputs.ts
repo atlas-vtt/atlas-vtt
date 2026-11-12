@@ -20,6 +20,8 @@ import { roundPlace } from './scenePicture.ts';
 import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
 import { GM_SIGHT_POLICY, sceneHasVision, sightPolicyFor, type SightPolicy } from '../../vision/tokenSightPolicy';
 import { mapTokens } from '../../tokens/offMap';
+import { measureList } from '../../measure/keptMeasures';
+import { measureLights } from '../../measure/measureLights';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
@@ -97,6 +99,8 @@ export interface SightInputs {
   /** The random id players know a token or a placed light by. */
   tokenAlias(id: string): string;
   lightAlias(id: string): string;
+  /** The map's measurement rules, which place the lights of its kept areas; without them those lights are left out. */
+  readonly measurement?: Pick<MeasurementSettings, 'unitDistance' | 'coneAngle'>;
 }
 
 /**
@@ -134,7 +138,24 @@ function sharedEmission(emission: LightEmission): JsonRecord {
   return emission.animation === 'smoulder' ? { ...emission, animation: 'pulse' } : { ...emission };
 }
 
-/** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on, its tokens and the held ones. */
+/**
+ * The lights the level's kept areas give (`measureLights`), as plain lights: a circle's and an
+ * aura's at its centre, a cone's as a beam, a square's and a line's at its middle (the players'
+ * page draws no area lights yet). An aura's stands where light reads its token (where a held one
+ * was taken from), and the aura of a hidden token gives players none, as its carried light gives none.
+ */
+function sharedMeasureLights(inputs: SightInputs): SharedSight['lights'] {
+  const { state, measurement } = inputs;
+  const measures = measureList(levelObjects(state).measures);
+  if (!measurement || !measures.some((measure) => measure.light !== undefined)) return [];
+  const held = heldForSight(state);
+  const places = Object.fromEntries(Object.values(mapTokens(levelObjects(state))).filter((token) => token.isHidden !== true).map((token) => [token.id, { ...token, ...held[token.id] }]));
+  return measureLights({ measures, scale: unitScaleOf(measurement, state.grid), coneAngle: measurement.coneAngle }, places).map((light) => ({
+    id: inputs.lightAlias(light.key), x: light.x, y: light.y, emission: sharedEmission(light.emission), ...(finite(light.rotation) && { rotation: light.rotation }),
+  }));
+}
+
+/** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on (those of kept areas among them), its tokens and the held ones. */
 export function sharedSight(inputs: SightInputs): SharedSight {
   const { state } = inputs;
   const { givesSight } = sightPolicyFor(GM_SIGHT_POLICY, inputs.rules);
@@ -148,10 +169,10 @@ export function sharedSight(inputs: SightInputs): SharedSight {
   const held = Object.entries(heldForSight(state)).flatMap(([id, at]) => (sent.has(id) && finite(at.x) && finite(at.y) ? [{ id: inputs.tokenAlias(id), x: roundPlace(at.x), y: roundPlace(at.y) }] : []));
   return {
     lighting: { ...state.lighting },
-    lights: lightList(levelObjects(state).lights).filter((light) => light.hidden !== true).map((light) => ({
+    lights: [...lightList(levelObjects(state).lights).filter((light) => light.hidden !== true).map((light) => ({
       id: inputs.lightAlias(light.id), x: light.x, y: light.y, emission: sharedEmission(light.emission),
       ...(finite(light.rotation) && { rotation: light.rotation }), ...(finite(light.activeBelowAmbient) && { activeBelowAmbient: light.activeBelowAmbient }),
-    })),
+    })), ...sharedMeasureLights(inputs)],
     tokens: tokens.map(({ entry }) => entry),
     held,
     // No vision token players get while the scene has one (every one hidden, or on another floor): the players'

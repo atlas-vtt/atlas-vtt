@@ -122,6 +122,14 @@ describe('the measure tool\'s bars above the toolbar', () => {
     act(() => { store.getState().addMeasure({ shape: 'ruler', points: [{ x: 0, y: 0 }, { x: 70, y: 0 }] }); });
     expect(button('Clear').getAttribute('aria-disabled')).toBeNull();
     same();
+    // A look chosen for the next kept area shows as its glyph in the dot's place, in its colour: the button is as wide.
+    act(() => store.getState().setMeasureTool({ effect: 'fire', color: '#ec7500' }));
+    expect(document.querySelector('.atlas-tool-bar__dot')).toBeNull();
+    const glyph = document.querySelector<SVGElement>(`${CHOICES} .atlas-tool-button:nth-of-type(3) svg, ${CHOICES} svg.lucide-flame`)!;
+    expect(getComputedStyle(glyph).color).toBe('rgb(236, 117, 0)');
+    same();
+    act(() => store.getState().setMeasureTool({ effect: null }));
+    same();
   });
 
   it('stands where the lighting tool\'s bars stand, from the moment the tool is chosen', async () => {
@@ -164,10 +172,27 @@ describe('the measure tool\'s bars above the toolbar', () => {
     }
   });
 
-  it('opens the colours above the bar, inside the view, eight in a row, and takes a click on one', async () => {
+  it('opens the look above the bar, inside the view: eight colours in a row and seven effects in a row under them, and takes a click on one', async () => {
     mount();
     await settled();
-    act(() => button('Colour').click());
+    act(() => button('Look').click());
+    const menu = rect(`${CHOICES} .atlas-dropdown-content`);
+    const effects = rects(`${CHOICES} .atlas-light-kind`);
+    expect(effects).toHaveLength(7);
+    expect(new Set(effects.map((chip) => Math.round(chip.top))).size).toBe(1);
+    expect(effects[0]!.top).toBeGreaterThan(rects(`${CHOICES} .atlas-swatch`)[0]!.bottom);
+    for (const chip of effects) {
+      expect(chip.left).toBeGreaterThanOrEqual(menu.left + 8);
+      expect(chip.right).toBeLessThanOrEqual(menu.right - 8);
+      expect(chip.width).toBeGreaterThanOrEqual(24);
+    }
+    // An effect brings its colour and leaves the menu open, at its size, for another colour.
+    const fire = effects[1]!;
+    act(() => document.elementFromPoint(fire.left + fire.width / 2, fire.top + fire.height / 2)!.closest<HTMLElement>('.atlas-light-kind')!.click());
+    expect(store.getState().measureTool).toMatchObject({ effect: 'fire', color: '#ec7500' });
+    expect(rect(`${CHOICES} .atlas-dropdown-content`)).toEqual(menu);
+    expect(document.querySelectorAll(`${CHOICES} .atlas-light-kind[aria-pressed="true"]`)).toHaveLength(1);
+    act(() => store.getState().setMeasureTool({ effect: null, color: null }));
     const colours = rect(`${CHOICES} .atlas-dropdown-content`);
     expect(colours.bottom).toBeLessThan(rect(CHOICES).top);
     expect(colours.left).toBeGreaterThanOrEqual(0);

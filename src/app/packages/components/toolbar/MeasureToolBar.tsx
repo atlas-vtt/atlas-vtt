@@ -5,12 +5,14 @@ import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { levelObjects } from "../../../levels/levelObjects"
 import { hasLevels } from "../../../levels/sceneLevels"
 import { measureList } from "../../../measure/keptMeasures"
+import { colourWithEffect } from "../../../measure/measureLights"
 import { DEFAULT_MEASURE_TOOL } from "../../../measure/measureTypes"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { DropdownMenu } from "../primitives/DropdownMenu"
 import { DropdownSwatchGrid } from "../primitives/DropdownSwatchGrid"
 import { ToolButton } from "../primitives/ToolButton"
 import { TooltipProvider } from "../primitives/tooltip"
+import { MEASURE_EFFECT_ICONS, MeasureEffectChips } from "./MeasureEffectChips"
 import { MEASURE_COLOR_SWATCHES, MEASURE_MODES, PLAYER_MEASURE_MODES, measureColorOfSwatch, measureModeChoice, swatchOfMeasureColor } from "./measureToolChoices"
 import { ChoiceButtons, TOOL_BAR_CHOICE_CLASS, ToolOptionsBars } from "./ToolOptionsBar"
 import { useUnavailableMeasureModes } from "./useUnavailableMeasureModes"
@@ -22,8 +24,8 @@ interface MeasureToolBarProps {
 
 /**
  * The measure tool's bars above the main toolbar while the tool is chosen: what a press measures,
- * and beside it what becomes of a measurement (kept, shown to the players, its colour) and the
- * button that clears the kept ones. The second bar is the same in every mode, so nothing moves
+ * and beside it what becomes of a measurement (kept, shown to the players, its look: its colour
+ * and, for a kept area, an effect) and the button that clears the kept ones. The second bar is the same in every mode, so nothing moves
  * when the mode changes. Measuring is the same in the session view, so the bars take every choice
  * there. Hidden while the toolbar is arranged.
  */
@@ -52,7 +54,7 @@ function MeasureBars({ playerView }: MeasureToolBarProps): React.ReactElement {
   )
 }
 
-/** Keep, Players, the colour and Clear: the same four in every mode. */
+/** Keep, Players, the look and Clear: the same four in every mode. */
 function MeasurementChoices(): React.ReactElement {
   const keep = useAtlasStore((state) => state.measureTool.keep)
   const players = useAtlasStore((state) => state.measureTool.players)
@@ -84,7 +86,7 @@ function MeasurementChoices(): React.ReactElement {
         onClick={() => setMeasureTool({ players: !players })}
         className={TOOL_BAR_CHOICE_CLASS}
       />
-      <MeasureColour />
+      <MeasureLook />
       <ToolButton
         icon={Trash2}
         label={t('toolbar.measureClear')}
@@ -97,15 +99,23 @@ function MeasurementChoices(): React.ReactElement {
   )
 }
 
-/** The colour the next measurement takes, as the dot the colour button shows. */
-function MeasureColourDot(): React.ReactElement {
+/** The look the next measurement takes, as the look button shows it: a dot of its colour, or the glyph of the effect chosen in that colour. */
+function MeasureLookIcon(): React.ReactElement {
   const color = useAtlasStore((state) => state.measureTool.color)
-  return <span className="atlas-tool-bar__dot" style={{ backgroundColor: swatchOfMeasureColor(color) }} />
+  const effect = useAtlasStore((state) => state.measureTool.effect)
+  if (!effect) return <span className="atlas-tool-bar__dot" style={{ backgroundColor: swatchOfMeasureColor(color) }} />
+  const Glyph = MEASURE_EFFECT_ICONS[effect]
+  return <Glyph style={{ color: swatchOfMeasureColor(color) }} />
 }
 
-/** The dot that opens the colours above the bar; a choice closes them. */
-function MeasureColour(): React.ReactElement {
+/**
+ * The button that opens the look above the bar: the colours, and the effect the next kept area is
+ * drawn with. An effect brings its usual colour (`colourWithEffect`), which the swatches then
+ * change; a colour closes the menu, an effect leaves it open for that.
+ */
+function MeasureLook(): React.ReactElement {
   const color = useAtlasStore((state) => state.measureTool.color)
+  const effect = useAtlasStore((state) => state.measureTool.effect)
   const setMeasureTool = useAtlasStore((state) => state.setMeasureTool)
   const [open, setOpen] = useState(false)
   const toggle = useCallback((): void => setOpen((before) => !before), [])
@@ -113,11 +123,11 @@ function MeasureColour(): React.ReactElement {
     <DropdownMenu
       isOpen={open}
       onToggle={toggle}
-      label={t('toolbar.colour')}
+      label={t('measure.look')}
       position="top"
       align="center"
       // The wrapper around the trigger takes the click.
-      triggerButton={<ToolButton icon={MeasureColourDot} label={t('toolbar.colour')} isActive={false} menuExpanded={open} onClick={() => undefined} />}
+      triggerButton={<ToolButton icon={MeasureLookIcon} label={t('measure.look')} isActive={false} menuExpanded={open} onClick={() => undefined} />}
     >
       <div className="atlas-dropdown-section">
         <DropdownSwatchGrid
@@ -129,6 +139,7 @@ function MeasureColour(): React.ReactElement {
             setOpen(false)
           }}
         />
+        <MeasureEffectChips labelled value={effect} color={color} onChange={(next) => setMeasureTool(next ? { effect: next, color: colourWithEffect(color, effect, next) } : { effect: null })} />
       </div>
     </DropdownMenu>
   )

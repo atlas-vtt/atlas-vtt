@@ -189,20 +189,107 @@ describe('MeasurePopover', () => {
 
 describe('the popover of a kept area', () => {
   const controls = (popover: HTMLElement): string[] =>
-    [...popover.querySelectorAll('.atlas-light-popover__heading, .atlas-swatch-grid, [role="switch"], .atlas-dungeon-stepper, .atlas-light-popover__actions button')]
+    [...popover.querySelectorAll('.atlas-light-popover__heading, .atlas-swatch-grid, .atlas-light-popover__kinds, [role="switch"], .atlas-dungeon-stepper, .atlas-light-popover__actions button')]
       .map((element) => {
         if (element.classList.contains('atlas-swatch-grid')) return 'colours';
+        if (element.classList.contains('atlas-light-popover__kinds')) return 'effects';
         const labelledBy = element.getAttribute('aria-labelledby');
         return (labelledBy ? document.getElementById(labelledBy)?.textContent : element.textContent) ?? '';
       });
 
-  it('holds, in this order: what it is, its colour, Players see it, Stops at walls, a circle\'s Follows token, a line\'s Width, Select tokens and Delete', () => {
-    const { store, circle, popover } = setup();
+  it('holds, in this order: what it is, its colour, its look, Gives light, Players see it, Stops at walls, a circle\'s Follows token, a line\'s Width, Select tokens and Delete', () => {
+    const { store, circle, ruler, popover } = setup();
     const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
     act(() => store.getState().openMeasurePopover(circle));
-    expect(controls(popover())).toEqual(['Circle · 2 sq', 'colours', 'Players see it', 'Stops at walls', 'Follows token', 'Select tokens', 'Delete']);
+    expect(controls(popover())).toEqual(['Circle · 2 sq', 'colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Follows token', 'Select tokens', 'Delete']);
     act(() => store.getState().openMeasurePopover(line));
-    expect(controls(popover())).toEqual(['Line · 4 sq', 'colours', 'Players see it', 'Stops at walls', 'Width', 'Select tokens', 'Delete']);
+    expect(controls(popover())).toEqual(['Line · 4 sq', 'colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Width', 'Select tokens', 'Delete']);
+    // A ruler has neither a look nor a light.
+    act(() => store.getState().openMeasurePopover(ruler));
+    expect(controls(popover())).toEqual(['Ruler · 3 sq', 'colours', 'Players see it', 'Delete']);
+  });
+
+  it('gives an area a look in one step: the effect, its usual colour and, on a lit scene, the light it starts with', () => {
+    const { store, circle, measure, steps, undo } = setup();
+    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => store.getState().openMeasurePopover(circle));
+    const chip = (name: string): HTMLElement => within(screen.getByRole('group', { name: 'Effect' })).getByRole('button', { name });
+    expect(within(screen.getByRole('group', { name: 'Effect' })).getAllByRole('button').map((item) => item.getAttribute('aria-label'))).toEqual(['None', 'Fire', 'Frost', 'Lightning', 'Mist', 'Radiance', 'Shadow']);
+    expect(chip('None').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(chip('Fire'));
+    expect(measure(circle)).toMatchObject({ effect: 'fire', color: '#ec7500', light: { color: '#ec7500', animation: 'torch' } });
+    expect(measure(circle)!.light!.dim).toBe(2 * measure(circle)!.light!.bright);
+    expect(chip('Fire').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('switch', { name: 'Gives light' }).getAttribute('aria-checked')).toBe('true');
+    expect(steps()).toBe(1);
+    // Frost starts without light; Shadow makes a circle a magical darkness, which has no ranges to set.
+    fireEvent.click(chip('Frost'));
+    expect(measure(circle)).toMatchObject({ effect: 'frost', color: '#8ad1f8' });
+    expect(measure(circle)).not.toHaveProperty('light');
+    fireEvent.click(chip('Shadow'));
+    expect(measure(circle)!.light).toMatchObject({ darkness: true });
+    expect(screen.getByRole('switch', { name: 'Magical darkness' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.queryByLabelText('Bright')).toBeNull();
+    // None takes the look away and leaves the rest.
+    fireEvent.click(chip('None'));
+    expect(measure(circle)).not.toHaveProperty('effect');
+    expect(measure(circle)).toMatchObject({ color: '#7852ee', light: { darkness: true } });
+    expect(steps()).toBe(4);
+    undo();
+    undo();
+    undo();
+    undo();
+    expect(measure(circle)).toMatchObject({ color: '#e93147' });
+    expect(measure(circle)).not.toHaveProperty('effect');
+    expect(measure(circle)).not.toHaveProperty('light');
+  });
+
+  it('switches an area\'s light on with ranges sized by it and folds them away again, one undo step each', () => {
+    const { store, circle, measure, steps } = setup();
+    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => store.getState().openMeasurePopover(circle));
+    const light = (): HTMLElement => screen.getByRole('switch', { name: 'Gives light' });
+    expect(light().getAttribute('aria-checked')).toBe('false');
+    expect(screen.queryByLabelText('Bright')).toBeNull();
+    fireEvent.click(light());
+    const emission = measure(circle)!.light!;
+    // Its own red, steady, bright to its edge and dim as far again.
+    expect(emission).toMatchObject({ color: '#e93147', animation: 'none', intensity: 1 });
+    expect(emission.bright).toBeGreaterThan(0);
+    expect(emission.dim).toBe(2 * emission.bright);
+    expect((screen.getByLabelText('Bright') as HTMLInputElement).value).toBe(String(emission.bright));
+    expect((screen.getByLabelText('Dim') as HTMLInputElement).value).toBe(String(emission.dim));
+    // A typed range is the light's at once.
+    fireEvent.change(screen.getByLabelText('Dim'), { target: { value: String(emission.dim + 5) } });
+    fireEvent.blur(screen.getByLabelText('Dim'));
+    expect(measure(circle)!.light).toMatchObject({ bright: emission.bright, dim: emission.dim + 5 });
+    fireEvent.click(light());
+    expect(measure(circle)).not.toHaveProperty('light');
+    expect(screen.queryByLabelText('Bright')).toBeNull();
+    expect(steps()).toBe(3);
+  });
+
+  it('shows the switch as it is and takes no press on a scene without dynamic lighting, and for Shadow on a shape without a radius', () => {
+    const { store, circle, measure } = setup();
+    const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
+    act(() => store.getState().openMeasurePopover(circle));
+    const light = (): HTMLElement => screen.getByRole('switch', { name: 'Gives light' });
+    const disabled = (): boolean => light().getAttribute('aria-disabled') === 'true';
+    expect(disabled()).toBe(true);
+    fireEvent.click(light());
+    expect(measure(circle)).not.toHaveProperty('light');
+    // An effect chosen there brings its look and colour, and no light.
+    fireEvent.click(within(screen.getByRole('group', { name: 'Effect' })).getByRole('button', { name: 'Fire' }));
+    expect(measure(circle)).toMatchObject({ effect: 'fire', color: '#ec7500' });
+    expect(measure(circle)).not.toHaveProperty('light');
+    act(() => store.getState().setSceneLighting({ enabled: true }));
+    expect(disabled()).toBe(false);
+    act(() => store.getState().openMeasurePopover(line));
+    expect(disabled()).toBe(false);
+    fireEvent.click(within(screen.getByRole('group', { name: 'Effect' })).getByRole('button', { name: 'Shadow' }));
+    expect(measure(line)).toMatchObject({ effect: 'shadow' });
+    expect(measure(line)).not.toHaveProperty('light');
+    expect(disabled()).toBe(true);
   });
 
   it('lets an area pass walls, and stop at them again without leaving a field behind, one undo step each', () => {

@@ -37,6 +37,10 @@
 - A ruler that starts or ends on a token counts the height between its two ends, by the collection's rule for diagonals
 - Range check: with one token selected and the measure tool in hand, point at another token to see a dashed line and the distance between the two, from edge to edge and with their heights. Nothing is clicked or kept, and only you see it
 - Ranges: a new mode of the measure tool. Click a token or a place for labelled rings around it: the range bands of a game that measures in bands, or how far the token gets with each movement step. The rings follow the grid and its rule for diagonals, stay with their token when it moves, and go when you click the token again or press Escape. Only you see them
+- Effects: a kept area can burn, freeze or crackle. Its handle offers Fire, Frost, Lightning, Mist, Radiance and Shadow, drawn in the area's own colour and moving while maps are animated. Tokens stand on top, and players see an effect only where they see the floor
+- Gives light: a kept area can light the scene like any light. A circle and an aura shine from their middle, a cone shines the way it points, and a square or a line glows along its whole shape, so a wall of fire lights the corridor it stands in. Its two ranges start from its size and can be changed at its handle
+- Fire, Lightning and Radiance bring their light when you choose them, and Shadow makes a circle or an aura a magical darkness as wide as itself
+- The colour dot in the measure tool's bar is now the look: pick a colour and an effect there, and the next area you keep takes both, with its light. A wall of fire is Line, drag, Shift
 
 ## Improved
 

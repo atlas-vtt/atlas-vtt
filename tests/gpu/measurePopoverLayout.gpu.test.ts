@@ -26,6 +26,9 @@ const MARGIN = 8;
 const WIDTH = 272;
 /** A tool's bar above the toolbar, as high as it stands over the view's bottom edge. */
 const BAR_TOP = VIEW.height - 120;
+/** `VITE_MEASURE_POPOVER_CAPTURE=1` writes pictures of the popover with a look and with its light's fields open. */
+const capture = import.meta.env.VITE_MEASURE_POPOVER_CAPTURE === '1';
+const OUT = '../../out/measure-effects/mounted';
 
 /** The measurement's popover on a map view of 1200 × 800 at zoom 1, the canvas filling the view, with a tool's bar and the toolbar at its bottom. */
 describe('the popover of a kept measurement', () => {
@@ -142,6 +145,77 @@ describe('the popover of a kept measurement', () => {
     // The switch ends where the swatches end.
     const toggle = rect('.atlas-toggle');
     expect(Math.abs(toggle.right - swatches.right)).toBeLessThanOrEqual(0.5);
+  });
+
+  it('holds an area\'s looks in one row under its colours, seven chips across the popover, the chosen one ringed', async () => {
+    mount();
+    const circle = keep(300, 400, 'circle');
+    await open(circle);
+    const swatches = rect('.atlas-swatch-grid');
+    const row = rect('.atlas-light-popover__kinds');
+    const chips = [...popover().querySelectorAll('.atlas-light-kind')].map((chip) => chip.getBoundingClientRect());
+    expect(chips).toHaveLength(7);
+    expect(new Set(chips.map((chip) => Math.round(chip.top))).size).toBe(1);
+    expect(row.top).toBeGreaterThanOrEqual(swatches.bottom);
+    expect(Math.abs(row.left - swatches.left)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(row.right - swatches.right)).toBeLessThanOrEqual(0.5);
+    expect(Math.max(...chips.map((chip) => chip.width)) - Math.min(...chips.map((chip) => chip.width))).toBeLessThanOrEqual(0.5);
+    for (const chip of chips) expect(chip.width).toBeGreaterThanOrEqual(28);
+    expect(chips.at(-1)!.right).toBeLessThanOrEqual(row.right + 0.5);
+    const before = box();
+    await act(async () => { store.getState().updateMeasure(circle, { effect: 'frost', color: '#8ad1f8' }); });
+    expect(box()).toEqual(before);
+    const pressed = [...popover().querySelectorAll('.atlas-light-kind[aria-pressed="true"]')];
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0]!.getAttribute('aria-label')).toBe('Frost');
+    if (capture) await page.screenshot({ path: `${OUT}/popover-frost.png` });
+  });
+
+  it('grows downward when the light is switched on: its top, its width and the switch stay where they are, and it shrinks back as it was', async () => {
+    mount();
+    await act(async () => { store.getState().setSceneLighting({ enabled: true }); });
+    await open(keep(300, 400, 'circle'));
+    const light = (): HTMLElement => [...popover().querySelectorAll<HTMLElement>('.atlas-light-popover__flicker')].find((row) => row.textContent === 'Gives light')!.querySelector<HTMLElement>('.atlas-toggle')!;
+    const closed = box();
+    const at = light().getBoundingClientRect();
+    await act(async () => { light().click(); });
+    await vi.waitFor(() => expect(box().height).toBeGreaterThan(closed.height + 60));
+    await act(async () => { ticks.forEach((tick) => tick()); });
+    const opened = box();
+    expect(opened).toMatchObject({ left: closed.left, top: closed.top, width: closed.width });
+    const after = light().getBoundingClientRect();
+    expect([after.left, after.top]).toEqual([at.left, at.top]);
+    // The two ranges on one line, their slider and the flicker under them, all inside the padding.
+    const fields = [...popover().querySelectorAll('.atlas-light-popover__ranges, .slider-root, .atlas-select')].map((part) => part.getBoundingClientRect());
+    expect(fields.length).toBeGreaterThanOrEqual(3);
+    for (const part of fields) {
+      expect(part.left).toBeGreaterThanOrEqual(popover().getBoundingClientRect().left + 8);
+      expect(part.right).toBeLessThanOrEqual(popover().getBoundingClientRect().right - 8);
+    }
+    if (capture) await page.screenshot({ path: `${OUT}/popover-light.png` });
+    await act(async () => { light().click(); });
+    await vi.waitFor(() => expect(box().height).toBe(closed.height));
+    await act(async () => { ticks.forEach((tick) => tick()); });
+    expect(box()).toEqual(closed);
+    // Reopened on a measurement that gives light, it stands level with its handle again.
+    const lit = keep(700, 300, 'circle');
+    await act(async () => { store.getState().updateMeasure(lit, { light: { bright: 10, dim: 20, color: '#e93147', intensity: 1, animation: 'none' } }); });
+    await open(lit);
+    expect(Math.abs(box().top + box().height / 2 - 300)).toBeLessThan(1);
+    expect(box().height).toBe(opened.height);
+  });
+
+  it('stays clear of the bars when the fold opens near them: there it moves up rather than under them', async () => {
+    mount();
+    await act(async () => { store.getState().setSceneLighting({ enabled: true }); });
+    await open(keep(300, VIEW.height - 260, 'circle'));
+    const light = [...popover().querySelectorAll<HTMLElement>('.atlas-light-popover__flicker')].find((row) => row.textContent === 'Gives light')!.querySelector<HTMLElement>('.atlas-toggle')!;
+    const closed = box();
+    await act(async () => { light.click(); });
+    await vi.waitFor(() => expect(box().height).toBeGreaterThan(closed.height + 60));
+    await act(async () => { ticks.forEach((tick) => tick()); });
+    expect(box().bottom).toBeLessThanOrEqual(BAR_TOP - MARGIN + 1);
+    expect(box().left).toBe(closed.left);
   });
 
   it('keeps its size whatever is chosen in it, and for another measurement of its kind: an area\'s has one row more, for the walls', async () => {

@@ -45,9 +45,9 @@ describe('kept measurements as they are read', () => {
   });
 
   it('keeps on a mended view what this Atlas does not know, and hands out the same view each time', () => {
-    const value = ruler('m', { color: 'red', glow: 't9', effect: { kind: 'fire' } });
+    const value = ruler('m', { color: 'red', glow: 't9', sound: { kind: 'crackle' } });
     const first = readMeasure('m', value);
-    expect(first).toEqual({ id: 'm', kind: 'measure', shape: 'ruler', points: [A, B], glow: 't9', effect: { kind: 'fire' } });
+    expect(first).toEqual({ id: 'm', kind: 'measure', shape: 'ruler', points: [A, B], glow: 't9', sound: { kind: 'crackle' } });
     expect(readMeasure('m', value)).toBe(first);
     expect(value).toMatchObject({ color: 'red' });
   });
@@ -86,6 +86,24 @@ describe('kept measurements as they are read', () => {
     expect(list).toHaveLength(MAX_MEASURES);
     expect(list[0]!.id).toBe('m0');
     expect(list[MAX_MEASURES - 1]!.id).toBe(`m${MAX_MEASURES - 1}`);
+  });
+
+  it('reads an area\'s light as every light\'s emission, and a look it does not know as none', () => {
+    const torch = { bright: 20, dim: 40, color: '#ff9a3c', intensity: 1, animation: 'torch' };
+    const sound = ruler('sound', { shape: 'circle', light: torch, effect: 'fire' });
+    expect(readMeasure('sound', sound)).toBe(sound);
+    // An emission without its two ranges is no light; a look of a newer Atlas draws none; both stay in the record.
+    const rangeless = ruler('rangeless', { shape: 'circle', light: { color: '#ff9a3c' }, effect: 'plasma', future: 1 });
+    const read = readMeasure('rangeless', rangeless)!;
+    expect(read.light).toBeUndefined();
+    expect(read.effect).toBeUndefined();
+    expect(read).toMatchObject({ id: 'rangeless', shape: 'circle', future: 1 });
+    expect(rangeless).toMatchObject({ light: { color: '#ff9a3c' }, effect: 'plasma' });
+    // A hand-edited emission is mended as a placed light's is: its ranges kept, the rest at its defaults.
+    const mended = readMeasure('mended', ruler('mended', { shape: 'cone', light: { bright: 10, dim: 20, color: 'orange', darkness: 'yes' }, effect: 'shadow' }))!;
+    expect(mended.light).toEqual({ bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' });
+    expect(mended.effect).toBe('shadow');
+    expect(readMeasure('text', ruler('text', { shape: 'circle', light: 'torch' }))!.light).toBeUndefined();
   });
 
   it('is the same list while the record is the same', () => {

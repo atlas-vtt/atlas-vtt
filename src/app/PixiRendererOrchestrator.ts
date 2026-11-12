@@ -80,7 +80,8 @@ import { viewedLevelId } from './levels/sceneLevels';
 import { levelObjects } from './levels/levelObjects';
 import { watchMapVideoPlayback } from './pixi/mosaicCanvas/video/watchMapVideoPlayback';
 import type { LiquidLayer } from './pixi/liquids/LiquidLayer';
-import { createViewLiquids, type PlayersView } from './pixi/liquids/viewLiquids';
+import type { MapVideoMode } from './pixi/mosaicCanvas/video/mapVideoPlayback';
+import { createViewLiquids, viewPlayback, type PlayersView, type ViewPlayback } from './pixi/liquids/viewLiquids';
 import { playerWindowStore } from './stores/playerWindowStore';
 import { PlayerWindowService } from './services/PlayerWindowService';
 import { fitZoomRange } from './pixi/fitMapRect';
@@ -107,6 +108,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private mapFeatures?: MapFeatureInteraction;
   /** Water, lava and acid moving over the map image, right above it. */
   private liquids?: LiquidLayer;
+  /** How the map's animated parts play now (`watchMapVideo`): a measure renderer made later starts with it. */
+  private mapVideoMode: MapVideoMode = 'pause';
   private selectionManager?: SelectionManager; // Add SelectionManager instance
   private fogRenderer?: FogOfWarRenderer; // Add FogRenderer instance
   private measureRenderer?: MeasureRenderer; // Add MeasureRenderer instance
@@ -520,7 +523,7 @@ export class PixiRendererOrchestrator { // Renamed class
 
     // Initialize MeasureRenderer if GridSystem is ready
     if (this.gridSystem) {
-      this.measureRenderer = new MeasureRenderer(viewport, this.store, this.gridSystem);
+      this.measureRenderer = new MeasureRenderer(viewport, this.store, this.gridSystem, undefined, this.mapPlayback(viewport));
       this.wireMeasureRendererProvider();
     }
     
@@ -645,7 +648,7 @@ export class PixiRendererOrchestrator { // Renamed class
     
     // Initialize or update MeasureRenderer if it doesn't exist yet
     if (!this.measureRenderer && this.gridSystem && currentViewport) {
-      this.measureRenderer = new MeasureRenderer(currentViewport, this.store, this.gridSystem);
+      this.measureRenderer = new MeasureRenderer(currentViewport, this.store, this.gridSystem, undefined, this.mapPlayback(currentViewport));
       this.wireMeasureRendererProvider();
     }
     
@@ -713,6 +716,13 @@ export class PixiRendererOrchestrator { // Renamed class
     viewport.addChildAt(this.liquids.container, viewport.getChildIndex(mapImage.layer) + 1);
   }
 
+  /** How what moves on this view's map by the liquids' rules is played (the effects of measured areas); null before the stage is up. */
+  private mapPlayback(viewport: Viewport): ViewPlayback | null {
+    const app = this.pixiAppManager.getApp();
+    if (!app?.renderer || !app.ticker) return null;
+    return viewPlayback(app, viewport, this.store, settingsLightingQuality(SettingsService.forApp(this.obsApp)), () => this.playersView());
+  }
+
   /** What the player window shows of this view while it shows it live: what moves only while seen moves for it too. */
   private playersView(): PlayersView | null {
     const frame = PlayerWindowService.getInstance()?.liveFrameOf(this.store);
@@ -746,6 +756,9 @@ export class PixiRendererOrchestrator { // Renamed class
         setVideoMode: (mode): void => {
           mapImage.setVideoMode(mode);
           this.liquids?.setMode(mode);
+          // The effects of measured areas move and stand still with the map: one rule for all that moves on it.
+          this.mapVideoMode = mode;
+          this.measureRenderer?.effects.setMode(mode);
         },
       },
       canvas: app.canvas,
@@ -1050,9 +1063,11 @@ export class PixiRendererOrchestrator { // Renamed class
     const restoreVideo = this.mapImage?.hideVideoFor();
     // Liquids take the still moment too, so a picture of the scene is the same however long it played.
     const restoreLiquids = this.liquids?.stillFor();
+    const restoreEffects = this.measureRenderer?.effects.stillFor();
     try {
       return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(false), lighting: this.lighting, roofs: this.roofs }, frame, render);
     } finally {
+      restoreEffects?.();
       restoreLiquids?.();
       restoreVideo?.();
       restoreRoof?.();
@@ -1250,6 +1265,7 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!measure) return;
     const rules = rulesLookup(this.obsApp);
     measure.measurementSettingsProvider = () => mapMeasurementSettings(rules, this.store.getState());
+    measure.effects.setMode(this.mapVideoMode);
     const grid = this.gridSystem;
     if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight() });
     this.tokenRenderer?.setMeasureHandlers(measure.handles.pointer);

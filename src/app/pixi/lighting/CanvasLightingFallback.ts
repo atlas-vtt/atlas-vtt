@@ -29,6 +29,7 @@ import { levelStack, levelsBelow, stackGrid, type LevelStack } from '../../level
 import { levelSurfaceList } from '../../levels/levelSurfaces';
 import { hasLevels, viewedLevelId } from '../../levels/sceneLevels';
 import { mapTokens } from '../../tokens/offMap';
+import { measureList } from '../../measure/keptMeasures';
 
 /** Full ambient light: everything in sight counts as lit. */
 const FULL_DAYLIGHT: AmbientLight = { ambient: 1 };
@@ -131,7 +132,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     const measurement = this.deps.measurement();
     const held = heldForSight(state);
     const hasVision = sceneHasVision(mapTokens(everyLevelObjects(state)));
-    const inputs = [state.lighting, mapTokens(levelObjects(state)), hasVision, levelObjects(state).walls, levelObjects(state).lights, state.grid, held, rules, bounds?.width, bounds?.height, measurement.unitDistance, state.levels, state.viewedLevel, everyLevelObjects(state).levelSurfaces];
+    const inputs = [state.lighting, mapTokens(levelObjects(state)), hasVision, levelObjects(state).walls, levelObjects(state).lights, state.grid, held, rules, bounds?.width, bounds?.height, measurement.unitDistance, state.levels, state.viewedLevel, everyLevelObjects(state).levelSurfaces, levelObjects(state).measures, measurement.coneAngle];
     if (inputs.every((input, i) => input === this.inputs[i]) && inputs.length === this.inputs.length) return;
     this.inputs = inputs;
     if (!state.lighting.enabled || !bounds) {
@@ -145,7 +146,8 @@ export class CanvasLightingFallback implements SceneLightingView {
     const scale = unitScaleOf(measurement, state.grid);
     const walls = this.sealedWalls(levelObjects(state).walls, worldTexel(bounds));
     const tokens = this.sightTokens.read(state);
-    const dark = activeLights(levelObjects(state).lights, tokens, state.lighting.ambient).filter((light) => light.emission.darkness).map((light) => engineLight(light, scale));
+    const kept = { measures: measureList(levelObjects(state).measures), scale, coneAngle: measurement.coneAngle };
+    const dark = activeLights(levelObjects(state).lights, tokens, state.lighting.ambient, kept).filter((light) => light.emission.darkness).map((light) => engineLight(light, scale));
     // The same list while there is no darkness, so whoever compares it finds it unchanged.
     this.reaches = dark.length > 0 ? this.darknessReaches.sync(dark, walls) : NO_REACHES;
     const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, GM_SIGHT_POLICY), FULL_DAYLIGHT, this.reaches);
