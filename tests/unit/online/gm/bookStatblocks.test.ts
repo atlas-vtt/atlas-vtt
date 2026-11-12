@@ -6,7 +6,7 @@ import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGa
 import type { StatblockTemplate, TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { FakeSocket, workspace } from './fakeTable.ts';
 import { storedRef } from './fakeStoring.ts';
-import { ANA, BEN, BRANNOCH, CAL, cave, delivered, MIRA_ART, ofType, openTable, traffic, type Delivered } from './bookTableHarness.ts';
+import { ANA, BEN, BRANNOCH, CAL, cave, delivered, MIRA, MIRA_ART, ofType, openTable, traffic, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 import { StatblockNotes, templateOf } from './statblockNotes.ts';
 
@@ -152,6 +152,23 @@ describe('a player\'s own character\'s statblock at a running table', () => {
     tab.store.set(cave());
     await advance(BOOK_POLL_MS);
     expect(statblocks(delivered(socket).slice(since), ANA)).toEqual([null]);
+    online.stop();
+  });
+
+  it('reaches its player filled when the GM makes the note from the token, links it before the note is read, and fills it in after', async () => {
+    const { online, socket, tab, ownership } = await openTable(new BookShelf(), PLAYERS, { [BRANNOCH]: ANA });
+    // Made from Mira's token: linked at once, the note not yet read, then written with its name alone, then filled in.
+    tab.store.set(cave({ mira: { statblockPath: MIRA_NOTE } }));
+    await advance(BOOK_POLL_MS);
+    notes.put(MIRA_NOTE, TEMPLATE, ['---', 'statblock: true', `atlas-template: ${TEMPLATE.id}`, 'name: Mira', '---', ''].join('\n'));
+    await advance(BOOK_POLL_MS);
+    // Then given to Ben, and filled in while he holds it.
+    ownership.give([MIRA], {}, BEN);
+    await advance(BOOK_POLL_MS);
+    expect(statblocks(delivered(socket), BEN).at(-1)).toMatchObject({ displayName: 'Mira' });
+    notes.edit(MIRA_NOTE, note('Mira', '25 ft.'));
+    await advance(BOOK_POLL_MS * 2);
+    expect(speedOf(statblocks(delivered(socket), BEN).at(-1))).toBe('25 ft.');
     online.stop();
   });
 
