@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { Button } from '../../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
-import { isLootBaseLoaded, lootBaseItemCount, needsBases, type LootBase } from '../../../../loot/LootBaseReader';
+import { hasUnreadableView, isLootBaseLoaded, lootBaseItemCount, needsBases, type LootBase } from '../../../../loot/LootBaseReader';
 import { baseName } from '../../../../utils/pathUtils';
 import { t } from '../../../../i18n';
 
@@ -11,6 +11,7 @@ function baseSummary(base: LootBase | undefined): string {
   if (base.missing) return t('csm.loot.notFound');
   if (base.views.length === 0) return t('csm.loot.noViews');
   if (needsBases(base)) return t('csm.loot.basesOff');
+  if (hasUnreadableView(base)) return t('loot.unreadable');
   return `${t('csm.loot.views', { count: base.views.length })} · ${t('loot.items', { count: lootBaseItemCount(base) })}`;
 }
 
@@ -23,7 +24,7 @@ interface BaseSourceRowProps {
 
 /** A loot base the collection rolls on as an Items table: each of its views is one. */
 export function BaseSourceRow({ path, base, onRemove }: BaseSourceRowProps): React.ReactElement {
-  const problem = base !== undefined && (base.missing || base.views.length === 0 || needsBases(base));
+  const problem = base !== undefined && (base.missing || base.views.length === 0 || needsBases(base) || hasUnreadableView(base));
   return (
     <div className="atlas-rt-row">
       <div className="atlas-rt-row__head">

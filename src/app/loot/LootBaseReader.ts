@@ -6,9 +6,10 @@ import { parseNoteYaml } from '../services/noteYaml';
 
 /**
  * Where a view's items stand: `loading` until Obsidian first ran its query,
- * `unavailable` when Obsidian cannot run it (Bases is off).
+ * `unavailable` when Obsidian cannot run it (Bases is off), `unreadable` when it ran
+ * the query and Atlas could not read what came of it.
  */
-export type LootViewStatus = 'loading' | 'ready' | 'unavailable';
+export type LootViewStatus = 'loading' | 'ready' | 'unavailable' | 'unreadable';
 
 /** One view of a loot base and the items it currently holds. */
 export interface LootBaseView {
@@ -45,6 +46,11 @@ export function lootBaseItemCount(base: LootBase): number {
 /** Whether Obsidian could not run some view of the base, because Bases is off. */
 export function needsBases(base: LootBase): boolean {
   return base.views.some((view) => view.status === 'unavailable');
+}
+
+/** Whether the results of some view of the base could not be read. */
+export function hasUnreadableView(base: LootBase): boolean {
+  return base.views.some((view) => view.status === 'unreadable');
 }
 
 function sameItems(a: readonly LootItem[], b: readonly LootItem[]): boolean {
@@ -107,21 +113,37 @@ export class LootBaseReader {
         views: this.base.views.map((view) => (view.name === name ? { ...view, ...change } : view)),
       });
     };
-    this.queries = names.flatMap((name) => {
+    // A view that cannot be read stops loading: the base's other views are rolled on without it
+    const unreadable = (name: string, error: unknown): void => {
+      // Obsidian runs the query again for every change in the vault: said once, until the view reads
+      if (run !== this.run || this.base.views.find((view) => view.name === name)?.status === 'unreadable') return;
+      console.warn(`[Atlas] Could not read the view ${name} of ${this.path}:`, error);
+      update(name, { items: [], status: 'unreadable' });
+    };
+    const started = names.flatMap((name) => {
       const config = lootQueryConfig(base, name);
       if (!config) return [];
-      return [new LootBaseQuery(this.app, config, this.path, {
+      const query = new LootBaseQuery(this.app, config, this.path, {
         onSnapshot: (snapshot) => {
-          const items = toLootItems(snapshot, [file.basename, name]);
+          let items: LootItem[];
+          try {
+            items = toLootItems(snapshot, [file.basename, name]);
+          } catch (error) {
+            unreadable(name, error);
+            return;
+          }
           const current = this.base.views.find((view) => view.name === name);
           // Obsidian also runs the query again for vault changes that leave the view as it was.
           if (current?.status === 'ready' && sameItems(current.items, items)) return;
           update(name, { items, status: 'ready' });
         },
         onUnavailable: () => update(name, { status: 'unavailable' }),
-      })];
+        onUnreadable: (error) => unreadable(name, error),
+      });
+      return [{ name, query }];
     });
-    await Promise.all(this.queries.map((query) => query.start()));
+    this.queries = started.map(({ query }) => query);
+    await Promise.all(started.map(({ name, query }) => query.start().catch((error: unknown) => unreadable(name, error))));
   }
 
   stop(): void {
