@@ -45,6 +45,7 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
   const { app } = useAtlasUI();
   const rules = useMemo(() => rulesLookup(app), [app]);
   const unitType = useAtlasStore((state) => mapMeasurementSettings(rules, state).unitType);
+  const unitName = useAtlasStore((state) => mapMeasurementSettings(rules, state).unitName);
   const unitDistance = useAtlasStore((state) => mapMeasurementSettings(rules, state).unitDistance);
   const maxRange = useAtlasStore((state) => maxLightRange(unitScaleOf({ unitDistance }, state.grid)));
   const current = useAtlasStore((state) => readLight(levelObjects(state).lights[lightId]));
@@ -94,7 +95,7 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
         emission={emission}
         onChange={update}
         presets={presets}
-        unit={unitLabelFor(unitType)}
+        unit={unitLabelFor(unitType, unitName)}
         unitDistance={unitDistance}
         maxRange={maxRange}
         surface={!!light.area}

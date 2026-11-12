@@ -57,9 +57,10 @@ export type MeasurementMode = 'metric' | 'abstract';
 export type GridUnitType = 'feet' | 'yards' | 'meters' | 'units' | 'custom';
 /**
  * How diagonal steps count on square grids: `equidistant` counts each as 1 (D&D 5e),
- * `alternating` counts them 1, 2, 1, 2 (5-10-5), `euclidean` measures the straight line.
+ * `alternating` counts them 1, 2, 1, 2 (5-10-5), `euclidean` measures the straight line,
+ * `manhattan` counts each as 2 (no diagonal moves: one step across and one along).
  */
-export type DiagonalRule = 'equidistant' | 'alternating' | 'euclidean';
+export type DiagonalRule = 'equidistant' | 'alternating' | 'euclidean' | 'manhattan';
 
 /**
  * What a cell of difficult terrain (a map feature marked so) costs the movement ruler: `double`
@@ -69,6 +70,8 @@ export type DifficultTerrainRule = 'double' | 'none';
 
 export interface CollectionGridDefaults {
   unitType: GridUnitType;
+  /** The name a `custom` unit shows after a distance ("mi"); read with `readUnitName`. Unset, or with another unit type, none. */
+  unitName?: string;
   unitDistance: number;
   measurementMode: MeasurementMode;
   abstractRangeBands?: RangeBand[];

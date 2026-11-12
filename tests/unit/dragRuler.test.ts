@@ -12,7 +12,7 @@ const CELL = 70;
 const TOKEN_RADIUS = computeTokenPixelSize(CELL, 1) / 2;
 const center = (col: number, row: number): { x: number; y: number } => ({ x: CELL / 2 + col * CELL, y: CELL / 2 + row * CELL });
 
-function makeRuler(token: { isHidden?: boolean } = {}): { ruler: DragRuler; view: { draw: ReturnType<typeof vi.fn>; clear: ReturnType<typeof vi.fn>; layers: object[] } } {
+function makeRuler(token: { isHidden?: boolean } = {}, shown: () => boolean = () => true): { ruler: DragRuler; view: { draw: ReturnType<typeof vi.fn>; clear: ReturnType<typeof vi.fn>; layers: { visible: boolean }[] } } {
   const view = { draw: vi.fn(), clear: vi.fn(), destroy: vi.fn(), layers: [{ visible: true }, { visible: true }] };
   const gridSystem = {
     getOptions: () => ({ type: 'square', size: CELL, offsetX: 0, offsetY: 0 }),
@@ -25,6 +25,8 @@ function makeRuler(token: { isHidden?: boolean } = {}): { ruler: DragRuler; view
     gridSystem as unknown as GridSystem,
     { getState: () => state as unknown as ViewAtlasState },
     () => settings,
+    () => true,
+    shown,
   );
   return { ruler, view };
 }
@@ -104,6 +106,29 @@ describe('DragRuler', () => {
     ruler.end();
     expect(pressSpace().defaultPrevented).toBe(false);
     expect(view.clear).toHaveBeenCalled();
+  });
+
+  it('shows no distance while the GM has them switched off, and follows the switch in the middle of a drag', () => {
+    let shown = false;
+    const { ruler, view } = makeRuler({}, () => shown);
+    ruler.begin('t1', center(0, 0));
+    ruler.update(center(2, 0));
+    expect(view.draw).not.toHaveBeenCalled();
+    expect(ruler.path()).toBeNull();
+    // Space still never reaches the command palette mid-drag, and adds no corner nobody sees
+    expect(pressSpace().defaultPrevented).toBe(true);
+
+    shown = true;
+    ruler.update(center(2, 3));
+    expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(2, 3)], '15ft', TOKEN_RADIUS, CELL);
+    expect(ruler.path()?.points).toEqual([center(0, 0), center(2, 3)]);
+
+    shown = false;
+    ruler.update(center(2, 4));
+    expect(view.clear).toHaveBeenCalled();
+    ruler.refreshVisibility();
+    expect(view.layers.every((layer) => !layer.visible)).toBe(true);
+    ruler.end();
   });
 
   it('hides the ruler from players while it measures a hidden token', () => {

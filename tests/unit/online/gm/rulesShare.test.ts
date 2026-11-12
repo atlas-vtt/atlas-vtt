@@ -38,6 +38,13 @@ describe('the rules players measure by', () => {
     expect(rules?.measurement).toMatchObject({ mode: 'metric', unitType: 'meters', unitDistance: 1.5 });
   });
 
+  it('name only what a page can read: Manhattan diagonals go out as 5/10/5, a unit the GM named as a bare number', () => {
+    const metric: MeasurementSettings = { ...DAGGERHEART, mode: 'metric', rangeBands: [], diagonalRule: 'manhattan', unitName: 'ly' };
+    const rules = sharedRules(GRID, metric, null);
+    expect(rules?.measurement).toEqual({ mode: 'metric', unitType: 'custom', unitDistance: 5, ruleDistance: 5, diagonalRule: 'alternating', coneAngle: 60, rangeBands: [] });
+    expect(parseGmMessage(JSON.parse(JSON.stringify({ t: 'rules', scene: 's1', ...rules })))).toEqual({ t: 'rules', scene: 's1', ...rules });
+  });
+
   it('say that everyone shows their cursor only while the GM lets them', () => {
     expect(sharedRules(GRID, DAGGERHEART, null)).not.toHaveProperty('cursors');
     const rules = sharedRules(GRID, DAGGERHEART, null, true);

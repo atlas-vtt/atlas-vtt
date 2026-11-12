@@ -5,7 +5,7 @@
  */
 
 import { HP_RESOURCE, parseResourceDefinitions, withLegacyBars } from '../resources/resourceDefinitions';
-import { isValidConeAngle, isValidRangeBandThreshold } from '../grid/measurementFormat';
+import { collectionUnitName, isValidConeAngle, isValidRangeBandThreshold } from '../grid/measurementFormat';
 import { isUnitDistance } from '../grid/unitDistance';
 import {
   CONDITION_EFFECTS,
@@ -35,7 +35,7 @@ import { parseStatblockRoles } from '../statblocks/roles/roleValidation';
 
 const UNIT_TYPES: readonly GridUnitType[] = ['feet', 'yards', 'meters', 'units', 'custom'];
 const MEASUREMENT_MODES: readonly MeasurementMode[] = ['metric', 'abstract'];
-const DIAGONAL_RULES: readonly DiagonalRule[] = ['equidistant', 'alternating', 'euclidean'];
+const DIAGONAL_RULES: readonly DiagonalRule[] = ['equidistant', 'alternating', 'euclidean', 'manhattan'];
 const DIFFICULT_TERRAIN_RULES: readonly DifficultTerrainRule[] = ['double', 'none'];
 
 type UnknownRecord = Record<string, unknown>;
@@ -64,8 +64,10 @@ function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
   if (!isUnitDistance(unitDistance)) return null;
   const bands = Array.isArray(abstractRangeBands) ? abstractRangeBands.map(parseBand) : [];
   if (bands.some((band) => band === null)) return null;
+  const unitName = collectionUnitName({ unitType, ...(typeof raw.unitName === 'string' && { unitName: raw.unitName }) });
   return {
     unitType,
+    ...(unitName !== undefined && { unitName }),
     unitDistance,
     measurementMode,
     diagonalRule: isOneOf(DIAGONAL_RULES, diagonalRule) ? diagonalRule : 'equidistant',

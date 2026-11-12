@@ -20,7 +20,7 @@ import { sameInitiativeRules } from './initiativeRules';
 import { sameLightPresets } from './lightPresetRules';
 import { sameSenses } from './senseRules';
 import { hasVisionDefaults, sameVisionDefaults } from './visionDefaults';
-import { DEFAULT_CONE_ANGLE } from '../grid/measurementFormat';
+import { collectionUnitName, DEFAULT_CONE_ANGLE } from '../grid/measurementFormat';
 import { sameStatblockRoles } from '../statblocks/roles/collectionStatblockRoles';
 import { DEFAULT_ITEM_RARITIES, parseItemRarities, sameItemRarities } from './itemRarities';
 
@@ -92,6 +92,7 @@ function sameGridDefaults(a: CollectionGridDefaults, b: CollectionGridDefaults):
   const bandsA = a.abstractRangeBands ?? [];
   const bandsB = b.abstractRangeBands ?? [];
   return a.unitType === b.unitType
+    && collectionUnitName(a) === collectionUnitName(b)
     && a.unitDistance === b.unitDistance
     && a.measurementMode === b.measurementMode
     && (a.diagonalRule ?? 'equidistant') === (b.diagonalRule ?? 'equidistant')

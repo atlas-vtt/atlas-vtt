@@ -32,6 +32,7 @@ import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
+import { DEFAULT_DRAG_DISTANCE, showsDragDistance } from '../measure/dragDistance';
 import { SyncService } from './token-renderer/SyncService';
 import { tokenSyncState } from './token-renderer/tokenSyncState';
 import { TokenGlide, placedAtOnce, type HeldPlayout, type TokenHolder } from './token-renderer/TokenGlide';
@@ -338,6 +339,7 @@ export class TokenRenderer {
       this.store,
       this.collectionSync.measurement,
       (id) => this.tokenSprites[id]?.visible ?? false,
+      () => showsDragDistance(SettingsService.forApp(this.obsApp)?.getDragDistance() ?? DEFAULT_DRAG_DISTANCE, this.store.getState().initiative.isActive),
     );
     this.interactionController.setDragRuler(this.dragRuler);
 

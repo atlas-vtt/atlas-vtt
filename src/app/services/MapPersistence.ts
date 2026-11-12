@@ -13,6 +13,8 @@ import { levelLinksFromFile } from '../levels/levelLinks';
 import { levelSurfacesFromFile } from '../levels/levelSurfaces';
 import { mapFeaturesFromFile } from '../mapFeatures/mapFeatures';
 import { liquidsFromFile } from '../liquids/liquids';
+import { measuresFromFile } from '../measure/keptMeasures';
+import type { KeptMeasure } from '../measure/measureTypes';
 import { roomsIntoWalls, wallsOfSavedRooms } from '../lighting/legacyRooms';
 import type { MapFeature } from '../types/mapFeatureTypes';
 import type { LiquidSurface } from '../types/liquidTypes';
@@ -75,6 +77,8 @@ export interface MapFile {
     mapFeatures?: Record<string, MapFeature>;
     /** Water, lava and acid that move on animated maps; absent until a map has some. */
     liquids?: Record<string, LiquidSurface>;
+    /** Measurements that stay on the map; absent until a map has some. */
+    measures?: Record<string, KeptMeasure>;
   };
   camera: CameraState;
   /** Frames the GM saved for the players' TV; absent in older files and until a scene has one. Read with `readPlayerFrames`. */
@@ -441,6 +445,7 @@ export function migrateMapFile(persisted: unknown): MapFile {
   const surfaces = levelSurfacesFromFile(persisted.objects?.levelSurfaces);
   const features = mapFeaturesFromFile(persisted.objects?.mapFeatures);
   const liquids = liquidsFromFile(persisted.objects?.liquids);
+  const measures = measuresFromFile(persisted.objects?.measures);
   const savedObjects: unknown = persisted.objects;
   const savedRooms: unknown = isRecord(savedObjects) ? savedObjects.rooms : undefined;
   const background = persisted.background ?? null;
@@ -470,6 +475,7 @@ export function migrateMapFile(persisted: unknown): MapFile {
       ...(surfaces && { levelSurfaces: surfaces }),
       ...(features && { mapFeatures: features }),
       ...(liquids && { liquids }),
+      ...(measures && { measures }),
     },
     grid: persisted.grid ? migrateGrid(persisted.grid) : initial.grid,
     camera: persisted.camera || initial.camera

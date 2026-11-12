@@ -1,3 +1,8 @@
+## New
+
+- **Units with a name of their own**: pick Custom as a collection's unit and type its name, such as mi, and every distance shows it. A single scene can name its own unit in the grid settings, so a galaxy map measures in ly while the rest of the collection stays in feet
+- **Diagonals that count 2**: a new choice for how a collection counts diagonals, for games without diagonal moves
+
 ## Improved
 
 - The lighting tool now opens on Draw rooms, with Draw walls for single walls right after it

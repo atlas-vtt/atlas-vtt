@@ -56,5 +56,7 @@ export function pathLengthInCells(grid: GridGeometry, points: readonly Point[], 
       return straight + diagonal + Math.floor(diagonal / 2);
     case 'equidistant':
       return straight + diagonal;
+    case 'manhattan':
+      return straight + 2 * diagonal;
   }
 }

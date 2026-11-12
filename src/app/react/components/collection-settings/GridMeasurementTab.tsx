@@ -12,7 +12,7 @@ import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
 import { UnitDistanceField } from './UnitDistanceField';
 import { SettingRow } from './SettingRow';
-import { areRangeBandsValid, DEFAULT_CONE_ANGLE, isValidConeAngle, isValidRangeBandThreshold } from '../../../grid/measurementFormat';
+import { areRangeBandsValid, DEFAULT_CONE_ANGLE, isValidConeAngle, isValidRangeBandThreshold, MAX_UNIT_NAME } from '../../../grid/measurementFormat';
 import { isUnitDistance } from '../../../grid/unitDistance';
 import type {
   CollectionGridDefaults,
@@ -53,7 +53,14 @@ const DIAGONAL_OPTIONS: SelectOption<DiagonalRule>[] = [
   { value: 'equidistant', label: t('csm.grid.diagonal.equidistant') },
   { value: 'alternating', label: t('csm.grid.diagonal.alternating') },
   { value: 'euclidean', label: t('csm.grid.diagonal.euclidean') },
+  { value: 'manhattan', label: t('csm.grid.diagonal.manhattan') },
 ];
+
+/** The grid defaults naming their custom unit `name`; an empty name is none. */
+function withUnitName(gridDefaults: CollectionGridDefaults, name: string): CollectionGridDefaults {
+  const { unitName: _previous, ...rest } = gridDefaults;
+  return name === '' ? rest : { ...rest, unitName: name };
+}
 
 export function GridMeasurementTab({
   gridDefaults,
@@ -101,6 +108,23 @@ export function GridMeasurementTab({
             <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">{t('csm.grid.distanceInvalid')}</p>
           )}
         </SettingRow>
+        {gridDefaults.unitType === 'custom' && (
+          <SettingRow
+            label={t('csm.grid.unitName')}
+            info={t('csm.grid.unitNameInfo')}
+            control={(labelId) => (
+              <input
+                type="text"
+                className="atlas-csm-input"
+                aria-labelledby={labelId}
+                maxLength={MAX_UNIT_NAME}
+                placeholder={t('csm.grid.unitNamePlaceholder')}
+                value={gridDefaults.unitName ?? ''}
+                onChange={(e) => onChange(withUnitName(gridDefaults, e.target.value))}
+              />
+            )}
+          />
+        )}
         <SettingRow
           label={t('csm.grid.diagonal')}
           info={t('csm.grid.diagonalInfo')}

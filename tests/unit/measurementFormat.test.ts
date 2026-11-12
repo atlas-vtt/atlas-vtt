@@ -6,6 +6,7 @@ import {
   formatReach,
   isValidRangeBandThreshold,
   rangeBandName,
+  readUnitName,
   resolveMeasurementSettings,
   unitLabelFor,
   type MeasurementSettings,
@@ -64,6 +65,51 @@ describe('formatDistance', () => {
 
   it('uses range bands in abstract mode', () => {
     expect(formatDistance(2, { ...metric, mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 3 }] })).toBe('Close');
+  });
+
+  // #243: a unit with a name of its own.
+  it('shows the name the GM typed for the unit, in measured and in set distances and beside inputs', () => {
+    const miles: MeasurementSettings = { ...metric, unitType: 'custom', unitDistance: 6, unitName: 'mi' };
+    expect(formatDistance(2, miles)).toBe('12 mi');
+    expect(formatReach(2.5, miles)).toBe('15 mi');
+    expect(unitLabelFor(miles.unitType, miles.unitName)).toBe('mi');
+    expect(unitLabelFor('custom')).toBe('');
+    // Range bands name distances themselves
+    expect(formatDistance(2, { ...miles, mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 3 }] })).toBe('Close');
+  });
+});
+
+describe('a unit\'s name', () => {
+  const grid = { enabled: true, size: 70, offsetX: 0, offsetY: 0, opacity: 1 };
+
+  it('is read trimmed and cut to a short word, and is none for text that names nothing', () => {
+    expect(readUnitName(' mi ')).toBe('mi');
+    expect(readUnitName('light years and more')).toBe('light years');
+    expect(readUnitName('   ')).toBeUndefined();
+    expect(readUnitName('')).toBeUndefined();
+    expect(readUnitName(5)).toBeUndefined();
+    expect(readUnitName(undefined)).toBeUndefined();
+  });
+
+  it('is the collection\'s for a custom unit only', () => {
+    const custom = { unitType: 'custom', unitName: 'leagues', unitDistance: 3, measurementMode: 'metric' } as const;
+    expect(resolveMeasurementSettings(custom, grid)).toMatchObject({ unitType: 'custom', unitName: 'leagues' });
+    expect(formatDistance(2, resolveMeasurementSettings(custom, grid))).toBe('6 leagues');
+    expect(resolveMeasurementSettings({ ...custom, unitType: 'feet' }, grid)).not.toHaveProperty('unitName');
+    expect(resolveMeasurementSettings({ ...custom, unitName: '  ' }, grid)).not.toHaveProperty('unitName');
+  });
+
+  it('is the scene\'s own where it names one, whatever unit the collection measures in', () => {
+    const feet = { unitType: 'feet', unitDistance: 5, measurementMode: 'metric' } as const;
+    const galaxy = { ...grid, unitDistanceOverride: 5000, unitNameOverride: 'ly' };
+    const settings = resolveMeasurementSettings(feet, galaxy);
+    expect(settings).toMatchObject({ unitType: 'feet', unitDistance: 5000, ruleDistance: 5, unitName: 'ly' });
+    expect(formatDistance(3, settings)).toBe('15000 ly');
+    expect(resolveMeasurementSettings({ unitType: 'custom', unitName: 'mi', unitDistance: 1, measurementMode: 'metric' }, galaxy).unitName).toBe('ly');
+    expect(resolveMeasurementSettings(undefined, { ...galaxy, measurementType: 'units' }).unitName).toBe('ly');
+    // Range bands have no unit to name; the scene's stays stored for measuring again
+    expect(resolveMeasurementSettings({ ...feet, measurementMode: 'abstract' }, galaxy)).not.toHaveProperty('unitName');
+    expect(resolveMeasurementSettings(feet, { ...grid, unitNameOverride: 7 as never })).not.toHaveProperty('unitName');
   });
 });
 

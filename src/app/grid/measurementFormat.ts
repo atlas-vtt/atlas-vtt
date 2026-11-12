@@ -24,6 +24,11 @@ export interface MeasurementSettings {
    * sets. Distances written in squares (presets, statblocks) are converted with this one.
    */
   ruleDistance: number;
+  /**
+   * The unit's name as the GM typed it ("mi", "ly"), shown in place of the unit type's own: the
+   * scene's where it names one, else the collection's for a custom unit. Unset: the unit type's.
+   */
+  unitName?: string;
   diagonalRule: DiagonalRule;
   /** What a cell of difficult terrain costs a token's movement (`movementCostInCells`); unset is nothing extra. Plain distances never pay it. */
   difficultTerrain?: DifficultTerrainRule;
@@ -46,24 +51,49 @@ export function sceneUnitDistance(grid: Pick<GridState, 'unitDistanceOverride'> 
   return typeof distance === 'number' && Number.isFinite(distance) && distance > 0 ? distance : undefined;
 }
 
+/** The longest name a unit keeps; a longer one is cut there. */
+export const MAX_UNIT_NAME = 12;
+
+/** A unit's name as typed: trimmed and at most `MAX_UNIT_NAME` long; text that names nothing, or no text, is none. */
+export function readUnitName(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const name = value.trim().slice(0, MAX_UNIT_NAME).trim();
+  return name === '' ? undefined : name;
+}
+
+/** The unit a scene names for its own distances (`GridState.unitNameOverride`), a galaxy map's "ly"; none where it names none. */
+export function sceneUnitName(grid: Pick<GridState, 'unitNameOverride'> | null | undefined): string | undefined {
+  return readUnitName(grid?.unitNameOverride);
+}
+
 /**
  * What a map measures in. Collection grid defaults win; a map without a collection falls back to
- * its grid state. A scene's own distance per cell changes only `unitDistance`, and only where
- * distances are measured: range bands have no distance per cell, so there it is kept but unused.
+ * its grid state. A scene's own distance per cell changes only `unitDistance` and its own unit
+ * name only `unitName`, and only where distances are measured: range bands have no distance per
+ * cell, so there both are kept but unused.
  */
 export function resolveMeasurementSettings(
   collection: CollectionGridDefaults | undefined,
   grid: GridState | null | undefined,
 ): MeasurementSettings {
-  const rules = collection ? collectionMeasurement(collection) : gridMeasurement(grid);
-  const override = rules.mode === 'abstract' ? undefined : sceneUnitDistance(grid);
-  return { ...rules, unitDistance: override ?? rules.ruleDistance };
+  const { unitName: ruleName, ...rules } = collection ? collectionMeasurement(collection) : gridMeasurement(grid);
+  const metric = rules.mode !== 'abstract';
+  const override = metric ? sceneUnitDistance(grid) : undefined;
+  const unitName = (metric ? sceneUnitName(grid) : undefined) ?? ruleName;
+  return { ...rules, unitDistance: override ?? rules.ruleDistance, ...(unitName !== undefined && { unitName }) };
+}
+
+/** The name a collection's unit shows: the one typed for a `custom` unit; none for the units that have their own. */
+export function collectionUnitName(collection: Pick<CollectionGridDefaults, 'unitType' | 'unitName'> | undefined): string | undefined {
+  return collection?.unitType === 'custom' ? readUnitName(collection.unitName) : undefined;
 }
 
 function collectionMeasurement(collection: CollectionGridDefaults): Omit<MeasurementSettings, 'unitDistance'> {
+  const unitName = collectionUnitName(collection);
   return {
     mode: collection.measurementMode,
     unitType: collection.unitType,
+    ...(unitName !== undefined && { unitName }),
     ruleDistance: collection.unitDistance,
     diagonalRule: collection.diagonalRule ?? 'equidistant',
     difficultTerrain: collection.difficultTerrain ?? 'none',
@@ -88,10 +118,16 @@ function gridMeasurement(grid: GridState | null | undefined): Omit<MeasurementSe
 const UNIT_SUFFIX: Record<GridUnitType, string> = { feet: 'ft', yards: 'yd', meters: 'm', units: 'u', custom: '' };
 const tenths = (value: number): number => Math.round(value * 10) / 10;
 
-/** Unit shown next to a distance input, e.g. "ft"; none for generic units. Maps without a unit use feet. */
-export function unitLabelFor(unitType: GridUnitType | undefined): string {
+/** Unit shown next to a distance input, e.g. "ft", or the name the GM gave it; none for generic units. Maps without a unit use feet. */
+export function unitLabelFor(unitType: GridUnitType | undefined, unitName?: string): string {
+  if (unitName) return unitName;
   if (unitType === 'units' || unitType === 'custom') return '';
   return UNIT_SUFFIX[unitType ?? 'feet'];
+}
+
+/** What follows a distance's number: the unit type's short form right after it ("30ft"), a typed name after a space ("30 mi"). */
+function unitSuffix(settings: Pick<MeasurementSettings, 'unitType' | 'unitName'>): string {
+  return settings.unitName ? ` ${settings.unitName}` : UNIT_SUFFIX[settings.unitType];
 }
 
 /** 
@@ -100,7 +136,7 @@ export function unitLabelFor(unitType: GridUnitType | undefined): string {
  */
 export function formatDistance(cells: number, settings: MeasurementSettings): string {
   if (settings.mode === 'abstract') return rangeBandName(cells, settings.rangeBands);
-  return `${tenths(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;
+  return `${tenths(cells * settings.unitDistance)}${unitSuffix(settings)}`;
 }
 
 /**
@@ -109,7 +145,7 @@ export function formatDistance(cells: number, settings: MeasurementSettings): st
  */
 export function formatReach(cells: number, settings: MeasurementSettings): string {
   if (settings.mode === 'abstract') return settings.rangeBands.length > 0 ? rangeBandName(cells, settings.rangeBands) : `${tenths(cells)} sq`;
-  return `${tenths(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;
+  return `${tenths(cells * settings.unitDistance)}${unitSuffix(settings)}`;
 }
 
 /** A band threshold must be a whole number of at least one square. */

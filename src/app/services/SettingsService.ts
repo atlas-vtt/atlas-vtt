@@ -1,4 +1,5 @@
 import { readFogEdge, type FogEdge } from '../fog/fogEdge';
+import { readDragDistance, type DragDistance } from '../measure/dragDistance';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import type { App, Plugin } from 'obsidian';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
@@ -336,6 +337,17 @@ export class SettingsService {
   setDiceDisplay(display: DiceDisplay): void {
     if (this.settings.diceDisplay === display) return;
     this.settings.diceDisplay = display;
+    this.commit();
+  }
+
+  /** When a dragged token shows its distance: the stored choice, or always when the file holds something else. */
+  getDragDistance(): DragDistance {
+    return readDragDistance(this.settings.dragDistance);
+  }
+
+  setDragDistance(choice: DragDistance): void {
+    if (this.settings.dragDistance === choice) return;
+    this.settings.dragDistance = choice;
     this.commit();
   }
 

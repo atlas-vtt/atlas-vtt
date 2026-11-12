@@ -15,6 +15,23 @@ export interface RulesSharePorts {
   rollDice?(): SharedRollDice | null;
 }
 
+/**
+ * The diagonal rule as the shared rules can name it. They have no word for `manhattan` yet, and a
+ * page refuses rules it cannot read whole, so players measure it by the nearest rule they know
+ * (5/10/5) until the protocol carries it.
+ */
+function sharedDiagonalRule(rule: MeasurementSettings['diagonalRule']): SharedRules['measurement']['diagonalRule'] {
+  return rule === 'manhattan' ? 'alternating' : rule;
+}
+
+/**
+ * The unit as the shared rules can name it. They carry no typed name yet, so a unit the GM named
+ * goes out as `custom`: players read the bare number, never another unit's sign after it.
+ */
+function sharedUnitType(unitType: MeasurementSettings['unitType'], unitName: string | undefined): SharedRules['measurement']['unitType'] {
+  return unitName ? 'custom' : unitType;
+}
+
 const finiteOr = (value: number | undefined, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
 
 /**
@@ -27,11 +44,11 @@ export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSe
   const offsetX = finiteOr(grid.offsetX, 0);
   const offsetY = finiteOr(grid.offsetY, 0);
   if (Math.abs(offsetX) > MAX_COORDINATE || Math.abs(offsetY) > MAX_COORDINATE) return null;
-  const { mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle } = measurement ?? resolveMeasurementSettings(undefined, grid);
+  const { mode, unitType, unitName, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle } = measurement ?? resolveMeasurementSettings(undefined, grid);
   return {
     grid: { type: grid.type ?? 'square', size: grid.size, offsetX, offsetY },
     snap: grid.snapToGrid ?? true,
-    measurement: { mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands: rangeBands.map(({ name, maxSquares }) => ({ name, maxSquares })), coneAngle },
+    measurement: { mode, unitType: sharedUnitType(unitType, unitName), unitDistance, ruleDistance, diagonalRule: sharedDiagonalRule(diagonalRule), rangeBands: rangeBands.map(({ name, maxSquares }) => ({ name, maxSquares })), coneAngle },
     accent,
     ...(cursors && { cursors }),
     ...(dice !== null && { dice }),

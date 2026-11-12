@@ -11,6 +11,7 @@ import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
 import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
 import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
+import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../measure/dragDistance';
 
 /**
  * How wheel events drive the map viewport.
@@ -57,6 +58,8 @@ export interface AtlasSettings {
   detectGridOnNewScenes: boolean;
   /** How the fog's edge looks, on the GM's map and the players'. Read with `getFogEdge`. */
   fogEdge: FogEdge;
+  /** When a dragged token shows how far it has moved: always, only while a fight runs, or never. Read with `getDragDistance`. */
+  dragDistance: DragDistance;
   /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
@@ -113,6 +116,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   sound: DEFAULT_SOUND_SETTINGS,
   detectGridOnNewScenes: true,
   fogEdge: DEFAULT_FOG_EDGE,
+  dragDistance: DEFAULT_DRAG_DISTANCE,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
   initiativeNames: false,

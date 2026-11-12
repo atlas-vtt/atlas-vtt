@@ -4,6 +4,8 @@
  * Space adds a waypoint at the current landing cell; the distance adds up
  * across waypoints, and difficult terrain on the way costs what the rules say
  * (`movementCostInCells`). The token still drops where the pointer is released.
+ * Whether a drag shows its distance at all is the GM's choice (`shown`, read at every step, so a
+ * change of the setting or a fight starting is followed at once).
  */
 
 import type { StoreApi } from 'zustand';
@@ -43,6 +45,7 @@ export class DragRuler {
     private readonly store: Pick<StoreApi<ViewAtlasState>, 'getState'>,
     private readonly settingsProvider: () => MeasurementSettings,
     private readonly tokenVisible: (tokenId: string) => boolean = () => true,
+    private readonly shown: () => boolean = () => true,
   ) {}
 
   /** Starts measuring a drag of `tokenId`, which started at `origin`. */
@@ -72,10 +75,10 @@ export class DragRuler {
     this.view.clear();
   }
 
-  /** The path the ruler shows now, or null while it shows none (no drag, or one that has not left its start). */
+  /** The path the ruler shows now, or null while it shows none (no drag, one that has not left its start, or distances switched off). */
   path(): DragRulerPath | null {
     const landing = this.landing;
-    if (!this.tokenId || !landing || this.waypoints.every(point => samePoint(point, landing))) return null;
+    if (!this.tokenId || !landing || !this.shown() || this.waypoints.every(point => samePoint(point, landing))) return null;
     return { tokenId: this.tokenId, points: [...this.waypoints, landing] };
   }
 
@@ -90,7 +93,7 @@ export class DragRuler {
   refreshVisibility(): void {
     const landing = this.landing;
     if (!this.tokenId || !landing) return;
-    const visible = this.tokenVisible(this.tokenId) && this.waypoints.some((point) => !samePoint(point, landing));
+    const visible = this.shown() && this.tokenVisible(this.tokenId) && this.waypoints.some((point) => !samePoint(point, landing));
     for (const layer of this.view.layers) layer.visible = visible;
   }
 
@@ -105,7 +108,7 @@ export class DragRuler {
     event.preventDefault();
     event.stopPropagation();
     const last = this.waypoints[this.waypoints.length - 1];
-    if (event.repeat || !this.landing || (last && samePoint(last, this.landing))) return;
+    if (event.repeat || !this.landing || !this.shown() || (last && samePoint(last, this.landing))) return;
     this.waypoints.push(this.landing);
     this.redraw();
   };

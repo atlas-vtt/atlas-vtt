@@ -12,6 +12,7 @@ import type { PartyValues } from './partyTypes';
 import type { LevelAlignment, LevelLink, LevelSurface, SceneLevel } from './sceneLevelTypes';
 import type { LiquidSurface } from './liquidTypes';
 import type { MapFeature } from './mapFeatureTypes';
+import type { KeptMeasure } from '../measure/measureTypes';
 import type { SavedPlayerFrame } from './playerCamera';
 import type { SceneSound } from '../sound/soundTypes';
 
@@ -80,6 +81,8 @@ export interface ViewState extends ViewUIState {
     mapFeatures?: Record<string, MapFeature>;
     /** Water, lava and acid that move while maps are animated; absent until the first is added. Read with `liquidList`. */
     liquids?: Record<string, LiquidSurface>;
+    /** Measurements that stay on the map; absent until the first is kept. Read with `measureList`. */
+    measures?: Record<string, KeptMeasure>;
   };
 
   // Camera state

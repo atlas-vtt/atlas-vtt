@@ -154,9 +154,9 @@ function takesEnter(target: EventTarget | null): boolean {
 
 /** What the rules the token's map plays by say about vision and light. */
 function lightingContext(state: ViewAtlasState, app: App, rules: SenseRules): TokenLightingContext {
-  const { unitType, unitDistance } = mapMeasurementSettings(rulesLookup(app), state);
+  const { unitType, unitName, unitDistance } = mapMeasurementSettings(rulesLookup(app), state);
   return {
-    unit: unitLabelFor(unitType),
+    unit: unitLabelFor(unitType, unitName),
     unitDistance,
     maxLightRange: maxLightRange(unitScaleOf({ unitDistance }, state.grid)),
     senses: rules.definitions,
