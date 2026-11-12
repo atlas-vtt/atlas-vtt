@@ -99,12 +99,6 @@ describe('the GM\'s measurements in full', () => {
     expect(full({ ...records, walled: false })).toEqual(full(records));
   });
 
-  it('never tell an aura: players get none', () => {
-    const aura = kept({ shape: 'circle', points: [at(0), at(70)], follows: 'hero', aura: 10 });
-    const plain = kept({ shape: 'circle', points: [at(300), at(370)] });
-    expect(told({ kept: [aura, plain] })).toEqual({ live: null, kept: [{ shape: 'circle', a: [300, 0], b: [370, 0] }], full: { live: null, kept: [{ shape: 'circle', pts: [300, 0, 370, 0] }] } });
-  });
-
   it('tell nothing of a measurement the GM keeps to themselves, one that started on a token unseen then, or one off every map', () => {
     const fromUnseen = kept({ shape: 'square', points: [at(0), at(70)], origin: { tokenIds: ['orc'], unseenAtStart: true } });
     const fromHero = kept({ shape: 'line', points: [at(200), at(270)], width: 70, origin: { tokenIds: ['hero'], unseenAtStart: false } });
@@ -126,6 +120,58 @@ describe('the GM\'s measurements in full', () => {
     expect(all.full.kept[0]?.pts[0]).toBe(6);
     const marks = { t: 'marks', scene: 's1', lasers: [], measures: [{ who: 'gm', color: '#123456', ...all }] };
     expect(parseGmMessage(JSON.parse(JSON.stringify(marks)))).toEqual(marks);
+  });
+});
+
+describe('what the GM puts on the table with a kept measurement', () => {
+  const HERO = '0123456789abcdef01234567';
+  const alias = (id: string): string | undefined => (id === 'hero' ? HERO : undefined);
+  /** What players are told in full, their tokens named by `alias`. */
+  const tell = (records: Records, seen: (id: string) => boolean = EVERYONE): ReturnType<GmMeasures['shown']> => {
+    const measures = new GmMeasures();
+    measures.follow({ live: records.live ?? null, kept: records.kept ?? [] }, EMPTY_MAP, 0);
+    return measures.shown(seen, alias);
+  };
+
+  it('goes out with its own colour and its look; a measurement without either says neither', () => {
+    const fire = kept({ shape: 'cone', points: [at(0), at(0, 70)], color: '#EC7500', effect: 'fire', light: { bright: 10, dim: 20, color: '#ec7500', intensity: 1, animation: 'torch' } });
+    const route = kept({ shape: 'ruler', points: [at(0), at(70)], color: '#086ddd' });
+    const plain = kept({ shape: 'square', points: [at(0), at(70)] });
+    expect(tell({ kept: [fire, route, plain], live: live('circle', [at(0), at(70)], { color: '#ffffff' }) }).full).toEqual({
+      live: { shape: 'circle', pts: [0, 0, 70, 0], color: '#ffffff' },
+      kept: [{ shape: 'cone', pts: [0, 0, 0, 70], color: '#ec7500', effect: 'fire' }, { shape: 'ruler', pts: [0, 0, 70, 0], color: '#086ddd' }, { shape: 'square', pts: [0, 0, 70, 0] }],
+    });
+  });
+
+  it('says nothing of the light an area gives: that is a light of the scene', () => {
+    const lit = kept({ shape: 'circle', points: [at(0), at(70)], light: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } });
+    expect(JSON.stringify(tell({ kept: [lit] }))).not.toMatch(/light|bright|dim/);
+  });
+
+  it('tells an aura by the token it lies around, as players know that token, and how far it reaches', () => {
+    const aura = kept({ shape: 'circle', points: [at(500), at(640)], follows: 'hero', aura: 12.3456, color: '#7852ee', effect: 'shadow' });
+    const { full: said, kept: older } = tell({ kept: [aura] });
+    expect(said.kept).toEqual([{ shape: 'circle', pts: [500, 0, 640, 0], color: '#7852ee', effect: 'shadow', aura: { token: HERO, reach: 12.346 } }]);
+    // The older words cannot say it: its points are where it was last edited, not where its token stands.
+    expect(older).toEqual([]);
+    expect(JSON.stringify(said)).not.toContain('hero');
+    const marks = { t: 'marks', scene: 's1', lasers: [], measures: [{ who: 'gm', color: '#123456', live: null, kept: older, full: said }] };
+    expect(parseGmMessage(JSON.parse(JSON.stringify(marks)))).toEqual(marks);
+  });
+
+  it('tells no aura whose token the players do not see, one the GM keeps to themselves, or one whose token cannot be named', () => {
+    const aura = kept({ shape: 'circle', points: [at(0), at(70)], follows: 'hero', aura: 10 });
+    const plain = kept({ shape: 'circle', points: [at(300), at(370)] });
+    expect(tell({ kept: [aura, plain] }, (id) => id !== 'hero').full.kept).toEqual([{ shape: 'circle', pts: [300, 0, 370, 0] }]);
+    expect(tell({ kept: [{ ...aura, hidden: true }] }).full.kept).toEqual([]);
+    expect(tell({ kept: [kept({ shape: 'circle', points: [at(0), at(70)], follows: 'orc', aura: 10 })] }).full.kept).toEqual([]);
+    // Without a way to name tokens, an aura is told to nobody, never as a circle.
+    expect(told({ kept: [aura, plain] })).toEqual({ live: null, kept: [{ shape: 'circle', a: [300, 0], b: [370, 0] }], full: { live: null, kept: [{ shape: 'circle', pts: [300, 0, 370, 0] }] } });
+  });
+
+  it('never gives a ruler a look, and leaves out a colour that is none', () => {
+    const route = kept({ shape: 'ruler', points: [at(0), at(70)], effect: 'fire', color: 'red' });
+    expect(tell({ kept: [route] }).full.kept).toEqual([{ shape: 'ruler', pts: [0, 0, 70, 0] }]);
   });
 });
 

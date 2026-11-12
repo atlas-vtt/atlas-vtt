@@ -12,12 +12,15 @@ export interface LiveMeasure extends Measurement {
   readonly pressed: Point;
   /** The GM measures for themselves: players are shown nothing of it. */
   readonly hidden?: true;
+  /** '#rrggbb': the colour it is drawn in, where the tool names one; unset, the accent. */
+  readonly color?: string;
 }
 
 /**
  * The measurements on the map as data, for whoever passes them on (online play): the live one, and
  * those kept on the level shown that players may see, in the order they were kept. One the GM keeps
- * to themselves (`KeptMeasure.hidden`) is never among them.
+ * to themselves (`KeptMeasure.hidden`) is never among them. An aura is, with the points it was last
+ * edited at: where it lies is its token's to say (`isAura`, `placeAura`).
  */
 export interface Measurements {
   readonly live: LiveMeasure | null;

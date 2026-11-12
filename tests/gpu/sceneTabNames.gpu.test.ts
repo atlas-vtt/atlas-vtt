@@ -48,10 +48,10 @@ describe('the names on the scene tabs', () => {
     document.body.className = '';
   });
 
-  /** The six scenes open in a map view `width` px wide; the third is the one players are shown. */
-  async function mount(width: number): Promise<void> {
+  /** The scenes (the six, unless named) open in a map view `width` px wide; the third is the one players are shown. */
+  async function mount(width: number, names: string[] = NAMES): Promise<void> {
     const tabMetaStore = createTabMetaStore();
-    const ids = NAMES.map((name) => tabMetaStore.getState().addTab(`${name}.atlasmap`, name));
+    const ids = names.map((name) => tabMetaStore.getState().addTab(`${name}.atlasmap`, name));
     tabMetaStore.getState().setActiveTab(ids[0]!);
     const ui = { app: {}, view: { viewId: 'map', tabMetaStore }, pixiApp: null, renderer: null } as unknown as AtlasUIContextValue;
     const nothing = (): void => undefined;
@@ -86,6 +86,16 @@ describe('the names on the scene tabs', () => {
     await mount(1900);
     await page.screenshot({ path: '__screenshots__/atlas-scene-tab-names-1900.png', element: document.querySelector('.atlas-top-bar-row')! });
     for (const [index, tab] of tabs().entries()) expect(isCut(tab), NAMES[index]).toBe(false);
+  });
+
+  it('cuts a name far longer than a scene needs, though the bar has room for it', async () => {
+    const long = 'The Extremely Long And Entirely Unnecessary Name Of A Scene Somebody Made To See What Happens';
+    await mount(1900, [long, ...NAMES.slice(1)]);
+    const [first, ...rest] = tabs();
+    expect(isCut(first!)).toBe(true);
+    // No wider than the six names' widest by more than a few letters, and the others stay whole.
+    expect(widthOf(first!)).toBeLessThan(Math.max(...rest.map(widthOf)) + 60);
+    for (const tab of rest) expect(isCut(tab)).toBe(false);
   });
 
   it('keeps the names of the tabs at their smallest readable once the strip scrolls', async () => {

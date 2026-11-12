@@ -104,7 +104,8 @@ export class FloorShare {
         },
       }),
     });
-    this.marks = new MarkShare({ ...ports, cursorsShown }, () => this.mapSize);
+    // An aura names its token by the id the token list gives it
+    this.marks = new MarkShare({ ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId) }, () => this.mapSize);
     this.dragRulers = new PlayerDragRulers((drags) => ports.showPlayerDrags?.(drags));
   }
 

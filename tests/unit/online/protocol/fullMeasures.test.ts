@@ -33,7 +33,7 @@ describe('measurements told in full', () => {
   });
 
   it('keep only what the protocol names of a measurement', () => {
-    const full = { live: { ...square, colour: 'red', effect: 'fire' }, kept: [], more: 1 };
+    const full = { live: { ...square, colour: 'red', light: { bright: 10, dim: 20 }, seed: 7 }, kept: [], more: 1 };
     expect(parsePlayerMessage({ ...measure, full })).toEqual({ ...measure, full: { live: square, kept: [] } });
   });
 

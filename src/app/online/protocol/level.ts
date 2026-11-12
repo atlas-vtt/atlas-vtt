@@ -14,7 +14,7 @@
  * 9: assets are stored for players (`AssetRef.id`, `asset-progress`) and the explored memory comes inline where it is small (`explored.png`), else stored (`explored.mask`) (2026-10-29); the first level without the GM serving assets over the table's socket (`asset-request`, `asset-chunk` and the scaled copies are gone).
  * 10: an explored memory carries the GM's count of removals from it (`explored.serial`): players replace theirs where it changed, and add the memory to theirs otherwise (2026-10-30).
  * 11: a table's sound: its whole state on the table's clock (`sound`), what to fetch ahead (`sound-prepare`), and a page saying how sound stands with it (`sound-state`) (2026-11-02).
- * 12: measurements in full (`MeasureState.full`: a ruler with its corners, a square, a line with its width, an area that walls do not stop), taken from players and sent on to them, and the rules areas and distances go by (`SharedMeasurement.manhattan`, `coneEnd`, `cellRule`, `unitName`) (2026-11-12).
+ * 12: measurements in full (`MeasureState.full`: a ruler with its corners, a square, a line with its width, an area that walls do not stop), taken from players and sent on to them, and the rules areas and distances go by (`SharedMeasurement.manhattan`, `coneEnd`, `cellRule`, `unitName`); the GM's own carry their colour, their effect and the token an aura lies around (`FullMeasure.color`, `effect`, `aura`), and a light says the area it glows from and the token it rides (`SharedLight.area`, `token`) (2026-11-12).
  */
 export const GM_LEVEL = 12;
 

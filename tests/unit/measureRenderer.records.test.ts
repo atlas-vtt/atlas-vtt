@@ -130,6 +130,14 @@ describe('MeasureRenderer records', () => {
     expect(s.measure.getPlayerViewLayers(() => true).slice(0, 2).map((entry) => entry.visible)).toEqual([true, true]);
   });
 
+  it('tells the colour the live measurement is drawn in, where the tool names one', () => {
+    const s = scene();
+    s.store.getState().setMeasureTool({ color: '#ec7500' });
+    s.pointer('pointerdown', 100, 100);
+    s.pointer('pointermove', 300, 100);
+    expect(s.measure.measurements.get().live?.color).toBe('#ec7500');
+  });
+
   it('tells subscribers each change with the measurements before it, and nothing after they unsubscribe', () => {
     const s = scene();
     const changes: [Measurements, Measurements][] = [];

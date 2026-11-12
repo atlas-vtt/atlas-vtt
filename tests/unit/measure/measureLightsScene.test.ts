@@ -94,7 +94,7 @@ describe('online play shares the lights of kept areas', () => {
   const objects = (measures: Record<string, KeptMeasure>, tokens = {}): ReturnType<typeof sceneState>['objects'] => ({ ...sceneState().objects, tokens, measures });
   const grid = { enabled: true, size: 70, offsetX: 0, offsetY: 0, opacity: 1 } as ReturnType<typeof sceneState>['grid'];
 
-  it('as plain lights: a circle at its centre, a cone as a beam, a square at its middle, a hidden one too, and never by its own id', () => {
+  it('a circle at its centre, a cone as a beam, a square at its middle with the outline it glows from, a hidden one too, and never by its own id', () => {
     const lights = share(sceneState({ grid, objects: objects({
       fire: area('fire', { light: TORCH, hidden: true }),
       cone: area('cone', { shape: 'cone', light: { ...TORCH, animation: 'smoulder' } }),
@@ -104,7 +104,7 @@ describe('online play shares the lights of kept areas', () => {
     expect(lights).toEqual([
       { id: 'alias:measure:fire', x: 350, y: 350, emission: TORCH },
       { id: 'alias:measure:cone', x: 350, y: 350, emission: { ...TORCH, angle: 90, animation: 'pulse' }, rotation: 90 },
-      { id: 'alias:measure:square', x: 420, y: 350, emission: TORCH },
+      { id: 'alias:measure:square', x: 420, y: 350, emission: TORCH, area: [350, 280, 350, 420, 490, 420, 490, 280] },
     ]);
   });
 
@@ -114,6 +114,16 @@ describe('online play shares the lights of kept areas', () => {
     const held = sceneState({ grid, lighting, heldTokens: { paladin: { x: 140, y: 140 } }, objects: objects({ aura }, { paladin: token('paladin', { x: 420, y: 140 }) }) });
     expect(share(held)).toEqual([{ id: 'alias:measure:aura', x: 140, y: 140, emission: TORCH }]);
     expect(share(sceneState({ grid, lighting, objects: objects({ aura }, { paladin: token('paladin', { isHidden: true }) }) }))).toEqual([]);
+  });
+
+  it('an aura\'s names its token while players are sent that token, so their page keeps the light on it', () => {
+    const aura = area('aura', { light: TORCH, follows: 'paladin', aura: 10 });
+    const state = sceneState({ grid, objects: objects({ aura }, { paladin: token('paladin', { x: 420, y: 140 }) }) });
+    const sight = sharedSight({ state, rules: GENERIC_SIGHT_RULES, shown: new Set(['paladin']), tokenAlias: (id) => `alias:${id}`, lightAlias: (id) => `alias:${id}`, measurement: MEASUREMENT });
+    expect(sight.tokens.map(({ id }) => id)).toEqual(['alias:paladin']);
+    expect(sight.lights).toEqual([{ id: 'alias:measure:aura', x: 420, y: 140, emission: TORCH, token: 'alias:paladin' }]);
+    // A token players get nothing of is named to nobody: its aura's light stands where it is told.
+    expect(share(state)).toEqual([{ id: 'alias:measure:aura', x: 420, y: 140, emission: TORCH }]);
   });
 
   it('none while the map\'s rules are not known', () => {

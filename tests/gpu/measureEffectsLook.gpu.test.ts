@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MEASURE_EFFECTS, MEASURE_EFFECT_STARTS, type MeasureEffect } from '../../src/app/measure/measureEffects';
 import { EFFECT_STILL_SECONDS } from '../../src/app/pixi/measure/effects/effectMotion';
 import { MeasureEffectMesh } from '../../src/app/pixi/measure/effects/MeasureEffectMesh';
-import { contactSheet, drawnMap, drawnTokens, effectShape, meanStep, renderEffects, savePng, SHAPE_NAMES, type MapKind } from './measureEffectsHarness';
+import { contactSheet, drawnMap, drawnParchment, drawnTokens, effectShape, meanStep, renderEffects, savePng, SHAPE_NAMES, type MapKind } from './measureEffectsHarness';
 
 /**
  * The pictures the looks are judged by, written only when asked (`VITE_EFFECT_CAPTURE=1`, into
@@ -12,9 +12,13 @@ import { contactSheet, drawnMap, drawnTokens, effectShape, meanStep, renderEffec
  * shape over a dark and a bright map in its usual colour and an unusual one, frames a thirtieth of
  * a second and seconds apart, small and large areas at 70 and 150 pixels a cell, the still picture
  * and the three qualities. Without the capture it only holds that every look draws and moves.
+ * `VITE_EFFECT_REVIEW=<folder>` writes the pictures a look is reworked by instead, into that folder
+ * under `out/measure-effects/` (which must exist): a circle, a cone and a line over dark stone and
+ * over pencilled parchment, far (60 pixels a cell) and near (160), at four moments.
  */
 
 const capture = import.meta.env.VITE_EFFECT_CAPTURE === '1';
+const review = import.meta.env.VITE_EFFECT_REVIEW as string | undefined;
 const only = (import.meta.env.VITE_EFFECT_LOOK as string | undefined)?.split(',');
 const looks = MEASURE_EFFECTS.filter((effect) => !only || only.includes(effect));
 
@@ -109,6 +113,34 @@ describe('the looks of area effects', () => {
         }
       }
       await savePng(contactSheet(tiles, size.width, size.height, 4), `${effect}-scale`);
+    });
+  }
+
+  for (const effect of review ? looks : []) {
+    it(`${effect} for review, far and near, on stone and parchment`, async () => {
+      const world = { width: 460, height: 400 };
+      const centre = { x: world.width / 2, y: world.height / 2 };
+      const moments = [0, 0.4, 2, 9].map((seconds) => START + seconds);
+      const grounds = { dark: Texture.from(drawnMap('dark', world.width, world.height, CELL)), parchment: Texture.from(drawnParchment(world.width, world.height, CELL)) };
+      const tokens = Texture.from(drawnTokens(world.width, world.height, CELL, [{ x: centre.x - 50, y: centre.y + 50 }, { x: centre.x + 150, y: centre.y - 50 }]));
+      for (const [ground, map] of Object.entries(grounds)) {
+        const far: Uint8ClampedArray[] = [];
+        for (const name of ['circle', 'cone', 'line'] as const) {
+          const shape = effectShape(name, CELL, centre);
+          const mesh = new MeasureEffectMesh({ rings: shape.rings, origin: shape.origin, effect, color: MEASURE_EFFECT_STARTS[effect].color, detail: 2, cell: CELL, seed: name });
+          const near: Uint8ClampedArray[] = [];
+          moments.forEach((seconds, index) => {
+            mesh.setTime(seconds);
+            far.push(renderEffects(renderer, { width: world.width * 0.6, height: world.height * 0.6, map, meshes: [mesh], zoom: 0.6 }));
+            near.push(renderEffects(renderer, { width: world.width * 1.6, height: world.height * 1.6, map, meshes: [mesh], zoom: 1.6, tokens: index === 3 ? tokens : null }));
+          });
+          mesh.destroy();
+          await savePng(contactSheet(near, world.width * 1.6, world.height * 1.6, 2), `${review}/${effect}-${ground}-near-${name}`);
+        }
+        await savePng(contactSheet(far, world.width * 0.6, world.height * 0.6, moments.length), `${review}/${effect}-${ground}-far`);
+        map.destroy(true);
+      }
+      tokens.destroy(true);
     });
   }
 

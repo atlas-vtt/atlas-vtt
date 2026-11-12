@@ -6,7 +6,7 @@ import { isTextEntryTarget } from '../../keyboard/textEntry';
 import { levelObjects } from '../../levels/levelObjects';
 import type { AreaMap } from '../../measure/areaOnMap';
 import { rimSpots } from '../../measure/handleSpots';
-import { isAura, measureList } from '../../measure/keptMeasures';
+import { measureList } from '../../measure/keptMeasures';
 import type { KeptMeasure } from '../../measure/measureTypes';
 import type { HeightAt } from '../../measure/tokenHeight';
 import type { MeasuresSlice } from '../../stores/measuresSlice';
@@ -265,8 +265,8 @@ export class MeasureRenderer {
     this.keptList = list;
     this.layer.setKept(list);
     this.handles.setKept(list);
-    // An aura is told to nobody yet: what is passed on says a circle where it was last edited, not where its token stands.
-    const kept = list.filter((measure) => measure.hidden !== true && !isAura(measure));
+    // An aura is among them as it is kept: whoever passes it on places it around its token (`isAura`), never by its points.
+    const kept = list.filter((measure) => measure.hidden !== true);
     if (!sameList(kept, this.measurements.get().kept)) this.measurements.set({ kept });
   }
 

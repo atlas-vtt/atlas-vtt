@@ -152,10 +152,10 @@ export class LiveMeasuring implements MeasureInputHost {
   private show(measurement: Measurement): void {
     const { store, layer, parts } = this.deps;
     this.shown = measurement;
-    const hidden = !store.getState().measureTool.players;
-    this.live = { ...measurement, pressed: this.pressed, ...(hidden && { hidden }) };
+    const { players, color } = store.getState().measureTool;
+    this.live = { ...measurement, pressed: this.pressed, ...(!players && { hidden: true as const }), ...(color !== null && { color }) };
     this.deps.changed(this.live);
-    layer.drawLive(measurement, store.getState().measureTool.color);
+    layer.drawLive(measurement, color);
     parts.drawn();
   }
 
