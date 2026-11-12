@@ -10,7 +10,7 @@
 import type { Point } from '../types/visionTypes';
 import { isRecord } from '../utils/guards';
 import { isHexColor } from '../utils/hexColor';
-import { MAX_MEASURES, MAX_MEASURE_AUTHOR, MAX_ORIGIN_TOKENS, MAX_RULER_POINTS, MEASURE_SHAPES, type KeptMeasure, type KeptMeasureOrigin, type MeasureShapeKind } from './measureTypes';
+import { MAX_AURA, MAX_MEASURES, MAX_MEASURE_AUTHOR, MAX_ORIGIN_TOKENS, MAX_RULER_POINTS, MEASURE_SHAPES, type KeptAura, type KeptMeasure, type KeptMeasureOrigin, type MeasureShapeKind } from './measureTypes';
 
 const NONE: readonly KeptMeasure[] = [];
 const lists = new WeakMap<object, readonly KeptMeasure[]>();
@@ -40,14 +40,23 @@ function isOrigin(value: unknown): value is KeptMeasureOrigin {
   return Array.isArray(tokenIds) && tokenIds.length <= MAX_ORIGIN_TOKENS && tokenIds.every((id) => typeof id === 'string');
 }
 
+const isAuraReach = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= MAX_AURA;
+
+/** Whether `measure` is an aura: a circle that names the token it follows and how far it reaches from it. */
+export function isAura(measure: KeptMeasure): measure is KeptAura {
+  return measure.shape === 'circle' && typeof measure.follows === 'string' && measure.follows !== '' && isAuraReach(measure.aura);
+}
+
 function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | null {
   const { shape, points } = value;
   if (!isShape(shape) || !isPath(points, shape)) return null;
-  const { id: ownId, kind, width, color, hidden, by, origin, level, walls, ...rest } = value;
+  const { id: ownId, kind, width, color, hidden, by, origin, level, walls, follows, aura, ...rest } = value;
+  // An aura is both of its fields on a circle; one alone, or on another shape, says nothing.
+  const follower = shape === 'circle' && typeof follows === 'string' && follows !== '' && isAuraReach(aura);
   const sound = ownId === id && kind === 'measure'
     && (width === undefined || isWidth(width)) && (color === undefined || isHexColor(color)) && (hidden === undefined || hidden === true)
     && (by === undefined || isAuthor(by)) && (origin === undefined || isOrigin(origin)) && (level === undefined || typeof level === 'string')
-    && (walls === undefined || walls === false);
+    && (walls === undefined || walls === false) && (follower || (follows === undefined && aura === undefined));
   if (sound) return value as unknown as KeptMeasure;
   // What this Atlas does not know (`rest`) stays on the view, for readers that do.
   return {
@@ -63,6 +72,7 @@ function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | nu
     ...(origin !== undefined && { origin: isOrigin(origin) ? origin : UNREADABLE_ORIGIN }),
     ...(typeof level === 'string' && { level }),
     ...(walls === false && { walls }),
+    ...(follower && { follows, aura }),
   };
 }
 
@@ -71,7 +81,8 @@ function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | nu
  * it. None without a known shape and finite points that fit it (two for an area, two to
  * `MAX_RULER_POINTS` for a ruler). A colour that is not `#rrggbb`, a width that is no size and a
  * maker that is no name read as unset, `hidden` only where it is `true`, `walls` only where it is
- * `false`, and an origin that cannot be read as one the players never saw.
+ * `false`, an origin that cannot be read as one the players never saw, and `follows` with `aura`
+ * only as a pair on a circle (`isAura`): a circle that names one of them alone stays where it is.
  */
 export function readMeasure(id: string, value: unknown): KeptMeasure | null {
   if (!isRecord(value)) return null;

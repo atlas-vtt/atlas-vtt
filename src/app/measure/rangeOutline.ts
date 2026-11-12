@@ -24,10 +24,13 @@ export interface RangeOrigin {
   readonly size?: number | undefined;
 }
 
-/** A range's outline in world pixels, around `centre`: a circle, or the closed outlines of the cells within reach. */
+/**
+ * A range's outline in world pixels, around `centre`: a circle, or the closed outlines of the cells
+ * within reach, with those `cells` by whole numbers (a square's column and row, a hex's q and r).
+ */
 export type RangeOutline =
   | { readonly kind: 'circle'; readonly centre: Point; readonly radius: number }
-  | { readonly kind: 'cells'; readonly centre: Point; readonly loops: readonly (readonly Point[])[] };
+  | { readonly kind: 'cells'; readonly centre: Point; readonly loops: readonly (readonly Point[])[]; readonly cells: readonly (readonly [number, number])[] };
 
 /** The most cells a range may hold for its cells to be counted; a longer one is drawn as a circle. */
 export const MAX_RANGE_CELLS = 16_384;
@@ -172,7 +175,7 @@ export function rangeOutline(origin: RangeOrigin, reach: number, grid: TokenGrid
   const layout = hexLayoutOf(grid);
   const cells = layout ? hexesWithin(stood, reach, layout) : squaresWithin(stood, reach, grid, diagonalRule);
   if (!cells) return { kind: 'circle', centre, radius: (token ? spaceRadius(token, grid) : grid.size / 2) + reach * grid.size };
-  return { kind: 'cells', centre, loops: outlinesOf(cells, layout ? hexLattice(layout) : squareLattice(grid)) };
+  return { kind: 'cells', centre, loops: outlinesOf(cells, layout ? hexLattice(layout) : squareLattice(grid)), cells };
 }
 
 /**

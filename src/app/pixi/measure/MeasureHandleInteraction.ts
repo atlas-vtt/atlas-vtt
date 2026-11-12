@@ -2,16 +2,19 @@ import type { Container, FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand/vanilla';
 import type { GridGeometry } from '../../grid/gridDistance';
-import { areaResizedBy, measureMovedBy } from '../../measure/measureMove';
-import type { KeptMeasure } from '../../measure/measureTypes';
-import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
+import type { KeptMeasure, MeasureChanges } from '../../measure/measureTypes';
+import { beginHistoryTransaction } from '../../stores/history';
 import type { MeasuresSlice } from '../../stores/measuresSlice';
 import type { UISlice } from '../../stores/uiSlice';
 import type { Point } from '../../types/visionTypes';
 import { elementOf, LIGHT_DRAG_THRESHOLD } from '../lighting/LightInteraction';
-import type { MeasureHandleRef, MeasurePointerHandlers } from './measureHandle';
+import { settleDragStep } from './dragStep';
+import type { MeasureHandlePlacer, MeasureHandleRef, MeasurePointerHandlers } from './measureHandle';
+import { handleDrag, sameDragChanges, type AuraDragSetting } from './measureHandleDrag';
 import { MeasureHandles } from './MeasureHandles';
 import { closeStaleMeasurePopover, keptMeasure, mayEditMeasure, type MeasureEditState } from './measurePopoverGuard';
+import { trackPointer } from './pointerTrack';
+import { PopoverPressWatch } from './PopoverPressWatch';
 
 /** The popover of a kept measurement, which a press may land in. */
 const POPOVER = '.atlas-measure-popover';
@@ -38,6 +41,10 @@ export interface MeasureHandleDeps {
   yields: () => boolean;
   /** The measurement whose handle the pointer is over is another, or none (null). */
   pointedAt?: (id: string | null) => void;
+  /** Where each measurement's handles stand; unset, where its points say. */
+  place?: MeasureHandlePlacer;
+  /** What the far handle of the aura `measure` is dragged by; null while its token is not on the map shown. */
+  aura?: (measure: KeptMeasure) => AuraDragSetting | null;
 }
 
 /** A press or drag under way. */
@@ -54,21 +61,22 @@ interface Gesture {
  * opens the measurement's popover, a drag of the handle at its origin moves the whole measurement
  * (its first point snapping as a new one's start would, freely with Alt), a drag of the handle at
  * an area's far end resizes and turns it (its size snapping as a new area's would), and Delete over
- * a handle deletes its measurement. A drag is one undo step, opened only once it starts, and only the pointer's release commits it:
- * Escape, a cancelled pointer, the window losing focus, the measurement going and the canvas no
- * longer showing the GM's view put it back and leave no step. A press anywhere else closes the
- * popover.
+ * a handle deletes its measurement. An aura stays with its token: its far handle changes how far it
+ * reaches, and a drag of its badge does nothing (`handleDrag`). A drag is one undo step, opened only
+ * once it starts, and only the pointer's release commits it: Escape, a cancelled pointer, the
+ * window losing focus, the measurement going and the canvas no longer showing the GM's view put it
+ * back and leave no step (`settleDragStep`). A press anywhere else closes the popover.
  */
 export class MeasureHandleInteraction {
   private readonly handles: MeasureHandles;
   private gesture: Gesture | null = null;
   private hovered: MeasureHandleRef | null = null;
-  /** The document a press outside the popover is heard in, while a popover is open. */
-  private pressDocument: Document | null = null;
+  /** Presses outside the popover, heard while one is open. */
+  private readonly presses = new PopoverPressWatch((event) => this.pressedInDocument(event));
   private readonly abort = (): void => this.cancel();
 
   constructor(private readonly deps: MeasureHandleDeps) {
-    this.handles = new MeasureHandles(deps.viewport, () => deps.viewport.scale.x);
+    this.handles = new MeasureHandles(deps.viewport, () => deps.viewport.scale.x, deps.place);
   }
 
   /** The handles' layer, for what shows and hides it. */
@@ -84,6 +92,11 @@ export class MeasureHandleInteraction {
   /** The zoom or the theme changed. */
   redraw(): void {
     this.handles.redraw();
+  }
+
+  /** The tokens that auras follow moved: their handles stand elsewhere. */
+  placesChanged(): void {
+    this.handles.moved();
   }
 
   /** What the token renderer's dispatch calls. */
@@ -150,7 +163,7 @@ export class MeasureHandleInteraction {
     // Both may have written to the store: what is open is read as it is now.
     const open = this.deps.store.getState().measurePopover ?? null;
     this.handles.setSelected(open);
-    this.hearPresses(open ? this.canvas.ownerDocument : null);
+    this.presses.hear(open ? this.canvas.ownerDocument : null);
   }
 
   /** The handles show or hide (the canvas shows the players' view): hidden, they hold no drag, no hover and no popover. */
@@ -172,7 +185,7 @@ export class MeasureHandleInteraction {
 
   destroy(): void {
     this.cancel();
-    this.hearPresses(null);
+    this.presses.hear(null);
     this.handles.destroy();
   }
 
@@ -197,7 +210,10 @@ export class MeasureHandleInteraction {
     if (id !== before) this.deps.pointedAt?.(id);
   }
 
-  /** A press on a handle: a click opens the popover; a drag moves the measurement by its origin, or resizes and turns an area by its far end. */
+  /**
+   * A press on a handle: a click opens the popover; a drag does what `handleDrag` says of the
+   * handle, and nothing where that is nothing.
+   */
   private press(handle: MeasureHandleRef, event: Press): void {
     const { id, part } = handle;
     const { viewport, store, snapGrid } = this.deps;
@@ -206,88 +222,57 @@ export class MeasureHandleInteraction {
     if (!measure) return;
     const start = { x: event.global.x, y: event.global.y };
     const grabbed = viewport.toWorld(start.x, start.y);
-    const origin = measure.points.map(({ x, y }) => ({ x, y }));
-    let placed = origin;
+    const drag = handleDrag(measure, part, snapGrid, this.deps.aura?.(measure) ?? null);
+    let placed: MeasureChanges | null = drag?.restore ?? null;
+    let moved = false;
     let dragging = false;
-    const dragged = (by: Point, free: boolean): Point[] => (part === 'end' ? areaResizedBy(origin, by, snapGrid(), free) : measureMovedBy(measure.shape, origin, by, snapGrid(), free));
 
     const onMove = (move: FederatedPointerEvent): void => {
-      if (!dragging) {
+      if (!moved) {
         if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= LIGHT_DRAG_THRESHOLD) return;
+        moved = true;
+        if (!drag) return;
         dragging = true;
         beginHistoryTransaction(store);
         handles.setDragging(handle);
       }
+      if (!drag || !placed) return;
       // The handle keeps its distance to the pointer, so the measurement does not jump when grabbed off-centre.
       const at = viewport.toWorld(move.global.x, move.global.y);
-      const points = dragged({ x: at.x - grabbed.x, y: at.y - grabbed.y }, move.altKey === true);
+      const changes = drag.changes({ x: at.x - grabbed.x, y: at.y - grabbed.y }, move.altKey === true);
       // Snapped, most moves of the pointer leave it where it is: nothing is written then.
-      if (points.every((point, index) => point.x === placed[index]?.x && point.y === placed[index]?.y)) return;
-      placed = points;
-      store.getState().updateMeasure(id, { points });
+      if (sameDragChanges(changes, placed)) return;
+      placed = changes;
+      store.getState().updateMeasure(id, changes);
     };
     this.track({
       id,
       dragging: () => dragging,
       onMove,
       end: (commit, later) => {
-        if (dragging) {
+        if (dragging && drag) {
           handles.setDragging(null);
-          this.settle(commit, later, () => {
-            if (keptMeasure(store.getState(), id)) store.getState().updateMeasure(id, { points: origin });
+          settleDragStep(store, commit, later, () => {
+            if (keptMeasure(store.getState(), id)) store.getState().updateMeasure(id, drag.restore);
           });
-        } else if (commit) {
+        } else if (commit && !moved) {
           store.getState().openMeasurePopover(id);
         }
       },
     });
   }
 
-  /** Closes a drag's undo step: recorded on a commit; on a cancel `restore` puts the measurement back and no step is left. */
-  private settle(commit: boolean, later: boolean, restore: () => void): void {
-    const { store } = this.deps;
-    if (commit) {
-      endHistoryTransaction(store);
-      return;
-    }
-    restore();
-    // The history looks at a write once its listeners are done: closed inside one, the step
-    // would be left for the write that cancelled the drag, with the drag's state as its past.
-    if (later) queueMicrotask(() => abandonHistoryTransaction(store));
-    else abandonHistoryTransaction(store);
-  }
-
   /** Follows the pointer on the viewport until it is released, or the gesture is cancelled. */
   private track({ onMove, ...gesture }: Gesture & { onMove: (event: FederatedPointerEvent) => void }): void {
-    const { viewport } = this.deps;
-    const canvas = this.canvas;
-    const win = canvas.ownerDocument.defaultView;
-    const onUp = (): void => this.gesture?.end(true, false);
-    viewport.on('pointermove', onMove);
-    viewport.on('pointerup', onUp);
-    viewport.on('pointerupoutside', onUp);
-    canvas.addEventListener('pointercancel', this.abort);
-    win?.addEventListener('blur', this.abort);
+    const stop = trackPointer(this.deps.viewport, this.canvas, { onMove, onUp: () => this.gesture?.end(true, false), onAbort: this.abort });
     this.gesture = {
       ...gesture,
       end: (commit, later) => {
         this.gesture = null;
-        viewport.off('pointermove', onMove);
-        viewport.off('pointerup', onUp);
-        viewport.off('pointerupoutside', onUp);
-        canvas.removeEventListener('pointercancel', this.abort);
-        win?.removeEventListener('blur', this.abort);
+        stop();
         gesture.end(commit, later);
       },
     };
-  }
-
-  /** Listens for presses in `doc` while a popover is open there; in none once it has closed. */
-  private hearPresses(doc: Document | null): void {
-    if (doc === this.pressDocument) return;
-    this.pressDocument?.removeEventListener('pointerdown', this.onDocumentPointerDown, true);
-    this.pressDocument = doc;
-    doc?.addEventListener('pointerdown', this.onDocumentPointerDown, true);
   }
 
   /**
@@ -295,7 +280,7 @@ export class MeasureHandleInteraction {
    * that is the popover's own (the dispatch then moves the popover to that measurement, or starts
    * the drag).
    */
-  private readonly onDocumentPointerDown = (event: PointerEvent): void => {
+  private pressedInDocument(event: PointerEvent): void {
     const { store, viewport } = this.deps;
     if (!store.getState().measurePopover) return;
     const target = elementOf(event.target);
@@ -306,5 +291,5 @@ export class MeasureHandleInteraction {
       if (this.handleAt(viewport.toWorld(event.clientX - rect.left, event.clientY - rect.top))) return;
     }
     store.getState().closeMeasurePopover();
-  };
+  }
 }

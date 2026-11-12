@@ -1,16 +1,19 @@
 import React, { useId, useMemo, useRef } from 'react';
 import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
 import { MousePointerClick, Trash2 } from 'lucide-react';
-import { formatDistance } from '../../../grid/measurementFormat';
+import { formatDistance, rangeBandName } from '../../../grid/measurementFormat';
 import { t } from '../../../i18n';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
+import { levelObjects } from '../../../levels/levelObjects';
+import { auraBadgePoint, auraCells } from '../../../measure/auraArea';
+import { isAura } from '../../../measure/keptMeasures';
 import { lengthInCells } from '../../../measure/measureGrid';
+import { auraLabelText } from '../../../measure/measureLabelText';
 import { MAX_LINE_WIDTH, type KeptMeasure, type MeasureChanges, type MeasureShapeKind } from '../../../measure/measureTypes';
 import { Stepper } from '../../../packages/components/dungeon-generator/fields';
 import { Button } from '../../../packages/components/primitives/button';
 import { useAnchoredPopoverVariants } from '../../../packages/components/primitives/dialogMotion';
 import { DropdownSwatchGrid } from '../../../packages/components/primitives/DropdownSwatchGrid';
-import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { LabelTooltip, TooltipProvider } from '../../../packages/components/primitives/tooltip';
 import { MEASURE_COLOR_SWATCHES, measureColorOfSwatch, swatchOfMeasureColor } from '../../../packages/components/toolbar/measureToolChoices';
 import { useFocusWhileOpen } from '../../../pixi/lighting/LightPopover';
@@ -22,8 +25,11 @@ import { measureHeightAt } from '../../../pixi/measureTokenHeights';
 import { mapMarkerScale } from '../../../pixi/utils/mapMarkerScale';
 import { mapMeasurementSettings } from '../../../services/mapMeasurementSettings';
 import { rulesLookup } from '../../../services/mapRules';
+import { mapTokens } from '../../../tokens/offMap';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore, useViewStoreHook } from '../../ViewStoreContext';
+import { FollowsToken } from './FollowsToken';
+import { SwitchRow } from './SwitchRow';
 
 /**
  * Keys the popover's controls use themselves; they must not reach the map's shortcuts (Tab, Space,
@@ -54,8 +60,9 @@ export function MeasurePopoverHost(): React.ReactElement {
 
 /**
  * What it holds, top to bottom: what the measurement is and measures, its colour, its switches
- * (an area's also whether walls stop it, and a line's width) and, last, what is done with it: an
- * area's tokens selected, and the measurement deleted. Every control writes to the store at once,
+ * (an area's also whether walls stop it, a circle's whether it follows the token it lies on, and a
+ * line's width) and, last, what is done with it: an area's tokens selected, and the measurement
+ * deleted. An aura's stands beside its badge on its token's rim. Every control writes to the store at once,
  * one undo step each.
  */
 function MeasurePopover({ measureId }: { measureId: string }): React.ReactElement | null {
@@ -70,7 +77,10 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
   const variants = useAnchoredPopoverVariants();
   useMapPopoverPosition(ref, measureId, (state, id, zoom) => {
     const target = keptMeasure(state, id);
-    return target ? { ...measureHandlePoint(target), bright: 0, dim: 0, marker: MEASURE_HANDLE_RADIUS * mapMarkerScale(zoom) * zoom } : null;
+    if (!target) return null;
+    const token = isAura(target) ? mapTokens(levelObjects(state))[target.follows] : undefined;
+    const at = token && state.grid ? auraBadgePoint(token, state.grid) : measureHandlePoint(target);
+    return { ...at, bright: 0, dim: 0, marker: MEASURE_HANDLE_RADIUS * mapMarkerScale(zoom) * zoom };
   });
   useFocusWhileOpen(ref, present);
 
@@ -113,6 +123,7 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
       <div className="atlas-light-popover__section">
         <SwitchRow label={t('toolbar.measurePlayers')} value={measure.hidden !== true} onChange={(players) => update({ hidden: players ? undefined : true })} />
         {area && <SwitchRow label={t('measure.stopsAtWalls')} value={measure.walls !== false} onChange={(stops) => update({ walls: stops ? undefined : false })} />}
+        {measure.shape === 'circle' && <FollowsToken measure={measure} />}
         {measure.shape === 'line' && <LineWidth measure={measure} />}
       </div>
       <div className="atlas-light-popover__section atlas-light-popover__actions">
@@ -133,10 +144,13 @@ function MeasureHeading({ measure }: { measure: KeptMeasure }): React.ReactEleme
   const store = useViewStoreHook();
   const value = useAtlasStore((state) => {
     const { grid } = state;
+    if (!grid) return '';
+    const settings = mapMeasurementSettings(rules, state);
+    if (isAura(measure)) return auraLabelText(auraCells(measure.aura, settings.unitDistance), settings);
     // The label's own words: a ruler's with the height between the tokens under its ends.
-    return grid ? measureDistance(grid, measure, mapMeasurementSettings(rules, state), measureHeightAt(store, { getOptions: () => grid })) : '';
+    return measureDistance(grid, measure, settings, measureHeightAt(store, { getOptions: () => grid }));
   });
-  const shape = SHAPE_NAMES[measure.shape];
+  const shape = isAura(measure) ? t('measure.shape.aura') : SHAPE_NAMES[measure.shape];
   return <span className="atlas-light-popover__heading">{value ? t('measure.heading', { shape, value }) : shape}</span>;
 }
 
@@ -150,8 +164,8 @@ function LineWidth({ measure }: { measure: KeptMeasure }): React.ReactElement {
   const cells = size > 0 ? Math.min(MAX_LINE_WIDTH, Math.max(1, Math.round(lengthInCells(measure.width ?? size, size)))) : 1;
   const text = useAtlasStore((state) => {
     const settings = mapMeasurementSettings(rules, state);
-    // A range band names how far something is; a width has none.
-    return settings.mode === 'abstract' ? String(cells) : formatDistance(cells, settings);
+    // A range band names how far something is; a width has none, and is said in squares, as a distance no band names is.
+    return settings.mode === 'abstract' ? rangeBandName(cells, []) : formatDistance(cells, settings);
   });
   const change = (next: number): void => {
     store.getState().updateMeasure(measure.id, { width: next * size });
@@ -184,15 +198,4 @@ function SelectTokens({ measure }: { measure: KeptMeasure }): React.ReactElement
   );
   // A disabled button takes no pointer: the span around it holds the tooltip that says why.
   return count === 0 ? <LabelTooltip label={t('measure.noTokens')} describe><span>{button}</span></LabelTooltip> : button;
-}
-
-/** One switch of the measurement, named by the text before it. */
-function SwitchRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }): React.ReactElement {
-  const id = useId();
-  return (
-    <div className="atlas-light-popover__flicker">
-      <span id={id}>{label}</span>
-      <ToggleSwitch size="s" value={value} labelledBy={id} onChange={() => onChange(!value)} />
-    </div>
-  );
 }

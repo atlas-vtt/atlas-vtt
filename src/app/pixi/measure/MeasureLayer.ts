@@ -1,18 +1,22 @@
 import { Container } from 'pixi.js';
+import { keptAudience, type PlacedAura } from '../../measure/auraArea';
+import { isAura } from '../../measure/keptMeasures';
 import type { KeptMeasure, Measurement } from '../../measure/measureTypes';
+import type { MeasureAudience } from '../../vision/measureOrigin';
 import type { Point } from '../../types/visionTypes';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import type { LiveMeasureParts, MeasureParts } from '../measurePartsVisibility';
 import { cssColorToHexNumber } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
 import { MeasureInkLayer } from '../utils/measureInk';
+import { AuraPlaces } from './AuraPlaces';
 import { DrawnMeasure, type MeasureLook, type MeasureSurfaces } from './DrawnMeasure';
 import { MeasurePin } from './MeasurePin';
 
 /** Told which kept measurements have a drawing, so that what shows them to players can follow. */
 export interface KeptDrawings {
-  /** `measure` is drawn in `parts`, newly or changed. */
-  kept(parts: MeasureParts, measure: KeptMeasure): void;
+  /** A kept measurement is drawn in `parts`, newly or changed; `audience` says who sees it. */
+  kept(parts: MeasureParts, audience: MeasureAudience): void;
   /** The drawing in `parts` is gone. */
   forgotten(parts: MeasureParts): void;
   /** The marks on the tokens of the measurement in `parts`, live or kept, were drawn anew. */
@@ -43,7 +47,8 @@ export function placeUnderTokens(parent: Container, layer: Container): void {
  * lighting (`MAP_LAYER_Z.measureBodies`); everything else stands above the lighting: the rulers and
  * the rings on tokens, composed in one pass, the areas' outlines for the GM in a second (`gmMarks`),
  * and every label above all of them. A kept measurement is drawn again only when its record is
- * another object, so a pointer move draws the live one alone.
+ * another object, so a pointer move draws the live one alone; an aura also when its token stands
+ * elsewhere (`AuraPlaces`), so a token that moves draws its own auras and nothing else.
  */
 export class MeasureLayer {
   private readonly bodies = new Container({ label: 'measure-bodies', zIndex: MAP_LAYER_Z.measureBodies, eventMode: 'none', interactiveChildren: false });
@@ -54,8 +59,11 @@ export class MeasureLayer {
   readonly liveParts: LiveMeasureParts;
   private readonly live: DrawnMeasure;
   private readonly pin = new MeasurePin();
-  private readonly kept = new Map<string, { readonly measure: KeptMeasure; readonly drawn: DrawnMeasure }>();
+  private readonly kept = new Map<string, { readonly measure: KeptMeasure; readonly aura: PlacedAura | null; readonly drawn: DrawnMeasure }>();
   private list: readonly KeptMeasure[] = [];
+  /** Where the auras among them lie; `auras` says whether there is one. */
+  readonly places = new AuraPlaces();
+  private auras = false;
   /** The kept areas that mark the tokens in them: the ones pointed at. */
   private pointed: ReadonlySet<string> = NO_IDS;
 
@@ -100,24 +108,53 @@ export class MeasureLayer {
   setKept(list: readonly KeptMeasure[]): void {
     if (list === this.list) return;
     this.list = list;
+    this.auras = list.some(isAura);
     const ids = new Set(list.map((measure) => measure.id));
+    this.places.keep(ids);
     for (const [id, { drawn }] of this.kept) {
-      if (ids.has(id)) continue;
-      this.drawings.forgotten(drawn.parts);
-      drawn.destroy();
-      this.kept.delete(id);
+      if (!ids.has(id)) this.forget(id, drawn);
     }
+    this.sync();
+  }
+
+  /** The tokens of the level shown stand elsewhere: the auras among the kept measurements follow theirs. True when one moved. */
+  aurasMoved(): boolean {
+    return this.auras && this.sync();
+  }
+
+  /**
+   * Draws the kept measurements that are new, another object or, an aura, placed elsewhere. An
+   * aura whose token is not on the map shown has no drawing. True when an aura was placed anew.
+   */
+  private sync(): boolean {
     let look: MeasureLook | null = null;
-    for (const measure of list) {
+    let moved = false;
+    for (const measure of this.list) {
       const known = this.kept.get(measure.id);
-      if (known?.measure === measure) continue;
+      const follows = isAura(measure);
+      const aura = follows ? this.places.place(measure, (look ??= this.look())) : null;
+      if (known?.measure === measure && known.aura === aura) continue;
+      if (follows && !aura) {
+        // Without its token it has no drawing: nothing changes while it had none.
+        if (known) this.forget(measure.id, known.drawn);
+        moved ||= known !== undefined;
+        continue;
+      }
+      moved ||= follows;
       const drawn = known?.drawn ?? new DrawnMeasure(this.surfaces);
       look ??= this.look();
       drawn.setMarked(this.pointed.has(measure.id), look);
-      drawn.draw(measure, colorOf(measure.color), look, measure.walls !== false);
-      this.kept.set(measure.id, { measure, drawn });
-      this.drawings.kept(drawn.parts, measure);
+      drawn.draw(measure, colorOf(measure.color), look, measure.walls !== false, aura);
+      this.kept.set(measure.id, { measure, aura, drawn });
+      this.drawings.kept(drawn.parts, keptAudience(measure));
     }
+    return moved;
+  }
+
+  private forget(id: string, drawn: DrawnMeasure): void {
+    this.drawings.forgotten(drawn.parts);
+    drawn.destroy();
+    this.kept.delete(id);
   }
 
   /** The kept measurements pointed at (a handle under the pointer, an open popover): those that are areas mark the tokens in them. */
@@ -154,8 +191,10 @@ export class MeasureLayer {
     }
   }
 
-  /** Draws everything again as it is: the zoom, the theme, the grid or the rules changed. */
-  redraw(): void {
+  /** Draws everything again as it is: the zoom, the theme, the grid or the rules changed. True when that placed an aura anew. */
+  redraw(): boolean {
+    // Another grid or other rules place an aura anew.
+    const moved = this.auras && this.sync();
     const look = this.look();
     for (const [drawn, parts] of this.all()) {
       drawn.redraw(look);
@@ -163,6 +202,7 @@ export class MeasureLayer {
       if (parts.marks.rings.length > 0) this.drawings.marked(parts);
     }
     if (this.pin.view.visible) this.pin.place(this.live.distance, look.zoom);
+    return moved;
   }
 
   destroy(): void {

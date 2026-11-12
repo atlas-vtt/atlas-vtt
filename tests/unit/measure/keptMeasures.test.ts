@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { measureList, measureMovedWithMap, measuresFromFile, readMeasure } from '../../../src/app/measure/keptMeasures';
-import { MAX_MEASURES, MAX_RULER_POINTS, type KeptMeasure } from '../../../src/app/measure/measureTypes';
+import { isAura, measureList, measureMovedWithMap, measuresFromFile, readMeasure } from '../../../src/app/measure/keptMeasures';
+import { MAX_AURA, MAX_MEASURES, MAX_RULER_POINTS, type KeptMeasure } from '../../../src/app/measure/measureTypes';
 import { measureShownToPlayers } from '../../../src/app/vision/measureOrigin';
 
 const A = { x: 0, y: 0 };
@@ -45,11 +45,28 @@ describe('kept measurements as they are read', () => {
   });
 
   it('keeps on a mended view what this Atlas does not know, and hands out the same view each time', () => {
-    const value = ruler('m', { color: 'red', follows: 't9', effect: { kind: 'fire' } });
+    const value = ruler('m', { color: 'red', glow: 't9', effect: { kind: 'fire' } });
     const first = readMeasure('m', value);
-    expect(first).toEqual({ id: 'm', kind: 'measure', shape: 'ruler', points: [A, B], follows: 't9', effect: { kind: 'fire' } });
+    expect(first).toEqual({ id: 'm', kind: 'measure', shape: 'ruler', points: [A, B], glow: 't9', effect: { kind: 'fire' } });
     expect(readMeasure('m', value)).toBe(first);
     expect(value).toMatchObject({ color: 'red' });
+  });
+
+  it('reads an aura only as a circle that names its token and its reach: one of them alone, or on another shape, says nothing', () => {
+    const circle = (more: Record<string, unknown>): KeptMeasure => ruler('m', { shape: 'circle', ...more });
+    const sound = circle({ follows: 't1', aura: 10 });
+    expect(readMeasure('m', sound)).toBe(sound);
+    expect(isAura(readMeasure('m', sound)!)).toBe(true);
+    for (const broken of [{ follows: 't1' }, { aura: 10 }, { follows: '', aura: 10 }, { follows: 7, aura: 10 }, { follows: 't1', aura: 0 }, { follows: 't1', aura: -5 }, { follows: 't1', aura: '10' }, { follows: 't1', aura: Infinity }, { follows: 't1', aura: MAX_AURA + 1 }]) {
+      const value = circle(broken);
+      const read = readMeasure('m', value)!;
+      expect(read).toEqual({ id: 'm', kind: 'measure', shape: 'circle', points: [A, B] });
+      expect(isAura(read)).toBe(false);
+      // The record stays as it came, for the next save.
+      expect(value).toMatchObject(broken);
+    }
+    expect(isAura(readMeasure('m', ruler('m', { follows: 't1', aura: 10 }))!)).toBe(false);
+    expect(readMeasure('m', ruler('m', { shape: 'cone', follows: 't1', aura: 10 }))).toEqual({ id: 'm', kind: 'measure', shape: 'cone', points: [A, B] });
   });
 
   it('never shows players a measurement whose origin cannot be read', () => {

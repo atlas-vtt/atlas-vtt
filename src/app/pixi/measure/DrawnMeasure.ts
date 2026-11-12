@@ -2,6 +2,8 @@ import { Container } from 'pixi.js';
 import type { GridGeometry } from '../../grid/gridDistance';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { AreaOnMapMemo, type AreaMap, type AreaOnMap } from '../../measure/areaOnMap';
+import { AuraOnMapMemo, type PlacedAura } from '../../measure/auraArea';
+import { auraLabelText } from '../../measure/measureLabelText';
 import { tokensInArea, type AreaToken } from '../../measure/measureTokens';
 import type { Measurement } from '../../measure/measureTypes';
 import type { HeightAt } from '../../measure/tokenHeight';
@@ -11,6 +13,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { drawMeasurement, drawMeasureOutline, drawMeasurePoint, measureLabelTarget } from '../utils/measureDrawing';
 import { MeasureInk, type MeasureInkLayer } from '../utils/measureInk';
 import { MeasureLabel } from '../utils/measureLabel';
+import type { LabelTarget } from '../utils/measureLabelLayout';
 import { AreaBody } from './AreaBody';
 import { AreaTokenRings, type MarkedToken } from './AreaTokenRings';
 import { legDistances, measureDistance } from './measureDistances';
@@ -52,6 +55,8 @@ interface Drawn {
   readonly color: number | null;
   /** An area stops at walls. */
   readonly walls: boolean;
+  /** Where an aura lies around its token now; null for every other measurement. */
+  readonly aura: PlacedAura | null;
 }
 
 /** What an area's drawing is made from: drawn from the same again, it is the same drawing. */
@@ -67,8 +72,10 @@ interface Inked {
  * One measurement on the map. A ruler: its line in ink, its distance, and for one with corners each
  * leg's length, small, at the leg's middle. An area: its body under the lighting (`AreaBody`), its
  * outline in ink for the GM, its size, and while it is `marked` (being drawn, or pointed at) a ring
- * on every token in it and their number on its label. The labels are one part, shown and hidden
- * together.
+ * on every token in it and their number on its label. An aura is the area around its token
+ * (`PlacedAura`): it says how far it reaches above its top edge, has no dot where it starts, since
+ * its token stands there, and never marks or counts that token. The labels are one part, shown and
+ * hidden together.
  */
 export class DrawnMeasure {
   readonly distance = new MeasureLabel();
@@ -78,6 +85,7 @@ export class DrawnMeasure {
   private readonly body: AreaBody;
   private readonly rings: AreaTokenRings;
   private readonly area = new AreaOnMapMemo();
+  private readonly auraArea = new AuraOnMapMemo();
   private readonly labels = new Container({ label: 'measure-labels-of-one', eventMode: 'none', interactiveChildren: false });
   private readonly legs: MeasureLabel[] = [];
   /** The distance with the number of tokens the players see, in the GM's label's place in their picture. */
@@ -124,11 +132,12 @@ export class DrawnMeasure {
 
   /**
    * Draws `measurement` in `color` (null: the accent); an area stops at walls unless `walls` is
-   * false. An area that comes out the same as the one drawn (a circle dragged around at one size)
-   * is left as it is.
+   * false, and an aura lies where `aura` places it. An area that comes out the same as the one
+   * drawn (a circle dragged around at one size, an aura whose token stands on the same cells) is
+   * left as it is.
    */
-  draw(measurement: Measurement, color: number | null, look: MeasureLook, walls = true): void {
-    this.drawn = { measurement, color, walls };
+  draw(measurement: Measurement, color: number | null, look: MeasureLook, walls = true, aura: PlacedAura | null = null): void {
+    this.drawn = { measurement, color, walls, aura };
     this.redraw(look, false);
   }
 
@@ -146,7 +155,7 @@ export class DrawnMeasure {
     const ruler = measurement.shape === 'ruler';
     const onMap = this.onMap(look);
     const tokens = onMap && this.marked ? this.tokensIn(onMap, look) : NO_TOKENS;
-    const text = measureDistance(grid, measurement, settings, look.heightAt, tokens.length);
+    const text = this.text(drawn, look, tokens.length, look.heightAt);
     const inked: Inked | null = onMap && { onMap, tint, zoom, tokens, text };
     const before = this.inked;
     this.inked = inked;
@@ -159,11 +168,11 @@ export class DrawnMeasure {
     } else {
       if (onMap) drawMeasureOutline(this.ink, tint, onMap.area.rings);
       const origin = measurement.points[0];
-      if (origin) drawMeasurePoint(this.ink, tint, origin, true);
+      if (origin && !drawn.aura) drawMeasurePoint(this.ink, tint, origin, true);
     }
     this.rings.show(ringed(tokens, look), tint, zoom);
     this.playersCount = null;
-    this.distance.show(text, measureLabelTarget(measurement), zoom, grid.size);
+    this.distance.show(text, labelTarget(drawn), zoom, grid.size);
     const legs = ruler ? legDistances(grid, measurement.points, settings) : [];
     this.fitLegs(legs.length);
     legs.forEach(({ from, to, distance }, index) => this.legs[index]!.show(distance, { beside: [from, to] }, zoom, grid.size));
@@ -203,6 +212,7 @@ export class DrawnMeasure {
     this.inked = null;
     this.counted = null;
     this.area.forget();
+    this.auraArea.forget();
     this.ink.clear();
     this.body.clear();
     this.rings.clear();
@@ -218,7 +228,13 @@ export class DrawnMeasure {
 
   private onMap(look: MeasureLook): AreaOnMap | null {
     const drawn = this.drawn;
-    return drawn && drawn.measurement.shape !== 'ruler' ? this.area.get(drawn.measurement, look.map, drawn.walls) : null;
+    if (!drawn || drawn.measurement.shape === 'ruler') return null;
+    return drawn.aura ? this.auraArea.get(drawn.aura, look.map, drawn.walls) : this.area.get(drawn.measurement, look.map, drawn.walls);
+  }
+
+  /** What its label says: with `tokens` in an area, and a ruler with the height between the tokens under its ends. */
+  private text({ measurement, aura }: Drawn, look: MeasureLook, tokens: number, heightAt?: HeightAt | null): string {
+    return aura ? auraLabelText(aura.cells, look.settings, tokens) : measureDistance(look.grid, measurement, look.settings, heightAt, tokens);
   }
 
   /** Counted again only for another area or other tokens. */
@@ -226,7 +242,8 @@ export class DrawnMeasure {
     const record = look.tokens();
     const counted = this.counted;
     if (counted && counted.onMap === onMap && counted.record === record) return counted.ids;
-    const ids = tokensInArea(Object.values(record), onMap.area, look.map.cells ? look.map.grid : null, onMap.cells);
+    const bearer = this.drawn?.aura?.measure.follows;
+    const ids = tokensInArea(Object.values(record), onMap.area, look.map.cells ? look.map.grid : null, onMap.cells).filter((id) => id !== bearer);
     this.counted = { onMap, record, ids };
     return ids;
   }
@@ -241,8 +258,7 @@ export class DrawnMeasure {
       this.playersLabel.view.visible = false;
       this.labels.addChildAt(this.playersLabel.view, this.labels.getChildIndex(this.distance.view) + 1);
     }
-    const { measurement } = drawn;
-    this.playersLabel.show(measureDistance(look.grid, measurement, look.settings, null, count), measureLabelTarget(measurement), look.zoom, look.grid.size);
+    this.playersLabel.show(this.text(drawn, look, count), labelTarget(drawn), look.zoom, look.grid.size);
   }
 
   /** As many leg labels as legs to name. */
@@ -254,6 +270,11 @@ export class DrawnMeasure {
       this.legs.push(label);
     }
   }
+}
+
+/** Where its distance goes: above an aura's top edge, since its token stands in its middle. */
+function labelTarget({ measurement, aura }: Drawn): LabelTarget {
+  return aura ? { beside: [aura.top] } : measureLabelTarget(measurement);
 }
 
 /** The tokens to ring, each with the circle its ring is drawn around. */

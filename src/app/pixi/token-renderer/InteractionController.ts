@@ -41,6 +41,7 @@ import { tokenSizeSubmenu } from '../../react/components/context-menu/tokenSizeM
 import { tokenMovementSubmenu } from '../../react/components/context-menu/tokenMovementMenu';
 import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLevelMenu';
 import { tokenHeightSubmenu } from '../../react/components/context-menu/tokenHeightMenu';
+import { tokenAuraSubmenu } from '../../react/components/context-menu/tokenAuraMenu';
 import { mapMeasurementSettings } from '../../services/mapMeasurementSettings';
 import { rulesLookup } from '../../services/mapRules';
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
@@ -609,6 +610,11 @@ export class InteractionController implements ITokenInteractionController {
     const heightMenu = this.isPlayerView ? null : tokenHeightSubmenu(this.store, this.contextMenuTargets(token.id),
       () => mapMeasurementSettings(rulesLookup(this.obsApp), this.store.getState()));
     if (heightMenu) entries.push(heightMenu);
+
+    // An area around each token of the selection that goes where the token goes; the GM's to give
+    const auraMenu = this.isPlayerView ? null : tokenAuraSubmenu(this.store, this.contextMenuTargets(token.id),
+      () => mapMeasurementSettings(rulesLookup(this.obsApp), this.store.getState()));
+    if (auraMenu) entries.push(auraMenu);
 
     // Hide/Show the selection in one undo step; the clicked token decides which way
     const currentToken = mapTokens(levelObjects(this.store.getState()))[token.id];

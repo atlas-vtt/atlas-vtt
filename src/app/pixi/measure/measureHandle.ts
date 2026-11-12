@@ -49,6 +49,22 @@ export function measureEndHandlePoint(measure: Pick<KeptMeasure, 'shape' | 'poin
   return measure.shape === 'ruler' ? null : measure.points[1] ?? null;
 }
 
+/** Where a kept measurement's handles stand, in world pixels. */
+export interface MeasureHandlePlace {
+  readonly origin: Point;
+  /** The handle at an area's far end; null for a ruler. */
+  readonly end: Point | null;
+}
+
+/**
+ * Says where the handles of a kept measurement stand; null for one that has none now. An aura's
+ * stand around its token, wherever that is, and it has none while its token is not on the map shown.
+ */
+export type MeasureHandlePlacer = (measure: KeptMeasure) => MeasureHandlePlace | null;
+
+/** Where the handles of a measurement stand that lies where its points say: at its origin and, an area's second, at its far end. */
+export const handlesAtPoints: MeasureHandlePlacer = (measure) => ({ origin: measureHandlePoint(measure), end: measureEndHandlePoint(measure) });
+
 export interface MeasureHandleState {
   /** The part of it the pointer is over; null over none. */
   hovered: MeasureHandlePart | null;
@@ -104,9 +120,10 @@ export function measureHandleHitRadius(zoom: number): number {
 /**
  * The handle at the world `point` at viewport `zoom`: the nearest one within its reach, and of
  * handles as near as each other the one of the later measurement, which lies on top. Only handles
- * are hit: a measurement's line, area and label take no pointer.
+ * are hit: a measurement's line, area and label take no pointer. `place` says where each
+ * measurement's handles stand.
  */
-export function measureHandleAt(measures: readonly KeptMeasure[], point: Point, zoom: number): MeasureHandleRef | null {
+export function measureHandleAt(measures: readonly KeptMeasure[], point: Point, zoom: number, place: MeasureHandlePlacer = handlesAtPoints): MeasureHandleRef | null {
   const scale = mapMarkerScale(zoom);
   let nearest: MeasureHandleRef | null = null;
   let best = Infinity;
@@ -119,8 +136,10 @@ export function measureHandleAt(measures: readonly KeptMeasure[], point: Point, 
     }
   };
   for (const measure of measures) {
-    take(measure.id, 'origin', measureHandlePoint(measure), MEASURE_HANDLE_HIT_RADIUS);
-    take(measure.id, 'end', measureEndHandlePoint(measure), MEASURE_END_HANDLE_HIT_RADIUS);
+    const at = place(measure);
+    if (!at) continue;
+    take(measure.id, 'origin', at.origin, MEASURE_HANDLE_HIT_RADIUS);
+    take(measure.id, 'end', at.end, MEASURE_END_HANDLE_HIT_RADIUS);
   }
   return nearest;
 }

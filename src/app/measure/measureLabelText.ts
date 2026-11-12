@@ -40,3 +40,9 @@ export function measureLabelText(measurement: Measurement, grid: GridGeometry, s
   else size = formatDistance(length, settings);
   return tokens > 0 ? `${size} · ${tokens}` : size;
 }
+
+/** An aura's label: how far it reaches from its token's space, and the number of `tokens` in it. */
+export function auraLabelText(cells: number, settings: MeasurementSettings, tokens = 0): string {
+  const size = formatDistance(cells, settings);
+  return tokens > 0 ? `${size} · ${tokens}` : size;
+}

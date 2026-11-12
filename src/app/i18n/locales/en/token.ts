@@ -21,6 +21,8 @@ export const token = {
   'token.ringColor': 'Ring Color',
   'token.height': 'Height',
   'token.onTheFloor': 'On the floor',
+  'token.aura': 'Aura',
+  'token.noAura': 'No aura',
   'token.movement': 'Movement',
   'token.movementWalk': 'Walk',
   'token.reset': 'Reset (Full HP, Clear Status)',

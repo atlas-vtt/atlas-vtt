@@ -5,13 +5,14 @@
  */
 
 import type { GridGeometry } from '../grid/gridDistance';
+import type { DiagonalRule } from '../types/collectionSettingsTypes';
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
 import type { AreaCellRule, ConeEnd } from './areaRules';
 import { cellsInArea, type AreaCell } from './measureCells';
 import { EDGE_TOLERANCE, shapedArea, type MeasureArea, type ShapedArea } from './measureGeometry';
 import type { Measurement } from './measureTypes';
-import { areaWithinWalls, wallSweepPoint } from './measureWalls';
+import { areaWithinWalls, shapesWithinWalls, wallSweepPoint } from './measureWalls';
 
 /** What of a map shapes the areas measured on it. */
 export interface AreaMap {
@@ -23,6 +24,8 @@ export interface AreaMap {
   readonly coneAngle: number;
   readonly coneEnd: ConeEnd;
   readonly cellRule: AreaCellRule;
+  /** How the map counts a diagonal step: an aura reaches as far from its token as distances are counted. */
+  readonly diagonalRule: DiagonalRule;
   /** The walls areas stop at, as light is traced through them (`sealedWalls`); none on a map without walls. */
   readonly walls: readonly WallSegment[];
 }
@@ -34,6 +37,12 @@ export interface AreaOnMap {
   readonly area: MeasureArea;
   /** The cells it covers; null where cells are not counted. */
   readonly cells: readonly AreaCell[] | null;
+  /**
+   * What the walls it stops at leave of shapes drawn with it that lie no farther than `beyond` past
+   * its reach (`shapesWithinWalls`): a covered cell's tint reaches past its outline, and must not
+   * reach past a wall. Null where it stops at no wall, and nothing is left out.
+   */
+  readonly withinWalls: ((shapes: readonly (readonly Point[])[], beyond: number) => readonly (readonly Point[])[]) | null;
 }
 
 /**
@@ -43,13 +52,25 @@ export interface AreaOnMap {
  */
 export function areaOnMap(measurement: Measurement, map: AreaMap, stopsAtWalls = true): AreaOnMap | null {
   const shaped = shapedArea(measurement, { coneAngle: map.coneAngle, coneEnd: map.coneEnd, lineWidth: map.grid.size });
-  if (!shaped) return null;
-  const area = stopsAtWalls && map.walls.length > 0 ? areaWithinWalls(shaped, map.walls) : shaped;
-  return { shaped, area, cells: map.cells ? cellsInArea(map.grid, area, map.cellRule) : null };
+  return shaped && shapeOnMap(shaped, map, stopsAtWalls);
 }
 
-function sameMap(a: AreaMap, b: AreaMap): boolean {
-  return a.walls === b.walls && a.cells === b.cells && a.coneAngle === b.coneAngle && a.coneEnd === b.coneEnd && a.cellRule === b.cellRule
+/** `shaped` as it lies on `map`: cut by the map's walls unless it does not stop at them, with the cells it covers. */
+export function shapeOnMap(shaped: ShapedArea, map: AreaMap, stopsAtWalls = true): AreaOnMap {
+  const { walls } = map;
+  const stops = stopsAtWalls && walls.length > 0;
+  const area = stops ? areaWithinWalls(shaped, walls) : shaped;
+  return {
+    shaped,
+    area,
+    cells: map.cells ? cellsInArea(map.grid, area, map.cellRule) : null,
+    withinWalls: stops ? (shapes, beyond) => shapesWithinWalls(shaped, walls, shapes, beyond) : null,
+  };
+}
+
+/** Whether two maps shape every area alike. */
+export function sameAreaMap(a: AreaMap, b: AreaMap): boolean {
+  return a.walls === b.walls && a.cells === b.cells && a.coneAngle === b.coneAngle && a.coneEnd === b.coneEnd && a.cellRule === b.cellRule && a.diagonalRule === b.diagonalRule
     && a.grid.type === b.grid.type && a.grid.size === b.grid.size && (a.grid.offsetX ?? 0) === (b.grid.offsetX ?? 0) && (a.grid.offsetY ?? 0) === (b.grid.offsetY ?? 0);
 }
 
@@ -78,7 +99,7 @@ export class AreaOnMapMemo {
     const cut = stopsAtWalls && map.walls.length > 0;
     const sweptFrom = cut ? circleSweptFrom(measurement, map.walls) : null;
     const last = this.last;
-    if (last && last.stops === stopsAtWalls && sameMap(last.map, map) && sameArea(last, measurement, sweptFrom)) return last.value;
+    if (last && last.stops === stopsAtWalls && sameAreaMap(last.map, map) && sameArea(last, measurement, sweptFrom)) return last.value;
     const value = areaOnMap(measurement, map, stopsAtWalls);
     this.last = { measurement, map, stops: stopsAtWalls, sweptFrom, value };
     return value;

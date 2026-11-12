@@ -65,8 +65,8 @@ describe('toolbar control items', () => {
     expect(menuEntry).toMatchObject({ label: 'Circle', isActive: true });
     menuEntry.onSelect();
     expect(ctx.selectTool).toHaveBeenCalledWith('measure');
-    // A mode the bar does not offer yet shows as the ruler.
-    expect(item('measure', context({ measureMode: 'ranges' })).menuEntry.label).toBe('Ruler');
+    // Ranges, which measures nothing by a press, shows by its own name too.
+    expect(item('measure', context({ measureMode: 'ranges' })).menuEntry.label).toBe('Ranges');
   });
 
   it('pins and activates the note pin while it is in use, and the dice while their tray is open', () => {
