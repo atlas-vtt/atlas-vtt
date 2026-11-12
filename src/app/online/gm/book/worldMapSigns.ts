@@ -25,7 +25,9 @@ export class WorldMapSigns {
       const id = this.alias(sign);
       this.shown.set(id, sign);
       const shown: MapSign = { id, x, y, ...(sign.icon !== undefined && { icon: sign.icon }), ...(sign.label !== undefined && { label: sign.label }), found: found.get(foundPinKey(sign.map, sign.pin)) ?? null };
-      byMap.set(on, [...(byMap.get(on) ?? []), shown]);
+      const onMap = byMap.get(on);
+      if (onMap === undefined) byMap.set(on, [shown]);
+      else onMap.push(shown);
     }
     const signed = (map: BookNestedMap): BookNestedMap => {
       const signs = byMap.get(map.id);
