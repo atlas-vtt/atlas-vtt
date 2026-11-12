@@ -59,6 +59,7 @@
 - Scene tabs show more of each scene's name, and all of it while the bar has room
 - Online play: note pins your players may read on the campaign's world map, and on the maps it leads into, now show there in their book, and the first player to open one finds its note for the whole table, as with pins on the shared map
 - Online play: when the campaign you start a table with has a game system of its own, the start menu says that every map plays by it instead of its collection's
+- Online play: the world map and the maps it leads into reach players the way the table's map does, a piece at a time, so a large world map opens at once and stays sharp as they zoom in
 
 ## Fixed
 
