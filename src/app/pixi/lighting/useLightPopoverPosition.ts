@@ -20,9 +20,9 @@ import { levelObjects } from '../../levels/levelObjects';
 
 /** Between the marker's edge, or the bright ring, and the popover. */
 const GAP = 12;
-/** The bars of the map view the popover keeps clear of: scene tabs above, the toolbars and the toolbar editor's tray below. */
+/** The bars of the map view the popover keeps clear of: scene tabs above, the toolbars, a tool's own bars and the toolbar editor's tray below. */
 const TOP_BARS = '.atlas-scene-tab-bar';
-const BOTTOM_BARS = '.atlas-bottom-toolbar-row .atlas-vtt-toolbar, .atlas-bottom-toolbar-row .atlas-toolbar-tray';
+const BOTTOM_BARS = '.atlas-bottom-toolbar-row .atlas-vtt-toolbar, .atlas-bottom-toolbar-row .atlas-tool-bar, .atlas-bottom-toolbar-row .atlas-toolbar-tray';
 
 interface Frame {
   /** The canvas within the area the popover is placed in. */

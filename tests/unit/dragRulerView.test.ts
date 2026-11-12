@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { Bounds, Container, Graphics, Text } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { DragRulerView } from '../../src/app/pixi/token-renderer/DragRulerView';
+import { BEYOND_SPEED } from '../../src/app/measure/dragMovement';
+import { forgetObsidianAccentColor } from '../../src/app/pixi/utils/colorUtils';
 import { shortenPathEnd } from '../../src/app/pixi/utils/measureDrawing';
 import { labelScale, pathMiddle } from '../../src/app/pixi/utils/measureLabelLayout';
 import { NAMEPLATE_HEIGHT } from '../../src/app/pixi/token-renderer/tokenSizing';
@@ -46,6 +48,39 @@ describe('DragRulerView', () => {
     viewport.emit('zoomed', {});
     expect(label!.scale.x).toBe(labelScale(70, 4));
     expect(clearOfToken()).toBeGreaterThan(35);
+    vi.restoreAllMocks();
+  });
+
+  it('draws its path in the colour of the movement step, in the theme\'s warning red past the last one, and in the accent without one', () => {
+    vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 16));
+    forgetObsidianAccentColor();
+    document.body.style.setProperty('--interactive-accent', 'rgb(10, 20, 30)');
+    document.body.style.setProperty('--text-error', 'rgb(200, 0, 0)');
+    const { view } = makeScene();
+    const accent = (view.layers[0] as Container).getChildByLabel('measure-accent', true) as Graphics;
+    /** The colours the path was drawn in: its stroke and its dots. */
+    const colors = (): number[] => [...new Set(accent.context.instructions.flatMap((instruction) =>
+      instruction.action === 'texture' ? [] : [(instruction.data.style as { color: number }).color]))];
+    const WHITE = 0xffffff;
+    const points = [{ x: 0, y: 0 }, { x: 70, y: 0 }];
+
+    view.draw(points, '5ft', 35, 70);
+    expect(colors()).toEqual([0x0a141e, WHITE]);
+    view.draw(points, '5 / 30ft', 35, 70, '#22c55e');
+    expect(colors()).toEqual([0x22c55e, WHITE]);
+    view.draw(points, '65 / 30ft', 35, 70, BEYOND_SPEED);
+    expect(colors()).toEqual([0xc80000, WHITE]);
+    // A theme with another red: the next draw (a zoom, a theme switch) takes it.
+    document.body.style.setProperty('--text-error', 'rgb(255, 80, 80)');
+    view.draw(points, '65 / 30ft', 35, 70, BEYOND_SPEED);
+    expect(colors()).toEqual([0xff5050, WHITE]);
+    // The next drag without a step is the accent's again.
+    view.draw(points, '5ft', 35, 70);
+    expect(colors()).toEqual([0x0a141e, WHITE]);
+
+    document.body.style.removeProperty('--interactive-accent');
+    document.body.style.removeProperty('--text-error');
+    forgetObsidianAccentColor();
     vi.restoreAllMocks();
   });
 

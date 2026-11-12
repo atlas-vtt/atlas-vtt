@@ -87,10 +87,10 @@ describe('MeasureRenderer records', () => {
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);
     expect(s.measure.measurements.get().live?.hidden).toBe(true);
-    expect(s.measure.getPlayerViewLayers(() => true).map((entry) => entry.visible)).toEqual([false, false]);
+    expect(s.measure.getPlayerViewLayers(() => true).slice(0, 2).map((entry) => entry.visible)).toEqual([false, false]);
     s.store.getState().setMeasureTool({ players: true });
     expect(s.measure.measurements.get().live?.hidden).toBeUndefined();
-    expect(s.measure.getPlayerViewLayers(() => true).map((entry) => entry.visible)).toEqual([true, true]);
+    expect(s.measure.getPlayerViewLayers(() => true).slice(0, 2).map((entry) => entry.visible)).toEqual([true, true]);
   });
 
   it('tells subscribers each change with the measurements before it, and nothing after they unsubscribe', () => {
@@ -135,7 +135,7 @@ describe('MeasureRenderer records', () => {
     };
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);
-    expect(s.measure.getPlayerViewLayers(() => false).map((entry) => entry.visible)).toEqual([false, false]);
+    expect(s.measure.getPlayerViewLayers(() => false).slice(0, 2).map((entry) => entry.visible)).toEqual([false, false]);
     expect(s.measure.measurements.get().live).toMatchObject({ shape: 'ruler', points: [{ x: 105, y: 105 }, { x: 315, y: 105 }] });
   });
 });

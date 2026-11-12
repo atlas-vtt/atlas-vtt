@@ -238,9 +238,10 @@ describe('keeping a measurement', () => {
     expect(pin(s).visible).toBe(false);
     s.pointer('pointerup', 175, 35);
     expect(pin(s).visible).toBe(true);
-    // The pin is the GM's: a players' frame leaves it out, and only it.
+    // The pin is the GM's, as the kept measurements' handles are: a players' frame leaves them out, and only them.
     expect(s.measure.getPlayerViewLayers(() => true)).toEqual([
       { layer: s.parts()[0], visible: true }, { layer: s.parts()[1], visible: true }, { layer: pin(s), visible: false },
+      { layer: s.measure.handles.layer, visible: false },
     ]);
     const { x, y } = pin(s).position;
     s.click(x, y);
@@ -278,7 +279,7 @@ describe('keeping a measurement', () => {
     expect(kept(s)[0]?.hidden).toBe(true);
     // The GM's canvas shows it; a players' frame does not.
     expect(s.visible().slice(2)).toEqual([true, true]);
-    expect(s.measure.getPlayerViewLayers(() => true).slice(2).map((entry) => entry.visible)).toEqual([false, false]);
+    expect(s.measure.getPlayerViewLayers(() => true).slice(2, 4).map((entry) => entry.visible)).toEqual([false, false]);
   });
 
   it('tells the GM when the level keeps no more, and lets the measurement fade instead', () => {

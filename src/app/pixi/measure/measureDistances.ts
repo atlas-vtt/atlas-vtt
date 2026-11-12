@@ -2,11 +2,17 @@
 
 import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
+import { riseBetweenEnds, type HeightAt } from '../../measure/tokenHeight';
 import type { Point } from '../../types/visionTypes';
 
-/** The length of the path through `points`, as the map's rules write it: diagonals are counted over the whole path. */
-export function pathDistance(grid: GridGeometry, points: readonly Point[], settings: MeasurementSettings): string {
-  return formatDistance(pathLengthInCells(grid, points, settings.diagonalRule), settings);
+/**
+ * The length of the path through `points`, as the map's rules write it: diagonals are counted over
+ * the whole path. With `heightAt` (a ruler's) the height between the tokens under its two ends is
+ * counted with it, once over the whole path; the legs keep their length on the floor.
+ */
+export function pathDistance(grid: GridGeometry, points: readonly Point[], settings: MeasurementSettings, heightAt?: HeightAt | null): string {
+  const rise = heightAt ? riseBetweenEnds(points, heightAt, settings) : 0;
+  return formatDistance(pathLengthInCells(grid, points, settings.diagonalRule, rise), settings);
 }
 
 /**

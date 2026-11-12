@@ -55,6 +55,11 @@ export class MeasureInput {
     private readonly now: () => number = () => performance.now(),
   ) {}
 
+  /** A measurement is being made: a press belongs to it, wherever it lands. */
+  get measuring(): boolean {
+    return this.gesture.active;
+  }
+
   /** Listens to the pointer, or stops and drops the measurement under way. */
   setEnabled(enabled: boolean): void {
     if (enabled === this.enabled) return;
@@ -79,7 +84,7 @@ export class MeasureInput {
   }
 
   private readonly onPointerDown = (e: FederatedPointerEvent): void => {
-    // Any other button is the viewport's, and a pin, door badge or light marker may have taken the press.
+    // Any other button is the viewport's, and a kept measurement's handle, a pin, door badge or light marker may have taken the press.
     if (e.button !== 0 || isHandled(e)) return;
     const world = this.viewport.toWorld(e.global);
     const screen = { x: e.global.x, y: e.global.y };

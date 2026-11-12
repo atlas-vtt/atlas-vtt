@@ -150,7 +150,17 @@ function unitSuffix(settings: Pick<MeasurementSettings, 'unitType' | 'unitName'>
  */
 export function formatDistance(cells: number, settings: MeasurementSettings): string {
   if (settings.mode === 'abstract') return rangeBandName(cells, settings.rangeBands);
-  return `${tenths(cells * settings.unitDistance)}${unitSuffix(settings)}`;
+  return formatGameUnits(cells * settings.unitDistance, settings);
+}
+
+/** A distance's number as labels write it: one decimal where the distance has one. */
+export function distanceNumber(units: number): string {
+  return `${tenths(units)}`;
+}
+
+/** Label for a distance already in game units (a token's speed), e.g. "30ft" or "30 mi": what `formatDistance` writes for as many cells. */
+export function formatGameUnits(units: number, settings: Pick<MeasurementSettings, 'unitType' | 'unitName'>): string {
+  return `${distanceNumber(units)}${unitSuffix(settings)}`;
 }
 
 /**
@@ -159,7 +169,7 @@ export function formatDistance(cells: number, settings: MeasurementSettings): st
  */
 export function formatReach(cells: number, settings: MeasurementSettings): string {
   if (settings.mode === 'abstract') return settings.rangeBands.length > 0 ? rangeBandName(cells, settings.rangeBands) : `${tenths(cells)} sq`;
-  return `${tenths(cells * settings.unitDistance)}${unitSuffix(settings)}`;
+  return formatGameUnits(cells * settings.unitDistance, settings);
 }
 
 /** A band threshold must be a whole number of at least one square. */

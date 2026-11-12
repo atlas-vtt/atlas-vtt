@@ -67,18 +67,21 @@ describe('the measure renderer\'s wiring', () => {
     const listeners: Array<() => void> = [];
     const unsubscribe = vi.fn();
     const refreshVisibility = vi.fn();
+    const stopHeights = vi.fn();
     const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
       obsApp: createInMemoryApp().app,
-      store: { getState: () => ({ objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 } }) },
+      store: { getState: () => ({ objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 } }), subscribe: vi.fn(() => stopHeights) },
       gridSystem: { getOptions: () => ({ size: 70 }) },
-      tokenRenderer: { onPlayersViewChange: vi.fn((listener: () => void) => { listeners.push(listener); return unsubscribe; }) },
-      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), playersView: null },
+      tokenRenderer: { onPlayersViewChange: vi.fn((listener: () => void) => { listeners.push(listener); return unsubscribe; }), setMeasureHandlers: vi.fn() },
+      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), playersView: null, handles: { pointer: {} } },
     });
     const wire = (renderer as unknown as { wireMeasureRendererProvider(): void }).wireMeasureRendererProvider.bind(renderer);
     wire();
     wire();
     expect(listeners).toHaveLength(2);
     expect(unsubscribe).toHaveBeenCalledTimes(1);
+    // The tokens' heights are followed once too, for the rulers that end on fliers
+    expect(stopHeights).toHaveBeenCalledTimes(1);
     listeners[1]!();
     expect(refreshVisibility).toHaveBeenCalledTimes(1);
     expect((renderer as unknown as { measureRenderer: { playersView: unknown } }).measureRenderer.playersView).not.toBeNull();

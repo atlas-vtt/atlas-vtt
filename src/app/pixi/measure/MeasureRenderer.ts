@@ -6,6 +6,7 @@ import type { SceneSource } from '../../host/sceneSource';
 import { levelObjects } from '../../levels/levelObjects';
 import { measureList } from '../../measure/keptMeasures';
 import type { KeptMeasure, Measurement, MeasureShapeKind } from '../../measure/measureTypes';
+import type { HeightAt } from '../../measure/tokenHeight';
 import type { MeasuresSlice } from '../../stores/measuresSlice';
 import type { ViewState } from '../../types/viewState';
 import type { Point } from '../../types/visionTypes';
@@ -15,14 +16,16 @@ import type { LayerVisibility } from '../playerSafeFrame';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { watchMeasureLabelTheme } from '../utils/measureLabel';
 import type { MeasureLook } from './DrawnMeasure';
+import { MeasureHandleInteraction, type MeasureHandleStore } from './MeasureHandleInteraction';
 import { MeasureInput, type MeasureInputHost } from './MeasureInput';
 import { MeasureLayer } from './MeasureLayer';
 import { showMeasuresFullNotice } from './measureNotices';
 import { NO_MEASUREMENTS, type LiveMeasure, type Measurements } from './measurements';
 
-type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath'> & Pick<MeasuresSlice, 'addMeasure'>;
+type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath'> & Pick<MeasuresSlice, 'addMeasure'>
+  & ReturnType<MeasureHandleStore['getState']>;
 
-/** What the measure tool reads of its view's state, and the one thing it writes: a measurement to keep. */
+/** What the measure tool reads of its view's state, and what it writes: a measurement to keep, and what the handles of the kept ones change. */
 export type MeasureStore = Pick<StoreApi<MeasureState>, 'getState' | 'subscribe'>;
 
 /** The grid a measurement snaps to and is measured on. */
@@ -42,15 +45,20 @@ const sameList = (a: readonly KeptMeasure[], b: readonly KeptMeasure[]): boolean
  * tool's choices are read from `measureTool` when they matter: the mode at a press, Keep and the
  * colour at the release. A released measurement is kept as a scene object (`addMeasure`, one undo
  * step) or fades after `MEASURE_FADE_MS`, during which the pin beside its label keeps it. Kept
- * measurements are drawn from the store, so undo, redo and another level show at once.
+ * measurements are drawn from the store, so undo, redo and another level show at once, each with
+ * the handle the GM moves, opens and deletes it by (`MeasureHandles`, `MeasureHandleInteraction`).
  */
 export class MeasureRenderer implements MeasureInputHost {
   /** Measurement settings of the current map, from its collection when it has one. */
   public measurementSettingsProvider: (() => MeasurementSettings) | null = null;
+  /** How high the token at a point stands, for the rulers that start or end on one; `rulesChanged` writes them again. */
+  public heightAt: HeightAt | null = null;
 
   private readonly layer: MeasureLayer;
   private readonly parts: MeasurePartsVisibility;
   private readonly input: MeasureInput;
+  /** The handles of the kept measurements: the viewport's dispatch hands them the pointer (`pointer`), the map's keys Escape and Delete. */
+  public readonly handles: MeasureHandleInteraction;
   private current: Measurements = NO_MEASUREMENTS;
   private readonly listeners = new Set<(next: Measurements, previous: Measurements) => void>();
   /** The record the kept measurements were last read from. */
@@ -85,8 +93,15 @@ export class MeasureRenderer implements MeasureInputHost {
       kept: (parts, measure) => this.parts.keep(parts, measure),
       forgotten: (parts) => this.parts.forget(parts),
     });
-    this.parts = new MeasurePartsVisibility(this.layer.liveParts, () => this.view);
     this.input = new MeasureInput(viewport, this);
+    // Made after the layer: the handles stand above every measurement and label.
+    this.handles = new MeasureHandleInteraction({
+      viewport,
+      store,
+      snapGrid: () => ((this.store.getState().grid?.snapToGrid ?? true) ? this.gridSystem.getOptions() : null),
+      yields: () => this.input.measuring || this.store.getState().activeTool === 'wall',
+    });
+    this.parts = new MeasurePartsVisibility(this.layer.liveParts, () => this.view, this.handles.layer);
 
     // Shapes and labels keep their size on screen, so a new zoom draws them again; a pan changes nothing.
     const onZoom = (): void => {
@@ -112,7 +127,7 @@ export class MeasureRenderer implements MeasureInputHost {
   /** Measurements drawn before it was known (kept ones of a scene already loaded) show by it at once. */
   public set playersView(view: MeasurePlayersView | null) {
     this.view = view;
-    this.parts.refresh();
+    this.refreshVisibility();
   }
 
   shape(): MeasureShapeKind | null {
@@ -168,6 +183,7 @@ export class MeasureRenderer implements MeasureInputHost {
   /** The players' sight changed, or whether the canvas shows it: measurements show or hide by it. */
   public refreshVisibility(): void {
     this.parts.refresh();
+    this.handles.visibilityChanged();
   }
 
   /** The map's measurement rules may have changed: every distance is written again. */
@@ -180,6 +196,7 @@ export class MeasureRenderer implements MeasureInputHost {
     this.stops.length = 0;
     this.stopFade();
     this.input.destroy();
+    this.handles.destroy();
     this.layer.destroy();
     this.listeners.clear();
   }
@@ -197,6 +214,7 @@ export class MeasureRenderer implements MeasureInputHost {
     this.input.setEnabled(measuring);
     if (state.measureTool.players !== previous.measureTool.players) this.setLiveHidden(!state.measureTool.players);
     this.readKept(state);
+    this.handles.follow(state);
     if (state.grid !== previous.grid) this.redraw();
   }
 
@@ -207,6 +225,7 @@ export class MeasureRenderer implements MeasureInputHost {
     this.keptRecord = record;
     const list = measureList(record);
     this.layer.setKept(list);
+    this.handles.setKept(list);
     const kept = list.filter((measure) => measure.hidden !== true);
     if (!sameList(kept, this.current.kept)) this.setMeasurements({ ...this.current, kept });
   }
@@ -279,10 +298,11 @@ export class MeasureRenderer implements MeasureInputHost {
   private redraw(): void {
     this.drawnZoom = this.viewport.scale.x;
     this.layer.redraw();
+    this.handles.redraw();
   }
 
   private look(): MeasureLook {
     const settings = this.measurementSettingsProvider?.() ?? resolveMeasurementSettings(undefined, this.store.getState().grid);
-    return { zoom: this.viewport.scale.x, grid: this.gridSystem.getOptions(), settings, accent: cssColorToHexNumber(getObsidianAccentColor()) };
+    return { zoom: this.viewport.scale.x, grid: this.gridSystem.getOptions(), settings, accent: cssColorToHexNumber(getObsidianAccentColor()), heightAt: this.heightAt };
   }
 }

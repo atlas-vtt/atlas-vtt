@@ -31,6 +31,7 @@ import { TextureCache } from './token-renderer/TextureCache';
 import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
+import { tokenMovement } from './token-renderer/tokenMovement';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { DEFAULT_DRAG_DISTANCE, showsDragDistance } from '../measure/dragDistance';
 import { SyncService } from './token-renderer/SyncService';
@@ -58,6 +59,7 @@ import { watchClick } from './utils/clickRelease';
 import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
 import type { MapFeaturePointerHandlers } from './mapFeatures/MapFeatureInteraction';
 import type { LightPointerHandlers } from './lighting/LightInteraction';
+import type { MeasurePointerHandlers } from './measure/measureHandle';
 import { runInBackground } from '../utils/backgroundTask';
 import { isModHeld } from '../keyboard/modKey';
 import type { AreaToolPointer } from './areas/PolygonAreaEditor';
@@ -171,6 +173,7 @@ export class TokenRenderer {
   /** The marker on the tokens whose turn it is. */
   private turnMarkers!: TurnMarkers;
   private lightHandlers?: LightPointerHandlers;
+  private measureHandlers?: MeasurePointerHandlers;
   /** Tokens held by the pointer; lighting alone does not hide them until release. */
   private heldTokenIds: ReadonlySet<string> = new Set();
   private lastHoveredPinId: string | null = null;
@@ -294,6 +297,7 @@ export class TokenRenderer {
     this.resourceDefsProvider = this.collectionSync.resources;
     this.interactionController.resourceDefsProvider = this.resourceDefsProvider;
     this.uiManager.resourceDefsProvider = this.resourceDefsProvider;
+    this.uiManager.measurementProvider = this.collectionSync.measurement;
     this.statblockSync = new StatblockTokenSync(obsApp, store, tokenStatblockLinkService, this.resourceDefsProvider);
 
     // Initialize sync service
@@ -333,6 +337,7 @@ export class TokenRenderer {
     this.viewport.addChild(this.playerSight.outlineLayer);
     this.watchCanvasTurn();
 
+    const movement = tokenMovement(this.obsApp, this.collectionSync.movement, this.collectionSync.measurement);
     this.dragRuler = new DragRuler(
       new DragRulerView(this.viewport, this.tokenContainer),
       this.gridSystem,
@@ -340,8 +345,10 @@ export class TokenRenderer {
       this.collectionSync.measurement,
       (id) => this.tokenSprites[id]?.visible ?? false,
       () => showsDragDistance(SettingsService.forApp(this.obsApp)?.getDragDistance() ?? DEFAULT_DRAG_DISTANCE, this.store.getState().initiative.isActive),
+      movement,
     );
     this.interactionController.setDragRuler(this.dragRuler);
+    this.interactionController.setTokenMovement(movement);
 
     // Initialize sync service
     this.syncService.initialize();
@@ -1202,6 +1209,9 @@ export class TokenRenderer {
     // Nameplate changes
     if (token.showNameplate !== prevToken.showNameplate) return true;
 
+    // Height off the floor, which the chip over the token says
+    if (token.elevation !== prevToken.elevation) return true;
+
     // Conditions, compared by value
     if ((token.conditions ?? []).join() !== (prevToken.conditions ?? []).join()) return true;
     if (token.conditionValues !== prevToken.conditionValues) return true;
@@ -1608,6 +1618,11 @@ export class TokenRenderer {
     this.lightHandlers = handlers;
   }
 
+  /** Kept measurements: their handles take the pointer with any tool, before pins, door badges and light markers, which they lie above. */
+  public setMeasureHandlers(handlers: MeasurePointerHandlers): void {
+    this.measureHandlers = handlers;
+  }
+
   public setDoorClickHandler(handler: (worldX: number, worldY: number) => boolean): void {
     this.doorClickHandler = handler;
   }
@@ -1817,6 +1832,12 @@ export class TokenRenderer {
       }
     }
 
+    // ── Handles of kept measurements: the smallest marks and the topmost, from any tool ──
+    if (e.button === 0 && this.measureHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
+      markHandled(e);
+      return;
+    }
+
     // ── Pin left-click: works from any tool (drag + open) ──────────────
     if (e.button === 0 && this.pinHitTestProvider && this.pinClickHandler) {
       const pinId = this.pinHitTestProvider(worldPos.x, worldPos.y);
@@ -1953,6 +1974,7 @@ export class TokenRenderer {
     this.uiManager.hoverSelectionBar(null);
     this.mapFeatureHandlers?.leave();
     this.lightHandlers?.leave();
+    this.measureHandlers?.leave();
     this.interactionController.handleViewportTokenHover(null);
     this.uiManager.setHoverState(null);
   };
@@ -1976,9 +1998,12 @@ export class TokenRenderer {
       this.mapFeatureHandlers?.leave();
     }
 
+    // A kept measurement's handle lies above the pins and light markers: none under it is hovered
+    const measureCursor = this.measureHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
+
     // Pin hover: show pointer cursor and emit preview events from any tool
     if (this.pinHitTestProvider) {
-      const pinId = this.pinHitTestProvider(worldPos.x, worldPos.y);
+      const pinId = measureCursor ? null : this.pinHitTestProvider(worldPos.x, worldPos.y);
       if (pinId !== this.lastHoveredPinId) {
         if (this.lastHoveredPinId) {
           this.pinHoverHandler?.('out', this.lastHoveredPinId, e);
@@ -2004,30 +2029,31 @@ export class TokenRenderer {
       this.lastHoveredPinId = null;
     }
 
-    // Light markers and range rings: hover and cursor from any tool
-    const lightCursor = this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
+    // Measurement handles, light markers and range rings: hover and cursor from any tool
+    if (measureCursor) this.lightHandlers?.leave();
+    const markerCursor = measureCursor ?? this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
 
     // Wall tool: pointer move for vertex dragging, freeform drawing, and hover cursors
     if (activeTool === 'wall' && this.wallPointerMoveHandler) {
       this.wallPointerMoveHandler(worldPos.x, worldPos.y, e);
 
       const wallCursor = this.wallCursorProvider?.(worldPos.x, worldPos.y) ?? 'crosshair';
-      this.applyCursor(lightCursor ?? wallCursor);
+      this.applyCursor(markerCursor ?? wallCursor);
       return;
     }
 
     if (activeTool === 'stairs' && this.stairsTool) {
       this.stairsTool.pointerMove(worldPos, e);
-      this.applyCursor(lightCursor ?? this.stairsTool.cursorAt(worldPos));
+      this.applyCursor(markerCursor ?? this.stairsTool.cursorAt(worldPos));
       return;
     }
 
-    if (lightCursor) {
+    if (markerCursor) {
       this.interactionController.handleViewportTokenHover(null);
       this.uiManager.setHoverState(null);
       this.hexLinkHandlers?.hover(null, e);
       this.mapFeatureHandlers?.leave();
-      this.applyCursor(lightCursor);
+      this.applyCursor(markerCursor);
       return;
     }
 

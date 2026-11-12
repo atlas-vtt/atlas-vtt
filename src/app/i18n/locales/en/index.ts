@@ -43,6 +43,7 @@ import { picker } from './picker';
 import { settings } from './settings';
 import { snapshots } from './snapshots';
 import { levels } from './levels';
+import { measure } from './measure';
 import { openings } from './openings';
 import { rooms } from './rooms';
 import { statblock } from './statblock';
@@ -157,6 +158,7 @@ export const en = {
   ...settings,
   ...snapshots,
   ...levels,
+  ...measure,
   ...openings,
   ...rooms,
   ...statblock,

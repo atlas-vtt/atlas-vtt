@@ -36,6 +36,7 @@ import { NO_BARS } from "./pixi/selection/selectionTargets";
 import { FogOfWarRenderer } from "./pixi/fog/FogOfWarRenderer";
 import { MeasureRenderer } from "./pixi/measure/MeasureRenderer";
 import { measurePlayersView } from './pixi/measurePlayersView';
+import { followTokenHeights, measureHeightAt } from './pixi/measureTokenHeights';
 import { NOTHING_SEEN } from './pixi/token-renderer/PlayerSightTokens';
 import type { TokenPerception } from './vision/tokenPerception';
 import { LaserPointerRenderer } from "./pixi/LaserPointerRenderer"; // Import LaserPointerRenderer
@@ -111,6 +112,7 @@ export class PixiRendererOrchestrator { // Renamed class
   /** Ends the measurements' watch on what the players see of the tokens. */
   private stopMeasuresFollowingPlayers: (() => void) | undefined;
   private stopMeasuresFollowingRules: (() => void) | undefined;
+  private stopMeasuresFollowingHeights: (() => void) | undefined;
   private laserPointerRenderer?: LaserPointerRenderer; // Add LaserPointerRenderer instance
   private drawingRenderer?: DrawingRenderer; // Add DrawingRenderer instance
   private drawingInteraction?: DrawingInteraction;
@@ -1110,7 +1112,7 @@ export class PixiRendererOrchestrator { // Renamed class
           e.preventDefault();
           return;
         }
-        if (this.levelLinks?.handleEscape() || this.lighting?.handleEscape()) {
+        if (this.measureRenderer?.handles.handleEscape() || this.levelLinks?.handleEscape() || this.lighting?.handleEscape()) {
           e.preventDefault();
           return;
         }
@@ -1131,7 +1133,8 @@ export class PixiRendererOrchestrator { // Renamed class
 
       // Delete selected tokens on Delete or Backspace key
       if (!this.store.getState().isPlayerView && (matchesMapHotkey(e, 'delete', settings) || matchesMapHotkey(e, 'deleteAlt', settings))) {
-        if (this.levelLinks?.handleDelete() || this.lighting?.handleDelete()) {
+        // The kept measurement under the pointer goes before anything selected does
+        if (this.measureRenderer?.handles.handleDelete() || this.levelLinks?.handleDelete() || this.lighting?.handleDelete()) {
           e.preventDefault();
           return;
         }
@@ -1221,6 +1224,7 @@ export class PixiRendererOrchestrator { // Renamed class
     }
 
     this.lighting?.wire(this.tokenRenderer);
+    if (this.measureRenderer) this.tokenRenderer.setMeasureHandlers(this.measureRenderer.handles.pointer);
 
     // Wire audio tool viewport handlers
     if (this.audioRenderer && this.audioTool) {
@@ -1241,10 +1245,15 @@ export class PixiRendererOrchestrator { // Renamed class
     measure.measurementSettingsProvider = () => mapMeasurementSettings(rules, this.store.getState());
     const grid = this.gridSystem;
     if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight() });
+    this.tokenRenderer?.setMeasureHandlers(measure.handles.pointer);
     this.stopMeasuresFollowingPlayers?.();
     this.stopMeasuresFollowingPlayers = this.tokenRenderer?.onPlayersViewChange(() => measure.refreshVisibility());
     this.stopMeasuresFollowingRules?.();
     this.stopMeasuresFollowingRules = onMapRulesChange(this.obsApp, () => this.store.getState().mapPath, () => measure.rulesChanged(), rules);
+    // A ruler that starts or ends on a token counts its height, so it is written again when that changes
+    if (grid) measure.heightAt = measureHeightAt(this.store, grid);
+    this.stopMeasuresFollowingHeights?.();
+    this.stopMeasuresFollowingHeights = followTokenHeights(this.store, () => measure.rulesChanged());
   }
 
   /** Handle audio tool pointer down: click to select existing source or place new one */
@@ -1345,6 +1354,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.fogRenderer?.destroy(); // Destroy FogRenderer
     this.stopMeasuresFollowingPlayers?.();
     this.stopMeasuresFollowingRules?.();
+    this.stopMeasuresFollowingHeights?.();
     this.measureRenderer?.destroy(); // Destroy MeasureRenderer
     this.laserPointerRenderer?.destroy(); // Destroy LaserPointerRenderer
     this.drawingRenderer?.destroy(); // Destroy DrawingRenderer

@@ -161,10 +161,12 @@ export function createUIActions(
     openLightPopover: (lightId) => set((draft) => {
       draft.lightPopover = lightId;
       draft.lightZonePopover = null;
+      draft.measurePopover = null;
     }),
     openLightZonePopover: (zoneId) => set((draft) => {
       draft.lightZonePopover = zoneId;
       draft.lightPopover = null;
+      draft.measurePopover = null;
     }),
     closeLightZonePopover: () => set((draft) => { draft.lightZonePopover = null; }),
     openLevelLinkPopover: (linkId) => set((draft) => { draft.levelLinkPopover = linkId; }),
@@ -172,7 +174,11 @@ export function createUIActions(
     openLevelSurfacePopover: (surfaceId) => set((draft) => { draft.levelSurfacePopover = surfaceId; }),
     closeLevelSurfacePopover: () => set((draft) => { draft.levelSurfacePopover = null; }),
     closeLightPopover: () => set((draft) => { draft.lightPopover = null; }),
-    openMeasurePopover: (measureId) => set((draft) => { draft.measurePopover = measureId; }),
+    openMeasurePopover: (measureId) => set((draft) => {
+      draft.measurePopover = measureId;
+      draft.lightPopover = null;
+      draft.lightZonePopover = null;
+    }),
     closeMeasurePopover: () => set((draft) => { draft.measurePopover = null; }),
     setMeasureTool: (changes) => set((draft) => { draft.measureTool = { ...draft.measureTool, ...changes }; }),
     setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),

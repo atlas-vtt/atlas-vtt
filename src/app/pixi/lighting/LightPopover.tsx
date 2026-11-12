@@ -142,7 +142,7 @@ function ShinesRow({ light, onChange }: { light: LightSource; onChange: (level: 
  * Focus moves into the popover when it opens (to the popover itself, so Tab reaches its first
  * control and no tooltip opens unasked), and back to where it was when the popover starts to leave.
  */
-function useFocusWhileOpen(ref: React.RefObject<HTMLElement | null>, present: boolean): void {
+export function useFocusWhileOpen(ref: React.RefObject<HTMLElement | null>, present: boolean): void {
   const before = useRef<Element | null>(null);
   useEffect(() => {
     const element = ref.current;

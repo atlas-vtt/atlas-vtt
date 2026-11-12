@@ -49,7 +49,8 @@ export function measureScene(grid: MeasureGrid = SQUARE_GRID): MeasureScene {
   const full = vi.fn<() => void>();
   const measure = new MeasureRenderer(viewport, store, grid, full);
   const boundary = new EventBoundary(viewport);
-  const parts = (): HideableLayer[] => measure.getGmViewLayers().map(({ layer }) => layer);
+  // The handles' layer is the GM's control, not a measurement's part.
+  const parts = (): HideableLayer[] => measure.getGmViewLayers().map(({ layer }) => layer).filter((layer) => layer !== measure.handles.layer);
   return {
     measure, viewport, store, full, parts,
     visible: () => parts().map((part) => part.visible),

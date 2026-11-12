@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ownSpeed, statblockSpeeds, tokenSpeed } from '../../../src/app/creatures/statblockSpeeds';
+import { chosenSpeed, ownSpeed, speedChoices, statblockSpeeds, tokenSpeed } from '../../../src/app/creatures/statblockSpeeds';
 import type { GameUnit } from '../../../src/app/grid/statedDistance';
 import { sceneFromFile, sceneToFile, tokenFromFile, tokenToFile } from '../../../src/app/resources/resourceFileFormat';
 import { meaningsOf } from '../../../src/app/statblocks/resolve/fieldMeanings';
@@ -96,6 +96,55 @@ describe('tokenSpeed', () => {
       expect(tokenSpeed({ speed, statblockPath: 'Goblin.md' }, goblin, FEET)).toBe(30);
     }
     expect(ownSpeed({ speed: 7.5 })).toBe(7.5);
+  });
+});
+
+describe('the speed a token picked of those its statblock states', () => {
+  const dragon = { fields: { speed: '40 ft., climb 40 ft., Fly 80 ft., swim 40 ft.' } };
+  const linked = (speedKind?: unknown): { statblockPath: string; speedKind?: unknown } => ({ statblockPath: 'Dragon.md', ...(speedKind !== undefined && { speedKind }) });
+
+  it('moves the token by the speed of that name, whatever its case', () => {
+    expect(tokenSpeed(linked(), dragon, FEET)).toBe(40);
+    expect(tokenSpeed(linked('Fly'), dragon, FEET)).toBe(80);
+    expect(tokenSpeed(linked(' fly '), dragon, FEET)).toBe(80);
+    expect(tokenSpeed(linked('fly'), dragon, METRES)).toBe(24);
+  });
+
+  it('falls back to the first for a pick the statblock does not state, and for one that is no name', () => {
+    for (const kind of ['burrow', '', '  ', 3, null, {}, ['fly']]) expect(tokenSpeed(linked(kind), dragon, FEET), String(kind)).toBe(40);
+  });
+
+  it('gives way to a speed of the token\'s own', () => {
+    expect(tokenSpeed({ ...linked('fly'), speed: 15 }, dragon, FEET)).toBe(15);
+  });
+
+  it('offers the first speed and every later one with a name of its own', () => {
+    const names = (speed: unknown): Array<string | null> => speedChoices(statblockSpeeds({ speed }, undefined, FEET)).map((stated) => stated.name);
+    expect(names('40 ft., climb 40 ft., fly 80 ft.')).toEqual([null, 'climb', 'fly']);
+    expect(names('fly 60 ft., swim 30 ft.')).toEqual(['fly', 'swim']);
+    // A later speed without a name, or named like one before it, cannot be picked by name.
+    expect(names("120' (40')")).toEqual([null]);
+    expect(names('30 ft., fly 60 ft., Fly 90 ft. (hover)')).toEqual([null, 'fly']);
+    expect(names({ walk: 30, fly: 60 })).toEqual(['walk', 'fly']);
+    expect(names('slow')).toEqual([]);
+  });
+
+  it('picks among the choices alone: a named first speed is found by its name too', () => {
+    const speeds = statblockSpeeds({ speed: 'fly 60 ft., swim 30 ft.' }, undefined, FEET);
+    expect(chosenSpeed(speeds, 'fly')?.speed).toBe(60);
+    expect(chosenSpeed(speeds, 'swim')?.speed).toBe(30);
+    expect(chosenSpeed(speeds, undefined)?.speed).toBe(60);
+    expect(chosenSpeed([], 'fly')).toBeUndefined();
+  });
+
+  it('goes through a scene file with the token and is left out once cleared', () => {
+    const token = { id: 't', kind: 'character', name: 'Wyrm', x: 1, y: 2, imagePath: 'w.png', statblockPath: 'Dragon.md', speedKind: 'fly' };
+    expect(tokenToFile(token)).toMatchObject({ speedKind: 'fly' });
+    expect(tokenFromFile(JSON.parse(JSON.stringify(tokenToFile(token))) as Record<string, unknown>)).toEqual(token);
+    const scene = { objects: { tokens: { t: token } }, tokenSettings: { hiddenResources: [] }, initiative: { entries: [] } };
+    expect(sceneFromFile(JSON.parse(JSON.stringify(sceneToFile(scene))) as typeof scene).objects.tokens.t).toEqual(token);
+    const cleared = JSON.parse(JSON.stringify(tokenToFile({ ...token, speedKind: undefined }))) as Record<string, unknown>;
+    expect(cleared).not.toHaveProperty('speedKind');
   });
 });
 

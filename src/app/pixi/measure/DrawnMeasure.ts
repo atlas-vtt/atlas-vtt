@@ -2,6 +2,7 @@ import { Container } from 'pixi.js';
 import type { GridGeometry } from '../../grid/gridDistance';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { Measurement } from '../../measure/measureTypes';
+import type { HeightAt } from '../../measure/tokenHeight';
 import type { MeasureParts } from '../measurePartsVisibility';
 import { destroyTree } from '../utils/destroyTree';
 import { drawMeasurement, measureLabelTarget } from '../utils/measureDrawing';
@@ -19,6 +20,8 @@ export interface MeasureLook {
   readonly settings: MeasurementSettings;
   /** The colour of a measurement that names none. */
   readonly accent: number;
+  /** How high the token at a point stands: a ruler counts the height between its two ends. Without it, none. */
+  readonly heightAt?: HeightAt | null;
 }
 
 /**
@@ -62,7 +65,8 @@ export class DrawnMeasure {
     const { zoom, grid, settings } = look;
     this.ink.begin(zoom);
     drawMeasurement(this.ink, color ?? look.accent, measurement, settings.coneAngle);
-    this.distance.show(pathDistance(grid, measurement.points, settings), measureLabelTarget(measurement), zoom, grid.size);
+    const heightAt = measurement.shape === 'ruler' ? look.heightAt : null;
+    this.distance.show(pathDistance(grid, measurement.points, settings, heightAt), measureLabelTarget(measurement), zoom, grid.size);
     const legs = measurement.shape === 'ruler' ? legDistances(grid, measurement.points, settings) : [];
     this.fitLegs(legs.length);
     legs.forEach(({ from, to, distance }, index) => this.legs[index]!.show(distance, { beside: [from, to] }, zoom, grid.size));

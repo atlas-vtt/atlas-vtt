@@ -32,7 +32,7 @@ import { fogCoverage } from '../../../src/app/fog/fogCoverage';
 import { fogRectangle } from '../../helpers/fogOperations';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
 import type { TokenEntity } from '../../../src/app/types';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
@@ -1419,10 +1419,12 @@ describe('TokenRenderer Integration Tests', () => {
       measure.destroy();
     });
 
+    /** The measurements' own parts among `layers`: the handles' layer is the GM's control. */
+    const parts = (layers: LayerVisibility[]): LayerVisibility[] => layers.filter(({ layer }) => layer !== measure.handles.layer);
     /** The measurement parts' `visible` on the canvas, the live ruler first. */
-    const onCanvas = (): boolean[] => measure.getGmViewLayers().map(({ layer }) => layer.visible);
+    const onCanvas = (): boolean[] => parts(measure.getGmViewLayers()).map(({ layer }) => layer.visible);
     /** What a players' frame shows of them. */
-    const inFrame = (): boolean[] => measure.getPlayerViewLayers(tokenRenderer.playersSeeInFrame(perception)).map(({ visible }) => visible);
+    const inFrame = (): boolean[] => parts(measure.getPlayerViewLayers(tokenRenderer.playersSeeInFrame(perception))).map(({ visible }) => visible);
     const keepRuler = (x: number): void => {
       store.getState().setMeasureTool({ keep: true });
       store.getState().setActiveTool('measure');
@@ -1481,6 +1483,37 @@ describe('TokenRenderer Integration Tests', () => {
       expect(inFrame()).toEqual([true, false, false, false, false, false]);
       store.getState().setGMView(true);
       expect(onCanvas()).toEqual([true, false, true, true, true, true]);
+    });
+
+    it('hands a press on a kept ruler\'s handle to it before the token under it, with any tool, and to the token in the players\' view', async () => {
+      store.getState().addToken(token({ id: 'goblin', x: 105, y: 105 }));
+      await waitForTokens('goblin');
+      keepRuler(105);
+      const [id] = Object.keys(store.getState().objects.measures ?? {});
+      const click = (x: number, y: number): void => {
+        viewport.emit('pointerdown', pointerEvent(x, y));
+        viewport.emit('pointerup', pointerEvent(x, y));
+      };
+      // With the measure tool the handle's press measures nothing.
+      click(105, 105);
+      expect(measure.measurements.get().live).toBeNull();
+      expect(store.getState().measurePopover).toBe(id);
+      store.getState().closeMeasurePopover();
+      store.getState().setActiveTool('select');
+      click(105, 105);
+      expect(store.getState().measurePopover).toBe(id);
+      expect(store.getState().selectedIds).toEqual([]);
+      // Beside the handle the token is the token's.
+      store.getState().closeMeasurePopover();
+      click(125, 120);
+      expect(store.getState().measurePopover).toBeNull();
+      expect(store.getState().selectedIds).toEqual(['goblin']);
+      store.getState().clearSelection();
+      // The players' view has no handles: the press there is the token's.
+      store.getState().setGMView(false);
+      click(105, 105);
+      expect(store.getState().measurePopover).toBeNull();
+      expect(store.getState().selectedIds).toEqual(['goblin']);
     });
   });
 

@@ -28,7 +28,9 @@ export interface LiveMeasureParts extends MeasureParts {
  * Which parts of the measurements show, the one place that sets their `visible`. The GM's view shows
  * what is drawn; the players' picture (their frame, and the canvas while it shows their view) leaves a
  * measurement out while `playersSeeMeasure` says so: one the GM measures for themselves, and one
- * whose start lies on tokens the players do not see. The pin is the GM's control: never in a frame.
+ * whose start lies on tokens the players do not see. The pin and the kept measurements' handles are
+ * the GM's controls: the pin is never in a frame, and the handles show on the GM's view of the
+ * canvas alone, never in a frame or a picture of the scene.
  */
 export class MeasurePartsVisibility {
   /** Whether the live label is drawn: set with every drawing, cleared with the measurement. It starts shown, empty. */
@@ -37,7 +39,8 @@ export class MeasurePartsVisibility {
   private liveAudience: MeasureAudience | null = null;
   private readonly kept = new Map<MeasureParts, MeasureAudience>();
 
-  constructor(private readonly live: LiveMeasureParts, private readonly view: () => MeasurePlayersView | null) {
+  /** `handles` is the layer of the kept measurements' handles. */
+  constructor(private readonly live: LiveMeasureParts, private readonly view: () => MeasurePlayersView | null, private readonly handles: HideableLayer) {
     live.pin.visible = false;
   }
 
@@ -89,7 +92,9 @@ export class MeasurePartsVisibility {
   /** A kept measurement is drawn in `parts`, or changed: `audience` says who sees it. */
   keep(parts: MeasureParts, audience: MeasureAudience): void {
     this.kept.set(parts, audience);
-    setLayerVisibility(this.keptLayers(parts, audience, this.seenOnCanvas()));
+    const seen = this.seenOnCanvas();
+    this.showHandles(seen);
+    setLayerVisibility(this.keptLayers(parts, audience, seen));
   }
 
   /** A kept measurement's drawing is gone. */
@@ -100,19 +105,28 @@ export class MeasurePartsVisibility {
   /** Shows on the canvas what it should show now: the players' sight, or whether the canvas shows it, changed. */
   refresh(): void {
     if (!this.liveAudience && this.kept.size === 0) return;
-    setLayerVisibility(this.layers(this.seenOnCanvas()));
+    const seen = this.seenOnCanvas();
+    this.showHandles(seen);
+    setLayerVisibility(this.layers(seen));
   }
 
   /** Every part as a players' frame shows it, by what they see (`seen`). */
   playerViewLayers(seen: TokenSeen): LayerVisibility[] {
     const layers = this.layers(seen);
     if (this.live.pin.visible) layers.push({ layer: this.live.pin, visible: false });
+    layers.push({ layer: this.handles, visible: false });
     return layers;
   }
 
-  /** Every part as the GM view shows it, for a picture of the scene. */
+  /** Every part as the GM view shows it, for a picture of the scene: the measurements, without the handles the GM moves them by. */
   gmViewLayers(): LayerVisibility[] {
-    return this.layers(null);
+    return [...this.layers(null), { layer: this.handles, visible: false }];
+  }
+
+  /** The handles show on the GM's view of the canvas alone (`seen` is null there). Asked only while something is kept: without, there is no handle. */
+  private showHandles(seen: TokenSeen | null): void {
+    const shown = seen === null;
+    if (this.handles.visible !== shown) this.handles.visible = shown;
   }
 
   private seenOnCanvas(): TokenSeen | null {

@@ -24,6 +24,7 @@ export function wirePlayerMeasurements(deps: {
   lighting: () => TokenPerception | undefined;
 }): () => void {
   deps.measure.playersView = measurePlayersView({ store: deps.store, grid: deps.grid, tokens: () => deps.tokens, lighting: deps.lighting });
+  deps.tokens.setMeasureHandlers(deps.measure.handles.pointer);
   return deps.tokens.onPlayersViewChange(() => deps.measure.refreshVisibility());
 }
 

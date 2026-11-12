@@ -41,13 +41,21 @@ export interface TokenResourceValue {
 
 /** Base interface for any token entity. */
 export interface BaseToken extends OnOneLevel {
-  /** Height above its level's floor in game units (flying); unset stands on the floor. */
-  elevation?: number;
+  /**
+   * Height above its level's floor in game units: a flier, or below 0 a swimmer or a creature in a
+   * pit. Unset stands on the floor. Read with `tokenHeight`; `undefined` clears it when patched.
+   */
+  elevation?: number | undefined;
   /**
    * How far the token moves in one move, in game units, set by hand. Unset follows its statblock;
    * read with `tokenSpeed`. `undefined` clears it when patched.
    */
   speed?: number | undefined;
+  /**
+   * Which of the speeds its statblock states the token moves by, by the speed's name ("fly");
+   * unset is the first. Read with `tokenSpeed`; `undefined` clears it when patched.
+   */
+  speedKind?: string | undefined;
   /** False preserves the whole artwork without an Atlas frame. Defaults to true. */
   showRing?: boolean;
   /** Expendable resources by definition key; see `src/app/resources/`. */

@@ -197,7 +197,7 @@ export function openEditTokenModal(
   // The senses of the map's rules and what they measure in, as its statblocks are read with.
   const rules = mapSenseRules(app, AssetService.getInstance(app), store.getState());
   const lighting = lightingContext(store.getState(), app, rules);
-  const statblock = character?.statblockPath ? { app, path: character.statblockPath, rules } : null;
+  const statblock = character?.statblockPath ? { app, path: character.statblockPath, rules, speedKind: token.speedKind } : null;
   const container = getDomHost().createDiv(portalHost(doc), 'atlas-vtt-plugin atlas-vtt-root');
   const root = createRoot(container);
 

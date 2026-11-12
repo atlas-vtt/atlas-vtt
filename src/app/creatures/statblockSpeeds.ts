@@ -67,10 +67,12 @@ export function statblockSpeeds(fields: Readonly<Record<string, unknown>>, meani
   return phrases.length > 0 ? speedsIn(boundedText(phrases.join(', ')), unit) : [];
 }
 
-/** What a token's speed is read of: its own speed, and the statblock it links. */
+/** What a token's speed is read of: its own speed, the statblock it links and the speed it picked of that. */
 export interface SpeedToken {
   speed?: unknown;
   statblockPath?: string | undefined;
+  /** The name of the stated speed the token moves by (`BaseToken.speedKind`); unset is the first. */
+  speedKind?: unknown;
 }
 
 /** A linked statblock as `CreatureIndex` holds it. */
@@ -81,15 +83,43 @@ export function ownSpeed(token: Pick<SpeedToken, 'speed'>): number | undefined {
   return positiveNumber(token.speed);
 }
 
+/** A speed's name as names are compared: whatever its case; null for a speed without a name. */
+export function speedKindOf(name: unknown): string | null {
+  const kind = typeof name === 'string' ? name.trim().toLowerCase() : '';
+  return kind === '' ? null : kind;
+}
+
 /**
- * How far a token moves in one move, in the collection's game units: its own speed, else the first
- * its linked statblock states. Null for a token without either, which moves without steps.
- * `creature` is the record of `token.statblockPath` in `CreatureIndex`: undefined while unread,
- * null for a note without a statblock.
+ * The speeds of a statblock a token may move by: the first it states, the default, and every
+ * later one that has a name of its own, by which a token records its pick (`speedKind`). A later
+ * speed without a name, or named like one before it, cannot be told apart and is left out.
+ */
+export function speedChoices(speeds: readonly StatedSpeed[]): StatedSpeed[] {
+  const seen = new Set<string | null>();
+  return speeds.filter((stated, index) => {
+    const kind = speedKindOf(stated.name);
+    if (index > 0 && (kind === null || seen.has(kind))) return false;
+    seen.add(kind);
+    return true;
+  });
+}
+
+/** The stated speed a token picked by name (`kind`): that choice, else the first, which also stands in for a pick the statblock no longer states. */
+export function chosenSpeed(speeds: readonly StatedSpeed[], kind: unknown): StatedSpeed | undefined {
+  const picked = speedKindOf(kind);
+  const choices = speedChoices(speeds);
+  return (picked === null ? undefined : choices.find((stated) => speedKindOf(stated.name) === picked)) ?? choices[0];
+}
+
+/**
+ * How far a token moves in one move, in the collection's game units: its own speed, else the one
+ * it picked of those its linked statblock states (`speedKind`), else the first. Null for a token
+ * without either, which moves without steps. `creature` is the record of `token.statblockPath` in
+ * `CreatureIndex`: undefined while unread, null for a note without a statblock.
  */
 export function tokenSpeed(token: SpeedToken, creature: SpeedCreature | null | undefined, unit: GameUnit): number | null {
   const own = ownSpeed(token);
   if (own !== undefined) return own;
   if (!token.statblockPath || !creature) return null;
-  return statblockSpeeds(creature.fields, creature.meanings, unit)[0]?.speed ?? null;
+  return chosenSpeed(statblockSpeeds(creature.fields, creature.meanings, unit), token.speedKind)?.speed ?? null;
 }

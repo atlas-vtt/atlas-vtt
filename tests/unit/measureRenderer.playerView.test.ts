@@ -125,10 +125,10 @@ describe('MeasureRenderer and the players\' picture', () => {
     s.store.getState().setActiveTool('measure');
     s.pointer('pointerdown', 400, 100);
     s.pointer('pointermove', 600, 100);
-    expect(s.measure.getPlayerViewLayers((id) => seen.has(id)).map((entry) => entry.visible)).toEqual([true, true]);
+    expect(s.measure.getPlayerViewLayers((id) => seen.has(id)).slice(0, 2).map((entry) => entry.visible)).toEqual([true, true]);
     s.pointer('pointerup', 600, 100);
     s.pointer('pointerdown', 800, 800);
-    expect(s.measure.getPlayerViewLayers(() => false).map((entry) => entry.visible)).toEqual([true, true]);
+    expect(s.measure.getPlayerViewLayers(() => false).slice(0, 2).map((entry) => entry.visible)).toEqual([true, true]);
   });
 
   it('keeps the origin with a kept measurement, drops it when the live one clears, and forgets kept ones that are cleared', () => {
@@ -160,7 +160,8 @@ describe('MeasureRenderer and the players\' picture', () => {
     // The live parts were cleared with their origin.
     expect(s.measure.getPlayerViewLayers(() => false).slice(0, 2).map((entry) => entry.visible)).toEqual([true, false]);
     s.store.getState().clearMeasures();
-    expect(s.measure.getPlayerViewLayers(() => false)).toHaveLength(2);
+    // The live parts and the handles' layer are left.
+    expect(s.measure.getPlayerViewLayers(() => false)).toHaveLength(3);
   });
 
   it('hides by the rule on the canvas while it shows the players\' view, and gives the GM view back', () => {
@@ -183,7 +184,7 @@ describe('MeasureRenderer and the players\' picture', () => {
     // A picture of the scene is the GM's, whatever the canvas shows.
     canvas.players = true;
     s.measure.refreshVisibility();
-    expect(s.measure.getGmViewLayers().map((entry) => entry.visible)).toEqual([true, true, true, true]);
+    expect(s.measure.getGmViewLayers().slice(0, 4).map((entry) => entry.visible)).toEqual([true, true, true, true]);
     s.pointer('pointerup', 300, 100);
   });
 

@@ -11,6 +11,8 @@ export interface StatblockLink {
   path: string;
   /** The senses of the map's collection and what it measures in (`mapSenseRules`). */
   rules: SenseRules;
+  /** Which of the statblock's speeds the token moves by (`BaseToken.speedKind`); unset is the first. */
+  speedKind?: string | undefined;
 }
 
 /**

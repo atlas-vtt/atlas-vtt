@@ -12,6 +12,9 @@
 - A ruler with corners shows the length of each leg and the total at its end
 - A measurement you keep is saved with the scene, and undo takes it back
 - A measurement you let go shows a pin beside its distance for two seconds: click the pin to keep it
+- A kept measurement has a small handle at its start, shown only to you. Drag the handle to move the measurement with any tool; its line and area take no clicks, so tokens under them stay in reach
+- Click the handle to change the measurement's colour, hide it from players or delete it
+- Delete or Backspace with the pointer over a handle removes that measurement
 - Hold Shift as you let go to do the opposite of Keep for that one measurement
 - Hold Alt to measure without snapping to the grid
 - Measurements have a dark edge, so they show on bright maps
@@ -19,7 +22,10 @@
 - Covered cells: a collection's Grid and measure settings say when an area covers a square or hex: at least half of it is inside, its centre is inside, or any part of it is
 - A cone can end rounded or flat, chosen in the same settings
 - Movement steps: the same settings name the steps of a move, such as Move ×1 and Dash ×2, each so many times a token's speed and with a colour of its own, and whether movement adds up over a turn. D&D 5e and Pathfinder 2e come with theirs
-- Speed: a token moves by the speed its statblock states, or by one of its own that you type in Edit token
+- While you drag a token, its line takes the colour of the step the move is in and turns red past the last one, and the label reads moved / speed, such as 25 / 30ft. Where movement adds up over a turn, a token's moves in its turn count together while a fight runs, and undo gives the distance back
+- Speed: a token moves by the speed its statblock states, or by one of its own that you type in Edit token. Where a statblock states several, such as walking and flying, pick one under Movement in the token's menu
+- Height: a token's menu has Height, which lifts it off the floor or puts it below, one square's distance at a time (+ and - work too), for the whole selection. A small tag over the token says how far, such as ↑ 30ft, and players see it on tokens they see
+- A ruler that starts or ends on a token counts the height between its two ends, by the collection's rule for diagonals
 
 ## Improved
 

@@ -8,7 +8,8 @@ import type { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { Point } from '../../grid/hexGeometry';
 import type { HideableLayer } from '../playerSafeFrame';
-import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
+import { BEYOND_SPEED, type MoveColor } from '../../measure/dragMovement';
+import { cssColorToHexNumber, getObsidianAccentColor, getObsidianErrorColor } from '../utils/colorUtils';
 import { drawMeasurePath, drawMeasurePoint } from '../utils/measureDrawing';
 import { MeasureInk, MeasureInkLayer } from '../utils/measureInk';
 import { MeasureLabel, watchMeasureLabelTheme } from '../utils/measureLabel';
@@ -21,6 +22,14 @@ interface Drawn {
   readonly distance: string;
   readonly tokenRadius: number;
   readonly gridSize: number;
+  /** The colour of the movement step the drag lies in; unset is the theme's accent. */
+  readonly color?: MoveColor | undefined;
+}
+
+/** The ink of a drag: its step's colour, the theme's warning red past the last step, else the accent. Read at every draw, so it follows the theme. */
+function inkColor(color: MoveColor | undefined): number {
+  if (color === undefined) return cssColorToHexNumber(getObsidianAccentColor());
+  return cssColorToHexNumber(color === BEYOND_SPEED ? getObsidianErrorColor() : color);
 }
 
 export class DragRulerView {
@@ -49,10 +58,11 @@ export class DragRulerView {
   /**
    * Draws the path through `points` with `distance` beside its middle, clear of a token of
    * `tokenRadius` (world units) at its end, the label sized as token UI on a grid of `gridSize`.
+   * `color` is the movement step the drag lies in (`dragMove`); without one the path is the accent's.
    */
-  draw(points: readonly Point[], distance: string, tokenRadius: number, gridSize: number): void {
+  draw(points: readonly Point[], distance: string, tokenRadius: number, gridSize: number, color?: MoveColor): void {
     if (points.length === 0) return;
-    this.drawn = { points, distance, tokenRadius, gridSize };
+    this.drawn = { points, distance, tokenRadius, gridSize, color };
     this.redraw();
     this.layer.view.visible = true;
     this.label.view.visible = true;
@@ -81,13 +91,13 @@ export class DragRulerView {
     const drawn = this.drawn;
     if (!drawn) return;
     const { points, distance, tokenRadius, gridSize } = drawn;
-    const accent = cssColorToHexNumber(getObsidianAccentColor());
+    const color = inkColor(drawn.color);
     const zoom = this.viewport.scale.x;
     this.drawnZoom = zoom;
     this.path.begin(zoom);
-    drawMeasurePath(this.path, accent, points);
+    drawMeasurePath(this.path, color, points);
     // The dragged token covers the end point; the origin and waypoints stay marked.
-    points.slice(0, -1).forEach((point, index) => drawMeasurePoint(this.path, accent, point, index === 0));
+    points.slice(0, -1).forEach((point, index) => drawMeasurePoint(this.path, color, point, index === 0));
     const end = points[points.length - 1]!;
     this.label.show(distance, { beside: points, avoid: tokenRadius > 0 ? { x: end.x, y: end.y, radius: tokenRadius } : null }, zoom, gridSize);
   }

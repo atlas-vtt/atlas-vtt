@@ -26,11 +26,12 @@ function lengthByWidth(length: number, width: number, settings: MeasurementSetti
 /**
  * The label of `measurement` on `grid`. An area's size is the straight distance of its drag in
  * cells, whatever the diagonal rule, so a circle of four cells reads the same in every direction;
- * a ruler's is its path by the rule. `tokens` is the number of tokens in an area.
+ * a ruler's is its path by the rule. `tokens` is the number of tokens in an area; `rise` the height
+ * between a ruler's two ends in cells (`riseBetweenEnds`), which an area never counts.
  */
-export function measureLabelText(measurement: Measurement, grid: GridGeometry, settings: MeasurementSettings, tokens = 0): string {
+export function measureLabelText(measurement: Measurement, grid: GridGeometry, settings: MeasurementSettings, tokens = 0, rise = 0): string {
   const { shape, points } = measurement;
-  if (shape === 'ruler') return formatDistance(pathLengthInCells(grid, points, settings.diagonalRule), settings);
+  if (shape === 'ruler') return formatDistance(pathLengthInCells(grid, points, settings.diagonalRule, rise), settings);
   const [origin, end] = points;
   const length = origin && end ? lengthInCells(Math.hypot(end.x - origin.x, end.y - origin.y), grid.size) : 0;
   let size: string;
