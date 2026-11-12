@@ -94,3 +94,13 @@
 - A note pinned to the map stays pinned, where you left it, after you click its pin to open the full note
 - A tooltip no longer blocks the buttons it covers, so the icon in the row above shows its own tooltip right away
 - Moving the Atlas folder inside the vault and back no longer leaves scenes without their map images
+- Obsidian now quits properly on macOS with Atlas enabled, and no longer pauses on "Saving…" when there is nothing to save
+- Note pins can no longer be placed while the players' view hides them, and typing a note's name after picking a pin icon no longer triggers map shortcuts
+- The first click with the pin, pen or fog tool after clicking a pin or token no longer does nothing
+- A Counter's maximum changed in a statblock template now reaches the statblocks that took it from the template; a maximum set on a statblock itself stays
+- Transparent parts and openings of an upper floor show the floor below on scenes without dynamic lighting too
+- A map without a grid no longer starts the grid search again each time its scene is opened
+- A pinned note preview stays pinned when you use its Open file button, and the note opens in a new tab instead of replacing the map
+- A tooltip shows again when the pointer slips off an icon and straight back onto it
+- Statblock text no longer leaves a stray bracket after a link to a heading with brackets, and reads links that have a title
+- A Base whose file cannot be read now says "Could not be read" instead of staying on "Reading…"
