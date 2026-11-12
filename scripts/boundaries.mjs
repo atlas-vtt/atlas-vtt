@@ -54,6 +54,7 @@ export const BOUNDARIES = {
       "src/app/pixi/token-renderer/tokenSizing.ts",
       "src/app/pixi/token-renderer/tokenRingMetrics.ts",
       "src/app/pixi/token-renderer/tokenRingTexture.ts",
+      "src/app/pixi/tokenPlacement/placementLayout.ts",
       "src/app/resources/resourceDefinitions.ts",
       "src/app/resources/resourceFileFormat.ts",
       "src/app/resources/resourceSlots.ts",
