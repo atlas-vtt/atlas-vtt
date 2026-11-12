@@ -1,5 +1,6 @@
 import { MAX_COORDINATE, type CursorState, type FullMeasure, type FullMeasures, type LaserState, type MarkPoint, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure, type SharedMeasure } from '../protocol/index.ts';
 import { LASER_COLOR_SWATCHES, resolveLaserPointerSettings } from '../../tools/laserPointerSettings';
+import { plainMeasure } from '../marks/index.ts';
 import { MoveRate, type MapSize } from './moveCheck.ts';
 
 /** What a player's marks are checked against. */
@@ -63,15 +64,20 @@ function fullNearMap({ pts }: FullMeasure, map: MapSize | null): boolean {
   return true;
 }
 
-/** Measurements told in full without those off the map. */
+/**
+ * A player's measurements told in full, without those off the map, each with nothing but what it
+ * measures (`plainMeasure`): a colour of its own, an effect and an aura are the GM's to put on the
+ * table, and whatever a player's message says of them is dropped here.
+ */
 function fullOnMap({ live, kept }: FullMeasures, map: MapSize | null): FullMeasures {
-  return { live: live !== null && fullNearMap(live, map) ? live : null, kept: kept.filter((measure) => fullNearMap(measure, map)) };
+  return { live: live !== null && fullNearMap(live, map) ? plainMeasure(live) : null, kept: kept.filter((measure) => fullNearMap(measure, map)).map(plainMeasure) };
 }
 
 /**
  * A player's measurements as the GM takes them, or null when they are refused: another scene, or a
  * colour that is not a swatch. Measurements off the map are left out, those told in full too, and
- * with the one being drawn its span.
+ * with the one being drawn its span. Every measurement is in the player's one colour and has
+ * neither effect nor aura (`fullOnMap`).
  */
 export function checkMeasure(message: PlayerMeasure, context: MarkContext): MeasureState | null {
   if (context.scene === null || message.scene !== context.scene) return null;

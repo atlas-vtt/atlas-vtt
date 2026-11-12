@@ -1,9 +1,10 @@
-import { MAX_MARK_KEPT, type FullMeasures, type MeasureState } from '../protocol/index.ts';
+import { MAX_MARK_KEPT, type FullMeasure, type FullMeasures, type MeasureState } from '../protocol/index.ts';
+import { keptAudience } from '../../measure/auraArea';
 import { isAura } from '../../measure/keptMeasures';
-import type { Measurement } from '../../measure/measureTypes';
+import type { KeptMeasure, Measurement } from '../../measure/measureTypes';
 import type { Measurements } from '../../pixi/measure/measurements';
 import { measureOriginOf, measureShownToPlayers, playersSeeMeasure, type MeasureOrigin, type TokenFootprint, type TokenSeen } from '../../vision/measureOrigin';
-import { legacyMeasures, measureInFull, SpanMeter } from '../marks/index.ts';
+import { legacyMeasures, measureInFull, SpanMeter, type ToldMeasure } from '../marks/index.ts';
 
 /** What the GM's measurements are judged by: where tokens stand and which ones the players see now. */
 export interface PlayersView {
@@ -18,7 +19,25 @@ export interface ShownMeasures extends Pick<MeasureState, 'live' | 'kept'> {
 
 type Point = Measurement['points'][number];
 
+/** The id players know a token by, or undefined for one they cannot be told of. */
+export type TokenAlias = (tokenId: string) => string | undefined;
+
 const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
+
+/**
+ * A kept measurement as players are told it: what it measures, whether walls stop it, its own
+ * colour and its look. An aura names its token by the id players know it by; null for an aura
+ * whose token they cannot be told of, which is then told to nobody.
+ */
+function toldKept(measure: KeptMeasure, alias: TokenAlias | undefined): ToldMeasure | null {
+  const { shape, points, width, walls, color, effect } = measure;
+  const told: ToldMeasure = {
+    shape, points, ...(width !== undefined && { width }), ...(walls === false && { walls }), ...(color !== undefined && { color }), ...(effect !== undefined && { effect }),
+  };
+  if (!isAura(measure)) return told;
+  const token = alias?.(measure.follows);
+  return token === undefined ? null : { ...told, aura: { token, reach: measure.aura } };
+}
 
 /**
  * The GM's measurements as the players' picture shows them, by Atlas's own rule (`playersSeeMeasure`):
@@ -30,10 +49,13 @@ const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
  *
  * They go out in full (`measureInFull`): a ruler with its corners, every area by its origin and its
  * end, a line with its width, and whether walls stop an area: one being made always stops at them,
- * a kept one unless its switch is off. An aura is told to nobody: players get none. Beside that
- * they go out in the words an older page knows (`legacyMeasures`), which say less: a ruler leg by
- * leg, no square and no line, and a circle or a cone that stops at walls only while no wall stands
- * on its level.
+ * a kept one unless its switch is off. Each goes with its own colour, a kept area with its look,
+ * and an aura with the token it lies around, by the id players know that token by: an aura is seen
+ * with its token (`keptAudience`), so one whose token the players do not see is told to nobody.
+ * Nothing says that an area gives light: its light is a light of the scene (`sharedSight`).
+ * Beside that they go out in the words an older page knows (`legacyMeasures`), which say less: a
+ * ruler leg by leg, no square, no line and no aura, and a circle or a cone that stops at walls
+ * only while no wall stands on its level.
  */
 export class GmMeasures {
   private live: { readonly pressed: Point; readonly origin: MeasureOrigin } | null = null;
@@ -70,15 +92,19 @@ export class GmMeasures {
     }
   }
 
-  /** What the players see of the measurements now, by `seen`. */
-  shown(seen: TokenSeen): ShownMeasures {
+  /** What the players see of the measurements now, by `seen`; `alias` names the tokens auras lie around, and without it no aura is told. */
+  shown(seen: TokenSeen, alias?: TokenAlias): ShownMeasures {
     const { live, kept } = this.records;
     const shownLive = live !== null && this.live !== null && playersSeeMeasure({ hidden: live.hidden, origin: this.live.origin }, seen) ? live : null;
     const shownKept = kept.filter((measure) => {
       const from = this.keptFrom.get(measure.id);
-      return !isAura(measure) && playersSeeMeasure(measure, seen) && (!from || measureShownToPlayers(from, seen));
+      return playersSeeMeasure(keptAudience(measure), seen) && (!from || measureShownToPlayers(from, seen));
     });
-    const told: FullMeasures = { live: shownLive && measureInFull(shownLive), kept: shownKept.flatMap((measure) => measureInFull(measure) ?? []) };
+    const inFull = (measure: KeptMeasure): FullMeasure | null => {
+      const said = toldKept(measure, alias);
+      return said && measureInFull(said);
+    };
+    const told: FullMeasures = { live: shownLive && measureInFull(shownLive), kept: shownKept.flatMap((measure) => inFull(measure) ?? []) };
     // The older words are made from every measurement shown, so a page that reads them is told what it always was.
     return { ...legacyMeasures(told, this.walled, MAX_MARK_KEPT), full: { live: told.live, kept: told.kept.slice(-MAX_MARK_KEPT) } };
   }

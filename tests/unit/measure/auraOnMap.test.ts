@@ -207,9 +207,11 @@ describe('who is shown an aura', () => {
     expect(bodies(s)).toHaveLength(1);
   });
 
-  it('is not passed on to players elsewhere, who would be told a circle where it was last edited', () => {
-    const { s } = scene();
+  it('is among the measurements passed on as the aura it is, so nobody takes it for a circle where it was last edited, and never when it is the GM\'s own', () => {
+    const { s, id } = scene();
     s.store.getState().addMeasure({ shape: 'circle', points: [cell(1, 1), cell(3, 1)] });
+    expect(s.measure.measurements.get().kept.map(({ follows, aura }) => [follows, aura])).toEqual([['hero', 10], [undefined, undefined]]);
+    s.store.getState().updateMeasure(id, { hidden: true });
     expect(s.measure.measurements.get().kept.map(({ follows }) => follows)).toEqual([undefined]);
   });
 });

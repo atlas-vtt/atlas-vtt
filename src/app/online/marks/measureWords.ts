@@ -2,14 +2,29 @@
  * A measurement between Atlas's words and the protocol's. Atlas says a shape and its points, with
  * a line's width, and of an area whether walls stop it; the protocol says that in full
  * (`FullMeasure`), and beside it what every reader knows: a line, a circle or a cone between two
- * points (`SharedMeasure`).
+ * points (`SharedMeasure`). What only a GM's kept measurement has goes in full alone: its own
+ * colour, its effect, and the token an aura lies around.
  */
 
-import { MAX_COORDINATE, MAX_RULER_NUMBERS, type FullMeasure, type FullMeasures, type MarkPoint, type MeasureState, type SharedMeasure } from '../protocol/index.ts';
+import { MARK_EFFECTS, MAX_AURA_REACH, MAX_COORDINATE, MAX_RULER_NUMBERS, TOKEN_ID_PATTERN, type FullMeasure, type FullMeasures, type MarkAura, type MarkPoint, type MeasureState, type SharedMeasure } from '../protocol/index.ts';
+import { readMeasureEffect, type MeasureEffect } from '../../measure/measureEffects';
 import type { Measurement } from '../../measure/measureTypes';
 
-/** A measurement as it is drawn: what it measures, and `walls: false` on an area that walls do not stop. */
-export type ToldMeasure = Measurement & { readonly walls?: false };
+/** The token an aura lies around, by the id its reader knows that token by, and how far it reaches from the token's space, in game units. */
+export type ToldAura = MarkAura;
+
+/**
+ * A measurement as it is drawn: what it measures, and `walls: false` on an area that walls do not
+ * stop. `color` ('#rrggbb') is its own colour, where it is not its sender's; `effect` the look an
+ * area's body has; `aura` is set on a circle that lies around a token, whose points then say only
+ * which way it faces.
+ */
+export type ToldMeasure = Measurement & {
+  readonly walls?: false;
+  readonly color?: string;
+  readonly effect?: MeasureEffect;
+  readonly aura?: ToldAura;
+};
 
 /** A sender's measurements as they are drawn. */
 export interface ToldMeasures {
@@ -19,31 +34,57 @@ export interface ToldMeasures {
 
 type Point = Measurement['points'][number];
 
+const COLOUR = /^#[0-9a-f]{6}$/i;
+
 const tenth = (value: number): number => Math.round(value * 10) / 10;
+const thousandth = (value: number): number => Math.round(value * 1000) / 1000;
 const onMap = (value: number): boolean => Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE;
 const pointAt = (pts: readonly number[], index: number): Point => ({ x: pts[2 * index] ?? 0, y: pts[2 * index + 1] ?? 0 });
 const markAt = (pts: readonly number[], index: number): MarkPoint => [pts[2 * index] ?? 0, pts[2 * index + 1] ?? 0];
 
+/** An aura as the protocol says it; null for one it cannot say: a token id that is none, a reach that is no distance. */
+function auraInFull({ token, reach }: ToldAura): MarkAura | null {
+  const told = thousandth(reach);
+  return TOKEN_ID_PATTERN.test(token) && told > 0 && told <= MAX_AURA_REACH ? { token, reach: told } : null;
+}
+
 /**
  * A measurement in full, its numbers to a tenth of a pixel; null for one the protocol cannot say:
- * a point off every map, fewer than two points, a ruler of more points than a message holds. An
- * area is told by its origin and its end.
+ * a point off every map, fewer than two points, a ruler of more points than a message holds, an
+ * aura whose token or reach cannot be said (never a circle in its place: that would stand where
+ * the aura was last edited). An area is told by its origin and its end. A colour that is not
+ * `#rrggbb` is left out, and so is an effect on a ruler.
  */
-export function measureInFull({ shape, points, width, walls }: ToldMeasure): FullMeasure | null {
+export function measureInFull({ shape, points, width, walls, color, effect, aura }: ToldMeasure): FullMeasure | null {
   const ruler = shape === 'ruler';
   const told = ruler ? points : [points[0], points[points.length - 1]];
   if (points.length < 2 || 2 * told.length > MAX_RULER_NUMBERS) return null;
   const pts = told.flatMap((point) => (point ? [tenth(point.x), tenth(point.y)] : []));
   if (pts.length !== 2 * told.length || !pts.every(onMap)) return null;
+  const follows = aura && shape === 'circle' ? auraInFull(aura) : undefined;
+  if (aura && !follows) return null;
   // A width the protocol would refuse (none left at a tenth of a pixel, or no number) is left out: the line then reads one cell wide.
   const wide = shape === 'line' && width !== undefined ? tenth(width) : 0;
-  return { shape, pts, ...(wide > 0 && onMap(wide) && { width: wide }), ...(!ruler && walls === false && { free: true as const }) };
+  const look = ruler ? undefined : MARK_EFFECTS.find((name) => name === effect);
+  return {
+    shape, pts, ...(wide > 0 && onMap(wide) && { width: wide }), ...(!ruler && walls === false && { free: true as const }),
+    ...(color !== undefined && COLOUR.test(color) && { color: color.toLowerCase() }), ...(look && { effect: look }), ...(follows && { aura: follows }),
+  };
 }
 
 /** A measurement told in full, as Atlas draws it. */
-export function measureFromFull({ shape, pts, width, free }: FullMeasure): ToldMeasure {
+export function measureFromFull({ shape, pts, width, free, color, effect, aura }: FullMeasure): ToldMeasure {
   const points = Array.from({ length: pts.length / 2 }, (_, index) => pointAt(pts, index));
-  return { shape, points, ...(width !== undefined && { width }), ...(free === true && { walls: false as const }) };
+  const look = readMeasureEffect(effect);
+  return {
+    shape, points, ...(width !== undefined && { width }), ...(free === true && { walls: false as const }),
+    ...(color !== undefined && { color }), ...(look && { effect: look }), ...(aura && { aura }),
+  };
+}
+
+/** A measurement told in full with nothing but what it measures: what a player's may say. */
+export function plainMeasure({ shape, pts, width, free }: FullMeasure): FullMeasure {
+  return { shape, pts, ...(width !== undefined && { width }), ...(free === true && { free }) };
 }
 
 /**
@@ -63,11 +104,13 @@ export function toldMeasures({ live, kept, full }: Pick<MeasureState, 'live' | '
 
 /**
  * A measurement in the older words: a ruler leg by leg, each leg a line, a circle and a cone as
- * themselves. None for a square or a line with a width, which those words cannot say. None either
- * for a circle or a cone that stops at walls on a level that has some (`walled`): the older words
- * say the whole shape, which would show more than its maker's own picture of it does.
+ * themselves. None for a square, a line with a width or an aura, which those words cannot say.
+ * None either for a circle or a cone that stops at walls on a level that has some (`walled`): the
+ * older words say the whole shape, which would show more than its maker's own picture of it does.
  */
-function legsOf({ shape, pts, free }: FullMeasure, walled: boolean): SharedMeasure[] {
+function legsOf({ shape, pts, free, aura }: FullMeasure, walled: boolean): SharedMeasure[] {
+  // An aura lies around its token, which the older words cannot say: its points are where it was last edited.
+  if (aura) return [];
   switch (shape) {
     case 'ruler':
       return Array.from({ length: pts.length / 2 - 1 }, (_, index) => ({ shape: 'line', a: markAt(pts, index), b: markAt(pts, index + 1) }));

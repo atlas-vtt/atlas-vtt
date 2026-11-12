@@ -2,7 +2,7 @@ import { CURSOR_KEEPALIVE_MS, GM_MARKS, MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, MA
 import type { SceneSource } from '../../host/sceneSource';
 import type { Measurements } from '../../pixi/measure/measurements';
 import { CursorShare, type CursorSharePorts } from './CursorShare.ts';
-import { GmMeasures, type PlayersView } from './gmMeasures.ts';
+import { GmMeasures, type PlayersView, type TokenAlias } from './gmMeasures.ts';
 import { checkLaser, checkMeasure, markRate } from './markCheck.ts';
 import type { MapSize, MoveRate } from './moveCheck.ts';
 import { legacyMeasures, Pacer, type CursorSource, type LaserSource, type PacerClock } from '../marks/index.ts';
@@ -42,6 +42,8 @@ export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePort
   showPlayerMarks?(marks: PlayerMarks): void;
   /** Whether the GM lets everyone see each other's cursor; without it nobody's cursor is taken or sent. */
   cursorsShown?(): boolean;
+  /** The id players know a token by, which an aura names the token it lies around by; without it players are told no aura. */
+  tokenAlias?: TokenAlias;
 }
 
 /** The live lane's key for `marks`: one waits at most. */
@@ -103,7 +105,8 @@ const spansAdded = (covered: number | null, span: number | undefined): number | 
  *
  * A player's measurements told in full go on in full, and beside them in the older words, which
  * are made from them here as the GM's own are (`legacyMeasures`): whatever a page said in those
- * words beside its full ones is not sent on.
+ * words beside its full ones is not sent on. Only the GM's measurements have a colour of their
+ * own, an effect or an aura: a player's are taken without (`checkMeasure`).
  */
 export class MarkShare {
   private readonly ports: MarkSharePorts;
@@ -297,7 +300,7 @@ export class MarkShare {
 
   private gmMeasures(): MarksMessage['measures'] {
     if (this.source === null) return [];
-    const state: MeasureState = { color: this.ports.accent?.() ?? DEFAULT_ACCENT, ...this.gm.shown(this.source.seen()) };
+    const state: MeasureState = { color: this.ports.accent?.() ?? DEFAULT_ACCENT, ...this.gm.shown(this.source.seen(), this.ports.tokenAlias) };
     const span = this.gm.takeSpan();
     return hasNone(state) ? [] : [measureEntry(GM_MARKS, state, span ?? null)];
   }

@@ -104,6 +104,8 @@ export interface MarkHarness {
   measure(next: Measurements): Promise<void>;
   footprints: readonly TokenFootprint[];
   seen: (id: string) => boolean;
+  /** The ids players know the GM's tokens by; none by default, so no aura is told. */
+  aliases: Record<string, string>;
   now(): number;
   advance(ms: number): void;
   /** Called with each message as it is sent, before it is recorded. */
@@ -145,6 +147,7 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
     cursorShows: [],
     footprints: [],
     seen: () => true,
+    aliases: {},
     onSend: null,
     share: new MarkShare({
       send: (body: GmMessage, to?: string) => {
@@ -165,6 +168,7 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
         harness.shows.push(marks);
       },
       cursorsShown: () => harness.cursorsOn,
+      tokenAlias: (tokenId) => harness.aliases[tokenId],
       nameOf: (player) => names[player] ?? null,
       showPlayerCursors: (cursors) => void harness.cursorShows.push(cursors),
       now: () => now,

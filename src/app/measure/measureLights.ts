@@ -20,9 +20,12 @@ import { shapedArea } from './measureGeometry';
 import type { KeptMeasure, MeasureChanges, MeasureInput, MeasureToolOptions, Measurement } from './measureTypes';
 import { spaceRadius } from './tokenDistance';
 
+/** The key of the light the kept area `id` gives, among the scene's lights. */
+export const measureLightKey = (id: string): string => `measure:${id}`;
+
 /** A kept area's light among the scene's lights (an `ActiveLight`). */
 export interface MeasureLight {
-  /** `measure:<id>`, stable while the measurement exists. */
+  /** `measureLightKey` of its measurement, stable while the measurement exists. */
   key: string;
   x: number;
   y: number;
@@ -91,7 +94,7 @@ function lightOf(measure: KeptMeasure, emission: LightEmission, token: AuraToken
   const [origin, end] = measure.points;
   if (measure.shape === 'ruler' || !origin || !end) return null;
   if (emission.darkness && !canBeDarkness(measure.shape)) return null;
-  const key = `measure:${measure.id}`;
+  const key = measureLightKey(measure.id);
   const shining = coloured(emission, measure.color);
   if (measure.shape === 'circle') {
     const aura = isAura(measure);

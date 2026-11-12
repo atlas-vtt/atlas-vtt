@@ -1,94 +1,33 @@
-import type { MeasureState } from '../protocol/index.ts';
 import { Container } from 'pixi.js';
-import type { GridGeometry } from '../../grid/gridDistance';
-import type { MeasurementSettings } from '../../grid/measurementFormat';
-import type { DifficultCells } from '../../grid/movementCost';
 import { areaMapOf, type AreaMap } from '../../measure/areaOnMap';
-import type { Measurement } from '../../measure/measureTypes';
+import { placeAura } from '../../measure/auraArea';
 import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
 import { DrawnMeasure, type MeasureLook, type MeasureSurfaces } from '../../pixi/measure/DrawnMeasure';
 import { destroyTree } from '../../pixi/utils/destroyTree';
 import { MeasureInkLayer } from '../../pixi/utils/measureInk';
 import { toldMeasures, type ToldMeasure } from './measureWords.ts';
 import { PointerTrack } from './PointerTrack.ts';
+import type { LayBodies, RemoteMeasure, RemoteMeasurePorts } from './remoteMeasurePorts.ts';
+import { colourNumber, colourOf, endOf, fixedOf, followerOf, sameLook, sameMeasurement, samePoint, samePoints, sameTold, type Kept, type Live, type Sender } from './toldMeasures.ts';
 
-/** One sender's measurements as they arrive. */
-export type RemoteMeasure = { readonly who: string } & MeasureState;
-
-/** What a measurement is measured by: the scene's grid and how its distances read. */
-export interface MeasureRules {
-  readonly grid: GridGeometry;
-  readonly measurement: MeasurementSettings;
-  /** Where the scene's difficult terrain lies, which drags pay for by the measurement's rule; null or unset where it has none. */
-  readonly difficult?: DifficultCells | null;
-  /**
-   * What of the map shapes an area measured on it (`areaMapOf`): whether its cells are counted, and
-   * the walls areas stop at. Unset, cells are counted and no wall stops an area: it is drawn whole.
-   */
-  readonly areas?: AreaMap | null;
-}
-
-/** Puts a layer into a map, where it lies under the map's tokens and its lighting. */
-export type LayBodies = (layer: Container) => void;
-
-export interface RemoteMeasurePorts {
-  /** The zoom the map shows at: lines and labels keep their size on screen. */
-  zoom(): number;
-  /** What the measurements are measured and shaped by; null while that is not known, and nothing is drawn. */
-  rules(): MeasureRules | null;
-  /** The senders' nominal send interval, in ms. */
-  readonly interval: number;
-  /**
-   * Draws the outline of every area above the lighting too, with the dot where it starts: for a GM,
-   * who must read an area in a dark room. Never where players look: the outline of an area cut by
-   * walls draws the rooms it is cut by.
-   */
-  readonly gmOutlines?: boolean;
-}
-
-type Point = Measurement['points'][number];
-
-/** A kept measurement and its drawing. */
-interface Kept {
-  told: ToldMeasure;
-  readonly drawn: DrawnMeasure;
-}
-
-/** A measurement being drawn: as its sender last told it, and its end as it is drawn, a moment behind. */
-interface Live {
-  told: ToldMeasure;
-  readonly track: PointerTrack;
-  end: Point;
-  readonly drawn: DrawnMeasure;
-}
-
-interface Sender {
-  readonly kept: Kept[];
-  live: Live | null;
-  colour: number;
-}
+export type { LayBodies, MeasureRules, RemoteMeasure, RemoteMeasurePorts } from './remoteMeasurePorts.ts';
 
 const NO_WALLS: AreaMap['walls'] = [];
 const NO_TOKENS = {};
 
-const colourNumber = (hex: string): number => Number.parseInt(hex.slice(1), 16);
-const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
-const samePoints = (a: readonly Point[], b: readonly Point[]): boolean => a.length === b.length && a.every((point, index) => samePoint(point, b[index]!));
-const sameLook = (a: ToldMeasure, b: ToldMeasure): boolean => a.shape === b.shape && a.width === b.width && a.walls === b.walls;
-const sameTold = (a: ToldMeasure, b: ToldMeasure): boolean => sameLook(a, b) && samePoints(a.points, b.points);
-const endOf = ({ points }: ToldMeasure): Point => points[points.length - 1] ?? { x: 0, y: 0 };
-const fixedOf = ({ points }: ToldMeasure): readonly Point[] => points.slice(0, -1);
-/** Whether `next` is `live` told again, its end moved on or its corners others: the same shape from the same start. */
-const sameMeasurement = (live: ToldMeasure, next: ToldMeasure): boolean => live.shape === next.shape && live.points[0] !== undefined && next.points[0] !== undefined && samePoint(live.points[0], next.points[0]);
-
 /**
- * Other people's measurements, each drawn as Atlas draws its own (`DrawnMeasure`) in the sender's
- * colour: a ruler with its corners, its length and each leg's; an area by its body, which lies in
- * a layer of its own under the map's tokens and lighting (`layBodies`) and so is lit like the floor
- * and hidden where a viewer does not see the map, and its size above everything. An area stops at
- * the walls the rules name unless its sender said that walls do not stop it; where the rules name
- * none it is drawn whole. Nothing of a measurement tells of tokens here: no rings, no count, no
- * height.
+ * Other people's measurements, each drawn as Atlas draws its own (`DrawnMeasure`) in its own
+ * colour, else its sender's: a ruler with its corners, its length and each leg's; an area by its
+ * body, which lies in a layer of its own under the map's tokens and lighting (`layBodies`) and so
+ * is lit like the floor and hidden where a viewer does not see the map, and its size above
+ * everything. An area stops at the walls the rules name unless its sender said that walls do not
+ * stop it; where the rules name none it is drawn whole. Nothing of a measurement tells of tokens
+ * here: no rings, no count, no height.
+ *
+ * A kept area told with a look has that in its body's place, played by the host's `effects`; an
+ * aura lies around the token its sender names, where the host draws that token (`token`), and
+ * follows it when the host says tokens moved (`tokensMoved`). Neither costs anything while no
+ * measurement told has one.
  *
  * Nothing but the body shows where an area is cut by walls: its outline above the lighting is the
  * GM's (`gmOutlines`). A players' page asks for none.
@@ -104,10 +43,13 @@ export class RemoteMeasures {
   private readonly shapes = new MeasureInkLayer('remote-measure-shapes');
   private readonly outlines: MeasureInkLayer | null;
   private readonly labels = new Container({ label: 'remote-measure-labels', eventMode: 'none', interactiveChildren: false });
-  /** The bodies of areas: a layer of the map it was last laid into, or of none. */
+  /** The bodies of areas: a layer of the map it was last laid into, or of none (`laid`). */
   private bodies = newBodies();
+  private laid = false;
   private readonly senders = new Map<string, Sender>();
   private moving = false;
+  /** Whether an aura is among the kept measurements. */
+  private auras = false;
 
   constructor(private readonly ports: RemoteMeasurePorts) {
     this.outlines = ports.gmOutlines === true ? new MeasureInkLayer('remote-measure-outlines') : null;
@@ -123,6 +65,7 @@ export class RemoteMeasures {
     this.clear();
     destroyTree(this.bodies);
     this.bodies = newBodies();
+    this.laid = lay !== null;
     lay?.(this.bodies);
   }
 
@@ -146,7 +89,25 @@ export class RemoteMeasures {
       this.drawKept(sender, told.kept, recoloured, look);
       this.follow(sender, told.live, entry.span, now, recoloured, look);
     }
-    this.moving = [...this.senders.values()].some((sender) => sender.live?.track.busy(now) === true);
+    const senders = [...this.senders.values()];
+    this.moving = senders.some((sender) => sender.live?.track.busy(now) === true);
+    this.auras = senders.some((sender) => sender.kept.some((kept) => kept.follower !== null));
+  }
+
+  /**
+   * The tokens the host draws stand elsewhere, or are others: every aura follows its own, drawn
+   * again only where its token stands on other cells. Nothing is asked while no aura is told.
+   */
+  tokensMoved(): void {
+    if (!this.auras) return;
+    this.mend();
+    const look = this.look();
+    if (look === null) return;
+    for (const sender of this.senders.values()) {
+      sender.kept.forEach((kept, index) => {
+        if (kept.follower) this.drawOne(sender, kept, index, look, false);
+      });
+    }
   }
 
   /** Whether an end being dragged still has somewhere to go. */
@@ -178,15 +139,20 @@ export class RemoteMeasures {
     this.mend();
     const look = this.look();
     if (look === null) return;
-    for (const { kept, live } of this.senders.values()) {
-      for (const { drawn } of kept) drawn.redraw(look);
-      live?.drawn.redraw(look);
+    for (const sender of this.senders.values()) {
+      sender.kept.forEach((kept, index) => {
+        // Another grid or other rules lay an aura anew.
+        if (kept.follower) this.drawOne(sender, kept, index, look, true);
+        else kept.drawn.redraw(look);
+      });
+      sender.live?.drawn.redraw(look);
     }
   }
 
   clear(): void {
     for (const [who, sender] of this.senders) this.remove(who, sender);
     this.moving = false;
+    this.auras = false;
   }
 
   destroy(): void {
@@ -223,11 +189,13 @@ export class RemoteMeasures {
   }
 
   private surfaces(): MeasureSurfaces {
-    return { bodies: this.bodies, shapes: this.shapes, labels: this.labels, ...(this.outlines && { outlines: this.outlines }) };
+    // A body in no map is seen by nobody: its look is not played.
+    const effects = this.laid ? this.ports.effects : undefined;
+    return { bodies: this.bodies, shapes: this.shapes, labels: this.labels, ...(this.outlines && { outlines: this.outlines }), ...(effects && { effects }) };
   }
 
   private add(who: string): Sender {
-    const sender: Sender = { kept: [], live: null, colour: 0 };
+    const sender: Sender = { who, kept: [], live: null, colour: 0 };
     this.senders.set(who, sender);
     return sender;
   }
@@ -244,11 +212,38 @@ export class RemoteMeasures {
     told.forEach((measure, index) => {
       const known = sender.kept[index];
       if (known !== undefined && !recoloured && sameTold(known.told, measure)) return;
-      const kept = known ?? { told: measure, drawn: new DrawnMeasure(this.surfaces()) };
+      const kept = known ?? { told: measure, follower: null, placed: null, drawn: new DrawnMeasure(this.surfaces()) };
       kept.told = measure;
+      kept.follower = followerOf(measure);
       sender.kept[index] = kept;
-      kept.drawn.draw(measure, sender.colour, look, measure.walls !== false);
+      this.drawOne(sender, kept, index, look, true);
     });
+  }
+
+  /**
+   * Draws one kept measurement: in its own colour, else its sender's, with its look where it has
+   * one (its pattern told from the sender's others by its place among them). An aura is laid
+   * around its token as the host draws that now, and has no drawing while the host draws none;
+   * unless `anew`, one whose token stands on the same cells is left as it is.
+   */
+  private drawOne(sender: Sender, kept: Kept, index: number, look: MeasureLook, anew: boolean): void {
+    const { told, follower, drawn } = kept;
+    const colour = colourOf(told, sender.colour);
+    const effect = told.effect ? { effect: told.effect, seed: `${sender.who}:${index}` } : null;
+    if (!follower) {
+      // In the place of an aura that had no token, it shows its size again.
+      kept.placed = null;
+      drawn.parts.label.visible = true;
+      drawn.draw(told, colour, look, told.walls !== false, null, effect);
+      return;
+    }
+    const token = this.ports.token?.(follower.follows) ?? null;
+    const placed = token && placeAura(follower, token, { ...look.grid, snapToGrid: look.map.cells }, look.settings, kept.placed);
+    if (!anew && placed === kept.placed) return;
+    kept.placed = placed;
+    drawn.parts.label.visible = placed !== null;
+    if (placed) drawn.draw(told, colour, look, told.walls !== false, placed, effect);
+    else drawn.clear();
   }
 
   /**
@@ -279,9 +274,9 @@ export class RemoteMeasures {
     if (!stands) this.drawLive(live, sender.colour, look);
   }
 
-  /** Draws the measurement being drawn as told, with its end where that is drawn now. */
+  /** Draws the measurement being drawn as told, with its end where that is drawn now, in its own colour or its sender's. */
   private drawLive({ told, end, drawn }: Live, colour: number, look: MeasureLook): void {
-    drawn.draw({ ...told, points: [...fixedOf(told), end] }, colour, look, told.walls !== false);
+    drawn.draw({ shape: told.shape, points: [...fixedOf(told), end], ...(told.width !== undefined && { width: told.width }) }, colourOf(told, colour), look, told.walls !== false);
   }
 }
 
