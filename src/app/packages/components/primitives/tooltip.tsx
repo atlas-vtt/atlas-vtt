@@ -28,7 +28,12 @@ const TooltipContent = React.forwardRef<
 >(({ className, sideOffset = 4, onEscapeKeyDown, ...props }, ref) => (
   <TooltipPrimitive.Portal container={portalHost()}>
     <TooltipPrimitive.Content
-      ref={ref}
+      ref={(content) => {
+        // The wrapper Radix places the tooltip with takes no pointer either (tooltip.css).
+        content?.parentElement?.classList.add("atlas-tooltip-wrapper")
+        if (typeof ref === "function") ref(content)
+        else if (ref) ref.current = content
+      }}
       sideOffset={sideOffset}
       className={cn("tooltip-content", className)}
       {...props}
