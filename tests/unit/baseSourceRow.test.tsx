@@ -32,6 +32,13 @@ describe('a loot base in the collection\'s random tables', () => {
     expect(screen.getByText('2 views · 2 items')).toBeTruthy();
   });
 
+  it('says a base whose file could not be read could not be read, not that it has no views', () => {
+    row({ ...base(), unreadable: true });
+    expect(screen.queryByText('Reading…')).toBeNull();
+    expect(screen.queryByText('No views')).toBeNull();
+    expect(screen.getByText('Could not be read')).toBeTruthy();
+  });
+
   it('says a view could not be read instead of reading for ever', () => {
     row(base('ready', 'unreadable'));
     expect(screen.queryByText('Reading…')).toBeNull();

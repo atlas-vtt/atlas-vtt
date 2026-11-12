@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FolderInput, Plus, Search } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
-import { hasUnreadableView, lootBaseItemCount, needsBases, type LootBase } from '../../../loot/LootBaseReader';
+import { isLootBaseUnreadable, lootBaseItemCount, needsBases, type LootBase } from '../../../loot/LootBaseReader';
 import type { CollectionTable } from '../../../randomTables/TableNoteReader';
 import { LootViewChecks } from '../loot/LootSourceTree';
 import type { ContextMenuEntry } from '../../root/ContextMenuContext';
@@ -14,8 +14,8 @@ import { t } from '../../../i18n';
 function baseProblems(base: LootBase): string[] {
   if (base.missing) return [t('csm.loot.notFound')];
   if (needsBases(base)) return [t('csm.loot.basesOff')];
+  if (isLootBaseUnreadable(base)) return [t('loot.unreadable')];
   if (base.views.length === 0) return [t('csm.loot.noViews')];
-  if (hasUnreadableView(base)) return [t('loot.unreadable')];
   return [];
 }
 

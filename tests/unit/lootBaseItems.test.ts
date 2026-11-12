@@ -66,6 +66,16 @@ describe('readLootBaseItems', () => {
     vi.restoreAllMocks();
   });
 
+  it('answers null for a base whose file cannot be read or is no YAML', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const app = appWith({ [BASE]: BASE_YAML });
+    app.vault.cachedRead = () => Promise.reject(new Error('The file is not on this device.'));
+    expect(await readLootBaseItems(app, BASE)).toBeNull();
+    expect(await readLootBaseItems(appWith({ [BASE]: 'views: [unclosed' }), BASE)).toBeNull();
+    expect(queries.started).toHaveLength(0);
+    vi.restoreAllMocks();
+  });
+
   it('answers null for a base that is gone, and while Bases is off', async () => {
     expect(await readLootBaseItems(appWith({}), BASE)).toBeNull();
     queries.available = false;

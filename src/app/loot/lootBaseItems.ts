@@ -1,5 +1,5 @@
 import { TFile, type App } from 'obsidian';
-import { hasUnreadableView, isLootBaseLoaded, LootBaseReader, needsBases, readBase } from './LootBaseReader';
+import { isLootBaseLoaded, isLootBaseUnreadable, LootBaseReader, needsBases, readBase } from './LootBaseReader';
 import { wholeBaseQueryConfig } from './lootBaseQuery';
 import { LootBaseQuery, lootBasesAvailable } from './lootQueryView';
 
@@ -10,7 +10,7 @@ function readViews(app: App, path: string): Promise<string[] | null> {
       if (!isLootBaseLoaded(base)) return;
       // After this answer from Obsidian's view, not while it is still reporting.
       queueMicrotask(() => reader.stop());
-      resolve(base.missing || needsBases(base) || hasUnreadableView(base) ? null : base.views.flatMap((view) => view.items.map((item) => item.id)));
+      resolve(base.missing || needsBases(base) || isLootBaseUnreadable(base) ? null : base.views.flatMap((view) => view.items.map((item) => item.id)));
     });
     reader.load().catch(reject);
   });
@@ -20,7 +20,10 @@ function readViews(app: App, path: string): Promise<string[] | null> {
 async function readWholeBase(app: App, path: string): Promise<string[] | null> {
   const file = app.vault.getAbstractFileByPath(path);
   if (!(file instanceof TFile)) return null;
-  const config = wholeBaseQueryConfig(readBase(await app.vault.cachedRead(file), path));
+  const text = await app.vault.cachedRead(file).catch(() => null);
+  // What could not be read is reported by the views' reader.
+  if (text === null) return null;
+  const config = wholeBaseQueryConfig(readBase(text, path));
   if (!config) return [];
   if (!lootBasesAvailable()) return null;
   return new Promise((resolve, reject) => {

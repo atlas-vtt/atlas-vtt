@@ -27,6 +27,8 @@ export interface LootBase {
   views: LootBaseView[];
   /** The file was not found; a base that cannot be read has no views. */
   missing: boolean;
+  /** The file is there and could not be read, or what it holds is no YAML; such a base has no views. */
+  unreadable?: true;
 }
 
 export function lootViewId(basePath: string, viewName: string): string {
@@ -48,9 +50,9 @@ export function needsBases(base: LootBase): boolean {
   return base.views.some((view) => view.status === 'unavailable');
 }
 
-/** Whether the results of some view of the base could not be read. */
-export function hasUnreadableView(base: LootBase): boolean {
-  return base.views.some((view) => view.status === 'unreadable');
+/** Whether the base's file, or the results of some view of it, could not be read. */
+export function isLootBaseUnreadable(base: LootBase): boolean {
+  return base.unreadable === true || base.views.some((view) => view.status === 'unreadable');
 }
 
 function sameItems(a: readonly LootItem[], b: readonly LootItem[]): boolean {
@@ -70,7 +72,8 @@ export function readBase(text: string, path: string): unknown {
 /**
  * Keeps the items of every view of one base: runs each view through Obsidian
  * and reports the base whenever a view's results change. `load` again after
- * the base file itself changed.
+ * the base file itself changed. Every `load` ends with the base reported: as
+ * read, as not in the vault, or as one that could not be read.
  */
 export class LootBaseReader {
   private queries: LootBaseQuery[] = [];
@@ -93,7 +96,13 @@ export class LootBaseReader {
       this.publish({ path: this.path, name: this.base.name, views: [], missing: true });
       return;
     }
-    const base = readBase(await this.app.vault.cachedRead(file), this.path);
+    let base: unknown;
+    try {
+      base = parseNoteYaml(await this.app.vault.cachedRead(file));
+    } catch (error) {
+      if (run === this.run) this.failed(file.basename, error);
+      return;
+    }
     if (run !== this.run) return;
 
     const names = baseViewNames(base);
@@ -150,6 +159,17 @@ export class LootBaseReader {
     this.run++;
     for (const query of this.queries) query.stop();
     this.queries = [];
+  }
+
+  /** The file could not be read or is no YAML: the base stops loading, and is read anew when `load` is called for a change of its file. */
+  private failed(name: string, error: unknown): void {
+    // Deleted or moved while it was read: the base is gone, not unreadable.
+    if (!(this.app.vault.getAbstractFileByPath(this.path) instanceof TFile)) {
+      this.publish({ path: this.path, name, views: [], missing: true });
+      return;
+    }
+    console.warn(`[Atlas] Could not read the base ${this.path}:`, error);
+    this.publish({ path: this.path, name, views: [], missing: false, unreadable: true });
   }
 
   private publish(base: LootBase): void {
