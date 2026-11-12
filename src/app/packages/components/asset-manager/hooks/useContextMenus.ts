@@ -12,6 +12,7 @@ import type { TagsAndCollectionsState } from './useTagsAndCollections';
 import type { StatblockLinkState } from './useStatblockLink';
 import { tagGroupOfTab } from '../utils/assetTags';
 import { tabHasFolders } from '../utils/tabKinds';
+import { tabFolderPath } from '../utils/assetFolders';
 import { transferTargets, transferToCollection } from '../utils/collectionTransferActions';
 import { openTokenStatblock } from '../utils/openTokenStatblock';
 import type { MenuAnchor } from '../utils/menuAnchor';
@@ -94,10 +95,13 @@ export function useContextMenus({
   const handleFolderContextMenu = (folder: FolderType, anchor: MenuAnchor): void => {
     const entries = buildFolderContextMenuEntries(folder, {
       app: data.app, assetService: data.assetService,
+      tabBasePath: tabFolderPath(selectedCollection, activeTab),
       folders: data.folders, assets: data.assets,
       setInputModalState: crud.setInputModalState,
       setFolders: data.setFolders, setAssets: data.setAssets,
       setSelectedFolderIds: sel.setSelectedFolderIds,
+      followFolderMoves: sel.followFolderMoves,
+      moveAssetsToFolder: crud.moveAssetsToFolder,
       handleFolderDoubleClick: sel.handleFolderDoubleClick,
       deleteFolderFromVault: crud.deleteFolderFromVault,
       loadFoldersForActiveTab: data.loadFoldersForActiveTab,

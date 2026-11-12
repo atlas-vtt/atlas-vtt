@@ -1,4 +1,4 @@
-import { normalizePath, type App } from 'obsidian';
+import { normalizePath, type App, type TFolder } from 'obsidian';
 import type { Asset, AssetService } from '../../../../services/AssetService';
 import { isPathTaken, renameFolderInVault } from '../../../../plugin/vaultFolders';
 import { movedFolderPathOf } from '../../../../services/renamedPaths';
@@ -23,25 +23,13 @@ export function folderRenameProblem(app: App, folderId: string, name: string): s
 }
 
 /**
- * Renames an asset manager folder by renaming its vault folder, which is where
- * the asset manager reads its folders from. The assets in it and in the folders
- * below it stay where they are: their records name the new place of the file
- * that places each one (`placingFilePath`) before the index is read again, and
- * the rename events carry the new paths to scenes, snapshots and notes.
- * Resolves to the folder's new id, to its id when `name` is the name it has,
- * and to null when the folder is no longer there; rejects with the reason when
- * the name cannot be used.
+ * Moves an asset manager folder to `to` by moving its vault folder, which is where the asset
+ * manager reads its folders from. The assets in it and in the folders below it stay in it: their
+ * records name the new place of the file that places each one (`placingFilePath`) before the
+ * index is read again, and the rename events carry the new paths to scenes, snapshots and notes.
  */
-export async function renameAssetFolder(app: App, assetService: AssetService, folderId: string, name: string): Promise<string | null> {
-  const from = vaultPathOfFolder(folderId);
-  const to = renamedFolderPath(from, name);
-  if (!name.trim() || to === from) return folderId;
-  const problem = folderRenameProblem(app, folderId, name);
-  if (problem) throw new Error(problem);
-  const folder = app.vault.getFolderByPath(from);
-  if (!folder) return null;
-
-  const moved = movedFolderPathOf([{ from, to }]);
+export async function relocateAssetFolder(app: App, assetService: AssetService, folder: TFolder, to: string): Promise<void> {
+  const moved = movedFolderPathOf([{ from: folder.path, to }]);
   await assetService.runExclusive(async () => {
     // Pending changes of an open scene would recreate its file, and so the folder, at the old path.
     for (const scene of await assetService.getAssets(undefined, 'scene')) {
@@ -57,5 +45,23 @@ export async function renameAssetFolder(app: App, assetService: AssetService, fo
       return true;
     });
   });
+}
+
+/**
+ * Renames an asset manager folder in the vault, with what it holds (`relocateAssetFolder`).
+ * Resolves to the folder's new id, to its id when `name` is the name it has,
+ * and to null when the folder is no longer there; rejects with the reason when
+ * the name cannot be used.
+ */
+export async function renameAssetFolder(app: App, assetService: AssetService, folderId: string, name: string): Promise<string | null> {
+  const from = vaultPathOfFolder(folderId);
+  const to = renamedFolderPath(from, name);
+  if (!name.trim() || to === from) return folderId;
+  const problem = folderRenameProblem(app, folderId, name);
+  if (problem) throw new Error(problem);
+  const folder = app.vault.getFolderByPath(from);
+  if (!folder) return null;
+
+  await relocateAssetFolder(app, assetService, folder, to);
   return folderIdOf(to);
 }

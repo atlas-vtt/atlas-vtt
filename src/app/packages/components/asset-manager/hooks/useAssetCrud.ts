@@ -10,6 +10,8 @@ import { useCollectionTransfer, type CollectionTransferActions } from './useColl
 import { t } from '../../../../i18n';
 import { folderIdOf, tabFolderPath } from '../utils/assetFolders';
 import { useFolderMove } from './useFolderMove';
+import { moveFoldersInto, type FolderMoveContext } from '../utils/folderMoveActions';
+import { runInBackground } from '../../../../utils/backgroundTask';
 import { tabHasFolders } from '../utils/tabKinds';
 import type { CollectionPick } from '../utils/collectionTransferActions';
 
@@ -99,6 +101,8 @@ export function useAssetCrud(
   setAssets: React.Dispatch<React.SetStateAction<AnyAsset[]>>,
   /** Opens a folder of the tab shown (null: its top level) with the moved cards selected: where a move's notice takes the GM. */
   openFolder: (folderId: string | null, assetIds: readonly string[]) => void,
+  /** What follows folders a drop moved into another folder: Back and Forward, and the folders selected. */
+  folderMoves: Pick<FolderMoveContext, 'followFolderMoves' | 'setSelectedFolderIds'>,
 ): AssetCrudActions {
 
   const [isTokenCreatorOpen, setIsTokenCreatorOpen] = useState(false);
@@ -226,11 +230,12 @@ export function useAssetCrud(
       // The party is shown flat: a card let go on its background stays in the folder it lies in.
       if (tabHasFolders(activeTab)) void moveAssetsToFolder(draggedItems.ids, targetFolderId);
     } else {
-      setFolders((prev) =>
-        prev.map((f) =>
-          draggedItems.ids.includes(f.id) ? { ...f, parentId: targetFolderId } : f
-        )
-      );
+      const { followFolderMoves, setSelectedFolderIds } = folderMoves;
+      const context: FolderMoveContext = {
+        app, assetService, tabBasePath: tabFolderPath(selectedCollection, activeTab),
+        followFolderMoves, setSelectedFolderIds, loadFoldersForActiveTab, loadAssetsForActiveTab,
+      };
+      runInBackground(moveFoldersInto(context, draggedItems.ids, targetFolderId), 'Moving folders into a folder', t('am.folder.moveFailed'));
     }
     setDraggedItems(null);
     setDropTarget(null);

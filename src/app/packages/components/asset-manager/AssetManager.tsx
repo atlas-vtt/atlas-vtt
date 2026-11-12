@@ -99,7 +99,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
     sel.selectedFolderId, data.folders, data.collections,
     data.setFolders, data.reloadCollections, setSelectedCollection,
     data.loadFoldersForActiveTab, data.loadAssetsForActiveTab,
-    draggedItems, setDraggedItems, setDropTarget, data.setAssets, reveal.inFolder,
+    draggedItems, setDraggedItems, setDropTarget, data.setAssets, reveal.inFolder, sel,
   );
 
   const tags = useTagsAndCollections(

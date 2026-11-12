@@ -4,6 +4,7 @@ import { AssetService } from '../../src/app/services/AssetService';
 import { registerVaultSync } from '../../src/app/plugin/vaultSync';
 import { folderIdOf, readTabFolders, tabFolderPath } from '../../src/app/packages/components/asset-manager/utils/assetFolders';
 import { renameAssetFolder } from '../../src/app/packages/components/asset-manager/utils/assetFolderRename';
+import { moveFoldersIntoFolder } from '../../src/app/packages/components/asset-manager/utils/assetFolderTree';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
 
 // The check runs at once instead of after the vault went quiet.
@@ -92,5 +93,23 @@ describe('a folder renamed in the asset manager, once Atlas has followed the ren
     expect((await assets.getAssets('c', 'scene'))[0]?.data?.mapPath).toBe(`${SCENES}/Prologue/Cave.atlasmap`);
     // The index is free again for the vault check and for the next edit.
     await expect(assets.runExclusive(async () => 'free')).resolves.toBe('free');
+  });
+});
+
+describe('a folder moved into another folder in the asset manager, once Atlas has followed the rename events', () => {
+  it('holds its scene in its new place, once, and the old folder is not back', async () => {
+    const { vault, assets } = await syncedVault();
+    await vault.app.vault.createFolder(`${SCENES}/Campaign`);
+    const [scene] = await assets.getAssets('c', 'scene');
+
+    const result = await moveFoldersIntoFolder(vault.app, assets, [folderIdOf(`${SCENES}/Act 1`)], SCENES, folderIdOf(`${SCENES}/Campaign`));
+    // What the asset manager reads right after the move, before any event was followed to its end.
+    expect((await assets.getAssets('c', 'scene'))[0]?.data?.mapPath).toBe(`${SCENES}/Campaign/Act 1/Cave.atlasmap`);
+    await settled();
+
+    expect(result.moved).toEqual([{ from: folderIdOf(`${SCENES}/Act 1`), to: folderIdOf(`${SCENES}/Campaign/Act 1`) }]);
+    expect(readTabFolders(vault.app, 'c', 'scenes').map((folder) => folder.path)).toEqual(['Campaign', 'Campaign/Act 1']);
+    expect(await assets.getAssets('c', 'scene')).toEqual([expect.objectContaining({ id: scene!.id, data: expect.objectContaining({ mapPath: `${SCENES}/Campaign/Act 1/Cave.atlasmap` }) })]);
+    expect(vault.folders.has(`${SCENES}/Act 1`)).toBe(false);
   });
 });

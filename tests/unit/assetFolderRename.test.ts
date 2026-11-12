@@ -60,6 +60,7 @@ describe('renaming a folder from its menu in the asset manager', () => {
     const entries = buildFolderContextMenuEntries(folder, {
       app: vault.app,
       assetService: assets,
+      tabBasePath: tabFolderPath('camp', folder.type),
       folders: readTabFolders(vault.app, 'camp', folder.type),
       assets: [],
       setInputModalState,
@@ -70,6 +71,8 @@ describe('renaming a folder from its menu in the asset manager', () => {
       deleteFolderFromVault: vi.fn(async () => {}),
       loadFoldersForActiveTab: vi.fn(async () => {}),
       loadAssetsForActiveTab: vi.fn(async () => {}),
+      followFolderMoves: vi.fn(),
+      moveAssetsToFolder: vi.fn(async () => {}),
       ...deps,
     });
     const rename = entries.find((entry) => entry.type === 'item' && entry.label === t('am.menu.rename'));

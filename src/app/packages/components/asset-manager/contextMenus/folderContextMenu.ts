@@ -1,26 +1,23 @@
 import type * as React from 'react';
-import type { App as ObsidianApp } from 'obsidian';
 import type { ContextMenuEntry } from '../../../../react/components/context-menu/AtlasContextMenu';
-import type { AssetService } from '../../../../services/AssetService';
 import type { AnyAsset, Folder, InputModalState } from '../types';
 import { folderRenameProblem, renameAssetFolder } from '../utils/assetFolderRename';
+import { createSubfolder, subfolderNameProblem } from '../utils/assetFolderTree';
+import { moveFolderContentsInto, type FolderMoveContext } from '../utils/folderMoveActions';
 import { confirmAction } from '../../../../ui/confirmDialog';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { t } from '../../../../i18n';
 
-export interface FolderContextMenuDeps {
-  app: ObsidianApp;
-  assetService: AssetService | null;
+export interface FolderContextMenuDeps extends FolderMoveContext {
   folders: Folder[];
   assets: AnyAsset[];
   setInputModalState: (state: InputModalState) => void;
   setFolders: React.Dispatch<React.SetStateAction<Folder[]>>;
   setAssets: React.Dispatch<React.SetStateAction<AnyAsset[]>>;
-  setSelectedFolderIds: React.Dispatch<React.SetStateAction<string[]>>;
   handleFolderDoubleClick: (folderId: string) => void;
   deleteFolderFromVault: (folder: Folder) => Promise<void>;
-  loadFoldersForActiveTab: () => Promise<void>;
-  loadAssetsForActiveTab: () => Promise<void>;
+  /** Move to Folder, as the asset manager runs it for cards. */
+  moveAssetsToFolder: (assetIds: string[], targetFolderId: string | null) => Promise<void>;
 }
 
 /**
@@ -32,11 +29,32 @@ async function renameFolder(folder: Folder, name: string, deps: FolderContextMen
   if (!assetService) return;
   try {
     const renamedId = await renameAssetFolder(app, assetService, folder.id, name);
-    if (renamedId) deps.setSelectedFolderIds((selected) => selected.map((id) => (id === folder.id ? renamedId : id)));
+    if (renamedId && renamedId !== folder.id) {
+      deps.setSelectedFolderIds((selected) => selected.map((id) => (id === folder.id ? renamedId : id)));
+      deps.followFolderMoves([{ from: folder.id, to: renamedId }]);
+    }
   } finally {
     await deps.loadFoldersForActiveTab();
     await deps.loadAssetsForActiveTab();
   }
+}
+
+/** Makes the folder in the vault, then shows the tab's folders as the vault holds them now. */
+async function createSubfolderIn(folder: Folder, name: string, deps: FolderContextMenuDeps): Promise<void> {
+  try {
+    await createSubfolder(deps.app, folder.id, name);
+  } finally {
+    await deps.loadFoldersForActiveTab();
+  }
+}
+
+/** Moves what the folder holds into `targetFolderId` (null: the tab's top level), in the vault. */
+function moveContents(folder: Folder, targetFolderId: string | null, deps: FolderContextMenuDeps): void {
+  runInBackground(
+    moveFolderContentsInto(deps, deps.moveAssetsToFolder, folder.id, targetFolderId),
+    `Moving the contents of folder ${folder.id}`,
+    t('am.folder.moveContentsFailed'),
+  );
 }
 
 export function buildFolderContextMenuEntries(
@@ -84,24 +102,9 @@ export function buildFolderContextMenuEntries(
         title: t('am.folder.createSubfolder'),
         placeholder: t('am.folder.subfolderName'),
         onConfirm: (subfolderName: string) => {
-          const newFolder: Folder = {
-            id: `folder-${Date.now()}`,
-            name: subfolderName.trim(),
-            type: folder.type,
-            path: `${folder.path}/${subfolderName.trim()}`,
-            parentId: folder.id,
-          };
-          deps.setFolders((prev) => [...prev, newFolder]);
+          runInBackground(createSubfolderIn(folder, subfolderName, deps), `Creating a subfolder of ${folder.id}`, t('am.folder.createFailed'));
         },
-        validation: (value: string) => {
-          const trimmed = value.trim();
-          if (!trimmed) return t('am.folder.subfolderEmpty');
-          const children = deps.folders.filter((f) => f.parentId === folder.id);
-          if (children.some((f) => f.name === trimmed)) {
-            return t('am.folder.subfolderExists', { name: trimmed });
-          }
-          return null;
-        },
+        validation: (value: string) => subfolderNameProblem(deps.app, folder.id, value),
       });
     },
   });
@@ -116,11 +119,7 @@ export function buildFolderContextMenuEntries(
       type: 'item',
       label: t('am.folder.moveToRoot'),
       icon: 'folder-input',
-      onClick: () => {
-        deps.setAssets((prev) =>
-          prev.map((a) => (a.folderId === folder.id ? { ...a, folderId: null } : a))
-        );
-      },
+      onClick: () => moveContents(folder, null, deps),
     });
 
     otherFolders.slice(0, 5).forEach((target) => {
@@ -128,11 +127,7 @@ export function buildFolderContextMenuEntries(
         type: 'item',
         label: t('am.folder.moveTo', { name: target.name }),
         icon: 'folder-input',
-        onClick: () => {
-          deps.setAssets((prev) =>
-            prev.map((a) => (a.folderId === folder.id ? { ...a, folderId: target.id } : a))
-          );
-        },
+        onClick: () => moveContents(folder, target.id, deps),
       });
     });
   }

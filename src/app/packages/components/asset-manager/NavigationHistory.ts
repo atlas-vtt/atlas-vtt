@@ -36,6 +36,11 @@ export class NavigationHistory {
     return this.currentIndex < this.history.length - 1;
   }
 
+  /** Folders have another id now (`moved` gives it, or null for a folder that kept its own): Back and Forward lead to where they are. */
+  follow(moved: (folderId: string) => string | null): void {
+    this.history = this.history.map((folderId) => (folderId === null ? null : moved(folderId) ?? folderId));
+  }
+
   clear(): void {
     this.history = [];
     this.currentIndex = -1;
