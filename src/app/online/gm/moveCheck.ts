@@ -1,8 +1,10 @@
-import { movementWalls, stopAtWalls, type MoveWalls, type Point } from '../movement/index.ts';
-import { MAX_COORDINATE, type PlayerMove } from '../protocol/index.ts';
+import { dropPlace, movementWalls, reaches, stopAtWalls, type MoveWalls, type Point } from '../movement/index.ts';
+import { MAX_COORDINATE, type PlayerMove, type SnapGrid } from '../protocol/index.ts';
 import type { TokenEntity } from '../../types';
 import type { WallSegment } from '../../types/wallTypes';
 import { wallList } from '../../vision/wallList';
+import { gridSnap } from './gridSnap.ts';
+import { tokenCells } from './scenePicture.ts';
 import { stairSides, withStairSides, type StairsOfTokens } from './stairSides.ts';
 
 /** The map's size in world pixels, from (0, 0): its image's own size, or the box Atlas draws it into turned, stretched and placed (`floorWorldSize`). */
@@ -25,6 +27,8 @@ export interface MoveContext {
   readonly walls: MoveWalls | null;
   /** Whether a token that fights may not move now, for it does not hold the turn (`movesOutOfTurn`); none are without. */
   outOfTurn?(tokenId: string): boolean;
+  /** The grid a dropped token snaps to, as players are sent it (`snapGridOf`); none where it does not snap. */
+  readonly snap?: SnapGrid | null;
 }
 
 export type MoveVerdict =
@@ -67,8 +71,34 @@ export function sceneWalls(walls: Record<string, WallSegment>, lit: boolean, map
  * scene: `stairSides`, so it steps on and off stairs only at their ground end), slid along it (`stopAtWalls`).
  */
 export function landing(context: Pick<MoveContext, 'walls' | 'map'>, state: StairsOfTokens, tokenId: string, from: Point, to: Point): Point {
-  const walls = withStairSides(context.walls, stairSides(state, tokenId, context.map));
+  const walls = tokenWalls(context, state, tokenId);
   return walls === null ? to : stopAtWalls(walls, from, to);
+}
+
+/** The walls and stair sides a player's token `tokenId` stops at (`landing`), or null for none. */
+function tokenWalls(context: Pick<MoveContext, 'walls' | 'map'>, state: StairsOfTokens, tokenId: string): MoveWalls | null {
+  return withStairSides(context.walls, stairSides(state, tokenId, context.map));
+}
+
+/** How far a place may lie from the place it snaps to and still stand on it: token places reach players to a hundredth of a pixel. */
+const ON_PLACE = 0.01;
+
+/**
+ * Where a player's token comes to rest when they put it down: where it lands (`landing`), and where a
+ * wall cut the move short (this one, or a step of the drag it ends: `walled`) on a scene whose grid
+ * snaps, on the nearest place the grid snaps it to that it reaches from there (`dropPlace`, the
+ * page's own rule), so a token pushed into a wall rests in the cell before it and never half across
+ * it, whatever the page sent.
+ */
+export function droppedLanding(context: Pick<MoveContext, 'walls' | 'map' | 'snap'>, state: StairsOfTokens, tokenId: string, from: Point & { readonly size?: number }, to: Point, walled = false): Point {
+  const walls = tokenWalls(context, state, tokenId);
+  const at = walls === null ? to : stopAtWalls(walls, from, to);
+  const grid = context.snap ?? null;
+  if (grid === null || walls === null || (!walled && at.x === to.x && at.y === to.y)) return at;
+  const snap = gridSnap(grid, tokenCells(from));
+  const own = snap(at);
+  if (Math.abs(own.x - at.x) <= ON_PLACE && Math.abs(own.y - at.y) <= ON_PLACE) return at;
+  return dropPlace(at, snap, grid.size, (a, b) => reaches(walls, a, b));
 }
 
 /** Moves a player may make: a burst of `MOVE_BURST`, then `MOVES_PER_SECOND` (a held movement key steps 5 times a second). */

@@ -4,7 +4,7 @@ import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransacti
 import { placeTokens } from '../../stores/tokenStacking';
 import type { HeldTokens } from '../../types/viewUIState';
 import type { Point } from '../movement/index.ts';
-import { checkMove, landing, MoveRate, type MoveContext } from './moveCheck.ts';
+import { checkMove, droppedLanding, landing, MoveRate, type MoveContext } from './moveCheck.ts';
 import type { MoveState, MoveStore } from './playerMoves.ts';
 import { mapTokens, sceneTokens } from '../../tokens/offMap';
 
@@ -29,6 +29,8 @@ interface LiveDrag {
   readonly tokenId: string;
   readonly start: { readonly x: number; readonly y: number };
   lastAt: number;
+  /** Whether a wall cut a step of the drag short: its drop then rests on a place the grid snaps it to (`droppedLanding`). */
+  walled?: boolean;
 }
 
 const key = (from: string, tokenId: string): string => `${from}\n${tokenId}`;
@@ -101,6 +103,7 @@ export class PlayerDrags {
     current.lastAt = this.ports.now();
     // From where the last message left it, up to the first wall in the way.
     const at = landing(context, state, verdict.tokenId, token, verdict);
+    if (at.x !== verdict.x || at.y !== verdict.y) current.walled = true;
     this.write((draft) => {
       const moved = sceneTokens(draft.objects)[verdict.tokenId];
       if (moved === undefined) return;
@@ -112,7 +115,7 @@ export class PlayerDrags {
 
   /**
    * The player's drop of a token: where it ended their drag (the drop's place, or before the first
-   * wall on the way there), false when it was refused (the token went back, or the GM had taken the
+   * wall on the way there, on the nearest place the grid snaps it to: `droppedLanding`), false when it was refused (the token went back, or the GM had taken the
    * drag over), `turn` when it was refused for the token's turn, and null when no drag of theirs was under way.
    */
   drop(from: string, move: PlayerMove): Point | false | 'turn' | null {
@@ -128,7 +131,7 @@ export class PlayerDrags {
       return !verdict.ok && verdict.reason === 'turn' ? 'turn' : false;
     }
     const token = mapTokens(state.objects)[live.tokenId];
-    const at = token === undefined ? { x: verdict.x, y: verdict.y } : landing(context, state, live.tokenId, token, verdict);
+    const at = token === undefined ? { x: verdict.x, y: verdict.y } : droppedLanding(context, state, live.tokenId, token, verdict, live.walled === true);
     this.end([live], at);
     return at;
   }

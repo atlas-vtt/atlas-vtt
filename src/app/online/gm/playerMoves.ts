@@ -1,7 +1,7 @@
 import type { GmMessage, PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
 import { placeTokens, type PlacedTokensState } from '../../stores/tokenStacking';
 import type { ViewState } from '../../types/viewState';
-import { checkMove, insideMap, landing, MoveRate, type MoveContext } from './moveCheck.ts';
+import { checkMove, droppedLanding, insideMap, MoveRate, type MoveContext } from './moveCheck.ts';
 import { PlayerDrags } from './playerDrags.ts';
 import { mapTokens } from '../../tokens/offMap';
 
@@ -143,14 +143,15 @@ export class PlayerMoves {
   }
 
   /**
-   * Puts the token down where the move takes it: its place, or before the first wall on the way there.
+   * Puts the token down where the move takes it: its place, or before the first wall on the way there,
+   * on the nearest place the grid snaps it to (`droppedLanding`).
    * Its sender hears where it stays when that is not the place they sent, and nothing is written when
    * a wall keeps it where it is.
    */
   private apply(from: string, tokenId: string, move: PlayerMove): void {
     const state = this.store.getState();
     const token = mapTokens(state.objects)[tokenId];
-    const at = token === undefined ? move : landing(this.context(state), state, tokenId, token, move);
+    const at = token === undefined ? move : droppedLanding(this.context(state), state, tokenId, token, move);
     const stopped = at.x !== move.x || at.y !== move.y;
     // A token put down on stairs goes to the level they lead to, and its player's picture follows it there
     if (!stopped || at.x !== token?.x || at.y !== token.y) this.store.setState((draft) => placeTokens(draft, [{ id: tokenId, x: at.x, y: at.y }]));
