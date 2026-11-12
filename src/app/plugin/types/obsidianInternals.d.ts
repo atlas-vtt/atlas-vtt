@@ -88,6 +88,13 @@ declare module 'obsidian' {
     renderer?: { getSectionInfo(element: HTMLElement): { lineStart: number } | null };
   }
 
+  interface TextFileView {
+    /** Set by a change, until the view's save (two seconds later, or asked for) has started. */
+    dirty?: boolean;
+    /** Whether a save of the view is being written to its file. */
+    readonly saving?: boolean;
+  }
+
   interface WorkspaceLeaf {
     containerEl: HTMLElement;
     tabHeaderEl?: HTMLElement;
