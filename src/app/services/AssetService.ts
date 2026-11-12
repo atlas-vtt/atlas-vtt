@@ -29,6 +29,7 @@ import type { LibraryMergeResult } from './library/mergeLibraryChanges';
 import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libraryPaths';
 import { isKnownAssetType, isPayloadUnread, serializeRecord } from './library/recordFile';
 import { assetKey, libraryClock, parseLibraryState } from './library/libraryState';
+import { indexText, snapshotIndex } from './library/indexSnapshot';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { showNotice } from '../ui/notice';
 
@@ -561,7 +562,7 @@ export class AssetService {
     this.saveCount++;
     return this.writes.run(async () => {
       if (!this.metadata) return;
-      const snapshot = structuredClone(this.metadata);
+      const snapshot = snapshotIndex(this.metadata);
       let failure: Error | null = null;
       try {
         if (persistFiles) await this.library.persist(snapshot);
@@ -569,7 +570,7 @@ export class AssetService {
         failure = error instanceof Error ? error : new Error(String(error));
       }
       // The cache follows even when a library file failed, so this device keeps what the files will get on the next save.
-      await this.writeMetadataFile(JSON.stringify({ ...snapshot, [LIBRARY_STATE_KEY]: this.library.bookkeeping }));
+      await this.writeMetadataFile(indexText(snapshot, LIBRARY_STATE_KEY, JSON.stringify(this.library.bookkeeping)));
       if (failure) throw failure;
     });
   }
