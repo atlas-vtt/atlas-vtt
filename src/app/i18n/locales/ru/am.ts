@@ -13,6 +13,7 @@ export const am: Translation = {
   'am.folder.newName': 'Новое название папки',
   'am.folder.newSubfolder': 'Создать подпапку',
   'am.folder.renameTitle': 'Переименовать папку «{name}»',
+  'am.folder.renameFailed': 'Не удалось переименовать папку',
   'am.folder.subfolderEmpty': 'Название подпапки не может быть пустым',
   'am.folder.subfolderExists': 'Подпапка «{name}» уже есть',
   'am.folder.subfolderName': 'Название подпапки',

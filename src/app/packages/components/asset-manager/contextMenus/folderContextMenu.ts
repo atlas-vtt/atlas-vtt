@@ -1,10 +1,16 @@
 import type * as React from 'react';
+import type { App as ObsidianApp } from 'obsidian';
 import type { ContextMenuEntry } from '../../../../react/components/context-menu/AtlasContextMenu';
+import type { AssetService } from '../../../../services/AssetService';
 import type { AnyAsset, Folder, InputModalState } from '../types';
+import { folderRenameProblem, renameAssetFolder } from '../utils/assetFolderRename';
 import { confirmAction } from '../../../../ui/confirmDialog';
+import { runInBackground } from '../../../../utils/backgroundTask';
 import { t } from '../../../../i18n';
 
 export interface FolderContextMenuDeps {
+  app: ObsidianApp;
+  assetService: AssetService | null;
   folders: Folder[];
   assets: AnyAsset[];
   setInputModalState: (state: InputModalState) => void;
@@ -13,6 +19,24 @@ export interface FolderContextMenuDeps {
   setSelectedFolderIds: React.Dispatch<React.SetStateAction<string[]>>;
   handleFolderDoubleClick: (folderId: string) => void;
   deleteFolderFromVault: (folder: Folder) => Promise<void>;
+  loadFoldersForActiveTab: () => Promise<void>;
+  loadAssetsForActiveTab: () => Promise<void>;
+}
+
+/**
+ * Renames the folder in the vault, then shows the tab's folders and assets as the vault and the
+ * index hold them now: the folder's id is its path, so it and every folder in it have a new one.
+ */
+async function renameFolder(folder: Folder, name: string, deps: FolderContextMenuDeps): Promise<void> {
+  const { app, assetService } = deps;
+  if (!assetService) return;
+  try {
+    const renamedId = await renameAssetFolder(app, assetService, folder.id, name);
+    if (renamedId) deps.setSelectedFolderIds((selected) => selected.map((id) => (id === folder.id ? renamedId : id)));
+  } finally {
+    await deps.loadFoldersForActiveTab();
+    await deps.loadAssetsForActiveTab();
+  }
 }
 
 export function buildFolderContextMenuEntries(
@@ -42,27 +66,9 @@ export function buildFolderContextMenuEntries(
         placeholder: t('am.folder.newName'),
         defaultValue: folder.name,
         onConfirm: (newName: string) => {
-          if (newName.trim() !== folder.name) {
-            deps.setFolders((prev) =>
-              prev.map((f) =>
-                f.id === folder.id
-                  ? { ...f, name: newName.trim(), path: newName.trim() }
-                  : f
-              )
-            );
-          }
+          runInBackground(renameFolder(folder, newName, deps), `Renaming folder ${folder.id}`, t('am.folder.renameFailed'));
         },
-        validation: (value: string) => {
-          const trimmed = value.trim();
-          if (!trimmed) return t('am.folder.nameEmpty');
-          const siblings = deps.folders.filter(
-            (f) => f.parentId === folder.parentId && f.id !== folder.id
-          );
-          if (siblings.some((f) => f.name === trimmed)) {
-            return t('am.folder.exists', { name: trimmed });
-          }
-          return null;
-        },
+        validation: (value: string) => folderRenameProblem(deps.app, folder.id, value),
       });
     },
   });

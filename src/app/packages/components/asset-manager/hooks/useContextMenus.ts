@@ -93,12 +93,15 @@ export function useContextMenus({
 
   const handleFolderContextMenu = (folder: FolderType, anchor: MenuAnchor): void => {
     const entries = buildFolderContextMenuEntries(folder, {
+      app: data.app, assetService: data.assetService,
       folders: data.folders, assets: data.assets,
       setInputModalState: crud.setInputModalState,
       setFolders: data.setFolders, setAssets: data.setAssets,
       setSelectedFolderIds: sel.setSelectedFolderIds,
       handleFolderDoubleClick: sel.handleFolderDoubleClick,
       deleteFolderFromVault: crud.deleteFolderFromVault,
+      loadFoldersForActiveTab: data.loadFoldersForActiveTab,
+      loadAssetsForActiveTab: data.loadAssetsForActiveTab,
     });
     openContextMenuGlobal(entries, { x: anchor.clientX, y: anchor.clientY }, {
       returnFocus: anchor.returnFocus,

@@ -13,6 +13,7 @@ export const am: Translation = {
   'am.folder.newName': '输入新的文件夹名',
   'am.folder.newSubfolder': '创建子文件夹',
   'am.folder.renameTitle': '重命名文件夹「{name}」',
+  'am.folder.renameFailed': '无法重命名文件夹',
   'am.folder.subfolderEmpty': '子文件夹名不能为空',
   'am.folder.subfolderExists': '已有名为「{name}」的子文件夹',
   'am.folder.subfolderName': '输入子文件夹名',

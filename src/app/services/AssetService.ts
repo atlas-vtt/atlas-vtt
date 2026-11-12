@@ -2,7 +2,7 @@ import { parseResourceDefinitions } from '../resources/resourceDefinitions';
 import { wasTokenRegistrationSaved } from './assetRegistrationRecovery';
 import { SettingsService } from './SettingsService';
 import { App, TFile, TFolder } from 'obsidian';
-import { ensureAdapterFolder } from '../plugin/vaultFolders';
+import { ensureAdapterFolder, renameFolderInVault } from '../plugin/vaultFolders';
 import type { TokenStateSnapshot } from '../types';
 import type { CellCoord, EncounterFormation } from '../encounters/encounterFormation';
 import { getDataFilePath } from '../utils/dataFileMigration';
@@ -779,35 +779,12 @@ export class AssetService {
    */
   private async moveCollectionFolder(oldId: string, newId: string): Promise<void> {
     const folder = this.app.vault.getFolderByPath(collectionFolderPath(oldId));
-    if (folder) await this.renameInVault(folder, collectionFolderPath(newId));
+    if (folder) await renameFolderInVault(this.app, folder, collectionFolderPath(newId));
     if (!this.metadata!.collections[oldId]) return;
     // The install record lies in the folder and moved with it.
     moveCollectionRecord(this.metadata!, oldId, newId);
     await this.saveMetadata();
   }
-
-  /**
-   * Renames through Obsidian, so links to the folder's notes follow. Obsidian
-   * may first ask whether to update those links and only then settle its
-   * promise; the rename itself is done once the vault reports it, so Atlas
-   * never waits for that answer.
-   */
-  private renameInVault(folder: TFolder, newPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const renamed = this.app.vault.on('rename', (file) => {
-        if (file.path === newPath) settle(resolve);
-      });
-      const settle = (done: () => void): void => {
-        this.app.vault.offref(renamed);
-        done();
-      };
-      this.app.fileManager.renameFile(folder, newPath).then(
-        () => settle(resolve),
-        (error: unknown) => settle(() => reject(error instanceof Error ? error : new Error(String(error)))),
-      );
-    });
-  }
-
 
   /**
    * Gives every collection its folder's name: the folder takes the collection's

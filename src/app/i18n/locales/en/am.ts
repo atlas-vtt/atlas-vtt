@@ -13,6 +13,7 @@ export const am = {
   'am.folder.newName': 'Enter new folder name',
   'am.folder.newSubfolder': 'Create subfolder',
   'am.folder.renameTitle': 'Rename folder "{name}"',
+  'am.folder.renameFailed': 'Could not rename the folder',
   'am.folder.subfolderEmpty': 'Subfolder name cannot be empty',
   'am.folder.subfolderExists': 'A subfolder named "{name}" already exists',
   'am.folder.subfolderName': 'Enter subfolder name',

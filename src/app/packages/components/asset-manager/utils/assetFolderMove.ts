@@ -25,7 +25,7 @@ export interface FailedMove {
 }
 
 /** Points an asset at the new place of the file that places it in a folder. */
-function placingFileUpdate(asset: TabServiceAsset, path: string): AssetUpdates {
+export function placingFileUpdate(asset: TabServiceAsset, path: string): AssetUpdates {
   return asset.type === 'map' ? { filePath: path } : primaryPathUpdate(asset, path);
 }
 
