@@ -1,4 +1,4 @@
-import { LIGHT_CEILING } from '../../../lighting/lightingConstants';
+import { GM_FLOOR, LIGHT_CEILING } from '../../../lighting/lightingConstants';
 import { BOUNCE_GATHER_GLSL } from './cascadeShaders';
 import { GLSL_VERSION, SRGB_GLSL, TONEMAP_GLSL, TRACE_GLSL, fieldGlsl, traceGlsl } from './glsl';
 import { WALL_PUSH_GLSL, wallPushGlsl } from './wallPushGlsl';
@@ -159,6 +159,10 @@ const TRACED_FACES_GLSL = `
  * outshines it, would see draws no veil, not even with another token looking on: it would draw the
  * whole darkness.
  * The GM sees the dim map under a stronger veil everywhere in it (uGmVeil).
+ * The GM's picture has a floor (uGmFloor, `GM_FLOOR`): where the light alone shows less of the map
+ * than that share of its colours as drawn, the cool grey map makes up what is lacking, so the GM
+ * reads a scene the players see nothing of. Where the light shows more, nothing is added, and what
+ * a sense perceives in the dark shows on top of it. The players' picture never reads it.
  * uZones (read only while uHasZones is set) is the zone map: the ambient light of the scene's
  * zones, premultiplied by their share of the pixel in alpha, which is 1 inside a zone, where the
  * rule counts it; uZonesLifted is the same where dim light is perceived as bright.
@@ -231,6 +235,7 @@ uniform sampler2D uDarkness;
 uniform float uHasDarkness;
 uniform vec3 uVeil;
 uniform vec3 uGmVeil;
+uniform float uGmFloor;
 uniform float uGreyLevel;
 uniform vec2 uDarkLevels;
 uniform sampler2D uZones;
@@ -257,6 +262,8 @@ ${SHOWN_GLSL}
 
 // Share of its colour an area no token sees loses in the GM view.
 const float UNSEEN_FADE = 0.4;
+// Share of the GM's floor left under magical darkness (GM_FLOOR).
+const float GM_FLOOR_IN_DARKNESS = ${GM_FLOOR.inDarkness.toFixed(4)};
 // How much the other lights here may add to the brightest one, as a share of it (LIGHT_CEILING).
 const float CEILING_REACH = ${LIGHT_CEILING.reach.toFixed(4)};
 
@@ -350,7 +357,8 @@ void main() {
   float gate = uLevelIndex > 0.5 && shownLevel != int(uLevelIndex + 0.5) ? 0.0 : 1.0;
   // A marked grid erased the alpha beneath it, premultiplied: what is left of the scene there is its colour scaled by the alpha.
   float grid = uGrid > 0.5 && !hole ? clamp(1.0 - back.a, 0.0, 1.0) : 0.0;
-  vec3 albedo = toLinear(uGrid > 0.5 || hole ? back.rgb / max(back.a, 1.0 / 255.0) : back.rgb);
+  vec3 drawn = uGrid > 0.5 || hole ? back.rgb / max(back.a, 1.0 / 255.0) : back.rgb;
+  vec3 albedo = toLinear(drawn);
   // rgb: the lights' light; alpha: its luminance had every light its bright level here.
   vec4 lamps = textureLod(uLightMap, world / uLightWorld, 0.0);
 ${traced ? TRACED_BOUNCE_GLSL : '  vec3 bounce = vec3(0.0);'}
@@ -452,7 +460,14 @@ ${traced ? TRACED_FACES_GLSL : ''}
   vec3 floorColor = albedo * 0.05;
   vec3 gmLit = 1.0 - (1.0 - lit) * (1.0 - floorColor);
   vec3 unseen = mix(gmLit, vec3(dot(gmLit, LUMA)), UNSEEN_FADE);
-  vec3 gm = mix(unseen, 1.0 - (1.0 - visible) * (1.0 - floorColor), seen) + uGmVeil * dark.r;
+  // The GM's floor: the map at a share of its colours as drawn, in the cool grey of low light, and
+  // less of it under magical darkness. It makes up what the light alone lacks of its brightness:
+  // all of it in the dark, nothing where the light shows as much, so a light fades into it without
+  // a darker ring, and what a sense perceives without light shows on top of it.
+  vec3 gmFloor = nightShift(toLinear(drawn * uGmFloor), uPurkinje) * (1.0 - (1.0 - GM_FLOOR_IN_DARKNESS) * dark.r);
+  float floorLight = dot(gmFloor, LUMA);
+  vec3 gmLift = gmFloor * (max(floorLight - dot(gmLit, LUMA), 0.0) / max(floorLight, 1e-5));
+  vec3 gm = mix(unseen, 1.0 - (1.0 - visible) * (1.0 - floorColor), seen) + gmLift + uGmVeil * dark.r;
 
   vec3 color = max(uMode > 0.5 ? player : gm, 0.0);
   // How much of the map shows here, whatever its colour: the light and senses where perceived now, the memory where remembered.

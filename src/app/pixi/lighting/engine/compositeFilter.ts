@@ -1,6 +1,6 @@
 import { Color, Matrix, Texture, UniformGroup, type Filter } from 'pixi.js';
 import { CompositeUpscale } from './compositeUpscale';
-import { BOUNCE, DARKNESS, EXPOSURE, PURKINJE, wallBand, wallCore } from '../../../lighting/lightingConstants';
+import { BOUNCE, DARKNESS, EXPOSURE, GM_FLOOR, PURKINJE, wallBand, wallCore } from '../../../lighting/lightingConstants';
 import { DEFAULT_AMBIENT_COLOR, DEFAULT_EXPLORED_COLOR, DEFAULT_UNEXPLORED_COLOR } from '../../../lighting/sceneLightingOptions';
 import { srgbToLinear } from '../../../lighting/srgb';
 import type { GridMarkColor } from '../../../grid/gridLightingMark';
@@ -137,6 +137,7 @@ export function createCompositeFilter(world: EngineWorld, explored: Texture): Co
     uHasZones: { value: 0, type: 'f32' },
     uVeil: { value: new Float32Array(DARKNESS.veil), type: 'vec3<f32>' },
     uGmVeil: { value: new Float32Array(DARKNESS.gmVeil), type: 'vec3<f32>' },
+    uGmFloor: { value: GM_FLOOR.shown, type: 'f32' },
     uGreyLevel: { value: 0, type: 'f32' },
     uDarkLevels: { value: new Float32Array([DARK_SIGHT_LEVELS.dim, DARK_SIGHT_LEVELS.bright]), type: 'vec2<f32>' },
     uFluSpacing: { value: PROBE_SPACING, type: 'f32' },
