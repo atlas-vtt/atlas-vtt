@@ -27,10 +27,18 @@ export type BookPartMessage =
   | { readonly t: 'book-map'; readonly worldMap: BookWorldMap | null }
   | { readonly t: 'book-quests'; readonly quests: readonly BookQuest[] };
 
-/** A page tells the GM that it reads its book in parts, on every reach of the GM. */
+/**
+ * A page tells the GM that it reads its book in parts, on every reach of the GM. `tiles`: it draws the
+ * world map and the maps it leads into from their tile pyramids (`AssetRef.tiles`), as the table's
+ * map; a GM that knows the word hands it those, any other page each map as one image.
+ */
 export interface PlayerBookParts {
   readonly t: 'book-parts';
+  readonly tiles?: true;
 }
+
+/** A page's word that it reads its book in parts, as the GM reads it. */
+export const parseBookParts = (value: Record<string, unknown>): PlayerBookParts => ({ t: 'book-parts', ...(value.tiles === true && { tiles: true }) });
 
 /**
  * A page tells the GM whether its book covers the map now (sent when that changes, and on every

@@ -1,5 +1,5 @@
 import { isCount, parseAsset, parseAssetProgress, parseVideoAsset, type AssetProgress, type AssetRef } from './asset.ts';
-import { isBookType, isPlayerBookType, parseBookCover, parseBookMessage, parseBookTokenMessage, parsePlayerBookMessage, type BookMessage, type BookTokenMessage, type PlayerBookCover, type PlayerBookMessage, type PlayerBookParts } from './book.ts';
+import { isBookType, isPlayerBookType, parseBookCover, parseBookParts, parseBookMessage, parseBookTokenMessage, parsePlayerBookMessage, type BookMessage, type BookTokenMessage, type PlayerBookCover, type PlayerBookMessage, type PlayerBookParts } from './book.ts';
 import { parseSignFound, type PlayerSignFound } from './bookLevels.ts';
 import { parseBookRestMessage, type BookRestMessage } from './bookRest.ts';
 import { isDeltaOf, parseDelta, parseSeq, type DeltaMessage, type DeltaOf } from './delta.ts';
@@ -238,7 +238,7 @@ export function parsePlayerMessage(value: unknown): PlayerMessage | null {
   if (isPlayerBookType(value.t)) return parsePlayerBookMessage(value);
   if (value.t === 'book-token') return parseBookTokenMessage(value);
   if (value.t === 'book-rest') return parseBookRestMessage(value);
-  if (value.t === 'book-parts') return { t: 'book-parts' };
+  if (value.t === 'book-parts') return parseBookParts(value);
   if (value.t === 'book-cover') return parseBookCover(value);
   if (value.t === 'sound-state') return parsePlayerSoundState(value);
   if (value.t === 'resync') return isSceneId(value.scene) && isDeltaOf(value.of) ? { t: 'resync', scene: value.scene, of: value.of } : null;

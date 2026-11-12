@@ -8,6 +8,12 @@ import { ANA, ANA_OWN, BEN, BRANNOCH_BOOK, CAL, cave, delivered, keptBooks, name
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
+// Node has no tile worker: a map's pyramid is still being cut for as long as the test runs, as on a slow device.
+vi.mock('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas')>()), buildMapPyramid: () => new Promise(() => undefined) }));
+vi.mock('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient', async (original) => ({
+  ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient')>()),
+  TesseraDecoderClient: { forApp: () => ({ levelReady: () => new Promise(() => undefined), tesseraBlobs: () => Promise.resolve([]) }), release: () => undefined },
+}));
 // The GM's marks draw with PIXI over Atlas's canvas, which a table of books has no use for.
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
   GmMarks: class {
