@@ -47,6 +47,8 @@
 - The lighting tool's bars stay in Session View, greyed out, and say that lighting is edited in GM View, instead of vanishing
 - Rooms saved with 0.14.0 turn into walls when you open the scene. The Rooms panel is gone: joining two rooms is deleting the wall between them
 - Fields, drop-downs and search bars in the asset manager and its dialogs have a quieter edge instead of a bright outline
+- With dynamic lighting, the GM can read the map where a scene has no light, while players still see only what the light shows
+- Scene tabs show more of each scene's name, and all of it while the bar has room
 
 ## Fixed
 
@@ -75,3 +77,12 @@
 - Collection and campaign settings no longer close on a click outside or Escape while they hold unsaved changes
 - The Scene levels page lets you change or replace the map image of a scene with a single floor
 - The statblock preview of the initiative tracker is no longer cut off for cards near the bottom of the window
+- Saving changes in the asset manager no longer slows down as the library grows
+- Moving Fantasy Statblocks statblocks into their notes no longer leaves a note behind because a property is written another way (3 and "3"), and for notes that really hold other values you can now choose to use the statblock's values
+- Online play: a player can no longer leave their token pressed halfway through a wall: a dropped token lands on a cell it can reach, snapped to the grid like the GM's own drops
+- Online play: the GM's map always shows the button that opens the table log while a table runs, not only when a new message came in
+- A large map can always be zoomed out until all of it shows, also after the pane gets smaller or another level's larger map is shown
+- Ctrl+click on a Mac trackpad opens the right-click menu of tokens, pins, doors, drawings, text, fog and walls
+- A note pinned to the map stays pinned, where you left it, after you click its pin to open the full note
+- A tooltip no longer blocks the buttons it covers, so the icon in the row above shows its own tooltip right away
+- Moving the Atlas folder inside the vault and back no longer leaves scenes without their map images
