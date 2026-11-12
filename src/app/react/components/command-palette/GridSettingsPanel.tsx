@@ -6,6 +6,7 @@ import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
 import { SettingRow, SettingSliderRow, SettingToggleRow } from './SettingRows';
 import { MapUnitRow } from './MapUnitRow';
 import { SceneUnitDistanceRow } from './SceneUnitDistanceRow';
+import { SceneUnitNameRow } from './SceneUnitNameRow';
 import type { AtlasView } from '../../../atlas-view';
 import type { GridType } from '../../../grid/GridSystem';
 import { DEFAULT_CELL_NUMBER_OPACITY, isCellNumberFormat, type CellNumberFormat } from '../../../grid/cellNumbering';
@@ -159,6 +160,8 @@ export function GridSettingsPanel({
       <MapUnitRow view={view} />
 
       <SceneUnitDistanceRow view={view} />
+
+      <SceneUnitNameRow view={view} />
 
       <SettingRow label={t('grid.hexNumbers')}>
         <ObsidianMenuDropdown

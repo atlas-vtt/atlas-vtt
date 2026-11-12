@@ -1,3 +1,4 @@
+import { isPlayersToken, type PlayerTokenRef } from '../characters/playerTokens';
 import { BUILT_IN_SIDES, defaultSides, sidesOfRules } from '../gameSystems/initiativeSideRules';
 import { t } from '../i18n';
 import type { TokenEntity } from '../types';
@@ -33,11 +34,13 @@ export function listedByCards(initiative: Pick<InitiativeState, 'isActive' | 'ca
 /**
  * The side a token fights on: the one the GM gave it where `known` holds it (the sides of the
  * fight or the rules; the built-in two by default), else the players' for a token that sees (the
- * lighting takes those for the party), else the opponents'.
+ * lighting takes those for the party) and for one that is a player's by what the app knows of it
+ * (`isPlayersToken`: a player character of the library, what a player was given), else the opponents'.
  */
-export function sideOf(token: Pick<TokenEntity, 'side' | 'vision'> | undefined, known: readonly SideId[] = BUILT_IN_SIDES): SideId {
-  if (token?.side && known.includes(token.side)) return token.side;
-  return token?.vision?.enabled ? 'players' : 'opponents';
+export function sideOf(token: (Pick<TokenEntity, 'side' | 'vision'> & PlayerTokenRef) | undefined, known: readonly SideId[] = BUILT_IN_SIDES): SideId {
+  if (!token) return 'opponents';
+  if (token.side && known.includes(token.side)) return token.side;
+  return token.vision?.enabled || isPlayersToken(token) ? 'players' : 'opponents';
 }
 
 /** A side as the lists show it: its name, this round's roll where the order is rolled, and whether it has the turn. */

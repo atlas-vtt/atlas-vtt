@@ -54,6 +54,18 @@ describe('readLootBaseItems', () => {
     expect(await readLootBaseItems(appWith({ [BASE]: 'filters:\n  and: []\n' }), BASE)).toEqual([]);
   });
 
+  it('answers null, and stops, for a base with a view whose results cannot be read', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const items = readLootBaseItems(appWith({ [BASE]: BASE_YAML }), BASE);
+    await started();
+    queries.of('Weapons').listener.onSnapshot(snapshot('Items/Sword.md'));
+    queries.of('Armor').listener.onUnreadable(new Error('no rows'));
+
+    expect(await items).toBeNull();
+    expect(queries.started.every((query) => query.stopped)).toBe(true);
+    vi.restoreAllMocks();
+  });
+
   it('answers null for a base that is gone, and while Bases is off', async () => {
     expect(await readLootBaseItems(appWith({}), BASE)).toBeNull();
     queries.available = false;

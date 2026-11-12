@@ -32,7 +32,7 @@ export interface SceneLevelsSlice {
   deleteLevelLink: (id: string) => void;
 }
 
-type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover'>;
+type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover' | 'measurePopover'>;
 
 type ImmerSet = (fn: (draft: LevelsDraft) => void) => void;
 
@@ -60,6 +60,7 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
       draft.lightPopover = null;
       draft.lightZonePopover = null;
       draft.levelLinkPopover = null;
+      draft.measurePopover = null;
     }),
 
     setLevels: (levels) => set((draft) => {

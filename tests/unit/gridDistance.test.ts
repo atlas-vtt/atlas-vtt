@@ -32,6 +32,15 @@ describe('pathLengthInCells on square grids', () => {
     expect(pathLengthInCells(square, [cell(0, 0), cell(3, 4)], 'euclidean')).toBeCloseTo(5);
   });
 
+  it('counts every diagonal 2 under the Manhattan rule: the steps across plus the steps along', () => {
+    expect(pathLengthInCells(square, [cell(0, 0), cell(4, 0)], 'manhattan')).toBe(4);
+    expect(pathLengthInCells(square, [cell(0, 0), cell(3, 3)], 'manhattan')).toBe(6);
+    expect(pathLengthInCells(square, [cell(0, 0), cell(4, 2)], 'manhattan')).toBe(6);
+    expect(pathLengthInCells(square, [cell(4, 2), cell(0, 0)], 'manhattan')).toBe(6);
+    // Corners change nothing: every leg costs its steps across and along.
+    expect(pathLengthInCells(square, [cell(0, 0), cell(1, 1), cell(3, 0), cell(3, 2)], 'manhattan')).toBe(2 + 3 + 2);
+  });
+
   it('adds up the segments of a path', () => {
     expect(pathLengthInCells(square, [cell(0, 0), cell(3, 0), cell(3, 2)], 'equidistant')).toBe(5);
   });
@@ -105,6 +114,7 @@ describe('pathLengthInCells on hex grids', () => {
     const points = [axialToPixel(layout, { q: 0, r: 0 }), axialToPixel(layout, { q: 3, r: -1 })];
     expect(pathLengthInCells(hex, points, 'equidistant')).toBe(3);
     expect(pathLengthInCells(hex, points, 'alternating')).toBe(3);
+    expect(pathLengthInCells(hex, points, 'manhattan')).toBe(3);
   });
 
   it('adds up steps across waypoints', () => {

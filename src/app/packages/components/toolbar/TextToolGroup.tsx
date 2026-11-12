@@ -4,22 +4,11 @@ import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { DropdownSwatchGrid } from "../primitives/DropdownSwatchGrid"
 import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
+import { MAP_COLOR_SWATCHES } from "./mapColorSwatches"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { textToolFace } from "./toolFaces"
 import { useEmitViewEvent } from "./useEmitViewEvent"
 import { t } from '../../../i18n'
-
-/** Preset text colours: high-contrast neutrals plus map-legible accents. */
-const TEXT_COLOR_SWATCHES = [
-  { value: '#ffffff', label: t('color.white') },
-  { value: '#000000', label: t('color.black') },
-  { value: '#e93147', label: t('color.red') },
-  { value: '#ec7500', label: t('color.orange') },
-  { value: '#e0ac00', label: t('color.yellow') },
-  { value: '#08b94e', label: t('color.green') },
-  { value: '#086ddd', label: t('color.blue') },
-  { value: '#7852ee', label: t('color.purple') },
-] as const;
 
 type TextSettings = { color: string; fontSize: number; bold: boolean }
 
@@ -61,7 +50,7 @@ export function TextToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
       <div className="atlas-dropdown-section">
         <DropdownSwatchGrid
           label={t('toolbar.colour')}
-          swatches={TEXT_COLOR_SWATCHES}
+          swatches={MAP_COLOR_SWATCHES}
           value={textColor}
           onChange={(value) => { setTextColor(value); applyTextSetting({ color: value }); }}
         />

@@ -10,7 +10,7 @@ export const toolbarEdit = {
   'toolbarEdit.text.label': 'Text',
   'toolbarEdit.text.description': 'Write labels and short notes straight onto the map.',
   'toolbarEdit.measure.label': 'Measure',
-  'toolbarEdit.measure.description': "Measure a distance, or the reach of a circle or cone, in your grid's units.",
+  'toolbarEdit.measure.description': 'Measure a distance, or the reach of a circle or cone, and keep it on the map if you like.',
   'toolbarEdit.wall.label': 'Lighting',
   'toolbarEdit.wall.description': 'Draw walls and doors, place lights, and decide what each token can see.',
   'toolbarEdit.pin.label': 'Note pin',

@@ -21,7 +21,14 @@ export const DND_5E: SystemPreset = {
       difficultTerrain: 'double',
       // A cone is as wide as it is long at every point: 2 × atan(1/2)
       coneAngle: 53.13,
+      // An area affects a square it covers at least half of
+      areaCellRule: 'half',
       abstractRangeBands: [],
+    },
+    // A creature moves up to its speed on its turn, and as far again with the action that doubles it
+    movement: {
+      steps: [{ name: 'Move', multiple: 1, color: '#22c55e' }, { name: 'Dash', multiple: 2, color: '#f59e0b' }],
+      countPerTurn: true,
     },
     dice: { defaultRoll: '1d20', crit: 'natural' },
     diceSetId: D20_DICE_SET_ID,

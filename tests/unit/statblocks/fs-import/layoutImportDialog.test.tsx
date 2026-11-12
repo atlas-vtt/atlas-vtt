@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { TooltipProvider } from '../../../../src/app/packages/components/primitives/tooltip';
 import { LayoutImportDialog } from '../../../../src/app/statblocks/editor/fs-import/LayoutImportDialog';
 import {
-  detailsLine, fsOnlyLine, moveExplanation, moveLabel, movedLine, readyLine, readyTitle,
+  detailsLine, fsOnlyLine, moveExplanation, moveLabel, movedLine, otherValuesLine, readyLine, readyTitle,
 } from '../../../../src/app/statblocks/editor/fs-import/importReportText';
 import type { LayoutStatblocks } from '../../../../src/app/statblocks/fs/fsLayoutStatblocks';
 import { importFsLayout, type FsLayoutImport } from '../../../../src/app/statblocks/fs/fsImport';
@@ -79,6 +79,13 @@ describe('the dialog\'s words', () => {
       'Moving your statblocks lets you open and edit them in Atlas; every value stays as it is. A statblock written into a note\'s text moves out of the text and shows beside the note.',
     );
   });
+  it('says how many notes hold other values and for which keys, each key once', () => {
+    expect(otherValuesLine([])).toBeNull();
+    expect(otherValuesLine([{ path: 'a', reason: '', conflicts: ['level'] }]))
+      .toBe('One note already holds other values for level. Its statblock\'s values can replace them.');
+    expect(otherValuesLine([{ path: 'a', reason: '', conflicts: ['level', 'hp'] }, { path: 'b', reason: '', conflicts: ['hp', 'ac', 'speed', 'size'] }]))
+      .toBe('2 notes already hold other values for level, hp, ac and 2 more. Their statblocks\' values can replace them.');
+  });
 });
 
 describe('LayoutImportDialog', () => {
@@ -117,6 +124,44 @@ describe('LayoutImportDialog', () => {
     expect(vault.files.get(HAG)).toBe(`---\nstatblock: true\natlas-template: ${imported.id}\nname: Hag\nlayout: Marsh layout\nhp: 9\n---\nShe waits.\n\nThe end.\n`);
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe('notes that hold other values than their statblocks', () => {
+    const OLD = 'Bestiary/Old.md';
+    const OLDER = 'Bestiary/Older.md';
+    const taken = (name: string, held: string): string => `---\n${held}---\n\`\`\`statblock\nlayout: Marsh layout\nname: ${name}\nhp: 9\nac: 12\n\`\`\`\n`;
+    const USE = 'Use the statblock\'s values';
+
+    async function moveFirst(): Promise<void> {
+      vault.files.set(OLD, taken('Old', 'hp: 3\n'));
+      vault.files.set(OLDER, taken('Older', 'tags: marsh\nac: 10\nhp: 3\n'));
+      show({ frontmatter: NOTES.slice(0, 1), fences: [HAG, OLD, OLDER] });
+      fireEvent.click(screen.getByRole('button', { name: 'Move 4 statblocks to Atlas' }));
+      await screen.findByText('Moved 2 of 4 statblocks.');
+    }
+
+    it('are left as they were, with the choice to use the statblocks\' values', async () => {
+      await moveFirst();
+      expect(screen.getByText('2 notes already hold other values for hp and ac. Their statblocks\' values can replace them.')).toBeTruthy();
+      expect(vault.files.get(OLD)).toBe(taken('Old', 'hp: 3\n'));
+      expect(vault.files.get(OLDER)).toBe(taken('Older', 'tags: marsh\nac: 10\nhp: 3\n'));
+      expect(screen.getAllByRole('button').slice(-2).map((button) => button.textContent)).toEqual([USE, 'Done']);
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(onClose).toHaveBeenCalled();
+      expect(vault.files.get(OLD)).toBe(taken('Old', 'hp: 3\n'));
+    });
+
+    it('move with the statblocks\' values once that is chosen, as one more batch', async () => {
+      await moveFirst();
+      fireEvent.click(screen.getByRole('button', { name: USE }));
+      expect(screen.getByRole('progressbar', { name: 'Moving statblocks' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
+      await screen.findByText('Moved 4 statblocks.');
+      expect(vault.files.get(OLD)).toBe(`---\nhp: 9\nstatblock: true\natlas-template: ${imported.id}\nname: Old\nlayout: Marsh layout\nac: 12\n---\n`);
+      expect(vault.files.get(OLDER)).toBe(`---\ntags: marsh\nac: 12\nhp: 9\nstatblock: true\natlas-template: ${imported.id}\nname: Older\nlayout: Marsh layout\n---\n`);
+      expect(screen.queryByRole('button', { name: USE })).toBeNull();
+      expect(screen.queryByText(/already hold/)).toBeNull();
+    });
   });
 
   it('closes on Not now without moving anything', () => {

@@ -64,7 +64,7 @@ async function crowd(): Promise<PlayerViewScene> {
     paint: fogRectangle({ x: 15 * CELL, y: 0, width: 4 * CELL, height: 4 * CELL }),
     edge: fogRectangle({ id: 'edge', timestamp: 2, x: 19 * CELL, y: 0, width: CELL, height: 4 * CELL }),
   });
-  s.events.emit('measure-persistence-changed', true);
+  s.store.getState().setMeasureTool({ keep: true });
   for (const k of [0, 2, 4, 6, 8, 40, 42, 44, 46, 48, 180, 182, 184, 186, 188, 15, 16, 17, 18, 19]) {
     const [x, y] = [centre(k % COLUMNS), centre(Math.floor(k / COLUMNS))];
     s.measureFrom(x, y, x + 2 * CELL, y + CELL);

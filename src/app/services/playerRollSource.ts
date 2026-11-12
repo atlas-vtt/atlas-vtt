@@ -1,7 +1,9 @@
 import type { DiceRollOrigin } from '../types/diceRollOrigin';
 import type { DiceRollResult } from '../types/diceTypes';
 import { nameShownToPlayers } from '../pixi/token-renderer/nameplateVisibility';
+import { tokenDisplayName } from '../pixi/token-renderer/tokenDisplayName';
 import type { PreparedDiceRoll, RollSourcePresentation } from '../react/components/dice/diceSourcePresentation';
+import type { TokenEntity } from '../types';
 
 /** A token the players' picture shows, as a roll may name it: plain data read from the map. */
 export interface ShownRollToken {
@@ -12,6 +14,14 @@ export interface ShownRollToken {
   readonly imagePath: string | undefined;
   readonly showRing: boolean;
   readonly ringColor: string | undefined;
+}
+
+/** What a token shows of itself wherever it is named: its name, artwork and ring. */
+export type TokenFace = Pick<ShownRollToken, 'name' | 'imagePath' | 'showRing' | 'ringColor'>;
+
+/** A token's face, read from the token as the scene holds it. */
+export function tokenFace(token: TokenEntity): TokenFace {
+  return { name: tokenDisplayName(token), imagePath: token.imagePath || undefined, showRing: token.showRing !== false, ringColor: token.ringColor };
 }
 
 /** The scene a player window shows, as rolls ask it which tokens it shows. */

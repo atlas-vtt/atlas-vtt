@@ -4,6 +4,10 @@ import { DragRuler } from '../../src/app/pixi/token-renderer/DragRuler';
 import type { DragRulerView } from '../../src/app/pixi/token-renderer/DragRulerView';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
+import { movementTurn, type TurnMovesState } from '../../src/app/initiative/movedThisTurn';
+import { BEYOND_SPEED } from '../../src/app/measure/dragMovement';
+import type { MovementRules } from '../../src/app/measure/movementRules';
+import type { TokenMovement } from '../../src/app/pixi/token-renderer/tokenMovement';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import { computeTokenPixelSize } from '../../src/app/pixi/token-renderer/tokenSizing';
 
@@ -12,19 +16,29 @@ const CELL = 70;
 const TOKEN_RADIUS = computeTokenPixelSize(CELL, 1) / 2;
 const center = (col: number, row: number): { x: number; y: number } => ({ x: CELL / 2 + col * CELL, y: CELL / 2 + row * CELL });
 
-function makeRuler(token: { isHidden?: boolean } = {}): { ruler: DragRuler; view: { draw: ReturnType<typeof vi.fn>; clear: ReturnType<typeof vi.fn>; layers: object[] } } {
+/** What a ruler is built with beyond its token: the movement it reads, more of the view's state, other measurement settings. */
+interface RulerOptions {
+  movement?: Pick<TokenMovement, 'rules' | 'speedOf'>;
+  state?: Record<string, unknown>;
+  settings?: Partial<MeasurementSettings>;
+}
+
+function makeRuler(token: { isHidden?: boolean; speed?: number } = {}, shown: () => boolean = () => true, options: RulerOptions = {}): { ruler: DragRuler; view: { draw: ReturnType<typeof vi.fn>; clear: ReturnType<typeof vi.fn>; layers: { visible: boolean }[] } } {
   const view = { draw: vi.fn(), clear: vi.fn(), destroy: vi.fn(), layers: [{ visible: true }, { visible: true }] };
   const gridSystem = {
     getOptions: () => ({ type: 'square', size: CELL, offsetX: 0, offsetY: 0 }),
     snapTokenCenter: (x: number, y: number) => center(Math.floor(x / CELL), Math.floor(y / CELL)),
   };
-  const state = { grid: { snapToGrid: true }, objects: { tokens: { t1: { id: 't1', size: 1, ...token } } } };
-  const settings: MeasurementSettings = { mode: 'metric', unitType: 'feet', unitDistance: 5, diagonalRule: 'equidistant', rangeBands: [] };
+  const state = { grid: { snapToGrid: true }, objects: { tokens: { t1: { id: 't1', size: 1, ...token } } }, ...options.state };
+  const settings = { mode: 'metric', unitType: 'feet', unitDistance: 5, diagonalRule: 'equidistant', rangeBands: [], ...options.settings } as MeasurementSettings;
   const ruler = new DragRuler(
     view as unknown as DragRulerView,
     gridSystem as unknown as GridSystem,
     { getState: () => state as unknown as ViewAtlasState },
     () => settings,
+    () => true,
+    shown,
+    options.movement ?? null,
   );
   return { ruler, view };
 }
@@ -106,6 +120,29 @@ describe('DragRuler', () => {
     expect(view.clear).toHaveBeenCalled();
   });
 
+  it('shows no distance while the GM has them switched off, and follows the switch in the middle of a drag', () => {
+    let shown = false;
+    const { ruler, view } = makeRuler({}, () => shown);
+    ruler.begin('t1', center(0, 0));
+    ruler.update(center(2, 0));
+    expect(view.draw).not.toHaveBeenCalled();
+    expect(ruler.path()).toBeNull();
+    // Space still never reaches the command palette mid-drag, and adds no corner nobody sees
+    expect(pressSpace().defaultPrevented).toBe(true);
+
+    shown = true;
+    ruler.update(center(2, 3));
+    expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(2, 3)], '15ft', TOKEN_RADIUS, CELL);
+    expect(ruler.path()?.points).toEqual([center(0, 0), center(2, 3)]);
+
+    shown = false;
+    ruler.update(center(2, 4));
+    expect(view.clear).toHaveBeenCalled();
+    ruler.refreshVisibility();
+    expect(view.layers.every((layer) => !layer.visible)).toBe(true);
+    ruler.end();
+  });
+
   it('hides the ruler from players while it measures a hidden token', () => {
     const hidden = makeRuler({ isHidden: true });
     hidden.ruler.begin('t1', center(0, 0));
@@ -125,5 +162,90 @@ describe('DragRuler', () => {
     expect(ruler.getPlayerViewLayers(() => true)).toEqual([]);
     ruler.end();
     expect(ruler.getPlayerViewLayers(() => false)).toEqual([]);
+  });
+
+  describe('under movement rules', () => {
+    const MOVE = { name: 'Move', multiple: 1, color: '#22c55e' };
+    const DASH = { name: 'Dash', multiple: 2, color: '#f59e0b' };
+    const steps = (countPerTurn = false): MovementRules => ({ steps: [MOVE, DASH], countPerTurn });
+    /** Movement as the canvas hands it over: the rules, and the token's own speed. */
+    const movement = (rules: MovementRules): RulerOptions['movement'] => ({
+      rules: () => rules,
+      speedOf: (token) => (typeof token.speed === 'number' ? token.speed : null),
+    });
+    /** A fight in round 1 whose turn `t1` holds, in which it has moved `moved` feet. */
+    const fightWith = (moved: number): Record<string, unknown> => {
+      const fight = { initiative: { isActive: true, round: 1, entries: [{ id: 'e1', tokenId: 't1', isActive: true }] }, fightsStarted: 1 };
+      return { ...fight, turnMoves: { t1: { turn: movementTurn(fight as unknown as TurnMovesState), distance: moved } } };
+    };
+
+    it('takes the colour of the step the move lies in and sets the distance against the speed', () => {
+      const { ruler, view } = makeRuler({ speed: 30 }, () => true, { movement: movement(steps()) });
+      ruler.begin('t1', center(0, 0));
+      ruler.update(center(5, 0));
+      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(5, 0)], '25 / 30ft', TOKEN_RADIUS, CELL, MOVE.color);
+      ruler.update(center(7, 0));
+      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(7, 0)], '35 / 30ft', TOKEN_RADIUS, CELL, DASH.color);
+      ruler.update(center(13, 0));
+      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(13, 0)], '65 / 30ft', TOKEN_RADIUS, CELL, BEYOND_SPEED);
+      ruler.end();
+    });
+
+    it('adds up over corners like the distance it shows', () => {
+      const { ruler, view } = makeRuler({ speed: 30 }, () => true, { movement: movement(steps()) });
+      ruler.begin('t1', center(0, 0));
+      ruler.update(center(4, 0));
+      pressSpace();
+      ruler.update(center(4, 3));
+      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(4, 0), center(4, 3)], '35 / 30ft', TOKEN_RADIUS, CELL, DASH.color);
+      ruler.end();
+    });
+
+    it('goes on from what the token moved in its turn where movement counts per turn and a fight runs', () => {
+      const counted = makeRuler({ speed: 30 }, () => true, { movement: movement(steps(true)), state: fightWith(20) });
+      counted.ruler.begin('t1', center(0, 0));
+      counted.ruler.update(center(3, 0));
+      expect(counted.view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '35 / 30ft', TOKEN_RADIUS, CELL, DASH.color);
+      counted.ruler.end();
+
+      // The same turn under rules that do not count: each drag starts at 0.
+      const single = makeRuler({ speed: 30 }, () => true, { movement: movement(steps(false)), state: fightWith(20) });
+      single.ruler.begin('t1', center(0, 0));
+      single.ruler.update(center(3, 0));
+      expect(single.view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '15 / 30ft', TOKEN_RADIUS, CELL, MOVE.color);
+      single.ruler.end();
+
+      // Outside a fight nothing was moved "this turn".
+      const idle = makeRuler({ speed: 30 }, () => true, { movement: movement(steps(true)), state: { ...fightWith(20), initiative: { isActive: false, round: 1, entries: [] } } });
+      idle.ruler.begin('t1', center(0, 0));
+      idle.ruler.update(center(3, 0));
+      expect(idle.view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '15 / 30ft', TOKEN_RADIUS, CELL, MOVE.color);
+      idle.ruler.end();
+    });
+
+    it('draws today\'s line and label without steps, without a speed and in range bands', () => {
+      const plain: Array<[string, { speed?: number }, RulerOptions]> = [
+        ['no steps', { speed: 30 }, { movement: movement({ steps: [], countPerTurn: true }) }],
+        ['no speed', {}, { movement: movement(steps()) }],
+        ['range bands', { speed: 30 }, { movement: movement(steps()), settings: { mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 6 }] } }],
+      ];
+      for (const [name, token, options] of plain) {
+        const { ruler, view } = makeRuler(token, () => true, options);
+        ruler.begin('t1', center(0, 0));
+        ruler.update(center(3, 0));
+        // Four arguments: no colour is named, so the view draws in the accent as it always did.
+        expect(view.draw, name).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], name === 'range bands' ? 'Close' : '15ft', TOKEN_RADIUS, CELL);
+        ruler.end();
+      }
+    });
+
+    it('shows nothing while distances are switched off, whatever the rules say', () => {
+      const { ruler, view } = makeRuler({ speed: 30 }, () => false, { movement: movement(steps()) });
+      ruler.begin('t1', center(0, 0));
+      ruler.update(center(5, 0));
+      expect(view.draw).not.toHaveBeenCalled();
+      expect(ruler.path()).toBeNull();
+      ruler.end();
+    });
   });
 });

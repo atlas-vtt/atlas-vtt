@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { commitLabel } from '../../../../src/app/statblocks/editor/template-editor/labelCommit';
-import { bindHeaderPart, fieldNamedBy } from '../../../../src/app/statblocks/model/headerBinding';
+import { bindHeaderPart, fieldNamedBy, rekeyHeaderPart } from '../../../../src/app/statblocks/model/headerBinding';
 import { headerParts } from '../../../../src/app/statblocks/model/templateHeader';
 import type { StatblockTemplate, TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { template } from '../template-editor/editorKit';
@@ -67,6 +67,29 @@ describe('a header part pointed at another field', () => {
   });
 });
 
+describe('a header part kept under the statblocks\' own key', () => {
+  it('moves the part\'s field to the key, with its meaning, and keeps the key it had readable', () => {
+    const rekeyed = rekeyHeaderPart(template([FEATS], FIELDS), 'level', 'tier');
+    expect(levelOf(rekeyed)).toEqual(['tier', 'Level']);
+    expect(rekeyed.fields.find((field) => field.key === 'tier')).toEqual({ key: 'tier', label: 'Level', type: 'rating', meaning: 'rating', formerKeys: ['level'] });
+    expect(rekeyed.fields.some((field) => field.key === 'level')).toBe(false);
+  });
+
+  it('gives a field found by its own key the part\'s meaning, so the part still finds it', () => {
+    const plain = FIELDS.map((field) => (field.key === 'level' ? { key: 'level', label: 'Level', type: 'rating' as const } : field));
+    expect(levelOf(rekeyHeaderPart(template([FEATS], plain), 'level', 'tier'))).toEqual(['tier', 'Level']);
+  });
+
+  it('refuses the name, the key the part has, and a key another field has or had', () => {
+    const source = template([RANK, FEATS], FIELDS);
+    expect(rekeyHeaderPart(source, 'name', 'title')).toBe(source);
+    expect(rekeyHeaderPart(source, 'level', 'level')).toBe(source);
+    expect(rekeyHeaderPart(source, 'level', 'rank')).toBe(source);
+    const renamed = template([FEATS], [...FIELDS.filter((field) => field.key !== 'rank'), { key: 'grade', label: 'Grade', type: 'text', formerKeys: ['rank'] }]);
+    expect(rekeyHeaderPart(renamed, 'level', 'rank')).toBe(renamed);
+  });
+});
+
 describe('renaming a header part in the template editor', () => {
   it('points the level at the field named so', () => {
     const { template: renamed } = commitLabel(template([RANK, FEATS], FIELDS), 'header-level', 'Rank');
@@ -77,5 +100,21 @@ describe('renaming a header part in the template editor', () => {
     const { template: renamed } = commitLabel(template([RANK, FEATS], FIELDS), 'header-level', 'Circle');
     expect(levelOf(renamed)).toEqual(['level', 'Circle']);
     expect(renamed.fields.find((field) => field.key === 'rank')?.meaning).toBeUndefined();
+  });
+
+  it('takes the key the collection\'s statblocks hold under that name, in their spelling, and says so', () => {
+    const result = commitLabel(template([FEATS], FIELDS), 'header-level', 'Tier', ['feats', 'Tier', 'stress']);
+    expect(levelOf(result.template)).toEqual(['Tier', 'Tier']);
+    expect(result.bound).toEqual({ key: 'Tier', created: false, fromCollection: true });
+    expect(result.template.fields.find((field) => field.key === 'Tier')?.formerKeys).toEqual(['level']);
+  });
+
+  it('keeps its key where the statblocks hold none of that name, and prefers a field of the template to their key', () => {
+    const relabelled = commitLabel(template([FEATS], FIELDS), 'header-level', 'Tier', ['feats', 'stress']);
+    expect(levelOf(relabelled.template)).toEqual(['level', 'Tier']);
+    expect(relabelled.bound).toBeUndefined();
+    const own = commitLabel(template([RANK, FEATS], FIELDS), 'header-level', 'Rank', ['rank']);
+    expect(levelOf(own.template)).toEqual(['rank', 'Rank']);
+    expect(own.template.fields.some((field) => field.formerKeys?.includes('level'))).toBe(false);
   });
 });

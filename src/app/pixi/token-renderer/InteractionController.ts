@@ -34,9 +34,15 @@ import { saveMapTokensAsEncounter } from '../../encounters/saveMapTokensAsEncoun
 import { copyMapObjects } from '../../clipboard/mapClipboardActions';
 import { copyDragSelection } from './dragCopy';
 import type { DragRuler } from './DragRuler';
+import type { TokenMovement } from './tokenMovement';
 import { runInBackground } from '../../utils/backgroundTask';
+import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
 import { tokenSizeSubmenu } from '../../react/components/context-menu/tokenSizeMenu';
+import { tokenMovementSubmenu } from '../../react/components/context-menu/tokenMovementMenu';
 import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLevelMenu';
+import { tokenHeightSubmenu } from '../../react/components/context-menu/tokenHeightMenu';
+import { mapMeasurementSettings } from '../../services/mapMeasurementSettings';
+import { rulesLookup } from '../../services/mapRules';
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
@@ -113,6 +119,8 @@ export class InteractionController implements ITokenInteractionController {
   private onTokensHeldChange?: (tokenIds: string[]) => void;
   private updateHandlePositions?: () => void;
   private dragRuler?: DragRuler;
+  /** The map's movement rules and its tokens' speeds (`tokenMovement`); a view without them moves tokens as ever. */
+  private movement?: TokenMovement;
   /** Where a lost pointer is heard while the pointer is down (`watchLostPointer`). */
   private lostPointerTargets: { canvas: HTMLElement; win: Window | null } | null = null;
   /** The popover of a change for the selection's tokens, made with the first one (`selectionResourceEntry`). */
@@ -155,13 +163,13 @@ export class InteractionController implements ITokenInteractionController {
   /** Called by TokenRenderer when viewport pointerdown hits a token. */
   public handleViewportTokenPointerDown(tokenId: string, e: FederatedPointerEvent): void {
     const activeTool = this.store.getState().activeTool;
-    if (activeTool === 'measure' || activeTool === 'measure-circle' || activeTool === 'measure-cone') {
+    if (activeTool === 'measure') {
       return;
     }
 
     e.stopPropagation();
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
       if (token && !this.isPlayerView) {
         this.showContextMenu(token, e);
@@ -180,7 +188,7 @@ export class InteractionController implements ITokenInteractionController {
 
   /** Starts a group drag for the given token IDs (click within selection bounding box). */
   public handleViewportGroupDragStart(tokenIds: string[], e: FederatedPointerEvent): void {
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
 
     const activeTool = this.store.getState().activeTool;
     if (activeTool !== 'select' && activeTool !== 'move') return;
@@ -216,6 +224,8 @@ export class InteractionController implements ITokenInteractionController {
       this.handleHoverStart(tokenId);
       // Emit hover preview for new token
       const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
+      // A token under the pointer may be dragged next: its speed is asked for ahead of the drag.
+      if (token) this.movement?.prepare([token]);
       if (token?.kind === 'character' && e && token.statblockPath?.trim()) {
         this.hoverPreview = {
           id: token.id,
@@ -265,6 +275,9 @@ export class InteractionController implements ITokenInteractionController {
     // This prevents accumulation if previous interaction didn't clean up properly
     this.cleanupDragListeners();
     
+    // A press without a hover before it (touch) asks for the grabbed token's speed here.
+    this.movement?.prepare([token]);
+
     // Store the token for potential click handling
     this.dragState.clickToken = token;
     this.dragState.hasMoved = false;
@@ -509,6 +522,11 @@ export class InteractionController implements ITokenInteractionController {
         tokenUpdates.push({id, x: finalPos.x, y: finalPos.y});
       }
       
+      // What each token moved counts for its turn, in the drop's own undo step.
+      this.dragRuler?.countDrop(tokenUpdates.flatMap(({ id, x, y }) => {
+        const from = this.dragState.initialPositions[id];
+        return from ? [{ id, from, to: { x, y } }] : [];
+      }));
       if (tokenUpdates.length > 0) stepHeld = dropTokensOnStairs(this.store, tokenUpdates, menuAt, this.artFloors?.());
       
       // Update UI
@@ -579,9 +597,18 @@ export class InteractionController implements ITokenInteractionController {
       }));
     }));
 
+    // The speed the selection moves by, where their statblocks state several
+    const movementMenu = this.movement ? tokenMovementSubmenu(this.store, token.id, this.contextMenuTargets(token.id), this.movement) : null;
+    if (movementMenu) entries.push(movementMenu);
+
     // Move to another level of the scene, the selection in one undo step
     const levelMenu = tokenLevelSubmenu(this.store, this.contextMenuTargets(token.id));
     if (levelMenu) entries.push(levelMenu);
+
+    // How far off the floor the selection stands, where the map measures distances; the GM's to say
+    const heightMenu = this.isPlayerView ? null : tokenHeightSubmenu(this.store, this.contextMenuTargets(token.id),
+      () => mapMeasurementSettings(rulesLookup(this.obsApp), this.store.getState()));
+    if (heightMenu) entries.push(heightMenu);
 
     // Hide/Show the selection in one undo step; the clicked token decides which way
     const currentToken = mapTokens(levelObjects(this.store.getState()))[token.id];
@@ -824,6 +851,10 @@ export class InteractionController implements ITokenInteractionController {
    */
   setTokensHeldCallback(callback: (tokenIds: string[]) => void): void {
     this.onTokensHeldChange = callback;
+  }
+
+  setTokenMovement(movement: TokenMovement): void {
+    this.movement = movement;
   }
 
   setDragRuler(ruler: DragRuler): void {

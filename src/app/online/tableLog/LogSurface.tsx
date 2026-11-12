@@ -13,10 +13,10 @@ export interface LogSurfaceProps extends Omit<TableLogPanelProps, 'variant'> {
 
 /**
  * The floating panel while it is open; while it is closed, a tab that opens it and counts what came
- * in meanwhile, drawn in `tabHost`, which the host places where the tab stands. The tab stays while
- * nothing is unread: the log is always one press away.
+ * in meanwhile, drawn in `tabHost`, which the host places where the tab stands. The tab is there
+ * whenever the log is closed, so the log can always be opened with the pointer.
  */
-function LogSurface({ open, onOpen, tabHost, ...panel }: LogSurfaceProps & { readonly tabHost: HTMLElement }): ReactElement {
+function LogSurface({ open, onOpen, tabHost, ...panel }: LogSurfaceProps & { readonly tabHost: HTMLElement }): ReactElement | null {
   const { unread } = useSyncExternalStore(panel.state.subscribe, panel.state.snapshot);
   if (open) return <TableLogPanel {...panel} variant="floating" />;
   return createPortal(<LogTab count={unread} onOpen={onOpen} />, tabHost);
@@ -30,7 +30,7 @@ export interface LogSurfaceMount {
 
 /**
  * Mounts the log's surface for a host that is not written in React (the GM's Obsidian): the panel
- * in `host`, its tab in `tabHost`.
+ * in `host`, the tab that opens it in `tabHost`.
  */
 export function mountLogSurface(host: HTMLElement, tabHost: HTMLElement): LogSurfaceMount {
   const root = createRoot(host);

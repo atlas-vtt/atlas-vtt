@@ -14,7 +14,6 @@ import { MapLayerShare } from './MapLayerShare.ts';
 import { MarkShare } from './MarkShare.ts';
 import { sceneWalls, type MapSize } from './moveCheck.ts';
 import { ownerIn } from './seatSource.ts';
-import { snapGridOf } from './scenePicture.ts';
 import { PlayerMoves } from './playerMoves.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 import { movesOutOfTurn } from './turnShare.ts';
@@ -99,7 +98,6 @@ export class FloorShare {
         map: this.mapSize,
         // The walls of this floor, on which every token of its list stands
         walls: sceneWalls(levelObjects(store.getState()).walls, this.scene?.lit === true, this.mapSize),
-        snap: snapGridOf(store.getState().grid),
         outOfTurn: (tokenId) => {
           const settings = ports.atlasSettings();
           return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, showInitiative: settings.showInitiative, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);

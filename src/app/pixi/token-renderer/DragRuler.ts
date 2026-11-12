@@ -4,6 +4,11 @@
  * Space adds a waypoint at the current landing cell; the distance adds up
  * across waypoints, and difficult terrain on the way costs what the rules say
  * (`movementCostInCells`). The token still drops where the pointer is released.
+ * Whether a drag shows its distance at all is the GM's choice (`shown`, read at every step, so a
+ * change of the setting or a fight starting is followed at once).
+ * Where the collection names movement steps and the token has a speed (`movement`), the line
+ * takes the colour of the step the move lies in and the label sets the distance against the
+ * speed; the drop counts what each token moved in the running turn (`countDrop`).
  */
 
 import type { StoreApi } from 'zustand';
@@ -13,6 +18,8 @@ import { movementCostInCells } from '../../grid/movementCost';
 import { tokenCenterShift } from '../../grid/gridPlacement';
 import type { Point } from '../../grid/hexGeometry';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
+import { movedThisTurn } from '../../initiative/movedThisTurn';
+import { dragMove, movedGameUnits, type DragMove } from '../../measure/dragMovement';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { DragRulerView } from './DragRulerView';
@@ -21,11 +28,20 @@ import { computeTokenPixelSize, tokenDiameterInCells } from './tokenSizing';
 import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { mapTokens } from '../../tokens/offMap';
+import type { TokenEntity } from '../../types';
+import type { TokenMovement } from './tokenMovement';
 
 /** What a drag ruler measures: the token and the points it runs through (its start, each waypoint, its landing). */
 export interface DragRulerPath {
   readonly tokenId: string;
   readonly points: readonly Point[];
+}
+
+/** A token of the drag as it is dropped: where the drag took it from and where it lands. */
+export interface TokenDrop {
+  readonly id: string;
+  readonly from: Point;
+  readonly to: Point;
 }
 
 export class DragRuler {
@@ -43,6 +59,8 @@ export class DragRuler {
     private readonly store: Pick<StoreApi<ViewAtlasState>, 'getState'>,
     private readonly settingsProvider: () => MeasurementSettings,
     private readonly tokenVisible: (tokenId: string) => boolean = () => true,
+    private readonly shown: () => boolean = () => true,
+    private readonly movement: Pick<TokenMovement, 'rules' | 'speedOf'> | null = null,
   ) {}
 
   /** Starts measuring a drag of `tokenId`, which started at `origin`. */
@@ -72,16 +90,44 @@ export class DragRuler {
     this.view.clear();
   }
 
-  /** The path the ruler shows now, or null while it shows none (no drag, or one that has not left its start). */
+  /** The path the ruler shows now, or null while it shows none (no drag, one that has not left its start, or distances switched off). */
   path(): DragRulerPath | null {
     const landing = this.landing;
-    if (!this.tokenId || !landing || this.waypoints.every(point => samePoint(point, landing))) return null;
+    if (!this.tokenId || !landing || !this.shown() || this.waypoints.every(point => samePoint(point, landing))) return null;
     return { tokenId: this.tokenId, points: [...this.waypoints, landing] };
+  }
+
+  /**
+   * Counts what each dropped token moved in the running turn, where the rules count movement per
+   * turn: the measured path from the token's own start to the place it is dropped at (`to`, as
+   * the drop snapped it), priced as the ruler prices it. Call it in the drag's history
+   * transaction, so undoing the drop gives the distance back. Nothing outside a drag, and nothing
+   * on a map that measures in range bands.
+   */
+  countDrop(drops: readonly TokenDrop[]): void {
+    const start = this.waypoints[0];
+    if (!this.tokenId || !start || !this.movement?.rules().countPerTurn) return;
+    const grid = this.gridSystem.getOptions();
+    const settings = this.settingsProvider();
+    /** Tokens by the distance they moved: tokens of one size on plain ground share theirs, and one write counts them. */
+    const moved = new Map<number, string[]>();
+    for (const { id, from, to } of drops) {
+      const size = this.tokenSize(id);
+      const own = this.snap(from, size);
+      // The token's own path: the measured corners, as far from its start as they are from the dragged token's.
+      const corners = this.waypoints.map((point) => ({ x: point.x + own.x - start.x, y: point.y + own.y - start.y }));
+      const distance = movedGameUnits(this.cost([...corners, to], grid, settings, size), settings);
+      if (distance === null || !(distance > 0)) continue;
+      const tokens = moved.get(distance);
+      if (tokens) tokens.push(id);
+      else moved.set(distance, [id]);
+    }
+    for (const [distance, tokenIds] of moved) this.store.getState().countTurnMove(tokenIds, distance);
   }
 
   /** Players never see the ruler of a token hidden from them, or of one they do not see (`isSeen`, with dynamic lighting). */
   getPlayerViewLayers(isSeen: (tokenId: string) => boolean = () => true): LayerVisibility[] {
-    const token = this.tokenId ? mapTokens(levelObjects(this.store.getState()))[this.tokenId] : undefined;
+    const token = this.token();
     const shown = !token || (!token.isHidden && isSeen(token.id));
     return shown ? [] : this.view.layers.map(layer => ({ layer, visible: false }));
   }
@@ -90,7 +136,7 @@ export class DragRuler {
   refreshVisibility(): void {
     const landing = this.landing;
     if (!this.tokenId || !landing) return;
-    const visible = this.tokenVisible(this.tokenId) && this.waypoints.some((point) => !samePoint(point, landing));
+    const visible = this.shown() && this.tokenVisible(this.tokenId) && this.waypoints.some((point) => !samePoint(point, landing));
     for (const layer of this.view.layers) layer.visible = visible;
   }
 
@@ -105,7 +151,7 @@ export class DragRuler {
     event.preventDefault();
     event.stopPropagation();
     const last = this.waypoints[this.waypoints.length - 1];
-    if (event.repeat || !this.landing || (last && samePoint(last, this.landing))) return;
+    if (event.repeat || !this.landing || !this.shown() || (last && samePoint(last, this.landing))) return;
     this.waypoints.push(this.landing);
     this.redraw();
   };
@@ -118,18 +164,36 @@ export class DragRuler {
     }
     const grid = this.gridSystem.getOptions();
     const settings = this.settingsProvider();
-    const features = mapFeatureList(levelObjects(this.store.getState()).mapFeatures);
-    const rules = { diagonalRule: settings.diagonalRule, difficultTerrain: settings.difficultTerrain, difficult: difficultCells(features) };
-    const footprint = this.snapsToGrid() ? tokenDiameterInCells(this.tokenSize()) : 1;
-    const cells = movementCostInCells(grid, this.cellPath(points, grid), rules, footprint);
+    const cells = this.cost(points, grid, settings);
+    const move = this.moveOf(cells, settings);
     const drawn = this.tip ? [...points.slice(0, -1), this.tip] : points;
-    this.view.draw(drawn, formatDistance(cells, settings), computeTokenPixelSize(grid.size, this.tokenSize()) / 2, grid.size);
+    const tokenRadius = computeTokenPixelSize(grid.size, this.tokenSize()) / 2;
+    if (move) this.view.draw(drawn, move.label, tokenRadius, grid.size, move.color);
+    // A drag that reads as a plain distance is drawn as it always was: in the accent, no colour named.
+    else this.view.draw(drawn, formatDistance(cells, settings), tokenRadius, grid.size);
     this.refreshVisibility();
   }
 
-  private snap(point: Point): Point {
+  /** What a path costs a token `size` cells wide, in grid cells: its length by the diagonal rule, and difficult terrain as the rules price it. */
+  private cost(points: readonly Point[], grid: GridGeometry, settings: MeasurementSettings, size = this.tokenSize()): number {
+    const features = mapFeatureList(levelObjects(this.store.getState()).mapFeatures);
+    const rules = { diagonalRule: settings.diagonalRule, difficultTerrain: settings.difficultTerrain, difficult: difficultCells(features) };
+    return movementCostInCells(grid, this.cellPath(points, grid, size), rules, this.snapsToGrid() ? tokenDiameterInCells(size) : 1);
+  }
+
+  /** How the drag reads under the movement rules; null where it reads as a plain distance (`dragMove`). */
+  private moveOf(cells: number, settings: MeasurementSettings): DragMove | null {
+    const token = this.token();
+    const rules = this.movement?.rules();
+    if (!this.movement || !token || !rules || rules.steps.length === 0) return null;
+    // With a fight running and movement counted per turn, the drag goes on from what the token moved in the turn.
+    const earlier = rules.countPerTurn ? movedThisTurn(this.store.getState(), token.id) : 0;
+    return dragMove({ cells, earlier, speed: this.movement.speedOf(token), rules, settings });
+  }
+
+  private snap(point: Point, size = this.tokenSize()): Point {
     if (!this.snapsToGrid()) return { x: point.x, y: point.y };
-    return this.gridSystem.snapTokenCenter(point.x, point.y, this.tokenSize());
+    return this.gridSystem.snapTokenCenter(point.x, point.y, size);
   }
 
   /**
@@ -137,9 +201,9 @@ export class DragRuler {
    * cells meet, and on a hex grid that point lies in none of the three hexes around it: which one the
    * rounding picks differs from place to place, so the same drag measured a hex more or less.
    */
-  private cellPath(points: readonly Point[], grid: GridGeometry): readonly Point[] {
+  private cellPath(points: readonly Point[], grid: GridGeometry, size: number): readonly Point[] {
     if (!this.snapsToGrid()) return points;
-    const shift = tokenCenterShift(grid.type, grid.size, this.tokenSize());
+    const shift = tokenCenterShift(grid.type, grid.size, size);
     return points.map(point => ({ x: point.x - shift.x, y: point.y - shift.y }));
   }
 
@@ -147,8 +211,13 @@ export class DragRuler {
     return this.store.getState().grid?.snapToGrid ?? true;
   }
 
-  private tokenSize(): number {
-    const size = this.tokenId ? mapTokens(levelObjects(this.store.getState()))[this.tokenId]?.size : undefined;
+  /** The dragged token as the store holds it now. */
+  private token(): TokenEntity | undefined {
+    return this.tokenId ? mapTokens(levelObjects(this.store.getState()))[this.tokenId] : undefined;
+  }
+
+  private tokenSize(tokenId: string | null = this.tokenId): number {
+    const size = tokenId ? mapTokens(levelObjects(this.store.getState()))[tokenId]?.size : undefined;
     return size || 1;
   }
 }

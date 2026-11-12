@@ -52,7 +52,7 @@ describe('MarkShare', () => {
     harness.advance(MARKS_INTERVAL_MS);
     harness.laser.at = [5, 5];
     harness.laser.changed();
-    await harness.measure({ live: { shape: 'sphere', start: { x: 1, y: 1 }, end: { x: 3, y: 4 } }, kept: [] });
+    await harness.measure({ live: { shape: 'circle', points: [{ x: 1, y: 1 }, { x: 3, y: 4 }], pressed: { x: 1, y: 1 } }, kept: [] });
     harness.advance(MARKS_INTERVAL_MS);
     const marks = lastMarks(harness);
     expect(harness.sent.every(({ to }) => to === undefined)).toBe(true);
@@ -179,7 +179,8 @@ describe('MarkShare', () => {
   it('sends a measurement being dragged on with the time since its end was last told: the GM\'s own, and a player\'s as it came', async () => {
     const harness = markHarness();
     harness.share.setScene('s1');
-    const drag = (x: number): Promise<void> => harness.measure({ live: { shape: 'line', start: { x: 0, y: 0 }, end: { x, y: 0 } }, kept: [] });
+    const pressed = { x: 0, y: 0 };
+    const drag = (x: number): Promise<void> => harness.measure({ live: { shape: 'ruler', points: [{ x: 0, y: 0 }, { x, y: 0 }], pressed }, kept: [] });
     await drag(0);
     harness.advance(MARKS_INTERVAL_MS);
     expect(lastMarks(harness)?.measures[0]).toEqual({ who: 'gm', color: '#123456', live: { shape: 'line', a: [0, 0], b: [0, 0] }, kept: [] });

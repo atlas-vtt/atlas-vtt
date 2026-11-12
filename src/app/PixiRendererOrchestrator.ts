@@ -3,7 +3,7 @@ import { createSceneSource } from './plugin/host/sceneSource';
 import { canRunMapHotkeys, matchesMapHotkey } from './keyboard/mapHotkeys';
 import { SettingsService, type AtlasSettings } from './services/SettingsService';
 import { DEFAULT_LASER_POINTER_SETTINGS } from './tools/laserPointerSettings';
-import { Application, Container, type FederatedPointerEvent } from "pixi.js";
+import { Application, Container, type FederatedPointerEvent, type Renderer } from "pixi.js";
 import { runInBackground } from './utils/backgroundTask';
 import { Viewport } from "pixi-viewport"; // Keep for type, but instance comes from PixiAppManager
 import { WorkspaceLeaf } from 'obsidian';
@@ -30,18 +30,21 @@ import type { NotePin } from "./types";
 import { captureBeforeRender, frameCamera, type LayerVisibility } from "./pixi/playerSafeFrame";
 import { PlayerFrameTexture } from "./pixi/PlayerFrameTexture";
 import type { FramePiece, PlayerFrame } from "./types/playerFrame";
-import { contextLost } from "./pixi/lighting/engine/gpu";
+import { contextLost, maxTextureSide } from "./pixi/lighting/engine/gpu";
 import { SelectionManager } from "./pixi/SelectionManager"; // Import SelectionManager
 import { NO_BARS } from "./pixi/selection/selectionTargets";
 import { FogOfWarRenderer } from "./pixi/fog/FogOfWarRenderer";
-import { MeasureRenderer } from "./pixi/MeasureRenderer"; // Import MeasureRenderer
+import { MeasureRenderer } from "./pixi/measure/MeasureRenderer";
 import { measurePlayersView } from './pixi/measurePlayersView';
+import { measureRangeSources } from './pixi/measureRangeSources';
+import { followTokenHeights, measureHeightAt } from './pixi/measureTokenHeights';
 import { NOTHING_SEEN } from './pixi/token-renderer/PlayerSightTokens';
 import type { TokenPerception } from './vision/tokenPerception';
 import { LaserPointerRenderer } from "./pixi/LaserPointerRenderer"; // Import LaserPointerRenderer
 import { DrawingRenderer } from "./pixi/DrawingRenderer"; // Import DrawingRenderer
 import { DrawingInteraction } from "./pixi/DrawingInteraction";
 import { TextRenderer } from "./pixi/TextRenderer"; // Import TextRenderer
+import type { TextSharpnessHost } from "./pixi/TextSharpening";
 import { TextTool } from "./tools/TextTool"; // Import TextTool
 import { LightingController } from './pixi/lighting/LightingController';
 import { settingsLightingQuality } from './pixi/lighting/settingsLightingQuality';
@@ -57,7 +60,7 @@ import { SoundRegistry } from './audio/SoundRegistry';
 import { AudioBufferCache } from './audio/AudioBufferCache';
 import { SpatialAudioEngine } from './audio/SpatialAudioEngine';
 import { mapMeasurementSettings } from './services/mapMeasurementSettings';
-import { rulesLookup } from './services/mapRules';
+import { onMapRulesChange, rulesLookup } from './services/mapRules';
 import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
@@ -109,6 +112,9 @@ export class PixiRendererOrchestrator { // Renamed class
   private measureRenderer?: MeasureRenderer; // Add MeasureRenderer instance
   /** Ends the measurements' watch on what the players see of the tokens. */
   private stopMeasuresFollowingPlayers: (() => void) | undefined;
+  private stopMeasuresFollowingRules: (() => void) | undefined;
+  private stopMeasuresFollowingHeights: (() => void) | undefined;
+  private stopMeasuresFollowingLeaving: (() => void) | undefined;
   private laserPointerRenderer?: LaserPointerRenderer; // Add LaserPointerRenderer instance
   private drawingRenderer?: DrawingRenderer; // Add DrawingRenderer instance
   private drawingInteraction?: DrawingInteraction;
@@ -514,7 +520,7 @@ export class PixiRendererOrchestrator { // Renamed class
 
     // Initialize MeasureRenderer if GridSystem is ready
     if (this.gridSystem) {
-      this.measureRenderer = new MeasureRenderer(viewport, this.eventBus, this.store, this.gridSystem);
+      this.measureRenderer = new MeasureRenderer(viewport, this.store, this.gridSystem);
       this.wireMeasureRendererProvider();
     }
     
@@ -544,7 +550,8 @@ export class PixiRendererOrchestrator { // Renamed class
         this.gridSystem,
         () => this.selectionManager?.updateSelectionOverlay(),
         this.store,
-        isPlayerView
+        isPlayerView,
+        this.textSharpnessHost()
       );
       // Add text container to viewport
       const textContainer = this.textRenderer.getContainer?.() || viewport.children.find(child => child.label === 'textContainer');
@@ -634,7 +641,7 @@ export class PixiRendererOrchestrator { // Renamed class
     
     // Initialize or update MeasureRenderer if it doesn't exist yet
     if (!this.measureRenderer && this.gridSystem && currentViewport) {
-      this.measureRenderer = new MeasureRenderer(currentViewport, this.eventBus, this.store, this.gridSystem);
+      this.measureRenderer = new MeasureRenderer(currentViewport, this.store, this.gridSystem);
       this.wireMeasureRendererProvider();
     }
     
@@ -646,7 +653,8 @@ export class PixiRendererOrchestrator { // Renamed class
         this.gridSystem,
         () => this.selectionManager?.updateSelectionOverlay(),
         this.store,
-        isPlayerView
+        isPlayerView,
+        this.textSharpnessHost()
       );
       // Add text container to viewport
       const textContainer = this.textRenderer.getContainer?.() || currentViewport.children.find(child => child.label === 'textContainer');
@@ -786,6 +794,7 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this._isDestroyed) return;
     this.fitZoomRangeToStretch();
     this.lighting?.renderer.refreshBounds();
+    this.measureRenderer?.mapSizeChanged();
     this.eventBus.emit('map-image-updated', this.getMapRect() ?? undefined);
   }
 
@@ -913,11 +922,26 @@ export class PixiRendererOrchestrator { // Renamed class
     }
   }
 
-  /** Keeps the map's tesserae of `view` (the player window's frame) loaded: the view's own and its roof's (the levels below draw their snapshots' own). */
+  /**
+   * Keeps what `view` (the player window's frame) shows ready at its detail: the map's tesserae, the
+   * view's own and its roof's (the levels below draw their snapshots' own), and the map's texts.
+   */
   public addMapDemandRegion(view: TesseraView): () => void {
-    const releases = [this.mapImage?.addDemandRegion(view), this.roofs?.addDemandRegion(view)];
+    const releases = [this.mapImage?.addDemandRegion(view), this.roofs?.addDemandRegion(view), this.textRenderer?.addDemandRegion(view)];
     return (): void => {
       for (const release of releases) release?.();
+    };
+  }
+
+  /** What the map's texts must know of this view's renderer to stay sharp. */
+  private textSharpnessHost(): TextSharpnessHost {
+    const renderer = (): Renderer | undefined => this.pixiAppManager.getApp()?.renderer;
+    return {
+      resolution: () => renderer()?.resolution ?? 1,
+      maxTextureSide: () => {
+        const current = renderer();
+        return current ? maxTextureSide(current) : null;
+      },
     };
   }
 
@@ -1091,7 +1115,7 @@ export class PixiRendererOrchestrator { // Renamed class
           e.preventDefault();
           return;
         }
-        if (this.levelLinks?.handleEscape() || this.lighting?.handleEscape()) {
+        if (this.measureRenderer?.handles.handleEscape() || this.measureRenderer?.ranges.handleEscape() || this.levelLinks?.handleEscape() || this.lighting?.handleEscape()) {
           e.preventDefault();
           return;
         }
@@ -1112,7 +1136,8 @@ export class PixiRendererOrchestrator { // Renamed class
 
       // Delete selected tokens on Delete or Backspace key
       if (!this.store.getState().isPlayerView && (matchesMapHotkey(e, 'delete', settings) || matchesMapHotkey(e, 'deleteAlt', settings))) {
-        if (this.levelLinks?.handleDelete() || this.lighting?.handleDelete()) {
+        // The kept measurement under the pointer goes before anything selected does
+        if (this.measureRenderer?.handles.handleDelete() || this.levelLinks?.handleDelete() || this.lighting?.handleDelete()) {
           e.preventDefault();
           return;
         }
@@ -1202,6 +1227,7 @@ export class PixiRendererOrchestrator { // Renamed class
     }
 
     this.lighting?.wire(this.tokenRenderer);
+    if (this.measureRenderer) this.tokenRenderer.setMeasureHandlers(this.measureRenderer.handles.pointer);
 
     // Wire audio tool viewport handlers
     if (this.audioRenderer && this.audioTool) {
@@ -1214,7 +1240,7 @@ export class PixiRendererOrchestrator { // Renamed class
     }
   }
 
-  /** Lets MeasureRenderer read the current map's measurement settings, and follow what the players see of the tokens. */
+  /** Lets MeasureRenderer read the current map's measurement settings and hear when they change, and follow what the players see of the tokens. */
   private wireMeasureRendererProvider(): void {
     const measure = this.measureRenderer;
     if (!measure) return;
@@ -1222,8 +1248,26 @@ export class PixiRendererOrchestrator { // Renamed class
     measure.measurementSettingsProvider = () => mapMeasurementSettings(rules, this.store.getState());
     const grid = this.gridSystem;
     if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight() });
+    this.tokenRenderer?.setMeasureHandlers(measure.handles.pointer);
     this.stopMeasuresFollowingPlayers?.();
     this.stopMeasuresFollowingPlayers = this.tokenRenderer?.onPlayersViewChange(() => measure.refreshVisibility());
+    this.stopMeasuresFollowingRules?.();
+    this.stopMeasuresFollowingRules = onMapRulesChange(this.obsApp, () => this.store.getState().mapPath, () => measure.rulesChanged(), rules);
+    // A ruler that starts or ends on a token counts its height, so it is written again when that changes
+    if (grid) measure.heightAt = measureHeightAt(this.store, grid);
+    this.stopMeasuresFollowingHeights?.();
+    this.stopMeasuresFollowingHeights = followTokenHeights(this.store, () => measure.rulesChanged());
+    // The range check and the rings of Ranges ask which token lies under the pointer and how far it moves
+    measure.rangeSources = measureRangeSources({ app: this.obsApp, store: this.store, rules, tokens: () => this.tokenRenderer });
+    // Areas stop at the walls as the lighting seals them, which goes by the map's size.
+    measure.mapBounds = () => this.getMapRect();
+    this.stopMeasuresFollowingLeaving?.();
+    this.stopMeasuresFollowingLeaving = onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => measure.handles.leave());
+  }
+
+  /** The ids of the tokens in the kept area `measureId`, the ones it rings while it is pointed at; none for a ruler. */
+  public tokensInMeasure(measureId: string): readonly string[] {
+    return this.measureRenderer?.tokensIn(measureId) ?? [];
   }
 
   /** Handle audio tool pointer down: click to select existing source or place new one */
@@ -1323,6 +1367,9 @@ export class PixiRendererOrchestrator { // Renamed class
     this.liquids?.destroy();
     this.fogRenderer?.destroy(); // Destroy FogRenderer
     this.stopMeasuresFollowingPlayers?.();
+    this.stopMeasuresFollowingRules?.();
+    this.stopMeasuresFollowingHeights?.();
+    this.stopMeasuresFollowingLeaving?.();
     this.measureRenderer?.destroy(); // Destroy MeasureRenderer
     this.laserPointerRenderer?.destroy(); // Destroy LaserPointerRenderer
     this.drawingRenderer?.destroy(); // Destroy DrawingRenderer

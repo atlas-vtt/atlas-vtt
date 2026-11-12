@@ -168,7 +168,8 @@ $settings-stack-below: 520px;
 }
 
 // ── Played campaign notice ─────────────────────────────────────────────────
-// One line over the rules' tabs while a played campaign's game system applies in their place.
+// One line over the rules' tabs: over a collection's while a played campaign's game system applies in their
+// place, over a campaign's while it is not played and no map plays by them.
 .atlas-csm-played-notice {
   @include atlas-flex-row($spacing-s);
   @include atlas-corner-shape;

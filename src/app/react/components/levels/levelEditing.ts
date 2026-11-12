@@ -1,5 +1,5 @@
 import { t } from '../../../i18n';
-import { withLevelAdded, withLevelChanged, withLevelDeleted, withLevelRoof, withLevelSight, withLevelsReordered, type LevelScene } from '../../../levels/levelEdits';
+import { levelsOrFirst, withLevelAdded, withLevelChanged, withLevelDeleted, withLevelRoof, withLevelSight, withLevelsReordered, type LevelScene } from '../../../levels/levelEdits';
 import { firstLevelId, viewedLevelId } from '../../../levels/sceneLevels';
 import type { ViewAtlasStore } from '../../../storeFactory';
 import { getHistoryStore, runUntracked } from '../../../stores/history';
@@ -54,11 +54,16 @@ export function addLevel(store: ViewAtlasStore, background: string | null): void
   });
 }
 
-/** Renames level `id`, or changes its elevation. */
-export function changeLevel(store: ViewAtlasStore, id: string, changes: { name?: string; elevation?: LevelElevation }): void {
-  const { levels, setLevels } = store.getState();
-  if (!levels) return;
-  editLevels(labelOf(store, id), () => runUntracked(store, () => setLevels(withLevelChanged(levels, id, changes))));
+/**
+ * Renames level `id`, or changes its elevation (null: the scene's only level, made where the scene
+ * has none, as its roof makes it).
+ */
+export function changeLevel(store: ViewAtlasStore, id: string | null, changes: { name?: string; elevation?: LevelElevation }): void {
+  const state = store.getState();
+  const levels = id === null ? levelsOrFirst(state, t('levels.firstName')) : state.levels;
+  const level = levels?.find((entry) => id === null || entry.id === id);
+  if (!levels || !level) return;
+  editLevels(levelLabel(levels, level), () => runUntracked(store, () => state.setLevels(withLevelChanged(levels, level.id, changes))));
 }
 
 /**
@@ -92,12 +97,15 @@ export function setLevelRoof(store: ViewAtlasStore, id: string | null, foregroun
   if (levels) runUntracked(store, () => state.setLevels(levels));
 }
 
-/** Shows `background` on level `id`; the first level's is the scene's own background, an edit like any other of it. */
-export function changeLevelBackground(store: ViewAtlasStore, id: string, background: string | null): void {
+/**
+ * Shows `background` on level `id` (null: a scene without levels); the first level's is the scene's
+ * own background, an edit like any other of it.
+ */
+export function changeLevelBackground(store: ViewAtlasStore, id: string | null, background: string | null): void {
   const state = store.getState();
-  if (!state.levels) return;
-  editLevels(labelOf(store, id), () => {
-    if (id === firstLevelId(state.levels)) state.setBackground(background);
+  if (id !== null && !state.levels) return;
+  editLevels(id === null ? t('levels.firstName') : labelOf(store, id), () => {
+    if (id === null || id === firstLevelId(state.levels)) state.setBackground(background);
     else runUntracked(store, () => state.setLevels(withLevelChanged(state.levels!, id, { background })));
   });
 }

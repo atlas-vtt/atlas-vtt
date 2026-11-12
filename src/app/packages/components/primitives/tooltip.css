@@ -27,6 +27,14 @@
   pointer-events: none;
 }
 
+/* Radix places a tooltip with a wrapper of the tooltip's size, which took the pointer the tooltip itself leaves alone:
+   what a showing or fading tooltip lay over (the icons of the row above its own) got no hover, so no tooltip, and no click.
+   The wrapper is Radix's element, so TooltipContent gives it this class: `:has()` on an element that is not Atlas' own
+   makes Obsidian's whole document pay for the selector. */
+.atlas-tooltip-wrapper {
+  pointer-events: none;
+}
+
 /* Inner layout for structured tooltip content */
 .tooltip-inner {
   display: flex;

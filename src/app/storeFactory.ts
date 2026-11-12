@@ -53,6 +53,8 @@ import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/le
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
 import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
+import { createMeasuresActions, type MeasuresSlice } from './stores/measuresSlice';
+import { createTurnMovesActions, type TurnMovesSlice } from './stores/turnMovesSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
 import type { SceneSound } from './sound/soundTypes';
@@ -247,6 +249,14 @@ export interface ViewAtlasState extends ViewState {
   // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
   addLiquids: LiquidsSlice['addLiquids'];
   deleteLiquid: LiquidsSlice['deleteLiquid'];
+  // Measurements that stay on the map (from measuresSlice.ts)
+  addMeasure: MeasuresSlice['addMeasure'];
+  updateMeasure: MeasuresSlice['updateMeasure'];
+  deleteMeasure: MeasuresSlice['deleteMeasure'];
+  clearMeasures: MeasuresSlice['clearMeasures'];
+
+  // Movement counted per turn (from turnMovesSlice.ts)
+  countTurnMove: TurnMovesSlice['countTurnMove'];
   /** Links the scene to its moods; nothing to link clears the field. Written with the map, never an undo step. */
   setSceneSound: (sound: SceneSound | null) => void;
 
@@ -306,6 +316,9 @@ export interface ViewAtlasState extends ViewState {
   closeLevelLinkPopover: UISlice['closeLevelLinkPopover'];
   openLevelSurfacePopover: UISlice['openLevelSurfacePopover'];
   closeLevelSurfacePopover: UISlice['closeLevelSurfacePopover'];
+  openMeasurePopover: UISlice['openMeasurePopover'];
+  closeMeasurePopover: UISlice['closeMeasurePopover'];
+  setMeasureTool: UISlice['setMeasureTool'];
   setLightingTool: UISlice['setLightingTool'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
@@ -346,13 +359,15 @@ export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewAtlasState['tokenSettings']> =
   tokenRingSize: 1,
 };
 
-const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'playerFrames' | 'sound'> => ({
+const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'turnMoves' | 'fightsStarted' | 'playerFrames' | 'sound'> => ({
   lighting: { ...DEFAULT_SCENE_LIGHTING },
   playerFrames: [],
   sound: null,
   exploredMask: null,
   exploredEdits: 0,
   partyValues: {},
+  turnMoves: {},
+  fightsStarted: 0,
   schema: ATLAS_SCHEMA,
   version: ATLAS_VERSION,
   mapPath: null,
@@ -1414,6 +1429,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.exploredMask = null;
             draft.exploredMasks = undefined;
             draft.exploredEdits = 0;
+            draft.turnMoves = {};
             draft.levels = undefined;
             draft.levelAlignments = undefined;
             draft.viewedLevel = null;
@@ -1537,6 +1553,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           roomTool: DEFAULT_ROOM_TOOL,
           ...createRoomsSlice(set),
           ...createLiquidsActions(set),
+          ...createMeasuresActions(set),
+          ...createTurnMovesActions(set),
           ...createPlayerFramesActions(set),
           setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),
 
@@ -1621,6 +1639,9 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               exploredEdits: current.exploredEdits,
               // The campaign's, never the scene's.
               partyValues: current.partyValues,
+              // Counted while the scene is open: a file never brings them.
+              turnMoves: current.turnMoves,
+              fightsStarted: current.fightsStarted,
             };
           },
 

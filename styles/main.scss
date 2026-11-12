@@ -95,7 +95,7 @@ body.theme-light {
   @import '../src/app/packages/components/primitives/context-menu.scss';
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
-  @import '../src/app/packages/components/toolbar/lighting-tool-bar.scss';
+  @import '../src/app/packages/components/toolbar/tool-options-bar.scss';
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
   @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/toolbar/editor/toolbar-card';
@@ -172,6 +172,7 @@ body.theme-light {
   @import '../src/app/react/components/collection-settings/random-tables/item-rarities.scss';
   @import '../src/app/react/components/collection-settings/statblock-field-chips.scss';
   @import '../src/app/react/components/collection-settings/setting-row.scss';
+  @import '../src/app/react/components/collection-settings/movement-rules.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-lab.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-lab-options.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-tray.scss';
@@ -444,18 +445,28 @@ body.theme-light {
   // lines are named: an absolute grid child's auto line is the row's edge). The turn banner
   // stands clear of them (`--atlas-toolbar-lift`, BottomToolbarRow); the toolbar's menus and
   // the dice tray open in their own place, over the bars, so the bars lie below the toolbar
-  // and everything that hangs from it.
+  // and everything that hangs from it. One cell holds them all: the bars of the tool that was
+  // left fade where the next tool's rise, so those never start beside the ones leaving.
   .atlas-bottom-toolbar-row__options {
     position: absolute;
     z-index: -1;
-    grid-area: 1 / 2 / 2 / 3;
+    // From the toolbar's left edge to the row's right edge. Bars that need more room than that (a
+    // narrow view) lie in a track wider than the slot, which ends at the slot's end: they move
+    // left by what they lack and stay in the view.
+    grid-area: 1 / 2 / 2 / 4;
     left: 0;
     right: 0;
     bottom: 100%;
-    display: flex;
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    justify-content: end;
+    justify-items: start;
     padding-bottom: $spacing-s;
     pointer-events: none;
+
+    > * {
+      grid-area: 1 / 1;
+    }
 
     &:empty {
       display: none;
@@ -589,7 +600,7 @@ body.theme-light {
   $own-look: '.atlas-dice-tray *, .atlas-segmented__option, .atlas-toolbar-tray__done';
   // The bars whose buttons these rules shape: the toolbars, the toolbar editor's tray, and the
   // ghost of a tool moving between them.
-  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost, .atlas-lighting-bar)';
+  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost, .atlas-tool-bar)';
 
   /* Make all buttons in toolbar transparent by default, except those with their own look. */
   #{$toolbars} button.btn:not(#{$own-look}),

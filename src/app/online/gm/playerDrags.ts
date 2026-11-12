@@ -4,7 +4,7 @@ import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransacti
 import { placeTokens } from '../../stores/tokenStacking';
 import type { HeldTokens } from '../../types/viewUIState';
 import type { Point } from '../movement/index.ts';
-import { checkMove, droppedLanding, landing, MoveRate, type MoveContext } from './moveCheck.ts';
+import { checkMove, dropPlace, landing, MoveRate, type MoveContext } from './moveCheck.ts';
 import type { MoveState, MoveStore } from './playerMoves.ts';
 import { mapTokens, sceneTokens } from '../../tokens/offMap';
 
@@ -29,8 +29,6 @@ interface LiveDrag {
   readonly tokenId: string;
   readonly start: { readonly x: number; readonly y: number };
   lastAt: number;
-  /** Whether a wall cut a step of the drag short: its drop then rests on a place the grid snaps it to (`droppedLanding`). */
-  walled?: boolean;
 }
 
 const key = (from: string, tokenId: string): string => `${from}\n${tokenId}`;
@@ -43,9 +41,12 @@ const loaded = (state: MoveState): boolean => state.mapLoaded && !state.isMapLoa
  * down on top (`placeTokens`) and closes the transaction, so the whole drag is one undo step. Drags of
  * several players at once share one step. On a lit scene every message and the drop move the token
  * from where it is up to the first wall in the way (`landing`), so a drag never takes it through a
- * wall or a closed door. A drag the GM takes over (by holding any token), one whose
- * scene unloads, whose player leaves or stops sending, or that the checks refuse, ends at once: the
- * token stays where it is, or goes back where it was taken from when refused or cancelled.
+ * wall or a closed door; between messages it follows the pointer freely, and the drop puts it where
+ * the GM's own drop would (`dropPlace`: snapped by the scene's grid, on a place it reaches). A drag
+ * the GM takes over (by holding any token), one whose scene unloads, whose player leaves or stops
+ * sending, or that the checks refuse, ends at once: the token stays where it is (put down as a drop
+ * would, when its player left or stopped sending), or goes back where it was taken from when refused
+ * or cancelled.
  */
 export class PlayerDrags {
   private readonly store: MoveStore;
@@ -103,7 +104,6 @@ export class PlayerDrags {
     current.lastAt = this.ports.now();
     // From where the last message left it, up to the first wall in the way.
     const at = landing(context, state, verdict.tokenId, token, verdict);
-    if (at.x !== verdict.x || at.y !== verdict.y) current.walled = true;
     this.write((draft) => {
       const moved = sceneTokens(draft.objects)[verdict.tokenId];
       if (moved === undefined) return;
@@ -114,9 +114,10 @@ export class PlayerDrags {
   }
 
   /**
-   * The player's drop of a token: where it ended their drag (the drop's place, or before the first
-   * wall on the way there, on the nearest place the grid snaps it to: `droppedLanding`), false when it was refused (the token went back, or the GM had taken the
-   * drag over), `turn` when it was refused for the token's turn, and null when no drag of theirs was under way.
+   * The player's drop of a token: where it ended their drag (where the GM's own drop would put it
+   * coming from the drop's place, or from before the first wall on the way there: `dropPlace`), false
+   * when it was refused (the token went back, or the GM had taken the drag over), `turn` when it was
+   * refused for the token's turn, and null when no drag of theirs was under way.
    */
   drop(from: string, move: PlayerMove): Point | false | 'turn' | null {
     const state = this.store.getState();
@@ -131,9 +132,9 @@ export class PlayerDrags {
       return !verdict.ok && verdict.reason === 'turn' ? 'turn' : false;
     }
     const token = mapTokens(state.objects)[live.tokenId];
-    const at = token === undefined ? { x: verdict.x, y: verdict.y } : droppedLanding(context, state, live.tokenId, token, verdict, live.walled === true);
-    this.end([live], at);
-    return at;
+    const at = token === undefined ? { x: verdict.x, y: verdict.y } : dropPlace(context, state, token, verdict);
+    this.end([live], at ?? 'back');
+    return at ?? false;
   }
 
   /**
@@ -217,14 +218,15 @@ export class PlayerDrags {
     else abandonHistoryTransaction(this.store);
   }
 
-  /** Drops each drag's token where it is, or puts it back when its player may no longer move it. */
+  /** Drops each drag's token where it is, as a drop puts it down there (`dropPlace`), or puts it back when its player may no longer move it. */
   private endWhereTheyAre(drags: readonly LiveDrag[]): void {
     for (const live of drags) {
       const state = this.store.getState();
       const token = mapTokens(state.objects)[live.tokenId];
       const context = this.context(state, live);
       const verdict = token === undefined || context.scene === null ? null : checkMove(live.from, { scene: context.scene, id: live.alias, x: token.x, y: token.y }, context);
-      this.end([live], verdict?.ok === true ? { x: verdict.x, y: verdict.y } : 'back');
+      const at = verdict?.ok === true && token !== undefined ? dropPlace(context, state, token, token) : null;
+      this.end([live], at ?? 'back');
     }
   }
 

@@ -1,16 +1,16 @@
 import { TFile, type App } from 'obsidian';
-import { isLootBaseLoaded, LootBaseReader, needsBases, readBase } from './LootBaseReader';
+import { hasUnreadableView, isLootBaseLoaded, LootBaseReader, needsBases, readBase } from './LootBaseReader';
 import { wholeBaseQueryConfig } from './lootBaseQuery';
 import { LootBaseQuery, lootBasesAvailable } from './lootQueryView';
 
-/** The items each view of the base shows; null when the base is gone or Obsidian cannot run it. */
+/** The items each view of the base shows; null when the base is gone, Obsidian cannot run it or a view cannot be read. */
 function readViews(app: App, path: string): Promise<string[] | null> {
   return new Promise((resolve, reject) => {
     const reader: LootBaseReader = new LootBaseReader(app, path, (base) => {
       if (!isLootBaseLoaded(base)) return;
       // After this answer from Obsidian's view, not while it is still reporting.
       queueMicrotask(() => reader.stop());
-      resolve(base.missing || needsBases(base) ? null : base.views.flatMap((view) => view.items.map((item) => item.id)));
+      resolve(base.missing || needsBases(base) || hasUnreadableView(base) ? null : base.views.flatMap((view) => view.items.map((item) => item.id)));
     });
     reader.load().catch(reject);
   });
@@ -31,6 +31,7 @@ async function readWholeBase(app: App, path: string): Promise<string[] | null> {
     const query: LootBaseQuery = new LootBaseQuery(app, config, path, {
       onSnapshot: (snapshot) => answer(snapshot.entries.map((entry) => entry.path)),
       onUnavailable: () => answer(null),
+      onUnreadable: () => answer(null),
     });
     query.start().catch(reject);
   });
@@ -39,7 +40,7 @@ async function readWholeBase(app: App, path: string): Promise<string[] | null> {
 /**
  * Every file a loot base holds, read once: what its own filters find and what
  * each of its views shows, linked from anywhere or not. Null when the base is
- * gone or Obsidian cannot run it (the Bases core plugin is off).
+ * gone, Obsidian cannot run it (the Bases core plugin is off) or its results cannot be read.
  */
 export async function readLootBaseItems(app: App, path: string): Promise<string[] | null> {
   const [shown, held] = await Promise.all([readViews(app, path), readWholeBase(app, path)]);

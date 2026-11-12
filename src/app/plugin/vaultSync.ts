@@ -4,12 +4,15 @@ import { FileReferenceService } from '../services/FileReferenceService';
 import { MapThumbnailService } from '../services/MapThumbnailService';
 import type { PathMove } from '../services/renamedPaths';
 import { stemOf } from '../services/vault-sync/recoveredIds';
+import { LibraryFolderMoves } from '../services/vault-sync/libraryFolderMoves';
 import { followLegacySnapshots, followSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { adoptOrphanedSnapshots } from '../snapshots/orphanedSnapshots';
 import { runInBackground } from '../utils/backgroundTask';
 import { isLibraryFile } from '../services/library/libraryPaths';
 import { EXTENSION_ATLASMAP, isScenePath } from '../utils/sceneFiles';
 import { closeMapTab, getLoadedAtlasView } from './atlasLeaves';
+import { showNotice } from '../ui/notice';
+import { t } from '../i18n';
 
 /**
  * How long the vault has to stay quiet before Atlas checks its index against
@@ -105,9 +108,15 @@ export function registerVaultSync(plugin: Plugin): void {
   };
   plugin.register(assets.onReconciled((result) => runInBackground(followReconciliation(result), 'Following files moved outside Atlas')));
 
+  const libraryFolder = new LibraryFolderMoves();
   plugin.registerEvent(
     app.vault.on('rename', (file, oldPath) => {
-      if (file instanceof TFolder) {
+      if (libraryFolder.isLeaving(oldPath, file.path)) {
+        // Atlas reads its library at its own place alone. Nothing follows a library that left, and nothing in it
+        // is rewritten, so it is whole when the folder is back, also when Atlas does not see it come back.
+        if (oldPath === ATLAS_VTT_DIR) showNotice(t('index.folderMoved', { folder: ATLAS_VTT_DIR, path: file.path }), 0);
+        if (isScenePath(oldPath)) closeMapTab(app, oldPath);
+      } else if (file instanceof TFolder) {
         // The open map first, so its next autosave cannot write the old folder back.
         getLoadedAtlasView(app)?.handleFolderRenamed(oldPath, file.path);
         runInBackground(fileReferences.handleFolderRenamed(oldPath, file.path), 'Following a renamed folder');

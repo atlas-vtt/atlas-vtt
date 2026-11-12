@@ -26,6 +26,15 @@ export const PATHFINDER_2E: SystemPreset = {
       difficultTerrain: 'double',
       abstractRangeBands: [],
     },
+    // Each of a turn's three actions may move a creature up to its Speed
+    movement: {
+      steps: [
+        { name: '1 action', multiple: 1, color: '#22c55e' },
+        { name: '2 actions', multiple: 2, color: '#f59e0b' },
+        { name: '3 actions', multiple: 3, color: '#f97316' },
+      ],
+      countPerTurn: true,
+    },
     dice: { defaultRoll: '1d20', crit: 'natural' },
     diceSetId: D20_DICE_SET_ID,
     // Its statblock template's Initiative field is added to the d20.

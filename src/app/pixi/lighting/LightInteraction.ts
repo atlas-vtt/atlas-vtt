@@ -300,7 +300,7 @@ export class LightInteraction {
  * The element an event came from. `instanceof Element` fails in a popout window, whose elements
  * belong to that window's classes; Obsidian's `instanceOf` asks the node's own window.
  */
-function elementOf(target: EventTarget | null): Element | null {
+export function elementOf(target: EventTarget | null): Element | null {
   const node = target as Node | null;
   return node && typeof node.instanceOf === 'function' && node.instanceOf(Element) ? node : null;
 }

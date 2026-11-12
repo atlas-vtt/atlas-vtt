@@ -108,8 +108,8 @@ describe('LightingToolBar', () => {
     fireEvent.click(button('Freehand'));
     expect(store.getState().lightingTool.drawMode).toBe('freeform');
     expect(pressed('Freehand')).toBe(true);
-    expect(button('Freehand').classList.contains('atlas-lighting-bar__choice')).toBe(true);
-    expect(button('Draw walls').classList.contains('atlas-lighting-bar__choice')).toBe(false);
+    expect(button('Freehand').classList.contains('atlas-tool-bar__choice')).toBe(true);
+    expect(button('Draw walls').classList.contains('atlas-tool-bar__choice')).toBe(false);
   });
 
   it('leaves the tools bar out for zones, where a click places a corner and there is nothing to choose', async () => {
@@ -155,7 +155,7 @@ describe('LightingToolBar', () => {
     fireEvent.click(button('Lasso'));
     expect(store.getState().roomTool.shape).toBe('polygon');
     // Groups are set apart by space, never a line.
-    expect(toolsBar('Draw rooms').querySelectorAll('.atlas-lighting-bar__break')).toHaveLength(1);
+    expect(toolsBar('Draw rooms').querySelectorAll('.atlas-tool-bar__break')).toHaveLength(1);
     expect(toolsBar('Draw rooms').querySelector('hr, [role="separator"]')).toBeNull();
   });
 

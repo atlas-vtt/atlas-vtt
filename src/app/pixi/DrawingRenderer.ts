@@ -10,6 +10,7 @@ import { splitStrokeByBrush } from './drawingEraseUtils';
 import { FogCursorPreview } from './fog/FogCursorPreview';
 import { destroyTree } from './utils/destroyTree';
 import { isHandled } from './utils/handledEvents';
+import { isPrimaryPress } from './utils/pointerButtons';
 import { levelObjects } from '../levels/levelObjects';
 
 export interface DrawingSettings {
@@ -144,7 +145,7 @@ export class DrawingRenderer {
 
   private onPointerDown(e: PIXI.FederatedPointerEvent): void {
     // A press a pin, door badge or light marker took is not a stroke.
-    if (!this.isToolActive() || e.button !== 0 || isHandled(e)) return;
+    if (!this.isToolActive() || !isPrimaryPress(e) || isHandled(e)) return;
 
     const world = this.viewport.toWorld(e.global);
     const tool = this.store.getState().activeTool;

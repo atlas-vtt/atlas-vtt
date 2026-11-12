@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App, TFile } from 'obsidian';
-import { isLootBaseLoaded, LootBaseReader, needsBases, type LootBase } from '../../src/app/loot/LootBaseReader';
-import { fakeQueries as queries } from '../mocks/fakeLootQueries';
+import { hasUnreadableView, isLootBaseLoaded, LootBaseReader, needsBases, type LootBase } from '../../src/app/loot/LootBaseReader';
+import { fakeQueries as queries, LootBaseQuery } from '../mocks/fakeLootQueries';
 import type { LootQuerySnapshot } from '../../src/app/loot/lootItem';
 
 vi.mock('../../src/app/loot/lootQueryView', () => import('../mocks/fakeLootQueries'));
@@ -109,6 +109,47 @@ describe('LootBaseReader', () => {
     queries.of('Weapons').listener.onSnapshot(SNAPSHOT);
     expect(latest()?.views[0]?.status).toBe('ready');
     expect(needsBases(latest() as LootBase)).toBe(false);
+  });
+
+  it('stops reading a view whose results cannot be read, and takes its items should they come after all', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { reader: items, latest } = reader({ 'Loot/Items.base': BASE_YAML });
+    await items.load();
+    queries.of('Armor').listener.onSnapshot(SNAPSHOT);
+
+    queries.of('Weapons').listener.onUnreadable(new Error('no order'));
+    expect(latest()?.views.map((view) => view.status)).toEqual(['unreadable', 'ready']);
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
+    expect(hasUnreadableView(latest() as LootBase)).toBe(true);
+    expect(needsBases(latest() as LootBase)).toBe(false);
+
+    queries.of('Weapons').listener.onSnapshot(SNAPSHOT);
+    expect(latest()?.views[0]?.status).toBe('ready');
+    expect(hasUnreadableView(latest() as LootBase)).toBe(false);
+  });
+
+  it('stops reading a view whose rows are no rows', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { reader: items, latest } = reader({ 'Loot/Items.base': BASE_YAML });
+    await items.load();
+
+    queries.of('Weapons').listener.onSnapshot({ ...SNAPSHOT, entries: null } as unknown as LootQuerySnapshot);
+    expect(latest()?.views[0]).toMatchObject({ status: 'unreadable', items: [] });
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(false);
+    queries.of('Armor').listener.onSnapshot(SNAPSHOT);
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
+  });
+
+  it('stops reading a view Obsidian fails to start, and reads the others', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(LootBaseQuery.prototype, 'start').mockRejectedValueOnce(new Error('render failed'));
+    const { reader: items, latest } = reader({ 'Loot/Items.base': BASE_YAML });
+    await items.load();
+
+    expect(latest()?.views.map((view) => view.status)).toEqual(['unreadable', 'loading']);
+    queries.of('Armor').listener.onSnapshot(SNAPSHOT);
+    expect(latest()?.views.map((view) => view.status)).toEqual(['unreadable', 'ready']);
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
   });
 
   it('stops its queries and ignores their late results', async () => {

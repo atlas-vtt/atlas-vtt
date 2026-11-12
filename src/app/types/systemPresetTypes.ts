@@ -3,6 +3,7 @@
  * conditions) that can be applied to any collection.
  */
 
+import type { MovementRules } from '../measure/movementRules';
 import type { ResourceDefinition } from '../resources/resourceTypes';
 import type { CollectionGridDefaults, ConditionDefinition } from './collectionSettingsTypes';
 import type { DiceRules } from './diceRulesTypes';
@@ -35,6 +36,11 @@ export interface SystemRules {
   diceSetId?: string;
   /** How the initiative tracker runs a fight. Unset means `DEFAULT_INITIATIVE_RULES`: a d20 each, highest first. */
   initiative?: InitiativeRules;
+  /**
+   * The steps a token's movement falls into (one move, a second one) and whether it adds up over a
+   * turn. Unset for a system that names none: its collections move without steps (`collectionMovementRules`).
+   */
+  movement?: MovementRules;
   /** Token resources the system defines, copied on apply like conditions. */
   resources?: ResourceDefinition[];
   /**

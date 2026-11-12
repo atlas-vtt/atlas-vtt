@@ -3,7 +3,6 @@ import { StoreApi } from 'zustand';
 import { ToolMode } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import { ToolState } from '../tools/ToolState';
-import { MeasureTool, MeasureSettings } from '../tools/MeasureTool';
 import { FogTool, FogSettings } from '../tools/FogTool';
 import { NotePinTool } from '../tools/NotePinTool';
 import { DiceTool } from '../tools/DiceTool';
@@ -15,7 +14,6 @@ import type { App } from 'obsidian';
 export class ToolController {
   /** Delegates all fine‑grained logic to dedicated tool classes. */
   private readonly toolState: ToolState;
-  private readonly measureTool: MeasureTool;
   private readonly fogTool: FogTool;
   private readonly notePinTool: NotePinTool;
   private readonly diceTool: DiceTool;
@@ -29,7 +27,6 @@ export class ToolController {
 
     // Instantiate dedicated segments
     this.toolState = new ToolState(eventBus);
-    this.measureTool = new MeasureTool(eventBus);
     this.fogTool = new FogTool(eventBus);
     this.notePinTool = new NotePinTool(eventBus, app, store);
     this.diceTool = new DiceTool(eventBus, () => mapDiceSet(app, store.getState().mapPath), offlineDiceInputs());
@@ -117,22 +114,6 @@ export class ToolController {
   }
   
   /**
-   * Set measurement shape
-   * @param shape The measurement shape
-   */
-  public setMeasureShape(shape: 'line' | 'cone' | 'circle'): void {
-    this.measureTool.setShape(shape);
-  }
-  
-  /**
-   * Set measurement persistence
-   * @param persist Whether measurements should persist
-   */
-  public setMeasurePersistence(persist: boolean): void {
-    this.measureTool.setPersistence(persist);
-  }
-  
-  /**
    * Open a note linked from a note pin
    * @param notePath The path to the note
    */
@@ -156,13 +137,6 @@ export class ToolController {
     return this.toolState.isInPlayerMode();
   }
   
-  /**
-   * Get the measurement settings
-   * @returns The measurement settings
-   */
-  public getMeasureSettings(): MeasureSettings {
-    return this.measureTool.getSettings();
-  }
   
   /**
    * Get the fog settings

@@ -58,9 +58,6 @@ export const nameSent = (claim: Claim, nameplate: boolean): boolean => claim !==
 export const roundPlace = (value: number): number => Math.round(value * 100) / 100;
 
 const finiteOr = (value: number | undefined, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
-
-/** How many cells a token's footprint is wide, as players are sent it. */
-export const tokenCells = (token: Pick<TokenEntity, 'size'>): number => finiteOr(token.size, 1) || 1;
 const onMap = (value: number): boolean => Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE;
 
 /**
@@ -75,7 +72,7 @@ export function sharedTokens(inputs: PictureInputs): SharedToken[] {
   for (const [id, shown] of inputs.shown) {
     const token = inputs.tokens[id];
     if (token === undefined || !onMap(token.x) || !onMap(token.y)) continue;
-    const cells = tokenCells(token);
+    const cells = finiteOr(token.size, 1) || 1;
     const size = computeTokenPixelSize(inputs.gridSize, cells);
     if (!(size > 0 && size <= MAX_TOKEN_SIZE && cells > 0 && cells <= MAX_TOKEN_CELLS)) continue;
     const claim = inputs.claimOf(id, token);

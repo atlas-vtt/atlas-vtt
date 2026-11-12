@@ -12,7 +12,7 @@ import { LogTab } from '../../src/app/online/tableLog/LogTab';
 import { DASHBOARD_THEME } from './dashboardTheme';
 
 /**
- * Online play's table log tab on the GM's map: it hangs directly below the scene tabs, in their
+ * The tab of online play's table log on the GM's map: it hangs directly below the scene tabs, in their
  * place where there are none, and stays clear of the tabs, the widgets, the dice rolls and the levels
  * switch at any width. The map UI as `UIRoot` lays it out, styled by the plugin's real stylesheets;
  * screenshots in `__screenshots__`.
@@ -108,14 +108,14 @@ describe('the table log\'s tab on the GM\'s map', () => {
     document.body.className = '';
   });
 
-  /** A map view `width` × `height` laid out as `layout`, with three messages unread. */
-  async function mount(width: number, height: number, layout: Layout): Promise<{ view: DOMRect; tab: DOMRect }> {
+  /** A map view `width` × `height` laid out as `layout`, with `unread` messages unread. */
+  async function mount(width: number, height: number, layout: Layout, unread = 3): Promise<{ view: DOMRect; tab: DOMRect }> {
     document.body.className = 'theme-dark';
     leaf.style.cssText = `position: relative; width: ${width}px; height: ${height}px; contain: strict`;
     leaf.innerHTML = mapUi(layout);
     document.body.append(leaf);
     root = createRoot(leaf.querySelector<HTMLElement>('.atlas-online-log-tab-host')!);
-    root.render(createElement(LogTab, { count: 3, onOpen: () => undefined }));
+    root.render(createElement(LogTab, { count: unread, onOpen: () => undefined }));
     await expect.poll(() => leaf.querySelector('.atlas-online-log-tab__button')).not.toBeNull();
     // The tab slides in; measure where it rests.
     for (const animation of document.getAnimations()) animation.finish();
@@ -172,6 +172,17 @@ describe('the table log\'s tab on the GM\'s map', () => {
       staysClear(tab);
     });
   }
+
+  it('stands in the same place with nothing unread, without a count', async () => {
+    const counting = (await mount(640, 600, { tabs: true, widgets: LABELS.length, levels: true })).tab;
+    expect(leaf.querySelector('.atlas-online-log-tab__count')).not.toBeNull();
+    root?.unmount();
+    const { tab } = await mount(640, 600, { tabs: true, widgets: LABELS.length, levels: true }, 0);
+    await page.screenshot({ path: '__screenshots__/atlas-online-log-tab-read-640.png', element: leaf });
+    expect(leaf.querySelector('.atlas-online-log-tab__count')).toBeNull();
+    for (const edge of ['left', 'top', 'width', 'height'] as const) expect(tab[edge], edge).toBeCloseTo(counting[edge], 1);
+    staysClear(tab);
+  });
 
   it('keeps clear of a levels switch with several floors in a short view', async () => {
     const { tab } = await mount(900, 420, { tabs: true, widgets: 0, levels: true });

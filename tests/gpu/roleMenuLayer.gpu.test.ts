@@ -8,13 +8,13 @@ import menuCss from '../../src/app/react/components/context-menu/atlas-context-m
 import roleCss from '../../src/app/statblocks/editor/create/create-statblock.scss?inline';
 import { portalHost, releasePortalHosts } from '../../src/app/host/portalHost';
 import { NewStatblockButton } from '../../src/app/statblocks/editor/create/RoleMenu';
-import type { RoleChoice } from '../../src/app/statblocks/editor/create/roleChoices';
+import type { TemplateOffer } from '../../src/app/statblocks/editor/create/templateOffers';
 
 const h = React.createElement;
 
-const CHOICES: RoleChoice[] = [
-  { roleId: 'creature', name: 'Creature', templateName: 'Creature' },
-  { roleId: 'npc', name: 'NPC', templateName: 'Creature' },
+const CHOICES: TemplateOffer[] = [
+  { templateId: 'builtin:generic-creature', roleId: 'creature', label: 'Creature', detail: 'Creature' },
+  { templateId: 'builtin:generic-creature', roleId: 'npc', label: 'NPC', detail: 'Creature' },
 ];
 
 /**

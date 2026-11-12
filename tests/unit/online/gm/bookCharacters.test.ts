@@ -53,9 +53,11 @@ function table(owners: Readonly<Record<string, string>>): Table {
   return held;
 }
 
-const knight = token('knight', { assetId: 'lib-knight' });
-const squire = token('squire', { assetId: 'lib-squire' });
-const wolf = token('wolf', { assetId: 'lib-wolf' });
+/** A token of a library token, named as the test's players' frame names it: by its id. */
+const hero = (id: string): TokenEntity => token(id, { assetId: `lib-${id}`, kind: 'character', name: id });
+const knight = hero('knight');
+const squire = hero('squire');
+const wolf = hero('wolf');
 
 describe('which character a player plays', () => {
   it('is the first token they own in the scene\'s order, as the players\' frame shows it', () => {
@@ -70,18 +72,24 @@ describe('which character a player plays', () => {
     expect(seats.played(BEN)).toBeNull();
   });
 
-  it('stays while the scene shows none of their tokens, and is never read from a token players do not see', () => {
+  it('is theirs whether or not the players\' frame shows its token, and stays while the scene holds none of their tokens', () => {
     const seats = table({ knight: ANA });
-    // Hidden from the start: Ana has no character, and nothing was read of the token.
+    // Hidden from the start: the knight is Ana's character all the same, and nobody else reads of it.
     seats.read([knight], ['knight']);
-    expect(seats.played(ANA)).toBeNull();
-    seats.read([knight]);
     expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
-    // Hidden again, another scene, a scene of another collection: it stays as it last was.
-    seats.read([{ ...knight, imagePath: 'art/changed.webp' }], ['knight']);
+    expect(seats.characters.of(ANA)?.shownName).toBeNull();
+    expect(seats.characters.names().get(ANA)).toBeNull();
+    seats.read([knight]);
+    expect(seats.characters.of(ANA)?.shownName).toBe('knight');
+    // Hidden again: her sheet follows the token as the scene holds it, and others read what the frame last showed.
+    seats.read([{ ...knight, name: 'knight errant', imagePath: 'art/changed.webp' } as TokenEntity], ['knight']);
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight errant');
+    expect(seats.characters.of(ANA)).toMatchObject({ imagePath: 'art/changed.webp', shownName: 'knight' });
+    // Another scene, a scene of another collection: it stays as it last was.
     seats.read([wolf]);
     seats.read([wolf], [], 'Dolmenwood');
-    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight errant');
+    seats.read([knight]);
     // While her character's token is only hidden, a second token of hers does not take its place.
     seats.owners.set('squire', ANA);
     seats.read([knight, squire], ['knight']);
@@ -89,6 +97,35 @@ describe('which character a player plays', () => {
     // Without her character's token in the scene, the token she has there is her character.
     seats.read([squire]);
     expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
+  });
+
+  it('is a token the players\' frame shows before one it does not, and one it does not show before none', () => {
+    const seats = table({ knight: ANA, squire: ANA, wolf: BEN });
+    seats.read([knight, squire, wolf], ['knight', 'wolf']);
+    expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
+    expect(seats.played(BEN)).toBe('Cairn:lib-wolf:wolf');
+    // A character remembered from another scene gives way to the token the shared scene holds of them, shown or not.
+    const moved = table({ knight: ANA, squire: ANA });
+    moved.read([squire]);
+    moved.read([knight], ['knight']);
+    expect(moved.played(ANA)).toBe('Cairn:lib-knight:knight');
+    // A token without artwork gives no sheet, shown or not.
+    const bare = table({ knight: ANA });
+    bare.read([{ ...knight, imagePath: '' }], ['knight']);
+    expect(bare.played(ANA)).toBeNull();
+  });
+
+  it('never gives a book of a token the frame does not show to anyone but its owner', () => {
+    const twin = { ...hero('twin'), assetId: 'lib-knight' };
+    const seats = table({ knight: ANA, twin: BEN });
+    // Both hidden: the book is open to one of them, as when both show.
+    seats.read([knight, twin], ['knight', 'twin']);
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+    expect(seats.played(BEN)).toBeNull();
+    // A hidden token nobody owns is nobody's character.
+    seats.owners.delete('knight');
+    seats.read([knight, wolf], ['knight', 'wolf']);
+    expect(seats.played(ANA)).toBeNull();
   });
 
   it('is the token they chose, while it is theirs and shown, and stays until they choose another', () => {
@@ -172,7 +209,7 @@ describe('which character a player plays', () => {
   });
 
   it('never opens one book to two players: a look-alike of a character someone plays is passed over', () => {
-    const twin = { ...token('twin'), assetId: 'lib-knight' };
+    const twin = { ...hero('twin'), assetId: 'lib-knight' };
     const seats = table({ knight: ANA, twin: BEN, wolf: BEN });
     seats.read([knight, twin, wolf]);
     expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
