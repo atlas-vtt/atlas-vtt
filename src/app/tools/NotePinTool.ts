@@ -26,6 +26,9 @@ import { linkedEncounterFolder } from '../encounters/encounterFolders';
 import { rollEncounterFolder } from '../encounters/encounterFolderRoll';
 import { atlasViewOfStore } from '../plugin/atlasLeaves';
 import { portalHost } from '../host/portalHost';
+import { isTextEntryTarget } from '../keyboard/textEntry';
+import { DEFAULT_MAP_HOTKEYS, formatHotkey } from '../keyboard/mapHotkeys';
+import { SettingsService } from '../services/SettingsService';
 
 interface NotePinDropdownResult {
   accepted: boolean;
@@ -45,6 +48,8 @@ export class NotePinTool {
   private obsidianApp: App;
   private isActive = false;
   private pinDropdown: HTMLElement | null = null;
+  /** Tells whoever opened the picker how it closed. */
+  private settlePick: ((result: NotePinDropdownResult) => void) | null = null;
   private iconPalette: PinIconPalette | null = null;
   private store: StoreApi<ViewAtlasState>;
   private currentPreviewIcon: string = 'pin';
@@ -94,6 +99,13 @@ export class NotePinTool {
 
       // Don't process if dropdown is already open
       if (this.pinDropdown) {
+        return;
+      }
+
+      // Pins are the GM's: the players' view shows none, so one placed there could not be seen
+      if (!this.store.getState().isGMView) {
+        const hotkeys = SettingsService.forApp(this.app)?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS;
+        showNotice(t('pin.needsGmView', { key: formatHotkey(hotkeys.gmView) }));
         return;
       }
 
@@ -167,6 +179,7 @@ export class NotePinTool {
     return new Promise<NotePinDropdownResult>((resolve) => {
       try {
         this.closeDropdown();
+        this.settlePick = resolve;
 
       // New pins default to the last used icon so a numbered run needs no re-selection
       let selectedIcon = resolvePinIcon(editedPin?.icon || this.currentPreviewIcon);
@@ -181,8 +194,7 @@ export class NotePinTool {
         selected: selectedIcon,
         onSelect: (icon) => {
           if (editedPin) {
-            this.closeDropdown();
-            resolve({ accepted: true, notePath: editedPin.notePath, icon });
+            this.closeDropdown({ accepted: true, notePath: editedPin.notePath, icon });
             return;
           }
           selectedIcon = icon;
@@ -206,13 +218,20 @@ export class NotePinTool {
         mapPath,
         createEntries: this.createEntries(mapPath),
         onPick: (notePath, sceneLevel) => {
-          this.closeDropdown();
-          resolve({ accepted: true, notePath, icon: selectedIcon, showName, ...(sceneLevel && { sceneLevel }) });
+          this.closeDropdown({ accepted: true, notePath, icon: selectedIcon, showName, ...(sceneLevel && { sceneLevel }) });
         },
-        onCancel: () => {
+        onCancel: () => this.closeDropdown(),
+      });
+
+      // Keys pressed on the picker's buttons are the picker's: Escape closes it, and a name typed there is meant for the search
+      dropdown.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
           this.closeDropdown();
-          resolve({ accepted: false });
-        },
+          return;
+        }
+        const typesCharacter = e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey;
+        if (typesCharacter && !isTextEntryTarget(e.target)) noteSearch.focus();
       });
 
       // ── Position & mount ──
@@ -261,10 +280,7 @@ export class NotePinTool {
 
       // Outside click handler
       const handleOutsideClick = (e: MouseEvent): void => {
-        if (dropdown && !dropdown.contains(e.target as Node) && !noteSearch.isCreating()) {
-          this.closeDropdown();
-          resolve({ accepted: false });
-        }
+        if (dropdown && !dropdown.contains(e.target as Node) && !noteSearch.isCreating()) this.closeDropdown();
       };
       this.outsideClickHandler = handleOutsideClick;
       // The click that opened the dropdown must not close it. Closing cancels the wait, or the
@@ -289,9 +305,13 @@ export class NotePinTool {
   }
 
   /**
-   * Closes the note pin dropdown if it's open
+   * Closes the note pin dropdown if it's open, and tells whoever opened it how it closed: with
+   * `result`, or as not accepted when a tool change, another picker or the view's end closed it.
    */
-  private closeDropdown(): void {
+  private closeDropdown(result: NotePinDropdownResult = { accepted: false }): void {
+    const settle = this.settlePick;
+    this.settlePick = null;
+    settle?.(result);
     if (this.pinDropdown) {
       if (this.outsideClickTimer !== null) {
         window.clearTimeout(this.outsideClickTimer);

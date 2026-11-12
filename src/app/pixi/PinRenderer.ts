@@ -12,7 +12,7 @@ import { pinGroupScale, pinScreenDiameter, type MapSize } from './pinSizing';
 import { pinSize } from '../styles/designTokens';
 import type { PinIconId } from '../types/pinIcons';
 import { destroyTree } from "./utils/destroyTree";
-import { isHandled } from "./utils/handledEvents";
+import { hearPressesLast, isHandled } from "./utils/handledEvents";
 import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
@@ -321,6 +321,11 @@ export class PinRenderer {
 
   public getPinContainer(): Container {
     return this.pinContainer;
+  }
+
+  /** The note pin tool hears presses after the dispatch that claims them; called once that dispatch listens. */
+  public reorderViewportListeners(): void {
+    if (this._notePinToolViewportListener) hearPressesLast(this.viewport, this._notePinToolViewportListener);
   }
 
   /** How large the map is in world pixels, which pins and names are sized by; set by the view. */

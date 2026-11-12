@@ -86,6 +86,7 @@ export const pin: Translation = {
   'pin.label.letter': '字母（A、B、C…）',
   'pin.crossCollection': '此图钉链向另一个合集的场景。请改为链到本合集的场景。',
   'pin.openMapFailed': '无法打开链接的地图',
+  'pin.needsGmView': '切换到主持人视图（{key}）后才能放置图钉',
   'pin.iconGroup': '图钉图标',
   'pin.search.placeholder': '搜索笔记和地图…',
   'pin.search.label': '搜索笔记和地图',

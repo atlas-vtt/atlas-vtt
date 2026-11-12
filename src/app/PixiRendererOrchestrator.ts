@@ -625,6 +625,10 @@ export class PixiRendererOrchestrator { // Renamed class
         this.wireViewportDispatchProviders();
         // Re-order SelectionManager listeners so they fire after TokenRenderer's viewport handlers
         this.selectionManager?.reorderViewportListeners();
+        // So do the tools that leave a press the dispatch claimed alone: they were built before it
+        this.pinRenderer?.reorderViewportListeners();
+        this.drawingRenderer?.reorderViewportListeners();
+        this.fogRenderer?.reorderViewportListeners();
         // If tokens were just initialized, re-ensure pins are on top
         if (this.pinRenderer && this.pinRenderer.getPinContainer().parent) {
             currentViewport.removeChild(this.pinRenderer.getPinContainer());

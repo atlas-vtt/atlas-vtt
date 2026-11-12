@@ -24,7 +24,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 import type { MapRect } from '../../grid/cellNumbering';
 import { destroyTree } from '../utils/destroyTree';
 import { requestRender } from '../RenderScheduler';
-import { isHandled } from '../utils/handledEvents';
+import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
 import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { STROKE_COLORS, ShapeStroke, type StrokeMode } from '../../tools/shapeStroke';
@@ -713,6 +713,11 @@ export class FogOfWarRenderer {
   // ═══════════════════════════════════════════════════════════════════
   // Drawing pointer handlers (fog/eraser tool)
   // ═══════════════════════════════════════════════════════════════════
+
+  /** The fog tools hear presses after the dispatch that claims them; called once that dispatch listens. */
+  public reorderViewportListeners(): void {
+    hearPressesLast(this.viewport, this.pointerDownHandler);
+  }
 
   private onPointerDown(event: PIXI.FederatedPointerEvent): void {
     const tool = this.store.getState().activeTool;
