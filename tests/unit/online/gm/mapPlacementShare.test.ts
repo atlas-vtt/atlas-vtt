@@ -31,6 +31,9 @@ function scene(stretch?: unknown, at: { readonly x: number; readonly y: number }
   return sceneState({ background: 'maps/cave.png', grid, objects: { ...sceneState().objects, tokens: { ana: token('ana', { x: at.x, y: at.y }) } } });
 }
 
+/** The scene with a grid that does not snap, so a player's move ends on the very place it names. */
+const unsnapped = (state: SceneState): SceneState => ({ ...state, grid: state.grid === null ? null : { ...state.grid, snapToGrid: false } });
+
 async function table(initial: SceneState, presented?: string): Promise<ShareHarness> {
   const share = shareHarness(initial, IMAGES, seats);
   share.presented = presented;
@@ -135,7 +138,7 @@ describe('a stretch that changes while the table is open', () => {
 
 describe("players' moves on a stretched map", () => {
   it('are kept on the map as it is drawn: the far strip a stretch adds is on it, and what lies beyond is not', async () => {
-    const share = await table(scene(WIDE));
+    const share = await table(unsnapped(scene(WIDE)));
     move(share, ANA, 1400, 300);
     await share.advance(TOKEN_INTERVAL_MS);
     expect(refused(share.sent)).toBe(0);
@@ -143,13 +146,13 @@ describe("players' moves on a stretched map", () => {
     move(share, ANA, 1501, 300);
     expect(refused(share.sent)).toBe(1);
 
-    const level = await table(scene());
+    const level = await table(unsnapped(scene()));
     move(level, ANA, 1400, 300);
     expect(refused(level.sent)).toBe(1);
   });
 
   it('reach the corner of the box that holds a turned map, where the image itself ends short of it', async () => {
-    const share = await table(scene(TURNED));
+    const share = await table(unsnapped(scene(TURNED)));
     const corner = imageToWorld({ x: IMAGE.width, y: IMAGE.height }, IMAGE, TURNED);
     expect(corner.x).toBeGreaterThan(IMAGE.width);
     move(share, ANA, corner.x - 1, corner.y - 20);
@@ -216,7 +219,7 @@ describe('the floors of a scene with a stretched map', () => {
   });
 
   it('keeps a player\'s moves on a fitted floor\'s own world', async () => {
-    const share = await table(floors(NO_STRETCH, TOWER), 'ground');
+    const share = await table(unsnapped(floors(NO_STRETCH, TOWER)), 'ground');
     // 100 px in, then the 500 px image twice its size, stretched a tenth and turned: past the frame's 1000 px.
     move(share, BEN, 1150, 300);
     await share.advance(TOKEN_INTERVAL_MS);
