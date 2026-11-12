@@ -134,6 +134,71 @@ export function drawnMap(kind: MapKind, width: number, height: number, cell: num
   return canvas;
 }
 
+/**
+ * A picture that stands for a bright hand-drawn map: pale parchment under pencil hatching, a grid,
+ * thick inked walls with rubble hatched behind them and a pillar. The hardest ground for a look
+ * that shines: nothing can be added to paper that is nearly white already.
+ */
+export function drawnParchment(width: number, height: number, cell: number): OffscreenCanvas {
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext('2d')!;
+  const random = seeded(23);
+  ctx.fillStyle = 'rgb(233, 224, 201)';
+  ctx.fillRect(0, 0, width, height);
+  for (let y = 0; y < height; y += cell) {
+    for (let x = 0; x < width; x += cell) {
+      ctx.fillStyle = `rgba(120, 100, 70, ${(random() * 0.09).toFixed(3)})`;
+      ctx.fillRect(x, y, cell, cell);
+    }
+  }
+  // Pencil shading: short strokes all one way.
+  ctx.lineWidth = 1;
+  for (let k = 0; k < (width * height) / 260; k++) {
+    const x = random() * width;
+    const y = random() * height;
+    const long = cell * (0.08 + random() * 0.22);
+    ctx.strokeStyle = `rgba(${random() < 0.5 ? '96, 84, 62' : '250, 244, 228'}, ${(0.1 + random() * 0.22).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + long, y - long * 0.8);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(52, 44, 34, 0.55)';
+  ctx.beginPath();
+  for (let x = 0; x <= width; x += cell) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, height); }
+  for (let y = 0; y <= height; y += cell) { ctx.moveTo(0, y + 0.5); ctx.lineTo(width, y + 0.5); }
+  ctx.stroke();
+  // A wall along the top with rubble behind it, and a pillar.
+  const wall = cell * 0.42;
+  ctx.fillStyle = 'rgb(222, 212, 188)';
+  ctx.fillRect(0, 0, width, wall);
+  ctx.strokeStyle = 'rgb(40, 30, 24)';
+  ctx.lineWidth = Math.max(2, cell * 0.035);
+  for (let k = 0; k < width / 9; k++) {
+    const x = random() * width;
+    const y = random() * wall;
+    const angle = random() * Math.PI;
+    const long = cell * (0.1 + random() * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(x - Math.cos(angle) * long, y - Math.sin(angle) * long);
+    ctx.lineTo(x + Math.cos(angle) * long, y + Math.sin(angle) * long);
+    ctx.stroke();
+  }
+  ctx.lineWidth = Math.max(4, cell * 0.09);
+  ctx.beginPath();
+  ctx.moveTo(0, wall);
+  ctx.lineTo(width, wall);
+  ctx.stroke();
+  const px = Math.round(width * 0.62 / cell) * cell;
+  const py = Math.round(height * 0.6 / cell) * cell;
+  ctx.fillStyle = 'rgb(206, 194, 166)';
+  ctx.fillRect(px + cell * 0.1, py + cell * 0.1, cell * 0.8, cell * 0.8);
+  ctx.strokeRect(px + cell * 0.1, py + cell * 0.1, cell * 0.8, cell * 0.8);
+  ctx.lineWidth = Math.max(1.5, cell * 0.02);
+  ctx.strokeRect(px + cell * 0.28, py + cell * 0.28, cell * 0.44, cell * 0.44);
+  return canvas;
+}
+
 /** Two tokens, as they stand over an area: a ringed disc with a letter each. */
 export function drawnTokens(width: number, height: number, cell: number, places: readonly Point[]): OffscreenCanvas {
   const canvas = new OffscreenCanvas(width, height);

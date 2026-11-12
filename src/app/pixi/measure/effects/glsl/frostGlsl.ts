@@ -1,98 +1,105 @@
 /**
- * Frost: rime lying on the floor as six-armed crystals, large and crowded along the outline and
- * small and few inside, over a thin sheet of ice. A slow breath moves where the frost lies thick,
- * so crystals grow and melt back as it passes, and glints come and go. The sheet is the area's
- * colour, its crystals nearly white, so it shows on dark and bright maps.
+ * Frost: ice taking the floor from the outline inwards. The floor is glazed in grains, plates of
+ * ice each of its own tone with a seam between them, and on every grain lies a feather of fern
+ * frost: a spine with barbs leaving it at a sixth of a turn, as rime grows on a pane. The frost
+ * lies thick along the outline, where the feathers are whole and a white bloom covers the glaze,
+ * and thins inwards to spines and bare ice, in tongues that a slow breath moves, so the map reads
+ * through the middle. Light passes slowly over the grains, glints come and go, and a low mist
+ * drifts over it all. The glaze is the area's colour deepened, the frost nearly white, so the frost
+ * shows on its own ice on a bright map as on a dark one.
  */
 export const FROST_GLSL = `
 /** A glint: a small four-pointed star that swells and goes. */
 float glint(vec2 p, float px) {
   vec4 s = spark(p, 0.8, 900.0, 1100.0);
-  if (s.w > 0.6) return 0.0;
+  if (s.w > 0.5) return 0.0;
   float life = smoothstep(0.0, 0.12, s.z) * (1.0 - smoothstep(0.16, 0.42, s.z));
-  float reach = (0.07 + 0.07 * s.w) * (0.5 + 0.5 * life);
+  float reach = (0.05 + 0.05 * s.w) * (0.5 + 0.5 * life);
   vec2 a = abs(s.xy);
-  float arms = max(0.0, 1.0 - a.x / reach) * max(0.0, 1.0 - a.y / (reach * 0.14 + px));
-  arms += max(0.0, 1.0 - a.y / reach) * max(0.0, 1.0 - a.x / (reach * 0.14 + px));
-  float heart = 1.0 - smoothstep(0.0, reach * 0.3 + px, length(s.xy));
-  return life * min(1.0, arms * arms + heart) * shown(0.07, px);
+  float arms = max(0.0, 1.0 - a.x / reach) * max(0.0, 1.0 - a.y / (reach * 0.12 + px));
+  arms += max(0.0, 1.0 - a.y / reach) * max(0.0, 1.0 - a.x / (reach * 0.12 + px));
+  float heart = 1.0 - smoothstep(0.0, reach * 0.25 + px, length(s.xy));
+  return life * min(1.0, arms * arms + heart) * shown(0.05, px);
 }
 
 /**
- * The crystal nearest to p on a lattice of \`gap\` cells (which divides TILE): xy the way from its
- * middle in cells, z its own number, w how far the pixel lies inside its ground.
+ * Needles of ice lying along \`dir\`: long thin streaks, each tapering at its ends, about 0 (within
+ * ±0.7), \`across\` of them to a cell's width. They lie still, so their lattice need not repeat
+ * with the drifts.
  */
-vec4 nearestCrystal(vec2 p, float gap) {
-  vec2 g = p / gap;
-  vec2 i = floor(g);
-  vec2 f = g - i;
-  float best = 8.0;
-  float second = 8.0;
-  vec2 to = vec2(0.0);
-  float id = 0.0;
-  for (int y = -1; y <= 1; y++) {
-    for (int x = -1; x <= 1; x++) {
-      vec2 cell = vec2(float(x), float(y));
-      vec4 h = hash42(mod(i + cell, TILE / gap) + uSeed + gap * 17.0);
-      vec2 r = cell + 0.2 + 0.6 * h.xy - f;
-      float dist = dot(r, r);
-      if (dist < best) { second = best; best = dist; to = r; id = h.z; }
-      else if (dist < second) { second = dist; }
-    }
-  }
-  return vec4(-to * gap, id, (sqrt(second) - sqrt(best)) * 0.5 * gap);
+float frostNeedles(vec2 p, vec2 dir, float across, float salt, float px) {
+  vec2 q = vec2(dot(p, dir) * across * 0.07, (p.x * dir.y - p.y * dir.x) * across);
+  // Needles lie unevenly close: evenly spaced, two ways of them cross as a ladder.
+  q.y += 2.4 * lineNoise(q.y * 0.31 + salt) + 0.5 * lineNoise(q.x * 0.9 - salt);
+  return gnoise(q + salt, vec2(8192.0)) * shown(1.0 / across, px);
 }
 
-/** A six-armed crystal with barbs: how much ice lies at \`v\` from its middle, its arms \`size\` long and turned by \`turned\`. */
-float crystalArms(vec2 v, float size, float turned, float px) {
-  float sector = TAU / 6.0;
-  float turn = (atan(v.y, v.x) + turned) / sector;
-  float a = (fract(turn) - 0.5) * sector;
-  // No two arms of a crystal are as long: each of the six has its own share of the size.
-  size *= 0.62 + 0.38 * hash11(mod(floor(turn), 6.0) + turned * 5.7);
-  // Along the nearest arm and off it.
-  vec2 q = length(v) * vec2(cos(a), abs(sin(a)));
-  float width = 0.008 + px * 0.75;
-  float arm = (1.0 - smoothstep(width * 0.5, width * 1.6, q.y)) * (1.0 - smoothstep(size * 0.8, size, q.x));
-  // Barbs leave the arm at a sixth of a turn, shorter towards its tip.
-  float gap = size * 0.25;
-  float k = clamp(floor(q.x / gap + 0.5), 1.0, 3.0);
-  vec2 b = q - vec2(k * gap, 0.0);
-  float along = b.x * 0.5 + b.y * 0.866;
-  float reach = size * (0.44 - 0.1 * k);
-  float barb = (1.0 - smoothstep(width * 0.4, width * 1.4, abs(b.x * 0.866 - b.y * 0.5))) * step(0.0, along) * (1.0 - smoothstep(reach * 0.75, reach, along));
-  return max(arm, barb * 0.85);
+/** The needles of the three ways crystals grow, a sixth of a turn apart. */
+vec3 frostWays(vec2 p, float across, float salt, float px) {
+  float turned = uSeed.x * 0.37 + salt;
+  return vec3(
+    frostNeedles(p, vec2(cos(turned), sin(turned)), across, salt + 3.0, px),
+    frostNeedles(p, vec2(cos(turned + 1.0472), sin(turned + 1.0472)), across, salt + 57.0, px),
+    frostNeedles(p, vec2(cos(turned + 2.0944), sin(turned + 2.0944)), across, salt + 113.0, px));
 }
 
-/** The crystals of one lattice where the frost lies \`thick\`: each grows once the frost is thicker than its own need. */
-float crystals(vec2 p, float gap, float thick, float px) {
-  vec4 c = nearestCrystal(p, gap);
-  float grown = smoothstep(c.z * 0.75, c.z * 0.75 + 0.35, thick);
-  if (grown <= 0.0) return 0.0;
-  // Much of a size, as crystals grown on one floor are.
-  float size = gap * (0.36 + 0.12 * fract(c.z * 7.3)) * (0.7 + 0.3 * grown);
-  return crystalArms(c.xy, size, c.z * 31.0, px) * grown * smoothstep(0.0, 0.05 * gap, c.w) * shown(gap * 0.12, px);
+/**
+ * How much frost the needles of the three ways make where it lies \`thick\`: along the outline
+ * they crowd and cross, inside only the tips of the strongest show.
+ */
+float frostGrown(vec3 needle, vec3 thick, float crowd) {
+  vec3 need = mix(vec3(0.5), vec3(crowd), thick);
+  vec3 grown = smoothstep(need, need + 0.13, needle);
+  return min(1.0, grown.x + grown.y + grown.z);
 }
 
 vec4 frost(vec2 p, float d, float px) {
-  float rime = 1.0 - inward(d, 1.1);
-  float within = inward(d, 0.18);
   int octaves = uDetail > 1.5 ? 3 : 2;
-  float breath = fbm((p - uDriftA.xy) * 1.25, vec2(TILE * 1.25), octaves, px * 1.25);
-  // How thickly the frost lies: along the outline always, inside in patches that slowly move.
-  float thick = clamp(0.28 + 0.6 * rime + breath * 1.3, 0.0, 1.0);
-  // The large crystals are the fewer: they need thicker frost than the small ones between them.
-  float ice = crystals(p, 0.8, thick * 0.8, px) * 0.85;
-  if (uDetail > 0.5) ice = max(ice, crystals(p + 3.3, 0.4, thick, px) * 0.75);
-  // Hoar: the fine white bloom all over the rime, heavier where the frost is thick.
-  float hoar = (0.35 + 0.65 * thick) * (0.5 + gnoise(p * 6.0, vec2(TILE * 6.0)) * shown(0.17, px));
+  float within = inward(d, 0.14);
+  float breath = fbm((p - uDriftA.xy) * 0.75, vec2(TILE * 0.75), octaves, px * 0.75);
+  // How thickly the frost lies: along the outline always, inwards in tongues that slowly move.
+  float thick = clamp(1.05 - d / min(1.1, uDepth * 1.6) + breath * 1.3, 0.0, 1.0);
 
-  // An even rime over the whole area, in the colour deepened, so it shows on parchment too.
-  float sheet = within * (0.25 + 0.1 * thick);
-  float white = within * clamp(ice * 0.85 + hoar * 0.26, 0.0, 1.0);
-  vec3 colour = mix(mix(uTint, deepened(1.8), 0.6), lifted(0.92), white);
-  float alpha = min(sheet + white * 0.45, 0.75);
-  vec4 lit = vec4(colour * (alpha + white * 0.18), alpha);
+  // Each of the three ways has floor of its own where it grows best.
+  vec2 m = p * 0.8;
+  float a = gnoise(m + 7.0, vec2(8192.0));
+  float b = gnoise(m + 41.0, vec2(8192.0));
+  vec3 lean = clamp(vec3(0.55 + a * 2.4, 0.55 + b * 2.4, 0.55 - (a + b) * 1.8), 0.0, 1.0);
+  // No needle is quite straight and no two patches lie quite alike: the floor they grow on is bent a little.
+  vec2 bent = p + vec2(a, b) * 0.36;
+  // Long blades, few, that reach in past the rime; and fine needles crowding along the outline.
+  // (Where the fine ones are left out, the blades are finer and more, so the rime is still needles.)
+  bool rich = uDetail > 0.5;
+  vec3 blades = frostWays(bent, rich ? 12.0 : 17.0, 0.0, px) * lean;
+  float ice = frostGrown(blades, vec3(min(thick * 1.25, 1.0)), rich ? 0.19 : 0.1);
+  float gloss = 0.0;
+  if (rich) {
+    vec3 fine = frostWays(bent, 22.0, 0.5, px);
+    ice = max(ice, 0.85 * frostGrown(fine, thick * (0.35 + 0.65 * lean.yzx), 0.07));
+    // The same needles lie under the bare glaze too, and show only where light catches them.
+    vec3 lying = fine * (0.25 + 0.75 * lean.yzx);
+    gloss = clamp(max(lying.x, max(lying.y, lying.z)) * 2.4, 0.0, 1.0);
+  }
+  // Under the needles of the thickest frost a white haze, so the outline's band is rime all through.
+  // Its inner edge is the blades' own: where one lies, the rime reaches further in.
+  float spiked = thick + max(blades.x, max(blades.y, blades.z)) * 0.9;
+  float crust = smoothstep(0.72, 0.95, spiked) * 0.36;
+  // Light passing slowly over the ice in broad bands, which the lie of the frost bends.
+  float band = 0.5 + 0.5 * sin(TAU * (dot(p, vec2(0.23, 0.14)) + breath * 0.8 + a * 0.5 - cycles(410.0)));
+  float sheen = band * band * band * band;
+
+  // The glaze under the frost: the colour deepened, deeper where the frost is thick.
+  vec3 glaze = mix(deepened(1.8), deepened(3.0) * 0.66, thick);
+  float sheet = within * (0.18 + 0.48 * thick);
+  float white = within * clamp(ice * 0.92 + crust * (1.0 - ice) + gloss * (0.06 + 0.4 * sheen) + sheen * 0.07, 0.0, 1.0);
+  vec3 colour = mix(glaze, lifted(0.94), white);
+  float alpha = sheet + white * (0.9 - sheet);
+  vec4 lit = vec4(colour * (alpha + white * 0.12), alpha);
+
+  // A low mist drifting over it, in the colour lifted.
+  float veil = fbm((p - uDriftA.zw * 4.0) * 0.5 + 9.0, vec2(TILE * 0.5), 2, px * 0.5);
+  float haze = within * smoothstep(0.0, 0.45, veil + 0.12) * 0.16;
+  lit = lit * (1.0 - haze) + vec4(lifted(0.8) * haze, haze);
 
   float star = uDetail > 0.5 ? glint(p, px) * within : 0.0;
   lit += vec4(vec3(1.0) * star * 0.9, star * 0.5);
