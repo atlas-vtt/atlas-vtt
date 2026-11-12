@@ -1,6 +1,6 @@
 import { CURSOR_KEEPALIVE_MS, GM_MARKS, MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, MAX_MARK_LASER_NUMBERS, type GmMessage, type LaserState, type MarksMessage, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure } from '../protocol/index.ts';
 import type { SceneSource } from '../../host/sceneSource';
-import type { Measurements } from '../../pixi/MeasureRenderer';
+import type { Measurements } from '../../pixi/measure/measurements';
 import { CursorShare, type CursorSharePorts } from './CursorShare.ts';
 import { GmMeasures, type PlayersView } from './gmMeasures.ts';
 import { checkLaser, checkMeasure, markRate } from './markCheck.ts';
@@ -217,12 +217,11 @@ export class MarkShare {
     this.source = source;
     this.gm.reset();
     if (source === null) return;
-    // Atlas tells of a new measurement inside the press that began it, before the press reaches the
-    // laser's tap: the press is read once the event is done.
+    // Atlas tells of a measurement several times within one event (drawn, kept, cleared): it is read once the event is done.
     const { measurements } = source;
     const measured = (): void => queueMicrotask(() => {
       if (this.source !== source || measurements === null) return;
-      this.gm.follow(measurements.get(), source.laser.lastPress(), source, this.ports.now());
+      this.gm.follow(measurements.get(), source, this.ports.now());
       this.pacer.request();
     });
     const request = (): void => this.pacer.request();

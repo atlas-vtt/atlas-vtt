@@ -16,7 +16,7 @@ import { EventEmitter } from 'events';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
 import { DrawingRenderer } from '../../../src/app/pixi/DrawingRenderer';
-import { MeasureRenderer } from '../../../src/app/pixi/MeasureRenderer';
+import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { TextTool } from '../../../src/app/tools/TextTool';
@@ -819,8 +819,8 @@ describe('TokenRenderer Integration Tests', () => {
     });
 
     it.each(MARKERS)('starts no measurement on %s', (_marker, x) => {
-      const measure = new MeasureRenderer(viewport, eventBus, store, gridSystem);
-      const started = (): boolean => (measure as unknown as { isDrawing: boolean }).isDrawing;
+      const measure = new MeasureRenderer(viewport, store, gridSystem);
+      const started = (): boolean => measure.measurements.get().live !== null;
       try {
         store.getState().setActiveTool('measure');
         viewport.emit('pointerdown', pointerEvent(x, 200));
@@ -1410,7 +1410,7 @@ describe('TokenRenderer Integration Tests', () => {
       const active = (): boolean => peeking || !store.getState().isGMView;
       tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active);
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
-      measure = new MeasureRenderer(viewport, eventBus, store, gridSystem);
+      measure = new MeasureRenderer(viewport, store, gridSystem);
       unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, store, grid: gridSystem, lighting: () => perception });
     });
 
@@ -1424,7 +1424,7 @@ describe('TokenRenderer Integration Tests', () => {
     /** What a players' frame shows of them. */
     const inFrame = (): boolean[] => measure.getPlayerViewLayers(tokenRenderer.playersSeeInFrame(perception)).map(({ visible }) => visible);
     const keepRuler = (x: number): void => {
-      eventBus.emit('measure-persistence-changed', true);
+      store.getState().setMeasureTool({ keep: true });
       store.getState().setActiveTool('measure');
       viewport.emit('pointerdown', pointerEvent(x, 105));
       viewport.emit('pointermove', pointerEvent(x, 400));

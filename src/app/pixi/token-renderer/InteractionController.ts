@@ -155,7 +155,7 @@ export class InteractionController implements ITokenInteractionController {
   /** Called by TokenRenderer when viewport pointerdown hits a token. */
   public handleViewportTokenPointerDown(tokenId: string, e: FederatedPointerEvent): void {
     const activeTool = this.store.getState().activeTool;
-    if (activeTool === 'measure' || activeTool === 'measure-circle' || activeTool === 'measure-cone') {
+    if (activeTool === 'measure') {
       return;
     }
 

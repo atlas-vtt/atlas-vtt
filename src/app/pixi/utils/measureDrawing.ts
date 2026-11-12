@@ -1,22 +1,13 @@
 /**
  * Drawing shared by the measure tool, the token drag ruler and other people's measurements: the
- * accent path, its point markers and the measured areas, in the ink of the selection highlight
+ * coloured path, its point markers and the measured areas, in the ink of the selection highlight
  * (`MeasureInk`); the distance goes on a `MeasureLabel`.
  */
 
 import type { Point } from '../../grid/hexGeometry';
+import type { Measurement } from '../../measure/measureTypes';
 import { MEASURE_DOT, type LabelTarget } from './measureLabelLayout';
 import type { InkTrace, MeasureInk } from './measureInk';
-
-/** The shapes the measure tool draws; a sphere is drawn as a circle. */
-export type MeasureShape = 'line' | 'cone' | 'circle' | 'sphere';
-
-/** A measurement as data: its shape, where it starts and where it was dragged to, in world pixels. */
-export interface MeasureRecord {
-  readonly shape: MeasureShape;
-  readonly start: Point;
-  readonly end: Point;
-}
 
 /** A polyline through world `points`: one stroke, so its joints are as clean as its segments. */
 export function drawMeasurePath(ink: MeasureInk, color: number, points: readonly Point[]): void {
@@ -82,36 +73,48 @@ export function drawMeasureCone(ink: MeasureInk, color: number, start: Point, en
 }
 
 /**
- * Draws `measurement` in `color` onto `ink` (begun at the zoom it is shown at): a line with a dot at
- * its end, a circle around its start, or a cone `coneAngle` degrees wide; then the dot at its start.
+ * Draws `measurement` in `color` onto `ink` (begun at the zoom it is shown at): a ruler's path with a
+ * dot at every corner and at its end, a circle around its start, or a cone `coneAngle` degrees wide;
+ * then the dot at its start. A square or a line, whose areas are not drawn yet, shows the drag it was made with.
  */
-export function drawMeasurement(ink: MeasureInk, color: number, measurement: MeasureRecord, coneAngle: number): void {
-  const { shape, start, end } = measurement;
+export function drawMeasurement(ink: MeasureInk, color: number, measurement: Measurement, coneAngle: number): void {
+  const { shape, points } = measurement;
+  const start = points[0];
+  const end = points[points.length - 1];
+  if (!start || !end) return;
   switch (shape) {
-    case 'line':
-      drawMeasurePath(ink, color, [start, end]);
-      drawMeasurePoint(ink, color, end);
-      break;
     case 'circle':
-    case 'sphere':
       drawMeasureCircle(ink, color, start, Math.hypot(end.x - start.x, end.y - start.y));
       break;
     case 'cone':
       drawMeasureCone(ink, color, start, end, coneAngle);
       break;
+    case 'ruler':
+    case 'square':
+    case 'line':
+      drawMeasurePath(ink, color, points);
+      for (const point of points.slice(1)) drawMeasurePoint(ink, color, point);
+      break;
   }
   drawMeasurePoint(ink, color, start, true);
 }
 
-/** Where a measurement's distance goes: beside a line, above a circle's centre, over the middle of a cone's axis. */
-export function measureLabelTarget({ shape, start, end }: MeasureRecord): LabelTarget {
+/**
+ * Where a measurement's distance goes: beside a ruler of one leg, beyond the end of one with corners
+ * (whose legs carry their own beside them), above a circle's centre, over the middle of a cone's axis.
+ */
+export function measureLabelTarget({ shape, points }: Measurement): LabelTarget {
+  const start = points[0];
+  const end = points[points.length - 1];
+  if (!start || !end) return { beside: [] };
   switch (shape) {
-    case 'line':
-      return { beside: [start, end] };
     case 'circle':
-    case 'sphere':
       return { beside: [start] };
     case 'cone':
       return { over: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } };
+    case 'ruler':
+    case 'square':
+    case 'line':
+      return points.length > 2 ? { beyond: { from: points[points.length - 2]!, to: end } } : { beside: points };
   }
 }

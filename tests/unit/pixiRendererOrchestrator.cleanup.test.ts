@@ -7,13 +7,14 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import { WallRenderer } from '../../src/app/pixi/vision/WallRenderer';
 import { WallTool } from '../../src/app/tools/WallTool';
-import { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
+import { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
+import { DEFAULT_MEASURE_TOOL } from '../../src/app/measure/measureTypes';
 import { FRAME, fakePlayerFrames } from '../mocks/playerFrameSource';
 
 afterEach(() => vi.restoreAllMocks());
 
 function createHarness(eventBus: EventEmitter) {
-  const store = createStore(subscribeWithSelector(() => ({ activeTool: 'move' })));
+  const store = createStore(subscribeWithSelector(() => ({ activeTool: 'move', objects: {}, measureTool: DEFAULT_MEASURE_TOOL, mapPath: null })));
   const viewport = Object.assign(new Container(), {
     plugins: { resume: vi.fn(), pause: vi.fn() },
   });
@@ -27,14 +28,15 @@ function createHarness(eventBus: EventEmitter) {
   vi.spyOn(renderer as any, 'setupRenderersAndManagers').mockImplementation(() => {
     (renderer as any).wallRenderer = new WallRenderer(viewport as any, store as any);
     (renderer as any).wallTool = new WallTool(eventBus);
-    (renderer as any).measureRenderer = new MeasureRenderer(viewport as any, eventBus, store as any, {} as any);
+    (renderer as any).measureRenderer = new MeasureRenderer(viewport as any, store as any, {} as any);
   });
   vi.spyOn(renderer as any, 'setupKeyboardHandlers').mockImplementation(() => {});
   return { renderer, store, viewport };
 }
 
 describe('renderer lifecycle across map switches', () => {
-  it.each(['measure', 'measure-circle', 'measure-cone'])('can activate %s after destroying the previous renderer', async (tool) => {
+  it('can activate the measure tool after destroying the previous renderer', async () => {
+    const tool = 'measure';
     const eventBus = new EventEmitter();
     const old = createHarness(eventBus);
     await old.renderer.init(document.createElement('div'));
@@ -44,10 +46,10 @@ describe('renderer lifecycle across map switches', () => {
     await current.renderer.init(document.createElement('div'));
     try {
       expect(() => current.store.setState({ activeTool: tool })).not.toThrow();
-      const measure = (current.renderer as any).measureRenderer;
-      expect(current.viewport.listeners('pointerdown')).toContain(measure.pointerDownHandler);
-      expect(current.viewport.listeners('pointermove')).toContain(measure.pointerMoveHandler);
-      expect(current.viewport.listeners('pointerup')).toContain(measure.pointerUpHandler);
+      const input = (current.renderer as any).measureRenderer.input;
+      expect(current.viewport.listeners('pointerdown')).toContain(input.onPointerDown);
+      expect(current.viewport.listeners('pointermove')).toContain(input.onPointerMove);
+      expect(current.viewport.listeners('pointerup')).toContain(input.onPointerUp);
     } finally {
       current.renderer.destroy();
     }

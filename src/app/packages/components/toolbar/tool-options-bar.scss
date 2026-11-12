@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// The lighting tool's bars above the main toolbar: its modes, and beside them
-// the current mode's tools (`LightingToolBar`)
+// A tool's own bars above the main toolbar: its modes, and beside them the
+// choices that go with them (`ToolOptionsBar`; the lighting and measure tools)
 // ═══════════════════════════════════════════════════════════════════════════
 // Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The bars have the
 // toolbar's padding and corners with smaller buttons, so they read as its second level, and are
@@ -22,13 +22,13 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
 
 // The modes start at the toolbar's left edge and the tools follow them: the modes bar keeps its
 // width, so neither bar moves when the mode changes.
-.atlas-lighting-bars {
+.atlas-tool-bars {
   display: flex;
   align-items: flex-end;
   gap: $spacing-s;
 }
 
-.atlas-lighting-bar {
+.atlas-tool-bar {
   display: flex;
   align-items: center;
   gap: $bar-inset;
@@ -50,13 +50,13 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
 }
 
 // Groups are told apart by space alone (no divider lines): the break adds a gap to the gap.
-.atlas-lighting-bar__break {
+.atlas-tool-bar__break {
   flex: none;
   width: 0;
 }
 
 // A mode is filled like a tool; the tools within it are tinted, so the two bars never read as one.
-.atlas-lighting-bar button.btn.atlas-lighting-bar__choice.is-active {
+.atlas-tool-bar button.btn.atlas-tool-bar__choice.is-active {
   background: var(--background-modifier-active-hover) !important;
   color: var(--text-accent) !important;
 
@@ -64,4 +64,15 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
     background: var(--background-modifier-active-hover) !important;
     color: var(--text-accent-hover) !important;
   }
+}
+
+// The colour the next measurement takes, as the icon of the button that opens the colours.
+.atlas-tool-bar__dot {
+  display: block;
+  flex: none;
+  box-sizing: border-box;
+  width: $spacing-l;
+  height: $spacing-l;
+  border-radius: 50%;
+  border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
 }

@@ -13,15 +13,21 @@ const HOLLOW_MIDDLE = 0xffffff;
 /** Builds a path in screen pixels on `graphics`, ready to stroke or fill. */
 export type InkTrace = (graphics: Graphics) => void;
 
-/** The dark bands about a line of `stroke` screen pixels, outermost first: the shade, then the dark line. */
+/**
+ * The dark line on either side of a measurement's stroke, in screen pixels: a casing, heavier than
+ * the selection's keyline, since a measurement takes any colour and must read on any map.
+ */
+export const MEASURE_CASING = { width: 1.5, alpha: 0.7 } as const;
+
+/** The dark bands about a line of `stroke` screen pixels, outermost first: the shade, then the casing. */
 export function darkBands(stroke: number): InkBand[] {
-  const keyline = stroke + 2 * CANVAS_INK.keyline;
+  const cased = stroke + 2 * MEASURE_CASING.width;
   let reach = 0;
   const shade = INK_SHADE.map((band) => {
     reach += band.width;
-    return { width: keyline + 2 * reach, alpha: band.alpha };
+    return { width: cased + 2 * reach, alpha: band.alpha };
   });
-  return [...shade.reverse(), { width: keyline, alpha: CANVAS_INK.keylineAlpha }];
+  return [...shade.reverse(), { width: cased, alpha: MEASURE_CASING.alpha }];
 }
 
 /**
@@ -61,7 +67,7 @@ class LinkedLayers implements HideableLayer {
 }
 
 /**
- * A measurement drawn in the ink of the selection highlight on a `MeasureInkLayer`, at its size on
+ * A measurement drawn on a `MeasureInkLayer` in its colour over a dark casing, at its size on
  * screen: `begin` scales it to the zoom, and the drawing calls take world points. Its pieces never add
  * up where they meet (at a joint, where a dot sits on the line, where a cone's edges join its arc):
  * an area's wash is one shape beneath; the dark bands are drawn with max blending, so a pixel takes
@@ -102,7 +108,7 @@ export class MeasureInk {
     return { x: point.x * this.zoom, y: point.y * this.zoom };
   }
 
-  /** Strokes `trace` as the accent line, held by its dark bands. */
+  /** Strokes `trace` in `color`, held by its dark bands. */
   stroke(trace: InkTrace, color: number): void {
     for (const band of darkBands(CANVAS_INK.stroke)) {
       trace(this.dark);

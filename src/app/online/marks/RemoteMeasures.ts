@@ -1,10 +1,11 @@
-import type { MarkPoint, MeasureState, SharedMeasure } from '../protocol/index.ts';
+import type { MarkPoint, MarkShape, MeasureState, SharedMeasure } from '../protocol/index.ts';
 import { Container } from 'pixi.js';
 import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
 import type { DifficultCells } from '../../grid/movementCost';
+import type { Measurement } from '../../measure/measureTypes';
 import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
-import { drawMeasurement, measureLabelTarget, type MeasureRecord } from '../../pixi/utils/measureDrawing';
+import { drawMeasurement, measureLabelTarget } from '../../pixi/utils/measureDrawing';
 import { MeasureInk, MeasureInkLayer } from '../../pixi/utils/measureInk';
 import { MeasureLabel } from '../../pixi/utils/measureLabel';
 import { destroyTree } from '../../pixi/utils/destroyTree';
@@ -34,20 +35,24 @@ interface Drawn {
   readonly liveShape: MeasureInk;
   /** A label for every kept measurement in order, then one for the measurement being drawn. */
   readonly labels: MeasureLabel[];
-  kept: readonly MeasureRecord[];
+  kept: readonly Measurement[];
   live: Live | null;
   colour: number;
 }
 
+/** The protocol's line is Atlas's ruler: a path, here of one leg. */
+const shapeOf = (shape: MarkShape): Measurement['shape'] => (shape === 'line' ? 'ruler' : shape);
+
 /** A measurement as Atlas's drawing takes it. */
-export const recordOf = ({ shape, a, b }: SharedMeasure): MeasureRecord => ({ shape, start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] } });
+export const recordOf = ({ shape, a, b }: SharedMeasure): Measurement => ({ shape: shapeOf(shape), points: [{ x: a[0], y: a[1] }, { x: b[0], y: b[1] }] });
 
 const colourNumber = (hex: string): number => Number.parseInt(hex.slice(1), 16);
 const sameMark = (a: MarkPoint, b: MarkPoint): boolean => a[0] === b[0] && a[1] === b[1];
 const samePoint = (a: { readonly x: number; readonly y: number }, b: { readonly x: number; readonly y: number }): boolean => a.x === b.x && a.y === b.y;
-const sameRecords = (a: readonly MeasureRecord[], b: readonly MeasureRecord[]): boolean =>
-  a.length === b.length && a.every((record, index) => record.shape === b[index]?.shape && samePoint(record.start, b[index].start) && samePoint(record.end, b[index].end));
-const liveRecord = ({ told, end }: Live): MeasureRecord => ({ shape: told.shape, start: { x: told.a[0], y: told.a[1] }, end });
+const samePoints = (a: Measurement['points'], b: Measurement['points']): boolean => a.length === b.length && a.every((point, index) => samePoint(point, b[index]!));
+const sameRecords = (a: readonly Measurement[], b: readonly Measurement[]): boolean =>
+  a.length === b.length && a.every((record, index) => record.shape === b[index]?.shape && samePoints(record.points, b[index].points));
+const liveRecord = ({ told, end }: Live): Measurement => ({ shape: shapeOf(told.shape), points: [{ x: told.a[0], y: told.a[1] }, end] });
 
 /**
  * Other people's measurements, drawn as Atlas draws its own (`drawMeasurement`) in the sender's
@@ -173,7 +178,7 @@ export class RemoteMeasures {
     return live;
   }
 
-  private drawKept(drawn: Drawn, kept: readonly MeasureRecord[], colour: number, { measurement }: MeasureRules): void {
+  private drawKept(drawn: Drawn, kept: readonly Measurement[], colour: number, { measurement }: MeasureRules): void {
     drawn.kept = kept;
     drawn.colour = colour;
     drawn.keptShapes.begin(this.zoom());
@@ -203,9 +208,9 @@ export class RemoteMeasures {
   }
 
   /** Shows `record`'s distance on `label`, beside it. */
-  private label(label: MeasureLabel | undefined, record: MeasureRecord, { grid, measurement }: MeasureRules): void {
+  private label(label: MeasureLabel | undefined, record: Measurement, { grid, measurement }: MeasureRules): void {
     if (label === undefined) return;
-    const distance = formatDistance(pathLengthInCells(grid, [record.start, record.end], measurement.diagonalRule), measurement);
+    const distance = formatDistance(pathLengthInCells(grid, record.points, measurement.diagonalRule), measurement);
     label.show(distance, measureLabelTarget(record), this.zoom(), grid.size);
   }
 }

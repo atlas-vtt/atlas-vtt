@@ -1,6 +1,6 @@
 import type { CursorSource, LaserSource, Press, TrailBatch } from '../../../../src/app/online/marks/index.ts';
 import type { GmMessage, LaserState, MarkPoint, MarksMessage, SharedCursor } from '../../../../src/app/online/protocol/index.ts';
-import type { Measurements } from '../../../../src/app/pixi/MeasureRenderer';
+import type { Measurements } from '../../../../src/app/pixi/measure/measurements';
 import type { TokenFootprint } from '../../../../src/app/vision/measureOrigin';
 import { MarkShare, type GmMarkSource, type PlayerMarks } from '../../../../src/app/online/gm/MarkShare.ts';
 import type { MapSize } from '../../../../src/app/online/gm/moveCheck.ts';

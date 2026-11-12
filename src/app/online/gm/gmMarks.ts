@@ -3,7 +3,7 @@ import { LIVE_INTERVAL_MS, type SharedCursor } from '../protocol/index.ts';
 import type { HeldPlayout } from '../../pixi/token-renderer/TokenGlide';
 import type { App } from 'obsidian';
 import type { SceneSource } from '../../host/sceneSource';
-import type { Measurements } from '../../pixi/MeasureRenderer';
+import type { Measurements } from '../../pixi/measure/measurements';
 import type { ViewState } from '../../types/viewState';
 import { tokenFootprints, type TokenFootprint } from '../../vision/measureOrigin';
 import { atlasLaserLook, field } from './atlasLighting.ts';

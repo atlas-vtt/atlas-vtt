@@ -43,6 +43,11 @@ export interface TokenResourceValue {
 export interface BaseToken extends OnOneLevel {
   /** Height above its level's floor in game units (flying); unset stands on the floor. */
   elevation?: number;
+  /**
+   * How far the token moves in one move, in game units, set by hand. Unset follows its statblock;
+   * read with `tokenSpeed`. `undefined` clears it when patched.
+   */
+  speed?: number | undefined;
   /** False preserves the whole artwork without an Atlas frame. Defaults to true. */
   showRing?: boolean;
   /** Expendable resources by definition key; see `src/app/resources/`. */
@@ -170,8 +175,6 @@ export type ToolMode =
   | 'fog-paint'
   | 'fog-erase'
   | 'measure'
-  | 'measure-circle'
-  | 'measure-cone'
   | 'pointer'
   | 'text'
   | 'note-pin'

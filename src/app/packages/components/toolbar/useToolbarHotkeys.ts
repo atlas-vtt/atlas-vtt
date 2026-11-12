@@ -2,8 +2,8 @@ import { useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { useMapHotkeys } from "../../../keyboard/useMapHotkeys"
 import { AMBIENT_AUDIO_ENABLED } from "../../../featureFlags"
-import { MEASURE_SHAPES, MEASURE_TOOLS, isMeasureTool, type Tool } from "./toolFaces"
-import { useEmitViewEvent } from "./useEmitViewEvent"
+import { nextMeasureMode } from "./measureToolChoices"
+import type { Tool } from "./toolFaces"
 import { levelObjects } from '../../../levels/levelObjects';
 import { mapTokens } from "../../../tokens/offMap"
 
@@ -25,10 +25,9 @@ interface ToolbarHotkeyActions {
   closeMenus: () => void
 }
 
-/** The toolbar's map hotkeys; a family's key cycles through its tools. */
+/** The toolbar's map hotkeys; a family's key cycles through its tools, the measure tool's through its modes. */
 export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: boolean, actions: ToolbarHotkeyActions): void {
   const store = useViewStoreHook()
-  const emit = useEmitViewEvent()
   const { renderer } = useAtlasUI()
   const { selectTool, toggleAssetManager, closeAssetManager, toggleGMView, closeMenus } = actions
   const activeTool = (): Tool => store.getState().activeTool
@@ -40,12 +39,16 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     move: () => selectTool(cycleTool(MOVE_TOOLS, activeTool())),
     fog: dmOnly(() => selectTool(cycleTool(FOG_TOOLS, activeTool()))),
     text: dmOnly(() => selectTool("text")),
+    // The tool keeps its mode while another tool is in use; pressed again while measuring, the key steps to the next mode.
     measure: () => {
-      const current = activeTool()
-      const next = cycleTool(MEASURE_TOOLS, current)
-      if (isMeasureTool(current)) emit('measure-shape-changed', MEASURE_SHAPES[next])
-      selectTool(next)
+      const state = store.getState()
+      if (state.activeTool === "measure") state.setMeasureTool({ mode: nextMeasureMode(state.measureTool.mode) })
+      else selectTool("measure")
     },
+    measureKeep: dmOnly(() => {
+      const state = store.getState()
+      if (state.activeTool === "measure") state.setMeasureTool({ keep: !state.measureTool.keep })
+    }),
     draw: dmOnly(() => selectTool(cycleTool(DRAW_TOOLS, activeTool()))),
     erase: dmOnly(() => selectTool("eraser")),
     gmView: dmOnly(toggleGMView),

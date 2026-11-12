@@ -72,7 +72,7 @@ describe('the measure renderer\'s wiring', () => {
       store: { getState: () => ({ objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 } }) },
       gridSystem: { getOptions: () => ({ size: 70 }) },
       tokenRenderer: { onPlayersViewChange: vi.fn((listener: () => void) => { listeners.push(listener); return unsubscribe; }) },
-      measureRenderer: { refreshVisibility, playersView: null },
+      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), playersView: null },
     });
     const wire = (renderer as unknown as { wireMeasureRendererProvider(): void }).wireMeasureRendererProvider.bind(renderer);
     wire();

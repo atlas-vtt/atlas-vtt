@@ -2,7 +2,7 @@ import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import type { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
-import type { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
+import type { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';

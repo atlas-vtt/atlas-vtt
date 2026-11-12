@@ -22,6 +22,7 @@ function context(overrides: Partial<ToolbarContext> = {}): ToolbarContext {
   const activeTool = overrides.activeTool ?? 'move';
   return {
     activeTool,
+    measureMode: 'ruler',
     selectTool: vi.fn(),
     hotkeyLabel: (id) => id,
     openMenu: null,
@@ -53,7 +54,19 @@ describe('toolbar control items', () => {
     expect(placement(item('fog', context()))).toEqual({ pinned: false, active: false });
     expect(placement(item('fog', context({ activeTool: 'eraser' })))).toEqual({ pinned: true, active: true });
     expect(placement(item('fog', context({ openMenu: 'fog' })))).toEqual({ pinned: true, active: true });
-    expect(placement(item('measure', context({ activeTool: 'measure-cone' })))).toEqual({ pinned: true, active: true });
+    expect(placement(item('measure', context({ activeTool: 'measure' })))).toEqual({ pinned: true, active: true });
+  });
+
+  it('shows the measure tool by the mode it measures in, whichever tool is in use, and selects the one tool', () => {
+    expect(item('measure', context()).menuEntry.label).toBe('Ruler');
+    expect(item('measure', context({ measureMode: 'cone' })).menuEntry).toMatchObject({ label: 'Cone', isActive: false });
+    const ctx = context({ activeTool: 'measure', measureMode: 'circle' });
+    const { menuEntry } = item('measure', ctx);
+    expect(menuEntry).toMatchObject({ label: 'Circle', isActive: true });
+    menuEntry.onSelect();
+    expect(ctx.selectTool).toHaveBeenCalledWith('measure');
+    // A mode the bar does not offer yet shows as the ruler.
+    expect(item('measure', context({ measureMode: 'ranges' })).menuEntry.label).toBe('Ruler');
   });
 
   it('pins and activates the note pin while it is in use, and the dice while their tray is open', () => {

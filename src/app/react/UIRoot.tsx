@@ -15,6 +15,7 @@ import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
 import { LightingToolBar } from '../packages/components/toolbar/LightingToolBar';
+import { MeasureToolBar } from '../packages/components/toolbar/MeasureToolBar';
 import { DMScreenFromStore } from './components/DMScreen';
 import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
@@ -213,7 +214,12 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                 <PanelBoundary name="the placing hint"><PlacementHint /></PanelBoundary>
               </>
             )}
-            options={!isPlayerView && <PanelBoundary name="the lighting tools"><LightingToolBar /></PanelBoundary>}
+            options={(
+              <>
+                {!isPlayerView && <PanelBoundary name="the lighting tools"><LightingToolBar /></PanelBoundary>}
+                <PanelBoundary name="the measure tools"><MeasureToolBar playerView={isPlayerView} /></PanelBoundary>
+              </>
+            )}
           >
             <PanelBoundary name="the toolbar"><MainToolbar viewId={view?.viewId} /></PanelBoundary>
           </BottomToolbarRow>

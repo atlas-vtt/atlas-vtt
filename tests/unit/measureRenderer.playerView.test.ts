@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
-import { Container, Text } from 'pixi.js';
+import type { Container } from 'pixi.js';
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { TokenFootprint } from '../../src/app/vision/measureOrigin';
 import type { MeasurePlayersView } from '../../src/app/pixi/measurePartsVisibility';
 import { labelScale } from '../../src/app/pixi/utils/measureLabelLayout';
-import { NAMEPLATE_TEXT } from '../../src/app/pixi/token-renderer/tokenSizing';
 import { measureFrom, measureScene, type MeasureScene } from '../helpers/measureScene';
 
 let current: MeasureScene | undefined;
@@ -46,15 +45,15 @@ describe('MeasureRenderer in the GM view', () => {
     steps.push(s.visible());
     vi.advanceTimersByTime(2000);
     steps.push(s.visible());
-    s.bus.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     measureFrom(s, 100, 100);
     steps.push(s.visible());
-    s.bus.emit('measure-shape-changed', 'circle');
+    s.store.getState().setMeasureTool({ mode: 'circle' });
     s.pointer('pointerdown', 400, 400);
     steps.push(s.visible());
-    s.bus.emit('measure-shape-changed', 'cone');
+    s.store.getState().setMeasureTool({ mode: 'cone' });
     steps.push(s.visible());
-    s.bus.emit('measure-persistence-changed', false);
+    s.store.getState().clearMeasures();
     steps.push(s.visible());
     s.store.getState().setActiveTool('select');
     steps.push(s.visible());
@@ -76,10 +75,10 @@ describe('MeasureRenderer in the GM view', () => {
 describe('MeasureRenderer layers', () => {
   it('keeps every distance label above every measurement shape, kept ones included', () => {
     const s = scene();
-    s.bus.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     s.store.getState().setActiveTool('measure');
     measureFrom(s, 100, 100);
-    s.bus.emit('measure-shape-changed', 'circle');
+    s.store.getState().setMeasureTool({ mode: 'circle' });
     measureFrom(s, 300, 300);
     const labels = s.parts().filter((_, index) => index % 2 === 1) as Container[];
     const shapes = s.viewport.children.find((child) => child.label === 'measures')!;
@@ -132,14 +131,19 @@ describe('MeasureRenderer and the players\' picture', () => {
     expect(s.measure.getPlayerViewLayers(() => false).map((entry) => entry.visible)).toEqual([true, true]);
   });
 
-  it('keeps the origin with a persistent copy, drops it when the measurement clears, and forgets copies switched off', () => {
+  it('keeps the origin with a kept measurement, drops it when the live one clears, and forgets kept ones that are cleared', () => {
     const s = scene();
     const seen = new Set(['hero']);
     s.measure.playersView = players([GOBLIN, HERO], seen, { players: false });
-    s.bus.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     s.store.getState().setActiveTool('measure');
     measureFrom(s, 100, 100);
     measureFrom(s, 400, 100);
+    // What it started on is saved with it.
+    expect(Object.values(s.store.getState().objects.measures ?? {}).map((measure) => measure.origin)).toEqual([
+      { tokenIds: ['goblin'], unseenAtStart: true },
+      { tokenIds: ['hero'], unseenAtStart: false },
+    ]);
     const isSeen = (id: string): boolean => seen.has(id);
     const [, , ...goblinRuler] = s.parts();
     const fromGoblin = s.measure.getPlayerViewLayers(isSeen);
@@ -155,7 +159,7 @@ describe('MeasureRenderer and the players\' picture', () => {
     expect(goblinRuler.slice(2).map((part) => shownIn(s.measure.getPlayerViewLayers(isSeen), part))).toEqual([true, true]);
     // The live parts were cleared with their origin.
     expect(s.measure.getPlayerViewLayers(() => false).slice(0, 2).map((entry) => entry.visible)).toEqual([true, false]);
-    s.bus.emit('measure-persistence-changed', false);
+    s.store.getState().clearMeasures();
     expect(s.measure.getPlayerViewLayers(() => false)).toHaveLength(2);
   });
 
@@ -164,7 +168,7 @@ describe('MeasureRenderer and the players\' picture', () => {
     const canvas = { players: true };
     const seen = new Set(['hero']);
     s.measure.playersView = players([GOBLIN, HERO], seen, canvas);
-    s.bus.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     s.store.getState().setActiveTool('measure');
     measureFrom(s, 400, 100);
     s.pointer('pointerdown', 100, 100);
@@ -189,15 +193,12 @@ describe('MeasureRenderer and the players\' picture', () => {
     s.store.getState().setActiveTool('measure');
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);
-    const label = s.parts()[1];
-    const text = label instanceof Container ? label.children.find((child) => child instanceof Text) : undefined;
-    if (!(label instanceof Container) || !(text instanceof Text)) throw new Error('Expected the live label');
-    expect(label.visible).toBe(false);
+    expect(s.parts()[1]!.visible).toBe(false);
+    const label = s.liveLabels()[0]!.view;
     s.viewport.scale.set(0.5);
     s.viewport.emit('zoomed', { viewport: s.viewport, type: 'wheel' });
-    // Sized as token UI for the new zoom, its font as it always is.
+    // Sized as token UI for the new zoom.
     expect(label.scale.x).toBe(labelScale(70, 0.5));
-    expect(text.style.fontSize).toBe(NAMEPLATE_TEXT.fontSize);
   });
 
   it('asks nothing of the players\' sight while there is no measurement', () => {
