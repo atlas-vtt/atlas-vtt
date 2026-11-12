@@ -13,6 +13,7 @@ import { pinSize } from '../styles/designTokens';
 import type { PinIconId } from '../types/pinIcons';
 import { destroyTree } from "./utils/destroyTree";
 import { isHandled } from "./utils/handledEvents";
+import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
 import type { ContextMenuEntry } from '../react/root/ContextMenuContext';

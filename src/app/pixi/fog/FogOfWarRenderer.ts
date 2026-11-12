@@ -25,6 +25,7 @@ import type { MapRect } from '../../grid/cellNumbering';
 import { destroyTree } from '../utils/destroyTree';
 import { requestRender } from '../RenderScheduler';
 import { isHandled } from '../utils/handledEvents';
+import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
 import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { STROKE_COLORS, ShapeStroke, type StrokeMode } from '../../tools/shapeStroke';
 import { drawStrokeArea } from '../utils/strokePreview';

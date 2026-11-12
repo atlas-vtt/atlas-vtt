@@ -10,6 +10,7 @@ import { splitStrokeByBrush } from './drawingEraseUtils';
 import { FogCursorPreview } from './fog/FogCursorPreview';
 import { destroyTree } from './utils/destroyTree';
 import { isHandled } from './utils/handledEvents';
+import { isPrimaryPress } from './utils/pointerButtons';
 import { levelObjects } from '../levels/levelObjects';
 
 export interface DrawingSettings {

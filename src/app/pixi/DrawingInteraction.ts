@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
 import { hitTestDrawing } from './drawingGeometry';
+import { isPrimaryPress, isSecondaryPress } from './utils/pointerButtons';
 import { MAP_ICON_LABELS } from './mapIcons';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
 import { t } from '../i18n';

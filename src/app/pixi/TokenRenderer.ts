@@ -56,6 +56,7 @@ import type { TokenInput } from '../types/viewState';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { markHandled, resetHandled } from './utils/handledEvents';
 import { watchClick } from './utils/clickRelease';
+import { isCtrlClick, isPrimaryPress, isSecondaryPress } from './utils/pointerButtons';
 import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
 import type { MapFeaturePointerHandlers } from './mapFeatures/MapFeatureInteraction';
 import type { LightPointerHandlers } from './lighting/LightInteraction';
@@ -1764,22 +1765,30 @@ export class TokenRenderer {
     }
   }
 
-  private openMenuOnRelease(down: FederatedPointerEvent, open: (up: FederatedPointerEvent) => void): void {
+  /** A right-drag pans, so the right button's menu waits for a release in place. A Ctrl+click on macOS cannot pan: its menu opens at once. */
+  private openMenuOnRelease(down: FederatedPointerEvent, open: (at: FederatedPointerEvent) => void): void {
     this.stopMenuPress?.();
+    if (isCtrlClick(down)) {
+      open(down);
+      return;
+    }
     this.stopMenuPress = watchClick(this.viewport, down, open);
   }
 
   private onViewportPointerDown = (e: FederatedPointerEvent): void => {
     // PIXI v8 reuses FederatedPointerEvent objects — clear custom flags from previous events
     resetHandled(e);
+    // A Ctrl+click on macOS is a secondary click whichever of Ctrl and the button is let go first: no tool takes its press or its tap
+    if (isCtrlClick(e)) markHandled(e);
     // Held tokens take the pointer: a right-drag still pans, but nothing on the map opens its menu
     if (this.placementActive()) return;
 
     const activeTool = this.store.getState().activeTool;
     const worldPos = this.viewport.toWorld(e.global);
+    const primary = isPrimaryPress(e);
 
     // ── Right-click: check walls, fog, and pins ─────────────────────────
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       // Wall context menu (when wall tool is active). It also opens beside the walls, for the selection,
       // so like the area menus below it waits for a release in place and a right-drag pans.
       if (activeTool === 'wall' && this.wallContextMenuHandler) {
@@ -1833,13 +1842,13 @@ export class TokenRenderer {
     }
 
     // ── Handles of kept measurements: the smallest marks and the topmost, from any tool ──
-    if (e.button === 0 && this.measureHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
+    if (primary && this.measureHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
       markHandled(e);
       return;
     }
 
     // ── Pin left-click: works from any tool (drag + open) ──────────────
-    if (e.button === 0 && this.pinHitTestProvider && this.pinClickHandler) {
+    if (primary && this.pinHitTestProvider && this.pinClickHandler) {
       const pinId = this.pinHitTestProvider(worldPos.x, worldPos.y);
       if (pinId) {
         markHandled(e);
@@ -1849,25 +1858,25 @@ export class TokenRenderer {
     }
 
     // ── Door badges: open and close doors from any tool ────────────────
-    if (e.button === 0 && activeTool !== 'wall' && this.doorClickHandler?.(worldPos.x, worldPos.y)) {
+    if (primary && activeTool !== 'wall' && this.doorClickHandler?.(worldPos.x, worldPos.y)) {
       markHandled(e);
       return;
     }
 
     // ── Light markers and range rings: a light's popover and its drags, from any tool ──
-    if (e.button === 0 && this.lightHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
+    if (primary && this.lightHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
       markHandled(e);
       return;
     }
 
     // ── Stairs tool: drawing and reshaping stairs between levels ─────────
-    if (activeTool === 'stairs' && e.button === 0 && this.stairsTool?.pointerDown(worldPos, e)) {
+    if (activeTool === 'stairs' && primary && this.stairsTool?.pointerDown(worldPos, e)) {
       markHandled(e);
       return;
     }
 
     // ── Wall tool: drawing, vertex drag, selection ─────────────────────
-    if (activeTool === 'wall' && e.button === 0 && this.wallPointerDownHandler) {
+    if (activeTool === 'wall' && primary && this.wallPointerDownHandler) {
       const handled = this.wallPointerDownHandler(worldPos.x, worldPos.y, e);
       if (handled) {
         markHandled(e);
@@ -1876,7 +1885,7 @@ export class TokenRenderer {
     }
 
     // Audio tool: click to place or select audio sources
-    if (activeTool === 'audio' && e.button === 0 && this.audioPointerDownHandler) {
+    if (activeTool === 'audio' && primary && this.audioPointerDownHandler) {
       const handled = this.audioPointerDownHandler(worldPos.x, worldPos.y, e);
       if (handled) {
         markHandled(e);
@@ -1888,7 +1897,7 @@ export class TokenRenderer {
     if (activeTool !== 'select' && activeTool !== 'move') return;
 
     // The bars of a selection stand above every token: one change for all of it
-    if (e.button === 0 && !e.shiftKey && this.pressSelectionBar(e)) {
+    if (primary && !e.shiftKey && this.pressSelectionBar(e)) {
       markHandled(e);
       return;
     }
@@ -1899,12 +1908,12 @@ export class TokenRenderer {
       markHandled(e);
       this.interactionController.handleViewportTokenPointerDown(tokenId, e);
       // Drawings selected alongside the token follow its drag; a token from outside the selection moves alone
-      if (e.button === 0 && this.store.getState().selectedIds.includes(tokenId)) this.drawingDragStartHandler?.(e);
+      if (primary && this.store.getState().selectedIds.includes(tokenId)) this.drawingDragStartHandler?.(e);
       return;
     }
 
     // 2. Hit-test the frame drawn around a selection of two or more (drag the group; shift is picking, not dragging)
-    if (e.button === 0 && !e.shiftKey && this.groupFrameHitTest?.(worldPos.x, worldPos.y)) {
+    if (primary && !e.shiftKey && this.groupFrameHitTest?.(worldPos.x, worldPos.y)) {
       markHandled(e);
       this.startGroupDrag(e);
       return;
@@ -1916,13 +1925,13 @@ export class TokenRenderer {
       if (drawingId) {
         markHandled(e);
         this.drawingClickHandler(drawingId, e);
-        if (e.button === 0) this.startTokenGroupDrag(e);
+        if (primary) this.startTokenGroupDrag(e);
         return;
       }
     }
 
     // 4. Linked hexes open their note on click; the event stays unhandled, so a drag still pans or selects
-    const hexLinkId = e.button === 0 ? this.hexLinkHandlers?.hitTest(worldPos.x, worldPos.y) ?? null : null;
+    const hexLinkId = primary ? this.hexLinkHandlers?.hitTest(worldPos.x, worldPos.y) ?? null : null;
     if (hexLinkId) {
       this.hexLinkHandlers?.press(hexLinkId, e);
     }
@@ -1938,7 +1947,7 @@ export class TokenRenderer {
     }
 
     // 6. Nothing hit — clear selection for move tool on empty-space left-click (shift keeps it)
-    if (e.button === 0 && activeTool === 'move' && !e.shiftKey) {
+    if (primary && activeTool === 'move' && !e.shiftKey) {
       const selectedIds = this.store.getState().selectedIds;
       if (selectedIds.length > 0) {
         this.store.getState().clearSelection();

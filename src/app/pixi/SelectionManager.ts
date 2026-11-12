@@ -3,6 +3,7 @@ import { Viewport } from "pixi-viewport";
 // For Token Sprite type if needed
 import { getObsidianAccentColor, cssColorToHexNumber } from "./utils/colorUtils";
 import { isHandled } from "./utils/handledEvents";
+import { isPrimaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { EventEmitter } from 'events';
 import { getDrawingBounds, type DrawingBounds } from './drawingGeometry';

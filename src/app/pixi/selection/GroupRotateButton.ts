@@ -5,6 +5,7 @@ import { paintRotateHandle, rotateIconTexture, ROTATE_ICON_SHARE } from '../rota
 import { destroyTree } from '../utils/destroyTree';
 import { isDarkTheme } from '../utils/canvasBadgeColors';
 import { MeasureLabel } from '../utils/measureLabel';
+import { isPrimaryPress } from '../utils/pointerButtons';
 import { ValueTransition } from '../utils/ValueTransition';
 import type { Box } from './selectionGeometry';
 import { drawGroupStem } from './selectionInk';

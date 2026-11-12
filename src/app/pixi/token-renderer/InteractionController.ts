@@ -36,6 +36,7 @@ import { copyDragSelection } from './dragCopy';
 import type { DragRuler } from './DragRuler';
 import type { TokenMovement } from './tokenMovement';
 import { runInBackground } from '../../utils/backgroundTask';
+import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
 import { tokenSizeSubmenu } from '../../react/components/context-menu/tokenSizeMenu';
 import { tokenMovementSubmenu } from '../../react/components/context-menu/tokenMovementMenu';
 import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLevelMenu';

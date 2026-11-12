@@ -15,6 +15,7 @@ import { EventEmitter } from 'events';
 import type { TextElement } from '../types';
 import { promptForText } from '../ui/textInputDialog';
 import { isHandledTap } from '../pixi/utils/handledEvents';
+import { isPrimaryPress } from '../pixi/utils/pointerButtons';
 import { MAP_LAYER_Z } from '../pixi/mapLayerOrder';
 import { t } from '../i18n';
 

@@ -18,6 +18,7 @@ import { TextResizeUI } from './TextResizeUI';
 import { createTextElementView, TEXT_BACKGROUND_LABEL, TEXT_CONTENT_LABEL, updateTextElementView } from './textElementView';
 import { promptForText } from '../ui/textInputDialog';
 import { destroyTree } from './utils/destroyTree';
+import { isSecondaryPress } from './utils/pointerButtons';
 import { t } from '../i18n';
 import { levelObjects } from '../levels/levelObjects';
 import type { TesseraView } from './mosaicCanvas/levelOfDetail';
