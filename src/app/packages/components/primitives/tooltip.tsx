@@ -18,7 +18,56 @@ function TooltipProvider(props: React.ComponentProps<typeof TooltipPrimitive.Pro
   )
 }
 
-const Tooltip = TooltipPrimitive.Root
+interface OpenStore {
+  get: () => boolean
+  set: (open: boolean) => void
+  subscribe: (listener: () => void) => () => void
+}
+
+function openStore(initial: boolean): OpenStore {
+  let open = initial
+  const listeners = new Set<() => void>()
+  return {
+    get: () => open,
+    set: (next) => {
+      if (next === open) return
+      open = next
+      listeners.forEach((listener) => listener())
+    },
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+  }
+}
+
+/**
+ * Radix's tooltip, with whether it is open held here where the caller does not hold it. Left to hold it itself, Radix
+ * announces an opening only after it has rendered it, and a tooltip that still fades out hears its own announcement as
+ * another tooltip's: a pointer that slipped off an icon and came back within the fade got a tooltip that closed itself
+ * and stayed shut until the pointer left and came back. Asked through `onOpenChange`, Radix announces before anything is
+ * rendered, when the fading tooltip's own close asks for nothing new.
+ *
+ * Radix compares each request with the `open` it was last rendered with, so a change must be rendered before the next
+ * event: a store read with `useSyncExternalStore` is, while state set from a pointer move or a timer waits for a task of
+ * its own, and a request arriving before that task (the pointer leaving as the delay ends) would be dropped.
+ */
+function Tooltip({ open, defaultOpen = false, onOpenChange, ...props }: React.ComponentProps<typeof TooltipPrimitive.Root>): React.ReactElement {
+  const [held] = React.useState(() => openStore(defaultOpen))
+  const heldOpen = React.useSyncExternalStore(held.subscribe, held.get)
+  return (
+    <TooltipPrimitive.Root
+      {...props}
+      open={open ?? heldOpen}
+      onOpenChange={(next) => {
+        if (open === undefined) held.set(next)
+        onOpenChange?.(next)
+      }}
+    />
+  )
+}
 
 const TooltipTrigger = TooltipPrimitive.Trigger
 

@@ -150,6 +150,29 @@ describe('a tooltip in rows of icon buttons', () => {
     }
   });
 
+  it('shows again for a pointer that slipped off its icon and came back while the tooltip still faded', async () => {
+    // A hand jitters across an icon's edge: away for a frame or a few, each shorter than the tenth of a second of the fade.
+    for (const away of [0, 30, 60]) {
+      await rest();
+      await glide(REPLACE, 8);
+      await shows(REPLACE);
+      const on = pointer;
+      const box = button(REPLACE).getBoundingClientRect();
+      const off = [{ x: on.x, y: box.top - 3 }, { x: on.x, y: box.bottom + 3 }].find((point) => !document.elementFromPoint(point.x, point.y)?.closest('button'));
+      if (!off) throw new Error('no place beside the icon that is off every icon');
+
+      await mouse.hover(off.x, off.y);
+      await sleep(away);
+      expect(document.querySelector('.tooltip-content[data-state="closed"]'), `still fading after ${away} ms away`).not.toBeNull();
+      await mouse.hover(on.x, on.y);
+
+      await sleep(500);
+      expect(shown(), `back after ${away} ms`).toBe(REPLACE);
+    }
+    // And it still goes when the pointer does.
+    await rest();
+  });
+
   it('names what is under the pointer once a row has moved, never the button that went with its row', async () => {
     await glide('Move Hall down', 8);
     await shows('Move Hall down');
