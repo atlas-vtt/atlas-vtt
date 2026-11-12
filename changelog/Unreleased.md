@@ -42,3 +42,21 @@
 - In statblocks, the name of an action or trait and its text now stand a full space apart in every font, and text that starts with a space no longer gets a double gap
 - Hovering a link to an Atlas statblock note, or holding Cmd/Ctrl over it, now shows the statblock in the preview instead of only its properties
 - Online play: a player whose page fell out of step with the table is caught up by itself, instead of having every roll and move refused until they reload
+- Two tokens linked to the same statblock no longer freeze Obsidian when two players play them at an online table
+- Renaming a folder in the asset manager now keeps the new name, and the assets inside stay in the folder
+- Creating a subfolder, moving a folder's contents and dragging a folder onto another folder in the asset manager now last, and Back and Forward still find a folder after it was renamed or moved
+- Deleting a folder in the asset manager now moves what it holds to the parent folder and removes the folder for good
+- A statblock description with several paragraphs or a list no longer makes its section, or everything after it, vanish from the card and the hover preview on older Obsidian installers
+- Notices now go away properly when the system has animations switched off
+- Text placed on the map stays sharp when you zoom in and on the player screen
+- Online play: a player keeps their character sheet while their token is hidden or out of sight
+- Online play: a token given to a player shows its statblock and abilities even when the map does not show the token yet
+- Online play: abilities named with a long link, or a link to a heading with brackets, show their plain name and text
+- Initiative by sides puts player characters on the players' side, also in scenes without dynamic lighting and at an online table
+- Creating a statblock from a token now also offers your own statblock templates, not only the collection's roles
+- Statblocks moved from Fantasy Statblocks show their Tier and the text of their features: renaming Level to the name your statblocks use now reads their value, and features written with `text` show their description
+- The scene's Token Settings now follow the game system a map plays by at once, and say when a played campaign's rules replace the collection's
+- A Base with a note Atlas cannot read no longer hangs on "Reading…": the note's bad value is left out and the rest of the table loads
+- Collection and campaign settings no longer close on a click outside or Escape while they hold unsaved changes
+- The Scene levels page lets you change or replace the map image of a scene with a single floor
+- The statblock preview of the initiative tracker is no longer cut off for cards near the bottom of the window
