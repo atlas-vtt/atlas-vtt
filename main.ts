@@ -76,6 +76,7 @@ import { SoundRecordStore } from './src/app/soundLibrary/SoundRecordStore';
 import { nameQuestCampaigns } from './src/app/campaigns/quests/nameQuestCampaigns';
 import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
+import { registerPlayerTokens } from './src/app/plugin/playerTokens';
 import { registerSoundDirector } from './src/app/plugin/soundDirector';
 import { SoundDirector } from './src/app/soundDirector/SoundDirector';
 import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
@@ -170,6 +171,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.register(recordCampaignPlay(this.app, campaignFiles, campaignsRead));
     // And keeps one set of values for each of its player characters, shared by every map view.
     registerPartySync(this, campaignFiles, campaignsRead);
+    // Whose tokens are the players' is the library's and the played campaign's to say, for the sides of a fight.
+    registerPlayerTokens(this, campaignPlayers, campaignsRead);
     // The vault's dice sets are vault files too; collections and templates pick from them.
     void DiceSetFiles.open(this.app).load().catch((error: unknown) => console.error('[Atlas] Reading the dice sets failed:', error));
     // Settings carried over even when the data file migration failed, so they are not lost to the defaults.
