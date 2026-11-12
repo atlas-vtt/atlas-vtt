@@ -9,6 +9,9 @@ export const LIGHTNING_GLSL = `
 /** How many shapes an arc jumps through while it lasts. */
 const float STRIKE_JUMPS = 4.0;
 
+/** How narrow the area is, from how little its arcs may lean (\`uSpread\`): 0 for a round one, 1 for a line. */
+float narrowness() { return clamp((TAU * 0.5 - uSpread) / (TAU * 0.5 - 0.2), 0.0, 1.0); }
+
 /**
  * The arcs of one lattice of \`gap\` cells at this pixel: x their heart, y their halo. Each lasts
  * \`share\` of its own cycle of \`pace\` to twice \`pace\` whole cycles a loop; \`forked\` ones branch.
@@ -16,6 +19,10 @@ const float STRIKE_JUMPS = 4.0;
 vec2 arcs(vec2 p, float px, float gap, float share, float pace, float forked) {
   vec2 axis = uFrame.zw;
   vec2 rel = p - uFrame.xy;
+  // A narrow area has longer arcs, more shapes to their longer lives, and bends that keep within it.
+  float narrow = narrowness();
+  float jumps = STRIKE_JUMPS * (1.0 + narrow);
+  float room = clamp(uDepth / 0.9, 0.4, 1.0);
   // Across and along the area, in lattice squares; its middle is a square's middle.
   vec2 g = vec2(dot(rel, vec2(-axis.y, axis.x)), dot(rel, axis)) / gap;
   vec2 home = floor(g + 0.5);
@@ -33,7 +40,7 @@ vec2 arcs(vec2 p, float px, float gap, float share, float pace, float forked) {
       if (uStill > 0.5) { phase = h.z < 0.45 ? share * 0.3 : 1.0; strike = 0.0; }
       if (phase >= share) continue;
       float life = phase / share;
-      float jump = floor(life * STRIKE_JUMPS);
+      float jump = floor(life * jumps);
       vec4 e = hash42(id * 7.31 + strike * vec2(0.731, 0.377) + uSeed);
       // Its own way: any on a round area, along a long one, which also keeps its arcs on its middle line.
       float lean = (e.x - 0.5) * uSpread;
@@ -41,12 +48,12 @@ vec2 arcs(vec2 p, float px, float gap, float share, float pace, float forked) {
       vec2 at = (g - id - (e.yz - 0.5) * vec2(0.7 * clamp(uSpread / (TAU * 0.5), 0.1, 1.0), 0.7)) * gap;
       float along = dot(at, vec2(way.y, way.x));
       float across = dot(at, vec2(way.x, -way.y));
-      float span = gap * (0.75 + 0.5 * e.w);
+      float span = gap * (0.75 + 0.5 * e.w) * (1.0 + 0.5 * narrow);
       float taper = 1.0 - smoothstep(span * 0.5, span, abs(along));
       if (taper <= 0.0) continue;
       // The same broad bends through its life, finer ones anew at every jump.
       float salt = e.w * 91.0 + strike;
-      float broad = lineNoise(along * 2.6 / gap + salt) * 0.23 * gap;
+      float broad = lineNoise(along * 2.6 / gap + salt) * 0.23 * gap * room;
       float bend = broad + lineNoise(along * 3.7 + salt + jump * 17.0) * 0.2 + lineNoise(along * 9.0 + salt + jump * 29.0) * 0.07;
       float flare = (0.6 + 0.4 * hash11(jump * 3.1 + salt)) * (1.0 - life * life * life);
       float off = abs(across - bend);
@@ -60,7 +67,7 @@ vec2 arcs(vec2 p, float px, float gap, float share, float pace, float forked) {
       float reach = span * (0.35 + 0.3 * e.z);
       if (past > 0.0 && past < reach) {
         float side = e.z < 0.5 ? -0.62 : 0.62;
-        float root = lineNoise(from * 2.6 / gap + salt) * 0.23 * gap + lineNoise(from * 3.7 + salt + jump * 17.0) * 0.2;
+        float root = lineNoise(from * 2.6 / gap + salt) * 0.23 * gap * room + lineNoise(from * 3.7 + salt + jump * 17.0) * 0.2;
         float fork = root + past * side + lineNoise(past * 4.5 + salt + jump * 13.0) * 0.16 * smoothstep(0.0, 0.3, past);
         float forkOff = abs(across - fork) * 0.85;
         float thin = flare * (1.0 - past / reach);
@@ -73,14 +80,17 @@ vec2 arcs(vec2 p, float px, float gap, float share, float pace, float forked) {
 }
 
 vec4 lightning(vec2 p, float d, float px) {
-  vec2 arc = arcs(p, px, 2.4, 0.42, 1500.0, uDetail);
+  // A wall of lightning is seldom without an arc along it: its arcs last most of their cycle.
+  float narrow = narrowness();
+  vec2 arc = arcs(p, px, 2.4, mix(0.42, 0.72, narrow), 1500.0, uDetail);
   // Crackles: short arcs that come and go faster, so the area is never long without one.
-  if (uDetail > 0.5) arc += arcs(p + 7.3, px, 1.2, 0.3, 2300.0, 0.0) * vec2(0.95, 0.7);
+  if (uDetail > 0.5) arc += arcs(p + 7.3, px, 1.2, mix(0.3, 0.45, narrow), 2300.0, 0.0) * vec2(0.95, 0.7);
   float cloud = 0.5 + gnoise((p - uDriftA.xy) * 0.75, vec2(TILE * 0.75));
   float within = inward(d, 0.45);
   // Between strikes the floor is only a little charged.
   float charged = within * (0.04 + 0.11 * cloud * cloud);
-  float halo = min(arc.y, 1.0);
+  // An arc's glow dies away before the outline, so it never draws the outline as a line.
+  float halo = min(arc.y, 1.0) * (0.3 + 0.7 * inward(d, 0.3));
   float heart = min(arc.x, 1.0);
   float alpha = min(charged + halo * 0.62 + heart * 0.4, 0.95);
   vec3 colour = deepened(1.3) * 0.5 * charged + uTint * charged * 0.3 + mix(uTint, lifted(0.25), halo * halo) * halo * 0.85 + lifted(0.9) * heart;

@@ -69,7 +69,8 @@ float crystals(vec2 p, float gap, float thick, float px) {
   vec4 c = nearestCrystal(p, gap);
   float grown = smoothstep(c.z * 0.75, c.z * 0.75 + 0.35, thick);
   if (grown <= 0.0) return 0.0;
-  float size = gap * (0.32 + 0.3 * fract(c.z * 7.3)) * (0.45 + 0.55 * grown);
+  // Much of a size, as crystals grown on one floor are.
+  float size = gap * (0.36 + 0.12 * fract(c.z * 7.3)) * (0.7 + 0.3 * grown);
   return crystalArms(c.xy, size, c.z * 31.0, px) * grown * smoothstep(0.0, 0.05 * gap, c.w) * shown(gap * 0.12, px);
 }
 
@@ -80,16 +81,18 @@ vec4 frost(vec2 p, float d, float px) {
   float breath = fbm((p - uDriftA.xy) * 1.25, vec2(TILE * 1.25), octaves, px * 1.25);
   // How thickly the frost lies: along the outline always, inside in patches that slowly move.
   float thick = clamp(0.28 + 0.6 * rime + breath * 1.3, 0.0, 1.0);
-  float ice = crystals(p, 0.8, thick, px);
-  if (uDetail > 0.5) ice = max(ice, crystals(p + 3.3, 0.4, thick * 0.9, px) * 0.8);
-  // Hoar: the fine white bloom between crystals where the frost is thickest.
-  float hoar = smoothstep(0.55, 1.0, thick) * (0.5 + gnoise(p * 6.0, vec2(TILE * 6.0)) * shown(0.17, px));
+  // The large crystals are the fewer: they need thicker frost than the small ones between them.
+  float ice = crystals(p, 0.8, thick * 0.8, px) * 0.85;
+  if (uDetail > 0.5) ice = max(ice, crystals(p + 3.3, 0.4, thick, px) * 0.75);
+  // Hoar: the fine white bloom all over the rime, heavier where the frost is thick.
+  float hoar = (0.35 + 0.65 * thick) * (0.5 + gnoise(p * 6.0, vec2(TILE * 6.0)) * shown(0.17, px));
 
-  float sheet = within * (0.07 + 0.2 * thick);
-  float white = within * clamp(ice * 0.9 + hoar * 0.3, 0.0, 1.0);
-  vec3 colour = mix(mix(uTint, deepened(1.6), 0.5), lifted(0.92), white);
-  float alpha = min(sheet + white * 0.5, 0.75);
-  vec4 lit = vec4(colour * (alpha + white * 0.2), alpha);
+  // An even rime over the whole area, in the colour deepened, so it shows on parchment too.
+  float sheet = within * (0.25 + 0.1 * thick);
+  float white = within * clamp(ice * 0.85 + hoar * 0.26, 0.0, 1.0);
+  vec3 colour = mix(mix(uTint, deepened(1.8), 0.6), lifted(0.92), white);
+  float alpha = min(sheet + white * 0.45, 0.75);
+  vec4 lit = vec4(colour * (alpha + white * 0.18), alpha);
 
   float star = uDetail > 0.5 ? glint(p, px) * within : 0.0;
   lit += vec4(vec3(1.0) * star * 0.9, star * 0.5);

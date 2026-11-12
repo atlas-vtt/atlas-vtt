@@ -14,7 +14,7 @@ import { createEffectLook, createEffectShader, EFFECT_CODE, type EffectDetail, t
 /** The cell an area's patterns are scaled to where none is given, world pixels. */
 const DEFAULT_CELL = 100;
 /** How far arcs lean from a thin area's length, radians; a round area's lean any way (half a turn). */
-const THIN_SPREAD = 0.45;
+const THIN_SPREAD = 0.2;
 
 export interface MeasureEffectOptions {
   /** The area's outline, world pixels (`MeasureArea.rings`): one ring, or more where walls cut it apart. */

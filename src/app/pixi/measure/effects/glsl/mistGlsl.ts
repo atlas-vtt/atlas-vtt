@@ -17,8 +17,9 @@ vec4 mist(vec2 p, float d, float px) {
   float bank = clamp(0.5 + near * 1.1 + far * 0.5, 0.0, 1.0);
   // The fog thins towards the outline, sooner where it is thin anyway.
   float thin = smoothstep(0.0, min(0.8, uDepth), d + (bank - 0.55) * 0.35);
-  float alpha = thin * (0.26 + 0.22 * smoothstep(0.1, 0.9, bank));
-  vec3 colour = mix(uTint * 0.44, lifted(0.35), smoothstep(0.15, 0.85, bank));
+  float alpha = thin * (0.31 + 0.19 * smoothstep(0.1, 0.9, bank));
+  // Its shade is a cool grey of the colour, which darkens a bright map a little, so the veil shows there too.
+  vec3 colour = mix(uTint * vec3(0.38, 0.42, 0.5), lifted(0.3) * 0.96, smoothstep(0.15, 0.85, bank));
   return vec4(colour * alpha, alpha);
 }
 `;

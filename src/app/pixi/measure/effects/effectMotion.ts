@@ -13,7 +13,7 @@ interface Drift { x: number; y: number }
 
 /** The four drifts each look's shader reads (`uDriftA.xy`, `.zw`, `uDriftB.xy`, `.zw`), as it names them there. */
 const DRIFTS: Readonly<Record<MeasureEffect, readonly [Drift, Drift, Drift, Drift]>> = {
-  // Broad tongues, fine licks over them, the sway that bends both, embers.
+  // The shimmer of the bed, unused, unused, embers; the flames stand where they are rooted.
   fire: [{ x: 0, y: -0.32 }, { x: 0, y: -0.66 }, { x: 0.03, y: -0.13 }, { x: 0.02, y: -0.45 }],
   // The breath over the ice, its second layer; the crystals lie still.
   frost: [{ x: 0.022, y: 0.012 }, { x: -0.015, y: 0.02 }, { x: 0, y: 0 }, { x: 0, y: 0 }],
