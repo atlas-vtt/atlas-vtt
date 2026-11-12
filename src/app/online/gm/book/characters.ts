@@ -55,7 +55,8 @@ export const characterKeyOf = (token: TokenEntity): string => token.assetId ?? `
  * token the GM's player list shows them by), as the players' frame shows it. A choice of a token
  * that is not theirs, or that the players' frame does not show, is passed over.
  * A character stays its player's for the table while the scene shows none of their tokens (another
- * scene, the token hidden or out of sight), with the sheet it last had. It ends when its token is
+ * scene, the token hidden or out of sight), with the sheet it last had; while its token is in the
+ * scene unseen, a choice of another token of theirs is passed over. It ends when its token is
  * in the shared scene and no longer theirs (the GM gave it to someone else or took it back), when the table no longer knows the player, or when they play another character.
  * A book is open to one player at a time: a token of a library token someone else plays is passed
  * over, so two players never read one book.
@@ -132,6 +133,14 @@ export class Characters {
     });
     const shown = scene.shown(owned);
     const settled = new Set<string>();
+    // A character whose token the scene holds but players do not see stays, and stands as their choice: a
+    // page that lists another token of theirs then acts with that one, and hiding must never cost a player their sheet.
+    for (const tokenId of owned) {
+      const owner = inputs.ownerOf(tokenId);
+      if (owner === undefined || this.played.get(owner)?.tokenId !== tokenId || shown.get(tokenId)?.imagePath !== undefined) continue;
+      this.chosen.set(owner, tokenId);
+      settled.add(owner);
+    }
     const isChosen = (tokenId: string): boolean => {
       const owner = inputs.ownerOf(tokenId);
       return owner !== undefined && this.chosen.get(owner) === tokenId;
@@ -144,11 +153,7 @@ export class Characters {
       if (owner === undefined || token === undefined || settled.has(owner) || !inputs.isKnown(owner)) continue;
       const before = this.played.get(owner);
       const seen = shown.get(tokenId);
-      if (seen?.imagePath === undefined) {
-        // Their character's token, not shown now: it stays as it was, before any further token of theirs.
-        if (before?.tokenId === tokenId) settled.add(owner);
-        continue;
-      }
+      if (seen?.imagePath === undefined) continue;
       const character = { collection: scene.collection, key: characterKeyOf(token), imagePath: seen.imagePath };
       const holder = holders.get(character.key);
       const statblockPath = statblockOf(token, inputs);

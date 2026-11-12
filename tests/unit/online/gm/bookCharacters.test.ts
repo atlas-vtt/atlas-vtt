@@ -118,6 +118,21 @@ describe('which character a player plays', () => {
     expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
   });
 
+  it('passes over a choice of another token while its token is in the scene unseen, also once it shows again', () => {
+    const seats = table({ knight: ANA, squire: ANA });
+    seats.read([knight, squire]);
+    // The page lists only the squire while the knight is hidden, and acts with it.
+    seats.characters.choose(ANA, 'squire');
+    seats.read([knight, squire], ['knight']);
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+    seats.read([knight, squire]);
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+    // A choice made while the knight shows counts.
+    seats.characters.choose(ANA, 'squire');
+    seats.read([knight, squire]);
+    expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
+  });
+
   it('ends at once when its token is in the scene and no longer theirs, or the table forgets the player', () => {
     const seats = table({ knight: ANA });
     seats.read([knight]);
