@@ -180,4 +180,23 @@ describe('the pyramids of a scene\'s floors', () => {
     expect(again.size).toBe(store.files.get(CELLAR)!.length);
     expect(store.client.batches).toEqual([]);
   });
+
+  it('put the world map\'s pyramid after the presented floor, built once the floors players look at are, and handed as an image where none is made', async () => {
+    const { store, hashes } = await threeFloors();
+    for (const path of [GROUND, VAULT]) store.cache.add(path, hashes.get(path)!, 3000, 2000);
+    store.client.hold = true;
+    store.publisher.storing.floorMaps?.({ presented: GROUND, watched: [], rest: [] });
+    const ground = await mapRef(store, GROUND);
+    const world = await store.publisher.storing.mapRef(store.files.get(VAULT)!, 'image/png', VAULT, 'book');
+    expect(world.tiles).toBe(true);
+    await drain(store);
+    const names = new Map([[ground.id!, 'ground'], [world.id!, 'world']]);
+    expect(store.cache.builds.indexOf(VAULT)).toBeGreaterThan(store.cache.builds.indexOf(GROUND));
+    expect(batchesSent(store, names)).toEqual(['ground:1*', 'ground:3', 'ground:2', 'ground:0', 'world:1*', 'world:3', 'world:2', 'world:0']);
+    // The cellar's file is no image the tile worker can build: handed again, it goes as an image of the book.
+    await store.publisher.storing.mapRef(store.files.get(CELLAR)!, 'image/png', CELLAR, 'book');
+    await store.advance(1000);
+    const image = await store.publisher.storing.mapRef(store.files.get(CELLAR)!, 'image/png', CELLAR, 'book');
+    expect(image).not.toHaveProperty('tiles');
+  });
 });
