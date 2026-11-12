@@ -23,6 +23,11 @@ export interface MeasureArea {
   readonly bounds: Box;
   /** Whether `point` lies in the area, its edge included. */
   contains(point: Point): boolean;
+  /**
+   * A line's middle line, from its origin to its end or to where walls stop it. The cells it runs
+   * through are the line's under every cell rule (`cellsInArea`); other areas have none.
+   */
+  readonly spine?: readonly [Point, Point];
 }
 
 /** An area as its measurement shapes it, before walls cut it. */
@@ -175,7 +180,9 @@ export function shapedArea(measurement: Measurement, rules: AreaShapeRules): Sha
       return cone(origin, towards, length, rules.coneAngle, rules.coneEnd);
     case 'square':
       return box(origin, towards, length, length / 2);
-    case 'line':
-      return box(origin, towards, length, (measurement.width ?? rules.lineWidth) / 2);
+    case 'line': {
+      const line = box(origin, towards, length, (measurement.width ?? rules.lineWidth) / 2);
+      return line && { ...line, spine: [origin, { x: origin.x + towards.x * length, y: origin.y + towards.y * length }] };
+    }
   }
 }

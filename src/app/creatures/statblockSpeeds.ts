@@ -1,0 +1,95 @@
+/**
+ * How far a creature moves, read from its statblock: every speed its speed line states ("30 ft.,
+ * fly 60 ft."), in the collection's game units. A token moves by its own speed where the GM set
+ * one, else by its statblock's first.
+ */
+
+import { readDistance, toGameUnits, type GameUnit } from '../grid/statedDistance';
+import { NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
+import { positiveNumber } from '../utils/numberInput';
+import type { IndexedCreature } from './CreatureIndex';
+import { phrasesOf } from './sensesText';
+import { boundedText } from './statblockValues';
+
+/** One speed a statblock states. */
+export interface StatedSpeed {
+  /** What kind of movement, as written ("fly", "swim"); null for the speed that names none. */
+  name: string | null;
+  /** Game units of the collection. */
+  speed: number;
+}
+
+/** The most speeds read from one statblock. */
+export const MAX_STATED_SPEEDS = 8;
+/** The longest name a speed keeps. */
+const MAX_SPEED_NAME = 24;
+/** Words before a distance that are the line's own label and no kind of movement. */
+const LABELS = new Set(['speed', 'speeds', 'movement', 'move', 'mv']);
+
+/** The kind of movement the text before a distance names: its last words after any punctuation; none for the line's own label. */
+function nameBefore(text: string): string | null {
+  const words = text.split(/[,;:()/]/).pop()?.replace(/[.\s]+$/u, '').trim() ?? '';
+  const name = words.slice(-MAX_SPEED_NAME).trim();
+  return name === '' || LABELS.has(name.toLowerCase()) ? null : name;
+}
+
+/** Every speed `text` states, in the order written. */
+function speedsIn(text: string, unit: GameUnit): StatedSpeed[] {
+  const speeds: StatedSpeed[] = [];
+  let rest = text;
+  while (speeds.length < MAX_STATED_SPEEDS) {
+    const stated = readDistance(rest);
+    if (!stated) break;
+    const speed = toGameUnits(stated, unit);
+    if (speed > 0 && Number.isFinite(speed)) speeds.push({ name: nameBefore(rest.slice(0, stated.start)), speed });
+    rest = rest.slice(stated.end);
+  }
+  return speeds;
+}
+
+/** The speed value of a statblock: the field its template means as the speed, else its `speed`. */
+function speedValue(fields: Readonly<Record<string, unknown>>, meanings: FieldMeanings): unknown {
+  const meant = meanings.speed === undefined ? undefined : fields[meanings.speed];
+  return meant === undefined || meant === null || meant === '' ? fields.speed : meant;
+}
+
+/**
+ * Every speed a statblock states, the default first. The value is the field its template means as
+ * the speed, else `speed`, in any shape statblocks hold it: a line ("30 ft., climb 30 ft."), a bare
+ * number, a list of lines or named entries, or speeds kept by name (`{ walk: 30, fly: 60 }`). A
+ * distance is read as rulebooks write it and converted to the collection's unit (`toGameUnits`);
+ * a bare number is taken as it stands. None where the statblock states no speed.
+ */
+export function statblockSpeeds(fields: Readonly<Record<string, unknown>>, meanings: FieldMeanings | undefined, unit: GameUnit): StatedSpeed[] {
+  const value = speedValue(fields, meanings ?? NO_MEANINGS);
+  if (typeof value === 'number') return value > 0 && Number.isFinite(value) ? [{ name: null, speed: value }] : [];
+  const phrases = phrasesOf(value);
+  return phrases.length > 0 ? speedsIn(boundedText(phrases.join(', ')), unit) : [];
+}
+
+/** What a token's speed is read of: its own speed, and the statblock it links. */
+export interface SpeedToken {
+  speed?: unknown;
+  statblockPath?: string | undefined;
+}
+
+/** A linked statblock as `CreatureIndex` holds it. */
+export type SpeedCreature = Pick<IndexedCreature, 'fields'> & Partial<Pick<IndexedCreature, 'meanings'>>;
+
+/** The speed a token has of its own: a number above 0 set by hand. */
+export function ownSpeed(token: Pick<SpeedToken, 'speed'>): number | undefined {
+  return positiveNumber(token.speed);
+}
+
+/**
+ * How far a token moves in one move, in the collection's game units: its own speed, else the first
+ * its linked statblock states. Null for a token without either, which moves without steps.
+ * `creature` is the record of `token.statblockPath` in `CreatureIndex`: undefined while unread,
+ * null for a note without a statblock.
+ */
+export function tokenSpeed(token: SpeedToken, creature: SpeedCreature | null | undefined, unit: GameUnit): number | null {
+  const own = ownSpeed(token);
+  if (own !== undefined) return own;
+  if (!token.statblockPath || !creature) return null;
+  return statblockSpeeds(creature.fields, creature.meanings, unit)[0]?.speed ?? null;
+}

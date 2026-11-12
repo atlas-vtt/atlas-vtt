@@ -121,7 +121,7 @@ describe('resolveMeasurementSettings', () => {
       { unitType: 'meters', unitDistance: 2, measurementMode: 'metric', diagonalRule: 'alternating' },
       { ...grid, unitType: 'feet', unitDistance: 5, measurementType: 'abstract' },
     );
-    expect(settings).toEqual({ mode: 'metric', unitType: 'meters', unitDistance: 2, ruleDistance: 2, diagonalRule: 'alternating', difficultTerrain: 'none', rangeBands: [], coneAngle: 90 });
+    expect(settings).toEqual({ mode: 'metric', unitType: 'meters', unitDistance: 2, ruleDistance: 2, diagonalRule: 'alternating', difficultTerrain: 'none', rangeBands: [], coneAngle: 90, areaCellRule: 'half', coneEnd: 'round' });
   });
 
   it('defaults collections without a diagonal rule to every diagonal counting 1', () => {
@@ -130,7 +130,7 @@ describe('resolveMeasurementSettings', () => {
 
   it('falls back to the map grid, measuring in range bands unless it asks for units', () => {
     expect(resolveMeasurementSettings(undefined, { ...grid, measurementType: 'units', unitType: 'meters', unitDistance: 3 }))
-      .toEqual({ mode: 'metric', unitType: 'meters', unitDistance: 3, ruleDistance: 3, diagonalRule: 'equidistant', difficultTerrain: 'none', rangeBands: [], coneAngle: 90 });
+      .toEqual({ mode: 'metric', unitType: 'meters', unitDistance: 3, ruleDistance: 3, diagonalRule: 'equidistant', difficultTerrain: 'none', rangeBands: [], coneAngle: 90, areaCellRule: 'half', coneEnd: 'round' });
     expect(resolveMeasurementSettings(undefined, grid).mode).toBe('abstract');
     expect(resolveMeasurementSettings(undefined, null)).toMatchObject({ unitType: 'feet', unitDistance: 5 });
   });

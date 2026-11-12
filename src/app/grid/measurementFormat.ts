@@ -4,6 +4,7 @@
  * a collection, the map's own grid units.
  */
 
+import { DEFAULT_AREA_CELL_RULE, DEFAULT_CONE_END, type AreaCellRule, type ConeEnd } from '../measure/areaRules';
 import type { GridState } from '../types/gridTypes';
 import type {
   CollectionGridDefaults,
@@ -35,6 +36,15 @@ export interface MeasurementSettings {
   rangeBands: readonly RangeBand[];
   /** Full opening of the cone measurement in degrees. */
   coneAngle: number;
+  /** When a measured area covers a cell; unset is `DEFAULT_AREA_CELL_RULE`. Read with `areaRulesOf`. */
+  areaCellRule?: AreaCellRule;
+  /** How a measured cone ends; unset is `DEFAULT_CONE_END`. Read with `areaRulesOf`. */
+  coneEnd?: ConeEnd;
+}
+
+/** The rules that shape a map's measured areas, with the defaults where the settings name none. */
+export function areaRulesOf(settings: Pick<MeasurementSettings, 'areaCellRule' | 'coneEnd'> | null | undefined): { cellRule: AreaCellRule; coneEnd: ConeEnd } {
+  return { cellRule: settings?.areaCellRule ?? DEFAULT_AREA_CELL_RULE, coneEnd: settings?.coneEnd ?? DEFAULT_CONE_END };
 }
 
 /** Cone of a collection that never set one: a quarter circle. */
@@ -99,6 +109,8 @@ function collectionMeasurement(collection: CollectionGridDefaults): Omit<Measure
     difficultTerrain: collection.difficultTerrain ?? 'none',
     rangeBands: collection.abstractRangeBands ?? [],
     coneAngle: collection.coneAngle ?? DEFAULT_CONE_ANGLE,
+    areaCellRule: collection.areaCellRule ?? DEFAULT_AREA_CELL_RULE,
+    coneEnd: collection.coneEnd ?? DEFAULT_CONE_END,
   };
 }
 
@@ -112,6 +124,8 @@ function gridMeasurement(grid: GridState | null | undefined): Omit<MeasurementSe
     difficultTerrain: 'none',
     rangeBands: [],
     coneAngle: DEFAULT_CONE_ANGLE,
+    areaCellRule: DEFAULT_AREA_CELL_RULE,
+    coneEnd: DEFAULT_CONE_END,
   };
 }
 

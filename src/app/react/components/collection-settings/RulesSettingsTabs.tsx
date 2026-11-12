@@ -8,6 +8,7 @@ import { isSameAsTyped, type RulesView } from '../../../gameSystems/rulesView';
 import { editedSenses } from '../../../gameSystems/senseEditing';
 import type { SystemPresetService } from '../../../services/SystemPresetService';
 import type { InitiativeRules } from '../../../types/initiativeRulesTypes';
+import { sameTypedMovementRules, type MovementRules } from '../../../measure/movementRules';
 import type { SystemPreset } from '../../../types/systemPresetTypes';
 import type { FieldSuggestion } from '../../../resources/resourceFieldSuggestions';
 import type { NamedModifierStatblock } from '../../../initiative/modifierPreview';
@@ -121,6 +122,8 @@ export function RulesSettingsTabs({
             coneAngle={collectionConeAngle(draft.gridDefaults, draft.systemPresetId)}
             difficultTerrain={collectionDifficultTerrain(draft.gridDefaults, draft.systemPresetId)}
             onChange={draft.setGridDefaults}
+            movement={view.movement}
+            onMovementChange={movementEdit(draft, view)}
           />
         );
       case 'vision':
@@ -185,4 +188,9 @@ export function RulesSettingsTabs({
 /** Sets typed initiative rules; rules that are the game system's again store nothing, so the draft keeps following it. */
 export function initiativeEdit(draft: Pick<RulesDraft, 'setInitiative'>, view: Pick<RulesView, 'systemInitiative'>): (next: InitiativeRules) => void {
   return (next) => draft.setInitiative(isSameAsTyped(next, view.systemInitiative) ? undefined : next);
+}
+
+/** Sets typed movement rules; rules that are the game system's again store nothing, so the draft keeps following it. */
+export function movementEdit(draft: Pick<RulesDraft, 'setMovement'>, view: Pick<RulesView, 'systemMovement'>): (next: MovementRules) => void {
+  return (next) => draft.setMovement(sameTypedMovementRules(next, view.systemMovement) ? undefined : next);
 }

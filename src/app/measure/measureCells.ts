@@ -4,7 +4,8 @@
  * Only the cells around the area's bounds are looked at. A cell the outline does not come near
  * lies whole inside or outside, which its centre tells. A cell on the outline is cut with it:
  * `centre` asks the area itself about the cell's centre, `half` and `any` measure how much of the
- * cell the outline holds.
+ * cell the outline holds. A line also covers every cell its middle line runs through, whatever the
+ * rule, so it never skips a cell along its length.
  */
 
 import type { GridGeometry } from '../grid/gridDistance';
@@ -124,27 +125,88 @@ function cellId(span: Span, line: number, index: number): number {
   return (line - span.firstLine) * STRIDE + (index - span.indexBase);
 }
 
-/** The cells of `span` the outline comes near: within a cell's circumradius of its centre, so every cell it touches is among them. */
+/** Calls `visit` for every cell of `span` whose centre lies within a cell's circumradius of `edge`: every cell the edge touches is among them. */
+function eachCellNear(lattice: Lattice, span: Span, edge: Seg, visit: (line: number, index: number, x: number, y: number) => void): void {
+  const reach = lattice.circumradius;
+  const [fromAcross, toAcross, fromAlong, toAlong] = lattice.rows ? [edge[1], edge[3], edge[0], edge[2]] : [edge[0], edge[2], edge[1], edge[3]];
+  const [first, last] = linesWithin(lattice, Math.min(fromAcross, toAcross), Math.max(fromAcross, toAcross), reach);
+  for (let line = Math.max(first, span.firstLine); line <= Math.min(last, span.lastLine); line++) {
+    const across = lattice.acrossOrigin + lattice.spacing * line;
+    const [start, end] = indicesWithin(lattice, line, Math.min(fromAlong, toAlong), Math.max(fromAlong, toAlong), reach);
+    for (let index = start; index <= end; index++) {
+      const along = lattice.alongOrigin + lattice.pitch * (index + lattice.stagger * line);
+      const x = lattice.rows ? along : across;
+      const y = lattice.rows ? across : along;
+      if (distToSeg(x, y, edge) <= reach) visit(line, index, x, y);
+    }
+  }
+}
+
+/** The cells of `span` the outline comes near. */
 function cellsOnOutline(lattice: Lattice, span: Span, rings: readonly Float64Array[]): Set<number> {
   const marked = new Set<number>();
-  const reach = lattice.circumradius;
   for (const ring of rings) {
     for (let i = 0; i < ring.length; i += 2) {
       const j = (i + 2) % ring.length;
-      const edge: Seg = [ring[i]!, ring[i + 1]!, ring[j]!, ring[j + 1]!];
-      const [fromAcross, toAcross, fromAlong, toAlong] = lattice.rows ? [edge[1], edge[3], edge[0], edge[2]] : [edge[0], edge[2], edge[1], edge[3]];
-      const [first, last] = linesWithin(lattice, Math.min(fromAcross, toAcross), Math.max(fromAcross, toAcross), reach);
-      for (let line = Math.max(first, span.firstLine); line <= Math.min(last, span.lastLine); line++) {
-        const across = lattice.acrossOrigin + lattice.spacing * line;
-        const [start, end] = indicesWithin(lattice, line, Math.min(fromAlong, toAlong), Math.max(fromAlong, toAlong), reach);
-        for (let index = start; index <= end; index++) {
-          const along = lattice.alongOrigin + lattice.pitch * (index + lattice.stagger * line);
-          if (distToSeg(lattice.rows ? along : across, lattice.rows ? across : along, edge) <= reach) marked.add(cellId(span, line, index));
-        }
-      }
+      eachCellNear(lattice, span, [ring[i]!, ring[i + 1]!, ring[j]!, ring[j + 1]!], (line, index) => marked.add(cellId(span, line, index)));
     }
   }
   return marked;
+}
+
+/** How a way meets a cell: not at all (a corner or a point of a side is no meeting), along one of its sides, or through its inside. */
+type Meeting = 'none' | 'beside' | 'inside';
+
+/** How far inside the side of a cell from corner `c` on the point (`px`, `py`) lies, the cell being around (`x`, `y`). */
+function depthAtSide(corners: readonly number[], c: number, x: number, y: number, px: number, py: number): number {
+  const ex = corners[(c + 2) % corners.length]! - corners[c]!;
+  const ey = corners[(c + 3) % corners.length]! - corners[c + 1]!;
+  return (ex * (py - y - corners[c + 1]!) - ey * (px - x - corners[c]!)) / Math.hypot(ex, ey);
+}
+
+/**
+ * How the way from `a` to `b` meets the cell around (`x`, `y`): the part of it within the cell
+ * must have a length, and runs through the inside where its middle lies off every side.
+ */
+function meetingOf(corners: readonly number[], x: number, y: number, [ax, ay, bx, by]: Seg): Meeting {
+  let enters = 0;
+  let leaves = 1;
+  for (let c = 0; c < corners.length; c += 2) {
+    const from = depthAtSide(corners, c, x, y, ax, ay);
+    const gain = depthAtSide(corners, c, x, y, bx, by) - from;
+    // Along this side's direction the whole way: it lies on the cell's side of it, or misses the cell.
+    if (Math.abs(gain) <= EDGE_TOLERANCE) {
+      if (from < -EDGE_TOLERANCE) return 'none';
+    } else if (gain > 0) enters = Math.max(enters, -from / gain);
+    else leaves = Math.min(leaves, -from / gain);
+  }
+  if (!((leaves - enters) * Math.hypot(bx - ax, by - ay) > EDGE_TOLERANCE)) return 'none';
+  const middle = (enters + leaves) / 2;
+  const mx = ax + (bx - ax) * middle;
+  const my = ay + (by - ay) * middle;
+  for (let c = 0; c < corners.length; c += 2) {
+    if (!(depthAtSide(corners, c, x, y, mx, my) > EDGE_TOLERANCE)) return 'beside';
+  }
+  return 'inside';
+}
+
+/**
+ * The cells of `span` a line's middle line `spine` makes the line's: those it runs through the
+ * inside of, and with them those it runs along a side of (between two hexes, the way to the next
+ * one), so the cells hang together. A spine that runs through no cell (along a square grid's
+ * line) makes none.
+ */
+function cellsOnSpine(lattice: Lattice, span: Span, [from, to]: readonly [Point, Point]): Set<number> {
+  const inside = new Set<number>();
+  const beside: number[] = [];
+  const way: Seg = [from.x, from.y, to.x, to.y];
+  eachCellNear(lattice, span, way, (line, index, x, y) => {
+    const meeting = meetingOf(lattice.corners, x, y, way);
+    if (meeting === 'inside') inside.add(cellId(span, line, index));
+    else if (meeting === 'beside') beside.push(cellId(span, line, index));
+  });
+  if (inside.size > 0) beside.forEach((id) => inside.add(id));
+  return inside;
 }
 
 // The outline as it is cut down to one cell, side by side: kept between calls so a pointer move allocates nothing for it.
@@ -204,17 +266,21 @@ function flat(ring: readonly Point[]): Float64Array {
  * The cells `area` covers under `rule`, line by line. Null where cells are not counted: without a
  * grid (`grid` is null where the map has none or its Snap is off), and for an area whose bounds
  * hold more than `MAX_AREA_CELLS`. A cell half inside to the last bit counts as half, and a cell
- * the area only touches along an edge has no part in it.
+ * the area only touches along an edge has no part in it. Whatever the rule, a line (an area with a
+ * `spine`) also covers the cells its middle line runs through (`cellsOnSpine`).
  */
 export function cellsInArea(grid: GridGeometry | null, area: MeasureArea, rule: AreaCellRule): readonly AreaCell[] | null {
   if (!grid || !(grid.size > 0)) return null;
   if (area.rings.length === 0) return [];
   const lattice = latticeOf(grid);
   const byCentre = rule === 'centre';
-  const span = spanOf(lattice, area.bounds, byCentre ? EDGE_TOLERANCE : lattice.circumradius);
+  const { spine } = area;
+  // A cell the spine runs through may have its centre outside the area.
+  const span = spanOf(lattice, area.bounds, byCentre && !spine ? EDGE_TOLERANCE : lattice.circumradius);
   if (!span) return null;
   const rings = byCentre ? [] : area.rings.map(flat);
   const onOutline = byCentre ? null : cellsOnOutline(lattice, span, rings);
+  const onSpine = spine ? cellsOnSpine(lattice, span, spine) : null;
   const least = (rule === 'half' ? 0.5 - SHARE_TOLERANCE : SHARE_TOLERANCE) * lattice.area;
   const cells: AreaCell[] = [];
   const centre = { x: 0, y: 0 };
@@ -225,10 +291,11 @@ export function cellsInArea(grid: GridGeometry | null, area: MeasureArea, rule: 
       const along = lattice.alongOrigin + lattice.pitch * (index + lattice.stagger * line);
       centre.x = lattice.rows ? along : across;
       centre.y = lattice.rows ? across : along;
-      const covered = onOutline?.has(cellId(span, line, index))
+      const id = cellId(span, line, index);
+      const byRule = onOutline?.has(id)
         ? Math.abs(rings.reduce((sum, ring) => sum + cut(ring, lattice.corners, centre.x, centre.y), 0)) >= least
         : area.contains(centre);
-      if (covered) cells.push({ key: lattice.key(line, index), centre: { x: centre.x, y: centre.y } });
+      if (byRule || onSpine?.has(id)) cells.push({ key: lattice.key(line, index), centre: { x: centre.x, y: centre.y } });
     }
   }
   return cells;

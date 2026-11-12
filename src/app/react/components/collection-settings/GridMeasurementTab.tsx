@@ -1,6 +1,7 @@
 /**
  * GridMeasurementTab — How the collection measures: what its ruler shows, what one square spans,
- * diagonals, difficult terrain and cones, and the range bands of a ruler that names distances.
+ * diagonals, difficult terrain, cones and the cells an area covers, the range bands of a ruler
+ * that names distances, and the steps of a token's movement.
  */
 
 import React from 'react';
@@ -10,10 +11,13 @@ import { SegmentedControl, type SegmentedOption } from '../../../packages/compon
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
+import { MovementRulesSection } from './MovementRulesSection';
 import { UnitDistanceField } from './UnitDistanceField';
 import { SettingRow } from './SettingRow';
 import { areRangeBandsValid, DEFAULT_CONE_ANGLE, isValidConeAngle, isValidRangeBandThreshold, MAX_UNIT_NAME } from '../../../grid/measurementFormat';
 import { isUnitDistance } from '../../../grid/unitDistance';
+import { DEFAULT_AREA_CELL_RULE, DEFAULT_CONE_END, type AreaCellRule, type ConeEnd } from '../../../measure/areaRules';
+import type { MovementRules } from '../../../measure/movementRules';
 import type {
   CollectionGridDefaults,
   DiagonalRule,
@@ -36,6 +40,9 @@ interface GridMeasurementTabProps {
   /** What difficult terrain costs the collection's movement, its system's while it has no rule of its own. Defaults to its own. */
   difficultTerrain?: DifficultTerrainRule;
   onChange: (gridDefaults: CollectionGridDefaults) => void;
+  /** The movement rules as typed, the system's while the collection has none of its own; with `onMovementChange`, the Movement group shows. */
+  movement?: MovementRules;
+  onMovementChange?: (movement: MovementRules) => void;
 }
 
 /** The units a measurement can name, as the settings label them. */
@@ -56,6 +63,17 @@ const DIAGONAL_OPTIONS: SelectOption<DiagonalRule>[] = [
   { value: 'manhattan', label: t('csm.grid.diagonal.manhattan') },
 ];
 
+const AREA_CELL_OPTIONS: SelectOption<AreaCellRule>[] = [
+  { value: 'half', label: t('csm.grid.areaCells.half') },
+  { value: 'centre', label: t('csm.grid.areaCells.centre') },
+  { value: 'any', label: t('csm.grid.areaCells.any') },
+];
+
+const CONE_END_OPTIONS: SelectOption<ConeEnd>[] = [
+  { value: 'round', label: t('csm.grid.coneEnd.round') },
+  { value: 'flat', label: t('csm.grid.coneEnd.flat') },
+];
+
 /** The grid defaults naming their custom unit `name`; an empty name is none. */
 function withUnitName(gridDefaults: CollectionGridDefaults, name: string): CollectionGridDefaults {
   const { unitName: _previous, ...rest } = gridDefaults;
@@ -67,6 +85,8 @@ export function GridMeasurementTab({
   coneAngle,
   difficultTerrain,
   onChange,
+  movement,
+  onMovementChange,
 }: GridMeasurementTabProps): React.ReactElement {
   const difficultDoubles = (difficultTerrain ?? gridDefaults.difficultTerrain ?? 'none') === 'double';
   const updateField = <K extends keyof CollectionGridDefaults>(
@@ -162,10 +182,31 @@ export function GridMeasurementTab({
             </span>
           )}
         />
+        <SettingRow
+          label={t('csm.grid.coneEnd')}
+          info={t('csm.grid.coneEndInfo')}
+          control={(labelId) => (
+            <Select value={gridDefaults.coneEnd ?? DEFAULT_CONE_END} options={CONE_END_OPTIONS} labelledBy={labelId}
+              onChange={(end) => updateField('coneEnd', end)} />
+          )}
+        />
+        <SettingRow
+          label={t('csm.grid.areaCells')}
+          info={t('csm.grid.areaCellsInfo')}
+          control={(labelId) => (
+            <Select value={gridDefaults.areaCellRule ?? DEFAULT_AREA_CELL_RULE} options={AREA_CELL_OPTIONS} labelledBy={labelId}
+              onChange={(rule) => updateField('areaCellRule', rule)} />
+          )}
+        />
       </section>
 
       {gridDefaults.measurementMode === 'abstract' && (
         <RangeBandsSection bands={gridDefaults.abstractRangeBands ?? []} onChange={(bands) => updateField('abstractRangeBands', bands)} />
+      )}
+
+      {/* Range bands are a ruler's steps already: only distances are held against a speed. */}
+      {gridDefaults.measurementMode !== 'abstract' && movement && onMovementChange && (
+        <MovementRulesSection movement={movement} onChange={onMovementChange} />
       )}
     </>
   );

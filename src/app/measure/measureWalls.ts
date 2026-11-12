@@ -90,11 +90,21 @@ function reached({ origin, polygon, index }: Sweep, point: Point): boolean {
   return distance <= Math.hypot(edge.x - origin.x, edge.y - origin.y) + EDGE_TOLERANCE;
 }
 
+/** A line's middle line as far as the sweep reaches along it. */
+function spineWithin(sweep: Sweep, [from, to]: readonly [Point, Point]): readonly [Point, Point] {
+  const { origin, polygon, index } = sweep;
+  const x = to.x - origin.x;
+  const y = to.y - origin.y;
+  const edge = outlineAt(origin, polygon, Math.atan2(y, x), index);
+  return Math.hypot(x, y) <= Math.hypot(edge.x - origin.x, edge.y - origin.y) ? [from, to] : [from, edge];
+}
+
 /**
  * `area` as `walls` leave it: what of it a straight way from its origin reaches. Its outline is
- * the shape's cut with the sweep's (to an eighth of a pixel), and a point is in it when it is in
- * the shape and reached. The area itself where no wall stands in its reach, and nothing where it
- * lies beyond what clipping can hold (two million pixels from the map's corner).
+ * the shape's cut with the sweep's (to an eighth of a pixel), a point is in it when it is in the
+ * shape and reached, and a line's middle line ends where the sweep does. The area itself where no
+ * wall stands in its reach, and nothing where it lies beyond what clipping can hold (two million
+ * pixels from the map's corner).
  */
 export function areaWithinWalls(area: ShapedArea, walls: readonly WallSegment[]): MeasureArea {
   const from = wallSweepPoint(area);
@@ -107,5 +117,10 @@ export function areaWithinWalls(area: ShapedArea, walls: readonly WallSegment[])
     for (let i = 0; i < ring.length; i += 2) corners.push({ x: ring[i]! / Q_SCALE, y: ring[i + 1]! / Q_SCALE });
     return corners;
   });
-  return { rings, bounds: ringBounds(rings), contains: (point) => area.contains(point) && reached(sweep, point) };
+  return {
+    rings,
+    bounds: ringBounds(rings),
+    contains: (point) => area.contains(point) && reached(sweep, point),
+    ...(area.spine && { spine: spineWithin(sweep, area.spine) }),
+  };
 }

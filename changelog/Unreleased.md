@@ -3,6 +3,24 @@
 - **Units with a name of their own**: pick Custom as a collection's unit and type its name, such as mi, and every distance shows it. A single scene can name its own unit in the grid settings, so a galaxy map measures in ly while the rest of the collection stays in feet
 - **Diagonals that count 2**: a new choice for how a collection counts diagonals, for games without diagonal moves
 
+**Measuring**
+- The measure tool has its own bars above the toolbar: Ruler, Circle and Cone, and beside them Keep, Players see it, a colour and Clear
+- Keep (K) switches whether what you measure stays on the map, and Clear removes everything kept on the level you are looking at
+- Players see it switches whether players see what you measure, and the colour dot picks the colour of your next measurement
+- Press M again while measuring to step to the next mode
+- Measure around corners: press Space while you drag the ruler, or click point by point and finish with a double click or Enter. Backspace takes the last corner back, Escape cancels
+- A ruler with corners shows the length of each leg and the total at its end
+- A measurement you keep is saved with the scene, and undo takes it back
+- A measurement you let go shows a pin beside its distance for two seconds: click the pin to keep it
+- Hold Shift as you let go to do the opposite of Keep for that one measurement
+- Hold Alt to measure without snapping to the grid
+- Measurements have a dark edge, so they show on bright maps
+- Distance while moving tokens: choose in the measure tool's menu whether a dragged token shows how far it has moved always, only in combat or never
+- Covered cells: a collection's Grid and measure settings say when an area covers a square or hex: at least half of it is inside, its centre is inside, or any part of it is
+- A cone can end rounded or flat, chosen in the same settings
+- Movement steps: the same settings name the steps of a move, such as Move ×1 and Dash ×2, each so many times a token's speed and with a colour of its own, and whether movement adds up over a turn. D&D 5e and Pathfinder 2e come with theirs
+- Speed: a token moves by the speed its statblock states, or by one of its own that you type in Edit token
+
 ## Improved
 
 - The lighting tool now opens on Draw rooms, with Draw walls for single walls right after it

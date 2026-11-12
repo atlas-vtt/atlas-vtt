@@ -21,6 +21,8 @@ import { sameLightPresets } from './lightPresetRules';
 import { sameSenses } from './senseRules';
 import { hasVisionDefaults, sameVisionDefaults } from './visionDefaults';
 import { collectionUnitName, DEFAULT_CONE_ANGLE } from '../grid/measurementFormat';
+import { DEFAULT_AREA_CELL_RULE, DEFAULT_CONE_END } from '../measure/areaRules';
+import { sameMovementRules } from '../measure/movementRules';
 import { sameStatblockRoles } from '../statblocks/roles/collectionStatblockRoles';
 import { DEFAULT_ITEM_RARITIES, parseItemRarities, sameItemRarities } from './itemRarities';
 
@@ -35,13 +37,13 @@ export const DEFAULT_GRID_DEFAULTS: Readonly<CollectionGridDefaults> = {
 
 /** What a game system sets in a collection's settings. */
 export type SystemSettings = Required<Pick<CollectionSettings, 'gridDefaults' | 'conditions' | 'defaultWidgets' | 'dice' | 'resources'>>
-  & Pick<CollectionSettings, 'systemPresetId' | 'diceSetId' | 'defaultTokenVision' | 'senses' | 'lightPresets' | 'initiative' | 'statblockRoles' | 'itemRarities'>;
+  & Pick<CollectionSettings, 'systemPresetId' | 'diceSetId' | 'defaultTokenVision' | 'senses' | 'lightPresets' | 'initiative' | 'movement' | 'statblockRoles' | 'itemRarities'>;
 
 /**
  * A collection without a game system: default measurement and dice, HP as its only resource
  * (its bar on for new scenes), no conditions, no default widgets, no default vision, and no
- * senses, light presets, initiative rules, statblock roles or item rarities of its
- * own, so it uses the generic ones. Role folders are the collection's own and stay.
+ * senses, light presets, initiative rules, movement rules, statblock roles or item rarities of
+ * its own, so it uses the generic ones. Role folders are the collection's own and stay.
  */
 export function vanillaSystemSettings(): SystemSettings {
   return {
@@ -56,6 +58,7 @@ export function vanillaSystemSettings(): SystemSettings {
     senses: undefined,
     lightPresets: undefined,
     initiative: undefined,
+    movement: undefined,
     statblockRoles: undefined,
     itemRarities: undefined,
   };
@@ -67,9 +70,9 @@ export function vanillaSystemSettings(): SystemSettings {
  * from the previous system never carry over; the ones tokens still have are removed when the
  * collection is saved. Senses are not copied: the collection reads its preset's
  * (`collectionSenses`) until the GM edits them, so a corrected built-in sense reaches it; its
- * light presets and initiative rules are read the same way (`collectionLightPresets`,
- * `collectionInitiativeRules`). The collection takes the preset's dice set, or its dice rules
- * where it names no set.
+ * light presets, initiative rules and movement rules are read the same way
+ * (`collectionLightPresets`, `collectionInitiativeRules`, `collectionMovementRules`). The
+ * collection takes the preset's dice set, or its dice rules where it names no set.
  */
 export function rulesOfPreset(
   preset: SystemPreset,
@@ -100,6 +103,8 @@ function sameGridDefaults(a: CollectionGridDefaults, b: CollectionGridDefaults):
     && (b.difficultTerrain === undefined || (a.difficultTerrain ?? 'none') === b.difficultTerrain)
     // Rules without a cone angle of their own measure with the preset's
     && (b.coneAngle === undefined || (a.coneAngle ?? DEFAULT_CONE_ANGLE) === b.coneAngle)
+    && (a.areaCellRule ?? DEFAULT_AREA_CELL_RULE) === (b.areaCellRule ?? DEFAULT_AREA_CELL_RULE)
+    && (a.coneEnd ?? DEFAULT_CONE_END) === (b.coneEnd ?? DEFAULT_CONE_END)
     && bandsA.length === bandsB.length
     && bandsA.every((band, i) => band.name === bandsB[i]!.name && band.maxSquares === bandsB[i]!.maxSquares);
 }
@@ -130,8 +135,9 @@ function sameDiceChoice(a: Pick<SystemRules, 'dice' | 'diceSetId'>, b: Pick<Syst
 
 /**
  * Whether a collection's `rules` play as `preset` does; condition ids do not matter. Rules
- * without senses, light presets, initiative rules, statblock roles or item rarities of their
- * own read the preset's, so they are the same in that. Role folders are no part of the rules.
+ * without senses, light presets, initiative rules, movement rules, statblock roles or item
+ * rarities of their own read the preset's, so they are the same in that. Role folders are no
+ * part of the rules.
  */
 export function sameSystemRules(preset: SystemRules, rules: SystemRules): boolean {
   return sameGridDefaults(preset.gridDefaults, rules.gridDefaults)
@@ -142,6 +148,7 @@ export function sameSystemRules(preset: SystemRules, rules: SystemRules): boolea
     && (rules.senses === undefined || sameSenses(preset.senses, rules.senses))
     && (rules.lightPresets === undefined || sameLightPresets(preset.lightPresets, rules.lightPresets))
     && (rules.initiative === undefined || sameInitiativeRules(preset.initiative, rules.initiative))
+    && (rules.movement === undefined || sameMovementRules(preset.movement, rules.movement))
     && (!rules.statblockRoles?.length || sameStatblockRoles(preset.statblockRoles, rules.statblockRoles))
     && sameOwnRarities(preset, rules)
     && preset.conditions.length === rules.conditions.length

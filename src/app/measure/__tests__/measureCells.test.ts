@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GridGeometry } from '../../grid/gridDistance';
+import { distToSeg } from '../../lighting/segments';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { AREA_CELL_RULES, type AreaCellRule } from '../areaRules';
@@ -27,7 +28,9 @@ function keysOf(grid: GridGeometry, made: MeasureArea, rule: AreaCellRule): Set<
 const SAMPLING = 0.06;
 
 /** Holds the cells `made` covers against cells sampled densely and asked of the area itself. */
-function expectCellsOfOracle(grid: GridGeometry, made: MeasureArea, circumradius: number): void {
+function expectCellsOfOracle(grid: GridGeometry, shaped: MeasureArea, circumradius: number): void {
+  // The rule alone: the cells a line's middle line adds are held below.
+  const { spine: _spine, ...made } = shaped;
   const sampled = sampledCells(grid, made);
   const covered = Object.fromEntries(AREA_CELL_RULES.map((rule) => [rule, keysOf(grid, made, rule)])) as Record<AreaCellRule, Set<string>>;
   for (const rule of AREA_CELL_RULES) {
@@ -147,6 +150,26 @@ function connected(cells: readonly Point[], step: number): boolean {
   return reached.size === cells.length;
 }
 
+/** How far inside `grid`'s cell at `point` the point lies: its distance from the cell's outline. */
+function depthInCell(grid: GridGeometry, point: Point): number {
+  const outline = cellOutline(grid, cellCentreAt(grid, point));
+  return Math.min(...outline.map((a, i) => {
+    const b = outline[(i + 1) % outline.length]!;
+    return distToSeg(point.x, point.y, [a.x, a.y, b.x, b.y]);
+  }));
+}
+
+/** The cells the way from `from` to `to` runs through the inside of, by points a fraction of a pixel apart along it. */
+function cellsAlong(grid: GridGeometry, from: Point, to: Point): Set<string> {
+  const keys = new Set<string>();
+  const steps = Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) * 4);
+  for (let i = 0; i <= steps; i++) {
+    const point = { x: from.x + ((to.x - from.x) * i) / steps, y: from.y + ((to.y - from.y) * i) / steps };
+    if (depthInCell(grid, point) > 0.5) keys.add(cellKeyAt(grid, point));
+  }
+  return keys;
+}
+
 describe('a snapped line', () => {
   for (const [name, grid] of GRIDS) {
     it(`never skips a cell along its length on ${name}`, () => {
@@ -161,23 +184,61 @@ describe('a snapped line', () => {
         const cells = 1 + Math.floor(random() * 9);
         const towards = { x: Math.cos(angle), y: Math.sin(angle) };
         const end = snapAreaEnd(grid, origin, { x: origin.x + towards.x * cells * grid.size, y: origin.y + towards.y * cells * grid.size });
-        const made = area({ shape: 'line', points: [origin, end] }, { ...RULES, lineWidth: grid.size });
+        // A third of the lines are thinner than a cell: their middle line alone holds their cells together.
+        const made = area({ shape: 'line', points: [origin, end] }, { ...RULES, lineWidth: run % 3 ? grid.size : grid.size / 5 });
+        const along = cellsAlong(grid, origin, end);
         for (const rule of AREA_CELL_RULES) {
-          const covered = cellsInArea(grid, made, rule)!.map((cell) => cell.centre);
+          const covered = cellsInArea(grid, made, rule)!;
           const label = `${rule}, ${cells} cells at ${Math.round((angle * 180) / Math.PI)}° from ${origin.x},${origin.y}`;
-          // Half of a cell: the cells a line's ends cut may each hold less (below), so a short line may hold half of none
-          // and a longer one begins and ends up to a cell later than under the other rules.
-          const ends = rule === 'half' ? 2 * across : across;
-          if (rule !== 'half' || cells >= 3) expect(covered.length, label).toBeGreaterThan(0);
-          if (covered.length === 0) continue;
-          expect(connected(covered, step), label).toBe(true);
-          const reach = covered.map((cell) => (cell.x - origin.x) * towards.x + (cell.y - origin.y) * towards.y);
-          expect(Math.min(...reach), label).toBeLessThanOrEqual(ends);
-          expect(Math.max(...reach), label).toBeGreaterThanOrEqual(cells * grid.size - ends);
+          const keys = new Set(covered.map((cell) => cell.key));
+          for (const key of along) expect(keys.has(key), `${label}: ${key} lies on its middle line`).toBe(true);
+          // A middle line that runs along the cells' edges runs through none: there the rule alone decides (below).
+          if (along.size === 0) continue;
+          const centres = covered.map((cell) => cell.centre);
+          expect(connected(centres, step), label).toBe(true);
+          const reach = centres.map((cell) => (cell.x - origin.x) * towards.x + (cell.y - origin.y) * towards.y);
+          expect(Math.min(...reach), label).toBeLessThanOrEqual(across);
+          expect(Math.max(...reach), label).toBeGreaterThanOrEqual(Math.hypot(end.x - origin.x, end.y - origin.y) - across);
         }
       }
     });
   }
+
+  it('covers under every rule the cells its middle line runs through, and none it only touches', () => {
+    const grid: GridGeometry = { type: 'square', size: 70, offsetX: 0, offsetY: 0 };
+    // A thin line across three cells of a row: it holds no cell's centre and half of none.
+    const thin = area({ shape: 'line', points: [{ x: 80, y: 90 }, { x: 270, y: 90 }], width: 10 });
+    const { spine: _spine, ...byRuleAlone } = thin;
+    expect(cellsInArea(grid, byRuleAlone, 'half')).toEqual([]);
+    expect(cellsInArea(grid, byRuleAlone, 'centre')).toEqual([]);
+    for (const rule of AREA_CELL_RULES) expect(cellsInArea(grid, thin, rule)!.map((cell) => cell.key)).toEqual(['1,1', '2,1', '3,1']);
+    // Along a grid line it touches the cells on both sides and runs through none; through a corner, the two it crosses.
+    const onEdge = area({ shape: 'line', points: [{ x: 80, y: 140 }, { x: 270, y: 140 }], width: 10 });
+    expect(cellsInArea(grid, onEdge, 'half')).toEqual([]);
+    const throughCorner = area({ shape: 'line', points: [{ x: 110, y: 110 }, { x: 170, y: 170 }], width: 10 });
+    expect(cellsInArea(grid, throughCorner, 'half')!.map((cell) => cell.key)).toEqual(['1,1', '2,2']);
+  });
+
+  it('covers the two hexes its middle line runs between on the way to the next one', () => {
+    const origin = cellCentreAt(POINTY, { x: 200, y: 200 });
+    // Three cells down a column of pointy hexes: through a hex, between two, through the next, between two more and into a fifth row.
+    const made = area({ shape: 'line', points: [origin, { x: origin.x, y: origin.y + 3 * POINTY.size }] }, { ...RULES, lineWidth: POINTY.size });
+    const { spine: _spine, ...byRuleAlone } = made;
+    const keys = cellsInArea(POINTY, made, 'half')!.map((cell) => cell.key);
+    const byRule = cellsInArea(POINTY, byRuleAlone, 'half')!.map((cell) => cell.key);
+    const below = (dx: number, rows: number): string => cellKeyAt(POINTY, { x: origin.x + dx, y: origin.y + rows * 1.5 * (POINTY.size / Math.sqrt(3)) });
+    // The line's end cuts the last pair to less than half; its middle line runs between them into the hex below, which without them would lie apart.
+    expect(keys.filter((key) => !byRule.includes(key)).sort()).toEqual([below(-10, 3), below(10, 3), below(0, 4)].sort());
+    expect(byRule.every((key) => keys.includes(key))).toBe(true);
+  });
+
+  it('ends its middle line where a wall stops it', () => {
+    const grid: GridGeometry = { type: 'square', size: 70, offsetX: 0, offsetY: 0 };
+    const thin = area({ shape: 'line', points: [{ x: 80, y: 90 }, { x: 340, y: 90 }], width: 10 });
+    const wall: WallSegment = { id: 'w', kind: 'wall', type: 'solid', p1: { x: 190, y: 0 }, p2: { x: 190, y: 300 } };
+    expect(cellsInArea(grid, thin, 'half')!.map((cell) => cell.key)).toEqual(['1,1', '2,1', '3,1', '4,1']);
+    expect(cellsInArea(grid, areaWithinWalls(thin, [wall]), 'half')!.map((cell) => cell.key)).toEqual(['1,1', '2,1']);
+  });
 
   it('holds half of no cell where its end cuts the cells beside it in two', () => {
     const grid: GridGeometry = { type: 'square', size: 70, offsetX: 0, offsetY: 0 };
@@ -205,8 +266,10 @@ describe('a snapped line', () => {
     const made = area({ shape: 'line', points: [origin, { x: origin.x + 3 * POINTY.size, y: origin.y }] }, { ...RULES, lineWidth: POINTY.size });
     expect(cellsInArea(POINTY, made, 'centre')).toHaveLength(4);
     expect(cellsInArea(POINTY, made, 'any')).toHaveLength(4 + 2 * 3);
-    // A hex is taller than the line is wide: the two at its ends are cut to 49 % and are not half inside.
-    expect(cellsInArea(POINTY, made, 'half')).toHaveLength(2);
+    // A hex is taller than the line is wide: the two at its ends are cut to 49 %, and are the line's all the same.
+    expect(cellsInArea(POINTY, made, 'half')).toHaveLength(4);
+    const { spine: _spine, ...byRuleAlone } = made;
+    expect(cellsInArea(POINTY, byRuleAlone, 'half')).toHaveLength(2);
     expect(cellsInArea(FLAT, area({ shape: 'circle', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }] }), 'centre')).toEqual([]);
   });
 });

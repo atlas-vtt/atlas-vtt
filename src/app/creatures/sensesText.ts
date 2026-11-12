@@ -37,8 +37,8 @@ function afterModifier(perception: unknown): string | null {
   return senses.length > 0 ? boundedText(senses.join(', ')) : null;
 }
 
-/** The phrases of a senses value: a text, a list of texts or named entries, or senses kept by name. */
-function phrasesOf(senses: unknown): string[] {
+/** The phrases of a statblock value that lists things with a reach: a text, a list of texts or named entries, or a record that keeps each by name. */
+export function phrasesOf(senses: unknown): string[] {
   if (typeof senses === 'string') return senses.trim() ? [senses.trim()] : [];
   if (Array.isArray(senses)) return senses.flatMap((entry) => phraseOf(entry) ?? []);
   if (typeof senses === 'object' && senses !== null) return namedSenses(senses as Record<string, unknown>);

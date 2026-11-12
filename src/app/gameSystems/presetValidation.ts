@@ -7,6 +7,8 @@
 import { HP_RESOURCE, parseResourceDefinitions, withLegacyBars } from '../resources/resourceDefinitions';
 import { collectionUnitName, isValidConeAngle, isValidRangeBandThreshold } from '../grid/measurementFormat';
 import { isUnitDistance } from '../grid/unitDistance';
+import { AREA_CELL_RULES, CONE_ENDS } from '../measure/areaRules';
+import { hasMovementRules, parseMovementRules } from '../measure/movementRules';
 import {
   CONDITION_EFFECTS,
   type CollectionGridDefaults,
@@ -59,7 +61,7 @@ function parseBand(raw: unknown): RangeBand | null {
 
 function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
   if (!isRecord(raw)) return null;
-  const { unitType, unitDistance, measurementMode, diagonalRule, difficultTerrain, coneAngle, abstractRangeBands } = raw;
+  const { unitType, unitDistance, measurementMode, diagonalRule, difficultTerrain, coneAngle, areaCellRule, coneEnd, abstractRangeBands } = raw;
   if (!isOneOf(UNIT_TYPES, unitType) || !isOneOf(MEASUREMENT_MODES, measurementMode)) return null;
   if (!isUnitDistance(unitDistance)) return null;
   const bands = Array.isArray(abstractRangeBands) ? abstractRangeBands.map(parseBand) : [];
@@ -73,6 +75,8 @@ function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
     diagonalRule: isOneOf(DIAGONAL_RULES, diagonalRule) ? diagonalRule : 'equidistant',
     ...(isOneOf(DIFFICULT_TERRAIN_RULES, difficultTerrain) && { difficultTerrain }),
     ...(isValidConeAngle(coneAngle) && { coneAngle }),
+    ...(isOneOf(AREA_CELL_RULES, areaCellRule) && { areaCellRule }),
+    ...(isOneOf(CONE_ENDS, coneEnd) && { coneEnd }),
     abstractRangeBands: bands as RangeBand[],
   };
 }
@@ -159,6 +163,7 @@ export function parseSystemRules(raw: unknown): SystemRules | null {
   const dice = parseDiceRules(raw.dice);
   const diceSetId = isNonEmptyString(raw.diceSetId) ? raw.diceSetId : undefined;
   const initiative = parseInitiativeRules(raw.initiative);
+  const movement = parseMovementRules(raw.movement);
   // Rules saved before resources existed track the bars their default widgets switched on.
   const resources = Array.isArray(raw.resources)
     ? parseResourceDefinitions(raw.resources)
@@ -178,6 +183,8 @@ export function parseSystemRules(raw: unknown): SystemRules | null {
     ...(dice && { dice }),
     ...(diceSetId && { diceSetId }),
     ...(initiative && { initiative }),
+    // Rules that do nothing are no rules of the system's: its collections then move without steps anyway.
+    ...(hasMovementRules(movement) && { movement }),
     ...(resources.length > 0 && { resources }),
     ...(defaultTokenVision && { defaultTokenVision }),
     ...(senses && { senses }),

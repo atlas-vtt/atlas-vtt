@@ -17,7 +17,7 @@ import { holdsModifier } from './modifierValue';
 const FANTASY_DEX = 'stats.1';
 
 /** What a template means by these fields is never a modifier, whatever number a statblock holds there. */
-const NOT_A_MODIFIER: ReadonlySet<FieldMeaning> = new Set(['hit-points', 'armor', 'rating']);
+const NOT_A_MODIFIER: ReadonlySet<FieldMeaning> = new Set(['hit-points', 'armor', 'rating', 'speed']);
 
 const holdsSixScores = (statblock: ModifierStatblock): boolean =>
   statblock.fantasy === true && Array.isArray(statblock.fields.stats) && statblock.fields.stats.length === 6;

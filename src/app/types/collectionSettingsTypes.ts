@@ -5,6 +5,8 @@
  * grid defaults, and token conditions.
  */
 
+import type { AreaCellRule, ConeEnd } from '../measure/areaRules';
+import type { MovementRules } from '../measure/movementRules';
 import type { ResourceDefinition } from '../resources/resourceTypes';
 import type { CreatureFilterDefinition } from './creatureFilterTypes';
 import type { DiceRules } from './diceRulesTypes';
@@ -81,6 +83,10 @@ export interface CollectionGridDefaults {
   difficultTerrain?: DifficultTerrainRule;
   /** Full opening of the cone measurement in degrees. Unset means 90. */
   coneAngle?: number;
+  /** When a measured area covers a cell. Unset means `half` (`DEFAULT_AREA_CELL_RULE`). */
+  areaCellRule?: AreaCellRule;
+  /** How a measured cone ends. Unset means `round` (`DEFAULT_CONE_END`), as cones were always drawn. */
+  coneEnd?: ConeEnd;
 }
 
 export interface CollectionSettings {
@@ -119,6 +125,12 @@ export interface CollectionSettings {
    * own. Unset while it takes those of its preset; read with `collectionInitiativeRules`.
    */
   initiative?: InitiativeRules | undefined;
+  /**
+   * The steps a token's movement falls into and whether it adds up over a turn, stored only once
+   * the collection has rules of its own. Unset while it takes those of its preset; read with
+   * `collectionMovementRules`.
+   */
+  movement?: MovementRules | undefined;
   /** Expendable token resources, in token order. Unset in collections saved before resources existed. */
   resources?: ResourceDefinition[];
   /** Filters on statblock fields Atlas does not filter by on its own. Read with `collectionCreatureFilters`. */
