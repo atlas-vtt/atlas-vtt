@@ -56,7 +56,7 @@ export function isInsideControl(root: HTMLElement, node: EventTarget | null): bo
 
 /**
  * The room from the row's bottom up to the scene tabs, a gap below them and below what hangs from
- * them (the table log's unread tab): the open control's tallest height.
+ * them (the table log's tab): the open control's tallest height.
  */
 export function roomAbove(container: HTMLElement, row: HTMLElement, gap: number): number {
   const rowBottom = row.getBoundingClientRect().bottom;

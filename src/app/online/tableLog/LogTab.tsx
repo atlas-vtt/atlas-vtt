@@ -6,18 +6,18 @@ import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 const MOST = 99;
 
 /**
- * The tab a host shows while the log is closed and something in it is unread, with the count. On
- * the GM's map it stands directly below the scene tabs. A press opens the log.
+ * The tab a host shows while the log is closed: a press opens the log, and it counts what came in
+ * unread meanwhile (no count while nothing did). On the GM's map it stands directly below the scene tabs.
  */
-export function LogUnreadTab({ count, onOpen }: { readonly count: number; readonly onOpen: () => void }): ReactElement {
+export function LogTab({ count, onOpen }: { readonly count: number; readonly onOpen: () => void }): ReactElement {
   const name = useId();
   return (
     <div className="atlas-vtt-plugin atlas-online-log-tab">
       <LabelTooltip label="Open the table log" side="right" describe>
         <button type="button" className="atlas-online-log-tab__button" aria-labelledby={name} onClick={onOpen}>
           <MessagesSquare />
-          <span className="atlas-online-log-tab__count" aria-hidden="true">{count > MOST ? `${MOST}+` : count}</span>
-          <span id={name} className="atlas-online-log__sr">{`Table log, ${count} new`}</span>
+          {count > 0 && <span className="atlas-online-log-tab__count" aria-hidden="true">{count > MOST ? `${MOST}+` : count}</span>}
+          <span id={name} className="atlas-online-log__sr">{count > 0 ? `Table log, ${count} new` : 'Table log'}</span>
         </button>
       </LabelTooltip>
     </div>
