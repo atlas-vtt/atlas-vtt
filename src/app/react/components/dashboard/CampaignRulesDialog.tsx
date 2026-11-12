@@ -18,6 +18,7 @@ import { RULES_TABS, RulesSettingsTabs, type SettingsTab } from '../collection-s
 import { SettingsDialog } from '../collection-settings/SettingsDialog';
 import { useCollectionCreatures } from '../collection-settings/useCollectionCreatures';
 import { useRulesDraft } from '../collection-settings/useRulesDraft';
+import { useUnsavedChanges } from '../collection-settings/useUnsavedChanges';
 import { useSystemPresets } from '../../hooks/useSystemPresets';
 import { useDiceSets } from '../../hooks/useDiceSets';
 import { usePlayedCollections } from './usePlayedCollections';
@@ -63,6 +64,7 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
     const { system, presets } = opened.current;
     load(system ? campaignRules(system, presets) : vanillaSystemSettings());
   }, [load]);
+  const hasChanges = useUnsavedChanges({ hasSystem, draft }, campaign.id);
 
   const view = viewOfRules(draft, systemPresets.presets, diceSets.sets);
   const canSave = !hasSystem || view.isValid;
@@ -104,6 +106,7 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
       title={t('campaign.systemTitle', { name: campaign.name })}
       closeLabel={t('campaign.closeSystem')}
       canSave={canSave}
+      hasChanges={hasChanges}
       onSave={save}
       onClose={onClose}
       size="fullscreen"
