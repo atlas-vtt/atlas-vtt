@@ -1,4 +1,5 @@
 import { MAX_BOOK_TITLE } from '../../protocol/index.ts';
+import { markdownLinkAt, type MarkdownLink } from '../../../services/markdownLink';
 import { decodeStatblockLinks, statblockLinksAsText } from '../../../services/statblockLinks';
 import { clippedLine } from './bookTexts.ts';
 
@@ -6,10 +7,6 @@ import { clippedLine } from './bookTexts.ts';
 const EMPHASIS = /(?<![\p{L}\p{N}\\])(\*\*|__|\*|_)(?=\S)(.+?)(?<=\S)\1(?![\p{L}\p{N}])/gu;
 /** A name that is one wikilink and nothing else: `[[Note#Heading|Alias]]`. */
 const WHOLE_WIKI_LINK = /^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/;
-/** A name that opens with a Markdown link's words and ends with the bracket that closes its address: `[Chill Touch](#Chill%20Touch)`. */
-const WHOLE_MARKDOWN_LINK = /^\[([^\]]*)\]\((.+)\)$/s;
-/** An address written in angle brackets, which may hold spaces and brackets: `<#Rage (3/day)>`. */
-const ANGLED = /^<([^<>]+)>$/;
 /** A destination outside the vault (`https:`, `obsidian:`). */
 const EXTERNAL = /^[a-z][a-z0-9+.-]*:/i;
 
@@ -19,26 +16,14 @@ function withoutEmphasis(text: string): string {
   return plain;
 }
 
-/** Whether every bracket of an address closes, and none closes that was not opened: the address then ends where the link does. */
-function closesItsBrackets(address: string): boolean {
-  let open = 0;
-  for (const character of address) {
-    if (character === '(') open += 1;
-    else if (character === ')' && --open < 0) return false;
-  }
-  return open === 0;
-}
-
 /**
- * The words and the address of a name that is one Markdown link and nothing else. The address may
+ * The words and the address of a name that is one Markdown link and nothing else: the address may
  * hold brackets of its own that close (`[Rage (3/day)](#Rage%20(3/day))`, as a heading with
- * brackets is linked) or stand in angle brackets. Null for any other name.
+ * brackets is linked), stand in angle brackets or be followed by a title. Null for any other name.
  */
-function wholeMarkdownLink(bare: string): { readonly words: string; readonly address: string } | null {
-  const [, words, inner] = WHOLE_MARKDOWN_LINK.exec(bare) ?? [];
-  if (words === undefined || inner === undefined) return null;
-  const address = ANGLED.exec(inner)?.[1] ?? (/[<>]/.test(inner) || !closesItsBrackets(inner) ? undefined : inner);
-  return address === undefined ? null : { words, address };
+function wholeMarkdownLink(bare: string): MarkdownLink | null {
+  const link = markdownLinkAt(bare, 0);
+  return link?.end === bare.length ? link : null;
 }
 
 /** A name without the emphasis around it, its links as the note wrote them. */

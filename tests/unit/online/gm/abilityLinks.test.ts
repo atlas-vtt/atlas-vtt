@@ -29,6 +29,12 @@ describe('an ability name that links', () => {
     expect(plainAbilityName('[Rage](#Rage) (3/day)')).toBe('Rage (3/day)');
   });
 
+  it('reads a link with a title as its words and its address alone', () => {
+    expect(plainAbilityName('**[Rage](#Rage "Rage (3/day)")**')).toBe('Rage');
+    expect(abilityLink('**[Rage](#Rage "Rage (3/day)")**')).toBe('#Rage');
+    expect(abilityLink("[Channel Divinity](<#Channel Divinity (2/Short Rest)> 'Twice')")).toBe('#Channel Divinity (2/Short Rest)');
+  });
+
   it('names its heading or note only where the name is the link alone', () => {
     expect(abilityLink('**[Chill Touch](#Chill%20Touch)**')).toBe('#Chill Touch');
     expect(abilityLink('[[Spells/Eldritch Blast#Blast|Eldritch Blast]]')).toBe('Spells/Eldritch Blast#Blast');

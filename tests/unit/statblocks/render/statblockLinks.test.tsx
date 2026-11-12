@@ -33,6 +33,25 @@ describe('links of bestiary values', () => {
     expect(plainText(`${BRACKETED} +7`)).toBe('Perception +7');
     expect(plainText('<STATBLOCK-MARKDOWN-LINK><rules/Grappled.md#Escape><STATBLOCK-MARKDOWN-LINK>')).toBe('Grappled');
   });
+
+  it('read as the words they show where the address holds brackets of its own', () => {
+    expect(plainText('[Rage (3/day)](#Rage%20(3/day)), then [Frenzy](#Frenzy).')).toBe('Rage (3/day), then Frenzy.');
+    expect(plainText('**[Channel Divinity (2/Short Rest)](<#Channel Divinity (2/Short Rest)>)**')).toBe('**Channel Divinity (2/Short Rest)**');
+    expect(plainText('![The keep](maps/Keep%20(upper%20floor).webp) from above')).toBe('The keep from above');
+    expect(plainText('<STATBLOCK-MARKDOWN-LINK>rules/Rage%20(3/day).md|Rage<STATBLOCK-MARKDOWN-LINK> twice')).toBe('Rage twice');
+    expect(plainText('[](rules/Rage%20(daily).md)')).toBe('Rage (daily)');
+    // Text in brackets after a link is no part of it, and brackets that never close make no link.
+    expect(plainText('[Rage](#Rage) (3/day)')).toBe('Rage (3/day)');
+    expect(plainText('Bite (see [Poison](rules/Poison.md))')).toBe('Bite (see Poison)');
+    expect(plainText('[Rage](#Rage%20(3/day')).toBe('[Rage](#Rage%20(3/day');
+  });
+
+  it('read as the words they show where a title follows the address', () => {
+    expect(plainText('[Rage](#Rage "Rage (3/day)") once')).toBe('Rage once');
+    expect(plainText("[](rules/Grappled.md 'Held :)') ends")).toBe('Grappled ends');
+    expect(plainText('[Perception](<rules/my skills.md#Perception> "A skill")')).toBe('Perception');
+    expect(plainText('<STATBLOCK-MARKDOWN-LINK>https://example.com/srd "The (free) rules"<STATBLOCK-MARKDOWN-LINK>')).toBe('srd');
+  });
 });
 
 describe('StatblockMarkdown links', () => {
