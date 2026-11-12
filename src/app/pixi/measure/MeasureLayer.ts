@@ -42,6 +42,20 @@ export function placeUnderTokens(parent: Container, layer: Container): void {
   else parent.addChild(layer);
 }
 
+/** Where a measure layer's parts go, beyond the container it is given. */
+export interface MeasureLayerOptions {
+  /** Plays the looks of the kept areas' bodies; without it they keep their wash. */
+  readonly effects?: AreaEffects;
+  /** Puts the bodies' layer into the map, under its tokens and its lighting; unset, right under the token layer of the container (`placeUnderTokens`). */
+  readonly layBodies?: (bodies: Container) => void;
+  /**
+   * False where the canvas itself is what players look at: no area then has an outline above the
+   * lighting, which would draw the rooms an area is cut by. Unset, the outlines are drawn into
+   * `gmMarks`, and whoever shows that layer shows them to the GM alone.
+   */
+  readonly gmOutlines?: false;
+}
+
 /**
  * The measurements as they are drawn on the map: the live one, with the pin beside its label while
  * it fades, and every kept one of the level shown. The bodies of areas lie under the tokens and the
@@ -69,21 +83,21 @@ export class MeasureLayer {
   /** The kept areas that mark the tokens in them: the ones pointed at. */
   private pointed: ReadonlySet<string> = NO_IDS;
 
-  /** `effects` plays the looks of the kept areas' bodies; without it they keep their wash. */
-  constructor(parent: Container, private readonly look: () => MeasureLook, private readonly drawings: KeptDrawings, private readonly effects?: AreaEffects) {
-    placeUnderTokens(parent, this.bodies);
+  constructor(parent: Container, private readonly look: () => MeasureLook, private readonly drawings: KeptDrawings, private readonly options: MeasureLayerOptions = {}) {
+    if (options.layBodies) options.layBodies(this.bodies);
+    else placeUnderTokens(parent, this.bodies);
     // Same zIndex, added in this order: the stable sort keeps the outlines above the rulers and every label above every shape.
     this.shapes.view.zIndex = MAP_LAYER_Z.measure;
     this.outlines.view.zIndex = MAP_LAYER_Z.measure;
     this.labels.zIndex = MAP_LAYER_Z.measure;
-    parent.addChild(this.shapes.view, this.outlines.view, this.labels);
+    parent.addChild(this.shapes.view, ...(options.gmOutlines === false ? [] : [this.outlines.view]), this.labels);
     // An area being made marks the tokens in it for as long as it shows.
     this.live = new DrawnMeasure(this.surfaces, true);
     this.live.labelLayer.addChild(this.pin.view);
     this.liveParts = { ...this.live.parts, pin: this.pin.view };
   }
 
-  /** The areas' outlines, which only the GM's view of the canvas shows. */
+  /** The areas' outlines, which only the GM's view of the canvas shows; empty, and in no map, where the layer draws none. */
   get gmMarks(): Container {
     return this.outlines.view;
   }
@@ -221,7 +235,8 @@ export class MeasureLayer {
   }
 
   private get surfaces(): MeasureSurfaces {
-    return { bodies: this.bodies, shapes: this.shapes, outlines: this.outlines, labels: this.labels, ...(this.effects && { effects: this.effects }) };
+    const { effects, gmOutlines } = this.options;
+    return { bodies: this.bodies, shapes: this.shapes, labels: this.labels, ...(gmOutlines !== false && { outlines: this.outlines }), ...(effects && { effects }) };
   }
 
   /** Every drawing with the parts it is shown and hidden by: the live one's are `liveParts`. */

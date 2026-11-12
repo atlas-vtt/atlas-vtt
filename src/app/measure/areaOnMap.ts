@@ -5,6 +5,7 @@
  */
 
 import type { GridGeometry } from '../grid/gridDistance';
+import { areaRulesOf, type MeasurementSettings } from '../grid/measurementFormat';
 import type { DiagonalRule } from '../types/collectionSettingsTypes';
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
@@ -28,6 +29,15 @@ export interface AreaMap {
   readonly diagonalRule: DiagonalRule;
   /** The walls areas stop at, as light is traced through them (`sealedWalls`); none on a map without walls. */
   readonly walls: readonly WallSegment[];
+}
+
+/**
+ * A map as areas read it: `grid` with the rules `settings` name, whether its cells are counted
+ * (`cells`), and the walls areas stop at.
+ */
+export function areaMapOf(grid: GridGeometry, settings: MeasurementSettings, cells: boolean, walls: readonly WallSegment[]): AreaMap {
+  const { cellRule, coneEnd } = areaRulesOf(settings);
+  return { grid, cells, coneAngle: settings.coneAngle, coneEnd, cellRule, diagonalRule: settings.diagonalRule, walls };
 }
 
 export interface AreaOnMap {

@@ -7,8 +7,15 @@ import { MAX_COORDINATE } from './tokens.ts';
 export const MAX_RANGE_BANDS = 32;
 /** The longest name of a range band. */
 export const MAX_BAND_NAME = 64;
+/** The longest name of a unit. */
+export const MAX_UNIT_NAME = 12;
 
-/** How the GM's Atlas labels a measured distance: the map's collection settings, as its own ruler reads them. */
+/**
+ * How the GM's Atlas labels a measured distance and shapes a measured area: the map's collection
+ * settings, as its own ruler reads them. `manhattan`, `coneEnd`, `cellRule` and `unitName` were added
+ * later: an older GM tells none of them, and an older page reads the measurement without them, by
+ * the fields that were there before, which say the nearest thing it knows.
+ */
 export interface SharedMeasurement {
   readonly mode: 'metric' | 'abstract';
   readonly unitType: 'feet' | 'yards' | 'meters' | 'units' | 'custom';
@@ -20,6 +27,14 @@ export interface SharedMeasurement {
   readonly rangeBands: readonly { readonly name: string; readonly maxSquares: number }[];
   /** Full opening of a cone, in degrees. */
   readonly coneAngle: number;
+  /** Every diagonal step costs two. `diagonalRule` then says `alternating`. */
+  readonly manhattan?: true;
+  /** A cone ends on a straight side across its length; unset, on an arc. */
+  readonly coneEnd?: 'flat';
+  /** An area covers a cell whose centre lies in it, or one any part of which does; unset, one at least half of which does. */
+  readonly cellRule?: 'centre' | 'any';
+  /** The unit's name as the GM typed it, written after a distance as text. `unitType` then says `custom`. */
+  readonly unitName?: string;
 }
 
 /**
@@ -43,6 +58,7 @@ export type RulesMessage = { readonly t: 'rules'; readonly scene: string } & Sha
 const MODES: readonly string[] = ['metric', 'abstract'];
 const UNIT_TYPES: readonly string[] = ['feet', 'yards', 'meters', 'units', 'custom'];
 const DIAGONAL_RULES: readonly string[] = ['equidistant', 'alternating', 'euclidean'];
+const CELL_RULES: readonly string[] = ['centre', 'any'];
 const ACCENT = /^#[0-9a-f]{6}$/i;
 
 const isDistance = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= MAX_COORDINATE;
@@ -58,15 +74,25 @@ function parseBands(value: unknown): SharedMeasurement['rangeBands'] | null {
   return bands.length === value.length ? bands : null;
 }
 
-/** A measurement as the client reads it, or null for anything malformed. */
+/**
+ * A measurement as the client reads it, or null for anything malformed. A field added later that
+ * is malformed is left out, as the map's dice are: a GM newer than this reader may say a value it
+ * does not know, and the measurement then reads by the older fields.
+ */
 export function parseMeasurement(value: unknown): SharedMeasurement | null {
   if (!isRecord(value)) return null;
-  const { mode, unitType, unitDistance, ruleDistance, diagonalRule, coneAngle } = value;
+  const { mode, unitType, unitDistance, ruleDistance, diagonalRule, coneAngle, manhattan, coneEnd, cellRule, unitName } = value;
   const rangeBands = parseBands(value.rangeBands);
   if (!isOneOf<SharedMeasurement['mode']>(mode, MODES) || !isOneOf<SharedMeasurement['unitType']>(unitType, UNIT_TYPES)
     || !isOneOf<SharedMeasurement['diagonalRule']>(diagonalRule, DIAGONAL_RULES) || rangeBands === null
     || !isDistance(unitDistance) || !isDistance(ruleDistance) || !isDistance(coneAngle) || coneAngle > 360) return null;
-  return { mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle };
+  return {
+    mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle,
+    ...(manhattan === true && { manhattan }),
+    ...(coneEnd === 'flat' && { coneEnd }),
+    ...(isOneOf<NonNullable<SharedMeasurement['cellRule']>>(cellRule, CELL_RULES) && { cellRule }),
+    ...(typeof unitName === 'string' && unitName.length > 0 && unitName.length <= MAX_UNIT_NAME && { unitName }),
+  };
 }
 
 /** A `rules` message as the client reads it, or null for anything malformed; malformed dice are left out. */

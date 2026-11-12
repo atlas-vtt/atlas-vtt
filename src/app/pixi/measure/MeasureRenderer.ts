@@ -2,7 +2,9 @@ import type { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand/vanilla';
 import { resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
+import { isTextEntryTarget } from '../../keyboard/textEntry';
 import { levelObjects } from '../../levels/levelObjects';
+import type { AreaMap } from '../../measure/areaOnMap';
 import { rimSpots } from '../../measure/handleSpots';
 import { isAura, measureList } from '../../measure/keptMeasures';
 import type { KeptMeasure } from '../../measure/measureTypes';
@@ -104,7 +106,7 @@ export class MeasureRenderer {
       kept: (parts, audience) => this.parts.keep(parts, audience),
       forgotten: (parts) => this.parts.forget(parts),
       marked: (parts) => this.parts.marked(parts),
-    }, this.effects);
+    }, { effects: this.effects });
     this.pointed = new PointedMeasures((ids) => this.layer.setPointed(ids));
     this.ranges = new RangeMarks({ viewport, store, look: () => this.look(), measuring: () => this.input.measuring, sources: () => this.rangeSources });
     // Made after the layer: the handles stand above every measurement and label.
@@ -128,7 +130,10 @@ export class MeasureRenderer {
       full: this.onFull,
       look: () => this.look(),
     });
-    this.input = new MeasureInput(viewport, this.live, (event) => this.keysBelongToMap?.(event) ?? true);
+    this.input = new MeasureInput(viewport, this.live, {
+      typed: (event) => isTextEntryTarget(event.target),
+      areMaps: (event) => this.keysBelongToMap?.(event) ?? true,
+    });
 
     // Shapes and labels keep their size on screen, so a new zoom draws them again; a pan changes nothing.
     const onZoom = (): void => {
@@ -166,6 +171,12 @@ export class MeasureRenderer {
   public set playersView(view: MeasurePlayersView | null) {
     this.view = view;
     this.refreshVisibility();
+  }
+
+  /** The map of the level shown as its areas are shaped by it: its grid and rules, whether its cells are counted, and the walls areas stop at. */
+  public areaMap(): AreaMap {
+    const state = this.store.getState();
+    return this.scene.areaMap(state, this.gridSystem.getOptions(), this.settings(state));
   }
 
   /** The ids of the tokens in the kept area `id` as it lies on the map now: the ones it rings while it is pointed at. */
@@ -295,9 +306,14 @@ export class MeasureRenderer {
     if (moved) this.handles.placesChanged();
   }
 
+  /** The rules the map measures by: its collection's where it has one, else its grid's own. */
+  private settings(state: MeasureState): MeasurementSettings {
+    return this.measurementSettingsProvider?.() ?? resolveMeasurementSettings(undefined, state.grid);
+  }
+
   private look(): MeasureLook {
     const state = this.store.getState();
-    const settings = this.measurementSettingsProvider?.() ?? resolveMeasurementSettings(undefined, state.grid);
+    const settings = this.settings(state);
     const grid = this.gridSystem.getOptions();
     return {
       zoom: this.viewport.scale.x,

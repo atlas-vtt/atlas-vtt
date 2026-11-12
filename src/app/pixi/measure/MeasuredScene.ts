@@ -1,10 +1,10 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { GridGeometry } from '../../grid/gridDistance';
-import { areaRulesOf, type MeasurementSettings } from '../../grid/measurementFormat';
+import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { levelObjects } from '../../levels/levelObjects';
 import { BASE_TEXEL, worldTexel } from '../../lighting/lightingConstants';
 import { sealedWalls } from '../../lighting/sealWalls';
-import type { AreaMap } from '../../measure/areaOnMap';
+import { areaMapOf, type AreaMap } from '../../measure/areaOnMap';
 import type { AreaToken } from '../../measure/measureTokens';
 import { mapTokens } from '../../tokens/offMap';
 import type { ViewState } from '../../types/viewState';
@@ -54,8 +54,7 @@ export class MeasuredScene {
 
   /** The map as areas read it: `grid` with the collection's rules, whether its cells are counted (its Snap is on), and the walls areas stop at. */
   areaMap(state: SceneState, grid: GridGeometry, settings: MeasurementSettings): AreaMap {
-    const { cellRule, coneEnd } = areaRulesOf(settings);
-    return { grid, cells: state.grid?.snapToGrid ?? true, coneAngle: settings.coneAngle, coneEnd, cellRule, diagonalRule: settings.diagonalRule, walls: this.walls(state) };
+    return areaMapOf(grid, settings, state.grid?.snapToGrid ?? true, this.walls(state));
   }
 
   private drawnWalls(state: SceneState): readonly WallSegment[] {

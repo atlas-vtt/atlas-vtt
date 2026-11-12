@@ -50,8 +50,12 @@ export interface MeasureSurfaces {
   readonly effects?: AreaEffects;
   /** Above the lighting, for everyone: rulers, and the rings on the tokens in an area. */
   readonly shapes: MeasureInkLayer;
-  /** Above the lighting, for the GM alone: the outline of every area, which must be read in a dark room too. */
-  readonly outlines: MeasureInkLayer;
+  /**
+   * Above the lighting, for the GM alone: the outline of every area, which must be read in a dark
+   * room too. Without it an area has no outline and no dot where it starts: where players look at
+   * the canvas itself, the outline of an area cut by walls would draw rooms they have not seen.
+   */
+  readonly outlines?: MeasureInkLayer;
   readonly labels: Container;
 }
 
@@ -79,7 +83,8 @@ interface Inked {
 /**
  * One measurement on the map. A ruler: its line in ink, its distance, and for one with corners each
  * leg's length, small, at the leg's middle. An area: its body under the lighting (`AreaBody`), its
- * outline in ink for the GM, its size, and while it is `marked` (being drawn, or pointed at) a ring
+ * outline in ink for the GM where there is a layer for it (`MeasureSurfaces.outlines`), its size,
+ * and while it is `marked` (being drawn, or pointed at) a ring
  * on every token in it and their number on its label. An aura is the area around its token
  * (`PlacedAura`): it says how far it reaches above its top edge, has no dot where it starts, since
  * its token stands there, and never marks or counts that token. The labels are one part, shown and
@@ -178,11 +183,12 @@ export class DrawnMeasure {
     // Its pattern holds on to where the area starts: an aura's to the middle of its shape, which goes with its token.
     const origin = drawn.aura?.shaped.origin ?? measurement.points[0];
     this.body.draw(onMap, tint, grid, drawn.look && origin ? { ...drawn.look, origin } : null);
-    this.ink.onto(ruler ? this.surfaces.shapes : this.surfaces.outlines);
+    const { shapes, outlines } = this.surfaces;
+    this.ink.onto(ruler || !outlines ? shapes : outlines);
     this.ink.begin(zoom);
     if (ruler) {
       drawMeasurement(this.ink, tint, measurement, settings.coneAngle);
-    } else {
+    } else if (outlines) {
       if (onMap) drawMeasureOutline(this.ink, tint, onMap.area.rings);
       const origin = measurement.points[0];
       if (origin && !drawn.aura) drawMeasurePoint(this.ink, tint, origin, true);

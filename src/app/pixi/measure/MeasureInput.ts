@@ -1,6 +1,5 @@
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import { isTextEntryTarget } from '../../keyboard/textEntry';
 import type { Measurement, MeasureShapeKind } from '../../measure/measureTypes';
 import type { Point } from '../../types/visionTypes';
 import { isHandled } from '../utils/handledEvents';
@@ -31,6 +30,14 @@ export interface MeasureInputHost {
   cancelled(): void;
 }
 
+/** Whose a key is that is pressed while a measurement is under way. */
+export interface MeasureKeys {
+  /** Whether the key is typed into a text field: it is that field's, and changes nothing. */
+  typed(event: KeyboardEvent): boolean;
+  /** Whether the key is the map's to take (`canRunMapHotkeys`): one that is not drops the measurement and is left alone. */
+  areMaps(event: KeyboardEvent): boolean;
+}
+
 /**
  * The measure tool's pointer and keys on a viewport, handed to a `MeasureGesture`. It listens to the
  * pointer while the tool is `enabled`, and to the keys of a measurement under way only while there is
@@ -42,7 +49,7 @@ export interface MeasureInputHost {
  * attention: it holds keys, and Enter finishes it. So it is dropped, leaving nothing, as soon as
  * the map is no longer what the GM works on: the window loses focus, a press lands anywhere but on
  * the canvas, focus goes to something outside the map's tab (a dialog), or a key is pressed that
- * is not the map's (`keysAreMaps`: another tab in front, a dialog, a menu or the DM screen over
+ * is not the map's (`MeasureKeys.areMaps`: another tab in front, a dialog, a menu or the DM screen over
  * the map). A key typed into a field is that field's and changes nothing. All of it is heard in
  * the canvas's own window and document, so a map in a popout is followed there.
  */
@@ -61,8 +68,7 @@ export class MeasureInput {
   constructor(
     private readonly viewport: Viewport,
     private readonly host: MeasureInputHost,
-    /** Whether a key pressed now is the map's to take (`canRunMapHotkeys`). */
-    private readonly keysAreMaps: (event: KeyboardEvent) => boolean = () => true,
+    private readonly keys: MeasureKeys,
     private readonly now: () => number = () => performance.now(),
   ) {}
 
@@ -163,9 +169,9 @@ export class MeasureInput {
 
   /** The keys of a measurement under way, taken before the map's hotkeys see them. */
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (!this.gesture.active || isTextEntryTarget(event.target)) return;
+    if (!this.gesture.active || this.keys.typed(event)) return;
     // Not the map's key: what was being measured is dropped, and the key left to whoever it belongs to.
-    if (!this.keysAreMaps(event)) {
+    if (!this.keys.areMaps(event)) {
       this.cancel();
       return;
     }

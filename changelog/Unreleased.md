@@ -42,6 +42,7 @@
 - Gives light: a kept area can light the scene like any light. A circle and an aura shine from their middle, a cone shines the way it points, and a square or a line glows along its whole shape, so a wall of fire lights the corridor it stands in. Its two ranges start from its size and can be changed at its handle
 - Fire, Lightning and Radiance bring their light when you choose them, and Shadow makes a circle or an aura a magical darkness as wide as itself
 - The colour dot in the measure tool's bar is now the look: pick a colour and an effect there, and the next area you keep takes both, with its light. A wall of fire is Line, drag, Shift
+- Online play: players see your measurements as you made them, a ruler with its corners, a square and a line, and theirs show the same way on your map
 
 ## Improved
 

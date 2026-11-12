@@ -1,4 +1,4 @@
-import { MAX_COORDINATE, type CursorState, type LaserState, type MarkPoint, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure, type SharedMeasure } from '../protocol/index.ts';
+import { MAX_COORDINATE, type CursorState, type FullMeasure, type FullMeasures, type LaserState, type MarkPoint, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure, type SharedMeasure } from '../protocol/index.ts';
 import { LASER_COLOR_SWATCHES, resolveLaserPointerSettings } from '../../tools/laserPointerSettings';
 import { MoveRate, type MapSize } from './moveCheck.ts';
 
@@ -55,9 +55,23 @@ export function checkLaser(message: PlayerLaser, context: MarkContext): LaserSta
 
 const measureNearMap = (measure: SharedMeasure, map: MapSize | null): boolean => nearMap(measure.a, map) && nearMap(measure.b, map);
 
+/** Whether every point of a measurement told in full is near the map. */
+function fullNearMap({ pts }: FullMeasure, map: MapSize | null): boolean {
+  for (let index = 0; index + 1 < pts.length; index += 2) {
+    if (!nearMap([pts[index] ?? Number.NaN, pts[index + 1] ?? Number.NaN], map)) return false;
+  }
+  return true;
+}
+
+/** Measurements told in full without those off the map. */
+function fullOnMap({ live, kept }: FullMeasures, map: MapSize | null): FullMeasures {
+  return { live: live !== null && fullNearMap(live, map) ? live : null, kept: kept.filter((measure) => fullNearMap(measure, map)) };
+}
+
 /**
  * A player's measurements as the GM takes them, or null when they are refused: another scene, or a
- * colour that is not a swatch. Measurements off the map are left out, and with the one being drawn its span.
+ * colour that is not a swatch. Measurements off the map are left out, those told in full too, and
+ * with the one being drawn its span.
  */
 export function checkMeasure(message: PlayerMeasure, context: MarkContext): MeasureState | null {
   if (context.scene === null || message.scene !== context.scene) return null;
@@ -65,7 +79,9 @@ export function checkMeasure(message: PlayerMeasure, context: MarkContext): Meas
   if (color === null) return null;
   const live = message.live !== null && measureNearMap(message.live, context.map) ? message.live : null;
   const kept = message.kept.filter((measure) => measureNearMap(measure, context.map));
-  return { color, live, kept, ...(live !== null && message.span !== undefined && { span: message.span }) };
+  const full = message.full && fullOnMap(message.full, context.map);
+  const drawn = full ? full.live : live;
+  return { color, live, kept, ...(drawn !== null && message.span !== undefined && { span: message.span }), ...(full && { full }) };
 }
 
 /**

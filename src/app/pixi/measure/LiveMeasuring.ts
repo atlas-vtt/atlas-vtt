@@ -1,11 +1,10 @@
-import type { StoreApi } from 'zustand/vanilla';
 import type { GridSystem } from '../../grid/GridSystem';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { toolLook } from '../../measure/measureLights';
 import { snapAreaEnd, snapAreaOrigin } from '../../measure/measureSnap';
-import type { MeasureInput, Measurement, MeasureShapeKind } from '../../measure/measureTypes';
-import type { MeasuresSlice } from '../../stores/measuresSlice';
-import type { ViewState } from '../../types/viewState';
+import type { MeasureInput, Measurement, MeasureShapeKind, MeasureToolOptions } from '../../measure/measureTypes';
+import type { GridState } from '../../types/gridTypes';
+import type { SceneLighting } from '../../types/lightingTypes';
 import type { Point } from '../../types/visionTypes';
 import type { MeasurePartsVisibility } from '../measurePartsVisibility';
 import { hexColorOf } from '../utils/colorUtils';
@@ -23,10 +22,21 @@ export const MEASURE_FADE_MS = 2000;
 /** The shapes the tool measures with; its other modes measure nothing. */
 const OFFERED: readonly MeasureShapeKind[] = ['ruler', 'circle', 'cone', 'square', 'line'];
 
-type LiveState = Pick<ViewState, 'grid' | 'measureTool' | 'lighting'> & Pick<MeasuresSlice, 'addMeasure'>;
+/**
+ * What the measurement being made reads of its view, and the one thing it writes: whether the grid
+ * snaps and how large its cells are, the tool's choices, whether the scene is lit, and where a
+ * measurement is kept. A view's store is one; so is any object that answers the same.
+ */
+export interface LiveMeasuringState {
+  readonly grid: Pick<GridState, 'snapToGrid' | 'size'> | null;
+  readonly measureTool: MeasureToolOptions;
+  readonly lighting: Pick<SceneLighting, 'enabled'>;
+  /** Keeps a measurement and returns its id; null, and nothing kept, where no more can be (`MeasuresSlice.addMeasure`). */
+  addMeasure(measure: MeasureInput): string | null;
+}
 
 export interface LiveMeasuringDeps {
-  store: Pick<StoreApi<LiveState>, 'getState'>;
+  store: { getState(): LiveMeasuringState };
   grid: MeasureGrid;
   layer: Pick<MeasureLayer, 'drawLive' | 'clearLive' | 'placePin' | 'pinAt'>;
   parts: Pick<MeasurePartsVisibility, 'start' | 'drawn' | 'pinned' | 'cleared' | 'setLiveHidden' | 'liveOrigin'>;

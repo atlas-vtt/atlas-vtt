@@ -1,14 +1,15 @@
-import type { MarkPoint, MarkShape, MeasureState, SharedMeasure } from '../protocol/index.ts';
+import type { MeasureState } from '../protocol/index.ts';
 import { Container } from 'pixi.js';
-import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
-import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
+import type { GridGeometry } from '../../grid/gridDistance';
+import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { DifficultCells } from '../../grid/movementCost';
+import { areaMapOf, type AreaMap } from '../../measure/areaOnMap';
 import type { Measurement } from '../../measure/measureTypes';
 import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
-import { drawMeasurement, measureLabelTarget } from '../../pixi/utils/measureDrawing';
-import { MeasureInk, MeasureInkLayer } from '../../pixi/utils/measureInk';
-import { MeasureLabel } from '../../pixi/utils/measureLabel';
+import { DrawnMeasure, type MeasureLook, type MeasureSurfaces } from '../../pixi/measure/DrawnMeasure';
 import { destroyTree } from '../../pixi/utils/destroyTree';
+import { MeasureInkLayer } from '../../pixi/utils/measureInk';
+import { toldMeasures, type ToldMeasure } from './measureWords.ts';
 import { PointerTrack } from './PointerTrack.ts';
 
 /** One sender's measurements as they arrive. */
@@ -20,90 +21,132 @@ export interface MeasureRules {
   readonly measurement: MeasurementSettings;
   /** Where the scene's difficult terrain lies, which drags pay for by the measurement's rule; null or unset where it has none. */
   readonly difficult?: DifficultCells | null;
+  /**
+   * What of the map shapes an area measured on it (`areaMapOf`): whether its cells are counted, and
+   * the walls areas stop at. Unset, cells are counted and no wall stops an area: it is drawn whole.
+   */
+  readonly areas?: AreaMap | null;
+}
+
+/** Puts a layer into a map, where it lies under the map's tokens and its lighting. */
+export type LayBodies = (layer: Container) => void;
+
+export interface RemoteMeasurePorts {
+  /** The zoom the map shows at: lines and labels keep their size on screen. */
+  zoom(): number;
+  /** What the measurements are measured and shaped by; null while that is not known, and nothing is drawn. */
+  rules(): MeasureRules | null;
+  /** The senders' nominal send interval, in ms. */
+  readonly interval: number;
+  /**
+   * Draws the outline of every area above the lighting too, with the dot where it starts: for a GM,
+   * who must read an area in a dark room. Never where players look: the outline of an area cut by
+   * walls draws the rooms it is cut by.
+   */
+  readonly gmOutlines?: boolean;
+}
+
+type Point = Measurement['points'][number];
+
+/** A kept measurement and its drawing. */
+interface Kept {
+  told: ToldMeasure;
+  readonly drawn: DrawnMeasure;
 }
 
 /** A measurement being drawn: as its sender last told it, and its end as it is drawn, a moment behind. */
 interface Live {
-  told: SharedMeasure;
+  told: ToldMeasure;
   readonly track: PointerTrack;
-  end: { readonly x: number; readonly y: number };
+  end: Point;
+  readonly drawn: DrawnMeasure;
 }
 
-interface Drawn {
-  /** The kept measurements and the one being drawn, each in a drawing of its own: only the second changes with every frame. */
-  readonly keptShapes: MeasureInk;
-  readonly liveShape: MeasureInk;
-  /** A label for every kept measurement in order, then one for the measurement being drawn. */
-  readonly labels: MeasureLabel[];
-  kept: readonly Measurement[];
+interface Sender {
+  readonly kept: Kept[];
   live: Live | null;
   colour: number;
 }
 
-/** The protocol's line is Atlas's ruler: a path, here of one leg. */
-const shapeOf = (shape: MarkShape): Measurement['shape'] => (shape === 'line' ? 'ruler' : shape);
-
-/** A measurement as Atlas's drawing takes it. */
-export const recordOf = ({ shape, a, b }: SharedMeasure): Measurement => ({ shape: shapeOf(shape), points: [{ x: a[0], y: a[1] }, { x: b[0], y: b[1] }] });
+const NO_WALLS: AreaMap['walls'] = [];
+const NO_TOKENS = {};
 
 const colourNumber = (hex: string): number => Number.parseInt(hex.slice(1), 16);
-const sameMark = (a: MarkPoint, b: MarkPoint): boolean => a[0] === b[0] && a[1] === b[1];
-const samePoint = (a: { readonly x: number; readonly y: number }, b: { readonly x: number; readonly y: number }): boolean => a.x === b.x && a.y === b.y;
-const samePoints = (a: Measurement['points'], b: Measurement['points']): boolean => a.length === b.length && a.every((point, index) => samePoint(point, b[index]!));
-const sameRecords = (a: readonly Measurement[], b: readonly Measurement[]): boolean =>
-  a.length === b.length && a.every((record, index) => record.shape === b[index]?.shape && samePoints(record.points, b[index].points));
-const liveRecord = ({ told, end }: Live): Measurement => ({ shape: shapeOf(told.shape), points: [{ x: told.a[0], y: told.a[1] }, end] });
+const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
+const samePoints = (a: readonly Point[], b: readonly Point[]): boolean => a.length === b.length && a.every((point, index) => samePoint(point, b[index]!));
+const sameLook = (a: ToldMeasure, b: ToldMeasure): boolean => a.shape === b.shape && a.width === b.width && a.walls === b.walls;
+const sameTold = (a: ToldMeasure, b: ToldMeasure): boolean => sameLook(a, b) && samePoints(a.points, b.points);
+const endOf = ({ points }: ToldMeasure): Point => points[points.length - 1] ?? { x: 0, y: 0 };
+const fixedOf = ({ points }: ToldMeasure): readonly Point[] => points.slice(0, -1);
+/** Whether `next` is `live` told again, its end moved on or its corners others: the same shape from the same start. */
+const sameMeasurement = (live: ToldMeasure, next: ToldMeasure): boolean => live.shape === next.shape && live.points[0] !== undefined && next.points[0] !== undefined && samePoint(live.points[0], next.points[0]);
 
 /**
- * Other people's measurements, drawn as Atlas draws its own (`drawMeasurement`) in the sender's
- * colour, each with its distance on a `MeasureLabel`, worked out here by the scene's rules. The end of a
- * measurement being drawn moves through a `PointerTrack`, timed by the span its messages tell, so it
- * glides between two messages, and its label says the distance to the end as drawn; kept
- * measurements stand as they arrive.
+ * Other people's measurements, each drawn as Atlas draws its own (`DrawnMeasure`) in the sender's
+ * colour: a ruler with its corners, its length and each leg's; an area by its body, which lies in
+ * a layer of its own under the map's tokens and lighting (`layBodies`) and so is lit like the floor
+ * and hidden where a viewer does not see the map, and its size above everything. An area stops at
+ * the walls the rules name unless its sender said that walls do not stop it; where the rules name
+ * none it is drawn whole. Nothing of a measurement tells of tokens here: no rings, no count, no
+ * height.
+ *
+ * Nothing but the body shows where an area is cut by walls: its outline above the lighting is the
+ * GM's (`gmOutlines`). A players' page asks for none.
+ *
+ * The end of a measurement being drawn moves through a `PointerTrack`, timed by the span its
+ * messages tell, so it glides between two messages, and its label says the distance to the end as
+ * drawn; a ruler's corners before its end stand as told, and kept measurements stand as they arrive.
  */
 export class RemoteMeasures {
+  /** Above the lighting: the rulers, the GM's outlines where they are drawn, and every label above them. */
   readonly container = new Container({ label: 'remote-measures', zIndex: MAP_LAYER_Z.measure, eventMode: 'none', interactiveChildren: false });
-  /** Every sender's shapes, composed in one pass; their labels follow in the container, above them all. */
+  /** Every sender's rulers, composed in one pass. */
   private readonly shapes = new MeasureInkLayer('remote-measure-shapes');
-  private readonly drawn = new Map<string, Drawn>();
-  private readonly zoom: () => number;
-  private readonly rules: () => MeasureRules | null;
-  /** The senders' nominal send interval, in ms. */
-  private readonly interval: number;
+  private readonly outlines: MeasureInkLayer | null;
+  private readonly labels = new Container({ label: 'remote-measure-labels', eventMode: 'none', interactiveChildren: false });
+  /** The bodies of areas: a layer of the map it was last laid into, or of none. */
+  private bodies = newBodies();
+  private readonly senders = new Map<string, Sender>();
   private moving = false;
 
-  constructor(zoom: () => number, rules: () => MeasureRules | null, interval: number) {
-    this.zoom = zoom;
-    this.rules = rules;
-    this.interval = interval;
-    this.container.addChild(this.shapes.view);
+  constructor(private readonly ports: RemoteMeasurePorts) {
+    this.outlines = ports.gmOutlines === true ? new MeasureInkLayer('remote-measure-outlines') : null;
+    this.container.addChild(this.shapes.view, ...(this.outlines ? [this.outlines.view] : []), this.labels);
+  }
+
+  /**
+   * Lays the bodies of areas into a map: `lay` puts their layer where it lies under the map's
+   * tokens and its lighting. Null takes it out of the map it lay in; areas then show their size
+   * alone. What is drawn goes with the layer it was drawn in: the next `update` draws it again.
+   */
+  layBodies(lay: LayBodies | null): void {
+    this.clear();
+    destroyTree(this.bodies);
+    this.bodies = newBodies();
+    lay?.(this.bodies);
   }
 
   /** Every sender's measurements as they are now (`now` in ms, the clock `tick` runs on); a sender missing from them has none. */
   update(measures: readonly RemoteMeasure[], now: number): void {
+    this.mend();
     const present = new Set(measures.map((entry) => entry.who));
-    for (const [who, drawn] of this.drawn) if (!present.has(who)) this.remove(who, drawn);
-    const rules = this.rules();
+    for (const [who, sender] of this.senders) if (!present.has(who)) this.remove(who, sender);
+    const look = this.look();
     for (const entry of measures) {
-      const known = this.drawn.get(entry.who);
-      if ((entry.live === null && entry.kept.length === 0) || rules === null) {
+      const known = this.senders.get(entry.who);
+      const told = toldMeasures(entry);
+      if ((told.live === null && told.kept.length === 0) || look === null) {
         if (known !== undefined) this.remove(entry.who, known);
         continue;
       }
-      const drawn = known ?? this.add(entry.who);
+      const sender = known ?? this.add(entry.who);
       const colour = colourNumber(entry.color);
-      const kept = entry.kept.map(recordOf);
-      const keptChanged = colour !== drawn.colour || !sameRecords(kept, drawn.kept);
-      const before = drawn.live;
-      drawn.live = this.follow(before, entry, now);
-      // Nothing to draw anew for a sender whose measurements stand, or whose end only moved on: `tick` draws that.
-      if (!keptChanged && drawn.live === before) continue;
-      if (keptChanged) this.drawKept(drawn, kept, colour, rules);
-      this.fitLabels(drawn);
-      kept.forEach((record, index) => this.label(drawn.labels[index], record, rules));
-      this.drawLive(drawn, rules);
+      const recoloured = colour !== sender.colour;
+      sender.colour = colour;
+      this.drawKept(sender, told.kept, recoloured, look);
+      this.follow(sender, told.live, entry.span, now, recoloured, look);
     }
-    this.moving = [...this.drawn.values()].some((drawn) => drawn.live?.track.busy(now) === true);
+    this.moving = [...this.senders.values()].some((sender) => sender.live?.track.busy(now) === true);
   }
 
   /** Whether an end being dragged still has somewhere to go. */
@@ -113,104 +156,135 @@ export class RemoteMeasures {
 
   /** Draws every end being dragged where it is at `now`. */
   tick(now: number): void {
-    const rules = this.rules();
+    this.mend();
+    // Asked for once, and only when an end moved.
+    let look: MeasureLook | null | undefined;
     this.moving = false;
-    for (const drawn of this.drawn.values()) {
-      const live = drawn.live;
+    for (const sender of this.senders.values()) {
+      const live = sender.live;
       if (live === null) continue;
       const end = live.track.at(now);
       this.moving ||= live.track.busy(now);
-      if (rules === null || end === null || samePoint(end, live.end)) continue;
+      if (end === null || samePoint(end, live.end)) continue;
+      if (look === undefined) look = this.look();
+      if (look === null) continue;
       live.end = { x: end.x, y: end.y };
-      this.drawLive(drawn, rules);
+      this.drawLive(live, sender.colour, look);
     }
   }
 
-  /** The zoom changed: shapes and labels keep their size on screen. */
+  /** The zoom or the rules changed: everything is drawn again as it stands, lines and labels at their size on screen. */
   rescale(): void {
-    const rules = this.rules();
-    if (rules === null) return;
-    for (const drawn of this.drawn.values()) {
-      this.drawKept(drawn, drawn.kept, drawn.colour, rules);
-      drawn.kept.forEach((record, index) => this.label(drawn.labels[index], record, rules));
-      this.drawLive(drawn, rules);
+    this.mend();
+    const look = this.look();
+    if (look === null) return;
+    for (const { kept, live } of this.senders.values()) {
+      for (const { drawn } of kept) drawn.redraw(look);
+      live?.drawn.redraw(look);
     }
   }
 
   clear(): void {
-    for (const [who, drawn] of this.drawn) this.remove(who, drawn);
+    for (const [who, sender] of this.senders) this.remove(who, sender);
+    this.moving = false;
   }
 
   destroy(): void {
     this.clear();
     this.shapes.destroy();
+    this.outlines?.destroy();
     destroyTree(this.container);
-  }
-
-  private add(who: string): Drawn {
-    const drawn: Drawn = { keptShapes: new MeasureInk(this.shapes), liveShape: new MeasureInk(this.shapes), labels: [], kept: [], live: null, colour: 0 };
-    this.drawn.set(who, drawn);
-    return drawn;
-  }
-
-  private remove(who: string, drawn: Drawn): void {
-    this.drawn.delete(who);
-    drawn.keptShapes.destroy();
-    drawn.liveShape.destroy();
-    for (const label of drawn.labels) label.destroy();
+    destroyTree(this.bodies);
   }
 
   /**
-   * The measurement being drawn after a message: the same one with its end moved on, or a new one
-   * (another start or shape), which stands where it begins and does not glide from the last.
+   * The map the bodies lay in was destroyed, and their layer with it: what was drawn there is let
+   * go of before anything draws into it, and areas have no body until they are laid into a map again.
    */
-  private follow(live: Live | null, { live: told, span }: RemoteMeasure, now: number): Live | null {
-    if (told === null) return null;
-    const end = { x: told.b[0], y: told.b[1] };
-    if (live === null || live.told.shape !== told.shape || !sameMark(live.told.a, told.a)) {
-      const track = new PointerTrack({ interval: this.interval });
+  private mend(): void {
+    if (this.bodies.destroyed) this.layBodies(null);
+  }
+
+  /** What every measurement is drawn by now; null while the rules are not known. */
+  private look(): MeasureLook | null {
+    const rules = this.ports.rules();
+    if (rules === null) return null;
+    const { grid, measurement } = rules;
+    return {
+      zoom: this.ports.zoom(),
+      grid,
+      settings: measurement,
+      // Every sender names a colour.
+      accent: 0,
+      map: rules.areas ?? areaMapOf(grid, measurement, true, NO_WALLS),
+      tokens: () => NO_TOKENS,
+      ringScale: 1,
+    };
+  }
+
+  private surfaces(): MeasureSurfaces {
+    return { bodies: this.bodies, shapes: this.shapes, labels: this.labels, ...(this.outlines && { outlines: this.outlines }) };
+  }
+
+  private add(who: string): Sender {
+    const sender: Sender = { kept: [], live: null, colour: 0 };
+    this.senders.set(who, sender);
+    return sender;
+  }
+
+  private remove(who: string, sender: Sender): void {
+    this.senders.delete(who);
+    for (const { drawn } of sender.kept) drawn.destroy();
+    sender.live?.drawn.destroy();
+  }
+
+  /** The kept measurements of a sender, in order: one that is another, or in another colour, is drawn anew, and those there are no more of go. */
+  private drawKept(sender: Sender, told: readonly ToldMeasure[], recoloured: boolean, look: MeasureLook): void {
+    for (const kept of sender.kept.splice(told.length)) kept.drawn.destroy();
+    told.forEach((measure, index) => {
+      const known = sender.kept[index];
+      if (known !== undefined && !recoloured && sameTold(known.told, measure)) return;
+      const kept = known ?? { told: measure, drawn: new DrawnMeasure(this.surfaces()) };
+      kept.told = measure;
+      sender.kept[index] = kept;
+      kept.drawn.draw(measure, sender.colour, look, measure.walls !== false);
+    });
+  }
+
+  /**
+   * The measurement being drawn after a message: the same one with its end moved on or its corners
+   * others, or a new one (another start or shape), which stands where it begins and does not glide
+   * from the last.
+   */
+  private follow(sender: Sender, told: ToldMeasure | null, span: number | undefined, now: number, recoloured: boolean, look: MeasureLook): void {
+    const live = sender.live;
+    if (told === null) {
+      live?.drawn.destroy();
+      sender.live = null;
+      return;
+    }
+    const end = endOf(told);
+    if (live === null || !sameMeasurement(live.told, told)) {
+      const track = new PointerTrack({ interval: this.ports.interval });
       track.push([end], undefined, now);
-      return { told, track, end };
+      sender.live = { told, track, end, drawn: live?.drawn ?? new DrawnMeasure(this.surfaces()) };
+      this.drawLive(sender.live, sender.colour, look);
+      return;
     }
     // An end that stands is no new sample, unless its message says that time passed for its sender.
-    if (!sameMark(live.told.b, told.b) || (span ?? 0) > 0) live.track.push([end], span, now);
+    if (!samePoint(endOf(live.told), end) || (span ?? 0) > 0) live.track.push([end], span, now);
+    // Nothing to draw anew while only the end moved on: `tick` draws that.
+    const stands = !recoloured && sameLook(live.told, told) && samePoints(fixedOf(live.told), fixedOf(told));
     live.told = told;
-    return live;
+    if (!stands) this.drawLive(live, sender.colour, look);
   }
 
-  private drawKept(drawn: Drawn, kept: readonly Measurement[], colour: number, { measurement }: MeasureRules): void {
-    drawn.kept = kept;
-    drawn.colour = colour;
-    drawn.keptShapes.begin(this.zoom());
-    for (const record of kept) drawMeasurement(drawn.keptShapes, colour, record, measurement.coneAngle);
+  /** Draws the measurement being drawn as told, with its end where that is drawn now. */
+  private drawLive({ told, end, drawn }: Live, colour: number, look: MeasureLook): void {
+    drawn.draw({ ...told, points: [...fixedOf(told), end] }, colour, look, told.walls !== false);
   }
+}
 
-  private drawLive(drawn: Drawn, rules: MeasureRules): void {
-    drawn.liveShape.begin(this.zoom());
-    if (drawn.live === null) return;
-    const record = liveRecord(drawn.live);
-    drawMeasurement(drawn.liveShape, drawn.colour, record, rules.measurement.coneAngle);
-    this.label(drawn.labels[drawn.kept.length], record, rules);
-  }
-
-  /** As many labels as measurements. */
-  private fitLabels(drawn: Drawn): void {
-    const count = drawn.kept.length + (drawn.live === null ? 0 : 1);
-    while (drawn.labels.length > count) {
-      const label = drawn.labels.pop();
-      label?.destroy();
-    }
-    while (drawn.labels.length < count) {
-      const label = new MeasureLabel();
-      this.container.addChild(label.view);
-      drawn.labels.push(label);
-    }
-  }
-
-  /** Shows `record`'s distance on `label`, beside it. */
-  private label(label: MeasureLabel | undefined, record: Measurement, { grid, measurement }: MeasureRules): void {
-    if (label === undefined) return;
-    const distance = formatDistance(pathLengthInCells(grid, record.points, measurement.diagonalRule), measurement);
-    label.show(distance, measureLabelTarget(record), this.zoom(), grid.size);
-  }
+function newBodies(): Container {
+  return new Container({ label: 'remote-measure-bodies', zIndex: MAP_LAYER_Z.measureBodies, eventMode: 'none', interactiveChildren: false });
 }

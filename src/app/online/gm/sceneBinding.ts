@@ -6,7 +6,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { diceSourceOf } from './atlasDice.ts';
-import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf } from './atlasLighting.ts';
+import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
 import { mapLayerSourceOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
 import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
@@ -93,7 +93,8 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     if (grid === null || grid === undefined) return null;
     const state = tab.store.getState();
     const difficult = difficultCells(mapFeatureList(levelObjects(state).mapFeatures));
-    return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult } satisfies MeasureRules;
+    // The areas players measure stop at the walls the GM's own do.
+    return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult, areas: tabAreaMap(liveRenderer()) } satisfies MeasureRules;
   }, (tokenId): string | undefined => share.draggerOf(tokenId));
   // Players' marks leave the GM's canvas as the hold begins: it is about to show another scene.
   const store = new PresentedStore(tab.store, presented, () => {

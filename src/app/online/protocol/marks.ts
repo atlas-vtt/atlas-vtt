@@ -19,6 +19,8 @@ export const MAX_MARK_CURSOR_NUMBERS = 64;
 export const MAX_KEPT = 20;
 /** The most kept measurements one sender has in a `marks` message (the GM keeps more than a player). */
 export const MAX_MARK_KEPT = 50;
+/** The most numbers (x, y pairs) a ruler's points take when it is told in full: its start, its corners and its end, 64 points. */
+export const MAX_RULER_NUMBERS = 128;
 /**
  * The shortest time between two `marks` messages, and between two of a player's lasers, measurements
  * or cursors: 10 a second (the last change always goes out). Each message carries the places passed
@@ -41,6 +43,28 @@ export interface SharedMeasure {
   readonly b: MarkPoint;
 }
 
+/** What a measurement told in full is: a ruler is a path with corners, the others are areas. */
+export type FullShape = 'ruler' | 'circle' | 'cone' | 'square' | 'line';
+
+/**
+ * A measurement in full. `pts` are its points flat (x, y pairs, world pixels): a ruler's start,
+ * corners and end, two points at least; an area's origin and the end it was dragged to, two points
+ * exactly. `width` is a line's, in world pixels; a line that tells none is one cell wide. `free` is
+ * set on an area that walls do not stop: any other area is cut by the walls its reader knows of.
+ */
+export interface FullMeasure {
+  readonly shape: FullShape;
+  readonly pts: readonly number[];
+  readonly width?: number;
+  readonly free?: true;
+}
+
+/** A sender's measurements in full: the one being drawn and the kept ones. */
+export interface FullMeasures {
+  readonly live: FullMeasure | null;
+  readonly kept: readonly FullMeasure[];
+}
+
 /**
  * A laser as it is now: the pointer (null while off the map or not pointing), the trail points added
  * since the last message (x, y flat), and whether it draws. `span` is the time in whole milliseconds
@@ -60,12 +84,19 @@ export interface LaserState {
  * A player's measurements as they are now: the one being drawn and the kept ones. `span` is the time
  * in whole milliseconds from the end of `live` the sender's last message told to the one this message
  * tells, so a receiver can move the end as it was dragged; a sender that tells none is drawn as it arrives.
+ *
+ * `live` and `kept` say what every reader can draw: a line, a circle or a cone between two points.
+ * `full` says the same measurements in full (added later: an older sender tells none, and an older
+ * reader does not look at it): a ruler with its corners, a square, a line with its width. A reader
+ * that knows `full` draws it in place of `live` and `kept`, and `span` then times the last point of
+ * `full.live`.
  */
 export interface MeasureState {
   readonly color: string;
   readonly live: SharedMeasure | null;
   readonly kept: readonly SharedMeasure[];
   readonly span?: number;
+  readonly full?: FullMeasures;
 }
 
 /**
@@ -106,6 +137,7 @@ export interface MarksMessage {
 }
 
 const SHAPES: readonly string[] = ['line', 'circle', 'cone'];
+const FULL_SHAPES: readonly string[] = ['ruler', 'circle', 'cone', 'square', 'line'];
 const COLOR = /^#[0-9a-f]{6}$/i;
 const MAX_LASER_SIZE = 1000;
 
@@ -125,6 +157,18 @@ function parseMeasure(value: unknown): SharedMeasure | null {
   const a = parsePoint(value.a);
   const b = parsePoint(value.b);
   return a === null || b === null ? null : { shape: value.shape as MarkShape, a, b };
+}
+
+/** A measurement in full, or null for anything malformed: a width on anything but a line, or `free` on a ruler, too. */
+function parseFullMeasure(value: unknown): FullMeasure | null {
+  if (!isRecord(value) || typeof value.shape !== 'string' || !FULL_SHAPES.includes(value.shape)) return null;
+  const shape = value.shape as FullShape;
+  const { pts, width, free } = value;
+  const ruler = shape === 'ruler';
+  if (!Array.isArray(pts) || pts.length % 2 !== 0 || pts.length < 4 || pts.length > (ruler ? MAX_RULER_NUMBERS : 4) || !pts.every(isCoordinate)) return null;
+  if (width !== undefined && (shape !== 'line' || !isCoordinate(width) || width <= 0)) return null;
+  if (free !== undefined && (free !== true || ruler)) return null;
+  return { shape, pts, ...(width !== undefined && { width }), ...(free === true && { free }) };
 }
 
 function parseLaserState(value: Record<string, unknown>, maxNumbers: number): LaserState | null {
@@ -157,13 +201,23 @@ function readAll<T>(values: readonly unknown[], read: (value: unknown) => T | nu
   return items;
 }
 
+/** A sender's measurements in full, with at most `maxKept` kept ones, or null for anything malformed. */
+function parseFullMeasures(value: unknown, maxKept: number): FullMeasures | null {
+  if (!isRecord(value) || !Array.isArray(value.kept) || value.kept.length > maxKept) return null;
+  const live = value.live === null ? null : parseFullMeasure(value.live);
+  const kept = readAll(value.kept, parseFullMeasure);
+  return (value.live !== null && live === null) || kept === null ? null : { live, kept };
+}
+
 function parseMeasureState(value: Record<string, unknown>, maxKept: number): MeasureState | null {
-  const { color, live, kept, span } = value;
+  const { color, live, kept, span, full } = value;
   if (typeof color !== 'string' || !COLOR.test(color) || !Array.isArray(kept) || kept.length > maxKept) return null;
   if (span !== undefined && !isSpan(span)) return null;
   const measure = live === null ? null : parseMeasure(live);
   const records = readAll(kept, parseMeasure);
-  return (live !== null && measure === null) || records === null ? null : { color, live: measure, kept: records, ...(span !== undefined && { span }) };
+  const whole = full === undefined ? undefined : parseFullMeasures(full, maxKept);
+  if ((live !== null && measure === null) || records === null || whole === null) return null;
+  return { color, live: measure, kept: records, ...(span !== undefined && { span }), ...(whole !== undefined && { full: whole }) };
 }
 
 /** A player's laser, measurements or cursor as the GM reads them, or null for anything malformed. */

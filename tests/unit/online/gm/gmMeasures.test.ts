@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { KeptMeasure, Measurement } from '../../../../src/app/measure/measureTypes';
 import { GmMeasures, type PlayersView } from '../../../../src/app/online/gm/gmMeasures.ts';
-import { MAX_MARK_KEPT } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_MARK_KEPT, MAX_RULER_NUMBERS, parseGmMessage, type FullMeasures, type MeasureState } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_RULER_POINTS } from '../../../../src/app/measure/measureTypes';
 import type { LiveMeasure } from '../../../../src/app/pixi/measure/measurements';
 
 const at = (x: number, y = 0): { x: number; y: number } => ({ x, y });
@@ -13,11 +14,22 @@ let ids = 0;
 const kept = (measure: Measurement & Partial<KeptMeasure>): KeptMeasure => ({ id: `m${ids += 1}`, kind: 'measure', ...measure, points: [...measure.points] });
 const live = (shape: Measurement['shape'], points: { x: number; y: number }[], more: Partial<LiveMeasure> = {}): LiveMeasure => ({ shape, points, pressed: points[0]!, ...more });
 
-function shown(records: { live?: LiveMeasure | null; kept?: KeptMeasure[]; walled?: boolean }, view: PlayersView = EMPTY_MAP, seen = EVERYONE): ReturnType<GmMeasures['shown']> {
+type Records = { live?: LiveMeasure | null; kept?: KeptMeasure[]; walled?: boolean };
+
+function told(records: Records, view: PlayersView = EMPTY_MAP, seen: (id: string) => boolean = EVERYONE): ReturnType<GmMeasures['shown']> {
   const measures = new GmMeasures();
   measures.follow({ live: records.live ?? null, kept: records.kept ?? [], ...(records.walled !== undefined && { walled: records.walled }) }, view, 0);
   return measures.shown(seen);
 }
+
+/** What players are told in the older words, which every page reads. */
+function shown(records: Records, view: PlayersView = EMPTY_MAP, seen: (id: string) => boolean = EVERYONE): Pick<MeasureState, 'live' | 'kept'> {
+  const { live, kept } = told(records, view, seen);
+  return { live, kept };
+}
+
+/** What they are told in full. */
+const full = (records: Records, view: PlayersView = EMPTY_MAP, seen: (id: string) => boolean = EVERYONE): FullMeasures => told(records, view, seen).full;
 
 describe('the GM\'s measurements in the protocol\'s words', () => {
   it('tells a ruler of one leg as a line, and a circle and a cone as themselves', () => {
@@ -54,6 +66,66 @@ describe('the GM\'s measurements in the protocol\'s words', () => {
   it('tells nothing of a square or a line with a width, which the protocol cannot say, nor of a measurement off every map', () => {
     expect(shown({ kept: [kept({ shape: 'square', points: [at(0), at(70)] }), kept({ shape: 'line', points: [at(0), at(70)], width: 70 })] })).toEqual({ live: null, kept: [] });
     expect(shown({ live: live('ruler', [at(0), at(Number.POSITIVE_INFINITY)]) })).toEqual({ live: null, kept: [] });
+  });
+});
+
+describe('the GM\'s measurements in full', () => {
+  const ruler = { shape: 'ruler' as const, points: [at(0), at(70.04), at(70, 70), at(140, 70)] };
+
+  it('tell a ruler with every corner, as one measurement, live or kept', () => {
+    const pts = [0, 0, 70, 0, 70, 70, 140, 70];
+    expect(full({ live: live('ruler', ruler.points) })).toEqual({ live: { shape: 'ruler', pts }, kept: [] });
+    expect(full({ kept: [kept(ruler)] })).toEqual({ live: null, kept: [{ shape: 'ruler', pts }] });
+  });
+
+  it('tell a square, and a line with its width, which the older words cannot say', () => {
+    const records = { kept: [kept({ shape: 'square', points: [at(0), at(70)] }), kept({ shape: 'line', points: [at(0), at(210)], width: 70.04 })], live: live('line', [at(0), at(0, 140)], { width: 35 }) };
+    expect(full(records)).toEqual({
+      live: { shape: 'line', pts: [0, 0, 0, 140], width: 35 },
+      kept: [{ shape: 'square', pts: [0, 0, 70, 0] }, { shape: 'line', pts: [0, 0, 210, 0], width: 70 }],
+    });
+    expect(shown(records)).toEqual({ live: null, kept: [] });
+  });
+
+  it('tell an area on a level with walls too, and say which walls do not stop', () => {
+    const circle = { shape: 'circle' as const, points: [at(0), at(70)] };
+    const records = { live: live('cone', [at(0), at(0, 70)]), kept: [kept(circle), kept({ ...circle, walls: false })], walled: true };
+    expect(full(records)).toEqual({
+      live: { shape: 'cone', pts: [0, 0, 0, 70] },
+      kept: [{ shape: 'circle', pts: [0, 0, 70, 0] }, { shape: 'circle', pts: [0, 0, 70, 0], free: true }],
+    });
+    // The older words say only the one that walls do not cut.
+    expect(shown(records)).toEqual({ live: null, kept: [{ shape: 'circle', a: [0, 0], b: [70, 0] }] });
+    expect(full({ ...records, walled: false })).toEqual(full(records));
+  });
+
+  it('never tell an aura: players get none', () => {
+    const aura = kept({ shape: 'circle', points: [at(0), at(70)], follows: 'hero', aura: 10 });
+    const plain = kept({ shape: 'circle', points: [at(300), at(370)] });
+    expect(told({ kept: [aura, plain] })).toEqual({ live: null, kept: [{ shape: 'circle', a: [300, 0], b: [370, 0] }], full: { live: null, kept: [{ shape: 'circle', pts: [300, 0, 370, 0] }] } });
+  });
+
+  it('tell nothing of a measurement the GM keeps to themselves, one that started on a token unseen then, or one off every map', () => {
+    const fromUnseen = kept({ shape: 'square', points: [at(0), at(70)], origin: { tokenIds: ['orc'], unseenAtStart: true } });
+    const fromHero = kept({ shape: 'line', points: [at(200), at(270)], width: 70, origin: { tokenIds: ['hero'], unseenAtStart: false } });
+    const own = kept({ shape: 'ruler', points: [at(0), at(70), at(70, 70)], hidden: true });
+    const records = { live: live('square', [at(0), at(70)], { hidden: true }), kept: [fromUnseen, fromHero, own] };
+    expect(full(records).kept).toEqual([{ shape: 'line', pts: [200, 0, 270, 0], width: 70 }]);
+    expect(full(records).live).toBeNull();
+    expect(full(records, EMPTY_MAP, (id) => id !== 'hero')).toEqual({ live: null, kept: [] });
+    expect(full({ live: live('ruler', [at(0), at(Number.POSITIVE_INFINITY)]), kept: [kept({ shape: 'circle', points: [at(2e6), at(70)] })] })).toEqual({ live: null, kept: [] });
+  });
+
+  it('hold a ruler of as many points as Atlas keeps, the newest measurements where there are more than a message holds, and read back as sent', () => {
+    expect(MAX_RULER_NUMBERS).toBe(2 * MAX_RULER_POINTS);
+    const longest = kept({ shape: 'ruler', points: Array.from({ length: MAX_RULER_POINTS }, (_, index) => at(index * 70, (index % 2) * 70)) });
+    const many = Array.from({ length: MAX_MARK_KEPT + 5 }, (_, index) => kept({ shape: 'square', points: [at(index), at(index + 70)] }));
+    const all = told({ kept: [...many, longest], live: live('line', [at(0), at(70)], { width: 140 }) });
+    expect(all.full.kept).toHaveLength(MAX_MARK_KEPT);
+    expect(all.full.kept.at(-1)?.pts).toHaveLength(MAX_RULER_NUMBERS);
+    expect(all.full.kept[0]?.pts[0]).toBe(6);
+    const marks = { t: 'marks', scene: 's1', lasers: [], measures: [{ who: 'gm', color: '#123456', ...all }] };
+    expect(parseGmMessage(JSON.parse(JSON.stringify(marks)))).toEqual(marks);
   });
 });
 
