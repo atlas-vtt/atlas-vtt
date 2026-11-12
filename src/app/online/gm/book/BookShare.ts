@@ -173,8 +173,8 @@ export class BookShare implements LootRecipientSource {
   /**
    * Reads the scene again for the players of `scope` and sends them what changed: everyone on the
    * poll and whenever the world map, the quests or who plays what may have changed, only the players
-   * of a note or an edit when only that changed. A character's name is in every other player's
-   * statblock (the allies a rest may be taken for), so a pass that renames one looks at everyone.
+   * of a note or an edit when only that changed. The name the map shows a character by is in every
+   * other player's statblock (the allies a rest may be taken for), so a pass that changes one looks at everyone.
    */
   private pass(scope: PassScope): void {
     const map = this.maps.get();
@@ -275,12 +275,12 @@ export class BookShare implements LootRecipientSource {
     this.characters.update(scene, {
       ownerOf: (tokenId) => this.ports.ownerOf(tokenId, scene.tokens[tokenId]),
       isKnown: (player) => known.has(player),
-      sheet: (shown, token, statblockPath) => {
+      sheet: (face, token, statblockPath) => {
         const resolved = statblockPath === null ? null : this.statblocks.resolved(statblockPath);
         // Beside the token's own: the numbers its statblock tracks, and the gauges its template places for resources it holds none of
         const extra = [...trackedSheetValues(resolved, scene.resources, token.resources), ...placedSheetValues(resolved, scene.resources, token.resources)];
         const maxEditable = (definition: ResourceDefinition): boolean => resourceMaxRoute(resolved, definition, token, statblockPath) !== null;
-        return sheetOf(shown, token, scene.resources, (path) => this.art.get(path), extra, maxEditable);
+        return sheetOf(face, token, scene.resources, (path) => this.art.get(path), extra, maxEditable);
       },
       libraryStatblock: (placed) => this.ports.libraryStatblock(placed),
     }, only);
@@ -424,7 +424,7 @@ export class BookShare implements LootRecipientSource {
   }
 }
 
-/** Whether two lists of the characters' names, in the players' order, read the same. */
-function sameNames(a: ReadonlyMap<string, string>, b: ReadonlyMap<string, string>): boolean {
+/** Whether two lists of the names the characters are shown by, in the players' order, read the same. */
+function sameNames(a: ReadonlyMap<string, string | null>, b: ReadonlyMap<string, string | null>): boolean {
   return a.size === b.size && [...a].every(([player, name]) => b.get(player) === name);
 }

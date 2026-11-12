@@ -1,7 +1,7 @@
 import type { BookCharacter } from '../../protocol/index.ts';
 import type { PlacedTokenSource } from '../../../characters/playerCharacters';
 import type { ResourceDefinition, ResourceValue } from '../../../resources/resourceTypes';
-import type { ShownRollToken } from '../../../services/playerRollSource';
+import { tokenFace, type TokenFace } from '../../../services/playerRollSource';
 import type { TokenEntity } from '../../../types';
 import type { BookScene } from './bookScene.ts';
 import { UNPLACED_PREFIX } from './BookShelf.ts';
@@ -20,6 +20,12 @@ export interface PlayedCharacter {
   readonly placed: PlacedTokenSource;
   /** The sheet as last read from the scene. */
   readonly sheet: BookCharacter;
+  /**
+   * The name the players' frame last showed its token by: what other players read of the character
+   * (the allies of a rest). Null while the frame has never shown its token: its own player reads
+   * their character all the same, and nobody else learns of it.
+   */
+  readonly shownName: string | null;
   /** The statblock note of the character: its token's, else the one of the library token it was placed from; null for none. */
   readonly statblockPath: string | null;
   /** What its statblock is drawn with, as last read from the scene: the scene's resources and the values its token holds. */
@@ -34,8 +40,8 @@ export interface CharacterInputs {
   ownerOf(tokenId: string): string | undefined;
   /** Whether the table still knows the player. */
   isKnown(player: string): boolean;
-  /** The sheet of a token the players' frame shows, with its statblock note, or null when none can be made of it. */
-  sheet(shown: ShownRollToken, token: TokenEntity, statblockPath: string | null): BookCharacter | null;
+  /** The sheet of a token for its own player, with its statblock note, or null when none can be made of it. `face`: the token as the players' frame shows it, else as the scene holds it. */
+  sheet(face: TokenFace, token: TokenEntity, statblockPath: string | null): BookCharacter | null;
   /** The statblock note the library token a placed token came from links, or null. */
   libraryStatblock(placed: PlacedTokenSource): string | null;
 }
@@ -52,16 +58,24 @@ export const characterKeyOf = (token: TokenEntity): string => token.assetId ?? `
 /**
  * Which character each player of the table plays: the token they chose (`choose`: the one they act
  * with on their page), else the first token they own in the shared scene, in the scene's order (the
- * token the GM's player list shows them by), as the players' frame shows it. A choice of a token
- * that is not theirs, or that the players' frame does not show, is passed over.
- * A character stays its player's for the table while the scene shows none of their tokens (another
- * scene, the token hidden or out of sight), with the sheet it last had. It ends when its token is
- * in the shared scene and no longer theirs (the GM gave it to someone else or took it back), when the table no longer knows the player, or when they play another character.
+ * token the GM's player list shows them by), among those the players' frame shows. A choice of a
+ * token that is not theirs is passed over, and one the frame does not show waits behind those it shows.
+ * What the map hides is the token, never a character from its own player: a character's token the
+ * frame does not show now (hidden, out of sight, under fog, on another floor) stays its player's
+ * before any further token of theirs, and a player the frame shows no token of plays the first of
+ * theirs in the scene all the same. Such a token is read as the scene holds it, for its own player
+ * alone; what others read of a character (`shownName`) is only what the frame showed them.
+ * A character stays its player's for the table while the shared scene holds none of their tokens
+ * (another scene), with the sheet it last had. It ends when its token is in the shared scene and
+ * no longer theirs (the GM gave it to someone else or took it back), when the table no longer
+ * knows the player, or when they play another character.
  * A book is open to one player at a time: a token of a library token someone else plays is passed
  * over, so two players never read one book.
  */
 export class Characters {
   private readonly played = new Map<string, PlayedCharacter>();
+  /** The name the players' frame last showed each character's token by, by the character's key. */
+  private readonly shownAs = new Map<string, string>();
   /** The token each player chose to play, by GM id, until they choose another. */
   private readonly chosen = new Map<string, string>();
 
@@ -91,9 +105,9 @@ export class Characters {
     return [...this.played].flatMap(([player, character]) => (character.statblockPath === path ? [player] : []));
   }
 
-  /** The name each player's character goes by now, by player. */
-  names(): Map<string, string> {
-    return new Map([...this.played].map(([player, character]) => [player, character.sheet.name]));
+  /** The name other players read each player's character by now (`shownName`), by player. */
+  names(): Map<string, string | null> {
+    return new Map([...this.played].map(([player, character]) => [player, character.shownName]));
   }
 
   /** The statblock notes of every character played. */
@@ -138,27 +152,38 @@ export class Characters {
     };
     // The token a player chose comes before their others (the sort keeps the scene's order otherwise).
     const inTurn = [...owned].sort((a, b) => Number(isChosen(b)) - Number(isChosen(a)));
-    for (const tokenId of inTurn) {
-      const owner = inputs.ownerOf(tokenId);
-      const token = scene.tokens[tokenId];
-      if (owner === undefined || token === undefined || settled.has(owner) || !inputs.isKnown(owner)) continue;
-      const before = this.played.get(owner);
-      const seen = shown.get(tokenId);
-      if (seen?.imagePath === undefined) {
-        // Their character's token, not shown now: it stays as it was, before any further token of theirs.
-        if (before?.tokenId === tokenId) settled.add(owner);
-        continue;
+    // First what the frame shows, and each player's own character's token though it does not; then,
+    // for the players that left without a character of this scene, their tokens it does not show.
+    for (const round of ['shown', 'unshown'] as const) {
+      for (const tokenId of inTurn) {
+        const owner = inputs.ownerOf(tokenId);
+        const token = scene.tokens[tokenId];
+        if (owner === undefined || token === undefined || settled.has(owner) || !inputs.isKnown(owner)) continue;
+        const before = this.played.get(owner);
+        const seen = shown.get(tokenId);
+        const theirs = before?.tokenId === tokenId;
+        if ((seen !== undefined || theirs) !== (round === 'shown')) continue;
+        // Their own player reads a token the frame does not show as the scene holds it.
+        const face = seen ?? tokenFace(token);
+        const { imagePath } = face;
+        const key = characterKeyOf(token);
+        const holder = holders.get(key);
+        const statblockPath = statblockOf(token, inputs);
+        const sheet = imagePath !== undefined && (holder === undefined || holder === owner) ? inputs.sheet(face, token, statblockPath) : null;
+        if (imagePath === undefined || sheet === null) {
+          // Their character's token, without artwork or not shown and no sheet to be made of it: it stays as it was, before any further token of theirs.
+          if (theirs && (seen === undefined || imagePath === undefined)) settled.add(owner);
+          continue;
+        }
+        if (before !== undefined) holders.delete(before.key);
+        holders.set(key, owner);
+        if (seen !== undefined) this.shownAs.set(key, sheet.name);
+        const drawnWith = { definitions: scene.resources, resources: token.resources };
+        this.played.set(owner, {
+          collection: scene.collection, key, imagePath, tokenId, placed: placedOf(token), sheet, shownName: this.shownAs.get(key) ?? null, statblockPath, drawnWith,
+        });
+        settled.add(owner);
       }
-      const character = { collection: scene.collection, key: characterKeyOf(token), imagePath: seen.imagePath };
-      const holder = holders.get(character.key);
-      const statblockPath = statblockOf(token, inputs);
-      const sheet = holder === undefined || holder === owner ? inputs.sheet(seen, token, statblockPath) : null;
-      if (sheet === null) continue;
-      if (before !== undefined) holders.delete(before.key);
-      holders.set(character.key, owner);
-      const drawnWith = { definitions: scene.resources, resources: token.resources };
-      this.played.set(owner, { ...character, tokenId, placed: placedOf(token), sheet, statblockPath, drawnWith });
-      settled.add(owner);
     }
   }
 }
