@@ -56,7 +56,7 @@
 - Rooms saved with 0.14.0 turn into walls when you open the scene. The Rooms panel is gone: joining two rooms is deleting the wall between them
 - Fields, drop-downs and search bars in the asset manager and its dialogs have a quieter edge instead of a bright outline
 - With dynamic lighting, the GM can read the map where a scene has no light, while players still see only what the light shows
-- Scene tabs show more of each scene's name, and all of it while the bar has room
+- Scene tabs show more of each scene's name; only a very long name is cut short
 - Online play: note pins your players may read on the campaign's world map, and on the maps it leads into, now show there in their book, and the first player to open one finds its note for the whole table, as with pins on the shared map
 - Online play: when the campaign you start a table with has a game system of its own, the start menu says that every map plays by it instead of its collection's
 
