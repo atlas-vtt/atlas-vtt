@@ -20,6 +20,11 @@ import { promptForText } from '../ui/textInputDialog';
 import { destroyTree } from './utils/destroyTree';
 import { t } from '../i18n';
 import { levelObjects } from '../levels/levelObjects';
+import type { TesseraView } from './mosaicCanvas/levelOfDetail';
+import { TextSharpening, type TextSharpnessHost } from './TextSharpening';
+
+/** A renderer nothing more is known of: the screen's pixels to a point, as `PixiAppManager` sets up every view's. */
+const SCREEN_SHARPNESS_HOST: TextSharpnessHost = { resolution: () => window.devicePixelRatio || 1, maxTextureSide: () => null };
 
 export class TextRenderer {
   private viewport: Viewport;
@@ -30,6 +35,7 @@ export class TextRenderer {
   private selectionOverlayUpdater: () => void;
   private rotationUI: TextRotationUI;
   private resizeUI: TextResizeUI;
+  private sharpening: TextSharpening;
   private isPlayerView: boolean;
   
   // Drag state
@@ -52,13 +58,15 @@ export class TextRenderer {
     gridSystem: GridSystem,
     selectionOverlayUpdater: () => void,
     store: StoreApi<ViewAtlasState>,
-    isPlayerView: boolean = false
+    isPlayerView: boolean = false,
+    sharpnessHost: TextSharpnessHost = SCREEN_SHARPNESS_HOST
   ) {
     this.viewport = viewport;
     this.gridSystem = gridSystem;
     this.selectionOverlayUpdater = selectionOverlayUpdater;
     this.store = store;
     this.isPlayerView = isPlayerView;
+    this.sharpening = new TextSharpening(viewport, sharpnessHost);
     
     // Create container for all text elements
     this.textContainer = new Container();
@@ -73,7 +81,11 @@ export class TextRenderer {
     
     // Initialize UI components
     this.rotationUI = new TextRotationUI(viewport, store, (text) => this.resizeUI.refresh(text));
-    this.resizeUI = new TextResizeUI(viewport, store, (text) => this.rotationUI.refresh(text));
+    this.resizeUI = new TextResizeUI(viewport, store, (text) => {
+      this.rotationUI.refresh(text);
+      // The drag scales the view itself until its release reaches the store.
+      this.sharpening.touch();
+    });
     
     // Subscribe to store changes
     this.subscribeToStore();
@@ -134,12 +146,14 @@ export class TextRenderer {
     // Add to container and registry
     this.textContainer.addChild(container);
     this.textElements[textElement.id] = container;
+    this.sharpening.track(textElement.id, container);
   }
 
   private updateText(textElement: TextElement): void {
     const container = this.textElements[textElement.id];
     if (!container) return;
     updateTextElementView(container, textElement);
+    this.sharpening.track(textElement.id, container);
     this.rotationUI.refresh(textElement);
     this.resizeUI.refresh(textElement);
     this.updateUIControlsPosition();
@@ -148,6 +162,7 @@ export class TextRenderer {
   private removeText(id: string): void {
     const container = this.textElements[id];
     if (container) {
+      this.sharpening.forget(id);
       destroyTree(container);
       delete this.textElements[id];
     }
@@ -435,6 +450,11 @@ export class TextRenderer {
     return this.textContainer;
   }
 
+  /** Keeps the texts `region` shows sharp at its pixels, until the returned function is called (the player window's frame). */
+  addDemandRegion(region: TesseraView): () => void {
+    return this.sharpening.addDemandRegion(region);
+  }
+
   destroy(): void {
     // Unsubscribe from store to prevent memory leaks
     this.unsubscribeFromStore?.();
@@ -442,6 +462,7 @@ export class TextRenderer {
     // Clean up
     this.rotationUI.destroy();
     this.resizeUI.destroy();
+    this.sharpening.destroy();
 
     // Remove all text elements
     Object.keys(this.textElements).forEach(id => this.removeText(id));
