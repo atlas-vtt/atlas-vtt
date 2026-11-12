@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_ROTATION_DEGREES, MAX_STRETCH_FACTOR, readMapStretch } from '../../../../src/app/grid/mapStretch';
 import { readLevelAlignment } from '../../../../src/app/levels/levelAlignment';
-import { MAX_FIT_OFFSET, MAX_FIT_SCALE, MAX_MAP_ROTATION, MAX_MAP_STRETCH, MIN_FIT_SCALE, parseGmMessage, parseLevelFit, parseMapStretch } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_FIT_OFFSET, MAX_FIT_SCALE, MAX_MAP_ROTATION, MAX_MAP_STRETCH, MIN_FIT_SCALE, parseGmMessage, parseImageSize, parseLevelFit, parseMapStretch } from '../../../../src/app/online/protocol/index.ts';
 
 const MAP = { hash: 'c'.repeat(64), size: 10, mime: 'image/png', id: 'e'.repeat(64) };
 const FIT = { scale: 0.5, offset: { x: 140, y: 0 } };
@@ -108,6 +108,20 @@ describe('a scene with a placed map', () => {
   });
 
   it('has neither without a map', () => {
-    expect(parseGmMessage(scene({ stretch: { x: 1.2, y: 1 }, fit: FIT }, null))).toEqual(scene({}, null));
+    expect(parseGmMessage(scene({ stretch: { x: 1.2, y: 1 }, fit: FIT, size: { width: 10, height: 10 } }, null))).toEqual(scene({}, null));
+  });
+
+  it("carries its image's size beside the map, and is read without it from an older GM", () => {
+    const sized = scene({ size: { width: 4096, height: 3072 }, stretch: { x: 1.2, y: 1 } });
+    expect(parseGmMessage(JSON.parse(JSON.stringify(sized)))).toEqual(sized);
+    expect(parseGmMessage(scene({ size: { width: 9, height: 4, depth: 2 } }))).toEqual(scene({ size: { width: 9, height: 4 } }));
+  });
+
+  it("is shown without a size where the size is malformed: the scene is not refused for it", () => {
+    for (const size of [null, 'big', [], {}, { width: 10 }, { width: 0, height: 10 }, { width: -5, height: 10 }, { width: 10.5, height: 10 }, { width: '10', height: 10 }, { width: Number.NaN, height: 10 }, { width: Number.POSITIVE_INFINITY, height: 10 }, { width: 2 ** 20 + 1, height: 10 }]) {
+      expect(parseGmMessage(scene({ size })), JSON.stringify(size)).toEqual(scene({}));
+      expect(parseImageSize(size), JSON.stringify(size)).toBeNull();
+    }
+    expect(parseImageSize({ width: 2 ** 20, height: 1 })).toEqual({ width: 2 ** 20, height: 1 });
   });
 });
