@@ -116,7 +116,7 @@ export class NotePinTool {
       if (source !== this.store) return;
 
       if (action === 'open') {
-        // Explicitly tell NotePreviewUIManager to hide any preview for this pin's notePath
+        // The note's hover preview makes way for the note itself; NotePreviewUIManager keeps a pinned one
         this.eventBus.emit('close-active-preview', pin.notePath);
         this.openLinkedNote(pin);
       } else if (action === 'edit') {
