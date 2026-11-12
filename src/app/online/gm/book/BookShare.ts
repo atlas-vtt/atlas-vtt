@@ -28,6 +28,8 @@ import { isWriting, ownBookOf, writeWriting, writingsIn } from './playerWritings
 import { bookUpdate, NO_QUESTS, RESEND, sentOf, type SentBook } from './sentBook.ts';
 import { StatblockShare } from './statblockShare.ts';
 import { WORLD_MAP_PROBLEM_TEXT, WorldMaps, type MapImageProblem, type WorldMapFile } from './worldMap.ts';
+import type { WorldMapSign } from './worldMapGate.ts';
+import { WorldMapSigns } from './worldMapSigns.ts';
 
 export type { BookSharePorts } from './bookSharePorts.ts';
 export { REFUSAL_BOOK_MS } from './owedBooks.ts';
@@ -71,6 +73,7 @@ export class BookShare implements LootRecipientSource {
   private readonly maps: WorldMaps;
   private readonly questList: AskedAnswer<readonly BookQuest[]>;
   private readonly questPlaces = new QuestPlaces();
+  private readonly signs: WorldMapSigns;
   private readonly statblocks: StatblockShare;
   /** The characters' recovery buttons, and the rests players ask for. */
   readonly rests: BookRests;
@@ -100,6 +103,7 @@ export class BookShare implements LootRecipientSource {
     this.shelf = shelf;
     this.art = new ArtRefs((path) => ports.readImage(path), () => this.update(), ports.stored);
     this.maps = new WorldMaps({ stat: (path) => ports.stat(path), readImage: (path) => ports.readImage(path), stored: ports.stored, source: () => ports.worldMap(), read: () => this.update() });
+    this.signs = new WorldMapSigns(() => ports.randomId());
     this.owed = new OwedBooks(ports, (player) => this.sendBook(player));
     this.questList = new AskedAnswer(() => ports.quests(), NO_QUESTS, () => this.update());
     const panel = new SettledPanelWidth(() => ports.statblockPanelWidth?.(), () => ports.now());
@@ -184,7 +188,7 @@ export class BookShare implements LootRecipientSource {
     const early = this.earlyWrites ?? [];
     const reach = early.length > 0 ? 'all' : scope;
     this.tellMapProblem(map === null ? this.maps.problem() : null);
-    this.worldMap = map;
+    this.worldMap = this.signs.of(map, this.ports.foundPins?.() ?? new Map());
     this.quests = this.questPlaces.of(quests, map?.questPlaces);
     const scene = this.ports.scene();
     const players = this.ports.players();
@@ -240,6 +244,11 @@ export class BookShare implements LootRecipientSource {
     else if (this.earlyWrites !== null) this.earlyWrites.push({ from, body });
     else if (!this.write(from, body)) this.owed.owe(from);
     return true;
+  }
+
+  /** The readable pin of the world map players know as `alias`, among those last handed out; null for any other. */
+  signOf(alias: string): WorldMapSign | null {
+    return this.signs.sign(alias);
   }
 
   /** The players who play a character (its library token's id) now. */

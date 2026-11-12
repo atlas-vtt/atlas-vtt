@@ -1,12 +1,12 @@
 import { isSide, parseAsset, type AssetRef } from './asset.ts';
-import { isMapId, parseNestedMaps, rootEntrances, type BookNestedMap, type MapEntrance } from './bookLevels.ts';
+import { isMapId, parseMapSigns, parseNestedMaps, rootEntrances, type BookNestedMap, type MapEntrance, type MapSign } from './bookLevels.ts';
 import { MAX_BOOK_QUESTS, parseBookQuest, type BookQuest } from './bookMap.ts';
 import { isRecord } from './shape.ts';
 
 /**
  * The campaign's world map: an image by hash and its own size in pixels. It never names its file. Its
  * entrances lead into the maps the GM's pins open, and theirs further (`maps`, each once however
- * often it is entered); an older GM names neither.
+ * often it is entered); an older GM names neither. Its signs are the pins the GM made readable on it.
  */
 export interface BookWorldMap {
   readonly image: AssetRef;
@@ -16,6 +16,7 @@ export interface BookWorldMap {
   readonly id?: string;
   readonly entrances?: readonly MapEntrance[];
   readonly maps?: readonly BookNestedMap[];
+  readonly signs?: readonly MapSign[];
 }
 
 /**
@@ -56,8 +57,9 @@ export function parseWorldMap(value: unknown): BookWorldMap | null | undefined {
   const id = isMapId(value.id) ? value.id : undefined;
   const maps = parseNestedMaps(value.maps, id);
   const entrances = maps === null ? null : rootEntrances(value.entrances, maps);
-  if (image === null || maps === null || entrances === null) return undefined;
-  return { image, width: value.width, height: value.height, ...(id !== undefined && { id }), ...(entrances.length > 0 && { entrances }), ...(maps.length > 0 && { maps }) };
+  const signs = parseMapSigns(value.signs);
+  if (image === null || maps === null || entrances === null || signs === null) return undefined;
+  return { image, width: value.width, height: value.height, ...(id !== undefined && { id }), ...(entrances.length > 0 && { entrances }), ...(maps.length > 0 && { maps }), ...(signs.length > 0 && { signs }) };
 }
 
 /**

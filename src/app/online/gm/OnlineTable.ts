@@ -142,6 +142,8 @@ export class OnlineTable {
     this.found = new FoundShare(this.log, {
       app, send: (body, to) => this.connection.send(body, to), now: () => timers.now(), nameOf: (player) => ownership.nameOf(player),
       layers: () => this.bound()?.share.layers ?? null, stored,
+      sign: (alias) => this.books.share.signOf(alias),
+      found: () => this.books.share.update(),
     });
     this.books = tableBook({
       app, shelf, ownership, randomId: () => randomHex(12),
@@ -152,6 +154,7 @@ export class OnlineTable {
       tokenWrites: () => this.bound()?.resources ?? null,
       cards: this.cards,
       cardsChanged: () => events.changed(),
+      foundPins: () => this.found.foundPins(),
     });
     this.covers = new CoveredPages({
       // Each method by itself: the timers are a class, whose methods a spread leaves behind
