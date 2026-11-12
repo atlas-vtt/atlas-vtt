@@ -8,9 +8,11 @@ $tab-height: 28px;
 $tab-action: 16px;
 // A tab's one inset: its padding, the gap between its parts, and how far its controls stand inside it on every side.
 $tab-inset: ($tab-height - $tab-action) * 0.5;
-// Tabs are as wide as their names while the bar has the room, share it once it has not, and
+// Tabs are as wide as their names (up to $tab-name-max) while the bar has the room, share it once it has not, and
 // shrink down to this width; then the strip scrolls.
 $tab-min-width: 112px;
+// A name longer than this is cut with an ellipsis, however much room the bar has: one scene never takes the bar.
+$tab-name-max: 28ch;
 // How far a name fades out before a control that lies over its end.
 $tab-name-fade: 12px;
 // Fades the strip's edges where tabs are cut off.
@@ -126,6 +128,7 @@ $tab-fade: 24px;
   &__name {
     flex: 0 1 auto;
     min-width: 0;
+    max-width: $tab-name-max;
     overflow: hidden;
     text-overflow: ellipsis;
   }

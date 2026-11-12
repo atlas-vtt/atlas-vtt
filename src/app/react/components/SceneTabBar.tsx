@@ -128,7 +128,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
                   <SceneTabProcessing scenePath={tab.filePath} />
                   {tab.isDirty && <span className="atlas-scene-tab__dirty" />}
                 </span>
-                <TabActionButton icon={X} label={t('tabs.close', { name: tab.displayName })} end="end" onClick={() => onCloseTab(tab.id)} />
+                <TabActionButton icon={X} label={t('tabs.close')} end="end" onClick={() => onCloseTab(tab.id)} />
               </div>
             );
           })}
