@@ -4,7 +4,8 @@ import { AssetService } from '../../src/app/services/AssetService';
 import { registerVaultSync } from '../../src/app/plugin/vaultSync';
 import { folderIdOf, readTabFolders, tabFolderPath } from '../../src/app/packages/components/asset-manager/utils/assetFolders';
 import { renameAssetFolder } from '../../src/app/packages/components/asset-manager/utils/assetFolderRename';
-import { moveFoldersIntoFolder } from '../../src/app/packages/components/asset-manager/utils/assetFolderTree';
+import { moveAssetsIntoFolder } from '../../src/app/packages/components/asset-manager/utils/assetFolderMove';
+import { moveFoldersIntoFolder, trashFolderIfEmpty } from '../../src/app/packages/components/asset-manager/utils/assetFolderTree';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
 
 // The check runs at once instead of after the vault went quiet.
@@ -111,5 +112,24 @@ describe('a folder moved into another folder in the asset manager, once Atlas ha
     expect(readTabFolders(vault.app, 'c', 'scenes').map((folder) => folder.path)).toEqual(['Campaign', 'Campaign/Act 1']);
     expect(await assets.getAssets('c', 'scene')).toEqual([expect.objectContaining({ id: scene!.id, data: expect.objectContaining({ mapPath: `${SCENES}/Campaign/Act 1/Cave.atlasmap` }) })]);
     expect(vault.folders.has(`${SCENES}/Act 1`)).toBe(false);
+  });
+});
+
+describe('a folder deleted in the asset manager once its scene has moved to the parent folder', () => {
+  it('is empty at once, since the scene takes its thumbnail along, and is not back after the rename events', async () => {
+    const { vault, assets } = await syncedVault();
+    await vault.app.vault.create(`${SCENES}/Act 1/Cave.thumb.jpg`, 'JPG');
+    const [scene] = await assets.getAssets('c', 'scene');
+
+    const result = await moveAssetsIntoFolder(vault.app, assets, [scene!.id], SCENES, null);
+    // The folder is trashed before any rename event was followed to its end.
+    expect(result.moved).toEqual([scene!.id]);
+    expect(await trashFolderIfEmpty(vault.app, assets, folderIdOf(`${SCENES}/Act 1`))).toBe(true);
+    await settled();
+
+    expect(readTabFolders(vault.app, 'c', 'scenes')).toEqual([]);
+    expect(vault.folders.has(`${SCENES}/Act 1`)).toBe(false);
+    expect(vault.files.get(`${SCENES}/Cave.thumb.jpg`)).toBe('JPG');
+    expect(await assets.getAssets('c', 'scene')).toEqual([expect.objectContaining({ id: scene!.id, data: expect.objectContaining({ mapPath: `${SCENES}/Cave.atlasmap` }) })]);
   });
 });

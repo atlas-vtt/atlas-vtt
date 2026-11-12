@@ -3,6 +3,7 @@ import type { Message } from '../../types';
 export const am = {
   'am.folder.confirmDelete': 'Are you sure you want to delete the folder "{name}"?',
   'am.folder.contains': { one: 'This folder contains {count} asset. It will be moved to the parent folder.', other: 'This folder contains {count} assets. They will be moved to the parent folder.' },
+  'am.folder.containsFolders': { one: 'It contains {count} folder, which will be moved to the parent folder with everything in it.', other: 'It contains {count} folders, which will be moved to the parent folder with everything in them.' },
   'am.folder.createSubfolder': 'Create subfolder',
   'am.folder.delete': 'Delete folder',
   'am.folder.deleteTitle': 'Delete folder',
@@ -16,6 +17,8 @@ export const am = {
   'am.folder.renameFailed': 'Could not rename the folder',
   'am.folder.createFailed': 'Could not create the folder',
   'am.folder.moveFailed': 'Could not move the folder',
+  'am.folder.deleteFailed': 'Could not delete the folder',
+  'am.folder.deleteKept': 'The folder "{name}" was not deleted: it still holds files or folders.',
   'am.folder.moveContentsFailed': 'Could not move the contents of the folder',
   'am.folder.moveNameClash': '{names} stayed: the folder already holds a file or folder of the same name.',
   'am.folder.moveIntoItself': '{names} stayed: a folder cannot be moved into itself.',

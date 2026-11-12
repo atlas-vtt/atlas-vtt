@@ -1,8 +1,8 @@
-import { App, TFile } from 'obsidian';
+import type { App } from 'obsidian';
 import { AssetService, Asset } from './AssetService';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { normalizeImagePath } from '../utils/pathUtils';
-import { mapThumbnailPath } from '../utils/dataFileMigration';
+import { moveSceneThumbnail } from './sceneThumbnailFile';
 import { movedFolderPathOf, movedPathOf, rewriteMapReferences, type MovedPath, type PathMove } from './renamedPaths';
 import { SceneSnapshotService } from '../snapshots/SceneSnapshotService';
 import { allSnapshotFiles, hiddenSnapshotFiles } from '../snapshots/sceneSnapshotFolders';
@@ -46,7 +46,7 @@ export class FileReferenceService {
 
     await this.updateAssetMetadata(moved);
     await this.updateScenes(moved);
-    for (const { from, to } of fileMoves) await this.renameMapThumbnail(from, to);
+    for (const { from, to } of fileMoves) await moveSceneThumbnail(this.app, from, to);
     await this.updateMapFiles(moved, fileMoves);
     await this.updateStatblockFrontmatter(moved);
     await this.updateRandomTableSources(moved);
@@ -113,7 +113,7 @@ export class FileReferenceService {
   }
 
   // ---------------------------------------------------------------------------
-  // Scenes and thumbnails of a renamed map
+  // Scenes of a renamed map
   // ---------------------------------------------------------------------------
 
   /** Scene records follow their map; a scene named after its file takes the new file name. */
@@ -127,21 +127,6 @@ export class FileReferenceService {
         data: { ...scene.data, mapPath: target },
         ...(scene.name === basename(mapPath) ? { name: basename(target) } : {}),
       });
-    }
-  }
-
-  private async renameMapThumbnail(oldPath: string, newPath: string): Promise<void> {
-    if (!oldPath.endsWith('.atlasmap') || !newPath.endsWith('.atlasmap')) return;
-    const thumbnail = this.app.vault.getAbstractFileByPath(mapThumbnailPath(oldPath));
-    const target = mapThumbnailPath(newPath);
-    if (!(thumbnail instanceof TFile)) return;
-    try {
-      // A thumbnail at the new path is a leftover of a deleted scene: no scene can be renamed onto a living one
-      const leftover = this.app.vault.getAbstractFileByPath(target);
-      if (leftover instanceof TFile) await this.app.fileManager.trashFile(leftover);
-      await this.app.vault.rename(thumbnail, target);
-    } catch (error) {
-      console.error(`[FileReferenceService] Error renaming thumbnail ${thumbnail.path}:`, error);
     }
   }
 

@@ -1,21 +1,17 @@
-import type * as React from 'react';
 import type { ContextMenuEntry } from '../../../../react/components/context-menu/AtlasContextMenu';
 import type { AnyAsset, Folder, InputModalState } from '../types';
 import { folderRenameProblem, renameAssetFolder } from '../utils/assetFolderRename';
 import { createSubfolder, subfolderNameProblem } from '../utils/assetFolderTree';
-import { moveFolderContentsInto, type FolderMoveContext } from '../utils/folderMoveActions';
+import { deleteFolderKeepingContents, moveFolderContentsInto, type FolderDeleteContext } from '../utils/folderMoveActions';
 import { confirmAction } from '../../../../ui/confirmDialog';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { t } from '../../../../i18n';
 
-export interface FolderContextMenuDeps extends FolderMoveContext {
+export interface FolderContextMenuDeps extends FolderDeleteContext {
   folders: Folder[];
   assets: AnyAsset[];
   setInputModalState: (state: InputModalState) => void;
-  setFolders: React.Dispatch<React.SetStateAction<Folder[]>>;
-  setAssets: React.Dispatch<React.SetStateAction<AnyAsset[]>>;
   handleFolderDoubleClick: (folderId: string) => void;
-  deleteFolderFromVault: (folder: Folder) => Promise<void>;
   /** Move to Folder, as the asset manager runs it for cards. */
   moveAssetsToFolder: (assetIds: string[], targetFolderId: string | null) => Promise<void>;
 }
@@ -140,22 +136,19 @@ export function buildFolderContextMenuEntries(
     icon: 'trash',
     destructive: true,
     onClick: async () => {
-      const assetsInFolder = deps.assets.filter((a) => a.folderId === folder.id);
+      const assetCount = deps.assets.filter((a) => a.folderId === folder.id).length;
+      const folderCount = deps.folders.filter((f) => f.parentId === folder.id).length;
       const message = [t('am.folder.confirmDelete', { name: folder.name })];
-      if (assetsInFolder.length > 0) {
-        message.push(t('am.folder.contains', { count: assetsInFolder.length }));
-      }
+      if (assetCount > 0) message.push(t('am.folder.contains', { count: assetCount }));
+      if (folderCount > 0) message.push(t('am.folder.containsFolders', { count: folderCount }));
       const confirmed = await confirmAction({ title: t('am.folder.deleteTitle'), message, confirmLabel: t('common.delete'), destructive: true });
       if (!confirmed) return;
 
-      deps.setAssets((prev) =>
-        prev.map((a) =>
-          a.folderId === folder.id ? { ...a, folderId: folder.parentId || null } : a
-        )
+      runInBackground(
+        deleteFolderKeepingContents(deps, deps.moveAssetsToFolder, folder),
+        `Deleting folder ${folder.id}`,
+        t('am.folder.deleteFailed'),
       );
-      deps.setFolders((prev) => prev.filter((f) => f.id !== folder.id));
-      deps.setSelectedFolderIds((prev) => prev.filter((id) => id !== folder.id));
-      await deps.deleteFolderFromVault(folder);
     },
   });
 

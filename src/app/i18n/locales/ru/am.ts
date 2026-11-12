@@ -3,6 +3,7 @@ import type { Translation } from '../../types';
 export const am: Translation = {
   'am.folder.confirmDelete': 'Удалить папку «{name}»?',
   'am.folder.contains': { one: 'В папке {count} ресурс. Он будет перемещён в родительскую папку.', few: 'В папке {count} ресурса. Они будут перемещены в родительскую папку.', many: 'В папке {count} ресурсов. Они будут перемещены в родительскую папку.', other: 'В папке {count} ресурса. Они будут перемещены в родительскую папку.' },
+  'am.folder.containsFolders': { one: 'В ней {count} папка. Она будет перемещена в родительскую папку со всем содержимым.', few: 'В ней {count} папки. Они будут перемещены в родительскую папку со всем содержимым.', many: 'В ней {count} папок. Они будут перемещены в родительскую папку со всем содержимым.', other: 'В ней {count} папки. Они будут перемещены в родительскую папку со всем содержимым.' },
   'am.folder.createSubfolder': 'Создать подпапку',
   'am.folder.delete': 'Удалить папку',
   'am.folder.deleteTitle': 'Удаление папки',
@@ -16,6 +17,8 @@ export const am: Translation = {
   'am.folder.renameFailed': 'Не удалось переименовать папку',
   'am.folder.createFailed': 'Не удалось создать папку',
   'am.folder.moveFailed': 'Не удалось переместить папку',
+  'am.folder.deleteFailed': 'Не удалось удалить папку',
+  'am.folder.deleteKept': 'Папка «{name}» не удалена: в ней ещё есть файлы или папки.',
   'am.folder.moveContentsFailed': 'Не удалось переместить содержимое папки',
   'am.folder.moveNameClash': '{names}: остались на месте — в папке уже есть файл или папка с таким именем.',
   'am.folder.moveIntoItself': '{names}: остались на месте — папку нельзя переместить в неё саму.',

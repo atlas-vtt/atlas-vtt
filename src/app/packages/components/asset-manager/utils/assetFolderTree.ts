@@ -3,6 +3,7 @@ import type { AssetService } from '../../../../services/AssetService';
 import { ensureFolder, isPathTaken } from '../../../../plugin/vaultFolders';
 import type { PathMove } from '../../../../services/renamedPaths';
 import { describeError } from '../../../../utils/errors';
+import { trashVaultItem } from '../../../../utils/trashVaultItem';
 import { formatList, t } from '../../../../i18n';
 import type { FailedMove } from './assetFolderMove';
 import { relocateAssetFolder } from './assetFolderRename';
@@ -126,4 +127,19 @@ export async function folderContents(
       .filter((child) => child instanceof TFolder && !isAtOrBelow(targetDir, child.path))
       .map((child) => folderIdOf(child.path)),
   };
+}
+
+/**
+ * Moves an asset manager folder to the trash once nothing is left in it, and resolves to whether
+ * it is gone. A folder that still holds a file or folder stays as it is: what it holds is the
+ * GM's, and only an asset's own delete takes that.
+ */
+export function trashFolderIfEmpty(app: App, assetService: AssetService, folderId: string): Promise<boolean> {
+  return assetService.runExclusive(async () => {
+    const folder = app.vault.getFolderByPath(vaultPathOfFolder(folderId));
+    if (!folder) return true;
+    if (folder.children.length > 0) return false;
+    await trashVaultItem(app, folder);
+    return true;
+  });
 }

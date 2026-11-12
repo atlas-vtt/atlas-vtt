@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { startTransition, useState } from 'react';
-import { TFolder, App as ObsidianApp } from 'obsidian';
+import type { App as ObsidianApp } from 'obsidian';
 import type { AnyAsset, CollectionOption, EncounterAsset, TokenAsset, Folder, Tab, InputModalState } from '../types';
 import { saveEncounter, type EncounterTokenDraft } from '../../../../encounters/encounterSaveService';
 import type { AssetService } from '../../../../services/AssetService';
@@ -76,7 +76,6 @@ export interface AssetCrudActions extends CollectionTransferActions {
   /** Whether a new folder of this name would take the place of a file or folder already there. */
   isFolderNameTaken: (folderName: string) => boolean;
   deleteAssetFromVault: (asset: { id: string; name: string }) => Promise<boolean>;
-  deleteFolderFromVault: (folder: Folder) => Promise<void>;
   moveAssetsToFolder: (assetIds: string[], targetFolderId: string | null) => Promise<void>;
   handleDrop: (targetFolderId: string | null) => void;
   handleSaveAsEncounter: (tokenAssets: AnyAsset[]) => Promise<void>;
@@ -194,32 +193,6 @@ export function useAssetCrud(
     }
   };
 
-  const deleteFolderFromVault = async (folder: Folder): Promise<void> => {
-    if (!app) return;
-    try {
-      let folderPath = tabFolderPath(selectedCollection, folder.type);
-      const buildFullPath = (f: Folder): string => {
-        if (f.parentId) {
-          const parent = folders.find((p) => p.id === f.parentId);
-          if (parent) return `${buildFullPath(parent)}/${f.name}`;
-        }
-        return f.name;
-      };
-      if (folder.parentId) {
-        const parent = folders.find((p) => p.id === folder.parentId);
-        if (parent) folderPath = `${folderPath}/${buildFullPath(parent)}`;
-      }
-      folderPath = `${folderPath}/${folder.name}`;
-
-      const folderFile = app.vault.getAbstractFileByPath(folderPath);
-      if (folderFile instanceof TFolder && folderFile.children.length === 0) {
-        await app.fileManager.trashFile(folderFile);
-      }
-    } catch (error) {
-      console.error('[useAssetCrud] Error deleting folder:', error);
-    }
-  };
-
   const moveAssetsToFolder = useFolderMove({
     app, assetService, activeTab, selectedCollection, folders, setAssets, loadAssetsForActiveTab, openFolder,
   });
@@ -291,7 +264,7 @@ export function useAssetCrud(
     setTargetFolderName, setSettingsModalCollectionId, setIsCreateCollectionModalOpen, showCreatedCollection, setInputModalState,
     handleCreateFolder, handleCreateMap,
     handleCreateCollection, handleRefresh,
-    createFolderInVault, isFolderNameTaken, deleteAssetFromVault, deleteFolderFromVault,
+    createFolderInVault, isFolderNameTaken, deleteAssetFromVault,
     moveAssetsToFolder, handleDrop, handleSaveAsEncounter,
     ...transfer,
   };

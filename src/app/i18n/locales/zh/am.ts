@@ -3,6 +3,7 @@ import type { Translation } from '../../types';
 export const am: Translation = {
   'am.folder.confirmDelete': '确定要删除文件夹「{name}」吗？',
   'am.folder.contains': { other: '此文件夹包含 {count} 个素材，将移到上级文件夹。' },
+  'am.folder.containsFolders': { other: '其中有 {count} 个文件夹，将连同其中的内容一起移到上级文件夹。' },
   'am.folder.createSubfolder': '创建子文件夹',
   'am.folder.delete': '删除文件夹',
   'am.folder.deleteTitle': '删除文件夹',
@@ -16,6 +17,8 @@ export const am: Translation = {
   'am.folder.renameFailed': '无法重命名文件夹',
   'am.folder.createFailed': '无法创建文件夹',
   'am.folder.moveFailed': '无法移动文件夹',
+  'am.folder.deleteFailed': '无法删除文件夹',
+  'am.folder.deleteKept': '文件夹「{name}」未删除：其中仍有文件或文件夹。',
   'am.folder.moveContentsFailed': '无法移动文件夹中的内容',
   'am.folder.moveNameClash': '{names} 未移动：文件夹中已有同名文件或文件夹。',
   'am.folder.moveIntoItself': '{names} 未移动：文件夹不能移动到自身之中。',

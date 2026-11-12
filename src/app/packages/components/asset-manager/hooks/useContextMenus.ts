@@ -98,12 +98,11 @@ export function useContextMenus({
       tabBasePath: tabFolderPath(selectedCollection, activeTab),
       folders: data.folders, assets: data.assets,
       setInputModalState: crud.setInputModalState,
-      setFolders: data.setFolders, setAssets: data.setAssets,
       setSelectedFolderIds: sel.setSelectedFolderIds,
       followFolderMoves: sel.followFolderMoves,
+      leaveDeletedFolder: sel.leaveDeletedFolder,
       moveAssetsToFolder: crud.moveAssetsToFolder,
       handleFolderDoubleClick: sel.handleFolderDoubleClick,
-      deleteFolderFromVault: crud.deleteFolderFromVault,
       loadFoldersForActiveTab: data.loadFoldersForActiveTab,
       loadAssetsForActiveTab: data.loadAssetsForActiveTab,
     });

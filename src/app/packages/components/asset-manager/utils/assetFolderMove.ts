@@ -2,6 +2,7 @@ import { normalizePath, type App } from 'obsidian';
 import type { AssetService, AssetUpdates } from '../../../../services/AssetService';
 import { ensureFolder } from '../../../../plugin/vaultFolders';
 import { saveOpenScene } from '../../../../services/sceneRename';
+import { moveSceneThumbnail } from '../../../../services/sceneThumbnailFile';
 import { primaryPathUpdate } from '../../../../services/vault-sync/assetFiles';
 import { assetFolderId, isTabAsset, placingFilePath, type TabServiceAsset } from './assetFormatters';
 import { vaultPathOfFolder } from './assetFolders';
@@ -61,11 +62,16 @@ export async function moveAssetsIntoFolder(
       try {
         if (asset.type === 'scene') await saveOpenScene(app, file.path);
         await ensureFolder(app, targetDir);
+        // A scene's thumbnail goes first: the rename event's pass takes it only later, and until
+        // then the folder the scene left still holds it, so it could not be deleted.
+        if (asset.type === 'scene') await moveSceneThumbnail(app, file.path, newPath);
         await app.fileManager.renameFile(file, newPath);
         await assetService.updateAsset(id, placingFileUpdate(asset, newPath));
         result.moved.push(id);
       } catch (error) {
         console.error(`[assetFolderMove] Failed to move ${file.path} to ${newPath}:`, error);
+        // The map stayed, so its thumbnail comes back to it.
+        if (asset.type === 'scene' && !app.vault.getFileByPath(newPath)) await moveSceneThumbnail(app, newPath, file.path);
         result.failed.push({ name: asset.name, reason: describeError(error) });
       }
     }
