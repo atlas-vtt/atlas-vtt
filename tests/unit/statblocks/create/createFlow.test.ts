@@ -110,6 +110,21 @@ describe('creating a statblock for a token', () => {
     expect(openStatblockEditor).toHaveBeenCalledWith(app(), expect.objectContaining({ collectionId: 'default' }));
   });
 
+  it('starts from a template picked itself: the token\'s art and link as with a role, in Obsidian\'s folder for new notes (#656)', async () => {
+    const onLinked = vi.fn();
+    const path = await createStatblock(app(), {
+      collectionId: 'marsh', templateId: 'builtin:5e-2014-monster', name: 'Marsh Warden', tokenImagePath: 'art/warden.webp', from: 'map', onLinked,
+    });
+
+    expect(path).toBe('Marsh Warden.md');
+    expect(frontmatterOfText(harness.files.get('Marsh Warden.md')!)).toEqual({
+      statblock: true, 'atlas-template': 'builtin:5e-2014-monster', name: 'Marsh Warden', image: 'art/warden.webp',
+    });
+    expect(link).toHaveBeenCalledWith('art/warden.webp', 'Marsh Warden.md');
+    expect(onLinked).toHaveBeenCalledWith('Marsh Warden.md');
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: 'Marsh Warden.md', collectionId: 'marsh', from: 'map', focusFirstEmpty: true });
+  });
+
   it('makes nothing while the switch is off', async () => {
     settings({ editor: false });
     expect(await createStatblock(app(), { collectionId: 'marsh', roleId: 'monster', name: 'Warden', from: 'map' })).toBeNull();

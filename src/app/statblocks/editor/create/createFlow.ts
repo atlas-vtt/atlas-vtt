@@ -1,7 +1,8 @@
 /**
  * Creating a statblock (§7.3), one flow for every entry point: a role of the
  * collection, then the note (`createStatblockNote`) in the role's folder with
- * the role's template, then the note opening with its statblock beside it and
+ * the role's template (or a template picked itself, which has no folder of its
+ * own), then the note opening with its statblock beside it and
  * focus on the first empty value. From a token the note is named after the token and the token linked;
  * otherwise (commands, the file menu) a popover asks for the name. Behind the
  * `statblockEditor` switch, like every entry point.
@@ -14,24 +15,27 @@ import { AssetService } from '../../../services/AssetService';
 import { createStatblockNote, type CreatedStatblockNote, type NewStatblockNote } from '../../notes/createStatblockNote';
 import { roleFolder } from '../../roles/collectionStatblockRoles';
 import { openStatblockEditor, type StatblockEditorEntry } from '../openStatblockEditor';
-import { chosenRole, roleChoicesFor, roleTemplateId } from './collectionRoles';
-import { systemPresetsOf } from '../../../services/mapCollectionRules';
+import { chosenRole, collectionOffers, roleTemplateId } from './collectionRoles';
 import { TemplateLibrary } from '../../library/TemplateLibrary';
 import type { TemplateId } from '../../model/templateTypes';
 import { libraryLoaded } from '../../resolve/readStatblock';
-import { collectionStatblockRoles } from '../../roles/collectionStatblockRoles';
 import { TEMPLATE_EDITOR_VIEW_TYPE, readTemplateEditorState } from '../templateEditorState';
 import { promptStatblockName } from './CreationPrompt';
 import { chooseTemplate } from './TemplateChoiceModal';
-import { templateOffers, type TemplateOffer } from './templateOffers';
+import type { TemplateOffer } from './templateOffers';
 import { t } from '../../../i18n';
 
-export interface StatblockCreation {
+/**
+ * What a statblock starts from: a role of the collection, whose folder the note goes into, with the role's template
+ * unless another is named (the template of a fence's layout); or a template picked itself, which belongs to no role.
+ */
+type CreationStart =
+  | { roleId: string; templateId?: TemplateId | undefined }
+  | { roleId?: undefined; templateId: TemplateId };
+
+export type StatblockCreation = CreationStart & {
   /** The entry point's collection; the default collection when null (a map outside every collection, a command). */
   collectionId: string | null;
-  roleId: string;
-  /** The template to start from (the template of a fence's layout); the role's otherwise. */
-  templateId?: TemplateId | undefined;
   name: string;
   /** A folder the user picked (the file menu); the role's folder otherwise. */
   folder?: string | undefined;
@@ -42,7 +46,7 @@ export interface StatblockCreation {
   onLinked?: ((notePath: string) => void) | undefined;
   /** Values the statblock starts with (Copy into a new statblock). */
   values?: NewStatblockNote['values'];
-}
+};
 
 export interface StatblockCreationRequest {
   /** The entry point's collection; the default one when it names none. */
@@ -53,24 +57,46 @@ export interface StatblockCreationRequest {
   from: StatblockEditorEntry;
 }
 
+/** Where a new statblock is made: for which collection, from which template, in which folder (Obsidian's for new notes when undefined). */
+interface CreationPlace {
+  collectionId: string;
+  templateId: TemplateId;
+  folder: string | undefined;
+}
+
+/** The place of a creation; null where it names a role and the collection has none. */
+async function placeOf(app: App, creation: StatblockCreation): Promise<CreationPlace | null> {
+  if (creation.roleId === undefined) {
+    const collectionId = creation.collectionId ?? AssetService.getInstance(app).getDefaultCollectionId();
+    return { collectionId, templateId: creation.templateId, folder: creation.folder };
+  }
+  const chosen = chosenRole(app, creation.collectionId, creation.roleId);
+  if (!chosen) return null;
+  return {
+    collectionId: chosen.collectionId,
+    templateId: creation.templateId ?? await roleTemplateId(app, chosen.role),
+    folder: creation.folder ?? roleFolder(chosen.settings, chosen.role.id),
+  };
+}
+
 /**
- * Creates the note for a chosen role and name, links the token, and opens the
+ * Creates the note for a chosen role or template and name, links the token, and opens the
  * note. Returns the note's path, or null when nothing was created (the switch
  * is off, or the note could not be written, which a notice says). A note whose
  * token could not be linked is kept and opened, and a notice says so.
  */
 export async function createStatblock(app: App, creation: StatblockCreation): Promise<string | null> {
   if (!experimentalFeatureOn(app, 'statblockEditor')) return null;
-  const chosen = chosenRole(app, creation.collectionId, creation.roleId);
-  if (!chosen) return null;
-  const { collectionId, settings, role } = chosen;
+  const place = await placeOf(app, creation);
+  if (!place) return null;
+  const { collectionId, templateId, folder } = place;
 
   let created: CreatedStatblockNote;
   try {
     created = await createStatblockNote(app, {
       name: creation.name,
-      templateId: creation.templateId ?? await roleTemplateId(app, role),
-      folder: creation.folder ?? roleFolder(settings, role.id),
+      templateId,
+      folder,
       tokenImagePath: creation.tokenImagePath,
       values: creation.values,
     });
@@ -100,21 +126,11 @@ function editedTemplate(app: App): TemplateId | null {
   return builtIn ?? (typeof file === 'string' ? TemplateLibrary.forApp(app).fileAt(file)?.entry?.template.id ?? null : null);
 }
 
-/** What "New statblock…" offers for a collection, the template being edited first. */
+/** What "New statblock…" offers for a collection, the template being edited first, once the library has read the vault. */
 async function offersFor(app: App, collectionId: string, preferred: TemplateId | null): Promise<TemplateOffer[]> {
   const library = TemplateLibrary.forApp(app);
   await libraryLoaded(library);
-  const assets = AssetService.getInstance(app);
-  const roles = collectionStatblockRoles(assets.getCollectionSettings(collectionId), systemPresetsOf(app));
-  const choices = roleChoicesFor(app, collectionId);
-  return templateOffers({
-    roles: await Promise.all(roles.map(async (role, index) => ({
-      roleId: role.id, name: role.name, templateId: await roleTemplateId(app, role), templateName: choices[index]?.templateName ?? '',
-    }))),
-    templates: library.list(),
-    preferred,
-    changedAt: (entry) => (entry.path ? app.vault.getFileByPath(entry.path)?.stat.mtime ?? 0 : 0),
-  });
+  return collectionOffers(app, collectionId, library.list(), preferred);
 }
 
 /**

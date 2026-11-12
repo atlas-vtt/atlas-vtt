@@ -10,12 +10,13 @@ import { experimentalFeatureOn } from '../../../experimental/experimentalFeature
 import { t } from '../../../i18n';
 import type { ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 import { runInBackground } from '../../../utils/backgroundTask';
+import { TemplateLibrary } from '../../library/TemplateLibrary';
 import { cachedTemplateId } from '../../notes/statblockSource';
 import { openStatblockEditor, type StatblockEditorEntry } from '../openStatblockEditor';
-import { roleChoicesFor } from './collectionRoles';
+import { collectionOffers } from './collectionRoles';
 import { createStatblock } from './createFlow';
 import { createStatblockMenuEntry } from './RoleMenu';
-import type { NewStatblockOption } from './roleChoices';
+import type { NewStatblockOption, TemplateOffer } from './templateOffers';
 
 export interface EntryContext {
   /** The entry point's collection: the asset manager's, the map's; null where there is none. */
@@ -31,7 +32,7 @@ export interface TokenForStatblock {
 
 export interface TokenCreationContext extends EntryContext {
   token: TokenForStatblock;
-  /** Before the note is made, once a role is chosen: close what covers the workspace. */
+  /** Before the note is made, once a role or template is chosen: close what covers the workspace. */
   onStart?: (() => void) | undefined;
   /** The token was linked to the new note. */
   onLinked?: ((notePath: string) => void) | undefined;
@@ -75,11 +76,20 @@ export function openStatblockNote(app: App, path: string, context: EntryContext)
   return 'note';
 }
 
-function createForToken(app: App, context: TokenCreationContext, roleId: string): void {
+/**
+ * What a token's statblock can start from, as "New statblock…" lists it: the collection's roles, then the vault's
+ * other templates. The built-ins no role starts from stay with the command: a menu holds no room for them.
+ */
+function tokenOffers(app: App, collectionId: string | null): TemplateOffer[] {
+  return collectionOffers(app, collectionId, TemplateLibrary.forApp(app).list().filter((entry) => !entry.builtIn));
+}
+
+function createForToken(app: App, context: TokenCreationContext, offer: TemplateOffer): void {
   context.onStart?.();
   runInBackground(createStatblock(app, {
     collectionId: context.collectionId,
-    roleId,
+    // A role names its template again once the library has read the vault; a template picked itself belongs to no role.
+    ...(offer.roleId === undefined ? { templateId: offer.templateId } : { roleId: offer.roleId }),
     name: context.token.name,
     tokenImagePath: context.token.imagePath,
     from: context.from,
@@ -90,14 +100,14 @@ function createForToken(app: App, context: TokenCreationContext, roleId: string)
 /** "Create statblock" for a token without one (token menu, asset card); null while the switch is off. */
 export function createStatblockEntry(app: App, context: TokenCreationContext): ContextMenuEntry | null {
   if (!experimentalFeatureOn(app, 'statblockEditor')) return null;
-  return createStatblockMenuEntry(roleChoicesFor(app, context.collectionId), (roleId) => createForToken(app, context, roleId));
+  return createStatblockMenuEntry(tokenOffers(app, context.collectionId), (offer) => createForToken(app, context, offer));
 }
 
 /** The link dialog's "New statblock…" for its token; undefined while the switch is off. */
 export function newStatblockOption(app: App, context: TokenCreationContext): NewStatblockOption | undefined {
   if (!experimentalFeatureOn(app, 'statblockEditor')) return undefined;
   return {
-    choices: roleChoicesFor(app, context.collectionId),
-    onChoose: (roleId) => createForToken(app, context, roleId),
+    choices: tokenOffers(app, context.collectionId),
+    onChoose: (offer) => createForToken(app, context, offer),
   };
 }
