@@ -175,7 +175,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">
-            {/* The scene tabs at the left end; what hangs directly below them (online play's unread table log) is put in the slot */}
+            {/* The scene tabs at the left end; what hangs directly below them (online play's table log tab) is put in the slot */}
             <div className="atlas-top-bar-start">
               {!isPlayerView && (
                 <PanelBoundary name="the scene tabs">

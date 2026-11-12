@@ -8,11 +8,11 @@ import tabsCss from '../../src/app/react/components/scene-tab-bar.scss?inline';
 import switcherCss from '../../src/app/react/components/levels/level-switcher.scss?inline';
 import barCss from '../../src/app/packages/components/player-window-bar/player-window-bar.scss?inline';
 import { roomAbove } from '../../src/app/online/gm/dock/dockDom';
-import { LogUnreadTab } from '../../src/app/online/tableLog/LogUnreadTab';
+import { LogTab } from '../../src/app/online/tableLog/LogTab';
 import { DASHBOARD_THEME } from './dashboardTheme';
 
 /**
- * Online play's unread table log on the GM's map: it hangs directly below the scene tabs, in their
+ * Online play's table log tab on the GM's map: it hangs directly below the scene tabs, in their
  * place where there are none, and stays clear of the tabs, the widgets, the dice rolls and the levels
  * switch at any width. The map UI as `UIRoot` lays it out, styled by the plugin's real stylesheets;
  * screenshots in `__screenshots__`.
@@ -88,7 +88,7 @@ const boxOf = (selector: string): DOMRect => document.querySelector(selector)!.g
 const boxesOf = (selector: string): DOMRect[] => [...document.querySelectorAll(selector)].map((element) => element.getBoundingClientRect());
 const overlaps = (a: DOMRect, b: DOMRect): boolean => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
 
-describe('the table log\'s unread tab on the GM\'s map', () => {
+describe('the table log\'s tab on the GM\'s map', () => {
   const style = document.createElement('style');
   style.textContent = DASHBOARD_THEME + css + tabsCss + switcherCss + barCss;
   // Obsidian's workspace leaf: it holds the view's fixed elements and their stacking.
@@ -115,7 +115,7 @@ describe('the table log\'s unread tab on the GM\'s map', () => {
     leaf.innerHTML = mapUi(layout);
     document.body.append(leaf);
     root = createRoot(leaf.querySelector<HTMLElement>('.atlas-online-log-tab-host')!);
-    root.render(createElement(LogUnreadTab, { count: 3, onOpen: () => undefined }));
+    root.render(createElement(LogTab, { count: 3, onOpen: () => undefined }));
     await expect.poll(() => leaf.querySelector('.atlas-online-log-tab__button')).not.toBeNull();
     // The tab slides in; measure where it rests.
     for (const animation of document.getAnimations()) animation.finish();
