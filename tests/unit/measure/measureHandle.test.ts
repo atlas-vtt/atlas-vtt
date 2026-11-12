@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { GridGeometry } from '../../../src/app/grid/gridDistance';
-import { measureMovedBy } from '../../../src/app/measure/measureMove';
+import { areaResizedBy, measureMovedBy } from '../../../src/app/measure/measureMove';
 import type { KeptMeasure } from '../../../src/app/measure/measureTypes';
-import { MEASURE_HANDLE_HIT_RADIUS, measureHandleAt, measureHandleLook } from '../../../src/app/pixi/measure/measureHandle';
+import { MEASURE_END_HANDLE_HIT_RADIUS, MEASURE_HANDLE_HIT_RADIUS, measureHandleAt, measureHandleLook } from '../../../src/app/pixi/measure/measureHandle';
 
 const SQUARES: GridGeometry = { type: 'square', size: 70, offsetX: 0, offsetY: 0 };
 const HEXES: GridGeometry = { type: 'hex-vertical', size: 70, offsetX: 0, offsetY: 0 };
@@ -14,12 +14,19 @@ const RULER = kept('ruler', 'ruler', [[105, 105], [315, 105], [315, 315]]);
 const CIRCLE = kept('circle', 'circle', [[525, 105], [665, 105]]);
 
 describe('measureHandleAt', () => {
-  it('hits a measurement at its first point alone: its corners, its end, its line and its area take no press', () => {
+  it('hits a measurement at its first point, and an area at its far end too: a ruler\'s corners and end, a line and an area take no press', () => {
     expect(measureHandleAt([RULER, CIRCLE], { x: 108, y: 101 }, 1)).toEqual({ id: 'ruler', part: 'origin' });
     expect(measureHandleAt([RULER, CIRCLE], { x: 525, y: 105 + MEASURE_HANDLE_HIT_RADIUS }, 1)).toEqual({ id: 'circle', part: 'origin' });
-    for (const [x, y] of [[315, 105], [315, 315], [210, 105], [595, 105], [665, 105], [525, 105 + MEASURE_HANDLE_HIT_RADIUS + 1]]) {
+    expect(measureHandleAt([RULER, CIRCLE], { x: 665, y: 105 + MEASURE_END_HANDLE_HIT_RADIUS }, 1)).toEqual({ id: 'circle', part: 'end' });
+    for (const [x, y] of [[315, 105], [315, 315], [210, 105], [595, 105], [665, 105 + MEASURE_END_HANDLE_HIT_RADIUS + 1], [525, 105 + MEASURE_HANDLE_HIT_RADIUS + 1]]) {
       expect(measureHandleAt([RULER, CIRCLE], { x: x!, y: y! }, 1)).toBeNull();
     }
+  });
+
+  it('takes the handle at the origin of an area so small that its two handles lie on each other, where the press is nearer to it', () => {
+    const tiny = kept('tiny', 'circle', [[105, 105], [111, 105]]);
+    expect(measureHandleAt([tiny], { x: 106, y: 105 }, 1)?.part).toBe('origin');
+    expect(measureHandleAt([tiny], { x: 110, y: 105 }, 1)?.part).toBe('end');
   });
 
   it('keeps its reach on screen: half the world pixels at twice the zoom, more of them zoomed out', () => {
@@ -41,7 +48,7 @@ describe('measureHandleAt', () => {
 
 describe('measureHandleLook', () => {
   const theme = { background: 0x2a2a2a, stroke: 0xffffff, accent: 0x4da6ff };
-  const rest = { hovered: false, selected: false, dragging: false };
+  const rest = { hovered: null, selected: false, dragging: null } as const;
 
   it('rings the badge in the measurement\'s colour, in the accent where it names none', () => {
     expect(measureHandleLook(kept('a', 'cone', [[0, 0], [70, 0]], '#e93147'), rest, theme)).toMatchObject({ shape: 'cone', ringColor: 0xe93147, accent: null, lift: 1 });
@@ -56,8 +63,11 @@ describe('measureHandleLook', () => {
   });
 
   it('lifts on hover, more while dragged, and rings the one whose popover is open in the accent', () => {
-    expect(measureHandleLook(RULER, { ...rest, hovered: true }, theme).lift).toBeGreaterThan(1);
-    expect(measureHandleLook(RULER, { ...rest, hovered: true, dragging: true }, theme).lift).toBeGreaterThan(measureHandleLook(RULER, { ...rest, hovered: true }, theme).lift);
+    expect(measureHandleLook(RULER, { ...rest, hovered: 'origin' }, theme).lift).toBeGreaterThan(1);
+    expect(measureHandleLook(RULER, { ...rest, hovered: 'origin', dragging: 'origin' }, theme).lift).toBeGreaterThan(measureHandleLook(RULER, { ...rest, hovered: 'origin' }, theme).lift);
+    // The handle at an area's far end lifts by itself.
+    const atEnd = measureHandleLook(CIRCLE, { ...rest, hovered: 'end' }, theme);
+    expect([atEnd.lift, atEnd.endLift > 1]).toEqual([1, true]);
     expect(measureHandleLook(RULER, { ...rest, selected: true }, theme).accent).toBe(0x4da6ff);
   });
 });
@@ -101,5 +111,21 @@ describe('measureMovedBy', () => {
 
   it('moves nothing of a measurement without points', () => {
     expect(measureMovedBy('ruler', [], { x: 10, y: 10 }, SQUARES)).toEqual([]);
+  });
+});
+
+describe('areaResizedBy', () => {
+  it('keeps the origin and snaps the size to whole cells along the way the end is dragged', () => {
+    // The circle of two cells, its end dragged 100 px right and 190 down: 240 right and 190 down of its origin is 306 px, four cells.
+    const [origin, end] = areaResizedBy(CIRCLE.points, { x: 100, y: 190 }, SQUARES);
+    expect(origin).toEqual({ x: 525, y: 105 });
+    expect(Math.hypot(end!.x - 525, end!.y - 105)).toBeCloseTo(280);
+    expect((end!.y - 105) / (end!.x - 525)).toBeCloseTo(190 / 240);
+  });
+
+  it('is never smaller than a cell, places freely with the key that frees, and keeps its size where the end would land on the origin', () => {
+    expect(areaResizedBy(CIRCLE.points, { x: -130, y: 0 }, SQUARES)).toEqual([{ x: 525, y: 105 }, { x: 595, y: 105 }]);
+    expect(areaResizedBy(CIRCLE.points, { x: -130, y: 4 }, SQUARES, true)).toEqual([{ x: 525, y: 105 }, { x: 535, y: 109 }]);
+    expect(areaResizedBy(CIRCLE.points, { x: -140, y: 0 }, null)).toEqual([{ x: 525, y: 105 }, { x: 665, y: 105 }]);
   });
 });

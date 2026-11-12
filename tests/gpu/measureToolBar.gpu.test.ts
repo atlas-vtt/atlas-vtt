@@ -8,6 +8,7 @@ import { TooltipProvider } from '../../src/app/packages/components/primitives/to
 import { LightingToolBar } from '../../src/app/packages/components/toolbar/LightingToolBar';
 import { MeasureToolBar } from '../../src/app/packages/components/toolbar/MeasureToolBar';
 import { MeasureToolGroup } from '../../src/app/packages/components/toolbar/MeasureToolGroup';
+import { MEASURE_MODES } from '../../src/app/packages/components/toolbar/measureToolChoices';
 import { BottomToolbarRow } from '../../src/app/react/components/BottomToolbarRow';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
@@ -80,7 +81,7 @@ describe('the measure tool\'s bars above the toolbar', () => {
     expect(choices.height).toBeCloseTo(modes.height, 1);
     expect(modes.height).toBeCloseTo(50, 0);
     // Buttons of 32 px in 8 px of padding, 8 px apart, the colour's among them.
-    expect(rects(`${MODES} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual([32, 32, 32]);
+    expect(rects(`${MODES} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual(MEASURE_MODES.map(() => 32));
     const controls = rects(`${CHOICES} .atlas-tool-button`);
     expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual([[32, 32], [32, 32], [32, 32], [32, 32]]);
     expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([8, 8, 8]);
@@ -148,6 +149,9 @@ describe('the measure tool\'s bars above the toolbar', () => {
     mount({ toolbarWidth: 320 });
     await settled();
     const choices = rect(CHOICES);
+    // The six modes and the four choices need more room than the toolbar's left edge leaves: they move left by what they lack.
+    expect(rect(MODES).left).toBeLessThan(rect('.atlas-main-toolbar').left);
+    expect(choices.right).toBeCloseTo(rect('.atlas-bottom-toolbar-row').right, 0);
     expect(rect(MODES).left).toBeGreaterThanOrEqual(0);
     expect(choices.right).toBeLessThanOrEqual(520);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(520);

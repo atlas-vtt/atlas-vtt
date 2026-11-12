@@ -42,7 +42,7 @@ describe('the popover of a kept measurement', () => {
       app: createInMemoryApp({ files: {} }).app,
       view: null,
       pixiApp: { ticker: { add: (tick: () => void) => ticks.add(tick), remove: (tick: () => void) => ticks.delete(tick) } } as unknown as Application,
-      renderer: { getViewportInstance: () => viewport, getCanvasElement: () => canvas },
+      renderer: { getViewportInstance: () => viewport, getCanvasElement: () => canvas, tokensInMeasure: () => [] },
     } as unknown as AtlasUIContextValue;
     const bars = h('div', { className: 'atlas-bottom-toolbar-row', style: { position: 'static', display: 'block' } },
       h('div', { className: 'atlas-tool-bar', style: { position: 'absolute', left: 16, top: BAR_TOP, width: 300, height: 40 } }),
@@ -144,16 +144,23 @@ describe('the popover of a kept measurement', () => {
     expect(Math.abs(toggle.right - swatches.right)).toBeLessThanOrEqual(0.5);
   });
 
-  it('keeps its size whatever is chosen in it, and for another measurement', async () => {
+  it('keeps its size whatever is chosen in it, and for another measurement of its kind: an area\'s has one row more, for the walls', async () => {
     mount();
     const ruler = keep(300, 400);
     const circle = keep(300, 600, 'circle');
+    const other = keep(700, 600, 'circle');
     await open(ruler);
     const { width, height } = box();
     expect(width).toBe(WIDTH);
     await act(async () => { store.getState().updateMeasure(ruler, { color: '#08b94e', hidden: true }); });
     expect(box()).toMatchObject({ width, height });
     await open(circle);
-    expect(box()).toMatchObject({ width, height });
+    const area = box();
+    expect(area.width).toBe(width);
+    expect(area.height).toBeGreaterThan(height + 20);
+    await act(async () => { store.getState().updateMeasure(circle, { walls: false, hidden: undefined }); });
+    expect(box()).toMatchObject({ width, height: area.height });
+    await open(other);
+    expect(box()).toMatchObject({ width, height: area.height });
   });
 });

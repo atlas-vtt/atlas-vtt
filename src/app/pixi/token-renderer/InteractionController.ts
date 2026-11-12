@@ -168,7 +168,7 @@ export class InteractionController implements ITokenInteractionController {
 
     e.stopPropagation();
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
       if (token && !this.isPlayerView) {
         this.showContextMenu(token, e);
@@ -187,7 +187,7 @@ export class InteractionController implements ITokenInteractionController {
 
   /** Starts a group drag for the given token IDs (click within selection bounding box). */
   public handleViewportGroupDragStart(tokenIds: string[], e: FederatedPointerEvent): void {
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
 
     const activeTool = this.store.getState().activeTool;
     if (activeTool !== 'select' && activeTool !== 'move') return;

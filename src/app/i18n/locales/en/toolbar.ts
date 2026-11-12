@@ -72,4 +72,8 @@ export const toolbar = {
   'toolbar.dragDistanceCombat': 'In combat',
   'toolbar.dragDistanceNever': 'Never',
   'toolbar.measureRules': 'Measurement rules…',
+  'toolbar.ranges': 'Ranges',
+  'toolbar.rangesTip': 'Click a token or a place to see its ranges',
+  'toolbar.rangesNoRules': 'This game system has no ranges or movement steps',
+  'toolbar.rangesNeedGmView': 'Switch to GM View ({key}) to see ranges',
 } as const satisfies Record<string, Message>;

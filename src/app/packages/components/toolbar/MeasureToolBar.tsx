@@ -1,17 +1,19 @@
-import React, { useCallback, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { Eye, EyeOff, Pin, Trash2 } from "lucide-react"
 import { t } from "../../../i18n"
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { levelObjects } from "../../../levels/levelObjects"
 import { hasLevels } from "../../../levels/sceneLevels"
 import { measureList } from "../../../measure/keptMeasures"
+import { DEFAULT_MEASURE_TOOL } from "../../../measure/measureTypes"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { DropdownMenu } from "../primitives/DropdownMenu"
 import { DropdownSwatchGrid } from "../primitives/DropdownSwatchGrid"
 import { ToolButton } from "../primitives/ToolButton"
 import { TooltipProvider } from "../primitives/tooltip"
-import { MEASURE_COLOR_SWATCHES, MEASURE_MODES, measureColorOfSwatch, measureModeChoice, swatchOfMeasureColor } from "./measureToolChoices"
+import { MEASURE_COLOR_SWATCHES, MEASURE_MODES, PLAYER_MEASURE_MODES, measureColorOfSwatch, measureModeChoice, swatchOfMeasureColor } from "./measureToolChoices"
 import { ChoiceButtons, TOOL_BAR_CHOICE_CLASS, ToolOptionsBars } from "./ToolOptionsBar"
+import { useUnavailableMeasureModes } from "./useUnavailableMeasureModes"
 
 interface MeasureToolBarProps {
   /** The players' view measures too, but keeps nothing: it gets the modes alone. */
@@ -33,10 +35,17 @@ export function MeasureToolBar({ playerView }: MeasureToolBarProps): React.React
 function MeasureBars({ playerView }: MeasureToolBarProps): React.ReactElement {
   const mode = useAtlasStore((state) => state.measureTool.mode)
   const setMeasureTool = useAtlasStore((state) => state.setMeasureTool)
+  const unavailable = useUnavailableMeasureModes()
+  // Ranges shows the GM's own rings: the players' view has no such mode. Left where it can no longer be chosen, the tool takes its first mode.
+  const rangesLeft = mode === 'ranges' && (playerView || unavailable(mode) !== null)
+  useEffect(() => {
+    if (rangesLeft) setMeasureTool({ mode: DEFAULT_MEASURE_TOOL.mode })
+  }, [rangesLeft, setMeasureTool])
   return (
     <TooltipProvider delayDuration={300}>
       <div role="toolbar" aria-label={t('toolbar.measureModes')} className="atlas-tool-bar atlas-tool-bar--modes">
-        <ChoiceButtons kind="mode" locked={null} choices={MEASURE_MODES} value={measureModeChoice(mode).value} onChange={(value) => setMeasureTool({ mode: value })} />
+        <ChoiceButtons kind="mode" locked={null} choices={playerView ? PLAYER_MEASURE_MODES : MEASURE_MODES} value={measureModeChoice(mode).value} unavailable={unavailable}
+          onChange={(value) => setMeasureTool({ mode: value })} />
       </div>
       {!playerView && <MeasurementChoices />}
     </TooltipProvider>

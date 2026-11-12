@@ -183,7 +183,7 @@ export class TextTool {
 
   private handleMapClick(e: FederatedPointerEvent): void {
     // Only the primary button places text; a right-drag pans the map and ends in a tap too.
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
     // A click a pin, door badge or light marker took places no text.
     if (isHandledTap(e)) return;
     // Free placement — see handleMapMove.

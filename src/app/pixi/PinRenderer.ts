@@ -159,7 +159,7 @@ export class PinRenderer {
       const activeTool = this.store.getState().activeTool;
       if (activeTool === 'fog' || activeTool === 'eraser') return;
 
-      if (activeTool === 'note-pin' && e.button === 0) {
+      if (activeTool === 'note-pin' && isPrimaryPress(e)) {
         const worldPos = this.viewport.toWorld(e.global);
         this.eventBus.emit('canvas-click', {
           x: e.global.x, y: e.global.y,
@@ -394,12 +394,12 @@ export class PinRenderer {
     const pin = levelObjects(this.store.getState()).pins[pinId];
     if (!pin) return;
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       this.showPinContextMenu(pin, { x: e.clientX, y: e.clientY });
       return;
     }
 
-    if (e.button === 0) {
+    if (isPrimaryPress(e)) {
       // Left-click: start drag (same logic as inline handler)
       let isDragging = false;
       let hasMoved = false;

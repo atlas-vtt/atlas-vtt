@@ -450,11 +450,16 @@ body.theme-light {
   .atlas-bottom-toolbar-row__options {
     position: absolute;
     z-index: -1;
-    grid-area: 1 / 2 / 2 / 3;
+    // From the toolbar's left edge to the row's right edge. Bars that need more room than that (a
+    // narrow view) lie in a track wider than the slot, which ends at the slot's end: they move
+    // left by what they lack and stay in the view.
+    grid-area: 1 / 2 / 2 / 4;
     left: 0;
     right: 0;
     bottom: 100%;
     display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    justify-content: end;
     justify-items: start;
     padding-bottom: $spacing-s;
     pointer-events: none;

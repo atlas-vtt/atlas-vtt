@@ -73,6 +73,21 @@ export function drawMeasureCone(ink: MeasureInk, color: number, start: Point, en
 }
 
 /**
+ * The outline of an area whose body is drawn elsewhere: every ring of world points closed, in one
+ * stroke and without a wash.
+ */
+export function drawMeasureOutline(ink: MeasureInk, color: number, rings: readonly (readonly Point[])[]): void {
+  const closed = rings.filter((ring) => ring.length > 2).map((ring) => ring.flatMap((point) => {
+    const { x, y } = ink.screen(point);
+    return [x, y];
+  }));
+  if (closed.length === 0) return;
+  ink.stroke((g) => {
+    for (const ring of closed) g.poly(ring, true);
+  }, color);
+}
+
+/**
  * Draws `measurement` in `color` onto `ink` (begun at the zoom it is shown at): a ruler's path with a
  * dot at every corner and at its end, a circle around its start, or a cone `coneAngle` degrees wide;
  * then the dot at its start. A square or a line, whose areas are not drawn yet, shows the drag it was made with.
@@ -101,7 +116,8 @@ export function drawMeasurement(ink: MeasureInk, color: number, measurement: Mea
 
 /**
  * Where a measurement's distance goes: beside a ruler of one leg, beyond the end of one with corners
- * (whose legs carry their own beside them), above a circle's centre, over the middle of a cone's axis.
+ * (whose legs carry their own beside them) and beside a line's drag, above a circle's centre, over
+ * the middle of a cone's axis and of a square.
  */
 export function measureLabelTarget({ shape, points }: Measurement): LabelTarget {
   const start = points[0];
@@ -112,8 +128,9 @@ export function measureLabelTarget({ shape, points }: Measurement): LabelTarget 
       return { beside: [start] };
     case 'cone':
       return { over: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } };
-    case 'ruler':
     case 'square':
+      return { over: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } };
+    case 'ruler':
     case 'line':
       return points.length > 2 ? { beyond: { from: points[points.length - 2]!, to: end } } : { beside: points };
   }

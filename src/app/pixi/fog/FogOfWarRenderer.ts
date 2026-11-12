@@ -247,7 +247,7 @@ export class FogOfWarRenderer {
     e.stopPropagation();
     const groupIds = this.findMergedFogGroup(fogId);
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       this.showFogContextMenu(groupIds, e);
       return;
     }
@@ -580,7 +580,7 @@ export class FogOfWarRenderer {
     e.stopPropagation();
     const groupIds = this.findMergedFogGroup(fogId);
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       this.showFogContextMenu(groupIds, e);
       return;
     }
@@ -717,7 +717,7 @@ export class FogOfWarRenderer {
     const tool = this.store.getState().activeTool;
     if (tool !== 'fog' && tool !== 'eraser') return;
     // Only the primary button paints; the right button pans the map.
-    if (event.button !== 0) return;
+    if (!isPrimaryPress(event)) return;
     // A press a pin, door badge or light marker took paints no fog.
     if (isHandled(event)) return;
 

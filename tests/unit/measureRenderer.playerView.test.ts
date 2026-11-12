@@ -160,8 +160,8 @@ describe('MeasureRenderer and the players\' picture', () => {
     // The live parts were cleared with their origin.
     expect(s.measure.getPlayerViewLayers(() => false).slice(0, 2).map((entry) => entry.visible)).toEqual([true, false]);
     s.store.getState().clearMeasures();
-    // The live parts and the handles' layer are left.
-    expect(s.measure.getPlayerViewLayers(() => false)).toHaveLength(3);
+    // The live parts and the GM's own layers are left.
+    expect(s.measure.getPlayerViewLayers(() => false)).toHaveLength(2 + s.measure.gmLayers.length);
   });
 
   it('hides by the rule on the canvas while it shows the players\' view, and gives the GM view back', () => {
@@ -202,11 +202,18 @@ describe('MeasureRenderer and the players\' picture', () => {
     expect(label.scale.x).toBe(labelScale(70, 0.5));
   });
 
-  it('asks nothing of the players\' sight while there is no measurement', () => {
+  it('asks only whether the canvas shows the players\' view, and nothing of any token, while there is no measurement', () => {
     const s = scene();
-    const seenOnCanvas = vi.fn(() => null);
-    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas };
+    const seen = vi.fn(() => true);
+    const footprints = vi.fn(() => []);
+    const seenAtStart = vi.fn(() => seen);
+    // The GM's own layers follow the canvas whatever is measured: the range marks, which are no measurement's, are on one.
+    s.measure.playersView = { footprints, seenAtStart, seenOnCanvas: () => seen };
     s.measure.refreshVisibility();
-    expect(seenOnCanvas).not.toHaveBeenCalled();
+    expect(seen).not.toHaveBeenCalled();
+    expect(footprints).not.toHaveBeenCalled();
+    expect(seenAtStart).not.toHaveBeenCalled();
+    expect(s.measure.ranges.view.visible).toBe(false);
+    expect(s.measure.handles.layer.visible).toBe(false);
   });
 });

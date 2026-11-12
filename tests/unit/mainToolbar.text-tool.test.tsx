@@ -60,7 +60,7 @@ const storeState = {
   setSceneLighting: vi.fn(),
   lightingTool: { mode: 'draw', drawMode: 'point-to-point', lightPreset: null },
   setLightingTool: vi.fn(),
-  measureTool: { mode: 'ruler', keep: false, players: true, color: null },
+  measureTool: { mode: 'ruler', keep: false, players: true, color: null, lineWidth: 1 },
   setMeasureTool: vi.fn(),
   setSelection,
   openAssetManager,

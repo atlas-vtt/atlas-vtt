@@ -86,8 +86,49 @@ describe('areaWithinWalls', () => {
     expect(cut.contains({ x: 200, y: -60 })).toBe(false);
     expect(cut.contains({ x: 200, y: 60 })).toBe(true);
     expect(cut.bounds.minY).toBeGreaterThanOrEqual(-0.2);
-    expect(wallSweepPoint(down).y).toBeGreaterThan(0);
-    expect(wallSweepPoint(circle(100))).toEqual({ x: 0, y: 0 });
+    expect(wallSweepPoint(down, walls).y).toBeGreaterThan(0);
+    // Off every wall an area is reached from its origin itself.
+    expect(wallSweepPoint(circle(100, { x: 0, y: 40 }), walls)).toEqual({ x: 0, y: 40 });
+  });
+
+  it('keeps a circle whose centre lies on a wall on the side it was dragged to', () => {
+    const walls = [wall('w', { x: -400, y: 0 }, { x: 400, y: 0 })];
+    const dragged = (end: Point): ReturnType<typeof areaWithinWalls> => areaWithinWalls(area({ shape: 'circle', points: [{ x: 0, y: 0 }, end] }), walls);
+    const below = dragged({ x: 60, y: 80 });
+    expect(below.contains({ x: 0, y: 50 })).toBe(true);
+    expect(below.contains({ x: 0, y: -50 })).toBe(false);
+    expect(below.bounds.minY).toBeGreaterThanOrEqual(-0.2);
+    const above = dragged({ x: 60, y: -80 });
+    expect(above.contains({ x: 0, y: -50 })).toBe(true);
+    expect(above.contains({ x: 0, y: 50 })).toBe(false);
+    // A drag along the wall itself still takes one side, never both.
+    const along = dragged({ x: 100, y: 0 });
+    expect(along.contains({ x: 0, y: 50 })).not.toBe(along.contains({ x: 0, y: -50 }));
+  });
+
+  it('keeps an area that starts in a corner of walls in the part of the ground it points into', () => {
+    // Two walls end at the origin: one runs east, one south. They part a quarter from the rest.
+    const walls = [wall('east', { x: 0, y: 0 }, { x: 400, y: 0 }), wall('south', { x: 0, y: 0 }, { x: 0, y: 400 })];
+    const dragged = (end: Point): ReturnType<typeof areaWithinWalls> => areaWithinWalls(area({ shape: 'circle', points: [{ x: 0, y: 0 }, end] }), walls);
+    const quarter = dragged({ x: 70, y: 70 });
+    expect(quarter.contains({ x: 40, y: 40 })).toBe(true);
+    expect([{ x: -40, y: 40 }, { x: -40, y: -40 }, { x: 40, y: -40 }].some((point) => quarter.contains(point))).toBe(false);
+    const rest = dragged({ x: -70, y: -70 });
+    expect([{ x: -40, y: 40 }, { x: -40, y: -40 }, { x: 40, y: -40 }].every((point) => rest.contains(point))).toBe(true);
+    expect(rest.contains({ x: 40, y: 40 })).toBe(false);
+  });
+
+  it('sweeps once for an area turned and resized on one side of the wall its origin lies on', () => {
+    const walls = [wall('w', { x: -400, y: 0 }, { x: 400, y: 0 })];
+    const sweeps = (): number => vi.mocked(computeVisibility).mock.calls.length;
+    for (const degrees of [10, 45, 90, 135, 170]) {
+      const end = { x: 150 * Math.cos((degrees * Math.PI) / 180), y: 150 * Math.sin((degrees * Math.PI) / 180) };
+      areaWithinWalls(area({ shape: 'circle', points: [{ x: 0, y: 0 }, end] }), walls);
+      areaWithinWalls(area({ shape: 'cone', points: [{ x: 0, y: 0 }, end] }), walls);
+    }
+    expect(sweeps()).toBe(1);
+    areaWithinWalls(area({ shape: 'cone', points: [{ x: 0, y: 0 }, { x: 0, y: -150 }] }), walls);
+    expect(sweeps()).toBe(2);
   });
 
   it('holds nothing where it lies beyond what can be clipped', () => {
@@ -107,12 +148,13 @@ describe('areaWithinWalls', () => {
     expect(sweeps()).toBe(3);
     areaWithinWalls(circle(150), [...walls]);
     expect(sweeps()).toBe(4);
-    // A square and a line of one direction share the sweep of their origin as they grow.
+    // A square, a line and a cone share the sweep of their origin with the circle there, whichever way they point.
     for (const length of [200, 210, 225]) {
       areaWithinWalls(area({ shape: 'square', points: [{ x: 0, y: 0 }, { x: 0, y: length }] }), walls);
       areaWithinWalls(area({ shape: 'line', points: [{ x: 0, y: 0 }, { x: 0, y: length }] }), walls);
+      areaWithinWalls(area({ shape: 'cone', points: [{ x: 0, y: 0 }, { x: length - 60, y: 60 }] }), walls);
     }
-    expect(sweeps()).toBe(5);
+    expect(sweeps()).toBe(4);
   });
 
   it('holds exactly the points of the shape a straight way from its origin reaches', () => {
@@ -131,7 +173,7 @@ describe('areaWithinWalls', () => {
       const shape = AREA_SHAPES[run % AREA_SHAPES.length]!;
       const made = area({ shape, points: [origin, { x: origin.x + length * Math.cos(angle), y: origin.y + length * Math.sin(angle) }] }, { coneAngle: 40 + random() * 200, coneEnd: run % 3 ? 'round' : 'flat', lineWidth: 60 + random() * 100 });
       const cut = areaWithinWalls(made, walls);
-      const from = wallSweepPoint(made);
+      const from = wallSweepPoint(made, walls);
       const stopping = walls.filter((candidate) => candidate.type === 'solid' || candidate.closed !== false);
       for (let i = 0; i < 300; i++) {
         const point = { x: made.bounds.minX + random() * (made.bounds.maxX - made.bounds.minX), y: made.bounds.minY + random() * (made.bounds.maxY - made.bounds.minY) };

@@ -45,7 +45,9 @@ const names = (bar: HTMLElement): string[] => within(bar).getAllByRole('button')
 const button = (name: string): HTMLElement => screen.getByRole('button', { name });
 const pressed = (name: string): boolean => button(name).getAttribute('aria-pressed') === 'true';
 const inert = (name: string): boolean => button(name).getAttribute('aria-disabled') === 'true';
-const MODES = ['Ruler', 'Circle', 'Cone'];
+const MODES = ['Ruler', 'Circle', 'Cone', 'Square', 'Line'];
+/** The GM's bar ends with Ranges, which the players' view has not. */
+const GM_MODES = [...MODES, 'Ranges'];
 const CHOICES = ['Keep', 'Players see it', 'Colour', 'Clear'];
 
 describe('MeasureToolBar', () => {
@@ -65,14 +67,14 @@ describe('MeasureToolBar', () => {
 
   it('keeps the modes in a bar of their own and the same four choices beside it in every mode', () => {
     const store = renderBar();
-    expect(names(modesBar())).toEqual(MODES);
+    expect(names(modesBar())).toEqual(GM_MODES);
     expect(names(choicesBar())).toEqual(CHOICES);
     expect(pressed('Ruler')).toBe(true);
     for (const [name, mode] of [['Circle', 'circle'], ['Cone', 'cone'], ['Ruler', 'ruler']] as const) {
       fireEvent.click(button(name));
       expect(store.getState().measureTool.mode).toBe(mode);
       expect(pressed(name)).toBe(true);
-      expect(names(modesBar())).toEqual(MODES);
+      expect(names(modesBar())).toEqual(GM_MODES);
       expect(names(choicesBar())).toEqual(CHOICES);
     }
   });

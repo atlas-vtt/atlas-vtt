@@ -9,13 +9,16 @@ import { mapMarkerScale } from '../utils/mapMarkerScale';
 import { createLineGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
 import {
+  MEASURE_END_HANDLE_RADIUS,
   MEASURE_HANDLE_GLYPH_SIZE,
   MEASURE_HANDLE_RADIUS,
+  measureEndHandlePoint,
   measureHandleAt,
   measureHandleLook,
   measureHandlePoint,
   sameHandleLook,
   type MeasureHandleLook,
+  type MeasureHandlePart,
   type MeasureHandleRef,
 } from './measureHandle';
 
@@ -31,17 +34,25 @@ const SHAPE_GLYPHS: Record<MeasureShapeKind, readonly string[]> = {
   line: ['M22 2 2 22'],
 };
 
-interface Handle {
+/** One thing to grab: its drawing, and what eases its hover and drag lift (made on the first lift). */
+interface Grip {
   readonly view: Container;
+  lift: ValueTransition | null;
+}
+
+interface Handle extends Grip {
   readonly badge: Graphics;
   glyph: Sprite | null;
+  /** The dot at an area's far end; null for a ruler. */
+  end: (Grip & { readonly view: Graphics }) | null;
   measure: KeptMeasure;
   look: MeasureHandleLook;
   /** The theme its badge was drawn in. */
   theme: CanvasBadgeTheme;
-  /** Eases the hover and drag lift; made on the first lift. */
-  lift: ValueTransition | null;
 }
+
+const partOf = (ref: MeasureHandleRef | null, id: string): MeasureHandlePart | null => (ref?.id === id ? ref.part : null);
+const sameRef = (a: MeasureHandleRef | null, b: MeasureHandleRef | null): boolean => a?.id === b?.id && a?.part === b?.part;
 
 function sameTheme(a: CanvasBadgeTheme, b: CanvasBadgeTheme): boolean {
   return a.background === b.background && a.stroke === b.stroke && a.accent === b.accent;
@@ -50,24 +61,29 @@ function sameTheme(a: CanvasBadgeTheme, b: CanvasBadgeTheme): boolean {
 /**
  * A handle on every kept measurement of the level shown, at its origin: a badge in the light
  * markers' language and a size smaller, with the shape's glyph and a thin ring in the
- * measurement's colour. It is all of a kept measurement that takes the pointer. Handles keep
- * their size on screen, move in place when their measurement changes, and are drawn again only
- * when their look is another. They are the GM's controls: `MeasurePartsVisibility` shows the layer
- * on the GM's canvas alone.
+ * measurement's colour. An area has a second one at its far end, a plain dot with the same ring,
+ * which resizes and turns it. They are all of a kept measurement that takes the pointer. Handles
+ * keep their size on screen, move in place when their measurement changes, and are drawn again
+ * only when their look is another. They are the GM's controls: `MeasurePartsVisibility` shows the
+ * layer on the GM's canvas alone.
  */
 export class MeasureHandles {
   readonly view = new Container({ label: 'measure-handles', zIndex: MAP_LAYER_Z.measure, eventMode: 'none', interactiveChildren: false });
+  /** The dots at the areas' far ends, beneath every badge. */
+  private readonly ends = new Container({ label: 'measure-end-handles' });
+  private readonly badges = new Container({ label: 'measure-origin-handles' });
   private readonly handles = new Map<string, Handle>();
   private readonly glyphs = new Map<MeasureShapeKind, Texture | null>();
   private list: readonly KeptMeasure[] = [];
   private theme: CanvasBadgeTheme;
-  private hovered: string | null = null;
-  private dragging: string | null = null;
+  private hovered: MeasureHandleRef | null = null;
+  private dragging: MeasureHandleRef | null = null;
   private selected: string | null = null;
 
   /** Added to `parent` after the measurements' labels, so the handles stand above them. */
   constructor(parent: Container, private readonly zoom: () => number, private readonly readTheme: () => CanvasBadgeTheme = canvasBadgeTheme) {
     this.theme = readTheme();
+    this.view.addChild(this.ends, this.badges);
     parent.addChild(this.view);
   }
 
@@ -78,15 +94,15 @@ export class MeasureHandles {
     this.sync();
   }
 
-  setHovered(id: string | null): void {
-    if (this.hovered === id) return;
-    this.hovered = id;
+  setHovered(handle: MeasureHandleRef | null): void {
+    if (sameRef(this.hovered, handle)) return;
+    this.hovered = handle;
     this.sync();
   }
 
-  setDragging(id: string | null): void {
-    if (this.dragging === id) return;
-    this.dragging = id;
+  setDragging(handle: MeasureHandleRef | null): void {
+    if (sameRef(this.dragging, handle)) return;
+    this.dragging = handle;
     this.sync();
   }
 
@@ -101,7 +117,10 @@ export class MeasureHandles {
   redraw(): void {
     const theme = this.readTheme();
     if (sameTheme(theme, this.theme)) {
-      for (const handle of this.handles.values()) this.applyScale(handle);
+      for (const handle of this.handles.values()) {
+        this.applyScale(handle);
+        if (handle.end) this.applyScale(handle.end);
+      }
       return;
     }
     this.theme = theme;
@@ -114,7 +133,7 @@ export class MeasureHandles {
   }
 
   destroy(): void {
-    for (const handle of this.handles.values()) handle.lift?.cancel();
+    for (const handle of this.handles.values()) this.stopLifts(handle);
     this.handles.clear();
     destroyTree(this.view);
     for (const texture of this.glyphs.values()) {
@@ -127,23 +146,25 @@ export class MeasureHandles {
     const ids = new Set(this.list.map((measure) => measure.id));
     for (const [id, handle] of this.handles) {
       if (ids.has(id)) continue;
-      handle.lift?.cancel();
-      destroyTree(handle.view);
+      this.remove(handle);
       this.handles.delete(id);
     }
     this.list.forEach((measure, index) => {
-      const look = measureHandleLook(measure, { hovered: this.hovered === measure.id, selected: this.selected === measure.id, dragging: this.dragging === measure.id }, this.theme);
+      const state = { hovered: partOf(this.hovered, measure.id), selected: this.selected === measure.id, dragging: partOf(this.dragging, measure.id) };
+      const look = measureHandleLook(measure, state, this.theme);
       const known = this.handles.get(measure.id);
       const handle = known ?? this.create(measure, look);
       // The badge takes the theme's colours whatever its look: one drawn in another theme is drawn again.
-      if (!known || known.theme !== this.theme || !sameHandleLook(known.look, look)) this.draw(handle, look);
+      const redrawn = !known || known.theme !== this.theme || !sameHandleLook(known.look, look);
+      if (redrawn) this.draw(handle, look);
       this.lift(handle, look.lift);
       if (known?.measure !== measure) {
         const at = measureHandlePoint(measure);
         handle.view.position.set(at.x, at.y);
       }
+      this.syncEnd(handle, measure, look, redrawn);
       // One that undo brought back takes its old place among the others.
-      if (this.view.children[index] !== handle.view) this.view.setChildIndex(handle.view, index);
+      if (this.badges.children[index] !== handle.view) this.badges.setChildIndex(handle.view, index);
       handle.measure = measure;
       handle.look = look;
       handle.theme = this.theme;
@@ -151,8 +172,8 @@ export class MeasureHandles {
   }
 
   private create(measure: KeptMeasure, look: MeasureHandleLook): Handle {
-    const view = this.view.addChild(new Container());
-    const handle: Handle = { view, badge: view.addChild(new Graphics()), glyph: null, measure, look, theme: this.theme, lift: null };
+    const view = this.badges.addChild(new Container());
+    const handle: Handle = { view, badge: view.addChild(new Graphics()), glyph: null, end: null, measure, look, theme: this.theme, lift: null };
     this.handles.set(measure.id, handle);
     this.applyScale(handle);
     return handle;
@@ -175,22 +196,59 @@ export class MeasureHandles {
     handle.glyph.tint = look.glyphTint;
   }
 
+  /** The dot at an area's far end: made with the area, moved with it, and gone when the measurement is a ruler. */
+  private syncEnd(handle: Handle, measure: KeptMeasure, look: MeasureHandleLook, redrawn: boolean): void {
+    const at = measureEndHandlePoint(measure);
+    if (!at) {
+      if (handle.end) this.removeGrip(handle.end);
+      handle.end = null;
+      return;
+    }
+    const made = handle.end === null;
+    handle.end ??= { view: this.ends.addChild(new Graphics()), lift: null };
+    const end = handle.end;
+    if (made || redrawn) {
+      end.view.clear();
+      end.view.circle(0, 0, MEASURE_END_HANDLE_RADIUS + 0.5).stroke({ width: 1, color: 0x000000, alpha: 0.35 });
+      end.view.circle(0, 0, MEASURE_END_HANDLE_RADIUS).fill({ color: this.theme.background, alpha: 0.95 });
+      end.view.circle(0, 0, MEASURE_END_HANDLE_RADIUS - 1.25).stroke({ width: 1.5, color: look.ringColor, alpha: 0.9 });
+    }
+    if (made) this.applyScale(end);
+    end.view.position.set(at.x, at.y);
+    this.lift(end, look.endLift);
+  }
+
+  private remove(handle: Handle): void {
+    if (handle.end) this.removeGrip(handle.end);
+    this.removeGrip(handle);
+  }
+
+  private removeGrip(grip: Grip): void {
+    grip.lift?.cancel();
+    destroyTree(grip.view);
+  }
+
+  private stopLifts(handle: Handle): void {
+    handle.lift?.cancel();
+    handle.end?.lift?.cancel();
+  }
+
   private glyphTexture(shape: MeasureShapeKind): Texture | null {
     if (!this.glyphs.has(shape)) this.glyphs.set(shape, createLineGlyphTexture(SHAPE_GLYPHS[shape]));
     return this.glyphs.get(shape) ?? null;
   }
 
-  private applyScale(handle: Handle): void {
-    handle.view.scale.set(mapMarkerScale(this.zoom()) * (handle.lift?.value ?? 1));
+  private applyScale(grip: Grip): void {
+    grip.view.scale.set(mapMarkerScale(this.zoom()) * (grip.lift?.value ?? 1));
   }
 
-  /** Eases the handle to its lift; reduced motion takes it there at once. */
-  private lift(handle: Handle, lift: number): void {
-    if ((handle.lift?.targetValue ?? 1) === lift) return;
-    handle.lift ??= new ValueTransition(1, MOTION_NORMAL_MS, () => {
-      if (!handle.view.destroyed) this.applyScale(handle);
+  /** Eases the grip to its lift; reduced motion takes it there at once. */
+  private lift(grip: Grip, lift: number): void {
+    if ((grip.lift?.targetValue ?? 1) === lift) return;
+    grip.lift ??= new ValueTransition(1, MOTION_NORMAL_MS, () => {
+      if (!grip.view.destroyed) this.applyScale(grip);
     });
-    if (prefersReducedMotion(document.body)) handle.lift.jumpTo(lift);
-    else handle.lift.animateTo(lift);
+    if (prefersReducedMotion(document.body)) grip.lift.jumpTo(lift);
+    else grip.lift.animateTo(lift);
   }
 }

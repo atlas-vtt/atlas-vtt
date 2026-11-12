@@ -40,6 +40,8 @@ interface Setup {
   /** A ruler of three squares from (300, 400), and a red circle of two from (900, 400). */
   ruler: string;
   circle: string;
+  /** The tokens the map says lie in each measurement: none until a test puts some there. */
+  tokensIn: Record<string, string[]>;
   measure: (id: string) => KeptMeasure | undefined;
   camera: { x: number; y: number; zoom: number };
   frame: () => void;
@@ -59,6 +61,7 @@ function setup(): Setup {
   const circle = store.getState().addMeasure({ shape: 'circle', points: [{ x: 900, y: 400 }, { x: 1040, y: 400 }], color: '#e93147', hidden: true })!;
   const history = getHistoryStore(store)!;
   history.getState().clear();
+  const tokensIn: Record<string, string[]> = {};
   const camera = { x: 0, y: 0, zoom: 1 };
   const viewport = {
     scale: { get x() { return camera.zoom; } },
@@ -70,7 +73,7 @@ function setup(): Setup {
     app,
     view: null,
     pixiApp: pixiApp as unknown as Application,
-    renderer: { getViewportInstance: () => viewport, getCanvasElement: () => document.createElement('canvas') } as never,
+    renderer: { getViewportInstance: () => viewport, getCanvasElement: () => document.createElement('canvas'), tokensInMeasure: (id: string) => tokensIn[id] ?? [] } as never,
   };
   render(
     <AtlasUIContext.Provider value={ui}>
@@ -79,7 +82,7 @@ function setup(): Setup {
   );
   const popover = (): HTMLElement => screen.getByRole('dialog', { name: 'Measurement' });
   return {
-    store, ruler, circle, camera, popover,
+    store, ruler, circle, tokensIn, camera, popover,
     measure: (id) => store.getState().objects.measures?.[id],
     frame: () => act(() => ticks.forEach((tick) => tick())),
     position: () => {
@@ -181,6 +184,81 @@ describe('MeasurePopover', () => {
     } finally {
       document.removeEventListener('keydown', map);
     }
+  });
+});
+
+describe('the popover of a kept area', () => {
+  const controls = (popover: HTMLElement): string[] =>
+    [...popover.querySelectorAll('.atlas-light-popover__heading, .atlas-swatch-grid, [role="switch"], .atlas-dungeon-stepper, .atlas-light-popover__actions button')]
+      .map((element) => {
+        if (element.classList.contains('atlas-swatch-grid')) return 'colours';
+        const labelledBy = element.getAttribute('aria-labelledby');
+        return (labelledBy ? document.getElementById(labelledBy)?.textContent : element.textContent) ?? '';
+      });
+
+  it('holds, in this order: what it is, its colour, Players see it, Stops at walls, a line\'s Width, Select tokens and Delete', () => {
+    const { store, circle, popover } = setup();
+    const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
+    act(() => store.getState().openMeasurePopover(circle));
+    expect(controls(popover())).toEqual(['Circle · 2 sq', 'colours', 'Players see it', 'Stops at walls', 'Select tokens', 'Delete']);
+    act(() => store.getState().openMeasurePopover(line));
+    expect(controls(popover())).toEqual(['Line · 4 sq', 'colours', 'Players see it', 'Stops at walls', 'Width', 'Select tokens', 'Delete']);
+  });
+
+  it('lets an area pass walls, and stop at them again without leaving a field behind, one undo step each', () => {
+    const { store, circle, measure, steps, undo } = setup();
+    act(() => store.getState().openMeasurePopover(circle));
+    const walls = (): HTMLElement => screen.getByRole('switch', { name: 'Stops at walls' });
+    expect(walls().getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(walls());
+    expect(measure(circle)?.walls).toBe(false);
+    expect(walls().getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(walls());
+    expect(measure(circle)).not.toHaveProperty('walls');
+    expect(steps()).toBe(2);
+    undo();
+    expect(measure(circle)?.walls).toBe(false);
+  });
+
+  it('makes a line wider and narrower by whole cells, never under one, and the tool\'s next line as wide', () => {
+    const { store, measure, popover, steps } = setup();
+    const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
+    const before = steps();
+    act(() => store.getState().openMeasurePopover(line));
+    const narrower = screen.getByRole('button', { name: 'Narrower' }) as HTMLButtonElement;
+    expect(narrower.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Wider' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Wider' }));
+    expect(measure(line)?.width).toBe(210);
+    // A map that counts in squares without a unit names no width in the heading; the stepper says it.
+    expect(popover().querySelector('.atlas-dungeon-stepper__value')?.textContent).toBe('3');
+    expect(store.getState().measureTool.lineWidth).toBe(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Narrower' }));
+    expect(measure(line)?.width).toBe(140);
+    expect(steps() - before).toBe(3);
+  });
+
+  it('selects the tokens in the area and closes, and offers nothing to select while it holds none', async () => {
+    const { store, circle, tokensIn } = setup();
+    act(() => store.getState().openMeasurePopover(circle));
+    const select = (): HTMLButtonElement => screen.getByRole('button', { name: 'Select tokens' }) as HTMLButtonElement;
+    expect(select().disabled).toBe(true);
+    tokensIn[circle] = ['goblin', 'hero'];
+    // The scene changed: the button asks again.
+    act(() => store.getState().setSnapToGrid(false));
+    expect(select().disabled).toBe(false);
+    fireEvent.click(select());
+    expect(store.getState().selectedIds).toEqual(['goblin', 'hero']);
+    expect(store.getState().measurePopover).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('has none of an area\'s controls for a ruler', () => {
+    const { store, ruler } = setup();
+    act(() => store.getState().openMeasurePopover(ruler));
+    expect(screen.queryByRole('switch', { name: 'Stops at walls' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Select tokens' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Wider' })).toBeNull();
   });
 });
 

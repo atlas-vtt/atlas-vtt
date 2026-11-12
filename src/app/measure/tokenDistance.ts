@@ -34,10 +34,11 @@ export interface PlacedToken extends HasHeight {
   readonly layer?: number | undefined;
 }
 
-const countsCells = (grid: TokenGrid): boolean => grid.snapToGrid !== false && grid.size > 0;
+/** Whether tokens stand on whole cells of `grid`, which distances then count; else they stand anywhere. */
+export const countsCells = (grid: TokenGrid): boolean => grid.snapToGrid !== false && grid.size > 0;
 
 /** Half the width of the space a token takes up, in world pixels. */
-function spaceRadius(token: PlacedToken, grid: TokenGrid): number {
+export function spaceRadius(token: Pick<PlacedToken, 'size'>, grid: Pick<TokenGrid, 'size'>): number {
   return (Math.max(1, tokenDiameterInCells(token.size || 1)) * grid.size) / 2;
 }
 

@@ -53,12 +53,12 @@ export class DrawingInteraction {
     const selectedIds = state.selectedIds;
     const isSelected = selectedIds.includes(drawingId);
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       if (!isSelected) state.setSelection([drawingId]);
       this.showContextMenu(drawingId, e);
       return;
     }
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
 
     if (e.shiftKey) {
       state.setSelection(isSelected ? selectedIds.filter((id) => id !== drawingId) : [...selectedIds, drawingId]);

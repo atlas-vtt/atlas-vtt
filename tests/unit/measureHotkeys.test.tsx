@@ -59,6 +59,10 @@ describe('the measure tool\'s keys', () => {
     press('m');
     expect(store.getState().measureTool.mode).toBe('cone');
     press('m');
+    expect(store.getState().measureTool.mode).toBe('square');
+    press('m');
+    expect(store.getState().measureTool.mode).toBe('line');
+    press('m');
     expect(store.getState().measureTool.mode).toBe('ruler');
     expect(store.getState().activeTool).toBe('measure');
   });

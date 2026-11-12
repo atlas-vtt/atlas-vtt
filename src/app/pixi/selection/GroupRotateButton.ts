@@ -73,7 +73,7 @@ export class GroupRotateButton {
     this.handle.on('pointerover', () => this.setHovered(true));
     this.handle.on('pointerout', () => this.setHovered(false));
     this.handle.on('pointerdown', (event) => {
-      if (event.button !== 0) return;
+      if (!isPrimaryPress(event)) return;
       event.stopPropagation();
       deps.press(event);
     });

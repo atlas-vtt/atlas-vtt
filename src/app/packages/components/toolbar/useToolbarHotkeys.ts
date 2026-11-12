@@ -5,6 +5,7 @@ import { AMBIENT_AUDIO_ENABLED } from "../../../featureFlags"
 import { nextMeasureMode } from "./measureToolChoices"
 import type { Tool } from "./toolFaces"
 import { levelObjects } from '../../../levels/levelObjects';
+import { mapOffersRanges } from "../../../services/mapRanges"
 import { mapTokens } from "../../../tokens/offMap"
 
 const MOVE_TOOLS: readonly Tool[] = ["move", "laser-pointer"]
@@ -28,7 +29,7 @@ interface ToolbarHotkeyActions {
 /** The toolbar's map hotkeys; a family's key cycles through its tools, the measure tool's through its modes. */
 export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: boolean, actions: ToolbarHotkeyActions): void {
   const store = useViewStoreHook()
-  const { renderer } = useAtlasUI()
+  const { app, renderer } = useAtlasUI()
   const { selectTool, toggleAssetManager, closeAssetManager, toggleGMView, closeMenus } = actions
   const activeTool = (): Tool => store.getState().activeTool
   const dmOnly = (action: () => void) => (): void => {
@@ -42,7 +43,9 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     // The tool keeps its mode while another tool is in use; pressed again while measuring, the key steps to the next mode.
     measure: () => {
       const state = store.getState()
-      if (state.activeTool === "measure") state.setMeasureTool({ mode: nextMeasureMode(state.measureTool.mode) })
+      // Ranges is stepped over where the bar offers it disabled (`useUnavailableMeasureModes`) or not at all.
+      const ranges = !isPlayerView && state.isGMView && mapOffersRanges(app, state)
+      if (state.activeTool === "measure") state.setMeasureTool({ mode: nextMeasureMode(state.measureTool.mode, ranges) })
       else selectTool("measure")
     },
     measureKeep: dmOnly(() => {

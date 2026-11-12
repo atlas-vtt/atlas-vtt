@@ -21,6 +21,12 @@ export interface LiveMeasure extends Measurement {
 export interface Measurements {
   readonly live: LiveMeasure | null;
   readonly kept: readonly KeptMeasure[];
+  /**
+   * Whether walls stand on the level shown: an area on it stops at them, unless it is a kept one
+   * that says otherwise (`KeptMeasure.walls`), and is then another shape than its two points say.
+   * Unset: none.
+   */
+  readonly walled?: boolean;
 }
 
-export const NO_MEASUREMENTS: Measurements = Object.freeze({ live: null, kept: Object.freeze([]) });
+export const NO_MEASUREMENTS: Measurements = Object.freeze({ live: null, kept: Object.freeze([]), walled: false });

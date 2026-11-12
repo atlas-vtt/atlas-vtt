@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { Container } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { KeptMeasure } from '../../../src/app/measure/measureTypes';
 import { mayEditMeasure } from '../../../src/app/pixi/measure/measurePopoverGuard';
@@ -52,6 +53,9 @@ function scene(): Kept {
 }
 
 const START = [{ x: 105, y: 105 }, { x: 315, y: 105 }];
+/** The badges at the measurements' origins, and the dots at the areas' far ends. */
+const badges = (s: MeasureScene): Container[] => s.measure.handles.layer.getChildByLabel('measure-origin-handles')?.children ?? [];
+const ends = (s: MeasureScene): Container[] => s.measure.handles.layer.getChildByLabel('measure-end-handles')?.children ?? [];
 /** Lets a cancelled drag's undo step close, which waits for the store write that cancelled it. */
 const settled = (): Promise<void> => Promise.resolve();
 
@@ -318,7 +322,7 @@ describe('the handles and the players', () => {
     const { s } = scene();
     const { layer } = s.measure.handles;
     expect(layer.visible).toBe(true);
-    expect(layer.children).toHaveLength(1);
+    expect(badges(s)).toHaveLength(1);
     expect(s.measure.getPlayerViewLayers(() => true)).toContainEqual({ layer, visible: false });
     expect(s.measure.getGmViewLayers()).toContainEqual({ layer, visible: false });
   });
@@ -349,9 +353,11 @@ describe('the handles and the players', () => {
 
   it('have one handle for each kept measurement, at its first point, which follows it', () => {
     const { s, id, press, move, up } = scene();
-    const { layer } = s.measure.handles;
+    const layer = { get children(): Container[] { return badges(s); } };
     const other = s.store.getState().addMeasure({ shape: 'cone', points: [{ x: 525, y: 525 }, { x: 665, y: 525 }] })!;
     expect(layer.children.map(({ position }) => [position.x, position.y])).toEqual([[105, 105], [525, 525]]);
+    // The cone, an area, has a second handle at its far end; the ruler has none.
+    expect(ends(s).map(({ position }) => [position.x, position.y])).toEqual([[665, 525]]);
     press(105, 105);
     move(258, 183);
     up();
@@ -369,5 +375,76 @@ describe('the handles and the players', () => {
     expect(layer.children.map(({ position }) => [position.x, position.y])).toEqual([[525, 525]]);
     s.store.getState().deleteMeasure(other);
     expect(layer.children).toHaveLength(0);
+    expect(ends(s)).toHaveLength(0);
+  });
+});
+
+describe('the handle at an area\'s far end', () => {
+  const CIRCLE = [{ x: 525, y: 385 }, { x: 665, y: 385 }];
+
+  /** The scene's ruler and a kept circle of two cells around (525, 385), its far end at (665, 385). */
+  function withCircle(): Kept & { circle: () => KeptMeasure | undefined; circleId: string } {
+    const kept = scene();
+    const circleId = kept.s.store.getState().addMeasure({ shape: 'circle', points: CIRCLE.map((point) => ({ ...point })) })!;
+    getHistoryStore(kept.s.store)!.getState().clear();
+    return { ...kept, circleId, circle: () => kept.s.store.getState().objects.measures?.[circleId] };
+  }
+
+  it('resizes and turns the area in whole cells, its origin staying, as one undo step', () => {
+    const { circle, press, move, up, steps, undo } = withCircle();
+    expect(press(667, 383)).toBe(true);
+    // Grabbed two pixels off its middle, it keeps that distance: its end comes to (525, 600), 215 px below the origin, three cells.
+    move(600, 500);
+    move(527, 598);
+    expect(circle()?.points).toEqual([{ x: 525, y: 385 }, { x: 525, y: 595 }]);
+    up();
+    expect(steps()).toBe(1);
+    undo();
+    expect(circle()?.points).toEqual(CIRCLE);
+  });
+
+  it('is never smaller than one cell, and takes any size with Alt', () => {
+    const { circle, press, move, up } = withCircle();
+    press(665, 385);
+    move(540, 385);
+    expect(circle()?.points[1]).toEqual({ x: 595, y: 385 });
+    move(540, 389, true);
+    expect(circle()?.points[1]).toEqual({ x: 540, y: 389 });
+    up();
+  });
+
+  it('is put back by Escape and by a press elsewhere, and leaves no undo step', async () => {
+    const { s, circle, press, move, up, steps } = withCircle();
+    press(665, 385);
+    move(525, 600);
+    expect(circle()?.points[1]).toEqual({ x: 525, y: 595 });
+    expect(s.measure.handles.handleEscape()).toBe(true);
+    await settled();
+    expect(circle()?.points).toEqual(CIRCLE);
+    up();
+    expect(steps()).toBe(0);
+  });
+
+  it('opens the popover on a click, and Delete over it deletes the measurement', () => {
+    const { s, circleId, circle, press, up } = withCircle();
+    press(665, 385);
+    up();
+    expect(s.store.getState().measurePopover).toBe(circleId);
+    s.store.getState().closeMeasurePopover();
+    expect(s.measure.handles.pointer.cursorAt(663, 387)).toBe('pointer');
+    expect(s.measure.handles.handleDelete()).toBe(true);
+    expect(circle()).toBeUndefined();
+  });
+
+  it('closes the popover and puts a drag back when another tab comes to the front', async () => {
+    const { s, circleId, circle, press, move, steps } = withCircle();
+    s.store.getState().openMeasurePopover(circleId);
+    press(665, 385);
+    move(525, 600);
+    s.measure.handles.leave();
+    await settled();
+    expect(s.store.getState().measurePopover).toBeNull();
+    expect(circle()?.points).toEqual(CIRCLE);
+    expect(steps()).toBe(0);
   });
 });

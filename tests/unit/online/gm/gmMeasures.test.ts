@@ -13,9 +13,9 @@ let ids = 0;
 const kept = (measure: Measurement & Partial<KeptMeasure>): KeptMeasure => ({ id: `m${ids += 1}`, kind: 'measure', ...measure, points: [...measure.points] });
 const live = (shape: Measurement['shape'], points: { x: number; y: number }[], more: Partial<LiveMeasure> = {}): LiveMeasure => ({ shape, points, pressed: points[0]!, ...more });
 
-function shown(records: { live?: LiveMeasure | null; kept?: KeptMeasure[] }, view: PlayersView = EMPTY_MAP, seen = EVERYONE): ReturnType<GmMeasures['shown']> {
+function shown(records: { live?: LiveMeasure | null; kept?: KeptMeasure[]; walled?: boolean }, view: PlayersView = EMPTY_MAP, seen = EVERYONE): ReturnType<GmMeasures['shown']> {
   const measures = new GmMeasures();
-  measures.follow({ live: records.live ?? null, kept: records.kept ?? [] }, view, 0);
+  measures.follow({ live: records.live ?? null, kept: records.kept ?? [], ...(records.walled !== undefined && { walled: records.walled }) }, view, 0);
   return measures.shown(seen);
 }
 
@@ -54,6 +54,22 @@ describe('the GM\'s measurements in the protocol\'s words', () => {
   it('tells nothing of a square or a line with a width, which the protocol cannot say, nor of a measurement off every map', () => {
     expect(shown({ kept: [kept({ shape: 'square', points: [at(0), at(70)] }), kept({ shape: 'line', points: [at(0), at(70)], width: 70 })] })).toEqual({ live: null, kept: [] });
     expect(shown({ live: live('ruler', [at(0), at(Number.POSITIVE_INFINITY)]) })).toEqual({ live: null, kept: [] });
+  });
+});
+
+describe('an area that stops at walls', () => {
+  const circle = { shape: 'circle' as const, points: [at(0), at(70)] };
+  const cone = { shape: 'cone' as const, points: [at(0), at(0, 70)] };
+
+  it('is told whole only while no wall stands on its level: walls would cut it for the GM, and the protocol cannot say the cut', () => {
+    const whole = { live: { shape: 'circle', a: [0, 0], b: [70, 0] }, kept: [{ shape: 'cone', a: [0, 0], b: [0, 70] }] };
+    expect(shown({ live: live('circle', circle.points), kept: [kept(cone)], walled: false })).toEqual(whole);
+    expect(shown({ live: live('circle', circle.points), kept: [kept(cone)], walled: true })).toEqual({ live: null, kept: [] });
+  });
+
+  it('is told on a level with walls once it is kept as one that walls do not stop; a ruler always', () => {
+    const records = { kept: [kept({ ...circle, walls: false }), kept(cone), kept({ shape: 'ruler', points: [at(0), at(70)] })], walled: true };
+    expect(shown(records).kept).toEqual([{ shape: 'circle', a: [0, 0], b: [70, 0] }, { shape: 'line', a: [0, 0], b: [70, 0] }]);
   });
 });
 

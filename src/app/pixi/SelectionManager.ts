@@ -180,7 +180,7 @@ export class SelectionManager {
     if (activeTool !== 'select' && activeTool !== 'move') return;
     
     // Only handle left mouse button (button 0) for marquee selection
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
 
     // Skip if another handler already claimed this event (e.g. token or fog click)
     if (isHandled(e)) return;

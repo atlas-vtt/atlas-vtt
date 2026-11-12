@@ -22,12 +22,17 @@ const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
 const onMap = ({ x, y }: Point): boolean => [x, y].every((value) => Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE);
 const mark = ({ x, y }: Point): MarkPoint => [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
 
+/** A measurement and whether walls may cut it: an area on a level with walls, unless it is kept as one that walls do not stop. */
+type Told = Measurement & { readonly walls?: false };
+
 /**
  * A measurement in the protocol's words, which knows a line, a circle and a cone between two points:
  * a ruler is told leg by leg, each leg a line. None for one off every map, and none for a square or
- * a line with a width, which the protocol cannot say yet.
+ * a line with a width, which the protocol cannot say yet. None either for a circle or a cone that
+ * stops at walls on a level that has some (`walled`): the protocol says the whole shape, which
+ * would show players more than the GM's own picture of it does.
  */
-function legsOf({ shape, points }: Measurement): SharedMeasure[] {
+function legsOf({ shape, points, walls }: Told, walled: boolean): SharedMeasure[] {
   const start = points[0];
   const end = points[points.length - 1];
   if (!start || !end || points.length < 2 || !points.every(onMap)) return [];
@@ -36,7 +41,7 @@ function legsOf({ shape, points }: Measurement): SharedMeasure[] {
       return points.slice(1).map((point, index) => ({ shape: 'line', a: mark(points[index]!), b: mark(point) }));
     case 'circle':
     case 'cone':
-      return [{ shape, a: mark(start), b: mark(end) }];
+      return walled && walls !== false ? [] : [{ shape, a: mark(start), b: mark(end) }];
     case 'square':
     case 'line':
       return [];
@@ -44,9 +49,9 @@ function legsOf({ shape, points }: Measurement): SharedMeasure[] {
 }
 
 /** The same with a ruler's corners left out: one line from its start to its end. */
-function straight(measurement: Measurement): SharedMeasure[] {
+function straight(measurement: Told, walled: boolean): SharedMeasure[] {
   const { shape, points } = measurement;
-  return legsOf(shape === 'ruler' && points.length > 2 ? { shape, points: [points[0]!, points[points.length - 1]!] } : measurement);
+  return legsOf(shape === 'ruler' && points.length > 2 ? { shape, points: [points[0]!, points[points.length - 1]!] } : measurement, walled);
 }
 
 /**
@@ -60,6 +65,9 @@ function straight(measurement: Measurement): SharedMeasure[] {
  * A ruler with corners goes out as its legs: those before the last among the kept measurements,
  * the last as the live one, or all of them kept. Where that is more than a message may hold, every
  * ruler goes out as one line from its start to its end.
+ *
+ * An area that stops at walls is told only while no wall stands on its level (`legsOf`): one being
+ * made always stops at them, a kept one unless its switch is off.
  */
 export class GmMeasures {
   private live: { readonly pressed: Point; readonly origin: MeasureOrigin } | null = null;
@@ -99,14 +107,15 @@ export class GmMeasures {
   /** What the players see of the measurements now, by `seen`. */
   shown(seen: TokenSeen): ShownMeasures {
     const { live, kept } = this.records;
+    const walled = this.records.walled === true;
     const shownLive = live !== null && this.live !== null && playersSeeMeasure({ hidden: live.hidden, origin: this.live.origin }, seen) ? live : null;
     const shownKept = kept.filter((measure) => {
       const from = this.keptFrom.get(measure.id);
       return playersSeeMeasure(measure, seen) && (!from || measureShownToPlayers(from, seen));
     });
-    const told = (legs: (measurement: Measurement) => SharedMeasure[]): ShownMeasures => {
-      const liveLegs = shownLive ? legs(shownLive) : [];
-      return { live: liveLegs[liveLegs.length - 1] ?? null, kept: [...shownKept.flatMap(legs), ...liveLegs.slice(0, -1)] };
+    const told = (legs: (measurement: Told, walled: boolean) => SharedMeasure[]): ShownMeasures => {
+      const liveLegs = shownLive ? legs(shownLive, walled) : [];
+      return { live: liveLegs[liveLegs.length - 1] ?? null, kept: [...shownKept.flatMap((measure) => legs(measure, walled)), ...liveLegs.slice(0, -1)] };
     };
     const byLegs = told(legsOf);
     const { live: last, kept: rest } = byLegs.kept.length <= MAX_MARK_KEPT ? byLegs : told(straight);

@@ -238,10 +238,10 @@ describe('keeping a measurement', () => {
     expect(pin(s).visible).toBe(false);
     s.pointer('pointerup', 175, 35);
     expect(pin(s).visible).toBe(true);
-    // The pin is the GM's, as the kept measurements' handles are: a players' frame leaves them out, and only them.
+    // The pin is the GM's, as the kept measurements' handles and the GM's other marks are: a players' frame leaves them out, and only them.
     expect(s.measure.getPlayerViewLayers(() => true)).toEqual([
       { layer: s.parts()[0], visible: true }, { layer: s.parts()[1], visible: true }, { layer: pin(s), visible: false },
-      { layer: s.measure.handles.layer, visible: false },
+      ...s.measure.gmLayers.map((layer) => ({ layer, visible: false })),
     ]);
     const { x, y } = pin(s).position;
     s.click(x, y);

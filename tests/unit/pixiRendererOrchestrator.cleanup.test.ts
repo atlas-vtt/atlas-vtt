@@ -14,7 +14,7 @@ import { FRAME, fakePlayerFrames } from '../mocks/playerFrameSource';
 afterEach(() => vi.restoreAllMocks());
 
 function createHarness(eventBus: EventEmitter) {
-  const store = createStore(subscribeWithSelector(() => ({ activeTool: 'move', objects: {}, measureTool: DEFAULT_MEASURE_TOOL, mapPath: null })));
+  const store = createStore(subscribeWithSelector(() => ({ activeTool: 'move', objects: { tokens: {}, walls: {} }, measureTool: DEFAULT_MEASURE_TOOL, mapPath: null })));
   const viewport = Object.assign(new Container(), {
     plugins: { resume: vi.fn(), pause: vi.fn() },
   });

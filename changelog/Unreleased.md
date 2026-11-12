@@ -4,7 +4,7 @@
 - **Diagonals that count 2**: a new choice for how a collection counts diagonals, for games without diagonal moves
 
 **Measuring**
-- The measure tool has its own bars above the toolbar: Ruler, Circle and Cone, and beside them Keep, Players see it, a colour and Clear
+- The measure tool has its own bars above the toolbar: Ruler, Circle, Cone, Square and Line, and beside them Keep, Players see it, a colour and Clear
 - Keep (K) switches whether what you measure stays on the map, and Clear removes everything kept on the level you are looking at
 - Players see it switches whether players see what you measure, and the colour dot picks the colour of your next measurement
 - Press M again while measuring to step to the next mode
@@ -19,6 +19,13 @@
 - Hold Alt to measure without snapping to the grid
 - Measurements have a dark edge, so they show on bright maps
 - Distance while moving tokens: choose in the measure tool's menu whether a dragged token shows how far it has moved always, only in combat or never
+- Square and Line: two new shapes. A square starts at the middle of one side and grows the way you drag; a line is one cell wide, and a kept line's width is set at its handle
+- Areas snap the way rulebooks measure them: they start on a cell's centre, corner or edge, and their size goes in whole cells whichever way you drag, so a circle of four squares reads 20ft in every direction
+- An area tints the cells it covers and outlines its true shape. It lies on the map under the tokens, lit like the floor, so players see it only where they see the map
+- An area stops at walls and closed doors. A kept area's handle has Stops at walls to let it pass them
+- While you draw an area or point at its handle, the tokens in it get a ring and the label says how many there are. Players see rings only on tokens they can see
+- A kept area has a second handle at its far end: drag it to resize and turn the area
+- Select tokens, at a kept area's handle, selects every token in it
 - Covered cells: a collection's Grid and measure settings say when an area covers a square or hex: at least half of it is inside, its centre is inside, or any part of it is
 - A cone can end rounded or flat, chosen in the same settings
 - Movement steps: the same settings name the steps of a move, such as Move ×1 and Dash ×2, each so many times a token's speed and with a colour of its own, and whether movement adds up over a turn. D&D 5e and Pathfinder 2e come with theirs
@@ -26,6 +33,8 @@
 - Speed: a token moves by the speed its statblock states, or by one of its own that you type in Edit token. Where a statblock states several, such as walking and flying, pick one under Movement in the token's menu
 - Height: a token's menu has Height, which lifts it off the floor or puts it below, one square's distance at a time (+ and - work too), for the whole selection. A small tag over the token says how far, such as ↑ 30ft, and players see it on tokens they see
 - A ruler that starts or ends on a token counts the height between its two ends, by the collection's rule for diagonals
+- Range check: with one token selected and the measure tool in hand, point at another token to see a dashed line and the distance between the two, from edge to edge and with their heights. Nothing is clicked or kept, and only you see it
+- Ranges: a new mode of the measure tool. Click a token or a place for labelled rings around it: the range bands of a game that measures in bands, or how far the token gets with each movement step. The rings follow the grid and its rule for diagonals, stay with their token when it moves, and go when you click the token again or press Escape. Only you see them
 
 ## Improved
 

@@ -89,6 +89,13 @@ export class MeasureInk {
     this.shape = new LinkedLayers([this.area, this.line]);
   }
 
+  /** Moves the drawing onto `layer`, above what is drawn there. */
+  onto(layer: MeasureInkLayer): void {
+    if (this.area.parent === layer.areas) return;
+    layer.areas.addChild(this.area);
+    layer.lines.addChild(this.line);
+  }
+
   /** Clears the drawing and sizes what follows for `zoom` (screen pixels per world unit). */
   begin(zoom: number): void {
     this.zoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;

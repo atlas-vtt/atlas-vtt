@@ -36,6 +36,7 @@ import { NO_BARS } from "./pixi/selection/selectionTargets";
 import { FogOfWarRenderer } from "./pixi/fog/FogOfWarRenderer";
 import { MeasureRenderer } from "./pixi/measure/MeasureRenderer";
 import { measurePlayersView } from './pixi/measurePlayersView';
+import { measureRangeSources } from './pixi/measureRangeSources';
 import { followTokenHeights, measureHeightAt } from './pixi/measureTokenHeights';
 import { NOTHING_SEEN } from './pixi/token-renderer/PlayerSightTokens';
 import type { TokenPerception } from './vision/tokenPerception';
@@ -113,6 +114,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private stopMeasuresFollowingPlayers: (() => void) | undefined;
   private stopMeasuresFollowingRules: (() => void) | undefined;
   private stopMeasuresFollowingHeights: (() => void) | undefined;
+  private stopMeasuresFollowingLeaving: (() => void) | undefined;
   private laserPointerRenderer?: LaserPointerRenderer; // Add LaserPointerRenderer instance
   private drawingRenderer?: DrawingRenderer; // Add DrawingRenderer instance
   private drawingInteraction?: DrawingInteraction;
@@ -792,6 +794,7 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this._isDestroyed) return;
     this.fitZoomRangeToStretch();
     this.lighting?.renderer.refreshBounds();
+    this.measureRenderer?.mapSizeChanged();
     this.eventBus.emit('map-image-updated', this.getMapRect() ?? undefined);
   }
 
@@ -1112,7 +1115,7 @@ export class PixiRendererOrchestrator { // Renamed class
           e.preventDefault();
           return;
         }
-        if (this.measureRenderer?.handles.handleEscape() || this.levelLinks?.handleEscape() || this.lighting?.handleEscape()) {
+        if (this.measureRenderer?.handles.handleEscape() || this.measureRenderer?.ranges.handleEscape() || this.levelLinks?.handleEscape() || this.lighting?.handleEscape()) {
           e.preventDefault();
           return;
         }
@@ -1254,6 +1257,17 @@ export class PixiRendererOrchestrator { // Renamed class
     if (grid) measure.heightAt = measureHeightAt(this.store, grid);
     this.stopMeasuresFollowingHeights?.();
     this.stopMeasuresFollowingHeights = followTokenHeights(this.store, () => measure.rulesChanged());
+    // The range check and the rings of Ranges ask which token lies under the pointer and how far it moves
+    measure.rangeSources = measureRangeSources({ app: this.obsApp, store: this.store, rules, tokens: () => this.tokenRenderer });
+    // Areas stop at the walls as the lighting seals them, which goes by the map's size.
+    measure.mapBounds = () => this.getMapRect();
+    this.stopMeasuresFollowingLeaving?.();
+    this.stopMeasuresFollowingLeaving = onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => measure.handles.leave());
+  }
+
+  /** The ids of the tokens in the kept area `measureId`, the ones it rings while it is pointed at; none for a ruler. */
+  public tokensInMeasure(measureId: string): readonly string[] {
+    return this.measureRenderer?.tokensIn(measureId) ?? [];
   }
 
   /** Handle audio tool pointer down: click to select existing source or place new one */
@@ -1355,6 +1369,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.stopMeasuresFollowingPlayers?.();
     this.stopMeasuresFollowingRules?.();
     this.stopMeasuresFollowingHeights?.();
+    this.stopMeasuresFollowingLeaving?.();
     this.measureRenderer?.destroy(); // Destroy MeasureRenderer
     this.laserPointerRenderer?.destroy(); // Destroy LaserPointerRenderer
     this.drawingRenderer?.destroy(); // Destroy DrawingRenderer

@@ -203,7 +203,7 @@ export class TextRenderer {
     const textElement = levelObjects(this.store.getState()).texts[textId];
     if (!textElement) return;
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       // Right click - show context menu
       this.showContextMenu(textElement, e);
       return;

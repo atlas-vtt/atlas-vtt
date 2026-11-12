@@ -49,8 +49,8 @@ export function measureScene(grid: MeasureGrid = SQUARE_GRID): MeasureScene {
   const full = vi.fn<() => void>();
   const measure = new MeasureRenderer(viewport, store, grid, full);
   const boundary = new EventBoundary(viewport);
-  // The handles' layer is the GM's control, not a measurement's part.
-  const parts = (): HideableLayer[] => measure.getGmViewLayers().map(({ layer }) => layer).filter((layer) => layer !== measure.handles.layer);
+  // The handles' layer, the areas' unlit outlines and the range marks are the GM's own, not a measurement's parts.
+  const parts = (): HideableLayer[] => measure.getGmViewLayers().map(({ layer }) => layer).filter((layer) => !measure.gmLayers.some((own) => own === layer));
   return {
     measure, viewport, store, full, parts,
     visible: () => parts().map((part) => part.visible),

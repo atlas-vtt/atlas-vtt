@@ -43,10 +43,11 @@ function isOrigin(value: unknown): value is KeptMeasureOrigin {
 function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | null {
   const { shape, points } = value;
   if (!isShape(shape) || !isPath(points, shape)) return null;
-  const { id: ownId, kind, width, color, hidden, by, origin, level, ...rest } = value;
+  const { id: ownId, kind, width, color, hidden, by, origin, level, walls, ...rest } = value;
   const sound = ownId === id && kind === 'measure'
     && (width === undefined || isWidth(width)) && (color === undefined || isHexColor(color)) && (hidden === undefined || hidden === true)
-    && (by === undefined || isAuthor(by)) && (origin === undefined || isOrigin(origin)) && (level === undefined || typeof level === 'string');
+    && (by === undefined || isAuthor(by)) && (origin === undefined || isOrigin(origin)) && (level === undefined || typeof level === 'string')
+    && (walls === undefined || walls === false);
   if (sound) return value as unknown as KeptMeasure;
   // What this Atlas does not know (`rest`) stays on the view, for readers that do.
   return {
@@ -61,6 +62,7 @@ function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | nu
     ...(isAuthor(by) && { by }),
     ...(origin !== undefined && { origin: isOrigin(origin) ? origin : UNREADABLE_ORIGIN }),
     ...(typeof level === 'string' && { level }),
+    ...(walls === false && { walls }),
   };
 }
 
@@ -68,8 +70,8 @@ function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | nu
  * A kept measurement as it is read: `id` is its place in the record, which is how the store finds
  * it. None without a known shape and finite points that fit it (two for an area, two to
  * `MAX_RULER_POINTS` for a ruler). A colour that is not `#rrggbb`, a width that is no size and a
- * maker that is no name read as unset, `hidden` only where it is `true`, and an origin that cannot
- * be read as one the players never saw.
+ * maker that is no name read as unset, `hidden` only where it is `true`, `walls` only where it is
+ * `false`, and an origin that cannot be read as one the players never saw.
  */
 export function readMeasure(id: string, value: unknown): KeptMeasure | null {
   if (!isRecord(value)) return null;

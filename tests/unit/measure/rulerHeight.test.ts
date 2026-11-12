@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GridGeometry } from '../../../src/app/grid/gridDistance';
 import type { MeasurementSettings } from '../../../src/app/grid/measurementFormat';
 import { measureLabelText } from '../../../src/app/measure/measureLabelText';
-import { legDistances, pathDistance } from '../../../src/app/pixi/measure/measureDistances';
+import { legDistances, measureDistance } from '../../../src/app/pixi/measure/measureDistances';
+import type { HeightAt } from '../../../src/app/measure/tokenHeight';
 import { followTokenHeights, measureHeightAt } from '../../../src/app/pixi/measureTokenHeights';
 import type { DiagonalRule } from '../../../src/app/types/collectionSettingsTypes';
 import type { TokenEntity } from '../../../src/app/types';
@@ -18,6 +19,10 @@ const cell = (col: number, row: number): { x: number; y: number } => ({ x: 35 + 
 const token = (id: string, col: number, row: number, more: Partial<TokenEntity> = {}): TokenEntity => (
   { id, kind: 'character', name: id, imagePath: '', ...cell(col, row), ...more }
 );
+
+/** A ruler's distance as its label and its popover say it. */
+const pathDistance = (grid: GridGeometry, points: readonly { x: number; y: number }[], settings: MeasurementSettings, heightAt?: HeightAt): string =>
+  measureDistance(grid, { shape: 'ruler', points }, settings, heightAt);
 
 describe('a ruler between two heights', () => {
   /** A flier 20 ft up at the cell (4, 0), another 10 ft up at (2, 2), everything else on the floor. */
@@ -102,10 +107,11 @@ describe('the measure tool on a map with fliers', () => {
     expect(s.liveLabels()[0]!.text).toBe('35ft');
     s.pointer('pointerup', 5 * 70 + 10, 2 * 70 + 10);
 
+    // A circle of four cells around the hero, with the hero and the flier on its edge in it: its size is its size, whatever stands how high.
     s.store.getState().setMeasureTool({ mode: 'circle' });
     s.pointer('pointerdown', 20, 20);
     s.pointer('pointermove', 300, 40);
-    expect(s.liveLabels()[0]!.text).toBe('20ft');
+    expect(s.liveLabels()[0]!.text).toBe('20ft · 2');
   });
 
   it('reads the token lying on top where two share a cell, and a hidden one like any other', () => {

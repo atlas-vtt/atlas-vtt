@@ -1,4 +1,4 @@
-import { Circle, Ruler, Triangle } from "lucide-react"
+import { Circle, Ruler, Slash, Square, Target, Triangle } from "lucide-react"
 import { t } from "../../../i18n"
 import type { MeasureMode } from "../../../measure/measureTypes"
 import type { DropdownSwatch } from "../primitives/DropdownSwatchGrid"
@@ -10,17 +10,28 @@ export const MEASURE_MODES: readonly ToolChoice<MeasureMode>[] = [
   { value: 'ruler', icon: Ruler, label: t('toolbar.ruler') },
   { value: 'circle', icon: Circle, label: t('toolbar.circle') },
   { value: 'cone', icon: Triangle, label: t('toolbar.cone') },
+  { value: 'square', icon: Square, label: t('measure.shape.square') },
+  { value: 'line', icon: Slash, label: t('measure.shape.line') },
+  // Ranges stays the last: labelled rings around a token or a point, and no measurement.
+  { value: 'ranges', icon: Target, label: t('toolbar.ranges'), tip: t('toolbar.rangesTip') },
 ]
+
+/** The modes without Ranges: what the players' view measures with, since the rings of Ranges are the GM's own. */
+export const PLAYER_MEASURE_MODES: readonly ToolChoice<MeasureMode>[] = MEASURE_MODES.filter((choice) => choice.value !== 'ranges')
 
 /** The bar's button for a mode; the ruler's for a mode the bar does not offer. */
 export function measureModeChoice(mode: MeasureMode): ToolChoice<MeasureMode> {
   return MEASURE_MODES.find((choice) => choice.value === mode) ?? MEASURE_MODES[0]!
 }
 
-/** The mode after `mode` in the bar, the first after the last: what the tool's key steps to. */
-export function nextMeasureMode(mode: MeasureMode): MeasureMode {
-  const index = MEASURE_MODES.findIndex((choice) => choice.value === mode)
-  return MEASURE_MODES[(index + 1) % MEASURE_MODES.length]!.value
+/**
+ * The mode after `mode` in the bar, the first after the last: what the tool's key steps to.
+ * Without `ranges` (the mode cannot be chosen now) Ranges is stepped over.
+ */
+export function nextMeasureMode(mode: MeasureMode, ranges = true): MeasureMode {
+  const modes = ranges ? MEASURE_MODES : PLAYER_MEASURE_MODES
+  const index = modes.findIndex((choice) => choice.value === mode)
+  return modes[(index + 1) % modes.length]!.value
 }
 
 /** How the swatch of the theme's accent is drawn. A measurement of that colour stores none. */

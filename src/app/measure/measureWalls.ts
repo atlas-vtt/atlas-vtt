@@ -7,6 +7,7 @@
 
 import { intersectShapes } from '../lighting/polygonClip';
 import { quantizeCoordinate } from '../lighting/quantizedPoint';
+import { blocksNothing, distToSeg, segOf } from '../lighting/segments';
 import { MAX_Q, Q_SCALE, type QPolygon } from '../types/shapeTypes';
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
@@ -16,15 +17,18 @@ import { blocksInReach } from '../vision/wallReach';
 import { EDGE_TOLERANCE, ringBounds, type MeasureArea, type ShapedArea } from './measureGeometry';
 
 /**
- * How far along its direction an area is reached from, world pixels. A wall its origin lies on
- * stops nothing for the sweep, and areas start on cell corners and edges, where walls run: reached
- * from just inside, a cone from a wall's foot stays on the side it points to.
+ * How far from its origin an area is reached from where that lies on a wall, world pixels. A wall
+ * the sweep starts on stops nothing for it, and areas start on cell corners and edges, where walls
+ * run: reached from just beside the wall, an area stays on the side it was dragged to.
  */
 const INSIDE = 1 / Q_SCALE;
+/** An origin this near a wall lies on it. */
+const ON_WALL = INSIDE / 2;
+const TURN = 2 * Math.PI;
 /** The sweep's edge is a polygon of chords, which must not cut into the area: its radius is this much more than the area's reach. */
 const CHORD_ROOM = 1.002;
 const MIN_SWEEP_RADIUS = 256;
-/** The sweeps kept for one list of walls. */
+/** The sweeps kept for one list of walls, and the origins whose walls are remembered. */
 const MAX_SWEEPS = 64;
 
 /** What a straight way from `origin` reaches within `radius`. */
@@ -37,6 +41,7 @@ interface Sweep {
 }
 
 const sweeps = new WeakMap<readonly WallSegment[], Map<string, Sweep | null>>();
+const raysAt = new WeakMap<readonly WallSegment[], Map<string, readonly number[]>>();
 const NOTHING: MeasureArea = { rings: [], bounds: ringBounds([]), contains: () => false };
 
 function quantized(ring: readonly Point[]): QPolygon | null {
@@ -49,10 +54,55 @@ function quantized(ring: readonly Point[]): QPolygon | null {
   return coordinates;
 }
 
-/** The point the walls are swept from for `area`: its origin, or just inside it for an area with a direction. */
-export function wallSweepPoint(area: ShapedArea): Point {
-  const { origin, towards } = area;
-  return towards ? { x: origin.x + towards.x * INSIDE, y: origin.y + towards.y * INSIDE } : origin;
+/** Keeps `value` under `key`, the oldest entry giving way once `MAX_SWEEPS` are held. */
+function remember<T>(kept: Map<string, T>, key: string, value: T): void {
+  const oldest = kept.keys().next();
+  if (kept.size >= MAX_SWEEPS && !oldest.done) kept.delete(oldest.value);
+  kept.set(key, value);
+}
+
+/**
+ * The ways the walls that `origin` lies on lead away from it, as angles in rising order: one for a
+ * wall that ends there, two for one that passes. None where it lies on no wall that stops anything.
+ * Kept by the walls and the origin, so asking again while an area is dragged looks at no wall.
+ */
+function wallRaysAt(origin: Point, walls: readonly WallSegment[]): readonly number[] {
+  let kept = raysAt.get(walls);
+  if (!kept) raysAt.set(walls, (kept = new Map<string, readonly number[]>()));
+  const key = `${origin.x},${origin.y}`;
+  let rays = kept.get(key);
+  if (!rays) {
+    const found: number[] = [];
+    for (const wall of walls) {
+      if (blocksNothing(wall) || distToSeg(origin.x, origin.y, segOf(wall)) > ON_WALL) continue;
+      for (const end of [wall.p1, wall.p2]) {
+        const x = end.x - origin.x;
+        const y = end.y - origin.y;
+        if (Math.hypot(x, y) > ON_WALL) found.push(Math.atan2(y, x));
+      }
+    }
+    rays = found.sort((a, b) => a - b);
+    remember(kept, key, rays);
+  }
+  return rays;
+}
+
+/**
+ * The point the walls are swept from for an area: its origin. Where that lies on walls, they part
+ * the ground around it, and the area is reached from just inside the part it points into, halfway
+ * between the two walls beside its direction. Every direction into one part gives the same point,
+ * so an area turned or resized there is swept once.
+ */
+export function wallSweepPoint({ origin, towards }: Pick<ShapedArea, 'origin' | 'towards'>, walls: readonly WallSegment[]): Point {
+  const rays = wallRaysAt(origin, walls);
+  if (rays.length === 0) return origin;
+  const angle = Math.atan2(towards.y, towards.x);
+  let before = 0;
+  while (before < rays.length && rays[before]! <= angle) before++;
+  const from = before > 0 ? rays[before - 1]! : rays[rays.length - 1]! - TURN;
+  const to = before < rays.length ? rays[before]! : rays[0]! + TURN;
+  const middle = (from + to) / 2;
+  return { x: origin.x + Math.cos(middle) * INSIDE, y: origin.y + Math.sin(middle) * INSIDE };
 }
 
 /**
@@ -73,9 +123,7 @@ function sweepFrom(origin: Point, reach: number, walls: readonly WallSegment[]):
       const polygon = computeVisibility(origin, radius, walls);
       sweep = { origin, polygon, index: indexOutline(origin, polygon), ring: quantized(polygon) };
     }
-    const oldest = kept.keys().next();
-    if (kept.size >= MAX_SWEEPS && !oldest.done) kept.delete(oldest.value);
-    kept.set(key, sweep);
+    remember(kept, key, sweep);
   }
   return sweep;
 }
@@ -100,14 +148,15 @@ function spineWithin(sweep: Sweep, [from, to]: readonly [Point, Point]): readonl
 }
 
 /**
- * `area` as `walls` leave it: what of it a straight way from its origin reaches. Its outline is
+ * `area` as `walls` leave it: what of it a straight way from its origin reaches (from just beside
+ * the walls its origin lies on, `wallSweepPoint`). Its outline is
  * the shape's cut with the sweep's (to an eighth of a pixel), a point is in it when it is in the
  * shape and reached, and a line's middle line ends where the sweep does. The area itself where no
  * wall stands in its reach, and nothing where it lies beyond what clipping can hold (two million
  * pixels from the map's corner).
  */
 export function areaWithinWalls(area: ShapedArea, walls: readonly WallSegment[]): MeasureArea {
-  const from = wallSweepPoint(area);
+  const from = wallSweepPoint(area, walls);
   const sweep = sweepFrom(from, area.reach + INSIDE, walls);
   if (!sweep) return area;
   const outline = area.rings.map(quantized);

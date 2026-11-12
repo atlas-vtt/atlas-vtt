@@ -66,7 +66,7 @@ describe('shapedArea', () => {
     it('lies around its origin as far as its end, its edge included', () => {
       const made = area('circle', { x: 100, y: 50 }, { x: 100, y: 330 });
       expect(made.reach).toBe(280);
-      expect(made.towards).toBeNull();
+      expect(made.towards).toEqual({ x: 0, y: 1 });
       expect(made.bounds).toEqual({ minX: -180, minY: -230, maxX: 380, maxY: 330 });
       for (let degrees = 0; degrees < 360; degrees += 7) {
         expect(made.contains(along(made.origin, degrees, 280))).toBe(true);

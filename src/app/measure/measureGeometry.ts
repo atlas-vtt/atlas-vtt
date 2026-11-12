@@ -33,8 +33,11 @@ export interface MeasureArea {
 /** An area as its measurement shapes it, before walls cut it. */
 export interface ShapedArea extends MeasureArea {
   readonly origin: Point;
-  /** The direction it was dragged in, one pixel long; null for a circle, which has none. */
-  readonly towards: Point | null;
+  /**
+   * The direction it was dragged in, one pixel long. A circle is the same whichever way it was
+   * dragged; its direction only says which side of a wall it lies on when its centre is on the wall.
+   */
+  readonly towards: Point;
   /** How far from the origin its farthest point lies. */
   readonly reach: number;
 }
@@ -78,7 +81,7 @@ export function ringBounds(rings: readonly (readonly Point[])[]): Box {
   return box;
 }
 
-function circle(origin: Point, radius: number, towards: Point | null): ShapedArea {
+function circle(origin: Point, radius: number, towards: Point): ShapedArea {
   const corners = circleCorners(radius);
   const ring = Array.from({ length: corners }, (_, i) => {
     const angle = (TURN * i) / corners;
@@ -175,7 +178,7 @@ export function shapedArea(measurement: Measurement, rules: AreaShapeRules): Sha
   const towards = { x: x / length, y: y / length };
   switch (measurement.shape) {
     case 'circle':
-      return circle(origin, length, null);
+      return circle(origin, length, towards);
     case 'cone':
       return cone(origin, towards, length, rules.coneAngle, rules.coneEnd);
     case 'square':

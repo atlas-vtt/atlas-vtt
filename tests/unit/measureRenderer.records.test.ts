@@ -18,7 +18,7 @@ function scene(): MeasureScene {
 
 describe('MeasureRenderer records', () => {
   it('starts with no measurements', () => {
-    expect(scene().measure.measurements.get()).toEqual({ live: null, kept: [] });
+    expect(scene().measure.measurements.get()).toEqual({ live: null, kept: [], walled: false });
   });
 
   it('records the live measurement at snapped cell centres as it is drawn, and drops it two seconds after release', () => {
@@ -30,7 +30,7 @@ describe('MeasureRenderer records', () => {
     s.pointer('pointerup', 300, 180);
     expect(s.measure.measurements.get().live).toEqual({ shape: 'ruler', points: [{ x: 105, y: 105 }, { x: 315, y: 175 }], pressed: { x: 100, y: 100 } });
     vi.advanceTimersByTime(2000);
-    expect(s.measure.measurements.get()).toEqual({ live: null, kept: [] });
+    expect(s.measure.measurements.get()).toEqual({ live: null, kept: [], walled: false });
   });
 
   it('records the shape of the mode the tool is in, and drops what was measured in another', () => {
@@ -44,11 +44,48 @@ describe('MeasureRenderer records', () => {
     expect(s.measure.measurements.get().live?.shape).toBe('circle');
   });
 
-  it.each(['square', 'line', 'ranges'] as const)('measures nothing in the %s mode, which is not built', (mode) => {
+  it('measures nothing in the ranges mode, which shows rings and no measurement', () => {
     const s = scene();
-    s.store.getState().setMeasureTool({ mode });
+    s.store.getState().setMeasureTool({ mode: 'ranges' });
     measureFrom(s, 100, 100);
-    expect(s.measure.measurements.get()).toEqual({ live: null, kept: [] });
+    expect(s.measure.measurements.get()).toEqual({ live: null, kept: [], walled: false });
+  });
+
+  it('starts an area on the nearest cell centre, corner or edge middle, and ends it a whole number of cells away, whichever way the pointer lies', () => {
+    const s = scene();
+    s.store.getState().setMeasureTool({ mode: 'circle' });
+    // Of the points half a cell apart, (100, 100) lies nearest the cell's centre.
+    s.pointer('pointerdown', 100, 100);
+    expect(s.measure.measurements.get().live?.points[0]).toEqual({ x: 105, y: 105 });
+    // 100 px down and 100 right is 141 px away: two cells, along the same way.
+    s.pointer('pointermove', 205, 205);
+    const [origin, end] = s.measure.measurements.get().live!.points;
+    expect(Math.hypot(end!.x - origin!.x, end!.y - origin!.y)).toBeCloseTo(140);
+    expect(end!.x - origin!.x).toBeCloseTo(end!.y - origin!.y);
+    // A corner of cells, where four meet, takes an area's start; a ruler's lies on a centre.
+    s.pointer('pointerup', 205, 205);
+    s.pointer('pointerdown', 138, 142);
+    expect(s.measure.measurements.get().live?.points[0]).toEqual({ x: 140, y: 140 });
+    // Never less than one cell, and freely with Alt.
+    s.pointer('pointermove', 150, 140);
+    expect(s.measure.measurements.get().live?.points[1]).toEqual({ x: 210, y: 140 });
+    s.pointer('pointermove', 150, 143, { alt: true });
+    expect(s.measure.measurements.get().live?.points[1]).toEqual({ x: 150, y: 143 });
+  });
+
+  it('measures a square, and a line as wide as the tool holds, in cells of the map', () => {
+    const s = scene();
+    s.store.getState().setMeasureTool({ mode: 'square', keep: true });
+    measureFrom(s, 105, 105, 315, 105);
+    s.store.getState().setMeasureTool({ mode: 'line' });
+    measureFrom(s, 105, 315, 315, 315);
+    s.store.getState().setMeasureTool({ lineWidth: 2 });
+    measureFrom(s, 105, 525, 315, 525);
+    expect(Object.values(s.store.getState().objects.measures ?? {}).map(({ shape, points, width }) => ({ shape, points, width }))).toEqual([
+      { shape: 'square', points: [{ x: 105, y: 105 }, { x: 315, y: 105 }], width: undefined },
+      { shape: 'line', points: [{ x: 105, y: 315 }, { x: 315, y: 315 }], width: 70 },
+      { shape: 'line', points: [{ x: 105, y: 525 }, { x: 315, y: 525 }], width: 140 },
+    ]);
   });
 
   it('keeps released measurements as scene objects while Keep is on, in the order they were kept', () => {
@@ -56,18 +93,18 @@ describe('MeasureRenderer records', () => {
     s.store.getState().setMeasureTool({ keep: true });
     measureFrom(s, 100, 100);
     s.store.getState().setMeasureTool({ mode: 'circle' });
-    measureFrom(s, 400, 400, 400, 600);
+    measureFrom(s, 385, 385, 385, 600);
     const kept = Object.values(s.store.getState().objects.measures ?? {});
     expect(kept).toEqual([
       { id: expect.any(String), kind: 'measure', shape: 'ruler', points: [{ x: 105, y: 105 }, { x: 315, y: 105 }] },
       { id: expect.any(String), kind: 'measure', shape: 'circle', points: [{ x: 385, y: 385 }, { x: 385, y: 595 }] },
     ]);
-    expect(s.measure.measurements.get()).toEqual({ live: null, kept });
+    expect(s.measure.measurements.get()).toEqual({ live: null, kept, walled: false });
     // Switching Keep off keeps what was kept: it is the scene's now.
     s.store.getState().setMeasureTool({ keep: false });
     expect(s.measure.measurements.get().kept).toHaveLength(2);
     s.store.getState().clearMeasures();
-    expect(s.measure.measurements.get()).toEqual({ live: null, kept: [] });
+    expect(s.measure.measurements.get()).toEqual({ live: null, kept: [], walled: false });
   });
 
   it('never tells of a kept measurement only the GM sees', () => {

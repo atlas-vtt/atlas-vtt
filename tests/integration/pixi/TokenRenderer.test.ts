@@ -1419,8 +1419,8 @@ describe('TokenRenderer Integration Tests', () => {
       measure.destroy();
     });
 
-    /** The measurements' own parts among `layers`: the handles' layer is the GM's control. */
-    const parts = (layers: LayerVisibility[]): LayerVisibility[] => layers.filter(({ layer }) => layer !== measure.handles.layer);
+    /** The measurements' own parts among `layers`: the handles' layer, the areas' unlit outlines and the range marks are the GM's own. */
+    const parts = (layers: LayerVisibility[]): LayerVisibility[] => layers.filter(({ layer }) => !measure.gmLayers.some((own) => own === layer));
     /** The measurement parts' `visible` on the canvas, the live ruler first. */
     const onCanvas = (): boolean[] => parts(measure.getGmViewLayers()).map(({ layer }) => layer.visible);
     /** What a players' frame shows of them. */

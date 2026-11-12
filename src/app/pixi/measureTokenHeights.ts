@@ -1,5 +1,5 @@
 import type { StoreApi } from 'zustand';
-import type { GridSystem } from '../grid/GridSystem';
+import type { GridGeometry } from '../grid/gridDistance';
 import { levelObjects } from '../levels/levelObjects';
 import { tokenStandingAt } from '../measure/tokenDistance';
 import { tokenHeight, type HeightAt } from '../measure/tokenHeight';
@@ -26,7 +26,7 @@ const shownTokens = (state: HeightsState): Readonly<Record<string, TokenEntity>>
  * one: the token lying on top there, hidden ones too, where the store has it. While no token is
  * off the floor it asks nothing of them.
  */
-export function measureHeightAt(store: Pick<HeightsStore, 'getState'>, grid: Pick<GridSystem, 'getOptions'>): HeightAt {
+export function measureHeightAt(store: Pick<HeightsStore, 'getState'>, grid: { getOptions(): GridGeometry }): HeightAt {
   return (point) => {
     const state = store.getState();
     const tokens = shownTokens(state);

@@ -2,17 +2,20 @@
 
 import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
+import { measureLabelText } from '../../measure/measureLabelText';
+import type { Measurement } from '../../measure/measureTypes';
 import { riseBetweenEnds, type HeightAt } from '../../measure/tokenHeight';
 import type { Point } from '../../types/visionTypes';
 
 /**
- * The length of the path through `points`, as the map's rules write it: diagonals are counted over
- * the whole path. With `heightAt` (a ruler's) the height between the tokens under its two ends is
- * counted with it, once over the whole path; the legs keep their length on the floor.
+ * What `measurement` measures, as its label and its popover say it (`measureLabelText`): a ruler's
+ * length along its path, diagonals counted over the whole of it, and with `heightAt` the height
+ * between the tokens under its two ends counted once with it (its legs keep their length on the
+ * floor); an area's size, with the number of `tokens` in it.
  */
-export function pathDistance(grid: GridGeometry, points: readonly Point[], settings: MeasurementSettings, heightAt?: HeightAt | null): string {
-  const rise = heightAt ? riseBetweenEnds(points, heightAt, settings) : 0;
-  return formatDistance(pathLengthInCells(grid, points, settings.diagonalRule, rise), settings);
+export function measureDistance(grid: GridGeometry, measurement: Measurement, settings: MeasurementSettings, heightAt?: HeightAt | null, tokens = 0): string {
+  const rise = measurement.shape === 'ruler' && heightAt ? riseBetweenEnds(measurement.points, heightAt, settings) : 0;
+  return measureLabelText(measurement, grid, settings, tokens, rise);
 }
 
 /**

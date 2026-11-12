@@ -59,6 +59,8 @@ export interface KeptMeasure extends Measurement, OnOneLevel {
    * Unset: it started on no token.
    */
   origin?: KeptMeasureOrigin;
+  /** An area that walls do not stop. Unset: it stops at walls, as every area does when it is made. */
+  walls?: false;
 }
 
 export type MeasureInput = Omit<KeptMeasure, 'id' | 'kind'>;
@@ -78,6 +80,11 @@ export interface MeasureToolOptions {
   players: boolean;
   /** '#rrggbb' of the next measurement; null is the theme's accent. */
   color: string | null;
+  /** How wide the next line is, in cells: the width the last line was given. */
+  lineWidth: number;
 }
 
-export const DEFAULT_MEASURE_TOOL: MeasureToolOptions = { mode: 'ruler', keep: false, players: true, color: null };
+/** The widest a line is made with the tool or its popover, in cells. */
+export const MAX_LINE_WIDTH = 20;
+
+export const DEFAULT_MEASURE_TOOL: MeasureToolOptions = { mode: 'ruler', keep: false, players: true, color: null, lineWidth: 1 };

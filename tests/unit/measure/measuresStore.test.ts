@@ -155,10 +155,10 @@ describe('the measure tool\'s choices and popover', () => {
   it('start as a ruler that fades, shown to players, in the accent colour, and change one choice at a time without an undo step', () => {
     const { store, steps } = setup();
     expect(store.getState().measureTool).toEqual(DEFAULT_MEASURE_TOOL);
-    expect(DEFAULT_MEASURE_TOOL).toEqual({ mode: 'ruler', keep: false, players: true, color: null });
+    expect(DEFAULT_MEASURE_TOOL).toEqual({ mode: 'ruler', keep: false, players: true, color: null, lineWidth: 1 });
     store.getState().setMeasureTool({ mode: 'cone', keep: true });
     store.getState().setMeasureTool({ color: '#3366ff' });
-    expect(store.getState().measureTool).toEqual({ mode: 'cone', keep: true, players: true, color: '#3366ff' });
+    expect(store.getState().measureTool).toEqual({ mode: 'cone', keep: true, players: true, color: '#3366ff', lineWidth: 1 });
     expect(steps()).toBe(0);
   });
 
