@@ -3,6 +3,7 @@
 
 // ── Scene levels page ───────────────────────────────────────────────────────
 // One row per floor, top floor first: name, elevation, then its actions as one group.
+// A scene of one floor has that row too, with its map's actions alone and its roof under it.
 
 .atlas-scene-levels {
   @include atlas-flex-col($spacing-s);
@@ -48,6 +49,15 @@
   &--viewed {
     background: var(--background-modifier-hover);
     box-shadow: inset 2px 0 0 var(--interactive-accent);
+  }
+
+  // A scene's only level: no other level to show in its place, so the row is no choice
+  &--only {
+    cursor: default;
+
+    &:hover {
+      background: none;
+    }
   }
 }
 
