@@ -147,6 +147,22 @@ function spineWithin(sweep: Sweep, [from, to]: readonly [Point, Point]): readonl
   return Math.hypot(x, y) <= Math.hypot(edge.x - origin.x, edge.y - origin.y) ? [from, to] : [from, edge];
 }
 
+/** What of `shapes` (rings of corners) `sweep` reaches; null where one lies beyond what clipping can hold. */
+function cutBy(sweep: Sweep, shapes: readonly (readonly Point[])[]): Point[][] | null {
+  if (!sweep.ring) return null;
+  const outlines: QPolygon[] = [];
+  for (const shape of shapes) {
+    const outline = quantized(shape);
+    if (!outline) return null;
+    outlines.push(outline);
+  }
+  return intersectShapes(outlines, [sweep.ring]).map((ring) => {
+    const corners: Point[] = [];
+    for (let i = 0; i < ring.length; i += 2) corners.push({ x: ring[i]! / Q_SCALE, y: ring[i + 1]! / Q_SCALE });
+    return corners;
+  });
+}
+
 /**
  * `area` as `walls` leave it: what of it a straight way from its origin reaches (from just beside
  * the walls its origin lies on, `wallSweepPoint`). Its outline is
@@ -159,17 +175,23 @@ export function areaWithinWalls(area: ShapedArea, walls: readonly WallSegment[])
   const from = wallSweepPoint(area, walls);
   const sweep = sweepFrom(from, area.reach + INSIDE, walls);
   if (!sweep) return area;
-  const outline = area.rings.map(quantized);
-  if (!sweep.ring || outline.some((ring) => ring === null)) return NOTHING;
-  const rings = intersectShapes(outline.filter((ring) => ring !== null), [sweep.ring]).map((ring) => {
-    const corners: Point[] = [];
-    for (let i = 0; i < ring.length; i += 2) corners.push({ x: ring[i]! / Q_SCALE, y: ring[i + 1]! / Q_SCALE });
-    return corners;
-  });
+  const rings = cutBy(sweep, area.rings);
+  if (!rings) return NOTHING;
   return {
     rings,
     bounds: ringBounds(rings),
     contains: (point) => area.contains(point) && reached(sweep, point),
     ...(area.spine && { spine: spineWithin(sweep, area.spine) }),
   };
+}
+
+/**
+ * What `walls` leave of `shapes` (rings of corners) that are drawn with `area` and lie no farther
+ * than `beyond` past its reach, as the tint of a cell it covers does: what a straight way from the
+ * area's origin reaches of them, by the sweep the area itself is cut with, taken that much farther
+ * so that its own edge cuts nothing. The shapes themselves where no wall stands that near.
+ */
+export function shapesWithinWalls(area: ShapedArea, walls: readonly WallSegment[], shapes: readonly (readonly Point[])[], beyond: number): readonly (readonly Point[])[] {
+  const sweep = sweepFrom(wallSweepPoint(area, walls), area.reach + beyond + INSIDE, walls);
+  return sweep ? cutBy(sweep, shapes) ?? [] : shapes;
 }

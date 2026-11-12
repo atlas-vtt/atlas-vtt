@@ -64,7 +64,7 @@ describe('the toolbar editor\'s card in a real layout', () => {
     expect(performance.now() - hoveredAt).toBeGreaterThanOrEqual(500);
 
     expect(label()).toBe('Measure');
-    expect(card().textContent).toContain('Measure a distance, or the reach of a circle or cone');
+    expect(card().textContent).toContain('Measure a distance or an area, keep it on the map');
     const image = card().querySelector('img');
     if (!image) throw new Error('no screenshot');
     await image.decode();

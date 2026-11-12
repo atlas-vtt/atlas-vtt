@@ -53,7 +53,7 @@ import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/le
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
 import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
-import { createMeasuresActions, type MeasuresSlice } from './stores/measuresSlice';
+import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
 import { createTurnMovesActions, type TurnMovesSlice } from './stores/turnMovesSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
@@ -254,6 +254,7 @@ export interface ViewAtlasState extends ViewState {
   updateMeasure: MeasuresSlice['updateMeasure'];
   deleteMeasure: MeasuresSlice['deleteMeasure'];
   clearMeasures: MeasuresSlice['clearMeasures'];
+  setTokenAuras: MeasuresSlice['setTokenAuras'];
 
   // Movement counted per turn (from turnMovesSlice.ts)
   countTurnMove: TurnMovesSlice['countTurnMove'];
@@ -764,6 +765,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
 
           deleteToken: (id) => set((draft) => {
             delete draft.objects.tokens[id];
+            dropTokenAuras(draft, [id]);
           }),
 
           setTokens: (map) => set((draft) => {
@@ -923,6 +925,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             ids.forEach(id => delete draft.objects.tokens[id]);
+            dropTokenAuras(draft, ids);
             
             // Remove deleted token IDs from selection
             draft.selectedIds = draft.selectedIds.filter(selectedId => !ids.includes(selectedId));
@@ -939,6 +942,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               case 'token':
                 if (draft.objects.tokens[id]) {
                   delete draft.objects.tokens[id];
+                  dropTokenAuras(draft, [id]);
                   // Remove from selection if selected
                   draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
                 }

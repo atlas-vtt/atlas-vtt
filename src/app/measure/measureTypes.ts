@@ -19,6 +19,8 @@ export const MAX_MEASURES = 256;
 export const MAX_ORIGIN_TOKENS = 64;
 /** The longest name of who made a measurement (`KeptMeasure.by`). */
 export const MAX_MEASURE_AUTHOR = 128;
+/** The farthest an aura reaches from its token's space (`KeptMeasure.aura`), in game units. */
+export const MAX_AURA = 100_000;
 
 export interface Measurement {
   readonly shape: MeasureShapeKind;
@@ -61,7 +63,21 @@ export interface KeptMeasure extends Measurement, OnOneLevel {
   origin?: KeptMeasureOrigin;
   /** An area that walls do not stop. Unset: it stops at walls, as every area does when it is made. */
   walls?: false;
+  /**
+   * The token (its id) a circle follows: an aura. It lies around that token wherever the token
+   * stands, drawn from the token's place and never written when the token moves, so its `points`
+   * are where it lay when it was last edited. Only with `aura`.
+   */
+  follows?: string;
+  /**
+   * How far an aura reaches from the edge of its token's space, in game units: the token may
+   * grow or shrink and its aura still reaches as far. Only with `follows`.
+   */
+  aura?: number;
 }
+
+/** A kept circle that follows a token. */
+export type KeptAura = KeptMeasure & { shape: 'circle'; follows: string; aura: number };
 
 export type MeasureInput = Omit<KeptMeasure, 'id' | 'kind'>;
 

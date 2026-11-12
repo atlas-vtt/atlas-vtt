@@ -1,7 +1,6 @@
 import { Graphics, type Container } from 'pixi.js';
 import type { GridGeometry } from '../../grid/gridDistance';
 import type { AreaOnMap } from '../../measure/areaOnMap';
-import type { AreaCell } from '../../measure/measureCells';
 import { cellOutline, hexLayoutOf } from '../../measure/measureGrid';
 import type { Point } from '../../types/visionTypes';
 import { destroyTree } from '../utils/destroyTree';
@@ -21,14 +20,17 @@ const BODY = {
   minCellInset: 1,
 } as const;
 
+/** How far past an area's reach a cell it covers may lie, in cells: no farther than a cell is wide from corner to corner. */
+const CELL_REACH = 1.5;
+
 const flat = (ring: readonly Point[]): number[] => ring.flatMap(({ x, y }) => [x, y]);
 
 /**
  * The body of one measured area, in world space under the tokens and the lighting: a light wash of
  * its colour over its shape as walls leave it, a stronger tint on each cell it covers (set in from
- * the cell's edge, so the cells read as cells), and its outline, drawn inside its edge so nothing
- * of it lies past a wall it stops at. The lighting lights it like the floor. Drawn again only for
- * another area, colour or cell size.
+ * the cell's edge, so the cells read as cells, and cut by the walls the area stops at), and its
+ * outline, drawn inside its edge: nothing of it lies past a wall it stops at. The lighting lights
+ * it like the floor. Drawn again only for another area, colour or cell size.
  */
 export class AreaBody {
   readonly view = new Graphics({ label: 'measure-body' });
@@ -53,10 +55,7 @@ export class AreaBody {
     if (rings.length === 0) return;
     for (const ring of rings) g.poly(ring, true);
     g.fill({ color, alpha: BODY.wash });
-    if (onMap.cells && onMap.cells.length > 0) {
-      traceCells(g, onMap.cells, grid);
-      g.fill({ color, alpha: BODY.cell });
-    }
+    if (traceCells(g, onMap, grid)) g.fill({ color, alpha: BODY.cell });
     for (const ring of rings) g.poly(ring, true);
     g.stroke({ width: Math.max(BODY.minOutlineWidth, grid.size * BODY.outlineWidth), color, alpha: BODY.outline, alignment: 1, join: 'round' });
   }
@@ -72,19 +71,24 @@ export class AreaBody {
   }
 }
 
-/** Every covered cell as a tile a little smaller than the cell. */
-function traceCells(g: Graphics, cells: readonly AreaCell[], grid: GridGeometry): void {
+/**
+ * Every covered cell as a tile a little smaller than the cell. A covered cell reaches past the
+ * area's outline, so where the area stops at walls its tiles are cut by the same walls: nothing of
+ * a body lies past a wall. False where nothing was traced.
+ */
+function traceCells(g: Graphics, { cells, withinWalls }: AreaOnMap, grid: GridGeometry): boolean {
+  if (!cells || cells.length === 0) return false;
   const inset = Math.max(BODY.minCellInset, grid.size * BODY.cellInset);
-  if (!hexLayoutOf(grid)) {
-    const half = grid.size / 2 - inset;
-    if (!(half > 0)) return;
-    for (const { centre } of cells) g.rect(centre.x - half, centre.y - half, 2 * half, 2 * half);
-    return;
-  }
-  // A hex's edges lie half its size from its centre.
+  // A cell's edges lie half its size from its centre.
   const shrink = 1 - inset / (grid.size / 2);
-  if (!(shrink > 0)) return;
-  for (const { centre } of cells) {
-    g.poly(cellOutline(grid, centre).flatMap(({ x, y }) => [centre.x + (x - centre.x) * shrink, centre.y + (y - centre.y) * shrink]), true);
+  if (!(shrink > 0)) return false;
+  if (!withinWalls && !hexLayoutOf(grid)) {
+    const half = (grid.size / 2) * shrink;
+    for (const { centre } of cells) g.rect(centre.x - half, centre.y - half, 2 * half, 2 * half);
+    return true;
   }
+  const tiles = cells.map(({ centre }) => cellOutline(grid, centre).map(({ x, y }) => ({ x: centre.x + (x - centre.x) * shrink, y: centre.y + (y - centre.y) * shrink })));
+  const left = (withinWalls ? withinWalls(tiles, grid.size * CELL_REACH) : tiles).filter((tile) => tile.length > 2);
+  for (const tile of left) g.poly(flat(tile), true);
+  return left.length > 0;
 }

@@ -60,8 +60,9 @@ interface Viewer {
  * what is drawn; the players' picture (their frame, and the canvas while it shows their view) leaves a
  * measurement out while `playersSeeMeasure` says so: one the GM measures for themselves, and one
  * whose start lies on tokens the players do not see. An area's body follows the same rule, and the
- * lighting above it decides where players see it. Of the tokens an area marks, the players' picture
- * rings and counts only those the players see. The pin, the kept measurements' handles and the unlit
+ * lighting above it decides where players see it. Of the tokens an area marks while it is made, the
+ * players' picture rings and counts only those the players see; the marks of a kept area the GM
+ * points at are the GM's own look, and the players' picture has none of them. The pin, the kept measurements' handles and the unlit
  * outlines that let the GM read an area in the dark (`gmLayers`) are the GM's own: the pin is never
  * in a frame, and the others show on the GM's view of the canvas alone, never in a frame or a
  * picture of the scene.
@@ -140,8 +141,9 @@ export class MeasurePartsVisibility {
 
   /** The tokens the measurement in `parts` marks are others: their rings and their number show as the canvas should show them. */
   marked(parts: MeasureParts): void {
-    const audience = parts === this.live ? this.liveAudience : this.kept.get(parts);
-    setLayerVisibility(markLayers(parts.marks, audience ?? null, this.onCanvas()));
+    const live = parts === this.live;
+    const audience = live ? this.liveAudience : this.kept.get(parts);
+    setLayerVisibility(markLayers(parts.marks, audience ?? null, this.onCanvas(), live));
   }
 
   /** Shows on the canvas what it should show now: the players' sight, or whether the canvas shows it, changed. */
@@ -183,20 +185,20 @@ export class MeasurePartsVisibility {
       ...this.liveLayers(viewer, false),
       ...kept.flatMap(([parts, audience]) => this.keptLayers(parts, audience, viewer, false)),
       // After every shape and label, so those keep their places in the list whatever is marked.
-      ...markLayers(this.live.marks, this.liveAudience, viewer),
-      ...kept.flatMap(([parts, audience]) => markLayers(parts.marks, audience, viewer)),
+      ...markLayers(this.live.marks, this.liveAudience, viewer, true),
+      ...kept.flatMap(([parts, audience]) => markLayers(parts.marks, audience, viewer, false)),
     ];
   }
 
   private liveLayers(viewer: Viewer, marks = true): LayerVisibility[] {
     const shown = shownBy(this.liveAudience, viewer.seen);
     const { shape, label } = this.live;
-    return [{ layer: shape, visible: shown }, { layer: label, visible: this.label && shown }, ...(marks ? markLayers(this.live.marks, this.liveAudience, viewer) : [])];
+    return [{ layer: shape, visible: shown }, { layer: label, visible: this.label && shown }, ...(marks ? markLayers(this.live.marks, this.liveAudience, viewer, true) : [])];
   }
 
   private keptLayers(parts: MeasureParts, audience: MeasureAudience, viewer: Viewer, marks = true): LayerVisibility[] {
     const visible = shownBy(audience, viewer.seen);
-    return [{ layer: parts.shape, visible }, { layer: parts.label, visible }, ...(marks ? markLayers(parts.marks, audience, viewer) : [])];
+    return [{ layer: parts.shape, visible }, { layer: parts.label, visible }, ...(marks ? markLayers(parts.marks, audience, viewer, false) : [])];
   }
 }
 
@@ -208,14 +210,17 @@ function shownBy(audience: MeasureAudience | null, seen: TokenSeen | null): bool
 /**
  * The marks on the tokens in an area as `viewer` sees them. The GM's canvas rings every token in
  * it and its label counts them all. The players' picture rings the tokens the players see, of a
- * measurement they see, and a label of its own counts those: neither tells of a token they do not
- * see. A picture of the scene has no rings: they belong to what the GM points at.
+ * measurement they see that is being made (`live`), and a label of its own counts those: neither
+ * tells of a token they do not see. A kept area marks its tokens only while the GM points at it:
+ * the players' picture then has no ring, and its label counts none. A picture of the scene has no
+ * rings: they belong to what the GM points at.
  */
-function markLayers(marks: TokenMarkParts, audience: MeasureAudience | null, { seen, picture }: Viewer): LayerVisibility[] {
+function markLayers(marks: TokenMarkParts, audience: MeasureAudience | null, { seen, picture }: Viewer, live: boolean): LayerVisibility[] {
   const shown = !picture && shownBy(audience, seen);
-  const layers: LayerVisibility[] = marks.rings.map(({ tokenId, layer }) => ({ layer, visible: shown && (!seen || seen(tokenId)) }));
+  const ringed = (tokenId: string): boolean => !seen || (live && seen(tokenId));
+  const layers: LayerVisibility[] = marks.rings.map(({ tokenId, layer }) => ({ layer, visible: shown && ringed(tokenId) }));
   const forPlayers = seen !== null && marks.rings.length > 0;
-  if (seen && forPlayers) marks.countForPlayers(marks.rings.filter(({ tokenId }) => seen(tokenId)).length);
+  if (forPlayers) marks.countForPlayers(marks.rings.filter(({ tokenId }) => ringed(tokenId)).length);
   if (marks.playersCount) layers.push({ layer: marks.gmCount, visible: !forPlayers }, { layer: marks.playersCount, visible: forPlayers });
   return layers;
 }

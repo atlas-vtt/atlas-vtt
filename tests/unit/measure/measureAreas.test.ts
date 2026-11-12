@@ -82,7 +82,7 @@ describe('the tokens in an area', () => {
     s.store.getState().updateToken('goblin', cell(8, 2));
     expect(labels(s)).toEqual(['10ft · 2']);
     expect(rings(s)).toHaveLength(2);
-    s.measure.cancelled();
+    s.key('Escape');
     expect(rings(s)).toHaveLength(0);
   });
 
@@ -122,6 +122,43 @@ describe('the tokens in an area', () => {
     expect(rings(s)).toHaveLength(3);
     s.store.getState().closeMeasurePopover();
     expect(rings(s)).toHaveLength(0);
+  });
+
+  it('are the GM\'s own look on a kept area: the players\' picture has no ring and counts none while the GM points at it', () => {
+    const s = scene(PARTY);
+    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => null };
+    s.store.getState().setMeasureTool({ mode: 'circle', keep: true });
+    measureFrom(s, 245, 245, 245, 385);
+    s.store.getState().setActiveTool('select');
+    const [id] = Object.keys(s.store.getState().objects.measures ?? {});
+    const kept = (): string[] => {
+      const texts: string[] = [];
+      const walk = (node: Container): void => {
+        if (!node.visible) return;
+        if ('text' in node && typeof node.text === 'string' && node.text !== '') texts.push(node.text);
+        node.children.forEach(walk);
+      };
+      walk(s.viewport.getChildByLabel('measure-labels')!);
+      return texts;
+    };
+    const frame = (): { labels: string[]; rings: number } => {
+      let shown = { labels: [] as string[], rings: 0 };
+      captureWithLayerVisibility(s.measure.getPlayerViewLayers(() => true), () => undefined, () => {
+        shown = { labels: kept(), rings: rings(s).filter((ring) => ring.visible).length };
+      });
+      return shown;
+    };
+    for (const point of [(): void => { s.measure.handles.pointer.cursorAt(245, 245); }, (): void => s.store.getState().openMeasurePopover(id!)]) {
+      point();
+      expect(rings(s).filter((ring) => ring.visible)).toHaveLength(3);
+      expect(kept()).toEqual(['10ft · 3']);
+      expect(frame()).toEqual({ labels: ['10ft'], rings: 0 });
+      // The frame leaves the GM's canvas as it was.
+      expect(rings(s).filter((ring) => ring.visible)).toHaveLength(3);
+      expect(kept()).toEqual(['10ft · 3']);
+      s.measure.handles.pointer.leave();
+      s.store.getState().closeMeasurePopover();
+    }
   });
 });
 

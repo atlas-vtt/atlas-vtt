@@ -9,6 +9,7 @@ import type { LevelAlignment, LevelLinkChanges, LevelLinkInput, SceneLevel } fro
 import { isRecord } from '../utils/guards';
 import type { MapMove } from '../grid/mapStretch';
 import { objectsMovedWithMap } from '../grid/mapStretchObjects';
+import { aurasToTokenLevels } from '../measure/auraUpkeep';
 import type { ViewState } from '../types/viewState';
 
 export interface SceneLevelsSlice {
@@ -120,6 +121,8 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
         token.level = levelId;
         moved.add(id);
       }
+      // An aura lies on the level its token stands on.
+      aurasToTokenLevels(draft.objects, moved);
       if (moved.size > 0 && levelId !== viewedLevelId(draft)) draft.selectedIds = draft.selectedIds.filter((id) => !moved.has(id));
     }),
   };

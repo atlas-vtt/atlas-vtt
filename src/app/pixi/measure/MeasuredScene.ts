@@ -55,7 +55,7 @@ export class MeasuredScene {
   /** The map as areas read it: `grid` with the collection's rules, whether its cells are counted (its Snap is on), and the walls areas stop at. */
   areaMap(state: SceneState, grid: GridGeometry, settings: MeasurementSettings): AreaMap {
     const { cellRule, coneEnd } = areaRulesOf(settings);
-    return { grid, cells: state.grid?.snapToGrid ?? true, coneAngle: settings.coneAngle, coneEnd, cellRule, walls: this.walls(state) };
+    return { grid, cells: state.grid?.snapToGrid ?? true, coneAngle: settings.coneAngle, coneEnd, cellRule, diagonalRule: settings.diagonalRule, walls: this.walls(state) };
   }
 
   private drawnWalls(state: SceneState): readonly WallSegment[] {

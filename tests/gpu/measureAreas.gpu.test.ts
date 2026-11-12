@@ -74,7 +74,7 @@ describe('a measured area in the players\' picture', () => {
     expect(around(s.frame(), without.frame(), { x: HERO.x, y: HERO.y - 40 }, 10)).toBeGreaterThan(100);
   });
 
-  it('rings the tokens in it while its handle is pointed at: for the players only those they see', async () => {
+  it('rings the tokens in it while its handle is pointed at, for the GM alone: the players\' picture stays as it was', async () => {
     const s = await kept([HERO, GOBLIN]);
     s.lighting.perception = perceiving({ goblin: 'unseen' });
     const quiet = { frame: s.frame(), gm: s.canvas() };
@@ -83,10 +83,13 @@ describe('a measured area in the players\' picture', () => {
     // The GM's canvas rings both.
     expect(around(pointed.gm, quiet.gm, HERO, RING_REACH)).toBeGreaterThan(100);
     expect(around(pointed.gm, quiet.gm, GOBLIN, RING_REACH)).toBeGreaterThan(100);
-    // The players' frame rings the hero, and shows nothing new where the goblin stands unseen.
-    expect(around(pointed.frame, quiet.frame, HERO, RING_REACH)).toBeGreaterThan(100);
-    expect(around(pointed.frame, quiet.frame, GOBLIN, RING_REACH)).toBe(0);
+    // What the GM points at is the GM's own look: no ring and no count reaches the players.
+    expect(samePixels(pointed.frame, quiet.frame)).toBe(true);
     s.measure.handles.pointer.leave();
+    s.store.getState().openMeasurePopover(s.id);
+    expect(around(s.canvas(), quiet.gm, HERO, RING_REACH)).toBeGreaterThan(100);
+    expect(samePixels(s.frame(), quiet.frame)).toBe(true);
+    s.store.getState().closeMeasurePopover();
     expect(samePixels(s.frame(), quiet.frame)).toBe(true);
     expect(samePixels(s.canvas(), quiet.gm)).toBe(true);
   });
@@ -122,6 +125,26 @@ describe('an area that stops at a wall', () => {
     expect(offEdge(cut, open, 150)).toBe(0);
     s.store.getState().updateMeasure(s.id, { walls: false });
     expect(samePixels(s.frame(), open)).toBe(true);
+  });
+
+  it('tints no part of a covered cell that lies past a wall running through it', async () => {
+    /** Through the middle of the cells from x = 160 to 200, which the circle covers by half. */
+    const through = { ...WALL, p1: { x: 180, y: -CELL }, p2: { x: 180, y: 256 + CELL } };
+    const beyond = (a: Uint8ClampedArray, b: Uint8ClampedArray): number => differingIn(a, b, 182, 0, 256, 256);
+    const s = await kept([]);
+    const empty = await scene();
+    // Without the wall the cells' tint reaches to their far edge.
+    expect(differingIn(s.frame(), empty.frame(), 182, 100, 198, 140)).toBeGreaterThan(400);
+    s.store.getState().addWall(through);
+    empty.store.getState().addWall(through);
+    const cut = s.frame();
+    const bare = empty.frame();
+    expect(beyond(cut, bare)).toBe(0);
+    // Before the wall the cells keep their tint: the same cells, cut at the wall.
+    expect(differingIn(cut, bare, 162, 100, 178, 140)).toBeGreaterThan(400);
+    // The GM's canvas has nothing of the body past the wall either. Its unlit outline is ink centred on the wall, whose
+    // soft casing fades out a few pixels past it; a tile would reach to the cell's far edge at 199.
+    expect(differingIn(s.canvas(), empty.canvas(), 190, 0, 256, 256)).toBe(0);
   });
 
   it('is cut while it is made, too', async () => {

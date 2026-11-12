@@ -6,7 +6,7 @@ import type { WallSegment } from '../../types/wallTypes';
 import { computeVisibility } from '../../vision/visibility';
 import { shapedArea, type ShapedArea } from '../measureGeometry';
 import type { Measurement } from '../measureTypes';
-import { areaWithinWalls, wallSweepPoint } from '../measureWalls';
+import { areaWithinWalls, shapesWithinWalls, wallSweepPoint } from '../measureWalls';
 import { AREA_SHAPES, distanceToOutline, inOutline, RULES, seeded } from './areaTestKit';
 
 vi.mock('../../vision/visibility', async (original) => {
@@ -186,5 +186,39 @@ describe('areaWithinWalls', () => {
         if (distanceToOutline(cut, point) > 1) expect(inOutline(cut, point), `outline, run ${run}`).toBe(cut.contains(point));
       }
     }
+  });
+});
+
+describe('shapesWithinWalls', () => {
+  const square = (x: number, y: number, side: number): Point[] => [{ x, y }, { x: x + side, y }, { x: x + side, y: y + side }, { x, y: y + side }];
+
+  it('cuts what is drawn with an area at the walls the area stops at: a tile a wall runs through keeps its near part', () => {
+    const walls = [wall('w', { x: 100, y: -300 }, { x: 100, y: 300 })];
+    const [tile, ...more] = shapesWithinWalls(circle(90), walls, [square(70, -35, 70)], 100);
+    expect(more).toHaveLength(0);
+    expect(Math.max(...tile!.map(({ x }) => x))).toBeCloseTo(100, 0);
+    expect(ringArea(tile!)).toBeCloseTo(30 * 70, -1);
+  });
+
+  it('leaves out a tile wholly behind a wall, and keeps one wholly before it as it is', () => {
+    const walls = [wall('w', { x: 100, y: -300 }, { x: 100, y: 300 })];
+    const left = shapesWithinWalls(circle(90), walls, [square(110, 0, 40), square(-40, -20, 40)], 100);
+    expect(left).toHaveLength(1);
+    expect(ringArea(left[0]!)).toBeCloseTo(1600, 0);
+    expect(Math.max(...left[0]!.map(({ x }) => x))).toBeCloseTo(0, 6);
+  });
+
+  it('is not cut by the edge of the sweep, which reaches as far past the area as the tiles do', () => {
+    // A wall near, so there is a sweep; the tile lies just past the area's reach, on the open side.
+    const walls = [wall('w', { x: 100, y: -300 }, { x: 100, y: 300 })];
+    const tile = square(-330, -35, 70);
+    const left = shapesWithinWalls(circle(255), walls, [tile], 100);
+    expect(left).toHaveLength(1);
+    expect(ringArea(left[0]!)).toBeCloseTo(4900, 0);
+  });
+
+  it('hands the shapes back where no wall stands near', () => {
+    const tiles = [square(0, 0, 70)];
+    expect(shapesWithinWalls(circle(90), [wall('far', { x: 5000, y: 0 }, { x: 5000, y: 100 })], tiles, 100)).toBe(tiles);
   });
 });

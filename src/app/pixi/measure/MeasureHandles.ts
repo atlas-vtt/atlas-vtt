@@ -12,13 +12,13 @@ import {
   MEASURE_END_HANDLE_RADIUS,
   MEASURE_HANDLE_GLYPH_SIZE,
   MEASURE_HANDLE_RADIUS,
-  measureEndHandlePoint,
+  handlesAtPoints,
   measureHandleAt,
   measureHandleLook,
-  measureHandlePoint,
   sameHandleLook,
   type MeasureHandleLook,
   type MeasureHandlePart,
+  type MeasureHandlePlacer,
   type MeasureHandleRef,
 } from './measureHandle';
 
@@ -63,8 +63,9 @@ function sameTheme(a: CanvasBadgeTheme, b: CanvasBadgeTheme): boolean {
  * markers' language and a size smaller, with the shape's glyph and a thin ring in the
  * measurement's colour. An area has a second one at its far end, a plain dot with the same ring,
  * which resizes and turns it. They are all of a kept measurement that takes the pointer. Handles
- * keep their size on screen, move in place when their measurement changes, and are drawn again
- * only when their look is another. They are the GM's controls: `MeasurePartsVisibility` shows the
+ * keep their size on screen, move in place when their measurement changes or, an aura's, when its
+ * token moves (`place` says where they stand; `moved` asks again), and are drawn again only when
+ * their look is another. They are the GM's controls: `MeasurePartsVisibility` shows the
  * layer on the GM's canvas alone.
  */
 export class MeasureHandles {
@@ -81,7 +82,12 @@ export class MeasureHandles {
   private selected: string | null = null;
 
   /** Added to `parent` after the measurements' labels, so the handles stand above them. */
-  constructor(parent: Container, private readonly zoom: () => number, private readonly readTheme: () => CanvasBadgeTheme = canvasBadgeTheme) {
+  constructor(
+    parent: Container,
+    private readonly zoom: () => number,
+    private readonly place: MeasureHandlePlacer = handlesAtPoints,
+    private readonly readTheme: () => CanvasBadgeTheme = canvasBadgeTheme,
+  ) {
     this.theme = readTheme();
     this.view.addChild(this.ends, this.badges);
     parent.addChild(this.view);
@@ -91,6 +97,11 @@ export class MeasureHandles {
   setKept(list: readonly KeptMeasure[]): void {
     if (list === this.list) return;
     this.list = list;
+    this.sync();
+  }
+
+  /** The handles may stand elsewhere: the tokens that auras follow moved. */
+  moved(): void {
     this.sync();
   }
 
@@ -129,7 +140,7 @@ export class MeasureHandles {
 
   /** The handle at the world point, while the handles show. */
   hitTest(point: Point): MeasureHandleRef | null {
-    return this.view.visible ? measureHandleAt(this.list, point, this.zoom()) : null;
+    return this.view.visible ? measureHandleAt(this.list, point, this.zoom(), this.place) : null;
   }
 
   destroy(): void {
@@ -143,13 +154,19 @@ export class MeasureHandles {
   }
 
   private sync(): void {
-    const ids = new Set(this.list.map((measure) => measure.id));
+    const places = new Map(this.list.flatMap((measure) => {
+      const at = this.place(measure);
+      return at ? [[measure.id, at] as const] : [];
+    }));
     for (const [id, handle] of this.handles) {
-      if (ids.has(id)) continue;
+      if (places.has(id)) continue;
       this.remove(handle);
       this.handles.delete(id);
     }
-    this.list.forEach((measure, index) => {
+    let index = 0;
+    for (const measure of this.list) {
+      const at = places.get(measure.id);
+      if (!at) continue;
       const state = { hovered: partOf(this.hovered, measure.id), selected: this.selected === measure.id, dragging: partOf(this.dragging, measure.id) };
       const look = measureHandleLook(measure, state, this.theme);
       const known = this.handles.get(measure.id);
@@ -158,17 +175,15 @@ export class MeasureHandles {
       const redrawn = !known || known.theme !== this.theme || !sameHandleLook(known.look, look);
       if (redrawn) this.draw(handle, look);
       this.lift(handle, look.lift);
-      if (known?.measure !== measure) {
-        const at = measureHandlePoint(measure);
-        handle.view.position.set(at.x, at.y);
-      }
-      this.syncEnd(handle, measure, look, redrawn);
+      if (handle.view.position.x !== at.origin.x || handle.view.position.y !== at.origin.y) handle.view.position.set(at.origin.x, at.origin.y);
+      this.syncEnd(handle, at.end, look, redrawn);
       // One that undo brought back takes its old place among the others.
       if (this.badges.children[index] !== handle.view) this.badges.setChildIndex(handle.view, index);
+      index++;
       handle.measure = measure;
       handle.look = look;
       handle.theme = this.theme;
-    });
+    }
   }
 
   private create(measure: KeptMeasure, look: MeasureHandleLook): Handle {
@@ -197,8 +212,7 @@ export class MeasureHandles {
   }
 
   /** The dot at an area's far end: made with the area, moved with it, and gone when the measurement is a ruler. */
-  private syncEnd(handle: Handle, measure: KeptMeasure, look: MeasureHandleLook, redrawn: boolean): void {
-    const at = measureEndHandlePoint(measure);
+  private syncEnd(handle: Handle, at: Point | null, look: MeasureHandleLook, redrawn: boolean): void {
     if (!at) {
       if (handle.end) this.removeGrip(handle.end);
       handle.end = null;

@@ -196,11 +196,11 @@ describe('the popover of a kept area', () => {
         return (labelledBy ? document.getElementById(labelledBy)?.textContent : element.textContent) ?? '';
       });
 
-  it('holds, in this order: what it is, its colour, Players see it, Stops at walls, a line\'s Width, Select tokens and Delete', () => {
+  it('holds, in this order: what it is, its colour, Players see it, Stops at walls, a circle\'s Follows token, a line\'s Width, Select tokens and Delete', () => {
     const { store, circle, popover } = setup();
     const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
     act(() => store.getState().openMeasurePopover(circle));
-    expect(controls(popover())).toEqual(['Circle · 2 sq', 'colours', 'Players see it', 'Stops at walls', 'Select tokens', 'Delete']);
+    expect(controls(popover())).toEqual(['Circle · 2 sq', 'colours', 'Players see it', 'Stops at walls', 'Follows token', 'Select tokens', 'Delete']);
     act(() => store.getState().openMeasurePopover(line));
     expect(controls(popover())).toEqual(['Line · 4 sq', 'colours', 'Players see it', 'Stops at walls', 'Width', 'Select tokens', 'Delete']);
   });
@@ -230,8 +230,8 @@ describe('the popover of a kept area', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Wider' }));
     fireEvent.click(screen.getByRole('button', { name: 'Wider' }));
     expect(measure(line)?.width).toBe(210);
-    // A map that counts in squares without a unit names no width in the heading; the stepper says it.
-    expect(popover().querySelector('.atlas-dungeon-stepper__value')?.textContent).toBe('3');
+    // A map that counts in squares without a unit names no width in the heading; the stepper says it, in squares.
+    expect(popover().querySelector('.atlas-dungeon-stepper__value')?.textContent).toBe('3 sq');
     expect(store.getState().measureTool.lineWidth).toBe(3);
     fireEvent.click(screen.getByRole('button', { name: 'Narrower' }));
     expect(measure(line)?.width).toBe(140);
@@ -295,3 +295,58 @@ describe('the measurement popover on the map', () => {
     expect(position().y).toBe(800 - 8 - 160);
   });
 });
+
+describe('a circle that follows a token', () => {
+  /** The circle's centre (900, 400) lies in the cell whose centre is (875, 385). */
+  const hero = { id: 'hero', kind: 'character' as const, name: 'hero', imagePath: '', x: 875, y: 385 };
+  const follows = (): HTMLElement => screen.getByRole('switch', { name: 'Follows token' });
+
+  it('cannot follow where its centre is on no token: the switch shows off and says why', () => {
+    const { store, circle, measure, steps } = setup();
+    act(() => store.getState().openMeasurePopover(circle));
+    expect(follows().getAttribute('aria-checked')).toBe('false');
+    expect(follows().getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(follows());
+    expect(measure(circle)).not.toHaveProperty('follows');
+    expect(steps()).toBe(0);
+  });
+
+  it('becomes the aura of the token it lies on, reaching as far past the token\'s space, and a circle again where the token stands', () => {
+    const { store, circle, measure, popover, steps, undo } = setup();
+    act(() => store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }));
+    getHistoryStore(store)!.getState().clear();
+    act(() => store.getState().openMeasurePopover(circle));
+    expect(follows().getAttribute('aria-disabled')).toBeNull();
+    fireEvent.click(follows());
+    // Two squares from the token's centre is a square and a half past its space: an aura of two squares, 5 a square.
+    expect(measure(circle)).toMatchObject({ shape: 'circle', follows: 'hero', aura: 10, points: [{ x: 875, y: 385 }, { x: 875 + 35 + 140, y: 385 }], color: '#e93147', hidden: true });
+    expect(follows().getAttribute('aria-checked')).toBe('true');
+    expect(within(popover()).getByText('Aura · 2 sq')).toBeTruthy();
+    expect(steps()).toBe(1);
+
+    // The token walks off; let go, the aura stays as a circle around where the token stands then.
+    act(() => store.getState().setTokenPositions([{ id: 'hero', x: 455, y: 385 }]));
+    fireEvent.click(follows());
+    const let_go = measure(circle)!;
+    expect(let_go).not.toHaveProperty('follows');
+    expect(let_go).not.toHaveProperty('aura');
+    expect(let_go.points).toEqual([{ x: 455, y: 385 }, { x: 455 + 35 + 140, y: 385 }]);
+    expect(within(popover()).getByText('Circle · 3 sq')).toBeTruthy();
+    undo();
+    expect(measure(circle)).toMatchObject({ follows: 'hero', aura: 10 });
+  });
+
+  it('stands beside its badge on the rim of its token, wherever the token is', () => {
+    const { store, circle, frame, position } = setup();
+    act(() => store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }));
+    act(() => store.getState().updateMeasure(circle, { follows: 'hero', aura: 10 }));
+    act(() => store.getState().openMeasurePopover(circle));
+    frame();
+    const before = position();
+    act(() => store.getState().setTokenPositions([{ id: 'hero', x: 875 - 210, y: 385 }]));
+    frame();
+    expect(position().x).toBeCloseTo(before.x - 210, 6);
+    expect(position().y).toBeCloseTo(before.y, 6);
+  });
+});
+

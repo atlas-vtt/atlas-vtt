@@ -8,6 +8,8 @@ import { isPinLabelKind, nextPinLabel } from '../tools/pinLabels';
 import { collectMapObjects, countMapObjects, type CopyableCollections, type MapObjectContent } from '../clipboard/mapObjectContent';
 import { duplicateStep, placeMapObjects } from '../clipboard/mapObjectPlacement';
 import { computeNextInstanceNumber } from './tokenInstanceNumbers';
+import { aurasToTokenLevels } from '../measure/auraUpkeep';
+import { dropTokenAuras } from './measuresSlice';
 import { placeTokens, raiseTokens } from './tokenStacking';
 import { isOffMap } from '../tokens/offMap';
 import type { SceneLevel } from '../types/sceneLevelTypes';
@@ -41,6 +43,7 @@ interface MapObjectsStoreState {
   viewedLevel?: string | null | undefined;
   activeTool: string;
   levelLinkPopover: string | null;
+  measurePopover: string | null;
 }
 
 type ImmerSet = (fn: (draft: MapObjectsStoreState) => void) => void;
@@ -128,6 +131,7 @@ export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStor
       delete token.offMap;
       // It is put on the map the view shows: in a scene of several levels, the level shown
       Object.assign(token, placedOnViewedLevel(draft));
+      aurasToTokenLevels(draft.objects, [id]);
       placeTokens(draft, [{ id, x, y }]);
       draft.selectedIds = [id];
     }),
@@ -144,6 +148,8 @@ export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStor
         delete pins[id];
         delete links[id];
       }
+      // A token's auras go with it, in this write: undo brings back both.
+      dropTokenAuras(draft, removed);
       if (draft.levelLinkPopover !== null && removed.has(draft.levelLinkPopover)) draft.levelLinkPopover = null;
       draft.selectedIds = draft.selectedIds.filter((id) => !removed.has(id));
       if (removedToken) {

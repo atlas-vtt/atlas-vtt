@@ -23,9 +23,11 @@
 - Areas snap the way rulebooks measure them: they start on a cell's centre, corner or edge, and their size goes in whole cells whichever way you drag, so a circle of four squares reads 20ft in every direction
 - An area tints the cells it covers and outlines its true shape. It lies on the map under the tokens, lit like the floor, so players see it only where they see the map
 - An area stops at walls and closed doors. A kept area's handle has Stops at walls to let it pass them
-- While you draw an area or point at its handle, the tokens in it get a ring and the label says how many there are. Players see rings only on tokens they can see
+- While you draw an area or point at its handle, the tokens in it get a ring and the label says how many there are. Players see the rings only while you draw, and only on tokens they can see
 - A kept area has a second handle at its far end: drag it to resize and turn the area
 - Select tokens, at a kept area's handle, selects every token in it
+- Auras: a token's menu has Aura, which gives the token an area that goes where it goes, one square's distance at a time (+ and - work too), for the whole selection. It is counted from the token's own space by the collection's rule for diagonals, so with diagonals that count 1 it is the square the rules mean. It tints its cells, stops at walls, and players see it while they see the token
+- Follows token, at the handle of a kept circle that lies on a token, makes the circle that token's aura, or lets it go where it is. An aura's far handle sets how far it reaches
 - Covered cells: a collection's Grid and measure settings say when an area covers a square or hex: at least half of it is inside, its centre is inside, or any part of it is
 - A cone can end rounded or flat, chosen in the same settings
 - Movement steps: the same settings name the steps of a move, such as Move ×1 and Dash ×2, each so many times a token's speed and with a colour of its own, and whether movement adds up over a turn. D&D 5e and Pathfinder 2e come with theirs
