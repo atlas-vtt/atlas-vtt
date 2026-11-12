@@ -155,6 +155,29 @@ describe('a player\'s own character\'s statblock at a running table', () => {
     online.stop();
   });
 
+  it('is sent to each player of two tokens that link one note, whatever their tokens hold, and then left alone', async () => {
+    // Brannoch's token holds 7 hit points and Mira's 4: one note drawn for two characters.
+    const table = await openTable(new BookShelf(), PLAYERS);
+    table.tab.store.set(cave({ brannoch: { statblockPath: BRANNOCH_NOTE }, mira: { statblockPath: BRANNOCH_NOTE } }));
+    await advance(BOOK_POLL_MS);
+    const all = delivered(table.socket);
+    expect(statblocks(all, ANA).map(speedOf)).toEqual(['30 ft.']);
+    expect(statblocks(all, BEN).map(speedOf)).toEqual(['30 ft.']);
+
+    // Nothing changed: neither is drawn or sent again.
+    const since = all.length;
+    await advance(BOOK_POLL_MS * 5);
+    expect(ofType(delivered(table.socket).slice(since), 'book', 'book-statblock')).toEqual([]);
+
+    // A change of the note reaches both.
+    notes.edit(BRANNOCH_NOTE, note('Brannoch', '40 ft.'));
+    await advance(BOOK_POLL_MS);
+    const after = delivered(table.socket).slice(since);
+    expect(statblocks(after, ANA).map(speedOf)).toEqual(['40 ft.']);
+    expect(statblocks(after, BEN).map(speedOf)).toEqual(['40 ft.']);
+    table.online.stop();
+  });
+
   it('is sent again after the book when the player comes back, and taken away when the GM gives the character to someone else', async () => {
     const { online, ownership, socket } = await linkedTable();
     let since = delivered(socket).length;
