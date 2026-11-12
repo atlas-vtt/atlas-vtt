@@ -4,7 +4,7 @@ import type { CampaignChoice } from '../../../../src/app/online/gm/campaignChoic
 import { campaignPick, matchesQuery, renderCampaignPicker, type CampaignPickerActions } from '../../../../src/app/online/gm/dock/campaignPicker.ts';
 import { tableTitle, type OnlineSnapshot } from '../../../../src/app/online/gm/dock/panelModel.ts';
 
-const choice = (id: string, over: Partial<CampaignChoice> = {}): CampaignChoice => ({ id, name: id.toUpperCase(), activity: 'Played 3d ago', players: 0, art: null, hue: 120, ...over });
+const choice = (id: string, over: Partial<CampaignChoice> = {}): CampaignChoice => ({ id, name: id.toUpperCase(), activity: 'Played 3d ago', players: 0, art: null, hue: 120, ownSystem: false, ...over });
 const STRAHD = choice('strahd', { name: 'Curse of Strahd', players: 4 });
 const CAVES = choice('caves', { name: 'Blue Mouth Caves', players: 1 });
 const LIST = [STRAHD, CAVES];
@@ -46,6 +46,14 @@ describe('the campaign a table starts on', () => {
     expect(rows.map((row) => row.getAttribute('aria-checked'))).toEqual(['false', 'true']);
     // One tab stop, as a radio group has.
     expect(rows.map((row) => row.tabIndex)).toEqual([-1, 0]);
+  });
+
+  it('says when the chosen campaign\'s own game system replaces the collections\' rules on the shared maps', () => {
+    const note = (layer: HTMLElement): string | undefined => layer.querySelector('.atlas-online-campaigns__system')?.textContent ?? undefined;
+    const own = [STRAHD, choice('caves', { name: 'Blue Mouth Caves', ownSystem: true })];
+    expect(note(picker(own, 'caves').layer)).toBe('Every map at this table plays by this campaign\'s game system, not its collection\'s.');
+    expect(note(picker(own, 'strahd').layer)).toBeUndefined();
+    expect(note(picker(LIST).layer)).toBeUndefined();
   });
 
   it('shows the world map, or the campaign\'s own tint where it has none', () => {

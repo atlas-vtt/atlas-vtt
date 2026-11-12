@@ -33,6 +33,7 @@ export const online = {
   'online.assign': 'Assign',
   'online.assignHere': 'Assign selected tokens here',
   'online.campaignLabel': 'Campaign',
+  'online.campaignOwnSystem': 'Every map at this table plays by this campaign\'s game system, not its collection\'s.',
   'online.cancel': 'Cancel',
   'online.cannotPresent': 'Atlas cannot show this map on the player view.',
   'online.clearSearch': 'Clear search',
