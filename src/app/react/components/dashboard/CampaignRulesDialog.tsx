@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { App } from 'obsidian';
+import { CampaignPlay } from '../../../campaigns/campaignPlay';
 import { campaignRules } from '../../../campaigns/campaignSystem';
 import type { Campaign } from '../../../campaigns/campaignTypes';
 import type { CampaignService } from '../../../campaigns/CampaignService';
+import { useCampaignPlay } from '../../../campaigns/useCampaignPlay';
 import { viewOfRules } from '../../../gameSystems/rulesView';
 import { vanillaSystemSettings } from '../../../gameSystems/systemRules';
 import { resourceFieldSuggestions } from '../../../resources/resourceFieldSuggestions';
@@ -64,6 +66,13 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
 
   const view = viewOfRules(draft, systemPresets.presets, diceSets.sets);
   const canSave = !hasSystem || view.isValid;
+  // Maps play by a campaign's system only while its online table is open: said where a GM sets rules no map shows yet.
+  const isPlayed = useCampaignPlay(CampaignPlay.forApp(app)) === campaign.id;
+  const whenPlayedNotice = hasSystem && !isPlayed && (
+    <div className="atlas-csm-played-notice" role="note">
+      <span className="atlas-csm-played-notice__text">{t('campaign.systemWhenPlayed')}</span>
+    </div>
+  );
 
   const save = (): void => {
     try {
@@ -112,6 +121,7 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
         fieldSuggestions={resourceFieldSuggestions([], statblockRecords)}
         initiativeFieldSuggestions={modifierFields.suggestions}
         modifierStatblocks={modifierFields.statblocks}
+        rulesNotice={whenPlayedNotice}
       />
     </SettingsDialog>
   );
