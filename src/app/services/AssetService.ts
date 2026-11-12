@@ -15,7 +15,7 @@ import { planFolderNameFixes } from './collectionFolderNames';
 import { migrateInstallRecords } from './collectionBundle/installRecord';
 import { createCollectionRecord, derivedCollectionRecord, defaultCollectionIdOf, forgetCollection, INITIAL_COLLECTION_ID, moveCollectionRecord, numberedCollectionName, prettifyIdentifier } from './collectionRecords';
 import { assetFilePath, groupTokenRefs } from './vault-sync/assetFiles';
-import { reconcileIndex, type VaultReconciliation } from './vault-sync/reconcileIndex';
+import { nothingReconciled, reconcileIndex, type VaultReconciliation } from './vault-sync/reconcileIndex';
 import { listVault, readVault } from './vault-sync/vaultListing';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import { isLegacyTokenRecord, type LegacyAssetMetadata } from './assetMetadataGuards';
@@ -28,7 +28,7 @@ import { LibrarySync } from './library/LibrarySync';
 import type { LibraryMergeResult } from './library/mergeLibraryChanges';
 import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libraryPaths';
 import { isKnownAssetType, isPayloadUnread, serializeRecord } from './library/recordFile';
-import { assetKey, libraryClock, parseLibraryState } from './library/libraryState';
+import { assetKey, emptyLibraryState, libraryClock, parseLibraryState } from './library/libraryState';
 import { indexText, snapshotIndex } from './library/indexSnapshot';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { showNotice } from '../ui/notice';
@@ -265,7 +265,9 @@ export class AssetService {
   /** Collections whose folder is being renamed to their name, so no check starts it twice. */
   private readonly folderRenames = new Set<string>();
   private readonly reconciledListeners = new Set<(result: VaultReconciliation) => void>();
-  private readonly library: LibrarySync;
+  private library: LibrarySync;
+  /** Whether the folder the library lives in is out of the vault; see `followLibraryFolder`. */
+  private libraryAway = false;
   /** Above zero while Atlas changes the index by itself (loading, a vault check); saves then reach only the cache. */
   private automaticDepth = 0;
   /** A vault check waiting for files that look like copies to stand long enough. */
@@ -570,7 +572,10 @@ export class AssetService {
         failure = error instanceof Error ? error : new Error(String(error));
       }
       // The cache follows even when a library file failed, so this device keeps what the files will get on the next save.
-      await this.writeMetadataFile(indexText(snapshot, LIBRARY_STATE_KEY, JSON.stringify(this.library.bookkeeping)));
+      // It lies in the library's folder: while that is away, writing it would put a folder in the way of its return.
+      if (!this.libraryAway || this.app.vault.getFolderByPath(COLLECTIONS_DIR)) {
+        await this.writeMetadataFile(indexText(snapshot, LIBRARY_STATE_KEY, JSON.stringify(this.library.bookkeeping)));
+      }
       if (failure) throw failure;
     });
   }
@@ -860,6 +865,12 @@ export class AssetService {
   reconcileWithVault(deleted: ReadonlySet<string> = new Set()): Promise<VaultReconciliation> {
     return this.indexLock.run(async () => {
       await this.ensureLoaded();
+      const folder = await this.followLibraryFolder();
+      if (folder.away) {
+        const nothing = nothingReconciled(folder.changed);
+        if (folder.changed) this.notifyReconciled(nothing);
+        return nothing;
+      }
       const check: { result?: VaultReconciliation } = {};
       await this.automatically(async () => {
         await this.matchFolderNames();
@@ -875,11 +886,39 @@ export class AssetService {
         return result.changed;
       });
       const reconciled = check.result!;
+      if (folder.changed) reconciled.changed = true;
       for (const id of reconciled.missingFolders) await this.ensureCollectionStructure(id);
       await this.applyVaultFileOps(reconciled);
       if (reconciled.changed) this.notifyReconciled(reconciled);
       return reconciled;
     });
+  }
+
+  /**
+   * Follows the folder the library lives in. Atlas reads its library at that
+   * place alone, so a folder moved, renamed or deleted takes the library with
+   * it, as a sync tool that has not delivered it would: the index lets go of
+   * it, nothing of it is looked for elsewhere, and nothing is made in its place
+   * that would stand in the way of its return. With the folder back, the
+   * library is loaded as at a start. A folder Obsidian has not listed yet is
+   * still on the disk, and no reason to let go of anything. Returns whether the
+   * library is away, and whether that changed.
+   */
+  private async followLibraryFolder(): Promise<{ away: boolean; changed: boolean }> {
+    const away = !this.app.vault.getFolderByPath(COLLECTIONS_DIR) && !(await this.app.vault.adapter.exists(COLLECTIONS_DIR));
+    if (away === this.libraryAway) return { away, changed: false };
+    // No save is under way while the index is replaced.
+    await this.writes.run(async () => {});
+    this.libraryAway = away;
+    if (away) {
+      // An empty library whose files count as read: one the GM starts in its place meanwhile is written like any other.
+      this.metadata = await this.createDefaultMetadata();
+      this.library.restore(emptyLibraryState());
+    } else {
+      this.library = new LibrarySync(this.app);
+      await this.loadMetadata();
+    }
+    return { away, changed: true };
   }
 
   /** Assets whose record file this device has read or written; their art or map missing for now does not remove them. */
@@ -1511,7 +1550,10 @@ export class AssetService {
    */
   async refreshMetadata(): Promise<void> {
     await this.ensureLoaded();
-    await this.indexLock.run(() => this.automatically(async () => (await this.readLibraryFiles()).changed));
+    await this.indexLock.run(async () => {
+      if ((await this.followLibraryFolder()).away) return;
+      await this.automatically(async () => (await this.readLibraryFiles()).changed);
+    });
   }
 
   /** Reads the library files that changed into the index. Open maps hear of changed collection settings. */

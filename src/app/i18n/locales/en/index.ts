@@ -199,6 +199,7 @@ export const en = {
   ...image,
   'index.unreadable': 'Atlas VTT could not read its asset index ({path}) and left it untouched. Restart Obsidian to try again.',
   'index.rebuilding': 'Atlas VTT could not read its asset index and is rebuilding it from your collection files. The unreadable file was kept as {path}.',
+  'index.folderMoved': 'The Atlas folder was moved to "{path}". Atlas finds its library only in "{folder}" at the top of the vault: move the folder back there and your maps, scenes and tokens are back.',
   ...link,
   ...mapPreview,
   ...names,
