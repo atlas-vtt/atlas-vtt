@@ -30,7 +30,7 @@ export function rulerRise(measurement: Measurement, settings: MeasurementSetting
  * What each leg of the path adds to its length, in cells: the legs add up to the whole, also where
  * the rule prices a diagonal by how many came before it.
  */
-export function legLengthsInCells(grid: GridGeometry, points: readonly Point[], settings: MeasurementSettings): number[] {
+function legLengthsInCells(grid: GridGeometry, points: readonly Point[], settings: MeasurementSettings): number[] {
   const lengths: number[] = [];
   let before = 0;
   for (let end = 2; end <= points.length; end++) {

@@ -53,7 +53,7 @@ export function heightField(height: number): { elevation: number | undefined } {
 }
 
 /** `gameUnits` as the map writes a distance: "30ft", "9 m". */
-export function formatHeight(gameUnits: number, settings: MeasurementSettings): string {
+function formatHeight(gameUnits: number, settings: MeasurementSettings): string {
   return formatDistance(Math.abs(gameUnits) / settings.unitDistance, settings);
 }
 

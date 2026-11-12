@@ -112,11 +112,6 @@ export function sameHandleLook(a: MeasureHandleLook, b: MeasureHandleLook): bool
   return a.shape === b.shape && a.glyphTint === b.glyphTint && a.ringColor === b.ringColor && a.accent === b.accent;
 }
 
-/** World radius within which a press at viewport `zoom` hits a handle at a measurement's origin. */
-export function measureHandleHitRadius(zoom: number): number {
-  return MEASURE_HANDLE_HIT_RADIUS * mapMarkerScale(zoom);
-}
-
 /**
  * The handle at the world `point` at viewport `zoom`: the nearest one within its reach, and of
  * handles as near as each other the one of the later measurement, which lies on top. Only handles
