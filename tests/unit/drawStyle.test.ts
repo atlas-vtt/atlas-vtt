@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { annotationList, readDrawing } from '../../src/app/annotations/annotationList';
 import { DEFAULT_DRAW_TOOL, type Annotation, type DrawingAnnotation } from '../../src/app/annotations/annotationTypes';
 import { stampSize, strokeWidth, textHeight } from '../../src/app/annotations/drawSizes';
-import { MIXED, shownLock, shownStyle, styleWrites, type StyleWrite } from '../../src/app/packages/components/toolbar/drawStyle';
+import { fillIsAll, MIXED, shownLock, shownStyle, styleWrites, type StyleWrite } from '../../src/app/packages/components/toolbar/drawStyle';
 import { SEE_THROUGH } from '../../src/app/annotations/madeDrawing';
 import { FONT_FAMILIES, TEXT_PLATE } from '../../src/app/annotations/madeText';
 import type { DrawingStroke, TextElement } from '../../src/app/types';
@@ -124,8 +124,26 @@ describe('what a pick writes to the selected', () => {
       { ids: ['stamp'], changes: { width: stampSize('l', CELL) } },
     ]);
     expect(updates(styleWrites('size', 's', read(stamp), CELL))).toEqual([{ ids: ['stamp'], changes: { width: stampSize('s', CELL) } }]);
+    // A wrapped text that was scaled by its corners wraps where it did on the map: its width takes the scale the write removes.
+    const wrapped = text('wrapped', { width: 120, scale: 2.5, breaks: [5] });
+    const plain = text('plain', { width: 120, breaks: [5] });
+    expect(styleWrites('size', 'l', read(wrapped, plain, pen), CELL)).toEqual([
+      { kind: 'update', ids: ['plain', 'pen'], changes: { width: strokeWidth('l', CELL), fontSize: textHeight('l', CELL), scale: undefined, breaks: undefined } },
+      { kind: 'place', places: { wrapped: { width: 300, fontSize: textHeight('l', CELL), scale: undefined, breaks: undefined } } },
+    ]);
     // A fill without a line gets none.
     expect(styleWrites('size', 'l', read(drawing('fill', { type: 'line', points: SQUARE, fill: 'solid', width: 0 })), CELL)).toEqual([]);
+  });
+
+  it('never takes the fill off a drawing that is nothing but its fill', () => {
+    const cells = drawing('cells', { type: 'line', points: SQUARE, fill: 'solid', width: 0, cells: true });
+    const piece = drawing('piece', { type: 'line', points: SQUARE, fill: 'soft', width: 0 });
+    // A line would be left of the room, nothing of the other two.
+    expect(updates(styleWrites('fill', null, read(cells, room, piece), CELL))).toEqual([{ ids: ['room'], changes: { fill: undefined } }]);
+    expect(styleWrites('fill', null, read(cells, piece), CELL)).toEqual([]);
+    expect(updates(styleWrites('fill', 'soft', read(cells, room), CELL))).toEqual([{ ids: ['cells', 'room'], changes: { fill: 'soft' } }]);
+    // The Fill tool then offers no None, and says why.
+    expect([fillIsAll(read(cells, piece)), fillIsAll(read(cells, room)), fillIsAll(read(room)), fillIsAll(read(pen)), fillIsAll([])]).toEqual([true, false, false, false, false]);
   });
 
   it('writes a line\'s look to lines alone: see-through ink, dashes, arrowheads on open lines, a fill on closed ones', () => {

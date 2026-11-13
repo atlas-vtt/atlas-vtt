@@ -3,6 +3,7 @@
  * is while its words change, and what of the typed words is written.
  */
 
+import { withinTextLength } from '../../annotations/annotationList';
 import type { TextAlign } from '../../annotations/annotationTypes';
 import type { Point } from '../../types/visionTypes';
 
@@ -48,7 +49,7 @@ export function centreFrom(anchor: Point, box: BoxSize, text: Stance): Point {
   return { x: anchor.x - offset.x, y: anchor.y - offset.y };
 }
 
-/** The words a field leaves: what was typed without the spaces and line breaks after its last letter; none for a field of those alone. */
+/** The words a field leaves: what was typed without the spaces and line breaks after its last letter, as long as a text may be at most; none for a field of spaces alone. */
 export function typedWords(value: string): string {
-  return value.replace(/\s+$/, '').replace(/\r\n?/g, '\n');
+  return withinTextLength(value.replace(/\r\n?/g, '\n')).replace(/\s+$/, '');
 }

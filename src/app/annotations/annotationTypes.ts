@@ -18,6 +18,13 @@ export const MAX_TEXTS = 500;
  * lifting at 120 Hz), so no drawing made before is passed over.
  */
 export const MAX_STROKE_POINTS = 20_000;
+/**
+ * The characters one text may have, as a string counts them: a longer one reads cut to this, and
+ * the field takes no more. The message to online players carries as many (`MAX_TEXT_LENGTH` in
+ * `online/protocol/annotations.ts`): the two must stay one number, which a test holds, since this
+ * file is shared code and cannot read that one.
+ */
+export const MAX_TEXT_LENGTH = 2000;
 /** The rings cut out of one drawing's fill (`DrawingStroke.holes`); a drawing with more reads without the rest. */
 export const MAX_HOLES = 256;
 /** The longest `group` and `by` a reader takes; a longer one reads as unset. */

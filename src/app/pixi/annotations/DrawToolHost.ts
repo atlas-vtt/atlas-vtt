@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand';
 import type { TextMeasure } from '../../annotations/annotationBounds';
 import { annotationIndex } from '../../annotations/annotationHit';
 import { annotationList, annotationRoom } from '../../annotations/annotationList';
+import { cleanFillsWritten } from '../../annotations/cleanFills';
 import type { DrawLayer, DrawMode } from '../../annotations/annotationTypes';
 import { drawCell, eraserRadius, stampSize } from '../../annotations/drawSizes';
 import { snapDrawPoint, snapStampPoint } from '../../annotations/drawSnap';
@@ -24,8 +25,12 @@ import type { GestureMode } from './drawGesture';
 import { activeDrawMode } from './drawToolState';
 import { LiveStroke } from './LiveStroke';
 
-/** What a level can hold no more of. */
-export type FullOf = 'drawings' | 'texts';
+/**
+ * What the GM is told of a limit: a level can hold no more `'drawings'` or `'texts'`, a drawing
+ * can take no more `'cuts'` of the eraser, or a level was loaded with more drawings or texts than
+ * are shown.
+ */
+export type FullOf = 'drawings' | 'texts' | 'cuts' | 'drawingsLeftOut' | 'textsLeftOut';
 
 export interface DrawToolDeps {
   readonly viewport: Viewport;
@@ -44,7 +49,7 @@ export interface DrawToolDeps {
   mapRect(): MapRect | null;
   /** Whether the canvas shows the GM's view: the tool works there alone. */
   gmView(): boolean;
-  /** Tells the GM that the level shown holds as many drawings or texts as it may. */
+  /** Tells the GM that the level shown holds as many drawings or texts as it may, or that a drawing can take no further cut. */
   full(of: FullOf): void;
   /** Is told the drawing under way, for whoever shows it elsewhere. */
   readonly underWay: UnderWay;
@@ -59,7 +64,8 @@ const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'c
  * made is selected, so it can be pulled right at once; but not a pen's stroke, since the next
  * stroke often starts on the end of the last, where a handle would take the press. The
  * eraser cuts what its sweep passes (`sweepChange`), every step of it written at once and the
- * whole sweep one undo step; its ring follows the pointer. The Cells mode fills or clears the
+ * whole sweep one undo step; its ring follows the pointer. A drawing that can take no further cut
+ * stays as it is, which the GM is told once a sweep. The Cells mode fills or clears the
  * cells its sweep passes (`CellsPainting`), written when the button comes up. A level that is full
  * takes nothing more, and says so.
  */
@@ -186,12 +192,22 @@ export class DrawToolHost {
     if (!change) return;
     // A cut leaves more drawings than it takes: where the level cannot hold them, nothing is cut.
     if (change.added.length - change.removed.length > annotationRoom(objects).drawings) {
-      if (!this.toldFull) this.deps.full('drawings');
-      this.toldFull = true;
+      this.tellFull('drawings');
       return;
     }
-    if (change.removed.length > 0) state.replaceDrawings(change.removed, change.added);
+    // A drawing cut into as many points or holes as one may have stays as it is under this move.
+    if (change.full) this.tellFull('cuts');
+    if (change.removed.length > 0) {
+      const ids = state.replaceDrawings(change.removed, change.added);
+      cleanFillsWritten(change.added, ids, levelObjects(this.deps.store.getState()).drawings);
+    }
     if (change.texts.length > 0) state.deleteAnnotations(change.texts);
+  }
+
+  /** Tells the GM what the sweep under way could not do, once for the sweep. */
+  private tellFull(of: FullOf): void {
+    if (!this.toldFull) this.deps.full(of);
+    this.toldFull = true;
   }
 
   private finished(made: MadeShape | null): void {
@@ -253,7 +269,7 @@ export class DrawToolHost {
   }
 
   /** Whether the level shown takes one more; tells the GM where it does not. */
-  private hasRoom(of: FullOf): boolean {
+  private hasRoom(of: 'drawings' | 'texts'): boolean {
     if (annotationRoom(levelObjects(this.deps.store.getState()))[of] > 0) return true;
     this.deps.full(of);
     return false;

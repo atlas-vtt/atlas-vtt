@@ -1,11 +1,13 @@
-import { MAX_OWN_ANCHOR_NUMBERS, MAX_PLAYER_STROKE_POINTS, type PlayerDrawChange } from '../protocol/index.ts';
+import { MAX_OWN_ANCHOR_NUMBERS, type PlayerDrawChange } from '../protocol/index.ts';
 import { readDrawing, readText } from '../../annotations/annotationList';
+import { levelObjects } from '../../levels/levelObjects';
 import type { Annotation, AnnotationPlace, DrawingAnnotation, DrawingInput } from '../../annotations/annotationTypes';
 import type { StyleWrite } from '../../packages/components/toolbar/drawStyle';
 import { changeDrawing, changeText } from '../../stores/annotationWrites';
 import type { DrawingStroke, TextElement } from '../../types';
 import type { SceneState } from './atlasView.ts';
-import { allNearEdge, drawingPoints, nearEdge, playerUse, textHeightAllowed, type PlayerUse } from './drawCheck.ts';
+import { seeThroughWeight } from './drawCost.ts';
+import { allNearEdge, costAllowed, drawingPoints, fillAllowed, nearEdge, playerUse, textHeightAllowed, type PlayerUse } from './drawCheck.ts';
 import type { MapSize } from './moveCheck.ts';
 
 /**
@@ -49,6 +51,24 @@ export function isOwn(record: unknown, player: string): boolean {
   return by === player && hidden !== true && layer !== 'map' && locked !== true;
 }
 
+/**
+ * The annotations a player names by the ids they were told (`idOf`), where every one of them is
+ * theirs to change; null where any is not, is gone, or is named by an id they were never told.
+ */
+export function namedOwn(idOf: (alias: string) => string | undefined, player: string, aliases: readonly string[], state: SceneState): Annotation[] | null {
+  const { drawings, texts } = levelObjects(state);
+  const own: Annotation[] = [];
+  for (const alias of aliases) {
+    const id = idOf(alias);
+    if (id === undefined) return null;
+    const record = drawings[id] ?? texts[id];
+    const annotation = !isOwn(record, player) ? null : drawings[id] ? readDrawing(id, record) : readText(id, record);
+    if (!annotation) return null;
+    own.push(annotation);
+  }
+  return own.length > 0 ? own : null;
+}
+
 /** A text told anew as a place; null for anything but a text, a width no letter fits in or the map does not hold, or breaks beyond its words. */
 export function wordsPlace(annotation: Annotation | undefined, words: Extract<PlayerDrawChange, { words: unknown }>['words'], widest: number): AnnotationPlace & { text?: string } | null {
   if (annotation?.kind !== 'text') return null;
@@ -61,44 +81,78 @@ export function wordsPlace(annotation: Annotation | undefined, words: Extract<Pl
   return { x, y, ...(text !== undefined && { text }), ...(wrap !== undefined && { width: wrap }), ...(breaks !== undefined ? { breaks: [...breaks] } : reset && { breaks: undefined }) };
 }
 
-/** `annotations` as they read with `places` written to them; null where one would be no annotation any more. */
-export function placedAnnotations(annotations: readonly Annotation[], places: Readonly<Record<string, AnnotationPlace>>): Annotation[] | null {
+/**
+ * `annotations` as they read once a change is written to them: `places`, and what the picks of
+ * the bars write (`writes`), each by the fields a player's change may write and by the very
+ * functions the store's write goes by, so what is judged is what is then written. `words`: the
+ * place is a text told anew. Null where one would be no annotation any more.
+ */
+export function changedAnnotations(annotations: readonly Annotation[], places: Readonly<Record<string, AnnotationPlace>>, writes: readonly StyleWrite[], words: boolean): Annotation[] | null {
   const after: Annotation[] = [];
   for (const annotation of annotations) {
-    const place = places[annotation.id];
-    if (!place) {
+    const { id } = annotation;
+    const place = places[id];
+    const picks = writes.filter((write): write is Exclude<StyleWrite, { kind: 'place' }> => write.kind !== 'place' && write.ids.includes(id));
+    if (!place && picks.length === 0) {
       after.push(annotation);
       continue;
     }
-    const record = { ...annotation.record, ...place };
-    const read = annotation.kind === 'text' ? readText(annotation.id, record) : readDrawing(annotation.id, record);
+    let read: Annotation | null;
+    if (annotation.kind === 'drawing') {
+      const record: DrawingStroke = { ...annotation.record };
+      if (place) changeDrawing(record, place, DRAWING_PLACE_FIELDS);
+      for (const pick of picks) if (pick.kind === 'update') changeDrawing(record, pick.changes, DRAWING_STYLE_FIELDS);
+      read = readDrawing(id, record);
+    } else {
+      const record: TextElement = { ...annotation.record };
+      if (place) changeText(record, place, words ? WORDS_FIELDS : TEXT_PLACE_FIELDS);
+      for (const pick of picks) changeText(record, pick.changes, pick.kind === 'text' ? TEXT_LOOK_FIELDS : TEXT_STYLE_FIELDS);
+      read = readText(id, record);
+    }
     if (!read) return null;
     after.push(read);
   }
   return after;
 }
 
+/**
+ * Whether drawings changed from `before` to `after` (one for one) are still what a player's may
+ * be: none costs more than one may (`costAllowed`), and a fill is one a player may make
+ * (`fillAllowed`) wherever the change gave a drawing its fill or, with `remade`, set its points
+ * anew. A fill that was there and was only moved, scaled or coloured is as it was.
+ */
+export function shapesAllowed(before: readonly Annotation[], after: readonly Annotation[], remade: boolean): boolean {
+  return after.every((annotation, index) => {
+    if (annotation.kind !== 'drawing') return true;
+    const was = before[index];
+    const filledAnew = was?.kind === 'drawing' && was.fill === null;
+    return costAllowed(annotation) && (!(remade || filledAnew) || fillAllowed(annotation));
+  });
+}
+
 /** Whether a changed annotation lies where a player's may and, a text, is of a size one may have. */
 export function placeAllowed(annotation: Annotation, map: MapSize | null, cell: number): boolean {
   if (annotation.kind === 'text') return nearEdge(annotation, map, cell) && textHeightAllowed(annotation.fontSize * annotation.scale, cell);
-  return annotation.points.length <= MAX_PLAYER_STROKE_POINTS && allNearEdge(annotation.points, map, cell);
+  return allNearEdge(annotation.points, map, cell);
 }
 
 /** What `player` has once `before` (theirs) read as `after`. */
 export function useAfter(list: readonly Annotation[], player: string, before: readonly Annotation[], after: readonly Annotation[]): PlayerUse {
   const use = playerUse(list, player);
-  const points = (annotations: readonly Annotation[]): number => annotations.reduce((sum, annotation) => sum + (annotation.kind === 'drawing' ? drawingPoints(annotation) : 0), 0);
-  use.points += points(after) - points(before);
+  const sum = (annotations: readonly Annotation[], of: (drawing: DrawingAnnotation) => number): number => annotations.reduce((total, annotation) => total + (annotation.kind === 'drawing' ? of(annotation) : 0), 0);
+  use.points += sum(after, drawingPoints) - sum(before, drawingPoints);
+  use.seeThrough += sum(after, seeThroughWeight) - sum(before, seeThroughWeight);
   return use;
 }
 
-/** What a player has once a sweep took `removed` of their drawings and left `added`. */
+/** What a player has once a sweep took `removed` of their drawings and left `added`. Their see-through ink counts as it did: a cut leaves no more of it than there was. */
 export function erasedUse(use: PlayerUse, own: readonly Annotation[], removed: readonly string[], added: readonly DrawingInput[]): PlayerUse {
   const gone = new Set(removed);
   const taken = own.filter((annotation): annotation is DrawingAnnotation => annotation.kind === 'drawing' && gone.has(annotation.id));
   return {
     drawings: use.drawings - taken.length + added.length,
     points: use.points - taken.reduce((sum, drawing) => sum + drawingPoints(drawing), 0) + added.reduce((sum, piece) => sum + drawingPoints(piece), 0),
+    seeThrough: use.seeThrough,
     texts: use.texts,
   };
 }

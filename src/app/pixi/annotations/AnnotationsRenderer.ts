@@ -1,7 +1,7 @@
 import { Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
-import { annotationList } from '../../annotations/annotationList';
+import { annotationList, annotationsLeftOut } from '../../annotations/annotationList';
 import type { DrawMode } from '../../annotations/annotationTypes';
 import { fillsCells } from '../../annotations/cellsMode';
 import { UnderWay, type UnderWaySource } from '../../annotations/underWay';
@@ -112,6 +112,10 @@ export class AnnotationsRenderer {
   /** The records the list was last read from. */
   private drawingsRecord: unknown = null;
   private textsRecord: unknown = null;
+  /** Tells the GM of a limit of drawings and texts. */
+  private readonly full: (of: FullOf) => void;
+  /** The levels of the scene loaded last whose GM was told that they hold more drawings or texts than are shown. */
+  private readonly toldLeftOut = new Set<string>();
   /** The camera is followed in the view's tick: only while there is something to show or hide. */
   private ticking = false;
   /** The zoom the handles were last drawn at. */
@@ -140,6 +144,7 @@ export class AnnotationsRenderer {
     this.unsubscribe = store.subscribe((state, previous) => this.follow(state, previous));
     const snapGrid = (): GridGeometry | null => ((store.getState().grid?.snapToGrid ?? true) ? options.grid() : null);
     const full = options.full ?? showAnnotationsFullNotice;
+    this.full = full;
     this.texts = new MapTexts({
       viewport,
       store,
@@ -169,7 +174,7 @@ export class AnnotationsRenderer {
       typing: () => this.texts.typing.active,
       // A text whose face is still loading is never measured: its side handle changes its width alone until the face is there.
       wordsBox: (text) => (textFontReady(text.fontFamily) ? textLayout(text) : measureTextView(text)),
-      breaksAt: (text, width) => (textFontReady(text.fontFamily) ? textBreaks(text, width) : []),
+      breaksAt: (text, width) => (textFontReady(text.fontFamily) ? textBreaks(text, width) : null),
       copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
       dragTokens: (event) => options.dragTokens?.(event),
       menu: (selected, clicked, at) => {
@@ -203,6 +208,7 @@ export class AnnotationsRenderer {
     this.read(state);
     this.toolChanged(state, null);
     this.refreshVisibility();
+    this.tellLeftOut(state);
   }
 
   /** A gesture of the Draw tool is under way: a press belongs to it, wherever it lands. */
@@ -314,6 +320,23 @@ export class AnnotationsRenderer {
     this.read(state);
     // After the layer has the new records: a gesture's preview ends on what they say.
     this.selecting.follow();
+    const loaded = previous.isMapLoading && !state.isMapLoading;
+    if (loaded || state.mapPath !== previous.mapPath) this.toldLeftOut.clear();
+    if (loaded || !sameScene) this.tellLeftOut(state);
+  }
+
+  /**
+   * A level may hold more drawings or texts than are read (a file from elsewhere, a sync that
+   * joined two): the GM is told once for each level of a scene after it is loaded, since nothing
+   * else says that the map shows only the first of them. Nothing is removed.
+   */
+  private tellLeftOut(state: ViewAtlasState): void {
+    const level = state.viewedLevel ?? '';
+    if (state.isMapLoading || state.isPlayerView === true || this.toldLeftOut.has(level)) return;
+    const { drawings, texts } = annotationsLeftOut(levelObjects(state));
+    if (drawings === 0 && texts === 0) return;
+    this.toldLeftOut.add(level);
+    this.full(drawings > 0 ? 'drawingsLeftOut' : 'textsLeftOut');
   }
 
   /** Draws the annotations of the level shown when a record of theirs is another. */

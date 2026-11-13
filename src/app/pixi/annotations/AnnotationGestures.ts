@@ -33,8 +33,8 @@ export interface GestureDeps {
   readonly snap: (world: Point, free: boolean) => Point;
   /** The box of a text's words before its scale, as it is set. */
   readonly wordsBox: (text: TextAnnotation) => { readonly width: number; readonly height: number };
-  /** Where the lines of `text` break at `width`. */
-  readonly breaksAt: (text: TextAnnotation, width: number) => number[];
+  /** Where the lines of `text` break at `width`; null while that cannot be told (its face is still loading). */
+  readonly breaksAt: (text: TextAnnotation, width: number) => number[] | null;
   /** Shows the handles as the gesture leaves them, and the one it holds; null shows them from the store again. */
   readonly showHandles: (handles: HandleSet | null, held: HandleRef | null) => void;
   /** Writes where a gesture left the annotations: one write, one undo step. */
@@ -189,7 +189,8 @@ export class AnnotationGestures {
   private widthPlace(text: TextAnnotation, side: -1 | 1, drag: Point): AnnotationPlace {
     const before = this.deps.wordsBox(text);
     const width = draggedWidth(text, before.width, side, drag, text.fontSize);
-    const breaks = this.deps.breaksAt(text, width);
+    // Breaks that cannot be told yet are left unset, never saved as none: they are worked out once the face is there.
+    const breaks = this.deps.breaksAt(text, width) ?? undefined;
     const wrapped = readText(text.id, { ...text.record, width, breaks });
     const at = placeBesideSide(text, text, before, wrapped ? this.deps.wordsBox(wrapped) : before, side);
     return { x: at.x, y: at.y, width, breaks };

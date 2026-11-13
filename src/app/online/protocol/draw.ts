@@ -15,6 +15,12 @@ export const MAX_PLAYER_TEXTS = 50;
 export const MAX_PLAYER_STROKE_POINTS = 2_000;
 /** The most numbers (x, y pairs) one of a player's drawing messages carries: about what one frame holds. */
 export const MAX_DRAW_NUMBERS = 480;
+/** The most corners a line a player fills may have; it must end where it began and may not cross itself. */
+export const MAX_PLAYER_FILL_CORNERS = 64;
+/** The most points a player's see-through line may have, a curve's clicked points counting four each: such ink is worked out as one outline, which costs by the points. */
+export const MAX_PLAYER_SEE_THROUGH_POINTS = 64;
+/** The most points a player's eraser tells its sweep in. */
+export const MAX_SWEEP_POINTS = 120;
 /** The longest text a player writes on the map. */
 export const MAX_PLAYER_TEXT_LENGTH = 500;
 /** The most of a player's own drawings and texts one message names. */

@@ -1,96 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { StoreApi } from 'zustand';
 import { annotationList } from '../../../../src/app/annotations/annotationList';
 import { eraserRadius, strokeWidth, textHeight } from '../../../../src/app/annotations/drawSizes';
-import { DRAW_BURST, DRAW_MARGIN_CELLS } from '../../../../src/app/online/gm/drawCheck.ts';
-import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
-import { PlayerDrawings, type ToldIds } from '../../../../src/app/online/gm/playerDrawings.ts';
+import { thinned } from '../../../../src/app/annotations/penStroke';
+import { DRAW_BURST, DRAW_MARGIN_CELLS, PEN_TOLERANCE } from '../../../../src/app/online/gm/drawCheck.ts';
 import { clearDrawnBy, drawnBy } from '../../../../src/app/online/gm/playerDrawingsClear.ts';
-import {
-  MAX_DRAW_NUMBERS, MAX_PLAYER_DRAWING_POINTS, MAX_PLAYER_DRAWINGS, MAX_PLAYER_STROKE_POINTS, MAX_PLAYER_TEXTS, parsePlayerMessage,
-  type DrawLook, type DrawTextLook, type GmMessage, type PlayerDrawMessage, type PlayerStroke,
-} from '../../../../src/app/online/protocol/index.ts';
-import { getHistoryStore, runUntracked, type HistoryState } from '../../../../src/app/stores/history';
+import { MAX_DRAW_NUMBERS, MAX_PLAYER_DRAWING_POINTS, MAX_PLAYER_DRAWINGS, MAX_PLAYER_STROKE_POINTS, MAX_PLAYER_TEXTS, parsePlayerMessage } from '../../../../src/app/online/protocol/index.ts';
+import { runUntracked } from '../../../../src/app/stores/history';
 import type { DrawingStroke, TextElement } from '../../../../src/app/types';
-import { ANA, BEN, SCENE, STORE_FACTORY } from './realStore.ts';
-
-type Request = Exclude<PlayerDrawMessage, PlayerStroke>;
-type DrawStore = SceneStore & { getState(): SceneState & { setSelection(ids: string[]): void; selectedIds: string[]; setPersistenceEnabled(enabled: boolean): void } };
-
-const { createViewAtlasStore } = (await import(/* @vite-ignore */ STORE_FACTORY)) as { createViewAtlasStore: (app: unknown, viewId: string) => DrawStore };
-
-const CELL = 70;
-const MAP = { width: 2000, height: 1500 };
-const LOOK: DrawLook = { colour: '#e93147', size: 'm' };
-const TEXT_LOOK: DrawTextLook = { colour: '#086ddd', size: 'l', font: 'scifi', look: 'outline', align: 'left' };
-
-interface Table {
-  readonly store: DrawStore;
-  readonly history: StoreApi<HistoryState>;
-  readonly drawings: PlayerDrawings;
-  readonly sent: { readonly body: GmMessage; readonly to: string }[];
-  /** How often the players were to be told what is theirs. */
-  changes: number;
-  allowed: boolean;
-  seated: Set<string>;
-  now: number;
-  /** Hands a message to the GM as it would arrive: through the protocol's own reader. */
-  send(from: string, message: Request): void;
-  drawn(): DrawingStroke[];
-  written(): TextElement[];
-  /** What a player is told is theirs now, by the ids they name them by. */
-  mine(player: string): { drawings: Record<string, string>; texts: Record<string, string> };
-  refusals(): string[];
-}
-
-/** A real Atlas view store with a loaded scene and a grid of 70 px, and the players' drawings on it: Ana and Ben sit at the table, which lets players draw. */
-function table(): Table {
-  const store = createViewAtlasStore({}, 'online-draw-test');
-  store.getState().setPersistenceEnabled(false);
-  runUntracked(store, () => store.setState((draft) => {
-    draft.mapLoaded = true;
-    draft.grid = { ...(draft.grid ?? {}), enabled: true, size: CELL } as SceneState['grid'];
-  }));
-  const history = getHistoryStore(store);
-  if (history === null) throw new Error('the store has no history');
-  history.getState().clear();
-  const harness: Table = {
-    store, history, sent: [], changes: 0, allowed: true, seated: new Set([ANA, BEN]), now: 0,
-    drawings: new PlayerDrawings(store, {
-      send: (body, to) => harness.sent.push({ body, to }),
-      now: () => harness.now,
-      allowed: () => harness.allowed,
-      seated: (player) => harness.seated.has(player),
-      map: () => MAP,
-      changed: () => (harness.changes += 1),
-    }),
-    send: (from, message) => {
-      const read = parsePlayerMessage(JSON.parse(JSON.stringify(message)));
-      if (read === null || read.t === 'stroke' || !read.t.startsWith('draw-')) throw new Error(`the protocol refuses ${message.t}`);
-      harness.drawings.receive(from, read as Request);
-    },
-    drawn: () => Object.values(store.getState().objects.drawings),
-    written: () => Object.values(store.getState().objects.texts),
-    mine: (player) => {
-      const { drawings, texts } = store.getState().objects;
-      const told: ToldIds = { drawings: Object.keys(drawings), texts: Object.keys(texts) };
-      const own = harness.drawings.mine(player, told);
-      return {
-        drawings: Object.fromEntries(own.drawings.map(({ at, id }) => [id, told.drawings[at]!])),
-        texts: Object.fromEntries(own.texts.map(({ at, id }) => [id, told.texts[at]!])),
-      };
-    },
-    refusals: () => harness.sent.flatMap(({ body }) => (body.t === 'draw-refused' ? [body.reason] : [])),
-  };
-  harness.drawings.setScene(SCENE);
-  return harness;
-}
-
-let requests = 0;
-const next = (): number => (requests += 1);
-const flat = (points: readonly (readonly [number, number])[]): number[] => points.flat();
-const pen = (points: readonly (readonly [number, number])[], look: DrawLook = LOOK): Request => ({ t: 'draw-add', scene: SCENE, n: next(), mode: 'pen', pts: flat(points), look });
-const steps = (history: StoreApi<HistoryState>): number => history.getState().pastStates.length;
+import { CELL, flat, LOOK, MAP, next, pen, steps, table, TEXT_LOOK, type Table } from './drawTable.ts';
+import { ANA, BEN, SCENE } from './realStore.ts';
 
 describe('a drawing a player makes', () => {
   it('is written as the GM\'s own tool makes it, with who made it, on top, as one undo step', () => {
@@ -134,8 +52,9 @@ describe('a drawing a player makes', () => {
     send(ANA, { t: 'draw-points', scene: SCENE, n, from: most, pts: flat(points.slice(most, 2 * most)) });
     send(ANA, { t: 'draw-add', scene: SCENE, n, mode: 'pen', pts: flat(points.slice(2 * most)), from: 2 * most, look: LOOK });
     expect(drawn()).toHaveLength(1);
-    expect(drawn()[0]?.points).toHaveLength(500);
-    expect(drawn()[0]?.points[499]).toEqual({ x: 499, y: 100 + (499 % 7) });
+    // Every piece arrived: the stroke is the whole line, thinned by the GM's own tolerance.
+    expect(drawn()[0]?.points).toEqual(thinned(points.map(([x, y]) => ({ x, y })), PEN_TOLERANCE));
+    expect(drawn()[0]?.points.at(-1)).toEqual({ x: 499, y: 100 + (499 % 7) });
 
     n = next();
     send(ANA, { t: 'draw-points', scene: SCENE, n, from: 0, pts: flat(points.slice(0, most)) });
@@ -357,7 +276,8 @@ describe('what a player changes, removes and erases', () => {
     expect(drawing()).toMatchObject({ color: '#00ff00', width: strokeWidth('xl', CELL), ends: 'end' });
     expect(text()).toMatchObject({ color: '#00ff00', fontSize: textHeight('xl', CELL), backgroundColor: '#000000' });
     expect(text()).not.toHaveProperty('outline');
-    expect(steps(harness.history)).toBe(4);
+    // The colour and the size were picked for the same two, one after the other: one step. The line's ends and the text's plate are others'.
+    expect(steps(harness.history)).toBe(3);
     // The protocol has no word for these, and the GM writes none of them from a pick.
     for (const style of [{ players: false }, { layer: 'map' }, { hidden: true }, { locked: true }, { icon: 'door' }, { width: 5000 }, { colour: '#00ff00', size: 'xl' }]) {
       expect(parsePlayerMessage({ t: 'draw-change', scene: SCENE, n: 1, ids: [line], style })).toBeNull();

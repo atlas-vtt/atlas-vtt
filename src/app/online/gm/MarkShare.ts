@@ -181,6 +181,11 @@ export class MarkShare {
     this.update();
   }
 
+  /** The drawings under way of `players` (of everyone without) go at once: the GM cleared what those players drew. */
+  dropStrokes(players?: ReadonlySet<string>): void {
+    if (this.playerStrokes.drop((player) => players !== undefined && !players.has(player))) this.pacer.request();
+  }
+
   /** The request `n` of a player's Draw tool was dealt with: the drawing they were making is on the map now, or is not. */
   strokeEnded(player: string, n: number, made: boolean): void {
     this.playerStrokes.ended(player, n, made, this.ports.now());
@@ -243,6 +248,9 @@ export class MarkShare {
       }
     }
     if (silent) this.show();
+    // A drawing under way goes the moment the GM would no longer take it: players may not draw any more, or its maker left this floor.
+    const scene = this.scene;
+    if (this.playerStrokes.any && this.playerStrokes.drop((player) => scene !== null && this.ports.strokesTaken?.(player, scene) != null)) this.pacer.request();
     this.cursors.update();
     if (this.scene !== null) this.pacer.request();
   }

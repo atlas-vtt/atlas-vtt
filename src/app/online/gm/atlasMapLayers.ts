@@ -28,6 +28,12 @@ export interface MapLayerSource {
   doorsSeen(walls: Readonly<Record<string, WallSegment>>, fog: FogCoverage | null): ReadonlySet<string> | null;
   /** Which of `points` the players' picture of a lit scene shows now (the doors' rule, with the committed fog); null as for the doors. */
   pointsSeen(points: readonly Point[], fog: FogCoverage | null): boolean[] | null;
+  /**
+   * What the players' sight is worked out from now (its sight, its ambient light, its lights'
+   * reaches), each the same object while it is the same: while all are, `pointsSeen` answers as it
+   * did. Null while the lighting cannot be read; without it, whoever asks cannot tell.
+   */
+  sightParts?(): readonly unknown[] | null;
   /** The tokens the players only sense now, where their frame outlines them; null as for the doors. */
   sensed(tokens: Readonly<Record<string, TokenEntity>>): SensedMark[] | null;
   /** Where the map's rules are looked up (Atlas's asset service and the played campaign), or null. */
@@ -72,6 +78,10 @@ export function mapLayerSourceOf(renderer: unknown, view: unknown): MapLayerSour
     pointsSeen: (points, fog) => {
       const lighting = controllerOf(renderer);
       return lighting === null ? null : playerPointSight(lighting.view, points, fog);
+    },
+    sightParts: () => {
+      const lighting = controllerOf(renderer);
+      return lighting === null ? null : [lighting.view.currentSight(), lighting.view.ambientLight(), lighting.view.lightReaches()];
     },
     sensed: (tokens) => {
       const lighting = controllerOf(renderer);

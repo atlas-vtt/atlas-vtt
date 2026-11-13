@@ -36,9 +36,9 @@ export interface AnnotationInteractionDeps {
   editText(text: TextAnnotation): void;
   /** Whether a text is being typed: its field stands where its frame would. */
   typing(): boolean;
-  /** The box of a text's words before its scale, and where its lines break at a width: what a side handle works with. */
+  /** The box of a text's words before its scale, and where its lines break at a width (null while its face is loading): what a side handle works with. */
   wordsBox(text: TextAnnotation): { readonly width: number; readonly height: number };
-  breaksAt(text: TextAnnotation, width: number): number[];
+  breaksAt(text: TextAnnotation, width: number): number[] | null;
   /** Leaves copies of the annotations `ids`, moved by (dx, dy), and selects them. */
   copyMoved(ids: readonly string[], dx: number, dy: number): void;
   /** Starts the drag of the selected tokens with the press `event`: a press on an annotation drags the tokens selected with it. */
@@ -56,14 +56,16 @@ export interface AnnotationInteractionDeps {
  * mode, those above the tokens in the move and select tools, and in the Draw tool's other modes
  * only the handles of what is selected, which is the one just made. A press selects (with its
  * group; Shift adds or takes away) and drags; a press on a handle scales, stretches, turns or moves
- * a line's point; a right press opens the menu; a double click edits a text or removes a line's point.
+ * a line's point; a right click opens the menu (the press released in place: a right-drag pans); a
+ * double click edits a text or removes a line's point.
  */
 export class AnnotationInteraction {
   /** What the dispatch calls. */
   readonly pointer: AnnotationPointerHandlers = {
     gripDown: (x, y, event) => this.gripDown({ x, y }, event),
     pointerDown: (x, y, event) => this.pointerDown({ x, y }, event),
-    secondaryDown: (x, y, event) => this.secondaryDown({ x, y }, event),
+    menuAt: (x, y) => this.menuAt({ x, y }),
+    openMenu: (x, y, event) => this.openMenu({ x, y }, event),
     dragAlong: (event) => this.dragAlong(event),
     cursorAt: (x, y, covered) => this.cursorAt({ x, y }, covered),
     leave: () => this.leave(),
@@ -75,6 +77,8 @@ export class AnnotationInteraction {
   private hovered: Annotation | null = null;
   /** The handle under the pointer. */
   private hot: HandleRef | null = null;
+  /** The selection the handle under the pointer belongs to, as the store had it. */
+  private selectedIds: readonly string[] | null = null;
   private readonly doubleClicks: DoubleClick;
 
   /** `now` is the clock a double click is told by, milliseconds; unset, the page's. */
@@ -106,6 +110,12 @@ export class AnnotationInteraction {
   follow(): void {
     const before = this.selection;
     const now = this.read();
+    // Another selection (by a key too, with the pointer at rest): the handle under the pointer was the old one's.
+    const { selectedIds } = this.deps.store.getState();
+    if (selectedIds !== this.selectedIds) {
+      this.selectedIds = selectedIds;
+      if (!this.gestures.active) this.setHot(null);
+    }
     if (this.gestures.active && (now.scope === 'none' || !this.deps.gmView() || !this.gestures.holds(now.list))) this.gestures.cancel();
     if (now === before) return;
     if (this.hovered && (now.list !== before?.list || now.scope !== before.scope)) this.hover(null);
@@ -138,12 +148,14 @@ export class AnnotationInteraction {
     return true;
   }
 
-  /** Delete on a line's point under the pointer removes the point; whether the key was taken. */
+  /**
+   * Delete on a line's point under the pointer removes the point; whether one went. Where the line
+   * has none to spare (an open one of two points, a closed one of three) the key is not the
+   * point's, and deletes what is selected as anywhere else.
+   */
   handleDelete(): boolean {
     const hot = this.hot;
-    if (!this.works() || hot?.kind !== 'point') return false;
-    this.removePoint(hot.index);
-    return true;
+    return this.works() && hot?.kind === 'point' && this.removePoint(hot.index);
   }
 
   /**
@@ -272,20 +284,29 @@ export class AnnotationInteraction {
     this.gestures.move(movable, event, { handles: null, withTokens: { begin: () => beginHistoryTransaction(store), end: () => endHistoryTransaction(store) } });
   }
 
-  private secondaryDown(point: Point, event: FederatedPointerEvent): boolean {
+  /** Whether `point` is inside the selection's frame, in a mode where the frame takes presses. */
+  private inFrame(point: Point, read: SelectionRead): boolean {
+    return read.handles !== null && read.scope !== 'made' && handleAt(read.handles, point, this.zoom) !== null;
+  }
+
+  private menuAt(point: Point): boolean {
+    if (!this.works()) return false;
+    const read = this.read();
+    return this.taken(point, read) !== null || this.inFrame(point, read);
+  }
+
+  private openMenu(point: Point, event: FederatedPointerEvent): boolean {
     if (!this.works()) return false;
     let read = this.read();
     const at = this.taken(point, read);
-    const inFrame = read.handles !== null && read.scope !== 'made' && handleAt(read.handles, point, this.zoom) !== null;
-    if (!at && !inFrame) return false;
+    if (!at && !this.inFrame(point, read)) return false;
     const state = this.deps.store.getState();
     if (at && !state.selectedIds.includes(at.id)) {
       state.setSelection(withGroups([at.id], read.list, read.scope));
       read = this.read();
     }
     this.gestures.cancel();
-    this.deps.menu?.(read.selected, at, { x: event.clientX, y: event.clientY });
-    return true;
+    return this.deps.menu?.(read.selected, at, { x: event.clientX, y: event.clientY }) ?? false;
   }
 
   private cursorAt(point: Point, covered: () => boolean): string | null {
@@ -331,12 +352,14 @@ export class AnnotationInteraction {
     this.deps.handles.hover(annotation ? outlineOf(annotation, this.zoom, this.deps.measure) : null);
   }
 
-  /** Removes the point `index` of the one line whose points show, where it has one to spare. */
-  private removePoint(index: number): void {
+  /** Removes the point `index` of the one line whose points show, where it has one to spare; whether it went. */
+  private removePoint(index: number): boolean {
     const line = this.read().handles?.line;
     const place: AnnotationPlace | null = line ? withPointRemoved(line, index) : null;
+    if (!line || !place) return false;
     this.setHot(null);
-    if (line && place) this.deps.store.getState().placeAnnotations({ [line.id]: place });
+    this.deps.store.getState().placeAnnotations({ [line.id]: place });
+    return true;
   }
 
   /** The selection without `ids`. */

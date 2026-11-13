@@ -219,6 +219,21 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(Math.round(rect(MODES).width + 8 + rect(TOOLS).width)).toBe(804);
   });
 
+  it('offers no None for a selected drawing that is nothing but its fill: the row stays in its place, disabled', async () => {
+    mount();
+    // Filled cells, selected, and then a mode whose bar has Fill: the bar shows the selection's style.
+    const id = store.getState().addDrawing({ type: 'line', points: [{ x: 0, y: 0 }, { x: 70, y: 0 }, { x: 70, y: 70 }, { x: 0, y: 70 }, { x: 0, y: 0 }], color: '#e93147', width: 0, opacity: 0.4, fill: 'solid', cells: true });
+    act(() => store.getState().setSelection([id]));
+    await choose('rectangle');
+    act(() => button('Fill').click());
+    const items = [...document.querySelectorAll<HTMLButtonElement>(`${TOOLS} .atlas-dropdown-content .atlas-dropdown-menu-item`)];
+    expect(items.map((item) => [item.textContent, item.disabled])).toEqual([['No fill', true], ['Soft', false], ['Solid', false]]);
+    act(() => items[0]!.click());
+    expect(store.getState().objects.drawings[id]?.fill).toBe('solid');
+    act(() => items[1]!.click());
+    expect(store.getState().objects.drawings[id]?.fill).toBe('soft');
+  });
+
   it('opens a tool\'s choices above the bar, inside the view, shows the choice made as the button\'s face and closes on a pick', async () => {
     mount();
     await choose('line');

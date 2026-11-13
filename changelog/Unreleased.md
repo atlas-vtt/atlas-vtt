@@ -34,7 +34,7 @@
 - Drag a line, a rectangle or an ellipse, or place it click by click. On a line, Space adds a corner, Backspace takes one back, Enter or a double click ends it, and ending on its first point closes it. Shift gives 15° steps, a square or a circle
 - Shapes and stamps snap to the grid while Snap is on; hold Alt to place them freely
 - The eraser cuts a drawing exactly where it passes, through filled shapes too, and removes a text it touches. Hold Alt to remove whole drawings. One sweep is one undo step
-- See-through ink has one even tone, also where a stroke crosses itself
+- See-through ink has one even tone, also where a stroke crosses itself. A very long stroke or a dense scribble is darker where it crosses
 - What you draw with Players see it switched off is yours alone: it is not in the player window, in Session View, in scene thumbnails or online
 - A drawing on the map is lit like the floor: players see it only where they see or remember the map
 - Texts and drawings lie in one order, so a text can stand above a drawing

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CELL, type DrawToolChoices } from '../../src/app/annotations/annotationTypes';
 import { eraserRadius } from '../../src/app/annotations/drawSizes';
 import { segmentDistanceSq } from '../../src/app/annotations/lineMath';
+import { LIGHTING_QUALITY } from '../../src/app/lighting/lightingQuality';
 import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsRenderer';
 import { MAP_LAYER_Z } from '../../src/app/pixi/mapLayerOrder';
 import { RenderScheduler } from '../../src/app/pixi/RenderScheduler';
@@ -491,4 +492,75 @@ describe('what the drawings cost', () => {
     // The target is a millisecond of the tool's own work a move; the bound leaves room for a busy machine.
     expect(median(moves)).toBeLessThan(1);
   }, 120_000);
+
+  it('prints what a pan over a lit scene costs with a level full of drawings, beside the same scene without them', async () => {
+    const MAP = 4096;
+    const view = await openLitView({ pane: { width: 1440, height: 900 }, map: MAP, quality: LIGHTING_QUALITY.balanced });
+    const { app, viewport, store, displayFrames } = view;
+    let annotations: AnnotationsRenderer | null = null;
+    const ownTicker = viewport.options.ticker;
+    cleanup.push(() => {
+      annotations?.destroy();
+      // The viewport takes itself off the ticker it was made with.
+      viewport.options.ticker = ownTicker;
+      view.dispose();
+    });
+    const random = seeded(11);
+    const state = store.getState();
+    // Rooms of a dungeon: walls in a lattice with gaps, a lamp in every other room, a little light of the scene's own.
+    state.setSceneLighting({ enabled: true, ambient: 0.2 });
+    for (let i = 1; i < 8; i++) {
+      for (let j = 0; j < 8; j++) {
+        state.addWall({ type: 'solid', p1: { x: i * 512, y: j * 512 + 80 }, p2: { x: i * 512, y: j * 512 + 432 } });
+        state.addWall({ type: 'solid', p1: { x: j * 512 + 80, y: i * 512 }, p2: { x: j * 512 + 432, y: i * 512 } });
+      }
+    }
+    for (let i = 0; i < 8; i++) {
+      for (let j = i % 2; j < 8; j += 2) state.addLight({ x: i * 512 + 256, y: j * 512 + 256, emission: { bright: 20, dim: 40, color: '#ffd9a0', intensity: 1, animation: 'none' } });
+    }
+    const gl = (app.renderer as unknown as { gl: WebGL2RenderingContext }).gl;
+    /** One display frame with the camera at `step` of a pan across the map, until the GPU is done with it. */
+    const frame = (step: number): number => {
+      viewport.moveCenter(900 + step * 9, 700 + step * 7);
+      const start = performance.now();
+      displayFrames(1);
+      gl.finish();
+      return performance.now() - start;
+    };
+    const pan = (): number[] => Array.from({ length: 240 }, (_, step) => frame(step));
+    displayFrames(60);
+    pan();
+    const bare = pan();
+
+    // A level as full as it may be: every tenth drawing lies on the map, under the lighting, the rest above it.
+    const drawings: Record<string, DrawingStroke> = {};
+    for (let index = 0; index < 2000; index++) {
+      let x = random() * MAP;
+      let y = random() * MAP;
+      const points = Array.from({ length: POINTS }, () => {
+        x += (random() - 0.5) * 12;
+        y += (random() - 0.5) * 12;
+        return { x, y };
+      });
+      const id = `d${index}`;
+      drawings[id] = { id, kind: 'drawing', timestamp: 1, type: 'pen', points, color: index % 2 ? '#ffffff' : '#ffcc00', width: 4, opacity: 1, order: index + 1, ...(index % 10 === 0 && { layer: 'map' as const }) };
+    }
+    // The drawings follow the camera in the view's own tick, as in a map view: the helper's viewport has another ticker.
+    viewport.options.ticker = app.ticker;
+    annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
+    store.setState({ objects: { ...store.getState().objects, drawings } });
+    displayFrames(60);
+    // The first pass draws what comes into view; the second finds everything drawn.
+    const first = pan();
+    for (let waited = 0; annotations.layer.building && waited < 600; waited++) displayFrames(1);
+    expect(annotations.layer.building).toBe(false);
+    const drawn = pan();
+    console.info([
+      `A pan over a lit scene (${MAP} px, 112 walls, 32 lights, Balanced, view 1440 × 900), a frame (tick, render, GPU done):`,
+      `without drawings: median ${ms(median(bare))}, 95 % under ${ms(share(bare, 0.95))};`,
+      `with 2,000 drawings of 100 points, 200 of them on the map, first pass (${annotations.layer.drawn} drawn by its end): median ${ms(median(first))}, 95 % under ${ms(share(first, 0.95))}, most ${ms(Math.max(...first))};`,
+      `the same pan again, everything drawn: median ${ms(median(drawn))}, 95 % under ${ms(share(drawn, 0.95))}, most ${ms(Math.max(...drawn))}.`,
+    ].join('\n'));
+    expect(annotations.layer.drawn).toBeGreaterThan(100);
+  }, 180_000);
 });

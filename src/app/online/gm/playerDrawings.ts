@@ -2,26 +2,27 @@ import {
   type DrawMine, type DrawOwn, type DrawRefusal, type GmMessage, type PlayerDrawAdd, type PlayerDrawChange, type PlayerDrawErase, type PlayerDrawMessage,
   type PlayerDrawPoints, type PlayerDrawRemove, type PlayerDrawText, type PlayerStroke,
 } from '../protocol/index.ts';
-import { AnnotationIndex } from '../../annotations/annotationHit';
-import { annotationList, annotationRoom, readDrawing, readText } from '../../annotations/annotationList';
+import { annotationList, annotationRoom, readDrawing } from '../../annotations/annotationList';
 import { orderOnTop } from '../../annotations/annotationStack';
 import { placedBy } from '../../annotations/annotationTransform';
 import type { Annotation, AnnotationPlace } from '../../annotations/annotationTypes';
-import { drawCell, eraserRadius } from '../../annotations/drawSizes';
-import { sweepChange } from '../../annotations/eraseSweep';
+import { drawCell } from '../../annotations/drawSizes';
 import { madeText } from '../../annotations/madeText';
 import { levelObjects } from '../../levels/levelObjects';
 import { placedOnViewedLevel } from '../../levels/sceneLevels';
 import { styleWrites, type StyleWrite } from '../../packages/components/toolbar/drawStyle';
 import { changeDrawing, changeText, newAnnotationId, newDrawing } from '../../stores/annotationWrites';
 import type { DrawingStroke, TextElement } from '../../types';
-import type { SceneState, SceneStore } from './atlasView.ts';
-import { allNearEdge, drawingPoints, drawRate, maxWrap, nearEdge, playerDrawing, playerUse, pointsOf, styleChoice, textChoices, transformOf, withinUse } from './drawCheck.ts';
+import type { SceneStore } from './atlasView.ts';
+import { seeThroughWeight } from './drawCost.ts';
+import { allNearEdge, drawingPoints, drawRate, maxWrap, nearEdge, playerDrawing, playerUse, pointsOf, styleChoice, textChoices, transformOf, withinUse, writeRate } from './drawCheck.ts';
+import { JoinedSteps } from './joinedSteps.ts';
 import { MoveRate, type MapSize } from './moveCheck.ts';
 import {
-  applyStyle, DRAWING_PLACE_FIELDS, erasedUse, isOwn, ownAnchors, placeAllowed, placedAnnotations, removeFrom, TEXT_PLACE_FIELDS, useAfter, wordsPlace, WORDS_FIELDS,
+  applyStyle, changedAnnotations, DRAWING_PLACE_FIELDS, erasedUse, isOwn, namedOwn, ownAnchors, placeAllowed, removeFrom, shapesAllowed, TEXT_PLACE_FIELDS, useAfter, wordsPlace, WORDS_FIELDS,
 } from './playerDrawingRules.ts';
 import { PlayerAliases, PointsAhead } from './playerDrawingState.ts';
+import { PlayerErasing } from './playerErasing.ts';
 
 type Request = Exclude<PlayerDrawMessage, PlayerStroke | PlayerDrawPoints>;
 
@@ -58,15 +59,19 @@ type Verdict = DrawRefusal | null;
  * decides and writes, each taken request as one write of the GM's store and so one undo step.
  *
  * Every request is refused unless the GM lets players draw now, its sender sits at the table and
- * names the scene of the floor they see, the map is loaded, and the sender is within their rate.
+ * names the scene of the floor they see, the map is loaded, and the sender is within the rate of
+ * its kind: drawings made, erasings, and every other write (`drawCheck.ts`).
  * A drawing is made here from what the gesture made and the tool's own words for its look
  * (`playerDrawing`, `madeText`): its width, opacity and size are the GM's tool's, never numbers a
- * page names. It must lie on the map or near its edge (`nearEdge`) and leave its maker within
+ * page names, and it is one that is cheap to build, draw and cut whatever the page sent. It must
+ * lie on the map or near its edge (`nearEdge`) and leave its maker within
  * what one player may have (`withinUse`). A change, a removal and an erasing reach only what the
  * sender made (`by`), is shown to players, lies above the tokens and is not locked, named by the
  * ids this player was told (`mine`): never the scene's own ids, never another player's. An eraser
  * is told as its sweep, and what it cuts is worked out here by the rule the GM's own eraser cuts
- * by, over the sender's drawings alone: nothing a page says can remove or reshape anything else.
+ * by, over the sender's drawings alone (`PlayerErasing`): nothing a page says can remove or
+ * reshape anything else. Changes to the same drawings that follow each other closely are one
+ * undo step of the GM's (`JoinedSteps`).
  * Who sees a drawing, its layer, its lock, its group and its order are never taken from a player.
  */
 export class PlayerDrawings {
@@ -76,9 +81,15 @@ export class PlayerDrawings {
   private readonly seen = new Map<string, number>();
   private readonly ahead = new PointsAhead();
   private readonly rate: MoveRate = drawRate();
+  private readonly writes: MoveRate = writeRate();
+  private readonly erasing: PlayerErasing;
+  private readonly steps: JoinedSteps;
   private readonly refusalRate = new MoveRate(REFUSAL_BURST, REFUSALS_PER_SECOND);
 
-  constructor(private readonly store: SceneStore, private readonly ports: PlayerDrawingPorts) {}
+  constructor(private readonly store: SceneStore, private readonly ports: PlayerDrawingPorts) {
+    this.erasing = new PlayerErasing(() => ports.now());
+    this.steps = new JoinedSteps(store);
+  }
 
   /** The shared scene of this floor; another one knows none of the ids and requests of the last. */
   setScene(scene: string | null): void {
@@ -87,11 +98,14 @@ export class PlayerDrawings {
     this.aliases.clear();
     this.seen.clear();
     this.ahead.clear();
+    this.erasing.clear();
+    this.steps.clear();
   }
 
   /** A player left the table or this floor: what they sent ahead goes, and their next page counts its requests anew. */
   playerLeft(player: string): void {
     this.ahead.playerLeft(player);
+    this.erasing.playerLeft(player);
     this.seen.delete(player);
   }
 
@@ -102,6 +116,8 @@ export class PlayerDrawings {
    */
   mine(player: string, told: ToldIds): Pick<DrawMine, 'drawings' | 'texts' | 'seen'> {
     const { drawings, texts } = levelObjects(this.store.getState());
+    // An id of what is on the level no more is forgotten: a player is told none for it again.
+    this.aliases.keep(player, (id) => drawings[id] !== undefined || texts[id] !== undefined);
     const own = (ids: readonly string[], records: Readonly<Record<string, DrawingStroke | TextElement>>): DrawOwn[] => {
       const list: DrawOwn[] = [];
       ids.forEach((id, at) => {
@@ -139,13 +155,14 @@ export class PlayerDrawings {
   private deal(from: string, message: Request): Verdict {
     const refusal = this.refusal(from, message.scene);
     if (refusal !== null) return refusal;
-    if (!this.rate.take(from, this.ports.now())) return 'rate';
+    // An erasing is held to a rate of its own, which also one that is refused takes from.
+    if (message.t === 'draw-erase') return this.erase(from, message);
+    if (!(message.t === 'draw-add' ? this.rate : this.writes).take(from, this.ports.now())) return 'rate';
     switch (message.t) {
       case 'draw-add': return this.add(from, message);
       case 'draw-text': return this.addText(from, message);
       case 'draw-change': return this.change(from, message);
       case 'draw-remove': return this.remove(from, message);
-      case 'draw-erase': return this.erase(from, message);
     }
   }
 
@@ -158,11 +175,14 @@ export class PlayerDrawings {
     if (drawing === null) return 'shape';
     if (!allNearEdge(drawing.points, this.ports.map(), cell)) return 'place';
     const objects = levelObjects(state);
+    const record = newDrawing(state, { ...drawing, points: [...drawing.points], by: from }, orderOnTop(state));
+    const read = readDrawing(record.id, record);
+    if (read === null) return 'shape';
     const use = playerUse(annotationList(objects), from);
     use.drawings += 1;
     use.points += drawingPoints(drawing);
+    use.seeThrough += seeThroughWeight(read);
     if (!withinUse(use) || annotationRoom(objects).drawings <= 0) return 'full';
-    const record = newDrawing(state, { ...drawing, points: [...drawing.points], by: from }, orderOnTop(state));
     this.store.setState((draft) => {
       draft.objects.drawings[record.id] = record;
     });
@@ -195,7 +215,7 @@ export class PlayerDrawings {
 
   private change(from: string, message: PlayerDrawChange): Verdict {
     const state = this.store.getState();
-    const own = this.ownOf(from, message.ids, state);
+    const own = namedOwn((alias) => this.aliases.idOf(from, alias), from, message.ids, state);
     if (own === null) return 'gone';
     const cell = drawCell(state.grid);
     const map = this.ports.map();
@@ -219,19 +239,22 @@ export class PlayerDrawings {
       places = { [own[0]!.id]: place };
     }
     for (const write of writes) if (write.kind === 'place') places = { ...places, ...write.places };
-    const after = placedAnnotations(own, places);
-    if (after === null) return 'shape';
+    const words = 'words' in message;
+    const after = changedAnnotations(own, places, writes, words);
+    // Points and a fill set anew are held to what a drawing may be made as; so is a line made a curve or straight again.
+    const remade = 'line' in message || ('style' in message && 'curved' in message.style);
+    if (after === null || !shapesAllowed(own, after, remade)) return 'shape';
     if (!after.every((annotation) => placeAllowed(annotation, map, cell))) return 'place';
     if (!withinUse(useAfter(annotationList(levelObjects(state)), from, own, after))) return 'full';
-    this.store.setState((draft) => {
+    this.steps.write(from, own.map(({ id }) => id), this.ports.now(), () => this.store.setState((draft) => {
       for (const [id, place] of Object.entries(places)) {
         const drawing = draft.objects.drawings[id];
         const text = draft.objects.texts[id];
         if (drawing) changeDrawing(drawing, place, DRAWING_PLACE_FIELDS);
-        if (text) changeText(text, place, 'words' in message ? WORDS_FIELDS : TEXT_PLACE_FIELDS);
+        if (text) changeText(text, place, words ? WORDS_FIELDS : TEXT_PLACE_FIELDS);
       }
       for (const write of writes) applyStyle(draft, write);
-    });
+    }));
     return null;
   }
 
@@ -245,7 +268,7 @@ export class PlayerDrawings {
   }
 
   private remove(from: string, message: PlayerDrawRemove): Verdict {
-    const own = this.ownOf(from, message.ids, this.store.getState());
+    const own = namedOwn((alias) => this.aliases.idOf(from, alias), from, message.ids, this.store.getState());
     if (own === null) return 'gone';
     const ids = new Set(own.map(({ id }) => id));
     this.store.setState((draft) => removeFrom(draft, ids));
@@ -254,14 +277,13 @@ export class PlayerDrawings {
 
   private erase(from: string, message: PlayerDrawErase): Verdict {
     const state = this.store.getState();
-    const cell = drawCell(state.grid);
-    const points = pointsOf(message.pts);
-    if (!allNearEdge(points, this.ports.map(), cell)) return 'place';
     const objects = levelObjects(state);
     const list = annotationList(objects);
     // The sweep is run over the sender's own alone: nothing else can be reached by it.
     const own = list.filter((annotation) => isOwn(annotation.record, from));
-    const change = sweepChange(new AnnotationIndex(own), { points, radius: eraserRadius(message.size, cell) }, message.whole === true);
+    const erasing = this.erasing.cut(from, message, own, drawCell(state.grid), this.ports.map());
+    if ('refused' in erasing) return erasing.refused;
+    const { change } = erasing;
     // A sweep that reaches nothing of theirs changes nothing.
     if (change === null) return null;
     // A cut leaves more drawings than it takes: where the level or the player cannot hold them, nothing is cut.
@@ -274,20 +296,5 @@ export class PlayerDrawings {
       for (const piece of added) draft.objects.drawings[piece.id] = piece;
     });
     return null;
-  }
-
-  /** The annotations a player names, where every one of them is theirs to change; null where any is not, is gone, or is named by an id they were never told. */
-  private ownOf(from: string, ids: readonly string[], state: SceneState): Annotation[] | null {
-    const { drawings, texts } = levelObjects(state);
-    const own: Annotation[] = [];
-    for (const alias of ids) {
-      const id = this.aliases.idOf(from, alias);
-      if (id === undefined) return null;
-      const record = drawings[id] ?? texts[id];
-      const annotation = !isOwn(record, from) ? null : drawings[id] ? readDrawing(id, record) : readText(id, record);
-      if (!annotation) return null;
-      own.push(annotation);
-    }
-    return own.length > 0 ? own : null;
   }
 }

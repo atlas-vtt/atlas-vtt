@@ -2,13 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleSpots, handlesOf } from '../../../src/app/annotations/annotationHandles';
 import { annotationList } from '../../../src/app/annotations/annotationList';
-import { MAX_TEXTS } from '../../../src/app/annotations/annotationTypes';
+import { MAX_TEXT_LENGTH, MAX_TEXTS } from '../../../src/app/annotations/annotationTypes';
 import { textHeight } from '../../../src/app/annotations/drawSizes';
 import { FONT_FAMILIES, TEXT_PLATE } from '../../../src/app/annotations/madeText';
 import { canRunMapHotkeys } from '../../../src/app/keyboard/mapHotkeys';
 import { isTextEntryTarget } from '../../../src/app/keyboard/textEntry';
 import { pickDrawStyle } from '../../../src/app/packages/components/toolbar/drawStyleStore';
 import { TEXT_CONTENT_LABEL } from '../../../src/app/pixi/textElementView';
+import { watchTextFonts } from '../../../src/app/pixi/textFonts';
 import { markHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { levelObjects } from '../../../src/app/levels/levelObjects';
 import type { ContextMenuEntry } from '../../../src/app/react/root/ContextMenuContext';
@@ -246,6 +247,26 @@ describe('editing a text on the map', () => {
     expect(selected(s)).toEqual(s.ids);
   });
 
+  it('takes no more than a text may have, and leaves a longer one from a file as it is until it is edited', () => {
+    const long = 'abcde '.repeat(MAX_TEXT_LENGTH / 2);
+    const s = scene([{ text: long }]);
+    const record = s.texts()[0]!;
+    s.tool({ mode: 'select' });
+    doubleClick(s, 300, 300);
+    const field = s.field()!;
+    expect(field.maxLength).toBe(MAX_TEXT_LENGTH);
+    expect(field.value).toHaveLength(MAX_TEXT_LENGTH);
+    // Closed as it was opened: the record is the file's, with all of its words.
+    s.fieldKey('Enter');
+    expect(s.texts()[0]).toBe(record);
+    expect(steps(s)).toBe(0);
+    // Edited, it is written as long as a text may be.
+    doubleClick(s, 300, 300);
+    s.type(`${'x'.repeat(MAX_TEXT_LENGTH + 50)}`);
+    s.fieldKey('Enter');
+    expect(s.texts()[0]!.text).toBe('x'.repeat(MAX_TEXT_LENGTH));
+  });
+
   it('opens it from the menu\'s Edit', () => {
     const s = scene([{}]);
     s.tool({ mode: 'select' });
@@ -338,6 +359,21 @@ describe('the side handles of a text', () => {
     const handles = handlesOf(annotationList(levelObjects(s.store.getState())).filter((annotation) => ids.has(annotation.id)), s.renderer.layer.measure)!;
     return handleSpots(handles, 1).find(({ ref }) => ref.kind === 'side' && ref.x === side)!.at;
   }
+
+  it('save no line breaks while the text\'s face is still loading: they are worked out once it is there', () => {
+    const s = scene([{ text: 'aaa bbb ccc', fontFamily: FONT_FAMILIES.mono, width: 200, breaks: [4] }]);
+    // The face is declared and not loaded yet.
+    const stop = watchTextFonts({ check: () => false, load: () => new Promise(() => undefined) }, () => undefined);
+    s.tool({ mode: 'select' });
+    s.store.getState().setSelection(s.ids);
+    const right = sideGrip(s, 1);
+    s.pull([[right.x, right.y], [right.x - 20, right.y], [right.x - 40, right.y]]);
+    const narrowed = s.texts()[0]!;
+    expect(narrowed.width).toBeLessThan(200);
+    // No breaks at all, where saved ones (none: every word on one line) would be drawn for good.
+    expect(narrowed).not.toHaveProperty('breaks');
+    stop();
+  });
 
   it('set the width its words wrap at, keep the other side and the top where they are, and save where the lines break, in one step', () => {
     // Three words of 3 letters and the spaces between them: 88 wide, one line 10 high.

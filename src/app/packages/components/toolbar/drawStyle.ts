@@ -88,6 +88,17 @@ const READ: { readonly [Field in StyleField]: (annotation: Annotation, cell: num
   icon: (annotation) => (annotation.kind === 'drawing' && annotation.icon !== null ? annotation.icon : MIXED),
 }
 
+const hasLine = (annotation: Annotation): boolean => annotation.kind === 'drawing' && annotation.width > 0
+
+/**
+ * Whether the selected drawings the Fill tool styles are all fills without a line (filled cells,
+ * what the eraser left of a fill): none of them can be without a fill, so the tool offers no None.
+ */
+export function fillIsAll(selected: readonly Annotation[]): boolean {
+  const styled = styledBy('fill', selected)
+  return styled.length > 0 && !styled.some(hasLine)
+}
+
 /** The selected annotations `field` is the style of. */
 export function styledBy(field: StyleField, selected: readonly Annotation[]): Annotation[] {
   return selected.filter(STYLED[field])
@@ -161,7 +172,7 @@ function curvedPlaces(styled: readonly Annotation[], curved: boolean): StyleWrit
  * What a pick of `value` for `field` writes to the selected annotations the field styles; nothing
  * where it styles none of them, and the pick is the tool's own. A size is written as the pixels
  * it comes to on a map with cells of `cell`; a text gets it as its height, without the scale its
- * handles gave it.
+ * handles gave it, and keeps the width its lines wrap at on the map.
  */
 export function styleWrites<Field extends StyleField>(field: Field, value: DrawStyle[Field], selected: readonly Annotation[], cell: number): StyleWrite[] {
   const styled = styledBy(field, selected)
@@ -173,17 +184,25 @@ export function styleWrites<Field extends StyleField>(field: Field, value: DrawS
   if (players !== undefined) return update(styled, { hidden: players ? undefined : true })
   if (layer !== undefined) return update(styled, { layer: layer === 'map' ? 'map' : undefined })
   if (size !== undefined) {
+    const fontSize = textHeight(size, cell)
+    // A text's wrap width is in its letters' pixels before the scale: one that was scaled wraps where it did only with the scale in its width.
+    const places: Record<string, AnnotationPlace> = {}
+    for (const annotation of styled) {
+      if (annotation.kind === 'text' && annotation.width !== null && annotation.scale !== 1) places[annotation.id] = { width: annotation.width * annotation.scale, fontSize, scale: undefined, ...RESET }
+    }
     // `width` reaches drawings alone and the other two texts alone, so lines and texts share a write; a stamp's width is its side.
     return [
-      ...update(styled.filter((annotation) => !isStamp(annotation)), { width: strokeWidth(size, cell), fontSize: textHeight(size, cell), scale: undefined, ...RESET }),
+      ...update(styled.filter((annotation) => !isStamp(annotation) && !places[annotation.id]), { width: strokeWidth(size, cell), fontSize, scale: undefined, ...RESET }),
       ...update(styled.filter(isStamp), { width: stampSize(size, cell) }),
+      ...(Object.keys(places).length > 0 ? [{ kind: 'place' as const, places }] : []),
     ]
   }
   if (seeThrough !== undefined) return update(styled, { opacity: seeThrough ? SEE_THROUGH : 1 })
   if (dash !== undefined) return update(styled, { dash: dash ?? undefined })
   if (ends !== undefined) return update(styled, { ends: ends ?? undefined })
   if (curved !== undefined) return curvedPlaces(styled, curved)
-  if (fill !== undefined) return update(styled, { fill: fill ?? undefined })
+  // A drawing without a line is nothing but its fill: taken off, it would be left in the scene and shown by nothing.
+  if (fill !== undefined) return update(fill === null ? styled.filter(hasLine) : styled, { fill: fill ?? undefined })
   if (font !== undefined) return update(styled, { fontFamily: FONT_FAMILIES[font], ...RESET })
   if (look !== undefined) {
     const changes: TextChanges = look === 'plate' ? { ...TEXT_PLATE, outline: undefined } : { ...NO_PLATE, outline: look === 'outline' ? true : undefined }

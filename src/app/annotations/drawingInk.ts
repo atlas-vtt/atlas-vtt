@@ -8,6 +8,9 @@ import { normalizePolygon, subtractShapes } from '../lighting/polygonClip';
 import type { QShape } from '../types/shapeTypes';
 import type { Point } from '../types/visionTypes';
 import type { DrawingAnnotation } from './annotationTypes';
+import { isCleanFill } from './cleanFills';
+import { keepInk, keptInk } from './inkMemo';
+import { cleanFillAffordable, evenInkAffordable } from './inkWork';
 import { CURVE_TOLERANCE, strokeCurve } from './penStroke';
 import { filledParts, onClipGrid, pointsQ, type FilledPart } from './quantized';
 import { arrowHead, dashes, inkShape, shaft } from './strokeLook';
@@ -56,14 +59,14 @@ function drawnPath(drawing: DrawingAnnotation, tolerance: number): readonly Poin
 export function fillShape(outline: readonly Point[], holes: readonly (readonly Point[])[]): QShape | null {
   const ring = outline.slice(0, -1);
   if (!onClipGrid(ring) || !holes.every((hole) => onClipGrid(hole))) return null;
-  let shape = normalizePolygon(pointsQ(ring));
-  for (const hole of holes) shape = subtractShapes(shape, normalizePolygon(pointsQ(hole)));
-  return shape;
+  const shape = normalizePolygon(pointsQ(ring));
+  // Each hole is what its own ring winds around; cleaned one by one, all of them are cut out in one go.
+  return holes.length === 0 ? shape : subtractShapes(shape, holes.flatMap((hole) => normalizePolygon(pointsQ(hole))));
 }
 
-/** A fill as it lies in the file, where the grid cannot hold it: its outline and its holes as they are. */
+/** A fill as it lies in the file: its outline and its holes as they are. For one that needs no cleaning, and where the grid cannot hold it. */
 function plainFill(outline: readonly Point[], holes: readonly (readonly Point[])[]): FilledPart[] {
-  return [{ outline: outline.slice(0, -1).map(({ x, y }) => ({ x, y })), holes: holes.map((hole) => hole.map(({ x, y }) => ({ x, y }))) }];
+  return [{ outline: outline.slice(0, -1), holes: holes.map((hole) => [...hole]) }];
 }
 
 /**
@@ -72,17 +75,31 @@ function plainFill(outline: readonly Point[], holes: readonly (readonly Point[])
  *
  * A fill is cleaned on the clipping grid, so an outline that crosses itself is filled by the same
  * rule a point is found in it by (`inFill`); a rectangle or an ellipse without holes crosses
- * nothing and is filled as it is. Under a see-through line the fill ends where the ink begins, so
- * the half of the line that lies on its inside is no darker than the half outside.
+ * nothing and is filled as it is, and so is what a cut left (`cleanFills.ts`). Under a see-through
+ * line the fill ends where the ink begins, so the half of the line that lies on its inside is no
+ * darker than the half outside.
+ *
+ * Both are worked out only within a budget (`inkWork.ts`). Past it, a see-through line is stroked
+ * as any line and is darker where it crosses itself, and a fill is filled as its outline lies.
+ * What was worked out for a see-through drawing is kept while only its place changes (`inkMemo.ts`).
  */
 export function drawingInk(drawing: DrawingAnnotation, tolerance: number): DrawingInk {
+  const seeThrough = drawing.width > 0 && drawing.opacity < 1;
+  const known = seeThrough ? keptInk(drawing, tolerance) : null;
+  if (known) return known;
+  const ink = inkOf(drawing, tolerance);
+  if (seeThrough) keepInk(drawing, tolerance, ink);
+  return ink;
+}
+
+function inkOf(drawing: DrawingAnnotation, tolerance: number): DrawingInk {
   const { width, opacity } = drawing;
   const path = drawnPath(drawing, tolerance);
   const inked = width > 0;
   const heads: Point[][] = [];
   let lines: Point[][] = [];
+  let line = path;
   if (inked) {
-    let line = path;
     if (drawing.ends) {
       const end = arrowHead(path, width, 'end');
       const start = drawing.ends === 'both' ? arrowHead(path, width, 'start') : null;
@@ -92,13 +109,13 @@ export function drawingInk(drawing: DrawingAnnotation, tolerance: number): Drawi
     }
     lines = drawing.dash ? dashes(line, width, drawing.dash) : [line.map(({ x, y }) => ({ x, y }))];
   }
-  const ink = inked && opacity < 1 ? inkShape(lines, width, heads) : null;
+  const ink = inked && opacity < 1 && evenInkAffordable(line, lines) ? inkShape(lines, width, heads) : null;
 
   let fill: DrawingInk['fill'] = null;
   if (drawing.fill && drawing.closed) {
     const alpha = opacity * (drawing.fill === 'soft' ? SOFT_FILL : 1);
-    const simple = drawing.holes.length === 0 && (drawing.shape === 'rectangle' || drawing.shape === 'ellipse');
-    const shape = simple && !ink ? null : fillShape(path, drawing.holes);
+    const simple = (drawing.holes.length === 0 && (drawing.shape === 'rectangle' || drawing.shape === 'ellipse')) || isCleanFill(drawing);
+    const shape = (simple && !ink) || !cleanFillAffordable(path, drawing.holes) ? null : fillShape(path, drawing.holes);
     fill = { parts: shape ? filledParts(ink ? subtractShapes(shape, ink) : shape) : plainFill(path, drawing.holes), alpha };
   }
   return ink

@@ -136,6 +136,27 @@ describe('the faces of texts', () => {
     layer.destroy();
     stop();
   });
+
+  it('are waited for in both documents where the canvas is in another than the one texts are measured in', async () => {
+    // The canvas' own document (a second window) has the face; the document PIXI measures in has not loaded it yet.
+    const canvas: FontSource = { check: () => true, load: vi.fn(() => Promise.resolve()) };
+    let loaded = false;
+    let arrive: () => void = () => undefined;
+    const measured: FontSource = { check: () => loaded, load: vi.fn(() => new Promise<void>((resolve) => { arrive = resolve; })) };
+    const arrived = vi.fn();
+    const stop = watchTextFonts(canvas, arrived, measured);
+    // A face settled before for other documents says nothing of these: it is asked of them.
+    const scifi = FONT_FAMILIES.scifi;
+    expect(textFontReady(scifi)).toBe(false);
+    expect([vi.mocked(canvas.load).mock.calls.length, vi.mocked(measured.load).mock.calls.length]).toEqual([1, 1]);
+    expect(textFontReady(scifi)).toBe(false);
+    expect(measured.load).toHaveBeenCalledOnce();
+    loaded = true;
+    arrive();
+    await vi.waitFor(() => expect(arrived).toHaveBeenCalledOnce());
+    expect(textFontReady(scifi)).toBe(true);
+    stop();
+  });
 });
 
 describe('where a text with a width keeps its line breaks', () => {

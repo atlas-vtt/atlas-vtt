@@ -3,7 +3,7 @@ import {
   type SharedAnnotations, type SharedDoor, type SharedDrawing, type SharedGrid, type SharedText,
 } from '../protocol/index.ts';
 import { annotationList, readDrawing } from '../../annotations/annotationList';
-import type { DrawingAnnotation, TextAnnotation } from '../../annotations/annotationTypes';
+import type { Annotation, DrawingAnnotation, TextAnnotation } from '../../annotations/annotationTypes';
 import type { LiveDrawing } from '../../annotations/madeDrawing';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { GridOptions } from '../../grid/GridSystem';
@@ -13,6 +13,7 @@ import { MAX_Q, Q_SCALE, type QShape } from '../../types/shapeTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { wallList } from '../../vision/wallList';
 import { ringColour, roundPlace } from './scenePicture.ts';
+import { SentOrders } from './sentOrders.ts';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 /** A place players may be sent: finite and within the protocol's reach. */
@@ -90,8 +91,9 @@ const SHAPES = { pen: undefined, line: 'line', free: 'line', rectangle: 'rectang
  * A drawing in the words the page reads: a stamp, or its line as a pen's stroke through its points,
  * whatever shape it is, which is what a page reads that knows nothing more. Beside the line goes
  * what it is drawn by: its shape, whether it is a curve, its fill and the holes in it, its dashes
- * and arrowheads, a stamp's turn, and its place in the one order. Nothing else of it: not who made
- * it, its group, its lock or its id, and of a curve's clicked points only that there were some.
+ * and arrowheads, and a stamp's turn. Nothing else of it: not who made it, its group, its lock or
+ * its id, and of a curve's clicked points only that there were some. Its place in the one order
+ * is told beside it, by a number of the audience's own (`SentOrders`), never the GM's.
  */
 function sharedDrawing(drawing: DrawingAnnotation): SharedDrawing | null {
   const width = clamp(drawing.width, 0, 100_000, 4);
@@ -101,7 +103,7 @@ function sharedDrawing(drawing: DrawingAnnotation): SharedDrawing | null {
     const centre = points[0];
     if (centre === undefined || drawing.icon === null || !/^[a-z0-9-]{1,40}$/.test(drawing.icon)) return null;
     const turn = turnOf(drawing.rotation);
-    return { type: 'icon', points: [centre.x, centre.y], colour, width, opacity, icon: drawing.icon, ...(turn !== 0 && { turn }), ...orderField(drawing.order) };
+    return { type: 'icon', points: [centre.x, centre.y], colour, width, opacity, icon: drawing.icon, ...(turn !== 0 && { turn }) };
   }
   const shape = SHAPES[drawing.shape];
   // A hole that reaches past the protocol's reach is left out: the fill then covers it, which gives nothing away.
@@ -114,7 +116,6 @@ function sharedDrawing(drawing: DrawingAnnotation): SharedDrawing | null {
     ...(holes.length > 0 && { holes }),
     ...(drawing.dash !== null && { dash: drawing.dash }),
     ...(drawing.ends !== null && { ends: drawing.ends }),
-    ...orderField(drawing.order),
   };
 }
 
@@ -147,7 +148,6 @@ function sharedText(text: TextAnnotation): SharedText {
     ...(text.look === 'outline' && { outline: true as const }),
     ...(wrap !== undefined && wrap > 0 && { wrap }),
     ...(wrap !== undefined && wrap > 0 && breaks !== undefined && { breaks }),
-    ...orderField(text.order),
   };
 }
 
@@ -179,6 +179,38 @@ export interface ToldAnnotationLists {
   readonly above: ToldAbove;
 }
 
+/** What the lists are told by beside the scene's drawings, texts and fog. */
+export interface ToldBy {
+  /**
+   * Whether players know of a drawing or text on the map (`KnownOnMap`): one they do not is not
+   * told. Without it every one is known: a scene whose map players see wherever fog does not
+   * cover it.
+   */
+  readonly known?: (annotation: Annotation) => boolean;
+  /** The numbers the entries above the tokens and those on the map are told their places in the order by; without them, each list is numbered anew. */
+  readonly orders?: { readonly above: SentOrders; readonly onMap: SentOrders };
+}
+
+type Entry = { readonly id: string; readonly text: SharedText } | { readonly id: string; readonly drawing: SharedDrawing };
+
+/** One audience's entries as its two lists, each entry with its place in the order as that audience is told it. */
+function listsOf(entries: readonly Entry[], orders: SentOrders): { drawings: SharedDrawing[]; texts: SharedText[]; ids: ToldAbove } {
+  // A text and a drawing may share an id: each is numbered under its own.
+  const numbers = orders.of(entries.map((entry) => `${'text' in entry ? 'text' : 'drawing'}:${entry.id}`));
+  const lists = { drawings: [] as SharedDrawing[], texts: [] as SharedText[], ids: { drawings: [] as string[], texts: [] as string[] } };
+  entries.forEach((entry, index) => {
+    const order = orderField(numbers[index]!);
+    if ('text' in entry) {
+      lists.texts.push({ ...entry.text, ...order });
+      lists.ids.texts.push(entry.id);
+    } else {
+      lists.drawings.push({ ...entry.drawing, ...order });
+      lists.ids.drawings.push(entry.id);
+    }
+  });
+  return lists;
+}
+
 /**
  * The drawings and texts players see, read as everything reads them (`annotationList`), in its
  * order: without those the GM keeps to themselves (`hidden`) and without those committed fog
@@ -188,7 +220,12 @@ export interface ToldAnnotationLists {
  * Those above the tokens are told as the players' frame draws them, above the lighting. Those on
  * the map are told apart (`onMap`): they lie under the lighting, and a page that drew them above
  * it would show them over rooms nobody has seen, so a page that does not know the field shows
- * none of them. Both together stay within what one message may carry.
+ * none of them. Of those only what players know of is told (`by.known`): a page is told an
+ * entry's whole line and words, wherever its lighting then shows them. Both together stay within
+ * what one message may carry.
+ *
+ * Each list's entries are numbered in the GM's order by numbers of their own (`by.orders`): the
+ * GM's count what is not told too.
  *
  * `above` names each told entry above the tokens by its id in the GM's scene, in the lists'
  * order: it never leaves the GM, and says which entries a player is told are theirs.
@@ -197,22 +234,22 @@ export function toldAnnotationLists(
   drawings: Readonly<Record<string, DrawingStroke>>,
   texts: Readonly<Record<string, TextElement>>,
   fog: FogCoverage | null,
+  by: ToldBy = {},
 ): ToldAnnotationLists {
   if (fog === null) return { shared: { drawings: [], texts: [] }, above: { drawings: [], texts: [] } };
-  const above = { drawings: [] as SharedDrawing[], texts: [] as SharedText[] };
-  const onMap = { drawings: [] as SharedDrawing[], texts: [] as SharedText[] };
-  const ids = { drawings: [] as string[], texts: [] as string[] };
+  const above: Entry[] = [];
+  const onMap: Entry[] = [];
   const room = { drawings: MAX_DRAWINGS, texts: MAX_TEXTS, points: MAX_DRAWING_POINTS };
   for (const annotation of annotationList({ drawings, texts })) {
     if (annotation.hidden) continue;
-    const lists = annotation.layer === 'map' ? onMap : above;
+    const list = annotation.layer === 'map' ? onMap : above;
+    if (list === onMap && by.known?.(annotation) === false) continue;
     if (annotation.kind === 'text') {
       if (room.texts === 0) continue;
       const box = textBox(annotation);
       if (box === null || underFog(box, fog)) continue;
       room.texts -= 1;
-      lists.texts.push(sharedText(annotation));
-      if (lists === above) ids.texts.push(annotation.id);
+      list.push({ id: annotation.id, text: sharedText(annotation) });
       continue;
     }
     if (room.drawings === 0) continue;
@@ -220,10 +257,17 @@ export function toldAnnotationLists(
     if (shared === null || pointsOf(shared) > room.points) continue;
     room.points -= pointsOf(shared);
     room.drawings -= 1;
-    lists.drawings.push(shared);
-    if (lists === above) ids.drawings.push(annotation.id);
+    list.push({ id: annotation.id, drawing: shared });
   }
-  return { shared: onMap.drawings.length + onMap.texts.length > 0 ? { ...above, onMap } : above, above: ids };
+  const told = listsOf(above, by.orders?.above ?? new SentOrders());
+  const mapped = listsOf(onMap, by.orders?.onMap ?? new SentOrders());
+  const lists = { drawings: told.drawings, texts: told.texts };
+  return { shared: onMap.length > 0 ? { ...lists, onMap: { drawings: mapped.drawings, texts: mapped.texts } } : lists, above: told.ids };
+}
+
+/** The drawings and texts on the map among those players may be told at all: not kept from them, in the order everything reads them. */
+export function onMapAnnotations(drawings: Readonly<Record<string, DrawingStroke>>, texts: Readonly<Record<string, TextElement>>): Annotation[] {
+  return annotationList({ drawings, texts }).filter((annotation) => annotation.layer === 'map' && !annotation.hidden);
 }
 
 /** The drawings and texts players see (`toldAnnotationLists`). */
@@ -231,8 +275,9 @@ export function sharedAnnotations(
   drawings: Readonly<Record<string, DrawingStroke>>,
   texts: Readonly<Record<string, TextElement>>,
   fog: FogCoverage | null,
+  by?: ToldBy,
 ): SharedAnnotations {
-  return toldAnnotationLists(drawings, texts, fog).shared;
+  return toldAnnotationLists(drawings, texts, fog, by).shared;
 }
 
 /**

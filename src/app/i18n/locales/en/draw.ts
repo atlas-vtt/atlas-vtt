@@ -37,6 +37,7 @@ export const draw = {
   'draw.curved': 'Curved',
   'draw.fill': 'Fill',
   'draw.fill.none': 'No fill',
+  'draw.fill.noLine': 'It has no line, so it needs its fill',
   'draw.fill.soft': 'Soft',
   'draw.fill.solid': 'Solid',
   'draw.seeThrough': 'See-through',

@@ -48,8 +48,9 @@ export interface DrawScene {
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointertap', x: number, y: number, keys?: PointerKeys): void;
   /**
    * A press as the viewport's dispatch (`TokenRenderer`) hands it to the drawings and texts before
-   * the viewport's other listeners hear it: the handles first, then what the tool in hand takes;
-   * a secondary press asks for the menu. Whether they took it.
+   * the viewport's other listeners hear it: the handles first, then what the tool in hand takes.
+   * Whether they took it. A secondary press is a right click, released where it was pressed:
+   * whether it opened their menu.
    */
   press(x: number, y: number, keys?: PointerKeys): boolean;
   /** `press`, the moves through the rest of `path`, and the release at its end. */
@@ -123,9 +124,12 @@ export function drawScene(options: { grid?: GridGeometry | null; playerView?: bo
       const event = eventOf(x, y, keys);
       resetHandled(event);
       const world = viewport.toWorld(event.global);
-      const taken = event.button === 2
-        ? renderer.selecting.pointer.secondaryDown(world.x, world.y, event)
-        : renderer.selecting.pointer.gripDown(world.x, world.y, event) || renderer.selecting.pointer.pointerDown(world.x, world.y, event);
+      if (event.button === 2) {
+        // The press stays the viewport's; released in place, as here, it opens the menu.
+        viewport.emit('pointerdown', event);
+        return renderer.selecting.pointer.menuAt(world.x, world.y) && renderer.selecting.pointer.openMenu(world.x, world.y, event);
+      }
+      const taken = renderer.selecting.pointer.gripDown(world.x, world.y, event) || renderer.selecting.pointer.pointerDown(world.x, world.y, event);
       if (taken) markHandled(event);
       viewport.emit('pointerdown', event);
       return taken;

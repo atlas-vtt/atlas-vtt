@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { fitsAnchors, fitsEllipse, fitsRectangle } from '../../../src/app/annotations/annotationFit';
-import { annotationList, annotationRoom, readDrawing, readText } from '../../../src/app/annotations/annotationList';
-import { ELLIPSE_STEPS, MAX_DRAWINGS, MAX_STROKE_POINTS, MAX_TEXTS, type DrawingAnnotation, type TextAnnotation } from '../../../src/app/annotations/annotationTypes';
+import { annotationList, annotationRoom, readDrawing, readText, withinTextLength } from '../../../src/app/annotations/annotationList';
+import { ELLIPSE_STEPS, MAX_DRAWINGS, MAX_STROKE_POINTS, MAX_TEXT_LENGTH, MAX_TEXTS, type DrawingAnnotation, type TextAnnotation } from '../../../src/app/annotations/annotationTypes';
+import { MAX_TEXT_LENGTH as MAX_ONLINE_TEXT_LENGTH } from '../../../src/app/online/protocol/annotations';
 import type { DrawingStroke, TextElement } from '../../../src/app/types';
 
 type Point = { x: number; y: number };
@@ -207,6 +208,33 @@ describe('texts as they are read', () => {
       .toMatchObject({ width: 210, breaks: [2, 5], align: 'left', bold: true, italic: true, rotation: 90, scale: 2 });
     expect(asText(text('t', { breaks: [2, 9] })).breaks).toBeNull();
     expect(asText(text('t', { breaks: [1.5] })).breaks).toBeNull();
+  });
+});
+
+describe('a text longer than a text may be', () => {
+  const label = (text: string, more: Record<string, unknown> = {}): Record<string, unknown> => ({ id: 't', kind: 'text', x: 0, y: 0, text, fontSize: 20, fontFamily: 'Arial', color: '#ffffff', ...more });
+
+  it('reads cut to the most a text may have, and stays in its record as the file has it', () => {
+    const record = label('ab'.repeat(MAX_TEXT_LENGTH), { width: 200, breaks: [MAX_TEXT_LENGTH + 4] });
+    const read = readText('t', record)!;
+    expect(read.text).toBe('ab'.repeat(MAX_TEXT_LENGTH / 2));
+    expect(read.record).toBe(record);
+    expect((read.record as { text: string }).text).toHaveLength(2 * MAX_TEXT_LENGTH);
+    // Breaks saved for the whole of it are none of the text that is read.
+    expect(read.breaks).toBeNull();
+    expect(readText('t', label('a'.repeat(MAX_TEXT_LENGTH)))!.text).toHaveLength(MAX_TEXT_LENGTH);
+  });
+
+  it('is cut after a whole character', () => {
+    // An emoji is two units of the string: one that would be halved by the cut goes whole.
+    const text = `${'a'.repeat(MAX_TEXT_LENGTH - 1)}\ud83d\ude00b`;
+    expect(withinTextLength(text)).toBe('a'.repeat(MAX_TEXT_LENGTH - 1));
+    expect(withinTextLength(`${'a'.repeat(MAX_TEXT_LENGTH - 2)}\ud83d\ude00b`)).toBe(`${'a'.repeat(MAX_TEXT_LENGTH - 2)}\ud83d\ude00`);
+    expect(withinTextLength('short')).toBe('short');
+  });
+
+  it('is as long as the message to online players may carry', () => {
+    expect(MAX_TEXT_LENGTH).toBe(MAX_ONLINE_TEXT_LENGTH);
   });
 });
 

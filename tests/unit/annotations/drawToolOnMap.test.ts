@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MAX_DRAWINGS, MAX_TEXTS } from '../../../src/app/annotations/annotationTypes';
+import { MAX_DRAWINGS, MAX_HOLES, MAX_TEXTS } from '../../../src/app/annotations/annotationTypes';
 import { eraserRadius, stampSize, strokeWidth, textHeight } from '../../../src/app/annotations/drawSizes';
+import { inFill } from '../../../src/app/annotations/lineMath';
 import { FONT_FAMILIES, TEXT_PLATE } from '../../../src/app/annotations/madeText';
 import { markHandled, resetHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { getHistoryStore } from '../../../src/app/stores/history';
@@ -283,6 +284,49 @@ describe('the Draw tool on the map: the eraser', () => {
     // A later edit is a step of its own.
     s.store.getState().addDrawing({ type: 'pen', points: [pt(1, 1)], color: '#ffffff', width: 4, opacity: 1 });
     expect(steps(s)).toBe(2);
+  });
+
+  it('leaves a fill that can take no further cut as it is, says so once a sweep, and still erases it whole', () => {
+    const s = scene();
+    // A floor with as many holes as a drawing may have.
+    const holes = Array.from({ length: MAX_HOLES }, (_, i) => {
+      const x = 20 + (i % 32) * 20;
+      const y = 300 + Math.floor(i / 32) * 20;
+      return [pt(x, y), pt(x + 8, y), pt(x + 8, y + 8), pt(x, y + 8)];
+    });
+    holding(s, { floor: { type: 'rectangle', points: [pt(0, 0), pt(700, 0), pt(700, 500), pt(0, 500), pt(0, 0)], width: 0, fill: 'solid', holes } });
+    const floor = s.drawings()[0];
+    history(s).getState().clear();
+    s.tool({ mode: 'eraser', size: 's' });
+    // Three moves through its open middle: each would cut one hole more.
+    s.drag([[100, 100], [200, 100], [300, 100], [400, 100]]);
+    expect(s.drawings()).toEqual([floor]);
+    expect(s.full.mock.calls).toEqual([['cuts']]);
+    expect(steps(s)).toBe(0);
+    // The next sweep says so again; one that removes whole drawings takes it.
+    s.drag([[100, 150], [200, 150]]);
+    expect(s.full).toHaveBeenCalledTimes(2);
+    s.tool({ mode: 'eraser', eraseWhole: true });
+    s.click(100, 100);
+    expect(s.drawings()).toEqual([]);
+  });
+
+  it('cuts a fill it cut before where the eraser is, and the picture is the cut one', () => {
+    const s = scene();
+    holding(s, { floor: { type: 'rectangle', points: [pt(0, 0), pt(700, 0), pt(700, 500), pt(0, 500), pt(0, 0)], width: 0, fill: 'solid' } });
+    s.tool({ mode: 'eraser', size: 'm' });
+    s.drag([[100, 100], [160, 100], [220, 100]]);
+    s.drag([[400, 300], [400, 360]]);
+    const [floor, ...more] = s.drawings();
+    expect(more).toEqual([]);
+    expect(floor!.holes).toHaveLength(2);
+    // The room's own corners are where they were: only the eraser's places were worked on.
+    expect(floor!.points).toEqual([pt(0, 0), pt(700, 0), pt(700, 500), pt(0, 500), pt(0, 0)]);
+    const reach = eraserRadius('m', CELL);
+    for (const [x, y] of [[100, 100], [190, 100], [400, 330]] as const) expect(floor!.holes!.some((hole) => hole.every((corner) => Math.abs(Math.hypot(corner.x - x, corner.y - y)) < 130 + reach))).toBe(true);
+    expect(inFill(pt(160, 100), floor!.points, floor!.holes!)).toBe(false);
+    expect(inFill(pt(400, 340), floor!.points, floor!.holes!)).toBe(false);
+    expect(inFill(pt(300, 200), floor!.points, floor!.holes!)).toBe(true);
   });
 });
 

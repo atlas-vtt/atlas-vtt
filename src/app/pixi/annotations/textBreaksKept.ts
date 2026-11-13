@@ -22,6 +22,8 @@ export function keepTextBreaks(store: { getState(): ViewAtlasState }): void {
   for (const annotation of annotationList(levelObjects(state))) {
     if (annotation.kind !== 'text' || annotation.width === null || annotation.breaks !== null) continue;
     if (annotation.locked || !textFontReady(annotation.fontFamily)) continue;
+    // A text read cut to the most one may have is the file's until it is edited: nothing is written into it.
+    if (annotation.text !== annotation.record.text) continue;
     places[annotation.id] = { breaks: textBreaks(annotation, annotation.width) };
   }
   if (Object.keys(places).length > 0) runUntracked(store, () => state.placeAnnotations(places));

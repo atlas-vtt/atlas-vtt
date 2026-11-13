@@ -1163,7 +1163,8 @@ export class PixiRendererOrchestrator { // Renamed class
     this.tokenRenderer.setAnnotationHandlers({
       gripDown: (x, y, e) => this.annotations?.selecting.pointer.gripDown(x, y, e) ?? false,
       pointerDown: (x, y, e) => this.annotations?.selecting.pointer.pointerDown(x, y, e) ?? false,
-      secondaryDown: (x, y, e) => this.annotations?.selecting.pointer.secondaryDown(x, y, e) ?? false,
+      menuAt: (x, y) => this.annotations?.selecting.pointer.menuAt(x, y) ?? false,
+      openMenu: (x, y, e) => this.annotations?.selecting.pointer.openMenu(x, y, e) ?? false,
       dragAlong: (e) => this.annotations?.selecting.pointer.dragAlong(e),
       cursorAt: (x, y, covered) => this.annotations?.selecting.pointer.cursorAt(x, y, covered) ?? null,
       leave: () => this.annotations?.selecting.pointer.leave(),

@@ -6,7 +6,7 @@ import { t } from "../../../i18n"
 import { hasLevels } from "../../../levels/sceneLevels"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { ToolButton } from "../primitives/ToolButton"
-import { shownLock } from "./drawStyle"
+import { fillIsAll, shownLock } from "./drawStyle"
 import { ALIGN_CHOICES, CELLS_CHOICES, DASH_CHOICES, ENDS_CHOICES, FILL_CHOICES, FONT_CHOICES, LOOK_CHOICES, SIZE_CHOICES, type DrawToolId } from "./drawToolChoices"
 import type { DrawIcon } from "./drawToolIcons"
 import { ChoiceMenu, ClearMenu, ColourMenu } from "./DrawToolMenus"
@@ -93,7 +93,12 @@ export function DrawModeTool({ id, access, locked: viewLocked }: DrawModeToolPro
     case 'dash': return <ChoiceMenu label={t('draw.line')} choices={DASH_CHOICES} value={style.dash} onChange={(dash) => pick('dash', dash)} locked={locked} />
     case 'ends': return <ChoiceMenu label={t('draw.ends')} choices={ENDS_CHOICES} value={style.ends} onChange={(ends) => pick('ends', ends)} locked={locked} />
     case 'curved': return <Switch icon={Spline} label={t('draw.curved')} on={style.curved === true} onChange={(on) => pick('curved', on)} locked={locked} />
-    case 'fill': return <ChoiceMenu label={t('draw.fill')} choices={FILL_CHOICES} value={style.fill} onChange={(fill) => pick('fill', fill)} locked={locked} />
+    case 'fill': {
+      // A selected drawing that is nothing but its fill cannot be without one.
+      const needsFill = fillIsAll(selected)
+      return <ChoiceMenu label={t('draw.fill')} choices={FILL_CHOICES} value={style.fill} onChange={(fill) => pick('fill', fill)} locked={locked}
+        unavailable={(fill) => (fill === null && needsFill ? t('draw.fill.noLine') : null)} />
+    }
     case 'font': return <ChoiceMenu label={t('draw.font')} choices={FONT_CHOICES} value={style.font} onChange={(font) => pick('font', font)} locked={locked} />
     case 'look': return <ChoiceMenu label={t('draw.look')} choices={LOOK_CHOICES} value={style.look} onChange={(look) => pick('look', look)} locked={locked} />
     case 'align': return <ChoiceMenu label={t('draw.align')} choices={ALIGN_CHOICES} value={style.align} onChange={(align) => pick('align', align)} locked={locked} />

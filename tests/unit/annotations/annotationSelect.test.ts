@@ -368,12 +368,37 @@ describe('a line\'s points', () => {
     s.pull([[300, 100]], { soon: true });
     expect(s.drawings()[0]?.points).toEqual([pt(100, 100), pt(300, 300)]);
     expect(steps(s)).toBe(1);
-    // Over a point, Delete is the point's; the line has none to spare, and stays whole.
+    // The line has no point to spare: Delete over one of them is not the point's, and goes on to whoever deletes the selection.
     expect(s.renderer.selecting.handleDelete()).toBe(false);
     s.renderer.selecting.pointer.cursorAt(100, 100, () => false);
-    expect(s.renderer.selecting.handleDelete()).toBe(true);
+    expect(s.renderer.selecting.handleDelete()).toBe(false);
     expect(s.drawings()[0]?.points).toHaveLength(2);
     expect(steps(s)).toBe(1);
+  });
+
+  it('take Delete only where a point goes: not on a triangle, and not after the selection changed under the pointer', () => {
+    let id = '';
+    let other = '';
+    const s = scene((made) => {
+      id = path(made);
+      other = made.store.getState().addDrawing(line([pt(400, 400), pt(500, 400), pt(500, 500), pt(400, 400)], { type: 'line' }));
+    });
+    // A closed line keeps three points.
+    s.store.getState().setSelection([other]);
+    s.renderer.selecting.pointer.cursorAt(500, 400, () => false);
+    expect(s.renderer.selecting.handleDelete()).toBe(false);
+    expect(s.drawings().find((drawing) => drawing.id === other)?.points).toHaveLength(4);
+    // The pointer rests on a point of the path; a key then selects the triangle: Delete is no longer that point's.
+    s.store.getState().setSelection([id]);
+    s.renderer.selecting.pointer.cursorAt(300, 100, () => false);
+    s.store.getState().setSelection([other]);
+    expect(s.renderer.selecting.handleDelete()).toBe(false);
+    expect(s.drawings().map((drawing) => drawing.points.length)).toEqual([3, 4]);
+    // With the path selected again and the pointer on its corner, the corner goes.
+    s.store.getState().setSelection([id]);
+    s.renderer.selecting.pointer.cursorAt(300, 100, () => false);
+    expect(s.renderer.selecting.handleDelete()).toBe(true);
+    expect(s.drawings().find((drawing) => drawing.id === id)?.points).toEqual([pt(100, 100), pt(300, 300)]);
   });
 });
 

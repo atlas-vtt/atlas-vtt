@@ -15,6 +15,7 @@ import { MarkShare } from './MarkShare.ts';
 import { sceneWalls, type MapSize } from './moveCheck.ts';
 import { ownerIn } from './seatSource.ts';
 import { PlayerDrawings } from './playerDrawings.ts';
+import { ClearedPlayers } from './playerDrawingsClear.ts';
 import { PlayerMoves } from './playerMoves.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 import { movesOutOfTurn } from './turnShare.ts';
@@ -25,6 +26,7 @@ import { levelBackground } from '../../levels/levelEdits';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { drawCell } from '../../annotations/drawSizes';
 import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
+import { isHistoryTravelling } from '../../stores/history';
 import { t } from '../../i18n';
 
 /** The type of an animated map's video by its path, or null for a path that is no video map. */
@@ -64,6 +66,10 @@ export class FloorShare {
   private readonly marks: MarkShare;
   /** The players' own drawings and texts on this floor. */
   private readonly drawings: PlayerDrawings;
+  /** Whose drawings the GM cleared: what such a player is drawing just then goes with them. */
+  private readonly cleared = new ClearedPlayers();
+  /** Whether a player's own request is being written now: what it removes is no clearing by the GM. */
+  private dealing = false;
   private readonly dragRulers: PlayerDragRulers;
   private unsubscribe: (() => void) | null = null;
   private poll: number | undefined;
@@ -107,6 +113,7 @@ export class FloorShare {
       ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => this.tokens.badgeOf(tokenId), tokenAlias: (tokenId) => this.tokens.listedAlias(tokenId),
       // Every player of the floor is told what is theirs after each change, so a page knows which message its own are counted in.
       drawnBy: (above) => new Map(playersDraw() ? (seats?.onlinePlayers() ?? []).map((player) => [player, this.drawings.mine(player, above)]) : []),
+      map: () => this.mapSize,
     });
     const draw = (): { readonly cell: number } | null => (playersDraw() ? { cell: drawCell(store.getState().grid) } : null);
     this.rules = new RulesShare(store, { ...ports, cursorsShown, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw });
@@ -232,7 +239,14 @@ export class FloorShare {
     if (message.t === 'drag') return this.moves.drag(from, message);
     if (message.t === 'drag-cancel') return this.moves.dragCancel(from, message);
     if (message.t === 'laser' || message.t === 'measure' || message.t === 'cursor' || message.t === 'stroke') return this.marks.receive(from, message);
-    if (message.t === 'draw-points' || message.t === 'draw-add' || message.t === 'draw-text' || message.t === 'draw-change' || message.t === 'draw-remove' || message.t === 'draw-erase') return this.drawings.receive(from, message);
+    if (message.t === 'draw-points' || message.t === 'draw-add' || message.t === 'draw-text' || message.t === 'draw-change' || message.t === 'draw-remove' || message.t === 'draw-erase') {
+      this.dealing = true;
+      try {
+        return this.drawings.receive(from, message);
+      } finally {
+        this.dealing = false;
+      }
+    }
     if (message.t !== 'resync') return;
     if (message.of === 'tokens') this.tokens.resync(from, message.scene);
     else this.inputs.resync(from, message.scene, message.of);
@@ -266,6 +280,9 @@ export class FloorShare {
 
   private async update(state: SceneState): Promise<void> {
     if (!state.mapLoaded || state.isMapLoading) return this.inputs.mapLoading();
+    const cleared = this.cleared.look(state);
+    // Not what a player's own request removed, and not what an undo took back.
+    if (cleared.size > 0 && !this.dealing && !isHistoryTravelling(this.store)) this.marks.dropStrokes(cleared);
     const lit = isLit(state);
     const refusal = lit && this.ports.lightingSource() === null ? LIGHTING_REFUSAL : null;
     if (refusal !== null) {
@@ -322,6 +339,7 @@ export class FloorShare {
     this.layers.setScene(null);
     this.rules.setScene(null);
     this.drawings.setScene(scene?.id ?? null);
+    this.cleared.reset();
     // Marks of the scene before must not follow the new one: the live lane would let them overtake it.
     this.marks.setScene(null);
     this.resend();

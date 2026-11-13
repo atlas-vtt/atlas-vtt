@@ -2,6 +2,7 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
 import { collectMapObjects } from '../../clipboard/mapObjectContent';
 import { levelObjects } from '../../levels/levelObjects';
+import { tellCopiesLeftOut } from '../annotations/annotationNotices';
 import { mapTokens } from '../../tokens/offMap';
 
 type Positions = Record<string, { x: number; y: number }>;
@@ -31,7 +32,10 @@ export function copyDragSelection(
   const annotationIds = fromSelection ? state.selectedIds.filter((id) => objects.drawings[id] || objects.texts[id]) : [];
 
   // Tokens are inserted first, in the order they were collected, so copies line up with tokenIds.
-  const copies = state.insertMapObjects(collectMapObjects(objects, [...tokenIds, ...annotationIds]));
+  const content = collectMapObjects(objects, [...tokenIds, ...annotationIds]);
+  // A level that is full takes the tokens' copies and no drawing's or text's: the GM is told why.
+  tellCopiesLeftOut(objects, content);
+  const copies = state.insertMapObjects(content);
   const ids = copies.slice(0, tokenIds.length);
   if (fromSelection) state.setSelection([...ids, ...annotationIds]);
 

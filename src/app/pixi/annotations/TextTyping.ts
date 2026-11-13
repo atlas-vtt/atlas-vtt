@@ -1,5 +1,5 @@
 import type { Viewport } from 'pixi-viewport';
-import { annotationRoom, readText } from '../../annotations/annotationList';
+import { annotationRoom, readText, withinTextLength } from '../../annotations/annotationList';
 import { isLocked } from '../../annotations/annotationLock';
 import type { TextAnnotation } from '../../annotations/annotationTypes';
 import { drawCell } from '../../annotations/drawSizes';
@@ -147,7 +147,8 @@ export class TextTyping {
       return;
     }
     const moved = Math.hypot(at.x - record.x, at.y - record.y) > 1e-6;
-    if (words !== record.text || moved) state.updateText(session.id, { text: words, x: at.x, y: at.y, ...(breaks && { breaks }) });
+    // What the field opened with is the text as it is read: a longer one from a file is written only once it was changed.
+    if (words !== withinTextLength(record.text) || moved) state.updateText(session.id, { text: words, x: at.x, y: at.y, ...(breaks && { breaks }) });
   }
 
   /** Closes the field and writes nothing: an edited text says what it said, a new one is dropped. */

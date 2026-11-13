@@ -17,7 +17,8 @@ export interface FontSource {
 }
 
 interface Watch {
-  readonly source: FontSource;
+  /** The fonts of the document the canvas is in and, where that is another, of the one texts are measured in. */
+  readonly sources: readonly FontSource[];
   readonly arrived: () => void;
 }
 
@@ -38,14 +39,14 @@ function settle(family: string): void {
 
 /**
  * Whether a text in `fontFamily` can be measured and drawn now. A bundled face that is not loaded
- * yet is asked for; `watchTextFonts` tells when it is there. Where nobody watches (no document
- * whose fonts could load) every face counts as there.
+ * yet is asked for, in every document that is watched; `watchTextFonts` tells when it is there.
+ * Where nobody watches (no document whose fonts could load) every face counts as there.
  */
 export function textFontReady(fontFamily: string): boolean {
   const family = bundledFamily(fontFamily);
   if (family === null || settled.has(family) || watches.size === 0) return true;
   const font = cssFont({ ...PROBE, fontFamily: family });
-  const sources = [...watches].map((watch) => watch.source);
+  const sources = [...watches].flatMap((watch) => watch.sources);
   if (sources.every((source) => source.check(font))) {
     settled.add(family);
     return true;
@@ -61,9 +62,16 @@ export function textFontReady(fontFamily: string): boolean {
 /**
  * Loads the bundled faces from `source` when a text asks for them, and calls `arrived` whenever
  * one has become ready, until the returned function is called.
+ *
+ * `source` is the fonts of the document the canvas is in. A text is measured on a canvas of the
+ * document PIXI was loaded in, which is another one for a canvas in a second window: hand its
+ * fonts in as `measured`, and a face counts as there only once both have it. Faces found ready
+ * for other documents are asked for again.
  */
-export function watchTextFonts(source: FontSource, arrived: () => void): () => void {
-  const watch: Watch = { source, arrived };
+export function watchTextFonts(source: FontSource, arrived: () => void, measured?: FontSource | null): () => void {
+  const watch: Watch = { sources: measured && measured !== source ? [source, measured] : [source], arrived };
+  const known = new Set([...watches].flatMap((other) => other.sources));
+  if (watch.sources.some((one) => !known.has(one))) settled.clear();
   watches.add(watch);
   return (): void => {
     watches.delete(watch);

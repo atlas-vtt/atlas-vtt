@@ -1816,9 +1816,10 @@ export class TokenRenderer {
       // A token takes the right-click from a linked hex or fog beneath it, as it takes the left-click
       const tokenTools = activeTool === 'select' || activeTool === 'move';
       const onToken = tokenTools && this.hitTestTokens(worldPos.x, worldPos.y) !== null;
-      // A drawing or text lies above linked hexes, features and fog: its menu opens on the press, where a press would take it
-      if (!onToken && this.annotationHandlers?.secondaryDown(worldPos.x, worldPos.y, e)) {
-        markHandled(e);
+      // A drawing or text lies above linked hexes, features and fog. A fill and a selection's frame cover whole
+      // stretches of the map too: like theirs, its press stays unhandled and its menu opens on a release in place
+      if (!onToken && this.annotationHandlers?.menuAt(worldPos.x, worldPos.y)) {
+        this.openMenuOnRelease(e, (up) => this.annotationHandlers?.openMenu(worldPos.x, worldPos.y, up));
         return;
       }
       // Linked hexes and fog cover whole stretches of the map: their press stays unhandled, so a

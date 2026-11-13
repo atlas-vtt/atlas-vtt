@@ -10,8 +10,17 @@ export interface AnnotationPointerHandlers {
   gripDown(worldX: number, worldY: number, event: FederatedPointerEvent): boolean;
   /** A primary press where the tool in hand lets annotations take one; true when an annotation or the selection's frame took it. */
   pointerDown(worldX: number, worldY: number, event: FederatedPointerEvent): boolean;
-  /** A secondary press; true when it opened the menu of the annotation there. */
-  secondaryDown(worldX: number, worldY: number, event: FederatedPointerEvent): boolean;
+  /**
+   * Whether a secondary press here asks for the annotations' menu: on an annotation a press would
+   * take, or inside the selection's frame. It changes nothing: a fill or a frame covers a stretch
+   * of the map, so the press stays the viewport's and a right-drag from it pans.
+   */
+  menuAt(worldX: number, worldY: number): boolean;
+  /**
+   * The secondary press at this place was released where it began (`event`): selects the
+   * annotation there, where it was not, and opens the menu at the pointer. True when it opened.
+   */
+  openMenu(worldX: number, worldY: number, event: FederatedPointerEvent): boolean;
   /** The selected annotations follow a drag of the tokens selected with them, begun by the press `event`. */
   dragAlong(event: FederatedPointerEvent): void;
   /**
