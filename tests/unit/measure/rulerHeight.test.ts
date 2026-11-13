@@ -59,9 +59,11 @@ describe('a ruler between two heights', () => {
     expect(measureLabelText({ shape: 'circle', points: [cell(0, 0), cell(4, 0)] }, GRID, feet(), 0, 4)).toBe('20ft');
   });
 
-  it('counts none where the map measures in range bands', () => {
+  it('counts the height where the map measures in range bands too, and names the band the whole distance reaches', () => {
     const bands: MeasurementSettings = { ...feet(), mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 4 }, { name: 'Far', maxSquares: 9 }] };
-    expect(pathDistance(GRID, [cell(0, 0), cell(4, 0)], bands, heightAt)).toBe('Close');
+    // Four squares along and a flier above: farther than Close.
+    expect(pathDistance(GRID, [cell(0, 0), cell(4, 0)], bands, heightAt)).toBe('Far');
+    expect(pathDistance(GRID, [cell(0, 0), cell(4, 0)], bands, () => 0)).toBe('Close');
   });
 });
 

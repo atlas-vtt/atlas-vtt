@@ -106,8 +106,22 @@ describe('tokenHeightSubmenu', () => {
     stop?.();
   });
 
-  it('is not offered where the map measures in range bands', () => {
-    const bands: MeasurementSettings = { ...FEET, mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 2 }] };
-    expect(tokenHeightSubmenu(createStore(), ['wyvern'], () => bands)).toBeNull();
+  it('steps from range band to range band where the map measures in bands, and names the height by its band', () => {
+    const bands: MeasurementSettings = { ...FEET, mode: 'abstract', rangeBands: [{ name: 'Melee', maxSquares: 1 }, { name: 'Close', maxSquares: 6 }, { name: 'Far', maxSquares: 20 }] };
+    const store = createStore();
+    const menu = tokenHeightSubmenu(store, ['hero'], () => bands);
+    expect(menu).toMatchObject({ type: 'submenu', label: 'Height' });
+    expect(rows(menu).height.stepper!.value).toBe('–');
+    rows(menu).height.stepper!.onIncrement();
+    expect(rows(menu).height.stepper!.value).toBe('Melee');
+    rows(menu).height.stepper!.onIncrement();
+    expect(heights(store)[0]).toBe(30);
+    expect(rows(menu).height.stepper!.value).toBe('Close');
+    for (let i = 0; i < 3; i++) rows(menu).height.stepper!.onDecrement();
+    expect(rows(menu).height.stepper!.value).toBe('−Melee');
+  });
+
+  it('is not offered where a cell spans no distance', () => {
+    expect(tokenHeightSubmenu(createStore(), ['wyvern'], () => ({ ...FEET, unitDistance: 0 }))).toBeNull();
   });
 });

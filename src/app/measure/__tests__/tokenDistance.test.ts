@@ -89,9 +89,11 @@ describe('distanceBetweenTokens on a square grid', () => {
     expect(distanceBetweenTokens(token(0, 2), loose, GRID, feet())).toBe(4);
   });
 
-  it('counts no height where the map measures in range bands', () => {
+  it('counts the height where the map measures in range bands too', () => {
     const bands: MeasurementSettings = { ...feet('alternating'), mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 2 }] };
-    expect(distanceBetweenTokens(token(0, 0), token(4, 0, 1, 20), GRID, bands)).toBe(4);
+    // Four squares along and four up, diagonals alternating: 4 + floor(4 / 2).
+    expect(distanceBetweenTokens(token(0, 0), token(4, 0, 1, 20), GRID, bands)).toBe(6);
+    expect(distanceBetweenTokens(token(0, 0), token(4, 0, 1, 20), GRID, { ...bands, unitDistance: 0 })).toBe(4);
   });
 });
 

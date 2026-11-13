@@ -7,7 +7,7 @@ import {
 
 const FEET: MeasurementSettings = { mode: 'metric', unitType: 'feet', unitDistance: 5, ruleDistance: 5, diagonalRule: 'alternating', rangeBands: [], coneAngle: 90 };
 const METRES: MeasurementSettings = { ...FEET, unitType: 'meters', unitDistance: 1.5, ruleDistance: 1.5 };
-const BANDS: MeasurementSettings = { ...FEET, mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 2 }] };
+const BANDS: MeasurementSettings = { ...FEET, mode: 'abstract', rangeBands: [{ name: 'Melee', maxSquares: 1 }, { name: 'Close', maxSquares: 6 }, { name: 'Far', maxSquares: 20 }] };
 
 describe('tokenHeight', () => {
   it('reads a height in game units, above the floor and below it', () => {
@@ -26,20 +26,20 @@ describe('tokenHeight', () => {
 
 describe('a step of the height', () => {
   it('goes up and down by one cell\'s distance, through the floor', () => {
-    expect(steppedHeight(0, 1, 5)).toBe(5);
-    expect(steppedHeight(30, -1, 5)).toBe(25);
-    expect(steppedHeight(5, -1, 5)).toBe(0);
-    expect(steppedHeight(0, -1, 5)).toBe(-5);
-    expect(steppedHeight(7, 1, 5)).toBe(12);
+    expect(steppedHeight(0, 1, FEET)).toBe(5);
+    expect(steppedHeight(30, -1, FEET)).toBe(25);
+    expect(steppedHeight(5, -1, FEET)).toBe(0);
+    expect(steppedHeight(0, -1, FEET)).toBe(-5);
+    expect(steppedHeight(7, 1, FEET)).toBe(12);
   });
 
   it('adds up without rounding errors, and stops at the farthest a token is put', () => {
     let height = 0;
-    for (let i = 0; i < 3; i++) height = steppedHeight(height, 1, 1.5);
+    for (let i = 0; i < 3; i++) height = steppedHeight(height, 1, METRES);
     expect(height).toBe(4.5);
-    expect(steppedHeight(0.1, 1, 0.2)).toBe(0.3);
-    expect(steppedHeight(MAX_TOKEN_HEIGHT - 2, 1, 5)).toBe(MAX_TOKEN_HEIGHT);
-    expect(steppedHeight(-MAX_TOKEN_HEIGHT, -1, 5)).toBe(-MAX_TOKEN_HEIGHT);
+    expect(steppedHeight(0.1, 1, { ...FEET, unitDistance: 0.2 })).toBe(0.3);
+    expect(steppedHeight(MAX_TOKEN_HEIGHT - 2, 1, FEET)).toBe(MAX_TOKEN_HEIGHT);
+    expect(steppedHeight(-MAX_TOKEN_HEIGHT, -1, FEET)).toBe(-MAX_TOKEN_HEIGHT);
   });
 
   it('leaves no field on a token that lands', () => {
@@ -57,12 +57,37 @@ describe('a height as it is written', () => {
     expect(heightChipText({ elevation: 12 }, { ...FEET, unitType: 'custom', unitName: 'mi', unitDistance: 6 })).toBe('↑ 12 mi');
   });
 
-  it('says nothing for a token on the floor, and nothing where the map measures in range bands', () => {
+  it('says nothing for a token on the floor, and nothing where a cell spans no distance', () => {
     expect(heightChipText({}, FEET)).toBe('');
     expect(heightChipText({ elevation: 0 }, FEET)).toBe('');
-    expect(heightChipText({ elevation: 30 }, BANDS)).toBe('');
-    expect(countsHeight(BANDS)).toBe(false);
-    expect(countsHeight({ mode: 'metric', unitDistance: 0 })).toBe(false);
+    expect(heightChipText({ elevation: 0 }, BANDS)).toBe('');
+    expect(countsHeight({ unitDistance: 0 })).toBe(false);
+  });
+
+  it('names a height by the range band it reaches where the map measures in bands', () => {
+    expect(countsHeight(BANDS)).toBe(true);
+    expect(heightChipText({ elevation: 30 }, BANDS)).toBe('↑ Close');
+    expect(heightChipText({ elevation: -5 }, BANDS)).toBe('↓ Melee');
+    expect(signedHeight(100, BANDS)).toBe('Far');
+    expect(signedHeight(-30, BANDS)).toBe('−Close');
+    // On the floor it is no band: the nearest band is a distance.
+    expect(signedHeight(0, BANDS)).toBe('–');
+  });
+
+  it('steps from band to band there, through the floor and down the same bands, and stays at the farthest', () => {
+    expect(steppedHeight(0, 1, BANDS)).toBe(5);
+    expect(steppedHeight(5, 1, BANDS)).toBe(30);
+    expect(steppedHeight(30, 1, BANDS)).toBe(100);
+    expect(steppedHeight(100, 1, BANDS)).toBe(100);
+    expect(steppedHeight(30, -1, BANDS)).toBe(5);
+    expect(steppedHeight(5, -1, BANDS)).toBe(0);
+    expect(steppedHeight(0, -1, BANDS)).toBe(-5);
+    expect(steppedHeight(-5, -1, BANDS)).toBe(-30);
+    // A height between two bands goes to the next one either way.
+    expect(steppedHeight(12, 1, BANDS)).toBe(30);
+    expect(steppedHeight(12, -1, BANDS)).toBe(5);
+    // Bands without a name for any reach step by cells, as distances do.
+    expect(steppedHeight(5, 1, { ...BANDS, rangeBands: [] })).toBe(10);
   });
 
   it('writes a menu\'s value with its sign', () => {
@@ -93,7 +118,9 @@ describe('the height between two ends', () => {
   it('is none for a path of one point, and where the map counts no heights', () => {
     expect(riseBetweenEnds([at(140)], heightAt, FEET)).toBe(0);
     expect(riseBetweenEnds([], heightAt, FEET)).toBe(0);
-    expect(riseBetweenEnds([at(0), at(140)], heightAt, BANDS)).toBe(0);
+    expect(riseBetweenEnds([at(0), at(140)], heightAt, { unitDistance: 0 })).toBe(0);
+    // Range bands count it as distances do: 20 up at 5 a cell.
+    expect(riseBetweenEnds([at(0), at(140)], heightAt, BANDS)).toBe(4);
     expect(riseBetweenEnds([at(0), at(140)], () => NaN, FEET)).toBe(0);
   });
 });

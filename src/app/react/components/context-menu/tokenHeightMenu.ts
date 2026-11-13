@@ -9,9 +9,10 @@ type HeightStore = Pick<StoreApi<ViewAtlasState>, 'getState' | 'subscribe'>;
 
 /**
  * "Height" for the tokens `tokenIds` (the selection, or the token clicked): − value + in steps of
- * one cell's distance, each token from its own height, and a row that puts them all on the floor.
- * Below the floor is a height too (a pit, a swimmer). Every step is one store write, so one undo
- * step. The submenu stays open and follows the tokens. None where the map measures in range bands.
+ * one cell's distance, or from range band to range band where the map measures in those, each
+ * token from its own height, and a row that puts them all on the floor. Below the floor is a
+ * height too (a pit, a swimmer). Every step is one store write, so one undo step. The submenu
+ * stays open and follows the tokens.
  */
 export function tokenHeightSubmenu(store: HeightStore, tokenIds: readonly string[], measurement: () => MeasurementSettings): ContextMenuEntry | null {
   if (!countsHeight(measurement())) return null;
@@ -29,7 +30,7 @@ export function tokenHeightSubmenu(store: HeightStore, tokenIds: readonly string
   const children = (): ContextMenuEntry[] => {
     const settings = measurement();
     const heights = heightsNow();
-    const step = (steps: number): void => setHeights((height) => steppedHeight(height, steps, settings.unitDistance));
+    const step = (steps: number): void => setHeights((height) => steppedHeight(height, steps, settings));
     return [
       { type: 'item', label: t('token.height'), keepOpen: true, onClick: () => undefined, stepper: heightStepper(heights, settings, step) },
       { type: 'item', label: t('token.onTheFloor'), keepOpen: true, disabled: heights.every((height) => height === 0), onClick: () => setHeights(() => 0) },

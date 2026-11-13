@@ -55,10 +55,23 @@ describe('how far an aura reaches', () => {
   });
 
   it('steps by one cell\'s distance, never below none, and without the dust of repeated halves', () => {
-    expect(steppedAura(0, 1, 5)).toBe(5);
-    expect(steppedAura(5, -1, 5)).toBe(0);
-    expect(steppedAura(5, -3, 5)).toBe(0);
-    expect(steppedAura(steppedAura(steppedAura(0, 1, 1.5), 1, 1.5), 1, 1.5)).toBe(4.5);
+    const feet = { mode: 'metric', rangeBands: [], unitDistance: 5 } as const;
+    const metres = { ...feet, unitDistance: 1.5 };
+    expect(steppedAura(0, 1, feet)).toBe(5);
+    expect(steppedAura(5, -1, feet)).toBe(0);
+    expect(steppedAura(5, -3, feet)).toBe(0);
+    expect(steppedAura(steppedAura(steppedAura(0, 1, metres), 1, metres), 1, metres)).toBe(4.5);
+  });
+
+  it('steps from range band to range band where the map measures in bands, down to none and no farther than the last', () => {
+    const bands = { mode: 'abstract', unitDistance: 5, rangeBands: [{ name: 'Melee', maxSquares: 1 }, { name: 'Close', maxSquares: 6 }, { name: 'Far', maxSquares: 20 }] } as const;
+    expect(steppedAura(0, 1, bands)).toBe(5);
+    expect(steppedAura(5, 1, bands)).toBe(30);
+    expect(steppedAura(30, 1, bands)).toBe(100);
+    expect(steppedAura(100, 1, bands)).toBe(100);
+    expect(steppedAura(30, -1, bands)).toBe(5);
+    expect(steppedAura(5, -1, bands)).toBe(0);
+    expect(steppedAura(0, -1, bands)).toBe(0);
   });
 
   it('holds two points for readers that know no auras: its token\'s centre, and the point that far past the token\'s space', () => {

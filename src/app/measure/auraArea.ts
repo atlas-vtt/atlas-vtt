@@ -18,6 +18,7 @@ import { cellKeyAt, hexLayoutOf, lengthInCells } from './measureGrid';
 import { cellsStoodOn, placementGridOf } from './measureTokens';
 import { MAX_AURA, type KeptAura, type KeptMeasure } from './measureTypes';
 import { outlinePointAt, rangeOutline, type RangeOutline } from './rangeOutline';
+import { steppedReach } from './reachSteps';
 import { countsCells, spaceRadius, type TokenGrid } from './tokenDistance';
 
 /** What an aura reads of its token: where it stands and how large it is. */
@@ -55,9 +56,14 @@ export function auraOfCells(cells: number, unitDistance: number): number {
   return units > 0 ? Math.min(MAX_AURA, Math.round(units * 1000) / 1000) : 0;
 }
 
-/** An aura's reach after `steps` steps of `step` game units, up or down: what the token menu's + and − do. Never below none, to the thousandth, within `MAX_AURA`. */
-export function steppedAura(aura: number, steps: number, step: number): number {
-  return Math.min(MAX_AURA, Math.max(0, Math.round((aura + steps * step) * 1000) / 1000));
+/**
+ * An aura's reach after `steps` steps up or down, as the map steps a reach (`steppedReach`: a
+ * cell's distance, or the next range band): what the token menu's + and − do. Never below none,
+ * to the thousandth, within `MAX_AURA`.
+ */
+export function steppedAura(aura: number, steps: number, settings: Pick<MeasurementSettings, 'mode' | 'rangeBands' | 'unitDistance'>): number {
+  const cells = steppedReach(auraCells(aura, settings.unitDistance), steps, settings);
+  return Math.min(MAX_AURA, Math.max(0, Math.round(auraOfCells(cells, settings.unitDistance) * 1000) / 1000));
 }
 
 /**

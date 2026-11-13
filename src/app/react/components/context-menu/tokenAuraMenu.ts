@@ -23,11 +23,10 @@ function auraOf(state: Pick<ViewAtlasState, 'objects'>, tokenId: string): KeptAu
 
 /**
  * "Aura" for the tokens `tokenIds` (the selection, or the token clicked): − value + in steps of one
- * cell's distance, each token from its own aura, and a row that takes them all away. The first
+ * cell's distance, or from range band to range band where the map measures in those, each token from its own aura, and a row that takes them all away. The first
  * step up gives a token its aura, in the measure tool's colour and shown to players as the tool
  * says; a step down to nothing removes it. Every step is one store write, so one undo step. The
- * submenu stays open and follows the tokens. None where the map measures in range bands: an aura
- * reaches a distance, as a height is one (`countsHeight`).
+ * submenu stays open and follows the tokens. None only where a cell spans no distance (`countsHeight`).
  */
 export function tokenAuraSubmenu(store: AuraStore, tokenIds: readonly string[], measurement: () => MeasurementSettings): ContextMenuEntry | null {
   if (!countsHeight(measurement())) return null;
@@ -52,7 +51,7 @@ export function tokenAuraSubmenu(store: AuraStore, tokenIds: readonly string[], 
   const children = (): ContextMenuEntry[] => {
     const settings = measurement();
     const auras = aurasNow();
-    const step = (steps: number): void => setAuras((aura) => steppedAura(aura, steps, settings.unitDistance));
+    const step = (steps: number): void => setAuras((aura) => steppedAura(aura, steps, settings));
     return [
       { type: 'item', label: t('token.aura'), keepOpen: true, onClick: () => undefined, stepper: auraStepper(auras, settings, step) },
       { type: 'item', label: t('token.noAura'), keepOpen: true, disabled: auras.every((aura) => aura === 0), onClick: () => setAuras(() => 0) },
@@ -69,7 +68,8 @@ export function tokenAuraSubmenu(store: AuraStore, tokenIds: readonly string[], 
 function auraStepper(auras: readonly number[], settings: MeasurementSettings, step: (steps: number) => void): MenuStepper {
   const low = auras.length > 0 ? Math.min(...auras) : 0;
   const high = auras.length > 0 ? Math.max(...auras) : 0;
-  const written = (aura: number): string => formatDistance(auraCells(aura, settings.unitDistance), settings);
+  // No aura on a map with range bands is a dash: its nearest band is a reach, not none.
+  const written = (aura: number): string => (aura === 0 && settings.mode === 'abstract' ? '–' : formatDistance(auraCells(aura, settings.unitDistance), settings));
   return {
     value: low === high ? written(low) : `${written(low)}–${written(high)}`,
     label: t('token.aura'),

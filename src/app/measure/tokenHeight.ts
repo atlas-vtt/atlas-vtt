@@ -1,13 +1,14 @@
 /**
  * A token's height above the floor of its level (`BaseToken.elevation`, game units): a flier, or
- * below 0 a swimmer or a creature in a pit. It is counted where distances are measured: a map
- * that measures in range bands has no distance to count it in, so there it is neither shown,
- * offered nor counted.
+ * below 0 a swimmer or a creature in a pit. It is counted in every distance between tokens. A map
+ * that measures in range bands names it as it names a distance, by the band it reaches ("↑ Close"),
+ * and steps it from band to band (`steppedReach`).
  */
 
 import { formatDistance, type MeasurementSettings } from '../grid/measurementFormat';
 import type { Point } from '../types/visionTypes';
 import { lengthInCells } from './measureGrid';
+import { steppedReach } from './reachSteps';
 
 /** The farthest from the floor a token is put, in game units either way. */
 export const MAX_TOKEN_HEIGHT = 100_000;
@@ -17,8 +18,8 @@ export interface HasHeight {
   readonly elevation?: unknown;
 }
 
-/** What says how a map measures: whether in distances at all, and what one cell spans. */
-export type HeightSettings = Pick<MeasurementSettings, 'mode' | 'unitDistance'>;
+/** What says how a map counts a height: what one cell spans. */
+export type HeightSettings = Pick<MeasurementSettings, 'unitDistance'>;
 
 /** `token`'s height in game units: 0 on the floor, and for a value that is no height. */
 export function tokenHeight(token: HasHeight | null | undefined): number {
@@ -27,9 +28,9 @@ export function tokenHeight(token: HasHeight | null | undefined): number {
   return Math.max(-MAX_TOKEN_HEIGHT, Math.min(MAX_TOKEN_HEIGHT, height));
 }
 
-/** Whether the map counts heights: it measures distances, and a cell spans one. */
+/** Whether the map counts heights: a cell spans a distance, by which a height is so many cells. Range bands count them too. */
 export function countsHeight(settings: HeightSettings): boolean {
-  return settings.mode !== 'abstract' && Number.isFinite(settings.unitDistance) && settings.unitDistance > 0;
+  return Number.isFinite(settings.unitDistance) && settings.unitDistance > 0;
 }
 
 /** A difference in height of `gameUnits`, either way, in cells; 0 where the map counts none. */
@@ -39,11 +40,13 @@ export function riseInCells(gameUnits: number, settings: HeightSettings): number
 }
 
 /**
- * `height` after `steps` steps of `step` game units, up or down: what the token menu's + and −
- * do. Kept to thousandths, so steps of 1.5 m never add up to 4.499999, and within `MAX_TOKEN_HEIGHT`.
+ * `height` after `steps` steps up or down, as the map steps a reach (`steppedReach`: a cell's
+ * distance, or the next range band): what the token menu's + and − do. Kept to thousandths, so
+ * steps of 1.5 m never add up to 4.499999, and within `MAX_TOKEN_HEIGHT`.
  */
-export function steppedHeight(height: number, steps: number, step: number): number {
-  const next = Math.round((height + steps * step) * 1000) / 1000;
+export function steppedHeight(height: number, steps: number, settings: Pick<MeasurementSettings, 'mode' | 'rangeBands' | 'unitDistance'>): number {
+  const cells = steppedReach(height / settings.unitDistance, steps, settings);
+  const next = Math.round(cells * settings.unitDistance * 1000) / 1000;
   return Math.max(-MAX_TOKEN_HEIGHT, Math.min(MAX_TOKEN_HEIGHT, next));
 }
 
@@ -52,19 +55,20 @@ export function heightField(height: number): { elevation: number | undefined } {
   return { elevation: height === 0 ? undefined : height };
 }
 
-/** `gameUnits` as the map writes a distance: "30ft", "9 m". */
+/** `gameUnits` as the map writes a distance: "30ft", "9 m", or the range band it reaches. */
 function formatHeight(gameUnits: number, settings: MeasurementSettings): string {
   return formatDistance(Math.abs(gameUnits) / settings.unitDistance, settings);
 }
 
-/** A height as a menu writes it: "30ft", and "−10ft" below the floor. */
+/** A height as a menu writes it: "30ft", and "−10ft" below the floor. On the floor a map with range bands writes a dash: its nearest band is a distance, not none. */
 export function signedHeight(gameUnits: number, settings: MeasurementSettings): string {
+  if (gameUnits === 0 && settings.mode === 'abstract') return '–';
   return `${gameUnits < 0 ? '−' : ''}${formatHeight(gameUnits, settings)}`;
 }
 
 /**
- * What a token's chip says: "↑ 30ft" above the floor, "↓ 10ft" below it; nothing on the floor, and
- * nothing where the map counts no heights.
+ * What a token's chip says: "↑ 30ft" above the floor, "↓ 10ft" below it, "↑ Close" where the map
+ * measures in range bands; nothing on the floor, and nothing where the map counts no heights.
  */
 export function heightChipText(token: HasHeight, settings: MeasurementSettings): string {
   const height = tokenHeight(token);

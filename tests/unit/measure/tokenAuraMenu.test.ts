@@ -13,7 +13,7 @@ const notices = vi.hoisted(() => ({ full: vi.fn() }));
 vi.mock('../../../src/app/pixi/measure/measureNotices', () => ({ showMeasuresFullNotice: notices.full }));
 
 const FEET: MeasurementSettings = { mode: 'metric', unitType: 'feet', unitDistance: 5, ruleDistance: 5, diagonalRule: 'equidistant', rangeBands: [], coneAngle: 90 };
-const BANDS: MeasurementSettings = { ...FEET, mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 2 }] };
+const BANDS: MeasurementSettings = { ...FEET, mode: 'abstract', rangeBands: [{ name: 'Melee', maxSquares: 1 }, { name: 'Close', maxSquares: 6 }, { name: 'Far', maxSquares: 20 }] };
 
 function character(id: string, x: number, size?: number): Character {
   return { id, kind: 'character', name: id, imagePath: `${id}.png`, x, y: 105, ...(size !== undefined && { size }) };
@@ -117,8 +117,23 @@ describe('tokenAuraSubmenu', () => {
     stop();
   });
 
-  it('is not offered where the map measures in range bands', () => {
-    expect(tokenAuraSubmenu(createStore(), ['hero'], () => BANDS)).toBeNull();
+  it('steps from range band to range band where the map measures in bands, and names the aura by its band', () => {
+    const store = createStore();
+    const menu = tokenAuraSubmenu(store, ['hero'], () => BANDS);
+    expect(menu).toMatchObject({ type: 'submenu', label: 'Aura' });
+    expect(rows(menu).aura.stepper).toMatchObject({ value: '–', canDecrement: false });
+    rows(menu).aura.stepper!.onIncrement();
+    expect(rows(menu).aura.stepper!.value).toBe('Melee');
+    rows(menu).aura.stepper!.onIncrement();
+    expect(reaches(store)).toEqual({ hero: 30 });
+    expect(rows(menu).aura.stepper!.value).toBe('Close');
+    rows(menu).aura.stepper!.onDecrement();
+    rows(menu).aura.stepper!.onDecrement();
+    expect(auras(store)).toHaveLength(0);
+  });
+
+  it('is not offered where a cell spans no distance', () => {
+    expect(tokenAuraSubmenu(createStore(), ['hero'], () => ({ ...FEET, unitDistance: 0 }))).toBeNull();
   });
 
   it('tells the GM when the level keeps as many measurements as it may', () => {
