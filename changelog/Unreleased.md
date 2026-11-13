@@ -107,3 +107,4 @@
 - A tooltip shows again when the pointer slips off an icon and straight back onto it
 - Statblock text no longer leaves a stray bracket after a link to a heading with brackets, and reads links that have a title
 - A Base whose file cannot be read now says "Could not be read" instead of staying on "Reading…"
+- A click on a wall selects only the walls joined to it. Walls elsewhere that were carved or drawn in the same step no longer join the selection and are no longer deleted with it
