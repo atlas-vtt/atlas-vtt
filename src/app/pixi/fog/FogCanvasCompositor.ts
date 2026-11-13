@@ -39,11 +39,8 @@ export class FogCanvasCompositor {
 
   // ── Public API ──────────────────────────────────────────────────────
 
-  /**
-   * Returns false after covering the canvas when geometry or drawing fails. `fadeEdge` false draws
-   * the fog as its shapes are, for what reads its pixels.
-   */
-  composite(ops: Readonly<Record<string, FogOperation>>, preview?: FogOperation, fadeEdge = true): boolean {
+  /** Returns false after covering the canvas when geometry or drawing fails. */
+  composite(ops: Readonly<Record<string, FogOperation>>, preview?: FogOperation): boolean {
     const coverage = this.coverageCache.get(ops, this.mapKey());
     if (!coverage) return this.coverCanvas();
     try {
@@ -56,7 +53,7 @@ export class FogCanvasCompositor {
         validateFogOperation(preview);
         renderOperation(this.ctx, preview, this.bounds, this.scale, preview.offsetX ?? 0, preview.offsetY ?? 0);
       }
-      if (fadeEdge) this.fadeEdges();
+      this.fadeEdges();
       return true;
     } catch {
       return this.coverCanvas();

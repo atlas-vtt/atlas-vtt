@@ -1,8 +1,6 @@
 /**
- * Shared rendering functions for fog operations on Canvas 2D.
- *
- * Used by both FogCanvasCompositor (full-canvas preview) and
- * FogOperationCanvas (per-operation sprite rendering).
+ * Rendering functions for fog operations on Canvas 2D: what `FogCanvasCompositor` draws a
+ * stroke under way with, and the bounds of an operation.
  */
 import type { FogBounds, FogOperation, FogBrushStroke, FogLassoFill, FogRectangleFill } from '../../types/fogTypes';
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { App } from 'obsidian';
 import { DEFAULT_GM_FOG_OPACITY } from '../../src/app/fog/gmFogOpacity';
-import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
+import { FogPicture } from '../../src/app/pixi/fog/FogPicture';
 import { GM_FOG_OPACITY_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { memoryPluginData } from '../mocks/pluginData';
@@ -59,40 +59,35 @@ describe('the GM\'s fog opacity, a setting of this device', () => {
 });
 
 describe('the fog on the canvas at the GM\'s opacity', () => {
-  interface FogPicture {
-    previewSprite: { alpha: number; visible: boolean };
+  interface PictureHarness {
+    sprite: { alpha: number; visible: boolean };
     setGmOpacity(opacity: number): void;
-    getGmViewLayers(): { alpha?: number }[];
-    getPlayerViewLayers(): { alpha?: number }[];
+    gmLayers(): { alpha?: number }[];
+    playerLayers(): { alpha?: number }[];
   }
 
-  /** The fog renderer's picture without its canvas, in the GM's view or the session view. */
-  function picture(isGMView: boolean): FogPicture {
-    const graphics = { visible: false };
-    return Object.assign(Object.create(FogOfWarRenderer.prototype) as FogOfWarRenderer, {
-      store: { getState: () => ({ isPlayerView: false, isGMView }) },
-      _pixiApp: {},
+  /** The fog's picture without its canvas, in the GM's view or the session view. */
+  function picture(isGMView: boolean): PictureHarness {
+    return Object.assign(Object.create(FogPicture.prototype) as FogPicture, {
+      deps: { store: { getState: () => ({ isPlayerView: false, isGMView }) }, app: {} },
       gmOpacity: DEFAULT_GM_FOG_OPACITY,
-      previewSprite: { alpha: isGMView ? DEFAULT_GM_FOG_OPACITY : 1, visible: true },
-      cursorPreview: { getDisplayObject: () => graphics },
-      lassoGraphics: graphics,
-      rectPreviewGraphics: graphics,
-    }) as unknown as FogPicture;
+      sprite: { alpha: isGMView ? DEFAULT_GM_FOG_OPACITY : 1, visible: true },
+    }) as unknown as PictureHarness;
   }
 
   it('draws the GM\'s fog as opaque as chosen, and a scene\'s thumbnail with it', () => {
     const fog = picture(true);
     fog.setGmOpacity(0.25);
-    expect(fog.previewSprite.alpha).toBe(0.25);
-    expect(fog.getGmViewLayers()[0]!.alpha).toBe(0.25);
+    expect(fog.sprite.alpha).toBe(0.25);
+    expect(fog.gmLayers()[0]!.alpha).toBe(0.25);
   });
 
   it('leaves the players\' fog opaque: in the session view and in every picture made for them', () => {
     const session = picture(false);
     session.setGmOpacity(0.25);
-    expect(session.previewSprite.alpha).toBe(1);
+    expect(session.sprite.alpha).toBe(1);
     const gm = picture(true);
     gm.setGmOpacity(0.25);
-    expect(gm.getPlayerViewLayers()[0]!.alpha).toBe(1);
+    expect(gm.playerLayers()[0]!.alpha).toBe(1);
   });
 });

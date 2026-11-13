@@ -32,8 +32,13 @@
 - Hold Alt while you draw to do the other thing: reveal with Hide, hide with Reveal
 - Escape drops the stroke you are drawing
 - More sets how dark fog looks to you in GM View. Players always see solid fog
+- Fog is changed with the fog tool only: with the select and move tools it is no longer selected, dragged, duplicated or deleted
 
 ## Improved
 
 - A lasso and a rectangle show the fog they will leave while you draw them
 - The fog brush's ring shows on light maps and on dark ones
+
+## Fixed
+
+- Tokens and pins under fog can be clicked and dragged with the select and move tools: fog no longer takes their clicks

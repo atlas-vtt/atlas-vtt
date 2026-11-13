@@ -53,7 +53,6 @@ export class SelectionManager {
   private tokenRendererProvider: () => ({ [id: string]: Container });
   /** How far a selected token's bars stand out from it, in world units; a group's frame encloses them. */
   public barsProvider: (tokenId: string) => BarsSpan = () => NO_BARS;
-  private fogSpriteProvider: () => ({ [id: string]: Container });
   private hitTestTokensProvider?: (worldX: number, worldY: number) => string | null;
 
   private readonly highlights: SelectionHighlights;
@@ -81,13 +80,11 @@ export class SelectionManager {
   constructor(
     viewport: Viewport,
     tokenRendererProvider: () => ({ [id: string]: Container }),
-    fogSpriteProvider: () => ({ [id: string]: Container }),
     store: ViewAtlasStore,
     eventBus: EventEmitter
   ) {
     this.viewport = viewport;
     this.tokenRendererProvider = tokenRendererProvider;
-    this.fogSpriteProvider = fogSpriteProvider;
     this.store = store;
     this.eventBus = eventBus;
 
@@ -221,7 +218,7 @@ export class SelectionManager {
     // Only handle left mouse button (button 0) for marquee selection
     if (!isPrimaryPress(e)) return;
 
-    // Skip if another handler already claimed this event (e.g. token or fog click)
+    // Skip if another handler already claimed this event (e.g. a token or pin click)
     if (isHandled(e)) return;
     
     // Don't start marquee if clicking on a token (geometry-based fallback); the Draw tool takes no token
@@ -318,7 +315,7 @@ export class SelectionManager {
     const area: SelectArea = lasso ? this.lassoPoints : { minX: box.x, minY: box.y, maxX: box.x + box.width, maxY: box.y + box.height };
 
     // The Draw tool's Select mode takes drawings and texts alone, on the map too
-    const selectedIds = scope === 'all' ? [] : this.tokensAndFogIn(lasso ? this.lassoPoints : null, box);
+    const selectedIds = scope === 'all' ? [] : this.tokensIn(lasso ? this.lassoPoints : null, box);
     selectedIds.push(...this.annotationsInArea(area, scope));
 
     if (this.marqueeGraphics && !this.marqueeGraphics.destroyed) {
@@ -330,8 +327,8 @@ export class SelectionManager {
     this.store.getState().setSelection(selectedIds);
   }
 
-  /** The tokens and fog areas a lasso or, without one, a marquee's box takes. A token the canvas hides (session view) is not selectable. */
-  private tokensAndFogIn(lasso: { x: number; y: number }[] | null, box: Rectangle): string[] {
+  /** The tokens a lasso or, without one, a marquee's box takes. A token the canvas hides (session view) is not selectable. */
+  private tokensIn(lasso: { x: number; y: number }[] | null, box: Rectangle): string[] {
     const ids: string[] = [];
     for (const [id, tokenGroup] of Object.entries(this.tokenRendererProvider())) {
       if (!tokenGroup?.visible) continue;
@@ -343,15 +340,6 @@ export class SelectionManager {
       const halfSize = 35;
       const tokenRect = new Rectangle(x - halfSize, y - halfSize, halfSize * 2, halfSize * 2);
       if (box.intersects(tokenRect) || box.contains(tokenRect.x, tokenRect.y)) ids.push(id);
-    }
-    for (const [id, fogSprite] of Object.entries(this.fogSpriteProvider())) {
-      if (!fogSprite) continue;
-      const bounds = fogSprite.getBounds();
-      if (lasso) {
-        if (pointInPolygon({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, lasso)) ids.push(id);
-      } else if (box.intersects(new Rectangle(bounds.x, bounds.y, bounds.width, bounds.height))) {
-        ids.push(id);
-      }
     }
     return ids;
   }
@@ -406,11 +394,9 @@ export class SelectionManager {
     // What its own handles frame is marked by them
     const framed = this.annotationHost?.framedIds();
     const targets = selectionTargets(selectedIds, {
-      world: this.viewport,
       tokens: this.tokenRendererProvider(),
       annotation: (id) => (framed?.has(id) ? null : annotations.get(id) ?? null),
       measure: measureTextView,
-      fog: this.fogSpriteProvider(),
       bars: this.barsProvider,
     });
     this.highlights.show(targets);

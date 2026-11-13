@@ -146,9 +146,6 @@ export class TokenRenderer {
   private _handleRotationEnded?: EventListener;
   private _handleResizeEnded?: EventListener;
 
-  // Fog provider pattern — wired by PixiRendererOrchestrator
-  private fogHitTestProvider?: (worldX: number, worldY: number) => string | null;
-  private fogClickHandler?: (fogId: string, e: FederatedPointerEvent) => void;
   /** Whether a world point lies inside the frame drawn around a selection of two or more. */
   private groupFrameHitTest?: (worldX: number, worldY: number) => boolean;
   private annotationHandlers?: AnnotationPointerHandlers;
@@ -159,7 +156,7 @@ export class TokenRenderer {
   private pinHoverHandler?: (type: 'over' | 'out', pinId: string, e?: FederatedPointerEvent) => void;
   private hexLinkHandlers?: HexLinkPointerHandlers;
   private mapFeatureHandlers?: MapFeaturePointerHandlers;
-  /** Ends the watch on a right press that opens a hex or fog menu on release. */
+  /** Ends the watch on a right press that opens a menu on release. */
   private stopMenuPress?: () => void;
   /** Whether the GM holds spawned tokens to place (`TokenPlacer`): the pointer is theirs then. */
   private placementActive: () => boolean = () => false;
@@ -1539,16 +1536,6 @@ export class TokenRenderer {
     this.syncService.forceSyncTokens();
   }
 
-  // ─── Fog provider setters ───────────────────────────────────────────
-
-  public setFogHitTestProvider(fn: (worldX: number, worldY: number) => string | null): void {
-    this.fogHitTestProvider = fn;
-  }
-
-  public setFogClickHandler(fn: (fogId: string, e: FederatedPointerEvent) => void): void {
-    this.fogClickHandler = fn;
-  }
-
   public setGroupFrameHitTest(fn: (worldX: number, worldY: number) => boolean): void {
     this.groupFrameHitTest = fn;
   }
@@ -1788,7 +1775,7 @@ export class TokenRenderer {
     const worldPos = this.viewport.toWorld(e.global);
     const primary = isPrimaryPress(e);
 
-    // ── Right-click: check walls, fog, and pins ─────────────────────────
+    // ── Right-click: check walls, door badges and pins ──────────────────
     if (isSecondaryPress(e)) {
       // Wall context menu (when wall tool is active). It also opens beside the walls, for the selection,
       // so like the area menus below it waits for a release in place and a right-drag pans.
@@ -1813,15 +1800,15 @@ export class TokenRenderer {
           return;
         }
       }
-      // A token takes the right-click from a linked hex or fog beneath it, as it takes the left-click
+      // A token takes the right-click from a linked hex beneath it, as it takes the left-click
       const tokenTools = activeTool === 'select' || activeTool === 'move';
       const onToken = tokenTools && this.hitTestTokens(worldPos.x, worldPos.y) !== null;
-      // A drawing or text lies above linked hexes, features and fog: its menu opens on the press, where a press would take it
+      // A drawing or text lies above linked hexes and features: its menu opens on the press, where a press would take it
       if (!onToken && this.annotationHandlers?.secondaryDown(worldPos.x, worldPos.y, e)) {
         markHandled(e);
         return;
       }
-      // Linked hexes and fog cover whole stretches of the map: their press stays unhandled, so a
+      // Linked hexes cover whole stretches of the map: their press stays unhandled, so a
       // right-drag still pans, and the menu opens when the button is released in place
       if (tokenTools && !onToken && this.hexLinkHandlers) {
         const hexLinkId = this.hexLinkHandlers.hitTest(worldPos.x, worldPos.y);
@@ -1835,13 +1822,6 @@ export class TokenRenderer {
         const featureId = this.mapFeatureHandlers.hitTest(worldPos.x, worldPos.y);
         if (featureId) {
           this.openMenuOnRelease(e, (up) => this.mapFeatureHandlers?.openContextMenu(featureId, up.clientX, up.clientY));
-          return;
-        }
-      }
-      if (!onToken && this.fogHitTestProvider && this.fogClickHandler) {
-        const fogId = this.fogHitTestProvider(worldPos.x, worldPos.y);
-        if (fogId) {
-          this.openMenuOnRelease(e, (up) => this.fogClickHandler?.(fogId, up));
           return;
         }
       }
@@ -1911,7 +1891,7 @@ export class TokenRenderer {
       }
     }
 
-    // ── Token + fog interactions: only for select/move tools ────────────
+    // ── Token interactions: only for select/move tools; fog takes no press outside its own tool ──
     if (activeTool !== 'select' && activeTool !== 'move') return;
 
     // The bars of a selection stand above every token: one change for all of it
@@ -1949,17 +1929,7 @@ export class TokenRenderer {
       this.hexLinkHandlers?.press(hexLinkId, e);
     }
 
-    // 5. Hit-test fog (left-click selection); a whole-map fog must not hide linked hexes
-    if (!hexLinkId && this.fogHitTestProvider && this.fogClickHandler) {
-      const fogId = this.fogHitTestProvider(worldPos.x, worldPos.y);
-      if (fogId) {
-        markHandled(e);
-        this.fogClickHandler(fogId, e);
-        return;
-      }
-    }
-
-    // 6. Nothing hit — clear selection for move tool on empty-space left-click (shift keeps it)
+    // 5. Nothing hit — clear selection for move tool on empty-space left-click (shift keeps it)
     if (primary && activeTool === 'move' && !e.shiftKey) {
       const selectedIds = this.store.getState().selectedIds;
       if (selectedIds.length > 0) {

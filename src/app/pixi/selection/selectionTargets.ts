@@ -1,4 +1,4 @@
-import { Point, type Container } from 'pixi.js';
+import type { Container } from 'pixi.js';
 import { annotationBounds, stampBox, textBox, type TextMeasure, type TurnedBox } from '../../annotations/annotationBounds';
 import type { Annotation } from '../../annotations/annotationTypes';
 import { getTokenRingOuterDiameter } from '../token-renderer/tokenRingMetrics';
@@ -12,14 +12,11 @@ export const NO_BARS: BarsSpan = { halfWidth: 0, reach: 0 };
 
 /** Where the selected things are found. */
 export interface SelectionSources {
-  /** The world the things stand in (the viewport). */
-  readonly world: Container;
   readonly tokens: Readonly<Record<string, Container>>;
   /** The drawing or text `id` of the level shown that is marked here; null for none, and for one its own handles frame. */
   annotation(id: string): Annotation | null;
   /** Sizes a text as it is drawn. */
   readonly measure?: TextMeasure;
-  readonly fog: Readonly<Record<string, Container>>;
   /** How far a token's bars stand out from it, in world units. */
   bars(tokenId: string): BarsSpan;
 }
@@ -35,12 +32,7 @@ export function selectionTargets(ids: readonly string[], sources: SelectionSourc
       continue;
     }
     const annotation = sources.annotation(id);
-    if (annotation) {
-      targets.push(annotationTarget(annotation, sources.measure));
-      continue;
-    }
-    const fog = sources.fog[id];
-    if (fog && !fog.destroyed) targets.push(boxTarget(id, worldBounds(fog, sources.world), false));
+    if (annotation) targets.push(annotationTarget(annotation, sources.measure));
   }
   return targets;
 }
@@ -64,7 +56,7 @@ function tokenTarget(id: string, group: Partial<TokenGroupContainer> & Container
   const handles = group.children
     .filter((child) => child.label === TOKEN_HANDLE_LABEL && child.visible)
     .map((handle) => ({ x: handle.x, y: handle.y, radius: Math.max(handle.width, handle.height) / 2 }));
-  return { id, x, y, outline, extent, handles, grouped: true };
+  return { id, x, y, outline, extent, handles };
 }
 
 /** A text or a stamp by its turned box, any other drawing by the box around all it shows. */
@@ -72,20 +64,9 @@ function annotationTarget(annotation: Annotation, measure: TextMeasure | undefin
   const turned: TurnedBox | null = annotation.kind === 'text' ? textBox(annotation, measure) : annotation.shape === 'stamp' ? stampBox(annotation) : null;
   if (turned) {
     const outline = { kind: 'rect', width: 2 * turned.halfWidth, height: 2 * turned.halfHeight, rotation: Math.atan2(turned.sin, turned.cos), cornerRadius: 0 } as const;
-    return { id: annotation.id, x: turned.x, y: turned.y, outline, grouped: true };
+    return { id: annotation.id, x: turned.x, y: turned.y, outline };
   }
   const { minX, minY, maxX, maxY } = annotationBounds(annotation);
-  return boxTarget(annotation.id, { x: minX, y: minY, width: maxX - minX, height: maxY - minY }, true);
-}
-
-function boxTarget(id: string, box: Box, grouped: boolean): SelectionTarget {
-  return { id, x: box.x + box.width / 2, y: box.y + box.height / 2, outline: boxOutline(box), grouped };
-}
-
-/** `node`'s bounds in the coordinates of `world`, which neither turns nor skews. */
-function worldBounds(node: Container, world: Container): Box {
-  const bounds = node.getBounds();
-  const topLeft = world.toLocal(new Point(bounds.minX, bounds.minY));
-  const bottomRight = world.toLocal(new Point(bounds.maxX, bounds.maxY));
-  return { x: topLeft.x, y: topLeft.y, width: bottomRight.x - topLeft.x, height: bottomRight.y - topLeft.y };
+  const box: Box = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  return { id: annotation.id, x: box.x + box.width / 2, y: box.y + box.height / 2, outline: boxOutline(box) };
 }

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fogRect, fogScenes } from '../helpers/fogCoverageScene';
 import { migrateMapFile } from '../../src/app/services/MapPersistence';
-import { FogOperationCanvas } from '../../src/app/pixi/fog/FogOperationCanvas';
 import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';
 
 vi.mock('../../src/app/fog/fogCoverage', { spy: true });
@@ -232,28 +231,22 @@ describe('fog renderer lifecycle', () => {
     expect(s.read(96, 32)).toBe(0);
   });
 
-  it('keeps invalid saved geometry opaque without building editing proxies', async () => {
+  it('keeps invalid saved geometry opaque until valid geometry arrives', async () => {
     const s = await scene();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const proxy = vi.spyOn(FogOperationCanvas.prototype, 'getCanvas');
     s.setFog({ paint: { ...fogRect(), timestamp: Number.NaN } });
     expect(s.read(100, 100)).toBe(0);
     expect(s.read(32, 32)).toBe(0);
-    expect(proxy).not.toHaveBeenCalled();
-    proxy.mockRestore();
     s.setFog({ paint: fogRect() });
     expect(s.read(100, 100)).toBe(255);
     expect(s.read(32, 32)).toBe(0);
   });
 
-  it('draws valid saved fog even when its editing proxy fails', async () => {
-    const s = await scene();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const proxy = vi.spyOn(FogOperationCanvas.prototype, 'getCanvas').mockImplementationOnce(() => { throw new Error('Proxy failed'); });
-    s.setFog({ paint: fogRect() });
-    expect(proxy).toHaveBeenCalledTimes(1);
-    expect(s.read(32, 32)).toBe(0);
-    expect(s.read(100, 100)).toBe(255);
+  it('holds nothing in its layer but the picture and the tool\'s marks, whatever fog the scene holds', async () => {
+    const s = await scene({ paint: fogRect(), more: { ...fogRect('more', 2), x: 80 }, hole: fogRect('hole', 3, true) });
+    const layers = s.fog.getContainer().children.length;
+    s.setFog({});
+    expect(s.fog.getContainer().children).toHaveLength(layers);
+    expect(s.fog.getContainer().interactiveChildren).toBe(false);
   });
 
   it.each([false, true])('covers malformed saved points during bounds calculation (preloaded: %s)', async preloaded => {

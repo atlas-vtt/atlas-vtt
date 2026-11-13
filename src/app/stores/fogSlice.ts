@@ -13,9 +13,7 @@ export interface FogSlice {
    * order given, after all the fog there is.
    */
   addFogOperations: (data: readonly FogOperationInput[]) => string[];
-  deleteFogOperation: (id: string) => void;
   deleteFogOperations: (ids: string[]) => void;
-  duplicateFogOperations: (ids: string[]) => void;
   setFogOperations: (fog: Record<string, FogOperation>) => void;
   /** Removes the fog of the level the view shows; other floors keep theirs. */
   clearFog: () => void;
@@ -26,7 +24,7 @@ export interface FogSlice {
   coverAllFog: (mapRect: MapRect | null) => boolean;
 }
 
-type FogDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'selectedIds'>;
+type FogDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects'>;
 
 type ImmerSet = (fn: (draft: FogDraft) => void) => void;
 
@@ -80,39 +78,10 @@ export function createFogActions(set: ImmerSet): FogSlice {
       return ids;
     },
 
-    deleteFogOperation: (id) => set((draft) => {
-      if (draft.objects.fog[id]) {
-        delete draft.objects.fog[id];
-        draft.selectedIds = draft.selectedIds.filter(sid => sid !== id);
-      }
-    }),
-
     deleteFogOperations: (ids) => set((draft) => {
       for (const id of ids) {
         delete draft.objects.fog[id];
       }
-      draft.selectedIds = draft.selectedIds.filter(sid => !ids.includes(sid));
-    }),
-
-    duplicateFogOperations: (ids) => set((draft) => {
-      if (!ids || !Array.isArray(ids)) return;
-      const newIds: string[] = [];
-      ids.forEach(id => {
-        const original = draft.objects.fog[id];
-        if (original && !original.isErasing) {
-          const newId = newFogId();
-          const offset = 40;
-          draft.objects.fog[newId] = {
-            ...original,
-            id: newId,
-            timestamp: Date.now(),
-            offsetX: (original.offsetX ?? 0) + offset,
-            offsetY: (original.offsetY ?? 0) + offset,
-          };
-          newIds.push(newId);
-        }
-      });
-      draft.selectedIds = newIds;
     }),
 
     setFogOperations: (fog) => set((draft) => {

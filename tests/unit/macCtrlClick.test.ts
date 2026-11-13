@@ -4,7 +4,7 @@ import type { Viewport } from 'pixi-viewport';
 import type { EventEmitter } from 'events';
 import type { App } from 'obsidian';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
-import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
+import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { ShapeStroke } from '../../src/app/tools/shapeStroke';
 import { PointerTap, type TapEvent, type TapViewport } from '../../src/app/online/marks/PointerTap.ts';
 import { setCtrlClickIsSecondary } from '../../src/app/pixi/utils/pointerButtons';
@@ -81,68 +81,41 @@ describe('Ctrl+click on a token', () => {
 describe('Ctrl+click with the fog tool', () => {
   interface FogToolHarness {
     stroke: ShapeStroke;
-    onPointerDown(event: FederatedPointerEvent): void;
-    handleViewportFogPointerDown(fogId: string, event: FederatedPointerEvent): void;
+    pointerDown(event: FederatedPointerEvent): void;
   }
 
-  function fogTool(): { tool: FogToolHarness; setSelection: ReturnType<typeof vi.fn> } {
-    const setSelection = vi.fn();
-    const state = { activeTool: 'fog', isMapLoading: false, isPlayerView: false, grid: { size: 70 }, objects: { fog: {} }, setSelection };
-    const tool = Object.assign(Object.create(FogOfWarRenderer.prototype) as FogOfWarRenderer, {
-      store: { getState: () => state },
-      viewport: { pause: false, toWorld: (point: { x: number; y: number }) => point, scale: { x: 1 } },
+  function fogTool(): FogToolHarness {
+    const state = { activeTool: 'fog', isMapLoading: false, isPlayerView: false, grid: { size: 70 }, objects: { fog: {} } };
+    return Object.assign(Object.create(FogGesture.prototype) as FogGesture, {
+      deps: {
+        store: { getState: () => state },
+        viewport: { pause: false, toWorld: (point: { x: number; y: number }) => point, scale: { x: 1 } },
+        host: { showStroke: vi.fn(), showCommitted: vi.fn() },
+      },
       stroke: Object.assign(new ShapeStroke(), { mode: 'rectangle' }),
       flipped: false,
-      strokeKeys: { hold: vi.fn(), release: vi.fn() },
-      cursorPreview: { shown: false },
-      compositor: { composite: vi.fn() },
-      updatePreviewTexture: vi.fn(),
-      container: {},
-      fogSprites: new Map(),
-      previewSprite: {},
-      renderPreviewFromStore: vi.fn(),
-      refreshBounds: vi.fn(),
-      rectPreviewGraphics: { clear: vi.fn(), rect: vi.fn(), stroke: vi.fn().mockReturnThis(), fill: vi.fn() },
+      keys: { hold: vi.fn(), release: vi.fn() },
+      ring: { shown: false },
+      outline: { clear: vi.fn(), rect: vi.fn(), stroke: vi.fn().mockReturnThis(), fill: vi.fn() },
     }) as unknown as FogToolHarness;
-    return { tool, setSelection };
   }
 
   it('paints no fog on macOS', () => {
     runOn('mac');
-    const { tool } = fogTool();
+    const tool = fogTool();
 
-    tool.onPointerDown(ctrlPress());
+    tool.pointerDown(ctrlPress());
 
     expect(tool.stroke.active).toBe(false);
   });
 
   it('paints fog on Windows and Linux as before', () => {
     runOn('windows');
-    const { tool } = fogTool();
+    const tool = fogTool();
 
-    tool.onPointerDown(ctrlPress());
+    tool.pointerDown(ctrlPress());
 
     expect(tool.stroke.active).toBe(true);
-  });
-
-  it('opens a fog area\'s menu on macOS without selecting it', () => {
-    runOn('mac');
-    const { tool, setSelection } = fogTool();
-
-    tool.handleViewportFogPointerDown('fog-1', ctrlPress());
-
-    expect(openContextMenuGlobal).toHaveBeenCalledWith(expect.any(Array), { x: 520, y: 310 });
-    expect(setSelection).not.toHaveBeenCalled();
-  });
-
-  it('selects a fog area on Windows and Linux as before', () => {
-    runOn('windows');
-    const { tool, setSelection } = fogTool();
-
-    tool.handleViewportFogPointerDown('fog-1', ctrlPress());
-
-    expect(openContextMenuGlobal).not.toHaveBeenCalled();
-    expect(setSelection).toHaveBeenCalledOnce();
   });
 });
 

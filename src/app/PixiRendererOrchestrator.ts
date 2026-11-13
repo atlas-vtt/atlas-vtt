@@ -421,7 +421,6 @@ export class PixiRendererOrchestrator { // Renamed class
     this.selectionManager = new SelectionManager(
         viewport,
         () => this.tokenRenderer?.getTokenSprites() || {},
-        () => this.fogRenderer?.getFogSprites() || {},
         this.store,
         this.eventBus
     );
@@ -585,7 +584,7 @@ export class PixiRendererOrchestrator { // Renamed class
         );
         // Set PIXI app reference for renderer access
         this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
-        // Wire viewport-level dispatch providers (fog, pins, selection hit-testing)
+        // Wire viewport-level dispatch providers (pins, selection hit-testing)
         this.wireViewportDispatchProviders();
         // Re-order SelectionManager listeners so they fire after TokenRenderer's viewport handlers
         this.selectionManager?.reorderViewportListeners();
@@ -1155,12 +1154,6 @@ export class PixiRendererOrchestrator { // Renamed class
 
     if (this.fogRenderer) {
       this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
-      this.tokenRenderer.setFogHitTestProvider(
-        (x, y) => this.fogRenderer!.hitTestFog(x, y)
-      );
-      this.tokenRenderer.setFogClickHandler(
-        (fogId, e) => this.fogRenderer!.handleViewportFogPointerDown(fogId, e)
-      );
     }
     // The drawings and texts are made after the first wiring pass, so they are resolved when asked
     this.tokenRenderer.setAnnotationHandlers({

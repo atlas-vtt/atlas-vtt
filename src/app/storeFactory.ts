@@ -159,9 +159,7 @@ export interface ViewAtlasState extends ViewState {
   // Fog actions (from fogSlice.ts)
   addFogOperation: FogSlice['addFogOperation'];
   addFogOperations: FogSlice['addFogOperations'];
-  deleteFogOperation: FogSlice['deleteFogOperation'];
   deleteFogOperations: FogSlice['deleteFogOperations'];
-  duplicateFogOperations: FogSlice['duplicateFogOperations'];
   setFogOperations: FogSlice['setFogOperations'];
   clearFog: FogSlice['clearFog'];
   coverAllFog: FogSlice['coverAllFog'];
@@ -273,7 +271,7 @@ export interface ViewAtlasState extends ViewState {
   placeOffMapToken: MapObjectsSlice['placeOffMapToken'];
 
   // Map state management
-  deleteMapObject: (type: 'token' | 'fog' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => void;
+  deleteMapObject: (type: 'token' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => void;
   clearMapState: () => void;
   plugin?: Plugin;
   setTokenSettings: (settings: ViewAtlasState['tokenSettings']) => void;
@@ -941,19 +939,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // --- Copy, paste and duplicate (from mapObjectsSlice.ts) ---
           ...createMapObjectsActions(set, get),
 
-          deleteMapObject: (type: 'token' | 'fog' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => set((draft) => {
+          deleteMapObject: (type: 'token' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => set((draft) => {
             switch (type) {
               case 'token':
                 if (draft.objects.tokens[id]) {
                   delete draft.objects.tokens[id];
                   dropTokenAuras(draft, [id]);
                   // Remove from selection if selected
-                  draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
-                }
-                break;
-              case 'fog':
-                if (draft.objects.fog[id]) {
-                  delete draft.objects.fog[id];
                   draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
                 }
                 break;

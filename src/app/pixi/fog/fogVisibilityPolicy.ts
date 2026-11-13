@@ -9,9 +9,3 @@ export function resolveFogPreviewAlpha(params: {
   }
   return params.isGMView ? params.gmOpacity : 1.0;
 }
-
-export function canInteractWithFog(params: {
-  isPlayerView: boolean;
-}): boolean {
-  return !params.isPlayerView;
-}
