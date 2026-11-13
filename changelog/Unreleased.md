@@ -42,3 +42,7 @@
 ## Improved
 
 - On Windows and Linux, the window's minimise, maximise and close buttons stay out of sight over a map and the other Atlas pages, so the widgets in the top-right corner can be seen. Move the pointer to the corner to show them
+
+## Atlas Online
+
+- Players may draw, a switch in the player view settings: your online players get a Draw tool of their own, with the pen, lines, shapes, text and an eraser. They change and erase only what they drew; you can change, erase and undo all of it, a drawing's menu says who drew it, and a player's entry in the dock clears theirs

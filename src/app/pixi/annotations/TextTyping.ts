@@ -1,23 +1,22 @@
 import type { Viewport } from 'pixi-viewport';
-import type { StoreApi } from 'zustand';
 import { annotationRoom, readText } from '../../annotations/annotationList';
 import { isLocked } from '../../annotations/annotationLock';
 import type { TextAnnotation } from '../../annotations/annotationTypes';
 import { drawCell } from '../../annotations/drawSizes';
 import { FONT_FAMILIES, madeText } from '../../annotations/madeText';
 import { levelObjects } from '../../levels/levelObjects';
-import type { ViewAtlasState } from '../../storeFactory';
 import type { Point } from '../../types/visionTypes';
 import { textFontReady } from '../textFonts';
 import { wordsOffset } from '../textElementView';
 import { textBreaks, textLayout, type TextLayout } from '../textLayout';
+import type { TypingState, TypingStore } from './drawToolState';
 import { fieldLook, TextField } from './TextField';
 import { anchorOf, centreFrom, typedWords } from './textTypingRules';
 import { TypingWatch } from './TypingWatch';
 
 export interface TextTypingDeps {
   readonly viewport: Viewport;
-  readonly store: StoreApi<ViewAtlasState>;
+  readonly store: TypingStore;
   /** Whether the canvas shows the GM's view: a text is typed there alone. */
   gmView(): boolean;
   /** Hides the words of the text `id` on the canvas while its field shows them; null shows them again. */
@@ -26,6 +25,8 @@ export interface TextTypingDeps {
   full(): void;
   /** A text is being typed, or no longer: the selection's frame hides and shows by it. */
   changed(): void;
+  /** What a press on leaves the keyboard with the field, as a selector: the tool's own bars. Unset, the Draw tool's bars. */
+  readonly bars?: string;
 }
 
 /** What lies over the whole map once it is open: the GM then works there. */
@@ -70,7 +71,7 @@ export class TextTyping {
   private readonly watch: TypingWatch;
 
   constructor(private readonly deps: TextTypingDeps) {
-    this.watch = new TypingWatch(() => this.canvas, () => this.finish());
+    this.watch = new TypingWatch(() => this.canvas, () => this.finish(), deps.bars);
   }
 
   /** A text is being typed. */
@@ -156,7 +157,7 @@ export class TextTyping {
   }
 
   /** The view's state changed: the field follows the tool's choices and its text's record, and what ends the typing ends it. */
-  follow(state: ViewAtlasState, previous: ViewAtlasState): void {
+  follow(state: TypingState, previous: TypingState): void {
     const session = this.session;
     if (!session) {
       if (this.pending && (state.activeTool !== previous.activeTool || state.drawTool.mode !== previous.drawTool.mode || state.mapPath !== previous.mapPath)) this.pending = null;
@@ -169,7 +170,7 @@ export class TextTyping {
       this.cancel();
       return;
     }
-    if (state.activeTool !== previous.activeTool || state.drawTool.mode !== previous.drawTool.mode || COVERS_MAP.some((open) => state[open] && !previous[open])) {
+    if (state.activeTool !== previous.activeTool || state.drawTool.mode !== previous.drawTool.mode || COVERS_MAP.some((open) => state[open] === true && previous[open] !== true)) {
       this.finish();
       return;
     }

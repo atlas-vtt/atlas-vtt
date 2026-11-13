@@ -48,6 +48,7 @@ export const online = {
   'online.command.startTable': 'Start online table',
   'online.command.stopTable': 'Stop online table',
   'online.command.togglePanel': 'Toggle online panel',
+  'online.clearDrawings': 'Clear drawings',
   'online.copyCode': 'Copy code',
   'online.copyImage': 'Copy image',
   'online.copyInvite': 'Copy invite link',

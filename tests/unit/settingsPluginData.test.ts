@@ -42,6 +42,17 @@ describe('Atlas settings in the plugin data', () => {
     expect(reopened.getLocalPlayerViewSettings().showCursors).toBe(true);
   });
 
+  it('lets no online player draw until the GM says so, also in a vault whose settings an older Atlas wrote', async () => {
+    expect((await loaded()).settings.getLocalPlayerViewSettings().playersDraw).toBe(false);
+    const older = await loaded({ localPlayerView: { showWidgets: false, showCursors: true } });
+    expect(older.settings.getLocalPlayerViewSettings()).toMatchObject({ playersDraw: false, showCursors: true });
+    older.settings.setLocalPlayerViewSettings({ playersDraw: true });
+    await older.settings.saveSettingsNow();
+    const reopened = new SettingsService(older.app, undefined, older.data);
+    await reopened.initialize();
+    expect(reopened.getLocalPlayerViewSettings().playersDraw).toBe(true);
+  });
+
   it('keeps what a newer Atlas stored when it saves', async () => {
     const { settings, data } = await loaded({
       futureSetting: { nested: [1, 2] },

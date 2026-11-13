@@ -9,6 +9,8 @@ export * from './delta.ts';
 export * from './deltaReader.ts';
 export * from './diagnostics.ts';
 export * from './dice.ts';
+export * from './draw.ts';
+export * from './drawParse.ts';
 export * from './errorReporter.ts';
 export * from './floor.ts';
 export * from './fog.ts';

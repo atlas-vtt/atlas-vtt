@@ -8,8 +8,8 @@ import { SettingRow, SettingToggleRow } from './SettingRows';
 import { usePlayerViewSwitches, type PlayerViewSwitch } from './playerViewSwitches';
 import { t } from '../../../i18n';
 
-const renderSwitch = ({ id, label, value, onToggle }: PlayerViewSwitch): React.ReactElement => (
-  <SettingToggleRow key={id} label={label} value={value} onToggle={onToggle} />
+const renderSwitch = ({ id, label, hint, value, onToggle }: PlayerViewSwitch): React.ReactElement => (
+  <SettingToggleRow key={id} label={label} hint={hint} value={value} onToggle={onToggle} />
 );
 
 export function LocalPlayerViewSettingsPanel(): React.ReactElement {

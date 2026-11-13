@@ -1,5 +1,5 @@
 import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type CursorViewport, type LayBodies, type MeasureRules, type OverlayHost, type RemoteDrag, type TapViewport } from '../marks/index.ts';
-import { LIVE_INTERVAL_MS, type SharedCursor } from '../protocol/index.ts';
+import { LIVE_INTERVAL_MS, type SharedCursor, type SharedStroke } from '../protocol/index.ts';
 import { Container } from 'pixi.js';
 import { placeUnderTokens } from '../../pixi/measure/MeasureLayer';
 import type { HeldPlayout } from '../../pixi/token-renderer/TokenGlide';
@@ -78,7 +78,7 @@ export class GmMarks {
   /** The committed fog a drawing under way is judged by. */
   private readonly fog = new FogCoverageCache();
   /** What the overlay shows: the players' marks and the rulers of their drags, each kept until it changes. */
-  private shown: { players: PlayerMarks; drags: readonly RemoteDrag[] } = { players: { lasers: [], measures: [] }, drags: [] };
+  private shown: { players: PlayerMarks; drags: readonly RemoteDrag[]; strokes: readonly SharedStroke[] } = { players: { lasers: [], measures: [] }, drags: [], strokes: [] };
   private built: { readonly renderer: unknown; readonly source: GmMarkSource; readonly taps: readonly { destroy(): void }[]; readonly host: OverlayHost; readonly tokens: unknown } | null = null;
   private readonly playout: HeldPlayout = {
     interval: LIVE_INTERVAL_MS,
@@ -148,6 +148,12 @@ export class GmMarks {
     this.showOverlay();
   }
 
+  /** Draws the drawings players are making over the tab's map, each as it was last told. */
+  showPlayerStrokes(strokes: readonly SharedStroke[]): void {
+    this.shown.strokes = strokes;
+    this.showOverlay();
+  }
+
   /** Draws the players' cursors over the tab's map. */
   showPlayerCursors(cursors: readonly SharedCursor[]): void {
     this.source();
@@ -170,7 +176,7 @@ export class GmMarks {
 
   private showOverlay(): void {
     this.source();
-    if (this.built !== null) this.overlay.show({ ...this.shown.players, drags: this.shown.drags }, this.built.host);
+    if (this.built !== null) this.overlay.show({ ...this.shown.players, drags: this.shown.drags, strokes: this.shown.strokes }, this.built.host);
   }
 
   /** Where every token stands, hidden ones included, as Atlas's measurements judge their start. */

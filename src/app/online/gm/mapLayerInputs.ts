@@ -167,6 +167,18 @@ function toldDrawing(drawing: DrawingAnnotation, fog: FogCoverage | null): Share
   return box === null || underFog(box, fog) ? null : sharedDrawing(drawing);
 }
 
+/** The ids the GM's scene has for the drawings and texts players are told, as the message lists those above the tokens. */
+export interface ToldAbove {
+  readonly drawings: readonly string[];
+  readonly texts: readonly string[];
+}
+
+/** What players are told of drawings and texts, and which of the scene's each entry above the tokens is. */
+export interface ToldAnnotationLists {
+  readonly shared: SharedAnnotations;
+  readonly above: ToldAbove;
+}
+
 /**
  * The drawings and texts players see, read as everything reads them (`annotationList`), in its
  * order: without those the GM keeps to themselves (`hidden`) and without those committed fog
@@ -177,15 +189,19 @@ function toldDrawing(drawing: DrawingAnnotation, fog: FogCoverage | null): Share
  * the map are told apart (`onMap`): they lie under the lighting, and a page that drew them above
  * it would show them over rooms nobody has seen, so a page that does not know the field shows
  * none of them. Both together stay within what one message may carry.
+ *
+ * `above` names each told entry above the tokens by its id in the GM's scene, in the lists'
+ * order: it never leaves the GM, and says which entries a player is told are theirs.
  */
-export function sharedAnnotations(
+export function toldAnnotationLists(
   drawings: Readonly<Record<string, DrawingStroke>>,
   texts: Readonly<Record<string, TextElement>>,
   fog: FogCoverage | null,
-): SharedAnnotations {
-  if (fog === null) return { drawings: [], texts: [] };
+): ToldAnnotationLists {
+  if (fog === null) return { shared: { drawings: [], texts: [] }, above: { drawings: [], texts: [] } };
   const above = { drawings: [] as SharedDrawing[], texts: [] as SharedText[] };
   const onMap = { drawings: [] as SharedDrawing[], texts: [] as SharedText[] };
+  const ids = { drawings: [] as string[], texts: [] as string[] };
   const room = { drawings: MAX_DRAWINGS, texts: MAX_TEXTS, points: MAX_DRAWING_POINTS };
   for (const annotation of annotationList({ drawings, texts })) {
     if (annotation.hidden) continue;
@@ -196,6 +212,7 @@ export function sharedAnnotations(
       if (box === null || underFog(box, fog)) continue;
       room.texts -= 1;
       lists.texts.push(sharedText(annotation));
+      if (lists === above) ids.texts.push(annotation.id);
       continue;
     }
     if (room.drawings === 0) continue;
@@ -204,8 +221,18 @@ export function sharedAnnotations(
     room.points -= pointsOf(shared);
     room.drawings -= 1;
     lists.drawings.push(shared);
+    if (lists === above) ids.drawings.push(annotation.id);
   }
-  return onMap.drawings.length + onMap.texts.length > 0 ? { ...above, onMap } : above;
+  return { shared: onMap.drawings.length + onMap.texts.length > 0 ? { ...above, onMap } : above, above: ids };
+}
+
+/** The drawings and texts players see (`toldAnnotationLists`). */
+export function sharedAnnotations(
+  drawings: Readonly<Record<string, DrawingStroke>>,
+  texts: Readonly<Record<string, TextElement>>,
+  fog: FogCoverage | null,
+): SharedAnnotations {
+  return toldAnnotationLists(drawings, texts, fog).shared;
 }
 
 /**

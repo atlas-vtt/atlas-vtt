@@ -11,6 +11,7 @@ import type { GridGeometry } from '../../grid/gridDistance';
 import { isTextEntryTarget } from '../../keyboard/textEntry';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasState } from '../../storeFactory';
+import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import type { TesseraView } from '../mosaicCanvas/levelOfDetail';
 import type { LayerVisibility } from '../playerSafeFrame';
@@ -23,6 +24,7 @@ import { copyAnnotationsMoved } from './annotationActions';
 import { AnnotationHandles } from './AnnotationHandles';
 import { AnnotationInteraction } from './AnnotationInteraction';
 import { AnnotationLayer } from './AnnotationLayer';
+import { annotationMenu } from './annotationMenu';
 import { showAnnotationsFullNotice } from './annotationNotices';
 import { AnnotationPlayersView } from './annotationPlayersView';
 import { ClickPlacing } from './ClickPlacing';
@@ -170,6 +172,11 @@ export class AnnotationsRenderer {
       breaksAt: (text, width) => (textFontReady(text.fontFamily) ? textBreaks(text, width) : []),
       copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
       dragTokens: (event) => options.dragTokens?.(event),
+      menu: (selected, clicked, at) => {
+        const entries = annotationMenu(selected, clicked, store.getState(), (text) => this.texts.edit(text));
+        if (entries.length > 0) openContextMenuGlobal(entries, at);
+        return entries.length > 0;
+      },
     }, options.now);
     const underWay = new UnderWay();
     this.underWay = underWay;

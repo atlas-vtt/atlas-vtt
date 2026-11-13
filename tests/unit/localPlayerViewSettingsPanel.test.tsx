@@ -51,6 +51,22 @@ it('offers the cursor switch only while online play is switched on', () => {
   expect(settings.getLocalPlayerViewSettings().showCursors).toBe(true);
 });
 
+it('offers Players may draw only while online play is switched on, off until the GM switches it on, and says what it does', () => {
+  context.settings = new SettingsService({} as never);
+  const settings = context.settings as SettingsService;
+  const { unmount } = render(<LocalPlayerViewSettingsPanel />);
+  expect(screen.queryByRole('switch', { name: 'Players may draw' })).toBeNull();
+  unmount();
+  settings.setExperimental('onlinePlay', true);
+  render(<LocalPlayerViewSettingsPanel />);
+  const toggle = screen.getByRole('switch', { name: 'Players may draw' });
+  expect(toggle.getAttribute('aria-checked')).toBe('false');
+  expect(screen.getByText('Online players get a Draw tool of their own. You can change and clear what they draw.')).toBeTruthy();
+  fireEvent.click(toggle);
+  expect(settings.getLocalPlayerViewSettings().playersDraw).toBe(true);
+  expect(screen.getByRole('switch', { name: 'Players may draw' }).getAttribute('aria-checked')).toBe('true');
+});
+
 it('offers a switch for every resource of the open scene\'s collection, bars and wheels alike', () => {
   context.settings = new SettingsService({} as never);
   context.resources = [{ ...HP, visibleToPlayers: true }, STRESS, AMMO];

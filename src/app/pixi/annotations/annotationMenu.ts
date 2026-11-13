@@ -1,3 +1,4 @@
+import { annotationAuthor } from '../../annotations/annotationAuthors';
 import { groupable, ungroupable } from '../../annotations/annotationGroups';
 import { isLocked } from '../../annotations/annotationLock';
 import type { Annotation, TextAnnotation } from '../../annotations/annotationTypes';
@@ -16,6 +17,8 @@ export type AnnotationMenuStore = Pick<ViewAtlasState, 'updateAnnotations' | 'or
  * but its unlocking (`annotationLock.ts`): the rows speak of the others, and where every selected
  * one is locked only Unlock and Duplicate can be chosen. Group makes one group of what is
  * selected and Ungroup takes it apart; each can be chosen only where it changes something.
+ * A drawing or text an online player made says so in a first row that does nothing, where the
+ * player is known (`annotationAuthor`).
  */
 export function annotationMenu(selected: readonly Annotation[], clicked: Annotation | null, store: AnnotationMenuStore, edit: (text: TextAnnotation) => void): ContextMenuEntry[] {
   const ids = selected.map(({ id }) => id);
@@ -27,6 +30,8 @@ export function annotationMenu(selected: readonly Annotation[], clicked: Annotat
   const hidden = changed.every((annotation) => annotation.hidden);
   const onMap = changed.every((annotation) => annotation.layer === 'map');
   const entries: ContextMenuEntry[] = [];
+  const author = annotationAuthor(clicked?.by ?? null);
+  if (author !== null) entries.push({ type: 'item', label: t('draw.menu.drawnBy', { name: author }), icon: 'user', disabled: true, onClick: () => undefined }, MENU_SEPARATOR);
   if (clicked?.kind === 'text') entries.push({ type: 'item', label: t('draw.menu.edit'), icon: 'pencil', disabled: isLocked(clicked), onClick: () => edit(clicked) });
   entries.push(
     {

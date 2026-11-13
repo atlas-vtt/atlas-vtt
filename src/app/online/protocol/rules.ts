@@ -43,6 +43,9 @@ export interface SharedMeasurement {
  * `cursors` is set while the GM lets everyone see each other's cursor: only then does a player send theirs.
  * `dice` are the map's dice a roll naming no token of the player's own set is made with (added later:
  * an older GM sends none, and a page offers no advantage then).
+ * `draw` is set while the GM lets players draw on the map (added later): `cell` is the side of the
+ * cell the Draw tool's named sizes are shares of there, in world pixels. Without it the GM takes no
+ * drawing from a player.
  */
 export interface SharedRules {
   readonly grid: SnapGrid;
@@ -51,6 +54,7 @@ export interface SharedRules {
   readonly accent: string | null;
   readonly cursors?: true;
   readonly dice?: SharedRollDice;
+  readonly draw?: { readonly cell: number };
 }
 
 export type RulesMessage = { readonly t: 'rules'; readonly scene: string } & SharedRules;
@@ -104,5 +108,7 @@ export function parseRules(value: Record<string, unknown>): RulesMessage | null 
   if (accent !== null && (typeof accent !== 'string' || !ACCENT.test(accent))) return null;
   if (cursors !== undefined && cursors !== true) return null;
   const dice = parseRollDice(value.dice);
-  return { t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }), ...(dice !== undefined && { dice }) };
+  // A word about drawing that cannot be read is left out: players then do not draw.
+  const draw = isRecord(value.draw) && isDistance(value.draw.cell) ? { cell: value.draw.cell } : undefined;
+  return { t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }), ...(dice !== undefined && { dice }), ...(draw !== undefined && { draw }) };
 }

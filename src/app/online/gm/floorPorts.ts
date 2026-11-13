@@ -51,6 +51,9 @@ export function floorPorts(ports: SceneSharePorts, deps: FloorPortsDeps): FloorS
     showPlayerCursors: (cursors) => {
       if (viewed()) ports.showPlayerCursors?.(cursors);
     },
+    showPlayerStrokes: (strokes) => {
+      if (viewed()) ports.showPlayerStrokes?.(strokes);
+    },
     seats: seats === undefined ? undefined : {
       onlinePlayers: () => deps.playersOn() ?? seats.onlinePlayers(),
       ownerOf: (tokenId, token) => seats.ownerOf(tokenId, token),

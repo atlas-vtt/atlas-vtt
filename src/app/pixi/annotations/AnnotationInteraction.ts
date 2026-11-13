@@ -1,23 +1,20 @@
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { StoreApi } from 'zustand';
 import type { TextMeasure } from '../../annotations/annotationBounds';
 import { HANDLE_LOOK, handleAt, isGrip, type HandleRef } from '../../annotations/annotationHandles';
 import { annotationsAt } from '../../annotations/annotationHit';
 import { takesPress, withGroups } from '../../annotations/annotationPress';
 import type { Annotation, AnnotationPlace, TextAnnotation } from '../../annotations/annotationTypes';
 import { withPointRemoved } from '../../annotations/linePoints';
-import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
-import type { ViewAtlasState } from '../../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import type { Point } from '../../types/visionTypes';
 import { AnnotationGestures, type GripRef } from './AnnotationGestures';
 import { AnnotationEdit, type EditLayer } from './AnnotationEdit';
 import type { AnnotationHandles } from './AnnotationHandles';
-import { annotationMenu } from './annotationMenu';
 import type { AnnotationPointerHandlers } from './annotationPointer';
 import { readSelection, type SelectionRead } from './annotationSelection';
 import { DoubleClick } from './DoubleClick';
+import type { SelectingStore } from './drawToolState';
 import { gripCursor } from './gripCursor';
 import { outlineOf, selectionPicture } from './selectionPicture';
 
@@ -26,7 +23,7 @@ const HIT_TOLERANCE = HANDLE_LOOK.edge;
 
 export interface AnnotationInteractionDeps {
   readonly viewport: Viewport;
-  readonly store: StoreApi<ViewAtlasState>;
+  readonly store: SelectingStore;
   readonly layer: EditLayer;
   readonly handles: AnnotationHandles;
   readonly measure: TextMeasure;
@@ -46,6 +43,11 @@ export interface AnnotationInteractionDeps {
   copyMoved(ids: readonly string[], dx: number, dy: number): void;
   /** Starts the drag of the selected tokens with the press `event`: a press on an annotation drags the tokens selected with it. */
   dragTokens(event: FederatedPointerEvent): void;
+  /**
+   * Opens the menu of the selected annotations at the screen point `at`, `clicked` being the one
+   * under the pointer; false where there is nothing to offer. Unset: a secondary press opens none.
+   */
+  menu?(selected: readonly Annotation[], clicked: Annotation | null, at: { x: number; y: number }): boolean;
 }
 
 /**
@@ -91,7 +93,7 @@ export class AnnotationInteraction {
         else deps.handles.show({ handles, outlines: [] });
         deps.handles.setHot(held ?? this.hot);
       },
-      write: (places) => deps.store.getState().placeAnnotations(places),
+      write: (places, by) => deps.store.getState().placeAnnotations(places, by),
     });
   }
 
@@ -171,7 +173,7 @@ export class AnnotationInteraction {
 
   /** Whether annotations take the pointer at all: on the GM's view of the canvas, in a view that is no players' own, while no text is typed. */
   works(): boolean {
-    return !this.deps.store.getState().isPlayerView && this.deps.gmView() && !this.deps.typing();
+    return this.deps.store.getState().isPlayerView !== true && this.deps.gmView() && !this.deps.typing();
   }
 
   private read(): SelectionRead {
@@ -282,8 +284,7 @@ export class AnnotationInteraction {
       read = this.read();
     }
     this.gestures.cancel();
-    const entries = annotationMenu(read.selected, at, this.deps.store.getState(), (text) => this.deps.editText(text));
-    if (entries.length > 0) openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
+    this.deps.menu?.(read.selected, at, { x: event.clientX, y: event.clientY });
     return true;
   }
 

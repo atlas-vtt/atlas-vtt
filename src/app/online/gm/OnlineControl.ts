@@ -10,6 +10,7 @@ import { freeGate, newGate } from './joinGate.ts';
 import { LogKeeper, type LogStore } from './log/logStore.ts';
 import { OnlineTable } from './OnlineTable.ts';
 import type { KnownPlayer, Ownership } from './ownership.ts';
+import { clearDrawnBy, drawnBy } from './playerDrawingsClear.ts';
 import { giveTokens, markTokens, playerTokenRows, type PlayerTokenRow } from './playerTokenRows.ts';
 import { presentOnPlayerView, presentedSceneSource, showPresentedElsewhere, type ShownElsewhere } from './presentedScene.ts';
 import type { SavedTable } from './savedTable.ts';
@@ -171,6 +172,18 @@ export class OnlineControl {
   /** Takes a player off the running table: their key for it stops working; they come back with their own code. */
   kick(playerId: string): void {
     this.current?.kick(playerId);
+  }
+
+  /** How many drawings and texts a player has on the level the shared scene shows; none while no scene is shared. */
+  playerDrawings(playerId: string): number {
+    const store = this.current?.sharedStore ?? null;
+    return store === null ? 0 : drawnBy(store.getState(), playerId).length;
+  }
+
+  /** Removes a player's drawings and texts from the level the shared scene shows, in one undo step. */
+  clearPlayerDrawings(playerId: string): void {
+    const store = this.current?.sharedStore ?? null;
+    if (store !== null) clearDrawnBy(store, playerId);
   }
 
   /** A player's own code in the running table's campaign, else in the played one; null for anyone it does not know. */

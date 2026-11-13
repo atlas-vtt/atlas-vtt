@@ -64,6 +64,17 @@ export function liveDrawingOf(told: SharedDrawing): LiveDrawing {
 type Kept<Record> = Map<string, Record>;
 
 /**
+ * The ids some of the told drawings and texts above the tokens go by: the reader's own, which it
+ * is told by their places in the lists (`draw-mine`), so that each keeps one id for as long as it
+ * is there, whatever is changed of it. Undefined for an entry that has none.
+ */
+export interface ToldNames {
+  /** A drawing's id and, of a curve, the points it was clicked with (flat), where the reader is told them. */
+  drawing(at: number): { readonly id: string; readonly anchors?: readonly number[] } | undefined;
+  text(at: number): string | undefined;
+}
+
+/**
  * The records of the drawings and texts a teller's messages tell. An entry that says what one of
  * the message before said keeps its record, so whoever draws from the records draws nothing anew
  * for it. Ids are made here: a teller names none.
@@ -75,22 +86,29 @@ export class ToldAnnotations {
 
   /**
    * The records of everything `told` tells: those above the tokens and, marked `layer: 'map'`,
-   * those on the map, each list in its order. `asMade` as for `drawingFields`.
+   * those on the map, each list in its order. `asMade` as for `drawingFields`. An entry above the
+   * tokens that `names` names has that id; every other gets one made here.
    */
-  read(told: SharedAnnotations, asMade: boolean): Required<AnnotationRecords> {
+  read(told: SharedAnnotations, asMade: boolean, names?: ToldNames): Required<AnnotationRecords> {
     const drawings: Kept<DrawingStroke> = new Map();
     const texts: Kept<TextElement> = new Map();
     const take = (lists: SharedAnnotationLists, onMap: boolean): void => {
       const place = onMap ? { layer: 'map' as const } : {};
       const prefix = `${onMap ? 'm' : 'a'}${asMade ? '' : 'o'}`;
-      for (const entry of lists.texts) {
-        const key = free(texts, prefix + JSON.stringify(entry));
-        texts.set(key, this.texts.get(key) ?? { id: this.id('t'), kind: 'text', ...textFields(entry), ...place });
-      }
-      for (const entry of lists.drawings) {
-        const key = free(drawings, prefix + JSON.stringify(entry));
-        drawings.set(key, this.drawings.get(key) ?? { id: this.id('d'), kind: 'drawing', timestamp: 0, ...drawingFields(entry, asMade), ...place });
-      }
+      // A named entry is another record than an unnamed one that says the same: its id is its name.
+      const named = (name: string | undefined): string => (name === undefined ? prefix : `${prefix}@${name}:`);
+      lists.texts.forEach((entry, at) => {
+        const name = onMap ? undefined : names?.text(at);
+        const key = free(texts, named(name) + JSON.stringify(entry));
+        texts.set(key, this.texts.get(key) ?? { id: name ?? this.id('t'), kind: 'text', ...textFields(entry), ...place });
+      });
+      lists.drawings.forEach((entry, at) => {
+        const own = onMap ? undefined : names?.drawing(at);
+        // The points a curve was clicked with, where the reader is told them: a curve told without them has two of its own in their place.
+        const anchors = own?.anchors === undefined || entry.curved !== true ? undefined : pointsOf(own.anchors);
+        const key = free(drawings, named(own?.id) + JSON.stringify(entry) + (anchors === undefined ? '' : JSON.stringify(own?.anchors)));
+        drawings.set(key, this.drawings.get(key) ?? { id: own?.id ?? this.id('d'), kind: 'drawing', timestamp: 0, ...drawingFields(entry, asMade), ...(anchors !== undefined && { anchors }), ...place });
+      });
     };
     take(told, false);
     if (told.onMap) take(told.onMap, true);

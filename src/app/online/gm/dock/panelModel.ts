@@ -91,6 +91,10 @@ export interface OnlineApi {
   release(tokenIds: readonly string[]): void;
   /** Takes a player off the running table; they come back with their own code. */
   kick(playerId: string): void;
+  /** How many drawings and texts a player has on the level the shared scene shows. */
+  playerDrawings(playerId: string): number;
+  /** Removes them, in one undo step. */
+  clearPlayerDrawings(playerId: string): void;
   /** A player's own code, or null while no table runs. */
   playerCode(playerId: string): string | null;
   /** Gives a player a new code; the old one stops working. */
@@ -112,7 +116,7 @@ export interface OnlineApi {
 }
 
 /** The part of `OnlineControl` the control uses. */
-export type ControlSource = Pick<OnlineControl, 'onChange' | 'status' | 'link' | 'campaignId' | 'seats' | 'isStarting' | 'lost' | 'outdated' | 'updateAfterSession' | 'start' | 'stop' | 'share' | 'players' | 'kick' | 'playerCode' | 'newPlayerCode' | 'addPlayer' | 'renamePlayer' | 'removeFromCampaign' | 'newLink' | 'playerTokens' | 'markPlayerTokens' | 'give'> & {
+export type ControlSource = Pick<OnlineControl, 'onChange' | 'status' | 'link' | 'campaignId' | 'seats' | 'isStarting' | 'lost' | 'outdated' | 'updateAfterSession' | 'start' | 'stop' | 'share' | 'players' | 'kick' | 'playerDrawings' | 'clearPlayerDrawings' | 'playerCode' | 'newPlayerCode' | 'addPlayer' | 'renamePlayer' | 'removeFromCampaign' | 'newLink' | 'playerTokens' | 'markPlayerTokens' | 'give'> & {
   readonly table: {
     readonly sharedTab: WorkspaceLeaf | null;
     readonly sharedStore: { getState(): { readonly objects: { readonly tokens: Readonly<Record<string, SceneToken>> } } } | null;
@@ -167,6 +171,8 @@ export function onlineApi(control: ControlSource, hideImage: () => void): Online
     },
     release: (ids) => control.give(ids, null),
     kick: (playerId) => control.kick(playerId),
+    playerDrawings: (playerId) => control.playerDrawings(playerId),
+    clearPlayerDrawings: (playerId) => control.clearPlayerDrawings(playerId),
     playerCode: (playerId) => control.playerCode(playerId),
     newPlayerCode: (playerId) => control.newPlayerCode(playerId),
     addPlayer: (name) => {

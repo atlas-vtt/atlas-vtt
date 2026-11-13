@@ -30,7 +30,8 @@ function within(target: EventTarget | null, selector: string): boolean {
 export class TypingWatch {
   private field: WatchedField | null = null;
 
-  constructor(private readonly canvas: () => HTMLElement, private readonly finish: () => void) {}
+  /** `bars`: what a press on leaves the keyboard with the field, as a selector; the Draw tool's own bars by default. */
+  constructor(private readonly canvas: () => HTMLElement, private readonly finish: () => void, private readonly bars: string = BARS) {}
 
   start(field: WatchedField): void {
     this.stop();
@@ -64,10 +65,10 @@ export class TypingWatch {
   }
 
   private readonly onPress = (event: PointerEvent): void => {
-    if (this.field && !this.field.contains(event.target) && !within(event.target, BARS)) this.finish();
+    if (this.field && !this.field.contains(event.target) && !within(event.target, this.bars)) this.finish();
   };
 
   private readonly onMouseDown = (event: MouseEvent): void => {
-    if (this.field && within(event.target, BARS) && !isTextEntryTarget(event.target)) event.preventDefault();
+    if (this.field && within(event.target, this.bars) && !isTextEntryTarget(event.target)) event.preventDefault();
   };
 }

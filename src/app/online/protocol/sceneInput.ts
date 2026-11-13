@@ -70,7 +70,9 @@ export function parseSceneInput(value: Record<string, unknown>, scene: string): 
     }
     case 'annotations': {
       const annotations = parseAnnotations(value);
-      return annotations === null ? null : { t: 'annotations', scene, ...annotations };
+      // A number that cannot be read is left out: the drawings still show.
+      const rev = isCount(value.rev, Number.MAX_SAFE_INTEGER) ? { rev: value.rev } : {};
+      return annotations === null ? null : { t: 'annotations', scene, ...rev, ...annotations };
     }
     case 'initiative': {
       const list = parseInitiative(value.list);

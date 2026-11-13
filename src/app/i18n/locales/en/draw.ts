@@ -71,6 +71,7 @@ export const draw = {
   'draw.ungroupNeedsGroup': 'Select a group first',
   'draw.selectFirst': 'Select a drawing first',
   'draw.unlockFirst': 'Unlock it first',
+  'draw.menu.drawnBy': 'Drawn by {name}',
   'draw.menu.edit': 'Edit',
   'draw.menu.show': 'Show to players',
   'draw.menu.hide': 'Hide from players',
