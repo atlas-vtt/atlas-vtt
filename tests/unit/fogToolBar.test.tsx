@@ -53,7 +53,7 @@ const pressed = (name: string): boolean => button(name).getAttribute('aria-press
 const inert = (name: string): boolean => button(name).getAttribute('aria-disabled') === 'true';
 const fogOf = (store: ViewAtlasStore): unknown[] => Object.values(store.getState().objects.fog);
 const WHATS = ['Hide', 'Reveal', 'Areas'];
-const TOOLS = ['Brush', 'Rectangle', 'Lasso', 'Brush size', 'Cover all', 'Reveal all', 'More'];
+const TOOLS = ['Brush', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Brush size', 'Cover all', 'Reveal all', 'More'];
 
 describe('FogToolBar', () => {
   it('shows while the fog tool hides or reveals, and not for another tool, while the toolbar is arranged, a scene loads, or for players', async () => {
@@ -105,7 +105,7 @@ describe('FogToolBar', () => {
   it('chooses the shape in the store, tinted where what the tool does is filled', () => {
     const { store } = renderBar();
     expect(pressed('Brush')).toBe(true);
-    for (const [name, shape] of [['Rectangle', 'rectangle'], ['Lasso', 'lasso'], ['Brush', 'brush']] as const) {
+    for (const [name, shape] of [['Rectangle', 'rectangle'], ['Polygon', 'polygon'], ['Lasso', 'lasso'], ['Cells', 'cells'], ['Brush', 'brush']] as const) {
       fireEvent.click(button(name));
       expect(store.getState().fogTool.shape).toBe(shape);
       expect(pressed(name)).toBe(true);
@@ -116,6 +116,26 @@ describe('FogToolBar', () => {
     fireEvent.click(button('Lasso'));
     fireEvent.click(button('Reveal'));
     expect(pressed('Lasso')).toBe(true);
+  });
+
+  it('shows Cells disabled on a map without a grid, and falls back to the brush when the grid goes while Cells is chosen', () => {
+    const { store } = renderBar();
+    expect(inert('Cells')).toBe(false);
+    fireEvent.click(button('Cells'));
+    expect(store.getState().fogTool.shape).toBe('cells');
+    act(() => store.setState((state) => ({ grid: { ...state.grid, size: 0 } })));
+    expect(inert('Cells')).toBe(true);
+    expect(store.getState().fogTool.shape).toBe('brush');
+    expect(pressed('Brush')).toBe(true);
+    // In its place, not to be chosen: the bar keeps its buttons.
+    expect(names(toolsBar())).toEqual(TOOLS);
+    fireEvent.click(button('Cells'));
+    expect(store.getState().fogTool.shape).toBe('brush');
+    // No other shape needs the grid.
+    expect(['Brush', 'Rectangle', 'Polygon', 'Lasso'].some(inert)).toBe(false);
+    act(() => store.setState((state) => ({ grid: { ...state.grid, size: 70 } })));
+    expect(inert('Cells')).toBe(false);
+    expect(store.getState().fogTool.shape).toBe('brush');
   });
 
   it('opens the brush\'s size from the size button, whose dot grows with the brush', () => {
@@ -151,6 +171,12 @@ describe('FogToolBar', () => {
     expect(slider()).toBeNull();
     expect(inert('Brush size')).toBe(true);
     expect(names(toolsBar())).toEqual(TOOLS);
+    // Only the brush has a size: the other shapes leave the button as it is.
+    for (const name of ['Polygon', 'Lasso', 'Cells']) {
+      fireEvent.click(button(name));
+      expect(inert('Brush size')).toBe(true);
+      expect(names(toolsBar())).toEqual(TOOLS);
+    }
     fireEvent.click(button('Brush size'));
     expect(slider()).toBeNull();
     fireEvent.click(button('Brush'));

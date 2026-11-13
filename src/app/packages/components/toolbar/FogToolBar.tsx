@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { CloudOff, MoreHorizontal, PaintBucket } from "lucide-react"
-import { FOG_BRUSH_SIZES, fogToolFor, fogWhat, isFogTool, type FogWhat } from "../../../fog/fogToolChoices"
+import { hasCells } from "../../../fog/fogCells"
+import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogToolFor, fogWhat, isFogTool, type FogShape, type FogWhat } from "../../../fog/fogToolChoices"
 import { DEFAULT_GM_FOG_OPACITY, GM_FOG_OPACITY_RANGE } from "../../../fog/gmFogOpacity"
 import { t } from "../../../i18n"
 import { useAtlasSettings, useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
@@ -42,6 +43,14 @@ function FogBars(): React.ReactElement {
   const shape = useAtlasStore((state) => state.fogTool.shape)
   const setActiveTool = useAtlasStore((state) => state.setActiveTool)
   const setFogTool = useAtlasStore((state) => state.setFogTool)
+  const cells = useAtlasStore((state) => hasCells(state.grid))
+  /** Why a shape cannot be chosen now, or null: cells are the grid's. */
+  const unavailableShape = (value: FogShape): string | null => (value === 'cells' && !cells ? t('fog.cellsNeedGrid') : null)
+  // Left where it can no longer be chosen (the map lost its grid), the tool takes its first shape.
+  const cellsLeft = shape === 'cells' && !cells
+  useEffect(() => {
+    if (cellsLeft) setFogTool({ shape: DEFAULT_FOG_TOOL.shape })
+  }, [cellsLeft, setFogTool])
   const choose = (next: FogWhat): void => {
     const { tool, areas } = fogToolFor(next)
     setFogTool({ areas })
@@ -53,7 +62,7 @@ function FogBars(): React.ReactElement {
         <ChoiceButtons kind="mode" locked={null} choices={FOG_WHATS} value={what} unavailable={unavailableWhat} onChange={choose} />
       </div>
       <div role="toolbar" aria-label={t('fog.tools')} className="atlas-tool-bar atlas-tool-bar--tools">
-        <ChoiceButtons kind="choice" locked={null} choices={FOG_SHAPES} value={shape} onChange={(next) => setFogTool({ shape: next })} />
+        <ChoiceButtons kind="choice" locked={null} choices={FOG_SHAPES} value={shape} unavailable={unavailableShape} onChange={(next) => setFogTool({ shape: next })} />
         <BrushSize />
         <GroupBreak />
         <WholeMap />

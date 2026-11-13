@@ -99,8 +99,11 @@ export class FogPicture {
     return rendered;
   }
 
-  /** Draws the fog with a stroke under way on it, also where the scene holds no fog yet; without one, the fog alone. */
-  drawStroke(stroke: FogOperation | undefined): void {
+  /**
+   * Draws the fog with a stroke under way on it (its shapes, where it takes several), also where
+   * the scene holds no fog yet; without one, the fog alone.
+   */
+  drawStroke(stroke: FogOperation | readonly FogOperation[] | undefined): void {
     this.sprite.visible = true;
     this.compositor.composite(viewedFog(this.deps.store.getState()), stroke);
     this.textureChanged();

@@ -26,6 +26,10 @@ export class FogOfWarRenderer {
   private readonly picture: FogPicture;
   private readonly gesture: FogGesture;
   private unsubscribe?: () => void;
+  /** Whether a key pressed now is this map's to take (`canRunMapHotkeys`); unset, every key outside a text field is. */
+  public keysBelongToMap: ((event: KeyboardEvent) => boolean) | null = null;
+  /** Whether a key is the map's undo as the GM has bound it; unset, the key it has by default. */
+  public isUndoKey: ((event: KeyboardEvent) => boolean) | null = null;
 
   private readonly mapImageUpdatedHandler = (): void => this.showCommitted();
 
@@ -58,6 +62,8 @@ export class FogOfWarRenderer {
         showStroke: (stroke) => this.picture.drawStroke(stroke),
         showCommitted: () => this.showCommitted(),
       },
+      keysBelongToMap: (event) => this.keysBelongToMap?.(event) ?? true,
+      isUndoKey: (event) => this.isUndoKey?.(event),
     });
 
     this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
@@ -159,6 +165,9 @@ export class FogOfWarRenderer {
       const choicesChanged = state.fogTool !== previous.fogTool;
       const loadingChanged = state.isMapLoading !== previous.isMapLoading;
       const viewChanged = state.isGMView !== previous.isGMView;
+      // What waits for its next click (a polygon) must not outlast the picture it was begun on.
+      const pictureLeft = state.viewedLevel !== previous.viewedLevel || (state.isMapLoading && loadingChanged)
+        || (viewChanged && !state.isGMView) || (state.isPlayerView && !previous.isPlayerView);
       const fog = viewedFog(state);
       const fogChanged = fog !== prevFog || mapChanged;
       previous = state;
@@ -172,9 +181,15 @@ export class FogOfWarRenderer {
       // The tool's choices (its bar, the brush's keys)
       if (choicesChanged) this.gesture.follow(state.fogTool);
 
-      // Fog changed (an edit, undo and redo, a load): not while a stroke is under way, whose
-      // preview is on the canvas, and not during a load, whose end draws the fog
-      if (fogChanged && !this.gesture.active) this.showCommitted();
+      // Another level, a load, the players' view: what is under way goes
+      if (pictureLeft) this.gesture.drop();
+
+      // Fog changed (an edit, undo and redo, a load); nothing is drawn during a load, whose end
+      // draws the fog. Under a gesture its preview is drawn again, on the fog as it now is
+      if (fogChanged) {
+        if (this.gesture.active) this.gesture.refresh();
+        else this.showCommitted();
+      }
 
       if (loadingChanged) {
         if (state.isMapLoading) this.container.visible = false;

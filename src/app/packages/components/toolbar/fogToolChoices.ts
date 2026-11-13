@@ -1,4 +1,4 @@
-import { Cloud, Eraser, Lasso, Paintbrush, Square, SquareDashed } from "lucide-react"
+import { Cloud, Eraser, Grid3x3, Lasso, Paintbrush, Pentagon, Square, SquareDashed } from "lucide-react"
 import type { FogShape, FogWhat } from "../../../fog/fogToolChoices"
 import { t } from "../../../i18n"
 import type { ToolChoice } from "./ToolOptionsBar"
@@ -13,9 +13,11 @@ export const FOG_WHATS: readonly ToolChoice<FogWhat>[] = [
   { value: 'areas', icon: SquareDashed, label: t('fog.areas') },
 ]
 
-/** The shapes a stroke is drawn with, in the bar's order. */
+/** The shapes fog is drawn with, in the bar's order; a tip says the keys a shape has. */
 export const FOG_SHAPES: readonly ToolChoice<FogShape>[] = [
   { value: 'brush', icon: Paintbrush, label: t('toolbar.brush') },
-  { value: 'rectangle', icon: Square, label: t('toolbar.rectangle') },
+  { value: 'rectangle', icon: Square, label: t('toolbar.rectangle'), tip: t('fog.rectangleTip') },
+  { value: 'polygon', icon: Pentagon, label: t('fog.polygon'), tip: t('fog.polygonTip') },
   { value: 'lasso', icon: Lasso, label: t('toolbar.lasso') },
+  { value: 'cells', icon: Grid3x3, label: t('fog.cells'), tip: t('fog.cellsTip') },
 ]

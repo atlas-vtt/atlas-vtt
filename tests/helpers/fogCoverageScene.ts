@@ -26,6 +26,8 @@ interface FogScene {
   /** Shows a map image of this rect (null: none) and announces it as the orchestrator does. */
   showMapImage(rect: MapRect | null): void;
   read(x: number, y: number, player?: boolean): number;
+  /** The whole picture as the players see it: how bright each pixel is, row by row. */
+  frame(): number[];
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void;
 }
 
@@ -96,6 +98,14 @@ export function fogScenes(): { scene: (ops?: Record<string, FogOperation>, befor
         if (player) captureWithLayerVisibility(fog.getPlayerViewLayers(), () => {}, read);
         else read();
         return value;
+      },
+      frame(): number[] {
+        let values: number[] = [];
+        captureWithLayerVisibility(fog.getPlayerViewLayers(), () => {}, () => {
+          const all = pixels();
+          values = Array.from({ length: 128 * 128 }, (_, index) => all[index * 4]!);
+        });
+        return values;
       },
       pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void {
         const event = new FederatedPointerEvent(renderer.events.rootBoundary);

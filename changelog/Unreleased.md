@@ -33,11 +33,16 @@
 - Escape drops the stroke you are drawing
 - More sets how dark fog looks to you in GM View. Players always see solid fog
 - Fog is changed with the fog tool only: with the select and move tools it is no longer selected, dragged, duplicated or deleted
+- Polygon: click the corners of a shape. Enter, a double click or a click on the first corner closes it, Backspace or undo takes the last corner back
+- Cells: drag over the grid to hide or reveal whole cells, squares and hexes alike
+- Rectangles and polygons snap to the grid, to the ends of walls and along walls. A dot or a line shows what a point snapped to. Hold Ctrl or Cmd to place it freely
+- Hold Shift for a square, or to keep a polygon's edge level, upright or diagonal
 
 ## Improved
 
 - A lasso and a rectangle show the fog they will leave while you draw them
 - The fog brush's ring shows on light maps and on dark ones
+- The fog rectangle snaps to the grid only while Snap is on
 
 ## Fixed
 

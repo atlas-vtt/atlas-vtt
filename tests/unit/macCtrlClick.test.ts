@@ -4,13 +4,12 @@ import type { Viewport } from 'pixi-viewport';
 import type { EventEmitter } from 'events';
 import type { App } from 'obsidian';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
-import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
-import { ShapeStroke } from '../../src/app/tools/shapeStroke';
 import { PointerTap, type TapEvent, type TapViewport } from '../../src/app/online/marks/PointerTap.ts';
 import { setCtrlClickIsSecondary } from '../../src/app/pixi/utils/pointerButtons';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { Token } from '../../src/app/types';
+import { fogGestureScene, type FogGestureHarness } from '../helpers/fogGestureHarness';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
@@ -79,26 +78,7 @@ describe('Ctrl+click on a token', () => {
 });
 
 describe('Ctrl+click with the fog tool', () => {
-  interface FogToolHarness {
-    stroke: ShapeStroke;
-    pointerDown(event: FederatedPointerEvent): void;
-  }
-
-  function fogTool(): FogToolHarness {
-    const state = { activeTool: 'fog', isMapLoading: false, isPlayerView: false, grid: { size: 70 }, objects: { fog: {} } };
-    return Object.assign(Object.create(FogGesture.prototype) as FogGesture, {
-      deps: {
-        store: { getState: () => state },
-        viewport: { pause: false, toWorld: (point: { x: number; y: number }) => point, scale: { x: 1 } },
-        host: { showStroke: vi.fn(), showCommitted: vi.fn() },
-      },
-      stroke: Object.assign(new ShapeStroke(), { mode: 'rectangle' }),
-      flipped: false,
-      keys: { hold: vi.fn(), release: vi.fn() },
-      ring: { shown: false },
-      outline: { clear: vi.fn(), rect: vi.fn(), stroke: vi.fn().mockReturnThis(), fill: vi.fn() },
-    }) as unknown as FogToolHarness;
-  }
+  const fogTool = (): FogGestureHarness => fogGestureScene('fog', 'rectangle').tool;
 
   it('paints no fog on macOS', () => {
     runOn('mac');
@@ -106,7 +86,7 @@ describe('Ctrl+click with the fog tool', () => {
 
     tool.pointerDown(ctrlPress());
 
-    expect(tool.stroke.active).toBe(false);
+    expect(tool.drag.active).toBe(false);
   });
 
   it('paints fog on Windows and Linux as before', () => {
@@ -115,7 +95,7 @@ describe('Ctrl+click with the fog tool', () => {
 
     tool.pointerDown(ctrlPress());
 
-    expect(tool.stroke.active).toBe(true);
+    expect(tool.drag.active).toBe(true);
   });
 });
 
