@@ -7,21 +7,23 @@
  * removes it.
  */
 
+import { newGroupId } from '../annotations/annotationCopies';
+import { groupable, ungroupable } from '../annotations/annotationGroups';
 import { changesTaken, isLocked, unlockedIds } from '../annotations/annotationLock';
 import { annotationStack, orderOnTop, reordered, type StackedAnnotation } from '../annotations/annotationStack';
 import {
   DRAWING_FIELDS, TEXT_FIELDS, TEXT_FIELDS_BESIDE_DRAWINGS,
-  type AnnotationChanges, type AnnotationPlace, type ClearScope, type DrawingInput, type TextInput,
+  type AnnotationChanges, type AnnotationPlace, type ClearScope, type DrawingInput, type TextChanges, type TextInput,
 } from '../annotations/annotationTypes';
 import { placedOnViewedLevel } from '../levels/sceneLevels';
 import type { DrawingStroke, TextElement } from '../types';
-import { changeAnnotation, newAnnotationId, newDrawing, removeAnnotations, shiftDrawing, type AnnotationsDraft } from './annotationWrites';
+import { changeDrawing, changeText, newAnnotationId, newDrawing, removeAnnotations, shiftDrawing, type AnnotationsDraft } from './annotationWrites';
 
 export interface AnnotationsSlice {
   /** Adds a text on the level shown, above every annotation there unless its data names an `order`, and returns its id. */
   addText: (data: TextInput) => string;
-  /** Changes a text; nothing of a locked one. */
-  updateText: (id: string, updates: Partial<TextInput>) => void;
+  /** Changes a text: every field of a text the changes name, a field given as undefined being removed. Nothing of a locked one. */
+  updateText: (id: string, changes: TextChanges) => void;
   setTexts: (texts: Record<string, TextElement>) => void;
 
   /** Adds a drawing on the level shown, above every annotation there unless its data names an `order`, and returns its id. */
@@ -49,6 +51,14 @@ export interface AnnotationsSlice {
    * is not among them.
    */
   orderAnnotations: (ids: readonly string[], to: 'front' | 'back') => void;
+  /**
+   * Makes one group of drawings and texts, in one write: each that is not locked gets the same new
+   * `group`, whatever group it was in. Nothing for fewer than two of them, or where they are one
+   * group already.
+   */
+  groupAnnotations: (ids: readonly string[]) => void;
+  /** Takes the group off drawings and texts, in one write; a locked one keeps its group. Nothing where none of them is in one. */
+  ungroupAnnotations: (ids: readonly string[]) => void;
   /**
    * Removes drawings and adds others in one write: the eraser's cut. What is added keeps every
    * field it is handed, its `order` too (a piece lies where its drawing lay), and returns its ids.
@@ -82,9 +92,9 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
       return id;
     },
 
-    updateText: (id, updates) => set((draft) => {
+    updateText: (id, changes) => set((draft) => {
       const text = draft.objects.texts[id];
-      if (text && !isLocked(text)) Object.assign(text, updates);
+      if (text && !isLocked(text)) changeText(text, changes, TEXT_FIELDS);
     }),
 
     setTexts: (texts) => set((draft) => {
@@ -126,8 +136,8 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
         const text = draft.objects.texts[id];
         const taken = changesTaken(drawing ?? text ?? {}, changes);
         if (!taken) continue;
-        if (drawing) changeAnnotation(drawing, taken, DRAWING_FIELDS);
-        if (text) changeAnnotation(text, taken, TEXT_FIELDS_BESIDE_DRAWINGS);
+        if (drawing) changeDrawing(drawing, taken, DRAWING_FIELDS);
+        if (text) changeText(text, taken, TEXT_FIELDS_BESIDE_DRAWINGS);
       }
     }),
 
@@ -148,8 +158,8 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
         const drawing = draft.objects.drawings[id];
         const text = draft.objects.texts[id];
         if (isLocked(drawing) || isLocked(text)) continue;
-        if (drawing) changeAnnotation(drawing, place, DRAWING_FIELDS);
-        if (text) changeAnnotation(text, place, TEXT_FIELDS);
+        if (drawing) changeDrawing(drawing, place, DRAWING_FIELDS);
+        if (text) changeText(text, place, TEXT_FIELDS);
       }
     }),
 
@@ -163,6 +173,30 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
         for (const { id, kind, order } of moves) {
           const entry = draft.objects[kind][id];
           if (entry) entry.order = order;
+        }
+      });
+    },
+
+    groupAnnotations: (ids) => {
+      const { drawings, texts } = get().objects;
+      const entries = ids.flatMap((id) => drawings[id] ?? texts[id] ?? []);
+      if (!groupable(entries)) return;
+      const group = newGroupId();
+      set((draft) => {
+        for (const id of unlockedIds(ids, draft.objects)) {
+          const entry = draft.objects.drawings[id] ?? draft.objects.texts[id];
+          if (entry) entry.group = group;
+        }
+      });
+    },
+
+    ungroupAnnotations: (ids) => {
+      const { drawings, texts } = get().objects;
+      if (!ungroupable(ids.flatMap((id) => drawings[id] ?? texts[id] ?? []))) return;
+      set((draft) => {
+        for (const id of unlockedIds(ids, draft.objects)) {
+          const entry = draft.objects.drawings[id] ?? draft.objects.texts[id];
+          if (entry) delete entry.group;
         }
       });
     },

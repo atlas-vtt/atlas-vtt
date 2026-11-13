@@ -155,6 +155,8 @@ export interface ViewAtlasState extends ViewState {
   placeAnnotations: AnnotationsSlice['placeAnnotations'];
   deleteAnnotations: AnnotationsSlice['deleteAnnotations'];
   orderAnnotations: AnnotationsSlice['orderAnnotations'];
+  groupAnnotations: AnnotationsSlice['groupAnnotations'];
+  ungroupAnnotations: AnnotationsSlice['ungroupAnnotations'];
   replaceDrawings: AnnotationsSlice['replaceDrawings'];
   clearAnnotations: AnnotationsSlice['clearAnnotations'];
 

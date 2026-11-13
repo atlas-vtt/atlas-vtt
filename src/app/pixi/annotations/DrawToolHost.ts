@@ -9,13 +9,15 @@ import { drawCell, eraserRadius, stampSize } from '../../annotations/drawSizes';
 import { snapDrawPoint, snapStampPoint } from '../../annotations/drawSnap';
 import { sweepChange } from '../../annotations/eraseSweep';
 import { liveDrawing, madeDrawing, madeStamp, type MadeShape } from '../../annotations/madeDrawing';
-import { madeText } from '../../annotations/madeText';
+import type { UnderWay } from '../../annotations/underWay';
+import type { MapRect } from '../../grid/cellNumbering';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasState } from '../../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import type { Point } from '../../types/visionTypes';
 import { FogCursorPreview } from '../fog/FogCursorPreview';
+import { CellsPainting } from './CellsPainting';
 import type { ClickPlacingHost } from './ClickPlacing';
 import type { DrawInputHost } from './DrawInput';
 import type { GestureMode } from './drawGesture';
@@ -36,25 +38,30 @@ export interface DrawToolDeps {
   readonly chrome: Container;
   /** The grid points snap to; null without a grid or while its Snap is off. */
   snapGrid(): GridGeometry | null;
+  /** The grid whose cells the Cells mode fills; null where the map has none, or it is switched off. */
+  cellGrid(): GridGeometry | null;
+  /** The map, at whose edge a filled cell ends; null without one. */
+  mapRect(): MapRect | null;
   /** Whether the canvas shows the GM's view: the tool works there alone. */
   gmView(): boolean;
   /** Tells the GM that the level shown holds as many drawings or texts as it may. */
   full(of: FullOf): void;
-  /** Asks the GM for a text's words; null where none are given. */
-  askText(): Promise<string | null>;
+  /** Is told the drawing under way, for whoever shows it elsewhere. */
+  readonly underWay: UnderWay;
 }
 
-const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'eraser'];
+const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'cells', 'eraser'];
 
 /**
  * What the Draw tool's gestures do to the scene: the drawing under way is shown as it will stay
- * (`LiveStroke`), a finished one is written with the tool's choices (`madeDrawing`), a click of the
- * Stamp mode places the tool's symbol and one of the Text mode asks for a text's words. What was
+ * (`LiveStroke`), a finished one is written with the tool's choices (`madeDrawing`), and a press of
+ * the Stamp mode places the tool's symbol (a text is typed on the map: `TextTyping`). What was
  * made is selected, so it can be pulled right at once; but not a pen's stroke, since the next
  * stroke often starts on the end of the last, where a handle would take the press. The
  * eraser cuts what its sweep passes (`sweepChange`), every step of it written at once and the
- * whole sweep one undo step; its ring follows the pointer. A level that is full takes nothing more,
- * and says so.
+ * whole sweep one undo step; its ring follows the pointer. The Cells mode fills or clears the
+ * cells its sweep passes (`CellsPainting`), written when the button comes up. A level that is full
+ * takes nothing more, and says so.
  */
 export class DrawToolHost {
   /** What `DrawInput` asks and tells. */
@@ -64,15 +71,27 @@ export class DrawToolHost {
 
   private readonly live = new LiveStroke();
   private readonly ring: FogCursorPreview;
+  private readonly cells: CellsPainting;
+  /** A drag of the Cells mode is under way: the sweep is its. */
+  private painting = false;
   /** An eraser's sweep is under way: its undo step is open. */
   private sweeping = false;
   /** The sweep under way was already told that the level is full. */
   private toldFull = false;
-  private destroyed = false;
 
   constructor(private readonly deps: DrawToolDeps) {
     this.ring = new FogCursorPreview(deps.viewport);
     deps.chrome.addChild(this.ring.getDisplayObject());
+    this.cells = new CellsPainting({
+      store: deps.store,
+      layerOf: (place, hidden) => deps.layerOf(place, hidden),
+      chrome: deps.chrome,
+      grid: () => deps.cellGrid(),
+      bounds: () => deps.mapRect(),
+      zoom: () => this.zoom,
+      full: () => deps.full('drawings'),
+      underWay: deps.underWay,
+    });
     this.gestures = {
       mode: () => this.gestureMode(),
       point: (world, free) => snapDrawPoint(deps.snapGrid(), world, free),
@@ -84,12 +103,8 @@ export class DrawToolHost {
       hovered: (world) => this.hovered(world),
     };
     this.clicks = {
-      mode: () => {
-        const mode = this.mode();
-        return mode === 'stamp' || mode === 'text' ? mode : null;
-      },
+      ready: () => this.mode() === 'stamp',
       stamp: (world, free) => this.stamp(world, free),
-      text: (world) => void this.text(world),
     };
     this.toolChanged();
   }
@@ -106,9 +121,9 @@ export class DrawToolHost {
   }
 
   destroy(): void {
-    this.destroyed = true;
     this.endSweep();
     this.live.destroy();
+    this.cells.destroy();
     this.ring.destroy();
   }
 
@@ -119,7 +134,9 @@ export class DrawToolHost {
 
   private gestureMode(): GestureMode | null {
     const mode = this.mode();
-    return mode !== null && GESTURES.includes(mode) ? (mode as GestureMode) : null;
+    if (mode === null || !GESTURES.includes(mode)) return null;
+    // Without a grid that is shown there are no cells to fill.
+    return mode === 'cells' && !this.cells.ready ? null : (mode as GestureMode);
   }
 
   private get zoom(): number {
@@ -127,8 +144,14 @@ export class DrawToolHost {
   }
 
   private started(mode: GestureMode): void {
-    // The pen works with nothing selected: what an earlier mode left selected is let go of.
-    if (mode === 'pen') this.deselect();
+    if (mode !== 'eraser') this.deps.underWay.begin();
+    // The pen and the Cells mode work with nothing selected: what an earlier mode left selected is let go of.
+    if (mode === 'pen' || mode === 'cells') this.deselect();
+    if (mode === 'cells') {
+      this.painting = true;
+      this.cells.begin();
+      return;
+    }
     if (mode !== 'eraser' || this.sweeping) return;
     this.sweeping = true;
     this.toldFull = false;
@@ -139,11 +162,20 @@ export class DrawToolHost {
   private changed(shape: MadeShape): void {
     const { drawTool, grid } = this.deps.store.getState();
     const drawing = liveDrawing(shape, drawTool, drawCell(grid));
-    if (drawing) this.live.show(this.deps.layerOf(drawTool.layer, !drawTool.players), drawing, this.zoom);
-    else this.live.clear();
+    if (drawing) {
+      this.live.show(this.deps.layerOf(drawTool.layer, !drawTool.players), drawing, this.zoom);
+      this.deps.underWay.show([drawing], shape.mode === 'pen');
+    } else {
+      this.live.clear();
+      this.deps.underWay.drop();
+    }
   }
 
   private swept(path: readonly Point[], alt: boolean): void {
+    if (this.painting) {
+      this.cells.sweep(path);
+      return;
+    }
     const state = this.deps.store.getState();
     const objects = levelObjects(state);
     const list = annotationList(objects);
@@ -164,21 +196,35 @@ export class DrawToolHost {
 
   private finished(made: MadeShape | null): void {
     this.endSweep();
+    if (this.painting) {
+      // The cells tell of their drawing themselves.
+      this.painting = false;
+      this.cells.finish();
+      this.live.clear();
+      return;
+    }
+    let added = false;
     if (made) {
       const state = this.deps.store.getState();
       const drawing = madeDrawing(made, state.drawTool, drawCell(state.grid), this.zoom);
       if (drawing && this.hasRoom('drawings')) {
         const id = state.addDrawing(drawing);
+        added = true;
         if (made.mode !== 'pen') this.select(id);
       }
     }
     // After the drawing is on the map: the stroke never blinks between the two.
     this.live.clear();
+    if (added) this.deps.underWay.made();
+    else this.deps.underWay.drop();
   }
 
   private dropped(): void {
     this.endSweep();
+    this.painting = false;
+    this.cells.drop();
     this.live.clear();
+    this.deps.underWay.drop();
   }
 
   private hovered(world: Point): void {
@@ -191,16 +237,6 @@ export class DrawToolHost {
     const cell = drawCell(state.grid);
     const at = snapStampPoint(this.deps.snapGrid(), world, free, stampSize(state.drawTool.size, cell));
     this.select(state.addDrawing(madeStamp(at, state.drawTool, cell)));
-  }
-
-  /** Asks for the words of a text at `world` and adds it; none where the GM gives none, or looks at another scene or level by then, or closed the view. */
-  private async text(world: Point): Promise<void> {
-    if (!this.hasRoom('texts')) return;
-    const { mapPath, viewedLevel } = this.deps.store.getState();
-    const words = await this.deps.askText();
-    const state = this.deps.store.getState();
-    if (!words || this.destroyed || state.mapPath !== mapPath || state.viewedLevel !== viewedLevel || !this.hasRoom('texts')) return;
-    this.select(state.addText(madeText(words, world, state.drawTool, drawCell(state.grid))));
   }
 
   /** What was just made is selected: it shows its handles until the next press elsewhere, and the bars show its style. */

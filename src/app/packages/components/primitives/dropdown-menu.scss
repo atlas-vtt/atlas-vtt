@@ -276,39 +276,6 @@
   font-style: italic;
 }
 
-/* Icon picker grid (draw tool → icon stamps) */
-.atlas-icon-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: $spacing-xs;
-}
-
-.atlas-icon-grid__item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: $spacing-xs;
-  border: $border-width-s solid transparent;
-  border-radius: $radius-l;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
-  }
-
-  &:active {
-    background: var(--background-modifier-active-hover);
-  }
-
-  &--active {
-    border-color: var(--interactive-accent);
-    color: var(--interactive-accent);
-  }
-}
-
 /* Colour swatch grid (text tool → colour) */
 .atlas-dropdown-swatches {
   @include atlas-flex-col($spacing-s);

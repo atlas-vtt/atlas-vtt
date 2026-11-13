@@ -57,7 +57,6 @@ import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
-import { text } from './text';
 import { audio } from './audio';
 import { editToken } from './editToken';
 import { templateEditor } from './templateEditor';
@@ -164,7 +163,6 @@ export const ru: Translation = {
   ...hotkey,
   ...pin,
   ...laser,
-  ...text,
   ...audio,
   ...editToken,
   ...hex,

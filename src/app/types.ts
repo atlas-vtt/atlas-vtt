@@ -197,12 +197,14 @@ export interface DrawingStroke extends OnOneLevel {
   /** Line width for strokes (0: a fill without a line), footprint size for `icon` stamps */
   width: number;
   opacity: number;
-  /** Key into `MAP_ICON_SVG`; only set when `type` is `'icon'` */
+  /** A stamp's symbol: a pin icon's id, or one of the twelve ids stamps had before (`stampGlyph`). Only set when `type` is `'icon'`. */
   icon?: string;
   /** A closed outline's inside, in `color`; soft is a quarter of it. */
   fill?: 'soft' | 'solid';
   /** Rings cut out of the fill. */
   holes?: Array<Array<{ x: number; y: number }>>;
+  /** A hint: this fill was made cell by cell (the Cells mode), so that mode grows it and clears it. */
+  cells?: true;
   dash?: 'dashed' | 'dotted';
   /** Arrowheads: at the line's end, or at both ends. */
   ends?: 'end' | 'both';

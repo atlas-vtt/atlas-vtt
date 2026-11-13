@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, Text, Texture } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
-import { readDrawing } from '../../src/app/annotations/annotationList';
+import { readDrawing, readText } from '../../src/app/annotations/annotationList';
 import type { DrawingAnnotation } from '../../src/app/annotations/annotationTypes';
 import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../../src/app/pixi/drawingLayer';
 import { DoorIcons, type DoorIconsState } from '../../src/app/pixi/lighting/DoorIcons';
@@ -66,6 +66,29 @@ describe('a drawing as it is drawn', () => {
     sprite.destroy();
     textures.destroy();
   });
+
+  it('tints a stamp with its colour, so stamps of one symbol share its white picture whatever their colours', async () => {
+    const textures = new StampTextures();
+    const [red, blue] = [createStampSprite(), createStampSprite()];
+    const changed = vi.fn();
+    placeStamp(red, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#e93147' }), textures, changed);
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+    placeStamp(blue, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#086ddd' }), textures, changed);
+    // The symbol was there already: nothing comes in late.
+    expect(blue.texture).toBe(red.texture);
+    expect([red.tint, blue.tint]).toEqual([0xe93147, 0x086ddd]);
+    // Another colour is another tint of the same picture.
+    placeStamp(red, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#ffffff' }), textures, changed);
+    expect(red.tint).toBe(0xffffff);
+    expect(red.texture).toBe(blue.texture);
+    expect(changed).toHaveBeenCalledOnce();
+    // A symbol this Atlas does not know shows nothing.
+    placeStamp(red, read({ type: 'icon', icon: 'dragon', points: [{ x: 0, y: 0 }], width: 70 }), textures, changed);
+    expect(red.texture).toBe(Texture.EMPTY);
+    red.destroy();
+    blue.destroy();
+    textures.destroy();
+  });
 });
 
 describe('a text view', () => {
@@ -73,12 +96,12 @@ describe('a text view', () => {
 
   it('draws a text at its place, turned and scaled, and follows its edits', () => {
     cleanup = stubJsdomGraphics();
-    const view = createTextElementView(element);
+    const view = createTextElementView(readText('t', element)!);
     expect(view.label).toBe('t');
     expect(view.position).toMatchObject({ x: 100, y: 50 });
     expect(view.rotation).toBeCloseTo(Math.PI / 2);
     expect(view.scale.x).toBe(2);
-    updateTextElementView(view, { ...element, text: 'Door', x: 10, rotation: undefined, scale: undefined });
+    updateTextElementView(view, readText('t', { ...element, text: 'Door', x: 10, rotation: undefined, scale: undefined })!);
     expect((view.getChildByLabel(TEXT_CONTENT_LABEL) as Text).text).toBe('Door');
     expect(view.position.x).toBe(10);
     expect(view.rotation).toBe(0);

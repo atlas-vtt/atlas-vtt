@@ -90,13 +90,13 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     draw: dmOnly(() => {
       const state = store.getState()
       if (state.activeTool !== "draw") selectTool("draw")
-      else if (state.isGMView) state.setDrawTool({ mode: nextDrawMode(state.drawTool.mode) })
+      else if (state.isGMView) state.setDrawTool({ mode: nextDrawMode(state.drawTool.mode, state.grid) })
     }),
     // The Draw tool's eraser while that tool is in use, and from it back to the mode before; else the fog's.
     erase: dmOnly(() => {
       const state = store.getState()
       if (state.activeTool !== "draw") selectTool("eraser")
-      else if (state.isGMView) state.setDrawTool({ mode: eraserOrBack(state.drawTool.mode, drawnWith.current) })
+      else if (state.isGMView) state.setDrawTool({ mode: eraserOrBack(state.drawTool.mode, drawnWith.current, state.grid) })
     }),
     drawSmaller: whileDrawing(() => stepDrawSize(store, -1)),
     drawLarger: whileDrawing(() => stepDrawSize(store, 1)),

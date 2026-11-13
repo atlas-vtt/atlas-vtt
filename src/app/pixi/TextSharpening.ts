@@ -1,7 +1,8 @@
 import type { Container, Text } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { TesseraView } from './mosaicCanvas/levelOfDetail';
-import { TEXT_CONTENT_LABEL } from './textElementView';
+import { carriesHalo } from '../annotations/textLook';
+import { showTextHalo, TEXT_CONTENT_LABEL, textViewFontSize } from './textElementView';
 import { TEXT_TEXTURE_LIMITS, textResolution, type TextSize, type TextTextureLimits } from './textSharpness';
 
 /** What the sharpening must know of the renderer its texts are drawn by. */
@@ -20,7 +21,17 @@ const MARGIN = 0.5;
 interface Entry {
   view: Container;
   text: Text;
+  /** The picture PIXI draws of the text, at resolution 1: its words, its halo and the room around them. */
   size: TextSize;
+  /** Its font size, in its own units; null for a view whose text nobody told of. */
+  fontSize: number | null;
+}
+
+/** The picture PIXI draws of `text` at resolution 1: what its bounds say, and the room its style keeps around them. */
+function pictureSize(text: Text): TextSize {
+  const bounds = text.getLocalBounds();
+  const room = 2 * text.style.padding;
+  return { width: bounds.width + room, height: bounds.height + room };
 }
 
 /** A picture of the map: the part of the world it shows, and the device pixels it has to each world unit. */
@@ -49,6 +60,9 @@ interface Camera {
  * anew once per doubling. A text is made finer at once, in the frame's tick, and coarser only
  * when camera and regions have rested, and a text no picture shows keeps the least resolution,
  * so the closest zoom holds fine textures only for what is on screen.
+ *
+ * An Outline text carries its halo only where a picture shows it large enough (`carriesHalo`):
+ * the same pictures decide it, in the same tick.
  */
 export class TextSharpening {
   private readonly entries = new Map<string, Entry>();
@@ -72,11 +86,12 @@ export class TextSharpening {
     const text = view.getChildByLabel(TEXT_CONTENT_LABEL) as Text | null;
     if (!text) return;
     if (this.entries.size === 0) this.viewport.options.ticker?.add(this.tick);
-    const bounds = text.getLocalBounds();
-    const entry: Entry = { view, text, size: { width: bounds.width, height: bounds.height } };
+    const entry: Entry = { view, text, size: pictureSize(text), fontSize: textViewFontSize(view) };
     this.entries.set(id, entry);
     this.look();
-    setResolution(text, this.wanted(entry, this.pictures(), this.limits()));
+    const pixelsPerUnit = this.shownAt(entry, this.pictures());
+    this.setHalo(entry, pixelsPerUnit);
+    setResolution(text, textResolution(pixelsPerUnit, entry.size, this.limits()));
   }
 
   forget(id: string): void {
@@ -142,7 +157,9 @@ export class TextSharpening {
     const limits = this.limits();
     let waiting = false;
     for (const entry of this.entries.values()) {
-      const wanted = this.wanted(entry, pictures, limits);
+      const pixelsPerUnit = this.shownAt(entry, pictures);
+      this.setHalo(entry, pixelsPerUnit);
+      const wanted = textResolution(pixelsPerUnit, entry.size, limits);
       const current = entry.text.resolution;
       if (wanted < current && !rested) waiting = true;
       else setResolution(entry.text, wanted);
@@ -150,7 +167,17 @@ export class TextSharpening {
     return waiting;
   }
 
-  private wanted(entry: Entry, pictures: readonly Picture[], limits: TextTextureLimits): number {
+  /** Draws the halo of a text a picture shows large enough, and leaves it out of one shown smaller; a text no picture shows keeps what it has. */
+  private setHalo(entry: Entry, pixelsPerUnit: number): void {
+    if (entry.fontSize === null || pixelsPerUnit <= 0) return;
+    const before = entry.text.style;
+    showTextHalo(entry.view, carriesHalo(entry.fontSize * pixelsPerUnit));
+    // With or without its halo the picture has another size.
+    if (entry.text.style !== before) entry.size = pictureSize(entry.text);
+  }
+
+  /** The most device pixels any picture that shows the text has to each of its units; 0 where none shows it. */
+  private shownAt(entry: Entry, pictures: readonly Picture[]): number {
     const { view, size } = entry;
     const scale = Math.abs(view.scale.x);
     // Whatever its rotation, the text lies within this circle.
@@ -163,7 +190,7 @@ export class TextSharpening {
         && view.y >= picture.y0 - marginY && view.y <= picture.y1 + marginY;
       if (shown) pixelsPerUnit = Math.max(pixelsPerUnit, picture.pixelsPerUnit * scale);
     }
-    return textResolution(pixelsPerUnit, size, limits);
+    return pixelsPerUnit;
   }
 
   private pictures(): Picture[] {

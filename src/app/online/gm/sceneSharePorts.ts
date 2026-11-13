@@ -12,7 +12,7 @@ import type { TokenSharePorts } from './TokenShare.ts';
 import type { NotePin } from '../../types';
 
 /** What the shared scene of an Atlas tab reads of the tab and the table, and how it reaches players. */
-export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'nameOf'> {
+export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'showPlayerStrokes' | 'nameOf'> {
   notice(text: string): void;
   /** Sends a live message (where dragged tokens are now) ahead of other frames, the latest of a key winning; without it drags reach players through the token list only. */
   sendLive?(body: GmMessage, key: string, to?: string): void;

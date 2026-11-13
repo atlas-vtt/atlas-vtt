@@ -1,14 +1,16 @@
 import React from "react"
-import { Blend, Bold, BringToFront, Eye, EyeOff, Italic, Layers2, Lock, LockOpen, SendToBack, Shapes, Spline } from "lucide-react"
+import { Blend, Bold, BringToFront, Eye, EyeOff, Group, Italic, Layers2, Lock, LockOpen, SendToBack, Shapes, Spline, Ungroup } from "lucide-react"
+import { groupable, ungroupable } from "../../../annotations/annotationGroups"
 import type { ClearScope } from "../../../annotations/annotationTypes"
 import { t } from "../../../i18n"
 import { hasLevels } from "../../../levels/sceneLevels"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { ToolButton } from "../primitives/ToolButton"
 import { shownLock } from "./drawStyle"
-import { ALIGN_CHOICES, DASH_CHOICES, ENDS_CHOICES, FILL_CHOICES, FONT_CHOICES, LOOK_CHOICES, SIZE_CHOICES, type DrawToolId } from "./drawToolChoices"
+import { ALIGN_CHOICES, CELLS_CHOICES, DASH_CHOICES, ENDS_CHOICES, FILL_CHOICES, FONT_CHOICES, LOOK_CHOICES, SIZE_CHOICES, type DrawToolId } from "./drawToolChoices"
 import type { DrawIcon } from "./drawToolIcons"
-import { ChoiceMenu, ClearMenu, ColourMenu, SymbolMenu } from "./DrawToolMenus"
+import { ChoiceMenu, ClearMenu, ColourMenu } from "./DrawToolMenus"
+import { StampSymbolTool } from "./StampSymbolTool"
 import { TOOL_BAR_CHOICE_CLASS } from "./ToolOptionsBar"
 import type { DrawStyleAccess } from "./useDrawStyle"
 
@@ -44,6 +46,9 @@ function Action({ icon, label, locked, onClick }: ActionProps): React.ReactEleme
   return <ToolButton icon={icon} label={label} {...(locked !== null && { subtitle: locked })} isActive={false} disabled={locked !== null} onClick={onClick} />
 }
 
+/** The tools a selection that is all locked leaves at hand: its unlocking, and those that change no selected drawing. */
+const FOR_LOCKED: ReadonlySet<DrawToolId> = new Set(['lock', 'group', 'ungroup', 'clear', 'eraseWhole', 'cellsLayer', 'cellsFill', 'cellsUnfill'])
+
 interface DrawModeToolProps {
   id: DrawToolId
   access: DrawStyleAccess
@@ -51,12 +56,24 @@ interface DrawModeToolProps {
   locked: string | null
 }
 
-/** One tool of a mode's bar. A switch whose selected drawings differ shows as off, and a press switches all of them on. */
-export function DrawModeTool({ id, access, locked }: DrawModeToolProps): React.ReactElement {
+/**
+ * One tool of a mode's bar. A switch whose selected drawings differ shows as off, and a press
+ * switches all of them on. Where everything selected is locked, the tools that would change it
+ * are disabled and say why.
+ */
+export function DrawModeTool({ id, access, locked: viewLocked }: DrawModeToolProps): React.ReactElement {
   const { style, pick, selected, annotations } = access
+  const selecting = useAtlasStore((state) => state.drawTool.mode === 'select')
+  // In Select mode a pick changes what is selected, and a locked drawing takes none: the tools say so. The lock's own switch and Clear still work.
+  const allLocked = selecting && selected.length > 0 && selected.every((annotation) => annotation.locked)
+  const locked = viewLocked ?? (allLocked && !FOR_LOCKED.has(id) ? t('draw.unlockFirst') : null)
   const eraseWhole = useAtlasStore((state) => state.drawTool.eraseWhole)
+  const cellsLayer = useAtlasStore((state) => state.drawTool.cellsLayer)
+  const cellsUnfill = useAtlasStore((state) => state.drawTool.cellsUnfill)
   const setDrawTool = useAtlasStore((state) => state.setDrawTool)
   const updateAnnotations = useAtlasStore((state) => state.updateAnnotations)
+  const groupAnnotations = useAtlasStore((state) => state.groupAnnotations)
+  const ungroupAnnotations = useAtlasStore((state) => state.ungroupAnnotations)
   const orderAnnotations = useAtlasStore((state) => state.orderAnnotations)
   const clearAnnotations = useAtlasStore((state) => state.clearAnnotations)
   const levelled = useAtlasStore((state) => hasLevels(state.levels))
@@ -82,22 +99,35 @@ export function DrawModeTool({ id, access, locked }: DrawModeToolProps): React.R
     case 'align': return <ChoiceMenu label={t('draw.align')} choices={ALIGN_CHOICES} value={style.align} onChange={(align) => pick('align', align)} locked={locked} />
     case 'bold': return <Switch icon={Bold} label={t('draw.bold')} on={style.bold === true} onChange={(on) => pick('bold', on)} locked={locked} />
     case 'italic': return <Switch icon={Italic} label={t('draw.italic')} on={style.italic === true} onChange={(on) => pick('italic', on)} locked={locked} />
-    case 'icon': return <SymbolMenu value={style.icon} onChange={(icon) => pick('icon', icon)} locked={locked} />
+    case 'icon': return <StampSymbolTool value={style.icon} onChange={(icon) => pick('icon', icon)} locked={locked} />
+    // The Cells mode's own layer, shown by the Layer tool's button: a coloured cell is map more often than a mark.
+    case 'cellsLayer':
+      return <Switch icon={Layers2} label={t('draw.onMap')} tip={t('draw.onMapTip')} on={cellsLayer === 'map'} onChange={(onMap) => setDrawTool({ cellsLayer: onMap ? 'map' : 'above' })} locked={viewLocked} />
+    case 'cellsFill':
+    case 'cellsUnfill': {
+      const { icon, label, tip } = CELLS_CHOICES[id]
+      const unfill = id === 'cellsUnfill'
+      return <Switch icon={icon} label={label} tip={tip} on={cellsUnfill === unfill} onChange={() => setDrawTool({ cellsUnfill: unfill })} locked={viewLocked} />
+    }
     case 'eraseWhole':
       return <Switch icon={Shapes} label={t('draw.eraseWhole')} tip={t('draw.eraseWholeTip')} on={eraseWhole} onChange={(on) => setDrawTool({ eraseWhole: on })} locked={locked} />
     case 'front': return <Action icon={BringToFront} label={t('draw.toFront')} locked={noneSelected} onClick={() => orderAnnotations(ids(), 'front')} />
     case 'back': return <Action icon={SendToBack} label={t('draw.toBack')} locked={noneSelected} onClick={() => orderAnnotations(ids(), 'back')} />
     case 'lock': {
       const on = shownLock(selected) === true
-      return <Switch icon={on ? Lock : LockOpen} label={t('draw.lock')} on={on} onChange={(lock) => updateAnnotations(ids(), { locked: lock ? true : undefined })} locked={noneSelected} />
+      return <Switch icon={on ? Lock : LockOpen} label={t('draw.lock')} on={on} onChange={(lock) => updateAnnotations(ids(), { locked: lock ? true : undefined })} locked={viewLocked ?? (selected.length === 0 ? t('draw.selectFirst') : null)} />
     }
+    case 'group':
+      return <Action icon={Group} label={t('draw.group')} locked={viewLocked ?? (groupable(selected) ? null : t('draw.groupNeedsTwo'))} onClick={() => groupAnnotations(ids())} />
+    case 'ungroup':
+      return <Action icon={Ungroup} label={t('draw.ungroup')} locked={viewLocked ?? (ungroupable(selected) ? null : t('draw.ungroupNeedsGroup'))} onClick={() => ungroupAnnotations(ids())} />
     case 'clear': {
       const has = (scope: ClearScope): boolean => {
         if (scope === 'above') return annotations.some((annotation) => annotation.layer === 'above')
         if (scope === 'players') return annotations.some((annotation) => annotation.by !== null)
         return annotations.length > 0
       }
-      return <ClearMenu levelled={levelled} has={has} onClear={clearAnnotations} locked={locked} />
+      return <ClearMenu levelled={levelled} has={has} onClear={clearAnnotations} locked={viewLocked} />
     }
   }
 }

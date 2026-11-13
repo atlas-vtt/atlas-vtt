@@ -45,7 +45,7 @@ function fillLess(drawing: DrawingAnnotation, sweep: EraseSweep): FilledPart[] |
 }
 
 /** Every field of the record but the three the store gives a drawing: what a piece starts from, so it keeps fields this Atlas does not know. */
-function keptFields(record: DrawingStroke): DrawingInput {
+export function keptFields(record: DrawingStroke): DrawingInput {
   const kept: Partial<DrawingStroke> = { ...record };
   delete kept.id;
   delete kept.kind;
@@ -76,7 +76,7 @@ function linePiece(kept: DrawingInput, drawing: DrawingAnnotation, piece: LinePi
 }
 
 /** A piece of the fill: a closed line without a width, with the rings cut out of it. */
-function fillPiece(kept: DrawingInput, part: FilledPart): DrawingInput {
+export function fillPiece(kept: DrawingInput, part: FilledPart): DrawingInput {
   const fill: DrawingInput = { ...kept, type: 'line', points: [...part.outline, { ...part.outline[0]! }], width: 0 };
   delete fill.anchors;
   delete fill.dash;

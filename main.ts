@@ -90,7 +90,7 @@ import { migrateLegacySnapshots } from './src/app/snapshots/legacySnapshotMigrat
 import { migrateSettingsToPluginData } from './src/app/plugin/settingsMigration';
 import { SystemPresetFiles } from './src/app/services/systemPresets/SystemPresetFiles';
 import { DiceSetFiles } from './src/app/services/diceSets/DiceSetFiles';
-import { registerStatusBarVisibility } from './src/app/plugin/statusBarVisibility';
+import { registerChromeVisibility } from './src/app/plugin/chromeVisibility';
 import { registerObsidianSyncNotice } from './src/app/plugin/obsidianSyncNotice';
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
@@ -257,7 +257,7 @@ export default class AtlasVTTPlugin extends Plugin {
       if (this.unloaded) return;
       registerColorSwatchIcons();
       this.imageDisplayService.registerContextMenu();
-      registerStatusBarVisibility(this);
+      registerChromeVisibility(this);
       this.changelogService?.showUpdates();
       runInBackground(addStarterTokens(this.app, AssetService.getInstance(this.app), this.settingsService), 'Adding the starter tokens');
       runInBackground(this.carryOverTokenBars(), 'Carrying over the token bar settings');

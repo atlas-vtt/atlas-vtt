@@ -1,5 +1,5 @@
 import { Pacer, type PacerClock } from '../marks/index.ts';
-import type { GmMessage, SharedAnnotations, SharedLiquid } from '../protocol/index.ts';
+import type { DrawMine, GmMessage, SharedLiquid } from '../protocol/index.ts';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { ViewState } from '../../types/viewState';
@@ -9,7 +9,7 @@ import type { AtlasPlayerSettings } from './atlasLighting.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
 import { sharedInitiative } from './initiativeInputs.ts';
-import { sharedAnnotations, sharedDoors, sharedGrid } from './mapLayerInputs.ts';
+import { sharedDoors, sharedGrid, toldAnnotationLists, type ToldAbove, type ToldAnnotationLists } from './mapLayerInputs.ts';
 import { ReadablePins, type ListedPin } from './pins/ReadablePins.ts';
 import { SharedLiquids } from './sharedLiquids.ts';
 import type { VaultImage } from './TokenShare.ts';
@@ -37,6 +37,11 @@ export interface MapLayerSharePorts extends PacerClock {
   badgeOf?(tokenId: string): number | null;
   /** The id players know a token by in their token list (`TokenShare.listedAlias`); none for a token they are not sent. */
   tokenAlias?(tokenId: string): string | undefined;
+  /**
+   * Which of the drawings and texts players are told are each player's own (`PlayerDrawings.mine`), for
+   * every player who is told so now; none while players may not draw. Without it nobody is told.
+   */
+  drawnBy?(above: ToldAbove): ReadonlyMap<string, Pick<DrawMine, 'drawings' | 'texts' | 'seen'>>;
 }
 
 const NO_PINS: Readonly<Record<string, NotePin>> = Object.freeze({});
@@ -78,8 +83,11 @@ export class MapLayerShare {
   private readonly pins: ReadablePins;
   private scene: { readonly id: string; readonly lit: boolean } | null = null;
   private readonly last = new Map<LayerMessage['t'], Sent>();
-  private annotations: { readonly key: AnnotationKey; readonly value: SharedAnnotations } | null = null;
-  private annotationsSent: SharedAnnotations | null = null;
+  private annotations: { readonly key: AnnotationKey; readonly value: ToldAnnotationLists } | null = null;
+  /** The drawings and texts players were last sent, as text, and the number that message had among the scene's. */
+  private annotationsSent: { readonly value: ToldAnnotationLists; readonly text: string; readonly rev: number } | null = null;
+  /** What each player was last told is theirs. */
+  private readonly mineSent = new Map<string, { readonly text: string; readonly body: DrawMine }>();
   private readonly liquids: SharedLiquids;
   private liquidsSent: readonly SharedLiquid[] | null = null;
   private pinsSeen: Readonly<Record<string, NotePin>> | null = null;
@@ -101,6 +109,7 @@ export class MapLayerShare {
     this.last.clear();
     this.annotations = null;
     this.annotationsSent = null;
+    this.mineSent.clear();
     this.liquids.clear();
     this.liquidsSent = null;
     this.art.clear();
@@ -121,7 +130,15 @@ export class MapLayerShare {
   /** The last layers again, to one player or to all. */
   resend(to?: string): void {
     for (const sent of this.last.values()) if (sent.scene === this.scene?.id) this.ports.send(sent.body, to);
+    // After the drawings and texts it speaks of.
+    for (const [player, mine] of this.mineSent) if (to === undefined || to === player) this.ports.send(mine.body, player);
     this.widgets.resend(to);
+  }
+
+  /** The committed fog of the floor as it is now, which drawings are judged by; null while it cannot be read. */
+  committedFog(): FogCoverage | null {
+    const state = this.store.getState();
+    return this.fog.get(levelObjects(state).fog, levelMapKey(state.mapPath, state));
   }
 
   /** Reads every portrait again: its reference may go out another way now (without a stored id). */
@@ -143,12 +160,7 @@ export class MapLayerShare {
     this.publish({ t: 'grid', scene: scene.id, grid: sharedGrid(source.grid()) });
     this.publishLiquids(scene.id, levelObjects(state).liquids);
     const fog = this.fog.get(levelObjects(state).fog, levelMapKey(state.mapPath, state));
-    const annotations = this.annotationsOf(state, fog);
-    // Drawings may run to megabytes: they are compared as text only when worked out anew.
-    if (annotations !== this.annotationsSent) {
-      this.annotationsSent = annotations;
-      this.publish({ t: 'annotations', scene: scene.id, ...annotations });
-    }
+    this.publishAnnotations(scene.id, this.annotationsOf(state, fog));
     const list = sharedInitiative({
       state, shown: settings.showInitiative, showNames: settings.showNames, fromTurn: settings.initiativeFromTurn === true, rules: source.rules(),
       bannerOff: settings.turnBanner === false, movesOnTurn: settings.movesOnTurn === true, dock: settings.initiativeDock ?? 'right',
@@ -193,13 +205,39 @@ export class MapLayerShare {
   }
 
   /** The drawings and texts, worked out again only when they or the fog changed. */
-  private annotationsOf(state: SceneState, fog: FogCoverage | null): SharedAnnotations {
+  private annotationsOf(state: SceneState, fog: FogCoverage | null): ToldAnnotationLists {
     const key: AnnotationKey = { drawings: levelObjects(state).drawings, texts: levelObjects(state).texts, fog };
     const known = this.annotations;
     if (known !== null && known.key.drawings === key.drawings && known.key.texts === key.texts && known.key.fog === key.fog) return known.value;
-    const value = sharedAnnotations(levelObjects(state).drawings, levelObjects(state).texts, fog);
+    const value = toldAnnotationLists(levelObjects(state).drawings, levelObjects(state).texts, fog);
     this.annotations = { key, value };
     return value;
+  }
+
+  /**
+   * Sends the drawings and texts when they say another thing than the last message did, numbered
+   * among the scene's (`rev`), and then tells each player who draws which of them are theirs: by
+   * their places in that very message, so it follows every one of them, and whenever what is a
+   * player's or the last of their requests dealt with is another.
+   */
+  private publishAnnotations(scene: string, told: ToldAnnotationLists): void {
+    let sent = this.annotationsSent;
+    // Drawings may run to megabytes: they are compared as text only when worked out anew.
+    if (sent === null || told !== sent.value) {
+      const text = JSON.stringify(told.shared);
+      const rev = sent === null ? 1 : text === sent.text ? sent.rev : sent.rev + 1;
+      if (rev !== sent?.rev) this.publish({ t: 'annotations', scene, rev, ...told.shared });
+      sent = this.annotationsSent = { value: told, text, rev };
+    }
+    const mine = this.ports.drawnBy?.(told.above) ?? new Map<string, Pick<DrawMine, 'drawings' | 'texts' | 'seen'>>();
+    for (const player of this.mineSent.keys()) if (!mine.has(player)) this.mineSent.delete(player);
+    for (const [player, own] of mine) {
+      const body: DrawMine = { t: 'draw-mine', scene, rev: sent.rev, ...own };
+      const text = JSON.stringify(body);
+      if (this.mineSent.get(player)?.text === text) continue;
+      this.mineSent.set(player, { text, body });
+      this.ports.send(body, player);
+    }
   }
 
   /**

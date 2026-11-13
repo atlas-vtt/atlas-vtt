@@ -38,12 +38,14 @@ body.theme-light {
  *  (https://fontforge.org/archive/sfds/toyfonts.html).
  *  Oxanium, Copyright 2019 The Oxanium Project Authors (https://github.com/sevmeyer/oxanium),
  *  licensed under the SIL Open Font License, Version 1.1.
+ *  Courier Prime, Copyright 2015 The Courier Prime Project Authors
+ *  (https://github.com/quoteunquoteapps/CourierPrime), licensed under the SIL Open Font License, Version 1.1.
  *  Licence text: https://openfontlicense.org
  *  Credits: https://github.com/atlas-vtt/atlas-vtt/blob/main/THIRD_PARTY_NOTICES.md
  */
 
-// Atlas' display face: the 3D dice panel's numbers (dice-roll.scss) and the dashboard's
-// wordmark. At-rules stay at the root, like @property above.
+// Atlas' display face: the 3D dice panel's numbers (dice-roll.scss), the dashboard's wordmark
+// and the Draw tool's medieval text. At-rules stay at the root, like @property above.
 @font-face {
   font-family: 'Atlas Fantaisie Artistique';
   src: url('../src/app/assets/fonts/fantaisie-artistique.ttf') format('truetype');
@@ -52,11 +54,20 @@ body.theme-light {
   font-display: swap;
 }
 
-// The sci-fi face of the dice, chosen in Dice settings; a variable font from 200 to 800.
+// The sci-fi face of the dice, chosen in Dice settings, and of the Draw tool's text; a variable font from 200 to 800.
 @font-face {
   font-family: 'Atlas Oxanium';
   src: url('../src/app/assets/fonts/oxanium.ttf') format('truetype');
   font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+// The Draw tool's monospace text. One weight: bold and italic are the browser's own.
+@font-face {
+  font-family: 'Atlas Courier Prime';
+  src: url('../src/app/assets/fonts/courier-prime.ttf') format('truetype');
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
@@ -183,6 +194,7 @@ body.theme-light {
   @import '../src/app/services/embedded-leaf.scss';
   @import '../src/app/react/components/atlas-toast.scss';
   @import '../src/app/ui/text-input-dialog.scss';
+  @import '../src/app/pixi/annotations/text-field.scss';
   @import '../src/app/packages/components/shared/DiceTextInput';
 
 
@@ -1240,6 +1252,20 @@ body.atlas-asset-manager-open > .menu {
 // The status bar would cover the bottom-right corner of a full-bleed Atlas view.
 body.atlas-hide-status-bar .status-bar {
   display: none;
+}
+
+// A frameless window on Windows and Linux draws its minimise, maximise and close buttons over the top-right
+// corner of an Atlas view, where a map keeps its widgets. They fade out and come back while the pointer is over them
+// (the container keeps its pointer events, so its hover still registers). macOS has native traffic lights instead.
+body.atlas-hide-window-controls:is(.mod-windows, .mod-linux) .titlebar-button-container.mod-right {
+  opacity: 0;
+  transition: opacity $transition-normal $transition-ease;
+
+  &:hover,
+  &:focus-within {
+    opacity: 1;
+    transition-duration: $transition-fast;
+  }
 }
 
 // File picker input used by "New map from image…"; only ever clicked programmatically.

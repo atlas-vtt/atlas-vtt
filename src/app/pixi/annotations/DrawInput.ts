@@ -4,7 +4,7 @@ import type { MadeShape } from '../../annotations/madeDrawing';
 import type { Point } from '../../types/visionTypes';
 import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
-import { DRAW_DRAG_THRESHOLD, DrawGesture, type DrawGestureResult, type DrawPointer, type GestureMode } from './drawGesture';
+import { DRAW_DRAG_THRESHOLD, DrawGesture, sweeps, type DrawGestureResult, type DrawPointer, type GestureMode } from './drawGesture';
 
 /** A press this soon after the click that ended a shape, in the same place, is that click's second (a double click) and draws nothing. */
 const DOUBLE_CLICK_MS = 500;
@@ -23,9 +23,9 @@ export interface DrawInputHost {
   started(mode: GestureMode): void;
   /** The shape under way changed. */
   changed(shape: MadeShape): void;
-  /** The eraser passed along `path` (one point for a dab); `alt` was held. */
+  /** The eraser, or the Cells mode, passed along `path` (one point for a dab); `alt` was held. */
   swept(path: readonly Point[], alt: boolean): void;
-  /** The gesture is over: `made` is what was drawn, null after the eraser's sweep. */
+  /** The gesture is over: `made` is what was drawn, null after a sweep. */
   finished(made: MadeShape | null): void;
   /** The gesture was dropped: nothing of it stays. */
   cancelled(): void;
@@ -131,8 +131,8 @@ export class DrawInput {
     if (!this.gesture.active) return;
     e.stopPropagation();
     const mode = this.gesture.mode;
-    // The pen and the eraser follow every place the pointer passed, also those between two frames.
-    const between = mode === 'pen' || mode === 'eraser' ? this.coalesced(e) : [];
+    // The pen and a sweep follow every place the pointer passed, also those between two frames.
+    const between = mode === 'pen' || sweeps(mode) ? this.coalesced(e) : [];
     if (between.length === 0) {
       this.apply(this.gesture.move(this.read(e)), altHeld(e));
       return;
@@ -153,7 +153,7 @@ export class DrawInput {
   private readonly onPointerUp = (e: FederatedPointerEvent): void => {
     if (!this.gesture.active) return;
     const at = this.read(e);
-    // The eraser's last step, and the pen's, to where the button came up.
+    // A sweep's last step, and the pen's, to where the button came up.
     this.apply(this.gesture.move(at), altHeld(e));
     const mode = this.gesture.mode;
     const result = this.gesture.release(at);

@@ -6,6 +6,8 @@ export const lpv = {
   'lpv.notePreviews': 'Note previews',
   'lpv.notePreviewsHint': 'Note previews are not shared with the player window.',
   'lpv.openWindow': 'Open player window',
+  'lpv.playersDraw': 'Players may draw',
+  'lpv.playersDrawHint': 'Online players get a Draw tool of their own. You can change and clear what they draw.',
   'lpv.showCursors': 'Show everyone\'s cursors',
   'lpv.showDiceRolls': 'Show dice rolls',
   'lpv.view4k': 'Render up to 4K',

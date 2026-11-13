@@ -31,7 +31,7 @@ describe('drawings as they are read', () => {
     const record = drawing('d');
     expect(asDrawing(record)).toEqual({
       kind: 'drawing', id: 'd', record, shape: 'pen', points: record.points, closed: false, width: 4, color: '#aa3300', opacity: 1,
-      fill: null, holes: [], dash: null, ends: null, anchors: null, icon: null, rotation: 0,
+      fill: null, holes: [], cells: false, dash: null, ends: null, anchors: null, icon: null, rotation: 0,
       hidden: false, layer: 'above', locked: false, order: 0, group: null, by: null, level: undefined,
     });
     expect(asDrawing(record).record).toBe(record);
@@ -96,6 +96,16 @@ describe('drawings as they are read', () => {
     // Three points and the first again is the least that has an inside
     expect(asDrawing(drawing('d', { points: [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 0, y: 0 }], fill: 'solid' })).closed).toBe(false);
     expect(asDrawing(drawing('d', { points: [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }, { x: 0, y: 0 }], fill: 'solid' }))).toMatchObject({ closed: true, fill: 'solid' });
+  });
+
+  it('reads a fill as made of cells only where the record says so, and only a fill', () => {
+    const cells = asDrawing(drawing('d', { type: 'line', points: RECTANGLE, width: 0, fill: 'solid', opacity: 0.4, cells: true }));
+    expect(cells).toMatchObject({ shape: 'line', closed: true, fill: 'solid', width: 0, cells: true });
+    expect(cells.record).toMatchObject({ cells: true });
+    for (const value of [1, 'true', {}, null]) expect(asDrawing(drawing('d', { type: 'line', points: RECTANGLE, fill: 'solid', cells: value })).cells).toBe(false);
+    // Without a fill, or on a line that is open, the hint says nothing.
+    expect(asDrawing(drawing('d', { type: 'line', points: RECTANGLE, cells: true })).cells).toBe(false);
+    expect(asDrawing(drawing('d', { type: 'line', points: RECTANGLE.slice(0, 3), fill: 'solid', cells: true })).cells).toBe(false);
   });
 
   it('reads no more holes than a drawing may have points', () => {

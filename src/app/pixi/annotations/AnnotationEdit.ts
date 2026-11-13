@@ -1,6 +1,7 @@
 import { readDrawing, readText } from '../../annotations/annotationList';
 import { placedBy, placesBy, type Transform } from '../../annotations/annotationTransform';
 import type { Annotation, AnnotationPlace } from '../../annotations/annotationTypes';
+import type { PlaceWriter } from './drawToolState';
 
 /** What shows annotations where a gesture would leave them (`AnnotationLayer`). */
 export interface EditLayer {
@@ -9,8 +10,7 @@ export interface EditLayer {
   endPreview(): void;
 }
 
-/** Writes where annotations lie: `placeAnnotations`, one write. */
-export type PlaceWriter = (places: Readonly<Record<string, AnnotationPlace>>) => void;
+export type { PlaceWriter };
 
 const isMove = (transform: Transform): boolean => transform.a === 1 && transform.b === 0 && transform.c === 0 && transform.d === 1 && transform.turn === 0;
 
@@ -93,7 +93,7 @@ export class AnnotationEdit {
     if (this.over) return false;
     const places = this.places ?? (this.transform ? placesBy(this.annotations, this.transform) : null);
     // Written before the preview ends: the layer draws the new records, and never the old ones between.
-    if (places && !this.live) write(places);
+    if (places && !this.live) write(places, this.places ? undefined : this.transform ?? undefined);
     this.end();
     return places !== null;
   }

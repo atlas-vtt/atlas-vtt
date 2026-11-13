@@ -53,19 +53,28 @@ describe('the Draw tool\'s keys', () => {
     for (const key of [',', '.']) expect(Object.values(DEFAULT_MAP_HOTKEYS).filter((bound) => bound === key)).toHaveLength(1);
   });
 
-  it('selects the tool in the mode it was left in, and steps through the built modes when pressed again', () => {
+  it('selects the tool in the mode it was left in, and steps through the modes when pressed again', () => {
     const store = mount();
     store.getState().setDrawTool({ mode: 'ellipse' });
     press('b');
     expect(tool(store)).toBe('draw');
     expect(mode(store)).toBe('ellipse');
     const seen: string[] = [];
-    for (let step = 0; step < 8; step++) {
+    for (let step = 0; step < 9; step++) {
       press('b');
       seen.push(mode(store));
     }
-    expect(seen).toEqual(['text', 'stamp', 'eraser', 'select', 'pen', 'line', 'rectangle', 'ellipse']);
+    expect(seen).toEqual(['text', 'stamp', 'cells', 'eraser', 'select', 'pen', 'line', 'rectangle', 'ellipse']);
     expect(tool(store)).toBe('draw');
+  });
+
+  it('steps over the Cells mode on a map whose grid is switched off', () => {
+    const store = mount();
+    store.getState().setGridVisible(false);
+    store.getState().setDrawTool({ mode: 'stamp' });
+    press('b');
+    press('b');
+    expect(mode(store)).toBe('eraser');
   });
 
   it('selects the tool in Text mode with the text key, from another tool and from another mode', () => {

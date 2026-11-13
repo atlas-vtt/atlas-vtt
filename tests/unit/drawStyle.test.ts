@@ -4,7 +4,7 @@ import { DEFAULT_DRAW_TOOL, type Annotation, type DrawingAnnotation } from '../.
 import { stampSize, strokeWidth, textHeight } from '../../src/app/annotations/drawSizes';
 import { MIXED, shownLock, shownStyle, styleWrites, type StyleWrite } from '../../src/app/packages/components/toolbar/drawStyle';
 import { SEE_THROUGH } from '../../src/app/annotations/madeDrawing';
-import { FONT_FAMILIES } from '../../src/app/annotations/madeText';
+import { FONT_FAMILIES, TEXT_PLATE } from '../../src/app/annotations/madeText';
 import type { DrawingStroke, TextElement } from '../../src/app/types';
 
 const CELL = 70;
@@ -40,7 +40,7 @@ describe('what the Draw tool\'s bars show', () => {
     const tool = { ...TOOL, color: '#e93147', size: 'l' as const, dash: 'dotted' as const, font: 'mono' as const };
     expect(shownStyle(tool, [], CELL)).toEqual({
       color: '#e93147', size: 'l', players: true, layer: 'above', seeThrough: false, dash: 'dotted', ends: null, curved: false, fill: null,
-      font: 'mono', look: 'outline', align: 'center', bold: false, italic: false, icon: 'door-open',
+      font: 'mono', look: 'outline', align: 'center', bold: false, italic: false, icon: 'door',
     });
   });
 
@@ -119,7 +119,8 @@ describe('what a pick writes to the selected', () => {
 
   it('writes a size as pixels of this map: lines and texts in one write, stamps in another, and a text without its scale', () => {
     expect(updates(styleWrites('size', 'l', all, CELL))).toEqual([
-      { ids: ['pen', 'room', 'label'], changes: { width: strokeWidth('l', CELL), fontSize: textHeight('l', CELL), scale: undefined } },
+      // A text set in another size breaks its lines elsewhere: what it saved of them goes with the write.
+      { ids: ['pen', 'room', 'label'], changes: { width: strokeWidth('l', CELL), fontSize: textHeight('l', CELL), scale: undefined, breaks: undefined } },
       { ids: ['stamp'], changes: { width: stampSize('l', CELL) } },
     ]);
     expect(updates(styleWrites('size', 's', read(stamp), CELL))).toEqual([{ ids: ['stamp'], changes: { width: stampSize('s', CELL) } }]);
@@ -139,13 +140,16 @@ describe('what a pick writes to the selected', () => {
   });
 
   it('writes a text\'s face, look, alignment and weight to texts alone, and a symbol to stamps alone', () => {
-    expect(updates(styleWrites('font', 'medieval', all, CELL))).toEqual([{ ids: ['label'], changes: { fontFamily: FONT_FAMILIES.medieval } }]);
-    expect(updates(styleWrites('look', 'outline', all, CELL))[0]!.changes).toEqual({ backgroundColor: undefined, outline: true });
-    expect(updates(styleWrites('look', 'plain', all, CELL))[0]!.changes).toEqual({ backgroundColor: undefined, outline: undefined });
-    expect(updates(styleWrites('look', 'plate', all, CELL))[0]!.changes).toEqual({ backgroundColor: '#000000', padding: 8, borderRadius: 4, outline: undefined });
+    // Another face or weight sets the words in other letters: the saved line breaks go, and are worked out anew.
+    expect(updates(styleWrites('font', 'medieval', all, CELL))).toEqual([{ ids: ['label'], changes: { fontFamily: FONT_FAMILIES.medieval, breaks: undefined } }]);
     expect(updates(styleWrites('align', 'right', all, CELL))).toEqual([{ ids: ['label'], changes: { align: 'right' } }]);
-    expect(updates(styleWrites('bold', true, all, CELL))[0]!.changes).toEqual({ bold: true });
-    expect(updates(styleWrites('italic', false, all, CELL))[0]!.changes).toEqual({ italic: false });
+    expect(updates(styleWrites('bold', true, all, CELL))[0]!.changes).toEqual({ bold: true, breaks: undefined });
+    expect(updates(styleWrites('italic', false, all, CELL))[0]!.changes).toEqual({ italic: false, breaks: undefined });
+    // A look is a text's own write: the plate is the chip texts always had, see-through as it was, and goes whole.
+    const plate = { backgroundColor: undefined, padding: undefined, borderRadius: undefined };
+    expect(styleWrites('look', 'outline', all, CELL)).toEqual([{ kind: 'text', ids: ['label'], changes: { ...plate, outline: true } }]);
+    expect(styleWrites('look', 'plain', all, CELL)).toEqual([{ kind: 'text', ids: ['label'], changes: { ...plate, outline: undefined } }]);
+    expect(styleWrites('look', 'plate', all, CELL)).toEqual([{ kind: 'text', ids: ['label'], changes: { ...TEXT_PLATE, outline: undefined } }]);
     expect(updates(styleWrites('icon', 'gem', all, CELL))).toEqual([{ ids: ['stamp'], changes: { icon: 'gem' } }]);
   });
 

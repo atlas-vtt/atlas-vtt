@@ -8,5 +8,7 @@ export * from './RemoteLasers.ts';
 export * from './RemoteCursors.ts';
 export * from './RemoteDrags.ts';
 export * from './RemoteMeasures.ts';
+export * from './RemoteStrokes.ts';
+export * from './toldAnnotations.ts';
 export * from './measureWords.ts';
 export * from './Pacer.ts';

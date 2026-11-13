@@ -93,6 +93,8 @@ export interface DrawingAnnotation extends ReadAnnotation {
   readonly fill: DrawFill | null;
   /** Rings cut out of the fill, each at least three points; empty without a fill. */
   readonly holes: readonly (readonly Point[])[];
+  /** A fill made cell by cell, which the Cells mode grows and clears; never without a fill. */
+  readonly cells: boolean;
   readonly dash: DrawDash | null;
   /** Arrowheads; null for none, and always for a closed line. */
   readonly ends: DrawEnds | null;
@@ -166,9 +168,9 @@ export type AnnotationChanges = DrawingChanges & TextChanges;
 /**
  * Where one annotation lies after its group was moved, turned or scaled (`placeAnnotations`): the
  * fields of its geometry, each its own kind's (`width` is a line's width or a stamp's footprint on
- * a drawing, the wrap width on a text).
+ * a drawing, the wrap width on a text, which goes with the `breaks` its lines then have).
  */
-export type AnnotationPlace = Pick<AnnotationChanges, 'points' | 'anchors' | 'holes' | 'x' | 'y' | 'rotation' | 'scale' | 'width' | 'fontSize'>;
+export type AnnotationPlace = Pick<AnnotationChanges, 'points' | 'anchors' | 'holes' | 'x' | 'y' | 'rotation' | 'scale' | 'width' | 'fontSize' | 'breaks'>;
 
 /** The fields of a drawing and of a text that the store's changes write; anything else in a change is passed over. */
 export const DRAWING_FIELDS: readonly (keyof DrawingChanges)[] = [
@@ -211,6 +213,8 @@ export interface DrawToolChoices {
   icon: string;
   /** The eraser removes each whole drawing it touches. */
   eraseWhole: boolean;
+  /** Where the Cells mode's fills lie: its own choice, since a coloured cell is map more often than a mark. */
+  cellsLayer: DrawLayer;
   /** The Cells mode clears cells where it would fill them. */
   cellsUnfill: boolean;
 }
@@ -231,8 +235,9 @@ export const DEFAULT_DRAW_TOOL: DrawToolChoices = {
   align: 'center',
   bold: false,
   italic: false,
-  icon: 'door-open',
+  icon: 'door',
   eraseWhole: false,
+  cellsLayer: 'map',
   cellsUnfill: false,
 };
 

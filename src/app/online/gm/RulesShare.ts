@@ -13,6 +13,8 @@ export interface RulesSharePorts {
   cursorsShown?(): boolean;
   /** The map's dice, by which a page offers advantage on a roll for no token of a set of its own; null while the tab has none. */
   rollDice?(): SharedRollDice | null;
+  /** While the GM lets players draw: the cell their Draw tool's sizes are shares of; null while it does not. */
+  draw?(): { readonly cell: number } | null;
 }
 
 /**
@@ -52,7 +54,7 @@ const finiteOr = (value: number | undefined, fallback: number): number => (typeo
  * the grid's own, as Atlas's ruler falls back to), accent and whether everyone's cursor shows, and
  * the map's dice where the tab has them; null for a grid players cannot use.
  */
-export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null): SharedRules | null {
+export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null, draw: { readonly cell: number } | null = null): SharedRules | null {
   if (grid === null || !Number.isFinite(grid.size) || !(grid.size > 0) || grid.size > MAX_COORDINATE) return null;
   const offsetX = finiteOr(grid.offsetX, 0);
   const offsetY = finiteOr(grid.offsetY, 0);
@@ -69,12 +71,14 @@ export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSe
     accent,
     ...(cursors && { cursors }),
     ...(dice !== null && { dice }),
+    ...(draw !== null && Number.isFinite(draw.cell) && draw.cell > 0 && draw.cell <= MAX_COORDINATE && { draw: { cell: draw.cell } }),
   };
 }
 
 /**
  * The shared scene's rules (`sharedRules`), sent to all when the scene is shared, to a player who
- * joins, and again whenever they changed when `update` looks (once a second, with the scene's poll).
+ * joins, and again whenever they changed when `update` looks (once a second, with the scene's poll):
+ * so a GM who lets players draw, or no longer, is followed by a running table within that second.
  */
 export class RulesShare {
   private readonly store: SceneStore;
@@ -98,7 +102,7 @@ export class RulesShare {
   update(): void {
     if (this.scene === null) return;
     const state = this.store.getState();
-    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null);
+    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null);
     if (rules === null) return;
     const body: GmMessage = { t: 'rules', scene: this.scene, ...rules };
     const text = JSON.stringify(body);

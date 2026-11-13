@@ -7,7 +7,7 @@
 import { CURVE_STEPS, curvedPath } from "../../../annotations/shapeOutlines"
 import {
   MAX_STROKE_POINTS,
-  type Annotation, type AnnotationChanges, type AnnotationPlace, type DrawFont, type DrawingAnnotation, type DrawToolChoices,
+  type Annotation, type AnnotationChanges, type AnnotationPlace, type DrawFont, type DrawingAnnotation, type DrawToolChoices, type TextChanges,
 } from "../../../annotations/annotationTypes"
 import { sizeOf, stampSize, strokeWidth, textHeight } from "../../../annotations/drawSizes"
 import { SEE_THROUGH } from "../../../annotations/madeDrawing"
@@ -24,8 +24,13 @@ export type StyleField =
 export type DrawStyle = Pick<DrawToolChoices, StyleField>
 export type ShownStyle = { [Field in StyleField]: Shown<DrawStyle[Field]> }
 
-/** The plate a text gets from the Look tool: the dark chip texts always had. */
-const PLATE = { backgroundColor: TEXT_PLATE.backgroundColor, padding: TEXT_PLATE.padding, borderRadius: TEXT_PLATE.borderRadius } as const
+/** What a text has of a plate: taken off with it. Its opacity stays, and is the plate's again when it gets one. */
+const NO_PLATE = { backgroundColor: undefined, padding: undefined, borderRadius: undefined } as const
+/**
+ * A text set in other letters breaks its lines elsewhere: the breaks it saved go, and whoever
+ * draws it gives it new ones (`keepTextBreaks`). Read by texts alone.
+ */
+const RESET = { breaks: undefined } as const
 
 const isStroke = (annotation: Annotation): annotation is DrawingAnnotation => annotation.kind === 'drawing' && annotation.shape !== 'stamp'
 const isStamp = (annotation: Annotation): annotation is DrawingAnnotation => annotation.kind === 'drawing' && annotation.shape === 'stamp'
@@ -118,10 +123,15 @@ export function shownLock(selected: readonly Annotation[]): Shown<boolean> | nul
   return selected.every((annotation) => annotation.locked === first.locked) ? first.locked : MIXED
 }
 
-/** One write to the store: a change to several annotations (`updateAnnotations`), or a new place for each (`placeAnnotations`). */
+/**
+ * One write to the store: a change to several annotations (`updateAnnotations`), a new place for
+ * each (`placeAnnotations`), or a change to texts in the fields that are a drawing's own under
+ * the same name (`updateText`: a plate's opacity).
+ */
 export type StyleWrite =
   | { kind: 'update'; ids: string[]; changes: AnnotationChanges }
   | { kind: 'place'; places: Record<string, AnnotationPlace> }
+  | { kind: 'text'; ids: string[]; changes: TextChanges }
 
 const idsOf = (annotations: readonly Annotation[]): string[] => annotations.map(({ id }) => id)
 const update = (annotations: readonly Annotation[], changes: AnnotationChanges): StyleWrite[] =>
@@ -165,7 +175,7 @@ export function styleWrites<Field extends StyleField>(field: Field, value: DrawS
   if (size !== undefined) {
     // `width` reaches drawings alone and the other two texts alone, so lines and texts share a write; a stamp's width is its side.
     return [
-      ...update(styled.filter((annotation) => !isStamp(annotation)), { width: strokeWidth(size, cell), fontSize: textHeight(size, cell), scale: undefined }),
+      ...update(styled.filter((annotation) => !isStamp(annotation)), { width: strokeWidth(size, cell), fontSize: textHeight(size, cell), scale: undefined, ...RESET }),
       ...update(styled.filter(isStamp), { width: stampSize(size, cell) }),
     ]
   }
@@ -174,14 +184,14 @@ export function styleWrites<Field extends StyleField>(field: Field, value: DrawS
   if (ends !== undefined) return update(styled, { ends: ends ?? undefined })
   if (curved !== undefined) return curvedPlaces(styled, curved)
   if (fill !== undefined) return update(styled, { fill: fill ?? undefined })
-  if (font !== undefined) return update(styled, { fontFamily: FONT_FAMILIES[font] })
+  if (font !== undefined) return update(styled, { fontFamily: FONT_FAMILIES[font], ...RESET })
   if (look !== undefined) {
-    if (look === 'plate') return update(styled, { ...PLATE, outline: undefined })
-    return update(styled, { backgroundColor: undefined, outline: look === 'outline' ? true : undefined })
+    const changes: TextChanges = look === 'plate' ? { ...TEXT_PLATE, outline: undefined } : { ...NO_PLATE, outline: look === 'outline' ? true : undefined }
+    return [{ kind: 'text', ids: idsOf(styled), changes }]
   }
   if (align !== undefined) return update(styled, { align })
-  if (bold !== undefined) return update(styled, { bold })
-  if (italic !== undefined) return update(styled, { italic })
+  if (bold !== undefined) return update(styled, { bold, ...RESET })
+  if (italic !== undefined) return update(styled, { italic, ...RESET })
   if (icon !== undefined) return update(styled, { icon })
   return []
 }

@@ -164,6 +164,15 @@ export const PIN_PALETTE: PinPaletteSlot[] = [
   { kind: 'label', id: 'letter', name: t('pin.label.letter'), sample: 'A' },
 ];
 
+/**
+ * Every pin icon in groups, the palette's own marks first and then the places: what a picker
+ * offers that has no palette row beside it (the Draw tool's stamps).
+ */
+export const PIN_ICON_GROUPS: PinPlaceGroup[] = [
+  { name: t('pin.group.marks'), places: PIN_PALETTE.flatMap((slot) => (slot.kind === 'icon' ? [slot.icon] : [])) },
+  ...PIN_PLACE_GROUPS,
+];
+
 export const DEFAULT_PIN_ICON: PinIconId = 'pin';
 
 /** Ids of the Lucide icons pins used before the pin icon set. */

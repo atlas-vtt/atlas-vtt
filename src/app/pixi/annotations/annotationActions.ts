@@ -1,25 +1,10 @@
 import { annotationRoom } from '../../annotations/annotationList';
-import { isLocked } from '../../annotations/annotationLock';
-import type { TextAnnotation } from '../../annotations/annotationTypes';
 import { collectMapObjects, translateMapObjects } from '../../clipboard/mapObjectContent';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { FullOf } from './DrawToolHost';
 
 type Store = { getState(): ViewAtlasState };
-
-/**
- * Asks for the words of `text` anew and writes them, in one undo step. Nothing where none are
- * given, they are the same, or the text is gone by the time the answer comes; a locked text is
- * not asked about.
- */
-export async function editTextWords(store: Store, text: TextAnnotation, ask: (words: string) => Promise<string | null>): Promise<void> {
-  if (isLocked(levelObjects(store.getState()).texts[text.id])) return;
-  const words = await ask(text.text);
-  const state = store.getState();
-  if (!words || words === text.text || !levelObjects(state).texts[text.id]) return;
-  state.updateText(text.id, { text: words });
-}
 
 /**
  * Leaves copies of the annotations `ids` moved by (dx, dy) and selects them, in one undo step: what

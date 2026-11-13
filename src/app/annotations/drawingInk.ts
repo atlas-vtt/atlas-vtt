@@ -53,7 +53,7 @@ function drawnPath(drawing: DrawingAnnotation, tolerance: number): readonly Poin
 }
 
 /** The fill of `outline` (closed: its last point is its first) less `holes`, by the nonzero rule, on the clipping grid; null beyond it. */
-function fillShape(outline: readonly Point[], holes: readonly (readonly Point[])[]): QShape | null {
+export function fillShape(outline: readonly Point[], holes: readonly (readonly Point[])[]): QShape | null {
   const ring = outline.slice(0, -1);
   if (!onClipGrid(ring) || !holes.every((hole) => onClipGrid(hole))) return null;
   let shape = normalizePolygon(pointsQ(ring));

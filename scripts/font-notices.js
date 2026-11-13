@@ -20,6 +20,12 @@ const BUNDLED_FONTS = [
     credit: 'Copyright 2019 The Oxanium Project Authors',
     source: 'https://github.com/sevmeyer/oxanium',
   },
+  {
+    font: 'src/app/assets/fonts/courier-prime.ttf',
+    licence: 'src/app/assets/fonts/courier-prime-OFL.txt',
+    credit: 'Copyright 2015 The Courier Prime Project Authors',
+    source: 'https://github.com/quoteunquoteapps/CourierPrime',
+  },
 ];
 
 /** Where the notice links the licence text, once for every font. */

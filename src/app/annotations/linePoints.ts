@@ -22,10 +22,11 @@ function ownPoints(line: DrawingAnnotation): readonly Point[] {
 
 /**
  * The points `annotation` shows to be dragged, in their order; null for anything but a line made
- * with the Line mode, and for one with more than `MAX_LINE_HANDLES`.
+ * with the Line mode (a cell fill is made of cells, and reshaped by them), and for one with more
+ * than `MAX_LINE_HANDLES`.
  */
 export function linePointsOf(annotation: Annotation): readonly Point[] | null {
-  if (annotation.kind !== 'drawing' || annotation.shape !== 'line') return null;
+  if (annotation.kind !== 'drawing' || annotation.shape !== 'line' || annotation.cells) return null;
   const points = ownPoints(annotation);
   return points.length >= 2 && points.length <= MAX_LINE_HANDLES ? points : null;
 }

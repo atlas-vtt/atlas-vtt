@@ -4,11 +4,10 @@ import { annotationList } from '../../annotations/annotationList';
 import { framedAnnotations, pressScope, takesPress, type PressScope } from '../../annotations/annotationPress';
 import type { Annotation } from '../../annotations/annotationTypes';
 import { levelObjects } from '../../levels/levelObjects';
-import type { ViewAtlasState } from '../../storeFactory';
 import { mapTokens } from '../../tokens/offMap';
+import type { SelectionState } from './drawToolState';
 
-/** What of a view's state says which annotations are selected and what takes the pointer. */
-export type SelectionState = Pick<ViewAtlasState, 'objects' | 'levels' | 'viewedLevel' | 'selectedIds' | 'activeTool' | 'drawTool'>;
+export type { SelectionState };
 
 /** The selected drawings and texts of the level shown, as the pointer and the handles take them. */
 export interface SelectionRead {

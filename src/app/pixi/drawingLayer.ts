@@ -3,11 +3,16 @@ import type { DrawingAnnotation } from '../annotations/annotationTypes';
 import { drawingInk, type DrawingInk } from '../annotations/drawingInk';
 import type { FilledPart } from '../annotations/quantized';
 import type { Point } from '../types/visionTypes';
-import { MAP_ICON_SVG } from './mapIcons';
+import { stampGlyph } from './mapIcons';
 import { createLucideIconTexture } from './utils/lucideIconTexture';
+import { createGlyphTexture } from './utils/pinIconTexture';
 
-/** The side a stamp's symbol is rasterised at, pixels. */
-const STAMP_TEXTURE_SIDE = 96;
+/**
+ * The side a stamp's symbol is rasterised at, pixels: a stamp one cell wide is about this large on
+ * a screen of two pixels to the point at the closest zoom. With mipmaps, so that it is as clean
+ * from far out.
+ */
+const STAMP_TEXTURE_SIDE = 512;
 
 const flat = (ring: readonly Point[]): number[] => ring.flatMap(({ x, y }) => [x, y]);
 
@@ -71,48 +76,58 @@ export function paintDrawing(graphics: Graphics, drawing: DrawingAnnotation, tol
   paintInk(graphics, drawingInk(drawing, tolerance), drawing.color);
 }
 
-/** The symbols of stamps as textures, one for each symbol and colour, rasterised when first asked for. */
+/**
+ * The symbols of stamps as textures: one for each symbol, in white, which every stamp of it tints
+ * with its own colour. Rasterised when first asked for, `side` pixels a side: less than
+ * `STAMP_TEXTURE_SIDE` where memory is short and a stamp is never seen that large.
+ */
 export class StampTextures {
-  private readonly textures = new Map<string, Texture>();
+  private readonly textures = new Map<string, Texture | null>();
   private readonly pending = new Map<string, Promise<Texture | null>>();
   private destroyed = false;
 
-  /** The texture of `icon` in `color` once it is there; null for a symbol the catalogue does not know, or one that cannot be drawn. */
-  of(icon: string, color: string): Texture | Promise<Texture | null> | null {
-    const markup = MAP_ICON_SVG[icon];
-    if (!markup) return null;
-    const key = `${icon}-${color}`;
-    const known = this.textures.get(key);
-    if (known) return known;
-    let pending = this.pending.get(key);
+  constructor(private readonly side: number = STAMP_TEXTURE_SIDE) {}
+
+  /** The texture of `icon` once it is there; null for a symbol this Atlas does not know, or one that cannot be drawn. */
+  of(icon: string): Texture | Promise<Texture | null> | null {
+    const known = this.textures.get(icon);
+    if (known !== undefined) return known;
+    const glyph = stampGlyph(icon);
+    if (!glyph) return null;
+    if (glyph.kind === 'silhouette') {
+      const texture = createGlyphTexture(glyph.path, this.side);
+      this.textures.set(icon, texture);
+      return texture;
+    }
+    let pending = this.pending.get(icon);
     if (!pending) {
-      pending = createLucideIconTexture(markup, color, STAMP_TEXTURE_SIDE).then((texture) => {
-        this.pending.delete(key);
+      pending = createLucideIconTexture(glyph.markup, '#ffffff', this.side, true).then((texture) => {
+        this.pending.delete(icon);
         if (this.destroyed) {
           texture.destroy(true);
           return null;
         }
-        this.textures.set(key, texture);
+        this.textures.set(icon, texture);
         return texture;
       }).catch((error: unknown) => {
-        this.pending.delete(key);
+        this.pending.delete(icon);
         console.error('[StampTextures] Failed to rasterise a symbol:', error);
         return null;
       });
-      this.pending.set(key, pending);
+      this.pending.set(icon, pending);
     }
     return pending;
   }
 
   destroy(): void {
     this.destroyed = true;
-    for (const texture of this.textures.values()) texture.destroy(true);
+    for (const texture of this.textures.values()) texture?.destroy(true);
     this.textures.clear();
   }
 }
 
-/** What a stamp's sprite shows: another symbol or colour is another texture, and a texture that comes in late takes the width asked for last. */
-const shown = new WeakMap<Sprite, { icon: string; color: string; width: number }>();
+/** The symbol a stamp's sprite shows: a texture that comes in late is for the symbol asked for last, at the width asked for last. */
+const shown = new WeakMap<Sprite, { icon: string; width: number }>();
 
 /** A sprite for stamps: empty until `placeStamp` draws one into it. */
 export function createStampSprite(): Sprite {
@@ -128,7 +143,7 @@ function sized(sprite: Sprite, width: number): void {
 }
 
 /**
- * Shows `stamp` in `sprite`: its symbol in its colour, as wide as its footprint, about its
+ * Shows `stamp` in `sprite`: its symbol tinted in its colour, as wide as its footprint, about its
  * centre, turned and as see-through as it is. `changed` is called once a symbol that was still
  * being rasterised is in, since nothing else tells that the picture is another.
  */
@@ -138,15 +153,16 @@ export function placeStamp(sprite: Sprite, stamp: DrawingAnnotation, textures: S
   sprite.position.set(centre.x, centre.y);
   sprite.rotation = (stamp.rotation * Math.PI) / 180;
   sprite.alpha = stamp.opacity;
+  sprite.tint = stamp.color;
   sized(sprite, stamp.width);
   const before = shown.get(sprite);
-  if (before?.icon === icon && before.color === stamp.color) {
+  if (before?.icon === icon) {
     before.width = stamp.width;
     return;
   }
-  const wanted = { icon, color: stamp.color, width: stamp.width };
+  const wanted = { icon, width: stamp.width };
   shown.set(sprite, wanted);
-  const texture = textures.of(icon, stamp.color);
+  const texture = textures.of(icon);
   if (texture instanceof Texture || texture === null) {
     sprite.texture = texture ?? Texture.EMPTY;
     sized(sprite, stamp.width);

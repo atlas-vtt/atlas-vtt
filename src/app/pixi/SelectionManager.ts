@@ -13,7 +13,7 @@ import type { Annotation } from '../annotations/annotationTypes';
 import type { SelectArea } from '../annotations/selectArea';
 import type { AnnotationEdit } from './annotations/AnnotationEdit';
 import { SelectionHighlights } from './selection/SelectionHighlights';
-import { measureTextView } from './textElementView';
+import { measureTextView } from './textLayout';
 import { NO_BARS, selectionTargets } from './selection/selectionTargets';
 import type { BarsSpan } from './token-renderer/types';
 import { prefersReducedMotion } from '../utils/motion';

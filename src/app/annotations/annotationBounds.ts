@@ -29,7 +29,8 @@ export interface TurnedBox {
 const GUESSED_LETTER = 0.6;
 const GUESSED_LINE = 1.2;
 
-function guessedSize(text: TextAnnotation): { width: number; height: number } {
+/** The size of a text guessed from its letters: for a text nobody can measure, or not yet (its face is still loading). */
+export function guessedTextSize(text: TextAnnotation): { width: number; height: number } {
   const lines = text.text.split('\n');
   const letter = text.fontSize * GUESSED_LETTER;
   const widest = lines.reduce((most, line) => Math.max(most, line.length), 1) * letter;
@@ -47,7 +48,7 @@ function turned(x: number, y: number, halfWidth: number, halfHeight: number, deg
 
 /** The box a text fills on the map. */
 export function textBox(text: TextAnnotation, measure?: TextMeasure): TurnedBox {
-  const size = measure ? measure(text) : guessedSize(text);
+  const size = measure ? measure(text) : guessedTextSize(text);
   return turned(text.x, text.y, (size.width * text.scale) / 2, (size.height * text.scale) / 2, text.rotation);
 }
 

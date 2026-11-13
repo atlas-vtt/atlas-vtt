@@ -38,6 +38,8 @@ export interface AtlasPlayerSettings {
   readonly turnBanner?: boolean;
   /** Whether players move tokens that fight only on their turn (`initiativeTurnOptions`); off when it cannot be read. */
   readonly movesOnTurn?: boolean;
+  /** Whether players may draw on the map (the player view's setting); off when it cannot be read. */
+  readonly playersDraw?: boolean;
 }
 
 /** A field of an object by name, unchecked; undefined for anything that has none. */
@@ -79,6 +81,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
     initiativeDock: field(layout, 'dock') === 'left' ? 'left' : 'right',
     turnBanner: field(turn, 'banner') !== false,
     movesOnTurn: field(turn, 'movesOnTurn') === true,
+    playersDraw: field(view, 'playersDraw') === true,
   };
 }
 

@@ -41,7 +41,8 @@ export function pickDrawStyle<Field extends StyleField>(store: ViewAtlasStore, f
   runHistoryTransaction(store, () => {
     for (const write of writes) {
       if (write.kind === 'update') state.updateAnnotations(write.ids, write.changes)
-      else state.placeAnnotations(write.places)
+      else if (write.kind === 'place') state.placeAnnotations(write.places)
+      else for (const id of write.ids) state.updateText(id, write.changes)
     }
   })
 }

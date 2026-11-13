@@ -13,6 +13,10 @@ export interface ListActions {
   unmark(tokenIds: readonly string[]): void;
   /** Takes the player off this table; their code still lets them back. */
   kick(playerId: string): void;
+  /** How many drawings and texts the player has on the level the shared scene shows. */
+  drawingsOf(playerId: string): number;
+  /** Removes them, in one undo step. */
+  clearDrawings(playerId: string): void;
   /** Copies the player's code as people read it; false while there is none or the clipboard refused. */
   copyPlayerCode(playerId: string): Promise<boolean>;
   newPlayerCode(playerId: string): void;
@@ -80,6 +84,8 @@ function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null
     openMenuBelow([
       { title: t('online.assignHere'), icon: 'user-plus', disabled: selected.length === 0, run: () => actions.assign(selected, player.id) },
       ...releaseEntries(face, tokens, actions),
+      // Stays in its place with nothing drawn, disabled: the menu keeps its shape.
+      { title: t('online.clearDrawings'), icon: 'eraser', apart: true, disabled: actions.drawingsOf(player.id) === 0, run: () => actions.clearDrawings(player.id) },
       { title: t('online.copyCode'), icon: 'copy', apart: true, run: () => void actions.copyPlayerCode(player.id) },
       { title: t('online.newCode'), icon: 'refresh-cw', run: () => actions.newPlayerCode(player.id) },
       { title: t('online.renameMenu'), icon: 'pencil', run: () => actions.askRename(player) },

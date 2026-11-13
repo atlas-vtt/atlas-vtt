@@ -31,10 +31,14 @@ export interface DrawScene {
   store: ReturnType<typeof createViewAtlasStore>;
   /** Told when the level could take no more. */
   full: Mock<(of: FullOf) => void>;
-  /** What the text dialog answers. */
-  askText: Mock<() => Promise<string | null>>;
-  /** What the dialog answers that edits a text's words. */
-  askTextEdit: Mock<(words: string) => Promise<string | null>>;
+  /** What holds the canvas: the field a text is typed in is its child. */
+  host: HTMLElement;
+  /** The field a text is being typed in; null while none is. */
+  field(): HTMLTextAreaElement | null;
+  /** Types `words` into the field, as the keyboard would: its value, then the event that tells of it. */
+  type(words: string): void;
+  /** A key pressed in the field. */
+  fieldKey(key: string, init?: KeyboardEventInit): KeyboardEvent;
   /** Told when a press on an annotation starts the drag of the tokens selected with it. */
   dragTokens: Mock<() => void>;
   /** Whether the canvas shows the players' picture, as a peek would make it: null leaves it to the store. */
@@ -65,20 +69,19 @@ export interface DrawScene {
 
 export function drawScene(options: { grid?: GridGeometry | null; playerView?: boolean; keysBelongToMap?: (event: KeyboardEvent) => boolean } = {}): DrawScene {
   const restoreGraphics = stubJsdomGraphics();
-  const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events: { domElement: createEl('canvas') } as unknown as EventSystem });
+  const host = document.body.createDiv();
+  const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events: { domElement: host.createEl('canvas') } as unknown as EventSystem });
   const { app } = createInMemoryApp({ files: {} });
   const store = createViewAtlasStore(app, 'draw-view');
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/draw.atlasmap');
   if (options.playerView) store.setState({ isPlayerView: true });
   const full = vi.fn<(of: FullOf) => void>();
-  const askText = vi.fn<() => Promise<string | null>>(() => Promise.resolve('Gate'));
-  const askTextEdit = vi.fn<(words: string) => Promise<string | null>>((words) => Promise.resolve(`${words}!`));
   const dragTokens = vi.fn<() => void>();
   const players: DrawScene['players'] = { shown: null };
   const grid = options.grid === undefined ? SQUARE_GRID : options.grid;
   const renderer = new AnnotationsRenderer({
-    viewport, store, grid: () => grid, full, askText, askTextEdit, showsPlayers: () => players.shown, accent: () => 0x8a5cf5, now: () => clock, dragTokens,
+    viewport, store, grid: () => grid, full, showsPlayers: () => players.shown, accent: () => 0x8a5cf5, now: () => clock, dragTokens,
     ...(options.keysBelongToMap && { keysBelongToMap: options.keysBelongToMap }),
   });
   let clock = 0;
@@ -93,7 +96,21 @@ export function drawScene(options: { grid?: GridGeometry | null; playerView?: bo
     return event;
   };
   const scene: DrawScene = {
-    renderer, viewport, store, full, askText, askTextEdit, dragTokens, players,
+    renderer, viewport, store, full, dragTokens, players, host,
+    field: () => host.querySelector('textarea'),
+    type(words): void {
+      const field = host.querySelector('textarea');
+      if (!field) throw new Error('no text is being typed');
+      field.value = words;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+    fieldKey(key, init = {}): KeyboardEvent {
+      const field = host.querySelector('textarea');
+      if (!field) throw new Error('no text is being typed');
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+      field.dispatchEvent(event);
+      return event;
+    },
     tool(choices): void {
       store.getState().setDrawTool(choices);
       store.getState().setActiveTool('draw');
@@ -146,6 +163,7 @@ export function drawScene(options: { grid?: GridGeometry | null; playerView?: bo
     destroy(): void {
       renderer.destroy();
       viewport.destroy();
+      host.remove();
       restoreGraphics();
     },
   };

@@ -102,6 +102,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     marks.showPlayers({ lasers: [], measures: [] });
     marks.showPlayerDrags([]);
     marks.showPlayerCursors([]);
+    marks.showPlayerStrokes([]);
   });
   const share: SceneShare = new SceneShare(store, {
     tokenSource: () => asTokenSource(shownRenderer()),
@@ -112,6 +113,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     showPlayerDrags: (drags) => shown() && marks.showPlayerDrags(drags),
     gmDragRuler: () => dragRulerOf(shownRenderer()),
     showPlayerCursors: (cursors) => shown() && marks.showPlayerCursors(cursors),
+    showPlayerStrokes: (strokes) => shown() && marks.showPlayerStrokes(strokes),
     nameOf: (player) => ports.nameOf(player),
     accent: lastWhileShown(shown, () => accentColour(leaf.view.containerEl.ownerDocument)),
     atlasSettings: () => atlasPlayerSettings(ports.app),

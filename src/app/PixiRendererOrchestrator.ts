@@ -523,6 +523,7 @@ export class PixiRendererOrchestrator { // Renamed class
       viewport,
       store: this.store,
       grid: () => this.gridSystem?.getOptions() ?? null,
+      mapRect: () => this.getMapRect(),
       sharpness: this.textSharpnessHost(),
       keysBelongToMap: (event) => canRunMapHotkeys(event, this.viewId),
       // Before the tokens are drawn nobody knows of a peek: the store's own view switches say it then
