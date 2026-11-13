@@ -90,8 +90,13 @@ describe('Ctrl+click with the fog tool', () => {
     const state = { activeTool: 'fog', isMapLoading: false, isPlayerView: false, grid: { size: 70 }, objects: { fog: {} }, setSelection };
     const tool = Object.assign(Object.create(FogOfWarRenderer.prototype) as FogOfWarRenderer, {
       store: { getState: () => state },
-      viewport: { pause: false, toWorld: (point: { x: number; y: number }) => point },
+      viewport: { pause: false, toWorld: (point: { x: number; y: number }) => point, scale: { x: 1 } },
       stroke: Object.assign(new ShapeStroke(), { mode: 'rectangle' }),
+      flipped: false,
+      strokeKeys: { hold: vi.fn(), release: vi.fn() },
+      cursorPreview: { shown: false },
+      compositor: { composite: vi.fn() },
+      updatePreviewTexture: vi.fn(),
       container: {},
       fogSprites: new Map(),
       previewSprite: {},

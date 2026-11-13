@@ -15,13 +15,18 @@ const pointer = (button: number, at = 140): FederatedPointerEvent =>
   ({ button, global: { x: at, y: at } }) as unknown as FederatedPointerEvent;
 
 function fogTool(): { tool: FogToolHarness; viewport: { pause: boolean }; addFogOperation: ReturnType<typeof vi.fn> } {
-  const viewport = { pause: false, toWorld: (point: { x: number; y: number }) => point };
+  const viewport = { pause: false, toWorld: (point: { x: number; y: number }) => point, scale: { x: 1 } };
   const addFogOperation = vi.fn();
   const state = { activeTool: 'fog', isMapLoading: false, grid: { size: 70 }, objects: { fog: {} }, addFogOperation };
   const tool = Object.assign(Object.create(FogOfWarRenderer.prototype) as FogOfWarRenderer, {
     store: { getState: () => state },
     viewport,
     stroke: Object.assign(new ShapeStroke(), { mode: 'rectangle' }),
+    flipped: false,
+    strokeKeys: { hold: vi.fn(), release: vi.fn() },
+    cursorPreview: { shown: false },
+    compositor: { composite: vi.fn() },
+    updatePreviewTexture: vi.fn(),
     container: {},
     fogSprites: new Map(),
     previewSprite: {},

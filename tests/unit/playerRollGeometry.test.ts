@@ -4,6 +4,7 @@ import { Container } from 'pixi.js';
 import { EventEmitter } from 'eventemitter3';
 import { createStore } from 'zustand/vanilla';
 import * as coverage from '../../src/app/fog/fogCoverage';
+import { DEFAULT_FOG_TOOL } from '../../src/app/fog/fogToolChoices';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { shownRollTokens, type RollSceneState } from '../../src/app/pixi/playerRollTokens';
 import { PlayerSightTokens } from '../../src/app/pixi/token-renderer/PlayerSightTokens';
@@ -27,7 +28,7 @@ it('names rolls from the fog the renderer already holds, working out nothing aga
   };
   const fog: Record<string, FogRectangleFill> = { paint: fogRectangle() };
   const store = createStore(() => ({
-    isPlayerView: false, isGMView: true, isMapLoading: false, mapLoaded: true, mapPath: MAP, activeTool: 'select',
+    isPlayerView: false, isGMView: true, isMapLoading: false, mapLoaded: true, mapPath: MAP, activeTool: 'select', fogTool: DEFAULT_FOG_TOOL,
     objects: { fog, tokens },
   }));
   const builds = vi.spyOn(coverage, 'fogCoverage');

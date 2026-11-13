@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Container, Sprite } from 'pixi.js';
 import { EventEmitter } from 'eventemitter3';
 import { createStore, type StoreApi } from 'zustand/vanilla';
+import { DEFAULT_FOG_TOOL, type FogToolChoices } from '../../src/app/fog/fogToolChoices';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
@@ -13,6 +14,7 @@ interface SceneState {
   isPlayerView: boolean;
   isGMView: boolean;
   activeTool: string;
+  fogTool: FogToolChoices;
   objects: { fog: Record<string, never> };
 }
 
@@ -26,7 +28,7 @@ function fogOverMap(isMapLoading: boolean): { store: StoreApi<SceneState>; show:
   // jsdom has no Canvas 2D implementation.
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
   const store = createStore<SceneState>(() => ({
-    mapPath: 'scenes/Old.atlasmap', isMapLoading, isPlayerView: false, isGMView: true, activeTool: 'select', objects: { fog: {} },
+    mapPath: 'scenes/Old.atlasmap', isMapLoading, isPlayerView: false, isGMView: true, activeTool: 'select', fogTool: DEFAULT_FOG_TOOL, objects: { fog: {} },
   }));
   const events = new EventEmitter();
   let shown: MapRect | null = null;

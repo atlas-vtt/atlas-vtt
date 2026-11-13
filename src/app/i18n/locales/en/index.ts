@@ -110,6 +110,7 @@ import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
 import { uvtt } from './uvtt';
+import { fog } from './fog';
 
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
@@ -228,4 +229,5 @@ export const en = {
   ...videoMap,
   ...uvttFloors,
   ...uvtt,
+  ...fog,
 } as const;

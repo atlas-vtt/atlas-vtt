@@ -24,3 +24,16 @@
 - What you draw with Players see it switched off is yours alone: it is not in the player window, in Session View, in scene thumbnails or online
 - A drawing on the map is lit like the floor: players see it only where they see or remember the map
 - Texts and drawings lie in one order, so a text can stand above a drawing
+
+**Fog tools**
+- The fog tool has its own bars above the toolbar: Hide and Reveal, and beside them the shape, the brush's size, Cover all and Reveal all
+- Cover all hides the whole map in one step, and Reveal all clears it. Undo takes either back
+- [ and ] make the brush smaller and larger
+- Hold Alt while you draw to do the other thing: reveal with Hide, hide with Reveal
+- Escape drops the stroke you are drawing
+- More sets how dark fog looks to you in GM View. Players always see solid fog
+
+## Improved
+
+- A lasso and a rectangle show the fog they will leave while you draw them
+- The fog brush's ring shows on light maps and on dark ones

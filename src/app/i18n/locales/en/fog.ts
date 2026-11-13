@@ -1,0 +1,27 @@
+import type { Message } from '../../types';
+
+export const fog = {
+  'fog.modes': 'Fog',
+  'fog.tools': 'Fog shapes and actions',
+  'fog.hide': 'Hide',
+  'fog.hideTip': 'Hold Alt to reveal instead',
+  'fog.reveal': 'Reveal',
+  'fog.revealTip': 'Hold Alt to hide instead',
+  'fog.areas': 'Areas',
+  'fog.areasSoon': 'Areas you can reveal with one click',
+  'fog.brushSize': 'Brush size',
+  'fog.brushSizeNeedsBrush': 'Only the brush has a size',
+  'fog.coverAll': 'Cover all',
+  'fog.coverAllTip': 'Hides the whole map',
+  'fog.coverLevelTip': 'Hides this whole level',
+  'fog.noMap': 'This scene has no map to cover.',
+  'fog.revealAll': 'Reveal all',
+  'fog.revealAllTip': 'Removes all fog from this map',
+  'fog.revealLevelTip': 'Removes all fog from this level',
+  'fog.noFog': 'No fog on this map',
+  'fog.noFogOnLevel': 'No fog on this level',
+  'fog.more': 'More',
+  'fog.gmOpacity': 'Fog opacity in GM View',
+  'fog.key.smaller': 'Smaller fog brush',
+  'fog.key.larger': 'Larger fog brush',
+} as const satisfies Record<string, Message>;

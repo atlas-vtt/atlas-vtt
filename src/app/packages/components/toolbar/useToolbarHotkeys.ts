@@ -12,6 +12,8 @@ import type { Tool } from "./toolFaces"
 import { levelObjects } from '../../../levels/levelObjects';
 import { mapOffersRanges } from "../../../services/mapRanges"
 import { mapTokens } from "../../../tokens/offMap"
+import { isFogTool, steppedBrushSize } from "../../../fog/fogToolChoices"
+import type { ViewAtlasState } from "../../../storeFactory"
 
 const MOVE_TOOLS: readonly Tool[] = ["move", "laser-pointer"]
 const FOG_TOOLS: readonly Tool[] = ["fog", "eraser"]
@@ -20,6 +22,11 @@ const FOG_TOOLS: readonly Tool[] = ["fog", "eraser"]
 function cycleTool<T extends Tool>(family: readonly T[], activeTool: Tool): T {
   const index = family.indexOf(activeTool as T)
   return family[(index + 1) % family.length]!
+}
+
+/** Steps the fog brush's size, only while the fog tool is in use. */
+function stepFogBrush(state: ViewAtlasState, direction: 1 | -1): void {
+  if (isFogTool(state.activeTool)) state.setFogTool({ brushSize: steppedBrushSize(state.fogTool.brushSize, direction) })
 }
 
 interface ToolbarHotkeyActions {
@@ -109,6 +116,8 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     assets: dmOnly(toggleAssetManager),
     pin: dmOnly(() => selectTool("note-pin")),
     wall: dmOnly(() => selectTool("wall")),
+    fogSmaller: dmOnly(() => stepFogBrush(store.getState(), -1)),
+    fogLarger: dmOnly(() => stepFogBrush(store.getState(), 1)),
     audio: dmOnly(() => { if (AMBIENT_AUDIO_ENABLED) selectTool("audio") }),
     diceTray: () => store.getState().setDiceTrayOpen(!store.getState().isDiceTrayOpen),
     initiative: dmOnly(() => {

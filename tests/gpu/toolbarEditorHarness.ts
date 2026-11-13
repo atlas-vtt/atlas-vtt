@@ -152,8 +152,6 @@ export async function mountToolbar(stored: StoredToolbarLayout = {}): Promise<To
       getNotePreviewUIManager: () => null,
       getRendererService: () => null,
     },
-    setFogBrushSize: vi.fn(),
-    clearAllFog: vi.fn(),
     openSceneBrowser: vi.fn(),
   };
   const ui = { app, view, pixiApp: null, renderer: { getTokenRenderer: () => ({ visibleTokenIds: () => [] }) } } as unknown as AtlasUIContextValue;

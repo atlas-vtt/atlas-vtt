@@ -12,9 +12,12 @@ import type { FogEdge } from '../../fog/fogEdge';
 import { validateFogOperation } from '../../fog/fogOperationShape';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { FogCoverage } from '../../fog/fogCoverage';
+import { fogStrokeReveals, isFogTool, type FogShape, type FogToolChoices } from '../../fog/fogToolChoices';
+import { DEFAULT_GM_FOG_OPACITY } from '../../fog/gmFogOpacity';
 import { FogCanvasCompositor } from './FogCanvasCompositor';
 import { FogEdgeMesh } from './fogEdgeMesh';
 import { FogCursorPreview } from './FogCursorPreview';
+import { FogStrokeKeys } from './FogStrokeKeys';
 import { FogOperationCanvas } from './FogOperationCanvas';
 import { calculateOperationBounds } from './fogRenderUtils';
 import { hitTestFogOp, findConnectedFogOps } from './fogHitTest';
@@ -39,6 +42,13 @@ const COMPONENT_DELETE_CELL_SIZE = 2;
 const COMPONENT_DELETE_ALPHA_THRESHOLD = 12;
 const COMPONENT_DELETE_MAX_RECTS = 320;
 const EMPTY_FOG: Readonly<Record<string, FogOperation>> = Object.freeze({});
+/** How wide a lasso's or rectangle's outline is while it is drawn, in screen pixels. */
+const OUTLINE_PX = 2;
+
+/** The stroke a shape is drawn with; the shapes that are no drag of the pointer have gestures of their own. */
+function strokeModeOf(shape: FogShape): StrokeMode {
+  return shape === 'rectangle' || shape === 'lasso' ? shape : 'brush';
+}
 
 interface FogSpriteEntry {
   sprite: PIXI.Sprite;
@@ -67,7 +77,14 @@ export class FogOfWarRenderer {
 
   // Drawing state: the stroke under way, with the brush, lasso or rectangle
   private readonly stroke = new ShapeStroke();
-  private isErasing = false;
+  /** Alt is held: a stroke does the other of hiding and revealing. */
+  private flipped = false;
+  private readonly strokeKeys = new FogStrokeKeys(() => this._pixiApp.canvas, {
+    flipped: (held) => this.setFlipped(held),
+    dropped: () => this.dropStroke(),
+  });
+  /** How opaque the fog is in the GM's view (`setGmOpacity`). */
+  private gmOpacity = DEFAULT_GM_FOG_OPACITY;
 
   // Store subscriptions
   private unsubscribe?: () => void;
@@ -77,9 +94,6 @@ export class FogOfWarRenderer {
   private pointerMoveHandler: (e: PIXI.FederatedPointerEvent) => void;
   private pointerUpHandler: () => void;
   private readonly pointerLeaveHandler = (): void => this.onPointerLeave();
-  private fogBrushSizeChangedHandler: (size: number) => void;
-  private fogClearAllHandler: () => void;
-  private fogModeChangedHandler: (mode: StrokeMode) => void;
   private readonly mapImageUpdatedHandler = (): void => {
     if (!this.store.getState().isMapLoading) {
       this.refreshBounds();
@@ -116,10 +130,7 @@ export class FogOfWarRenderer {
     this.previewSprite.position.set(bounds.x, bounds.y);
     this.previewSprite.width = bounds.width;
     this.previewSprite.height = bounds.height;
-    this.previewSprite.alpha = resolveFogPreviewAlpha({
-      isPlayerView: this.store.getState().isPlayerView,
-      isGMView: this.store.getState().isGMView,
-    });
+    this.previewSprite.alpha = this.fogAlpha();
     this.previewSprite.visible = false;
     this.previewSprite.eventMode = 'none';
     this.previewSprite.zIndex = 999; // Below per-op sprites during normal mode
@@ -142,13 +153,15 @@ export class FogOfWarRenderer {
     cursorObj.zIndex = 1002;
     this.container.addChild(cursorObj);
 
+    // ── The tool's choices as the store holds them ───────────────────
+    const { fogTool } = this.store.getState();
+    this.stroke.mode = strokeModeOf(fogTool.shape);
+    this.setBrushSize(fogTool.brushSize);
+
     // ── Bound handlers ──────────────────────────────────────────────
     this.pointerDownHandler = this.onPointerDown.bind(this);
     this.pointerMoveHandler = this.onPointerMove.bind(this);
     this.pointerUpHandler = this.onPointerUp.bind(this);
-    this.fogBrushSizeChangedHandler = (size: number) => this.setBrushSize(size);
-    this.fogClearAllHandler = () => this.clearAllFog();
-    this.fogModeChangedHandler = (mode: StrokeMode) => this.setFogMode(mode);
 
     // ── Event listeners ─────────────────────────────────────────────
     this.setupEventListeners();
@@ -199,7 +212,22 @@ export class FogOfWarRenderer {
 
   /** The fog as translucent as the GM view shows it, also while the canvas is in session view: for a picture of the scene. */
   getGmViewLayers(): LayerVisibility[] {
-    return [{ layer: this.previewSprite, visible: this.previewSprite.visible, alpha: resolveFogPreviewAlpha({ isPlayerView: false, isGMView: true }) }];
+    return [{ layer: this.previewSprite, visible: this.previewSprite.visible, alpha: resolveFogPreviewAlpha({ isPlayerView: false, isGMView: true, gmOpacity: this.gmOpacity }) }];
+  }
+
+  /** How opaque the fog is in the GM's view, as the GM set it for this device. */
+  setGmOpacity(opacity: number): void {
+    if (opacity === this.gmOpacity) return;
+    this.gmOpacity = opacity;
+    this.previewSprite.alpha = this.fogAlpha();
+    // The edge's shader applies the sprite's opacity itself, which the scene graph does not see
+    requestRender(this._pixiApp);
+  }
+
+  /** How opaque the fog is drawn on this canvas now. */
+  private fogAlpha(): number {
+    const { isPlayerView, isGMView } = this.store.getState();
+    return resolveFogPreviewAlpha({ isPlayerView, isGMView, gmOpacity: this.gmOpacity });
   }
 
   /** Returns a map of fog sprite IDs → Containers for SelectionManager. */
@@ -271,7 +299,7 @@ export class FogOfWarRenderer {
     this.previewSprite.visible = true;
 
     if (this.stroke.mode === 'brush') {
-      this.cursorPreview.show(this.isErasing);
+      this.cursorPreview.show(this.reveals());
     }
   }
 
@@ -309,10 +337,8 @@ export class FogOfWarRenderer {
     this.viewport.off('pointerup', this.pointerUpHandler);
     this.viewport.off('pointerupoutside', this.pointerUpHandler);
     this._pixiApp.canvas.removeEventListener('pointerleave', this.pointerLeaveHandler);
+    this.strokeKeys.release();
 
-    this.eventBus.off('fog-brush-size-changed', this.fogBrushSizeChangedHandler);
-    this.eventBus.off('fog-clear-all', this.fogClearAllHandler);
-    this.eventBus.off('fog-mode-changed', this.fogModeChangedHandler);
     this.eventBus.off('map-image-updated', this.mapImageUpdatedHandler);
 
     this.cursorPreview.destroy();
@@ -340,8 +366,11 @@ export class FogOfWarRenderer {
     }
   }
 
-  private clearAllFog(): void {
-    this.store.getState().clearFog();
+  /** The tool's choices changed in its bar or by a key: the brush takes its size, and another shape drops the stroke under way. */
+  private followFogTool(choices: FogToolChoices): void {
+    this.setBrushSize(choices.brushSize);
+    const mode = strokeModeOf(choices.shape);
+    if (mode !== this.stroke.mode) this.setFogMode(mode);
   }
 
   private setBrushSize(size: number): void {
@@ -350,20 +379,36 @@ export class FogOfWarRenderer {
   }
 
   setFogMode(mode: StrokeMode): void {
+    this.dropStroke();
+    this.stroke.mode = mode;
+
+    if (isFogTool(this.store.getState().activeTool) && mode === 'brush') {
+      this.cursorPreview.show(this.reveals());
+    } else {
+      this.cursorPreview.hide();
+    }
+  }
+
+  /** Whether a stroke made now reveals: the revealing tool's does, and Alt turns either tool's around. */
+  private reveals(): boolean {
+    return fogStrokeReveals(this.store.getState().activeTool, this.flipped);
+  }
+
+  /** Alt went down or up: the ring and the stroke under way show what the stroke now does. */
+  private setFlipped(held: boolean): void {
+    if (held === this.flipped) return;
+    this.flipped = held;
+    if (this.cursorPreview.shown) this.cursorPreview.show(this.reveals());
+    if (this.stroke.active) this.previewStroke();
+  }
+
+  /** Drops the stroke under way, leaving the fog as the store holds it. */
+  private dropStroke(): void {
     const wasActive = this.stroke.active;
     this.resetDrawingState();
     if (wasActive && !this.store.getState().isMapLoading) {
       this.refreshBounds();
       this.rebuildFogSprites();
-    }
-    this.stroke.mode = mode;
-
-    const tool = this.store.getState().activeTool;
-    const isFogActive = tool === 'fog' || tool === 'eraser';
-    if (isFogActive && mode === 'brush') {
-      this.cursorPreview.show(this.isErasing);
-    } else {
-      this.cursorPreview.hide();
     }
   }
 
@@ -378,14 +423,12 @@ export class FogOfWarRenderer {
     this.viewport.on('pointerupoutside', this.pointerUpHandler);
     this._pixiApp.canvas.addEventListener('pointerleave', this.pointerLeaveHandler);
 
-    this.eventBus.on('fog-brush-size-changed', this.fogBrushSizeChangedHandler);
-    this.eventBus.on('fog-clear-all', this.fogClearAllHandler);
-    this.eventBus.on('fog-mode-changed', this.fogModeChangedHandler);
     this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
   }
 
   private setupStoreSubscriptions(): void {
     let prevTool = this.store.getState().activeTool;
+    let prevFogTool = this.store.getState().fogTool;
     let prevFog = levelObjects(this.store.getState())?.fog;
     let prevLoading = this.store.getState().isMapLoading;
     let prevMapPath = this.store.getState().mapPath;
@@ -405,12 +448,17 @@ export class FogOfWarRenderer {
       // Tool changes → enable/disable fog mode or toggle interaction
       if (state.activeTool !== prevTool) {
         prevTool = state.activeTool;
-        if (state.activeTool === 'fog' || state.activeTool === 'eraser') {
-          this.isErasing = state.activeTool === 'eraser';
+        if (isFogTool(state.activeTool)) {
           this.enableFogMode();
         } else {
           this.disableFogMode();
         }
+      }
+
+      // The tool's choices (its bar, the brush's keys)
+      if (state.fogTool !== prevFogTool) {
+        prevFogTool = state.fogTool;
+        this.followFogTool(state.fogTool);
       }
 
       // Fog data changes (undo/redo, map load, drag commit) → rebuild sprites
@@ -438,20 +486,14 @@ export class FogOfWarRenderer {
       // GM view toggle → adjust fog opacity
       if (state.isGMView !== prevGMView) {
         prevGMView = state.isGMView;
-        this.previewSprite.alpha = resolveFogPreviewAlpha({
-          isPlayerView: state.isPlayerView,
-          isGMView: state.isGMView,
-        });
+        this.previewSprite.alpha = this.fogAlpha();
       }
     });
   }
 
   private applyInitialStoreState(): void {
     const state = this.store.getState();
-    this.previewSprite.alpha = resolveFogPreviewAlpha({
-      isPlayerView: state.isPlayerView,
-      isGMView: state.isGMView,
-    });
+    this.previewSprite.alpha = this.fogAlpha();
 
     if (state.isMapLoading) {
       this.container.visible = false;
@@ -720,15 +762,16 @@ export class FogOfWarRenderer {
   }
 
   private onPointerDown(event: PIXI.FederatedPointerEvent): void {
-    const tool = this.store.getState().activeTool;
-    if (tool !== 'fog' && tool !== 'eraser') return;
+    if (!isFogTool(this.store.getState().activeTool)) return;
     // Only the primary button paints; the right button pans the map.
     if (!isPrimaryPress(event)) return;
     // A press a pin, door badge or light marker took paints no fog.
     if (isHandled(event)) return;
 
     this.previewSprite.visible = true;
+    this.setFlipped(event.altKey === true);
     this.stroke.begin(this.strokePoint(event));
+    this.strokeKeys.hold();
     this.previewStroke();
   }
 
@@ -749,13 +792,15 @@ export class FogOfWarRenderer {
   }
 
   private onPointerMove(event: PIXI.FederatedPointerEvent): void {
-    const tool = this.store.getState().activeTool;
+    const fogTool = isFogTool(this.store.getState().activeTool);
+    // Alt pressed or let go while the map had no key focus is told by the pointer.
+    if (fogTool) this.setFlipped(event.altKey === true);
 
-    if (this.stroke.mode === 'brush' && (tool === 'fog' || tool === 'eraser')) {
+    if (this.stroke.mode === 'brush' && fogTool) {
       const worldPos = this.viewport.toWorld(event.global);
       this.cursorPreview.updatePosition(worldPos.x, worldPos.y);
       // Back on the map after the pointer had left it.
-      if (!this.cursorPreview.shown) this.cursorPreview.show(tool === 'eraser');
+      if (!this.cursorPreview.shown) this.cursorPreview.show(this.reveals());
     }
 
     if (!this.stroke.active) return;
@@ -771,8 +816,9 @@ export class FogOfWarRenderer {
   private onPointerUp(): void {
     if (!this.stroke.active) return;
     const shape = this.stroke.finish();
+    this.strokeKeys.release();
     this.clearPreviewGraphics();
-    if (shape) this.store.getState().addFogOperation({ ...shape, isErasing: this.store.getState().activeTool === 'eraser' });
+    if (shape) this.store.getState().addFogOperation({ ...shape, isErasing: this.reveals() });
     else if (!this.store.getState().isMapLoading) {
       this.refreshBounds();
       this.rebuildFogSprites();
@@ -783,18 +829,22 @@ export class FogOfWarRenderer {
   // Preview helpers (live visual feedback during drawing)
   // ═══════════════════════════════════════════════════════════════════
 
-  /** Shows the stroke under way: the brush on the fog itself, a lasso or rectangle as its outline. */
+  /**
+   * Shows the stroke under way as the fog it will leave: hidden or revealed on the fog itself,
+   * whatever the shape. A lasso and a rectangle also show their outline, which tells the shape
+   * where it hides what is hidden already.
+   */
   private previewStroke(): void {
-    const erasing = this.store.getState().activeTool === 'eraser';
+    const reveals = this.reveals();
     const shape = this.stroke.shape();
-    if (shape?.type === 'brush') {
-      const tempOp: FogOperation = { id: '__preview__', kind: 'fog', timestamp: Date.now(), isErasing: erasing, ...shape };
-      const committed = levelObjects(this.store.getState())?.fog ?? EMPTY_FOG;
-      this.compositor.composite(committed, tempOp);
-      this.updatePreviewTexture();
-      return;
-    }
-    drawStrokeArea(this.stroke.mode === 'lasso' ? this.lassoGraphics : this.rectPreviewGraphics, this.stroke, erasing ? STROKE_COLORS.erase : STROKE_COLORS.paint);
+    const committed = levelObjects(this.store.getState())?.fog ?? EMPTY_FOG;
+    // No shape yet (a lasso of two points, a rectangle without a size) shows the fog as it is
+    const preview: FogOperation | undefined = shape ? { id: '__preview__', kind: 'fog', timestamp: Date.now(), isErasing: reveals, ...shape } : undefined;
+    this.compositor.composite(committed, preview);
+    this.updatePreviewTexture();
+    if (this.stroke.mode === 'brush') return;
+    const outline = this.stroke.mode === 'lasso' ? this.lassoGraphics : this.rectPreviewGraphics;
+    drawStrokeArea(outline, this.stroke, reveals ? STROKE_COLORS.erase : STROKE_COLORS.paint, OUTLINE_PX / this.viewport.scale.x, false);
   }
 
   private renderPreviewFromStore(fadeEdge = true): boolean {
@@ -923,6 +973,7 @@ export class FogOfWarRenderer {
 
   private resetDrawingState(): void {
     this.stroke.cancel();
+    this.strokeKeys.release();
     this.clearPreviewGraphics();
   }
 

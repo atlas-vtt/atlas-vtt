@@ -9,7 +9,6 @@ import { immer } from "zustand/middleware/immer";
 import type { App, Plugin } from 'obsidian';
 import type AtlasVTTPlugin from '../../main';
 import type { TokenEntity, Character, NotePin } from './types';
-import type { FogOperation, FogOperationInput } from './types/fogTypes';
 import type { WallSegment, WallInput } from './types/wallTypes';
 import { DEFAULT_SCENE_LIGHTING, type LightChanges, type LightInput, type LightZoneChanges, type LightZoneInput, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
 import type { AudioSource, AudioInput } from './types/audioTypes';
@@ -48,7 +47,7 @@ import { movedFolderPathOf, movedPathOf, rewriteMapReferences } from './services
 import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
-import { elsewhereThanViewedLevel, firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId } from './levels/sceneLevels';
+import { firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId } from './levels/sceneLevels';
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
@@ -56,6 +55,7 @@ import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/r
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
 import { createAnnotationsActions, type AnnotationsSlice } from './stores/annotationsSlice';
+import { createFogActions, type FogSlice } from './stores/fogSlice';
 import { createTurnMovesActions, type TurnMovesSlice } from './stores/turnMovesSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
@@ -156,14 +156,15 @@ export interface ViewAtlasState extends ViewState {
   replaceDrawings: AnnotationsSlice['replaceDrawings'];
   clearAnnotations: AnnotationsSlice['clearAnnotations'];
 
-  // Fog actions
-  addFogOperation: (data: FogOperationInput) => string;
-  deleteFogOperation: (id: string) => void;
-  deleteFogOperations: (ids: string[]) => void;
-  duplicateFogOperations: (ids: string[]) => void;
-  setFogOperations: (fog: Record<string, FogOperation>) => void;
-  /** Removes the fog of the level the view shows; other floors keep theirs. */
-  clearFog: () => void;
+  // Fog actions (from fogSlice.ts)
+  addFogOperation: FogSlice['addFogOperation'];
+  addFogOperations: FogSlice['addFogOperations'];
+  deleteFogOperation: FogSlice['deleteFogOperation'];
+  deleteFogOperations: FogSlice['deleteFogOperations'];
+  duplicateFogOperations: FogSlice['duplicateFogOperations'];
+  setFogOperations: FogSlice['setFogOperations'];
+  clearFog: FogSlice['clearFog'];
+  coverAllFog: FogSlice['coverAllFog'];
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
   /** Sets the explored memory of `level` (unset: the level the view shows; null: the first); a level the scene no longer has keeps none. */
@@ -320,6 +321,7 @@ export interface ViewAtlasState extends ViewState {
   closeMeasurePopover: UISlice['closeMeasurePopover'];
   setMeasureTool: UISlice['setMeasureTool'];
   setDrawTool: UISlice['setDrawTool'];
+  setFogTool: UISlice['setFogTool'];
   setLightingTool: UISlice['setLightingTool'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
@@ -795,6 +797,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             draft.activeTool = tool;
+            // Revealing makes no areas: the fog tool comes back from it hiding.
+            if (tool === 'eraser' && draft.fogTool.areas) draft.fogTool = { ...draft.fogTool, areas: false };
           }),
 
           setSelectionMode: (mode) => set((draft) => {
@@ -1077,64 +1081,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // Drawings and texts (from annotationsSlice.ts)
           ...createAnnotationsActions(set, get),
 
-          // Fog actions
-          addFogOperation: (data) => {
-            const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-            set((draft) => {
-              const op: FogOperation = {
-                id,
-                kind: 'fog',
-                timestamp: Date.now(),
-                ...data,
-                ...placedOnViewedLevel(draft),
-              };
-              draft.objects.fog[id] = op;
-            });
-            return id;
-          },
-
-          deleteFogOperation: (id) => set((draft) => {
-            if (draft.objects.fog[id]) {
-              delete draft.objects.fog[id];
-              draft.selectedIds = draft.selectedIds.filter(sid => sid !== id);
-            }
-          }),
-
-          deleteFogOperations: (ids) => set((draft) => {
-            for (const id of ids) {
-              delete draft.objects.fog[id];
-            }
-            draft.selectedIds = draft.selectedIds.filter(sid => !ids.includes(sid));
-          }),
-
-          duplicateFogOperations: (ids) => set((draft) => {
-            if (!ids || !Array.isArray(ids)) return;
-            const newIds: string[] = [];
-            ids.forEach(id => {
-              const original = draft.objects.fog[id];
-              if (original && !original.isErasing) {
-                const newId = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-                const offset = 40;
-                draft.objects.fog[newId] = {
-                  ...original,
-                  id: newId,
-                  timestamp: Date.now(),
-                  offsetX: (original.offsetX ?? 0) + offset,
-                  offsetY: (original.offsetY ?? 0) + offset,
-                };
-                newIds.push(newId);
-              }
-            });
-            draft.selectedIds = newIds;
-          }),
-
-          setFogOperations: (fog) => set((draft) => {
-            draft.objects.fog = { ...fog };
-          }),
-
-          clearFog: () => set((draft) => {
-            draft.objects.fog = elsewhereThanViewedLevel(draft.objects.fog, draft);
-          }),
+          // Fog actions (from fogSlice.ts)
+          ...createFogActions(set),
 
           setSceneLighting: (changes) => set((draft) => {
             Object.assign(draft.lighting, changes);

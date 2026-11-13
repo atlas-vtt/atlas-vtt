@@ -8,6 +8,7 @@
 
 import { DEFAULT_DRAW_TOOL, type DrawToolChoices } from '../annotations/annotationTypes';
 import { sameRememberedDrawTool } from '../annotations/drawToolMemory';
+import { clampBrushSize, DEFAULT_FOG_TOOL, type FogToolChoices } from '../fog/fogToolChoices';
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
 import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lightingTool';
 import { DEFAULT_MEASURE_TOOL, type MeasureToolOptions } from '../measure/measureTypes';
@@ -40,6 +41,8 @@ export interface UISlice extends ViewUIState {
   setMeasureTool: (changes: Partial<MeasureToolOptions>) => void;
   /** Changes the Draw tool's choices; a change of its style is remembered on the device. */
   setDrawTool: (changes: Partial<DrawToolChoices>) => void;
+  /** Changes the fog tool's choices; a brush size is kept within its limits. */
+  setFogTool: (changes: Partial<FogToolChoices>) => void;
   setLightingTool: (changes: Partial<LightingToolOptions>) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
@@ -72,6 +75,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'measurePopover'
   | 'measureTool'
   | 'drawTool'
+  | 'fogTool'
   | 'lightingTool'
   | 'heldTokens'
   | 'exploredBrush'
@@ -97,6 +101,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     measurePopover: null,
     measureTool: DEFAULT_MEASURE_TOOL,
     drawTool,
+    fogTool: DEFAULT_FOG_TOOL,
     lightingTool: DEFAULT_LIGHTING_TOOL,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
@@ -136,6 +141,7 @@ export function createUIActions(
   | 'closeMeasurePopover'
   | 'setMeasureTool'
   | 'setDrawTool'
+  | 'setFogTool'
   | 'setLightingTool'
   | 'setHeldTokens'
   | 'setExploredBrush'
@@ -201,6 +207,10 @@ export function createUIActions(
       });
       if (styled) rememberDrawTool?.(styled);
     },
+    setFogTool: (changes) => set((draft) => {
+      const next = { ...draft.fogTool, ...changes };
+      draft.fogTool = { ...next, brushSize: clampBrushSize(next.brushSize) };
+    }),
     setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),

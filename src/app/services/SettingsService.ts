@@ -22,8 +22,8 @@ import {
   TUTORIAL_IDS,
 } from './atlasSettings';
 import {
-  loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
-  saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
+  loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
+  saveAnimateMaps, saveGmFogOpacity, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
 } from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
@@ -306,6 +306,18 @@ export class SettingsService {
     if (this.isPlayerView4k() === on) return;
     savePlayerView4k(this.app, on);
     this.notify();
+  }
+
+  /** How opaque fog is in the GM's view, 0 to 1 (`readGmFogOpacity`); players' fog is always opaque. */
+  getGmFogOpacity(): number {
+    return loadGmFogOpacity(this.app);
+  }
+
+  /** The GM's fog opacity is this device's, as its screen decides what shows through: local storage, not the synced settings. */
+  setGmFogOpacity(opacity: number): void {
+    const before = this.getGmFogOpacity();
+    saveGmFogOpacity(this.app, opacity);
+    if (this.getGmFogOpacity() !== before) this.notify();
   }
 
   getLaserPointerSettings(): LaserPointerSettings {
