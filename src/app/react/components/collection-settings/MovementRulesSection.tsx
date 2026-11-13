@@ -1,6 +1,7 @@
 /**
  * MovementRulesSection — The steps a token's movement falls into (one move, a second one), each a
- * multiple of its speed with a colour, and whether movement adds up over a turn.
+ * multiple of its speed with a colour, whether movement adds up over a turn, and the speed of a
+ * creature that states none.
  */
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -12,9 +13,12 @@ import { clippedViewFrame } from '../../../packages/components/primitives/useKee
 import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import {
-  isStepMultiple, isValidMovementRules, MAX_MOVEMENT_STEPS, MAX_STEP_MULTIPLE, MAX_STEP_NAME, type MovementRules, type MovementStep,
+  isStepMultiple, MAX_MOVEMENT_STEPS, MAX_STEP_MULTIPLE, MAX_STEP_NAME, shownStepMultiple, typedStepMultiple,
+  type MovementRules, type MovementStep,
 } from '../../../measure/movementRules';
 import { RESOURCE_COLORS } from '../../../resources/resourceColors';
+import type { CollectionGridDefaults } from '../../../types/collectionSettingsTypes';
+import { MovementSpeedRow } from './MovementSpeedRow';
 import { SettingRow } from './SettingRow';
 import { t } from '../../../i18n';
 
@@ -101,9 +105,16 @@ interface MovementRulesSectionProps {
   /** The rules as typed: a name may be empty and a multiple no number while they are. */
   movement: MovementRules;
   onChange: (movement: MovementRules) => void;
+  /** What the collection measures in: a speed is typed in its unit, or picked as one of its range bands. */
+  gridDefaults: CollectionGridDefaults;
 }
 
-export function MovementRulesSection({ movement, onChange }: MovementRulesSectionProps): React.ReactElement {
+/** Whether every step can be saved: a name, and a multiple above the step before. */
+function stepsAreValid(steps: readonly MovementStep[]): boolean {
+  return steps.every((step, i) => step.name.trim() !== '' && isStepMultiple(step.multiple) && step.multiple > (steps[i - 1]?.multiple ?? 0));
+}
+
+export function MovementRulesSection({ movement, onChange, gridDefaults }: MovementRulesSectionProps): React.ReactElement {
   const { steps } = movement;
   const listRef = useRef<HTMLDivElement>(null);
   /** The step that was just added: its name is typed next. */
@@ -160,12 +171,9 @@ export function MovementRulesSection({ movement, onChange }: MovementRulesSectio
                       min={0.5}
                       max={MAX_STEP_MULTIPLE}
                       step={0.5}
-                      value={Number.isNaN(step.multiple) ? '' : step.multiple}
-                      onChange={(e) => {
-                        // Keep whatever was typed, even an empty field; Save stays disabled until it is valid.
-                        const raw = e.target.value.trim();
-                        updateStep(i, { multiple: raw === '' ? NaN : Number(raw) });
-                      }}
+                      value={Number.isNaN(step.multiple) ? '' : shownStepMultiple(step.multiple)}
+                      // Keep whatever was typed, even an empty field; Save stays disabled until it is valid.
+                      onChange={(e) => updateStep(i, { multiple: typedStepMultiple(e.target.value) })}
                     />
                   </LabelTooltip>
                 </span>
@@ -181,7 +189,7 @@ export function MovementRulesSection({ movement, onChange }: MovementRulesSectio
       ) : (
         <div className="atlas-csm-empty">{t('csm.movement.noSteps')}</div>
       )}
-      {!isValidMovementRules(movement) && (
+      {!stepsAreValid(steps) && (
         <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">{t('csm.movement.stepsInvalid')}</p>
       )}
       <Button variant="ghost" className="atlas-csm-add-btn" disabled={steps.length >= MAX_MOVEMENT_STEPS} onClick={addStep}>
@@ -195,6 +203,7 @@ export function MovementRulesSection({ movement, onChange }: MovementRulesSectio
           <ToggleSwitch labelledBy={labelId} value={movement.countPerTurn} onChange={() => onChange({ ...movement, countPerTurn: !movement.countPerTurn })} />
         )}
       />
+      <MovementSpeedRow movement={movement} onChange={onChange} gridDefaults={gridDefaults} />
     </section>
   );
 }

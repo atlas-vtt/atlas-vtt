@@ -2,6 +2,7 @@ import React, { useId } from 'react';
 import { ToggleSwitch } from '../../packages/components/primitives/Toggle';
 import type { ResourceDefinition, ResourceValue } from '../../resources/resourceTypes';
 import { NumberOverrideField } from './NumberOverrideField';
+import { TokenSpeedField, type TokenSpeedContext } from './TokenSpeedField';
 import { t } from '../../i18n';
 
 interface EditTokenSectionProps {
@@ -55,17 +56,17 @@ interface TokenIdentitySectionProps {
   onShowNameplateChange: (show: boolean) => void;
   /** The name field, which takes the focus when the dialog opens. */
   nameRef: React.Ref<HTMLInputElement>;
-  /** The token's own speed, as typed; empty follows its statblock. */
+  /** The token's own speed, as typed; empty follows its statblock, else the map's movement rules. */
   speed: string;
   onSpeedChange: (speed: string) => void;
-  /** "Speed" with the map's game unit. */
-  speedLabel: string;
+  /** What a speed is typed and shown in on the token's map. */
+  speedContext: TokenSpeedContext;
   /** The speed the linked statblock states, if any. */
   statblockSpeed: number | undefined;
 }
 
 export function TokenIdentitySection({
-  name, onNameChange, showNameplate, onShowNameplateChange, nameRef, speed, onSpeedChange, speedLabel, statblockSpeed,
+  name, onNameChange, showNameplate, onShowNameplateChange, nameRef, speed, onSpeedChange, speedContext, statblockSpeed,
 }: TokenIdentitySectionProps): React.ReactElement {
   const nameId = useId();
   return (
@@ -83,13 +84,7 @@ export function TokenIdentitySection({
         />
       </div>
       <SwitchRow label={t('editToken.showNameplate')} value={showNameplate} onChange={onShowNameplateChange} />
-      <NumberOverrideField
-        label={speedLabel}
-        value={speed}
-        onChange={onSpeedChange}
-        placeholder={defaultPlaceholder(statblockSpeed)}
-        resetLabel={t('editToken.resetStatblock')}
-      />
+      <TokenSpeedField value={speed} onChange={onSpeedChange} context={speedContext} statblockSpeed={statblockSpeed} />
     </EditTokenSection>
   );
 }

@@ -68,15 +68,15 @@ export function viewOfRules(settings: EditedRules, presets: readonly SystemPrese
   const systemInitiative = collectionInitiativeRules({ systemPresetId: settings.systemPresetId }, presets);
   // The rules as they are typed, half a roll included; only stored rules are parsed.
   const initiative = settings.initiative ?? systemInitiative;
-  const systemMovement = collectionMovementRules({ systemPresetId: settings.systemPresetId }, presets);
+  // The system's speed for creatures that state none reads in the unit being typed.
+  const systemMovement = collectionMovementRules({ systemPresetId: settings.systemPresetId, gridDefaults }, presets);
   // As typed, a step still without a name included; only stored rules are parsed.
   const movement = settings.movement ?? systemMovement;
   const senses = collectionSenses(settings, presets);
   const isValid = areRangeBandsValid(gridDefaults.abstractRangeBands)
     && isUnitDistance(gridDefaults.unitDistance)
     && isValidInitiativeRules(initiative)
-    // A ruler that names distances shows no movement steps, so none can be put right there.
-    && (gridDefaults.measurementMode === 'abstract' || isValidMovementRules(movement))
+    && isValidMovementRules(movement)
     && sensesAreValid(senses)
     // A resource without a name or a statblock field could never show.
     && resources.every((resource) => resource.name.trim() !== '' && resource.field.trim() !== '');

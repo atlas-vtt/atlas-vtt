@@ -1,10 +1,14 @@
 /**
  * How far a creature moves, read from its statblock: every speed its speed line states ("30 ft.,
- * fly 60 ft."), in the collection's game units. A token moves by its own speed where the GM set
- * one, else by its statblock's first.
+ * fly 60 ft.", or "double near" in a game of range bands), in the collection's game units. A
+ * token moves by its own speed where the GM set one, else by its statblock's first, else by the
+ * speed its game gives creatures that state none.
  */
 
+import type { MeasurementSettings } from '../grid/measurementFormat';
 import { readDistance, toGameUnits, type GameUnit } from '../grid/statedDistance';
+import { unitScaleOf } from '../lighting/lightingUnits';
+import { bandReachChoices } from '../measure/reachSteps';
 import { NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
 import { positiveNumber } from '../utils/numberInput';
 import type { IndexedCreature } from './CreatureIndex';
@@ -33,8 +37,39 @@ function nameBefore(text: string): string | null {
   return name === '' || LABELS.has(name.toLowerCase()) ? null : name;
 }
 
-/** Every speed `text` states, in the order written. */
-function speedsIn(text: string, unit: GameUnit): StatedSpeed[] {
+/** What speeds are read in: the collection's unit, and its range bands where it names distances. */
+export type SpeedUnit = GameUnit & Partial<Pick<MeasurementSettings, 'mode' | 'rangeBands'>>;
+
+const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+
+/**
+ * Every range band `text` names as a speed ("double near (fly)"), in the order written: each is
+ * as far as its band reaches. Where a name holds another ("Double Near", "Near") the longer one
+ * is read. None where the collection measures distances.
+ */
+function bandSpeedsIn(text: string, unit: SpeedUnit): StatedSpeed[] {
+  if (unit.mode !== 'abstract') return [];
+  const bands = bandReachChoices({ mode: 'abstract', rangeBands: unit.rangeBands ?? [] })
+    .map((band) => ({ name: band.name.trim().toLowerCase(), cells: band.cells }))
+    .filter((band) => band.name !== '')
+    .sort((a, b) => b.name.length - a.name.length);
+  const perCell = unitScaleOf({ unitDistance: unit.ruleDistance }, null).unitDistance;
+  const lower = text.toLowerCase();
+  const speeds: StatedSpeed[] = [];
+  let from = 0;
+  for (let at = 0; at < lower.length && speeds.length < MAX_STATED_SPEEDS; at += 1) {
+    if (at > 0 && WORD_CHARACTER.test(lower[at - 1]!)) continue;
+    const band = bands.find(({ name }) => lower.startsWith(name, at) && !WORD_CHARACTER.test(lower[at + name.length] ?? ''));
+    if (!band) continue;
+    speeds.push({ name: nameBefore(text.slice(from, at)), speed: band.cells * perCell });
+    from = at + band.name.length;
+    at = from - 1;
+  }
+  return speeds;
+}
+
+/** Every speed `text` states, in the order written: its distances, else the range bands it names. */
+function speedsIn(text: string, unit: SpeedUnit): StatedSpeed[] {
   const speeds: StatedSpeed[] = [];
   let rest = text;
   while (speeds.length < MAX_STATED_SPEEDS) {
@@ -44,7 +79,7 @@ function speedsIn(text: string, unit: GameUnit): StatedSpeed[] {
     if (speed > 0 && Number.isFinite(speed)) speeds.push({ name: nameBefore(rest.slice(0, stated.start)), speed });
     rest = rest.slice(stated.end);
   }
-  return speeds;
+  return speeds.length > 0 ? speeds : bandSpeedsIn(text, unit);
 }
 
 /** The speed value of a statblock: the field its template means as the speed, else its `speed`. */
@@ -58,13 +93,23 @@ function speedValue(fields: Readonly<Record<string, unknown>>, meanings: FieldMe
  * the speed, else `speed`, in any shape statblocks hold it: a line ("30 ft., climb 30 ft."), a bare
  * number, a list of lines or named entries, or speeds kept by name (`{ walk: 30, fly: 60 }`). A
  * distance is read as rulebooks write it and converted to the collection's unit (`toGameUnits`);
- * a bare number is taken as it stands. None where the statblock states no speed.
+ * a bare number is taken as it stands; a collection that measures in range bands also reads a
+ * band's name as that band's reach. None where the statblock states no speed.
  */
-export function statblockSpeeds(fields: Readonly<Record<string, unknown>>, meanings: FieldMeanings | undefined, unit: GameUnit): StatedSpeed[] {
+export function statblockSpeeds(fields: Readonly<Record<string, unknown>>, meanings: FieldMeanings | undefined, unit: SpeedUnit): StatedSpeed[] {
   const value = speedValue(fields, meanings ?? NO_MEANINGS);
   if (typeof value === 'number') return value > 0 && Number.isFinite(value) ? [{ name: null, speed: value }] : [];
   const phrases = phrasesOf(value);
   return phrases.length > 0 ? speedsIn(boundedText(phrases.join(', ')), unit) : [];
+}
+
+/**
+ * Whether a statblock says anything of its speed, readable or not. One that says "0 ft." or
+ * "none" states its speed: it is not a creature that states none.
+ */
+function statesSpeed(fields: Readonly<Record<string, unknown>>, meanings: FieldMeanings | undefined): boolean {
+  const value = speedValue(fields, meanings ?? NO_MEANINGS);
+  return typeof value === 'number' || phrasesOf(value).length > 0;
 }
 
 /** What a token's speed is read of: its own speed, the statblock it links and the speed it picked of that. */
@@ -113,13 +158,20 @@ export function chosenSpeed(speeds: readonly StatedSpeed[], kind: unknown): Stat
 
 /**
  * How far a token moves in one move, in the collection's game units: its own speed, else the one
- * it picked of those its linked statblock states (`speedKind`), else the first. Null for a token
- * without either, which moves without steps. `creature` is the record of `token.statblockPath` in
- * `CreatureIndex`: undefined while unread, null for a note without a statblock.
+ * it picked of those its linked statblock states (`speedKind`), else the first. A token without a
+ * statblock, or whose statblock says nothing of its speed, moves by `none`, the speed the
+ * movement rules give a creature that states none (`MovementRules.speed`). Null for a token
+ * without any, which moves without steps: also while its statblock is unread (what it states is
+ * not known yet), and where it states a speed that is none ("0 ft.") or cannot be read.
+ * `creature` is the record of `token.statblockPath` in `CreatureIndex`: undefined while unread,
+ * null for a note without a statblock.
  */
-export function tokenSpeed(token: SpeedToken, creature: SpeedCreature | null | undefined, unit: GameUnit): number | null {
+export function tokenSpeed(token: SpeedToken, creature: SpeedCreature | null | undefined, unit: SpeedUnit, none?: number): number | null {
   const own = ownSpeed(token);
   if (own !== undefined) return own;
-  if (!token.statblockPath || !creature) return null;
+  const fallback = positiveNumber(none) ?? null;
+  if (!token.statblockPath) return fallback;
+  if (creature === undefined) return null;
+  if (!creature || !statesSpeed(creature.fields, creature.meanings)) return fallback;
   return chosenSpeed(statblockSpeeds(creature.fields, creature.meanings, unit), token.speedKind)?.speed ?? null;
 }

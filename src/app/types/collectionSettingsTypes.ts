@@ -126,8 +126,8 @@ export interface CollectionSettings {
    */
   initiative?: InitiativeRules | undefined;
   /**
-   * The steps a token's movement falls into and whether it adds up over a turn, stored only once
-   * the collection has rules of its own. Unset while it takes those of its preset; read with
+   * The steps a token's movement falls into, whether it adds up over a turn and the speed of a
+   * creature that states none, stored only once the collection has rules of its own. Unset while it takes those of its preset; read with
    * `collectionMovementRules`.
    */
   movement?: MovementRules | undefined;

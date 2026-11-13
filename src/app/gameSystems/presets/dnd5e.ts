@@ -25,10 +25,12 @@ export const DND_5E: SystemPreset = {
       areaCellRule: 'half',
       abstractRangeBands: [],
     },
-    // A creature moves up to its speed on its turn, and as far again with the action that doubles it
+    // A creature moves up to its speed on its turn, and as far again with the action that doubles it.
+    // One that states no speed moves 30 feet.
     movement: {
       steps: [{ name: 'Move', multiple: 1, color: '#22c55e' }, { name: 'Dash', multiple: 2, color: '#f59e0b' }],
       countPerTurn: true,
+      speed: 30,
     },
     dice: { defaultRoll: '1d20', crit: 'natural' },
     diceSetId: D20_DICE_SET_ID,

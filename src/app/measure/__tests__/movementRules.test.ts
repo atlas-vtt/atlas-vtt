@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  hasMovementRules, isValidMovementRules, movementStepFor, NO_MOVEMENT_RULES, parseMovementRules, sameMovementRules, sameTypedMovementRules,
-  savedMovementRules, type MovementRules,
+  hasMovementRules, isValidMovementRules, MAX_MOVEMENT_SPEED, movementStepFor, NO_MOVEMENT_RULES, parseMovementRules, sameMovementRules,
+  sameTypedMovementRules, savedMovementRules, shownStepMultiple, stepReach, typedStepMultiple, withMovementSpeed, type MovementRules,
 } from '../movementRules';
 
 const MOVE = { name: 'Move', multiple: 1, color: '#22c55e' };
@@ -46,6 +46,15 @@ describe('parseMovementRules', () => {
     expect(parseMovementRules({ steps: [1, 2, 3, 4, 5, 6].map(step) })?.steps.map((kept) => kept.multiple)).toEqual([1, 2, 3, 4]);
   });
 
+  it('reads the speed of creatures that state none only where it is a number above 0 within bounds', () => {
+    expect(parseMovementRules({ ...TWO_STEPS, speed: 30 })).toEqual({ ...TWO_STEPS, speed: 30 });
+    expect(parseMovementRules({ speed: 7.5 })).toEqual({ steps: [], countPerTurn: false, speed: 7.5 });
+    expect(parseMovementRules({ speed: MAX_MOVEMENT_SPEED })?.speed).toBe(MAX_MOVEMENT_SPEED);
+    for (const speed of [0, -30, NaN, Infinity, MAX_MOVEMENT_SPEED + 1, '30', null, true, [30], { feet: 30 }]) {
+      expect(parseMovementRules({ ...TWO_STEPS, speed }), String(speed)).toEqual(TWO_STEPS);
+    }
+  });
+
   it('cuts a name that is too long', () => {
     expect(parseMovementRules({ steps: [{ ...MOVE, name: 'A'.repeat(60) }] })?.steps[0]?.name).toHaveLength(24);
   });
@@ -68,9 +77,20 @@ describe('movement rules while they are edited', () => {
     expect(parseMovementRules(saved)).toEqual(saved);
   });
 
-  it('do something once they name a step or count per turn', () => {
+  it('can be saved with a speed only where it is one, and are stored with it', () => {
+    expect(isValidMovementRules({ ...TWO_STEPS, speed: 30 })).toBe(true);
+    for (const speed of [0, -5, NaN, MAX_MOVEMENT_SPEED + 1]) expect(isValidMovementRules({ ...TWO_STEPS, speed }), String(speed)).toBe(false);
+    expect(savedMovementRules({ ...TWO_STEPS, speed: 30 })).toEqual({ ...TWO_STEPS, speed: 30 });
+    expect(savedMovementRules({ ...TWO_STEPS, speed: 0 })).toEqual(TWO_STEPS);
+    expect(withMovementSpeed(TWO_STEPS, 25)).toEqual({ ...TWO_STEPS, speed: 25 });
+    expect(withMovementSpeed({ ...TWO_STEPS, speed: 25 }, undefined)).toEqual(TWO_STEPS);
+    expect(withMovementSpeed({ ...TWO_STEPS, speed: 25 }, undefined)).not.toHaveProperty('speed');
+  });
+
+  it('do something once they name a step or a speed, or count per turn', () => {
     expect(hasMovementRules(undefined)).toBe(false);
     expect(hasMovementRules({ steps: [], countPerTurn: false })).toBe(false);
+    expect(hasMovementRules({ steps: [], countPerTurn: false, speed: 30 })).toBe(true);
     expect(hasMovementRules({ steps: [], countPerTurn: true })).toBe(true);
     expect(hasMovementRules({ steps: [MOVE], countPerTurn: false })).toBe(true);
   });
@@ -91,6 +111,16 @@ describe('sameMovementRules', () => {
     expect(sameMovementRules(TWO_STEPS, { ...TWO_STEPS, steps: [MOVE, { ...DASH, name: 'Run' }] })).toBe(false);
     expect(sameMovementRules(TWO_STEPS, { ...TWO_STEPS, steps: [MOVE, { ...DASH, multiple: 3 }] })).toBe(false);
     expect(sameMovementRules(TWO_STEPS, { ...TWO_STEPS, steps: [MOVE, { ...DASH, color: '#f97316' }] })).toBe(false);
+  });
+
+  it('tells rules apart by the speed of creatures that state none', () => {
+    expect(sameMovementRules({ ...TWO_STEPS, speed: 30 }, { ...TWO_STEPS, speed: 30 })).toBe(true);
+    expect(sameMovementRules({ ...TWO_STEPS, speed: 30 }, TWO_STEPS)).toBe(false);
+    expect(sameMovementRules({ ...TWO_STEPS, speed: 30 }, { ...TWO_STEPS, speed: 25 })).toBe(false);
+    expect(sameMovementRules(undefined, { steps: [], countPerTurn: false, speed: 30 })).toBe(false);
+    expect(sameTypedMovementRules({ ...TWO_STEPS, speed: 30 }, { ...TWO_STEPS, speed: 30 })).toBe(true);
+    expect(sameTypedMovementRules({ ...TWO_STEPS, speed: 3 }, { ...TWO_STEPS, speed: 30 })).toBe(false);
+    expect(sameTypedMovementRules(TWO_STEPS, { ...TWO_STEPS, speed: 30 })).toBe(false);
   });
 
   it('ignores a colour\'s case and spaces around a name, which typing does not', () => {
@@ -137,5 +167,40 @@ describe('movementStepFor', () => {
     for (const speed of [null, undefined, 0, -30, NaN, Infinity]) expect(movementStepFor(10, speed, TWO_STEPS)).toBeNull();
     expect(movementStepFor(NaN, 30, TWO_STEPS)).toBeNull();
     expect(movementStepFor(-5, 30, TWO_STEPS)).toBe(MOVE);
+  });
+});
+
+describe('stepReach', () => {
+  it('is the step\'s multiple of the speed, and the last step\'s beyond them all', () => {
+    expect(stepReach(MOVE, 30, TWO_STEPS)).toBe(30);
+    expect(stepReach(DASH, 30, TWO_STEPS)).toBe(60);
+    expect(stepReach('beyond', 30, TWO_STEPS)).toBe(60);
+    expect(stepReach(null, 30, TWO_STEPS)).toBeNull();
+    expect(stepReach('beyond', 30, NO_MOVEMENT_RULES)).toBeNull();
+  });
+});
+
+describe('a step\'s multiple as it is typed', () => {
+  it('reads a number as typed, and no number for an empty field', () => {
+    for (const [text, multiple] of [['1', 1], ['2', 2], ['0.5', 0.5], ['1.5', 1.5], ['0.25', 0.25], ['0.3', 0.3], ['0.35', 0.35], [' 4 ', 4]] as const) {
+      expect(typedStepMultiple(text), text).toBe(multiple);
+    }
+    for (const text of ['', '  ', 'x']) expect(typedStepMultiple(text), text).toBeNaN();
+  });
+
+  it('reads the decimals of a third as that third, which then holds a move of exactly a third', () => {
+    for (const text of ['0.33', '0.333', '0.3333']) expect(typedStepMultiple(text), text).toBe(1 / 3);
+    for (const text of ['0.66', '0.67', '0.667']) expect(typedStepMultiple(text), text).toBe(2 / 3);
+    expect(typedStepMultiple('1.33')).toBe(4 / 3);
+    const third: MovementRules = { steps: [{ ...MOVE, multiple: typedStepMultiple('0.33') }, { ...DASH, multiple: 1 }], countPerTurn: false };
+    for (const speed of [30, 60, 90, 120, 150, 180, 240]) expect(movementStepFor(speed / 3, speed, third), String(speed)).toBe(third.steps[0]);
+    expect(movementStepFor(45, 120, third)).toBe(third.steps[1]);
+  });
+
+  it('shows three decimals at most, and reads what it shows as the same multiple', () => {
+    expect(shownStepMultiple(1 / 3)).toBe(0.333);
+    expect(shownStepMultiple(2)).toBe(2);
+    expect(shownStepMultiple(1.5)).toBe(1.5);
+    for (const multiple of [1 / 3, 2 / 3, 4 / 3, 0.5, 1, 2.5]) expect(typedStepMultiple(String(shownStepMultiple(multiple)))).toBe(multiple);
   });
 });

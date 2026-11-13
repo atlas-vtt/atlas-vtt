@@ -125,7 +125,7 @@ describe('what a dropped token moved in its turn', () => {
     press('a');
     moveTo(center(7, 0));
     // The GM reads the turn's 35 ft against the speed; the players, whose token it is not, this drag's 15 ft.
-    expect(draw.mock.lastCall?.slice(1)).toEqual(['35 / 30ft', expect.any(Number), CELL, DASH.color, '15ft']);
+    expect(draw.mock.lastCall?.slice(1)).toEqual(['35 / 60ft', expect.any(Number), CELL, DASH.color, '15ft']);
     release(center(7, 0));
   });
 

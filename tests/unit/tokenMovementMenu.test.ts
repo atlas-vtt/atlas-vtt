@@ -115,10 +115,16 @@ describe('the token menu\'s Movement', () => {
     for (const [name, clicked, targets] of none) expect(tokenMovementSubmenu(store, clicked, targets, movement()), name).toBeNull();
   });
 
-  it('is not offered where a speed changes nothing: a collection without movement steps, or one in range bands', () => {
+  it('is not offered where a speed changes nothing: a collection without movement steps', () => {
     const store = sceneOf(token('dragon', 'Dragon.md'));
     expect(tokenMovementSubmenu(store, 'dragon', ['dragon'], movement({ steps: [], countPerTurn: true }))).toBeNull();
-    expect(tokenMovementSubmenu(store, 'dragon', ['dragon'], movement(STEPS, { ...FEET, mode: 'abstract' }))).toBeNull();
+  });
+
+  it('is offered on a map that measures in range bands, each speed written as the band it reaches', () => {
+    const store = sceneOf(token('dragon', 'Dragon.md'));
+    const bands = { ...FEET, mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 1 }, { name: 'Near', maxSquares: 6 }, { name: 'Far', maxSquares: 13 }] } as MeasurementSettings;
+    expect(rows(tokenMovementSubmenu(store, 'dragon', ['dragon'], movement(STEPS, bands)))).toEqual([['Walk', 'Far', true], ['Climb', 'Far', false], ['Fly', 'Far', false]]);
+    expect(rows(tokenMovementSubmenu(sceneOf(token('wyvern', 'Wyvern.md')), 'wyvern', ['wyvern'], movement(STEPS, bands)))).toEqual([['Walk', 'Near', true], ['Fly', 'Far', false]]);
   });
 
   it('writes distances in what the map measures in', () => {

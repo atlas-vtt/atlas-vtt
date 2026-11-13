@@ -9,11 +9,34 @@ import type { MeasurementSettings } from '../grid/measurementFormat';
 /** What says how a map steps a reach. */
 export type ReachSettings = Pick<MeasurementSettings, 'mode' | 'rangeBands'>;
 
-/** The reaches a map with range bands names, in cells, nearest first; none where it steps by cells. */
-function bandReaches({ mode, rangeBands }: ReachSettings): number[] {
+/** A reach a map with range bands names: the band, and how far it reaches in cells. */
+export interface BandReach {
+  readonly name: string;
+  readonly cells: number;
+}
+
+/**
+ * The reaches a map with range bands names, nearest first; none where it steps by cells. Of bands
+ * that end at the same cell the first is the reach's name, as a distance is named (`rangeBandName`).
+ */
+export function bandReachChoices({ mode, rangeBands }: ReachSettings): BandReach[] {
   if (mode !== 'abstract') return [];
-  const reaches = rangeBands.map((band) => band.maxSquares).filter((squares) => Number.isFinite(squares) && squares > 0);
-  return [...new Set(reaches)].sort((a, b) => a - b);
+  const reaches = new Map<number, string>();
+  for (const { name, maxSquares } of rangeBands) {
+    if (Number.isFinite(maxSquares) && maxSquares > 0 && !reaches.has(maxSquares)) reaches.set(maxSquares, name);
+  }
+  return [...reaches].map(([cells, name]) => ({ name, cells })).sort((a, b) => a.cells - b.cells);
+}
+
+/** The band a reach of `cells` is written as: the first that reaches as far, the farthest past them all; none where the map names no reaches. */
+export function bandReachOf(cells: number, settings: ReachSettings): BandReach | undefined {
+  const choices = bandReachChoices(settings);
+  return choices.find((band) => Math.round(cells) <= band.cells) ?? choices[choices.length - 1];
+}
+
+/** The reaches a map with range bands names, in cells, nearest first; none where it steps by cells. */
+function bandReaches(settings: ReachSettings): number[] {
+  return bandReachChoices(settings).map((band) => band.cells);
 }
 
 /** Whether the map names its reaches: it measures in range bands and has some. */

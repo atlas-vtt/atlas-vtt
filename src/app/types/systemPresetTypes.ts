@@ -37,8 +37,9 @@ export interface SystemRules {
   /** How the initiative tracker runs a fight. Unset means `DEFAULT_INITIATIVE_RULES`: a d20 each, highest first. */
   initiative?: InitiativeRules;
   /**
-   * The steps a token's movement falls into (one move, a second one) and whether it adds up over a
-   * turn. Unset for a system that names none: its collections move without steps (`collectionMovementRules`).
+   * The steps a token's movement falls into (one move, a second one), whether it adds up over a
+   * turn, and the speed of a creature that states none, in the unit of `gridDefaults`. Unset for a
+   * system that names none: its collections move without steps (`collectionMovementRules`).
    */
   movement?: MovementRules;
   /** Token resources the system defines, copied on apply like conditions. */

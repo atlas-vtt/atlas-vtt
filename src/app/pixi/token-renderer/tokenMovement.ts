@@ -2,7 +2,8 @@
  * What the canvas knows of how a map's tokens move: the collection's movement rules and each
  * token's speed. A speed that comes from a statblock is read from the record `CreatureIndex`
  * holds, never from the note: a drag asks at every step, so an unread statblock gives no speed
- * (the drag then reads as a plain distance), and `prepare` asks for it ahead of the drag.
+ * (the drag then reads as a plain distance), and `prepare` asks for it ahead of the drag. A token
+ * that states no speed moves by the one the rules give such creatures.
  */
 
 import type { App } from 'obsidian';
@@ -16,7 +17,7 @@ export interface TokenMovement {
   rules(): MovementRules;
   /** What the map measures in now: the unit speeds are read in and written with. */
   settings(): MeasurementSettings;
-  /** How far the token moves in one move, in game units; null without a speed and while its statblock is unread. */
+  /** How far the token moves in one move, in game units (`tokenSpeed`); null without a speed and while its statblock is unread. */
   speedOf(token: SpeedToken): number | null;
   /**
    * The speeds the token may pick from (`speedChoices` of its statblock), the default first. None
@@ -45,7 +46,7 @@ export function tokenMovement(app: App, rules: () => MovementRules, settings: ()
   return {
     rules,
     settings,
-    speedOf: (token) => tokenSpeed(token, creatureOf(token), settings()),
+    speedOf: (token) => tokenSpeed(token, creatureOf(token), settings(), rules().speed),
     choicesOf: (token) => {
       const creature = creatureOf(token);
       return creature ? speedChoices(statblockSpeeds(creature.fields, creature.meanings, settings())) : [];

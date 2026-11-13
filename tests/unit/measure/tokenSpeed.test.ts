@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chosenSpeed, ownSpeed, speedChoices, statblockSpeeds, tokenSpeed } from '../../../src/app/creatures/statblockSpeeds';
+import { chosenSpeed, ownSpeed, speedChoices, statblockSpeeds, tokenSpeed, type SpeedUnit } from '../../../src/app/creatures/statblockSpeeds';
 import type { GameUnit } from '../../../src/app/grid/statedDistance';
 import { sceneFromFile, sceneToFile, tokenFromFile, tokenToFile } from '../../../src/app/resources/resourceFileFormat';
 import { meaningsOf } from '../../../src/app/statblocks/resolve/fieldMeanings';
@@ -8,6 +8,12 @@ import { BUILT_IN_TEMPLATES } from '../../../src/app/statblocks/presets';
 const FEET: GameUnit = { unitType: 'feet', ruleDistance: 5 };
 const METRES: GameUnit = { unitType: 'meters', ruleDistance: 1.5 };
 const SQUARES: GameUnit = { unitType: 'units', ruleDistance: 1 };
+const YARDS: GameUnit = { unitType: 'yards', ruleDistance: 1 };
+/** A game of range bands on 5-foot squares. */
+const BANDS: SpeedUnit = {
+  ...FEET, mode: 'abstract',
+  rangeBands: [{ name: 'Close', maxSquares: 1 }, { name: 'Near', maxSquares: 6 }, { name: 'Double Near', maxSquares: 12 }, { name: 'Far', maxSquares: 13 }],
+};
 
 const speedsOf = (speed: unknown, unit = FEET): Array<[string | null, number]> => statblockSpeeds({ speed }, undefined, unit).map((stated) => [stated.name, stated.speed]);
 
@@ -72,6 +78,61 @@ describe('statblockSpeeds', () => {
   });
 });
 
+describe('the speed a statblock of each built-in template states', () => {
+  /** The first speed of a statblock written for the template `id`, whose speed field holds `value`. */
+  const stated = (id: string, value: unknown, unit: SpeedUnit): number | undefined => {
+    const { fields } = BUILT_IN_TEMPLATES.find((entry) => entry.id === id)!.template;
+    const meanings = meaningsOf(fields);
+    return chosenSpeed(statblockSpeeds({ [meanings.speed!]: value }, meanings, unit), undefined)?.speed;
+  };
+  const SHAPES: Array<[template: string, value: unknown, unit: SpeedUnit, speed: number]> = [
+    // The base rate stands first; the encounter rate in brackets is a step of it.
+    ['builtin:bx-creature', "120' (40')", FEET, 120],
+    ['builtin:bx-creature', "90' (30') / 180' (60') flying", FEET, 90],
+    ['builtin:bx-creature', 'near', BANDS, 30],
+    ['builtin:bx-creature', 'double near (fly)', BANDS, 60],
+    ['builtin:percentile-creature', 8, YARDS, 8],
+    ['builtin:percentile-creature', '8', YARDS, 8],
+    ['builtin:draw-steel-monster', 5, SQUARES, 5],
+    ['builtin:draw-steel-monster', '5 (fly)', SQUARES, 5],
+    ['builtin:d20-creature', '25 feet, fly 40 feet', FEET, 25],
+    ['builtin:5e-2014-monster', '30 ft., climb 30 ft.', FEET, 30],
+    ['builtin:5e-2024-monster', '30 ft., Fly 60 ft.', FEET, 30],
+    ['builtin:generic-npc', 6, { unitType: 'meters', ruleDistance: 2 }, 6],
+  ];
+
+  for (const [template, value, unit, speed] of SHAPES) {
+    it(`${template}: ${JSON.stringify(value)} is ${speed}`, () => {
+      expect(stated(template, value, unit)).toBe(speed);
+    });
+  }
+});
+
+describe('a speed written as a range band', () => {
+  const speeds = (speed: unknown, unit: SpeedUnit = BANDS): Array<[string | null, number]> => statblockSpeeds({ speed }, undefined, unit).map((stated) => [stated.name, stated.speed]);
+
+  it('is as far as the band reaches, the longer name where one holds another', () => {
+    expect(speeds('near')).toEqual([[null, 30]]);
+    expect(speeds('Double Near')).toEqual([[null, 60]]);
+    expect(speeds('MV close')).toEqual([[null, 5]]);
+    expect(speeds('near (climb), double near (fly)')).toEqual([[null, 30], [null, 60]]);
+    expect(speeds('fly far')).toEqual([['fly', 65]]);
+  });
+
+  it('is read only where the collection measures in bands, and only as a whole word', () => {
+    expect(speeds('near', FEET)).toEqual([]);
+    expect(speeds('nearly none')).toEqual([]);
+    expect(speeds('none')).toEqual([]);
+    expect(speeds('near', { ...BANDS, rangeBands: [] })).toEqual([]);
+    expect(speeds('near', { ...BANDS, rangeBands: [{ name: ' ', maxSquares: 3 }] })).toEqual([]);
+  });
+
+  it('gives way to a distance the statblock states', () => {
+    expect(speeds('30 ft. (near)')).toEqual([[null, 30]]);
+    expect(speeds(60)).toEqual([[null, 60]]);
+  });
+});
+
 describe('tokenSpeed', () => {
   const goblin = { fields: { speed: '30 ft., climb 20 ft.' } };
 
@@ -88,6 +149,31 @@ describe('tokenSpeed', () => {
     expect(tokenSpeed({ statblockPath: 'Goblin.md' }, { fields: { speed: 'slow' } }, FEET)).toBeNull();
     // A statblock record handed over for a token that links none says nothing about it.
     expect(tokenSpeed({}, goblin, FEET)).toBeNull();
+  });
+
+  it('is the speed the rules give a creature that states none, for a token without a statblock or whose statblock says nothing of its speed', () => {
+    expect(tokenSpeed({}, undefined, FEET, 30)).toBe(30);
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, { fields: {} }, FEET, 30)).toBe(30);
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, { fields: { speed: '  ' } }, FEET, 30)).toBe(30);
+    // The link leads to a note without a statblock.
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, null, FEET, 30)).toBe(30);
+    // A template whose speed field is empty, in a statblock without `speed`.
+    const meanings = meaningsOf([{ key: 'movement', label: 'Movement', type: 'text', meaning: 'speed' }]);
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, { fields: { movement: '' }, meanings }, FEET, 30)).toBe(30);
+  });
+
+  it('never stands in for a speed the token or its statblock states, one that is none included', () => {
+    expect(tokenSpeed({ speed: 45 }, undefined, FEET, 30)).toBe(45);
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, goblin, FEET, 40)).toBe(30);
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, { fields: { speed: '0 ft.' } }, FEET, 30)).toBeNull();
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, { fields: { speed: 'none' } }, BANDS, 30)).toBeNull();
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, { fields: { speed: 0 } }, FEET, 30)).toBeNull();
+    // While the statblock is unread, what it states is not known yet.
+    expect(tokenSpeed({ statblockPath: 'Goblin.md' }, undefined, FEET, 30)).toBeNull();
+  });
+
+  it('takes a rules\' speed that is none as none', () => {
+    for (const none of [undefined, 0, -5, NaN, Infinity]) expect(tokenSpeed({}, undefined, FEET, none), String(none)).toBeNull();
   });
 
   it('reads a speed of its own only where it is a number above 0', () => {

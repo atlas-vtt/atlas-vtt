@@ -163,6 +163,12 @@ export function formatGameUnits(units: number, settings: Pick<MeasurementSetting
   return `${distanceNumber(units)}${unitSuffix(settings)}`;
 }
 
+/** Label for a distance in game units on a map that may name distances: "30ft", or the range band it reaches ("Near"). */
+export function formatGameDistance(units: number, settings: MeasurementSettings): string {
+  if (settings.mode === 'abstract') return rangeBandName(units / settings.unitDistance, settings.rangeBands);
+  return formatGameUnits(units, settings);
+}
+
 /**
  * Label for a distance that is set rather than measured (a sense's range): as `formatDistance`,
  * with one decimal where the distance has one, since 7.5 m is not 8 m.

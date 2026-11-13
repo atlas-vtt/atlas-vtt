@@ -31,9 +31,12 @@
 - Follows token, at the handle of a kept circle that lies on a token, makes the circle that token's aura, or lets it go where it is. An aura's far handle sets how far it reaches
 - Covered cells: a collection's Grid and measure settings say when an area covers a square or hex: at least half of it is inside, its centre is inside, or any part of it is
 - A cone can end rounded or flat, chosen in the same settings
-- Movement steps: the same settings name the steps of a move, such as Move ×1 and Dash ×2, each so many times a token's speed and with a colour of its own, and whether movement adds up over a turn. D&D 5e and Pathfinder 2e come with theirs
-- While you drag a token, its line takes the colour of the step the move is in and turns red past the last one, and the label reads moved / speed, such as 25 / 30ft. Where movement adds up over a turn, a token's moves in its turn count together while a fight runs, and undo gives the distance back
-- Speed: a token moves by the speed its statblock states, or by one of its own that you type in Edit token. Where a statblock states several, such as walking and flying, pick one under Movement in the token's menu
+- Movement steps: the same settings name the steps of a move, such as Move ×1 and Dash ×2, each so many times a token's speed and with a colour of its own, and whether movement adds up over a turn
+- Every built-in game system comes with its movement: its steps, and the speed of a creature that states none
+- While you drag a token, its line takes the colour of the step the move is in and turns red past the last one, and the label reads moved / how far that step reaches, such as 25 / 30ft, or 45 / 60ft in a Dash. Where movement adds up over a turn, a token's moves in its turn count together while a fight runs, and undo gives the distance back
+- Speed: a token moves by the speed its statblock states, or by one of its own that you set in Edit token. Where a statblock states several, such as walking and flying, pick one under Movement in the token's menu
+- A token with no speed of its own and none in its statblock moves by the speed its collection's Movement settings give such creatures
+- Games that measure in range bands have movement steps too: a drag reads as bands, such as Close / Near, a speed is picked as a band, and a statblock may name one, such as double near
 - Height: a token's menu has Height, which lifts it off the floor or puts it below, one square's distance at a time (+ and - work too), for the whole selection. A small tag over the token says how far, such as ↑ 30ft, and players see it on tokens they see
 - A ruler that starts or ends on a token counts the height between its two ends, by the collection's rule for diagonals
 - In a game that measures in range bands, Height and Aura step from band to band and are named by their band, such as ↑ Close or an aura of Very Close

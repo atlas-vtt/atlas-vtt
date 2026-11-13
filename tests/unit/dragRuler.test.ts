@@ -205,15 +205,15 @@ describe('DragRuler', () => {
       return { ...fight, turnMoves: { t1: { turn: movementTurn(fight as unknown as TurnMovesState), distance: moved } } };
     };
 
-    it('takes the colour of the step the move lies in and sets the distance against the speed', () => {
+    it('takes the colour of the step the move lies in and sets the distance against how far that step reaches', () => {
       const { ruler, view } = makeRuler({ speed: 30 }, () => true, { movement: movement(steps()) });
       ruler.begin('t1', center(0, 0));
       ruler.update(center(5, 0));
       expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(5, 0)], '25 / 30ft', TOKEN_RADIUS, CELL, MOVE.color);
       ruler.update(center(7, 0));
-      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(7, 0)], '35 / 30ft', TOKEN_RADIUS, CELL, DASH.color);
+      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(7, 0)], '35 / 60ft', TOKEN_RADIUS, CELL, DASH.color);
       ruler.update(center(13, 0));
-      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(13, 0)], '65 / 30ft', TOKEN_RADIUS, CELL, BEYOND_SPEED);
+      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(13, 0)], '65 / 60ft', TOKEN_RADIUS, CELL, BEYOND_SPEED);
       ruler.end();
     });
 
@@ -223,7 +223,7 @@ describe('DragRuler', () => {
       ruler.update(center(4, 0));
       pressSpace();
       ruler.update(center(4, 3));
-      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(4, 0), center(4, 3)], '35 / 30ft', TOKEN_RADIUS, CELL, DASH.color);
+      expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(4, 0), center(4, 3)], '35 / 60ft', TOKEN_RADIUS, CELL, DASH.color);
       ruler.end();
     });
 
@@ -231,7 +231,7 @@ describe('DragRuler', () => {
       const counted = makeRuler({ speed: 30 }, () => true, { movement: movement(steps(true)), state: fightWith(20) });
       counted.ruler.begin('t1', center(0, 0));
       counted.ruler.update(center(3, 0));
-      expect(counted.view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '35 / 30ft', TOKEN_RADIUS, CELL, DASH.color);
+      expect(counted.view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '35 / 60ft', TOKEN_RADIUS, CELL, DASH.color);
       counted.ruler.end();
 
       // The same turn under rules that do not count: each drag starts at 0.
@@ -249,20 +249,58 @@ describe('DragRuler', () => {
       idle.ruler.end();
     });
 
-    it('draws today\'s line and label without steps, without a speed and in range bands', () => {
+    it('draws the plain line and label without steps and without a speed', () => {
       const plain: Array<[string, { speed?: number }, RulerOptions]> = [
         ['no steps', { speed: 30 }, { movement: movement({ steps: [], countPerTurn: true }) }],
         ['no speed', {}, { movement: movement(steps()) }],
-        ['range bands', { speed: 30 }, { movement: movement(steps()), settings: { mode: 'abstract', rangeBands: [{ name: 'Close', maxSquares: 6 }] } }],
       ];
       for (const [name, token, options] of plain) {
         const { ruler, view } = makeRuler(token, () => true, options);
         ruler.begin('t1', center(0, 0));
         ruler.update(center(3, 0));
         // Four arguments: no colour is named, so the view draws in the accent as it always did.
-        expect(view.draw, name).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], name === 'range bands' ? 'Close' : '15ft', TOKEN_RADIUS, CELL);
+        expect(view.draw, name).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '15ft', TOKEN_RADIUS, CELL);
         ruler.end();
       }
+    });
+
+    describe('on a map that measures in range bands', () => {
+      const BANDS: Partial<MeasurementSettings> = {
+        mode: 'abstract',
+        rangeBands: [{ name: 'Close', maxSquares: 1 }, { name: 'Near', maxSquares: 6 }, { name: 'Double Near', maxSquares: 12 }, { name: 'Far', maxSquares: 13 }],
+      };
+
+      it('colours the line by the step and writes moved and reach as the bands they reach', () => {
+        const { ruler, view } = makeRuler({ speed: 30 }, () => true, { movement: movement(steps()), settings: BANDS });
+        ruler.begin('t1', center(0, 0));
+        ruler.update(center(3, 0));
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], 'Near / Near', TOKEN_RADIUS, CELL, MOVE.color);
+        ruler.update(center(8, 0));
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(8, 0)], 'Double Near / Double Near', TOKEN_RADIUS, CELL, DASH.color);
+        ruler.update(center(14, 0));
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(14, 0)], 'Far / Double Near', TOKEN_RADIUS, CELL, BEYOND_SPEED);
+        ruler.end();
+      });
+
+      it('goes on from what the token moved in its turn, and counts a drop', () => {
+        const countTurnMove = vi.fn();
+        const { ruler, view } = makeRuler({ speed: 30 }, () => true, { movement: movement(steps(true)), settings: BANDS, state: { ...fightWith(20), countTurnMove } });
+        ruler.begin('t1', center(0, 0));
+        ruler.update(center(3, 0));
+        // 20 ft earlier and three squares of 5 ft: 35 ft, in the second move.
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], 'Double Near / Double Near', TOKEN_RADIUS, CELL, DASH.color);
+        ruler.countDrop([{ id: 't1', from: center(0, 0), to: center(3, 0) }]);
+        expect(countTurnMove).toHaveBeenLastCalledWith(['t1'], 15);
+        ruler.end();
+      });
+
+      it('shows the players the plain band of a token that is not theirs', () => {
+        const { ruler, view } = makeRuler({ speed: 30, vision: { enabled: false } }, () => true, { movement: movement(steps()), settings: BANDS });
+        ruler.begin('t1', center(0, 0));
+        ruler.update(center(8, 0));
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(8, 0)], 'Double Near / Double Near', TOKEN_RADIUS, CELL, DASH.color, 'Double Near');
+        ruler.end();
+      });
     });
 
     describe('of a token that is not the players\' own', () => {
@@ -276,8 +314,8 @@ describe('DragRuler', () => {
           const { ruler, view } = makeRuler({ speed: 30, ...creature }, () => true, { movement: movement(steps(true)), state: fightWith(20) });
           ruler.begin('t1', center(0, 0));
           ruler.update(center(3, 0));
-          // The GM reads 35 of 30 ft in the Dash colour; the players 15 ft, in the accent.
-          expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '35 / 30ft', TOKEN_RADIUS, CELL, DASH.color, '15ft');
+          // The GM reads 35 of the Dash's 60 ft in its colour; the players 15 ft, in the accent.
+          expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], '35 / 60ft', TOKEN_RADIUS, CELL, DASH.color, '15ft');
           ruler.end();
         });
       }

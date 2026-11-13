@@ -47,6 +47,13 @@ export const SHADOWDARK: SystemPreset = {
         { name: 'Far', maxSquares: 13 },
       ],
     },
+    // A creature moves near on its turn, and near again where it gives up its action. The speed is
+    // Near's reach, 6 squares of 5 feet, so the second move ends where Double Near does.
+    movement: {
+      steps: [{ name: 'Move', multiple: 1, color: '#22c55e' }, { name: 'Second move', multiple: 2, color: '#f59e0b' }],
+      countPerTurn: true,
+      speed: 30,
+    },
     dice: { defaultRoll: '1d20', crit: 'natural' },
     diceSetId: D20_DICE_SET_ID,
     conditions: conditionsOf('shadowdark', [

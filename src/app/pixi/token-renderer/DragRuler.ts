@@ -7,8 +7,8 @@
  * Whether a drag shows its distance at all is the GM's choice (`shown`, read at every step, so a
  * change of the setting or a fight starting is followed at once).
  * Where the collection names movement steps and the token has a speed (`movement`), the line
- * takes the colour of the step the move lies in and the label sets the distance against the
- * speed; the drop counts what each token moved in the running turn (`countDrop`).
+ * takes the colour of the step the move lies in and the label sets the distance against how far
+ * that step reaches; the drop counts what each token moved in the running turn (`countDrop`).
  * That reading is the GM's, and the players' for their own tokens (`sideOf`): of any other token
  * it would tell them a creature's speed and what it moved this turn, so their picture (a frame,
  * and the canvas while it shows their view, `playersView`) has the plain distance in the accent
@@ -108,8 +108,7 @@ export class DragRuler {
    * Counts what each dropped token moved in the running turn, where the rules count movement per
    * turn: the measured path from the token's own start to the place it is dropped at (`to`, as
    * the drop snapped it), priced as the ruler prices it. Call it in the drag's history
-   * transaction, so undoing the drop gives the distance back. Nothing outside a drag, and nothing
-   * on a map that measures in range bands.
+   * transaction, so undoing the drop gives the distance back. Nothing outside a drag.
    */
   countDrop(drops: readonly TokenDrop[]): void {
     const start = this.waypoints[0];

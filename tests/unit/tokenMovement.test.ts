@@ -65,6 +65,24 @@ describe('tokenMovement', () => {
     expect(movement.choicesOf(fast)).toEqual([]);
   });
 
+  it('gives a token that states no speed the one the rules give such creatures', async () => {
+    rules = { ...STEPS, speed: 40 };
+    expect(movement.speedOf({})).toBe(40);
+    expect(movement.speedOf({ speed: 45 })).toBe(45);
+    // The goblin's statblock states 30 ft: unread it is not known yet, read it wins.
+    expect(movement.speedOf(goblin)).toBeNull();
+    movement.prepare([goblin]);
+    await read();
+    expect(movement.speedOf(goblin)).toBe(30);
+    // A statblock that says nothing of its speed.
+    delete current.frontmatter[GOBLIN]!.speed;
+    current.metadata.trigger('changed', current.app.vault.getAbstractFileByPath(GOBLIN));
+    await vi.waitFor(() => expect(movement.speedOf(goblin)).toBe(40));
+    // A link that leads to no statblock at all.
+    CreatureIndex.forApp(current.app).request(['Notes/Plain.md']);
+    await vi.waitFor(() => expect(movement.speedOf({ statblockPath: 'Notes/Plain.md' })).toBe(40));
+  });
+
   it('has nothing read where the collection names no movement steps', () => {
     rules = { steps: [], countPerTurn: true };
     const request = vi.spyOn(CreatureIndex.forApp(current.app), 'request');

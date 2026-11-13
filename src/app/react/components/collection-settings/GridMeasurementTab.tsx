@@ -204,9 +204,8 @@ export function GridMeasurementTab({
         <RangeBandsSection bands={gridDefaults.abstractRangeBands ?? []} onChange={(bands) => updateField('abstractRangeBands', bands)} />
       )}
 
-      {/* Range bands are a ruler's steps already: only distances are held against a speed. */}
-      {gridDefaults.measurementMode !== 'abstract' && movement && onMovementChange && (
-        <MovementRulesSection movement={movement} onChange={onMovementChange} />
+      {movement && onMovementChange && (
+        <MovementRulesSection movement={movement} onChange={onMovementChange} gridDefaults={gridDefaults} />
       )}
     </>
   );

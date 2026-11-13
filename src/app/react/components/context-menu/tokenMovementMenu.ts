@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand';
 import type { ContextMenuEntry } from '../../root/ContextMenuContext';
 import { chosenSpeed, speedKindOf, type StatedSpeed } from '../../../creatures/statblockSpeeds';
-import { formatGameUnits } from '../../../grid/measurementFormat';
+import { formatGameDistance } from '../../../grid/measurementFormat';
 import { t } from '../../../i18n';
 import { levelObjects } from '../../../levels/levelObjects';
 import type { TokenMovement } from '../../../pixi/token-renderer/tokenMovement';
@@ -18,9 +18,10 @@ function speedLabel(speed: StatedSpeed): string {
  * "Movement ▸" for the tokens `tokenIds` (the selection, or the token clicked alone): one row per
  * speed the clicked token's statblock states, its first on top, the one it moves by ticked. A row
  * is offered only where every one of the tokens states that speed, and picking it sets it for
- * all of them in one store write, so one undo step. None where the collection names no movement
- * steps or measures in range bands (a speed changes nothing there), for a token that moves by a
- * speed of its own, and where fewer than two speeds are left to pick from.
+ * all of them in one store write, so one undo step. A speed is written as the map writes
+ * distances: "60ft", or the range band it reaches. None where the collection names no movement
+ * steps (a speed changes nothing there), for a token that moves by a speed of its own, and where
+ * fewer than two speeds are left to pick from.
  */
 export function tokenMovementSubmenu(
   store: Pick<StoreApi<ViewAtlasState>, 'getState'>,
@@ -29,7 +30,7 @@ export function tokenMovementSubmenu(
   movement: Pick<TokenMovement, 'rules' | 'settings' | 'choicesOf'>,
 ): ContextMenuEntry | null {
   const settings = movement.settings();
-  if (settings.mode === 'abstract' || movement.rules().steps.length === 0) return null;
+  if (movement.rules().steps.length === 0) return null;
   const tokens = mapTokens(levelObjects(store.getState()));
   const clicked = tokens[tokenId];
   if (!clicked) return null;
@@ -43,7 +44,7 @@ export function tokenMovementSubmenu(
   const children: ContextMenuEntry[] = offered.map((choice, index) => ({
     type: 'item',
     label: speedLabel(choice),
-    detail: formatGameUnits(choice.speed, settings),
+    detail: formatGameDistance(choice.speed, settings),
     checked: choice === current,
     onClick: () => store.getState().updateTokens(
       tokenIds.map((id) => ({ id, changes: { speedKind: index === 0 ? undefined : choice.name ?? undefined } })),
