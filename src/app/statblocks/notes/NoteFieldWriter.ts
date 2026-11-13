@@ -15,6 +15,7 @@
  */
 
 import type { App, MarkdownView, TAbstractFile, TFile } from 'obsidian';
+import { holdsUnsavedText } from '../../utils/unsavedText';
 import { applyWrites, type NoteRewrite, type PatchBuilder, type WriteRequest, type WriteResult } from './applyWrites';
 import { writeToEditor } from './editorWrite';
 import { editingViewOf, loadedMarkdownViews } from './openEditors';
@@ -110,11 +111,19 @@ export class NoteFieldWriter {
    * Every pending change to disk or into its editor, and every editor written to saved (on close,
    * quit, window close). The registered commits run first: each queues its write as it starts.
    */
-  async flushAll(): Promise<void> {
+  flushAll(): Promise<void> {
+    return this.finishFlush(this.runPending());
+  }
+
+  /**
+   * `flushAll` for Obsidian's quit, started at once; null where it has nothing to write or save,
+   * since Obsidian must not be made to wait for nothing (`waitBeforeQuit`). Each commit queues
+   * its write as it starts, so what there is to do is known once the commits have started.
+   */
+  flushForQuit(): Promise<void> | null {
     const commits = this.runPending();
-    await this.queue.flushAll();
-    await commits;
-    await this.saveTouched();
+    if (this.queue.idle && !this.hasUnsavedEditor()) return null;
+    return this.finishFlush(commits);
   }
 
   /**
@@ -154,6 +163,20 @@ export class NoteFieldWriter {
       }
     });
     return Promise.all(commits).then(() => undefined);
+  }
+
+  /** The rest of a flush whose commits have started: what is queued, the commits' own writes, then the editors. */
+  private async finishFlush(commits: Promise<void>): Promise<void> {
+    await this.queue.flushAll();
+    await commits;
+    await this.saveTouched();
+  }
+
+  /** Whether an open editor Atlas wrote into still holds text its file does not. */
+  private hasUnsavedEditor(): boolean {
+    if (this.touched.size === 0) return false;
+    const open = new Set(loadedMarkdownViews(this.app));
+    return [...this.touched].some((view) => open.has(view) && holdsUnsavedText(view));
   }
 
   private enqueue(path: string, request: WriteRequest, now: boolean): Promise<WriteOutcome> {

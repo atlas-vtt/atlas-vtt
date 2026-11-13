@@ -1,7 +1,7 @@
 import React from 'react';
 import { SettingRow } from './SettingRows';
 import type { AtlasView } from '../../../atlas-view';
-import { sceneUnitDistance, unitLabelFor } from '../../../grid/measurementFormat';
+import { collectionUnitName, sceneUnitDistance, unitLabelFor } from '../../../grid/measurementFormat';
 import { typedDistance } from '../../../grid/unitDistance';
 import { useSceneMeasurement } from './useSceneMeasurement';
 import { t } from '../../../i18n';
@@ -21,9 +21,11 @@ export function SceneUnitDistanceRow({ view }: { view: AtlasView | null }): Reac
   if (measurement.mode === 'abstract') return null;
   const store = view.atlasStore;
   const stored = sceneUnitDistance(scene.state.grid);
-  const unit = unitLabelFor(measurement.unitType);
+  const unit = unitLabelFor(measurement.unitType, measurement.unitName);
   const { kind } = scene.rules.source;
-  const distance = `${measurement.ruleDistance}${unit ? ` ${unit}` : ''}`;
+  // The distance the scene falls back to is in the unit of the rules it plays by, whatever the scene names its own.
+  const ruleUnit = unitLabelFor(measurement.unitType, collectionUnitName(scene.rules.settings?.gridDefaults));
+  const distance = `${measurement.ruleDistance}${ruleUnit ? ` ${ruleUnit}` : ''}`;
   const hint = kind === 'campaign' ? t('grid.distanceFromCampaign', { distance })
     : kind === 'collection' ? t('grid.distanceFromCollection', { distance })
       : t('grid.distanceFromGrid', { distance });

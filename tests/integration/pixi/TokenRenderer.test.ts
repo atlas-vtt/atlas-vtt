@@ -16,7 +16,8 @@ import { EventEmitter } from 'events';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
 import { DrawingRenderer } from '../../../src/app/pixi/DrawingRenderer';
-import { MeasureRenderer } from '../../../src/app/pixi/MeasureRenderer';
+import { auraBadgePoint } from '../../../src/app/measure/auraArea';
+import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { TextTool } from '../../../src/app/tools/TextTool';
@@ -32,7 +33,7 @@ import { fogCoverage } from '../../../src/app/fog/fogCoverage';
 import { fogRectangle } from '../../helpers/fogOperations';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
 import type { TokenEntity } from '../../../src/app/types';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
@@ -819,8 +820,8 @@ describe('TokenRenderer Integration Tests', () => {
     });
 
     it.each(MARKERS)('starts no measurement on %s', (_marker, x) => {
-      const measure = new MeasureRenderer(viewport, eventBus, store, gridSystem);
-      const started = (): boolean => (measure as unknown as { isDrawing: boolean }).isDrawing;
+      const measure = new MeasureRenderer(viewport, store, gridSystem);
+      const started = (): boolean => measure.measurements.get().live !== null;
       try {
         store.getState().setActiveTool('measure');
         viewport.emit('pointerdown', pointerEvent(x, 200));
@@ -1410,7 +1411,7 @@ describe('TokenRenderer Integration Tests', () => {
       const active = (): boolean => peeking || !store.getState().isGMView;
       tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active);
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
-      measure = new MeasureRenderer(viewport, eventBus, store, gridSystem);
+      measure = new MeasureRenderer(viewport, store, gridSystem);
       unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, store, grid: gridSystem, lighting: () => perception });
     });
 
@@ -1419,12 +1420,14 @@ describe('TokenRenderer Integration Tests', () => {
       measure.destroy();
     });
 
+    /** The measurements' own parts among `layers`: the handles' layer, the areas' unlit outlines and the range marks are the GM's own. */
+    const parts = (layers: LayerVisibility[]): LayerVisibility[] => layers.filter(({ layer }) => !measure.gmLayers.some((own) => own === layer));
     /** The measurement parts' `visible` on the canvas, the live ruler first. */
-    const onCanvas = (): boolean[] => measure.getGmViewLayers().map(({ layer }) => layer.visible);
+    const onCanvas = (): boolean[] => parts(measure.getGmViewLayers()).map(({ layer }) => layer.visible);
     /** What a players' frame shows of them. */
-    const inFrame = (): boolean[] => measure.getPlayerViewLayers(tokenRenderer.playersSeeInFrame(perception)).map(({ visible }) => visible);
+    const inFrame = (): boolean[] => parts(measure.getPlayerViewLayers(tokenRenderer.playersSeeInFrame(perception))).map(({ visible }) => visible);
     const keepRuler = (x: number): void => {
-      eventBus.emit('measure-persistence-changed', true);
+      store.getState().setMeasureTool({ keep: true });
       store.getState().setActiveTool('measure');
       viewport.emit('pointerdown', pointerEvent(x, 105));
       viewport.emit('pointermove', pointerEvent(x, 400));
@@ -1481,6 +1484,40 @@ describe('TokenRenderer Integration Tests', () => {
       expect(inFrame()).toEqual([true, false, false, false, false, false]);
       store.getState().setGMView(true);
       expect(onCanvas()).toEqual([true, false, true, true, true, true]);
+    });
+
+    it('puts the handle of a kept ruler that starts on a token on the token\'s rim: a press there is the handle\'s with any tool, the token\'s middle is the token\'s, and so is all of it in the players\' view', async () => {
+      store.getState().addToken(token({ id: 'goblin', x: 105, y: 105 }));
+      await waitForTokens('goblin');
+      keepRuler(105);
+      const [id] = Object.keys(store.getState().objects.measures ?? {});
+      const click = (x: number, y: number): void => {
+        viewport.emit('pointerdown', pointerEvent(x, y));
+        viewport.emit('pointerup', pointerEvent(x, y));
+      };
+      // The badge stands on the rim of the goblin's space; pressed a little within it, the press is on the token and on the badge.
+      const rim = auraBadgePoint({ x: 105, y: 105 }, { size: gridSize });
+      const onBadge = { x: rim.x + (105 - rim.x) * 0.15, y: rim.y + (105 - rim.y) * 0.15 };
+      // With the measure tool the handle's press measures nothing.
+      click(onBadge.x, onBadge.y);
+      expect(measure.measurements.get().live).toBeNull();
+      expect(store.getState().measurePopover).toBe(id);
+      store.getState().closeMeasurePopover();
+      store.getState().setActiveTool('select');
+      click(onBadge.x, onBadge.y);
+      expect(store.getState().measurePopover).toBe(id);
+      expect(store.getState().selectedIds).toEqual([]);
+      // The token's middle, where the ruler starts, is the token's.
+      store.getState().closeMeasurePopover();
+      click(105, 105);
+      expect(store.getState().measurePopover).toBeNull();
+      expect(store.getState().selectedIds).toEqual(['goblin']);
+      store.getState().clearSelection();
+      // The players' view has no handles: the press on the badge's place is the token's.
+      store.getState().setGMView(false);
+      click(onBadge.x, onBadge.y);
+      expect(store.getState().measurePopover).toBeNull();
+      expect(store.getState().selectedIds).toEqual(['goblin']);
     });
   });
 

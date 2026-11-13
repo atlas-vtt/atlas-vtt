@@ -12,9 +12,10 @@ import type { PartyValues } from './partyTypes';
 import type { LevelAlignment, LevelLink, LevelSurface, SceneLevel } from './sceneLevelTypes';
 import type { LiquidSurface } from './liquidTypes';
 import type { MapFeature } from './mapFeatureTypes';
+import type { KeptMeasure } from '../measure/measureTypes';
+import type { TurnMove } from '../measure/turnMoves';
 import type { SavedPlayerFrame } from './playerCamera';
 import type { SceneSound } from '../sound/soundTypes';
-import type { Room } from '../lighting/rooms';
 
 /** Data read from a map view, independent of the store and persistence services. */
 export interface ViewState extends ViewUIState {
@@ -81,8 +82,8 @@ export interface ViewState extends ViewUIState {
     mapFeatures?: Record<string, MapFeature>;
     /** Water, lava and acid that move while maps are animated; absent until the first is added. Read with `liquidList`. */
     liquids?: Record<string, LiquidSurface>;
-    /** Areas carved out of the rock, whose outline stands as walls; absent until the first is carved. Read with `roomList`. */
-    rooms?: Record<string, Room>;
+    /** Measurements that stay on the map; absent until the first is kept. Read with `measureList`. */
+    measures?: Record<string, KeptMeasure>;
   };
 
   // Camera state
@@ -111,12 +112,24 @@ export interface ViewState extends ViewUIState {
    * value, never saved with the scene: a character's tokens show them (`PartyReconciler`).
    */
   partyValues: PartyValues;
+  /**
+   * What each token has moved in the turn it was last moved in, by token id (`measure/turnMoves.ts`),
+   * for rules that count movement per turn. Added in the step that moves the token
+   * (`countTurnMove`), so undo gives the distance back; read with `movedThisTurn`. Undo-tracked
+   * token by token, never saved; a state built without it has counted nothing.
+   */
+  turnMoves?: Record<string, TurnMove> | undefined;
+  /**
+   * How many fights this view has started: it tells the turns of one fight from the next one's
+   * (`movementTurn`). Never saved, never undo-tracked; unset reads as none.
+   */
+  fightsStarted?: number | undefined;
 
   // Audio dirty flag (non-persisted)
   _audioDirty: boolean;
 
   // Tool and selection state
-  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'measure-circle' | 'measure-cone' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio' | 'stairs';
+  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio' | 'stairs';
   selectionMode: 'box' | 'lasso';
   selectedIds: string[];
 

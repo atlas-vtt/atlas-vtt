@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import { waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { MarkdownView, Platform, WorkspaceLeaf, type OpenViewState } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { NotePreviewUIManager } from '../../src/app/services/NotePreviewUIManager';
+import { NotePinTool } from '../../src/app/tools/NotePinTool';
+import { dispatchPinAction } from '../../src/app/pixi/utils/pinActions';
 import { createUILayers, type UILayers } from '../../src/app/services/uiLayers';
 import type { PreviewWindowLayout } from '../../src/app/stores/pinnedNotePreviewSlice';
+import type { NotePin } from '../../src/app/types';
 
 const VIEW_ID = 'pinned-previews-test';
 const TAVERN = 'maps/tavern.atlasmap';
@@ -33,6 +36,7 @@ class LeafResizeObserver {
 }
 
 interface Harness {
+  app: ReturnType<typeof createInMemoryApp>['app'];
   store: ViewAtlasStore;
   eventBus: EventEmitter;
   manager: NotePreviewUIManager;
@@ -41,6 +45,11 @@ interface Harness {
   uiLayers: UILayers;
   /** Note views opened by previews, oldest first. */
   noteViews: MarkdownView[];
+  /** Opens a link in a tab of the workspace, as a followed pin does. */
+  openLinkText: MockInstance;
+  /** Hands out a leaf: a new one (`true`) for a preview's note, the tab in use (`false`) for a note opened over it. */
+  getLeaf: MockInstance;
+  pinTool: NotePinTool;
 }
 
 /** A detached leaf that opens the note in a markdown view, the way Obsidian's does. */
@@ -73,17 +82,27 @@ function createHarness({ noteLeaves = false } = {}): Harness {
   atlasLeaf.view = { viewId: VIEW_ID, containerEl: viewContainer, getViewType: () => 'atlas-vtt' };
   const uiLayers = createUILayers(viewContainer);
   const noteViews: MarkdownView[] = [];
+  const openLinkText = vi.fn(async () => {});
+  const getLeaf = vi.fn((_newLeaf?: boolean) => (noteLeaves ? createNoteLeaf(noteViews) : null));
   Object.assign(app.workspace, {
     getLeavesOfType: vi.fn((type: string) => (type === 'atlas-vtt' ? [atlasLeaf] : [])),
     getActiveViewOfType: vi.fn(() => null),
-    getLeaf: vi.fn(() => (noteLeaves ? createNoteLeaf(noteViews) : null)),
+    getLeaf,
     setActiveLeaf: vi.fn(),
+    openLinkText,
   });
 
   const store = createViewAtlasStore(app, VIEW_ID);
   const eventBus = new EventEmitter();
   const manager = new NotePreviewUIManager(app, eventBus, store, VIEW_ID);
-  return { store, eventBus, manager, atlasLeaf, atlasLeafRoot, uiLayers, noteViews };
+  const pinTool = new NotePinTool(eventBus, app, store);
+  return { app, store, eventBus, manager, atlasLeaf, atlasLeafRoot, uiLayers, noteViews, openLinkText, getLeaf, pinTool };
+}
+
+function destroyHarness({ manager, pinTool }: Harness): void {
+  pinTool.destroy();
+  manager.destroy();
+  document.body.empty();
 }
 
 /** The store side of `MapService.loadMap`: save the old map, rehydrate the new one, announce it. */
@@ -101,9 +120,16 @@ async function loadMap({ store, eventBus }: Harness, path: string): Promise<void
   state.setMapLoaded(true);
 }
 
-async function openPreview({ eventBus }: Harness): Promise<HTMLElement> {
+const TAVERN_PIN: NotePin = { id: 'pin-1', kind: 'pin', notePath: 'notes/tavern.md', x: 0, y: 0 };
+
+/** A click on the pin: its note opens in a tab of the workspace. */
+function followPin({ store }: Harness): void {
+  dispatchPinAction('open', TAVERN_PIN, store);
+}
+
+async function openPreview({ eventBus }: Harness, pin: NotePin = TAVERN_PIN): Promise<HTMLElement> {
   eventBus.emit('pin-hover-preview', {
-    pin: { id: 'pin-1', kind: 'pin', notePath: 'notes/tavern.md', x: 0, y: 0 },
+    pin,
     screenX: 100,
     screenY: 100,
     pixiEvent: { metaKey: true, ctrlKey: true },
@@ -122,8 +148,16 @@ async function findPreview(): Promise<HTMLElement> {
   return previewEl!;
 }
 
-function click(previewEl: HTMLElement, button: 'pin' | 'close'): void {
+function click(previewEl: HTMLElement, button: 'pin' | 'open' | 'close'): void {
   previewEl.querySelector<HTMLButtonElement>(`.atlas-note-preview-${button}-btn`)!.click();
+}
+
+/** A link in the note a preview shows, once the preview follows its clicks. */
+async function addNoteLink(previewEl: HTMLElement, href: string): Promise<HTMLAnchorElement> {
+  const link = previewEl.querySelector('.atlas-note-preview-content')!.createEl('a', { cls: 'internal-link', href });
+  // The preview hears of links drawn later through a mutation observer, which reports after this task
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
+  return link;
 }
 
 /** What the window measures: jsdom has no layout, and a hidden window measures 0 × 0 at 0, 0. */
@@ -162,8 +196,7 @@ describe('NotePreviewUIManager pinned previews', () => {
   });
 
   afterEach(() => {
-    harness.manager.destroy();
-    document.body.empty();
+    destroyHarness(harness);
     vi.unstubAllGlobals();
   });
 
@@ -256,6 +289,98 @@ describe('NotePreviewUIManager pinned previews', () => {
     expect(document.querySelector('.atlas-note-preview-window')).toBeNull();
   });
 
+  it('keeps a pinned preview where it is when its pin is followed to the full note', async () => {
+    const previewEl = await openPreview(harness);
+    click(previewEl, 'pin');
+    dragTo(previewEl, LAYOUT, 'se');
+
+    followPin(harness);
+
+    expect(harness.openLinkText).toHaveBeenCalledWith('notes/tavern.md', '', true);
+    expect(document.querySelector('.atlas-note-preview-window')).toBe(previewEl);
+    expect(previewEl.querySelector('.atlas-note-preview-pin-btn')?.classList.contains('is-pinned')).toBe(true);
+    expect(harness.store.getState().pinnedNotePreviews['pin-1']).toMatchObject(LAYOUT);
+
+    // The map still reopens it, as after any other visit to another scene
+    await loadMap(harness, CELLAR);
+    await loadMap(harness, TAVERN);
+    expect(shownLayout(await findPreview())).toEqual(['321px', '54px', '480px', '300px']);
+  });
+
+  it('closes the hover preview of a pin that is followed to its note', async () => {
+    await openPreview(harness);
+
+    followPin(harness);
+
+    expect(harness.openLinkText).toHaveBeenCalledWith('notes/tavern.md', '', true);
+    expect(document.querySelector('.atlas-note-preview-window')).toBeNull();
+  });
+
+  it('keeps a pinned preview where it is when its Open file button is used (#726)', async () => {
+    const previewEl = await openPreview(harness);
+    click(previewEl, 'pin');
+    dragTo(previewEl, LAYOUT, 'se');
+
+    click(previewEl, 'open');
+
+    expect(harness.openLinkText).toHaveBeenCalledWith('notes/tavern.md', '', true);
+    expect(document.querySelector('.atlas-note-preview-window')).toBe(previewEl);
+    expect(previewEl.querySelector('.atlas-note-preview-pin-btn')?.classList.contains('is-pinned')).toBe(true);
+    expect(harness.store.getState().pinnedNotePreviews['pin-1']).toMatchObject(LAYOUT);
+
+    // The map still reopens it, as after any other visit to another scene
+    await loadMap(harness, CELLAR);
+    await loadMap(harness, TAVERN);
+    expect(shownLayout(await findPreview())).toEqual(['321px', '54px', '480px', '300px']);
+  });
+
+  it('closes a hover preview whose Open file button is used', async () => {
+    const previewEl = await openPreview(harness);
+
+    click(previewEl, 'open');
+
+    expect(harness.openLinkText).toHaveBeenCalledWith('notes/tavern.md', '', true);
+    expect(document.querySelector('.atlas-note-preview-window')).toBeNull();
+  });
+
+  it('opens the note of an Open file button in a tab of its own, never over the map', async () => {
+    click(await openPreview(harness), 'open');
+
+    expect(harness.openLinkText).toHaveBeenCalledTimes(1);
+    expect(harness.getLeaf).not.toHaveBeenCalledWith(false);
+  });
+
+  it('opens the section a pin names once, in a tab of its own, from the Open file button', async () => {
+    const pin: NotePin = { ...TAVERN_PIN, notePath: 'notes/tavern.md#Cellar' };
+    click(await openPreview(harness, pin), 'open');
+
+    expect(harness.openLinkText.mock.calls).toEqual([['notes/tavern.md#Cellar', '', true]]);
+    expect(harness.getLeaf).not.toHaveBeenCalledWith(false);
+  });
+
+  it('opens nothing from the Open file button of a note that is gone', async () => {
+    const previewEl = await openPreview(harness);
+    click(previewEl, 'pin');
+    harness.app.vault.getAbstractFileByPath = (): null => null;
+
+    click(previewEl, 'open');
+
+    expect(harness.openLinkText).not.toHaveBeenCalled();
+    expect(previewEl.isConnected).toBe(true);
+  });
+
+  it('opens a link inside a pinned note in a tab of its own and keeps the preview', async () => {
+    const previewEl = await openPreview(harness);
+    click(previewEl, 'pin');
+    const link = await addNoteLink(previewEl, 'notes/cellar.md');
+
+    link.click();
+
+    expect(harness.openLinkText.mock.calls).toEqual([['notes/cellar.md', '', 'tab']]);
+    expect(previewEl.isConnected).toBe(true);
+    expect(Object.keys(harness.store.getState().pinnedNotePreviews)).toEqual(['pin-1']);
+  });
+
   it('forgets a preview once it is unpinned', async () => {
     const previewEl = await openPreview(harness);
     click(previewEl, 'pin');
@@ -276,9 +401,15 @@ describe('NotePreviewUIManager pinned note state', () => {
   });
 
   afterEach(() => {
-    harness.manager.destroy();
-    document.body.empty();
+    destroyHarness(harness);
   });
+
+  /** The leaf's `detach`, counted from now: opening took the leaf out of the workspace's split with it once. */
+  function leafClosing(view: MarkdownView): MockInstance {
+    const detach = vi.mocked(view.leaf.detach);
+    detach.mockClear();
+    return detach;
+  }
 
   async function openPinnedNote(): Promise<{ previewEl: HTMLElement; view: MarkdownView }> {
     const previewEl = await openPreview(harness);
@@ -300,6 +431,73 @@ describe('NotePreviewUIManager pinned note state', () => {
     await waitFor(() => expect(reopened.currentMode.getScroll()).toBe(42.5));
     expect(reopened.getEphemeralState()).toEqual({ cursor });
     expect(reopened.getMode()).toBe('preview');
+  });
+
+  it('keeps a pinned note at its scroll, in its own leaf, when its pin is followed to the full note', async () => {
+    const { previewEl, view } = await openPinnedNote();
+    view.currentMode.applyScroll(42.5);
+    const closeLeaf = leafClosing(view);
+
+    followPin(harness);
+
+    expect(previewEl.isConnected).toBe(true);
+    expect(harness.noteViews).toEqual([view]);
+    expect(closeLeaf).not.toHaveBeenCalled();
+    expect(view.currentMode.getScroll()).toBe(42.5);
+  });
+
+  it('releases the leaf of a pinned note whose pin was followed once the view closes', async () => {
+    const { view } = await openPinnedNote();
+    const closeLeaf = leafClosing(view);
+    followPin(harness);
+
+    harness.manager.destroy();
+
+    expect(closeLeaf).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.atlas-note-preview-window')).toBeNull();
+  });
+
+  it('releases the leaf of a hover preview whose pin is followed', async () => {
+    await openPreview(harness);
+    const closeLeaf = leafClosing(harness.noteViews.at(-1)!);
+
+    followPin(harness);
+
+    expect(closeLeaf).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a pinned note at its scroll, in its own leaf, when its Open file button is used (#726)', async () => {
+    const { previewEl, view } = await openPinnedNote();
+    view.currentMode.applyScroll(42.5);
+    const closeLeaf = leafClosing(view);
+
+    click(previewEl, 'open');
+
+    expect(previewEl.isConnected).toBe(true);
+    expect(harness.noteViews).toEqual([view]);
+    expect(closeLeaf).not.toHaveBeenCalled();
+    expect(view.currentMode.getScroll()).toBe(42.5);
+  });
+
+  it('releases the leaf of a pinned note whose Open file button was used once the view closes', async () => {
+    const { previewEl, view } = await openPinnedNote();
+    const closeLeaf = leafClosing(view);
+    click(previewEl, 'open');
+
+    harness.manager.destroy();
+
+    expect(closeLeaf).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.atlas-note-preview-window')).toBeNull();
+  });
+
+  it('releases the leaf of a hover preview whose Open file button is used', async () => {
+    const previewEl = await openPreview(harness);
+    const closeLeaf = leafClosing(harness.noteViews.at(-1)!);
+
+    click(previewEl, 'open');
+
+    expect(closeLeaf).toHaveBeenCalledTimes(1);
+    expect(harness.noteViews).toHaveLength(1);
   });
 
   it('saves the scroll with the map once scrolling pauses', async () => {

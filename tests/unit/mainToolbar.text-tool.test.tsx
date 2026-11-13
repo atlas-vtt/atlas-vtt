@@ -27,11 +27,13 @@ let settings: {
   getLightingQuality: () => 'high';
   isLightingQualityPicked: () => boolean;
   setLightingQuality: () => void;
+  getDragDistance: () => 'always';
+  setDragDistance: () => void;
 } | undefined;
 let viewType = 'atlas-vtt';
 
 function settingsWithLayout(layout: StoredToolbarLayout): typeof settings {
-  return { getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS, getLightingQuality: () => 'high', isLightingQualityPicked: () => false, setLightingQuality: () => undefined };
+  return { getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS, getLightingQuality: () => 'high', isLightingQualityPicked: () => false, setLightingQuality: () => undefined, getDragDistance: () => 'always', setDragDistance: () => undefined };
 }
 
 const storeState = {
@@ -58,6 +60,8 @@ const storeState = {
   setSceneLighting: vi.fn(),
   lightingTool: { mode: 'draw', drawMode: 'point-to-point', lightPreset: null },
   setLightingTool: vi.fn(),
+  measureTool: { mode: 'ruler', keep: false, players: true, color: null, lineWidth: 1 },
+  setMeasureTool: vi.fn(),
   setSelection,
   openAssetManager,
   closeAssetManager,

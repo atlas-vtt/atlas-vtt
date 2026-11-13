@@ -5,7 +5,7 @@ import { computeSight } from '../../../../vision/sight';
 import { LightingEngine } from '../LightingEngine';
 import type { LightingMode } from '../compositeFilter';
 import type { EngineLight, EngineScene } from '../types';
-import { createTestRenderer, renderThroughEngine, type PixelReader } from './gpuTestUtils';
+import { createTestRenderer, renderThroughEngine, setGmFloor, type PixelReader } from './gpuTestUtils';
 import { darkvision } from '../../../../vision/__tests__/senseSources';
 
 const SIZE = 256;
@@ -34,17 +34,19 @@ function scene(options: MemoryOptions & Partial<EngineScene>): EngineScene {
  * falloff changed (the dim range lit out to its edge, then held on dark maps, then the fade
  * within the dim range and the senses' fade towards their range, 2026-10-23). Another GPU or
  * driver may round a channel differently: record them there from what the first test below
- * reports.
+ * reports. `gm` was recorded anew when the GM's picture got its floor (`GM_FLOOR`, 2026-11-12);
+ * `gmWithoutFloor` is the GM's hash from before, which the picture still has with the floor at 0.
  */
-const RECORDED = { player: '016b47bc', gm: '62870fd9' } as const;
+const RECORDED = { player: '016b47bc', gm: '37927311', gmWithoutFloor: '62870fd9' } as const;
 /**
  * The same scene without its lights, under an ambient light of 0.2: sight, darkvision, explored
  * memory and the GM's ghosted map. Recorded on beta before the light falloff changed (commit
  * f1ae04bd, same machine), and anew when a sense came to fade towards the edge of its range
- * (`SENSE_FADE`, 2026-10-23): what no light touches stays as it was but for that.
+ * (`SENSE_FADE`, 2026-10-23): what no light touches stays as it was but for that. The GM's hashes
+ * as above: this floor under an ambient light of 0.2 shows darker than the GM's floor.
  */
 const UNLIT: Partial<EngineScene> = { lights: [], ambient: 0.2 };
-const UNLIT_RECORDED = { player: '6b7d35a6', gm: 'fe953c1b' } as const;
+const UNLIT_RECORDED = { player: '6b7d35a6', gm: 'de697922', gmWithoutFloor: 'fe953c1b' } as const;
 const DEFAULTS: MemoryOptions = { exploredMemory: true, exploredColor: '#ffffff', unexploredColor: '#000000' };
 
 /** Screen points: remembered but unseen (world 100, 100), never seen (900, 900), seen by the token (780, 300). */
@@ -84,7 +86,7 @@ describe('explored memory in the composite', () => {
     return texture;
   }
 
-  async function render(mode: LightingMode, options: MemoryOptions & Partial<EngineScene> = {}): Promise<PixelReader> {
+  async function render(mode: LightingMode, options: MemoryOptions & Partial<EngineScene> = {}, gmFloor?: number): Promise<PixelReader> {
     const renderer = await createTestRenderer(SIZE);
     cleanup.push(() => renderer.destroy());
     const explored = exploredLeftHalf(renderer);
@@ -96,6 +98,7 @@ describe('explored memory in the composite', () => {
     engine.setExplored(explored);
     engine.update(scene(options));
     engine.flush();
+    if (gmFloor !== undefined) setGmFloor(engine, gmFloor);
     return renderThroughEngine(engine, renderer, camera);
   }
 
@@ -107,6 +110,13 @@ describe('explored memory in the composite', () => {
   it('draws a scene without lights exactly as before the light falloff changed', async () => {
     expect(hashOf(await render('player', UNLIT))).toBe(UNLIT_RECORDED.player);
     expect(hashOf(await render('gm', UNLIT))).toBe(UNLIT_RECORDED.gm);
+  });
+
+  it('draws the GM\'s view without its floor exactly as before it had one, and the players\' view the same with it or without', async () => {
+    expect(hashOf(await render('gm', {}, 0))).toBe(RECORDED.gmWithoutFloor);
+    expect(hashOf(await render('gm', UNLIT, 0))).toBe(UNLIT_RECORDED.gmWithoutFloor);
+    expect(hashOf(await render('player', {}, 0))).toBe(RECORDED.player);
+    expect(hashOf(await render('player', UNLIT, 0))).toBe(UNLIT_RECORDED.player);
   });
 
   it('draws the default options exactly as with none set', async () => {

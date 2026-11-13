@@ -2,6 +2,102 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.15.0 — Measure tool, spell effects and movement
+
+2026-11-13
+
+### New
+
+**New Feature: Measure tool Updates**
+- The Measure tool now has it's own secondary toolbar
+- Measure around corners: press Space while you drag, or click point by point. The ruler shows each leg and the total
+- Keep (K) leaves measurements on the map and saves them with the scene. Hold Shift as you let go to do the opposite once
+- A kept measurement has a handle: drag it to move the measurement, click it to change its colour, hide it from players or delete it
+- Areas snap the way the collection settings measure, tint the cells they cover and stop at walls and closed doors (optional)
+- Tokens inside an area get a ring and are counted
+- Option to select all tokens within a measurment
+- Hold Alt to measure without snapping to the grid
+
+**Spell effects, light and auras**
+- Persistent areas can show Fire, Frost, Lightning, Mist, Radiance or Shadow effects
+- Persistent measurements can emit light. Shadows count as magical darkness
+- Auras: give a token an area that follows it, from the token's menu
+
+**Movement, height and ranges**
+- Movement steps: a collection names its moves, such as Move and Dash. A dragged token's line takes the step's colour and shows moved / speed
+- A token's speed comes from its statblock, or you set one in Edit token
+- Height: lift a token off the floor from its menu. Rulers count the height between two tokens
+- Range check: select a token and point at another with the measure tool to see the distance between them
+- Ranges: click a token for rings that show its range bands, or how far each movement step gets it
+
+**General**
+- Custom units: give a collection's unit a name of its own, such as mi. A single scene can have its own unit
+- Choose whether a dragged token shows its distance always, only in combat or never
+
+### Improved
+
+- Rooms are real walls now: drag their points, delete them and give them doors
+- The lights you can place sit in the bar beside the lighting modes
+- The Rooms panel is gone: rooms from 0.14.0 become walls when you open the scene
+- Improved low light visuals with dynamic lighting enabled
+
+### Fixed
+
+- Creating a statblock from a token no longer says it failed when only the link to the token went wrong
+- Creating a statblock from a token also offers your own statblock templates
+- A statblock value that tracks a number shows its own pattern instead of "current / max"
+- Fixed the spacing between the name and the text of actions and traits in statblocks
+- Statblock descriptions with several paragraphs or a list no longer hide the rest of the card on older Obsidian installers
+- Statblock text no longer leaves a stray bracket after some links
+- Hovering a link to an Atlas statblock note shows the statblock, not only its properties
+- A Counter's maximum changed in a statblock template reaches the statblocks that use it
+- Statblocks moved from Fantasy Statblocks show their Tier and the text of their features
+- Moving Fantasy Statblocks statblocks into their notes no longer leaves notes behind
+- The statblock preview of the initiative tracker is no longer cut off near the bottom of the window
+- Initiative by sides puts player characters on the players' side in scenes without dynamic lighting
+- Renaming a folder in the asset manager keeps the new name and the assets inside
+- Creating subfolders and moving folders in the asset manager now last
+- Deleting a folder in the asset manager moves what it holds to the parent folder
+- Saving changes in the asset manager no longer slows down as the library grows
+- Moving the Atlas folder inside the vault and back no longer leaves scenes without their map images
+- A Base that Atlas cannot read no longer hangs on "Reading…"
+- Collection and campaign settings no longer close on a click outside or Escape while they hold unsaved changes
+- The scene's Token Settings follow the played campaign's game system at once
+- The Scene levels page lets you change the map image of a scene with a single floor
+- Transparent parts of an upper floor show the floor below on scenes without dynamic lighting
+- A large map can always be zoomed out until all of it shows
+- A map without a grid no longer searches for one each time its scene opens
+- Text placed on the map stays sharp when you zoom in and on the player screen
+- A click on a wall selects only the walls joined to it
+- Ctrl+click on a Mac trackpad opens the right-click menu on the map
+- The first click with the pin, pen or fog tool after clicking a pin or token works again
+- Note pins can no longer be placed while the players' view hides them
+- A note pinned to the map stays pinned after you click its pin or use its Open file button
+- A tooltip no longer blocks the buttons it covers, and shows again when the pointer slips off an icon and back
+- Notices go away properly when the system has animations switched off
+- Obsidian quits properly on macOS with Atlas enabled
+
+### Atlas Online
+
+- Players see your measurements as you made them, with their colour, effect, light and auras, and measure with the same five shapes
+- Note pins your players may read on the world map and the maps it leads into show in their book
+- Large world maps open at once and stay sharp when players zoom in
+- The start menu says when a campaign's game system replaces the collection's
+- A Public roll always reaches your players
+- Players read the new note when you point a pin they found at another note
+- A player whose page fell out of step with the table catches up by itself
+- Two tokens linked to the same statblock no longer freeze Obsidian when two players play them
+- A player keeps their character sheet while their token is hidden or out of sight
+- A token given to a player shows its statblock and abilities before the map shows the token
+- Abilities named with a long link show their plain name and text
+- A token a player drops no longer rests halfway through a wall
+- The GM's map always shows the table log button while a table runs
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daniel Mensinga, Daria Ambrose, Deus Ex Minima, Dewwww, Eskil Bolsøy, George Young, Giodude, Hannes Pingel, Ionazh, Josh Zindler, Joshua Herrin, Kevin Hait, Krangal, LittleBlueShyGuy, Markus Baumann, Michael Breuer, MrEhm, Nick, Pau Benazet Montobbio, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Tim Roddick-Hull, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
 ## 0.14.0 — Rooms, pin names and a tidier lighting tool
 
 2026-11-10

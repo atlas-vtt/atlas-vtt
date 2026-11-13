@@ -2,7 +2,7 @@ import type { Message } from '../../types';
 
 export const tabs = {
   'tabs.allOpen': 'All open maps',
-  'tabs.close': 'Close {name}',
+  'tabs.close': 'Close scene',
   'tabs.processing': 'Processing · {percent}%',
   'tabs.openMaps': 'Open maps',
   'tabs.openScene': 'Open scene',

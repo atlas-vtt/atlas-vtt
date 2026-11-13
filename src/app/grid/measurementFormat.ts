@@ -4,6 +4,7 @@
  * a collection, the map's own grid units.
  */
 
+import { DEFAULT_AREA_CELL_RULE, DEFAULT_CONE_END, type AreaCellRule, type ConeEnd } from '../measure/areaRules';
 import type { GridState } from '../types/gridTypes';
 import type {
   CollectionGridDefaults,
@@ -24,12 +25,26 @@ export interface MeasurementSettings {
    * sets. Distances written in squares (presets, statblocks) are converted with this one.
    */
   ruleDistance: number;
+  /**
+   * The unit's name as the GM typed it ("mi", "ly"), shown in place of the unit type's own: the
+   * scene's where it names one, else the collection's for a custom unit. Unset: the unit type's.
+   */
+  unitName?: string;
   diagonalRule: DiagonalRule;
   /** What a cell of difficult terrain costs a token's movement (`movementCostInCells`); unset is nothing extra. Plain distances never pay it. */
   difficultTerrain?: DifficultTerrainRule;
   rangeBands: readonly RangeBand[];
   /** Full opening of the cone measurement in degrees. */
   coneAngle: number;
+  /** When a measured area covers a cell; unset is `DEFAULT_AREA_CELL_RULE`. Read with `areaRulesOf`. */
+  areaCellRule?: AreaCellRule;
+  /** How a measured cone ends; unset is `DEFAULT_CONE_END`. Read with `areaRulesOf`. */
+  coneEnd?: ConeEnd;
+}
+
+/** The rules that shape a map's measured areas, with the defaults where the settings name none. */
+export function areaRulesOf(settings: Pick<MeasurementSettings, 'areaCellRule' | 'coneEnd'> | null | undefined): { cellRule: AreaCellRule; coneEnd: ConeEnd } {
+  return { cellRule: settings?.areaCellRule ?? DEFAULT_AREA_CELL_RULE, coneEnd: settings?.coneEnd ?? DEFAULT_CONE_END };
 }
 
 /** Cone of a collection that never set one: a quarter circle. */
@@ -46,29 +61,56 @@ export function sceneUnitDistance(grid: Pick<GridState, 'unitDistanceOverride'> 
   return typeof distance === 'number' && Number.isFinite(distance) && distance > 0 ? distance : undefined;
 }
 
+/** The longest name a unit keeps; a longer one is cut there. */
+export const MAX_UNIT_NAME = 12;
+
+/** A unit's name as typed: trimmed and at most `MAX_UNIT_NAME` long; text that names nothing, or no text, is none. */
+export function readUnitName(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const name = value.trim().slice(0, MAX_UNIT_NAME).trim();
+  return name === '' ? undefined : name;
+}
+
+/** The unit a scene names for its own distances (`GridState.unitNameOverride`), a galaxy map's "ly"; none where it names none. */
+export function sceneUnitName(grid: Pick<GridState, 'unitNameOverride'> | null | undefined): string | undefined {
+  return readUnitName(grid?.unitNameOverride);
+}
+
 /**
  * What a map measures in. Collection grid defaults win; a map without a collection falls back to
- * its grid state. A scene's own distance per cell changes only `unitDistance`, and only where
- * distances are measured: range bands have no distance per cell, so there it is kept but unused.
+ * its grid state. A scene's own distance per cell changes only `unitDistance` and its own unit
+ * name only `unitName`, and only where distances are measured: range bands have no distance per
+ * cell, so there both are kept but unused.
  */
 export function resolveMeasurementSettings(
   collection: CollectionGridDefaults | undefined,
   grid: GridState | null | undefined,
 ): MeasurementSettings {
-  const rules = collection ? collectionMeasurement(collection) : gridMeasurement(grid);
-  const override = rules.mode === 'abstract' ? undefined : sceneUnitDistance(grid);
-  return { ...rules, unitDistance: override ?? rules.ruleDistance };
+  const { unitName: ruleName, ...rules } = collection ? collectionMeasurement(collection) : gridMeasurement(grid);
+  const metric = rules.mode !== 'abstract';
+  const override = metric ? sceneUnitDistance(grid) : undefined;
+  const unitName = (metric ? sceneUnitName(grid) : undefined) ?? ruleName;
+  return { ...rules, unitDistance: override ?? rules.ruleDistance, ...(unitName !== undefined && { unitName }) };
+}
+
+/** The name a collection's unit shows: the one typed for a `custom` unit; none for the units that have their own. */
+export function collectionUnitName(collection: Pick<CollectionGridDefaults, 'unitType' | 'unitName'> | undefined): string | undefined {
+  return collection?.unitType === 'custom' ? readUnitName(collection.unitName) : undefined;
 }
 
 function collectionMeasurement(collection: CollectionGridDefaults): Omit<MeasurementSettings, 'unitDistance'> {
+  const unitName = collectionUnitName(collection);
   return {
     mode: collection.measurementMode,
     unitType: collection.unitType,
+    ...(unitName !== undefined && { unitName }),
     ruleDistance: collection.unitDistance,
     diagonalRule: collection.diagonalRule ?? 'equidistant',
     difficultTerrain: collection.difficultTerrain ?? 'none',
     rangeBands: collection.abstractRangeBands ?? [],
     coneAngle: collection.coneAngle ?? DEFAULT_CONE_ANGLE,
+    areaCellRule: collection.areaCellRule ?? DEFAULT_AREA_CELL_RULE,
+    coneEnd: collection.coneEnd ?? DEFAULT_CONE_END,
   };
 }
 
@@ -82,16 +124,24 @@ function gridMeasurement(grid: GridState | null | undefined): Omit<MeasurementSe
     difficultTerrain: 'none',
     rangeBands: [],
     coneAngle: DEFAULT_CONE_ANGLE,
+    areaCellRule: DEFAULT_AREA_CELL_RULE,
+    coneEnd: DEFAULT_CONE_END,
   };
 }
 
 const UNIT_SUFFIX: Record<GridUnitType, string> = { feet: 'ft', yards: 'yd', meters: 'm', units: 'u', custom: '' };
 const tenths = (value: number): number => Math.round(value * 10) / 10;
 
-/** Unit shown next to a distance input, e.g. "ft"; none for generic units. Maps without a unit use feet. */
-export function unitLabelFor(unitType: GridUnitType | undefined): string {
+/** Unit shown next to a distance input, e.g. "ft", or the name the GM gave it; none for generic units. Maps without a unit use feet. */
+export function unitLabelFor(unitType: GridUnitType | undefined, unitName?: string): string {
+  if (unitName) return unitName;
   if (unitType === 'units' || unitType === 'custom') return '';
   return UNIT_SUFFIX[unitType ?? 'feet'];
+}
+
+/** What follows a distance's number: the unit type's short form right after it ("30ft"), a typed name after a space ("30 mi"). */
+function unitSuffix(settings: Pick<MeasurementSettings, 'unitType' | 'unitName'>): string {
+  return settings.unitName ? ` ${settings.unitName}` : UNIT_SUFFIX[settings.unitType];
 }
 
 /** 
@@ -100,7 +150,23 @@ export function unitLabelFor(unitType: GridUnitType | undefined): string {
  */
 export function formatDistance(cells: number, settings: MeasurementSettings): string {
   if (settings.mode === 'abstract') return rangeBandName(cells, settings.rangeBands);
-  return `${tenths(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;
+  return formatGameUnits(cells * settings.unitDistance, settings);
+}
+
+/** A distance's number as labels write it: one decimal where the distance has one. */
+export function distanceNumber(units: number): string {
+  return `${tenths(units)}`;
+}
+
+/** Label for a distance already in game units (a token's speed), e.g. "30ft" or "30 mi": what `formatDistance` writes for as many cells. */
+export function formatGameUnits(units: number, settings: Pick<MeasurementSettings, 'unitType' | 'unitName'>): string {
+  return `${distanceNumber(units)}${unitSuffix(settings)}`;
+}
+
+/** Label for a distance in game units on a map that may name distances: "30ft", or the range band it reaches ("Near"). */
+export function formatGameDistance(units: number, settings: MeasurementSettings): string {
+  if (settings.mode === 'abstract') return rangeBandName(units / settings.unitDistance, settings.rangeBands);
+  return formatGameUnits(units, settings);
 }
 
 /**
@@ -109,7 +175,7 @@ export function formatDistance(cells: number, settings: MeasurementSettings): st
  */
 export function formatReach(cells: number, settings: MeasurementSettings): string {
   if (settings.mode === 'abstract') return settings.rangeBands.length > 0 ? rangeBandName(cells, settings.rangeBands) : `${tenths(cells)} sq`;
-  return `${tenths(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;
+  return formatGameUnits(cells * settings.unitDistance, settings);
 }
 
 /** A band threshold must be a whole number of at least one square. */

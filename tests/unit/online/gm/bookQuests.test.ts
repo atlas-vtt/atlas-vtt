@@ -12,6 +12,12 @@ import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
+// Node has no tile worker: a map's pyramid is still being cut for as long as the test runs, as on a slow device.
+vi.mock('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas')>()), buildMapPyramid: () => new Promise(() => undefined) }));
+vi.mock('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient', async (original) => ({
+  ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient')>()),
+  TesseraDecoderClient: { forApp: () => ({ levelReady: () => new Promise(() => undefined), tesseraBlobs: () => Promise.resolve([]) }), release: () => undefined },
+}));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
   GmMarks: class {
     source(): null {
@@ -109,6 +115,26 @@ describe('quests at a running table', () => {
     writeQuests(quests);
     await advance(100);
     expect(ofType(delivered(table.socket), 'book')).toHaveLength(books);
+    table.online.stop();
+  });
+
+  it('hands a page that draws the book\'s maps from their tiles the world map as its pyramid, and any other page as one image', async () => {
+    const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
+    const worldMapOf = (player: string): { readonly id: string; readonly tiles?: true } | undefined => {
+      const sent = delivered(table.socket).filter(({ to, body }) => to === player && (body.t === 'book' || body.t === 'book-map')).at(-1);
+      const read = parseGmMessage(JSON.parse(JSON.stringify(sent?.body)));
+      return read?.t === 'book' ? read.book.worldMap?.image : read?.t === 'book-map' ? read.worldMap?.image : undefined;
+    };
+    expect(worldMapOf(ANA)?.tiles).toBeUndefined();
+    const image = worldMapOf(BEN)?.id;
+
+    table.from(ANA, { t: 'book-parts', tiles: true });
+    await advance(100);
+    expect(worldMapOf(ANA)).toMatchObject({ tiles: true });
+    expect(worldMapOf(ANA)?.id).not.toBe(image);
+    expect(ofType(delivered(table.socket), 'book-map').filter(({ to }) => to === ANA)).toHaveLength(1);
+    expect(worldMapOf(BEN)).toMatchObject({ id: image });
+    expect(worldMapOf(BEN)?.tiles).toBeUndefined();
     table.online.stop();
   });
 

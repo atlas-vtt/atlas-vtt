@@ -12,7 +12,8 @@ import { pinGroupScale, pinScreenDiameter, type MapSize } from './pinSizing';
 import { pinSize } from '../styles/designTokens';
 import type { PinIconId } from '../types/pinIcons';
 import { destroyTree } from "./utils/destroyTree";
-import { isHandled } from "./utils/handledEvents";
+import { hearPressesLast, isHandled } from "./utils/handledEvents";
+import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
 import type { ContextMenuEntry } from '../react/root/ContextMenuContext';
@@ -159,7 +160,7 @@ export class PinRenderer {
       const activeTool = this.store.getState().activeTool;
       if (activeTool === 'fog' || activeTool === 'eraser') return;
 
-      if (activeTool === 'note-pin' && e.button === 0) {
+      if (activeTool === 'note-pin' && isPrimaryPress(e)) {
         const worldPos = this.viewport.toWorld(e.global);
         this.eventBus.emit('canvas-click', {
           x: e.global.x, y: e.global.y,
@@ -322,6 +323,11 @@ export class PinRenderer {
     return this.pinContainer;
   }
 
+  /** The note pin tool hears presses after the dispatch that claims them; called once that dispatch listens. */
+  public reorderViewportListeners(): void {
+    if (this._notePinToolViewportListener) hearPressesLast(this.viewport, this._notePinToolViewportListener);
+  }
+
   /** How large the map is in world pixels, which pins and names are sized by; set by the view. */
   public setMapSize(read: () => MapSize | null): void {
     this.mapSize = read;
@@ -394,12 +400,12 @@ export class PinRenderer {
     const pin = levelObjects(this.store.getState()).pins[pinId];
     if (!pin) return;
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       this.showPinContextMenu(pin, { x: e.clientX, y: e.clientY });
       return;
     }
 
-    if (e.button === 0) {
+    if (isPrimaryPress(e)) {
       // Left-click: start drag (same logic as inline handler)
       let isDragging = false;
       let hasMoved = false;

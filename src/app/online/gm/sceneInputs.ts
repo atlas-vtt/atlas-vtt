@@ -18,9 +18,10 @@ import { wallList } from '../../vision/wallList';
 import type { SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
 import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
-import { blockingWalls } from '../../lighting/rooms';
 import { GM_SIGHT_POLICY, sceneHasVision, sightPolicyFor, type SightPolicy } from '../../vision/tokenSightPolicy';
 import { mapTokens } from '../../tokens/offMap';
+import { isAura, measureList } from '../../measure/keptMeasures';
+import { measureLightKey, measureLights } from '../../measure/measureLights';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
@@ -71,7 +72,7 @@ export function sharedLightingScene(state: SceneState, rules: SightRules, measur
     cellSize,
     unitDistance,
     // A window stops a token and nothing players see by, so their lighting never gets it.
-    walls: wallList(blockingWalls(levelObjects(state))).filter((wall) => wall.blocks !== 'movement').map(sharedWall),
+    walls: wallList(levelObjects(state).walls).filter((wall) => wall.blocks !== 'movement').map(sharedWall),
     zones: lightZoneList(levelObjects(state).lightZones).map((zone) => ({
       polygon: zone.polygon.flatMap((corner) => [corner.x, corner.y]), ambient: zone.ambient, ...(zone.ambientColor && { colour: zone.ambientColor }),
     })),
@@ -98,6 +99,8 @@ export interface SightInputs {
   /** The random id players know a token or a placed light by. */
   tokenAlias(id: string): string;
   lightAlias(id: string): string;
+  /** The map's measurement rules, which place the lights of its kept areas; without them those lights are left out. */
+  readonly measurement?: Pick<MeasurementSettings, 'unitDistance' | 'coneAngle'>;
 }
 
 /**
@@ -127,15 +130,42 @@ function sightToken(token: TokenEntity, inputs: SightInputs, givesSight: SightPo
 
 /**
  * A light's emission as players get it, a slow smoulder as a pulse, which every player page draws
- * (one that does not know an animation stops on it). The players' page knows no area lights yet:
- * a placed area light goes out as a light at its middle, its area left out.
+ * (one that does not know an animation stops on it). A placed area light goes out as a light at
+ * its middle, its area left out.
  */
-// ponytail: share `area` once the players' page draws area lights; until then lava lights its room from its middle there.
+// ponytail: share a placed light's `area` too (`SharedLight.area`, as a kept area's light has it) once the players' page draws area lights; until then lava lights its room from its middle there.
 function sharedEmission(emission: LightEmission): JsonRecord {
   return emission.animation === 'smoulder' ? { ...emission, animation: 'pulse' } : { ...emission };
 }
 
-/** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on, its tokens and the held ones. */
+const tenth = (value: number): number => Math.round(value * 10) / 10;
+
+/**
+ * The lights the level's kept areas give (`measureLights`), hidden areas too: the GM hid the mark,
+ * not the fire. A circle's at its centre, a cone's as a beam, a square's and a line's at its middle
+ * with the outline it glows from (`area`: a page that does not read it shines the light from the
+ * middle). An aura's stands where light reads its token (where a held one was taken from) and
+ * names that token while players are sent it (`sent`), so their page keeps the light on the token
+ * as it moves there; the aura of a hidden token gives players none, as its carried light gives none.
+ */
+function sharedMeasureLights(inputs: SightInputs, sent: ReadonlySet<string>): SharedSight['lights'] {
+  const { state, measurement } = inputs;
+  const measures = measureList(levelObjects(state).measures);
+  if (!measurement || !measures.some((measure) => measure.light !== undefined)) return [];
+  const held = heldForSight(state);
+  const places = Object.fromEntries(Object.values(mapTokens(levelObjects(state))).filter((token) => token.isHidden !== true).map((token) => [token.id, { ...token, ...held[token.id] }]));
+  const bearers = new Map(measures.flatMap((measure): [string, string][] => (isAura(measure) && sent.has(measure.follows) ? [[measureLightKey(measure.id), measure.follows]] : [])));
+  return measureLights({ measures, scale: unitScaleOf(measurement, state.grid), coneAngle: measurement.coneAngle }, places).map((light) => {
+    const bearer = bearers.get(light.key);
+    return {
+      id: inputs.lightAlias(light.key), x: light.x, y: light.y, emission: sharedEmission(light.emission), ...(finite(light.rotation) && { rotation: light.rotation }),
+      ...(light.area && { area: light.area.flatMap(({ x, y }) => [tenth(x), tenth(y)]) }),
+      ...(bearer !== undefined && { token: inputs.tokenAlias(bearer) }),
+    };
+  });
+}
+
+/** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on (those of kept areas among them), its tokens and the held ones. */
 export function sharedSight(inputs: SightInputs): SharedSight {
   const { state } = inputs;
   const { givesSight } = sightPolicyFor(GM_SIGHT_POLICY, inputs.rules);
@@ -149,10 +179,10 @@ export function sharedSight(inputs: SightInputs): SharedSight {
   const held = Object.entries(heldForSight(state)).flatMap(([id, at]) => (sent.has(id) && finite(at.x) && finite(at.y) ? [{ id: inputs.tokenAlias(id), x: roundPlace(at.x), y: roundPlace(at.y) }] : []));
   return {
     lighting: { ...state.lighting },
-    lights: lightList(levelObjects(state).lights).filter((light) => light.hidden !== true).map((light) => ({
+    lights: [...lightList(levelObjects(state).lights).filter((light) => light.hidden !== true).map((light) => ({
       id: inputs.lightAlias(light.id), x: light.x, y: light.y, emission: sharedEmission(light.emission),
       ...(finite(light.rotation) && { rotation: light.rotation }), ...(finite(light.activeBelowAmbient) && { activeBelowAmbient: light.activeBelowAmbient }),
-    })),
+    })), ...sharedMeasureLights(inputs, sent)],
     tokens: tokens.map(({ entry }) => entry),
     held,
     // No vision token players get while the scene has one (every one hidden, or on another floor): the players'

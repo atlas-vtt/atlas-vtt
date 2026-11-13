@@ -15,6 +15,7 @@ import { EventEmitter } from 'events';
 import type { TextElement } from '../types';
 import { promptForText } from '../ui/textInputDialog';
 import { isHandledTap } from '../pixi/utils/handledEvents';
+import { isPrimaryPress } from '../pixi/utils/pointerButtons';
 import { MAP_LAYER_Z } from '../pixi/mapLayerOrder';
 import { t } from '../i18n';
 
@@ -183,7 +184,7 @@ export class TextTool {
 
   private handleMapClick(e: FederatedPointerEvent): void {
     // Only the primary button places text; a right-drag pans the map and ends in a tap too.
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
     // A click a pin, door badge or light marker took places no text.
     if (isHandledTap(e)) return;
     // Free placement — see handleMapMove.

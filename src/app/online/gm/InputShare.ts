@@ -8,7 +8,6 @@ import { sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
 import { SequencedList } from './sequencedList.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
 import { levelObjects } from '../../levels/levelObjects';
-import { blockingWalls } from '../../lighting/rooms';
 import { levelExploredMask } from '../../levels/sceneLevels';
 
 export interface InputSharePorts extends PacerClock {
@@ -178,7 +177,7 @@ export class InputShare {
       this.publish({ t: 'lighting', scene: scene.id, ...lighting });
       if (this.lighting !== null) this.lighting.sent = lighting;
     }
-    this.sight.publish(scene.id, sharedSight({ state, rules, shown, tokenAlias: (id) => this.ports.tokenAlias(id), lightAlias: (id) => this.lightAlias(id) }));
+    this.sight.publish(scene.id, sharedSight({ state, rules, shown, tokenAlias: (id) => this.ports.tokenAlias(id), lightAlias: (id) => this.lightAlias(id), measurement: source.measurement() }));
   }
 
   /** The walls, zones and senses, worked out again only when what they are made of changed. */
@@ -186,9 +185,9 @@ export class InputShare {
     const rules = source.rules();
     const measurement = source.measurement();
     const key = this.lighting;
-    if (key !== null && key.walls === blockingWalls(levelObjects(state)) && key.zones === levelObjects(state).lightZones && key.grid === state.grid && key.rules === rules && key.unitDistance === measurement.unitDistance) return key.scene;
+    if (key !== null && key.walls === levelObjects(state).walls && key.zones === levelObjects(state).lightZones && key.grid === state.grid && key.rules === rules && key.unitDistance === measurement.unitDistance) return key.scene;
     const scene = sharedLightingScene(state, rules, measurement);
-    this.lighting = { walls: blockingWalls(levelObjects(state)), zones: levelObjects(state).lightZones, grid: state.grid, rules, unitDistance: measurement.unitDistance, scene, sent: null };
+    this.lighting = { walls: levelObjects(state).walls, zones: levelObjects(state).lightZones, grid: state.grid, rules, unitDistance: measurement.unitDistance, scene, sent: null };
     return scene;
   }
 

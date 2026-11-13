@@ -1,11 +1,11 @@
-import { CURSOR_KEEPALIVE_MS, GM_MARKS, MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, MAX_MARK_LASER_NUMBERS, type GmMessage, type LaserState, type MarksMessage, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure } from '../protocol/index.ts';
+import { CURSOR_KEEPALIVE_MS, GM_MARKS, MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, MAX_MARK_KEPT, MAX_MARK_LASER_NUMBERS, type GmMessage, type LaserState, type MarksMessage, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure } from '../protocol/index.ts';
 import type { SceneSource } from '../../host/sceneSource';
-import type { Measurements } from '../../pixi/MeasureRenderer';
+import type { Measurements } from '../../pixi/measure/measurements';
 import { CursorShare, type CursorSharePorts } from './CursorShare.ts';
-import { GmMeasures, type PlayersView } from './gmMeasures.ts';
+import { GmMeasures, type PlayersView, type TokenAlias } from './gmMeasures.ts';
 import { checkLaser, checkMeasure, markRate } from './markCheck.ts';
 import type { MapSize, MoveRate } from './moveCheck.ts';
-import { Pacer, type CursorSource, type LaserSource, type PacerClock } from '../marks/index.ts';
+import { legacyMeasures, Pacer, type CursorSource, type LaserSource, type PacerClock } from '../marks/index.ts';
 
 /** The GM's own marks on the shared tab: its renderer's measurements, its laser, and what players see of the tokens. */
 export interface GmMarkSource extends PlayersView {
@@ -42,6 +42,8 @@ export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePort
   showPlayerMarks?(marks: PlayerMarks): void;
   /** Whether the GM lets everyone see each other's cursor; without it nobody's cursor is taken or sent. */
   cursorsShown?(): boolean;
+  /** The id players know a token by, which an aura names the token it lies around by; without it players are told no aura. */
+  tokenAlias?: TokenAlias;
 }
 
 /** The live lane's key for `marks`: one waits at most. */
@@ -79,8 +81,17 @@ type MeasureEntry = MarksMessage['measures'][number];
 /** A laser as `marks` and the GM's overlay take it: its look and pointer, with these trail points and the time they cover. */
 const laserEntry = (who: string, { color, size, at, on }: LaserState, pts: readonly number[], span: number | null): LaserEntry => ({ who, color, size, at, pts, on, ...(span !== null && { span }) });
 
+/** Whether a sender is drawing a measurement, which a span then times: by what it tells in full, where it tells any. */
+const isDrawing = ({ live, full }: MeasureState): boolean => (full ? full.live : live) !== null;
+
+/** Whether a sender has no measurement at all. */
+const hasNone = (state: MeasureState): boolean => !isDrawing(state) && (state.full ?? state).kept.length === 0;
+
 /** A sender's measurements as `marks` and the GM's overlay take them, with the time since the live one's end was last told. */
-const measureEntry = (who: string, { color, live, kept }: MeasureState, span: number | null): MeasureEntry => ({ who, color, live, kept, ...(live !== null && span !== null && { span }) });
+const measureEntry = (who: string, state: MeasureState, span: number | null): MeasureEntry => {
+  const { color, live, kept, full } = state;
+  return { who, color, live, kept, ...(isDrawing(state) && span !== null && { span }), ...(full && { full }) };
+};
 
 /** The time messages cover together: null once one of them told none, and no more than a message may tell. */
 const spansAdded = (covered: number | null, span: number | undefined): number | null => (covered === null || span === undefined ? null : Math.min(MAX_LASER_SPAN_MS, covered + span));
@@ -91,6 +102,11 @@ const spansAdded = (covered: number | null, span: number | undefined): number | 
  * players may see (`GmMeasures`), the GM's laser, each player's checked laser and measurements, and, while the GM lets
  * everyone see them, everyone's cursors (`CursorShare`). Each client leaves out its own. The GM's own overlay does not wait for that pace: it is shown a player's marks
  * as they arrive.
+ *
+ * A player's measurements told in full go on in full, and beside them in the older words, which
+ * are made from them here as the GM's own are (`legacyMeasures`): whatever a page said in those
+ * words beside its full ones is not sent on. Only the GM's measurements have a colour of their
+ * own, an effect or an aura: a player's are taken without (`checkMeasure`).
  */
 export class MarkShare {
   private readonly ports: MarkSharePorts;
@@ -154,7 +170,7 @@ export class MarkShare {
       const state = this.measureRate.take(from, now) ? checkMeasure(message, context) : null;
       if (state === null) return;
       const covered = this.measures.get(from)?.covered;
-      if (state.live === null && state.kept.length === 0) this.measures.delete(from);
+      if (hasNone(state)) this.measures.delete(from);
       else this.measures.set(from, { state, covered: spansAdded(covered === undefined ? 0 : covered, state.span) });
       this.show({ measure: from });
     }
@@ -217,12 +233,11 @@ export class MarkShare {
     this.source = source;
     this.gm.reset();
     if (source === null) return;
-    // Atlas tells of a new measurement inside the press that began it, before the press reaches the
-    // laser's tap: the press is read once the event is done.
+    // Atlas tells of a measurement several times within one event (drawn, kept, cleared): it is read once the event is done.
     const { measurements } = source;
     const measured = (): void => queueMicrotask(() => {
       if (this.source !== source || measurements === null) return;
-      this.gm.follow(measurements.get(), source.laser.lastPress(), source, this.ports.now());
+      this.gm.follow(measurements.get(), source, this.ports.now());
       this.pacer.request();
     });
     const request = (): void => this.pacer.request();
@@ -247,7 +262,7 @@ export class MarkShare {
     if (this.scene === null) return;
     const playerLasers = [...this.lasers].map(([who, { state, waiting }]) => laserEntry(who, state, waiting?.pts ?? [], waiting?.span ?? null));
     for (const laser of this.lasers.values()) laser.waiting = null;
-    const playerMeasures = [...this.measures].map(([who, { state, covered }]) => measureEntry(who, state, covered ?? null));
+    const playerMeasures = [...this.measures].map(([who, { state, covered }]) => measureEntry(who, this.inBothWords(state), covered ?? null));
     for (const held of this.measures.values()) held.covered = undefined;
     const cursors = this.cursors.take(this.source?.cursor ?? null);
     const body: MarksMessage = {
@@ -285,8 +300,13 @@ export class MarkShare {
 
   private gmMeasures(): MarksMessage['measures'] {
     if (this.source === null) return [];
-    const { live, kept } = this.gm.shown(this.source.seen());
+    const state: MeasureState = { color: this.ports.accent?.() ?? DEFAULT_ACCENT, ...this.gm.shown(this.source.seen(), this.ports.tokenAlias) };
     const span = this.gm.takeSpan();
-    return live === null && kept.length === 0 ? [] : [measureEntry(GM_MARKS, { color: this.ports.accent?.() ?? DEFAULT_ACCENT, live, kept }, span ?? null)];
+    return hasNone(state) ? [] : [measureEntry(GM_MARKS, state, span ?? null)];
+  }
+
+  /** A player's measurements told in full, with the older words made from them for the pages that read no others; others as they came. */
+  private inBothWords(state: MeasureState): MeasureState {
+    return state.full ? { ...state, ...legacyMeasures(state.full, this.gm.walled, MAX_MARK_KEPT) } : state;
   }
 }

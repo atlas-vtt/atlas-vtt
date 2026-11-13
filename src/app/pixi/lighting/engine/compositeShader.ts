@@ -1,8 +1,9 @@
-import { LIGHT_CEILING } from '../../../lighting/lightingConstants';
+import { GM_FLOOR, LIGHT_CEILING } from '../../../lighting/lightingConstants';
 import { BOUNCE_GATHER_GLSL } from './cascadeShaders';
 import { GLSL_VERSION, SRGB_GLSL, TONEMAP_GLSL, TRACE_GLSL, fieldGlsl, traceGlsl } from './glsl';
 import { WALL_PUSH_GLSL, wallPushGlsl } from './wallPushGlsl';
 import { SHOWN_GLSL } from './compositeUpscaleShader';
+import { STACK_GLSL } from './stackGlsl';
 
 /** What only the traced picture reads: its wall fields, the traces through them, the faces of walls and the bounce. */
 const TRACED_GLSL = `
@@ -159,6 +160,10 @@ const TRACED_FACES_GLSL = `
  * outshines it, would see draws no veil, not even with another token looking on: it would draw the
  * whole darkness.
  * The GM sees the dim map under a stronger veil everywhere in it (uGmVeil).
+ * The GM's picture has a floor (uGmFloor, `GM_FLOOR`): where the light alone shows less of the map
+ * than that share of its colours as drawn, the cool grey map makes up what is lacking, so the GM
+ * reads a scene the players see nothing of. Where the light shows more, nothing is added, and what
+ * a sense perceives in the dark shows on top of it. The players' picture never reads it.
  * uZones (read only while uHasZones is set) is the zone map: the ambient light of the scene's
  * zones, premultiplied by their share of the pixel in alpha, which is 1 inside a zone, where the
  * rule counts it; uZonesLifted is the same where dim light is perceived as bright.
@@ -172,7 +177,7 @@ const TRACED_FACES_GLSL = `
  * again: uBackTexture's missing alpha is how much of the grid shows, painted unlit in uGridColor
  * (sRGB); a colour picked to contrast with the map is white where the ambient light is low. The GM
  * sees it everywhere, the players wherever their picture shows the map, now or from memory.
- * Openings (read only while uHasBelow is set): uStack holds the level stack (`LevelStack`) on its
+ * Openings (read through `STACK_GLSL`, only while uHasBelow is set): uStack holds the level stack (`LevelStack`) on its
  * box of texels (uStackBox, uStackTexel, uStackGrid): red is the level each texel shows, 0 the one
  * the view shows, 1 and 2 the levels below drawn (nearest first), 255 nothing. In the viewed
  * level's composite (uLevelIndex 0) a texel that shows anything else is a hole: the eraser took the
@@ -231,6 +236,7 @@ uniform sampler2D uDarkness;
 uniform float uHasDarkness;
 uniform vec3 uVeil;
 uniform vec3 uGmVeil;
+uniform float uGmFloor;
 uniform float uGreyLevel;
 uniform vec2 uDarkLevels;
 uniform sampler2D uZones;
@@ -238,18 +244,9 @@ uniform sampler2D uZonesLifted;
 uniform float uHasZones;
 uniform float uGrid;
 uniform vec3 uGridColor;
-uniform sampler2D uStack;
-uniform vec4 uStackBox;
-uniform vec2 uStackGrid;
-uniform float uStackTexel;
-uniform float uHasBelow;
 uniform float uLevelIndex;
-uniform sampler2D uBelow1;
-uniform sampler2D uBelow2;
-uniform vec2 uBelowShown;
-uniform float uBelowDim;
-uniform vec3 uBelowGrid;
 uniform float uShownOut;
+${STACK_GLSL}
 ${traced ? TRACED_GLSL : ''}
 ${SRGB_GLSL}
 ${TONEMAP_GLSL}
@@ -257,6 +254,8 @@ ${SHOWN_GLSL}
 
 // Share of its colour an area no token sees loses in the GM view.
 const float UNSEEN_FADE = 0.4;
+// Share of the GM's floor left under magical darkness (GM_FLOOR).
+const float GM_FLOOR_IN_DARKNESS = ${GM_FLOOR.inDarkness.toFixed(4)};
 // How much the other lights here may add to the brightest one, as a share of it (LIGHT_CEILING).
 const float CEILING_REACH = ${LIGHT_CEILING.reach.toFixed(4)};
 
@@ -269,26 +268,6 @@ float underCeiling(float all, float strongest) {
 }
 // Ambient light below which a grid coloured against the map is drawn white: a bright map lies too dark there for black lines.
 const float GRID_DARK_AMBIENT = 0.35;
-
-// The level the stack shows at world point w: 0 the one the view shows (also off the stack's grid
-// and box), 1 or 2 a level below drawn, 255 nothing. The texel holding w decides, as the rule's shownAt.
-int stackAt(vec2 w) {
-  if (uHasBelow < 0.5) return 0;
-  vec2 cell = floor(w / uStackTexel);
-  if (any(lessThan(cell, vec2(0.0))) || any(greaterThanEqual(cell, uStackGrid))) return 0;
-  vec2 local = cell - uStackBox.xy;
-  if (any(lessThan(local, vec2(0.0))) || any(greaterThanEqual(local, uStackBox.zw))) return 0;
-  return int(texelFetch(uStack, ivec2(local), 0).r * 255.0 + 0.5);
-}
-
-// The snapshot texel of a level below that holds w: worked out from the stack texel holding w, as
-// stackAt reads it, so it always lies in that stack texel and never shows a neighbour's.
-ivec2 snapshotTexel(vec2 w) {
-  vec2 cell = floor(w / uStackTexel);
-  float sub = uBelowGrid.z;
-  vec2 inside = clamp(floor((w - cell * uStackTexel) * sub / uStackTexel), vec2(0.0), vec2(sub - 1.0));
-  return ivec2((cell - uBelowGrid.xy) * sub + inside);
-}
 
 vec4 sightTexel(vec2 device) {
   return texelFetch(uTexture, clamp(ivec2(floor(device)), ivec2(0), ivec2(uInputPixel.xy) - 1), 0);
@@ -350,7 +329,8 @@ void main() {
   float gate = uLevelIndex > 0.5 && shownLevel != int(uLevelIndex + 0.5) ? 0.0 : 1.0;
   // A marked grid erased the alpha beneath it, premultiplied: what is left of the scene there is its colour scaled by the alpha.
   float grid = uGrid > 0.5 && !hole ? clamp(1.0 - back.a, 0.0, 1.0) : 0.0;
-  vec3 albedo = toLinear(uGrid > 0.5 || hole ? back.rgb / max(back.a, 1.0 / 255.0) : back.rgb);
+  vec3 drawn = uGrid > 0.5 || hole ? back.rgb / max(back.a, 1.0 / 255.0) : back.rgb;
+  vec3 albedo = toLinear(drawn);
   // rgb: the lights' light; alpha: its luminance had every light its bright level here.
   vec4 lamps = textureLod(uLightMap, world / uLightWorld, 0.0);
 ${traced ? TRACED_BOUNCE_GLSL : '  vec3 bounce = vec3(0.0);'}
@@ -452,7 +432,14 @@ ${traced ? TRACED_FACES_GLSL : ''}
   vec3 floorColor = albedo * 0.05;
   vec3 gmLit = 1.0 - (1.0 - lit) * (1.0 - floorColor);
   vec3 unseen = mix(gmLit, vec3(dot(gmLit, LUMA)), UNSEEN_FADE);
-  vec3 gm = mix(unseen, 1.0 - (1.0 - visible) * (1.0 - floorColor), seen) + uGmVeil * dark.r;
+  // The GM's floor: the map at a share of its colours as drawn, in the cool grey of low light, and
+  // less of it under magical darkness. It makes up what the light alone lacks of its brightness:
+  // all of it in the dark, nothing where the light shows as much, so a light fades into it without
+  // a darker ring, and what a sense perceives without light shows on top of it.
+  vec3 gmFloor = nightShift(toLinear(drawn * uGmFloor), uPurkinje) * (1.0 - (1.0 - GM_FLOOR_IN_DARKNESS) * dark.r);
+  float floorLight = dot(gmFloor, LUMA);
+  vec3 gmLift = gmFloor * (max(floorLight - dot(gmLit, LUMA), 0.0) / max(floorLight, 1e-5));
+  vec3 gm = mix(unseen, 1.0 - (1.0 - visible) * (1.0 - floorColor), seen) + gmLift + uGmVeil * dark.r;
 
   vec3 color = max(uMode > 0.5 ? player : gm, 0.0);
   // How much of the map shows here, whatever its colour: the light and senses where perceived now, the memory where remembered.
@@ -472,13 +459,7 @@ ${traced ? TRACED_FACES_GLSL : ''}
   }
   if (hole) {
     // The level below as its snapshot holds it in this very stack texel, or nothing; the viewed level's tokens over it.
-    vec3 under = uMode > 0.5 ? toSrgb(uUnexplored) : vec3(0.0);
-    ivec2 snap = snapshotTexel(world);
-    if (shownLevel == 1 && uBelowShown.x > 0.5) {
-      under = texelFetch(uBelow1, clamp(snap, ivec2(0), textureSize(uBelow1, 0) - 1), 0).rgb * uBelowDim;
-    } else if (shownLevel == 2 && uBelowShown.y > 0.5) {
-      under = texelFetch(uBelow2, clamp(snap, ivec2(0), textureSize(uBelow2, 0) - 1), 0).rgb * (uBelowDim * uBelowDim);
-    }
+    vec3 under = belowAt(shownLevel, world, uMode > 0.5 ? toSrgb(uUnexplored) : vec3(0.0));
     shown = mix(under, shown, clamp(back.a, 0.0, 1.0));
     shownHere = min(shownHere, dot(shown, LUMA));
   }

@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { Bounds, Container, Graphics, Text } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { DragRulerView } from '../../src/app/pixi/token-renderer/DragRulerView';
+import { BEYOND_SPEED } from '../../src/app/measure/dragMovement';
+import { forgetObsidianAccentColor } from '../../src/app/pixi/utils/colorUtils';
 import { shortenPathEnd } from '../../src/app/pixi/utils/measureDrawing';
 import { labelScale, pathMiddle } from '../../src/app/pixi/utils/measureLabelLayout';
 import { NAMEPLATE_HEIGHT } from '../../src/app/pixi/token-renderer/tokenSizing';
@@ -46,6 +48,82 @@ describe('DragRulerView', () => {
     viewport.emit('zoomed', {});
     expect(label!.scale.x).toBe(labelScale(70, 4));
     expect(clearOfToken()).toBeGreaterThan(35);
+    vi.restoreAllMocks();
+  });
+
+  it('draws its path in the colour of the movement step, in the theme\'s warning red past the last one, and in the accent without one', () => {
+    vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 16));
+    forgetObsidianAccentColor();
+    document.body.style.setProperty('--interactive-accent', 'rgb(10, 20, 30)');
+    document.body.style.setProperty('--text-error', 'rgb(200, 0, 0)');
+    const { view } = makeScene();
+    const accent = (view.layers[0] as Container).getChildByLabel('measure-accent', true) as Graphics;
+    /** The colours the path was drawn in: its stroke and its dots. */
+    const colors = (): number[] => [...new Set(accent.context.instructions.flatMap((instruction) =>
+      instruction.action === 'texture' ? [] : [(instruction.data.style as { color: number }).color]))];
+    const WHITE = 0xffffff;
+    const points = [{ x: 0, y: 0 }, { x: 70, y: 0 }];
+
+    view.draw(points, '5ft', 35, 70);
+    expect(colors()).toEqual([0x0a141e, WHITE]);
+    view.draw(points, '5 / 30ft', 35, 70, '#22c55e');
+    expect(colors()).toEqual([0x22c55e, WHITE]);
+    view.draw(points, '65 / 30ft', 35, 70, BEYOND_SPEED);
+    expect(colors()).toEqual([0xc80000, WHITE]);
+    // A theme with another red: the next draw (a zoom, a theme switch) takes it.
+    document.body.style.setProperty('--text-error', 'rgb(255, 80, 80)');
+    view.draw(points, '65 / 30ft', 35, 70, BEYOND_SPEED);
+    expect(colors()).toEqual([0xff5050, WHITE]);
+    // The next drag without a step is the accent's again.
+    view.draw(points, '5ft', 35, 70);
+    expect(colors()).toEqual([0x0a141e, WHITE]);
+
+    document.body.style.removeProperty('--interactive-accent');
+    document.body.style.removeProperty('--text-error');
+    forgetObsidianAccentColor();
+    vi.restoreAllMocks();
+  });
+
+  it('holds a second drawing for the players where they read another distance: plain, in the accent, in the same place, hidden until it is swapped in', () => {
+    vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 16));
+    forgetObsidianAccentColor();
+    document.body.style.setProperty('--interactive-accent', 'rgb(10, 20, 30)');
+    const { viewport, tokens, view } = makeScene();
+    const points = [{ x: 0, y: 0 }, { x: 70, y: 0 }];
+    const textOf = (label: Container): string => (label.children.find((child): child is Text => child instanceof Text)?.text ?? '');
+    const colorsOf = (path: Container): number[] => [...new Set((path.getChildByLabel('measure-accent', true) as Graphics).context.instructions.flatMap((instruction) =>
+      instruction.action === 'texture' ? [] : [(instruction.data.style as { color: number }).color]))];
+
+    view.draw(points, '5ft', 35, 70);
+    expect(view.playersLayers).toEqual([]);
+
+    view.draw(points, '35 / 30ft', 35, 70, '#f59e0b', '5ft');
+    const [path, label] = view.layers as Container[];
+    const [playersPath, playersLabel] = view.playersLayers as Container[];
+    expect(textOf(label!)).toBe('35 / 30ft');
+    expect(colorsOf(path!)).toEqual([0xf59e0b, 0xffffff]);
+    expect(textOf(playersLabel!)).toBe('5ft');
+    expect(colorsOf(playersPath!)).toEqual([0x0a141e, 0xffffff]);
+    expect([playersPath!.visible, playersLabel!.visible]).toEqual([false, false]);
+    expect([path!.visible, label!.visible]).toEqual([true, true]);
+    // Under the tokens and above the token UI, like the GM's.
+    viewport.sortChildren();
+    expect(viewport.getChildIndex(playersPath!)).toBeLessThan(viewport.getChildIndex(tokens));
+    expect(playersLabel!.zIndex).toBe(label!.zIndex);
+
+    // A zoom draws both again; a drag that reads the same for everyone has none for the players.
+    playersLabel!.visible = true;
+    viewport.scale.set(2);
+    viewport.emit('zoomed', {});
+    expect(playersLabel!.scale.x).toBe(label!.scale.x);
+    view.draw(points, '5ft', 35, 70);
+    expect(view.playersLayers).toEqual([]);
+    expect([playersPath!.visible, playersLabel!.visible]).toEqual([false, false]);
+    view.clear();
+    expect(view.layers.every((layer) => !layer.visible)).toBe(true);
+
+    document.body.style.removeProperty('--interactive-accent');
+    forgetObsidianAccentColor();
     vi.restoreAllMocks();
   });
 

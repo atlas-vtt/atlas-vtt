@@ -86,6 +86,7 @@ export const pin = {
   'pin.label.letter': 'Lettered (A, B, C…)',
   'pin.crossCollection': 'This pin links to a scene of another collection. Link it to a scene of this collection instead.',
   'pin.openMapFailed': 'Could not open the linked map',
+  'pin.needsGmView': 'Switch to GM View ({key}) to place pins',
   'pin.iconGroup': 'Pin icon',
   'pin.search.placeholder': 'Search notes, maps and encounters…',
   'pin.search.label': 'Search notes, maps and encounters',

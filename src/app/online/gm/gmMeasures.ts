@@ -1,8 +1,10 @@
-import { MAX_COORDINATE, MAX_MARK_KEPT, type MarkPoint, type SharedMeasure } from '../protocol/index.ts';
-import type { Measurements } from '../../pixi/MeasureRenderer';
-import type { MeasureRecord } from '../../pixi/utils/measureDrawing';
-import { measureOriginOf, measureShownToPlayers, type MeasureOrigin, type TokenFootprint, type TokenSeen } from '../../vision/measureOrigin';
-import { SpanMeter, type Press } from '../marks/index.ts';
+import { MAX_MARK_KEPT, type FullMeasure, type FullMeasures, type MeasureState } from '../protocol/index.ts';
+import { keptAudience } from '../../measure/auraArea';
+import { isAura } from '../../measure/keptMeasures';
+import type { KeptMeasure, Measurement } from '../../measure/measureTypes';
+import type { Measurements } from '../../pixi/measure/measurements';
+import { measureOriginOf, measureShownToPlayers, playersSeeMeasure, type MeasureOrigin, type TokenFootprint, type TokenSeen } from '../../vision/measureOrigin';
+import { legacyMeasures, measureInFull, SpanMeter, type ToldMeasure } from '../marks/index.ts';
 
 /** What the GM's measurements are judged by: where tokens stand and which ones the players see now. */
 export interface PlayersView {
@@ -10,71 +12,106 @@ export interface PlayersView {
   seen(): TokenSeen;
 }
 
-/** The GM's measurements players may see. */
-export interface ShownMeasures {
-  readonly live: SharedMeasure | null;
-  readonly kept: readonly SharedMeasure[];
+/** The GM's measurements players may see: in full, and in the words every reader knows. */
+export interface ShownMeasures extends Pick<MeasureState, 'live' | 'kept'> {
+  readonly full: FullMeasures;
 }
 
-const samePoint = (a: { x: number; y: number }, b: { x: number; y: number }): boolean => a.x === b.x && a.y === b.y;
-const coordinate = (value: number): boolean => Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE;
+type Point = Measurement['points'][number];
 
-/** A record as players get it (a sphere is drawn as a circle), or null for one off every map. */
-function shared({ shape, start, end }: MeasureRecord): SharedMeasure | null {
-  if (![start.x, start.y, end.x, end.y].every(coordinate)) return null;
-  const point = ({ x, y }: { x: number; y: number }): MarkPoint => [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
-  return { shape: shape === 'sphere' ? 'circle' : shape, a: point(start), b: point(end) };
+/** The id players know a token by, or undefined for one they cannot be told of. */
+export type TokenAlias = (tokenId: string) => string | undefined;
+
+const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
+
+/**
+ * A kept measurement as players are told it: what it measures, whether walls stop it, its own
+ * colour and its look. An aura names its token by the id players know it by; null for an aura
+ * whose token they cannot be told of, which is then told to nobody.
+ */
+function toldKept(measure: KeptMeasure, alias: TokenAlias | undefined): ToldMeasure | null {
+  const { shape, points, width, walls, color, effect } = measure;
+  const told: ToldMeasure = {
+    shape, points, ...(width !== undefined && { width }), ...(walls === false && { walls }), ...(color !== undefined && { color }), ...(effect !== undefined && { effect }),
+  };
+  if (!isAura(measure)) return told;
+  const token = alias?.(measure.follows);
+  return token === undefined ? null : { ...told, aura: { token, reach: measure.aura } };
 }
 
 /**
- * The GM's measurements as the players' picture shows them, by Atlas's own rule: each one's origin
- * (the tokens under its start, and whether the players saw all of them) is taken when it starts, from
- * the press and its start; it shows while `measureShownToPlayers` says so. Records carry no origin, so
- * a live measurement is a new one when a new press began it or its start moved; a kept one takes the
- * origin of the live one it was kept from.
+ * The GM's measurements as the players' picture shows them, by Atlas's own rule (`playersSeeMeasure`):
+ * never one the GM measures for themselves, and one that started on tokens only while the players
+ * see them. A live measurement's origin (the tokens under its press and its start, and whether the
+ * players saw all of them) is taken here when it starts, by what these players see; a kept one
+ * carries the origin it was kept with, and one kept from the live measurement is held to that one's
+ * origin too.
+ *
+ * They go out in full (`measureInFull`): a ruler with its corners, every area by its origin and its
+ * end, a line with its width, and whether walls stop an area: one being made always stops at them,
+ * a kept one unless its switch is off. Each goes with its own colour, a kept area with its look,
+ * and an aura with the token it lies around, by the id players know that token by: an aura is seen
+ * with its token (`keptAudience`), so one whose token the players do not see is told to nobody.
+ * Nothing says that an area gives light: its light is a light of the scene (`sharedSight`).
+ * Beside that they go out in the words an older page knows (`legacyMeasures`), which say less: a
+ * ruler leg by leg, no square, no line and no aura, and a circle or a cone that stops at walls
+ * only while no wall stands on its level.
  */
 export class GmMeasures {
-  private live: { readonly start: MeasureRecord['start']; readonly press: number | null; readonly origin: MeasureOrigin } | null = null;
-  /** The last live measurement and its origin, which a measurement kept from it takes. */
-  private last: { readonly record: MeasureRecord; readonly origin: MeasureOrigin } | null = null;
-  private readonly kept = new WeakMap<MeasureRecord, MeasureOrigin>();
+  private live: { readonly pressed: Point; readonly origin: MeasureOrigin } | null = null;
+  /** Where the last live measurement started, and its origin, which a measurement kept from it is held to. */
+  private last: { readonly start: Point; readonly end: Point; readonly origin: MeasureOrigin } | null = null;
+  /** For every kept measurement met, by id: the origin of the live one it was kept from, or null. */
+  private readonly keptFrom = new Map<string, MeasureOrigin | null>();
   private records: Measurements = { live: null, kept: [] };
   /** The time between the ends of the live measurement that players are told. */
   private readonly meter = new SpanMeter();
 
-  /** Takes the measurements as they are at `now` (ms); `press` is the last press on the map, which began the live one if it is new. */
-  follow(records: Measurements, press: Press | null, view: PlayersView, now: number): void {
+  /** Takes the measurements as they are at `now` (ms). */
+  follow(records: Measurements, view: PlayersView, now: number): void {
     this.records = records;
     const { live } = records;
-    if (live === null) {
-      // The next live measurement is a new one, wherever it starts.
-      if (this.live !== null) this.live = { ...this.live, start: { x: Number.NaN, y: Number.NaN } };
+    const start = live?.points[0];
+    const end = live?.points[live.points.length - 1];
+    if (!live || !start || !end) {
+      this.live = null;
       this.meter.reset();
     } else {
-      const current = this.live;
-      const fresh = current === null || (press !== null && press.serial !== current.press) || !samePoint(live.start, current.start);
+      const fresh = this.live === null || this.live.pressed !== live.pressed;
       if (fresh) this.meter.reset();
-      if (fresh || this.last === null || !samePoint(this.last.record.end, live.end)) this.meter.moved(now);
-      const pressed = press !== null && press.serial !== current?.press ? [{ x: press.at[0], y: press.at[1] }] : [];
-      const next = fresh ? { start: live.start, press: press?.serial ?? null, origin: measureOriginOf([...pressed, live.start], view.footprints(), view.seen()) } : current;
-      this.live = next;
-      this.last = { record: live, origin: next.origin };
+      if (fresh || this.last === null || !samePoint(this.last.end, end)) this.meter.moved(now);
+      const current = fresh || this.live === null ? { pressed: live.pressed, origin: measureOriginOf([live.pressed, start], view.footprints(), view.seen()) } : this.live;
+      this.live = current;
+      this.last = { start, end, origin: current.origin };
     }
-    for (const record of records.kept) {
-      if (this.kept.has(record)) continue;
+    for (const { id, points } of records.kept) {
+      if (this.keptFrom.has(id)) continue;
+      const first = points[0];
       const last = this.last;
-      const from = last !== null && samePoint(last.record.start, record.start) && samePoint(last.record.end, record.end) ? last.origin : origin(record, view);
-      this.kept.set(record, from);
+      this.keptFrom.set(id, last !== null && first !== undefined && samePoint(last.start, first) ? last.origin : null);
     }
   }
 
-  /** What the players see of the measurements now, by `seen`. */
-  shown(seen: TokenSeen): ShownMeasures {
-    const visible = (from: MeasureOrigin | undefined): boolean => from !== undefined && measureShownToPlayers(from, seen);
+  /** What the players see of the measurements now, by `seen`; `alias` names the tokens auras lie around, and without it no aura is told. */
+  shown(seen: TokenSeen, alias?: TokenAlias): ShownMeasures {
     const { live, kept } = this.records;
-    const shownLive = live !== null && visible(this.live?.origin) ? shared(live) : null;
-    const shownKept = kept.filter((record) => visible(this.kept.get(record))).map(shared).filter((record) => record !== null);
-    return { live: shownLive, kept: shownKept.slice(-MAX_MARK_KEPT) };
+    const shownLive = live !== null && this.live !== null && playersSeeMeasure({ hidden: live.hidden, origin: this.live.origin }, seen) ? live : null;
+    const shownKept = kept.filter((measure) => {
+      const from = this.keptFrom.get(measure.id);
+      return playersSeeMeasure(keptAudience(measure), seen) && (!from || measureShownToPlayers(from, seen));
+    });
+    const inFull = (measure: KeptMeasure): FullMeasure | null => {
+      const said = toldKept(measure, alias);
+      return said && measureInFull(said);
+    };
+    const told: FullMeasures = { live: shownLive && measureInFull(shownLive), kept: shownKept.flatMap((measure) => inFull(measure) ?? []) };
+    // The older words are made from every measurement shown, so a page that reads them is told what it always was.
+    return { ...legacyMeasures(told, this.walled, MAX_MARK_KEPT), full: { live: told.live, kept: told.kept.slice(-MAX_MARK_KEPT) } };
+  }
+
+  /** Whether walls stand on the level the GM's canvas shows, where an area that stops at them is another shape than its two points say. */
+  get walled(): boolean {
+    return this.records.walled === true;
   }
 
   /** The time from the live measurement's end as it was last taken to its end now, in whole ms; none for the first of a measurement. */
@@ -86,12 +123,8 @@ export class GmMeasures {
   reset(): void {
     this.live = null;
     this.last = null;
+    this.keptFrom.clear();
     this.records = { live: null, kept: [] };
     this.meter.reset();
   }
-}
-
-/** The origin of a measurement seen for the first time, from its start alone. */
-function origin(record: MeasureRecord, view: PlayersView): MeasureOrigin {
-  return measureOriginOf([record.start], view.footprints(), view.seen());
 }

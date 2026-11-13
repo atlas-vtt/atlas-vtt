@@ -1,4 +1,4 @@
-import { GM_MARKS, type PlayerMessage, type SharedFloor, type SharedScene } from '../protocol/index.ts';
+import { GM_MARKS, parseImageSize, type PlayerMessage, type SharedFloor, type SharedScene } from '../protocol/index.ts';
 import type { ShownRollToken } from '../../services/playerRollSource';
 import { isLit, LIGHTING_REFUSAL } from './atlasLighting.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
@@ -20,7 +20,6 @@ import { movesOutOfTurn } from './turnShare.ts';
 import { RulesShare } from './RulesShare.ts';
 import { TOKEN_POLL_MS, TokenShare } from './TokenShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
-import { blockingWalls } from '../../lighting/rooms';
 import { levelBackground } from '../../levels/levelEdits';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
@@ -98,14 +97,15 @@ export class FloorShare {
         ownerOf,
         map: this.mapSize,
         // The walls of this floor, on which every token of its list stands
-        walls: sceneWalls(blockingWalls(levelObjects(store.getState())), this.scene?.lit === true, this.mapSize),
+        walls: sceneWalls(levelObjects(store.getState()).walls, this.scene?.lit === true, this.mapSize),
         outOfTurn: (tokenId) => {
           const settings = ports.atlasSettings();
           return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, showInitiative: settings.showInitiative, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
         },
       }),
     });
-    this.marks = new MarkShare({ ...ports, cursorsShown }, () => this.mapSize);
+    // An aura names its token by the id the token list gives it
+    this.marks = new MarkShare({ ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId) }, () => this.mapSize);
     this.dragRulers = new PlayerDragRulers((drags) => ports.showPlayerDrags?.(drags));
   }
 
@@ -275,7 +275,9 @@ export class FloorShare {
     if (built.tooLarge) this.ports.notice(t('online.assetsMapTooLarge'));
     const video = built.map === null ? null : await readFloorVideo(this.ports.stored, background, videoMimeOf);
     if (this.key !== key) return;
-    const scene: SharedScene = { id: this.keepId ?? this.ports.randomId(), map: built.map, lit, ...(floor !== undefined && { floor }), ...placement, ...(video !== null && { video: video.ref }) };
+    // The image's own size goes with its map, so players see where the map lies before its art arrives
+    const size = built.map === null ? null : parseImageSize(built.size);
+    const scene: SharedScene = { id: this.keepId ?? this.ports.randomId(), map: built.map, lit, ...(floor !== undefined && { floor }), ...placement, ...(size !== null && { size }), ...(video !== null && { video: video.ref }) };
     this.keepId = null;
     this.publish(scene, built.size && floorWorldSize(state, level, built.size));
   }

@@ -1,6 +1,6 @@
 import type { GmMessage, SharedRollDice, SharedRules } from '../protocol/index.ts';
 import { MAX_COORDINATE } from '../protocol/index.ts';
-import { resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
+import { areaRulesOf, readUnitName, resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
 import type { SceneState, SceneStore } from './atlasView.ts';
 
 export interface RulesSharePorts {
@@ -15,6 +15,36 @@ export interface RulesSharePorts {
   rollDice?(): SharedRollDice | null;
 }
 
+/**
+ * The diagonal rule as every page can read it. An older page has no word for `manhattan` and
+ * refuses rules it cannot read whole, so it is told the nearest rule it knows (5/10/5); the rule
+ * itself goes out beside it (`SharedMeasurement.manhattan`).
+ */
+function sharedDiagonalRule(rule: MeasurementSettings['diagonalRule']): SharedRules['measurement']['diagonalRule'] {
+  return rule === 'manhattan' ? 'alternating' : rule;
+}
+
+/**
+ * The unit as every page can read it. A unit the GM named goes out as `custom`, so an older page
+ * reads the bare number, never another unit's sign after it; the name goes out beside it
+ * (`SharedMeasurement.unitName`).
+ */
+function sharedUnitType(unitType: MeasurementSettings['unitType'], unitName: string | undefined): SharedRules['measurement']['unitType'] {
+  return unitName ? 'custom' : unitType;
+}
+
+/** What an older page does not read of a measurement: the rules that came later, each told only where it is not what such a page takes it for. */
+function laterRules(settings: MeasurementSettings): Pick<SharedRules['measurement'], 'manhattan' | 'coneEnd' | 'cellRule' | 'unitName'> {
+  const { cellRule, coneEnd } = areaRulesOf(settings);
+  const unitName = readUnitName(settings.unitName);
+  return {
+    ...(settings.diagonalRule === 'manhattan' && { manhattan: true as const }),
+    ...(coneEnd === 'flat' && { coneEnd }),
+    ...(cellRule !== 'half' && { cellRule }),
+    ...(unitName !== undefined && { unitName }),
+  };
+}
+
 const finiteOr = (value: number | undefined, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
 
 /**
@@ -27,11 +57,15 @@ export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSe
   const offsetX = finiteOr(grid.offsetX, 0);
   const offsetY = finiteOr(grid.offsetY, 0);
   if (Math.abs(offsetX) > MAX_COORDINATE || Math.abs(offsetY) > MAX_COORDINATE) return null;
-  const { mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle } = measurement ?? resolveMeasurementSettings(undefined, grid);
+  const settings = measurement ?? resolveMeasurementSettings(undefined, grid);
+  const { mode, unitType, unitName, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle } = settings;
   return {
     grid: { type: grid.type ?? 'square', size: grid.size, offsetX, offsetY },
     snap: grid.snapToGrid ?? true,
-    measurement: { mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands: rangeBands.map(({ name, maxSquares }) => ({ name, maxSquares })), coneAngle },
+    measurement: {
+      mode, unitType: sharedUnitType(unitType, unitName), unitDistance, ruleDistance, diagonalRule: sharedDiagonalRule(diagonalRule),
+      rangeBands: rangeBands.map(({ name, maxSquares }) => ({ name, maxSquares })), coneAngle, ...laterRules(settings),
+    },
     accent,
     ...(cursors && { cursors }),
     ...(dice !== null && { dice }),

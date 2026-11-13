@@ -12,7 +12,7 @@ import { StatblockList } from './statblock-link/StatblockList';
 import { StatblockPreviewPane, type StatblockPreviewToken } from './statblock-link/StatblockPreviewPane';
 import { useStatblockEntries, type BestiaryStatus } from './statblock-link/useStatblockEntries';
 import { NewStatblockButton } from '../../../statblocks/editor/create/RoleMenu';
-import type { NewStatblockOption } from '../../../statblocks/editor/create/roleChoices';
+import type { NewStatblockOption } from '../../../statblocks/editor/create/templateOffers';
 import { t } from '../../../i18n';
 
 interface StatblockLinkModalProps {
@@ -166,9 +166,9 @@ const StatblockLinkModal: React.FC<StatblockLinkModalProps> = ({ isOpen, onClose
                 className="atlas-statblock-link__new"
                 choices={newStatblock.choices}
                 onMenuOpenChange={setRoleMenuOpen}
-                onChoose={(roleId) => {
+                onChoose={(offer) => {
                   onClose();
-                  newStatblock.onChoose(roleId);
+                  newStatblock.onChoose(offer);
                 }}
               />
               {unlinkButton}

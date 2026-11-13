@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
 import { LevelSurfacePopoverHost } from '../pixi/levelSurfaces/LevelSurfacePopover';
-import { RoomsPanelHost } from '../pixi/lighting/RoomsPanel';
+import { MeasurePopoverHost } from './components/measure/MeasurePopover';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
 import { MainToolbar } from '../packages/components/MainToolbar';
@@ -16,6 +16,7 @@ import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
 import { LightingToolBar } from '../packages/components/toolbar/LightingToolBar';
+import { MeasureToolBar } from '../packages/components/toolbar/MeasureToolBar';
 import { DMScreenFromStore } from './components/DMScreen';
 import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
@@ -176,7 +177,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">
-            {/* The scene tabs at the left end; what hangs directly below them (online play's unread table log) is put in the slot */}
+            {/* The scene tabs at the left end; what hangs directly below them (online play's table log tab) is put in the slot */}
             <div className="atlas-top-bar-start">
               {!isPlayerView && (
                 <PanelBoundary name="the scene tabs">
@@ -214,7 +215,12 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                 <PanelBoundary name="the placing hint"><PlacementHint /></PanelBoundary>
               </>
             )}
-            options={!isPlayerView && <PanelBoundary name="the lighting tools"><LightingToolBar /></PanelBoundary>}
+            options={(
+              <>
+                {!isPlayerView && <PanelBoundary name="the lighting tools"><LightingToolBar /></PanelBoundary>}
+                <PanelBoundary name="the measure tools"><MeasureToolBar playerView={isPlayerView} /></PanelBoundary>
+              </>
+            )}
           >
             <PanelBoundary name="the toolbar"><MainToolbar viewId={view?.viewId} /></PanelBoundary>
           </BottomToolbarRow>
@@ -260,7 +266,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the players' glass"><GlassChip view={view} /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
-          {!isPlayerView && <PanelBoundary name="the rooms"><RoomsPanelHost /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the measurement's settings"><MeasurePopoverHost /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}
           

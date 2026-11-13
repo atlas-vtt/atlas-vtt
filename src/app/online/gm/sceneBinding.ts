@@ -6,7 +6,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { diceSourceOf } from './atlasDice.ts';
-import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf } from './atlasLighting.ts';
+import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
 import { mapLayerSourceOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
 import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
@@ -24,6 +24,7 @@ import type { AtlasTab, TabBinding } from './sharedTab.ts';
 import type { VaultImage } from './TokenShare.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
 import { showNotice } from '../../ui/notice';
+import type { NotePin } from '../../types';
 
 /** A shared view's scene and the GM's marks on it. */
 export interface SceneBinding extends TabBinding {
@@ -56,6 +57,8 @@ export interface SceneBindingPorts {
   rollRequest(from: string, answer: RollRequestAnswer): RollRequest | null;
   /** The entry of the table's log that tells who found a readable pin of a map, or null while nobody has. */
   foundPin(mapPath: string, pinId: string): string | null;
+  /** The shared map's pins whenever the GM changed them, so found pins can follow the notes they link now. */
+  pinsChanged(mapPath: string, pins: Readonly<Record<string, NotePin>>): void;
 }
 
 /** The renderer as the books' token source, the tokens the players see read on each token's own floor. */
@@ -90,7 +93,8 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     if (grid === null || grid === undefined) return null;
     const state = tab.store.getState();
     const difficult = difficultCells(mapFeatureList(levelObjects(state).mapFeatures));
-    return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult } satisfies MeasureRules;
+    // The areas players measure stop at the walls the GM's own do.
+    return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult, areas: tabAreaMap(liveRenderer()) } satisfies MeasureRules;
   }, (tokenId): string | undefined => share.draggerOf(tokenId));
   // Players' marks leave the GM's canvas as the hold begins: it is about to show another scene.
   const store = new PresentedStore(tab.store, presented, () => {
@@ -125,6 +129,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     randomId: () => ports.randomId(),
     logRoll: (roll) => live() && ports.logRoll(roll),
     foundPin: (mapPath, pinId) => ports.foundPin(mapPath, pinId),
+    pinsChanged: (mapPath, pins) => live() && ports.pinsChanged(mapPath, pins),
     presentedLevel: () => store.presentedLevel,
     rendererCurrent: () => shown() && showsViewedLevel(renderer, tab.store.getState()),
     rollRequest: (from, answer) => (shown() ? ports.rollRequest(from, answer) : null),

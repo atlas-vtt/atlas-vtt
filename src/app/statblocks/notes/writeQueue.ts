@@ -52,6 +52,11 @@ export class WriteQueue<T> {
     await Promise.all([...paths].map((path) => this.flush(path)));
   }
 
+  /** Whether nothing waits and no run is in flight. */
+  get idle(): boolean {
+    return this.items.size === 0 && this.running.size === 0;
+  }
+
   /** Paths with items waiting or a run in flight at or below `path` (a note, or a folder). */
   pathsWithin(path: string): string[] {
     const paths = new Set([...this.items.keys(), ...this.running.keys()]);

@@ -471,7 +471,7 @@ input.atlas-filter-range__input {
   transition: border-color $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
 
   &:hover {
-    border-color: var(--text-muted);
+    border-color: $am-control-border-hover;
   }
 
   &:focus {

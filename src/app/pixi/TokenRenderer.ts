@@ -31,7 +31,9 @@ import { TextureCache } from './token-renderer/TextureCache';
 import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
+import { tokenMovement } from './token-renderer/tokenMovement';
 import { DragRulerView } from './token-renderer/DragRulerView';
+import { DEFAULT_DRAG_DISTANCE, showsDragDistance } from '../measure/dragDistance';
 import { SyncService } from './token-renderer/SyncService';
 import { tokenSyncState } from './token-renderer/tokenSyncState';
 import { TokenGlide, placedAtOnce, type HeldPlayout, type TokenHolder } from './token-renderer/TokenGlide';
@@ -54,9 +56,11 @@ import type { TokenInput } from '../types/viewState';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { markHandled, resetHandled } from './utils/handledEvents';
 import { watchClick } from './utils/clickRelease';
+import { isCtrlClick, isPrimaryPress, isSecondaryPress } from './utils/pointerButtons';
 import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
 import type { MapFeaturePointerHandlers } from './mapFeatures/MapFeatureInteraction';
 import type { LightPointerHandlers } from './lighting/LightInteraction';
+import type { MeasurePointerHandlers } from './measure/measureHandle';
 import { runInBackground } from '../utils/backgroundTask';
 import { isModHeld } from '../keyboard/modKey';
 import type { AreaToolPointer } from './areas/PolygonAreaEditor';
@@ -170,6 +174,7 @@ export class TokenRenderer {
   /** The marker on the tokens whose turn it is. */
   private turnMarkers!: TurnMarkers;
   private lightHandlers?: LightPointerHandlers;
+  private measureHandlers?: MeasurePointerHandlers;
   /** Tokens held by the pointer; lighting alone does not hide them until release. */
   private heldTokenIds: ReadonlySet<string> = new Set();
   private lastHoveredPinId: string | null = null;
@@ -293,6 +298,7 @@ export class TokenRenderer {
     this.resourceDefsProvider = this.collectionSync.resources;
     this.interactionController.resourceDefsProvider = this.resourceDefsProvider;
     this.uiManager.resourceDefsProvider = this.resourceDefsProvider;
+    this.uiManager.measurementProvider = this.collectionSync.measurement;
     this.statblockSync = new StatblockTokenSync(obsApp, store, tokenStatblockLinkService, this.resourceDefsProvider);
 
     // Initialize sync service
@@ -332,14 +338,19 @@ export class TokenRenderer {
     this.viewport.addChild(this.playerSight.outlineLayer);
     this.watchCanvasTurn();
 
+    const movement = tokenMovement(this.obsApp, this.collectionSync.movement, this.collectionSync.measurement);
     this.dragRuler = new DragRuler(
       new DragRulerView(this.viewport, this.tokenContainer),
       this.gridSystem,
       this.store,
       this.collectionSync.measurement,
       (id) => this.tokenSprites[id]?.visible ?? false,
+      () => showsDragDistance(SettingsService.forApp(this.obsApp)?.getDragDistance() ?? DEFAULT_DRAG_DISTANCE, this.store.getState().initiative.isActive),
+      movement,
+      () => this.playerSight.showsPlayers() || this.isInPlayerMode(),
     );
     this.interactionController.setDragRuler(this.dragRuler);
+    this.interactionController.setTokenMovement(movement);
 
     // Initialize sync service
     this.syncService.initialize();
@@ -1200,6 +1211,9 @@ export class TokenRenderer {
     // Nameplate changes
     if (token.showNameplate !== prevToken.showNameplate) return true;
 
+    // Height off the floor, which the chip over the token says
+    if (token.elevation !== prevToken.elevation) return true;
+
     // Conditions, compared by value
     if ((token.conditions ?? []).join() !== (prevToken.conditions ?? []).join()) return true;
     if (token.conditionValues !== prevToken.conditionValues) return true;
@@ -1606,6 +1620,11 @@ export class TokenRenderer {
     this.lightHandlers = handlers;
   }
 
+  /** Kept measurements: their handles take the pointer with any tool, before pins, door badges and light markers, which they lie above. */
+  public setMeasureHandlers(handlers: MeasurePointerHandlers): void {
+    this.measureHandlers = handlers;
+  }
+
   public setDoorClickHandler(handler: (worldX: number, worldY: number) => boolean): void {
     this.doorClickHandler = handler;
   }
@@ -1747,22 +1766,30 @@ export class TokenRenderer {
     }
   }
 
-  private openMenuOnRelease(down: FederatedPointerEvent, open: (up: FederatedPointerEvent) => void): void {
+  /** A right-drag pans, so the right button's menu waits for a release in place. A Ctrl+click on macOS cannot pan: its menu opens at once. */
+  private openMenuOnRelease(down: FederatedPointerEvent, open: (at: FederatedPointerEvent) => void): void {
     this.stopMenuPress?.();
+    if (isCtrlClick(down)) {
+      open(down);
+      return;
+    }
     this.stopMenuPress = watchClick(this.viewport, down, open);
   }
 
   private onViewportPointerDown = (e: FederatedPointerEvent): void => {
     // PIXI v8 reuses FederatedPointerEvent objects — clear custom flags from previous events
     resetHandled(e);
+    // A Ctrl+click on macOS is a secondary click whichever of Ctrl and the button is let go first: no tool takes its press or its tap
+    if (isCtrlClick(e)) markHandled(e);
     // Held tokens take the pointer: a right-drag still pans, but nothing on the map opens its menu
     if (this.placementActive()) return;
 
     const activeTool = this.store.getState().activeTool;
     const worldPos = this.viewport.toWorld(e.global);
+    const primary = isPrimaryPress(e);
 
     // ── Right-click: check walls, fog, and pins ─────────────────────────
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       // Wall context menu (when wall tool is active). It also opens beside the walls, for the selection,
       // so like the area menus below it waits for a release in place and a right-drag pans.
       if (activeTool === 'wall' && this.wallContextMenuHandler) {
@@ -1815,8 +1842,14 @@ export class TokenRenderer {
       }
     }
 
+    // ── Handles of kept measurements: the smallest marks and the topmost, from any tool ──
+    if (primary && this.measureHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
+      markHandled(e);
+      return;
+    }
+
     // ── Pin left-click: works from any tool (drag + open) ──────────────
-    if (e.button === 0 && this.pinHitTestProvider && this.pinClickHandler) {
+    if (primary && this.pinHitTestProvider && this.pinClickHandler) {
       const pinId = this.pinHitTestProvider(worldPos.x, worldPos.y);
       if (pinId) {
         markHandled(e);
@@ -1826,25 +1859,25 @@ export class TokenRenderer {
     }
 
     // ── Door badges: open and close doors from any tool ────────────────
-    if (e.button === 0 && activeTool !== 'wall' && this.doorClickHandler?.(worldPos.x, worldPos.y)) {
+    if (primary && activeTool !== 'wall' && this.doorClickHandler?.(worldPos.x, worldPos.y)) {
       markHandled(e);
       return;
     }
 
     // ── Light markers and range rings: a light's popover and its drags, from any tool ──
-    if (e.button === 0 && this.lightHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
+    if (primary && this.lightHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
       markHandled(e);
       return;
     }
 
     // ── Stairs tool: drawing and reshaping stairs between levels ─────────
-    if (activeTool === 'stairs' && e.button === 0 && this.stairsTool?.pointerDown(worldPos, e)) {
+    if (activeTool === 'stairs' && primary && this.stairsTool?.pointerDown(worldPos, e)) {
       markHandled(e);
       return;
     }
 
     // ── Wall tool: drawing, vertex drag, selection ─────────────────────
-    if (activeTool === 'wall' && e.button === 0 && this.wallPointerDownHandler) {
+    if (activeTool === 'wall' && primary && this.wallPointerDownHandler) {
       const handled = this.wallPointerDownHandler(worldPos.x, worldPos.y, e);
       if (handled) {
         markHandled(e);
@@ -1853,7 +1886,7 @@ export class TokenRenderer {
     }
 
     // Audio tool: click to place or select audio sources
-    if (activeTool === 'audio' && e.button === 0 && this.audioPointerDownHandler) {
+    if (activeTool === 'audio' && primary && this.audioPointerDownHandler) {
       const handled = this.audioPointerDownHandler(worldPos.x, worldPos.y, e);
       if (handled) {
         markHandled(e);
@@ -1865,7 +1898,7 @@ export class TokenRenderer {
     if (activeTool !== 'select' && activeTool !== 'move') return;
 
     // The bars of a selection stand above every token: one change for all of it
-    if (e.button === 0 && !e.shiftKey && this.pressSelectionBar(e)) {
+    if (primary && !e.shiftKey && this.pressSelectionBar(e)) {
       markHandled(e);
       return;
     }
@@ -1876,12 +1909,12 @@ export class TokenRenderer {
       markHandled(e);
       this.interactionController.handleViewportTokenPointerDown(tokenId, e);
       // Drawings selected alongside the token follow its drag; a token from outside the selection moves alone
-      if (e.button === 0 && this.store.getState().selectedIds.includes(tokenId)) this.drawingDragStartHandler?.(e);
+      if (primary && this.store.getState().selectedIds.includes(tokenId)) this.drawingDragStartHandler?.(e);
       return;
     }
 
     // 2. Hit-test the frame drawn around a selection of two or more (drag the group; shift is picking, not dragging)
-    if (e.button === 0 && !e.shiftKey && this.groupFrameHitTest?.(worldPos.x, worldPos.y)) {
+    if (primary && !e.shiftKey && this.groupFrameHitTest?.(worldPos.x, worldPos.y)) {
       markHandled(e);
       this.startGroupDrag(e);
       return;
@@ -1893,13 +1926,13 @@ export class TokenRenderer {
       if (drawingId) {
         markHandled(e);
         this.drawingClickHandler(drawingId, e);
-        if (e.button === 0) this.startTokenGroupDrag(e);
+        if (primary) this.startTokenGroupDrag(e);
         return;
       }
     }
 
     // 4. Linked hexes open their note on click; the event stays unhandled, so a drag still pans or selects
-    const hexLinkId = e.button === 0 ? this.hexLinkHandlers?.hitTest(worldPos.x, worldPos.y) ?? null : null;
+    const hexLinkId = primary ? this.hexLinkHandlers?.hitTest(worldPos.x, worldPos.y) ?? null : null;
     if (hexLinkId) {
       this.hexLinkHandlers?.press(hexLinkId, e);
     }
@@ -1915,7 +1948,7 @@ export class TokenRenderer {
     }
 
     // 6. Nothing hit — clear selection for move tool on empty-space left-click (shift keeps it)
-    if (e.button === 0 && activeTool === 'move' && !e.shiftKey) {
+    if (primary && activeTool === 'move' && !e.shiftKey) {
       const selectedIds = this.store.getState().selectedIds;
       if (selectedIds.length > 0) {
         this.store.getState().clearSelection();
@@ -1951,6 +1984,7 @@ export class TokenRenderer {
     this.uiManager.hoverSelectionBar(null);
     this.mapFeatureHandlers?.leave();
     this.lightHandlers?.leave();
+    this.measureHandlers?.leave();
     this.interactionController.handleViewportTokenHover(null);
     this.uiManager.setHoverState(null);
   };
@@ -1974,9 +2008,12 @@ export class TokenRenderer {
       this.mapFeatureHandlers?.leave();
     }
 
+    // A kept measurement's handle lies above the pins and light markers: none under it is hovered
+    const measureCursor = this.measureHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
+
     // Pin hover: show pointer cursor and emit preview events from any tool
     if (this.pinHitTestProvider) {
-      const pinId = this.pinHitTestProvider(worldPos.x, worldPos.y);
+      const pinId = measureCursor ? null : this.pinHitTestProvider(worldPos.x, worldPos.y);
       if (pinId !== this.lastHoveredPinId) {
         if (this.lastHoveredPinId) {
           this.pinHoverHandler?.('out', this.lastHoveredPinId, e);
@@ -2002,30 +2039,31 @@ export class TokenRenderer {
       this.lastHoveredPinId = null;
     }
 
-    // Light markers and range rings: hover and cursor from any tool
-    const lightCursor = this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
+    // Measurement handles, light markers and range rings: hover and cursor from any tool
+    if (measureCursor) this.lightHandlers?.leave();
+    const markerCursor = measureCursor ?? this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
 
     // Wall tool: pointer move for vertex dragging, freeform drawing, and hover cursors
     if (activeTool === 'wall' && this.wallPointerMoveHandler) {
       this.wallPointerMoveHandler(worldPos.x, worldPos.y, e);
 
       const wallCursor = this.wallCursorProvider?.(worldPos.x, worldPos.y) ?? 'crosshair';
-      this.applyCursor(lightCursor ?? wallCursor);
+      this.applyCursor(markerCursor ?? wallCursor);
       return;
     }
 
     if (activeTool === 'stairs' && this.stairsTool) {
       this.stairsTool.pointerMove(worldPos, e);
-      this.applyCursor(lightCursor ?? this.stairsTool.cursorAt(worldPos));
+      this.applyCursor(markerCursor ?? this.stairsTool.cursorAt(worldPos));
       return;
     }
 
-    if (lightCursor) {
+    if (markerCursor) {
       this.interactionController.handleViewportTokenHover(null);
       this.uiManager.setHoverState(null);
       this.hexLinkHandlers?.hover(null, e);
       this.mapFeatureHandlers?.leave();
-      this.applyCursor(lightCursor);
+      this.applyCursor(markerCursor);
       return;
     }
 

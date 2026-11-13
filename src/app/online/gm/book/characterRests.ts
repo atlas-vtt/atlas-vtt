@@ -60,9 +60,13 @@ function bookButton(offer: RestOffer): BookRecoveryButton | null {
 /** Whether a button has an action the player may take for another character. */
 const forOthers = (button: BookRecoveryButton): boolean => (button.choices ?? []).some((choice) => choice.actions.some((action) => action.forOthers));
 
-/** The characters an action may be taken for: every other character played at the table that has a statblock and is a library token. */
+/**
+ * The characters an action may be taken for: every other character played at the table that has a
+ * statblock, is a library token and whose token the players' frame has shown (`shownName`): one the
+ * map has only ever hidden is its own player's alone.
+ */
 export function restAllies(character: PlayedCharacter, played: readonly PlayedCharacter[]): PlayedCharacter[] {
-  return played.filter((other) => other.key !== character.key && other.statblockPath !== null && !other.key.startsWith(UNPLACED_PREFIX));
+  return played.filter((other) => other.key !== character.key && other.statblockPath !== null && other.shownName !== null && !other.key.startsWith(UNPLACED_PREFIX));
 }
 
 /** The buttons as the page is sent them: each id once, as many as a statblock carries. */
@@ -133,9 +137,9 @@ export class CharacterRests {
     else this.decorated.delete(character);
   }
 
-  /** The allies as the page is sent them, by the table ids this table gives them, as many as a statblock carries. */
+  /** The allies as the page is sent them, by the table ids this table gives them and the names the players' frame showed them by, as many as a statblock carries. */
   private bookAllies(allies: readonly PlayedCharacter[]): BookRestAlly[] {
-    return allies.slice(0, MAX_REST_ALLIES).map((ally) => ({ id: this.idOf(ally.key), name: cutLine(ally.sheet.name, MAX_BOOK_TITLE) ?? UNNAMED }));
+    return allies.slice(0, MAX_REST_ALLIES).map((ally) => ({ id: this.idOf(ally.key), name: cutLine(ally.shownName ?? '', MAX_BOOK_TITLE) ?? UNNAMED }));
   }
 
   private idOf(character: string): string {

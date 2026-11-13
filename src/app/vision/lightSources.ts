@@ -7,31 +7,33 @@ import { tokenFacing } from './visionCone';
 import { gameUnitsToWorld, type UnitScale } from '../lighting/lightingUnits';
 import { MIN_SOFTNESS, TINT_TO_WHITE, softEdge } from '../lighting/lightingConstants';
 import { srgbToLinear } from '../lighting/srgb';
+import { measureLights, type KeptLights } from '../measure/measureLights';
 import { kindOf } from './sight';
 import { ambientAt } from './lightLevels';
 import type { AmbientLight } from './sight';
 import type { EngineLight } from '../pixi/lighting/engine/types';
 import type { Point } from '../types/visionTypes';
 
-/** A light that shines right now: placed on the map or carried by a token. */
+/** A light that shines right now: placed on the map, carried by a token or given by a kept area. */
 export interface ActiveLight {
-  /** `light:<id>` or `token:<id>`, stable while the light exists. */
+  /** `light:<id>`, `token:<id>` or `measure:<id>`, stable while the light exists. */
   key: string;
   x: number;
   y: number;
   emission: LightEmission;
   /** Where a light that shines one way faces: the placed light's rotation, or where the token carrying it looks (`tokenFacing`). */
   rotation?: number;
-  /** A placed light that glows from an area (`LightSource.area`): its corners; `x`, `y` are its middle. */
+  /** A light that glows from an area (a placed light's `LightSource.area`, a kept square or line): its corners; `x`, `y` are its middle. */
   area?: readonly Point[];
 }
 
 /**
  * The lights that shine under `ambient` light: placed ones that are switched on and, where they
- * follow the ambient light, awake (`isLightOn`), and those tokens carry. Both the picture and
- * the rule are built from this list, so a sleeping lamp lights neither.
+ * follow the ambient light, awake (`isLightOn`), those tokens carry, and those the kept areas of
+ * the level give (`kept`, `measureLights`: an aura's from its token as `tokens` has it). Both the
+ * picture and the rule are built from this list, so a sleeping lamp lights neither.
  */
-export function activeLights(lights: Record<string, LightSource>, tokens: Record<string, TokenEntity>, ambient: number | AmbientLight = 0): ActiveLight[] {
+export function activeLights(lights: Record<string, LightSource>, tokens: Record<string, TokenEntity>, ambient: number | AmbientLight = 0, kept?: KeptLights): ActiveLight[] {
   const active: ActiveLight[] = [];
   for (const light of lightList(lights)) {
     // The ambient light where the light stands (an area light's middle): that of a zone around it, else the scene's.
@@ -42,6 +44,7 @@ export function activeLights(lights: Record<string, LightSource>, tokens: Record
     const carried = readEmission(token.light);
     if (carried) active.push({ key: `token:${token.id}`, x: token.x, y: token.y, emission: carried, rotation: tokenFacing(token.rotation) });
   }
+  if (kept) active.push(...measureLights(kept, tokens));
   return active;
 }
 

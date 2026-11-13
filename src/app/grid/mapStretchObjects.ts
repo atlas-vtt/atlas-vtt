@@ -10,7 +10,7 @@ import type { Point } from './hexGeometry';
 import type { MapMove } from './mapStretch';
 import { isOffMap, sceneTokens } from '../tokens/offMap';
 import { liquidMovedWithMap } from '../liquids/liquids';
-import { isRoomArea, movedArea } from '../lighting/rooms';
+import { measureMovedWithMap } from '../measure/keptMeasures';
 
 type SceneObjects = ViewState['objects'];
 
@@ -66,6 +66,6 @@ export function objectsMovedWithMap(objects: SceneObjects, move: MapMove, moves?
     ...(objects.levelSurfaces ? { levelSurfaces: mapRecord(objects.levelSurfaces, (surface) => (Array.isArray(surface.polygon) ? { ...surface, polygon: surface.polygon.map(move) } : surface), moves) } : {}),
     ...(objects.mapFeatures ? { mapFeatures: mapRecord(objects.mapFeatures, (feature) => (Array.isArray(feature.polygon) ? { ...feature, polygon: feature.polygon.map(move) } : feature), moves) } : {}),
     ...(objects.liquids ? { liquids: mapRecord(objects.liquids, (surface) => liquidMovedWithMap(surface, move), moves) } : {}),
-    ...(objects.rooms ? { rooms: mapRecord(objects.rooms, (room) => (isRoomArea(room.area) ? { ...room, area: movedArea(room.area, move) } : room), moves) } : {}),
+    ...(objects.measures ? { measures: mapRecord(objects.measures, (measure) => measureMovedWithMap(measure, move), moves) } : {}),
   };
 }

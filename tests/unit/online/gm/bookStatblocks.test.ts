@@ -6,7 +6,7 @@ import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGa
 import type { StatblockTemplate, TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { FakeSocket, workspace } from './fakeTable.ts';
 import { storedRef } from './fakeStoring.ts';
-import { ANA, BEN, BRANNOCH, CAL, cave, delivered, MIRA_ART, ofType, openTable, traffic, type Delivered } from './bookTableHarness.ts';
+import { ANA, BEN, BRANNOCH, CAL, cave, delivered, MIRA, MIRA_ART, ofType, openTable, traffic, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 import { StatblockNotes, templateOf } from './statblockNotes.ts';
 
@@ -153,6 +153,46 @@ describe('a player\'s own character\'s statblock at a running table', () => {
     await advance(BOOK_POLL_MS);
     expect(statblocks(delivered(socket).slice(since), ANA)).toEqual([null]);
     online.stop();
+  });
+
+  it('reaches its player filled when the GM makes the note from the token, links it before the note is read, and fills it in after', async () => {
+    const { online, socket, tab, ownership } = await openTable(new BookShelf(), PLAYERS, { [BRANNOCH]: ANA });
+    // Made from Mira's token: linked at once, the note not yet read, then written with its name alone, then filled in.
+    tab.store.set(cave({ mira: { statblockPath: MIRA_NOTE } }));
+    await advance(BOOK_POLL_MS);
+    notes.put(MIRA_NOTE, TEMPLATE, ['---', 'statblock: true', `atlas-template: ${TEMPLATE.id}`, 'name: Mira', '---', ''].join('\n'));
+    await advance(BOOK_POLL_MS);
+    // Then given to Ben, and filled in while he holds it.
+    ownership.give([MIRA], {}, BEN);
+    await advance(BOOK_POLL_MS);
+    expect(statblocks(delivered(socket), BEN).at(-1)).toMatchObject({ displayName: 'Mira' });
+    notes.edit(MIRA_NOTE, note('Mira', '25 ft.'));
+    await advance(BOOK_POLL_MS * 2);
+    expect(speedOf(statblocks(delivered(socket), BEN).at(-1))).toBe('25 ft.');
+    online.stop();
+  });
+
+  it('is sent to each player of two tokens that link one note, whatever their tokens hold, and then left alone', async () => {
+    // Brannoch's token holds 7 hit points and Mira's 4: one note drawn for two characters.
+    const table = await openTable(new BookShelf(), PLAYERS);
+    table.tab.store.set(cave({ brannoch: { statblockPath: BRANNOCH_NOTE }, mira: { statblockPath: BRANNOCH_NOTE } }));
+    await advance(BOOK_POLL_MS);
+    const all = delivered(table.socket);
+    expect(statblocks(all, ANA).map(speedOf)).toEqual(['30 ft.']);
+    expect(statblocks(all, BEN).map(speedOf)).toEqual(['30 ft.']);
+
+    // Nothing changed: neither is drawn or sent again.
+    const since = all.length;
+    await advance(BOOK_POLL_MS * 5);
+    expect(ofType(delivered(table.socket).slice(since), 'book', 'book-statblock')).toEqual([]);
+
+    // A change of the note reaches both.
+    notes.edit(BRANNOCH_NOTE, note('Brannoch', '40 ft.'));
+    await advance(BOOK_POLL_MS);
+    const after = delivered(table.socket).slice(since);
+    expect(statblocks(after, ANA).map(speedOf)).toEqual(['40 ft.']);
+    expect(statblocks(after, BEN).map(speedOf)).toEqual(['40 ft.']);
+    table.online.stop();
   });
 
   it('is sent again after the book when the player comes back, and taken away when the GM gives the character to someone else', async () => {

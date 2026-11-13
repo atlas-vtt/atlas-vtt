@@ -26,8 +26,9 @@ import { LightReaches } from './lightReaches';
 import { LightMotion, NO_MOVING_LIGHTS } from './lightMotion';
 import { activeLights, engineLight } from './lightSources';
 import { everyLevelObjects, levelObjects } from '../levels/levelObjects';
-import { blockingWalls } from '../lighting/rooms';
 import { mapTokens } from '../tokens/offMap';
+import { measureList } from '../measure/keptMeasures';
+import { measureLights, sameMeasureLights, type KeptLights, type MeasureLight } from '../measure/measureLights';
 
 /** What a scene's lighting works out on the CPU, in world pixels: the engine draws it and the rules read it. */
 export interface SceneModel {
@@ -49,7 +50,7 @@ export interface SceneModel {
 
 /** What a scene's lighting is worked out from: the records sight and light read, the scene's lighting, the grid and the tokens the pointer holds. */
 export interface SceneState {
-  objects: Pick<ViewState['objects'], 'tokens' | 'walls' | 'lights' | 'lightZones' | 'rooms'>;
+  objects: Pick<ViewState['objects'], 'tokens' | 'walls' | 'lights' | 'lightZones' | 'measures'>;
   lighting: ViewState['lighting'];
   grid: ViewState['grid'];
   heldTokens: ViewState['heldTokens'];
@@ -65,6 +66,9 @@ interface Built {
   walls: ViewState['objects']['walls'];
   lights: ViewState['objects']['lights'];
   zones: ViewState['objects']['lightZones'];
+  /** The level's kept measurements, and the lights they gave: other measurements with the same lights build nothing. */
+  measures: ViewState['objects']['measures'];
+  kept: readonly MeasureLight[];
   tokens: Record<string, TokenEntity>;
   grid: ViewState['grid'];
   lighting: SceneLighting;
@@ -78,7 +82,8 @@ interface Built {
 
 /**
  * A scene's lights, their reaches and its sight, worked out from the store and again only when
- * what they are built from changes: the walls, the placed lights, the light zones, the grid, the sight options,
+ * what they are built from changes: the walls, the placed lights, the lights the kept areas give
+ * (a measurement that changes in nothing its light reads builds nothing), the light zones, the grid, the sight options,
  * an ambient light that wakes or puts out a light that follows it,
  * the sight rules of the map's collection and the tokens as sight and light read them (`SightTokens`: a dragged token stands where its
  * drag began until the drop, so a drag builds nothing).
@@ -111,8 +116,8 @@ export class SceneModelBuilder {
    * `reach` (the map, unless the level's openings look over larger maps below it).
    */
   update(state: SceneState, bounds: MapBounds, measurement: () => MeasurementSettings, sightRules?: () => SightRules, reach: MapBounds = bounds): { model: SceneModel; rebuilt: boolean } {
-    const { lights, lightZones: zones } = levelObjects(state);
-    const walls = blockingWalls(levelObjects(state));
+    const { lights, lightZones: zones, measures } = levelObjects(state);
+    const walls = levelObjects(state).walls;
     const { grid, lighting } = state;
     const tokens = this.sightTokens.read(state);
     const rules = sightRules?.();
@@ -122,14 +127,19 @@ export class SceneModelBuilder {
     const sameReach = last?.reach.width === reach.width && last.reach.height === reach.height;
     const rest = this.restsAt();
     const rested = rest !== null && this.options.clock!() >= rest;
-    if (last && !rested && sameReach && last.walls === walls && last.lights === lights && last.zones === zones && last.tokens === tokens && last.grid === grid && last.rules === rules && last.hasVision === hasVision) {
+    // Asked only of other measurements: most of what changes on one (its colour, who sees it, its look) is no light.
+    const keptAnew = last && last.measures !== measures ? measureLights(keptLights(state, measurement()), tokens) : null;
+    if (last && keptAnew && sameMeasureLights(keptAnew, last.kept)) last.measures = measures;
+    if (last && !rested && sameReach && last.walls === walls && last.lights === lights && last.zones === zones && last.measures === measures && last.tokens === tokens && last.grid === grid && last.rules === rules && last.hasVision === hasVision) {
       const same = !sightOptionsChanged(last.lighting, lighting) && !awakeLightsChanged(lights, withZones(last.lighting, lightZoneList(zones)), withZones(lighting, lightZoneList(zones)));
       // The lighting is noted either way: the next update compares with it, not with an older one.
       last.lighting = lighting;
       if (same) return { model: last.model, rebuilt: false };
     }
-    const model = this.build(state, tokens, bounds, reach, measurement(), rules, hasVision);
-    this.built = { walls, lights, zones, tokens, grid, lighting, rules, hasVision, reach, model };
+    const settings = measurement();
+    const kept = keptLights(state, settings);
+    const model = this.build(state, tokens, bounds, reach, settings, rules, hasVision, kept);
+    this.built = { walls, lights, zones, measures, kept: measureLights(kept, tokens), tokens, grid, lighting, rules, hasVision, reach, model };
     return { model, rebuilt: true };
   }
 
@@ -139,12 +149,12 @@ export class SceneModelBuilder {
     this.motion?.clear();
   }
 
-  private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, reach: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined, hasVision: boolean): SceneModel {
+  private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, reach: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined, hasVision: boolean, kept: KeptLights): SceneModel {
     const scale = unitScaleOf(measurement, state.grid);
-    const walls = sealedWalls(wallList(blockingWalls(levelObjects(state))), worldTexel(bounds));
+    const walls = sealedWalls(wallList(levelObjects(state).walls), worldTexel(bounds));
     const zoneList = lightZoneList(levelObjects(state).lightZones);
     const ambient = withZones(state.lighting, zoneList);
-    const shining = activeLights(levelObjects(state).lights, tokens, ambient).map((light) => engineLight(light, scale));
+    const shining = activeLights(levelObjects(state).lights, tokens, ambient, kept).map((light) => engineLight(light, scale));
     // An area light's outline, and the edges of every light's shadows its reflection comes from,
     // are traced a quarter cell apart, clear of the capsules the picture puts around walls.
     const sampling = { spacing: scale.cellSize * AREA_SAMPLE_SPACING, clearance: wallRadius(worldTexel(bounds)) };
@@ -167,6 +177,11 @@ export class SceneModelBuilder {
 }
 
 const NO_ZONES: readonly EngineZone[] = [];
+
+/** The kept areas of the level shown with what places their lights (`measureLights`). */
+function keptLights(state: SceneState, measurement: MeasurementSettings): KeptLights {
+  return { measures: measureList(levelObjects(state).measures), scale: unitScaleOf(measurement, state.grid), coneAngle: measurement.coneAngle };
+}
 
 /**
  * A light with what the rule counts for it, which the picture draws as the rule has it: its

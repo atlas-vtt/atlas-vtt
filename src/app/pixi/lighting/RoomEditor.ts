@@ -1,13 +1,17 @@
 import type { EventEmitter } from 'events';
 import type { Viewport } from 'pixi-viewport';
 import { strokePolygons } from '../../lighting/exploredEdits';
-import { areaOf, extended, roomWalls, type RoomArea } from '../../lighting/rooms';
+import { areaOf, extended, type RoomArea } from '../../lighting/rooms';
+import { carvedWalls, filledWalls } from '../../lighting/wallCarving';
+import { wallSpaces } from '../../lighting/wallSpaces';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasStore } from '../../storeFactory';
+import { runHistoryTransaction } from '../../stores/history';
 import { ShapeStroke } from '../../tools/shapeStroke';
 import type { WallToolSubMode } from '../../tools/WallTool';
 import type { Point } from '../../types/visionTypes';
 import type { MapBounds } from '../../vision/visibility';
+import { wallList } from '../../vision/wallList';
 import { closesDraft } from '../areas/areaGeometry';
 import { RoomOverlay } from './RoomOverlay';
 
@@ -27,12 +31,15 @@ export type RoomKeys = { altKey: boolean; shiftKey?: boolean };
 
 /** How far, in screen pixels, a door must be dragged to be one. */
 const DOOR_DRAG = 5;
+/** How long the walls must rest before the rock is darkened anew, in milliseconds. */
+const SHADE_REST_MS = 120;
 
 /**
  * The lighting tool's rooms mode: rooms are carved out of the rock with a rectangle, corner by
- * corner, with a lasso or a brush, and filled back in the same ways. What is carved goes into the
- * highlighted room, or a new one while none is highlighted (`carveRoom`). While a room is being split (`roomSplit`), the next shape
- * cuts it in two instead. A door is dragged across an opening, its ends reaching the outline.
+ * corner, with a lasso or a brush, and filled back in the same ways. A room is its walls and
+ * nothing else: carving writes walls like any others (`carvedWalls`), one undo step, which the
+ * walls mode then edits, and a shape carved into a room opens into it. A door is dragged across
+ * an opening, its ends reaching the walls beside it.
  */
 export class RoomEditor {
   private readonly overlay: RoomOverlay;
@@ -45,6 +52,8 @@ export class RoomEditor {
   private door: { from: Point; secret: boolean } | null = null;
   /** The stroke under way fills rock back in. */
   private filling = false;
+  /** The wait before the rock is darkened anew after the walls changed, or null. */
+  private shadeTimer: number | null = null;
   private readonly cleanups: Array<() => void> = [];
 
   constructor(private readonly deps: RoomEditorDeps) {
@@ -65,14 +74,17 @@ export class RoomEditor {
       () => eventBus.off('wall-submode-changed', onSubMode),
       () => viewport.off('zoomed', redraw),
       store.subscribe((state, previous) => {
-        if (state.roomTool !== previous.roomTool) this.stop();
-        if (levelObjects(state).rooms !== levelObjects(previous).rooms || state.activeRoomId !== previous.activeRoomId
-          || state.roomTool !== previous.roomTool || state.roomSplit !== previous.roomSplit) this.draw();
+        // A wall's end dragged in this mode changes the walls at every step: the rock follows once they rest.
+        if (levelObjects(state).walls !== levelObjects(previous).walls) this.shadeSoon();
+        if (state.roomTool === previous.roomTool) return;
+        this.stop();
+        this.draw();
       }),
+      () => this.shadeNow(false),
     );
   }
 
-  /** The rock and the rooms' outlines (`GmOverlays`). */
+  /** The darkened rock and the shape under way (`GmOverlays`). */
   get view(): RoomOverlay['view'] {
     return this.overlay.view;
   }
@@ -159,13 +171,10 @@ export class RoomEditor {
     return true;
   }
 
-  /** Escape drops the shape under way, else stops a split. */
+  /** Escape drops the shape under way. */
   handleEscape(): boolean {
-    if (!this.shown) return false;
-    const state = this.deps.store.getState();
-    if (this.stroke.active || this.draft.length > 0 || this.door) this.stop();
-    else if (state.roomSplit) state.setRoomSplit(null);
-    else return false;
+    if (!this.shown || !this.busy) return false;
+    this.stop();
     return true;
   }
 
@@ -206,22 +215,31 @@ export class RoomEditor {
   }
 
   /**
-   * A closed door from `a` to `b`, its ends pushed out to the rooms' outline when that is within
+   * A closed door from `a` to `b`, its ends pushed out to the walls beside it when they are within
    * a grid cell, so no light slips past a door drawn a little short.
    */
   private placeDoor(a: Point, b: Point, secret: boolean): void {
     const state = this.deps.store.getState();
     const reach = state.grid?.size ?? 70;
-    const walls = Object.values(roomWalls(levelObjects(state).rooms ?? {}));
+    const walls = wallList(levelObjects(state).walls);
     state.addWall({ type: secret ? 'secret-door' : 'door', p1: extended(a, b, walls, reach), p2: extended(b, a, walls, reach), closed: true });
   }
 
+  /** Carves `area` or fills it in, as one edit of the level's walls and one undo step. */
   private apply(area: RoomArea): void {
-    const state = this.deps.store.getState();
     if (area.length === 0) return;
-    if (state.roomSplit) state.splitRoom(state.roomSplit, area);
-    else if (this.filling) state.fillRooms(area);
-    else state.carveRoom(area);
+    const { store } = this.deps;
+    const state = store.getState();
+    const walls = levelObjects(state).walls;
+    const chain = `room_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const { remove, add } = (this.filling ? filledWalls : carvedWalls)(area, wallList(walls), wallSpaces(walls), chain);
+    if (remove.length === 0 && add.length === 0) return;
+    runHistoryTransaction(store, () => {
+      if (remove.length > 0) state.deleteWalls(remove);
+      for (const wall of add) state.addWall(wall);
+    });
+    // What was just carved shows at once.
+    this.shadeNow(true);
   }
 
   /** With Shift, a corner lands on the nearest crossing of a square grid. */
@@ -232,13 +250,30 @@ export class RoomEditor {
     return { x: snap(point.x, grid.offsetX), y: snap(point.y, grid.offsetY) };
   }
 
+  /** Darkens the rock anew once the walls have rested `SHADE_REST_MS`: finding the rooms of a large map takes tens of milliseconds. */
+  private shadeSoon(): void {
+    if (!this.shown || this.shadeTimer !== null) return;
+    const win = this.deps.canvas.ownerDocument.defaultView;
+    if (!win) return;
+    this.shadeTimer = win.setTimeout(() => this.shadeNow(true), SHADE_REST_MS);
+  }
+
+  /** Drops a darkening that waits, and with `draw` darkens the rock for the walls as they are. */
+  private shadeNow(draw: boolean): void {
+    if (this.shadeTimer !== null) this.deps.canvas.ownerDocument.defaultView?.clearTimeout(this.shadeTimer);
+    this.shadeTimer = null;
+    if (draw) this.overlay.drawShade();
+  }
+
   private zoom(): number {
     return this.deps.viewport.scale.x;
   }
 
   private draw(): void {
+    // The rock is darkened for the walls as they are; nothing is drawn anew where they did not change.
+    this.shadeNow(true);
     const preview = this.shown ? { stroke: this.stroke, draft: this.draft, pointer: this.pointer, door: this.door?.from ?? null, filling: this.filling } : null;
-    this.overlay.draw(this.active, preview);
+    this.overlay.draw(preview);
   }
 
   destroy(): void {

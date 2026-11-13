@@ -106,14 +106,18 @@ export class SceneDice {
     return dice === null ? null : quietRoll(formula, set ?? dice.rules(), this.ports.randomId(), Date.now(), undefined, setAppearance, advantage);
   }
 
-  /** Runs a GM's roll on the shared tab's dice, carrying `notes` into the log; false where the tab has no dice or nothing was rolled. */
+  /**
+   * Runs a GM's public roll on the shared tab's dice, carrying `notes` into the log; false where the
+   * tab has no dice or nothing was rolled. The GM chose to show it, so players see it whatever the
+   * player view's "show dice rolls" setting says.
+   */
   rollAsGm(run: (dice: DiceSource) => boolean, notes: RollNotes): boolean {
     const dice = this.ports.dice?.() ?? null;
     if (dice === null) return false;
     let rolled = false;
     this.share.rollAs('gm', () => {
       rolled = run(dice);
-    }, notes);
+    }, notes, true);
     return rolled;
   }
 }

@@ -52,7 +52,8 @@ export class LivePyramid {
   private active = false;
   private dead = false;
 
-  constructor(readonly hash: string, readonly path: string, private readonly shape: Pyramid, private readonly ports: LivePyramidPorts) {
+  /** `offFloor`: who looks at it while it is no floor of the shared scene and players hold it. */
+  constructor(readonly hash: string, readonly path: string, private readonly shape: Pyramid, private readonly ports: LivePyramidPorts, readonly offFloor: MapStanding = 'presented') {
     this.levels = shape.levels.length;
     this.count = tileCount(shape);
     this.bytes = pyramidBound(shape);

@@ -8,21 +8,13 @@ import type { LevelElevation, SceneLevel } from '../../../types/sceneLevelTypes'
 import { t } from '../../../i18n';
 import { LevelRoofSettings } from './SceneLevelRoof';
 
-interface SceneLevelRowProps {
-  level: SceneLevel;
-  name: string;
+/** What a level has among the scene's other levels. */
+interface LevelAmongOthers {
   isViewed: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
   onShow: () => void;
-  onRename: (name: string) => void;
-  onElevation: (elevation: LevelElevation) => void;
   onMove: (direction: 1 | -1) => void;
-  onPickImage: () => void;
-  /** Whether the level has an image another can take the place of. */
-  hasImage: boolean;
-  /** Picks an image of the same shape that takes the image's place, scaled onto it. */
-  onReplaceImage: () => void;
   onDelete: () => void;
   /** The levels below this one, nearest first, with what they are called. */
   below: readonly { id: string; name: string }[];
@@ -30,19 +22,36 @@ interface SceneLevelRowProps {
   onSees: (id: string, seen: boolean) => void;
   /** The transparent parts of its map are openings, or floor. */
   onOpenArt: (open: boolean) => void;
+}
+
+interface SceneLevelRowProps {
+  level: SceneLevel;
+  name: string;
+  onRename: (name: string) => void;
+  onElevation: (elevation: LevelElevation) => void;
+  onPickImage: () => void;
+  /** Whether the level has an image another can take the place of. */
+  hasImage: boolean;
+  /** Picks an image of the same shape that takes the image's place, scaled onto it. */
+  onReplaceImage: () => void;
   /** Picks the image drawn as the level's roof, or none. */
   onPickRoof: () => void;
   onRemoveRoof: () => void;
+  /**
+   * Unset for a scene's only level: its row has nothing to reorder, delete, show in another's
+   * place or see below, and its roof stands open under it.
+   */
+  among?: LevelAmongOthers | undefined;
 }
 
-/** A number field that commits a finite number on blur or Enter, and goes back to `value` otherwise. */
+/** A number field that commits another finite number on blur or Enter, and goes back to `value` for anything else. */
 function NumberField({ value, label, onCommit }: { value: number; label: string; onCommit: (value: number) => void }): React.ReactElement {
   const [text, setText] = useState(String(value));
   useEffect(() => setText(String(value)), [value]);
   const commit = (): void => {
     const parsed = Number(text.replace(',', '.'));
-    if (text.trim() !== '' && Number.isFinite(parsed)) onCommit(parsed);
-    else setText(String(value));
+    if (text.trim() === '' || !Number.isFinite(parsed)) setText(String(value));
+    else if (parsed !== value) onCommit(parsed);
   };
   return (
     <input
@@ -100,7 +109,7 @@ function SwitchRow({ label, value, onChange }: { label: string; value: boolean; 
  * and which levels below it sees through them. A level below it does not see stops the view with
  * its floor; of the levels it sees, the two nearest are drawn.
  */
-function LevelBelowSettings({ level, below, onSees, onOpenArt }: Pick<SceneLevelRowProps, 'level' | 'below' | 'onSees' | 'onOpenArt'>): React.ReactElement {
+function LevelBelowSettings({ level, below, onSees, onOpenArt }: Pick<SceneLevelRowProps, 'level'> & Pick<LevelAmongOthers, 'below' | 'onSees' | 'onOpenArt'>): React.ReactElement {
   const seen = below.filter((entry) => !level.sees || level.sees.includes(entry.id));
   return (
     <div className="atlas-scene-level__below" onClick={(event) => event.stopPropagation()}>
@@ -114,19 +123,19 @@ function LevelBelowSettings({ level, below, onSees, onOpenArt }: Pick<SceneLevel
   );
 }
 
-/** One level in the Levels page: its name, elevation and the actions on it. */
+/** One level in the Levels page: its name, elevation and the actions on it; a scene's only level has its map's actions alone. */
 export function SceneLevelRow(props: SceneLevelRowProps): React.ReactElement {
-  const { level, name, isViewed } = props;
+  const { level, name, among } = props;
   const [draft, setDraft] = useState(level.name ?? '');
   const [showsBelow, setShowsBelow] = useState(false);
   const [showsRoof, setShowsRoof] = useState(false);
   useEffect(() => setDraft(level.name ?? ''), [level.name]);
   const { bottom, top } = level.elevation;
-  const hasBelow = props.below.length > 0;
+  const hasBelow = !!among && among.below.length > 0;
 
   return (
     <div className="atlas-scene-level-entry">
-      <div className={cn('atlas-scene-level', isViewed && 'atlas-scene-level--viewed')} onClick={props.onShow}>
+      <div className={cn('atlas-scene-level', among?.isViewed && 'atlas-scene-level--viewed', !among && 'atlas-scene-level--only')} onClick={among?.onShow}>
         <input
           className="atlas-scene-level__name"
           type="text"
@@ -144,23 +153,31 @@ export function SceneLevelRow(props: SceneLevelRowProps): React.ReactElement {
           <NumberField value={top} label={t('levels.top', { name })} onCommit={(value) => props.onElevation({ bottom: Math.min(bottom, value), top: value })} />
         </div>
         <div className="atlas-scene-level__actions" onClick={(event) => event.stopPropagation()}>
-          <RowButton label={t('levels.moveUp', { name })} icon={<ArrowUp />} disabled={!props.canMoveUp} onClick={() => props.onMove(1)} />
-          <RowButton label={t('levels.moveDown', { name })} icon={<ArrowDown />} disabled={!props.canMoveDown} onClick={() => props.onMove(-1)} />
+          {among && (
+            <>
+              <RowButton label={t('levels.moveUp', { name })} icon={<ArrowUp />} disabled={!among.canMoveUp} onClick={() => among.onMove(1)} />
+              <RowButton label={t('levels.moveDown', { name })} icon={<ArrowDown />} disabled={!among.canMoveDown} onClick={() => among.onMove(-1)} />
+            </>
+          )}
           <RowButton label={t('levels.changeImage', { name })} icon={<Image />} onClick={props.onPickImage} />
           <RowButton label={t('levels.replaceImage', { name })} icon={<Replace />} disabled={!props.hasImage} onClick={props.onReplaceImage} />
-          <RowButton
-            label={hasBelow ? t('levels.showsBelow', { name }) : t('levels.nothingBelow', { name })}
-            icon={<Layers />}
-            disabled={!hasBelow}
-            expanded={hasBelow ? showsBelow : undefined}
-            onClick={() => setShowsBelow(!showsBelow)}
-          />
-          <RowButton label={t('levels.roof', { name })} icon={<House />} expanded={showsRoof} onClick={() => setShowsRoof(!showsRoof)} />
-          <RowButton label={t('levels.delete', { name })} icon={<Trash2 />} destructive onClick={props.onDelete} />
+          {among && (
+            <>
+              <RowButton
+                label={hasBelow ? t('levels.showsBelow', { name }) : t('levels.nothingBelow', { name })}
+                icon={<Layers />}
+                disabled={!hasBelow}
+                expanded={hasBelow ? showsBelow : undefined}
+                onClick={() => setShowsBelow(!showsBelow)}
+              />
+              <RowButton label={t('levels.roof', { name })} icon={<House />} expanded={showsRoof} onClick={() => setShowsRoof(!showsRoof)} />
+              <RowButton label={t('levels.delete', { name })} icon={<Trash2 />} destructive onClick={among.onDelete} />
+            </>
+          )}
         </div>
       </div>
-      {hasBelow && showsBelow && <LevelBelowSettings level={level} below={props.below} onSees={props.onSees} onOpenArt={props.onOpenArt} />}
-      {showsRoof && <LevelRoofSettings name={name} foreground={level.foreground} onPick={props.onPickRoof} onRemove={props.onRemoveRoof} />}
+      {among && hasBelow && showsBelow && <LevelBelowSettings level={level} below={among.below} onSees={among.onSees} onOpenArt={among.onOpenArt} />}
+      {(showsRoof || !among) && <LevelRoofSettings name={name} foreground={level.foreground} onPick={props.onPickRoof} onRemove={props.onRemoveRoof} />}
     </div>
   );
 }

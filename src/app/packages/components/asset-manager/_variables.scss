@@ -30,13 +30,18 @@ $search-button-size: 24px;
 /// A filter section's search field: room for its 24 px close button inside the border.
 $filter-search-height: 28px;
 
-/// The edge of a control that must be found by it alone (the search field, an unchecked checkbox):
-/// 3:1 against its surface in both themes (WCAG 1.4.11; 3.5:1 on a light card's #eee), where Obsidian's border colour
-/// gives 1.4–2:1.
-$am-control-border: color-mix(in srgb, var(--text-muted) 75%, var(--background-modifier-border));
-/// The same edge while the field is typed in or its list is open: the accent, as `atlas-text-input` takes on focus, so a
-/// field's edge never fades when it is used (Obsidian's focus border is lighter than its rest one in the light theme).
-$am-control-border-focus: var(--interactive-accent);
+/// The edge of a field, a select or a search: quiet, a shade above Obsidian's own border, so a form reads as its
+/// content and not as frames. A field is also told by its fill (`--background-modifier-form-field`), so its edge need
+/// not carry it alone; an edge at 3:1 against the surface stood out as a bright stroke round every field.
+$am-control-border: color-mix(in srgb, var(--text-muted) 22%, var(--background-modifier-border));
+/// The same edge under the pointer: a step stronger, still below the text beside it.
+$am-control-border-hover: color-mix(in srgb, var(--text-muted) 45%, var(--background-modifier-border));
+/// The same edge while the field is typed in or its list is open: the accent, softened into the border, so the field
+/// in use is told at once without a hard line (Obsidian's focus border is lighter than its rest one in the light theme).
+$am-control-border-focus: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
+/// The edge of a control that must be found by it alone (an unchecked checkbox, which has no fill of its own):
+/// 3:1 against its surface in both themes (WCAG 1.4.11; 3.5:1 on a light card's #eee).
+$am-checkbox-border: color-mix(in srgb, var(--text-muted) 75%, var(--background-modifier-border));
 
 
 /// Secondary text that is read, not glanced at (card names, hints under a field): Obsidian's muted grey in the light

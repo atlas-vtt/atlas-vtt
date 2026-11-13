@@ -9,7 +9,6 @@ import type { HeaderMenuHandle } from './components/HeaderMenu';
 import { Sidebar } from './components/Sidebar';
 import { BestiaryTokensOffer } from './components/BestiaryTokensOffer';
 import { useStarterOfferDismissal } from './hooks/useStarterOfferDismissal';
-import { useStarterTokensEntry } from './hooks/useStarterTokensEntry';
 import { EmptyTabAction, type CreatableTab } from './components/EmptyTabAction';
 import { Content } from './components/Content';
 import { LocationBar } from './components/LocationBar';
@@ -100,7 +99,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
     sel.selectedFolderId, data.folders, data.collections,
     data.setFolders, data.reloadCollections, setSelectedCollection,
     data.loadFoldersForActiveTab, data.loadAssetsForActiveTab,
-    draggedItems, setDraggedItems, setDropTarget, data.setAssets, reveal.inFolder,
+    draggedItems, setDraggedItems, setDropTarget, data.setAssets, reveal.inFolder, sel,
   );
 
   const tags = useTagsAndCollections(
@@ -134,7 +133,6 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
     encounters: () => crud.setIsEncounterBuilderOpen(true),
   };
   const starterOffer = useStarterOfferDismissal(data.app, data.collections.find((option) => option.id === selectedCollection)?.uid);
-  const starterEntry = useStarterTokensEntry(data.app, data.assetService ?? undefined, selectedCollection, activeTab);
 
   const emptyAction = (
     <EmptyTabAction tab={shown.tab} app={data.app} assetService={data.assetService} collection={selectedCollection} onCreate={onCreate} onShowMaps={() => changeTab('maps')} />
@@ -184,7 +182,6 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onCreateCollection={crud.handleCreateCollection}
             onCreateFolder={crud.handleCreateFolder}
             createMenu={createMenu}
-            starterTokens={starterEntry}
             sidebarToggleLabel={sidebar.toggleLabel}
             onToggleSidebar={sidebar.toggle}
             sel={sel}
