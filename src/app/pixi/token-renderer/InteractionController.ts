@@ -6,14 +6,13 @@
  */
 
 import type { ResourceDefsProvider } from '../../resources/resourceTypes';
-import { isKillable, resetLabel } from '../../resources/resourceValues';
+import { isKillable } from '../../resources/resourceValues';
 import { visibleResources } from '../../resources/visibleResources';
 import React from 'react';
 import { Container, FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { App } from 'obsidian';
 import { openEditTokenModal } from './EditTokenModal';
-import { STATBLOCK_UNLINK_UPDATES } from './statblockFrontmatter';
 import { openContextMenuGlobal, closeContextMenuGlobal, type ContextMenuEntry } from '../../react/root/ContextMenuContext';
 import { DestructiveActionRow } from './DestructiveActionRow';
 import type { ITokenInteractionController, TokenGroupContainer } from './types';
@@ -27,7 +26,7 @@ import { initiativeEntryForToken } from '../../stores/initiativeEntries';
 import { EventEmitter } from 'events';
 import { StatblockDialogService } from '../../services/StatblockDialogService';
 import { AssetService } from '../../services/AssetService';
-import { createStatblockEntry, newStatblockOption, openStatblockNote, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';
+import { createStatblockEntry, newStatblockOption, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import { saveMapTokensAsEncounter } from '../../encounters/saveMapTokensAsEncounter';
@@ -50,13 +49,11 @@ import { conditionsSubmenu } from '../../react/components/context-menu/condition
 import { applySelectionResourceChange, selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
 import { selectionResources, type SelectionResource } from '../../resources/selectionResourceChange';
 import { SelectionResourceEditing } from '../selectionResourceEditor';
-import { placedPlayerCharacterEntry } from '../../react/components/context-menu/playerCharacterMenu';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { dropTokensOnStairs, type StairsMenuPlace } from './stairsDrop';
 import type { TokenPreviewAnchor } from '../../services/NotePreviewUIManager';
 import type { ArtFloors } from '../../levels/levelSurfaces';
 import { t } from '../../i18n';
-import { showNotice } from '../../ui/notice';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
@@ -682,33 +679,9 @@ export class InteractionController implements ITokenInteractionController {
     });
 
 
-    // Statblock linking
+    // A token without a statblock can be given one here. Editing and unlinking one are the asset manager's.
     const obsApp = this.obsApp;
-    const statblockPath = character?.statblockPath;
-    if (statblockPath) {
-      entries.push({
-        type: 'item',
-        label: t('token.editStatblock'),
-        icon: 'file-text',
-        onClick: () => {
-          if (obsApp && openStatblockNote(obsApp, statblockPath, this.statblockEntryContext()) === 'missing') {
-            showNotice(t('token.statblockMissing'));
-          }
-        },
-      });
-      entries.push({
-        type: 'item',
-        label: t('am.menu.unlinkStatblock'),
-        icon: 'unlink',
-        onClick: async () => {
-          if (obsApp && token.imagePath) {
-            const linkService = TokenStatblockLinkService.getInstance(obsApp);
-            await linkService.unlinkToken(token.imagePath);
-            this.store.getState().updateToken(token.id, STATBLOCK_UNLINK_UPDATES);
-          }
-        },
-      });
-    } else {
+    if (!character?.statblockPath) {
       entries.push({
         type: 'item',
         label: t('am.menu.linkStatblock'),
@@ -739,11 +712,6 @@ export class InteractionController implements ITokenInteractionController {
       const create = token.imagePath ? createStatblockEntry(obsApp, this.tokenCreationContext(token, character?.name || 'Token')) : null;
       if (create) entries.push(create);
     }
-
-
-    // Player character: the library token it was placed from, for the GM alone
-    const playerCharacter = this.isPlayerView ? null : placedPlayerCharacterEntry(this.obsApp, token, this.store);
-    if (playerCharacter) entries.push(playerCharacter);
 
     // Ring colour of the selection in one undo step; the clicked token's colour is ticked
     const currentRingColor = token.ringColor;
@@ -788,7 +756,7 @@ export class InteractionController implements ITokenInteractionController {
     if (this.anyTracksResources(shownTargets)) {
       entries.push({
         type: 'item',
-        label: resetLabel(this.resourceDefsProvider()),
+        label: t('token.reset'),
         icon: 'rotate-ccw',
         onClick: () => this.store.getState().resetTokens(shownTargets, this.resourceDefsProvider()),
       });

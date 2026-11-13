@@ -36,7 +36,7 @@
 - While you drag a token, its line takes the colour of the step the move is in and turns red past the last one, and the label reads moved / how far that step reaches, such as 25 / 30ft, or 45 / 60ft in a Dash. Where movement adds up over a turn, a token's moves in its turn count together while a fight runs, and undo gives the distance back
 - Speed: a token moves by the speed its statblock states, or by one of its own that you set in Edit token. Where a statblock states several, such as walking and flying, pick one under Movement in the token's menu
 - A token with no speed of its own and none in its statblock moves by the speed its collection's Movement settings give such creatures
-- Games that measure in range bands have movement steps too: a drag reads as bands, such as Close / Near, a speed is picked as a band, and a statblock may name one, such as double near
+- Games that measure in range bands have movement steps too: a drag reads as the band moved and the step's name, such as Close · Move, a speed is picked as a band, and a statblock may name one, such as double near
 - Height: a token's menu has Height, which lifts it off the floor or puts it below, one square's distance at a time (+ and - work too), for the whole selection. A small tag over the token says how far, such as ↑ 30ft, and players see it on tokens they see
 - A ruler that starts or ends on a token counts the height between its two ends, by the collection's rule for diagonals
 - In a game that measures in range bands, Height and Aura step from band to band and are named by their band, such as ↑ Close or an aura of Very Close
@@ -64,6 +64,7 @@
 - Online play: note pins your players may read on the campaign's world map, and on the maps it leads into, now show there in their book, and the first player to open one finds its note for the whole table, as with pins on the shared map
 - Online play: when the campaign you start a table with has a game system of its own, the start menu says that every map plays by it instead of its collection's
 - Online play: the world map and the maps it leads into reach players the way the table's map does, a piece at a time, so a large world map opens at once and stays sharp as they zoom in
+- A token's menu on the map is shorter: Reset is just Reset, and Edit statblock, Unlink statblock and Make player character are in the asset manager only
 
 ## Fixed
 
