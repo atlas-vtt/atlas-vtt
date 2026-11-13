@@ -62,6 +62,7 @@ import type { MapFeaturePointerHandlers } from './mapFeatures/MapFeatureInteract
 import type { LightPointerHandlers } from './lighting/LightInteraction';
 import type { MeasurePointerHandlers } from './measure/measureHandle';
 import type { FogAreaPointerHandlers } from './fog/FogOfWarRenderer';
+import { isFogTool } from '../fog/fogToolChoices';
 import type { AnnotationPointerHandlers } from './annotations/annotationPointer';
 import { runInBackground } from '../utils/backgroundTask';
 import { isModHeld } from '../keyboard/modKey';
@@ -1807,8 +1808,8 @@ export class TokenRenderer {
           return;
         }
       }
-      // The badge of a fog area lies above the tokens: its menu opens on a release in place.
-      const fogAreaId = this.fogAreaHandlers?.hitTest(worldPos.x, worldPos.y);
+      // The badge of a fog area that takes the pointer here: its menu opens on a release in place.
+      const fogAreaId = this.fogBadgeAt(worldPos.x, worldPos.y, activeTool);
       if (fogAreaId) {
         this.openMenuOnRelease(e, (up) => this.fogAreaHandlers?.openMenu(fogAreaId, up.clientX, up.clientY));
         return;
@@ -1868,8 +1869,8 @@ export class TokenRenderer {
       return;
     }
 
-    // ── Badges of fog areas: a click hides or reveals the area, from any tool ──
-    const fogAreaId = primary ? this.fogAreaHandlers?.hitTest(worldPos.x, worldPos.y) ?? null : null;
+    // ── Badges of fog areas: a click hides or reveals the area (`fogBadgeAt` says with which tools, and when a token goes first) ──
+    const fogAreaId = primary ? this.fogBadgeAt(worldPos.x, worldPos.y, activeTool) : null;
     if (fogAreaId) {
       markHandled(e);
       this.fogAreaHandlers?.press(fogAreaId);
@@ -2050,8 +2051,8 @@ export class TokenRenderer {
     // Measurement handles, light markers and range rings: hover and cursor from any tool
     if (measureCursor) this.lightHandlers?.leave();
     const lightCursor = measureCursor ?? this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
-    // The badge of a fog area, where no handle or marker above it is pointed at: a press there is its own, with any tool
-    const fogAreaId = lightCursor ? null : this.fogAreaHandlers?.hitTest(worldPos.x, worldPos.y) ?? null;
+    // The badge of a fog area, where no handle or marker above it is pointed at and a press there would be its own
+    const fogAreaId = lightCursor ? null : this.fogBadgeAt(worldPos.x, worldPos.y, activeTool);
     this.fogAreaHandlers?.hover(fogAreaId);
     const markerCursor = lightCursor ?? (fogAreaId ? 'pointer' : null);
 
@@ -2110,6 +2111,20 @@ export class TokenRenderer {
     this.uiManager.hoverSelectionBar(selectionBar);
     this.applyCursor(tokenId || hexLinkId || selectionBar ? 'pointer' : 'default');
   };
+
+  /**
+   * The fog area whose badge takes the pointer at a world point with `tool`. None with the
+   * lighting tool, like door badges. A hidden area's badge lies above the tokens; a revealed
+   * area's leaves the pointer to a token under it, except with the fog tool: the party stands in
+   * revealed rooms, and taking a token there must never hide the room.
+   */
+  private fogBadgeAt(worldX: number, worldY: number, tool: string): string | null {
+    const badges = this.fogAreaHandlers;
+    if (!badges || tool === 'wall') return null;
+    const areaId = badges.hitTest(worldX, worldY);
+    if (!areaId || isFogTool(tool) || !badges.yieldsToTokens(areaId)) return areaId;
+    return this.hitTestTokens(worldX, worldY) === null ? areaId : null;
+  }
 
   /** The key of the resource a token of a selection of two or more draws under the pointer, or null. */
   private selectionBarAt(e: FederatedPointerEvent): string | null {

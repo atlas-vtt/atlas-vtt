@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fogAreaList, isFogArea, MAX_FOG_AREAS, type FogAreaShape } from '../../src/app/fog/fogAreas';
+import { fogAreaList, isFogArea, MAX_FOG_AREAS, type FogArea, type FogAreaShape } from '../../src/app/fog/fogAreas';
 import { fogCoverage } from '../../src/app/fog/fogCoverage';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
-import { getHistoryStore } from '../../src/app/stores/history';
+import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction, getHistoryStore } from '../../src/app/stores/history';
 import type { FogOperation } from '../../src/app/types/fogTypes';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -311,5 +311,63 @@ describe('the whole map and its areas', () => {
     store.getState().coverAllFog(MAP);
     expect(fog()[below]).toMatchObject({ isErasing: true });
     expect(fog()[above]).toMatchObject({ isErasing: false });
+  });
+});
+
+describe('a gesture on a fog area', () => {
+  it('is one undo step however often it reshapes the area', () => {
+    const { store, fog, steps, undo } = scene();
+    const hall = store.getState().addFogArea(HALL)!;
+    const before = steps();
+    beginHistoryTransaction(store);
+    for (const width of [210, 260, 300]) store.getState().updateFogArea(hall, { width });
+    endHistoryTransaction(store);
+    expect(fog()[hall]).toMatchObject({ width: 300 });
+    expect(steps()).toBe(before + 1);
+    undo();
+    expect(fog()[hall]).toMatchObject({ width: 200 });
+  });
+
+  it('leaves no undo step when it is cancelled: the area is put back as the very operation it was', () => {
+    const { store, fog, steps, undo } = scene();
+    const hall = store.getState().addFogArea(HALL)!;
+    const was = fog()[hall] as FogArea;
+    const before = steps();
+    beginHistoryTransaction(store);
+    // A corner more makes it an outline of corners: only the operation itself brings the rectangle back.
+    store.getState().updateFogArea(hall, { points: [{ x: 100, y: 100 }, { x: 200, y: 50 }, { x: 300, y: 100 }, { x: 300, y: 200 }, { x: 100, y: 200 }] });
+    expect(fog()[hall]).toMatchObject({ type: 'lasso' });
+    expect(store.getState().restoreFogArea(was)).toBe(true);
+    abandonHistoryTransaction(store);
+    expect(fog()[hall]).toBe(was);
+    expect(steps()).toBe(before);
+    // The step before it is still the one undo takes back.
+    undo();
+    expect(fog()[hall]).toBeUndefined();
+  });
+
+  it('puts no area back that is gone, or lies on another level', () => {
+    const { store, fog } = scene();
+    store.setState({ levels: LEVELS, viewedLevel: 'ground' });
+    const hall = store.getState().addFogArea(HALL)!;
+    const was = fog()[hall] as FogArea;
+    store.getState().setViewedLevel('upper');
+    expect(store.getState().restoreFogArea({ ...was, x: 0 })).toBe(false);
+    expect(fog()[hall]).toBe(was);
+    store.getState().setViewedLevel('ground');
+    store.getState().deleteFogAreas([hall]);
+    expect(store.getState().restoreFogArea(was)).toBe(false);
+    expect(fog()).toEqual({});
+  });
+
+  it('selects an area without an undo step', () => {
+    const { store, steps } = scene();
+    const hall = store.getState().addFogArea(HALL)!;
+    const before = steps();
+    store.getState().selectFogArea(hall);
+    expect(store.getState().fogAreaSelected).toBe(hall);
+    store.getState().selectFogArea(null);
+    expect(store.getState().fogAreaSelected).toBeNull();
+    expect(steps()).toBe(before);
   });
 });

@@ -1,5 +1,6 @@
 import type { FederatedPointerEvent } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { areaOutline, fogAreaList, type FogArea } from '../../src/app/fog/fogAreas';
 import { canvasBadgeTheme } from '../../src/app/pixi/utils/canvasBadgeColors';
 import { markHandled, resetHandled } from '../../src/app/pixi/utils/handledEvents';
 import { getHistoryStore } from '../../src/app/stores/history';
@@ -182,5 +183,75 @@ describe('fog areas on the map', () => {
     s.pointer('pointermove', BADGE.x, BADGE.y);
     const revealed = playersSee();
     for (let at = 0; at < revealed.length; at += 4) expect([at, revealed[at], revealed[at + 1], revealed[at + 2]]).toEqual([at, 255, 255, 255]);
+  });
+
+  it('draws areas in Areas mode that never overlap, reshapes one by a corner and deletes it with the key', async () => {
+    const s = await scene();
+    s.showMapImage(MAP);
+    dispatchBadges(s);
+    // Corners land where the pointer is, or on another area.
+    s.store.setState((state) => ({ grid: { ...state.grid, snapToGrid: false } }));
+    s.store.getState().setFogTool({ areas: true, shape: 'rectangle' });
+    s.store.getState().setActiveTool('fog');
+    const history = getHistoryStore(s.store)!;
+    const areas = (): readonly FogArea[] => fogAreaList(s.store.getState().objects.fog);
+    const drag = (from: readonly [number, number], to: readonly [number, number]): void => {
+      s.pointer('pointerdown', ...from);
+      s.pointer('pointermove', ...to);
+      s.pointer('pointerup', ...to);
+    };
+
+    // The hall, 16 to 64 both ways: while it is drawn its outline shows in the areas' accent, and it is hidden once it is let go.
+    s.pointer('pointerdown', 16, 16);
+    s.pointer('pointermove', 64, 64);
+    let accent = 0;
+    const drawing = s.rgba();
+    for (let x = 22; x < 58; x++) if (isAccent(drawing, x, 15) || isAccent(drawing, x, 16)) accent++;
+    expect(accent).toBeGreaterThan(30);
+    expect(areas()).toEqual([]);
+    s.pointer('pointerup', 64, 64);
+    expect(areas()).toEqual([expect.objectContaining({ type: 'rectangle', isErasing: false, x: 16, y: 16, width: 48, height: 48 })]);
+    const hallId = areas()[0]!.id;
+    expect([s.read(40, 40), s.read(100, 100)]).toEqual([0, 255]);
+
+    // A second area begun beside the hall and drawn across its right half: it ends at the hall.
+    drag([112, 24], [40, 48]);
+    expect(areas()).toHaveLength(2);
+    const side = (): FogArea => areas().find((area) => area.id !== hallId)!;
+    const sideId = side().id;
+    expect(Math.min(...areaOutline(side()).map((point) => point.x))).toBe(64);
+
+    // With the hall revealed, all of it is clear: the second area hides nothing of it.
+    s.store.getState().flipFogArea(hallId);
+    const revealed = s.frame();
+    for (let y = 18; y < 62; y++) {
+      for (let x = 18; x < 62; x++) expect([x, y, revealed[y * SIZE + x]]).toEqual([x, y, 255]);
+    }
+    expect([s.read(72, 36), s.read(104, 36), s.read(110, 80)]).toEqual([0, 0, 255]);
+
+    // A click in the second area, beside its badge, selects it: its corners show handles on the GM's canvas alone.
+    click(s, 106, 44);
+    expect(s.store.getState().fogAreaSelected).toBe(sideId);
+    const handles = changed(s.rgba(), s.rgba(s.fog.getGmViewLayers()));
+    expect(handles.some((pixel) => Math.hypot(pixel.x + 0.5 - 112, pixel.y + 0.5 - 48) < 5)).toBe(true);
+    const playersSee = s.rgba(s.fog.getPlayerViewLayers());
+    expect(isAccent(playersSee, 112, 48)).toBe(false);
+
+    // Its bottom right corner dragged down: the fog follows, in one undo step.
+    const before = history.getState().pastStates.length;
+    drag([112, 48], [120, 100]);
+    expect(areaOutline(side())).toContainEqual({ x: 120, y: 100 });
+    expect(s.read(110, 80)).toBe(0);
+    expect(history.getState().pastStates).toHaveLength(before + 1);
+
+    // Delete deletes it, and its fog goes.
+    const key = new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true });
+    window.dispatchEvent(key);
+    expect(key.defaultPrevented).toBe(true);
+    expect(areas().map((area) => area.id)).toEqual([hallId]);
+    expect(s.store.getState().fogAreaSelected).toBeNull();
+    expect([s.read(104, 36), s.read(110, 80)]).toEqual([255, 255]);
+    history.getState().undo();
+    expect(s.read(110, 80)).toBe(0);
   });
 });

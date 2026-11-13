@@ -92,14 +92,55 @@ describe('FogToolBar', () => {
     expect(pressed('Hide')).toBe(false);
   });
 
-  it('shows Areas in its place, not to be chosen yet', () => {
+  it('chooses Areas, which the hiding tool then makes, and leaves it for Hide or Reveal', () => {
     const { store } = renderBar();
-    expect(inert('Areas')).toBe(true);
-    expect(inert('Hide') || inert('Reveal')).toBe(false);
+    expect(['Hide', 'Reveal', 'Areas'].some(inert)).toBe(false);
     fireEvent.click(button('Areas'));
-    expect(store.getState().fogTool.areas).toBe(false);
+    expect(store.getState().fogTool.areas).toBe(true);
     expect(store.getState().activeTool).toBe('fog');
+    expect(pressed('Areas')).toBe(true);
+    expect(pressed('Hide')).toBe(false);
+    // From revealing too.
+    fireEvent.click(button('Reveal'));
+    expect(store.getState().fogTool.areas).toBe(false);
+    fireEvent.click(button('Areas'));
+    expect(store.getState()).toMatchObject({ activeTool: 'fog', fogTool: { areas: true } });
+    fireEvent.click(button('Hide'));
+    expect(store.getState()).toMatchObject({ activeTool: 'fog', fogTool: { areas: false } });
     expect(pressed('Hide')).toBe(true);
+  });
+
+  it('shows the Brush in its place in Areas, not to be chosen, and takes the rectangle where the brush was', () => {
+    const { store } = renderBar();
+    expect(pressed('Brush')).toBe(true);
+    fireEvent.click(button('Areas'));
+    expect(store.getState().fogTool.shape).toBe('rectangle');
+    expect(pressed('Rectangle')).toBe(true);
+    expect(inert('Brush')).toBe(true);
+    expect(names(toolsBar())).toEqual(TOOLS);
+    fireEvent.click(button('Brush'));
+    expect(store.getState().fogTool.shape).toBe('rectangle');
+    // Every shape with an outline can be chosen, and stays when the tool hides again.
+    for (const [name, shape] of [['Polygon', 'polygon'], ['Lasso', 'lasso'], ['Cells', 'cells'], ['Rectangle', 'rectangle']] as const) {
+      fireEvent.click(button(name));
+      expect(store.getState().fogTool.shape).toBe(shape);
+    }
+    fireEvent.click(button('Lasso'));
+    fireEvent.click(button('Hide'));
+    expect(pressed('Lasso')).toBe(true);
+    expect(inert('Brush')).toBe(false);
+    // A shape with an outline stays when Areas is chosen.
+    fireEvent.click(button('Areas'));
+    expect(store.getState().fogTool.shape).toBe('lasso');
+  });
+
+  it('falls back to the rectangle in Areas when the grid goes while Cells is chosen', () => {
+    const { store } = renderBar();
+    fireEvent.click(button('Areas'));
+    fireEvent.click(button('Cells'));
+    act(() => store.setState((state) => ({ grid: { ...state.grid, size: 0 } })));
+    expect(store.getState().fogTool.shape).toBe('rectangle');
+    expect(inert('Cells') && inert('Brush')).toBe(true);
   });
 
   it('chooses the shape in the store, tinted where what the tool does is filled', () => {

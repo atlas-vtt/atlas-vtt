@@ -50,6 +50,11 @@ export interface FogSlice {
   flipFogArea: (id: string) => boolean;
   /** Changes the outline or the name of an area of the level shown, in one undo step; false where nothing changed. */
   updateFogArea: (id: string, changes: FogAreaChanges) => boolean;
+  /**
+   * Puts an area of the level shown back as `area`, the very operation it was before a gesture
+   * changed it: a cancelled gesture leaves the scene holding what it held. False where the area is gone.
+   */
+  restoreFogArea: (area: FogArea) => boolean;
   /** Deletes those of `ids` that are areas of the level shown, in one undo step. */
   deleteFogAreas: (ids: readonly string[]) => void;
 }
@@ -249,6 +254,13 @@ export function createFogActions(set: ImmerSet, get: () => FogDraft): FogSlice {
         }
         if (geometry) draft.objects.fog[id] = reshapedArea(current, geometry);
       });
+      return true;
+    },
+
+    restoreFogArea: (area) => {
+      const current = viewedArea(get(), area.id);
+      if (!current) return false;
+      if (current !== area) set((draft) => { draft.objects.fog[area.id] = area; });
       return true;
     },
 

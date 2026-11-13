@@ -1,8 +1,8 @@
 /**
  * The fog of a map view: owns the fog's layer, its picture (`FogPicture`), the fog tool's
- * gesture (`FogGesture`) and the marks of its areas (`FogAreaLayer`), and says when the picture
- * follows the scene. Fog takes presses only while the fog tool is chosen; the badges of its
- * areas with any tool (`areaPointer`).
+ * gesture (`FogGesture`, which in Areas mode draws, selects and edits areas) and the marks of its
+ * areas (`FogAreaLayer`), and says when the picture follows the scene. Fog takes presses only
+ * while the fog tool is chosen; the badges of its areas with any tool (`areaPointer`).
  */
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
@@ -28,6 +28,8 @@ export interface FogAreaPointerHandlers {
   hitTest(worldX: number, worldY: number): string | null;
   /** A click on the area's badge: it flips between hidden and revealed. */
   press(areaId: string): void;
+  /** Whether the area's badge leaves a press to a token under it, unless the fog tool is chosen: a revealed area's does, since the party stands in it. */
+  yieldsToTokens(areaId: string): boolean;
   /** Opens the menu of the area's badge at a screen point. */
   openMenu(areaId: string, screenX: number, screenY: number): void;
   /** The badge the pointer is on now, or none. */
@@ -82,6 +84,7 @@ export class FogOfWarRenderer {
       },
       keysBelongToMap: (event) => this.keysBelongToMap?.(event) ?? true,
       isUndoKey: (event) => this.isUndoKey?.(event),
+      showsPlayers: () => this.showsPlayers?.() ?? null,
     });
 
     this.areas = new FogAreaLayer({ viewport, store, showsPlayers: () => this.showsPlayers?.() ?? null });
@@ -120,7 +123,7 @@ export class FogOfWarRenderer {
    * for a picture of the scene, which leaves out the marks of the fog's areas like the GM's other markers.
    */
   getGmViewLayers(): LayerVisibility[] {
-    return [...this.picture.gmLayers(), { layer: this.areas.view, visible: false }];
+    return [...this.picture.gmLayers(), { layer: this.areas.view, visible: false }, ...this.gesture.areaLayers()];
   }
 
   /** The badges of the fog's areas for the viewport's dispatch: a click flips an area, a right-click opens its menu. */
@@ -128,6 +131,7 @@ export class FogOfWarRenderer {
     return {
       hitTest: (x, y) => this.areas.hitTest(x, y),
       press: (areaId) => { this.store.getState().flipFogArea(areaId); },
+      yieldsToTokens: (areaId) => this.areas.isRevealed(areaId),
       openMenu: (areaId, screenX, screenY) => showFogAreaMenu(this.store, areaId, screenX, screenY),
       hover: (areaId) => this.areas.setHovered(areaId),
     };
@@ -141,6 +145,7 @@ export class FogOfWarRenderer {
   /** The canvas shows another view (the GM's or the players'): the marks of the fog's areas show or hide with it. */
   refreshVisibility(): void {
     this.areas.refreshVisibility();
+    this.gesture.refreshVisibility();
   }
 
   /** How opaque the fog is in the GM's view, as the GM set it for this device. */

@@ -49,6 +49,8 @@ export interface ViewUIState {
   measurePopover: string | null;
   /** The fog area being renamed in its popover. */
   fogAreaPopover: string | null;
+  /** The fog area selected in the fog tool's Areas mode: its corners show handles. Never saved, no undo step. */
+  fogAreaSelected: string | null;
   /** The measure tool's mode and choices: the bar above the toolbar sets them, the tool reads them. Never saved. */
   measureTool: MeasureToolOptions;
   /** The Draw tool's mode and choices: its bars set them, the tool reads them. Never saved with the scene; its style is remembered on the device. */

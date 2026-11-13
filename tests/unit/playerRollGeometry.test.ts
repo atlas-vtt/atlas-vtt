@@ -32,7 +32,9 @@ it('names rolls from the fog the renderer already holds, working out nothing aga
     objects: { fog, tokens },
   }));
   const builds = vi.spyOn(coverage, 'fogCoverage');
-  const renderer = new FogOfWarRenderer(new Container() as never, { canvas: createEl('canvas') } as never, new EventEmitter() as never, store as never, () => null);
+  // A viewport without a ticker of its own, as the areas' layer reads it when it goes.
+  const viewport = Object.assign(new Container(), { options: {} });
+  const renderer = new FogOfWarRenderer(viewport as never, { canvas: createEl('canvas') } as never, new EventEmitter() as never, store as never, () => null);
   try {
     const sprites = Object.fromEntries(Object.values(tokens).map((t) => [t.id, { x: t.x, y: t.y } as TokenGroupContainer]));
     const sight = new PlayerSightTokens({ tokens: () => tokens as never, sprites: () => sprites, held: () => new Set() });

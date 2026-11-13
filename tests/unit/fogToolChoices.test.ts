@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampBrushSize, DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogStrokeReveals, fogToolFor, fogWhat, isFogTool, steppedBrushSize } from '../../src/app/fog/fogToolChoices';
+import { clampBrushSize, DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogStrokeReveals, fogToolFor, fogWhat, isFogTool, makesFogAreas, settledFogTool, steppedBrushSize } from '../../src/app/fog/fogToolChoices';
 import { DEFAULT_GM_FOG_OPACITY, readGmFogOpacity } from '../../src/app/fog/gmFogOpacity';
 
 describe('what the fog tool does', () => {
@@ -33,6 +33,25 @@ describe('what the fog tool does', () => {
     expect(fogStrokeReveals('eraser', false)).toBe(true);
     expect(fogStrokeReveals('fog', true)).toBe(true);
     expect(fogStrokeReveals('eraser', true)).toBe(false);
+  });
+});
+
+describe('the choices the fog tool can hold', () => {
+  it('have no brush while the tool makes areas: the rectangle takes its place', () => {
+    expect(settledFogTool({ areas: true, shape: 'brush', brushSize: 50 })).toEqual({ areas: true, shape: 'rectangle', brushSize: 50 });
+    expect(settledFogTool({ areas: false, shape: 'brush', brushSize: 50 }).shape).toBe('brush');
+    expect(settledFogTool({ areas: true, shape: 'lasso', brushSize: 50 }).shape).toBe('lasso');
+  });
+
+  it('make areas only while the hiding tool is the one in use', () => {
+    expect(makesFogAreas({ activeTool: 'fog', fogTool: { areas: true } })).toBe(true);
+    expect(makesFogAreas({ activeTool: 'fog', fogTool: { areas: false } })).toBe(false);
+    expect(makesFogAreas({ activeTool: 'move', fogTool: { areas: true } })).toBe(false);
+    expect(makesFogAreas({ activeTool: 'eraser', fogTool: { areas: true } })).toBe(false);
+  });
+
+  it('keep the brush within its limits', () => {
+    expect(settledFogTool({ areas: false, shape: 'brush', brushSize: 9000 }).brushSize).toBe(FOG_BRUSH_SIZES.max);
   });
 });
 

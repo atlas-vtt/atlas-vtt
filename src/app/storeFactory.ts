@@ -166,6 +166,7 @@ export interface ViewAtlasState extends ViewState {
   addFogArea: FogSlice['addFogArea'];
   flipFogArea: FogSlice['flipFogArea'];
   updateFogArea: FogSlice['updateFogArea'];
+  restoreFogArea: FogSlice['restoreFogArea'];
   deleteFogAreas: FogSlice['deleteFogAreas'];
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
@@ -323,6 +324,7 @@ export interface ViewAtlasState extends ViewState {
   closeMeasurePopover: UISlice['closeMeasurePopover'];
   openFogAreaPopover: UISlice['openFogAreaPopover'];
   closeFogAreaPopover: UISlice['closeFogAreaPopover'];
+  selectFogArea: UISlice['selectFogArea'];
   setMeasureTool: UISlice['setMeasureTool'];
   setDrawTool: UISlice['setDrawTool'];
   setFogTool: UISlice['setFogTool'];

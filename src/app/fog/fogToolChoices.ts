@@ -36,6 +36,11 @@ export function fogWhat(state: FogToolState): FogWhat {
   return state.fogTool.areas ? 'areas' : 'hide';
 }
 
+/** Whether the fog tool is in use and makes areas: its Areas mode. */
+export function makesFogAreas(state: FogToolState): boolean {
+  return state.activeTool === 'fog' && state.fogTool.areas;
+}
+
 /** The tool that does `what`, and whether it makes areas. */
 export function fogToolFor(what: FogWhat): { tool: FogToolId; areas: boolean } {
   return { tool: what === 'reveal' ? 'eraser' : 'fog', areas: what === 'areas' };
@@ -49,6 +54,15 @@ export function fogStrokeReveals(activeTool: string, flipped: boolean): boolean 
 export function clampBrushSize(size: number): number {
   if (!Number.isFinite(size)) return DEFAULT_FOG_TOOL.brushSize;
   return Math.min(FOG_BRUSH_SIZES.max, Math.max(FOG_BRUSH_SIZES.min, Math.round(size)));
+}
+
+/**
+ * The choices as the tool can hold them: the brush within its limits, and no brush while it makes
+ * areas, since an area needs an outline: the rectangle takes its place.
+ */
+export function settledFogTool(choices: FogToolChoices): FogToolChoices {
+  const shape = choices.areas && choices.shape === 'brush' ? 'rectangle' : choices.shape;
+  return { ...choices, shape, brushSize: clampBrushSize(choices.brushSize) };
 }
 
 /** How much one step changes the brush: a share of its size, so steps look alike on a small and a large brush. */

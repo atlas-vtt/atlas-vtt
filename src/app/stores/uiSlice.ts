@@ -8,7 +8,7 @@
 
 import { DEFAULT_DRAW_TOOL, type DrawToolChoices } from '../annotations/annotationTypes';
 import { sameRememberedDrawTool } from '../annotations/drawToolMemory';
-import { clampBrushSize, DEFAULT_FOG_TOOL, type FogToolChoices } from '../fog/fogToolChoices';
+import { DEFAULT_FOG_TOOL, settledFogTool, type FogToolChoices } from '../fog/fogToolChoices';
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
 import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lightingTool';
 import { DEFAULT_MEASURE_TOOL, type MeasureToolOptions } from '../measure/measureTypes';
@@ -40,10 +40,12 @@ export interface UISlice extends ViewUIState {
   closeMeasurePopover: () => void;
   openFogAreaPopover: (areaId: string) => void;
   closeFogAreaPopover: () => void;
+  /** Selects a fog area for editing in the fog tool's Areas mode, or none (null). */
+  selectFogArea: (areaId: string | null) => void;
   setMeasureTool: (changes: Partial<MeasureToolOptions>) => void;
   /** Changes the Draw tool's choices; a change of its style is remembered on the device. */
   setDrawTool: (changes: Partial<DrawToolChoices>) => void;
-  /** Changes the fog tool's choices; a brush size is kept within its limits. */
+  /** Changes the fog tool's choices; a brush size is kept within its limits, and Areas never has the brush (`settledFogTool`). */
   setFogTool: (changes: Partial<FogToolChoices>) => void;
   setLightingTool: (changes: Partial<LightingToolOptions>) => void;
   setHeldTokens: (held: HeldTokens) => void;
@@ -76,6 +78,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'levelSurfacePopover'
   | 'measurePopover'
   | 'fogAreaPopover'
+  | 'fogAreaSelected'
   | 'measureTool'
   | 'drawTool'
   | 'fogTool'
@@ -103,6 +106,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     levelSurfacePopover: null,
     measurePopover: null,
     fogAreaPopover: null,
+    fogAreaSelected: null,
     measureTool: DEFAULT_MEASURE_TOOL,
     drawTool,
     fogTool: DEFAULT_FOG_TOOL,
@@ -145,6 +149,7 @@ export function createUIActions(
   | 'closeMeasurePopover'
   | 'openFogAreaPopover'
   | 'closeFogAreaPopover'
+  | 'selectFogArea'
   | 'setMeasureTool'
   | 'setDrawTool'
   | 'setFogTool'
@@ -205,6 +210,7 @@ export function createUIActions(
     closeMeasurePopover: () => set((draft) => { draft.measurePopover = null; }),
     openFogAreaPopover: (areaId) => set((draft) => { draft.fogAreaPopover = areaId; }),
     closeFogAreaPopover: () => set((draft) => { draft.fogAreaPopover = null; }),
+    selectFogArea: (areaId) => set((draft) => { draft.fogAreaSelected = areaId; }),
     setMeasureTool: (changes) => set((draft) => { draft.measureTool = { ...draft.measureTool, ...changes }; }),
     setDrawTool: (changes) => {
       let styled: DrawToolChoices | null = null;
@@ -216,8 +222,7 @@ export function createUIActions(
       if (styled) rememberDrawTool?.(styled);
     },
     setFogTool: (changes) => set((draft) => {
-      const next = { ...draft.fogTool, ...changes };
-      draft.fogTool = { ...next, brushSize: clampBrushSize(next.brushSize) };
+      draft.fogTool = settledFogTool({ ...draft.fogTool, ...changes });
     }),
     setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),

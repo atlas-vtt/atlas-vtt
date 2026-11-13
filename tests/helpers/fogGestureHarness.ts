@@ -4,6 +4,7 @@ import { DEFAULT_FOG_TOOL, type FogShape, type FogToolChoices } from '../../src/
 import { FogDrag } from '../../src/app/pixi/fog/FogDrag';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { FogSnapping, type FogGuideMark, type PlaceKeys } from '../../src/app/pixi/fog/FogSnapping';
+import { PlainFogStroke } from '../../src/app/pixi/fog/fogStrokeOutcome';
 import type { ShapeStroke } from '../../src/app/tools/shapeStroke';
 
 /** What the gesture reads of the store. */
@@ -85,6 +86,10 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
   const tool = Object.assign(Object.create(FogGesture.prototype) as FogGesture, {
     deps: { store, viewport, host: picture },
     shape,
+    makesAreas: false,
+    plain: new PlainFogStroke(store as never, picture),
+    // Areas mode has a test of its own (fogAreasMode.test.ts): here the tool hides or reveals.
+    areas: { on: false, cancel: () => undefined, move: () => false, release: () => false },
     drag: new FogDrag(outline as unknown as Graphics, snapping, () => 1),
     polygon: { active: false, drop: () => false, rescale: vi.fn() },
     snapping,

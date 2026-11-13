@@ -108,7 +108,7 @@ describe('the badges of fog areas on the map', () => {
     expect(fog.areaPointer().hitTest(BADGE.x + 16, BADGE.y)).toBeNull();
   });
 
-  it.each(['select', 'move', 'measure', 'draw', 'wall', 'note-pin'] as const)('flips the area on a click on its badge with the %s tool, in one undo step, and the click reaches no token', (tool) => {
+  it.each(['select', 'move', 'measure', 'draw', 'note-pin'] as const)('reveals a hidden area on a click on its badge with the %s tool, in one undo step, and the click reaches no token', (tool) => {
     store.getState().setActiveTool(tool);
     const before = steps();
     const press = click(BADGE);
@@ -116,13 +116,60 @@ describe('the badges of fog areas on the map', () => {
     expect(isHandled(press)).toBe(true);
     expect(steps()).toBe(before + 1);
     expect(store.getState().selectedIds).toEqual([]);
-    click(BADGE);
-    expect(area().isErasing).toBe(false);
-    expect(steps()).toBe(before + 2);
   });
 
-  it.each(['fog', 'eraser'] as const)('flips the area on a click on its badge with the fog tool (%s) too, and starts no stroke', (tool) => {
+  it.each(['select', 'move', 'measure', 'draw', 'note-pin'] as const)('hides a revealed area on a click on its badge with the %s tool where no token stands under it', (tool) => {
+    store.getState().deleteToken('goblin');
+    store.getState().flipFogArea(hall);
     store.getState().setActiveTool(tool);
+    const before = steps();
+    expect(isHandled(click(BADGE))).toBe(true);
+    expect(area().isErasing).toBe(false);
+    expect(steps()).toBe(before + 1);
+  });
+
+  it('leaves a click on a revealed area\'s badge to the token under it with the select tool, and the menu too', () => {
+    store.getState().flipFogArea(hall);
+    store.getState().setActiveTool('select');
+    const before = steps();
+    click(BADGE);
+    expect(area().isErasing).toBe(true);
+    expect(steps()).toBe(before);
+    expect(store.getState().selectedIds).toEqual(['goblin']);
+    // Neither the pointer nor a right-click there is the badge's.
+    viewport.emit('pointermove', pointerEvent(BADGE));
+    expect(name()?.visible ?? false).toBe(false);
+    click(BADGE, 2);
+    expect(menu().some((entry) => entry.type === 'item' && entry.label === 'Rename')).toBe(false);
+    expect(area().isErasing).toBe(true);
+  });
+
+  it.each(['measure', 'draw', 'note-pin'] as const)('flips no revealed area under a token with the %s tool either', (tool) => {
+    store.getState().flipFogArea(hall);
+    store.getState().setActiveTool(tool);
+    click(BADGE);
+    expect(area().isErasing).toBe(true);
+  });
+
+  it('takes no press, pointer or right-click on a badge with the lighting tool, like a door\'s badge', () => {
+    store.getState().setActiveTool('wall');
+    const before = steps();
+    click(BADGE);
+    expect(area().isErasing).toBe(false);
+    expect(steps()).toBe(before);
+    viewport.emit('pointermove', pointerEvent(BADGE));
+    expect(name()?.visible ?? false).toBe(false);
+    click(BADGE, 2);
+    expect(openContextMenuGlobal).not.toHaveBeenCalled();
+  });
+
+  it.each(['fog', 'eraser'] as const)('flips the area on a click on its badge with the fog tool (%s) too, over a token as well, and starts no stroke', (tool) => {
+    store.getState().setActiveTool(tool);
+    click(BADGE);
+    expect(area().isErasing).toBe(true);
+    // The fog tool takes no token: the revealed area's badge is its own there.
+    click(BADGE);
+    expect(area().isErasing).toBe(false);
     click(BADGE);
     expect(area().isErasing).toBe(true);
     expect(Object.keys(store.getState().objects.fog)).toEqual([hall]);
@@ -141,6 +188,8 @@ describe('the badges of fog areas on the map', () => {
   });
 
   it('opens the badge\'s menu on a right-click released in place: Reveal or Hide, Rename, and Delete last', () => {
+    // A revealed area's badge would leave the right-click to a token under it.
+    store.getState().deleteToken('goblin');
     const press = click(BADGE, 2);
     // The press stays the map's, so a right-drag still pans.
     expect(isHandled(press)).toBe(false);
@@ -271,6 +320,26 @@ describe('the badges of fog areas on the map', () => {
     getHistoryStore(store)!.getState().undo();
     expect(store.getState().objects.fog[fresh]).toBeUndefined();
     expect(renaming()).toBeNull();
+  });
+
+  it('draws a revealed area\'s badge smaller and dimmer than a hidden one\'s, except with the fog tool or under the pointer', () => {
+    store.getState().deleteToken('goblin');
+    const badge = (layer().getChildByLabel('fog-area-badges') as Container).getChildAt(0);
+    store.getState().setActiveTool('select');
+    expect([badge.scale.x, badge.alpha]).toEqual([1, 1]);
+    store.getState().flipFogArea(hall);
+    expect(badge.scale.x).toBeLessThan(1);
+    expect(badge.alpha).toBeLessThan(1);
+    // A smaller badge is pressed within its own edge.
+    expect(fog.areaPointer().hitTest(BADGE.x + 9, BADGE.y)).toBe(hall);
+    expect(fog.areaPointer().hitTest(BADGE.x + 12, BADGE.y)).toBeNull();
+    viewport.emit('pointermove', pointerEvent(BADGE));
+    expect(badge.alpha).toBe(1);
+    viewport.emit('pointermove', pointerEvent(BESIDE));
+    expect(badge.alpha).toBeLessThan(1);
+    store.getState().setActiveTool('fog');
+    expect([badge.scale.x, badge.alpha]).toEqual([1, 1]);
+    expect(fog.areaPointer().hitTest(BADGE.x + 13, BADGE.y)).toBe(hall);
   });
 
   it('keeps badges the size they are on screen when the map is zoomed', () => {

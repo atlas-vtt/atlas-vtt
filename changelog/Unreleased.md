@@ -38,7 +38,12 @@
 - Rectangles and polygons snap to the grid, to the ends of walls and along walls. A dot or a line shows what a point snapped to. Hold Ctrl or Cmd to place it freely
 - Hold Shift for a square, or to keep a polygon's edge level, upright or diagonal
 - Areas: draw the rooms of a map once, then reveal or hide each with one click on its badge, with any tool
+- Choose Areas in the fog bar and draw a room with the rectangle, the polygon, the lasso or over cells. A new area ends where its neighbours begin, so areas never overlap
+- Start a shape inside an area to add it to that area. Hold Alt to take it away from the areas it covers
+- Click an area to select it. Drag a corner to reshape it, click an edge for a new corner, double-click a corner to remove it, drag inside the area to move it. Delete deletes it and Escape lets go
+- Escape puts a corner or an area you are dragging back where it was
 - An area's badge shows an eye while the area is revealed and a struck-through eye while it is hidden. Only you see the badges
+- A revealed area's badge is smaller and fainter, and a token standing on it takes the click, so moving the party never hides a room. Badges take no click while the lighting tool is chosen
 - Right-click a badge to reveal or hide its area, name it or delete it. Point at a badge to see the area's name and outline
 - Cover all hides every area with the map and Reveal all reveals them. The areas stay, each one click from the other state
 - Rectangles and polygons snap to the corners and edges of areas

@@ -13,7 +13,7 @@ import { simplifiedOutline } from './fogAreaShapes';
 import { validateFogOperation } from './fogOperationShape';
 
 export { areaBadgePoint };
-export { fittedArea, joinedArea, simplifiedOutline, trimmedArea } from './fogAreaShapes';
+export { fittedArea, joinedArea, outerOutlines, simplifiedOutline, trimmedAreas } from './fogAreaShapes';
 
 /** The areas of one level that are read; a record that holds more keeps them as plain fog. */
 export const MAX_FOG_AREAS = 500;

@@ -331,7 +331,8 @@ describe('the fog tool\'s polygon', () => {
     s.click(0, 0);
     s.move(138, 4);
     const layers = s.gesture.playerLayers();
-    expect(layers).toHaveLength(3);
+    // The ring, the outline, the guide, and what Areas mode shows: a stroke's outlines and the handles.
+    expect(layers).toHaveLength(5);
     expect(layers.every((entry) => entry.visible === false)).toBe(true);
     // The guide shows on the GM's canvas where the next corner lands.
     expect(layers.some((entry) => entry.layer.visible && entry.layer.position.x === 140 && entry.layer.position.y === 0)).toBe(true);

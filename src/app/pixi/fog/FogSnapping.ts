@@ -5,7 +5,7 @@
  */
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
-import { fogAreaOutlines } from '../../fog/fogAreas';
+import { areaOutline, fogAreaList, fogAreaOutlines } from '../../fog/fogAreas';
 import { NO_SNAP, snapHeldPoint, snapPoint, type FogSnap, type FogSnapCandidates } from '../../fog/fogSnap';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
@@ -47,11 +47,12 @@ export class FogSnapping {
 
   /**
    * Where a corner of a rectangle or a polygon lands for the pointer at `world`. `from` is the
-   * polygon's corner before it, which Shift holds its edge to eighths of a turn from.
+   * polygon's corner before it, which Shift holds its edge to eighths of a turn from. `except` is
+   * the area whose own corner is placed: it lands on nothing of that area's.
    */
-  corner(world: Point, keys: PlaceKeys, from: Point | null = null): Point {
+  corner(world: Point, keys: PlaceKeys, from: Point | null = null, except: string | null = null): Point {
     const held = keys.shift && from ? from : null;
-    const candidates = keys.free ? NO_SNAP : this.candidates();
+    const candidates = keys.free ? NO_SNAP : this.candidates(except);
     return this.shown(held ? snapHeldPoint(held, world, candidates, this.reach()) : snapPoint(world, candidates, this.reach()));
   }
 
@@ -81,8 +82,11 @@ export class FogSnapping {
     return grid && grid.size > 0 && (grid.snapToGrid ?? true) ? grid : null;
   }
 
-  private candidates(): FogSnapCandidates {
+  private candidates(except: string | null): FogSnapCandidates {
     const objects = levelObjects(this.deps.store.getState());
-    return { grid: this.grid(), walls: wallList(objects.walls), areas: fogAreaOutlines(objects.fog) };
+    const areas = except === null
+      ? fogAreaOutlines(objects.fog)
+      : fogAreaList(objects.fog).filter((area) => area.id !== except).map(areaOutline).filter((outline) => outline.length >= 3);
+    return { grid: this.grid(), walls: wallList(objects.walls), areas };
   }
 }

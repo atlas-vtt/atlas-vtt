@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fittedArea, joinedArea, simplifiedOutline, trimmedArea } from '../../src/app/fog/fogAreas';
+import { fittedArea, joinedArea, simplifiedOutline, trimmedAreas } from '../../src/app/fog/fogAreas';
 import type { Point } from '../../src/app/types/visionTypes';
 
 const box = (x: number, y: number, width: number, height: number): Point[] =>
@@ -95,13 +95,17 @@ describe('a shape joined to an area', () => {
 });
 
 describe('a shape taken away from an area', () => {
+  /** The one area without the one shape: undefined where the shape covers nothing of it. */
+  const trimmedArea = (area: Point[], shape: Point[]): Point[] | null | undefined => trimmedAreas([area], [shape])[0];
+
   it('cuts a corner off, to an L', () => {
     const trimmed = trimmedArea(box(0, 0, 100, 100), box(50, 50, 100, 100));
     expect(corners(trimmed)).toEqual(at([0, 0], [100, 0], [100, 50], [50, 50], [50, 100], [0, 100]));
   });
 
-  it('leaves the area as it is where the shape lies apart', () => {
-    expect(corners(trimmedArea(box(0, 0, 100, 100), box(200, 200, 50, 50)))).toEqual(at([0, 0], [100, 0], [100, 100], [0, 100]));
+  it('leaves the area as it is where the shape lies apart, or only touches it', () => {
+    expect(trimmedArea(box(0, 0, 100, 100), box(200, 200, 50, 50))).toBeUndefined();
+    expect(trimmedArea(box(0, 0, 100, 100), box(100, 0, 50, 100))).toBeUndefined();
   });
 
   it('is refused where it would split the area in two', () => {
@@ -114,6 +118,16 @@ describe('a shape taken away from an area', () => {
 
   it('is refused where nothing of the area would be left', () => {
     expect(trimmedArea(box(10, 10, 20, 20), box(0, 0, 100, 100))).toBeNull();
+  });
+
+  it('leaves every area as it is where a shape cannot be read', () => {
+    expect(trimmedAreas([box(0, 0, 100, 100)], [[{ x: 0, y: 0 }, { x: 1e12, y: 0 }, { x: 0, y: 5 }]])).toEqual([undefined]);
+  });
+
+  it('adds several shapes to an area at once, where they make one outline with it', () => {
+    expect(corners(joinedArea(box(0, 0, 100, 100), box(100, 0, 50, 100), box(150, 0, 50, 100)))).toEqual(at([0, 0], [200, 0], [200, 100], [0, 100]));
+    // The second reaches the area only through the first: each alone would lie apart or be fine, together they are one.
+    expect(joinedArea(box(0, 0, 100, 100), box(300, 0, 50, 100))).toBeNull();
   });
 });
 

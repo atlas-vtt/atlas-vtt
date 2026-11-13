@@ -2,10 +2,11 @@
  * The fog areas of the level shown, as the GM sees them with any tool: a badge on each (an eye
  * while it is revealed, struck through while it is hidden), its name beside the badge the
  * pointer is on, and the areas' outlines while the fog tool is chosen (the one pointed at with
- * any tool). Badges keep their size on screen. Nothing of it is the players': the layer hides
+ * any tool). Badges keep their size on screen; a revealed area's keeps back outside the fog
+ * tool (`quiet`). Nothing of it is the players': the layer hides
  * while the canvas shows their view, and their frame and a picture of the scene leave it out.
  */
-import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { Container, Graphics, Sprite } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { areaBadgeSpot, areaIsHidden, areaName, areaOutline, fogAreaList, type FogArea } from '../../fog/fogAreas';
 import { isFogTool } from '../../fog/fogToolChoices';
@@ -14,9 +15,8 @@ import type { Point } from '../../types/visionTypes';
 import { canvasBadgeTheme, type CanvasBadgeTheme } from '../utils/canvasBadgeColors';
 import { destroyTree } from '../utils/destroyTree';
 import { mapMarkerScale } from '../utils/mapMarkerScale';
-import { createLineGlyphTexture } from '../utils/pinIconTexture';
 import { FogAreaName } from './FogAreaName';
-import { drawFogBadge, FOG_BADGE_GLYPH_SIZE, FOG_BADGE_GLYPHS, fogBadgeAt, sameBadgeLook, type FogBadgeGlyph, type FogBadgeLook } from './fogAreaBadge';
+import { drawFogBadge, FOG_BADGE_GLYPH_SIZE, FOG_BADGE_QUIET, fogBadgeAt, FogBadgeGlyphs, sameBadgeLook, type FogBadgeLook } from './fogAreaBadge';
 import { drawAreaOutlines, type AreaOutline } from './fogAreaOutlines';
 import { viewedFog } from './FogPicture';
 
@@ -55,7 +55,7 @@ export class FogAreaLayer {
   private readonly outlines = new Graphics();
   private readonly badgeLayer = new Container({ label: 'fog-area-badges' });
   private readonly badges = new Map<string, Badge>();
-  private readonly glyphs = new Map<FogBadgeGlyph, Texture | null>();
+  private readonly glyphs = new FogBadgeGlyphs();
   /** Made with the first name shown. */
   private name: FogAreaName | null = null;
   private readonly readTheme: () => CanvasBadgeTheme;
@@ -127,6 +127,12 @@ export class FogAreaLayer {
     this.sync();
   }
 
+  /** Whether area `id` shows a badge and is revealed. */
+  isRevealed(id: string): boolean {
+    const badge = this.badges.get(id);
+    return badge !== undefined && !areaIsHidden(badge.area);
+  }
+
   /** Where the badge of area `id` sits in the world, or null where it has none. */
   badgeSpot(id: string): Point | null {
     return this.badges.get(id)?.spot ?? null;
@@ -140,10 +146,7 @@ export class FogAreaLayer {
     this.deps.viewport.options.ticker?.remove(this.flushOutlines);
     this.badges.clear();
     if (!this.view.destroyed) destroyTree(this.view);
-    for (const texture of this.glyphs.values()) {
-      if (texture && !texture.destroyed) texture.destroy(true);
-    }
-    this.glyphs.clear();
+    this.glyphs.destroy();
   }
 
   private zoom(): number {
@@ -151,8 +154,16 @@ export class FogAreaLayer {
     return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   }
 
-  private *spots(): Generator<readonly [string, Point]> {
-    for (const [id, badge] of this.badges) yield [id, badge.spot];
+  private *spots(): Generator<readonly [string, Point, number]> {
+    for (const [id, badge] of this.badges) yield [id, badge.spot, this.quiet(badge) ? FOG_BADGE_QUIET.scale : 1];
+  }
+
+  /**
+   * A revealed area's badge keeps back while another tool than the fog tool is chosen: smaller
+   * and dimmer than a hidden area's, which is the one the table waits for.
+   */
+  private quiet(badge: Badge): boolean {
+    return !areaIsHidden(badge.area) && !isFogTool(this.deps.store.getState().activeTool);
   }
 
   /** Whether the canvas shows the GM's view of a loaded scene: only then are the areas marked. */
@@ -216,8 +227,11 @@ export class FogAreaLayer {
   }
 
   private place(badge: Badge): void {
+    const quiet = this.quiet(badge);
     badge.view.position.set(badge.spot.x, badge.spot.y);
-    badge.view.scale.set(mapMarkerScale(this.zoom()));
+    badge.view.scale.set(mapMarkerScale(this.zoom()) * (quiet ? FOG_BADGE_QUIET.scale : 1));
+    // The badge pointed at shows whole, whatever it is.
+    badge.view.alpha = quiet && this.hovered !== badge.area.id ? FOG_BADGE_QUIET.alpha : 1;
   }
 
   /** Draws the badge as its area is now, where that is another look or another theme than it was drawn in. */
@@ -227,18 +241,12 @@ export class FogAreaLayer {
     badge.look = look;
     badge.theme = this.theme;
     drawFogBadge(badge.disc, look, this.theme);
-    const texture = this.glyph(look.glyph);
+    const texture = this.glyphs.of(look.glyph);
     if (!texture) return;
     if (!badge.glyph) badge.glyph = badge.view.addChild(new Sprite({ texture, anchor: 0.5 }));
     else badge.glyph.texture = texture;
     badge.glyph.setSize(FOG_BADGE_GLYPH_SIZE);
     badge.glyph.tint = this.theme.stroke;
-  }
-
-  /** The glyph in white, rasterised once and tinted per badge; null where no 2D canvas is available. */
-  private glyph(glyph: FogBadgeGlyph): Texture | null {
-    if (!this.glyphs.has(glyph)) this.glyphs.set(glyph, createLineGlyphTexture(FOG_BADGE_GLYPHS[glyph]));
-    return this.glyphs.get(glyph) ?? null;
   }
 
   private showName(): void {

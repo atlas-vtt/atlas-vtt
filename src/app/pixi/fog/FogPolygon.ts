@@ -6,7 +6,6 @@
 import type * as PIXI from 'pixi.js';
 import { PolygonDraft } from '../../fog/fogPolygon';
 import { STROKE_COLORS } from '../../tools/shapeStroke';
-import type { FogOperation } from '../../types/fogTypes';
 import type { Point } from '../../types/visionTypes';
 import { DoubleClick } from '../annotations/DoubleClick';
 import { closesDraft } from '../areas/areaGeometry';
@@ -20,11 +19,11 @@ const CORNER = { radius: 3, first: 5.5 } as const;
 export interface FogPolygonHost {
   /** Screen pixels per world pixel. */
   zoom(): number;
-  /** Whether the polygon reveals when it closes. */
+  /** Whether the polygon takes away when it closes: its lines are drawn in the revealing colour. */
   reveals(): boolean;
-  /** Shows the fog with the polygon on it; without one that is an area yet, the fog as the scene holds it. */
-  showStroke(stroke: FogOperation | undefined): void;
-  /** The polygon was closed: `outline` becomes fog. */
+  /** Shows what the polygon will leave: `outline` is what its corners enclose, null while that is no area yet. */
+  showOutline(outline: Point[] | null): void;
+  /** The polygon was closed: `outline` is what it leaves. */
   commit(outline: Point[]): void;
   /** A polygon began, or ended: its keys are heard only while one is under way. */
   underWay(active: boolean): void;
@@ -122,9 +121,7 @@ export class FogPolygon {
   /** Shows the polygon again: what it does, the zoom or the fog under it changed. */
   draw(): void {
     if (!this.active) return;
-    const reveals = this.host.reveals();
-    const points = this.draft.outlineWith(this.cursor);
-    this.host.showStroke(points ? { id: '__preview__', kind: 'fog', timestamp: Date.now(), type: 'lasso', isErasing: reveals, points } : undefined);
+    this.host.showOutline(this.draft.outlineWith(this.cursor));
     this.drawOutline();
   }
 

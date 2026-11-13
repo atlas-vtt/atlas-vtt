@@ -16,7 +16,7 @@ import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { ToolButton } from "../primitives/ToolButton"
 import { TooltipProvider } from "../primitives/tooltip"
-import { FOG_SHAPES, FOG_WHATS } from "./fogToolChoices"
+import { FOG_AREA_SHAPES, FOG_SHAPES, FOG_WHATS } from "./fogToolChoices"
 import { ChoiceButtons, GroupBreak, TOOL_BAR_CHOICE_CLASS, ToolOptionsBars } from "./ToolOptionsBar"
 
 /** The dot on the size button, in pixels: as small and as large as the button's icon may be. */
@@ -35,20 +35,19 @@ export function FogToolBar(): React.ReactElement {
   return <ToolOptionsBars shown={shown}><FogBars /></ToolOptionsBars>
 }
 
-/** Why a thing the tool can do cannot be chosen now, or null. */
-function unavailableWhat(what: FogWhat): string | null {
-  return what === 'areas' ? t('fog.areasSoon') : null
-}
-
 function FogBars(): React.ReactElement {
   const what = useAtlasStore(fogWhat)
   const shape = useAtlasStore((state) => state.fogTool.shape)
   const setActiveTool = useAtlasStore((state) => state.setActiveTool)
   const setFogTool = useAtlasStore((state) => state.setFogTool)
   const cells = useAtlasStore((state) => hasCells(state.grid))
-  /** Why a shape cannot be chosen now, or null: cells are the grid's. */
-  const unavailableShape = (value: FogShape): string | null => (value === 'cells' && !cells ? t('fog.cellsNeedGrid') : null)
-  // Left where it can no longer be chosen (the map lost its grid), the tool takes its first shape.
+  const areas = what === 'areas'
+  /** Why a shape cannot be chosen now, or null: cells are the grid's, and an area cannot be brushed. */
+  const unavailableShape = (value: FogShape): string | null => {
+    if (value === 'cells' && !cells) return t('fog.cellsNeedGrid')
+    return value === 'brush' && areas ? t('fog.brushNeedsOutline') : null
+  }
+  // Left where it can no longer be chosen (the map lost its grid), the tool takes its first shape: in Areas, the first with an outline.
   const cellsLeft = shape === 'cells' && !cells
   useEffect(() => {
     if (cellsLeft) setFogTool({ shape: DEFAULT_FOG_TOOL.shape })
@@ -61,10 +60,10 @@ function FogBars(): React.ReactElement {
   return (
     <TooltipProvider delayDuration={300}>
       <div role="toolbar" aria-label={t('fog.modes')} className="atlas-tool-bar atlas-tool-bar--modes">
-        <ChoiceButtons kind="mode" locked={null} choices={FOG_WHATS} value={what} unavailable={unavailableWhat} onChange={choose} />
+        <ChoiceButtons kind="mode" locked={null} choices={FOG_WHATS} value={what} onChange={choose} />
       </div>
       <div role="toolbar" aria-label={t('fog.tools')} className="atlas-tool-bar atlas-tool-bar--tools">
-        <ChoiceButtons kind="choice" locked={null} choices={FOG_SHAPES} value={shape} unavailable={unavailableShape} onChange={(next) => setFogTool({ shape: next })} />
+        <ChoiceButtons kind="choice" locked={null} choices={areas ? FOG_AREA_SHAPES : FOG_SHAPES} value={shape} unavailable={unavailableShape} onChange={(next) => setFogTool({ shape: next })} />
         <BrushSize />
         <GroupBreak />
         <WholeMap />

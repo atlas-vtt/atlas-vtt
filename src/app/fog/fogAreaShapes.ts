@@ -5,7 +5,7 @@
  * leave two pieces, a hole or nothing is none.
  */
 
-import { intersectShapes, normalizePolygon, subtractShapes, unionShapes } from '../lighting/polygonClip';
+import { intersectShapes, normalizePolygon, shapeParts, subtractShapes, unionShapes } from '../lighting/polygonClip';
 import { quantizeCoordinate } from '../lighting/quantizedPoint';
 import { simplifyStroke } from '../pixi/lighting/wallEdits';
 import { Q_SCALE, type QPolygon, type QShape } from '../types/shapeTypes';
@@ -77,18 +77,53 @@ export function fittedArea(shape: Outline, others: ReadonlyArray<Outline>): Poin
   return oneOutline(subtractShapes(own, neighbours)) ?? drawn;
 }
 
-/** `area` with `shape` added to it; null where the two make no single outline without holes (they lie apart, or enclose a hole). */
-export function joinedArea(area: Outline, shape: Outline): Point[] | null {
-  const own = shapeOf(area);
-  const added = shapeOf(shape);
-  return own && added ? oneOutline(unionShapes(own, added)) : null;
+/** The shape `outlines` cover together; null where one of them cannot be read. */
+function unionOf(outlines: ReadonlyArray<Outline>): QShape | null {
+  let all: QShape = [];
+  for (const outline of outlines) {
+    const shape = shapeOf(outline);
+    if (!shape) return null;
+    all = unionShapes(all, shape);
+  }
+  return all;
 }
 
-/** `area` without what `shape` covers of it; null where that leaves no single outline without holes (two pieces, a hole, or nothing). */
-export function trimmedArea(area: Outline, shape: Outline): Point[] | null {
-  const own = shapeOf(area);
-  const taken = shapeOf(shape);
-  return own && taken ? oneOutline(subtractShapes(own, taken)) : null;
+/** `area` with `shapes` added to it; null where they make no single outline without holes together (they lie apart, or enclose a hole). */
+export function joinedArea(area: Outline, ...shapes: Outline[]): Point[] | null {
+  const all = unionOf([area, ...shapes]);
+  return all ? oneOutline(all) : null;
+}
+
+/**
+ * Each of `areas` without what `shapes` cover of it together: undefined for an area they cover
+ * nothing of (one they only touch too), which stays as it is; null where what is left is no
+ * single outline without holes. The shapes are worked out once, however many areas there are.
+ */
+export function trimmedAreas(areas: ReadonlyArray<Outline>, shapes: ReadonlyArray<Outline>): Array<Point[] | null | undefined> {
+  const taken = unionOf(shapes);
+  if (!taken || taken.length === 0) return areas.map(() => undefined);
+  const reach = boxOf(shapes.flat());
+  return areas.map((area) => {
+    if (area.length < 3 || !boxesMeet(boxOf(area), reach)) return undefined;
+    const own = shapeOf(area);
+    if (!own || intersectShapes(own, taken).length === 0) return undefined;
+    return oneOutline(subtractShapes(own, taken));
+  });
+}
+
+/**
+ * The outer outlines of what `shapes` cover together, one per piece: shapes that touch are one
+ * piece, and what a piece encloses belongs to it. Shapes that lie apart, each one outline, come
+ * back as they were given, to the last bit.
+ */
+export function outerOutlines(shapes: ReadonlyArray<Outline>): Point[][] {
+  const given = shapes.map((shape) => shape.map((point) => ({ x: point.x, y: point.y })));
+  if (given.length <= 1) return given;
+  const all = unionOf(shapes);
+  if (!all) return given;
+  const parts = shapeParts(all);
+  if (parts.length === given.length && parts.every((part) => part.holes.length === 0)) return given;
+  return parts.map((part) => pointsOf(part.outline));
 }
 
 /**

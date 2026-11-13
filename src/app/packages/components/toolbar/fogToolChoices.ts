@@ -10,7 +10,7 @@ import type { ToolChoice } from "./ToolOptionsBar"
 export const FOG_WHATS: readonly ToolChoice<FogWhat>[] = [
   { value: 'hide', icon: Cloud, label: t('fog.hide'), tip: t('fog.hideTip') },
   { value: 'reveal', icon: Eraser, label: t('fog.reveal'), tip: t('fog.revealTip') },
-  { value: 'areas', icon: SquareDashed, label: t('fog.areas') },
+  { value: 'areas', icon: SquareDashed, label: t('fog.areas'), tip: t('fog.areasTip') },
 ]
 
 /** The shapes fog is drawn with, in the bar's order; a tip says the keys a shape has. */
@@ -21,3 +21,6 @@ export const FOG_SHAPES: readonly ToolChoice<FogShape>[] = [
   { value: 'lasso', icon: Lasso, label: t('toolbar.lasso') },
   { value: 'cells', icon: Grid3x3, label: t('fog.cells'), tip: t('fog.cellsTip') },
 ]
+
+/** The shapes while the tool makes areas: the same buttons, each saying what a shape begun inside an area does. */
+export const FOG_AREA_SHAPES: readonly ToolChoice<FogShape>[] = FOG_SHAPES.map((shape) => ({ ...shape, tip: t('fog.areaShapeTip') }))
