@@ -2,31 +2,33 @@
  * The fog area selected in the fog tool's Areas mode (store `fogAreaSelected`), and what the
  * pointer and the keys do with it: a corner is dragged (snapped, Ctrl or Cmd frees it), a press
  * on an edge adds a corner there and drags it, a double click on a corner removes it, a drag
- * inside the area moves it, Delete deletes it and Escape lets go of it. Every gesture is one
- * undo step; one that is cancelled, or that ends where the outline would cross itself or enclose
- * nothing, puts the area back and leaves none. A rectangle stays a rectangle while its corners
- * are dragged; a corner more or less makes it an outline of corners.
+ * inside the area moves it, Delete deletes it and Escape lets go of it. A drag changes nothing of
+ * the scene while it lasts: the fog is the players' picture too, so the editor draws the outline
+ * as it will be, and the release writes it, once, as one undo step. A drag that is cancelled, or
+ * that ends where the outline would cross itself or enclose nothing, writes nothing. A rectangle
+ * stays a rectangle while its corners are dragged; a corner more or less makes it an outline of corners.
  */
-import { Graphics } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import { cornerAt, edgeAt, withCornerAdded, withoutCorner } from '../../fog/fogAreaEdit';
-import { areaOutline, fogAreaList, MAX_AREA_CORNERS, type FogArea } from '../../fog/fogAreas';
+import { areaIsHidden, areaOutline, fogAreaList, MAX_AREA_CORNERS, type FogArea } from '../../fog/fogAreas';
 import { areaAtPoint, insideOutline } from '../../fog/fogAreaStroke';
 import { makesFogAreas } from '../../fog/fogToolChoices';
 import { t } from '../../i18n';
 import type { ViewAtlasState } from '../../storeFactory';
-import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
-import type { FogAreaChanges } from '../../stores/fogSlice';
 import type { Point } from '../../types/visionTypes';
 import { showNotice } from '../../ui/notice';
 import { DoubleClick } from '../annotations/DoubleClick';
 import { canvasBadgeTheme } from '../utils/canvasBadgeColors';
-import { grabChanges, type FogAreaGrab } from './fogAreaGrab';
+import { destroyTree } from '../utils/destroyTree';
+import { grabChanges, grabOutline, type FogAreaGrab } from './fogAreaGrab';
 import { FogAreaKeys } from './FogAreaKeys';
 import { areaCursorAt, drawAreaHandles, FOG_HANDLE } from './fogAreaHandles';
+import { drawAreaOutlines } from './fogAreaOutlines';
 import { viewedFog } from './FogPicture';
 import type { FogSnapping, PlaceKeys } from './FogSnapping';
+import { showsGmView } from './fogVisibilityPolicy';
 
 /** Screen pixels the pointer may move from where it was pressed before the press is a drag. */
 export const CLICK_SLOP = 4;
@@ -46,25 +48,31 @@ export interface FogAreaEditorDeps {
   readonly keysBelongToMap?: (event: KeyboardEvent) => boolean;
   /** A stroke is under way: the keys are its own. */
   readonly busy: () => boolean;
+  /** A drag shows the outline area `areaId` will have (null: no longer): whoever draws the one it has leaves it out meanwhile. */
+  readonly held?: (areaId: string | null) => void;
 }
 
 export class FogAreaEditor {
-  /** The selected area's corner handles. */
-  readonly view = new Graphics();
+  /** What the GM alone sees of the selected area: its corner handles, and under a drag the outline it will have. */
+  readonly view = new Container({ eventMode: 'none', interactiveChildren: false, visible: false });
+  private readonly handles = new Graphics();
+  /** The outline a drag will leave; empty while none shows one. */
+  private readonly preview = new Graphics();
+  /** The area whose outline the preview shows. */
+  private previewed: string | null = null;
   private grab: FogAreaGrab | null = null;
   /** The corner the pointer is on. */
   private lit: number | null = null;
   private clicks = new DoubleClick();
   private readonly keys: FogAreaKeys;
-  /** What the handles were last drawn for. */
+  /** What the handles, and the outline under them, were last drawn for. */
   private drawn: { outline: readonly Point[]; zoom: number; lit: number | null; accent: number; background: number } | null = null;
   private readonly unsubscribe: () => void;
   private readonly onZoom = (): void => this.draw();
   private readonly onPointerCancel = (): void => this.cancel();
 
   constructor(private readonly deps: FogAreaEditorDeps) {
-    this.view.eventMode = 'none';
-    this.view.visible = false;
+    this.view.addChild(this.preview, this.handles);
     this.keys = new FogAreaKeys(deps.canvas, {
       mayTake: (event) => !deps.busy() && this.selected() !== null && (deps.keysBelongToMap?.(event) ?? true),
       deleted: () => this.remove(),
@@ -82,6 +90,8 @@ export class FogAreaEditor {
         state.selectFogArea(null);
         return;
       }
+      // The area changed under a drag (an undo, a flip): what the drag would leave is of an outline that is no more.
+      if (this.grab && viewedFog(state)[this.grab.id] !== this.grab.before) this.cancel();
       if (id) this.keys.hold();
       else this.keys.release();
       if (changed || viewedFog(state) !== viewedFog(previous)) this.draw();
@@ -148,19 +158,19 @@ export class FogAreaEditor {
       // A drag is no first click of two: a press on the corner right after it removes nothing.
       this.clicks = new DoubleClick();
     }
-    this.write(grab, grabChanges(grab, world, (at) => this.deps.snapping.corner(at, keys, null, grab.id)));
+    // An outline that is refused springs back to the one the area has.
+    grab.changes = grabChanges(grab, world, (at) => this.deps.snapping.corner(at, keys, null, grab.id));
+    grab.shown = grab.changes && grabOutline(grab, grab.changes);
+    this.draw();
     return true;
   }
 
-  /** The pointer was released: a drag ends as one undo step, or as none where it changed nothing. */
+  /** The pointer was released: what the drag left is written, as one undo step, or nothing where it changed nothing. */
   release(): FogAreaRelease {
     const grab = this.grab;
     if (!grab) return 'none';
     this.letGo();
-    if (grab.open) {
-      if (viewedFog(this.deps.store.getState())[grab.id] !== grab.before) endHistoryTransaction(this.deps.store);
-      else abandonHistoryTransaction(this.deps.store);
-    }
+    if (grab.changes) this.deps.store.getState().updateFogArea(grab.id, grab.changes);
     this.draw();
     return grab.what === 'move' && !grab.moved ? 'click' : 'done';
   }
@@ -186,15 +196,10 @@ export class FogAreaEditor {
     return area ? areaCursorAt(areaOutline(area), world, this.zoom()) : null;
   }
 
-  /** Ends a drag under way without a trace: the area is as it was, and no undo step is left. */
+  /** Ends a drag under way without a trace: the scene never held anything of it. */
   cancel(): void {
-    const grab = this.grab;
-    if (!grab) return;
+    if (!this.grab) return;
     this.letGo();
-    if (grab.open) {
-      this.deps.store.getState().restoreFogArea(grab.before);
-      abandonHistoryTransaction(this.deps.store);
-    }
     this.draw();
   }
 
@@ -212,11 +217,11 @@ export class FogAreaEditor {
     this.unsubscribe();
     this.keys.release();
     this.deps.viewport.off('zoomed', this.onZoom);
-    if (!this.view.destroyed) this.view.destroy();
+    if (!this.view.destroyed) destroyTree(this.view);
   }
 
   private mayEdit(state: ViewAtlasState): boolean {
-    return makesFogAreas(state) && state.isGMView && state.isPlayerView !== true && !state.isMapLoading && this.deps.showsPlayers?.() !== true;
+    return makesFogAreas(state) && !state.isMapLoading && showsGmView(state, this.deps.showsPlayers);
   }
 
   /** The area `id` names on the level shown, where it can be edited now. */
@@ -235,10 +240,12 @@ export class FogAreaEditor {
     return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   }
 
-  private hold(area: FogArea, what: FogAreaGrab['what'], index: number, outline: readonly Point[], world: Point, screen: Point, open = false): void {
+  /** Takes the area by a corner or by itself. `added` is set where the press added the corner it holds: a release in place leaves that corner. */
+  private hold(area: FogArea, what: FogAreaGrab['what'], index: number, outline: readonly Point[], world: Point, screen: Point, added = false): void {
     this.grab = {
-      id: area.id, what, index, before: area, outline, rectangle: area.type === 'rectangle' && !open,
-      pressedAt: world, pressedOnScreen: screen, at: world, moved: false, open,
+      id: area.id, what, index, before: area, outline, rectangle: area.type === 'rectangle' && !added,
+      pressedAt: world, pressedOnScreen: screen, at: world, moved: false,
+      changes: added ? { points: outline } : null, shown: added ? outline : null,
     };
     this.deps.canvas().addEventListener('pointercancel', this.onPointerCancel);
     this.draw();
@@ -250,18 +257,14 @@ export class FogAreaEditor {
     this.deps.snapping.clear();
   }
 
-  /** A press on an edge: a corner is added there, and held. The gesture's undo step begins with it. */
+  /** A press on an edge: a corner is added there, and held. The scene gets it where the pointer is released. */
   private addCorner(area: FogArea, edge: { index: number; point: Point }, world: Point, screen: Point): void {
-    const { store } = this.deps;
     const outline = areaOutline(area);
     if (outline.length >= MAX_AREA_CORNERS) {
       showNotice(t('fog.areaCornersFull'));
       return;
     }
-    const points = withCornerAdded(outline, edge.index, edge.point);
-    beginHistoryTransaction(store);
-    if (store.getState().updateFogArea(area.id, { points })) this.hold(area, 'corner', edge.index + 1, points, world, screen, true);
-    else abandonHistoryTransaction(store);
+    this.hold(area, 'corner', edge.index + 1, withCornerAdded(outline, edge.index, edge.point), world, screen, true);
   }
 
   /** A double click on a corner: it goes, where three corners that make an area are left. */
@@ -277,26 +280,20 @@ export class FogAreaEditor {
     this.deps.store.getState().deleteFogAreas([area.id]);
   }
 
-  /** Gives the held area its outline for where the pointer is; one that is refused (null) springs back to what it was. */
-  private write(grab: FogAreaGrab, changes: FogAreaChanges | null): void {
-    const { store } = this.deps;
-    if (!grab.open) {
-      beginHistoryTransaction(store);
-      grab.open = true;
-    }
-    if (changes) store.getState().updateFogArea(grab.id, changes);
-    else store.getState().restoreFogArea(grab.before);
-  }
-
-  /** Draws the selected area's handles, where the outline, the zoom, the corner lit or the theme changed. */
+  /**
+   * Draws the selected area's handles, on the outline a drag will leave where one is under way,
+   * and that outline with them; anew only where the outline, the zoom, the corner lit or the theme changed.
+   */
   private draw(): void {
     const area = this.selected();
-    const outline = area ? areaOutline(area) : null;
-    if (!outline || outline.length < 3) {
+    const grab = this.grab;
+    const shown = area && grab?.id === area.id ? grab.shown : null;
+    this.showsPreviewOf(shown && area ? area.id : null);
+    const outline = shown ?? (area ? areaOutline(area) : null);
+    if (!area || !outline || outline.length < 3) {
       this.view.visible = false;
       return;
     }
-    const grab = this.grab;
     const lit = grab ? (grab.what === 'corner' ? cornerAt(outline, grab.at, Infinity) : null) : this.lit;
     const theme = canvasBadgeTheme();
     const zoom = this.zoom();
@@ -304,6 +301,15 @@ export class FogAreaEditor {
     const last = this.drawn;
     if (last && last.outline === outline && last.zoom === zoom && last.lit === lit && last.accent === theme.accent && last.background === theme.background) return;
     this.drawn = { outline, zoom, lit, accent: theme.accent, background: theme.background };
-    drawAreaHandles(this.view, outline, zoom, theme, lit);
+    if (shown) drawAreaOutlines(this.preview, [{ outline: shown, dashed: !areaIsHidden(area) }], zoom, theme.accent);
+    drawAreaHandles(this.handles, outline, zoom, theme, lit);
+  }
+
+  /** The preview shows the outline area `id` will have, or none (null): the one the area has is not drawn beside it. */
+  private showsPreviewOf(id: string | null): void {
+    if (id === this.previewed) return;
+    this.previewed = id;
+    if (id === null) this.preview.clear();
+    this.deps.held?.(id);
   }
 }

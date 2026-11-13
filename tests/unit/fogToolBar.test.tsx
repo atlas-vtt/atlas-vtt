@@ -286,6 +286,39 @@ describe('FogToolBar', () => {
     expect(showNotice).toHaveBeenLastCalledWith('1 area made');
   });
 
+  it('says how wide the brush is in cells of the map\'s grid, and nothing on a map without one', () => {
+    const { store } = renderBar();
+    const value = (): string => document.querySelector('.atlas-dropdown-slider-row__value')!.textContent;
+    act(() => store.setState((state) => ({ grid: { ...state.grid, type: 'square', size: 70, offsetX: 0, offsetY: 0 } })));
+    fireEvent.click(button('Brush size'));
+    // A brush of 50 px to either side of the pointer is 100 px wide: 1.4 cells of 70.
+    expect(value()).toBe('1.4 cells');
+    expect(screen.getByRole('slider', { name: 'Brush size' }).getAttribute('aria-valuetext')).toBe('1.4 cells');
+    act(() => store.getState().setFogTool({ brushSize: 35 }));
+    expect(value()).toBe('1 cell');
+    act(() => store.getState().setFogTool({ brushSize: 200 }));
+    expect(value()).toBe('5.7 cells');
+    // Hexes are as wide as the grid's size too.
+    act(() => store.setState((state) => ({ grid: { ...state.grid, type: 'hex-vertical', size: 100 } })));
+    expect(value()).toBe('4 cells');
+    // Without a grid there are no cells to count in, and pixels say nothing: no number.
+    act(() => store.setState((state) => ({ grid: { ...state.grid, size: 0 } })));
+    expect(value()).toBe('');
+  });
+
+  it('begins the More menu\'s actions with their icons, with no place kept for a tick', () => {
+    renderBar();
+    fireEvent.click(button('More'));
+    for (const name of ['Areas from walls', 'Delete all areas']) {
+      const row = screen.getByRole('button', { name });
+      expect(row.classList.contains('atlas-dropdown-menu-item--flush')).toBe(true);
+      expect(row.querySelector('.atlas-dropdown-menu-item__check')).toBeNull();
+      expect(row.firstElementChild?.tagName.toLowerCase()).toBe('svg');
+    }
+    // Deleting stays told apart as what it is.
+    expect(screen.getByRole('button', { name: 'Delete all areas' }).classList.contains('atlas-dropdown-btn--destructive')).toBe(true);
+  });
+
   it('opens the brush\'s size from the size button, whose dot grows with the brush', () => {
     const { store } = renderBar();
     const slider = (): HTMLElement | null => screen.queryByRole('slider', { name: 'Brush size' });

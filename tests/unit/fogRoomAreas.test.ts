@@ -69,11 +69,23 @@ describe('the areas made of a map\'s rooms', () => {
   });
 
   it('end where the areas there are begin', () => {
-    // An area over the vault's right half: the vault's area is its left half.
-    const { shapes } = planRoomAreas([VAULT], [rect(560, 100, 400, 400)], REACH, 100);
+    // An area over the right two fifths of the vault: the vault's area is the rest of it.
+    const { shapes } = planRoomAreas([VAULT], [rect(588, 100, 400, 400)], REACH, 100);
     expect(shapes).toHaveLength(1);
     const [shape] = shapes;
-    expect(shape?.type === 'lasso' ? shape.points.map(({ x, y }) => `${x},${y}`).sort() : []).toEqual(['420,140', '420,420', '560,140', '560,420']);
+    expect(shape?.type === 'lasso' ? shape.points.map(({ x, y }) => `${x},${y}`).sort() : []).toEqual(['420,140', '420,420', '588,140', '588,420']);
+  });
+
+  it('are none of a room the areas there are cover more than half of, one area or several together', () => {
+    // An area drawn by hand over the left three fifths of the hall: pressed again, nothing is stacked on it.
+    expect(planRoomAreas([HALL, VAULT], [rect(100, 100, 208, 400)], REACH, 100).shapes).toEqual([{ type: 'lasso', points: VAULT }]);
+    // Two areas of a third and a quarter of the hall, apart: together more than half.
+    expect(planRoomAreas([HALL], [rect(140, 140, 94, 280), rect(350, 140, 70, 280)], REACH, 100).shapes).toEqual([]);
+    // The same two over each other cover a third: the hall gets its area, less them.
+    const { shapes } = planRoomAreas([HALL], [rect(140, 140, 94, 280), rect(140, 140, 70, 280)], REACH, 100);
+    expect(shapes).toHaveLength(1);
+    // Exactly half is not more than half.
+    expect(planRoomAreas([HALL], [rect(140, 140, 140, 280)], REACH, 100).shapes).toHaveLength(1);
   });
 
   it('are no more than the level can still hold, and say that rooms were left', () => {

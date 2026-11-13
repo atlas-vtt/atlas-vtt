@@ -1,9 +1,10 @@
 /**
  * Areas from walls: which of a map's rooms (`fogRooms.ts`) become fog areas. A room that an area
- * already is gets none; every other gets one, fitted to the areas there are like any new area.
+ * already is gets none, nor does one the areas there are cover most of (a room the GM drew an
+ * area in by hand); every other gets one, fitted to the areas there are like any new area.
  */
 
-import { coveredShare, fittedArea } from './fogAreaShapes';
+import { coveredShare, coveredShareOfAll, fittedArea } from './fogAreaShapes';
 import type { FogAreaShape } from './fogAreas';
 import type { Point } from '../types/visionTypes';
 
@@ -11,6 +12,8 @@ type Outline = readonly Point[];
 
 /** Two outlines that cover more than this share of each other are one room's. */
 const SAME_SHARE = 0.95;
+/** A room the areas there are cover more than this share of, together, has its area. */
+const COVERED_SHARE = 0.5;
 /** Such outlines' boxes differ on no side by more than this share of their width or height. */
 const BOX_SLACK = 0.1;
 
@@ -63,14 +66,15 @@ export interface RoomAreaPlan {
 }
 
 /**
- * The areas to make of `rooms`: none for a room that one of `areas` already is, and no more than
- * `most`. Each is fitted to the areas there are, so it ends where they begin.
+ * The areas to make of `rooms`: none for a room that one of `areas` already is or that `areas`
+ * cover more than half of together, and no more than `most`. Each is fitted to the areas there
+ * are, so it ends where they begin.
  */
 export function planRoomAreas(rooms: ReadonlyArray<Outline>, areas: ReadonlyArray<Outline>, reach: number, most: number): RoomAreaPlan {
   const shapes: FogAreaShape[] = [];
   let full = false;
   for (const room of rooms) {
-    if (areaOfRoom(room, areas, reach) >= 0) continue;
+    if (areaOfRoom(room, areas, reach) >= 0 || coveredShareOfAll(room, areas) > COVERED_SHARE) continue;
     if (shapes.length >= most) full = true;
     else shapes.push({ type: 'lasso', points: fittedArea(room, areas) });
   }

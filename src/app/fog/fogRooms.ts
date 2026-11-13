@@ -17,7 +17,10 @@ import { concerns } from '../lighting/segments';
 import { distanceTo, sideOf } from '../lighting/wallSides';
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
+import { pointInPolygon } from '../vision/visibility';
+import { withoutEnclosed } from './fogRoomHoles';
 import { roomOutline, type RoomOutline } from './fogRoomOutline';
+import { ringWork, type RingWork } from './fogRoomRing';
 import { RoomRaster, roomTexel, type GroundPiece } from './fogRoomRaster';
 
 export { roomTexel };
@@ -29,6 +32,8 @@ export type RoomCorners = readonly Point[];
 const LEAST_CELLS = 0.5;
 /** A point nearer than this to a wall's centre line, in map pixels, lies on the wall: on neither side of it. */
 const ON_WALL = 1e-6;
+/** The pieces of closed ground inside a room that are taken out of it: of more (walls strewn across a room by the thousand), the largest. */
+const MOST_ENCLOSED = 128;
 /** The texels beside a texel: across its edges first, then across its corners. */
 const BESIDE = [[0, -1], [1, 0], [0, 1], [-1, 0], [-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
 
@@ -56,6 +61,8 @@ class RoomMap {
   private readonly raster: RoomRaster;
   /** The outline of each closed piece of ground that was asked for; null where it encloses nothing. */
   private readonly outlines = new Map<GroundPiece, RoomOutline | null>();
+  /** The same without regard to what the piece encloses: its outer walls alone. */
+  private readonly outers = new Map<GroundPiece, RoomOutline | null>();
   private all: readonly RoomCorners[] | null = null;
 
   constructor(walls: readonly WallSegment[], private readonly mapRect: MapRect, private readonly cell: number) {
@@ -105,8 +112,34 @@ class RoomMap {
 
   private outlineOf(piece: GroundPiece): RoomOutline | null {
     let outline = this.outlines.get(piece);
-    if (outline === undefined) this.outlines.set(piece, outline = roomOutline(this.raster, piece));
+    if (outline === undefined) {
+      const outer = this.outerOf(piece);
+      const holed = outer && withoutEnclosed(outer.outline, this.enclosedBy(piece, outer.outline));
+      this.outlines.set(piece, outline = outer && holed ? { ...outer, ...holed } : outer);
+    }
     return outline;
+  }
+
+  private outerOf(piece: GroundPiece, work?: RingWork): RoomOutline | null {
+    let outer = this.outers.get(piece);
+    if (outer === undefined) this.outers.set(piece, outer = roomOutline(this.raster, piece, work));
+    return outer;
+  }
+
+  /** The outer outlines of the closed ground inside `outline`, the outer outline of `piece`: rooms and rock that walls close off within it. */
+  private enclosedBy(piece: GroundPiece, outline: readonly Point[]): Point[][] {
+    let [left, top, right, bottom] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const { x, y } of outline) [left, top, right, bottom] = [Math.min(left, x), Math.min(top, y), Math.max(right, x), Math.max(bottom, y)];
+    const corners = [...outline];
+    // Ground lies inside the outline whole or not at all: walls part the two.
+    const inside = this.raster.piecesIn(left, top, right, bottom).filter((other) => other !== piece && !other.open && pointInPolygon(this.raster.placeIn(other), corners));
+    if (inside.length > MOST_ENCLOSED) inside.sort((a, b) => b.size - a.size).splice(MOST_ENCLOSED);
+    // All of them together may cost what one room may.
+    const work = ringWork();
+    return inside.flatMap((other) => {
+      const outer = this.outerOf(other, work);
+      return outer ? [outer.outline] : [];
+    });
   }
 }
 
@@ -122,7 +155,8 @@ function roomMap(walls: readonly WallSegment[], mapRect: MapRect, cell: number):
 
 /**
  * The room around `point`: the outline of the ground the walls enclose there, on the walls'
- * centre lines, without the holes that walls inside it close off (each is a room of its own).
+ * centre lines. What walls inside it close off is no part of it (each is a room of its own, or
+ * rock): the outline runs to each such hole and round it on a slit of no width (`fogKeyhole.ts`).
  * Null where the point lies on a wall's line or off the map, and where the ground runs out to
  * the map's edge. `walls` are a level's (`wallList`), `mapRect` the map as it is drawn and `cell`
  * the width of a grid cell.

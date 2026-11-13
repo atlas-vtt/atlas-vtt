@@ -11,6 +11,7 @@ import { isHexGridType } from '../grid/hexGeometry';
 import { snapAreaOrigin } from '../measure/measureSnap';
 import type { Point } from '../types/visionTypes';
 import { heldToEighth, keepsDirection } from './fogConstrain';
+import { outlineRings } from './fogKeyhole';
 
 /** A wall as snapping reads it: its two ends. */
 export interface FogSnapLine {
@@ -125,7 +126,10 @@ function nearestCorner(point: Point, candidates: FogSnapCandidates, reach: numbe
 function nearestEdge(point: Point, candidates: FogSnapCandidates, reach: number): FogSnapTarget | null {
   const nearest = new NearestLine(point, reach);
   for (const area of candidates.areas) {
-    for (let i = 0; i < area.length; i++) nearest.offer('area-edge', area[i]!, area[(i + 1) % area.length]!);
+    // An area with a hole is its own edge and the hole's: the slit between them is no edge of it.
+    for (const ring of outlineRings(area)) {
+      for (let i = 0; i < ring.length; i++) nearest.offer('area-edge', ring[i]!, ring[(i + 1) % ring.length]!);
+    }
   }
   for (const wall of candidates.walls) nearest.offer('wall', wall.p1, wall.p2);
   return nearest.target();

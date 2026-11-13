@@ -15,8 +15,8 @@ import { placeKeysOf, type PlaceKeys } from './FogSnapping';
 import { FogStroke, type FogStrokeDeps } from './FogStroke';
 
 export interface FogGestureDeps extends FogStrokeDeps {
-  /** Whether the canvas shows the players' view though the store's view switches say the GM's (a peek). */
-  readonly showsPlayers?: () => boolean | null;
+  /** The selected area is held by a drag that shows its outline as it will be (null: no longer). */
+  readonly areaHeld?: (areaId: string | null) => void;
 }
 
 export class FogGesture {
@@ -46,6 +46,7 @@ export class FogGesture {
       busy: () => this.active,
       ...(deps.keysBelongToMap && { keysBelongToMap: deps.keysBelongToMap }),
       ...(deps.showsPlayers && { showsPlayers: deps.showsPlayers }),
+      ...(deps.areaHeld && { held: deps.areaHeld }),
       host: {
         begin: (world, screen, keys) => this.begin(world, screen, keys),
         click: (world, screen, keys) => this.click(world, screen, keys),
@@ -67,7 +68,7 @@ export class FogGesture {
     deps.canvas().addEventListener('pointerleave', this.onPointerLeave);
   }
 
-  /** A gesture is under way: its preview is on the fog's canvas. */
+  /** A stroke is under way: a drag, or a polygon between its clicks. */
   get active(): boolean {
     return this.stroke.active;
   }
@@ -129,12 +130,12 @@ export class FogGesture {
     return this.active ? null : this.areas.editor.cursorAt(world);
   }
 
-  /** What is the GM's alone: the ring, the outline of what is under way, the snapping guide and what Areas mode shows. */
+  /** What is the GM's alone: the ring, the outline of what is under way, the wash over what it will reveal, the snapping guide and what Areas mode shows. */
   playerLayers(): LayerVisibility[] {
     return [...this.stroke.layers(), ...this.areaLayers()];
   }
 
-  /** What Areas mode shows on the map: the selected area's handles, the outlines a stroke will leave. No picture of the scene has them. */
+  /** What Areas mode shows on the map: the selected area's handles and the outline a drag will leave it, the outlines a stroke will leave. No picture of the scene has them. */
   areaLayers(): LayerVisibility[] {
     return this.areas.layers();
   }

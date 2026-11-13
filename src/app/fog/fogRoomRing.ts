@@ -16,6 +16,22 @@ const SIMPLIFY_TOLERANCE = 0.5;
 export const SAME_PLACE = 1e-6;
 /** Two corners of a ring nearer than this, in map pixels, are one place the ring comes back to. */
 const SAME_CORNER = 1e-3;
+/**
+ * The corners that may still be looked at while ways out and back are taken from rings, one way a
+ * pass, and while their loops are. Whoever asks for a room and for what it encloses hands one
+ * such count to all of them, so the question costs no more however many rings it takes.
+ */
+export interface RingWork {
+  ways: number;
+  loops: number;
+}
+
+/**
+ * The work one question may take: some 35 ms of ways and 20 ms of loops. A room with thousands of
+ * walls standing in it keeps the ways and loops that are left, on slits of no width along the
+ * walls: what it covers is the same.
+ */
+export const ringWork = (): RingWork => ({ ways: 200_000, loops: 50_000 });
 
 /** A corner that is a place on the wall a stretch of the room's edge faces. */
 export interface FacedCorner extends Point {
@@ -78,11 +94,13 @@ function arc<Corner>(ring: readonly Corner[], from: number, to: number): Corner[
  * leads to (its own end, or the walls of a room inside the room that it joins to the room's own)
  * and back along the other. Of the two rings such a place parts the ring into, the larger is the
  * room's. `step` is how far apart along a wall two places still are one: a stretch of the edge.
+ * No more corners are looked at than `work` has left: ways left over stay in the ring.
  */
-export function withoutInnerWalls(ring: ReadonlyArray<Point | FacedCorner>, walls: readonly WallSegment[], step: number): Array<Point | FacedCorner> {
+export function withoutInnerWalls(ring: ReadonlyArray<Point | FacedCorner>, walls: readonly WallSegment[], step: number, work: RingWork = ringWork()): Array<Point | FacedCorner> {
   let corners = [...ring];
   // Each pass takes one such way out and back away, whole.
-  for (let pass = 0; pass < ring.length; pass++) {
+  while (work.ways >= corners.length) {
+    work.ways -= corners.length;
     /** Where each stretch of each wall was last faced, by the wall, the stretch and the side (`facedKey`). */
     const faced = new Map<number, number>();
     let cut: [number, number] | null = null;
@@ -112,12 +130,14 @@ export function withoutInnerWalls(ring: ReadonlyArray<Point | FacedCorner>, wall
 /**
  * The ring without the loops that leave it at a place and come back to it: the walls of a room
  * inside the room that touch the room's own in one place, which the edge runs round. Of the two
- * rings such a place parts the ring into, the larger is the room's.
+ * rings such a place parts the ring into, the larger is the room's. No more corners are looked
+ * at than `work` has left: loops left over stay in the ring, each round what it was round.
  */
-export function outerLoop(ring: readonly Point[]): Point[] {
+export function outerLoop(ring: readonly Point[], work: RingWork = ringWork()): Point[] {
   let corners = [...ring];
   // Each pass takes one loop away.
-  for (let pass = 0; pass < ring.length; pass++) {
+  while (work.loops >= corners.length) {
+    work.loops -= corners.length;
     const seen = new Map<string, number>();
     let cut: [number, number] | null = null;
     for (let index = 0; index < corners.length && !cut; index++) {

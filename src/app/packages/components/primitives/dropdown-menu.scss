@@ -126,6 +126,11 @@
   white-space: nowrap;
 }
 
+/* A row of a menu without ticks: icon / label / shortcut, the icon on the menu's text edge */
+.atlas-dropdown-menu-item--flush {
+  grid-template-columns: $icon-s 1fr auto;
+}
+
 .atlas-dropdown-menu-item__check {
   display: flex;
   align-items: center;

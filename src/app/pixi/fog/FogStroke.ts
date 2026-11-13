@@ -2,10 +2,10 @@
  * What the fog tool has under way: a drag with the brush, the lasso, the rectangle or over cells
  * (`FogDrag`), a polygon placed click by click (`FogPolygon`), or a click in a room the walls
  * enclose (`FogRoomClick`), with the marks that show it (the brush's ring, the outline, the
- * snapping guide) and the keys that change it (`FogStrokeKeys`). What it leaves is its
- * outcome's (`FogStrokeOutcome`): fog hidden or revealed, or in Areas mode an area. It is shown
- * while it is under way and committed when it ends, as one undo step. Which of them a press
- * begins is the gesture's to say (`FogGesture`).
+ * snapping guide, the wash over what a shape will reveal) and the keys that change it
+ * (`FogStrokeKeys`). What it leaves is its outcome's (`FogStrokeOutcome`): fog hidden or
+ * revealed, or in Areas mode an area. It is shown while it is under way and committed when it
+ * ends, as one undo step. Which of them a press begins is the gesture's to say (`FogGesture`).
  */
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
@@ -21,14 +21,16 @@ import type { FogAreasMode } from './FogAreasMode';
 import { FogCursorPreview } from './FogCursorPreview';
 import { FogDrag } from './FogDrag';
 import { FogPolygon } from './FogPolygon';
+import { FogRevealWash } from './FogRevealWash';
 import { FogRoomClick } from './FogRoomClick';
 import { FogSnapGuide } from './FogSnapGuide';
 import { FogSnapping, type PlaceKeys } from './FogSnapping';
 import { FogStrokeKeys } from './FogStrokeKeys';
 import { PlainFogStroke, type FogStrokeHost, type FogStrokeOutcome } from './fogStrokeOutcome';
+import { showsGmView } from './fogVisibilityPolicy';
 
 export interface FogStrokeDeps {
-  /** The fog's layer, which the shape's outline, the brush's ring and the snapping guide join. */
+  /** The fog's layer, which the stroke's marks join: its outline, the brush's ring, the snapping guide, the wash. */
   readonly layer: PIXI.Container;
   readonly viewport: Viewport;
   /** The map's canvas: its window hears the stroke's keys. */
@@ -41,6 +43,8 @@ export interface FogStrokeDeps {
   readonly keysBelongToMap?: (event: KeyboardEvent) => boolean;
   /** Whether a key is the map's undo as the GM has bound it; unset or undefined, the key it has by default. */
   readonly isUndoKey?: (event: KeyboardEvent) => boolean | undefined;
+  /** Whether the canvas shows the players' view though the store's view switches say the GM's (a peek). */
+  readonly showsPlayers?: () => boolean | null;
 }
 
 /** What a stroke asks of the fog tool's Areas mode: whether a shape becomes an area, and what is its own to drop. */
@@ -65,21 +69,26 @@ export class FogStroke {
   private readonly guide: FogSnapGuide;
   /** The outline of a lasso, rectangle, polygon or cells under way, of the cell or the room under the pointer. */
   private readonly outline = new PIXI.Graphics();
+  /** What a shape under way will reveal, which only the GM's own view shows. */
+  private readonly wash: FogRevealWash;
 
   /** `areas` is asked whenever a stroke needs it: the mode is built with this stroke's snapping. */
   constructor(private readonly deps: FogStrokeDeps, private readonly areas: () => FogStrokeAreas) {
     const { layer, viewport, store } = deps;
     this.outline.eventMode = 'none';
     this.outline.zIndex = 1001;
+    this.wash = new FogRevealWash(() => showsGmView(store.getState(), deps.showsPlayers));
+    // Over the fog (999), under the areas' marks (1000) and the outline of the shape it fills.
+    this.wash.view.zIndex = 999.5;
     this.ring = new FogCursorPreview(viewport);
     this.ring.getDisplayObject().zIndex = 1002;
     this.guide = new FogSnapGuide(viewport);
     this.guide.view.zIndex = 1003;
-    layer.addChild(this.outline, this.ring.getDisplayObject(), this.guide.view);
+    layer.addChild(this.outline, this.ring.getDisplayObject(), this.guide.view, this.wash.view);
 
     const zoom = (): number => viewport.scale.x;
     this.snapping = new FogSnapping({ store, zoom, guide: this.guide });
-    this.plain = new PlainFogStroke(store, deps.host);
+    this.plain = new PlainFogStroke(store, deps.host, this.wash);
     this.drag = new FogDrag(this.outline, this.snapping, zoom);
     this.rooms = new FogRoomClick({
       store, outline: this.outline, zoom,
@@ -110,7 +119,7 @@ export class FogStroke {
     });
   }
 
-  /** A drag or a polygon is under way: its preview is on the fog's canvas. */
+  /** A drag or a polygon is under way. */
   get active(): boolean {
     return this.drag.active || this.polygon.active;
   }
@@ -202,6 +211,7 @@ export class FogStroke {
     this.drag.cancel();
     this.rooms.forget();
     this.polygon.drop();
+    this.plain.end();
     this.areas().cancel();
     this.keys.release();
     this.snapping.clear();
@@ -230,19 +240,24 @@ export class FogStroke {
    * peek), which has none of them. They keep what they show, and are back with the GM's view.
    */
   showMarks(shown: boolean): void {
-    for (const mark of [this.ring.getDisplayObject(), this.outline, this.guide.view]) mark.renderable = shown;
+    for (const mark of this.marks()) mark.renderable = shown;
   }
 
-  /** What is the GM's alone: the ring, the outline of what is under way and the snapping guide. */
+  /** What is the GM's alone: the ring, the outline of what is under way, the snapping guide and the wash. */
   layers(): LayerVisibility[] {
-    return [this.ring.getDisplayObject(), this.outline, this.guide.view].map((layer) => ({ layer, visible: false }));
+    return this.marks().map((layer) => ({ layer, visible: false }));
   }
 
   destroy(): void {
     this.keys.release();
     this.ring.destroy();
     this.guide.destroy();
+    this.wash.destroy();
     if (!this.outline.destroyed) this.outline.destroy();
+  }
+
+  private marks(): PIXI.Container[] {
+    return [this.ring.getDisplayObject(), this.outline, this.guide.view, this.wash.view];
   }
 
   /** What a shape made now leaves: an area in Areas mode, else fog hidden or revealed. */
@@ -286,7 +301,7 @@ export class FogStroke {
     this.outcome().commit(shapes, this.flipped);
   }
 
-  /** Shows what is under way as what it will leave: fog hidden or revealed on the fog itself, or an area's outline. */
+  /** Shows what is under way as what it will leave: fog on the fog itself, a wash where it will reveal, or an area's outline. */
   private preview(): void {
     if (this.polygon.active) {
       this.polygon.draw();

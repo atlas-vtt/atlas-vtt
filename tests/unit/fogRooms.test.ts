@@ -131,9 +131,15 @@ describe('the room around a point', () => {
   it('leaves a room inside a room out of the outline, and gives it as a room of its own', () => {
     const walls = [...box(140, 140, 700, 560), ...box(350, 350, 210, 140)];
     const outer = roomAt(at(200, 200), walls, MAP, CELL)!;
-    expect(cornersOf(outer)).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700]));
+    // The outline runs round the outer walls, and on a slit to the inner room and round it the other way.
+    expect(cornersOf(outer)).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700], [350, 350], [560, 350], [560, 490], [350, 490]));
+    expect(outer).toHaveLength(10);
+    expect(areaOf(outer)).toBe(700 * 560 - 210 * 140);
+    expect(inside(at(200, 200), outer)).toBe(true);
+    expect(inside(at(450, 420), outer)).toBe(false);
     const inner = roomAt(at(450, 420), walls, MAP, CELL)!;
     expect(cornersOf(inner)).toEqual(places([350, 350], [560, 350], [560, 490], [350, 490]));
+    expect(inner).toHaveLength(4);
     // A wall standing free inside a room takes nothing from it.
     const free = [...box(140, 140, 700, 560), wall(300, 300, 500, 300)];
     expect(cornersOf(roomAt(at(200, 200), free, MAP, CELL))).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700]));
@@ -142,6 +148,34 @@ describe('the room around a point', () => {
     const stubbed = roomAt(at(200, 200), stub, MAP, CELL)!;
     expect(areaOf(stubbed)).toBeCloseTo(700 * 560, 6);
     expect(cornersOf(stubbed)).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700]));
+  });
+
+  it('gives a corridor all round two rooms the corridor alone: the rooms inside are no part of it', () => {
+    const walls = [...box(140, 140, 700, 560), ...box(210, 210, 560, 420), wall(490, 210, 490, 630)];
+    const corridor = roomAt(at(175, 400), walls, MAP, CELL)!;
+    expect(cornersOf(corridor)).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700], [210, 210], [770, 210], [770, 630], [210, 630]));
+    expect(areaOf(corridor)).toBe(700 * 560 - 560 * 420);
+    // Every side of the corridor is in it, and neither room.
+    for (const [x, y] of [[175, 400], [500, 175], [805, 400], [500, 665]] as const) expect(inside(at(x, y), corridor)).toBe(true);
+    expect(inside(at(350, 420), corridor)).toBe(false);
+    expect(inside(at(630, 420), corridor)).toBe(false);
+    expect(roomAt(at(805, 600), walls, MAP, CELL)).toBe(corridor);
+    // The rooms inside are rooms of their own, and the map has the three.
+    expect(cornersOf(roomAt(at(350, 420), walls, MAP, CELL))).toEqual(places([210, 210], [490, 210], [490, 630], [210, 630]));
+    expect(cornersOf(roomAt(at(630, 420), walls, MAP, CELL))).toEqual(places([490, 210], [770, 210], [770, 630], [490, 630]));
+    const rooms = roomsOfWalls(walls, MAP, CELL);
+    expect(rooms).toHaveLength(3);
+    expect(rooms.map(areaOf).reduce((sum, area) => sum + area, 0)).toBe(700 * 560);
+  });
+
+  it('leaves a room inside a room inside a room to the room around it', () => {
+    const walls = [...box(140, 140, 700, 560), ...box(280, 280, 420, 280), ...box(420, 350, 140, 140)];
+    const [outer, middle, inner] = [roomAt(at(200, 200), walls, MAP, CELL)!, roomAt(at(300, 300), walls, MAP, CELL)!, roomAt(at(490, 420), walls, MAP, CELL)!];
+    expect(areaOf(outer)).toBe(700 * 560 - 420 * 280);
+    expect(areaOf(middle)).toBe(420 * 280 - 140 * 140);
+    expect(areaOf(inner)).toBe(140 * 140);
+    expect(inside(at(490, 420), outer)).toBe(false);
+    expect(inside(at(490, 420), middle)).toBe(false);
   });
 
   it('gives an L-shaped room its six corners', () => {
@@ -220,18 +254,25 @@ describe('the room around a point', () => {
   });
 
   it('leaves out a room inside the room that a wall joins to the room\'s own, and a wall that stands across a ring of ground', () => {
-    // The inner box hangs on the outer wall by one wall: the edge runs out along it and round the box.
+    // The inner box hangs on the outer wall by one wall: the room is what lies round the box.
     const hung = [...box(140, 140, 700, 560), ...box(420, 350, 210, 140), wall(840, 420, 630, 420)];
     const outer = roomAt(at(200, 200), hung, MAP, CELL)!;
-    expect(cornersOf(outer)).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700]));
+    expect(cornersOf(outer)).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700], [420, 350], [630, 350], [630, 490], [420, 490]));
+    expect(areaOf(outer)).toBe(700 * 560 - 210 * 140);
+    expect(inside(at(500, 400), outer)).toBe(false);
     expect(cornersOf(roomAt(at(500, 400), hung, MAP, CELL))).toEqual(places([420, 350], [630, 350], [630, 490], [420, 490]));
     // An inner box that touches the outer wall with one corner.
     const touching = [...box(140, 140, 700, 560), ...ring([840, 420], [735, 490], [630, 420], [735, 350])];
-    expect(cornersOf(roomAt(at(200, 200), touching, MAP, CELL))).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700]));
-    // A passage all round a block, with one wall across it: the room is the passage, its outline the outer wall.
+    const touched = roomAt(at(200, 200), touching, MAP, CELL)!;
+    expect(areaOf(touched)).toBe(700 * 560 - 210 * 70);
+    expect(inside(at(735, 420), touched)).toBe(false);
+    expect(inside(at(700, 300), touched)).toBe(true);
+    // A passage all round a block, with one wall across it: the room is the passage, without the block.
     const round = [...box(140, 140, 700, 560), ...box(280, 280, 420, 280), wall(140, 420, 280, 420)];
-    expect(cornersOf(roomAt(at(200, 200), round, MAP, CELL))).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700]));
-    expect(roomAt(at(200, 600), round, MAP, CELL)).toBe(roomAt(at(200, 200), round, MAP, CELL));
+    const passage = roomAt(at(200, 200), round, MAP, CELL)!;
+    expect(cornersOf(passage)).toEqual(places([140, 140], [840, 140], [840, 700], [140, 700], [280, 280], [700, 280], [700, 560], [280, 560]));
+    expect(areaOf(passage)).toBe(700 * 560 - 420 * 280);
+    expect(roomAt(at(200, 600), round, MAP, CELL)).toBe(passage);
   });
 
   it('follows a curved wall of short pieces from end to end of each piece', () => {

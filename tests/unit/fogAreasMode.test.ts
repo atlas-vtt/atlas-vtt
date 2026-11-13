@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Container, Point, type FederatedPointerEvent, type PointData } from 'pixi.js';
+import { Container, Point, type FederatedPointerEvent, type Graphics, type PointData } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -49,6 +49,12 @@ interface AreasScene {
   /** The keys the map's own shortcuts heard. */
   shortcuts: ReturnType<typeof vi.fn>;
   areas: () => readonly FogArea[];
+  /** How often the scene's fog was written since the scene was made. */
+  writes: () => number;
+  /** The outline a drag of the selected area shows the GM, as it will be: left, right, top and bottom of its line's middle; null while none shows. */
+  previewed: () => number[] | null;
+  /** The area a drag holds, as the layer of the areas' outlines is told. */
+  held: () => string | null;
   selected: () => string | null;
   undo: () => void;
   steps: () => number;
@@ -71,10 +77,16 @@ function areasScene(shape: FogShape = 'rectangle', keysBelongToMap?: (event: Key
   const viewport = new Camera();
   const canvas = document.body.createEl('canvas');
   const showStroke = vi.fn();
+  let held: string | null = null;
   const gesture = new FogGesture({
     layer: new Container(), viewport: viewport as unknown as Viewport, canvas: () => canvas, store,
     host: { showStroke, showCommitted: vi.fn() },
+    areaHeld: (areaId) => { held = areaId; },
     ...(keysBelongToMap && { keysBelongToMap }),
+  });
+  let writes = 0;
+  const stopCounting = store.subscribe((state, previous) => {
+    if (state.objects.fog !== previous.objects.fog) writes++;
   });
   const shortcuts = vi.fn();
   window.addEventListener('keydown', shortcuts);
@@ -84,9 +96,12 @@ function areasScene(shape: FogShape = 'rectangle', keysBelongToMap?: (event: Key
   });
   stops.push(() => {
     stopFollowing();
+    stopCounting();
     window.removeEventListener('keydown', shortcuts);
     gesture.destroy();
   });
+  // The editor's own layer: the outline a drag will leave lies under the handles.
+  const [preview] = gesture.areaLayers().map((entry) => entry.layer as Container).find((layer) => layer.children.length === 2)!.children as [Graphics, Graphics];
   const pointer = (type: string, [x, y]: Place, keys: Keys = {}): void => {
     viewport.emit(type, { button: 0, global: { x, y }, altKey: false, shiftKey: false, ctrlKey: false, metaKey: false, ...keys } as unknown as FederatedPointerEvent);
   };
@@ -112,6 +127,13 @@ function areasScene(shape: FogShape = 'rectangle', keysBelongToMap?: (event: Key
       return event;
     },
     areas: () => fogAreaList(store.getState().objects.fog),
+    writes: () => writes,
+    previewed: () => {
+      const bounds = preview.getLocalBounds();
+      // The line is 4 px wide with its casing: 2 px to either side of the outline.
+      return bounds.width > 0 ? [bounds.minX + 2, bounds.maxX - 2, bounds.minY + 2, bounds.maxY - 2].map(Math.round) : null;
+    },
+    held: () => held,
     selected: () => store.getState().fogAreaSelected,
     undo: () => history.getState().undo(),
     steps: () => history.getState().pastStates.length,
@@ -263,7 +285,7 @@ describe('drawing in Areas mode', () => {
       const id = `area-${String(index).padStart(3, '0')}`;
       fog[id] = { id, kind: 'fog', timestamp: index, isErasing: false, type: 'rectangle', x: 2000 + index * 20, y: 2000, width: 10, height: 10, area: {} };
     }
-    s.store.getState().setFogOperations(fog);
+    s.store.setState((state) => ({ objects: { ...state.objects, fog } }));
     const before = s.steps();
     s.drag([[70, 70], [210, 210]]);
     expect(Object.keys(s.store.getState().objects.fog)).toHaveLength(MAX_FOG_AREAS);
@@ -438,19 +460,23 @@ describe('editing the selected area', () => {
     s.click([140, 140]);
     const before = s.steps();
     const was = s.store.getState().objects.fog[hall];
+    const writes = s.writes();
     s.press([210, 210]);
     s.move([280, 350]);
-    expect(s.areas()[0]).toMatchObject({ width: 210, height: 280 });
+    expect(s.previewed()).toEqual([70, 280, 70, 350]);
     const event = s.key('Escape');
     expect(event.defaultPrevented).toBe(true);
-    expect(s.store.getState().objects.fog[hall]).toBe(was);
-    expect(s.steps()).toBe(before);
+    expect(s.previewed()).toBeNull();
+    expect(s.held()).toBeNull();
     // The area stays selected, and the release that follows changes nothing.
     expect(s.selected()).toBe(hall);
     s.move([350, 350]);
     s.release();
+    expect(s.previewed()).toBeNull();
     expect(s.store.getState().objects.fog[hall]).toBe(was);
     expect(s.steps()).toBe(before);
+    // Nothing of it was ever the scene's: no write to take back.
+    expect(s.writes()).toBe(writes);
   });
 
   it('refuses a corner dragged to where the outline would cross itself: it springs back, and no undo step is left', () => {
@@ -459,15 +485,19 @@ describe('editing the selected area', () => {
     s.click([140, 140]);
     const before = s.steps();
     const was = s.store.getState().objects.fog[hall];
+    const writes = s.writes();
     s.press([70, 70], { ctrlKey: true });
     s.move([150, 100], { ctrlKey: true });
-    expect(corners(s.areas()[0])).toEqual(at([150, 100], [210, 70], [210, 210], [70, 210]));
-    // Past the edge on the right.
+    expect(s.previewed()).toEqual([70, 210, 70, 210]);
+    expect(s.held()).toBe(hall);
+    // Past the edge on the right: the outline shown is the area's own again.
     s.move([300, 140], { ctrlKey: true });
-    expect(s.store.getState().objects.fog[hall]).toBe(was);
+    expect(s.previewed()).toBeNull();
+    expect(s.held()).toBeNull();
     s.release();
     expect(s.store.getState().objects.fog[hall]).toBe(was);
     expect(s.steps()).toBe(before);
+    expect(s.writes()).toBe(writes);
     // Back where the outline is one, the corner follows again.
     s.press([70, 70], { ctrlKey: true });
     s.move([300, 140], { ctrlKey: true });
@@ -497,11 +527,15 @@ describe('editing the selected area', () => {
     const before = s.steps();
     const was = s.store.getState().objects.fog[hall];
     s.press([140, 70]);
+    // The corner is the scene's only once the pointer is released.
+    expect(s.store.getState().objects.fog[hall]).toBe(was);
     s.move([140, 0]);
+    expect(s.previewed()).toEqual([70, 210, 0, 210]);
     s.key('Escape');
     expect(s.store.getState().objects.fog[hall]).toBe(was);
     expect(s.steps()).toBe(before);
     s.release();
+    expect(s.store.getState().objects.fog[hall]).toBe(was);
     s.click([140, 70]);
     expect(areaOutline(s.areas()[0]!)).toHaveLength(5);
     expect(s.steps()).toBe(before + 1);
@@ -542,12 +576,19 @@ describe('editing the selected area', () => {
     s.click([140, 140]);
     const before = s.steps();
     const was = s.store.getState().objects.fog[hall];
+    const writes = s.writes();
     s.press([150, 150]);
     s.move([250, 180]);
-    expect(corners(s.areas()[0])).toEqual(box(170, 100, 140, 140));
+    expect(s.previewed()).toEqual([170, 310, 100, 240]);
     s.key('Escape');
+    expect(s.previewed()).toBeNull();
     expect(s.store.getState().objects.fog[hall]).toBe(was);
     expect(s.steps()).toBe(before);
+    expect(s.writes()).toBe(writes);
+    // Dragged again and let go, it lies where it was shown.
+    s.drag([[150, 150], [250, 180]]);
+    expect(corners(s.areas()[0])).toEqual(box(170, 100, 140, 140));
+    expect(s.steps()).toBe(before + 1);
   });
 
   it('takes a shape away with Alt from the selected area too, where a drag would move it', () => {
@@ -573,6 +614,93 @@ describe('editing the selected area', () => {
     window.dispatchEvent(new Event('blur'));
     expect(s.store.getState().objects.fog[hall]).toBe(was);
     expect(s.steps()).toBe(before);
+    expect(s.previewed()).toBeNull();
+    // The release that comes late writes nothing either.
+    s.release();
+    expect(s.store.getState().objects.fog[hall]).toBe(was);
+  });
+
+  it('writes a drag of a corner, of an added corner or of the whole area once, at the release, as one undo step: until then the scene holds the area as it was', () => {
+    for (const [what, places, left] of [
+      ['a corner', [[210, 210], [250, 300], [280, 350], [350, 350]], box(70, 70, 280, 280)],
+      ['an added corner', [[140, 70], [140, 30], [150, 10], [140, 0]], at([70, 70], [140, 0], [210, 70], [210, 210], [70, 210])],
+      ['the area', [[150, 150], [200, 165], [230, 170], [250, 180]], box(170, 100, 140, 140)],
+    ] as const) {
+      const s = areasScene();
+      const hall = withHall(s);
+      s.click([140, 140]);
+      const before = s.steps();
+      const writes = s.writes();
+      const was = s.store.getState().objects.fog[hall];
+      const [first, ...rest] = places;
+      s.press(first);
+      for (const place of rest) {
+        s.move(place);
+        expect([what, s.store.getState().objects.fog[hall]]).toEqual([what, was]);
+        expect([what, s.store.getState().objects.fog[hall] === was]).toEqual([what, true]);
+      }
+      // The GM sees the outline as it will be, and the one the area has is not drawn beside it.
+      expect([what, s.previewed()]).not.toEqual([what, null]);
+      expect([what, s.held()]).toEqual([what, hall]);
+      expect([what, s.writes(), s.steps()]).toEqual([what, writes, before]);
+      s.release();
+      expect([what, corners(s.areas()[0])]).toEqual([what, left]);
+      expect([what, s.writes(), s.steps()]).toEqual([what, writes + 1, before + 1]);
+      expect([what, s.previewed(), s.held()]).toEqual([what, null, null]);
+      s.undo();
+      expect([what, corners(s.areas()[0])]).toEqual([what, box(70, 70, 140, 140)]);
+    }
+  });
+
+  it('drops a drag when another level is shown: no level\'s fog is touched, and no undo step is left open', () => {
+    const s = areasScene();
+    s.store.setState({
+      levels: [
+        { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: null },
+        { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: null },
+      ],
+      viewedLevel: 'ground',
+    });
+    const hall = withHall(s);
+    s.click([140, 140]);
+    const before = s.steps();
+    const writes = s.writes();
+    const fog = s.store.getState().objects.fog;
+    s.press([210, 210]);
+    s.move([280, 350]);
+    s.store.getState().setViewedLevel('upper');
+    expect(s.selected()).toBeNull();
+    expect(s.previewed()).toBeNull();
+    expect(s.held()).toBeNull();
+    // The pointer is still down: what it does until its release is no drag's.
+    s.move([300, 400]);
+    s.release();
+    expect(s.store.getState().objects.fog).toBe(fog);
+    expect(s.store.getState().objects.fog[hall]).toMatchObject({ x: 70, y: 70, width: 140, height: 140 });
+    expect([s.writes(), s.steps()]).toEqual([writes, before]);
+    // No transaction is left open: the next edit is a step of its own, and undo takes back that edit alone.
+    const cellar = s.store.getState().addFogArea({ type: 'rectangle', x: 300, y: 300, width: 70, height: 70 })!;
+    expect(s.steps()).toBe(before + 1);
+    s.undo();
+    expect(s.store.getState().objects.fog[cellar]).toBeUndefined();
+    expect(s.store.getState().objects.fog).toEqual(fog);
+  });
+
+  it('drops a drag when the area it holds changes under it: an undo takes the area back, and the release writes nothing over it', () => {
+    const s = areasScene();
+    const hall = withHall(s);
+    s.click([140, 140]);
+    s.drag([[210, 210], [280, 280]]);
+    expect(s.areas()[0]).toMatchObject({ width: 210, height: 210 });
+    s.press([280, 280]);
+    s.move([350, 350]);
+    expect(s.previewed()).toEqual([70, 350, 70, 350]);
+    s.undo();
+    expect(s.previewed()).toBeNull();
+    const undone = s.store.getState().objects.fog[hall];
+    expect(undone).toMatchObject({ width: 140, height: 140 });
+    s.release();
+    expect(s.store.getState().objects.fog[hall]).toBe(undone);
   });
 
   it('says what a press on the selected area would do: grab on a corner, move inside it, and nothing of its own on an edge or beside it', () => {

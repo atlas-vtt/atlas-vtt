@@ -1,7 +1,8 @@
 /**
  * The fog's picture: the committed coverage of the level shown, and a stroke under way on it,
- * drawn on one Canvas-backed sprite that every picture of the map shows at its own opacity. An
- * edit of the fog fades from the picture before it to the new one (`FogFade`).
+ * drawn on one Canvas-backed sprite that every picture of the map shows at its own opacity, the
+ * players' too: a stroke is drawn on it only where the players may see it at once (what hides,
+ * and the brush). An edit of the fog fades from the picture before it to the new one (`FogFade`).
  */
 import * as PIXI from 'pixi.js';
 import type { StoreApi } from 'zustand';
@@ -97,6 +98,11 @@ export class FogPicture {
   /** Whether the fog is fading from the picture before an edit to the one it has now. */
   get fading(): boolean {
     return this.fade.running;
+  }
+
+  /** Whether the canvas shows a stroke under way on the fog. */
+  get showsStroke(): boolean {
+    return this.stroke === 'shown';
   }
 
   /** Whether there is fog to show: some in the scene, fog still fading away, or the cover of fog that cannot be drawn. */

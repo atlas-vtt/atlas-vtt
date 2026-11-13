@@ -163,14 +163,11 @@ export interface ViewAtlasState extends ViewState {
   // Fog actions (from fogSlice.ts)
   addFogOperation: FogSlice['addFogOperation'];
   addFogOperations: FogSlice['addFogOperations'];
-  deleteFogOperations: FogSlice['deleteFogOperations'];
-  setFogOperations: FogSlice['setFogOperations'];
   clearFog: FogSlice['clearFog'];
   coverAllFog: FogSlice['coverAllFog'];
   addFogArea: FogSlice['addFogArea'];
   flipFogArea: FogSlice['flipFogArea'];
   updateFogArea: FogSlice['updateFogArea'];
-  restoreFogArea: FogSlice['restoreFogArea'];
   deleteFogAreas: FogSlice['deleteFogAreas'];
   addRoomAreas: FogSlice['addRoomAreas'];
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */

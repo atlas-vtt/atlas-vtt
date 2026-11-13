@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Container, Point, type FederatedPointerEvent, type PointData } from 'pixi.js';
+import { Container, Point, type FederatedPointerEvent, type Graphics, type PointData } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
@@ -31,6 +31,10 @@ interface PolygonScene {
   /** What the gesture last asked the picture to show on the fog; undefined for the fog as it is. */
   shown: () => FogOperation | undefined;
   showCommitted: ReturnType<typeof vi.fn>;
+  /** Every stroke the gesture asked the picture to show on the fog, which the players see. */
+  shownOnFog: () => unknown[];
+  /** The ground washed over for the GM alone, as what will be revealed: left, right, top and bottom; null where none is. */
+  washed: () => number[] | null;
   /** A click of the primary button at a place on the map. */
   click(x: number, y: number, keys?: Keys): void;
   move(x: number, y: number, keys?: Keys): void;
@@ -60,8 +64,9 @@ function polygonScene(keysBelongToMap?: (event: KeyboardEvent) => boolean): Poly
   const canvas = document.body.createEl('canvas');
   const showStroke = vi.fn();
   const showCommitted = vi.fn();
+  const layer = new Container();
   const gesture = new FogGesture({
-    layer: new Container(), viewport: viewport as unknown as Viewport, canvas: () => canvas, store,
+    layer, viewport: viewport as unknown as Viewport, canvas: () => canvas, store,
     host: { showStroke, showCommitted },
     ...(keysBelongToMap && { keysBelongToMap }),
   });
@@ -82,6 +87,11 @@ function polygonScene(keysBelongToMap?: (event: KeyboardEvent) => boolean): Poly
   return {
     store, gesture, showCommitted, shortcuts,
     shown: () => showStroke.mock.lastCall?.[0] as FogOperation | undefined,
+    shownOnFog: () => showStroke.mock.calls.map(([stroke]) => stroke as unknown).filter((stroke) => stroke !== undefined),
+    washed: () => {
+      const bounds = (layer.getChildByLabel('fog-reveal-wash') as Graphics).getLocalBounds();
+      return bounds.width > 0 ? [bounds.minX, bounds.maxX, bounds.minY, bounds.maxY].map(Math.round) : null;
+    },
     click: (x, y, keys = {}) => {
       pointer('pointerdown', x, y, keys);
       pointer('pointerup', x, y, keys);
@@ -131,11 +141,15 @@ describe('the fog tool\'s polygon', () => {
     s.click(0, 0);
     s.click(140, 0);
     s.click(140, 140);
-    // Near the first corner the pointer shows the polygon closed.
+    // Near the first corner the pointer shows the polygon closed: what it will reveal, to the GM
+    // alone. Nothing of it is on the fog's picture, which the players see.
     s.move(6, 5);
-    expect(s.shown()).toMatchObject({ isErasing: true, points: [{ x: 0, y: 0 }, { x: 140, y: 0 }, { x: 140, y: 140 }] });
+    expect(s.washed()).toEqual([0, 140, 0, 140]);
+    expect(s.shownOnFog()).toEqual([]);
     s.click(6, 5);
     expect(s.gesture.active).toBe(false);
+    expect(s.washed()).toBeNull();
+    expect(s.shownOnFog()).toEqual([]);
     expect(s.fog()).toMatchObject([{ type: 'lasso', isErasing: true, points: [{ x: 0, y: 0 }, { x: 140, y: 0 }, { x: 140, y: 140 }] }]);
 
     s.click(210, 0);
@@ -146,6 +160,32 @@ describe('the fog tool\'s polygon', () => {
     expect(s.gesture.active).toBe(false);
     expect(s.fog()).toHaveLength(2);
     expect(s.fog()[1]).toMatchObject({ points: [{ x: 210, y: 0 }, { x: 280, y: 0 }, { x: 280, y: 70 }] });
+  });
+
+  it('drops a polygon that would reveal without a trace: the fog\'s picture never held anything of it', () => {
+    const s = polygonScene();
+    s.store.getState().setActiveTool('eraser');
+    s.click(0, 0);
+    s.click(140, 0);
+    s.move(140, 140);
+    expect(s.washed()).toEqual([0, 140, 0, 140]);
+    s.key('Escape');
+    expect(s.gesture.active).toBe(false);
+    expect(s.washed()).toBeNull();
+    expect(s.shownOnFog()).toEqual([]);
+    expect(s.fog()).toEqual([]);
+  });
+
+  it('shows what will be revealed on the GM\'s own view only: a canvas in session view gets no wash, and its fog no stroke', () => {
+    const s = polygonScene();
+    s.store.getState().setActiveTool('eraser');
+    s.store.setState({ isGMView: false });
+    s.click(0, 0);
+    s.click(140, 0);
+    s.move(140, 140);
+    expect(s.gesture.active).toBe(true);
+    expect(s.washed()).toBeNull();
+    expect(s.shownOnFog()).toEqual([]);
   });
 
   it('makes nothing of fewer than three corners or corners on one line, and goes on', () => {
@@ -290,8 +330,11 @@ describe('the fog tool\'s polygon', () => {
     expect(s.shown()).toMatchObject({ points: [{ x: 0, y: 0 }, { x: 70, y: 0 }, { x: 140, y: 70 }] });
     s.move(151, 93, { ctrlKey: true });
     expect(s.shown()).toMatchObject({ isErasing: false, points: [{ x: 0, y: 0 }, { x: 70, y: 0 }, { x: 151, y: 93 }] });
+    // Alt turns it around: what it hid on the fog's picture goes, and what it will reveal shows to the GM alone.
+    expect(s.washed()).toBeNull();
     s.key('Alt');
-    expect(s.shown()).toMatchObject({ isErasing: true });
+    expect(s.shown()).toBeUndefined();
+    expect(s.washed()).toEqual([0, 151, 0, 93]);
     s.click(151, 93, { ctrlKey: true, altKey: true });
     s.key('Enter', { altKey: true });
     expect(s.fog()).toMatchObject([{ isErasing: true, points: [{ x: 0, y: 0 }, { x: 70, y: 0 }, { x: 151, y: 93 }] }]);
@@ -331,8 +374,8 @@ describe('the fog tool\'s polygon', () => {
     s.click(0, 0);
     s.move(138, 4);
     const layers = s.gesture.playerLayers();
-    // The ring, the outline, the guide, and what Areas mode shows: a stroke's outlines and the handles.
-    expect(layers).toHaveLength(5);
+    // The ring, the outline, the guide, the wash over what will be revealed, and what Areas mode shows: a stroke's outlines and the handles.
+    expect(layers).toHaveLength(6);
     expect(layers.every((entry) => entry.visible === false)).toBe(true);
     // The guide shows on the GM's canvas where the next corner lands.
     expect(layers.some((entry) => entry.layer.visible && entry.layer.position.x === 140 && entry.layer.position.y === 0)).toBe(true);

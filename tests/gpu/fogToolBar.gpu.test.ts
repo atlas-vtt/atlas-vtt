@@ -182,6 +182,20 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(hint.getBoundingClientRect().right).toBeCloseTo(row.right, 1);
     expect(hint.getBoundingClientRect().height).toBeGreaterThan(1.5 * parseFloat(getComputedStyle(hint).fontSize));
     expect(more.width).toBeLessThan(300);
+    // The menu has one text edge: its two actions begin on it with their icons, where the switch's and the sliders' names begin.
+    const edge = rect(`${TOOLS} .atlas-dropdown-toggle-row__label`).left;
+    expect(rect(`${TOOLS} .atlas-dropdown-slider-row .atlas-dropdown-label`).left + parseFloat(getComputedStyle(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row .atlas-dropdown-label`)!).paddingLeft)).toBeCloseTo(edge, 1);
+    const across = rect(`${TOOLS} .atlas-dropdown-content .slider-root`);
+    const actions = [...document.querySelectorAll<HTMLElement>(`${TOOLS} .atlas-dropdown-content .atlas-dropdown-menu-item`)];
+    expect(actions.map((action) => action.textContent)).toEqual(['Areas from walls', 'Delete all areas']);
+    for (const action of actions) {
+      const [icon, label] = [action.querySelector('svg')!.getBoundingClientRect(), action.querySelector('span')!.getBoundingClientRect()];
+      expect(icon.left).toBeCloseTo(edge, 1);
+      expect(label.left).toBeCloseTo(icon.right + 8, 1);
+      // The row itself spans the menu, as a slider's track does.
+      expect(action.getBoundingClientRect().left).toBeCloseTo(across.left, 1);
+      expect(action.getBoundingClientRect().right).toBeCloseTo(across.right, 1);
+    }
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row__value`)!.textContent).toBe('50%');
     act(() => settings.setGmFogOpacity(0.8));
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row__value`)!.textContent).toBe('80%');

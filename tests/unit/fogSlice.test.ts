@@ -112,6 +112,60 @@ describe('the fog actions of the view store', () => {
     expect(fog()).toHaveLength(1);
   });
 
+  it('adds a single operation after all the fog there is, whatever the clock says', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(5_000);
+    const { store, steps, undo } = scene();
+    // Covered and flipped in the same millisecond: the stamps run ahead of the clock.
+    store.getState().coverAllFog(MAP);
+    store.getState().addFogOperations([rect(0, true), rect(200, true), rect(400, true)]);
+    const newest = Math.max(...Object.values(store.getState().objects.fog).map((operation) => operation.timestamp));
+    expect(newest).toBeGreaterThan(5_000);
+    // A stroke right after hides again what was just revealed: it must not sort before the reveal.
+    const id = store.getState().addFogOperation(rect(0));
+    expect(store.getState().objects.fog[id]!.timestamp).toBe(newest + 1);
+    expect(fogCoverage(store.getState().objects.fog).covers({ x: 50, y: 50 })).toBe(true);
+    expect(steps()).toBe(3);
+    undo();
+    expect(fogCoverage(store.getState().objects.fog).covers({ x: 50, y: 50 })).toBe(false);
+    // With the clock ahead of every stamp, it is the clock's time.
+    vi.setSystemTime(9_000);
+    const later = store.getState().addFogOperation(rect(0));
+    expect(store.getState().objects.fog[later]!.timestamp).toBe(9_000);
+  });
+
+  it('acts on a record that holds an entry that is no operation: a file is kept as it came', () => {
+    const broken = (): ReturnType<typeof scene> => {
+      const made = scene();
+      // What a damaged file may hold: nothing, a number, a text.
+      const entries: Record<string, unknown> = { none: null, number: 7, text: 'fog' };
+      made.store.setState((state) => ({ objects: { ...state.objects, fog: { ...(entries as Record<string, FogOperation>), ...state.objects.fog } } }));
+      return made;
+    };
+    const ids = (store: ViewAtlasStore): string[] => Object.keys(store.getState().objects.fog);
+
+    // Reveal all clears them with the rest, in one undo step that brings them back.
+    const cleared = broken();
+    cleared.store.getState().addFogOperation(rect(0));
+    cleared.store.getState().clearFog();
+    expect(ids(cleared.store)).toEqual([]);
+    cleared.undo();
+    expect(ids(cleared.store)).toHaveLength(4);
+
+    // Cover all and a stroke are added beside them.
+    const covered = broken();
+    expect(covered.store.getState().coverAllFog(MAP)).toBe(true);
+    expect(ids(covered.store).slice(0, 3)).toEqual(['none', 'number', 'text']);
+    expect(covered.fog()[3]).toMatchObject({ type: 'rectangle', ...MAP });
+    const added = broken();
+    expect(added.store.getState().addFogOperations([rect(0), rect(200)])).toHaveLength(2);
+    expect(typeof added.store.getState().addFogOperation(rect(400))).toBe('string');
+    expect(ids(added.store)).toHaveLength(6);
+    // Areas are counted, flipped and made past them.
+    expect(added.store.getState().addFogArea({ type: 'rectangle', x: 0, y: 0, width: 50, height: 50 })).not.toBeNull();
+    expect(added.store.getState().flipFogArea('none')).toBe(false);
+  });
+
   it('adds nothing, and no undo step, for an empty list', () => {
     const { store, steps } = scene();
     expect(store.getState().addFogOperations([])).toEqual([]);

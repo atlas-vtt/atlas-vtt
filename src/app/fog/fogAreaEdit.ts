@@ -1,7 +1,9 @@
 /**
  * The rules of editing a fog area by its corners: which corner or edge the pointer is on, the
  * outline a moved, added or removed corner leaves, and which outlines an area may have. An area
- * is one outline that does not cross itself and encloses ground.
+ * is one outline that does not cross itself and encloses ground. Where it has a hole, the outline
+ * runs to the hole and back on a slit of no width (`fogKeyhole.ts`): the two corners at each end
+ * of a slit are one to the pointer, so the slit stays one line whatever is done to them.
  */
 
 import type { Point } from '../types/visionTypes';
@@ -18,6 +20,7 @@ export interface AreaRectangle {
 }
 
 const isPlace = (point: Point): boolean => Number.isFinite(point.x) && Number.isFinite(point.y);
+const same = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
 
 /** The corner of `outline` at `point`: the nearest within `reach`, the first of two as near. Null where none is. */
 export function cornerAt(outline: Outline, point: Point, reach: number): number | null {
@@ -89,22 +92,39 @@ export function isAreaOutline(outline: Outline): boolean {
   return outline.length >= 3 && outline.every(isPlace) && hasArea(outline) && !outlineCrossesItself(outline);
 }
 
-/** `outline` with its corner `index` at `to`. */
+/** `outline` with its corner `index` at `to`, and with it every corner that lies in the same place: the end of a slit moves as one. */
 export function withCornerAt(outline: Outline, index: number, to: Point): Point[] {
-  return outline.map((corner, i) => (i === index ? { x: to.x, y: to.y } : { x: corner.x, y: corner.y }));
+  const held = outline[index];
+  return outline.map((corner, i) => (i === index || (held && same(corner, held)) ? { x: to.x, y: to.y } : { x: corner.x, y: corner.y }));
 }
 
-/** `outline` with a corner at `point` on the edge that starts at corner `index`: the new corner is `index + 1`. */
+/**
+ * `outline` with a corner at `point` on the edge that starts at corner `index`: the new corner is
+ * `index + 1`. An edge that is one side of a slit gets it on the other side too, which runs back
+ * later in the outline.
+ */
 export function withCornerAdded(outline: Outline, index: number, point: Point): Point[] {
   const corners = outline.map((corner) => ({ x: corner.x, y: corner.y }));
+  const [from, to] = [outline[index], outline[(index + 1) % outline.length]];
   corners.splice(index + 1, 0, { x: point.x, y: point.y });
+  if (!from || !to) return corners;
+  // The same edge the other way round, from the one just split on: counted in the outline with its new corner.
+  for (let i = index + 2; i < corners.length; i++) {
+    if (!same(corners[i]!, to) || !same(corners[(i + 1) % corners.length]!, from)) continue;
+    corners.splice(i + 1, 0, { x: point.x, y: point.y });
+    break;
+  }
   return corners;
 }
 
-/** `outline` without its corner `index`; null where that leaves no area's outline: fewer than three corners, or edges that cross. */
+/**
+ * `outline` without its corner `index` and every corner in the same place; null where that
+ * leaves no area's outline: fewer than three corners, or edges that cross.
+ */
 export function withoutCorner(outline: Outline, index: number): Point[] | null {
-  if (outline.length <= 3 || index < 0 || index >= outline.length) return null;
-  const corners = outline.filter((_, i) => i !== index).map((corner) => ({ x: corner.x, y: corner.y }));
+  const taken = outline[index];
+  if (outline.length <= 3 || !taken) return null;
+  const corners = outline.filter((corner, i) => i !== index && !same(corner, taken)).map((corner) => ({ x: corner.x, y: corner.y }));
   return isAreaOutline(corners) ? corners : null;
 }
 

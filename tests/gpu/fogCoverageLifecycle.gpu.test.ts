@@ -73,7 +73,7 @@ describe('fog renderer lifecycle', () => {
     expect(s.read(100, 100, false)).toBe(255);
   });
 
-  it('shows a rectangle and a lasso as the fog they will leave while they are drawn, and commits just that', async () => {
+  it('shows a rectangle as the fog it will leave while it is drawn, and a lasso that reveals only once it is let go', async () => {
     const s = await scene();
     s.store.getState().setActiveTool('fog');
     s.store.getState().setFogTool({ shape: 'rectangle' });
@@ -87,16 +87,19 @@ describe('fog renderer lifecycle', () => {
     expect(Object.values(s.store.getState().objects.fog)).toMatchObject([{ type: 'rectangle', isErasing: false, x: 0, y: 0, width: 70, height: 70 }]);
     expect(s.read(48, 48)).toBe(0);
 
-    // Revealing with the lasso: the hole shows before the release.
+    // Revealing with the lasso: the players see the hole only once it is let go, the GM a wash over what will go.
     s.store.getState().setActiveTool('eraser');
     s.store.getState().setFogTool({ shape: 'lasso' });
+    const gmBefore = s.read(40, 40, false);
     s.pointer('pointerdown', 20, 20);
     s.pointer('pointermove', 60, 20);
     expect(s.read(40, 30)).toBe(0);
     s.pointer('pointermove', 60, 60);
     s.pointer('pointermove', 20, 60);
-    expect(s.read(40, 40)).toBe(255);
+    expect(s.read(40, 40)).toBe(0);
     expect(s.read(10, 10)).toBe(0);
+    // The wash is red over the grey of the fog.
+    expect(s.read(40, 40, false)).toBeGreaterThan(gmBefore + 20);
     expect(Object.values(s.store.getState().objects.fog)).toHaveLength(1);
     s.pointer('pointerup', 20, 60);
     expect(Object.values(s.store.getState().objects.fog)).toHaveLength(2);
@@ -117,13 +120,17 @@ describe('fog renderer lifecycle', () => {
       s.store.getState().setActiveTool('eraser');
       s.store.getState().setFogTool({ shape: 'rectangle' });
       // The rectangle's corners snap to the 70 px grid's.
+      const gmBefore = s.read(48, 48, false);
       s.pointer('pointerdown', 5, 5);
       s.pointer('pointermove', 66, 66);
-      expect(s.read(48, 48)).toBe(255);
+      // What the rectangle will reveal is a wash on the GM's canvas, and nothing in the players' picture.
+      expect(s.read(48, 48)).toBe(0);
+      expect(s.read(48, 48, false)).toBeGreaterThan(gmBefore + 20);
       expect(key('keydown', 'Escape').defaultPrevented).toBe(true);
       // The map's shortcuts never hear the key, and the fog is as the scene holds it.
       expect(heard).not.toHaveBeenCalled();
       expect(s.read(48, 48)).toBe(0);
+      expect(s.read(48, 48, false)).toBe(gmBefore);
       s.pointer('pointermove', 30, 66);
       s.pointer('pointerup', 30, 66);
       expect(Object.keys(s.store.getState().objects.fog)).toEqual(['paint']);

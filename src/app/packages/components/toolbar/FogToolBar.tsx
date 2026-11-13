@@ -104,8 +104,11 @@ function BrushSizeDot(): React.ReactElement {
 function BrushSize(): React.ReactElement {
   const size = useAtlasStore((state) => state.fogTool.brushSize)
   const brush = useAtlasStore((state) => state.fogTool.shape === 'brush')
+  const cell = useAtlasStore((state) => (hasCells(state.grid) ? state.grid.size : 0))
   const setFogTool = useAtlasStore((state) => state.setFogTool)
   const hotkeyLabel = useHotkeyLabels()
+  // How wide the brush is in cells of the map's grid, to a tenth: pixels say nothing at the table. Nothing on a map without a grid.
+  const inCells = (radius: number): string => (cell > 0 ? t('fog.exploreCells', { count: Math.round((20 * radius) / cell) / 10 }) : '')
   const [wanted, setWanted] = useState(false)
   const open = wanted && brush
   const toggle = useCallback((): void => setWanted((before) => brush && !before), [brush])
@@ -125,7 +128,7 @@ function BrushSize(): React.ReactElement {
         <ToolButton
           icon={BrushSizeDot}
           label={t('fog.brushSize')}
-          shortcut={`${hotkeyLabel('fogSmaller')} ${hotkeyLabel('fogLarger')}`}
+          shortcut={`${hotkeyLabel('drawSmaller')} ${hotkeyLabel('drawLarger')}`}
           {...(!brush && { subtitle: t('fog.brushSizeNeedsBrush') })}
           isActive={false}
           disabled={!brush}
@@ -141,6 +144,7 @@ function BrushSize(): React.ReactElement {
           value={size}
           min={FOG_BRUSH_SIZES.min}
           max={FOG_BRUSH_SIZES.max}
+          format={inCells}
           onChange={(next) => setFogTool({ brushSize: next })}
         />
       </div>
@@ -212,7 +216,8 @@ function MoreMenu(): React.ReactElement {
     else if (made === 0) showNotice(rooms > 0 ? t('fog.roomsAreAreas') : t('fog.noRooms'))
     setOpen(false)
   }
-  const fromWalls = <DropdownMenuItem icon={LayoutGrid} label={t('fog.areasFromWalls')} disabled={!walls} onClick={areasFromWalls} />
+  // The menu has no row that is ticked: its actions begin on its text edge, like its switch and sliders.
+  const fromWalls = <DropdownMenuItem flush icon={LayoutGrid} label={t('fog.areasFromWalls')} disabled={!walls} onClick={areasFromWalls} />
   const deleteAreas = (): void => {
     // Every area of the level, also those past the number that are read.
     deleteFogAreas(Object.keys(fog).filter((id) => isFogArea(fog[id])))
@@ -264,6 +269,7 @@ function MoreMenu(): React.ReactElement {
       <div className="atlas-dropdown-section">
         <DropdownMenuItem
           destructive
+          flush
           icon={Trash2}
           label={levelled ? t('fog.deleteLevelAreas') : t('fog.deleteAreas')}
           disabled={fogAreaList(fog).length === 0}

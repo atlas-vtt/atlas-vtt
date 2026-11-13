@@ -76,6 +76,33 @@ function caves(random: () => number): WallSegment[] {
   return walls;
 }
 
+/**
+ * Courts: a box with boxes standing inside it, clear of its walls and of each other, `jitter`
+ * pixels off the lattice. Some of those are divided by a wall, hang on the court's wall by one
+ * or hold a box of their own: rooms that enclose rooms.
+ */
+function courts(random: () => number, jitter: number): WallSegment[] {
+  const walls: WallSegment[] = [];
+  const off = (): number => (random() - 0.5) * jitter;
+  const boxAt = (x: number, y: number, w: number, h: number): void => {
+    walls.push(...closed([[x * CELL + off(), y * CELL + off()], [(x + w) * CELL + off(), y * CELL + off()], [(x + w) * CELL + off(), (y + h) * CELL + off()], [x * CELL + off(), (y + h) * CELL + off()]]));
+  };
+  // Two courts side by side, each nine cells wide and up to sixteen high.
+  for (const left of [1, 10]) {
+    const height = 8 + Math.floor(random() * 9);
+    boxAt(left, 1, 9, height);
+    for (let top = 2; top + 3 <= height; top += 4 + Math.floor(random() * 2)) {
+      const [x, w, h] = [left + 1 + Math.floor(random() * 2), 4 + Math.floor(random() * 3), 2 + Math.floor(random() * 2)];
+      boxAt(x, top, w, h);
+      const kind = random();
+      if (kind < 0.3) walls.push(wall((x + 2) * CELL, top * CELL, (x + 2) * CELL, (top + h) * CELL));
+      else if (kind < 0.5) walls.push(wall(left * CELL, (top + 1) * CELL, x * CELL, (top + 1) * CELL));
+      else if (kind < 0.7 && w >= 5 && h >= 3) boxAt(x + 1, top + 1, w - 2, 1);
+    }
+  }
+  return walls;
+}
+
 const areaOf = (outline: RoomCorners): number => {
   let twice = 0;
   outline.forEach((corner, index) => {
@@ -85,9 +112,12 @@ const areaOf = (outline: RoomCorners): number => {
   return Math.abs(twice) / 2;
 };
 
-const ringArea = (ring: readonly number[]): number => {
+/** What a space covers: its outline less the holes that walls inside it close off, which run the other way round. */
+const spaceArea = (space: readonly (readonly number[])[]): number => {
   let twice = 0;
-  for (let i = 0; i < ring.length; i += 2) twice += ring[i]! * ring[(i + 3) % ring.length]! - ring[(i + 2) % ring.length]! * ring[i + 1]!;
+  for (const ring of space) {
+    for (let i = 0; i < ring.length; i += 2) twice += ring[i]! * ring[(i + 3) % ring.length]! - ring[(i + 2) % ring.length]! * ring[i + 1]!;
+  }
   return Math.abs(twice) / 2 / (Q_SCALE * Q_SCALE);
 };
 
@@ -113,20 +143,22 @@ function placeIn(outline: RoomCorners): Point | null {
 }
 
 /** The rooms of `walls` that have a space of the clipping's around a place in them, and how far each is off it. */
-function compared(walls: readonly WallSegment[]): { compared: number; off: string[] } {
+function compared(walls: readonly WallSegment[]): { compared: number; holed: number; off: string[] } {
   const spaces = enclosedSpaces(sealedWalls(walls, worldTexel(MAP)));
   const off: string[] = [];
-  let count = 0;
+  let [count, holed] = [0, 0];
   for (const room of roomsOfWalls(walls, MAP, CELL)) {
     const place = placeIn(room);
-    // A place in a room inside this room is that room's, and one right beside a wall lies in the strip the clipping gives the wall.
+    // A place right beside a wall lies in the strip the clipping gives the wall.
     if (!place || ![[0, 0], [3, 0], [-3, 0], [0, 3], [0, -3]].every(([dx, dy]) => roomAt({ x: place.x + dx!, y: place.y + dy! }, walls, MAP, CELL) === room)) continue;
     const space = spaces.find((candidate) => shapeContains(candidate, place));
     count++;
-    const truth = space ? ringArea(space[0]!) : 0;
+    // An outline that comes back to a place runs round a hole: a room or rock inside the room.
+    if (new Set(room.map(({ x, y }) => `${x},${y}`)).size < room.length) holed++;
+    const truth = space ? spaceArea(space) : 0;
     if (Math.abs(areaOf(room) - truth) > TOLERANCE * truth) off.push(`${areaOf(room).toFixed(0)} px² for ${truth.toFixed(0)} px² around ${place.x.toFixed(0)},${place.y.toFixed(0)}`);
   }
-  return { compared: count, off };
+  return { compared: count, holed, off };
 }
 
 describe('rooms from walls against the spaces the clipping finds', () => {
@@ -140,6 +172,18 @@ describe('rooms from walls against the spaces the clipping finds', () => {
       rooms += result.compared;
     }
     expect(rooms).toBeGreaterThan(TRIALS * 5);
+  }, 20_000 + TRIALS * 50);
+
+  it('agree on rooms that stand inside rooms: the room around them is what lies round them', () => {
+    let [rooms, holed] = [0, 0];
+    for (let trial = 1; trial <= TRIALS; trial++) {
+      const result = compared(courts(seeded(trial * 104729), [0, 6][trial % 2]!));
+      expect({ trial, off: result.off }).toEqual({ trial, off: [] });
+      rooms += result.compared;
+      holed += result.holed;
+    }
+    expect(rooms).toBeGreaterThan(TRIALS * 4);
+    expect(holed).toBeGreaterThan(TRIALS);
   }, 20_000 + TRIALS * 50);
 
   it('agree on caves of many short walls', () => {

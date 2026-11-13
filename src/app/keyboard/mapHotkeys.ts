@@ -23,13 +23,10 @@ export const MAP_HOTKEYS = [
   { id: 'silence', label: t('hotkey.silence'), group: t('hotkey.group.map'), defaultKey: 'Shift+s', dmOnly: true, experimental: 'sound' },
   { id: 'move', label: t('hotkey.move'), group: t('hotkey.group.tools'), defaultKey: 'v' },
   { id: 'fog', label: t('hotkey.fog'), group: t('hotkey.group.tools'), defaultKey: 'f', dmOnly: true },
-  // Run only while the fog tool is in use (`useToolbarHotkeys`).
-  { id: 'fogSmaller', label: t('fog.key.smaller'), group: t('hotkey.group.tools'), defaultKey: '[', dmOnly: true },
-  { id: 'fogLarger', label: t('fog.key.larger'), group: t('hotkey.group.tools'), defaultKey: ']', dmOnly: true },
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
   { id: 'erase', label: t('hotkey.erase'), group: t('hotkey.group.tools'), defaultKey: 'e', dmOnly: true },
   { id: 'text', label: t('hotkey.text'), group: t('hotkey.group.tools'), defaultKey: 't', dmOnly: true },
-  // Run only while the Draw tool is in use (`useToolbarHotkeys`).
+  // Run only while the Draw tool or the fog tool is in use (`useToolbarHotkeys`): the size of whichever it is.
   { id: 'drawSmaller', label: t('hotkey.drawSmaller'), group: t('hotkey.group.tools'), defaultKey: ',', dmOnly: true },
   { id: 'drawLarger', label: t('hotkey.drawLarger'), group: t('hotkey.group.tools'), defaultKey: '.', dmOnly: true },
   { id: 'measure', label: t('hotkey.measure'), group: t('hotkey.group.tools'), defaultKey: 'm' },

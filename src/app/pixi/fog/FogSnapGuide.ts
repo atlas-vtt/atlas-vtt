@@ -1,7 +1,8 @@
 /**
- * Shows what a point of a fog shape snapped to: a dot on the place, and along the wall or the
- * area's edge it lies on a thin line. In the theme's accent over a dark line, as wide on screen
- * at any zoom, so it shows on a light map and on a dark one. The GM's alone.
+ * Shows what a point of a fog shape snapped to: a ring round the place, which stays in sight in
+ * its middle, and along the wall or the area's edge it lies on a thin line. In the theme's accent
+ * over a dark line, as wide on screen at any zoom, so it shows on a light map and on a dark one.
+ * The GM's alone.
  */
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
@@ -9,7 +10,7 @@ import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils
 import type { FogGuideMark } from './FogSnapping';
 
 /** Screen pixels. */
-const DOT = { radius: 3, halo: 4.5 } as const;
+const RING = { radius: 5, width: 2, halo: 4.5 } as const;
 const LINE = { width: 1.5, halo: 3.5 } as const;
 const HALO = { color: 0x000000, alpha: 0.45 } as const;
 
@@ -69,7 +70,7 @@ export class FogSnapGuide {
       g.moveTo(fromX, fromY).lineTo(toX, toY).stroke({ width: LINE.halo / zoom, color: HALO.color, alpha: HALO.alpha });
       g.moveTo(fromX, fromY).lineTo(toX, toY).stroke({ width: LINE.width / zoom, color });
     }
-    g.circle(0, 0, DOT.halo / zoom).fill({ color: HALO.color, alpha: HALO.alpha });
-    g.circle(0, 0, DOT.radius / zoom).fill({ color });
+    g.circle(0, 0, RING.radius / zoom).stroke({ width: RING.halo / zoom, color: HALO.color, alpha: HALO.alpha });
+    g.circle(0, 0, RING.radius / zoom).stroke({ width: RING.width / zoom, color });
   }
 }

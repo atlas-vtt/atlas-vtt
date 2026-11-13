@@ -17,7 +17,7 @@ export { fittedArea, joinedArea, outerOutlines, simplifiedOutline, trimmedAreas 
 
 /** The areas of one level that are read; a record that holds more keeps them as plain fog. */
 export const MAX_FOG_AREAS = 500;
-/** The corners an area's outline keeps. */
+/** The corners an area's outline is thinned towards when it is made, and past which the editor adds none. */
 export const MAX_AREA_CORNERS = 200;
 /** The characters of a name that are read. */
 export const MAX_AREA_NAME = 60;
@@ -163,7 +163,8 @@ function readable(geometry: FogAreaGeometry): boolean {
 
 /**
  * What an operation holds for an area of `shape`: a rectangle with its corner and size, a lasso
- * with at most `MAX_AREA_CORNERS` corners. Null where the shape encloses nothing or cannot be
+ * thinned towards `MAX_AREA_CORNERS` corners without covering more than the shape
+ * (`simplifiedOutline`). Null where the shape encloses nothing or cannot be
  * fog: fewer than three corners, corners on one line, a place that is no number or beyond what
  * fog reaches.
  */

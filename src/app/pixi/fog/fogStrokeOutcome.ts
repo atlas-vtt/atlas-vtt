@@ -30,16 +30,31 @@ export interface FogStrokeOutcome {
   end(): void;
 }
 
+/** Where a shape that will reveal shows before it does: to the GM alone, off the fog's canvas. */
+export interface FogRevealPreview {
+  show(shapes: readonly StrokeShape[]): void;
+  clear(): void;
+}
+
 /** A shape as the fog shows it before it is the scene's. */
 export function fogPreviewOf(shape: StrokeShape, isErasing: boolean): FogOperation {
   return { id: '__preview__', kind: 'fog', timestamp: Date.now(), isErasing, ...shape };
 }
 
-/** Hide and Reveal: the shape is fog, or takes fog away; Alt makes a stroke do the other. */
+/**
+ * Hide and Reveal: the shape is fog, or takes fog away; Alt makes a stroke do the other. The fog's
+ * canvas is what the players see, so only what hides is shown on it while it is under way, and
+ * the brush, which wipes fog away as it goes. What another shape will reveal shows to the GM
+ * alone (`FogRevealPreview`) until it is committed.
+ */
 export class PlainFogStroke implements FogStrokeOutcome {
+  /** The fog's canvas shows the stroke under way. */
+  private onFog = false;
+
   constructor(
     private readonly store: Pick<StoreApi<ViewAtlasState>, 'getState'>,
     private readonly host: FogStrokeHost,
+    private readonly reveal: FogRevealPreview,
   ) {}
 
   begin(): void {
@@ -52,12 +67,22 @@ export class PlainFogStroke implements FogStrokeOutcome {
 
   preview(shapes: readonly StrokeShape[], alt: boolean): void {
     const reveals = this.takesAway(alt);
+    if (reveals && !shapes.some((shape) => shape.type === 'brush')) {
+      this.reveal.show(shapes);
+      // Alt went down on a shape that was hiding: what the canvas showed of it goes.
+      if (this.onFog) this.host.showStroke(undefined);
+      this.onFog = false;
+      return;
+    }
+    this.reveal.clear();
     const strokes = shapes.map((shape) => fogPreviewOf(shape, reveals));
+    this.onFog = strokes.length > 0;
     this.host.showStroke(strokes.length > 1 ? strokes : strokes[0]);
   }
 
   commit(shapes: readonly StrokeShape[], alt: boolean): void {
     const isErasing = this.takesAway(alt);
+    this.end();
     const { addFogOperation, addFogOperations } = this.store.getState();
     const [only] = shapes;
     if (!only) this.host.showCommitted();
@@ -66,6 +91,7 @@ export class PlainFogStroke implements FogStrokeOutcome {
   }
 
   end(): void {
-    // Nothing of a plain stroke is kept between its points.
+    this.onFog = false;
+    this.reveal.clear();
   }
 }

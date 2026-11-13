@@ -7,6 +7,7 @@
 import type { Graphics } from 'pixi.js';
 import type { StoreApi } from 'zustand';
 import { areaOutline, fogAreaList } from '../../fog/fogAreas';
+import { outlineRings } from '../../fog/fogKeyhole';
 import { isAreaOfRoom } from '../../fog/fogRoomAreas';
 import { roomAt, roomTexel, type RoomCorners } from '../../fog/fogRooms';
 import type { MapRect } from '../../grid/cellNumbering';
@@ -106,7 +107,8 @@ export class FogRoomClick {
     if (room === this.shown && (room === null || zoom === this.shownZoom)) return;
     this.shown = room;
     this.shownZoom = zoom;
-    if (room) drawAreaOutlines(this.deps.outline, [{ outline: room, dashed: false }], zoom, canvasBadgeTheme().accent);
+    // A room round a room is outlined along its own walls and the inner room's, not along the slit between them.
+    if (room) drawAreaOutlines(this.deps.outline, outlineRings(room).map((outline) => ({ outline, dashed: false })), zoom, canvasBadgeTheme().accent);
     else this.deps.outline.clear();
   }
 }

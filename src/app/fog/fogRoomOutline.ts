@@ -10,7 +10,7 @@ import { sideOf } from '../lighting/wallSides';
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
 import { STEP_X, STEP_Y, type GroundPiece, type RoomRaster } from './fogRoomRaster';
-import { distance, ON_LINE, outerLoop, SAME_PLACE, simplified, tidied, twiceArea, withoutInnerWalls, type FacedCorner } from './fogRoomRing';
+import { distance, ON_LINE, outerLoop, ringWork, SAME_PLACE, simplified, tidied, twiceArea, withoutInnerWalls, type FacedCorner, type RingWork } from './fogRoomRing';
 
 /** How far from two stretches of the edge, in texels, the corners between their walls are looked for: close by, and where nothing is found there, far off, where two walls that run together at last meet. */
 const CORNER_REACH = [{ texels: 8, walls: 48 }, { texels: 48, walls: 256 }] as const;
@@ -195,8 +195,11 @@ function onWallEnd(raster: RoomRaster, corner: Point): Point {
   return best;
 }
 
-/** The outline of `piece`, a closed piece of the raster's ground; null where what the walls leave of it encloses nothing. */
-export function roomOutline(raster: RoomRaster, piece: GroundPiece): RoomOutline | null {
+/**
+ * The outline of `piece`, a closed piece of the raster's ground; null where what the walls leave
+ * of it encloses nothing. `work` is what taking the walls inside it out of its edge may cost.
+ */
+export function roomOutline(raster: RoomRaster, piece: GroundPiece, work: RingWork = ringWork()): RoomOutline | null {
   const { texel, left, top, walls } = raster;
   const edge = raster.edgeOf(piece);
   /** Corners that lie somewhere along a wall: where the outline bends at one, no wall's corner was found for it. */
@@ -224,7 +227,7 @@ export function roomOutline(raster: RoomRaster, piece: GroundPiece): RoomOutline
     ring.push(spot);
     if (spot.wall >= 0 && next.wall >= 0 && spot.wall !== next.wall) ring.push(...between(raster, spot, next));
   });
-  const corners = simplified(tidied(outerLoop(tidied(withoutInnerWalls(ring, walls, 1.5 * texel)))));
+  const corners = simplified(tidied(outerLoop(tidied(withoutInnerWalls(ring, walls, 1.5 * texel, work)), work)));
   const outline = tidied(corners.map((corner) => (loose.has(corner) ? onWallEnd(raster, corner) : corner))).map(({ x, y }) => ({ x, y }));
   const area = twiceArea(outline) / 2;
   if (outline.length < 3 || area < texel * texel) return null;

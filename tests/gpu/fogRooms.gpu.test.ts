@@ -73,7 +73,93 @@ const accentAlong = (pixels: Uint8ClampedArray, y: number, from: number, to: num
   return count;
 };
 
+/** A corridor from 16 to 112 all round a block from 40 to 88, which a wall down its middle parts into two rooms. */
+const COURT = { left: 16, top: 16, right: 112, bottom: 112 };
+const BLOCK = { left: 40, top: 40, right: 88, bottom: 88 };
+const box = (room: typeof COURT): WallInput[] => [
+  { type: 'solid', p1: { x: room.left, y: room.top }, p2: { x: room.right, y: room.top } },
+  { type: 'solid', p1: { x: room.right, y: room.top }, p2: { x: room.right, y: room.bottom } },
+  { type: 'solid', p1: { x: room.right, y: room.bottom }, p2: { x: room.left, y: room.bottom } },
+  { type: 'solid', p1: { x: room.left, y: room.bottom }, p2: { x: room.left, y: room.top } },
+];
+const RING_WALLS: WallInput[] = [...box(COURT), ...box(BLOCK), { type: 'solid', p1: { x: 64, y: 40 }, p2: { x: 64, y: 88 } }];
+
+/**
+ * Holds the players' picture to fog over the corridor alone, or over all but the corridor
+ * (`covered` false): two pixels clear of every wall, as `expectFogOver` allows.
+ */
+function expectCorridor(frame: readonly number[], covered: boolean): void {
+  const within = (x: number, y: number, room: typeof COURT, by: number): boolean => x >= room.left + by && x < room.right - by && y >= room.top + by && y < room.bottom - by;
+  let [corridor, rooms] = [0, 0];
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const inCorridor = within(x, y, COURT, 2) && !within(x, y, BLOCK, -2);
+      const inRooms = within(x, y, BLOCK, 2);
+      if (inCorridor) corridor++;
+      if (inRooms) rooms++;
+      if (inCorridor) expect([x, y, at(frame, x, y)]).toEqual([x, y, covered ? 0 : 255]);
+      // Beyond the court too, save along the map's own edge, where fog that covers the map ends.
+      else if (inRooms || (!within(x, y, COURT, -2) && within(x, y, { left: 0, top: 0, right: SIZE, bottom: SIZE }, 4))) expect([x, y, at(frame, x, y)]).toEqual([x, y, covered ? 255 : 0]);
+    }
+  }
+  // The corridor is 24 px wide all round, the block 48 px square.
+  expect([corridor, rooms]).toEqual([92 * 92 - 52 * 52, 44 * 44]);
+}
+
 describe('the fog tool\'s Room shape on the map', () => {
+  it('hides and reveals a corridor that runs all round rooms without the rooms inside it', async () => {
+    const s = await scene();
+    s.showMapImage(MAP);
+    s.store.setState((state) => ({ grid: { ...state.grid, type: 'square', size: 16, offsetX: 0, offsetY: 0 } }));
+    for (const wall of RING_WALLS) s.store.getState().addWall(wall);
+    s.store.temporal.getState().clear();
+    s.store.getState().setFogTool({ shape: 'room' });
+    s.store.getState().setActiveTool('fog');
+    const history = getHistoryStore(s.store)!;
+
+    // A click in the corridor's left side hides the corridor: the two rooms inside stay clear.
+    click(s, 28, 64);
+    expect(Object.values(s.store.getState().objects.fog)).toEqual([expect.objectContaining({ type: 'lasso', isErasing: false })]);
+    expect(history.getState().pastStates).toHaveLength(1);
+    expectCorridor(s.frame(), true);
+    history.getState().undo();
+
+    // With the whole map covered, revealing the corridor leaves the rooms inside hidden.
+    s.store.getState().coverAllFog(MAP);
+    s.store.getState().setActiveTool('eraser');
+    click(s, 64, 100);
+    expectCorridor(s.frame(), false);
+
+    // Each room inside is revealed by a click of its own.
+    click(s, 52, 64);
+    const frame = s.frame();
+    expect([at(frame, 52, 64), at(frame, 76, 64)]).toEqual([255, 0]);
+  });
+
+  it('outlines a corridor round rooms along its walls and theirs, with no line across it', async () => {
+    const s = await scene();
+    s.showMapImage(MAP);
+    s.store.setState((state) => ({ grid: { ...state.grid, type: 'square', size: 16, offsetX: 0, offsetY: 0 } }));
+    for (const wall of RING_WALLS) s.store.getState().addWall(wall);
+    s.store.getState().setFogTool({ shape: 'room' });
+    s.store.getState().setActiveTool('fog');
+    s.pointer('pointermove', 28, 64);
+    const pixels = s.rgba();
+    // The court's top wall and the block's are outlined.
+    expect(accentAlong(pixels, 16, 20, 108)).toBe(88);
+    expect(accentAlong(pixels, 40, 44, 84)).toBe(40);
+    // Nothing is drawn on the corridor's floor: no pixel in the accent more than three pixels from a wall.
+    const floor = (x: number, y: number): boolean => {
+      const outer = Math.min(x - COURT.left, COURT.right - x, y - COURT.top, COURT.bottom - y);
+      const inner = Math.max(BLOCK.left - x, x - BLOCK.right, BLOCK.top - y, y - BLOCK.bottom);
+      return outer > 3 && inner > 3;
+    };
+    let stray = 0;
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) if (floor(x, y) && isAccent(pixels, x, y)) stray++;
+    expect(stray).toBe(0);
+  });
+
+
   it('hides exactly the room clicked in, in one undo step: its neighbour beyond the door stays clear', async () => {
     const s = await scene();
     s.showMapImage(MAP);

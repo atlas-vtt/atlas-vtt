@@ -26,15 +26,13 @@ export interface FogAreaChanges {
 }
 
 export interface FogSlice {
-  /** Adds an operation on the level shown and returns its id. */
+  /** Adds an operation on the level shown and returns its id: it acts after all the fog there is. */
   addFogOperation: (data: FogOperationInput) => string;
   /**
    * Adds operations on the level shown in one undo step and returns their ids: they act in the
    * order given, after all the fog there is.
    */
   addFogOperations: (data: readonly FogOperationInput[]) => string[];
-  deleteFogOperations: (ids: string[]) => void;
-  setFogOperations: (fog: Record<string, FogOperation>) => void;
   /**
    * Reveals the whole level the view shows, in one undo step: its fog goes, and its areas stay,
    * revealed. Other floors keep theirs.
@@ -54,11 +52,6 @@ export interface FogSlice {
   flipFogArea: (id: string) => boolean;
   /** Changes the outline or the name of an area of the level shown, in one undo step; false where nothing changed. */
   updateFogArea: (id: string, changes: FogAreaChanges) => boolean;
-  /**
-   * Puts an area of the level shown back as `area`, the very operation it was before a gesture
-   * changed it: a cancelled gesture leaves the scene holding what it held. False where the area is gone.
-   */
-  restoreFogArea: (area: FogArea) => boolean;
   /** Deletes those of `ids` that are areas of the level shown, in one undo step. */
   deleteFogAreas: (ids: readonly string[]) => void;
   /**
@@ -155,11 +148,16 @@ function newFogId(): string {
   return `fog_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 }
 
-/** A time after every operation's, so what is written now acts last whatever the clock says. */
+/**
+ * A time after every operation's, so what is written now acts last whatever the clock says. An
+ * entry that is no object (a map file is kept as it came) has no time.
+ */
 function timeAfterAll(fog: Readonly<Record<string, FogOperation>>): number {
   let newest = -Infinity;
-  for (const operation of Object.values(fog)) {
-    if (Number.isFinite(operation.timestamp) && operation.timestamp > newest) newest = operation.timestamp;
+  for (const entry of Object.values<unknown>(fog)) {
+    if (typeof entry !== 'object' || entry === null || !('timestamp' in entry)) continue;
+    const { timestamp } = entry;
+    if (typeof timestamp === 'number' && Number.isFinite(timestamp) && timestamp > newest) newest = timestamp;
   }
   return Math.max(Date.now(), newest + 1);
 }
@@ -181,18 +179,9 @@ function isArea(rect: MapRect | null): rect is MapRect {
 export function createFogActions(set: ImmerSet, get: () => FogDraft): FogSlice {
   return {
     addFogOperation: (data) => {
-      const id = newFogId();
-      set((draft) => {
-        const op: FogOperation = {
-          id,
-          kind: 'fog',
-          timestamp: Date.now(),
-          ...data,
-          ...placedOnViewedLevel(draft),
-        };
-        draft.objects.fog[id] = op;
-      });
-      return id;
+      let ids: string[] = [];
+      set((draft) => { ids = append(draft, [data]); });
+      return ids[0]!;
     },
 
     addFogOperations: (data) => {
@@ -200,16 +189,6 @@ export function createFogActions(set: ImmerSet, get: () => FogDraft): FogSlice {
       if (data.length > 0) set((draft) => { ids = append(draft, data); });
       return ids;
     },
-
-    deleteFogOperations: (ids) => set((draft) => {
-      for (const id of ids) {
-        delete draft.objects.fog[id];
-      }
-    }),
-
-    setFogOperations: (fog) => set((draft) => {
-      draft.objects.fog = { ...fog };
-    }),
 
     clearFog: () => {
       // Nothing to reveal leaves no undo step.
@@ -263,13 +242,6 @@ export function createFogActions(set: ImmerSet, get: () => FogDraft): FogSlice {
         }
         if (geometry) draft.objects.fog[id] = reshapedArea(current, geometry);
       });
-      return true;
-    },
-
-    restoreFogArea: (area) => {
-      const current = viewedArea(get(), area.id);
-      if (!current) return false;
-      if (current !== area) set((draft) => { draft.objects.fog[area.id] = area; });
       return true;
     },
 

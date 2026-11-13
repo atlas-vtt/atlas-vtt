@@ -2,7 +2,7 @@
  * The fog areas of the level shown, as the GM sees them with any tool: a badge on each (an eye
  * while it is revealed, struck through while it is hidden), its name beside the badge the
  * pointer is on, and the areas' outlines while the fog tool is chosen (the one pointed at with
- * any tool). Badges keep their size on screen; a revealed area's keeps back outside the fog
+ * any tool; not that of an area a drag holds, which its editor draws as it will be). Badges keep their size on screen; a revealed area's keeps back outside the fog
  * tool (`quiet`). Nothing of it is the players': the layer hides
  * while the canvas shows their view, and their frame and a picture of the scene leave it out.
  */
@@ -19,6 +19,7 @@ import { FogAreaName } from './FogAreaName';
 import { drawFogBadge, FOG_BADGE_GLYPH_SIZE, FOG_BADGE_QUIET, fogBadgeAt, FogBadgeGlyphs, sameBadgeLook, type FogBadgeLook } from './fogAreaBadge';
 import { drawAreaOutlines, type AreaOutline } from './fogAreaOutlines';
 import { viewedFog } from './FogPicture';
+import { showsGmView } from './fogVisibilityPolicy';
 
 /** Above the fog's picture (999), below the outline, ring and guide of a stroke under way (1001 and up). */
 export const FOG_AREAS_Z_INDEX = 1000;
@@ -64,8 +65,10 @@ export class FogAreaLayer {
   private readonly unsubscribe: () => void;
   private areas: readonly FogArea[] = [];
   private hovered: string | null = null;
+  /** The area a drag holds: its editor draws the outline it will have, so the one it has is left out. */
+  private held: string | null = null;
   /** What the outlines were last drawn for. */
-  private outlined: { areas: readonly FogArea[]; all: boolean; hovered: string | null; zoom: number; accent: number } | null = null;
+  private outlined: { areas: readonly FogArea[]; all: boolean; hovered: string | null; held: string | null; zoom: number; accent: number } | null = null;
   private outlinesPending = false;
   private outlinesDrawn = false;
 
@@ -127,6 +130,13 @@ export class FogAreaLayer {
     this.sync();
   }
 
+  /** A drag of the selected area shows its outline as it will be (null: no longer): the outline it has is not drawn meanwhile. */
+  setHeld(areaId: string | null): void {
+    if (areaId === this.held) return;
+    this.held = areaId;
+    if (this.view.visible) this.drawOutlines();
+  }
+
   /** Whether area `id` shows a badge and is revealed. */
   isRevealed(id: string): boolean {
     const badge = this.badges.get(id);
@@ -168,8 +178,7 @@ export class FogAreaLayer {
 
   /** Whether the canvas shows the GM's view of a loaded scene: only then are the areas marked. */
   private shown(state: ViewAtlasState): boolean {
-    if (state.isMapLoading || !state.isGMView || state.isPlayerView === true) return false;
-    return this.deps.showsPlayers?.() !== true;
+    return !state.isMapLoading && showsGmView(state, this.deps.showsPlayers);
   }
 
   private sync(): void {
@@ -286,11 +295,12 @@ export class FogAreaLayer {
     const zoom = this.zoom();
     const { accent } = this.theme;
     const last = this.outlined;
-    if (last && last.areas === this.areas && last.all === all && last.zoom === zoom && last.accent === accent && (all || last.hovered === this.hovered)) return;
-    this.outlined = { areas: this.areas, all, hovered: this.hovered, zoom, accent };
+    const { held } = this;
+    if (last && last.areas === this.areas && last.all === all && last.zoom === zoom && last.accent === accent && last.held === held && (all || last.hovered === this.hovered)) return;
+    this.outlined = { areas: this.areas, all, hovered: this.hovered, held, zoom, accent };
     const drawn: AreaOutline[] = [];
     for (const { area } of this.badges.values()) {
-      if (all || area.id === this.hovered) drawn.push({ outline: areaOutline(area), dashed: !areaIsHidden(area) });
+      if (area.id !== held && (all || area.id === this.hovered)) drawn.push({ outline: areaOutline(area), dashed: !areaIsHidden(area) });
     }
     // Nothing to draw over nothing drawn changes no picture.
     if (drawn.length === 0 && !this.outlinesDrawn) return;

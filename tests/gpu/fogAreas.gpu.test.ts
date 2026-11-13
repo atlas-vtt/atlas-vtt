@@ -237,9 +237,30 @@ describe('fog areas on the map', () => {
     const playersSee = s.rgba(s.fog.getPlayerViewLayers());
     expect(isAccent(playersSee, 112, 48)).toBe(false);
 
-    // Its bottom right corner dragged down: the fog follows, in one undo step.
+    // Its bottom right corner dragged down. Until the release the scene holds the area as it was,
+    // and so does the players' picture; the GM sees the corner where it will lie.
     const before = history.getState().pastStates.length;
-    drag([112, 48], [120, 100]);
+    const heldFog = s.store.getState().objects.fog;
+    const playersBefore = s.frame();
+    /** Whether the area's bottom edge, as the scene holds it, is outlined on the GM's canvas. */
+    const bottomEdgeDrawn = (): boolean => {
+      const gm = s.rgba();
+      // Between the handle on its left corner and the badge in its middle.
+      return isAccent(gm, 72, 47) || isAccent(gm, 72, 48);
+    };
+    expect(bottomEdgeDrawn()).toBe(true);
+    s.pointer('pointerdown', 112, 48);
+    s.pointer('pointermove', 118, 80);
+    s.pointer('pointermove', 120, 100);
+    expect(s.store.getState().objects.fog).toBe(heldFog);
+    expect(s.frame()).toEqual(playersBefore);
+    // The outline it will have is drawn in place of the one it has.
+    expect(isAccent(s.rgba(), 120, 100)).toBe(true);
+    expect(bottomEdgeDrawn()).toBe(false);
+    expect(isAccent(s.rgba(s.fog.getPlayerViewLayers()), 120, 100)).toBe(false);
+    expect(history.getState().pastStates).toHaveLength(before);
+    // Released: the fog follows, in one undo step.
+    s.pointer('pointerup', 120, 100);
     expect(areaOutline(side())).toContainEqual({ x: 120, y: 100 });
     expect(s.read(110, 80)).toBe(0);
     expect(history.getState().pastStates).toHaveLength(before + 1);

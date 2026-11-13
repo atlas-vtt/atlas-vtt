@@ -1,6 +1,7 @@
 /**
  * The selected fog area as the pointer holds it: by a corner, which is dragged, or by itself,
- * which moves it. What it becomes for where the pointer is, and what is refused.
+ * which moves it. What it becomes for where the pointer is, and what is refused. The scene holds
+ * the area as it was taken until the pointer is released.
  */
 import { isAreaOutline, movedOutline, rectangleBetween, withCornerAt } from '../../fog/fogAreaEdit';
 import type { FogArea } from '../../fog/fogAreas';
@@ -12,7 +13,7 @@ export interface FogAreaGrab {
   readonly what: 'corner' | 'move';
   /** The corner held, among `outline`. */
   readonly index: number;
-  /** The area as it was before the gesture: what a cancel puts back. */
+  /** The area as it was taken: the scene holds it so until the pointer is released. */
   readonly before: FogArea;
   /** Its outline when it was taken, with a corner the press added. */
   readonly outline: readonly Point[];
@@ -24,8 +25,23 @@ export interface FogAreaGrab {
   at: Point;
   /** The pointer left the place it was pressed at. */
   moved: boolean;
-  /** A history transaction is open: the gesture has written. */
-  open: boolean;
+  /** What a release now writes; null where it writes nothing: the pointer has not left its place, or the outline is refused. */
+  changes: FogAreaChanges | null;
+  /** The outline `changes` leave, which shows while the area is held; null with them. */
+  shown: readonly Point[] | null;
+}
+
+/** The outline the held area has once `changes` are written. */
+export function grabOutline(grab: FogAreaGrab, changes: FogAreaChanges): readonly Point[] {
+  if (changes.points) return changes.points;
+  // A rectangle that stays one: its outline runs from its upper left corner round to its lower left.
+  const [first, , opposite] = grab.outline;
+  if (!first || !opposite) return grab.outline;
+  const x = changes.x ?? first.x;
+  const y = changes.y ?? first.y;
+  const right = x + (changes.width ?? opposite.x - first.x);
+  const bottom = y + (changes.height ?? opposite.y - first.y);
+  return [{ x, y }, { x: right, y }, { x: right, y: bottom }, { x, y: bottom }];
 }
 
 /**

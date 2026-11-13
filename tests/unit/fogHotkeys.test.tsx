@@ -44,17 +44,17 @@ const press = (key: string): boolean => fireEvent.keyDown(window, { key });
 const size = (store: ViewAtlasStore): number => store.getState().fogTool.brushSize;
 
 describe('the fog tool\'s keys', () => {
-  it('lists the brush\'s two keys among the GM\'s tool keys, on [ and ], and not among the players\'', () => {
-    expect(DEFAULT_MAP_HOTKEYS.fogSmaller).toBe('[');
-    expect(DEFAULT_MAP_HOTKEYS.fogLarger).toBe(']');
-    const gm = availableHotkeys().map((action) => action.id);
-    expect(gm).toContain('fogSmaller');
-    expect(gm).toContain('fogLarger');
-    const players = availableHotkeys(true).map((action) => action.id);
-    expect(players).not.toContain('fogSmaller');
-    expect(players).not.toContain('fogLarger');
-    // No other action has the keys.
-    for (const key of ['[', ']']) expect(Object.values(DEFAULT_MAP_HOTKEYS).filter((bound) => bound === key)).toHaveLength(1);
+  it('sizes the brush with the keys that size the Draw tool, which every keyboard types bare: , and .', () => {
+    // [ and ] need Option or AltGr on a German keyboard, and then are no bare key.
+    expect(DEFAULT_MAP_HOTKEYS.drawSmaller).toBe(',');
+    expect(DEFAULT_MAP_HOTKEYS.drawLarger).toBe('.');
+    expect(Object.values(DEFAULT_MAP_HOTKEYS)).not.toContain('[');
+    expect(Object.values(DEFAULT_MAP_HOTKEYS)).not.toContain(']');
+    // One pair of keys for both tools, named for both, among the GM's tool keys and not the players'.
+    const gm = availableHotkeys().filter((action) => action.id === 'drawSmaller' || action.id === 'drawLarger');
+    expect(gm.map((action) => action.label)).toEqual(['Smaller drawing or fog brush', 'Larger drawing or fog brush']);
+    expect(availableHotkeys(true).map((action) => action.id)).not.toEqual(expect.arrayContaining(['drawSmaller']));
+    for (const key of [',', '.']) expect(Object.values(DEFAULT_MAP_HOTKEYS).filter((bound) => bound === key)).toHaveLength(1);
   });
 
   it('keeps F cycling between hiding and revealing', () => {
@@ -67,42 +67,51 @@ describe('the fog tool\'s keys', () => {
     expect(store.getState().activeTool).toBe('fog');
   });
 
-  it('steps the brush with ] and [ while the fog tool hides or reveals, never as an undo step', () => {
+  it('steps the brush with . and , while the fog tool hides or reveals, never as an undo step', () => {
     const store = mount();
     press('f');
-    press(']');
+    press('.');
     const larger = size(store);
     expect(larger).toBeGreaterThan(DEFAULT_FOG_TOOL.brushSize);
-    press('[');
-    press('[');
+    press(',');
+    press(',');
     expect(size(store)).toBeLessThan(DEFAULT_FOG_TOOL.brushSize);
     press('f');
     expect(store.getState().activeTool).toBe('eraser');
     const before = size(store);
-    press(']');
+    press('.');
     expect(size(store)).toBeGreaterThan(before);
     expect(getHistoryStore(store)!.getState().pastStates).toHaveLength(0);
+    // The keys they had before do nothing now.
+    const kept = size(store);
+    press(']');
+    press('[');
+    expect(size(store)).toBe(kept);
   });
 
   it('stops at the smallest and the largest brush', () => {
     const store = mount();
     press('f');
-    for (let i = 0; i < 40; i++) press(']');
+    for (let i = 0; i < 40; i++) press('.');
     expect(size(store)).toBe(FOG_BRUSH_SIZES.max);
-    for (let i = 0; i < 40; i++) press('[');
+    for (let i = 0; i < 40; i++) press(',');
     expect(size(store)).toBe(FOG_BRUSH_SIZES.min);
   });
 
   it('leaves the brush as it is while another tool is in use, and in the players\' view', () => {
     const store = mount();
-    press(']');
-    press('[');
-    press('[');
+    press('.');
+    press(',');
+    press(',');
+    expect(size(store)).toBe(DEFAULT_FOG_TOOL.brushSize);
+    // While the Draw tool is in use the keys are that tool's.
+    store.getState().setActiveTool('draw');
+    press('.');
     expect(size(store)).toBe(DEFAULT_FOG_TOOL.brushSize);
 
     const players = mount(true);
     players.getState().setActiveTool('fog');
-    press(']');
+    press('.');
     expect(size(players)).toBe(DEFAULT_FOG_TOOL.brushSize);
   });
 
@@ -110,8 +119,8 @@ describe('the fog tool\'s keys', () => {
     const store = mount();
     press('f');
     // A key a shortcut took has its default prevented.
-    expect(press(']')).toBe(false);
-    expect(press('[')).toBe(false);
+    expect(press('.')).toBe(false);
+    expect(press(',')).toBe(false);
     expect(size(store)).toBe(DEFAULT_FOG_TOOL.brushSize);
   });
 });

@@ -148,23 +148,50 @@ describe('an outline thinned to few enough corners', () => {
     expect(corners(simplifiedOutline(dense, 200))).toEqual(at([0, 0], [100, 0], [100, 100], [0, 100]));
   });
 
-  it('keeps a round outline round, within a tolerance that grows until the corners fit', () => {
+  it('keeps a round outline round, within a tolerance that grows until the corners fit, though never past a texel', () => {
     const circle = Array.from({ length: 3000 }, (_, i) => ({ x: 1000 * Math.cos((i / 3000) * 2 * Math.PI), y: 1000 * Math.sin((i / 3000) * 2 * Math.PI) }));
-    for (const most of [200, 40, 8]) {
-      const thinned = simplifiedOutline(circle, most);
-      expect(thinned.length).toBeLessThanOrEqual(most);
-      expect(thinned.length).toBeGreaterThanOrEqual(3);
-      // Every corner left is one of the circle's own.
-      for (const point of thinned) expect(Math.hypot(point.x, point.y)).toBeCloseTo(1000, 6);
-    }
+    const thinned = simplifiedOutline(circle, 200);
+    expect(thinned.length).toBeLessThanOrEqual(200);
+    expect(thinned.length).toBeGreaterThanOrEqual(3);
+    // Every corner left is one of the circle's own.
+    for (const point of thinned) expect(Math.hypot(point.x, point.y)).toBeCloseTo(1000, 6);
     // 200 corners lose less than a hundredth of the circle.
-    expect(area(simplifiedOutline(circle, 200))).toBeGreaterThan(Math.PI * 1000 * 1000 * 0.99);
+    expect(area(thinned)).toBeGreaterThan(Math.PI * 1000 * 1000 * 0.99);
+    // Asked for fewer than two pixels of tolerance leave, it keeps what they leave: within two pixels of the circle.
+    const fewest = simplifiedOutline(circle, 8);
+    expect(fewest.length).toBeGreaterThan(8);
+    expect(fewest.length).toBeLessThan(80);
+    expect(area(fewest)).toBeGreaterThan(Math.PI * 998 * 998);
   });
 
-  it('never comes to fewer than three corners, however small the outline is', () => {
+  it('never covers more than the outline drawn: where fewer corners would lie outside it, they are cut back to it', () => {
+    // A cave wall of 1800 corners: a ripple of a pixel all along it, and every twelfth corner 12 px farther out.
+    const cave = Array.from({ length: 1800 }, (_, i) => {
+      const far = 400 + (i % 12 === 0 ? 12 : 0) + Math.sin(i * 1.3);
+      return { x: 500 + far * Math.cos((i / 1800) * 2 * Math.PI), y: 500 + far * Math.sin((i / 1800) * 2 * Math.PI) };
+    });
+    const thinned = simplifiedOutline(cave, 200);
+    // Fewer corners where the cave bulges; where it is dented, fewer would lie outside it, and its own stay.
+    expect(thinned.length).toBeLessThan(cave.length * 0.7);
+    // The spikes are kept: they are more than a texel.
+    expect(thinned.filter((point) => Math.hypot(point.x - 500, point.y - 500) > 410)).toHaveLength(150);
+    // Nothing of it lies outside the cave, to the eighth of a pixel shapes are rounded to along its wall.
+    const whole = area(joinedArea(cave)!);
+    expect(area(joinedArea(cave, thinned)!) - whole).toBeLessThan((2 * Math.PI * 412) / 8);
+    // And it is the cave to within two pixels of its wall.
+    expect(area(joinedArea(thinned)!)).toBeGreaterThan(whole - 2 * 2 * Math.PI * 412);
+    expect(area(joinedArea(thinned)!)).toBeLessThan(whole);
+
+    // Corners that only stand out stay: 900 spikes of 12 px are the cave, and thinning them would uncover or cover ground.
+    const spiked = Array.from({ length: 900 }, (_, i) => {
+      const far = 400 + (i % 2) * 12;
+      return { x: 500 + far * Math.cos((i / 900) * 2 * Math.PI), y: 500 + far * Math.sin((i / 900) * 2 * Math.PI) };
+    });
+    expect(simplifiedOutline(spiked, 200)).toEqual(spiked);
+  });
+
+  it('leaves a scribble too small to thin as it was drawn', () => {
     const scribble = Array.from({ length: 900 }, (_, i) => ({ x: (i % 2) * 0.2 + i * 0.0001, y: ((i >> 1) % 2) * 0.2 }));
-    const thinned = simplifiedOutline(scribble, 200);
-    expect(thinned.length).toBeGreaterThanOrEqual(3);
-    expect(thinned.length).toBeLessThanOrEqual(200);
+    expect(simplifiedOutline(scribble, 200)).toEqual(scribble);
   });
 });

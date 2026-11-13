@@ -7,13 +7,14 @@ import { FogRoomClick } from '../../src/app/pixi/fog/FogRoomClick';
 import { FogSnapping, type FogGuideMark, type PlaceKeys } from '../../src/app/pixi/fog/FogSnapping';
 import { FogStroke } from '../../src/app/pixi/fog/FogStroke';
 import { PlainFogStroke } from '../../src/app/pixi/fog/fogStrokeOutcome';
-import type { ShapeStroke } from '../../src/app/tools/shapeStroke';
+import type { ShapeStroke, StrokeShape } from '../../src/app/tools/shapeStroke';
 
 /** What the gesture reads of the store. */
 export interface FogGestureState {
   activeTool: string;
   fogTool: FogToolChoices;
   isMapLoading: boolean;
+  isGMView: boolean;
   grid: { size: number; type?: 'square' | 'hex-horizontal' | 'hex-vertical'; offsetX?: number; offsetY?: number; snapToGrid?: boolean };
   objects: { fog: Record<string, unknown>; walls: Record<string, unknown> };
   addFogOperation: ReturnType<typeof vi.fn>;
@@ -61,6 +62,8 @@ export interface FogGestureScene {
   guide: { mark: FogGuideMark | null };
   /** What was drawn as the outline of what is under way, or of the cell under the pointer. */
   outline: { clear: ReturnType<typeof vi.fn>; poly: ReturnType<typeof vi.fn> };
+  /** What the GM alone is shown of a shape that will reveal: the shapes last washed over, none once the wash was cleared. */
+  wash: { shapes: readonly StrokeShape[] };
 }
 
 interface PressKeys {
@@ -80,7 +83,7 @@ export const fogPointerAt = (x: number, y: number, keys: PressKeys = {}): Federa
  */
 export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): FogGestureScene {
   const state: FogGestureState = {
-    activeTool, fogTool: { ...DEFAULT_FOG_TOOL, shape }, isMapLoading: false, grid: { size: 70 }, objects: { fog: {}, walls: {} },
+    activeTool, fogTool: { ...DEFAULT_FOG_TOOL, shape }, isMapLoading: false, isGMView: true, grid: { size: 70 }, objects: { fog: {}, walls: {} },
     addFogOperation: vi.fn(), addFogOperations: vi.fn(),
   };
   const picture: PictureCalls = { showStroke: vi.fn(), showCommitted: vi.fn() };
@@ -91,6 +94,8 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
   const line = vi.fn().mockReturnThis();
   const outline = { clear: vi.fn(), rect: vi.fn(), poly: vi.fn(), moveTo: line, lineTo: line, circle: line, stroke: line, fill: vi.fn() };
   const keys = { hold: vi.fn(), release: vi.fn() };
+  const wash: FogGestureScene['wash'] = { shapes: [] };
+  const reveal = { show: (shapes: readonly StrokeShape[]) => { wash.shapes = shapes.map((washed) => ({ ...washed })); }, clear: () => { wash.shapes = []; } };
   const ring = {
     shown: true,
     erasing: null as boolean | null,
@@ -107,7 +112,7 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
   const stroke = Object.assign(Object.create(FogStroke.prototype) as FogStroke, {
     deps,
     areas: () => areas,
-    plain: new PlainFogStroke(store as never, picture),
+    plain: new PlainFogStroke(store as never, picture, reveal),
     drag: new FogDrag(outline as unknown as Graphics, snapping, () => 1),
     polygon: { active: false, drop: () => false, rescale: vi.fn() },
     // Rooms have a test of their own (fogRoomClick.test.ts): this map has none.
@@ -135,5 +140,5 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
     rekey: (placeKeys) => underWay.rekey(placeKeys),
     drop: () => gesture.drop(),
   };
-  return { tool, state, picture, viewport, guide, outline };
+  return { tool, state, picture, viewport, guide, outline, wash };
 }

@@ -53,6 +53,4 @@ export const fog = {
   'fog.roomsAreAreas': 'Every room is an area already',
   'fog.deleteAreas': 'Delete all areas',
   'fog.deleteLevelAreas': "Delete this level's areas",
-  'fog.key.smaller': 'Smaller fog brush',
-  'fog.key.larger': 'Larger fog brush',
 } as const satisfies Record<string, Message>;

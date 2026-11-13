@@ -50,10 +50,11 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
   const dmOnly = (action: () => void) => (): void => {
     if (!isPlayerView) action()
   }
-  /** An action of the Draw tool's bars: only while the tool is in use, in the GM's view. */
-  const whileDrawing = (action: () => void) => dmOnly(() => {
+  /** The size of the tool in use, a step smaller or larger: the Draw tool's in the GM's view, else the fog brush. */
+  const stepSize = (direction: 1 | -1) => dmOnly(() => {
     const state = store.getState()
-    if (state.activeTool === "draw" && state.isGMView) action()
+    if (state.activeTool !== "draw") stepFogBrush(state, direction)
+    else if (state.isGMView) stepDrawSize(store, direction)
   })
 
   // The mode the Draw tool had before its eraser, which the eraser's key goes back to.
@@ -98,8 +99,8 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
       if (state.activeTool !== "draw") selectTool("eraser")
       else if (state.isGMView) state.setDrawTool({ mode: eraserOrBack(state.drawTool.mode, drawnWith.current, state.grid) })
     }),
-    drawSmaller: whileDrawing(() => stepDrawSize(store, -1)),
-    drawLarger: whileDrawing(() => stepDrawSize(store, 1)),
+    drawSmaller: stepSize(-1),
+    drawLarger: stepSize(1),
     gmView: dmOnly(toggleGMView),
     selectAll: dmOnly(() => {
       const state = store.getState()
@@ -116,8 +117,6 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     assets: dmOnly(toggleAssetManager),
     pin: dmOnly(() => selectTool("note-pin")),
     wall: dmOnly(() => selectTool("wall")),
-    fogSmaller: dmOnly(() => stepFogBrush(store.getState(), -1)),
-    fogLarger: dmOnly(() => stepFogBrush(store.getState(), 1)),
     audio: dmOnly(() => { if (AMBIENT_AUDIO_ENABLED) selectTool("audio") }),
     diceTray: () => store.getState().setDiceTrayOpen(!store.getState().isDiceTrayOpen),
     initiative: dmOnly(() => {

@@ -9,3 +9,12 @@ export function resolveFogPreviewAlpha(params: {
   }
   return params.isGMView ? params.gmOpacity : 1.0;
 }
+
+/**
+ * Whether a canvas shows the GM's own view, where the fog tool's marks belong: not session view,
+ * not the palette's player mode, and not a peek, which `showsPlayers` tells while the store's
+ * view switches still say the GM's.
+ */
+export function showsGmView(state: { isGMView: boolean; isPlayerView: boolean }, showsPlayers?: () => boolean | null): boolean {
+  return state.isGMView && !state.isPlayerView && showsPlayers?.() !== true;
+}

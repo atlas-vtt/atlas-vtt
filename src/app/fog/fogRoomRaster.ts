@@ -46,6 +46,8 @@ export interface GroundPiece {
   readonly open: boolean;
   /** Its first texel, row by row: the leftmost of its top row. */
   readonly first: number;
+  /** How many texels it has. */
+  readonly size: number;
 }
 
 export class RoomRaster {
@@ -110,6 +112,32 @@ export class RoomRaster {
   }
 
   /**
+   * The pieces with ground in the box of map pixels from (`left`, `top`) to (`right`, `bottom`),
+   * each once, flooded now where it was not.
+   */
+  piecesIn(left: number, top: number, right: number, bottom: number): GroundPiece[] {
+    const { width, height, texel, barrier, pieceOf } = this;
+    const column = (x: number): number => Math.min(width - 1, Math.max(0, Math.floor((x - this.left) / texel)));
+    const row = (y: number): number => Math.min(height - 1, Math.max(0, Math.floor((y - this.top) / texel)));
+    const found = new Set<number>();
+    let last = 0;
+    for (let y = row(top); y <= row(bottom); y++) {
+      for (let at = y * width + column(left), end = y * width + column(right); at <= end; at++) {
+        if (barrier[at] === 1) continue;
+        const id = pieceOf[at] || this.flood(at);
+        if (id !== last) found.add(last = id);
+      }
+    }
+    return [...found].map((id) => this.pieces[id - 1]!);
+  }
+
+  /** The middle of the piece's first texel, in map pixels: a place on its ground. */
+  placeIn(piece: GroundPiece): { x: number; y: number } {
+    const column = piece.first % this.width;
+    return { x: this.left + (column + 0.5) * this.texel, y: this.top + ((piece.first - column) / this.width + 0.5) * this.texel };
+  }
+
+  /**
    * The corners of a piece's outer edge, along the raster's lines, clockwise as the map is drawn:
    * for each, its column and row among the raster's lines and the way its edge leaves it
    * (`STEP_X`, `STEP_Y`), with the piece to the right of that edge. Holes in the piece have no
@@ -144,7 +172,7 @@ export class RoomRaster {
     const { width, height, barrier, pieceOf } = this;
     const id = this.pieces.length + 1;
     const free = (texel: number): boolean => barrier[texel] === 0 && pieceOf[texel] === 0;
-    let [open, first] = [false, seed];
+    let [open, first, size] = [false, seed, 0];
     const waiting = [seed];
     while (waiting.length > 0) {
       const from = waiting.pop()!;
@@ -156,6 +184,7 @@ export class RoomRaster {
       while (start > 0 && free(row + start - 1)) start--;
       while (end < width - 1 && free(row + end + 1)) end++;
       pieceOf.fill(id, row + start, row + end + 1);
+      size += end - start + 1;
       if (row + start < first) first = row + start;
       if (start === 0 || end === width - 1 || row === 0 || row === (height - 1) * width) open = true;
       // One seed for each run of free texels above and below the run just filled.
@@ -169,7 +198,7 @@ export class RoomRaster {
         }
       }
     }
-    this.pieces.push({ id, open, first });
+    this.pieces.push({ id, open, first, size });
     return id;
   }
 

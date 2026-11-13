@@ -96,6 +96,7 @@ export class FogOfWarRenderer {
       keysBelongToMap: (event) => this.keysBelongToMap?.(event) ?? true,
       isUndoKey: (event) => this.isUndoKey?.(event),
       showsPlayers: () => this.showsPlayers?.() ?? null,
+      areaHeld: (areaId) => this.areas.setHeld(areaId),
     });
 
     this.areas = new FogAreaLayer({ viewport, store, showsPlayers: () => this.showsPlayers?.() ?? null });
@@ -132,10 +133,10 @@ export class FogOfWarRenderer {
 
   /**
    * The fog as translucent as the GM view shows it, also while the canvas is in session view:
-   * for a picture of the scene, which leaves out the marks of the fog's areas like the GM's other markers.
+   * for a picture of the scene, which leaves out the marks of the fog's areas and of the tool like the GM's other markers.
    */
   getGmViewLayers(): LayerVisibility[] {
-    return [...this.picture.gmLayers(), { layer: this.areas.view, visible: false }, ...this.gesture.areaLayers()];
+    return [...this.picture.gmLayers(), { layer: this.areas.view, visible: false }, ...this.gesture.playerLayers()];
   }
 
   /** The badges of the fog's areas for the viewport's dispatch: a click flips an area, a right-click opens its menu. */
@@ -274,11 +275,13 @@ export class FogOfWarRenderer {
       if (pictureLeft) this.gesture.drop();
 
       // Fog changed (an edit, undo and redo, a load); nothing is drawn during a load, whose end
-      // draws the fog. Under a gesture its preview is drawn again, on the fog as it now is. An
-      // edit fades in; the fog of another map or level, or of a load, is there at once
+      // draws the fog. A stroke the canvas shows is drawn again, on the fog as it now is; one
+      // it does not show (a shape that will reveal, an area's outline) leaves the canvas to the
+      // fog. An edit fades in; the fog of another map or level, or of a load, is there at once
       if (fogChanged) {
-        if (this.gesture.active) this.gesture.refresh();
-        else this.showCommitted(!mapChanged && !levelChanged && !loadingChanged);
+        const { active } = this.gesture;
+        if (!active || !this.picture.showsStroke) this.showCommitted(!mapChanged && !levelChanged && !loadingChanged);
+        if (active) this.gesture.refresh();
       }
 
       if (loadingChanged) {

@@ -157,13 +157,15 @@ describe('the fog tool\'s stroke', () => {
   });
 
   it('commits cells that enclose a hole as their rows, in one step, and reveals with the revealing tool', () => {
-    const { tool, state, picture } = fogTool('eraser', 'cells');
+    const { tool, state, picture, wash } = fogTool('eraser', 'cells');
     // Round the cell at (1, 1): a ring of eight.
     tool.pointerDown(at(35, 35));
     for (const [x, y] of [[175, 35], [175, 175], [35, 175], [35, 105]] as const) tool.pointerMove(at(x, y));
-    const shown = picture.showStroke.mock.lastCall?.[0] as unknown[];
-    expect(shown).toHaveLength(4);
+    // What it will reveal shows to the GM alone, off the fog's picture.
+    expect(wash.shapes).toHaveLength(4);
+    expect(picture.showStroke).not.toHaveBeenCalled();
     tool.pointerUp();
+    expect(wash.shapes).toEqual([]);
     expect(state.addFogOperation).not.toHaveBeenCalled();
     expect(state.addFogOperations).toHaveBeenCalledExactlyOnceWith([
       { type: 'lasso', isErasing: true, points: [{ x: 0, y: 0 }, { x: 210, y: 0 }, { x: 210, y: 70 }, { x: 0, y: 70 }] },
@@ -221,15 +223,18 @@ describe('the fog tool\'s stroke', () => {
   });
 
   it('follows Alt pressed and let go during a stroke: what is committed is what the key says at the release', () => {
-    const { tool, state, picture } = fogTool('fog', 'rectangle');
+    const { tool, state, picture, wash } = fogTool('fog', 'rectangle');
     tool.pointerDown(at(0, 0));
     tool.pointerMove(at(140, 140));
     expect(picture.showStroke.mock.lastCall?.[0]).toMatchObject({ type: 'rectangle', isErasing: false });
-    // The key goes down while the pointer rests: the preview turns around without a move.
+    // The key goes down while the pointer rests: the preview turns around without a move. What
+    // the rectangle hid on the fog's picture goes, and what it will reveal shows to the GM alone.
     tool.setFlipped(true);
-    expect(picture.showStroke.mock.lastCall?.[0]).toMatchObject({ type: 'rectangle', isErasing: true });
+    expect(picture.showStroke.mock.lastCall?.[0]).toBeUndefined();
+    expect(wash.shapes).toMatchObject([{ type: 'rectangle', x: 0, y: 0, width: 140, height: 140 }]);
     tool.setFlipped(false);
     expect(picture.showStroke.mock.lastCall?.[0]).toMatchObject({ type: 'rectangle', isErasing: false });
+    expect(wash.shapes).toEqual([]);
     tool.pointerUp();
     expect(state.addFogOperation).toHaveBeenCalledWith({ type: 'rectangle', isErasing: false, x: 0, y: 0, width: 140, height: 140 });
     expect(tool.keys.release).toHaveBeenCalled();
@@ -254,13 +259,14 @@ describe('the fog tool\'s stroke', () => {
   });
 
   it('shows a lasso and a rectangle as the fog they will make, once they are a shape', () => {
-    const lasso = fogTool('eraser', 'lasso');
+    const lasso = fogTool('fog', 'lasso');
     lasso.tool.pointerDown(at(33, 33));
     lasso.tool.pointerMove(at(141, 37));
     // Two points are no area yet: the fog as it is.
     expect(lasso.picture.showStroke.mock.lastCall?.[0]).toBeUndefined();
     lasso.tool.pointerMove(at(90, 121));
-    expect(lasso.picture.showStroke.mock.lastCall?.[0]).toMatchObject({ type: 'lasso', isErasing: true, points: [{ x: 33, y: 33 }, { x: 141, y: 37 }, { x: 90, y: 121 }] });
+    expect(lasso.picture.showStroke.mock.lastCall?.[0]).toMatchObject({ type: 'lasso', isErasing: false, points: [{ x: 33, y: 33 }, { x: 141, y: 37 }, { x: 90, y: 121 }] });
+    expect(lasso.wash.shapes).toEqual([]);
 
     const rectangle = fogTool('fog', 'rectangle');
     rectangle.tool.pointerDown(at(33, 33));
@@ -270,6 +276,49 @@ describe('the fog tool\'s stroke', () => {
     // Back on the first corner: no area, and the preview goes.
     rectangle.tool.pointerMove(at(33, 33));
     expect(rectangle.picture.showStroke.mock.lastCall?.[0]).toBeUndefined();
+  });
+
+  it('never puts what a rectangle, a lasso or a drag over cells will reveal on the fog\'s picture, which the players see: the GM alone is shown it', () => {
+    const drags = {
+      rectangle: [[0, 0], [140, 140], [210, 140]],
+      lasso: [[33, 33], [141, 37], [90, 121], [40, 100]],
+      cells: [[10, 10], [200, 30], [200, 100]],
+    } as const;
+    for (const shape of ['rectangle', 'lasso', 'cells'] as const) {
+      // With the revealing tool, and with Alt held on the hiding one.
+      for (const [activeTool, alt] of [['eraser', false], ['fog', true]] as const) {
+        const { tool, state, picture, wash } = fogTool(activeTool, shape);
+        const [first, ...rest] = drags[shape];
+        tool.pointerDown(at(first[0], first[1], alt));
+        for (const [x, y] of rest) tool.pointerMove(at(x, y, alt));
+        expect(wash.shapes.length).toBeGreaterThan(0);
+        expect(wash.shapes.every((washed) => washed.type !== 'brush')).toBe(true);
+        expect(picture.showStroke.mock.calls.filter(([stroke]) => stroke !== undefined)).toEqual([]);
+        // Dropped, nothing was ever taken from the picture, and nothing is.
+        tool.drop();
+        expect(wash.shapes).toEqual([]);
+        expect(state.addFogOperation).not.toHaveBeenCalled();
+        expect(state.addFogOperations).not.toHaveBeenCalled();
+        expect(picture.showStroke.mock.calls.filter(([stroke]) => stroke !== undefined)).toEqual([]);
+      }
+      // Hiding, the same drag is fog on the picture at once: more fog for a moment tells the players nothing.
+      const hiding = fogTool('fog', shape);
+      const [first, ...rest] = drags[shape];
+      hiding.tool.pointerDown(at(first[0], first[1]));
+      for (const [x, y] of rest) hiding.tool.pointerMove(at(x, y));
+      expect(hiding.picture.showStroke.mock.lastCall?.[0]).toBeDefined();
+      expect(hiding.wash.shapes).toEqual([]);
+    }
+  });
+
+  it('wipes fog away with the brush as it goes, on the fog\'s picture: the brush is live whatever it does', () => {
+    for (const [activeTool, alt] of [['eraser', false], ['fog', true], ['fog', false], ['eraser', true]] as const) {
+      const { tool, picture, wash } = fogTool(activeTool, 'brush');
+      tool.pointerDown(at(100, 100, alt));
+      tool.pointerMove(at(160, 110, alt));
+      expect(picture.showStroke.mock.lastCall?.[0]).toMatchObject({ type: 'brush', isErasing: (activeTool === 'eraser') !== alt });
+      expect(wash.shapes).toEqual([]);
+    }
   });
 
   it('commits nothing for a lasso of two points or a rectangle that never moved, and shows the fog as it is', () => {
@@ -366,6 +415,8 @@ interface SceneState {
 interface FogRendererHarness {
   state: SceneState;
   gesture: { active: boolean; stop: ReturnType<typeof vi.fn>; start: ReturnType<typeof vi.fn>; drop: ReturnType<typeof vi.fn>; refresh: ReturnType<typeof vi.fn> };
+  /** What the renderer reads of its picture. */
+  picture: { showsStroke: boolean };
   /** How often the fog was drawn as the scene holds it. */
   drawn: ReturnType<typeof vi.fn>;
   /** A store write reaches the renderer. */
@@ -378,21 +429,23 @@ function fogRenderer(): FogRendererHarness {
   const listeners: ((state: SceneState) => void)[] = [];
   const gesture = { active: false, cancel: vi.fn(), drop: vi.fn(), refresh: vi.fn(), follow: vi.fn(), start: vi.fn(), stop: vi.fn() };
   const drawn = vi.fn(() => true);
+  const picture = { fit: vi.fn(), drawCommitted: drawn, clear: vi.fn(), endFade: vi.fn(), followView: vi.fn(), hasFog: false, showsStroke: false, sprite: { visible: false } };
   const renderer = Object.assign(Object.create(FogOfWarRenderer.prototype) as FogOfWarRenderer, {
     // The store hands its listeners a new state object after every write
     store: { getState: () => ({ ...state }), subscribe: (listener: (state: SceneState) => void) => (listeners.push(listener), () => undefined) },
     gesture,
-    picture: { fit: vi.fn(), drawCommitted: drawn, clear: vi.fn(), endFade: vi.fn(), followView: vi.fn(), hasFog: false, sprite: { visible: false } },
+    picture,
     container: { visible: true },
   }) as unknown as { followStore(): void };
   renderer.followStore();
-  return { state, gesture, drawn, notify: () => listeners.forEach((listener) => listener({ ...state })) };
+  return { state, gesture, picture, drawn, notify: () => listeners.forEach((listener) => listener({ ...state })) };
 }
 
 describe('the fog renderer', () => {
   it('does not draw the scene\'s fog over a stroke under way, and does once the stroke is over', () => {
-    const { state, gesture, drawn, notify } = fogRenderer();
+    const { state, gesture, picture, drawn, notify } = fogRenderer();
     gesture.active = true;
+    picture.showsStroke = true;
     // Fog changes under the stroke, as an undo would change it.
     state.objects = { fog: { a: {} } };
     notify();
@@ -404,6 +457,16 @@ describe('the fog renderer', () => {
     state.objects = { fog: { a: {}, b: {} } };
     notify();
     expect(drawn).toHaveBeenCalledTimes(1);
+    expect(gesture.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws the scene\'s fog under a stroke its picture does not show: a shape that will reveal, an area\'s outline', () => {
+    const { state, gesture, drawn, notify } = fogRenderer();
+    gesture.active = true;
+    state.objects = { fog: { a: {} } };
+    notify();
+    // An edit, which fades in; what is under way is shown again for the fog as it now is.
+    expect(drawn).toHaveBeenCalledExactlyOnceWith(true);
     expect(gesture.refresh).toHaveBeenCalledTimes(1);
   });
 

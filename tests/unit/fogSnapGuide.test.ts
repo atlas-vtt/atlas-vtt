@@ -10,14 +10,14 @@ function guide(): { camera: Container; snap: FogSnapGuide; drawn: ReturnType<typ
   return { camera, snap, drawn: vi.spyOn(snap.view, 'clear') };
 }
 
-it('shows a dot on the place a point snapped to, and nothing for a point that did not snap', () => {
+it('shows a ring round the place a point snapped to, and nothing for a point that did not snap', () => {
   const { snap } = guide();
   expect(snap.view.visible).toBe(false);
   snap.show({ point: { x: 70, y: 140 } });
   expect(snap.view.visible).toBe(true);
   expect(snap.view.position).toMatchObject({ x: 70, y: 140 });
-  // A dot of three pixels, with its dark rim.
-  expect(snap.view.getLocalBounds().width).toBeCloseTo(9, 5);
+  // A ring of five pixels' radius, with its dark casing: large enough to notice.
+  expect(snap.view.getLocalBounds().width).toBeCloseTo(14.5, 5);
   snap.show(null);
   expect(snap.view.visible).toBe(false);
   snap.destroy();
@@ -41,10 +41,10 @@ it('draws the line a point lies on, from end to end', () => {
   const bounds = snap.view.getBounds();
   expect(bounds.minX).toBeLessThanOrEqual(104);
   expect(bounds.maxX).toBeGreaterThanOrEqual(304);
-  // Back on a place without a line: only the dot is left.
+  // Back on a place without a line: only the ring is left.
   snap.show({ point: { x: 104, y: 97 } });
   expect(drawn).toHaveBeenCalledTimes(2);
-  expect(snap.view.getLocalBounds().width).toBeCloseTo(9, 5);
+  expect(snap.view.getLocalBounds().width).toBeCloseTo(14.5, 5);
   snap.destroy();
 });
 
@@ -55,7 +55,7 @@ it('keeps its size on screen when the map is zoomed, and follows no zoom once it
   camera.emit('zoomed', {});
   expect(drawn).toHaveBeenCalledTimes(2);
   // Half the size on the map is the same size on screen.
-  expect(snap.view.getLocalBounds().width).toBeCloseTo(4.5, 5);
+  expect(snap.view.getLocalBounds().width).toBeCloseTo(7.25, 5);
   // Hidden, a zoom draws nothing: the next place shown is drawn for the zoom there is then.
   snap.show(null);
   camera.scale.set(4);
