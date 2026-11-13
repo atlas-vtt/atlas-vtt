@@ -1253,6 +1253,20 @@ body.atlas-hide-status-bar .status-bar {
   display: none;
 }
 
+// A frameless window on Windows and Linux draws its minimise, maximise and close buttons over the top-right
+// corner of an Atlas view, where a map keeps its widgets. They fade out and come back while the pointer is over them
+// (the container keeps its pointer events, so its hover still registers). macOS has native traffic lights instead.
+body.atlas-hide-window-controls:is(.mod-windows, .mod-linux) .titlebar-button-container.mod-right {
+  opacity: 0;
+  transition: opacity $transition-normal $transition-ease;
+
+  &:hover,
+  &:focus-within {
+    opacity: 1;
+    transition-duration: $transition-fast;
+  }
+}
+
 // File picker input used by "New map from image…"; only ever clicked programmatically.
 .atlas-hidden-file-input {
   display: none;

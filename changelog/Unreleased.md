@@ -38,3 +38,7 @@
 - What you draw with Players see it switched off is yours alone: it is not in the player window, in Session View, in scene thumbnails or online
 - A drawing on the map is lit like the floor: players see it only where they see or remember the map
 - Texts and drawings lie in one order, so a text can stand above a drawing
+
+## Improved
+
+- On Windows and Linux, the window's minimise, maximise and close buttons stay out of sight over a map and the other Atlas pages, so the widgets in the top-right corner can be seen. Move the pointer to the corner to show them

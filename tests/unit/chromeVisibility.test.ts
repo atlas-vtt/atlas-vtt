@@ -4,8 +4,10 @@ import type { Plugin } from 'obsidian';
 
 vi.mock('../../src/app/player-view', () => ({ PLAYER_VIEW_TYPE: 'atlas-vtt-player' }));
 vi.mock('../../src/app/dashboard-view', () => ({ DASHBOARD_VIEW_TYPE: 'atlas-vtt-dashboard' }));
+vi.mock('../../src/app/sound-view', () => ({ SOUND_VIEW_TYPE: 'atlas-sound' }));
+vi.mock('../../src/app/dungeon-generator-view', () => ({ DUNGEON_GENERATOR_VIEW_TYPE: 'atlas-dungeon-generator' }));
 
-import { registerStatusBarVisibility } from '../../src/app/plugin/statusBarVisibility';
+import { registerChromeVisibility } from '../../src/app/plugin/chromeVisibility';
 import { TEMPLATE_EDITOR_VIEW_TYPE } from '../../src/app/statblocks/editor/templateEditorState';
 import { STATBLOCK_NOTE_CLASS } from '../../src/app/statblocks/notes/openEditors';
 
@@ -22,15 +24,16 @@ function setUp(first: unknown): Map<string, Handler> {
     registerEvent: () => undefined,
     register: () => undefined,
   } as unknown as Plugin;
-  registerStatusBarVisibility(plugin);
+  registerChromeVisibility(plugin);
   return handlers;
 }
 
 const hidden = (): boolean => document.body.classList.contains('atlas-hide-status-bar');
+const controlsHidden = (): boolean => document.body.classList.contains('atlas-hide-window-controls');
+
+afterEach(() => document.body.classList.remove('atlas-hide-status-bar', 'atlas-hide-window-controls'));
 
 describe('the status bar', () => {
-  afterEach(() => document.body.classList.remove('atlas-hide-status-bar'));
-
   it('hides while a map or a statblock template is active, and shows for other views', () => {
     const handlers = setUp(leafOf('atlas-vtt'));
     expect(hidden()).toBe(true);
@@ -50,5 +53,16 @@ describe('the status bar', () => {
     note.view.containerEl.classList.remove(STATBLOCK_NOTE_CLASS);
     handlers.get('atlas-vtt:statblock-panel-changed')?.();
     expect(hidden()).toBe(false);
+  });
+});
+
+describe('the window buttons', () => {
+  it('fade while an Atlas page is active, and stay for notes', () => {
+    const handlers = setUp(leafOf('atlas-vtt'));
+    expect(controlsHidden()).toBe(true);
+    handlers.get('active-leaf-change')?.(leafOf('markdown'));
+    expect(controlsHidden()).toBe(false);
+    handlers.get('active-leaf-change')?.(leafOf('atlas-sound'));
+    expect(controlsHidden()).toBe(true);
   });
 });
