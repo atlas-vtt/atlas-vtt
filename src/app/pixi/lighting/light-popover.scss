@@ -43,6 +43,44 @@ $gap: $spacing-s;
   }
 }
 
+// The swatches lie $gap inside the popover's border like the chips, the first row of a kept
+// measurement's popover right under its corners: they take the chips' radius, concentric with
+// the popover's, where a swatch's own small radius sat square in a round corner.
+.atlas-light-popover .atlas-swatch {
+  @include atlas-panel-inset-radius($gap);
+}
+
+// Every control at a row's end is one control high here: a field, a select, a stepper. The
+// switch is the usual one, tick and cross on its thumb, at that height instead of its own, so
+// the rows keep one rhythm. Its radii step down as in toggle.scss: thumb = switch − padding − border.
+.atlas-light-popover .atlas-toggle:not(.atlas-toggle--s, .atlas-toggle--xs) {
+  // Obsidian's control height, which the select and the stepper beside it take too.
+  $height: var(--input-height, 30px);
+  $pad: 4px;
+  $thumb: calc(#{$height} - 2 * #{$pad} - 2 * #{$border-width-s});
+
+  .atlas-toggle__switch {
+    height: $height;
+    width: calc(#{$height} * 1.5);
+    padding: $pad;
+  }
+
+  .atlas-toggle__thumb {
+    width: $thumb;
+    height: $thumb;
+    border-radius: calc(#{$radius-xl} - #{$pad} - #{$border-width-s});
+  }
+
+  .atlas-toggle__thumb--on {
+    transform: translateX(calc(#{$height} * 0.5));
+  }
+
+  .atlas-toggle__icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
 .atlas-light-popover__section {
   @include atlas-flex-col($gap);
   padding-top: $gap;
@@ -102,11 +140,21 @@ $gap: $spacing-s;
   flex-shrink: 0;
 }
 
-// A measured area's seven looks share the popover's row, where a chip of the row's height would be
-// narrower than tall: these are as tall as they come out wide.
-.atlas-light-popover__kinds--square .atlas-light-kind {
-  height: auto;
-  aspect-ratio: 1;
+// A measured area's seven looks: squares of a swatch's size, spread over the row from edge to
+// edge, so the swatches above and the looks read as two rows of one kind of bead.
+.atlas-light-popover__kinds--square {
+  justify-content: space-between;
+
+  .atlas-light-kind {
+    flex: 0 0 calc((100% - 7 * #{$spacing-xs}) / 8);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .atlas-light-glyph {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 // The last chip of a collection with more lights than fit: it opens the others as a menu. It

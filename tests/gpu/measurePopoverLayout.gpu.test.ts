@@ -142,6 +142,9 @@ describe('the popover of a kept measurement', () => {
     expect(cells).toHaveLength(8);
     expect(new Set(cells.map((cell) => Math.round(cell.top))).size).toBe(1);
     expect(Math.max(...cells.map((cell) => cell.width)) - Math.min(...cells.map((cell) => cell.width))).toBeLessThanOrEqual(0.5);
+    // The swatches take the chips' radius, concentric with the popover's corner, not a small square one.
+    const corner = (selector: string): number => Number.parseFloat(getComputedStyle(popover().querySelector(selector)!).borderTopLeftRadius);
+    expect(corner('.atlas-swatch')).toBeGreaterThanOrEqual(cells[0]!.width / 2 - 0.5);
     // The switch ends where the swatches end.
     const toggle = rect('.atlas-toggle');
     expect(Math.abs(toggle.right - swatches.right)).toBeLessThanOrEqual(0.5);
@@ -161,6 +164,10 @@ describe('the popover of a kept measurement', () => {
     expect(Math.abs(row.right - swatches.right)).toBeLessThanOrEqual(0.5);
     expect(Math.max(...chips.map((chip) => chip.width)) - Math.min(...chips.map((chip) => chip.width))).toBeLessThanOrEqual(0.5);
     for (const chip of chips) expect(chip.width).toBeGreaterThanOrEqual(28);
+    // A look's chip is as large as a colour's swatch, and the row runs from edge to edge like the swatches'.
+    const swatch = popover().querySelector('.atlas-swatch')!.getBoundingClientRect();
+    expect(Math.abs(chips[0]!.width - swatch.width)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(chips[0]!.left - row.left)).toBeLessThanOrEqual(0.5);
     // Each chip is a square, not a slot of the row's height.
     for (const chip of chips) expect(Math.abs(chip.width - chip.height)).toBeLessThanOrEqual(0.5);
     expect(chips.at(-1)!.right).toBeLessThanOrEqual(row.right + 0.5);
