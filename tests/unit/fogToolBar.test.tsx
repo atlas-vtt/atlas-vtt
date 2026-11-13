@@ -249,6 +249,57 @@ describe('FogToolBar', () => {
     expect(slider()).toBeNull();
   });
 
+  it('deletes all areas of the level shown from More, in one undo step, and keeps the row where there are none', () => {
+    const { store } = renderBar();
+    const history = getHistoryStore(store)!;
+    const row = (): HTMLButtonElement => screen.getByRole('button', { name: 'Delete all areas' });
+    fireEvent.click(button('More'));
+    expect(row().disabled).toBe(true);
+    let plain = '';
+    act(() => {
+      plain = store.getState().addFogOperation({ type: 'rectangle', isErasing: false, x: 0, y: 0, width: 50, height: 50 });
+      store.getState().addFogArea({ type: 'rectangle', x: 100, y: 0, width: 50, height: 50 });
+      store.getState().flipFogArea(store.getState().addFogArea({ type: 'rectangle', x: 200, y: 0, width: 50, height: 50 })!);
+    });
+    expect(row().disabled).toBe(false);
+    const before = history.getState().pastStates.length;
+    fireEvent.click(row());
+    expect(Object.keys(store.getState().objects.fog)).toEqual([plain]);
+    expect(history.getState().pastStates).toHaveLength(before + 1);
+    // The menu closed on the choice.
+    expect(screen.queryByRole('button', { name: 'Delete all areas' })).toBeNull();
+    act(() => history.getState().undo());
+    expect(fogOf(store)).toHaveLength(3);
+  });
+
+  it('names the level in the row of a scene with levels, and leaves the areas of other levels', () => {
+    const { store } = renderBar();
+    act(() => {
+      store.setState({ levels: LEVELS, viewedLevel: 'ground' });
+      store.getState().addFogArea({ type: 'rectangle', x: 100, y: 0, width: 50, height: 50 });
+      store.getState().setViewedLevel('upper');
+    });
+    fireEvent.click(button('More'));
+    const row = screen.getByRole<HTMLButtonElement>('button', { name: "Delete this level's areas" });
+    expect(row.disabled).toBe(true);
+    act(() => { store.getState().addFogArea({ type: 'rectangle', x: 100, y: 0, width: 50, height: 50 }); });
+    fireEvent.click(row);
+    expect(fogOf(store)).toEqual([expect.objectContaining({ level: 'ground' })]);
+  });
+
+  it('reveals all by revealing the areas, which stay, and has nothing to reveal once only revealed areas are left', () => {
+    const { store } = renderBar();
+    let hall = '';
+    act(() => { hall = store.getState().addFogArea({ type: 'rectangle', x: 100, y: 0, width: 50, height: 50 })!; });
+    expect(inert('Reveal all')).toBe(false);
+    fireEvent.click(button('Reveal all'));
+    expect(store.getState().objects.fog[hall]).toMatchObject({ isErasing: true });
+    expect(inert('Reveal all')).toBe(true);
+    fireEvent.click(button('Cover all'));
+    expect(store.getState().objects.fog[hall]).toMatchObject({ isErasing: false });
+    expect(inert('Reveal all')).toBe(false);
+  });
+
   it('takes every choice in the session view too, where fog is painted as players see it', () => {
     const { store } = renderBar();
     act(() => store.setState({ isGMView: false }));

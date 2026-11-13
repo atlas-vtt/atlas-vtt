@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { CloudOff, MoreHorizontal, PaintBucket } from "lucide-react"
+import { CloudOff, MoreHorizontal, PaintBucket, Trash2 } from "lucide-react"
+import { areaIsHidden, fogAreaList, isFogArea } from "../../../fog/fogAreas"
 import { hasCells } from "../../../fog/fogCells"
 import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogToolFor, fogWhat, isFogTool, type FogShape, type FogWhat } from "../../../fog/fogToolChoices"
 import { DEFAULT_GM_FOG_OPACITY, GM_FOG_OPACITY_RANGE } from "../../../fog/gmFogOpacity"
@@ -11,6 +12,7 @@ import { useAtlasUI } from "../../../react/root/AtlasUIContext"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { showNotice } from "../../../ui/notice"
 import { DropdownMenu } from "../primitives/DropdownMenu"
+import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { ToolButton } from "../primitives/ToolButton"
 import { TooltipProvider } from "../primitives/tooltip"
@@ -134,7 +136,8 @@ function WholeMap(): React.ReactElement {
   const { renderer } = useAtlasUI()
   const coverAllFog = useAtlasStore((state) => state.coverAllFog)
   const clearFog = useAtlasStore((state) => state.clearFog)
-  const anyFog = useAtlasStore((state) => Object.keys(levelObjects(state).fog).length > 0)
+  // A revealed area hides nothing: with only those left there is nothing to reveal.
+  const anyFog = useAtlasStore((state) => Object.values(levelObjects(state).fog).some((operation) => !isFogArea(operation) || areaIsHidden(operation)))
   const levelled = useAtlasStore((state) => hasLevels(state.levels))
   // A scene without levels has no level to name.
   const coverTip = levelled ? t('fog.coverLevelTip') : t('fog.coverAllTip')
@@ -151,11 +154,19 @@ function WholeMap(): React.ReactElement {
   )
 }
 
-/** What is rarely changed: how opaque fog is in the GM's view, kept on this device. */
+/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, and deleting the areas of the level shown. */
 function MoreMenu(): React.ReactElement {
   const settings = useAtlasSettings()
   const [open, setOpen] = useState(false)
   const toggle = useCallback((): void => setOpen((before) => !before), [])
+  const fog = useAtlasStore((state) => levelObjects(state).fog)
+  const deleteFogAreas = useAtlasStore((state) => state.deleteFogAreas)
+  const levelled = useAtlasStore((state) => hasLevels(state.levels))
+  const deleteAreas = (): void => {
+    // Every area of the level, also those past the number that are read.
+    deleteFogAreas(Object.keys(fog).filter((id) => isFogArea(fog[id])))
+    setOpen(false)
+  }
   const percent = (opacity: number): number => Math.round(opacity * 100)
   return (
     <DropdownMenu
@@ -178,6 +189,15 @@ function MoreMenu(): React.ReactElement {
           // Shown where Atlas' settings cannot be reached, with nothing to set.
           disabled={!settings}
           onChange={(next) => settings?.setGmFogOpacity(next / 100)}
+        />
+      </div>
+      <div className="atlas-dropdown-section">
+        <DropdownMenuItem
+          destructive
+          icon={Trash2}
+          label={levelled ? t('fog.deleteLevelAreas') : t('fog.deleteAreas')}
+          disabled={fogAreaList(fog).length === 0}
+          onClick={deleteAreas}
         />
       </div>
     </DropdownMenu>

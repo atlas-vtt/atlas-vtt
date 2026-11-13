@@ -163,6 +163,10 @@ export interface ViewAtlasState extends ViewState {
   setFogOperations: FogSlice['setFogOperations'];
   clearFog: FogSlice['clearFog'];
   coverAllFog: FogSlice['coverAllFog'];
+  addFogArea: FogSlice['addFogArea'];
+  flipFogArea: FogSlice['flipFogArea'];
+  updateFogArea: FogSlice['updateFogArea'];
+  deleteFogAreas: FogSlice['deleteFogAreas'];
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
   /** Sets the explored memory of `level` (unset: the level the view shows; null: the first); a level the scene no longer has keeps none. */
@@ -317,6 +321,8 @@ export interface ViewAtlasState extends ViewState {
   closeLevelSurfacePopover: UISlice['closeLevelSurfacePopover'];
   openMeasurePopover: UISlice['openMeasurePopover'];
   closeMeasurePopover: UISlice['closeMeasurePopover'];
+  openFogAreaPopover: UISlice['openFogAreaPopover'];
+  closeFogAreaPopover: UISlice['closeFogAreaPopover'];
   setMeasureTool: UISlice['setMeasureTool'];
   setDrawTool: UISlice['setDrawTool'];
   setFogTool: UISlice['setFogTool'];
@@ -1074,7 +1080,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createAnnotationsActions(set, get),
 
           // Fog actions (from fogSlice.ts)
-          ...createFogActions(set),
+          ...createFogActions(set, get),
 
           setSceneLighting: (changes) => set((draft) => {
             Object.assign(draft.lighting, changes);

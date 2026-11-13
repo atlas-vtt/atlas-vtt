@@ -38,6 +38,8 @@ export interface UISlice extends ViewUIState {
   closeLevelSurfacePopover: () => void;
   openMeasurePopover: (measureId: string) => void;
   closeMeasurePopover: () => void;
+  openFogAreaPopover: (areaId: string) => void;
+  closeFogAreaPopover: () => void;
   setMeasureTool: (changes: Partial<MeasureToolOptions>) => void;
   /** Changes the Draw tool's choices; a change of its style is remembered on the device. */
   setDrawTool: (changes: Partial<DrawToolChoices>) => void;
@@ -73,6 +75,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'levelLinkPopover'
   | 'levelSurfacePopover'
   | 'measurePopover'
+  | 'fogAreaPopover'
   | 'measureTool'
   | 'drawTool'
   | 'fogTool'
@@ -99,6 +102,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     levelLinkPopover: null,
     levelSurfacePopover: null,
     measurePopover: null,
+    fogAreaPopover: null,
     measureTool: DEFAULT_MEASURE_TOOL,
     drawTool,
     fogTool: DEFAULT_FOG_TOOL,
@@ -139,6 +143,8 @@ export function createUIActions(
   | 'closeLevelSurfacePopover'
   | 'openMeasurePopover'
   | 'closeMeasurePopover'
+  | 'openFogAreaPopover'
+  | 'closeFogAreaPopover'
   | 'setMeasureTool'
   | 'setDrawTool'
   | 'setFogTool'
@@ -197,6 +203,8 @@ export function createUIActions(
       draft.lightZonePopover = null;
     }),
     closeMeasurePopover: () => set((draft) => { draft.measurePopover = null; }),
+    openFogAreaPopover: (areaId) => set((draft) => { draft.fogAreaPopover = areaId; }),
+    closeFogAreaPopover: () => set((draft) => { draft.fogAreaPopover = null; }),
     setMeasureTool: (changes) => set((draft) => { draft.measureTool = { ...draft.measureTool, ...changes }; }),
     setDrawTool: (changes) => {
       let styled: DrawToolChoices | null = null;

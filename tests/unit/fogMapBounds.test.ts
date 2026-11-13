@@ -33,7 +33,7 @@ function fogOverMap(isMapLoading: boolean): { store: StoreApi<SceneState>; show:
   const events = new EventEmitter();
   let shown: MapRect | null = null;
   const renderer = new FogOfWarRenderer(
-    new Container() as never, { canvas: createEl('canvas') } as never, events as never,
+    Object.assign(new Container(), { options: {} }) as never, { canvas: createEl('canvas') } as never, events as never,
     store as unknown as StoreApi<ViewAtlasState>, () => shown,
   );
   const preview = renderer.getContainer().children.find((child) => child instanceof Sprite && child.zIndex === 999)!;

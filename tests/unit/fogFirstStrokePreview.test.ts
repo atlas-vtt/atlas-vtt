@@ -21,7 +21,7 @@ it('shows the first stroke after all fog was deleted while it is drawn', () => {
     fogTool: DEFAULT_FOG_TOOL,
     objects: { fog: {} as Record<string, never> },
   }));
-  const viewport = Object.assign(new Container(), { toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }) });
+  const viewport = Object.assign(new Container(), { options: {}, toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }) });
   const renderer = new FogOfWarRenderer(
     viewport as never, { canvas: createEl('canvas') } as never, new EventEmitter() as never,
     store as unknown as StoreApi<ViewAtlasState>, () => MAP,

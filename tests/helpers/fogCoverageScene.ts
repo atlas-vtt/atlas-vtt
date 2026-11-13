@@ -5,7 +5,7 @@ import { EventEmitter } from 'eventemitter3';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { destroyTree } from '../../src/app/pixi/utils/destroyTree';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import { watchGl } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
@@ -28,6 +28,9 @@ interface FogScene {
   read(x: number, y: number, player?: boolean): number;
   /** The whole picture as the players see it: how bright each pixel is, row by row. */
   frame(): number[];
+  /** Every pixel's red, green, blue and alpha as the GM's canvas shows it, or with `layers` set for the picture (the players' frame, a thumbnail). */
+  rgba(layers?: readonly LayerVisibility[]): Uint8ClampedArray;
+  viewport: Viewport;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void;
 }
 
@@ -80,7 +83,13 @@ export function fogScenes(): { scene: (ops?: Record<string, FogOperation>, befor
       renderer.destroy();
     });
     return {
-      store, fog, events,
+      store, fog, events, viewport,
+      rgba(layers?: readonly LayerVisibility[]): Uint8ClampedArray {
+        if (!layers) return pixels();
+        let all = new Uint8ClampedArray();
+        captureWithLayerVisibility(layers, () => {}, () => { all = pixels(); });
+        return all;
+      },
       lookAt(x: number, y: number): void {
         floor.position.set(x, y);
         viewport.moveCorner(x, y);

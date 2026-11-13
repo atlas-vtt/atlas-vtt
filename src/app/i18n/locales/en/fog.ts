@@ -28,6 +28,12 @@ export const fog = {
   'fog.noFogOnLevel': 'No fog on this level',
   'fog.more': 'More',
   'fog.gmOpacity': 'Fog opacity in GM View',
+  'fog.areaRename': 'Rename area',
+  'fog.areaName': 'Name',
+  'fog.areaNamePlaceholder': 'Guard room, crypt…',
+  'fog.areasFull': 'This map has as many areas as it can hold. Delete one to draw another.',
+  'fog.deleteAreas': 'Delete all areas',
+  'fog.deleteLevelAreas': "Delete this level's areas",
   'fog.key.smaller': 'Smaller fog brush',
   'fog.key.larger': 'Larger fog brush',
 } as const satisfies Record<string, Message>;

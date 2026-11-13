@@ -37,6 +37,12 @@
 - Cells: drag over the grid to hide or reveal whole cells, squares and hexes alike
 - Rectangles and polygons snap to the grid, to the ends of walls and along walls. A dot or a line shows what a point snapped to. Hold Ctrl or Cmd to place it freely
 - Hold Shift for a square, or to keep a polygon's edge level, upright or diagonal
+- Areas: draw the rooms of a map once, then reveal or hide each with one click on its badge, with any tool
+- An area's badge shows an eye while the area is revealed and a struck-through eye while it is hidden. Only you see the badges
+- Right-click a badge to reveal or hide its area, name it or delete it. Point at a badge to see the area's name and outline
+- Cover all hides every area with the map and Reveal all reveals them. The areas stay, each one click from the other state
+- Rectangles and polygons snap to the corners and edges of areas
+- More deletes all areas
 
 ## Improved
 

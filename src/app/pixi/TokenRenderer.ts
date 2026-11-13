@@ -61,6 +61,7 @@ import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
 import type { MapFeaturePointerHandlers } from './mapFeatures/MapFeatureInteraction';
 import type { LightPointerHandlers } from './lighting/LightInteraction';
 import type { MeasurePointerHandlers } from './measure/measureHandle';
+import type { FogAreaPointerHandlers } from './fog/FogOfWarRenderer';
 import type { AnnotationPointerHandlers } from './annotations/annotationPointer';
 import { runInBackground } from '../utils/backgroundTask';
 import { isModHeld } from '../keyboard/modKey';
@@ -171,6 +172,7 @@ export class TokenRenderer {
   private turnMarkers!: TurnMarkers;
   private lightHandlers?: LightPointerHandlers;
   private measureHandlers?: MeasurePointerHandlers;
+  private fogAreaHandlers?: FogAreaPointerHandlers;
   /** Tokens held by the pointer; lighting alone does not hide them until release. */
   private heldTokenIds: ReadonlySet<string> = new Set();
   private lastHoveredPinId: string | null = null;
@@ -1612,6 +1614,11 @@ export class TokenRenderer {
     this.measureHandlers = handlers;
   }
 
+  /** Fog areas: a click on a badge hides or reveals its area with any tool, after pins, door badges and light markers; a right-click opens its menu. */
+  public setFogAreaHandlers(handlers: FogAreaPointerHandlers): void {
+    this.fogAreaHandlers = handlers;
+  }
+
   public setDoorClickHandler(handler: (worldX: number, worldY: number) => boolean): void {
     this.doorClickHandler = handler;
   }
@@ -1800,6 +1807,12 @@ export class TokenRenderer {
           return;
         }
       }
+      // The badge of a fog area lies above the tokens: its menu opens on a release in place.
+      const fogAreaId = this.fogAreaHandlers?.hitTest(worldPos.x, worldPos.y);
+      if (fogAreaId) {
+        this.openMenuOnRelease(e, (up) => this.fogAreaHandlers?.openMenu(fogAreaId, up.clientX, up.clientY));
+        return;
+      }
       // A token takes the right-click from a linked hex beneath it, as it takes the left-click
       const tokenTools = activeTool === 'select' || activeTool === 'move';
       const onToken = tokenTools && this.hitTestTokens(worldPos.x, worldPos.y) !== null;
@@ -1852,6 +1865,14 @@ export class TokenRenderer {
     // ── Light markers and range rings: a light's popover and its drags, from any tool ──
     if (primary && this.lightHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
       markHandled(e);
+      return;
+    }
+
+    // ── Badges of fog areas: a click hides or reveals the area, from any tool ──
+    const fogAreaId = primary ? this.fogAreaHandlers?.hitTest(worldPos.x, worldPos.y) ?? null : null;
+    if (fogAreaId) {
+      markHandled(e);
+      this.fogAreaHandlers?.press(fogAreaId);
       return;
     }
 
@@ -1967,6 +1988,7 @@ export class TokenRenderer {
     this.mapFeatureHandlers?.leave();
     this.lightHandlers?.leave();
     this.measureHandlers?.leave();
+    this.fogAreaHandlers?.hover(null);
     this.annotationHandlers?.leave();
     this.interactionController.handleViewportTokenHover(null);
     this.uiManager.setHoverState(null);
@@ -1981,6 +2003,7 @@ export class TokenRenderer {
       this.interactionController.handleViewportTokenHover(null);
       this.uiManager.setHoverState(null);
       this.mapFeatureHandlers?.leave();
+      this.fogAreaHandlers?.hover(null);
       return;
     }
 
@@ -2011,6 +2034,7 @@ export class TokenRenderer {
         this.uiManager.setHoverState(null);
         this.hexLinkHandlers?.hover(null, e);
         this.mapFeatureHandlers?.leave();
+        this.fogAreaHandlers?.hover(null);
         this.annotationHandlers?.leave();
         this.applyCursor('pointer');
         return;
@@ -2025,7 +2049,11 @@ export class TokenRenderer {
 
     // Measurement handles, light markers and range rings: hover and cursor from any tool
     if (measureCursor) this.lightHandlers?.leave();
-    const markerCursor = measureCursor ?? this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
+    const lightCursor = measureCursor ?? this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
+    // The badge of a fog area, where no handle or marker above it is pointed at: a press there is its own, with any tool
+    const fogAreaId = lightCursor ? null : this.fogAreaHandlers?.hitTest(worldPos.x, worldPos.y) ?? null;
+    this.fogAreaHandlers?.hover(fogAreaId);
+    const markerCursor = lightCursor ?? (fogAreaId ? 'pointer' : null);
 
     // Wall tool: pointer move for vertex dragging, freeform drawing, and hover cursors
     if (activeTool === 'wall' && this.wallPointerMoveHandler) {

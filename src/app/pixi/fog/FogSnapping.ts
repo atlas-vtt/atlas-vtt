@@ -5,6 +5,7 @@
  */
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
+import { fogAreaOutlines } from '../../fog/fogAreas';
 import { NO_SNAP, snapHeldPoint, snapPoint, type FogSnap, type FogSnapCandidates } from '../../fog/fogSnap';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
@@ -13,9 +14,6 @@ import { wallList } from '../../vision/wallList';
 
 /** Screen pixels: how near the pointer must be to a corner, a wall's end or an edge to land on it. */
 const SNAP_REACH = 10;
-
-/** The fog's areas a point may land on: none yet. */
-const NO_AREAS: ReadonlyArray<readonly Point[]> = [];
 
 /** The keys that change where a point lands. */
 export interface PlaceKeys {
@@ -84,7 +82,7 @@ export class FogSnapping {
   }
 
   private candidates(): FogSnapCandidates {
-    const state = this.deps.store.getState();
-    return { grid: this.grid(), walls: wallList(levelObjects(state).walls), areas: NO_AREAS };
+    const objects = levelObjects(this.deps.store.getState());
+    return { grid: this.grid(), walls: wallList(objects.walls), areas: fogAreaOutlines(objects.fog) };
   }
 }
