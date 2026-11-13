@@ -123,17 +123,17 @@ describe('the popover of a kept measurement', () => {
     const inset = padding + border;
     expect(padding).toBe(8);
     for (const side of ['paddingTop', 'paddingRight', 'paddingBottom'] as const) expect(Number.parseFloat(getComputedStyle(popover())[side])).toBe(padding);
-    const heading = rect('.atlas-light-popover__heading');
     const swatches = rect('.atlas-swatch-grid');
     const players = rect('.atlas-light-popover__flicker');
     const remove = rect('.atlas-light-popover__delete');
-    for (const part of [heading, swatches, players, remove]) {
+    for (const part of [swatches, players, remove]) {
       expect(part.left).toBeGreaterThanOrEqual(own.left + inset - 0.5);
       expect(part.right).toBeLessThanOrEqual(own.right - inset + 0.5);
     }
-    expect(Math.abs(heading.top - (own.top + inset))).toBeLessThanOrEqual(0.5);
+    // The swatches come first: the popover has no heading and the swatches no label above them.
+    expect(popover().querySelector('.atlas-light-popover__heading')).toBeNull();
+    expect(Math.abs(swatches.top - (own.top + inset))).toBeLessThanOrEqual(0.5);
     expect(Math.abs(own.bottom - inset - remove.bottom)).toBeLessThanOrEqual(0.5);
-    expect(heading.bottom).toBeLessThanOrEqual(swatches.top);
     expect(swatches.bottom).toBeLessThanOrEqual(players.top);
     expect(players.bottom).toBeLessThanOrEqual(remove.top);
     // Delete is the last thing in it, in its right corner.
@@ -161,6 +161,8 @@ describe('the popover of a kept measurement', () => {
     expect(Math.abs(row.right - swatches.right)).toBeLessThanOrEqual(0.5);
     expect(Math.max(...chips.map((chip) => chip.width)) - Math.min(...chips.map((chip) => chip.width))).toBeLessThanOrEqual(0.5);
     for (const chip of chips) expect(chip.width).toBeGreaterThanOrEqual(28);
+    // Each chip is a square, not a slot of the row's height.
+    for (const chip of chips) expect(Math.abs(chip.width - chip.height)).toBeLessThanOrEqual(0.5);
     expect(chips.at(-1)!.right).toBeLessThanOrEqual(row.right + 0.5);
     const before = box();
     await act(async () => { store.getState().updateMeasure(circle, { effect: 'frost', color: '#8ad1f8' }); });

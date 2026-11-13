@@ -39,7 +39,7 @@ export function MeasureEffectChips({ value, onChange, color, labelled = false }:
   const tint = readableTint(color === null ? theme.accent : cssColorToHexNumber(color), theme.background)
   const style = { '--atlas-light-badge': hexColorOf(theme.background), '--atlas-light-tint': hexColorOf(tint) } as React.CSSProperties
   const chips = (
-    <div className="atlas-light-popover__kinds" role="group" aria-labelledby={labelId} style={style}>
+    <div className="atlas-light-popover__kinds atlas-light-popover__kinds--square" role="group" aria-labelledby={labelId} style={style}>
       {!labelled && <span id={labelId} hidden>{t('measure.effect')}</span>}
       {CHOICES.map((effect) => {
         const Icon = effect ? MEASURE_EFFECT_ICONS[effect] : Ban

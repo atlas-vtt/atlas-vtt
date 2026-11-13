@@ -9,6 +9,8 @@ export interface DropdownSwatch {
 
 interface DropdownSwatchGridProps {
   label: string
+  /** The label only names the group: where the swatches say what they are, it is not shown. */
+  labelHidden?: boolean
   swatches: readonly DropdownSwatch[]
   value: string
   onChange: (value: string) => void
@@ -18,13 +20,13 @@ interface DropdownSwatchGridProps {
   children?: React.ReactNode
 }
 
-/** A labelled row of colour swatches for toolbar dropdowns and popovers; the current colour is ringed. */
-export function DropdownSwatchGrid({ label, swatches, value, onChange, hint, children }: DropdownSwatchGridProps): React.ReactElement {
+/** A row of colour swatches under its label for toolbar dropdowns and popovers; the current colour is ringed. */
+export function DropdownSwatchGrid({ label, labelHidden = false, swatches, value, onChange, hint, children }: DropdownSwatchGridProps): React.ReactElement {
   const current = value.toLowerCase()
   const labelId = React.useId()
   return (
     <div className="atlas-dropdown-swatches" role="group" aria-labelledby={labelId}>
-      <span id={labelId} className="atlas-dropdown-swatches__label">{label}</span>
+      <span id={labelId} className="atlas-dropdown-swatches__label" hidden={labelHidden}>{label}</span>
       <div className="atlas-swatch-grid">
         {swatches.map((swatch) => {
           const isActive = current === swatch.value.toLowerCase()

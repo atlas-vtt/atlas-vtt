@@ -95,11 +95,14 @@ function setup(): Setup {
 }
 
 describe('MeasurePopover', () => {
-  it('is closed until a measurement is opened, then says what it is and measures and names every control', async () => {
+  it('is closed until a measurement is opened, then names every control and repeats nothing the label on the map says', async () => {
     const { store, ruler, popover } = setup();
     expect(screen.queryByRole('dialog')).toBeNull();
     act(() => store.getState().openMeasurePopover(ruler));
-    expect(within(popover()).getByText('Ruler · 3 sq')).toBeTruthy();
+    // What it is and measures stands on the map; the popover has no heading, and its swatches no label to read.
+    expect(popover().querySelector('.atlas-light-popover__heading')).toBeNull();
+    expect(within(popover()).getByText('Colour').hidden).toBe(true);
+    expect(within(popover()).getByRole('group', { name: 'Colour' })).toBeTruthy();
     expect(within(popover()).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual(
       ['Default', 'White', 'Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Purple', 'Delete'],
     );
@@ -118,7 +121,6 @@ describe('MeasurePopover', () => {
     const element = popover();
     act(() => store.getState().openMeasurePopover(circle));
     expect(popover()).toBe(element);
-    expect(within(element).getByText('Circle · 2 sq')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Red' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('switch', { name: 'Players see it' }).getAttribute('aria-checked')).toBe('false');
   });
@@ -189,7 +191,7 @@ describe('MeasurePopover', () => {
 
 describe('the popover of a kept area', () => {
   const controls = (popover: HTMLElement): string[] =>
-    [...popover.querySelectorAll('.atlas-light-popover__heading, .atlas-swatch-grid, .atlas-light-popover__kinds, [role="switch"], .atlas-dungeon-stepper, .atlas-light-popover__actions button')]
+    [...popover.querySelectorAll('.atlas-swatch-grid, .atlas-light-popover__kinds, [role="switch"], .atlas-dungeon-stepper, .atlas-light-popover__actions button')]
       .map((element) => {
         if (element.classList.contains('atlas-swatch-grid')) return 'colours';
         if (element.classList.contains('atlas-light-popover__kinds')) return 'effects';
@@ -197,16 +199,16 @@ describe('the popover of a kept area', () => {
         return (labelledBy ? document.getElementById(labelledBy)?.textContent : element.textContent) ?? '';
       });
 
-  it('holds, in this order: what it is, its colour, its look, Gives light, Players see it, Stops at walls, a circle\'s Follows token, a line\'s Width, Select tokens and Delete', () => {
+  it('holds, in this order: its colour, its look, Gives light, Players see it, Stops at walls, a circle\'s Follows token, a line\'s Width, Select tokens and Delete', () => {
     const { store, circle, ruler, popover } = setup();
     const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
     act(() => store.getState().openMeasurePopover(circle));
-    expect(controls(popover())).toEqual(['Circle · 2 sq', 'colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Follows token', 'Select tokens', 'Delete']);
+    expect(controls(popover())).toEqual(['colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Follows token', 'Select tokens', 'Delete']);
     act(() => store.getState().openMeasurePopover(line));
-    expect(controls(popover())).toEqual(['Line · 4 sq', 'colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Width', 'Select tokens', 'Delete']);
+    expect(controls(popover())).toEqual(['colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Width', 'Select tokens', 'Delete']);
     // A ruler has neither a look nor a light.
     act(() => store.getState().openMeasurePopover(ruler));
-    expect(controls(popover())).toEqual(['Ruler · 3 sq', 'colours', 'Players see it', 'Delete']);
+    expect(controls(popover())).toEqual(['colours', 'Players see it', 'Delete']);
   });
 
   it('gives an area a look in one step: the effect, its usual colour and, on a lit scene, the light it starts with', () => {
@@ -317,7 +319,7 @@ describe('the popover of a kept area', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Wider' }));
     fireEvent.click(screen.getByRole('button', { name: 'Wider' }));
     expect(measure(line)?.width).toBe(210);
-    // A map that counts in squares without a unit names no width in the heading; the stepper says it, in squares.
+    // A map that counts in squares without a unit: the stepper says the width in squares.
     expect(popover().querySelector('.atlas-dungeon-stepper__value')?.textContent).toBe('3 sq');
     expect(store.getState().measureTool.lineWidth).toBe(3);
     fireEvent.click(screen.getByRole('button', { name: 'Narrower' }));
@@ -408,7 +410,6 @@ describe('a circle that follows a token', () => {
     // Two squares from the token's centre is a square and a half past its space: an aura of two squares, 5 a square.
     expect(measure(circle)).toMatchObject({ shape: 'circle', follows: 'hero', aura: 10, points: [{ x: 875, y: 385 }, { x: 875 + 35 + 140, y: 385 }], color: '#e93147', hidden: true });
     expect(follows().getAttribute('aria-checked')).toBe('true');
-    expect(within(popover()).getByText('Aura · 2 sq')).toBeTruthy();
     expect(steps()).toBe(1);
 
     // The token walks off; let go, the aura stays as a circle around where the token stands then.
@@ -418,7 +419,6 @@ describe('a circle that follows a token', () => {
     expect(let_go).not.toHaveProperty('follows');
     expect(let_go).not.toHaveProperty('aura');
     expect(let_go.points).toEqual([{ x: 455, y: 385 }, { x: 455 + 35 + 140, y: 385 }]);
-    expect(within(popover()).getByText('Circle · 3 sq')).toBeTruthy();
     undo();
     expect(measure(circle)).toMatchObject({ follows: 'hero', aura: 10 });
   });

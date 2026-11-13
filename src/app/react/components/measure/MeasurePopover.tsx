@@ -5,12 +5,10 @@ import { formatDistance, rangeBandName } from '../../../grid/measurementFormat';
 import { t } from '../../../i18n';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { levelObjects } from '../../../levels/levelObjects';
-import { auraCells } from '../../../measure/auraArea';
 import { rimSpots } from '../../../measure/handleSpots';
-import { isAura, measureList } from '../../../measure/keptMeasures';
+import { measureList } from '../../../measure/keptMeasures';
 import { lengthInCells } from '../../../measure/measureGrid';
-import { auraLabelText } from '../../../measure/measureLabelText';
-import { MAX_LINE_WIDTH, type KeptMeasure, type MeasureChanges, type MeasureShapeKind } from '../../../measure/measureTypes';
+import { MAX_LINE_WIDTH, type KeptMeasure, type MeasureChanges } from '../../../measure/measureTypes';
 import { Stepper } from '../../../packages/components/dungeon-generator/fields';
 import { Button } from '../../../packages/components/primitives/button';
 import { useAnchoredPopoverVariants } from '../../../packages/components/primitives/dialogMotion';
@@ -19,10 +17,8 @@ import { LabelTooltip, TooltipProvider } from '../../../packages/components/prim
 import { MEASURE_COLOR_SWATCHES, measureColorOfSwatch, swatchOfMeasureColor } from '../../../packages/components/toolbar/measureToolChoices';
 import { useFocusWhileOpen } from '../../../pixi/lighting/LightPopover';
 import { useMapPopoverPosition } from '../../../pixi/lighting/useLightPopoverPosition';
-import { measureDistance } from '../../../pixi/measure/measureDistances';
 import { MEASURE_HANDLE_RADIUS, measureHandlePoint } from '../../../pixi/measure/measureHandle';
 import { keptMeasure } from '../../../pixi/measure/measurePopoverGuard';
-import { measureHeightAt } from '../../../pixi/measureTokenHeights';
 import { mapMarkerScale } from '../../../pixi/utils/mapMarkerScale';
 import { mapMeasurementSettings } from '../../../services/mapMeasurementSettings';
 import { rulesLookup } from '../../../services/mapRules';
@@ -39,14 +35,6 @@ import { SwitchRow } from './SwitchRow';
  */
 const OWN_KEYS = new Set([' ', 'Enter', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
 
-const SHAPE_NAMES: Record<MeasureShapeKind, string> = {
-  ruler: t('measure.shape.ruler'),
-  circle: t('measure.shape.circle'),
-  cone: t('measure.shape.cone'),
-  square: t('measure.shape.square'),
-  line: t('measure.shape.line'),
-};
-
 /**
  * The popover of the kept measurement the GM edits (store `measurePopover`), beside its handle on
  * the map. One popover: opening another measurement moves it there.
@@ -61,7 +49,7 @@ export function MeasurePopoverHost(): React.ReactElement {
 }
 
 /**
- * What it holds, top to bottom: what the measurement is and measures, its colour, an area's look
+ * What it holds, top to bottom: its colour (the map's label already says what it is and measures), an area's look
  * and the light it gives (`MeasureLook`), its switches
  * (an area's also whether walls stop it, a circle's whether it follows the token it lies on, and a
  * line's width) and, last, what is done with it: an area's tokens selected, and the measurement
@@ -117,9 +105,9 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
         }
       }}
     >
-      <MeasureHeading measure={measure} />
       <DropdownSwatchGrid
         label={t('toolbar.colour')}
+        labelHidden
         swatches={MEASURE_COLOR_SWATCHES}
         value={swatchOfMeasureColor(measure.color)}
         onChange={(swatch) => update({ color: measureColorOfSwatch(swatch) ?? undefined })}
@@ -140,23 +128,6 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
       </div>
     </motion.section>
   );
-}
-
-/** What the measurement is and what it measures, as its label on the map says it: "Ruler · 35 ft". */
-function MeasureHeading({ measure }: { measure: KeptMeasure }): React.ReactElement {
-  const { app } = useAtlasUI();
-  const rules = useMemo(() => rulesLookup(app), [app]);
-  const store = useViewStoreHook();
-  const value = useAtlasStore((state) => {
-    const { grid } = state;
-    if (!grid) return '';
-    const settings = mapMeasurementSettings(rules, state);
-    if (isAura(measure)) return auraLabelText(auraCells(measure.aura, settings.unitDistance), settings);
-    // The label's own words: a ruler's with the height between the tokens under its ends.
-    return measureDistance(grid, measure, settings, measureHeightAt(store, { getOptions: () => grid }));
-  });
-  const shape = isAura(measure) ? t('measure.shape.aura') : SHAPE_NAMES[measure.shape];
-  return <span className="atlas-light-popover__heading">{value ? t('measure.heading', { shape, value }) : shape}</span>;
 }
 
 /** How wide a line is, in whole cells, written as the map writes a distance. The tool makes its next line as wide. */

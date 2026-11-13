@@ -13,7 +13,7 @@ interface SwitchRowProps {
 /** One switch of a measurement's popover, named by the text before it. */
 export function SwitchRow({ label, value, onChange, unavailable = null }: SwitchRowProps): React.ReactElement {
   const id = useId();
-  const toggle = <ToggleSwitch size="s" value={value} labelledBy={id} disabled={unavailable !== null} onChange={() => onChange(!value)} />;
+  const toggle = <ToggleSwitch value={value} labelledBy={id} disabled={unavailable !== null} onChange={() => onChange(!value)} />;
   return (
     <div className="atlas-light-popover__flicker">
       <span id={id}>{label}</span>
