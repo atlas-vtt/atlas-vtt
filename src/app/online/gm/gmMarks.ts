@@ -4,6 +4,8 @@ import { Container } from 'pixi.js';
 import { placeUnderTokens } from '../../pixi/measure/MeasureLayer';
 import type { HeldPlayout } from '../../pixi/token-renderer/TokenGlide';
 import type { App } from 'obsidian';
+import type { UnderWaySource } from '../../annotations/underWay';
+import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { SceneSource } from '../../host/sceneSource';
 import type { Measurements } from '../../pixi/measure/measurements';
 import type { ViewState } from '../../types/viewState';
@@ -12,6 +14,7 @@ import { atlasLaserLook, field } from './atlasLighting.ts';
 import { asTokenSource, call, type SceneState, type SceneStore } from './atlasView.ts';
 import type { GmMarkSource, PlayerMarks } from './MarkShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
+import { levelMapKey } from '../../levels/sceneLevels';
 import { mapTokens } from '../../tokens/offMap';
 
 type Viewport = TapViewport & CursorViewport & OverlayHost['viewport'];
@@ -24,6 +27,12 @@ const isContainer = (value: unknown): value is Container => value instanceof Con
 function measurementsOf(renderer: unknown): SceneSource<Measurements> | null {
   const source = field(field(renderer, 'measureRenderer'), 'measurements');
   return hasMethods(source, ['get', 'subscribe']) ? (source as SceneSource<Measurements>) : null;
+}
+
+/** The drawing the tab's Draw tool is making (`AnnotationsRenderer.underWay`, a private renderer field), or null in a build without it. */
+function strokeOf(renderer: unknown): UnderWaySource | null {
+  const source = field(field(renderer, 'annotations'), 'underWay');
+  return hasMethods(source, ['get', 'subscribe']) ? (source as UnderWaySource) : null;
 }
 
 /** Tells an Atlas tab's token renderer how to draw the tokens players drag (`TokenRenderer.setHeldPlayout`), where it can be told. */
@@ -66,6 +75,8 @@ export class GmMarks {
   private readonly draggerOf: (tokenId: string) => string | undefined;
   private readonly overlay: MarkOverlay;
   private readonly cursors = new CursorOverlay((cursor) => cursor.name ?? '');
+  /** The committed fog a drawing under way is judged by. */
+  private readonly fog = new FogCoverageCache();
   /** What the overlay shows: the players' marks and the rulers of their drags, each kept until it changes. */
   private shown: { players: PlayerMarks; drags: readonly RemoteDrag[] } = { players: { lasers: [], measures: [] }, drags: [] };
   private built: { readonly renderer: unknown; readonly source: GmMarkSource; readonly taps: readonly { destroy(): void }[]; readonly host: OverlayHost; readonly tokens: unknown } | null = null;
@@ -96,10 +107,16 @@ export class GmMarks {
     const state = (): SceneState & Partial<Pick<ViewState, 'activeTool' | 'tokenSettings'>> => this.store.getState();
     const tap = new PointerTap(parts.viewport, parts.canvas, () => state().activeTool === 'laser-pointer');
     const cursor = new CursorTap(parts.viewport, parts.canvas);
+    const stroke = strokeOf(renderer);
     const source: GmMarkSource = {
       measurements: parts.measurements,
       laser: tap,
       cursor,
+      ...(stroke !== null && { stroke }),
+      fog: () => {
+        const scene = state();
+        return this.fog.get(levelObjects(scene).fog, levelMapKey(scene.mapPath, scene));
+      },
       laserLook: () => atlasLaserLook(this.app),
       footprints: () => this.footprints(parts.tokens, state()),
       seen: () => {

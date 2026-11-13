@@ -5,6 +5,8 @@ import { orderOnTop } from '../../annotations/annotationStack';
 import { addedParts, CELL_FILL_OPACITY, cellsFilled, cellsShape, cellsUnfilled, coveredByFills, shapeWithin, type CellFillLook } from '../../annotations/cellFill';
 import { cellGrid, cellsCrossed, type CellGrid, type GridCell } from '../../annotations/cellGrid';
 import type { DrawLayer } from '../../annotations/annotationTypes';
+import type { LiveDrawing } from '../../annotations/madeDrawing';
+import type { UnderWay } from '../../annotations/underWay';
 import type { FilledPart } from '../../annotations/quantized';
 import type { MapRect } from '../../grid/cellNumbering';
 import type { GridGeometry } from '../../grid/gridDistance';
@@ -31,6 +33,8 @@ export interface CellsPaintingDeps {
   zoom(): number;
   /** Tells the GM that the level shown holds as many drawings as it may. */
   full(): void;
+  /** Is told the cells being filled, for whoever shows them elsewhere. */
+  readonly underWay: UnderWay;
 }
 
 /** What one drag of the Cells mode has passed so far. */
@@ -55,6 +59,14 @@ interface CellsDrag {
 const CLEARING = { veil: 0.28, dark: 0x000000, light: 0xffffff, line: 1.5 } as const;
 
 const flat = (ring: readonly Point[]): number[] => ring.flatMap(({ x, y }) => [x, y]);
+
+/** An area of the cells being filled as the drawing it will be part of: a fill without a line, in the cells' look. */
+function partDrawing({ outline, holes }: FilledPart, look: CellFillLook): LiveDrawing {
+  return {
+    type: 'line', points: [...outline, outline[0]!], color: look.color, width: 0, opacity: CELL_FILL_OPACITY, fill: 'solid',
+    ...(holes.length > 0 && { holes }), ...(look.hidden && { hidden: true as const }), ...(look.layer === 'map' && { layer: 'map' as const }),
+  };
+}
 
 /**
  * A drag of the Draw tool's Cells mode. The cells the pointer passes are shown while the drag
@@ -83,7 +95,7 @@ export class CellsPainting {
 
   /** A drag begins, with the tool's choices as they are now. */
   begin(): void {
-    this.drop();
+    this.clear();
     const geometry = this.deps.grid();
     const grid = geometry ? cellGrid(geometry) : null;
     if (!grid) return;
@@ -125,26 +137,38 @@ export class CellsPainting {
   /** The drag is over: its cells are written, in one step. */
   finish(): void {
     const drag = this.drag;
-    this.drop();
-    if (!drag || drag.cells.size === 0) return;
-    const state = this.deps.store.getState();
-    // Another scene or level is shown by now: the cells were none of its.
-    if (state.mapPath !== drag.mapPath || state.viewedLevel !== drag.level) return;
-    const objects = levelObjects(state);
-    const list = annotationList(objects);
-    const cells = [...drag.cells.values()];
-    const change = drag.unfill ? cellsUnfilled(cells, list) : cellsFilled(cells, drag.look, list, orderOnTop(state), drag.bounds);
-    if (!change) return;
-    // A fill that falls apart, or cells that touch no fill of their look, leave more drawings than they take: where the level cannot hold them, nothing is written.
-    if (change.added.length - change.removed.length > annotationRoom(objects).drawings) {
-      this.deps.full();
-      return;
-    }
-    state.replaceDrawings(change.removed, change.added);
+    this.clear();
+    if (drag && this.write(drag)) this.deps.underWay.made();
+    else this.deps.underWay.drop();
   }
 
   /** The drag is dropped: nothing of it stays. */
   drop(): void {
+    this.clear();
+    this.deps.underWay.drop();
+  }
+
+  /** Writes the cells of `drag`; false where nothing was written. */
+  private write(drag: CellsDrag): boolean {
+    if (drag.cells.size === 0) return false;
+    const state = this.deps.store.getState();
+    // Another scene or level is shown by now: the cells were none of its.
+    if (state.mapPath !== drag.mapPath || state.viewedLevel !== drag.level) return false;
+    const objects = levelObjects(state);
+    const list = annotationList(objects);
+    const cells = [...drag.cells.values()];
+    const change = drag.unfill ? cellsUnfilled(cells, list) : cellsFilled(cells, drag.look, list, orderOnTop(state), drag.bounds);
+    if (!change) return false;
+    // A fill that falls apart, or cells that touch no fill of their look, leave more drawings than they take: where the level cannot hold them, nothing is written.
+    if (change.added.length - change.removed.length > annotationRoom(objects).drawings) {
+      this.deps.full();
+      return false;
+    }
+    state.replaceDrawings(change.removed, change.added);
+    return true;
+  }
+
+  private clear(): void {
     this.drag = null;
     this.filling.clear();
     this.filling.removeFromParent();
@@ -167,6 +191,7 @@ export class CellsPainting {
     if (this.filling.parent !== layer) layer.addChild(this.filling);
     this.filling.clear();
     const parts = addedParts(shapeWithin(drag.shape, drag.bounds), drag.covered);
+    this.deps.underWay.show(parts.filter(({ outline }) => outline.length >= 3).map((part) => partDrawing(part, drag.look)), false);
     paintInk(this.filling, { fill: { parts, alpha: CELL_FILL_OPACITY }, lines: [], heads: [], even: null, width: 0, alpha: 1 }, drag.look.color);
   }
 

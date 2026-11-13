@@ -9,6 +9,7 @@ import { drawCell, eraserRadius, stampSize } from '../../annotations/drawSizes';
 import { snapDrawPoint, snapStampPoint } from '../../annotations/drawSnap';
 import { sweepChange } from '../../annotations/eraseSweep';
 import { liveDrawing, madeDrawing, madeStamp, type MadeShape } from '../../annotations/madeDrawing';
+import type { UnderWay } from '../../annotations/underWay';
 import type { MapRect } from '../../grid/cellNumbering';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
@@ -45,6 +46,8 @@ export interface DrawToolDeps {
   gmView(): boolean;
   /** Tells the GM that the level shown holds as many drawings or texts as it may. */
   full(of: FullOf): void;
+  /** Is told the drawing under way, for whoever shows it elsewhere. */
+  readonly underWay: UnderWay;
 }
 
 const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'cells', 'eraser'];
@@ -87,6 +90,7 @@ export class DrawToolHost {
       bounds: () => deps.mapRect(),
       zoom: () => this.zoom,
       full: () => deps.full('drawings'),
+      underWay: deps.underWay,
     });
     this.gestures = {
       mode: () => this.gestureMode(),
@@ -140,6 +144,7 @@ export class DrawToolHost {
   }
 
   private started(mode: GestureMode): void {
+    if (mode !== 'eraser') this.deps.underWay.begin();
     // The pen and the Cells mode work with nothing selected: what an earlier mode left selected is let go of.
     if (mode === 'pen' || mode === 'cells') this.deselect();
     if (mode === 'cells') {
@@ -157,8 +162,13 @@ export class DrawToolHost {
   private changed(shape: MadeShape): void {
     const { drawTool, grid } = this.deps.store.getState();
     const drawing = liveDrawing(shape, drawTool, drawCell(grid));
-    if (drawing) this.live.show(this.deps.layerOf(drawTool.layer, !drawTool.players), drawing, this.zoom);
-    else this.live.clear();
+    if (drawing) {
+      this.live.show(this.deps.layerOf(drawTool.layer, !drawTool.players), drawing, this.zoom);
+      this.deps.underWay.show([drawing], shape.mode === 'pen');
+    } else {
+      this.live.clear();
+      this.deps.underWay.drop();
+    }
   }
 
   private swept(path: readonly Point[], alt: boolean): void {
@@ -187,19 +197,26 @@ export class DrawToolHost {
   private finished(made: MadeShape | null): void {
     this.endSweep();
     if (this.painting) {
+      // The cells tell of their drawing themselves.
       this.painting = false;
       this.cells.finish();
+      this.live.clear();
+      return;
     }
+    let added = false;
     if (made) {
       const state = this.deps.store.getState();
       const drawing = madeDrawing(made, state.drawTool, drawCell(state.grid), this.zoom);
       if (drawing && this.hasRoom('drawings')) {
         const id = state.addDrawing(drawing);
+        added = true;
         if (made.mode !== 'pen') this.select(id);
       }
     }
     // After the drawing is on the map: the stroke never blinks between the two.
     this.live.clear();
+    if (added) this.deps.underWay.made();
+    else this.deps.underWay.drop();
   }
 
   private dropped(): void {
@@ -207,6 +224,7 @@ export class DrawToolHost {
     this.painting = false;
     this.cells.drop();
     this.live.clear();
+    this.deps.underWay.drop();
   }
 
   private hovered(world: Point): void {

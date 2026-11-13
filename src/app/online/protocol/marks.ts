@@ -1,3 +1,4 @@
+import { parseDrawing, type SharedDrawing } from './annotations.ts';
 import { MAX_SCENE_ID } from './moves.ts';
 import { MAX_PLAYERS, PLAYER_ID_PATTERN, playerName } from './relay.ts';
 import { isRecord } from './shape.ts';
@@ -23,6 +24,14 @@ export const MAX_MARK_KEPT = 50;
 export const MAX_RULER_NUMBERS = 128;
 /** The farthest an aura reaches from the edge of its token's space, in game units. */
 export const MAX_AURA_REACH = 100_000;
+/** The most numbers (x, y pairs, a fill's holes with them) the drawings of one stroke under way carry in a `marks` message. */
+export const MAX_STROKE_NUMBERS = 2_048;
+/** The most drawings a stroke under way is told as: one, or the areas of the cells being filled. */
+export const MAX_STROKE_DRAWINGS = 16;
+/** The most points a pen's stroke may have come to before the ones a message tells. */
+export const MAX_STROKE_FROM = 10_000_000;
+/** The highest number a sender counts its drawings to. */
+export const MAX_STROKE_COUNT = 1_000_000_000;
 /**
  * The shortest time between two `marks` messages, and between two of a player's lasers, measurements
  * or cursors: 10 a second (the last change always goes out). Each message carries the places passed
@@ -143,6 +152,33 @@ export type PlayerCursor = { readonly t: 'cursor'; readonly scene: string } & Cu
 export type SharedCursor = { readonly who: string; readonly name?: string } & CursorState;
 
 
+/**
+ * A drawing under way, as it stands: `drawings` tells it as a finished drawing is told
+ * (`SharedDrawing`, never a stamp), whole each time: the line, rectangle or ellipse being pulled,
+ * or the areas of the cells being filled. `n` counts its sender's drawings: another number is
+ * another drawing.
+ *
+ * A pen's stroke only grows at its end, so it tells the points it has come to since an earlier
+ * message: `from` is how many points of the stroke lie before the first of `drawings[0].points`
+ * (a reader that holds more of the stroke than that leaves out the ones it has, and one that holds
+ * fewer joins the two with a straight piece), and `span` the time in whole milliseconds from the
+ * last point the sender's message before told to the last of this one, so a reader can let the
+ * stroke grow as it was drawn.
+ *
+ * `kept` says the drawing was made: it is told among the scene's drawings from now on, and its
+ * reader shows what it has of it until those arrive. A sender whose stroke was dropped names it no more.
+ */
+export interface StrokeState {
+  readonly n: number;
+  readonly drawings: readonly SharedDrawing[];
+  readonly from?: number;
+  readonly span?: number;
+  readonly kept?: true;
+}
+
+/** One sender's drawing under way, as the GM sends it on. */
+export type SharedStroke = { readonly who: string } & StrokeState;
+
 /** A player's laser in the shared scene. */
 export type PlayerLaser = { readonly t: 'laser'; readonly scene: string } & LaserState;
 /** A player's measurements in the shared scene, whole each time. */
@@ -161,6 +197,11 @@ export interface MarksMessage {
   readonly lasers: readonly ({ readonly who: string } & LaserState)[];
   readonly measures: readonly ({ readonly who: string } & MeasureState)[];
   readonly cursors?: readonly SharedCursor[];
+  /**
+   * The drawings under way that players see grow (added later: a reader that does not know it shows
+   * a drawing once it is made). A sender missing from it draws nothing.
+   */
+  readonly strokes?: readonly SharedStroke[];
 }
 
 const SHAPES: readonly string[] = ['line', 'circle', 'cone'];
@@ -306,7 +347,44 @@ export function parseMarks(value: Record<string, unknown>): MarksMessage | null 
   });
   const cursorsRead = cursors === undefined ? undefined : parseCursorList(cursors);
   if (lasersRead === null || measuresRead === null || cursorsRead === null) return null;
-  return { t: 'marks', scene, lasers: lasersRead, measures: measuresRead, ...(cursorsRead !== undefined && { cursors: cursorsRead }) };
+  const strokesRead = parseStrokeList(value.strokes);
+  return {
+    t: 'marks', scene, lasers: lasersRead, measures: measuresRead,
+    ...(cursorsRead !== undefined && { cursors: cursorsRead }), ...(strokesRead !== undefined && { strokes: strokesRead }),
+  };
+}
+
+const isCount = (value: unknown, max: number): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max;
+const numbersOf = (drawing: SharedDrawing): number => drawing.points.length + (drawing.holes ?? []).reduce((sum, ring) => sum + ring.length, 0);
+
+/**
+ * A drawing under way, or null for one that cannot be read: a count that is none, a drawing that
+ * is none or is a stamp, more drawings or points than a message may carry, or a pen's `from` on
+ * anything but one drawing.
+ */
+export function parseStroke(value: Record<string, unknown>): StrokeState | null {
+  const { n, drawings, from, span, kept } = value;
+  if (!isCount(n, MAX_STROKE_COUNT) || !Array.isArray(drawings) || drawings.length > MAX_STROKE_DRAWINGS) return null;
+  if (span !== undefined && !isSpan(span)) return null;
+  if (from !== undefined && (!isCount(from, MAX_STROKE_FROM) || drawings.length !== 1)) return null;
+  const read = readAll(drawings, (drawing) => {
+    const parsed = parseDrawing(drawing);
+    return parsed === null || parsed.type !== 'pen' ? null : parsed;
+  });
+  if (read === null || read.reduce((sum, drawing) => sum + numbersOf(drawing), 0) > MAX_STROKE_NUMBERS) return null;
+  return { n, drawings: read, ...(from !== undefined && { from }), ...(span !== undefined && { span }), ...(kept === true && { kept }) };
+}
+
+/** The drawings under way of a `marks` message that can be read, one a sender at most; undefined where it names none. */
+function parseStrokeList(strokes: unknown): SharedStroke[] | undefined {
+  if (!Array.isArray(strokes)) return undefined;
+  const read = new Map<string, SharedStroke>();
+  for (const value of strokes.slice(0, MAX_PLAYERS + 1)) {
+    const entry = entryOf(value);
+    const stroke = entry === null ? null : parseStroke(entry.fields);
+    if (entry !== null && stroke !== null && !read.has(entry.who)) read.set(entry.who, { who: entry.who, ...stroke });
+  }
+  return [...read.values()];
 }
 
 /** The cursors of a `marks` message, or null when any is malformed. */

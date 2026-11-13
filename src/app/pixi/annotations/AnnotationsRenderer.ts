@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand';
 import { annotationList } from '../../annotations/annotationList';
 import type { DrawMode } from '../../annotations/annotationTypes';
 import { fillsCells } from '../../annotations/cellsMode';
+import { UnderWay, type UnderWaySource } from '../../annotations/underWay';
 import { snapDrawPoint } from '../../annotations/drawSnap';
 import type { MapRect } from '../../grid/cellNumbering';
 import type { GridGeometry } from '../../grid/gridDistance';
@@ -86,6 +87,9 @@ export class AnnotationsRenderer {
    */
   readonly selecting: AnnotationInteraction;
 
+  /** The drawing a gesture of the Draw tool is making now, for whoever shows it elsewhere than on this canvas. */
+  readonly underWay: UnderWaySource;
+
   private readonly store: StoreApi<ViewAtlasState>;
   private readonly viewport: Viewport;
   private readonly sharpening: TextSharpening;
@@ -167,9 +171,12 @@ export class AnnotationsRenderer {
       copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
       dragTokens: (event) => options.dragTokens?.(event),
     }, options.now);
+    const underWay = new UnderWay();
+    this.underWay = underWay;
     this.host = new DrawToolHost({
       viewport,
       store,
+      underWay,
       layerOf: (place, hidden) => this.layer.layerOf(place, hidden),
       measure: this.layer.measure,
       chrome: this.chrome,

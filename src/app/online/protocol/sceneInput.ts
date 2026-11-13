@@ -6,7 +6,8 @@ import { parseInitiative } from './initiative.ts';
 import { parseLightingScene, parseSight } from './lighting.ts';
 import { parseLiquids } from './liquids.ts';
 import { parseLive } from './live.ts';
-import { parseAnnotations, parseDoors, parseGrid, parsePins, parseSensed } from './mapLayers.ts';
+import { parseAnnotations } from './annotations.ts';
+import { parseDoors, parseGrid, parsePins, parseSensed } from './mapLayers.ts';
 import { MAX_SCENE_ID } from './moves.ts';
 import { parseWidgetBar } from './widgets.ts';
 

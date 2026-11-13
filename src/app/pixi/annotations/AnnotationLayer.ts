@@ -36,6 +36,8 @@ export interface AnnotationLayerOptions {
   readonly sharpness?: TextSharpness;
   /** The picture changed in a way nothing else tells of: a stamp's symbol came in. */
   readonly changed?: () => void;
+  /** The pixels a side a stamp's symbol is drawn at (`StampTextures`); its own where unset. */
+  readonly stampSide?: number;
 }
 
 type NodeKind = 'text' | 'stamp' | 'ink';
@@ -96,7 +98,7 @@ export class AnnotationLayer {
   private readonly entries = new Map<string, Entry>();
   /** The entries by the annotations of the list as it is now. */
   private byAnnotation = new Map<Annotation, Entry>();
-  private readonly stamps = new StampTextures();
+  private readonly stamps: StampTextures;
   private list: readonly Annotation[] = [];
   /** The parts of the world the pictures show; null shows everything. */
   private views: readonly Box[] | null = null;
@@ -109,6 +111,7 @@ export class AnnotationLayer {
     this.onMapHidden.alpha = HIDDEN_ANNOTATION_ALPHA;
     this.aboveHidden.alpha = HIDDEN_ANNOTATION_ALPHA;
     parent.addChild(this.onMap, this.onMapHidden, this.above, this.aboveHidden);
+    this.stamps = new StampTextures(options.stampSide);
     this.previews = new LayerPreview((annotation) => this.entries.get(keyOf(annotation)), () => this.entries.values(), (entry, shown) => this.draw(entry as Entry, shown));
   }
 

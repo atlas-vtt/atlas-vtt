@@ -78,12 +78,15 @@ export function paintDrawing(graphics: Graphics, drawing: DrawingAnnotation, tol
 
 /**
  * The symbols of stamps as textures: one for each symbol, in white, which every stamp of it tints
- * with its own colour. Rasterised when first asked for.
+ * with its own colour. Rasterised when first asked for, `side` pixels a side: less than
+ * `STAMP_TEXTURE_SIDE` where memory is short and a stamp is never seen that large.
  */
 export class StampTextures {
   private readonly textures = new Map<string, Texture | null>();
   private readonly pending = new Map<string, Promise<Texture | null>>();
   private destroyed = false;
+
+  constructor(private readonly side: number = STAMP_TEXTURE_SIDE) {}
 
   /** The texture of `icon` once it is there; null for a symbol this Atlas does not know, or one that cannot be drawn. */
   of(icon: string): Texture | Promise<Texture | null> | null {
@@ -92,13 +95,13 @@ export class StampTextures {
     const glyph = stampGlyph(icon);
     if (!glyph) return null;
     if (glyph.kind === 'silhouette') {
-      const texture = createGlyphTexture(glyph.path, STAMP_TEXTURE_SIDE);
+      const texture = createGlyphTexture(glyph.path, this.side);
       this.textures.set(icon, texture);
       return texture;
     }
     let pending = this.pending.get(icon);
     if (!pending) {
-      pending = createLucideIconTexture(glyph.markup, '#ffffff', STAMP_TEXTURE_SIDE, true).then((texture) => {
+      pending = createLucideIconTexture(glyph.markup, '#ffffff', this.side, true).then((texture) => {
         this.pending.delete(icon);
         if (this.destroyed) {
           texture.destroy(true);

@@ -1,8 +1,11 @@
 import { CURSOR_KEEPALIVE_MS, GM_MARKS, MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, MAX_MARK_KEPT, MAX_MARK_LASER_NUMBERS, type GmMessage, type LaserState, type MarksMessage, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure } from '../protocol/index.ts';
+import type { UnderWaySource } from '../../annotations/underWay';
+import type { FogCoverage } from '../../fog/fogCoverage';
 import type { SceneSource } from '../../host/sceneSource';
 import type { Measurements } from '../../pixi/measure/measurements';
 import { CursorShare, type CursorSharePorts } from './CursorShare.ts';
 import { GmMeasures, type PlayersView, type TokenAlias } from './gmMeasures.ts';
+import { GmStrokes } from './gmStrokes.ts';
 import { checkLaser, checkMeasure, markRate } from './markCheck.ts';
 import type { MapSize, MoveRate } from './moveCheck.ts';
 import { legacyMeasures, Pacer, type CursorSource, type LaserSource, type PacerClock } from '../marks/index.ts';
@@ -18,6 +21,10 @@ export interface GmMarkSource extends PlayersView {
   laserLook(): { readonly color: string; readonly size: number };
   /** Calls `listener` whenever what the players see of the tokens may have changed; returns the function that stops it. */
   onPlayersViewChange?(listener: () => void): () => void;
+  /** The drawing the GM is making on the shared tab; without it players see a drawing once it is made. */
+  readonly stroke?: UnderWaySource;
+  /** The committed fog of the level shown, which a drawing under way is judged by as a finished one is; null while it cannot be read. */
+  fog?(): FogCoverage | null;
 }
 
 /** Players' marks, for the GM to see over the map. */
@@ -51,7 +58,7 @@ const MARKS_KEY = 'marks';
 
 /** A player's laser that sent nothing for this long is gone (the client sends while it shows, at least twice a second). */
 export const LASER_SILENCE_MS = 1000;
-const isEmpty = (marks: MarksMessage): boolean => marks.lasers.length === 0 && marks.measures.length === 0 && (marks.cursors?.length ?? 0) === 0;
+const isEmpty = (marks: MarksMessage): boolean => marks.lasers.length === 0 && marks.measures.length === 0 && (marks.cursors?.length ?? 0) === 0 && (marks.strokes?.length ?? 0) === 0;
 
 /** Obsidian's default accent, for when the theme's cannot be read. */
 const DEFAULT_ACCENT = '#8a5cf5';
@@ -99,7 +106,8 @@ const spansAdded = (covered: number | null, span: number | undefined): number | 
 /**
  * Everyone's marks in the shared scene, sent to all as one `marks` message at most every
  * `MARKS_INTERVAL_MS` through the live lane, only when something changed: the GM's measurements
- * players may see (`GmMeasures`), the GM's laser, each player's checked laser and measurements, and, while the GM lets
+ * players may see (`GmMeasures`), the drawing the GM is making where players will see it (`GmStrokes`),
+ * the GM's laser, each player's checked laser and measurements, and, while the GM lets
  * everyone see them, everyone's cursors (`CursorShare`). Each client leaves out its own. The GM's own overlay does not wait for that pace: it is shown a player's marks
  * as they arrive.
  *
@@ -113,6 +121,7 @@ export class MarkShare {
   private readonly map: () => MapSize | null;
   private readonly pacer: Pacer;
   private readonly gm = new GmMeasures();
+  private readonly strokes = new GmStrokes();
   private readonly lasers = new Map<string, PlayerLaserState>();
   private readonly measures = new Map<string, PlayerMeasureState>();
   private readonly laserRate: MoveRate = markRate();
@@ -146,6 +155,7 @@ export class MarkShare {
     this.lasers.clear();
     this.measures.clear();
     this.gm.reset();
+    this.strokes.reset();
     this.cursors.reset();
     this.pacer.cancel();
     this.last = null;
@@ -232,6 +242,7 @@ export class MarkShare {
     this.stopSource = null;
     this.source = source;
     this.gm.reset();
+    this.strokes.reset();
     if (source === null) return;
     // Atlas tells of a measurement several times within one event (drawn, kept, cleared): it is read once the event is done.
     const { measurements } = source;
@@ -241,7 +252,14 @@ export class MarkShare {
       this.pacer.request();
     });
     const request = (): void => this.pacer.request();
-    const stops = [measurements?.subscribe(measured) ?? (() => undefined), source.laser.subscribe(request), source.cursor?.subscribe(request) ?? (() => undefined), source.onPlayersViewChange?.(request) ?? (() => undefined)];
+    const drawn = (): void => {
+      this.strokes.moved(this.ports.now());
+      this.pacer.request();
+    };
+    const stops = [
+      measurements?.subscribe(measured) ?? (() => undefined), source.laser.subscribe(request), source.cursor?.subscribe(request) ?? (() => undefined),
+      source.onPlayersViewChange?.(request) ?? (() => undefined), source.stroke?.subscribe(drawn) ?? (() => undefined),
+    ];
     this.stopSource = () => stops.forEach((stop) => stop());
     measured();
   }
@@ -265,15 +283,17 @@ export class MarkShare {
     const playerMeasures = [...this.measures].map(([who, { state, covered }]) => measureEntry(who, this.inBothWords(state), covered ?? null));
     for (const held of this.measures.values()) held.covered = undefined;
     const cursors = this.cursors.take(this.source?.cursor ?? null);
+    const now = this.ports.now();
+    const stroke = this.source?.stroke === undefined ? undefined : this.strokes.take(this.source.stroke.get(), this.source.fog?.() ?? null, now);
     const body: MarksMessage = {
       t: 'marks',
       scene: this.scene,
       lasers: [...this.gmLaser(), ...playerLasers.filter((laser) => laser.at !== null || laser.on || laser.pts.length > 0)],
       measures: [...this.gmMeasures(), ...playerMeasures],
       ...(cursors !== undefined && { cursors }),
+      ...(stroke !== undefined && { strokes: [{ who: GM_MARKS, ...stroke }] }),
     };
     const text = JSON.stringify(body);
-    const now = this.ports.now();
     // Cursors that show go out now and then while nothing changes, so a page can tell a GM that went silent.
     const keepAlive = (body.cursors?.length ?? 0) > 0 && now - this.sentAt >= CURSOR_KEEPALIVE_MS;
     // Nothing to tell before anyone made a mark: players start without any.

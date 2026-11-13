@@ -1,3 +1,4 @@
+export * from './annotations.ts';
 export * from './asset.ts';
 export * from './book.ts';
 export * from './bookSlots.ts';
