@@ -274,11 +274,11 @@ describe('DragRuler', () => {
         const { ruler, view } = makeRuler({ speed: 30 }, () => true, { movement: movement(steps()), settings: BANDS });
         ruler.begin('t1', center(0, 0));
         ruler.update(center(3, 0));
-        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], 'Near / Near', TOKEN_RADIUS, CELL, MOVE.color);
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], `Near · ${MOVE.name}`, TOKEN_RADIUS, CELL, MOVE.color);
         ruler.update(center(8, 0));
-        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(8, 0)], 'Double Near / Double Near', TOKEN_RADIUS, CELL, DASH.color);
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(8, 0)], `Double Near · ${DASH.name}`, TOKEN_RADIUS, CELL, DASH.color);
         ruler.update(center(14, 0));
-        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(14, 0)], 'Far / Double Near', TOKEN_RADIUS, CELL, BEYOND_SPEED);
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(14, 0)], 'Far', TOKEN_RADIUS, CELL, BEYOND_SPEED);
         ruler.end();
       });
 
@@ -288,7 +288,7 @@ describe('DragRuler', () => {
         ruler.begin('t1', center(0, 0));
         ruler.update(center(3, 0));
         // 20 ft earlier and three squares of 5 ft: 35 ft, in the second move.
-        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], 'Double Near / Double Near', TOKEN_RADIUS, CELL, DASH.color);
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(3, 0)], `Double Near · ${DASH.name}`, TOKEN_RADIUS, CELL, DASH.color);
         ruler.countDrop([{ id: 't1', from: center(0, 0), to: center(3, 0) }]);
         expect(countTurnMove).toHaveBeenLastCalledWith(['t1'], 15);
         ruler.end();
@@ -298,7 +298,7 @@ describe('DragRuler', () => {
         const { ruler, view } = makeRuler({ speed: 30, vision: { enabled: false } }, () => true, { movement: movement(steps()), settings: BANDS });
         ruler.begin('t1', center(0, 0));
         ruler.update(center(8, 0));
-        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(8, 0)], 'Double Near / Double Near', TOKEN_RADIUS, CELL, DASH.color, 'Double Near');
+        expect(view.draw).toHaveBeenLastCalledWith([center(0, 0), center(8, 0)], `Double Near · ${DASH.name}`, TOKEN_RADIUS, CELL, DASH.color, 'Double Near');
         ruler.end();
       });
     });

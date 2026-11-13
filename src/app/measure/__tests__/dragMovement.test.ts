@@ -56,13 +56,13 @@ describe('dragMove', () => {
 
   it('counts a map of range bands like any other and writes both as the bands they reach', () => {
     const bands = (cells: number, extra: Partial<Parameters<typeof dragMove>[0]> = {}): ReturnType<typeof dragMove> => move(cells, 30, { settings: BANDS, ...extra });
-    expect(bands(1)).toEqual({ label: 'Close / Near', color: MOVE.color });
-    expect(bands(6)).toEqual({ label: 'Near / Near', color: MOVE.color });
-    expect(bands(7)).toEqual({ label: 'Double Near / Double Near', color: DASH.color });
-    expect(bands(12)).toEqual({ label: 'Double Near / Double Near', color: DASH.color });
-    expect(bands(13)).toEqual({ label: 'Far / Double Near', color: BEYOND_SPEED });
+    expect(bands(1)).toEqual({ label: `Close · ${MOVE.name}`, color: MOVE.color });
+    expect(bands(6)).toEqual({ label: `Near · ${MOVE.name}`, color: MOVE.color });
+    expect(bands(7)).toEqual({ label: `Double Near · ${DASH.name}`, color: DASH.color });
+    expect(bands(12)).toEqual({ label: `Double Near · ${DASH.name}`, color: DASH.color });
+    expect(bands(13)).toEqual({ label: 'Far', color: BEYOND_SPEED });
     // What the token moved earlier in its turn is in game units there too.
-    expect(bands(2, { earlier: 30 })).toEqual({ label: 'Double Near / Double Near', color: DASH.color });
+    expect(bands(2, { earlier: 30 })).toEqual({ label: `Double Near · ${DASH.name}`, color: DASH.color });
     // Bands without names are written in squares, as a ruler writes them.
     expect(bands(4, { settings: { ...BANDS, rangeBands: [] } })?.label).toBe('4 sq / 6 sq');
   });

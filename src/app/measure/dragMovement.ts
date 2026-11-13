@@ -7,7 +7,7 @@
  */
 
 import { distanceNumber, formatGameUnits, rangeBandName, type MeasurementSettings } from '../grid/measurementFormat';
-import { movementStepFor, stepReach, type MovementRules } from './movementRules';
+import { movementStepFor, stepReach, type MovementRules, type MovementStep } from './movementRules';
 
 /** The colour of a move past the last step: no step's own, so whoever draws it reads the theme's warning red. */
 export const BEYOND_SPEED = 'beyond';
@@ -17,9 +17,9 @@ export type MoveColor = string;
 
 export interface DragMove {
   /**
-   * Moved and how far the step it lies in reaches, "25 / 30ft", "45 / 60ft" in a second move,
-   * "Close / Near" where the map names distances. The moved part holds the turn's earlier moves
-   * where they count; past the last step the reach is the last step's.
+   * Moved and how far the step it lies in reaches, "25 / 30ft", "45 / 60ft" in a second move;
+   * where the map names distances, the band moved and the step's name, "Close · Move". The moved
+   * part holds the turn's earlier moves where they count; past the last step the reach is the last step's.
    */
   readonly label: string;
   readonly color: MoveColor;
@@ -48,11 +48,18 @@ export function movedGameUnits(cells: number, settings: Pick<MeasurementSettings
   return Number.isFinite(units) && settings.unitDistance > 0 ? units : null;
 }
 
-/** Moved against reach as the map writes distances: numbers with the unit once, or the two bands. */
-function moveLabel(moved: number, reach: number, settings: MoveSettings): string {
+/**
+ * A move as the map writes it. Where distances are measured: moved against the step's reach, the
+ * unit once ("25 / 30ft"). Where the map measures in range bands, two band names say nothing
+ * ("Close / Close"), so the label is the band moved and the step's name ("Close · Move"), and the
+ * band alone past the last step.
+ */
+function moveLabel(moved: number, reach: number, step: MovementStep | typeof BEYOND_SPEED, settings: MoveSettings): string {
   if (settings.mode !== 'abstract') return `${distanceNumber(moved)} / ${formatGameUnits(reach, settings)}`;
   const band = (units: number): string => rangeBandName(units / settings.unitDistance, settings.rangeBands);
-  return `${band(moved)} / ${band(reach)}`;
+  // Bands without names are counted in squares, which read against each other as distances do.
+  if (settings.rangeBands.length === 0) return `${band(moved)} / ${band(reach)}`;
+  return step === BEYOND_SPEED ? band(moved) : `${band(moved)} · ${step.name}`;
 }
 
 /**
@@ -67,7 +74,7 @@ export function dragMove({ cells, earlier, speed, rules, settings }: DragMoveInp
   const reach = stepReach(step, speed, rules);
   if (step === null || reach === null) return null;
   return {
-    label: moveLabel(moved, reach, settings),
+    label: moveLabel(moved, reach, step, settings),
     color: step === BEYOND_SPEED ? BEYOND_SPEED : step.color,
   };
 }

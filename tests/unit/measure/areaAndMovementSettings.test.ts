@@ -6,7 +6,7 @@ import { collectionMovementRules } from '../../../src/app/gameSystems/movementRu
 import { parseUserPresets } from '../../../src/app/gameSystems/presetValidation';
 import { viewOfRules } from '../../../src/app/gameSystems/rulesView';
 import { rulesOfPreset, sameSystemRules, vanillaSystemSettings } from '../../../src/app/gameSystems/systemRules';
-import { areaRulesOf, formatGameDistance, resolveMeasurementSettings } from '../../../src/app/grid/measurementFormat';
+import { areaRulesOf, distanceNumber, formatGameDistance, resolveMeasurementSettings } from '../../../src/app/grid/measurementFormat';
 import { BEYOND_SPEED, dragMove } from '../../../src/app/measure/dragMovement';
 import { isValidMovementRules, NO_MOVEMENT_RULES, type MovementRules } from '../../../src/app/measure/movementRules';
 import { movementEdit } from '../../../src/app/react/components/collection-settings/RulesSettingsTabs';
@@ -234,7 +234,8 @@ describe('the movement rules of the built-in systems', () => {
         const [, reach, colour] = system.steps[index]!;
         const at = dragMove({ cells, earlier: 0, speed, rules, settings });
         expect(at?.color, step.name).toBe(colour);
-        expect(at?.label.split(' / ')[1], step.name).toBe(reach);
+        // Distances read against the step's reach; a band is named with its step, since two band names say nothing.
+        expect(at?.label, step.name).toBe(settings.mode === 'abstract' ? `${reach} · ${step.name}` : `${distanceNumber(speed * step.multiple)} / ${reach}`);
         expect(dragMove({ cells: cells + 1, earlier: 0, speed, rules, settings })?.color, `past ${step.name}`).toBe(system.steps[index + 1]?.[2] ?? BEYOND_SPEED);
       });
     });
@@ -253,10 +254,10 @@ describe('the movement rules of the built-in systems', () => {
     expect(drag('builtin:coc7e', 20)).toBe('20 / 40yd');
     expect(drag('builtin:cyberpunkred', 7, 6)).toBe('14 / 24m');
     expect(drag('builtin:drawsteel', 4)).toBe('4 / 5u');
-    expect(drag('builtin:shadowdark', 4)).toBe('Near / Near');
-    expect(drag('builtin:shadowdark', 9)).toBe('Double Near / Double Near');
-    expect(drag('builtin:daggerheart', 2)).toBe('Very Close / Close');
-    expect(drag('builtin:daggerheart', 13)).toBe('Very Far / Far');
+    expect(drag('builtin:shadowdark', 4)).toBe('Near · Move');
+    expect(drag('builtin:shadowdark', 9)).toBe('Double Near · Second move');
+    expect(drag('builtin:daggerheart', 2)).toBe('Very Close · Move');
+    expect(drag('builtin:daggerheart', 13)).toBe('Very Far');
   });
 
   it('can be saved as they stand, in colours the settings offer, and read back the same', () => {
