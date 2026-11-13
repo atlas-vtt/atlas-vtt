@@ -4,6 +4,8 @@ export const glass = {
   'glass.following': 'Players · following you',
   'glass.bring': 'Bring players here',
   'glass.dragHint': 'Drag to move. Snaps to a square grid unless you hold Alt.',
+  'glass.liveHint': 'Drag to move the players with you at once. Snaps to a square grid unless you hold Alt.',
+  'glass.playersNow': 'Where players are now',
   'glass.pin': 'Pin the players here',
   'glass.unpin': 'Let the players follow you',
   'glass.bringHint': 'Show players this map',

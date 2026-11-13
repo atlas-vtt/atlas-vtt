@@ -52,6 +52,12 @@
   padding-inline-start: $spacing-xs;
 }
 
+.atlas-glass-chip__grip--alone,
+.atlas-glass-chip__grip--end {
+  // Equal on both sides, like the chip's padding
+  padding-inline-end: $spacing-xs;
+}
+
 .atlas-glass-chip__icon {
   flex: none;
   width: $icon-s;

@@ -72,6 +72,12 @@ function fakeService() {
       changed();
       return true;
     }),
+    dragPlayersTo: vi.fn((_tabId: string, x: number, y: number) => {
+      state.frozen = true;
+      glass = { ...glass, centerX: x, centerY: y };
+      changed();
+      return true;
+    }),
     playersToCamera: vi.fn((tabId: string) => playerWindowStore.getState().shownTabId === tabId),
     isTrueScale: () => false,
     playerCameraAt: vi.fn((x: number, y: number) => ({ centerX: x, centerY: y, scale: 1 })),
@@ -711,5 +717,141 @@ describe('where the chip stands', () => {
     it('does not wait on the screen for a frame that left it', () => {
       expect(savedChipPlace({ x: -900, y: -800, width: 400, height: 300 }, chip, room)).toEqual({ x: -886, y: -784 });
     });
+  });
+});
+
+describe('moving players live', () => {
+  const grip = (kind: 'live' | 'players'): Element | null => document.querySelector(`[data-glass-grip="${kind}"]`);
+  const FRAME = { centerX: 100, centerY: 100, width: 200, height: 100 };
+
+  /** Presses a grip at (100, 50), drags it through `to` and lets go, or keeps holding with `release: false`. */
+  function dragGrip(kind: 'live' | 'players', to: { x: number; y: number; altKey?: boolean }[], release = true): void {
+    fireEvent.pointerDown(grip(kind)!, { pointerId: 1, button: 0, clientX: 100, clientY: 50 });
+    for (const { x, y, altKey = false } of to) fireEvent.pointerMove(window, { pointerId: 1, clientX: x, clientY: y, altKey });
+    if (release) fireEvent.pointerUp(window, { pointerId: 1, clientX: to.at(-1)!.x, clientY: to.at(-1)!.y });
+  }
+
+  it('moves players with the live grip at once, snapped like the glass, and frames them where it is dropped', () => {
+    render(<GlassChip view={fakeView()} />);
+    const outline = fakes.outlines[0]!;
+    dragGrip('live', [{ x: 163, y: 72 }, { x: 190, y: 130 }], false);
+
+    // Grabbed 50 above its centre: (190, 180) puts the corner at (90, 130), which lands on (100, 150)
+    expect(service.dragPlayersTo).toHaveBeenLastCalledWith('tab-a', 200, 200);
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
+    expect(service.state.frozen).toBe(true);
+    // No frame is staged: players are the glass
+    expect(outline.setGlass).toHaveBeenLastCalledWith({ ...FRAME, centerX: 200, centerY: 200 }, 'live');
+    expect(outline.setOrigin).toHaveBeenLastCalledWith(null);
+
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 190, clientY: 130 });
+    expect(service.framePlayersOn).toHaveBeenCalledExactlyOnceWith('tab-a', 200, 200);
+    expect(screen.queryByRole('group', { name: 'Where players are now' })).toBeNull();
+  });
+
+  it('leaves the players where the pointer is with Alt held', () => {
+    render(<GlassChip view={fakeView()} />);
+    dragGrip('live', [{ x: 163, y: 72, altKey: true }]);
+    expect(service.dragPlayersTo).toHaveBeenLastCalledWith('tab-a', 163, 122);
+    expect(service.framePlayersOn).toHaveBeenCalledExactlyOnceWith('tab-a', 163, 122);
+  });
+
+  it('does not move players below the threshold, so a press stays a click', () => {
+    render(<GlassChip view={fakeView()} />);
+    dragGrip('live', [{ x: 102, y: 51 }]);
+    expect(service.dragPlayersTo).not.toHaveBeenCalled();
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
+  });
+
+  it('puts players back on Escape, following the GM again', () => {
+    render(<GlassChip view={fakeView()} />);
+    dragGrip('live', [{ x: 163, y: 72 }], false);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.pointerUp(window, { pointerId: 1 });
+
+    expect(service.unfreezeCamera).toHaveBeenCalledOnce();
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
+    expect(service.state.frozen).toBe(false);
+  });
+
+  it('puts players back on Escape where they were pinned', () => {
+    render(<GlassChip view={fakeView()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Pin the players here' }));
+    dragGrip('live', [{ x: 163, y: 72 }], false);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.pointerUp(window, { pointerId: 1 });
+
+    expect(service.freezeCamera).toHaveBeenLastCalledWith({ centerX: 100, centerY: 100, scale: 1 });
+    expect(service.unfreezeCamera).not.toHaveBeenCalled();
+    expect(service.framePlayersOn).not.toHaveBeenCalled();
+  });
+
+  it('does not stage a frame when the live grip is dragged, and the glass grip still does', async () => {
+    render(<GlassChip view={fakeView()} />);
+    dragGrip('live', [{ x: 190, y: 130 }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('group', { name: 'Show players here' })).toBeNull();
+
+    drag([{ x: 190, y: 130 }]);
+    expect(screen.getByRole('group', { name: 'Show players here' })).toBeTruthy();
+  });
+
+  describe('while a frame is staged', () => {
+    function stage(): void {
+      drag([{ x: 190, y: 130 }]);
+    }
+
+    it('has the grip on the dashed frame, not on the staged one', () => {
+      render(<GlassChip view={fakeView()} />);
+      expect(screen.queryByRole('group', { name: 'Where players are now' })).toBeNull();
+      expect(grip('live')).not.toBeNull();
+
+      stage();
+      expect(screen.getByRole('group', { name: 'Where players are now' })).toBeTruthy();
+      expect(grip('players')).not.toBeNull();
+      expect(grip('live')).toBeNull();
+    });
+
+    it('moves players from the dashed frame while the staged frame stays where it is', () => {
+      render(<GlassChip view={fakeView()} />);
+      const outline = fakes.outlines[0]!;
+      stage();
+      dragGrip('players', [{ x: 350, y: 230 }]);
+
+      // Grabbed 50 above the players' centre: (350, 280) puts the corner at (250, 230), which lands on (250, 250)
+      expect(service.dragPlayersTo).toHaveBeenLastCalledWith('tab-a', 350, 300);
+      expect(service.framePlayersOn).toHaveBeenCalledExactlyOnceWith('tab-a', 350, 300);
+      expect(outline.setGlass).toHaveBeenLastCalledWith({ ...FRAME, centerX: 200, centerY: 200 }, 'ghost');
+      expect(outline.setOrigin).toHaveBeenLastCalledWith({ ...FRAME, centerX: 350, centerY: 300 });
+      expect(screen.getByRole('group', { name: 'Show players here' })).toBeTruthy();
+    });
+
+    it('puts players back on Escape and keeps the staged frame', () => {
+      render(<GlassChip view={fakeView()} />);
+      const outline = fakes.outlines[0]!;
+      stage();
+      dragGrip('players', [{ x: 350, y: 230 }], false);
+      fireEvent.keyDown(window, { key: 'Escape' });
+
+      expect(service.unfreezeCamera).toHaveBeenCalledOnce();
+      expect(service.framePlayersOn).not.toHaveBeenCalled();
+      expect(outline.setGlass).toHaveBeenLastCalledWith({ ...FRAME, centerX: 200, centerY: 200 }, 'ghost');
+    });
+
+    it('goes when the staged frame is forgotten', async () => {
+      render(<GlassChip view={fakeView()} />);
+      stage();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fireEvent.click(screen.getByRole('button', { name: 'Leave the players where they are' }));
+      expect(screen.queryByRole('group', { name: 'Where players are now' })).toBeNull();
+      expect(grip('live')).not.toBeNull();
+    });
+  });
+
+  it('is not offered on a map players do not see', () => {
+    playerWindowStore.setState({ isOpen: true, shownTabId: 'tab-b' });
+    render(<GlassChip view={fakeView()} />);
+    expect(grip('live')).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Where players are now' })).toBeNull();
   });
 });
