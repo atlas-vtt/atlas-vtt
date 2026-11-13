@@ -157,6 +157,9 @@ $tab-fade: 24px;
   // never resizes on hover.
   &__action {
     position: absolute;
+    // Above the label: its fade (mask-image) makes it a stacking context, which would paint over the
+    // controls and take their clicks, as it comes after the eye in the tab.
+    z-index: 1;
     top: $tab-inset;
     display: flex;
     visibility: hidden;
