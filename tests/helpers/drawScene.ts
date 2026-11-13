@@ -75,7 +75,15 @@ export interface DrawScene {
   destroy(): void;
 }
 
-export function drawScene(options: { grid?: GridGeometry | null; playerView?: boolean; keysBelongToMap?: (event: KeyboardEvent) => boolean } = {}): DrawScene {
+export interface DrawSceneOptions {
+  grid?: GridGeometry | null;
+  playerView?: boolean;
+  keysBelongToMap?: (event: KeyboardEvent) => boolean;
+  /** Called with the store before the drawings and texts listen to it: what subscribes here hears every change before they do, as the selection's own marks do on the map. */
+  hearsFirst?: (store: ReturnType<typeof createViewAtlasStore>) => void;
+}
+
+export function drawScene(options: DrawSceneOptions = {}): DrawScene {
   const restoreGraphics = stubJsdomGraphics();
   const host = document.body.createDiv();
   const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events: { domElement: host.createEl('canvas') } as unknown as EventSystem });
@@ -84,6 +92,7 @@ export function drawScene(options: { grid?: GridGeometry | null; playerView?: bo
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/draw.atlasmap');
   if (options.playerView) store.setState({ isPlayerView: true });
+  options.hearsFirst?.(store);
   const full = vi.fn<(of: FullOf) => void>();
   const dragTokens = vi.fn<() => void>();
   const players: DrawScene['players'] = { shown: null };

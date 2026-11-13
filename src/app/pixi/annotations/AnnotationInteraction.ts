@@ -75,6 +75,12 @@ export class AnnotationInteraction {
 
   private readonly gestures: AnnotationGestures;
   private selection: SelectionRead | null = null;
+  /**
+   * The selection `follow` last acted on. Not `selection`: that is read anew by whoever asks
+   * between two changes (the selection's own marks ask `framedIds` before this hears of a change),
+   * and compared with it a change looked like none, so a frame stayed around what was let go of.
+   */
+  private followed: SelectionRead | null = null;
   /** The annotation whose outline shows under the pointer. */
   private hovered: Annotation | null = null;
   /** The handle under the pointer. */
@@ -110,8 +116,9 @@ export class AnnotationInteraction {
 
   /** The view's state changed: the handles show what is selected now, and a gesture on something that is another now is dropped. */
   follow(): void {
-    const before = this.selection;
+    const before = this.followed;
     const now = this.read();
+    this.followed = now;
     // Another selection (by a key too, with the pointer at rest): the handle under the pointer was the old one's.
     const { selectedIds } = this.deps.store.getState();
     if (selectedIds !== this.selectedIds) {
