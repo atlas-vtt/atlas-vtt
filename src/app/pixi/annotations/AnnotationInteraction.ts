@@ -204,9 +204,19 @@ export class AnnotationInteraction {
     return annotationsAt(point, HIT_TOLERANCE / this.zoom, read.list, this.deps.measure).find((annotation) => takesPress(read.scope, annotation)) ?? null;
   }
 
+  private handleUnder(point: Point, read: SelectionRead): HandleRef | null {
+    return read.handles ? handleAt(read.handles, point, this.zoom) : null;
+  }
+
   private gripAt(point: Point, read: SelectionRead): GripRef | null {
-    const handle = read.handles ? handleAt(read.handles, point, this.zoom) : null;
+    const handle = this.handleUnder(point, read);
     return isGrip(handle) ? handle : null;
+  }
+
+  /** The undo step a move shares with the tokens dragged along: they write as they go. */
+  private tokenSteps(): { begin: () => void; end: () => void } {
+    const { store } = this.deps;
+    return { begin: () => beginHistoryTransaction(store), end: () => endHistoryTransaction(store) };
   }
 
   private gripDown(point: Point, event: FederatedPointerEvent): boolean {
@@ -233,7 +243,7 @@ export class AnnotationInteraction {
       return false;
     }
     const at = this.taken(point, read);
-    const handle = read.handles ? handleAt(read.handles, point, this.zoom) : null;
+    const handle = this.handleUnder(point, read);
     if (!at) {
       // Inside the frame, on none of what it holds: the selection is moved.
       if (handle?.kind !== 'body' || event.shiftKey) return false;
@@ -262,7 +272,6 @@ export class AnnotationInteraction {
   /** Moves the selected annotations that may be moved with the pointer, and the tokens selected with them. */
   private startMove(read: SelectionRead, edge: Extract<HandleRef, { kind: 'edge' }> | null, event: FederatedPointerEvent): void {
     const { movable, handles, withTokens } = read;
-    const { store } = this.deps;
     // Before this move listens: the tokens' drag copies what is selected before anything has moved.
     if (withTokens) this.deps.dragTokens(event);
     if (movable.length === 0) return;
@@ -271,7 +280,7 @@ export class AnnotationInteraction {
       ...(edge && handles && { click: () => this.gestures.addPoint(handles, edge.after, edge.at) }),
       // Tokens dragged with them write as they go: both are one undo step, and the tokens' drag copies for both.
       ...(withTokens
-        ? { withTokens: { begin: () => beginHistoryTransaction(store), end: () => endHistoryTransaction(store) } }
+        ? { withTokens: this.tokenSteps() }
         : { copy: (dx: number, dy: number) => this.deps.copyMoved(movable.map(({ id }) => id), dx, dy) }),
     });
   }
@@ -279,14 +288,13 @@ export class AnnotationInteraction {
   private dragAlong(event: FederatedPointerEvent): void {
     if (!this.works()) return;
     const { movable } = this.read();
-    const { store } = this.deps;
     if (movable.length === 0) return;
-    this.gestures.move(movable, event, { handles: null, withTokens: { begin: () => beginHistoryTransaction(store), end: () => endHistoryTransaction(store) } });
+    this.gestures.move(movable, event, { handles: null, withTokens: this.tokenSteps() });
   }
 
   /** Whether `point` is inside the selection's frame, in a mode where the frame takes presses. */
   private inFrame(point: Point, read: SelectionRead): boolean {
-    return read.handles !== null && read.scope !== 'made' && handleAt(read.handles, point, this.zoom) !== null;
+    return read.scope !== 'made' && this.handleUnder(point, read) !== null;
   }
 
   private menuAt(point: Point): boolean {
@@ -316,7 +324,7 @@ export class AnnotationInteraction {
       return null;
     }
     const read = this.read();
-    const handle = read.handles ? handleAt(read.handles, point, this.zoom) : null;
+    const handle = this.handleUnder(point, read);
     if (isGrip(handle) && read.handles) {
       this.setHot(handle);
       this.hover(null);

@@ -16,8 +16,8 @@ type Point = MadeShape['points'][number];
 /** How far off the map a player's drawing may reach, in cells: a line that begins at the edge, a label beside it. */
 export const DRAW_MARGIN_CELLS = 2;
 /** The tallest a player's text is, in cells, however its handles scaled it; and the least, so none is too small to find again. */
-export const MAX_TEXT_CELLS = 4;
-export const MIN_TEXT_CELLS = 0.05;
+const MAX_TEXT_CELLS = 4;
+const MIN_TEXT_CELLS = 0.05;
 /** The widest a player's text wraps at, in cells, on a map whose size is not known. */
 const MAX_WRAP_CELLS = 100;
 
@@ -71,7 +71,7 @@ export function pointsOf(flat: readonly number[]): Point[] {
  * The Draw tool as a player's look sets it: the GM's own tool with the player's colour, size and
  * switches. Players see what it makes, above the tokens: neither is a player's to choose.
  */
-export function drawChoices(look: DrawLook): DrawToolChoices {
+function drawChoices(look: DrawLook): DrawToolChoices {
   return {
     ...DEFAULT_DRAW_TOOL, color: look.colour, size: look.size, players: true, layer: 'above',
     seeThrough: look.seeThrough === true, dash: look.dash ?? null, ends: look.ends ?? null, curved: look.curved === true, fill: look.fill ?? null,

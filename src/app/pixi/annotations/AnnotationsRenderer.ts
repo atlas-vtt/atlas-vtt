@@ -62,6 +62,8 @@ export interface AnnotationsRendererOptions {
   readonly now?: () => number;
 }
 
+const zoomOf = (viewport: Viewport): number => Math.abs(viewport.scale.x) || 1;
+
 /** A renderer nothing more is known of: the screen's pixels to a point, as `PixiAppManager` sets up every view's. */
 const SCREEN_SHARPNESS_HOST: TextSharpnessHost = { resolution: () => window.devicePixelRatio || 1, maxTextureSide: () => null };
 
@@ -127,14 +129,14 @@ export class AnnotationsRenderer {
     this.store = store;
     this.sharpening = new TextSharpening(viewport, options.sharpness ?? SCREEN_SHARPNESS_HOST);
     this.layer = new AnnotationLayer(viewport, {
-      zoom: () => Math.abs(viewport.scale.x) || 1,
+      zoom: () => zoomOf(viewport),
       sharpness: this.sharpening,
       changed: () => options.requestRender?.(),
     });
     viewport.addChild(this.chrome);
     const accent = options.accent ?? ((): number => cssColorToHexNumber(getObsidianAccentColor()));
     this.handles = new AnnotationHandles({
-      zoom: () => Math.abs(viewport.scale.x) || 1,
+      zoom: () => zoomOf(viewport),
       accent,
       changed: () => options.requestRender?.(),
     });
@@ -368,7 +370,7 @@ export class AnnotationsRenderer {
   private readonly tick = (): void => {
     this.views.look();
     if (this.layer.building) this.layer.build();
-    const zoom = Math.abs(this.viewport.scale.x) || 1;
+    const zoom = zoomOf(this.viewport);
     if (zoom === this.zoom) return;
     this.zoom = zoom;
     // The handles keep their size on screen.
