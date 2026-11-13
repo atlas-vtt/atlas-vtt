@@ -397,6 +397,54 @@ describe('FogToolBar', () => {
     expect(slider()).toBeNull();
   });
 
+  it('switches fog that clears around party tokens from More, with its distance, as a scene option and no undo step', () => {
+    const { store } = renderBar();
+    const history = getHistoryStore(store)!;
+    const steps = history.getState().pastStates.length;
+    const toggle = (): HTMLElement => screen.getByRole('switch', { name: 'Party tokens clear fog' });
+    const slider = (): HTMLElement => screen.getByRole('slider', { name: 'Distance' });
+    fireEvent.click(button('More'));
+    expect(toggle().getAttribute('aria-checked')).toBe('false');
+    screen.getByText('Fog clears around party tokens when they are moved. Walls stop it.');
+    // The distance stays in place while the switch is off, and is not to be set.
+    expect(slider().getAttribute('aria-valuetext')).toBe('4 cells');
+    expect(slider().hasAttribute('data-disabled')).toBe(true);
+
+    fireEvent.click(toggle());
+    expect(store.getState().fogExplore).toEqual({ distance: 4 });
+    expect(toggle().getAttribute('aria-checked')).toBe('true');
+    expect(slider().hasAttribute('data-disabled')).toBe(false);
+    act(() => slider().focus());
+    fireEvent.keyDown(slider(), { key: 'ArrowRight' });
+    expect(store.getState().fogExplore).toEqual({ distance: 5 });
+    fireEvent.keyDown(slider(), { key: 'Home' });
+    expect(store.getState().fogExplore).toEqual({ distance: 1 });
+    expect(slider().getAttribute('aria-valuetext')).toBe('1 cell');
+    fireEvent.keyDown(slider(), { key: 'End' });
+    expect(store.getState().fogExplore).toEqual({ distance: 20 });
+
+    // Off, and on again with the menu closed in between: the distance it had comes back.
+    fireEvent.click(toggle());
+    expect(store.getState().fogExplore).toBeUndefined();
+    expect(slider().getAttribute('aria-valuetext')).toBe('20 cells');
+    fireEvent.click(button('More'));
+    fireEvent.click(button('More'));
+    fireEvent.click(toggle());
+    expect(store.getState().fogExplore).toEqual({ distance: 20 });
+    expect(history.getState().pastStates).toHaveLength(steps);
+  });
+
+  it('shows the distance a scene holds beyond what the slider offers, and follows the scene', () => {
+    const { store } = renderBar();
+    act(() => store.getState().setFogExplore({ distance: 30 }));
+    fireEvent.click(button('More'));
+    const slider = screen.getByRole('slider', { name: 'Distance' });
+    expect(slider.getAttribute('aria-valuenow')).toBe('30');
+    expect(slider.getAttribute('aria-valuemax')).toBe('30');
+    act(() => store.getState().setFogExplore(null));
+    expect(screen.getByRole('switch', { name: 'Party tokens clear fog' }).getAttribute('aria-checked')).toBe('false');
+  });
+
   it('deletes all areas of the level shown from More, in one undo step, and keeps the row where there are none', () => {
     const { store } = renderBar();
     const history = getHistoryStore(store)!;

@@ -175,6 +175,13 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(more.bottom).toBeLessThanOrEqual(rect(TOOLS).top);
     expect(more.left).toBeGreaterThanOrEqual(0);
     expect(more.right).toBeLessThanOrEqual(1400);
+    // The hint under the party switch wraps on the rows' width: the menu is no wider for it.
+    const hint = document.querySelector<HTMLElement>(`${TOOLS} .atlas-dropdown-hint`)!;
+    const row = rect(`${TOOLS} .atlas-dropdown-toggle-row`);
+    expect(hint.getBoundingClientRect().left).toBeCloseTo(row.left, 1);
+    expect(hint.getBoundingClientRect().right).toBeCloseTo(row.right, 1);
+    expect(hint.getBoundingClientRect().height).toBeGreaterThan(1.5 * parseFloat(getComputedStyle(hint).fontSize));
+    expect(more.width).toBeLessThan(300);
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row__value`)!.textContent).toBe('50%');
     act(() => settings.setGmFogOpacity(0.8));
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row__value`)!.textContent).toBe('80%');

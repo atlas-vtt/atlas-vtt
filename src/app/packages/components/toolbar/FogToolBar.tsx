@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { CloudOff, LayoutGrid, MoreHorizontal, PaintBucket, Trash2 } from "lucide-react"
 import { areaIsHidden, fogAreaList, isFogArea } from "../../../fog/fogAreas"
 import { hasCells } from "../../../fog/fogCells"
+import { FOG_EXPLORE_DISTANCE, readFogExplore } from "../../../fog/fogExplore"
 import { hasRoomWalls } from "../../../fog/fogRooms"
 import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogToolFor, fogWhat, isFogTool, type FogShape, type FogWhat } from "../../../fog/fogToolChoices"
 import { DEFAULT_GM_FOG_OPACITY, GM_FOG_OPACITY_RANGE } from "../../../fog/gmFogOpacity"
@@ -16,6 +17,7 @@ import { wallList } from "../../../vision/wallList"
 import { DropdownMenu } from "../primitives/DropdownMenu"
 import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
+import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { ToolButton } from "../primitives/ToolButton"
 import { LabelTooltip, TooltipProvider } from "../primitives/tooltip"
 import { FOG_AREA_SHAPES, FOG_SHAPES, FOG_WHATS } from "./fogToolChoices"
@@ -169,10 +171,32 @@ function WholeMap(): React.ReactElement {
   )
 }
 
-/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, an area for every room of the level shown, and deleting its areas. */
+/** The scene's option that fog clears around party tokens as they are put down, as the More menu shows it. */
+interface PartyClearsFog {
+  on: boolean
+  /** How far, in cells: while the option is off, the distance it had last, which it comes back with. */
+  distance: number
+  toggle: () => void
+  setDistance: (distance: number) => void
+}
+
+/** The option lives in the scene; the distance of one switched off is kept here, for as long as the bar shows. */
+function usePartyClearsFog(): PartyClearsFog {
+  const distance = useAtlasStore((state) => readFogExplore(state.fogExplore)?.distance ?? null)
+  const setFogExplore = useAtlasStore((state) => state.setFogExplore)
+  const [kept, setKept] = useState<number>(FOG_EXPLORE_DISTANCE.initial)
+  const toggle = (): void => {
+    if (distance !== null) setKept(distance)
+    setFogExplore(distance === null ? { distance: kept } : null)
+  }
+  return { on: distance !== null, distance: distance ?? kept, toggle, setDistance: (next) => setFogExplore({ distance: next }) }
+}
+
+/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, fog that clears around the party, an area for every room of the level shown, and deleting its areas. */
 function MoreMenu(): React.ReactElement {
   const { renderer } = useAtlasUI()
   const settings = useAtlasSettings()
+  const explore = usePartyClearsFog()
   const [open, setOpen] = useState(false)
   const toggle = useCallback((): void => setOpen((before) => !before), [])
   const fog = useAtlasStore((state) => levelObjects(state).fog)
@@ -216,6 +240,21 @@ function MoreMenu(): React.ReactElement {
           // Shown where Atlas' settings cannot be reached, with nothing to set.
           disabled={!settings}
           onChange={(next) => settings?.setGmFogOpacity(next / 100)}
+        />
+      </div>
+      <div className="atlas-dropdown-section">
+        <DropdownToggleRow label={t('fog.explore')} value={explore.on} onChange={explore.toggle} />
+        <p className="atlas-dropdown-hint">{t('fog.exploreHint')}</p>
+        {/* The distance stays where it is while the switch is off. */}
+        <DropdownSliderRow
+          label={t('fog.exploreDistance')}
+          value={explore.distance}
+          min={FOG_EXPLORE_DISTANCE.min}
+          // A scene may hold a longer distance than the bar offers.
+          max={Math.max(FOG_EXPLORE_DISTANCE.offered, explore.distance)}
+          format={(cells) => t('fog.exploreCells', { count: cells })}
+          disabled={!explore.on}
+          onChange={explore.setDistance}
         />
       </div>
       <div className="atlas-dropdown-section">

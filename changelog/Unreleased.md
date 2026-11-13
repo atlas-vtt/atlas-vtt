@@ -54,6 +54,9 @@
 - More makes areas from walls: one area for every room the walls enclose, in one step
 - Fog fades: what you reveal fades away and new fog gathers, on your map and in the player window. With reduced motion it changes at once
 - Hold H to see the fog as your players see it, solid and without the areas' badges, also on a map without lighting
+- Party tokens clear fog: switch it on in More, and fog clears around the party's tokens as they are moved, as far as the distance you set. Walls stop it, open doors let it through
+- It clears when a token is put down: at the end of a drag, when a token is placed on the map, and when a player moves their token online. Hidden tokens and opponents clear nothing
+- Undo takes the move and the fog it cleared back together
 
 ## Improved
 

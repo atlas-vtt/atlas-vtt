@@ -175,6 +175,18 @@
   color: var(--text-normal);
 }
 
+/* A line under a row that says what the row does. It wraps within the menu and never widens it:
+   it asks for no width of its own and then takes the menu's. */
+.atlas-dropdown-hint {
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
+  margin: 0;
+  padding-inline: var(--atlas-menu-text-inset, 0px);
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
 /* Slider row: name and value on the text edge, the track across the menu */
 .atlas-dropdown-slider-row {
   @include atlas-flex-col($spacing-s);
