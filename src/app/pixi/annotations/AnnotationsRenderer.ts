@@ -27,6 +27,7 @@ import { annotationMenu } from './annotationMenu';
 import { showAnnotationsFullNotice } from './annotationNotices';
 import { AnnotationPlayersView } from './annotationPlayersView';
 import type { AnnotationPointerHandlers } from './annotationPointer';
+import { BarMenuPress } from './BarMenuPress';
 import { ClickPlacing } from './ClickPlacing';
 import { DrawInput } from './DrawInput';
 import { DrawPlacing } from './DrawPlacing';
@@ -114,6 +115,7 @@ export class AnnotationsRenderer {
   private readonly input: DrawInput;
   private readonly clicks: ClickPlacing;
   private readonly placing: DrawPlacing;
+  private readonly barMenus: BarMenuPress;
   private readonly texts: MapTexts;
   private readonly unsubscribe: () => void;
   /** The records the list was last read from. */
@@ -162,6 +164,7 @@ export class AnnotationsRenderer {
     };
     const full = options.full ?? showAnnotationsFullNotice;
     this.full = full;
+    this.barMenus = new BarMenuPress(() => viewport.options.events.domElement);
     this.texts = new MapTexts({
       viewport,
       store,
@@ -202,6 +205,8 @@ export class AnnotationsRenderer {
         if (entries.length > 0) openContextMenuGlobal(entries, at);
         return entries.length > 0;
       },
+      closesMenu: () => this.barMenus.closesMenu,
+      settled: () => this.placing.settled(),
     }, options.now);
     const underWay = new UnderWay();
     this.underWay = underWay;
@@ -211,6 +216,7 @@ export class AnnotationsRenderer {
       stamps: this.layer.stamps,
       taken: this.selecting.pointer,
       typing: () => this.texts.typing.active,
+      rested: (world) => this.host.gestures.hovered(world),
       requestRender: () => options.requestRender?.(),
     });
     this.pointer = this.placing.pointer;
@@ -302,9 +308,11 @@ export class AnnotationsRenderer {
     this.watch(false);
     this.input.destroy();
     this.clicks.destroy();
+    this.barMenus.destroy();
+    // Before what shows the pointer goes: a drag that ends here still tells it.
+    this.selecting.destroy();
     this.placing.destroy();
     this.host.destroy();
-    this.selecting.destroy();
     this.handles.destroy();
     this.layer.destroy();
     this.sharpening.destroy();
@@ -398,6 +406,7 @@ export class AnnotationsRenderer {
   private toolChanged(state: ViewAtlasState): void {
     const mode = activeDrawMode(state);
     this.input.setEnabled(mode !== null);
+    this.barMenus.setEnabled(mode !== null);
     this.clicks.setEnabled(mode === 'stamp');
     this.texts.setMode(mode);
     this.host.toolChanged();

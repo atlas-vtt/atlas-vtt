@@ -39,6 +39,8 @@ export interface GestureDeps {
   readonly showHandles: (handles: HandleSet | null, held: HandleRef | null) => void;
   /** Writes where a gesture left the annotations: one write, one undo step. */
   readonly write: PlaceWriter;
+  /** A drag of annotations alone ended, whatever ended it: the pointer rests where it was let go, still with the drag's cursor. */
+  readonly settled?: () => void;
 }
 
 /** What a move of annotations does besides showing and writing where they went. */
@@ -231,6 +233,8 @@ export class AnnotationGestures {
         if (running.dragging) viewport.plugins.resume('drag');
         gesture.end(commit, running.dragging);
         this.deps.showHandles(null, null);
+        // A move that goes with tokens ends with their drag, which leaves its own cursor.
+        if (running.dragging && !live) this.deps.settled?.();
       },
     };
     const onMove = (move: FederatedPointerEvent): void => {

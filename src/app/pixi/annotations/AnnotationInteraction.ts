@@ -48,6 +48,13 @@ export interface AnnotationInteractionDeps {
    * under the pointer; false where there is nothing to offer. Unset: a secondary press opens none.
    */
   menu?(selected: readonly Annotation[], clicked: Annotation | null, at: { x: number; y: number }): boolean;
+  /**
+   * Whether the primary press now handled only closes a menu of the tool's bars: it is taken, and
+   * selects, moves and lets go of nothing, so nothing is drawn by it either. Unset: no press does.
+   */
+  closesMenu?(): boolean;
+  /** A drag of annotations ended, by its release or not: the pointer rests where the drag left it, with the cursor of the drag. */
+  settled?(): void;
 }
 
 /**
@@ -106,6 +113,7 @@ export class AnnotationInteraction {
         deps.handles.setHot(held ?? this.hot);
       },
       write: (places, by) => deps.store.getState().placeAnnotations(places, by),
+      settled: () => deps.settled?.(),
     });
   }
 
@@ -237,6 +245,7 @@ export class AnnotationInteraction {
 
   private gripDown(point: Point, event: FederatedPointerEvent): boolean {
     if (!this.works()) return false;
+    if (this.deps.closesMenu?.()) return true;
     const read = this.read();
     const grip = this.gripAt(point, read);
     if (!grip || !read.handles) return false;
@@ -251,6 +260,7 @@ export class AnnotationInteraction {
 
   private pointerDown(point: Point, event: FederatedPointerEvent): boolean {
     if (!this.works()) return false;
+    if (this.deps.closesMenu?.()) return true;
     const read = this.read();
     const state = this.deps.store.getState();
     const own = read.scope === 'made' ? this.own(event.altKey === true) : null;

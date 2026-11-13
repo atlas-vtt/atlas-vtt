@@ -1,4 +1,4 @@
-import type { Container, EventSystem } from 'pixi.js';
+import type { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import type { DrawMode } from '../../annotations/annotationTypes';
@@ -16,6 +16,7 @@ import type { DrawInputHost } from './DrawInput';
 import { sweeps, type GestureMode } from './drawGesture';
 import { activeDrawMode } from './drawToolState';
 import { PlacingPreview } from './PlacingPreview';
+import { restingPointer, setCanvasCursor, type PointerPlace } from './pointerAtRest';
 
 export interface DrawPlacingDeps {
   readonly viewport: Viewport;
@@ -35,6 +36,8 @@ export interface DrawPlacingDeps {
   gmView(): boolean;
   /** Whether a text is being typed: its field has the pointer's attention. */
   typing(): boolean;
+  /** The pointer is at `world` with the tool in hand, told by no move: what follows the pointer besides the mark (the eraser's ring) is put there. */
+  rested(world: Point): void;
   requestRender(): void;
 }
 
@@ -50,7 +53,9 @@ const NOT_COVERED = (): boolean => false;
  *
  * The pointer's place is told by the viewport's dispatch through `pointer`; what changes with the
  * pointer at rest (the tool's choices, what lies on the map, the camera, Alt, a gesture ending) is
- * shown at once at the place it was told last.
+ * shown at once at the place it was told last. Where no move has told of it (the tool came into
+ * hand by its key, a text's field closed under the pointer), the place is where the pointer was
+ * last seen, if that is on the canvas (`restingPointer`).
  */
 export class DrawPlacing {
   /** What the viewport's dispatch asks about drawings and texts, with the preview and its cursor. */
@@ -58,9 +63,11 @@ export class DrawPlacing {
 
   private readonly preview: PlacingPreview;
   /** Where the pointer was last told to be over the map, on screen, and whether Alt was held; null once it left. */
-  private last: { screen: Point; free: boolean } | null = null;
+  private last: PointerPlace | null = null;
   /** The cursor last told for the pointer; null for the system's own. */
   private cursor: string | null = null;
+  /** What the dispatch last asked the cursor for, with any tool in hand: where, and whether a token lies there. */
+  private asked: { world: Point; covered: () => boolean; free: boolean } | null = null;
   /** The mode of the Draw tool's gesture under way, and whether its shape shows by now. */
   private gesture: GestureMode | null = null;
   private pictured = false;
@@ -75,6 +82,7 @@ export class DrawPlacing {
     this.pointer = {
       ...deps.taken,
       cursorAt: (x, y, covered, free) => {
+        this.asked = { world: { x, y }, covered, free: free === true };
         const cursor = this.at({ x, y }, covered, free === true);
         // With another tool in hand the cursor is that tool's: nothing of it is kept, or put back, here.
         const working = this.mode() !== null;
@@ -86,6 +94,7 @@ export class DrawPlacing {
       leave: () => {
         deps.taken.leave();
         this.last = null;
+        this.asked = null;
         this.cursor = null;
         this.show(null);
       },
@@ -137,6 +146,8 @@ export class DrawPlacing {
     const working = this.mode() !== null;
     // Out of hand, the tool leaves the cursor as the system's: the next tool sets its own with the next move.
     const left = this.listening && !working;
+    // Into hand (by a key, by the GM's view coming back, by a text's field closing): no move has told where the pointer is.
+    if (working && !this.listening) this.last ??= restingPointer(this.deps.viewport);
     this.listen(working);
     const last = this.last;
     if (!working || !last) {
@@ -145,7 +156,23 @@ export class DrawPlacing {
       return;
     }
     const { x, y } = this.deps.viewport.toWorld(last.screen);
+    this.deps.rested({ x, y });
     this.apply(this.at({ x, y }, NOT_COVERED, last.free));
+  }
+
+  /**
+   * A drag of drawings or texts ended with the pointer at rest, still showing the drag's cursor
+   * (PIXI sets it again at the release, to what the last move left). With the Draw tool in hand
+   * the pointer shows what it shows there; with another, the cursor is what a move there would
+   * leave for a drawing, else the system's, until that tool's next move says more.
+   */
+  settled(): void {
+    if (this.mode() !== null) {
+      this.refresh();
+      return;
+    }
+    const asked = this.asked;
+    if (asked) setCanvasCursor(this.deps.viewport, this.deps.taken.cursorAt(asked.world.x, asked.world.y, asked.covered, asked.free));
   }
 
   destroy(): void {
@@ -204,20 +231,10 @@ export class DrawPlacing {
     if (this.preview.show(mark)) this.deps.requestRender();
   }
 
-  /**
-   * Sets the cursor where no pointer event does. PIXI sets the canvas's cursor again after every
-   * press and release, to what its last pointer move left, so that is told too.
-   */
+  /** Sets the cursor where no pointer event does, and remembers it as the tool's own. */
   private apply(cursor: string | null): void {
     this.cursor = cursor;
-    const { viewport } = this.deps;
-    const shown = cursor ?? 'default';
-    viewport.cursor = shown;
-    // A view without PIXI's own events (a test) has no canvas whose cursor could be set.
-    const events: Partial<EventSystem> | undefined = viewport.options.events;
-    if (!events?.rootBoundary || typeof events.setCursor !== 'function') return;
-    events.rootBoundary.cursor = shown;
-    events.setCursor(shown);
+    setCanvasCursor(this.deps.viewport, cursor);
   }
 
   /** Follows, while the tool works, what moves the mark with the pointer at rest: the camera, a pan, Alt. */

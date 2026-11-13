@@ -8,7 +8,7 @@ export interface WatchedField {
 }
 
 /** The Draw tool's own bars: a press there changes the text being typed and leaves the keyboard with it. */
-const BARS = '.atlas-bottom-toolbar-row__options';
+export const DRAW_TOOL_BARS = '.atlas-bottom-toolbar-row__options';
 
 function within(target: EventTarget | null, selector: string): boolean {
   const node = target as Node | null;
@@ -31,7 +31,7 @@ export class TypingWatch {
   private field: WatchedField | null = null;
 
   /** `bars`: what a press on leaves the keyboard with the field, as a selector; the Draw tool's own bars by default. */
-  constructor(private readonly canvas: () => HTMLElement, private readonly finish: () => void, private readonly bars: string = BARS) {}
+  constructor(private readonly canvas: () => HTMLElement, private readonly finish: () => void, private readonly bars: string = DRAW_TOOL_BARS) {}
 
   start(field: WatchedField): void {
     this.stop();
