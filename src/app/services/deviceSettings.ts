@@ -2,6 +2,8 @@ import type { App } from 'obsidian';
 import type { NavigationInputMode } from './atlasSettings';
 import { isLightingQualityLevel, type LightingQualityLevel } from '../lighting/lightingQuality';
 import { parseGraphicsChoice, type GraphicsChoice } from '../lighting/graphicsSettings';
+import type { DrawToolChoices } from '../annotations/annotationTypes';
+import { drawToolFrom, rememberedDrawTool } from '../annotations/drawToolMemory';
 
 /**
  * Facts about this device, which Atlas keeps in the vault's local storage: they never sync,
@@ -20,6 +22,8 @@ export const ANIMATE_MAPS_STORAGE_KEY = 'atlas-vtt:animate-maps';
 export const INITIATIVE_COLLAPSED_STORAGE_KEY = 'atlas-vtt:initiative-tracker';
 /** Whether this device renders the player view with up to 4K pixels: `4k`, else the default budget. */
 export const PLAYER_VIEW_4K_STORAGE_KEY = 'atlas-vtt:player-view-4k';
+/** The Draw tool's last style on this device (`RememberedDrawTool` as JSON). */
+export const DRAW_TOOL_STORAGE_KEY = 'atlas-vtt:draw-tool';
 
 /**
  * The vault's local storage. Obsidian stores a value only when it is truthy: `false`, `0` and `''`
@@ -164,5 +168,24 @@ export function saveInitiativeCollapsed(storage: DeviceStorage, collapsed: boole
     storage.saveLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY, collapsed ? 'collapsed' : 'expanded');
   } catch (error) {
     console.error('[Atlas] Could not save how this device shows the initiative tracker', error);
+  }
+}
+
+/** The Draw tool's choices as it starts on this device: the style it was last given, the defaults where none was. */
+export function loadDrawTool(storage: DeviceStorage): DrawToolChoices {
+  try {
+    const stored: unknown = storage.loadLocalStorage(DRAW_TOOL_STORAGE_KEY);
+    return drawToolFrom(typeof stored === 'string' ? JSON.parse(stored) : null);
+  } catch (error) {
+    console.error('[Atlas] Could not read the draw tool\'s choices of this device', error);
+    return drawToolFrom(null);
+  }
+}
+
+export function saveDrawTool(storage: DeviceStorage, choices: DrawToolChoices): void {
+  try {
+    storage.saveLocalStorage(DRAW_TOOL_STORAGE_KEY, JSON.stringify(rememberedDrawTool(choices)));
+  } catch (error) {
+    console.error('[Atlas] Could not save the draw tool\'s choices of this device', error);
   }
 }

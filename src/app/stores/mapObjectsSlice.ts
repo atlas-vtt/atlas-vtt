@@ -18,6 +18,8 @@ import { levelObjects } from '../levels/levelObjects';
 import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
 import { placedLevelLink } from '../levels/levelLinkCopies';
 import { isRecord } from '../utils/guards';
+import { placedAnnotationCopies } from '../annotations/annotationCopies';
+import { orderOnTop } from '../annotations/annotationStack';
 
 export interface MapObjectsSlice {
   /**
@@ -69,7 +71,8 @@ function addLinkCopies(draft: MapObjectsStoreState, content: MapObjectContent, r
   return ids;
 }
 
-function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkRoom: number): string[] {
+/** Adds the copies to `draft`; `top` is the order the first copied drawing or text takes (`orderOnTop`). */
+function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkRoom: number, top: number): string[] {
   const { objects } = draft;
   // Copies land on the level the view shows, as new objects do.
   const level = placedOnViewedLevel(draft);
@@ -81,12 +84,14 @@ function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkR
   }
   // Copies keep the order their originals lie in, above everything on the map.
   raiseTokens(objects.tokens, ids);
-  for (const drawing of content.drawings) {
+  // Copied drawings and texts lie above every other one of the level, in a group of their own.
+  const annotations = placedAnnotationCopies(content.drawings, content.texts, top);
+  for (const drawing of annotations.drawings) {
     const id = createObjectId('drawing');
     objects.drawings[id] = { ...drawing, id, timestamp: Date.now(), ...level };
     ids.push(id);
   }
-  for (const text of content.texts) {
+  for (const text of annotations.texts) {
     const id = createObjectId('text');
     objects.texts[id] = { ...text, id, ...level };
     ids.push(id);
@@ -108,9 +113,10 @@ export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStor
     if (countMapObjects(content) === 0) return [];
     // The map's limit counts the stairs of every level.
     const linkRoom = MAX_LEVEL_LINKS - levelLinkList(get().objects.levelLinks).length;
+    const top = orderOnTop(get());
     let ids: string[] = [];
     set((draft) => {
-      ids = addCopies(draft, content, linkRoom);
+      ids = addCopies(draft, content, linkRoom, top);
     });
     return ids;
   };

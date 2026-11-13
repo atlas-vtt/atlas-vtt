@@ -12,6 +12,7 @@ export const BOUNDARIES = {
       "src/app/levels/**/*.tsx",
       "src/app/mapFeatures/**/*.ts",
       "src/app/liquids/**/*.ts",
+      "src/app/annotations/**/*.ts",
       "src/app/measure/**/*.ts",
       "src/app/vision/**/*.ts",
       "src/app/vision/**/*.tsx",

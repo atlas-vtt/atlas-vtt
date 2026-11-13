@@ -6,6 +6,8 @@
  * NOT persisted — the partialize whitelist in storeFactory.ts excludes these.
  */
 
+import { DEFAULT_DRAW_TOOL, type DrawToolChoices } from '../annotations/annotationTypes';
+import { sameRememberedDrawTool } from '../annotations/drawToolMemory';
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
 import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lightingTool';
 import { DEFAULT_MEASURE_TOOL, type MeasureToolOptions } from '../measure/measureTypes';
@@ -36,6 +38,8 @@ export interface UISlice extends ViewUIState {
   openMeasurePopover: (measureId: string) => void;
   closeMeasurePopover: () => void;
   setMeasureTool: (changes: Partial<MeasureToolOptions>) => void;
+  /** Changes the Draw tool's choices; a change of its style is remembered on the device. */
+  setDrawTool: (changes: Partial<DrawToolChoices>) => void;
   setLightingTool: (changes: Partial<LightingToolOptions>) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
@@ -48,8 +52,8 @@ export interface UISlice extends ViewUIState {
   setRoofsHidden: (hidden: boolean) => void;
 }
 
-/** Default state — all panels closed */
-export function createInitialUIState(): Pick<
+/** Default state — all panels closed. `drawTool` is what the Draw tool starts with: its defaults, or what the device remembered. */
+export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TOOL): Pick<
   UISlice,
   | 'isGridSettingsOpen'
   | 'isDMScreenOpen'
@@ -67,6 +71,7 @@ export function createInitialUIState(): Pick<
   | 'levelSurfacePopover'
   | 'measurePopover'
   | 'measureTool'
+  | 'drawTool'
   | 'lightingTool'
   | 'heldTokens'
   | 'exploredBrush'
@@ -91,6 +96,7 @@ export function createInitialUIState(): Pick<
     levelSurfacePopover: null,
     measurePopover: null,
     measureTool: DEFAULT_MEASURE_TOOL,
+    drawTool,
     lightingTool: DEFAULT_LIGHTING_TOOL,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
@@ -100,9 +106,13 @@ export function createInitialUIState(): Pick<
   };
 }
 
-/** Action creators — `set` comes from the immer middleware in the store */
+/**
+ * Action creators — `set` comes from the immer middleware in the store. `rememberDrawTool` is
+ * handed the Draw tool's choices whenever their style changed, to keep them for the device.
+ */
 export function createUIActions(
   set: (fn: (draft: UISlice) => void) => void,
+  rememberDrawTool?: (choices: DrawToolChoices) => void,
 ): Pick<
   UISlice,
   | 'setGridSettingsOpen'
@@ -125,6 +135,7 @@ export function createUIActions(
   | 'openMeasurePopover'
   | 'closeMeasurePopover'
   | 'setMeasureTool'
+  | 'setDrawTool'
   | 'setLightingTool'
   | 'setHeldTokens'
   | 'setExploredBrush'
@@ -181,6 +192,15 @@ export function createUIActions(
     }),
     closeMeasurePopover: () => set((draft) => { draft.measurePopover = null; }),
     setMeasureTool: (changes) => set((draft) => { draft.measureTool = { ...draft.measureTool, ...changes }; }),
+    setDrawTool: (changes) => {
+      let styled: DrawToolChoices | null = null;
+      set((draft) => {
+        const next = { ...draft.drawTool, ...changes };
+        if (!sameRememberedDrawTool(draft.drawTool, next)) styled = next;
+        draft.drawTool = next;
+      });
+      if (styled) rememberDrawTool?.(styled);
+    },
     setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),

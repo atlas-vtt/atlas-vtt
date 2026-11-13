@@ -1,5 +1,6 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { LightingToolOptions } from '../lighting/lightingTool';
+import type { DrawToolChoices } from '../annotations/annotationTypes';
 import type { MeasureToolOptions } from '../measure/measureTypes';
 import type { Point } from './visionTypes';
 
@@ -47,6 +48,8 @@ export interface ViewUIState {
   measurePopover: string | null;
   /** The measure tool's mode and choices: the bar above the toolbar sets them, the tool reads them. Never saved. */
   measureTool: MeasureToolOptions;
+  /** The Draw tool's mode and choices: its bars set them, the tool reads them. Never saved with the scene; its style is remembered on the device. */
+  drawTool: DrawToolChoices;
   /** The lighting tool's mode and choices: the bar above the toolbar sets them, the controller hands them to its editors. */
   lightingTool: LightingToolOptions;
   /** The tokens the pointer holds (pressed or dragged), each where it stood when taken; set through `holdTokens`. */
