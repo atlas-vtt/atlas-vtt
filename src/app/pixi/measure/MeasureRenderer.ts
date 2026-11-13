@@ -128,6 +128,7 @@ export class MeasureRenderer {
       measuring: () => this.input.measuring,
       changed: (live) => this.liveChanged(live),
       full: this.onFull,
+      spent: (press) => this.handles.closedPopover(press),
       look: () => this.look(),
     });
     this.input = new MeasureInput(viewport, this.live, {

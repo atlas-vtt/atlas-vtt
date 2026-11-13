@@ -18,8 +18,12 @@ export interface MeasureInputHost {
   shape(): MeasureShapeKind | null;
   /** Where a measurement's point lies for the pointer at `world`: snapped as the grid says, unless `free`. */
   point(world: Point, free: boolean): Point;
-  /** A press at `world` that is no measurement's (the pin of the one fading): true when it was taken. */
-  takePress(world: Point): boolean;
+  /**
+   * A press at `world` that is no measurement's: on the pin of the one fading, or one that already
+   * did something else (`press`, the browser's own event or touch, closed a kept measurement's popover).
+   * True when it was taken.
+   */
+  takePress(world: Point, press: object | undefined): boolean;
   /** A measurement begins: the pointer pressed at `pressed`, and its start is drawn at `start`. */
   started(pressed: Point, start: Point): void;
   /** The measurement being made changed. */
@@ -112,7 +116,7 @@ export class MeasureInput {
       this.apply(this.gesture.press(this.host.point(world, altHeld(e)), screen), shiftHeld(e));
       return;
     }
-    if (this.followsLastClick(screen) || this.host.takePress(world)) {
+    if (this.followsLastClick(screen) || this.host.takePress(world, e.nativeEvent)) {
       e.stopPropagation();
       return;
     }

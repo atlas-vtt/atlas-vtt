@@ -46,6 +46,8 @@ export interface LiveMeasuringDeps {
   changed: (live: LiveMeasure | null) => void;
   /** Tells the GM that no further measurement can be kept. */
   full: () => void;
+  /** Whether a press (the browser's own event or touch) already did something that starts no measurement: it closed a kept measurement's popover. Unset, none has. */
+  spent?: (press: object) => boolean;
   /** The map's rules and the theme's accent: a kept area takes the tool's effect, and the light that starts with, by them (`toolLook`); unset, neither. */
   look?: () => Pick<MeasureLook, 'settings' | 'accent'>;
 }
@@ -89,8 +91,9 @@ export class LiveMeasuring implements MeasureInputHost {
     return start ? snapAreaEnd(grid.getOptions(), start, world) : snapAreaOrigin(grid.getOptions(), world);
   }
 
-  /** A press on the pin keeps the measurement that fades, and starts no other. */
-  takePress(world: Point): boolean {
+  /** A press on the pin keeps the measurement that fades, and one that closed a popover only did that: neither starts another. */
+  takePress(world: Point, press: object | undefined): boolean {
+    if (press && this.deps.spent?.(press)) return true;
     const { live } = this;
     if (this.fadeTimer === null || !live || !this.deps.layer.pinAt(world)) return false;
     if (this.keep(live)) this.clear();

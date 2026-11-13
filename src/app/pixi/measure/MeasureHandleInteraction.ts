@@ -73,6 +73,8 @@ export class MeasureHandleInteraction {
   private hovered: MeasureHandleRef | null = null;
   /** Presses outside the popover, heard while one is open. */
   private readonly presses = new PopoverPressWatch((event) => this.pressedInDocument(event));
+  /** The press that closed the popover, which the measure tool then starts no measurement with. */
+  private closedBy: Event | null = null;
   private readonly abort = (): void => this.cancel();
 
   constructor(private readonly deps: MeasureHandleDeps) {
@@ -278,7 +280,7 @@ export class MeasureHandleInteraction {
   /**
    * A press outside the popover closes it, wherever it lands, except on a handle on the map:
    * that is the popover's own (the dispatch then moves the popover to that measurement, or starts
-   * the drag).
+   * the drag). The press is remembered: it closed something, and measures nothing (`closedPopover`).
    */
   private pressedInDocument(event: PointerEvent): void {
     const { store, viewport } = this.deps;
@@ -290,6 +292,15 @@ export class MeasureHandleInteraction {
       const rect = canvas.getBoundingClientRect();
       if (this.handleAt(viewport.toWorld(event.clientX - rect.left, event.clientY - rect.top))) return;
     }
+    this.closedBy = event;
     store.getState().closeMeasurePopover();
+  }
+
+  /** Whether `press` is the one that closed the popover: such a press only did that. */
+  closedPopover(press: object): boolean {
+    const closing = this.closedBy;
+    if (closing === null) return false;
+    // PIXI hands on the browser's event itself, or for a finger its touch, made at the same moment.
+    return press === closing || ('timeStamp' in press && press.timeStamp === closing.timeStamp);
   }
 }

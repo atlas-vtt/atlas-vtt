@@ -103,6 +103,28 @@ describe('a press on a kept measurement', () => {
     s.store.getState().setActiveTool('wall');
     expect(press(105, 105)).toBe(false);
   });
+
+  it('closes the popover on a press beside it and measures nothing with that press; the next press measures', () => {
+    const { s, id, press, up, canvas } = scene();
+    const kept = (): number => Object.keys(s.store.getState().objects.measures ?? {}).length;
+    document.body.appendChild(canvas);
+    cleanups.push(() => canvas.remove());
+    s.store.getState().setActiveTool('measure');
+    press(105, 105);
+    up();
+    expect(s.store.getState().measurePopover).toBe(id);
+    // The press as the browser sends it: the document hears it first, then the map's own dispatch gets the same event.
+    const native = new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 400, clientY: 400 }) as PointerEvent;
+    canvas.dispatchEvent(native);
+    expect(s.store.getState().measurePopover).toBeNull();
+    s.pointer('pointerdown', 400, 400, { native });
+    s.pointer('pointermove', 540, 400);
+    s.pointer('pointerup', 540, 400);
+    expect(kept()).toBe(1);
+    expect(s.measure.measurements.get().live).toBeNull();
+    measureFrom(s, 400, 400, 540, 400);
+    expect(kept()).toBe(2);
+  });
 });
 
 describe('a kept measurement dragged by its handle', () => {

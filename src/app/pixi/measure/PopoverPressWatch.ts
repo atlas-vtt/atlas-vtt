@@ -1,7 +1,7 @@
 /**
  * Hears every press in the document a popover is open in, in the capture phase, for as long as it
- * is open: a press outside it closes it wherever it lands, and the press still does what it does
- * there. One document at a time: a map in a popout has its own.
+ * is open: a press outside it closes it wherever it lands, and whoever hears of the press
+ * decides what else it does there (the measure tool: nothing). One document at a time: a map in a popout has its own.
  */
 export class PopoverPressWatch {
   private doc: Document | null = null;

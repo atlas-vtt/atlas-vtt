@@ -12,6 +12,8 @@ export interface PointerKeys {
   button?: number;
   shift?: boolean;
   alt?: boolean;
+  /** The browser's own event the press came from. */
+  native?: PointerEvent;
 }
 
 export const GRID = 70;
@@ -68,6 +70,7 @@ export function measureScene(grid: MeasureGrid = SQUARE_GRID): MeasureScene {
       event.shiftKey = keys.shift ?? false;
       event.altKey = keys.alt ?? false;
       event.global.set(x, y);
+      if (keys.native) event.nativeEvent = keys.native;
       viewport.emit(type, event);
     },
     click(x, y, keys): void {
