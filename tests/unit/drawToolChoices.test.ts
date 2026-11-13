@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DRAW_FONTS, DRAW_MODES, DRAW_SIZES, TEXT_ALIGNS, TEXT_LOOKS } from '../../src/app/annotations/annotationTypes';
+import { DRAW_FONTS, DRAW_MODES, DRAW_SIZES, TEXT_LOOKS } from '../../src/app/annotations/annotationTypes';
 import {
-  ALIGN_CHOICES, CELLS_CHOICES, CLEAR_SCOPES, COMMON_DRAW_TOOLS, DASH_CHOICES, DRAW_COLOR_SWATCHES, DRAW_MODE_CHOICES, ENDS_CHOICES, FILL_CHOICES, FONT_CHOICES,
+  CELLS_CHOICES, CLEAR_SCOPES, COMMON_DRAW_TOOLS, DASH_CHOICES, DRAW_COLOR_SWATCHES, DRAW_MODE_CHOICES, ENDS_CHOICES, FILL_CHOICES, FONT_CHOICES,
   LOOK_CHOICES, SIZE_CHOICES, drawModeChoice, drawModeTools, drawModeUnavailable, eraserOrBack, nextDrawMode,
 } from '../../src/app/packages/components/toolbar/drawToolChoices';
 
@@ -65,7 +65,7 @@ describe('the tools of a mode', () => {
     expect(own('line')).toEqual(['dash', 'ends', 'curved', 'fill', 'seeThrough']);
     expect(own('rectangle')).toEqual(['dash', 'fill']);
     expect(own('ellipse')).toEqual(own('rectangle'));
-    expect(own('text')).toEqual(['font', 'look', 'align', 'bold', 'italic']);
+    expect(own('text')).toEqual(['font', 'look']);
     expect(own('stamp')).toEqual(['icon']);
     expect(own('cells')).toEqual(['cellsFill', 'cellsUnfill']);
     expect(own('select')).toEqual(['front', 'back', 'lock', 'group', 'ungroup', 'clear']);
@@ -84,19 +84,18 @@ describe('the tools of a mode', () => {
 });
 
 describe('the choices of the tools\' menus', () => {
-  it('offers every size, face, look and alignment the tool knows, and a line, its ends and a fill with none of each first', () => {
+  it('offers every size, face and look the tool knows, and a line, its ends and a fill with none of each first', () => {
     expect(SIZE_CHOICES.map((choice) => choice.value)).toEqual(DRAW_SIZES);
     expect(FONT_CHOICES.map((choice) => choice.value)).toEqual(DRAW_FONTS);
     expect(FONT_CHOICES.map((choice) => choice.label)).toEqual(['Medieval', 'Sci-fi', 'Mono']);
     expect(LOOK_CHOICES.map((choice) => choice.value)).toEqual(TEXT_LOOKS);
-    expect(ALIGN_CHOICES.map((choice) => choice.value)).toEqual(TEXT_ALIGNS);
     expect(DASH_CHOICES.map((choice) => choice.value)).toEqual([null, 'dashed', 'dotted']);
     expect(ENDS_CHOICES.map((choice) => choice.value)).toEqual([null, 'end', 'both']);
     expect(FILL_CHOICES.map((choice) => choice.value)).toEqual([null, 'soft', 'solid']);
   });
 
   it('shows each choice of a menu by an icon and a name of its own', () => {
-    for (const choices of [SIZE_CHOICES, FONT_CHOICES, LOOK_CHOICES, ALIGN_CHOICES, DASH_CHOICES, ENDS_CHOICES, FILL_CHOICES]) {
+    for (const choices of [SIZE_CHOICES, FONT_CHOICES, LOOK_CHOICES, DASH_CHOICES, ENDS_CHOICES, FILL_CHOICES]) {
       expect(new Set(choices.map((choice) => choice.icon)).size).toBe(choices.length);
       expect(new Set(choices.map((choice) => choice.label)).size).toBe(choices.length);
     }

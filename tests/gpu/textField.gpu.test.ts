@@ -252,8 +252,8 @@ describe('the field a map text is typed in', () => {
   it('stands where the text will stand: what is typed lies where the map then draws it, for a click and for a drag', async () => {
     const s = await open();
     s.store.getState().setActiveTool('draw');
-    for (const [align, path] of [['center', [[2000, 2000]]], ['left', [[1900, 1950], [2000, 1960], [2150, 1962]]]] as const) {
-      s.store.getState().setDrawTool({ mode: 'text', font: 'medieval', look: 'plain', size: 'l', align });
+    for (const [made, path] of [['click', [[2000, 2000]]], ['drag', [[1900, 1950], [2000, 1960], [2150, 1962]]]] as const) {
+      s.store.getState().setDrawTool({ mode: 'text', font: 'medieval', look: 'plain', size: 'l' });
       s.look(2000, 2000, 1.5);
       s.drag(path);
       const field = s.field()!;
@@ -265,7 +265,7 @@ describe('the field a map text is typed in', () => {
       // What was made is selected and framed: the frame is no ink of the text.
       s.store.getState().clearSelection();
       const drawn = await s.shot();
-      expect([strayInk(drawn, typed).stray, strayInk(typed, drawn).stray], align).toEqual([0, 0]);
+      expect([strayInk(drawn, typed).stray, strayInk(typed, drawn).stray], made).toEqual([0, 0]);
       expect(strayInk(drawn, typed).clear).toBeGreaterThan(200);
       s.store.getState().deleteAnnotations(Object.keys(s.store.getState().objects.texts));
     }

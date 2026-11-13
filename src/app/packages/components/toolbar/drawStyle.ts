@@ -20,7 +20,7 @@ export type Shown<Value> = Value | typeof MIXED
 /** The choices of the tool that are a style: what a drawing or text keeps of them. */
 export type StyleField =
   | 'color' | 'size' | 'players' | 'layer' | 'seeThrough' | 'dash' | 'ends' | 'curved' | 'fill'
-  | 'font' | 'look' | 'align' | 'bold' | 'italic' | 'icon'
+  | 'font' | 'look' | 'icon'
 export type DrawStyle = Pick<DrawToolChoices, StyleField>
 export type ShownStyle = { [Field in StyleField]: Shown<DrawStyle[Field]> }
 
@@ -53,9 +53,6 @@ const STYLED: Readonly<Record<StyleField, (annotation: Annotation) => boolean>> 
   fill: (annotation) => isStroke(annotation) && annotation.closed,
   font: isText,
   look: isText,
-  align: isText,
-  bold: isText,
-  italic: isText,
   icon: isStamp,
 }
 
@@ -82,9 +79,6 @@ const READ: { readonly [Field in StyleField]: (annotation: Annotation, cell: num
   fill: (annotation) => (annotation.kind === 'drawing' ? annotation.fill : null),
   font: (annotation) => (annotation.kind === 'text' ? fontOf(annotation.fontFamily) : MIXED),
   look: (annotation) => (annotation.kind === 'text' ? annotation.look : MIXED),
-  align: (annotation) => (annotation.kind === 'text' ? annotation.align : MIXED),
-  bold: (annotation) => annotation.kind === 'text' && annotation.bold,
-  italic: (annotation) => annotation.kind === 'text' && annotation.italic,
   icon: (annotation) => (annotation.kind === 'drawing' && annotation.icon !== null ? annotation.icon : MIXED),
 }
 
@@ -123,7 +117,7 @@ export function shownStyle(tool: DrawStyle, selected: readonly Annotation[], cel
   return {
     color: shown('color'), size: shown('size'), players: shown('players'), layer: shown('layer'),
     seeThrough: shown('seeThrough'), dash: shown('dash'), ends: shown('ends'), curved: shown('curved'), fill: shown('fill'),
-    font: shown('font'), look: shown('look'), align: shown('align'), bold: shown('bold'), italic: shown('italic'), icon: shown('icon'),
+    font: shown('font'), look: shown('look'), icon: shown('icon'),
   }
 }
 
@@ -179,7 +173,7 @@ export function styleWrites<Field extends StyleField>(field: Field, value: DrawS
   if (styled.length === 0) return []
   const style: Partial<DrawStyle> = {}
   style[field] = value
-  const { color, size, players, layer, seeThrough, dash, ends, curved, fill, font, look, align, bold, italic, icon } = style
+  const { color, size, players, layer, seeThrough, dash, ends, curved, fill, font, look, icon } = style
   if (color !== undefined) return update(styled, { color })
   if (players !== undefined) return update(styled, { hidden: players ? undefined : true })
   if (layer !== undefined) return update(styled, { layer: layer === 'map' ? 'map' : undefined })
@@ -208,9 +202,6 @@ export function styleWrites<Field extends StyleField>(field: Field, value: DrawS
     const changes: TextChanges = look === 'plate' ? { ...TEXT_PLATE, outline: undefined } : { ...NO_PLATE, outline: look === 'outline' ? true : undefined }
     return [{ kind: 'text', ids: idsOf(styled), changes }]
   }
-  if (align !== undefined) return update(styled, { align })
-  if (bold !== undefined) return update(styled, { bold, ...RESET })
-  if (italic !== undefined) return update(styled, { italic, ...RESET })
   if (icon !== undefined) return update(styled, { icon })
   return []
 }

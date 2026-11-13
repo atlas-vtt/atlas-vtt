@@ -12,8 +12,8 @@ import { textBreaks } from '../textLayout';
  * Two devices can break the same text elsewhere (their browsers measure a run a little
  * differently), so a text keeps where its lines broke on the device that set it, and every device
  * draws it from that. Typing a text and dragging its side save the breaks with what they write.
- * A change that sets a text in other letters without measuring it (the bars' font, size, bold and
- * italic) takes its breaks off; this puts them back at once, as part of that change's undo step.
+ * A change that sets a text in other letters without measuring it (the bars' font and size)
+ * takes its breaks off; this puts them back at once, as part of that change's undo step.
  * A locked text keeps what it has, and a text whose face is still loading waits for it.
  */
 export function keepTextBreaks(store: { getState(): ViewAtlasState }): void {

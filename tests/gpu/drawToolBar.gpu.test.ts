@@ -155,10 +155,9 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     }
     // Buttons of 32 px, 8 px apart and from the bar's edge, a group 8 px further: the widest pair is 370 + 8 + 426 px.
     expect(Math.round(modes.width)).toBe(370);
-    expect(widths).toEqual({ select: 426, pen: 218, line: 378, rectangle: 258, ellipse: 258, text: 378, stamp: 218, cells: 218, eraser: 146 });
+    expect(widths).toEqual({ select: 426, pen: 218, line: 378, rectangle: 258, ellipse: 258, text: 258, stamp: 218, cells: 218, eraser: 146 });
     // Select has the most tools; no mode's bar is wider than its.
     expect(Math.max(...Object.values(widths))).toBe(widths.select);
-    expect(widths.text).toBe(widths.line);
     // Rectangle and ellipse have the same tools: one bar, which stays mounted between them.
     await choose('rectangle');
     const bar = document.querySelector(TOOLS);
@@ -177,7 +176,8 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Line', 'Ends', 'Curved', 'Fill', 'See-through']);
     expect(gaps()).toEqual([8, 8, 8, 16, 8, 8, 8, 8]);
     await choose('text');
-    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Font', 'Look', 'Align', 'Bold', 'Italic']);
+    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Font', 'Look']);
+    expect(gaps()).toEqual([8, 8, 8, 16, 8]);
     await choose('stamp');
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Symbol']);
     await choose('cells');

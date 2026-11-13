@@ -36,7 +36,6 @@ export const DRAW_SHAPE_MODES = ['pen', 'line', 'rectangle', 'ellipse'] as const
 export const DRAW_SIZE_NAMES = ['s', 'm', 'l', 'xl'] as const;
 export const DRAW_FONT_NAMES = ['medieval', 'scifi', 'mono'] as const;
 export const DRAW_TEXT_LOOKS = ['outline', 'plate', 'plain'] as const;
-export const DRAW_ALIGNS = ['left', 'center', 'right'] as const;
 
 export type DrawShapeMode = (typeof DRAW_SHAPE_MODES)[number];
 export type DrawSizeName = (typeof DRAW_SIZE_NAMES)[number];
@@ -65,9 +64,6 @@ export interface DrawTextLook {
   readonly size: DrawSizeName;
   readonly font: (typeof DRAW_FONT_NAMES)[number];
   readonly look: (typeof DRAW_TEXT_LOOKS)[number];
-  readonly align: (typeof DRAW_ALIGNS)[number];
-  readonly bold?: true;
-  readonly italic?: true;
 }
 
 /** One pick of the Draw tool's bars, for drawings and texts that are there: exactly one of these. */
@@ -80,10 +76,7 @@ export type DrawStylePick =
   | { readonly curved: boolean }
   | { readonly fill: Fill | null }
   | { readonly font: DrawTextLook['font'] }
-  | { readonly look: DrawTextLook['look'] }
-  | { readonly align: DrawTextLook['align'] }
-  | { readonly bold: boolean }
-  | { readonly italic: boolean };
+  | { readonly look: DrawTextLook['look'] };
 
 /** The plane mapped as `x' = a·x + c·y + tx`, `y' = b·x + d·y + ty`, and the degrees it turns what it maps: a move, a turn, a scaling. */
 export type DrawMap = readonly [a: number, b: number, c: number, d: number, tx: number, ty: number, turn: number];
@@ -244,8 +237,7 @@ export function parseDrawLook(value: unknown): DrawLook | null {
 /** A text's look, or null for anything malformed. */
 export function parseDrawTextLook(value: unknown): DrawTextLook | null {
   if (!isRecord(value) || !isDrawColour(value.colour) || !isOneOf(DRAW_SIZE_NAMES, value.size)) return null;
-  const { font, look, align, bold, italic } = value;
-  if (!isOneOf(DRAW_FONT_NAMES, font) || !isOneOf(DRAW_TEXT_LOOKS, look) || !isOneOf(DRAW_ALIGNS, align)) return null;
-  if ((bold !== undefined && bold !== true) || (italic !== undefined && italic !== true)) return null;
-  return { colour: value.colour, size: value.size, font, look, align, ...(bold === true && { bold }), ...(italic === true && { italic }) };
+  const { font, look } = value;
+  if (!isOneOf(DRAW_FONT_NAMES, font) || !isOneOf(DRAW_TEXT_LOOKS, look)) return null;
+  return { colour: value.colour, size: value.size, font, look };
 }

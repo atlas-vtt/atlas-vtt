@@ -82,7 +82,7 @@ function drawChoices(look: DrawLook): DrawToolChoices {
 export function textChoices(look: DrawTextLook): DrawToolChoices {
   return {
     ...DEFAULT_DRAW_TOOL, color: look.colour, size: look.size, players: true, layer: 'above',
-    font: look.font, look: look.look, align: look.align, bold: look.bold === true, italic: look.italic === true,
+    font: look.font, look: look.look,
   };
 }
 
@@ -212,8 +212,5 @@ export function styleChoice(pick: DrawStylePick): StyleChoice {
   if ('curved' in pick) return { field: 'curved', value: pick.curved };
   if ('fill' in pick) return { field: 'fill', value: pick.fill };
   if ('font' in pick) return { field: 'font', value: pick.font };
-  if ('look' in pick) return { field: 'look', value: pick.look };
-  if ('align' in pick) return { field: 'align', value: pick.align };
-  if ('bold' in pick) return { field: 'bold', value: pick.bold };
-  return { field: 'italic', value: pick.italic };
+  return { field: 'look', value: pick.look };
 }

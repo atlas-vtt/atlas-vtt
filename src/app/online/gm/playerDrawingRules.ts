@@ -18,7 +18,7 @@ import type { MapSize } from './moveCheck.ts';
 
 /** What a player's own drawing or text may be changed in by a pick of the bars: never who sees it, where it lies, its lock, its group or its order. */
 export const DRAWING_STYLE_FIELDS = ['color', 'width', 'opacity', 'fill', 'dash', 'ends'] as const;
-export const TEXT_STYLE_FIELDS = ['color', 'fontSize', 'scale', 'fontFamily', 'align', 'bold', 'italic', 'breaks'] as const;
+export const TEXT_STYLE_FIELDS = ['color', 'fontSize', 'scale', 'fontFamily', 'breaks'] as const;
 export const TEXT_LOOK_FIELDS = ['backgroundColor', 'padding', 'borderRadius', 'opacity', 'outline'] as const;
 export const DRAWING_PLACE_FIELDS = ['points', 'anchors', 'holes'] as const;
 export const TEXT_PLACE_FIELDS = ['x', 'y', 'rotation', 'scale'] as const;

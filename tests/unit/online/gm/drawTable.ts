@@ -16,7 +16,7 @@ const { createViewAtlasStore } = (await import(/* @vite-ignore */ STORE_FACTORY)
 export const CELL = 70;
 export const MAP = { width: 2000, height: 1500 };
 export const LOOK: DrawLook = { colour: '#e93147', size: 'm' };
-export const TEXT_LOOK: DrawTextLook = { colour: '#086ddd', size: 'l', font: 'scifi', look: 'outline', align: 'left' };
+export const TEXT_LOOK: DrawTextLook = { colour: '#086ddd', size: 'l', font: 'scifi', look: 'outline' };
 
 export interface Table {
   readonly store: DrawStore;
@@ -30,8 +30,8 @@ export interface Table {
   now: number;
   /** How far the clock goes on each time it is read, ms: a GM whose work takes time. */
   tick: number;
-  /** Hands a message to the GM as it would arrive: through the protocol's own reader. */
-  send(from: string, message: Request): void;
+  /** Hands a message to the GM as it would arrive: through the protocol's own reader, which may be given more than a request says. */
+  send(from: string, message: Request | (Record<string, unknown> & { readonly t: Request['t'] })): void;
   drawn(): DrawingStroke[];
   written(): TextElement[];
   /** What a player is told is theirs now, by the ids they name them by. */

@@ -1,5 +1,5 @@
 import React from "react"
-import { Blend, Bold, BringToFront, Eye, EyeOff, Group, Italic, Layers2, Lock, LockOpen, SendToBack, Shapes, Spline, Ungroup } from "lucide-react"
+import { Blend, BringToFront, Eye, EyeOff, Group, Layers2, Lock, LockOpen, SendToBack, Shapes, Spline, Ungroup } from "lucide-react"
 import { groupable, ungroupable } from "../../../annotations/annotationGroups"
 import type { ClearScope } from "../../../annotations/annotationTypes"
 import { t } from "../../../i18n"
@@ -7,7 +7,7 @@ import { hasLevels } from "../../../levels/sceneLevels"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { ToolButton } from "../primitives/ToolButton"
 import { fillIsAll, shownLock } from "./drawStyle"
-import { ALIGN_CHOICES, CELLS_CHOICES, DASH_CHOICES, ENDS_CHOICES, FILL_CHOICES, FONT_CHOICES, LOOK_CHOICES, SIZE_CHOICES, type DrawToolId } from "./drawToolChoices"
+import { CELLS_CHOICES, DASH_CHOICES, ENDS_CHOICES, FILL_CHOICES, FONT_CHOICES, LOOK_CHOICES, SIZE_CHOICES, type DrawToolId } from "./drawToolChoices"
 import type { DrawIcon } from "./drawToolIcons"
 import { ChoiceMenu, ClearMenu, ColourMenu } from "./DrawToolMenus"
 import { StampSymbolTool } from "./StampSymbolTool"
@@ -101,9 +101,6 @@ export function DrawModeTool({ id, access, locked: viewLocked }: DrawModeToolPro
     }
     case 'font': return <ChoiceMenu label={t('draw.font')} choices={FONT_CHOICES} value={style.font} onChange={(font) => pick('font', font)} locked={locked} />
     case 'look': return <ChoiceMenu label={t('draw.look')} choices={LOOK_CHOICES} value={style.look} onChange={(look) => pick('look', look)} locked={locked} />
-    case 'align': return <ChoiceMenu label={t('draw.align')} choices={ALIGN_CHOICES} value={style.align} onChange={(align) => pick('align', align)} locked={locked} />
-    case 'bold': return <Switch icon={Bold} label={t('draw.bold')} on={style.bold === true} onChange={(on) => pick('bold', on)} locked={locked} />
-    case 'italic': return <Switch icon={Italic} label={t('draw.italic')} on={style.italic === true} onChange={(on) => pick('italic', on)} locked={locked} />
     case 'icon': return <StampSymbolTool value={style.icon} onChange={(icon) => pick('icon', icon)} locked={locked} />
     // The Cells mode's own layer, shown by the Layer tool's button: a coloured cell is map more often than a mark.
     case 'cellsLayer':

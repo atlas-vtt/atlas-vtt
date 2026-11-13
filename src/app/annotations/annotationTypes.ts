@@ -52,8 +52,8 @@ export type DrawEnds = 'end' | 'both';
 export type DrawLayer = 'above' | 'map';
 export type TextLook = 'outline' | 'plate' | 'plain';
 export const TEXT_LOOKS: readonly TextLook[] = ['outline', 'plate', 'plain'];
+/** How the lines of a text that names one stand in its box; the tool writes none, and a text without one is centred. */
 export type TextAlign = 'left' | 'center' | 'right';
-export const TEXT_ALIGNS: readonly TextAlign[] = ['left', 'center', 'right'];
 /** The faces the tool offers; a text keeps the `fontFamily` it was written with. */
 export type DrawFont = 'medieval' | 'scifi' | 'mono';
 export const DRAW_FONTS: readonly DrawFont[] = ['medieval', 'scifi', 'mono'];
@@ -213,9 +213,6 @@ export interface DrawToolChoices {
   fill: DrawFill | null;
   font: DrawFont;
   look: TextLook;
-  align: TextAlign;
-  bold: boolean;
-  italic: boolean;
   /** The symbol the Stamp mode places. */
   icon: string;
   /** The eraser removes each whole drawing it touches. */
@@ -239,9 +236,6 @@ export const DEFAULT_DRAW_TOOL: DrawToolChoices = {
   fill: null,
   font: 'medieval',
   look: 'outline',
-  align: 'center',
-  bold: false,
-  italic: false,
   icon: 'door',
   eraseWhole: false,
   cellsLayer: 'map',

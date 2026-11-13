@@ -7,7 +7,7 @@
 import { PIN_ICON_PATHS } from '../types/pinIconPaths';
 import { isRecord } from '../utils/guards';
 import { isHexColor } from '../utils/hexColor';
-import { DEFAULT_DRAW_TOOL, DRAW_FONTS, DRAW_SIZES, TEXT_ALIGNS, TEXT_LOOKS, type DrawToolChoices } from './annotationTypes';
+import { DEFAULT_DRAW_TOOL, DRAW_FONTS, DRAW_SIZES, TEXT_LOOKS, type DrawToolChoices } from './annotationTypes';
 
 export type RememberedDrawTool = Omit<DrawToolChoices, 'mode' | 'eraseWhole' | 'cellsUnfill'>;
 
@@ -48,9 +48,6 @@ export function drawToolFrom(remembered: unknown): DrawToolChoices {
     fill: oneOf(['soft', 'solid', null] as const, remembered.fill, base.fill),
     font: oneOf(DRAW_FONTS, remembered.font, base.font),
     look: oneOf(TEXT_LOOKS, remembered.look, base.look),
-    align: oneOf(TEXT_ALIGNS, remembered.align, base.align),
-    bold: flag(remembered.bold, base.bold),
-    italic: flag(remembered.italic, base.italic),
     // A symbol the catalogue does not offer (one of the twelve stamps had before, a later Atlas's) is not what the tool places.
     icon: typeof icon === 'string' && Object.hasOwn(PIN_ICON_PATHS, icon) ? icon : base.icon,
     cellsLayer: oneOf(['above', 'map'] as const, remembered.cellsLayer, base.cellsLayer),

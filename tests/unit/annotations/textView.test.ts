@@ -3,6 +3,7 @@ import { Container, type Graphics, type Text } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { annotationList, readText } from '../../../src/app/annotations/annotationList';
 import type { TextAnnotation } from '../../../src/app/annotations/annotationTypes';
+import { textHeight } from '../../../src/app/annotations/drawSizes';
 import { FONT_FAMILIES, TEXT_PLATE } from '../../../src/app/annotations/madeText';
 import { HALO } from '../../../src/app/annotations/textLook';
 import { pickDrawStyle } from '../../../src/app/packages/components/toolbar/drawStyleStore';
@@ -12,7 +13,7 @@ import { textFontReady, watchTextFonts, type FontSource } from '../../../src/app
 import { measureTextView, textBreaks, textLayout } from '../../../src/app/pixi/textLayout';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { TextElement } from '../../../src/app/types';
-import { drawScene, type DrawScene } from '../../helpers/drawScene';
+import { CELL, drawScene, type DrawScene } from '../../helpers/drawScene';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 
 // jsdom measures every letter 8 wide and every line 10 high (`stubJsdomGraphics`).
@@ -107,6 +108,25 @@ describe('a text\'s view', () => {
   });
 });
 
+describe('a text that is bold, slanted and aligned', () => {
+  it('is read and drawn so, and so is a copy of it', () => {
+    const s = current = drawScene();
+    const fields = { x: 300, y: 300, text: 'aaa bbb ccc', fontSize: 24, fontFamily: 'Arial', color: '#ffffff', width: 60, breaks: [8], align: 'right' as const, bold: true, italic: true };
+    const id = s.store.getState().addText(fields);
+    const record = s.store.getState().objects.texts[id]!;
+    expect(record).toMatchObject(fields);
+    const read = readText(id, record)!;
+    expect(read).toMatchObject({ align: 'right', bold: true, italic: true });
+    const view = createTextElementView(read);
+    expect(words(view).style).toMatchObject({ fontWeight: 'bold', fontStyle: 'italic', align: 'right' });
+    expect([words(view).anchor.x, words(view).x]).toEqual([1, 30]);
+    // A copy is the text again, all three with it.
+    s.store.getState().duplicateMapObjects([id]);
+    const copies = Object.values(s.store.getState().objects.texts).filter((text) => text.id !== id);
+    expect(copies).toEqual([expect.objectContaining({ text: 'aaa bbb ccc', align: 'right', bold: true, italic: true })]);
+  });
+});
+
 describe('the faces of texts', () => {
   it('are waited for: a text in a face that has not loaded is neither measured nor drawn until it has', async () => {
     let loaded = false;
@@ -172,12 +192,11 @@ describe('where a text with a width keeps its line breaks', () => {
     s.store.getState().setSelection([id]);
     s.store.getState().updateText(id, { breaks: [4, 8] });
     const before = steps(s);
-    pickDrawStyle(s.store, 'bold', true);
-    expect(s.store.getState().objects.texts[id]).toMatchObject({ bold: true, breaks: [8] });
+    pickDrawStyle(s.store, 'size', 'xl');
+    expect(s.store.getState().objects.texts[id]).toMatchObject({ fontSize: textHeight('xl', CELL), breaks: [8] });
     expect(steps(s)).toBe(before + 1);
     getHistoryStore(s.store)!.getState().undo();
-    expect(s.store.getState().objects.texts[id]).toMatchObject({ breaks: [4, 8] });
-    expect(s.store.getState().objects.texts[id]).not.toHaveProperty('bold');
+    expect(s.store.getState().objects.texts[id]).toMatchObject({ fontSize: 24, breaks: [4, 8] });
   });
 
   it('leaves a locked text and a text without a width as they are', () => {

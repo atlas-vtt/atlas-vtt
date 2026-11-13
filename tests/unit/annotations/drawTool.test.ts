@@ -48,8 +48,10 @@ describe('the draw tool\'s choices', () => {
     expect(drawToolFrom('pen')).toEqual(DEFAULT_DRAW_TOOL);
     expect(drawToolFrom({
       mode: 'eraser', eraseWhole: true, color: 'red', size: 'xxl', players: 'no', layer: 'sky', dash: 'wavy', ends: 'both', fill: 'solid', curved: true,
-      font: 'comic', look: 'plate', align: 'right', bold: true, italic: 1, icon: '', seeThrough: true, cellsLayer: 'sky', cellsUnfill: true,
-    })).toEqual({ ...DEFAULT_DRAW_TOOL, ends: 'both', fill: 'solid', curved: true, look: 'plate', align: 'right', bold: true, seeThrough: true });
+      font: 'comic', look: 'plate', icon: '', seeThrough: true, cellsLayer: 'sky', cellsUnfill: true,
+    })).toEqual({ ...DEFAULT_DRAW_TOOL, ends: 'both', fill: 'solid', curved: true, look: 'plate', seeThrough: true });
+    // What a device remembered of choices the tool no longer has is passed over.
+    expect(drawToolFrom({ look: 'plain', align: 'right', bold: true, italic: true })).toEqual({ ...DEFAULT_DRAW_TOOL, look: 'plain' });
     expect(drawToolFrom({ icon: 'cauldron', dash: 'dotted', layer: 'map', size: 's', color: '#000000', cellsLayer: 'above' }))
       .toEqual({ ...DEFAULT_DRAW_TOOL, icon: 'cauldron', dash: 'dotted', layer: 'map', size: 's', color: '#000000', cellsLayer: 'above' });
     // One of the twelve symbols stamps had before is drawn still, and placed no more: the tool starts with its own.
@@ -73,7 +75,11 @@ describe('the draw tool\'s choices', () => {
     expect(logged).toHaveLength(1);
     localStorage.set(DRAW_TOOL_STORAGE_KEY, 7);
     expect(loadDrawTool(app)).toEqual(DEFAULT_DRAW_TOOL);
-    saveDrawTool(app, { ...DEFAULT_DRAW_TOOL, bold: true });
-    expect(loadDrawTool(app).bold).toBe(true);
+    saveDrawTool(app, { ...DEFAULT_DRAW_TOOL, curved: true });
+    expect(loadDrawTool(app).curved).toBe(true);
+    // A device that remembered an alignment, bold or italic starts without them, and without a word.
+    localStorage.set(DRAW_TOOL_STORAGE_KEY, JSON.stringify({ look: 'plate', align: 'right', bold: true, italic: true }));
+    expect(loadDrawTool(app)).toEqual({ ...DEFAULT_DRAW_TOOL, look: 'plate' });
+    expect(logged).toHaveLength(1);
   });
 });

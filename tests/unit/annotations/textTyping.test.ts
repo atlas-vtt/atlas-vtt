@@ -60,7 +60,7 @@ function doubleClick(s: DrawScene, x: number, y: number): void {
 describe('typing a text on the map', () => {
   it('opens a field where the map is clicked, and writes the text in the tool\'s look once, when Enter ends it', () => {
     const s = scene();
-    s.tool({ mode: 'text', color: '#ffcc00', size: 'l', look: 'plate', font: 'scifi', align: 'left', bold: true, players: false });
+    s.tool({ mode: 'text', color: '#ffcc00', size: 'l', look: 'plate', font: 'scifi', players: false });
     s.click(123, 45);
     const field = s.field()!;
     expect(field).not.toBeNull();
@@ -70,12 +70,13 @@ describe('typing a text on the map', () => {
     expect([s.texts(), steps(s)]).toEqual([[], 0]);
     expect(s.fieldKey('Enter').defaultPrevented).toBe(true);
     expect(s.field()).toBeNull();
-    // Aligned left it begins where the click was, its line centred on the click from top to bottom.
+    // Its line is centred on the click, from side to side and from top to bottom.
     expect(s.texts()).toEqual([expect.objectContaining({
-      x: 123 + (4 * LETTER) / 2, y: 45, text: 'Gate', color: '#ffcc00', fontSize: textHeight('l', CELL), fontFamily: FONT_FAMILIES.scifi,
-      ...TEXT_PLATE, align: 'left', bold: true, italic: false, hidden: true,
+      x: 123, y: 45, text: 'Gate', color: '#ffcc00', fontSize: textHeight('l', CELL), fontFamily: FONT_FAMILIES.scifi,
+      ...TEXT_PLATE, hidden: true,
     })]);
-    expect(s.texts()[0]).not.toHaveProperty('outline');
+    // The tool names no alignment, weight or slant: a new text is centred and upright by having none.
+    for (const field of ['align', 'bold', 'italic', 'outline']) expect(s.texts()[0]).not.toHaveProperty(field);
     expect(s.texts()[0]).not.toHaveProperty('width');
     expect(steps(s)).toBe(1);
     expect(selected(s)).toEqual([s.texts()[0]!.id]);
@@ -85,7 +86,7 @@ describe('typing a text on the map', () => {
 
   it('starts a new line with Shift+Enter, and leaves the Enter that ends a composition to the composition', () => {
     const s = scene();
-    s.tool({ mode: 'text', align: 'center' });
+    s.tool({ mode: 'text' });
     s.click(200, 100);
     s.type('Old');
     expect(s.fieldKey('Enter', { shiftKey: true }).defaultPrevented).toBe(false);
@@ -99,7 +100,7 @@ describe('typing a text on the map', () => {
 
   it('gives a dragged text the drag\'s width: its words wrap, and it keeps where its lines broke', () => {
     const s = scene();
-    s.tool({ mode: 'text', size: 's', align: 'center' });
+    s.tool({ mode: 'text', size: 's' });
     s.drag([[100, 100], [140, 104], [180, 105]]);
     s.type('aaa bbb ccc');
     s.fieldKey('Enter');
@@ -173,16 +174,15 @@ describe('typing a text on the map', () => {
     s.tool({ mode: 'text', font: 'medieval', size: 'm' });
     s.click(100, 100);
     s.type('Gate');
-    pickDrawStyle(s.store, 'bold', true);
     pickDrawStyle(s.store, 'font', 'mono');
     pickDrawStyle(s.store, 'size', 'xl');
     pickDrawStyle(s.store, 'color', '#e93147');
     const root = s.host.querySelector<HTMLElement>('.atlas-map-text-field')!;
-    expect(root.style.getPropertyValue('--atlas-text-field-font')).toBe(`normal bold ${textHeight('xl', CELL)}px "${FONT_FAMILIES.mono}"`);
+    expect(root.style.getPropertyValue('--atlas-text-field-font')).toBe(`normal normal ${textHeight('xl', CELL)}px "${FONT_FAMILIES.mono}"`);
     expect(root.style.getPropertyValue('--atlas-text-field-color')).toBe('#e93147');
     expect([s.field()?.value, s.texts(), steps(s)]).toEqual(['Gate', [], 0]);
     s.fieldKey('Enter');
-    expect(s.texts()[0]).toMatchObject({ text: 'Gate', bold: true, fontFamily: FONT_FAMILIES.mono, fontSize: textHeight('xl', CELL), color: '#e93147' });
+    expect(s.texts()[0]).toMatchObject({ text: 'Gate', fontFamily: FONT_FAMILIES.mono, fontSize: textHeight('xl', CELL), color: '#e93147' });
     expect(steps(s)).toBe(1);
   });
 
@@ -344,11 +344,32 @@ describe('editing a text on the map', () => {
     s.tool({ mode: 'select' });
     doubleClick(s, 300, 300);
     s.type('Crypt');
-    pickDrawStyle(s.store, 'italic', true);
-    expect(s.host.querySelector<HTMLElement>('.atlas-map-text-field')!.style.getPropertyValue('--atlas-text-field-font')).toContain('italic');
-    expect([s.field()?.value, s.texts()[0]!.text, s.texts()[0]!.italic, steps(s)]).toEqual(['Crypt', 'Vault', true, 1]);
+    pickDrawStyle(s.store, 'font', 'mono');
+    expect(s.host.querySelector<HTMLElement>('.atlas-map-text-field')!.style.getPropertyValue('--atlas-text-field-font')).toContain(FONT_FAMILIES.mono);
+    expect([s.field()?.value, s.texts()[0]!.text, s.texts()[0]!.fontFamily, steps(s)]).toEqual(['Crypt', 'Vault', FONT_FAMILIES.mono, 1]);
     s.fieldKey('Enter');
     expect([s.texts()[0]!.text, steps(s)]).toEqual(['Crypt', 2]);
+  });
+
+  it('shows a text that is bold, slanted and aligned as it is while it is edited, and its new words keep all three', () => {
+    const s = scene([{ align: 'right', bold: true, italic: true }]);
+    s.tool({ mode: 'select' });
+    const before = s.texts()[0]!;
+    doubleClick(s, 300, 300);
+    const root = s.host.querySelector<HTMLElement>('.atlas-map-text-field')!;
+    expect(root.style.getPropertyValue('--atlas-text-field-font')).toBe('italic bold 24px "Arial"');
+    expect(root.style.getPropertyValue('--atlas-text-field-align')).toBe('right');
+    s.type('Vault of kings');
+    s.fieldKey('Enter');
+    const after = s.texts()[0]!;
+    expect(after).toEqual({ ...before, text: 'Vault of kings', x: after.x });
+    // Aligned right, its right side stays where it stood: the middle goes left by half of what was added.
+    expect(after.x - before.x).toBeCloseTo((-(14 - 5) * LETTER) / 2);
+    // A pick of the bars leaves them too.
+    s.store.getState().setSelection([after.id]);
+    pickDrawStyle(s.store, 'size', 'xl');
+    pickDrawStyle(s.store, 'look', 'outline');
+    expect(s.texts()[0]).toMatchObject({ align: 'right', bold: true, italic: true, outline: true, fontSize: textHeight('xl', CELL) });
   });
 });
 

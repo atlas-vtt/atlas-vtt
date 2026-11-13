@@ -180,13 +180,27 @@ describe('what the GM refuses whatever a page sends', () => {
 describe('a text a player writes', () => {
   it('is written in the tool\'s own look and size, with the width its words wrap at and where its lines break', () => {
     const { send, written, history } = table();
-    send(ANA, { t: 'draw-text', scene: SCENE, n: next(), x: 300, y: 200, text: 'The old mill\nby the river', wrap: 120, breaks: [8], look: { ...TEXT_LOOK, bold: true } });
+    send(ANA, { t: 'draw-text', scene: SCENE, n: next(), x: 300, y: 200, text: 'The old mill\nby the river', wrap: 120, breaks: [8], look: TEXT_LOOK });
     expect(written()).toEqual([expect.objectContaining({
       kind: 'text', by: ANA, x: 300, y: 200, text: 'The old mill\nby the river', fontSize: textHeight('l', CELL), fontFamily: 'Atlas Oxanium', color: '#086ddd',
-      outline: true, align: 'left', bold: true, italic: false, rotation: 0, scale: 1, width: 120, breaks: [8], order: 1,
+      outline: true, rotation: 0, scale: 1, width: 120, breaks: [8], order: 1,
     })]);
-    for (const field of ['hidden', 'layer', 'locked', 'group', 'backgroundColor']) expect(written()[0]).not.toHaveProperty(field);
+    for (const field of ['hidden', 'layer', 'locked', 'group', 'backgroundColor', 'align', 'bold', 'italic']) expect(written()[0]).not.toHaveProperty(field);
     expect(steps(history)).toBe(1);
+  });
+
+  it('is centred and upright whatever a page says of an alignment, a weight or a slant: those words are not read', () => {
+    const harness = table();
+    harness.send(ANA, { t: 'draw-text', scene: SCENE, n: next(), x: 300, y: 200, text: 'Mill', look: { ...TEXT_LOOK, align: 'left', bold: true, italic: true } });
+    expect(harness.written()).toHaveLength(1);
+    for (const field of ['align', 'bold', 'italic']) expect(harness.written()[0]).not.toHaveProperty(field);
+    // A pick that names one of them beside a pick the bars have is that pick; one that names nothing else changes nothing, and nothing is refused.
+    const [words] = Object.keys(harness.mine(ANA).texts);
+    harness.send(ANA, { t: 'draw-change', scene: SCENE, n: next(), ids: [words!], style: { colour: '#00ff00', bold: true, align: 'right' } });
+    expect(harness.written()[0]).toMatchObject({ color: '#00ff00' });
+    for (const field of ['align', 'bold', 'italic']) expect(harness.written()[0]).not.toHaveProperty(field);
+    expect(parsePlayerMessage({ t: 'draw-change', scene: SCENE, n: next(), ids: [words!], style: { italic: true } })).toBeNull();
+    expect(harness.refusals()).toEqual([]);
   });
 
   it('is refused off the map, and with a width no letter fits in or the map does not hold', () => {
