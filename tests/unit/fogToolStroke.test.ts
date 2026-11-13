@@ -140,9 +140,10 @@ describe('the fog tool\'s stroke', () => {
   it('outlines the cell under the pointer before a press, anew only for another cell, and not once the pointer has left', () => {
     const { tool, outline, picture } = fogTool('fog', 'cells');
     tool.pointerMove(at(10, 10));
-    expect(outline.poly).toHaveBeenCalledExactlyOnceWith([0, 0, 70, 0, 70, 70, 0, 70], true);
+    // A light line over a dark one: the cell is traced once for each.
+    expect(outline.poly.mock.calls).toEqual([[[0, 0, 70, 0, 70, 70, 0, 70], true], [[0, 0, 70, 0, 70, 70, 0, 70], true]]);
     tool.pointerMove(at(60, 20));
-    expect(outline.poly).toHaveBeenCalledTimes(1);
+    expect(outline.poly).toHaveBeenCalledTimes(2);
     tool.pointerMove(at(80, 20));
     expect(outline.poly).toHaveBeenLastCalledWith([70, 0, 140, 0, 140, 70, 70, 70], true);
     // Nothing of the fog's picture is drawn for it.
@@ -152,7 +153,7 @@ describe('the fog tool\'s stroke', () => {
     expect(outline.clear).toHaveBeenCalled();
     // Back on the cell it left: outlined again.
     tool.pointerMove(at(80, 20));
-    expect(outline.poly).toHaveBeenCalledTimes(3);
+    expect(outline.poly).toHaveBeenCalledTimes(6);
   });
 
   it('commits cells that enclose a hole as their rows, in one step, and reveals with the revealing tool', () => {
@@ -325,6 +326,29 @@ describe('the fog tool\'s stroke', () => {
     lasso.tool.pointerLeave();
     lasso.tool.pointerMove(at(120, 100));
     expect(lasso.tool.ring.shown).toBe(false);
+  });
+
+  it('shows the brush\'s ring under the pointer when the tool or the brush is taken up, and none while the pointer is off the map', () => {
+    const { tool, state } = fogTool('fog', 'brush');
+    // The pointer is on the toolbar, which chose the tool: a ring would stand where the pointer last was on the map.
+    tool.pointerLeave();
+    tool.start();
+    expect(tool.ring.shown).toBe(false);
+    tool.follow({ ...state.fogTool, shape: 'lasso' });
+    tool.follow({ ...state.fogTool, shape: 'brush' });
+    expect(tool.ring.shown).toBe(false);
+
+    // Resting on the map while a key takes the tool up, or the brush: the ring is there at once.
+    tool.pointerMove(at(120, 90));
+    tool.follow({ ...state.fogTool, shape: 'lasso' });
+    expect(tool.ring.shown).toBe(false);
+    tool.ring.updatePosition.mockClear();
+    tool.follow({ ...state.fogTool, shape: 'brush' });
+    expect(tool.ring.shown).toBe(true);
+    expect(tool.ring.updatePosition).toHaveBeenCalledExactlyOnceWith(120, 90);
+    state.activeTool = 'eraser';
+    tool.start();
+    expect(tool.ring).toMatchObject({ shown: true, erasing: true });
   });
 });
 

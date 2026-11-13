@@ -5,6 +5,7 @@ import { FogDrag } from '../../src/app/pixi/fog/FogDrag';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { FogRoomClick } from '../../src/app/pixi/fog/FogRoomClick';
 import { FogSnapping, type FogGuideMark, type PlaceKeys } from '../../src/app/pixi/fog/FogSnapping';
+import { FogStroke } from '../../src/app/pixi/fog/FogStroke';
 import { PlainFogStroke } from '../../src/app/pixi/fog/fogStrokeOutcome';
 import type { ShapeStroke } from '../../src/app/tools/shapeStroke';
 
@@ -37,8 +38,13 @@ export interface FogGestureHarness {
   /** Escape. */
   drop(): void;
   keys: { hold: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> };
-  ring: { shown: boolean; erasing: boolean | null; radius: number | null };
+  ring: { shown: boolean; erasing: boolean | null; radius: number | null; updatePosition: ReturnType<typeof vi.fn> };
 }
+
+/** The gesture's own handling of the pointer, which the viewport's events reach in the app. */
+type Routing = Pick<FogGestureHarness, 'start' | 'follow' | 'pointerDown' | 'pointerMove' | 'pointerUp' | 'pointerLeave' | 'drop'>;
+/** What the stroke's keys tell it. */
+type UnderWay = Pick<FogGestureHarness, 'setFlipped' | 'rekey'>;
 
 /** What the gesture asks of the fog's picture. */
 export interface PictureCalls {
@@ -84,13 +90,24 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
   const snapping = new FogSnapping({ store: store as never, zoom: () => 1, guide: { show: (mark) => { guide.mark = mark; } } });
   const line = vi.fn().mockReturnThis();
   const outline = { clear: vi.fn(), rect: vi.fn(), poly: vi.fn(), moveTo: line, lineTo: line, circle: line, stroke: line, fill: vi.fn() };
-  const tool = Object.assign(Object.create(FogGesture.prototype) as FogGesture, {
-    deps: { store, viewport, host: picture },
-    shape,
-    makesAreas: false,
+  const keys = { hold: vi.fn(), release: vi.fn() };
+  const ring = {
+    shown: true,
+    erasing: null as boolean | null,
+    radius: null as number | null,
+    updatePosition: vi.fn(),
+    setBrushRadius(radius: number): void { this.radius = radius; },
+    show(erasing: boolean): void { Object.assign(this, { shown: true, erasing }); },
+    hide(): void { this.shown = false; },
+  };
+  // Areas mode has a test of its own (fogAreasMode.test.ts): here the tool hides or reveals.
+  const areas = { on: false, cancel: () => undefined, move: () => false, release: () => false };
+  const deps = { store, viewport, host: picture };
+  // What is under way (`FogStroke`) and the routing of the pointer (`FogGesture`), built without their canvas.
+  const stroke = Object.assign(Object.create(FogStroke.prototype) as FogStroke, {
+    deps,
+    areas: () => areas,
     plain: new PlainFogStroke(store as never, picture),
-    // Areas mode has a test of its own (fogAreasMode.test.ts): here the tool hides or reveals.
-    areas: { on: false, cancel: () => undefined, move: () => false, release: () => false },
     drag: new FogDrag(outline as unknown as Graphics, snapping, () => 1),
     polygon: { active: false, drop: () => false, rescale: vi.fn() },
     // Rooms have a test of their own (fogRoomClick.test.ts): this map has none.
@@ -98,17 +115,25 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
     snapping,
     flipped: false,
     pointer: null,
-    keys: { hold: vi.fn(), release: vi.fn() },
-    ring: {
-      shown: true,
-      erasing: null as boolean | null,
-      radius: null as number | null,
-      updatePosition: vi.fn(),
-      setBrushRadius(radius: number): void { this.radius = radius; },
-      show(erasing: boolean): void { Object.assign(this, { shown: true, erasing }); },
-      hide(): void { this.shown = false; },
-    },
+    keys,
+    ring,
     outline,
-  }) as unknown as FogGestureHarness;
+  });
+  const gesture = Object.assign(Object.create(FogGesture.prototype) as FogGesture, { deps, shape, makesAreas: false, areas, stroke, over: null }) as unknown as Routing;
+  const underWay = stroke as unknown as UnderWay;
+  const tool: FogGestureHarness = {
+    drag: stroke.drag,
+    keys,
+    ring,
+    start: () => gesture.start(),
+    follow: (choices) => gesture.follow(choices),
+    pointerDown: (event) => gesture.pointerDown(event),
+    pointerMove: (event) => gesture.pointerMove(event),
+    pointerUp: () => gesture.pointerUp(),
+    pointerLeave: () => gesture.pointerLeave(),
+    setFlipped: (held) => underWay.setFlipped(held),
+    rekey: (placeKeys) => underWay.rekey(placeKeys),
+    drop: () => gesture.drop(),
+  };
   return { tool, state, picture, viewport, guide, outline };
 }

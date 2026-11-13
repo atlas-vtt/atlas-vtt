@@ -300,6 +300,47 @@ describe('the badges of fog areas on the map', () => {
     expect(layer().visible).toBe(true);
   });
 
+  it('hides the fog tool\'s ring, outline and guide while the peek is held, and not in session view, where the tool still paints', () => {
+    // The outline of what is under way (the first of its height), the brush's ring and the snapping guide lie above the areas' marks.
+    const above = (zIndex: number): Container => fog.getContainer().children.find((child) => child instanceof Graphics && child.zIndex === zIndex)!;
+    const marks = [above(1001), above(1002), above(1003)];
+    const shown = (): boolean[] => marks.map((mark) => mark.renderable);
+    store.getState().setActiveTool('fog');
+    viewport.emit('pointermove', pointerEvent(BESIDE));
+    const ring = marks[1]!;
+    expect(ring.visible).toBe(true);
+    expect(shown()).toEqual([true, true, true]);
+
+    let peeking = true;
+    tokens.setPlayerSightProvider(() => undefined, () => peeking);
+    tokens.refreshPlayerSight();
+    expect(shown()).toEqual([false, false, false]);
+    // The ring keeps its place, and is back when the key is let go.
+    expect(ring.visible).toBe(true);
+    peeking = false;
+    tokens.refreshPlayerSight();
+    expect(shown()).toEqual([true, true, true]);
+
+    store.getState().setGMView(false);
+    expect(shown()).toEqual([true, true, true]);
+  });
+
+  it('shows the pointer what a press on the area selected in Areas mode would do, and a finger on its badge', () => {
+    store.getState().deleteToken('goblin');
+    store.getState().setFogTool({ areas: true, shape: 'rectangle' });
+    store.getState().setActiveTool('fog');
+    click({ x: 40, y: 40 });
+    expect(store.getState().fogAreaSelected).toBe(hall);
+    viewport.emit('pointermove', pointerEvent({ x: 210, y: 210 }));
+    expect(viewport.cursor).toBe('grab');
+    viewport.emit('pointermove', pointerEvent({ x: 40, y: 40 }));
+    expect(viewport.cursor).toBe('move');
+    viewport.emit('pointermove', pointerEvent(BADGE));
+    expect(viewport.cursor).toBe('pointer');
+    viewport.emit('pointermove', pointerEvent(BESIDE));
+    expect(viewport.cursor).toBe('default');
+  });
+
   it('shows only the areas of the level shown', () => {
     store.setState({ levels: LEVELS, viewedLevel: 'upper' });
     expect(fog.areaPointer().hitTest(BADGE.x, BADGE.y)).toBeNull();

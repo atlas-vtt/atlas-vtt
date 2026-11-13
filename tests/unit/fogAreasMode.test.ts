@@ -575,6 +575,44 @@ describe('editing the selected area', () => {
     expect(s.steps()).toBe(before);
   });
 
+  it('says what a press on the selected area would do: grab on a corner, move inside it, and nothing of its own on an edge or beside it', () => {
+    const s = areasScene();
+    const hall = withHall(s);
+    const cursor = (x: number, y: number): string | null => s.gesture.cursorAt({ x, y });
+    // Nothing is selected: a press in the hall selects it.
+    expect(cursor(140, 140)).toBeNull();
+    s.click([140, 140]);
+    expect(s.selected()).toBe(hall);
+    const state = s.store.getState();
+    expect(cursor(140, 140)).toBe('move');
+    expect(cursor(210, 210)).toBe('grab');
+    expect(cursor(74, 68)).toBe('grab');
+    // A press on an edge adds a corner, one beside the hall begins a shape.
+    expect(cursor(140, 70)).toBeNull();
+    expect(cursor(300, 300)).toBeNull();
+    // Asking writes nothing.
+    expect(s.store.getState()).toBe(state);
+
+    // While it is held: the corner, then the area.
+    s.press([210, 210]);
+    s.move([250, 260]);
+    expect(cursor(250, 260)).toBe('grabbing');
+    s.release();
+    s.press([140, 140]);
+    s.move([160, 160]);
+    expect(cursor(400, 400)).toBe('move');
+    s.release();
+
+    // A shape under way has the pointer.
+    s.press([400, 400]);
+    s.move([450, 450]);
+    expect(cursor(140, 140)).toBeNull();
+    s.release();
+    s.key('Escape');
+    expect(s.selected()).toBeNull();
+    expect(cursor(140, 140)).toBeNull();
+  });
+
   it('keeps its handles and a stroke\'s outlines out of every picture of the scene', () => {
     const s = areasScene();
     withHall(s);

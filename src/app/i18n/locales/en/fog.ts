@@ -37,7 +37,7 @@ export const fog = {
   'fog.more': 'More',
   'fog.gmOpacity': 'Fog opacity in GM View',
   'fog.explore': 'Party tokens clear fog',
-  'fog.exploreHint': 'Fog clears around party tokens when they are moved. Walls stop it.',
+  'fog.exploreHint': 'Fog clears around a party token when it is moved, up to walls.',
   'fog.exploreDistance': 'Distance',
   'fog.exploreCells': { one: '{count} cell', other: '{count} cells' },
   'fog.areaRename': 'Rename area',

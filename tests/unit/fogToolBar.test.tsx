@@ -405,7 +405,7 @@ describe('FogToolBar', () => {
     const slider = (): HTMLElement => screen.getByRole('slider', { name: 'Distance' });
     fireEvent.click(button('More'));
     expect(toggle().getAttribute('aria-checked')).toBe('false');
-    screen.getByText('Fog clears around party tokens when they are moved. Walls stop it.');
+    screen.getByText('Fog clears around a party token when it is moved, up to walls.');
     // The distance stays in place while the switch is off, and is not to be set.
     expect(slider().getAttribute('aria-valuetext')).toBe('4 cells');
     expect(slider().hasAttribute('data-disabled')).toBe(true);

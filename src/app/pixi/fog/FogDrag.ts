@@ -10,10 +10,8 @@ import type { GridGeometry } from '../../grid/gridDistance';
 import { ShapeStroke, type StrokeShape } from '../../tools/shapeStroke';
 import type { Point } from '../../types/visionTypes';
 import { drawStrokeArea } from '../utils/strokePreview';
+import { FOG_MARK, strokeFogOutlines } from './fogMarkLines';
 import type { FogSnapping, PlaceKeys } from './FogSnapping';
-
-/** How wide a shape's outline is while it is drawn, in screen pixels. */
-const OUTLINE_PX = 2;
 
 const same = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
 
@@ -119,27 +117,23 @@ export class FogDrag {
    * hidden already. A brush stroke has none: the fog shows it.
    */
   drawOutline(color: number): void {
-    const width = OUTLINE_PX / this.zoom();
     if (this.cells.active) {
       this.outline.clear();
-      for (const shape of this.cells.shapes()) this.outline.poly(shape.points.flatMap((point) => [point.x, point.y]), true);
-      this.outline.stroke({ width, color, alpha: 0.6 });
+      strokeFogOutlines(this.outline, this.cells.shapes().map((shape) => shape.points), color, this.zoom());
     } else if (this.stroke.active && this.shape !== 'brush') {
-      drawStrokeArea(this.outline, this.stroke, color, width, false);
+      drawStrokeArea(this.outline, this.stroke, color, FOG_MARK.width / this.zoom(), false);
     }
   }
 
   /** Outlines the cell under a resting pointer, as the brush shows its ring; drawn anew only for another cell. */
   private hoverCell(world: Point, grid: GridGeometry | null, color: number): void {
-    const width = OUTLINE_PX / this.zoom();
+    const zoom = this.zoom();
     const [cell] = hasCells(grid) ? cellShapes(grid, cellsOnSegment(grid, world, world)) : [];
     const first = cell?.points[0];
-    const hovered = cell && first ? `${first.x},${first.y}|${color}|${width}` : '';
+    const hovered = cell && first ? `${first.x},${first.y}|${color}|${zoom}` : '';
     if (hovered === this.hovered) return;
     this.hovered = hovered;
     this.outline.clear();
-    if (!cell) return;
-    this.outline.poly(cell.points.flatMap((point) => [point.x, point.y]), true);
-    this.outline.stroke({ width, color, alpha: 0.6 });
+    if (cell) strokeFogOutlines(this.outline, [cell.points], color, zoom);
   }
 }

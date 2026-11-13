@@ -9,10 +9,12 @@ import { STROKE_COLORS } from '../../tools/shapeStroke';
 import type { Point } from '../../types/visionTypes';
 import { DoubleClick } from '../annotations/DoubleClick';
 import { closesDraft } from '../areas/areaGeometry';
+import { FOG_MARK, FOG_MARK_CASING } from './fogMarkLines';
 import type { FogSnapping, PlaceKeys } from './FogSnapping';
 
+/** How faint the edge is that would close the polygon. */
+const CLOSING_ALPHA = 0.3;
 /** Screen pixels. */
-const EDGE = { width: 2, alpha: 0.6, closing: 0.3 } as const;
 const CORNER = { radius: 3, first: 5.5 } as const;
 
 /** What a polygon asks of the fog tool. */
@@ -137,27 +139,40 @@ export class FogPolygon {
     this.host.underWay(false);
   }
 
-  /** The corners placed, the edges between them and to the pointer, and faintly the edge that would close them. */
+  /**
+   * The corners placed, the edges between them and to the pointer, and faintly the edge that
+   * would close them. Each over a dark line: before the third corner no fog shows where they are.
+   */
   private drawOutline(): void {
     const color = this.host.reveals() ? STROKE_COLORS.erase : STROKE_COLORS.paint;
-    const zoom = this.host.zoom();
+    const pixel = 1 / this.host.zoom();
     const { corners } = this.draft;
     const first = corners[0];
     const g = this.outline;
     g.clear();
     if (!first) return;
     const next = this.cursor;
-    g.moveTo(first.x, first.y);
-    for (const corner of corners.slice(1)) g.lineTo(corner.x, corner.y);
-    if (next) g.lineTo(next.x, next.y);
-    g.stroke({ width: EDGE.width / zoom, color, alpha: EDGE.alpha });
+    const width = FOG_MARK.width * pixel;
+    const casing = { width: FOG_MARK.casing * pixel, ...FOG_MARK_CASING };
+    const edges = (): void => {
+      g.moveTo(first.x, first.y);
+      for (const corner of corners.slice(1)) g.lineTo(corner.x, corner.y);
+      if (next) g.lineTo(next.x, next.y);
+    };
+    edges();
+    g.stroke(casing);
+    edges();
+    g.stroke({ width, color, alpha: FOG_MARK.alpha });
     const end = next ?? corners[corners.length - 1]!;
     if (corners.length >= 2 && end !== first) {
-      g.moveTo(end.x, end.y).lineTo(first.x, first.y).stroke({ width: EDGE.width / zoom, color, alpha: EDGE.closing });
+      g.moveTo(end.x, end.y).lineTo(first.x, first.y).stroke({ width, color, alpha: CLOSING_ALPHA });
     }
-    for (const corner of corners) g.circle(corner.x, corner.y, CORNER.radius / zoom);
-    g.fill({ color });
     // The first corner is the one a click closes the polygon on.
-    g.circle(first.x, first.y, CORNER.first / zoom).stroke({ width: EDGE.width / zoom, color, alpha: EDGE.alpha });
+    g.circle(first.x, first.y, CORNER.first * pixel).stroke(casing);
+    g.circle(first.x, first.y, CORNER.first * pixel).stroke({ width, color, alpha: FOG_MARK.alpha });
+    for (const corner of corners) g.circle(corner.x, corner.y, (CORNER.radius + 1) * pixel);
+    g.fill(FOG_MARK_CASING);
+    for (const corner of corners) g.circle(corner.x, corner.y, CORNER.radius * pixel);
+    g.fill({ color });
   }
 }

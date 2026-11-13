@@ -2051,10 +2051,10 @@ export class TokenRenderer {
     // Measurement handles, light markers and range rings: hover and cursor from any tool
     if (measureCursor) this.lightHandlers?.leave();
     const lightCursor = measureCursor ?? this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
-    // The badge of a fog area, where no handle or marker above it is pointed at and a press there would be its own
+    // The badge of a fog area, where no handle or marker above it is pointed at and a press there would be its own; else the cursor of the area selected in the fog tool
     const fogAreaId = lightCursor ? null : this.fogBadgeAt(worldPos.x, worldPos.y, activeTool);
     this.fogAreaHandlers?.hover(fogAreaId);
-    const markerCursor = lightCursor ?? (fogAreaId ? 'pointer' : null);
+    const markerCursor = lightCursor ?? (fogAreaId ? 'pointer' : this.fogAreaHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null);
 
     // Wall tool: pointer move for vertex dragging, freeform drawing, and hover cursors
     if (activeTool === 'wall' && this.wallPointerMoveHandler) {

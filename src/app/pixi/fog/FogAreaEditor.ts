@@ -24,7 +24,7 @@ import { DoubleClick } from '../annotations/DoubleClick';
 import { canvasBadgeTheme } from '../utils/canvasBadgeColors';
 import { grabChanges, type FogAreaGrab } from './fogAreaGrab';
 import { FogAreaKeys } from './FogAreaKeys';
-import { drawAreaHandles, FOG_HANDLE } from './fogAreaHandles';
+import { areaCursorAt, drawAreaHandles, FOG_HANDLE } from './fogAreaHandles';
 import { viewedFog } from './FogPicture';
 import type { FogSnapping, PlaceKeys } from './FogSnapping';
 
@@ -177,6 +177,13 @@ export class FogAreaEditor {
       this.draw();
     }
     return corner !== null || edgeAt(outline, world, FOG_HANDLE.edgeReach / zoom) !== null;
+  }
+
+  /** The cursor at `world` where a press would be the selected area's own, as it is while that area is held; null elsewhere. */
+  cursorAt(world: Point): string | null {
+    if (this.grab) return this.grab.what === 'corner' ? 'grabbing' : 'move';
+    const area = this.selected();
+    return area ? areaCursorAt(areaOutline(area), world, this.zoom()) : null;
   }
 
   /** Ends a drag under way without a trace: the area is as it was, and no undo step is left. */

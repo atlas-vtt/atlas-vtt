@@ -37,6 +37,8 @@ export interface FogAreaPointerHandlers {
   openMenu(areaId: string, screenX: number, screenY: number): void;
   /** The badge the pointer is on now, or none. */
   hover(areaId: string | null): void;
+  /** The cursor at a world point where a press would take the area selected in the fog tool's Areas mode; null elsewhere. */
+  cursorAt(worldX: number, worldY: number): string | null;
 }
 
 export class FogOfWarRenderer {
@@ -144,6 +146,7 @@ export class FogOfWarRenderer {
       yieldsToTokens: (areaId) => this.areas.isRevealed(areaId),
       openMenu: (areaId, screenX, screenY) => showFogAreaMenu(this.store, areaId, screenX, screenY),
       hover: (areaId) => this.areas.setHovered(areaId),
+      cursorAt: (x, y) => this.gesture.cursorAt({ x, y }),
     };
   }
 

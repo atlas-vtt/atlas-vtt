@@ -14,7 +14,7 @@ export const FOG_BADGE_GLYPH_SIZE = 15;
 /** A little wider than the badge, so its edge is easy to press. */
 const FOG_BADGE_HIT_RADIUS = 14;
 /** How a revealed area's badge keeps back outside the fog tool: its size as a share of a badge's, and how opaque it is. */
-export const FOG_BADGE_QUIET = { scale: 0.75, alpha: 0.6 } as const;
+export const FOG_BADGE_QUIET = { scale: 0.75, alpha: 0.8 } as const;
 
 /** The paths of Lucide's `eye` and `eye-off` on their 24×24 canvas. */
 export const FOG_BADGE_GLYPHS = {
