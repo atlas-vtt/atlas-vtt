@@ -62,7 +62,7 @@ describe('the height chip of a token', () => {
     expect(text()).toBe('↓ 10ft');
   });
 
-  it('shows nothing for a token on the floor, in a map of range bands, or without the map\'s rules', () => {
+  it('shows nothing for a token on the floor or without the map\'s rules, and names the band in a map of range bands', () => {
     const grounded = renderer();
     grounded.ui.update(flier({ elevation: undefined }), SPRITE);
     expect(grounded.chip().visible).toBe(false);
@@ -73,9 +73,11 @@ describe('the height chip of a token', () => {
     expect(grounded.chip().visible).toBe(false);
     grounded.ui.destroy();
 
-    const bands = renderer({ ...FEET, mode: 'abstract' });
+    // 30 up at 5 a square is six squares: Close.
+    const bands = renderer({ ...FEET, mode: 'abstract', rangeBands: [{ name: 'Melee', maxSquares: 1 }, { name: 'Close', maxSquares: 6 }, { name: 'Far', maxSquares: 12 }] });
     bands.ui.update(flier(), SPRITE);
-    expect(bands.chip().visible).toBe(false);
+    expect(bands.chip().visible).toBe(true);
+    expect(bands.chip().children.map((child) => ('text' in child ? child.text : '')).join('')).toContain('Close');
     bands.ui.destroy();
 
     const bare = renderer(null);
