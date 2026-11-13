@@ -14,7 +14,7 @@
 
 **Hide, layer and edit drawings**
 - Players see it: switch it off and a drawing or text is yours alone
-- On the map: lays a drawing under the grid and the tokens, lit like the floor, so players see it only where they see the map
+- Under tokens: lays a drawing on the floor, under the grid and the tokens. It is lit like the map, so players see it only where they see the map
 - Select mode selects only drawings and texts. A frame with handles moves, resizes and turns them, and a line's points can be dragged, added and removed
 - Lock, group, bring to front and send to back
 

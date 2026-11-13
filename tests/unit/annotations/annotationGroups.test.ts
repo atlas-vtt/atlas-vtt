@@ -140,7 +140,7 @@ describe('grouping drawings and texts', () => {
     s.press(240, 160, { button: 2 });
     choose('Hide from players');
     s.press(240, 160, { button: 2 });
-    choose('On the map');
+    choose('Under tokens');
     for (const entry of [s.store.getState().objects.drawings[stroke]!, s.store.getState().objects.texts[text]!]) expect(entry).toMatchObject({ hidden: true, layer: 'map' });
     s.press(240, 160, { button: 2 });
     choose('To back');

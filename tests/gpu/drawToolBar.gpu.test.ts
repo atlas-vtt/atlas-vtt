@@ -97,7 +97,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(names(MODES)).toEqual(['Select', 'Pen', 'Line', 'Rectangle', 'Ellipse', 'Text', 'Stamp', 'Cells', 'Eraser']);
     expect(rects(`${MODES} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual(MODE_NAMES.map(() => 32));
     // The pen's tools: the four every drawing has, a doubled gap, and its see-through ink. Buttons of 32 px, 8 px apart, menus' buttons among them.
-    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'On the map', 'See-through']);
+    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'See-through']);
     const controls = rects(`${TOOLS} .atlas-tool-button`);
     expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual(controls.map(() => [32, 32]));
     expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([8, 8, 8, 16]);
@@ -146,11 +146,11 @@ describe('the Draw tool\'s bars above the toolbar', () => {
       if (mode === 'eraser') continue;
       if (mode === 'cells') {
         // A cell has the grid's size: the mode has no Size, and its three stand from the colour's place on.
-        expect(names(TOOLS).slice(0, 3)).toEqual(['Colour', 'Players see it', 'On the map']);
+        expect(names(TOOLS).slice(0, 3)).toEqual(['Colour', 'Players see it', 'Under tokens']);
         expect(rects(`${TOOLS} .atlas-tool-button`).slice(0, 3).map((item) => item.left)).toEqual(common.slice(0, 3));
         continue;
       }
-      expect(names(TOOLS).slice(0, 4)).toEqual(['Colour', 'Size', 'Players see it', 'On the map']);
+      expect(names(TOOLS).slice(0, 4)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens']);
       expect(rects(`${TOOLS} .atlas-tool-button`).slice(0, 4).map((item) => item.left)).toEqual(common);
     }
     // Buttons of 32 px, 8 px apart and from the bar's edge, a group 8 px further: the widest pair is 370 + 8 + 426 px.
@@ -174,18 +174,18 @@ describe('the Draw tool\'s bars above the toolbar', () => {
       return controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right));
     };
     await choose('line');
-    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'On the map', 'Line', 'Ends', 'Curved', 'Fill', 'See-through']);
+    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Line', 'Ends', 'Curved', 'Fill', 'See-through']);
     expect(gaps()).toEqual([8, 8, 8, 16, 8, 8, 8, 8]);
     await choose('text');
-    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'On the map', 'Font', 'Look', 'Align', 'Bold', 'Italic']);
+    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Font', 'Look', 'Align', 'Bold', 'Italic']);
     await choose('stamp');
-    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'On the map', 'Symbol']);
+    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Symbol']);
     await choose('cells');
-    expect(names(TOOLS)).toEqual(['Colour', 'Players see it', 'On the map', 'Fill', 'Unfill']);
+    expect(names(TOOLS)).toEqual(['Colour', 'Players see it', 'Under tokens', 'Fill', 'Unfill']);
     expect(gaps()).toEqual([8, 8, 16, 8]);
     if (import.meta.env.VITE_DRAW_LOOKS) await page.screenshot({ path: '__screenshots__/draw-3-looks/bars-cells.png' });
     await choose('select');
-    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'On the map', 'To front', 'To back', 'Lock', 'Group', 'Ungroup', 'Clear']);
+    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'To front', 'To back', 'Lock', 'Group', 'Ungroup', 'Clear']);
     if (import.meta.env.VITE_DRAW_LOOKS) await page.screenshot({ path: '__screenshots__/draw-3-looks/bars-select.png' });
     expect(gaps()).toEqual([8, 8, 8, 16, 8, 8, 8, 8, 16]);
     await choose('eraser');
@@ -263,6 +263,21 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(swatches).toHaveLength(8);
     expect(new Set(swatches.map((swatch) => Math.round(swatch.top))).size).toBe(1);
     expect(rect(`${TOOLS} .atlas-dropdown-content`).bottom).toBeLessThan(tools.top);
+    // The swatches are all the menu holds: the first and the last are concentric with its corners
+    // (the menu's radius is the swatch's plus the gap between them), and keep their own radius inside.
+    const menu = document.querySelector<HTMLElement>(`${TOOLS} .atlas-dropdown-content`)!;
+    const menuBox = menu.getBoundingClientRect();
+    const cells = [...document.querySelectorAll<HTMLElement>(`${TOOLS} .atlas-swatch`)];
+    const px = (element: HTMLElement, corner: 'TopLeft' | 'TopRight' | 'BottomLeft' | 'BottomRight'): number => parseFloat(getComputedStyle(element)[`border${corner}Radius`]);
+    const first = cells[0]!;
+    const last = cells.at(-1)!;
+    // Within the half pixel the grid's columns are laid out to.
+    expect(Math.abs(px(first, 'TopLeft') + (swatches[0]!.left - menuBox.left) - px(menu, 'TopLeft'))).toBeLessThan(0.75);
+    expect(px(first, 'BottomLeft')).toBe(px(first, 'TopLeft'));
+    expect(Math.abs(px(last, 'TopRight') + (menuBox.right - swatches.at(-1)!.right) - px(menu, 'TopRight'))).toBeLessThan(0.75);
+    expect(px(last, 'BottomRight')).toBe(px(last, 'TopRight'));
+    expect(px(first, 'TopRight')).toBeLessThan(px(first, 'TopLeft'));
+    expect(px(cells[3]!, 'TopLeft')).toBe(px(first, 'TopRight'));
     const red = swatches[2]!;
     act(() => document.elementFromPoint(red.left + red.width / 2, red.top + red.height / 2)!.closest<HTMLElement>('.atlas-swatch')!.click());
     expect(store.getState().drawTool.color).toBe('#e93147');
@@ -344,8 +359,8 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(store.getState().drawTool.cellsUnfill).toBe(true);
     expect([button('Fill').getAttribute('aria-pressed'), button('Unfill').getAttribute('aria-pressed')]).toEqual(['false', 'true']);
     // The mode fills on the map unless told otherwise, and its layer is its own.
-    expect(button('On the map').getAttribute('aria-pressed')).toBe('true');
-    act(() => button('On the map').click());
+    expect(button('Under tokens').getAttribute('aria-pressed')).toBe('true');
+    act(() => button('Under tokens').click());
     expect(store.getState().drawTool).toMatchObject({ cellsLayer: 'above', layer: 'above' });
     act(() => store.getState().setGridVisible(false));
     await settled('pen');
@@ -362,7 +377,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     mount();
     await choose('line');
     const tools = rect(TOOLS);
-    for (const [name, field] of [['Players see it', 'players'], ['On the map', 'layer'], ['Curved', 'curved'], ['See-through', 'seeThrough']] as const) {
+    for (const [name, field] of [['Players see it', 'players'], ['Under tokens', 'layer'], ['Curved', 'curved'], ['See-through', 'seeThrough']] as const) {
       const before = store.getState().drawTool[field];
       const pressed = button(name).getAttribute('aria-pressed');
       act(() => button(name).click());
@@ -437,7 +452,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     // Nothing selected: only what needs a selection waits for one.
     expect(disabled()).toEqual(['To front', 'To back', 'Lock', 'Group', 'Ungroup']);
     act(() => store.getState().setSelection([pen, label]));
-    expect(disabled()).toEqual(['Colour', 'Size', 'Players see it', 'On the map', 'To front', 'To back', 'Group', 'Ungroup']);
+    expect(disabled()).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'To front', 'To back', 'Group', 'Ungroup']);
     expect(rect(TOOLS)).toEqual(tools);
     // A press on one of them opens nothing and changes nothing.
     act(() => button('Colour').closest<HTMLElement>('.atlas-dropdown-menu')!.querySelector<HTMLElement>('span')!.click());

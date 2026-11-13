@@ -114,6 +114,7 @@ export function ColourMenu({ value, onChange, locked }: ColourMenuProps): React.
           <DropdownSwatchGrid
             label={t('toolbar.colour')}
             labelHidden
+            fillsMenu
             swatches={DRAW_COLOR_SWATCHES}
             value={value === MIXED ? '' : value}
             onChange={(color) => {

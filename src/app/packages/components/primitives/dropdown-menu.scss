@@ -287,6 +287,28 @@
   gap: $spacing-xs;
 }
 
+// Swatches that are all their menu holds stand in its corners: the swatch in a corner is
+// concentric with the menu there and keeps its own radius on its other corners. The grid has
+// eight columns, so the corners are the first and eighth swatch and the ends of the last row.
+// Counted by type: each swatch is followed by its tooltip's hidden name.
+.atlas-swatch-grid--fills-menu > .atlas-swatch {
+  &:first-of-type {
+    @include atlas-panel-inset-radius($spacing-s, top-left);
+  }
+
+  &:nth-of-type(8) {
+    @include atlas-panel-inset-radius($spacing-s, top-right);
+  }
+
+  &:nth-of-type(8n + 1):nth-last-of-type(-n + 8) {
+    @include atlas-panel-inset-radius($spacing-s, bottom-left);
+  }
+
+  &:nth-of-type(8n):last-of-type {
+    @include atlas-panel-inset-radius($spacing-s, bottom-right);
+  }
+}
+
 .atlas-swatch {
   display: flex;
   align-items: center;
