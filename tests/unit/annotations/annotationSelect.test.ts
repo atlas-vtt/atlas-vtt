@@ -394,7 +394,7 @@ describe('what the Draw tool just made', () => {
     expect(selected(s)).toEqual([s.drawings()[1]?.id]);
   });
 
-  it('is selected after a line, a stamp and a text alike', async () => {
+  it('is selected after a line, a stamp and a text alike', () => {
     const s = scene();
     s.tool({ mode: 'line' });
     s.pull([[70, 70], [210, 140]]);
@@ -405,8 +405,9 @@ describe('what the Draw tool just made', () => {
     s.tool({ mode: 'text' });
     s.press(500, 500);
     s.pointer('pointerup', 500, 500);
-    s.pointer('pointertap', 500, 500);
-    await vi.waitFor(() => expect(s.texts()).toHaveLength(1));
+    s.type('Gate');
+    s.fieldKey('Enter');
+    expect(s.texts()).toHaveLength(1);
     expect(selected(s)).toEqual([s.texts()[0]?.id]);
   });
 
@@ -493,7 +494,7 @@ describe('the menu and the double click', () => {
     for (const row of ['Edit', 'Hide from players', 'On the map', 'To front', 'To back', 'Delete']) choose(row);
     expect(s.texts()[0]).toMatchObject({ x: 500, y: 300, locked: true });
     expect(s.texts()[0]).not.toHaveProperty('hidden');
-    expect(s.askTextEdit).not.toHaveBeenCalled();
+    expect(s.field()).toBeNull();
     expect(steps(s)).toBe(0);
     choose('Unlock');
     expect(s.texts()[0]).not.toHaveProperty('locked');
@@ -512,17 +513,6 @@ describe('the menu and the double click', () => {
     expect(selected(s)).toEqual([ids[0]]);
   });
 
-  it('asks for no words on a double click of a locked text', async () => {
-    const s = scene((made) => { made.store.getState().addText(label(300, 300, { locked: true })); });
-    s.press(300, 300);
-    s.pointer('pointerup', 300, 300);
-    expect(s.press(300, 300, { soon: true })).toBe(true);
-    s.pointer('pointerup', 300, 300);
-    await Promise.resolve();
-    expect(s.askTextEdit).not.toHaveBeenCalled();
-    expect(s.texts()[0]).toMatchObject({ text: 'Vault' });
-  });
-
   it('orders and duplicates from the menu', () => {
     let ids: string[] = [];
     const s = scene((made) => { ids = [made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)])), made.store.getState().addDrawing(line([pt(100, 200), pt(300, 200)]))]; });
@@ -538,17 +528,6 @@ describe('the menu and the double click', () => {
     expect(s.drawings()).toHaveLength(3);
   });
 
-  it('edits a text on a double click, in the Draw tool\'s Select mode and with the move tool', async () => {
-    const s = scene((made) => { made.store.getState().addText(label(300, 300)); });
-    for (const [tool, words] of [['draw', 'Vault!'], ['move', 'Vault!!']] as const) {
-      s.store.getState().setActiveTool(tool);
-      s.pull([[300, 300]]);
-      expect(s.askTextEdit).not.toHaveBeenCalledWith(words.slice(0, -1));
-      s.pull([[300, 300]], { soon: true });
-      await vi.waitFor(() => expect(s.texts()[0]?.text).toBe(words));
-    }
-    expect(steps(s)).toBe(2);
-  });
 });
 
 describe('drawings and texts selected with tokens', () => {

@@ -20,7 +20,7 @@ const MODE_FACES: Readonly<Partial<Record<DrawMode, ModeFace>>> = {
   line: { icon: Slash, label: t('draw.mode.line'), tip: t('draw.mode.lineTip') },
   rectangle: { icon: Square, label: t('draw.mode.rectangle') },
   ellipse: { icon: Circle, label: t('draw.mode.ellipse') },
-  text: { icon: Type, label: t('draw.mode.text') },
+  text: { icon: Type, label: t('draw.mode.text'), tip: t('draw.mode.textTip') },
   stamp: { icon: Stamp, label: t('draw.mode.stamp') },
   eraser: { icon: Eraser, label: t('draw.mode.eraser') },
 }

@@ -48,12 +48,22 @@ describe('which handles a selection has', () => {
     }
   });
 
-  it('gives a text and a stamp corners that keep their shape, a turn handle and no sides', () => {
-    for (const one of [text({}), drawing({ type: 'icon', icon: 'door-open', points: [pt(0, 0)], width: 70 })]) {
-      const handles = handlesOf([one], measure)!;
-      expect([count(handles, 'corner'), count(handles, 'side'), count(handles, 'turn')]).toEqual([4, 0, 1]);
-      expect(handles.proportional).toBe(true);
-    }
+  it('gives a text and a stamp corners that keep their shape and a turn handle, and a text the two sides its width lies between', () => {
+    const stamp = handlesOf([drawing({ type: 'icon', icon: 'door-open', points: [pt(0, 0)], width: 70 })], measure)!;
+    expect([count(stamp, 'corner'), count(stamp, 'side'), count(stamp, 'turn')]).toEqual([4, 0, 1]);
+    expect([stamp.proportional, stamp.wrap]).toEqual([true, null]);
+    const label = text({});
+    const handles = handlesOf([label], measure)!;
+    expect([count(handles, 'corner'), count(handles, 'turn')]).toEqual([4, 1]);
+    expect([handles.proportional, handles.wrap]).toEqual([true, label]);
+    // Its left and right side, on a single line too (20 high: 30 with the frame's gap); none above and below.
+    expect(handleSpots(handles, 1).flatMap(({ ref }) => (ref.kind === 'side' ? [[ref.x, ref.y]] : []))).toEqual([[1, 0], [-1, 0]]);
+    expect(handleAt(handles, pt(50 + HANDLE_LOOK.gap, 0), 1)).toEqual({ kind: 'side', x: 1, y: 0 });
+    // Too small on screen to hold them between the corners, it has none.
+    expect(count(handles, 'side', 0.5)).toBe(0);
+    // Selected with another, a text is stretched like the rest: the frame has all four sides, and no text's width to set.
+    const both = handlesOf([label, text({ x: 300, y: 300 })], measure)!;
+    expect([count(both, 'side'), both.wrap]).toEqual([4, null]);
   });
 
   it('shows a line\'s points in place of its sides, and nothing but its two ends on a straight line', () => {

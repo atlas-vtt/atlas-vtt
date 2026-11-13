@@ -71,7 +71,12 @@ export class AnnotationIndex {
   }
 }
 
-const indexes = new WeakMap<readonly Annotation[], AnnotationIndex>();
+let indexes = new WeakMap<readonly Annotation[], AnnotationIndex>();
+
+/** Forgets every index built so far: the measurer sizes texts another way now (a face has loaded). */
+export function forgetAnnotationIndexes(): void {
+  indexes = new WeakMap();
+}
 
 /**
  * The index of `list`, built once per list and measurer: the reader hands out the same list while

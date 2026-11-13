@@ -41,8 +41,6 @@ vi.mock('../../../src/app/react/root/ContextMenuContext', () => ({
   closeContextMenuGlobal: vi.fn(),
 }));
 
-const promptForText = vi.hoisted(() => vi.fn(async () => null));
-vi.mock('../../../src/app/ui/textInputDialog', () => ({ promptForText }));
 
 // jsdom has no 2D canvas, so SVG icons cannot be rasterised here.
 vi.mock('../../../src/app/pixi/utils/lucideIconTexture', () => ({
@@ -848,7 +846,6 @@ describe('TokenRenderer Integration Tests', () => {
       tokenRenderer.setPinClickHandler(vi.fn());
       tokenRenderer.setDoorClickHandler((x) => x > 500 && x < 560);
       tokenRenderer.setLightHandlers({ pointerDown: (x) => x > 290 && x < 310, cursorAt: () => null, leave: () => undefined });
-      promptForText.mockClear();
     });
 
     const click = (x: number): void => {
@@ -903,17 +900,21 @@ describe('TokenRenderer Integration Tests', () => {
       }
     });
 
-    it.each(MARKERS)('opens no text box on %s', (_marker, x) => {
+    it.each(MARKERS)('starts no text on %s', (_marker, x) => {
+      // The field a text is typed in lies over the canvas, in what holds it.
+      const host = document.body.appendChild(document.createElement('div'));
+      host.append(viewport.options.events.domElement);
       const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
       try {
         store.getState().setDrawTool({ mode: 'text' });
         store.getState().setActiveTool('draw');
         click(x);
-        expect(promptForText).not.toHaveBeenCalled();
+        expect(host.querySelector('textarea')).toBeNull();
         click(OFF_MARKERS);
-        expect(promptForText).toHaveBeenCalledTimes(1);
+        expect(host.querySelector('textarea')).not.toBeNull();
       } finally {
         drawing.destroy();
+        host.remove();
       }
     });
 

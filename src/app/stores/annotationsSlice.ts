@@ -11,17 +11,17 @@ import { changesTaken, isLocked, unlockedIds } from '../annotations/annotationLo
 import { annotationStack, orderOnTop, reordered, type StackedAnnotation } from '../annotations/annotationStack';
 import {
   DRAWING_FIELDS, TEXT_FIELDS, TEXT_FIELDS_BESIDE_DRAWINGS,
-  type AnnotationChanges, type AnnotationPlace, type ClearScope, type DrawingInput, type TextInput,
+  type AnnotationChanges, type AnnotationPlace, type ClearScope, type DrawingInput, type TextChanges, type TextInput,
 } from '../annotations/annotationTypes';
 import { placedOnViewedLevel } from '../levels/sceneLevels';
 import type { DrawingStroke, TextElement } from '../types';
-import { changeAnnotation, newAnnotationId, newDrawing, removeAnnotations, shiftDrawing, type AnnotationsDraft } from './annotationWrites';
+import { changeDrawing, changeText, newAnnotationId, newDrawing, removeAnnotations, shiftDrawing, type AnnotationsDraft } from './annotationWrites';
 
 export interface AnnotationsSlice {
   /** Adds a text on the level shown, above every annotation there unless its data names an `order`, and returns its id. */
   addText: (data: TextInput) => string;
-  /** Changes a text; nothing of a locked one. */
-  updateText: (id: string, updates: Partial<TextInput>) => void;
+  /** Changes a text: every field of a text the changes name, a field given as undefined being removed. Nothing of a locked one. */
+  updateText: (id: string, changes: TextChanges) => void;
   setTexts: (texts: Record<string, TextElement>) => void;
 
   /** Adds a drawing on the level shown, above every annotation there unless its data names an `order`, and returns its id. */
@@ -82,9 +82,9 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
       return id;
     },
 
-    updateText: (id, updates) => set((draft) => {
+    updateText: (id, changes) => set((draft) => {
       const text = draft.objects.texts[id];
-      if (text && !isLocked(text)) Object.assign(text, updates);
+      if (text && !isLocked(text)) changeText(text, changes, TEXT_FIELDS);
     }),
 
     setTexts: (texts) => set((draft) => {
@@ -126,8 +126,8 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
         const text = draft.objects.texts[id];
         const taken = changesTaken(drawing ?? text ?? {}, changes);
         if (!taken) continue;
-        if (drawing) changeAnnotation(drawing, taken, DRAWING_FIELDS);
-        if (text) changeAnnotation(text, taken, TEXT_FIELDS_BESIDE_DRAWINGS);
+        if (drawing) changeDrawing(drawing, taken, DRAWING_FIELDS);
+        if (text) changeText(text, taken, TEXT_FIELDS_BESIDE_DRAWINGS);
       }
     }),
 
@@ -148,8 +148,8 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
         const drawing = draft.objects.drawings[id];
         const text = draft.objects.texts[id];
         if (isLocked(drawing) || isLocked(text)) continue;
-        if (drawing) changeAnnotation(drawing, place, DRAWING_FIELDS);
-        if (text) changeAnnotation(text, place, TEXT_FIELDS);
+        if (drawing) changeDrawing(drawing, place, DRAWING_FIELDS);
+        if (text) changeText(text, place, TEXT_FIELDS);
       }
     }),
 

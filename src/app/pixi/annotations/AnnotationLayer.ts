@@ -6,7 +6,9 @@ import { curveTolerance } from '../../annotations/drawingInk';
 import type { Box } from '../../vision/polygonBounds';
 import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../drawingLayer';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
-import { createTextElementView, measureTextView, textElementOf, updateTextElementView } from '../textElementView';
+import { createTextElementView, updateTextElementView } from '../textElementView';
+import { textFontReady } from '../textFonts';
+import { measureTextView } from '../textLayout';
 import { destroyTree } from '../utils/destroyTree';
 import { LayerPreview } from './LayerPreview';
 
@@ -77,6 +79,9 @@ function layer(label: string, zIndex: number): Container {
  * pointer move, a pan and a zoom over what is drawn therefore draw nothing. What a picture shows
  * for the first time is drawn `BUILD_POINTS` at a go, the topmost first: whoever owns the layer
  * calls `build` in each frame's tick while `building`. Shared with every page that shows a map.
+ *
+ * A text is drawn only once its face has loaded (`textFontReady`); whoever owns the layer calls
+ * `fontsArrived` when one has.
  */
 export class AnnotationLayer {
   readonly onMap = layer(LAYERS.onMap, MAP_LAYER_Z.annotationsOnMap);
@@ -178,6 +183,11 @@ export class AnnotationLayer {
     this.drawWaiting(false);
   }
 
+  /** A face has loaded: the texts that waited for it are drawn. */
+  fontsArrived(): void {
+    this.cull(false);
+  }
+
   destroy(): void {
     for (const entry of this.entries.values()) {
       if (entry.kind === 'text') this.options.sharpness?.forget(entry.annotation.id);
@@ -258,6 +268,8 @@ export class AnnotationLayer {
    */
   private draw(entry: Entry, shown?: Annotation): void {
     const annotation = shown ?? entry.annotation;
+    // A text waits for its face: it stays as it is, or undrawn, until `fontsArrived`.
+    if (annotation.kind === 'text' && !textFontReady(annotation.fontFamily)) return;
     const kind = kindOf(annotation);
     if (entry.kind !== kind) {
       this.discard(entry);
@@ -270,9 +282,8 @@ export class AnnotationLayer {
     this.drawn += 1;
     let node = entry.node;
     if (annotation.kind === 'text') {
-      const element = textElementOf(annotation);
-      if (node) updateTextElementView(node, element);
-      else node = createTextElementView(element);
+      if (node) updateTextElementView(node, annotation);
+      else node = createTextElementView(annotation);
       this.options.sharpness?.track(annotation.id, node);
     } else if (annotation.shape === 'stamp') {
       node ??= createStampSprite();

@@ -2,10 +2,11 @@ import type { FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { TextMeasure } from '../../annotations/annotationBounds';
 import { handlesOf, mapHandles, type HandleRef, type HandleSet } from '../../annotations/annotationHandles';
-import { readDrawing } from '../../annotations/annotationList';
+import { readDrawing, readText } from '../../annotations/annotationList';
 import { moveBy, scaleByHandle, turnAbout, turnBetween, type Transform } from '../../annotations/annotationTransform';
-import type { Annotation } from '../../annotations/annotationTypes';
+import type { Annotation, AnnotationPlace, TextAnnotation } from '../../annotations/annotationTypes';
 import { withPointAdded, withPointMoved } from '../../annotations/linePoints';
+import { draggedWidth, placeBesideSide } from '../../annotations/textWidth';
 import type { Point } from '../../types/visionTypes';
 import { trackPointer } from '../measure/pointerTrack';
 import { AnnotationEdit, type EditLayer, type PlaceWriter } from './AnnotationEdit';
@@ -30,6 +31,10 @@ export interface GestureDeps {
   readonly touched: () => void;
   /** Where a line's point lies for the pointer at `world`: on the grid where it snaps, unless `free`. */
   readonly snap: (world: Point, free: boolean) => Point;
+  /** The box of a text's words before its scale, as it is set. */
+  readonly wordsBox: (text: TextAnnotation) => { readonly width: number; readonly height: number };
+  /** Where the lines of `text` break at `width`. */
+  readonly breaksAt: (text: TextAnnotation, width: number) => number[];
   /** Shows the handles as the gesture leaves them, and the one it holds; null shows them from the store again. */
   readonly showHandles: (handles: HandleSet | null, held: HandleRef | null) => void;
   /** Writes where a gesture left the annotations: one write, one undo step. */
@@ -63,8 +68,8 @@ interface Running {
 }
 
 /**
- * The gesture under way on selected annotations: a move, a handle's scale, stretch or turn, or a
- * line's point dragged. While it lasts the layer shows where it would leave them (`AnnotationEdit`)
+ * The gesture under way on selected annotations: a move, a handle's scale, stretch or turn, a
+ * line's point dragged, or a text's side, which sets the width its words wrap at. While it lasts the layer shows where it would leave them (`AnnotationEdit`)
  * and the handles follow; the pointer's release writes it in one write, and anything else that
  * ends it (Escape, a lost pointer, the window losing focus, `cancel`) shows everything as it was
  * and leaves no undo step. The viewport's pan is held for as long as a drag lasts.
@@ -154,6 +159,14 @@ export class AnnotationGestures {
           this.deps.showHandles(shown ? handlesOf([shown], this.deps.measure) : handles, grip);
           return;
         }
+        if (grip.kind === 'side' && handles.wrap && grip.x !== 0) {
+          const text = handles.wrap;
+          const place = this.widthPlace(text, grip.x, drag);
+          edit.showPlaces({ [text.id]: place });
+          const shown = readText(text.id, { ...text.record, ...place });
+          this.deps.showHandles(shown ? handlesOf([shown], this.deps.measure) : handles, grip);
+          return;
+        }
         const transform = this.transformOf(handles, grip, grabbed, drag, move.shiftKey === true);
         edit.show(transform);
         this.deps.showHandles(mapHandles(handles, transform), grip);
@@ -170,6 +183,16 @@ export class AnnotationGestures {
     const line = handles.line;
     const place = line ? withPointAdded(line, after, at) : null;
     if (line && place) this.deps.write({ [line.id]: place });
+  }
+
+  /** Where a drag of the `side` handle of `text` by `drag` leaves it: its width, the breaks of its lines there, and its place, the other side and its top staying. */
+  private widthPlace(text: TextAnnotation, side: -1 | 1, drag: Point): AnnotationPlace {
+    const before = this.deps.wordsBox(text);
+    const width = draggedWidth(text, before.width, side, drag, text.fontSize);
+    const breaks = this.deps.breaksAt(text, width);
+    const wrapped = readText(text.id, { ...text.record, width, breaks });
+    const at = placeBesideSide(text, text, before, wrapped ? this.deps.wordsBox(wrapped) : before, side);
+    return { x: at.x, y: at.y, width, breaks };
   }
 
   private transformOf(handles: HandleSet, grip: Exclude<GripRef, { kind: 'point' }>, grabbed: Point, drag: Point, shift: boolean): Transform {

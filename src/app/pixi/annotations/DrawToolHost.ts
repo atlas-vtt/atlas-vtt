@@ -9,7 +9,6 @@ import { drawCell, eraserRadius, stampSize } from '../../annotations/drawSizes';
 import { snapDrawPoint, snapStampPoint } from '../../annotations/drawSnap';
 import { sweepChange } from '../../annotations/eraseSweep';
 import { liveDrawing, madeDrawing, madeStamp, type MadeShape } from '../../annotations/madeDrawing';
-import { madeText } from '../../annotations/madeText';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasState } from '../../storeFactory';
@@ -40,16 +39,14 @@ export interface DrawToolDeps {
   gmView(): boolean;
   /** Tells the GM that the level shown holds as many drawings or texts as it may. */
   full(of: FullOf): void;
-  /** Asks the GM for a text's words; null where none are given. */
-  askText(): Promise<string | null>;
 }
 
 const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'eraser'];
 
 /**
  * What the Draw tool's gestures do to the scene: the drawing under way is shown as it will stay
- * (`LiveStroke`), a finished one is written with the tool's choices (`madeDrawing`), a click of the
- * Stamp mode places the tool's symbol and one of the Text mode asks for a text's words. What was
+ * (`LiveStroke`), a finished one is written with the tool's choices (`madeDrawing`), and a press of
+ * the Stamp mode places the tool's symbol (a text is typed on the map: `TextTyping`). What was
  * made is selected, so it can be pulled right at once; but not a pen's stroke, since the next
  * stroke often starts on the end of the last, where a handle would take the press. The
  * eraser cuts what its sweep passes (`sweepChange`), every step of it written at once and the
@@ -68,7 +65,6 @@ export class DrawToolHost {
   private sweeping = false;
   /** The sweep under way was already told that the level is full. */
   private toldFull = false;
-  private destroyed = false;
 
   constructor(private readonly deps: DrawToolDeps) {
     this.ring = new FogCursorPreview(deps.viewport);
@@ -84,12 +80,8 @@ export class DrawToolHost {
       hovered: (world) => this.hovered(world),
     };
     this.clicks = {
-      mode: () => {
-        const mode = this.mode();
-        return mode === 'stamp' || mode === 'text' ? mode : null;
-      },
+      ready: () => this.mode() === 'stamp',
       stamp: (world, free) => this.stamp(world, free),
-      text: (world) => void this.text(world),
     };
     this.toolChanged();
   }
@@ -106,7 +98,6 @@ export class DrawToolHost {
   }
 
   destroy(): void {
-    this.destroyed = true;
     this.endSweep();
     this.live.destroy();
     this.ring.destroy();
@@ -191,16 +182,6 @@ export class DrawToolHost {
     const cell = drawCell(state.grid);
     const at = snapStampPoint(this.deps.snapGrid(), world, free, stampSize(state.drawTool.size, cell));
     this.select(state.addDrawing(madeStamp(at, state.drawTool, cell)));
-  }
-
-  /** Asks for the words of a text at `world` and adds it; none where the GM gives none, or looks at another scene or level by then, or closed the view. */
-  private async text(world: Point): Promise<void> {
-    if (!this.hasRoom('texts')) return;
-    const { mapPath, viewedLevel } = this.deps.store.getState();
-    const words = await this.deps.askText();
-    const state = this.deps.store.getState();
-    if (!words || this.destroyed || state.mapPath !== mapPath || state.viewedLevel !== viewedLevel || !this.hasRoom('texts')) return;
-    this.select(state.addText(madeText(words, world, state.drawTool, drawCell(state.grid))));
   }
 
   /** What was just made is selected: it shows its handles until the next press elsewhere, and the bars show its style. */

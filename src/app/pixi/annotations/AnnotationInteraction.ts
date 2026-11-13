@@ -37,6 +37,11 @@ export interface AnnotationInteractionDeps {
   snap(world: Point, free: boolean): Point;
   /** Opens a text for editing. */
   editText(text: TextAnnotation): void;
+  /** Whether a text is being typed: its field stands where its frame would. */
+  typing(): boolean;
+  /** The box of a text's words before its scale, and where its lines break at a width: what a side handle works with. */
+  wordsBox(text: TextAnnotation): { readonly width: number; readonly height: number };
+  breaksAt(text: TextAnnotation, width: number): number[];
   /** Leaves copies of the annotations `ids`, moved by (dx, dy), and selects them. */
   copyMoved(ids: readonly string[], dx: number, dy: number): void;
   /** Starts the drag of the selected tokens with the press `event`: a press on an annotation drags the tokens selected with it. */
@@ -79,6 +84,8 @@ export class AnnotationInteraction {
       measure: deps.measure,
       touched: () => deps.touched(),
       snap: (world, free) => deps.snap(world, free),
+      wordsBox: (text) => deps.wordsBox(text),
+      breaksAt: (text, width) => deps.breaksAt(text, width),
       showHandles: (handles, held) => {
         if (!handles) this.showSelection();
         else deps.handles.show({ handles, outlines: [] });
@@ -108,6 +115,12 @@ export class AnnotationInteraction {
     if (!this.deps.gmView()) this.leaveGesture();
     if (!this.gestures.active) this.showSelection();
     this.deps.handles.redraw();
+  }
+
+  /** Texts are sized another way now (a face has loaded): what was read of the selection is read anew. */
+  remeasure(): void {
+    this.selection = null;
+    this.redraw();
   }
 
   /** The map is no longer what the GM works on: a gesture under way is dropped. */
@@ -156,9 +169,9 @@ export class AnnotationInteraction {
     return Math.abs(this.deps.viewport.scale.x) || 1;
   }
 
-  /** Whether annotations take the pointer at all: on the GM's view of the canvas, in a view that is no players' own. */
+  /** Whether annotations take the pointer at all: on the GM's view of the canvas, in a view that is no players' own, while no text is typed. */
   works(): boolean {
-    return !this.deps.store.getState().isPlayerView && this.deps.gmView();
+    return !this.deps.store.getState().isPlayerView && this.deps.gmView() && !this.deps.typing();
   }
 
   private read(): SelectionRead {
@@ -166,9 +179,9 @@ export class AnnotationInteraction {
     return this.selection;
   }
 
-  /** Shows the frame, handles and outlines of what is selected, as the store has it; nothing while the canvas shows the players' picture. */
+  /** Shows the frame, handles and outlines of what is selected, as the store has it; nothing while the canvas shows the players' picture, or a text is typed. */
   private showSelection(): void {
-    this.deps.handles.show(this.deps.gmView() ? selectionPicture(this.read(), this.zoom, this.deps.measure) : null);
+    this.deps.handles.show(this.deps.gmView() && !this.deps.typing() ? selectionPicture(this.read(), this.zoom, this.deps.measure) : null);
   }
 
   /** The topmost annotation at `point` that the tool in hand takes. */

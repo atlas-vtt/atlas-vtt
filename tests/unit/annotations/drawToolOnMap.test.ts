@@ -286,7 +286,7 @@ describe('the Draw tool on the map: the eraser', () => {
   });
 });
 
-describe('the Draw tool on the map: stamps and texts', () => {
+describe('the Draw tool on the map: stamps', () => {
   it('places the tool\'s symbol on the cell under a press, as large as the tool says', () => {
     const s = scene();
     s.tool({ mode: 'stamp', icon: 'skull', color: '#00ff00', size: 'm' });
@@ -302,54 +302,6 @@ describe('the Draw tool on the map: stamps and texts', () => {
     s.click(300, 300, { button: 2 });
     expect(s.drawings()).toHaveLength(3);
     expect(steps(s)).toBe(3);
-  });
-
-  it('asks for a text\'s words on a click and adds it in the tool\'s look', async () => {
-    const s = scene();
-    s.tool({ mode: 'text', color: '#ffcc00', size: 'l', look: 'plate', font: 'scifi', align: 'left', bold: true, players: false });
-    s.click(123, 45);
-    await vi.waitFor(() => expect(s.texts()).toHaveLength(1));
-    expect(s.texts()[0]).toMatchObject({
-      x: 123, y: 45, text: 'Gate', color: '#ffcc00', fontSize: textHeight('l', CELL), fontFamily: FONT_FAMILIES.scifi,
-      ...TEXT_PLATE, align: 'left', bold: true, italic: false, hidden: true,
-    });
-    expect(s.texts()[0]).not.toHaveProperty('outline');
-    s.tool({ mode: 'text', look: 'outline', players: true });
-    s.click(300, 45);
-    await vi.waitFor(() => expect(s.texts()).toHaveLength(2));
-    expect(s.texts()[1]).toMatchObject({ outline: true });
-    expect(s.texts()[1]).not.toHaveProperty('backgroundColor');
-    expect(s.texts()[1]).not.toHaveProperty('hidden');
-  });
-
-  it('adds no text for the tap that ends a pan, for a press something else took, or where the GM gives no words', async () => {
-    const s = scene();
-    s.tool({ mode: 'text' });
-    s.click(100, 100, { button: 2 });
-    expect(s.askText).not.toHaveBeenCalled();
-    s.viewport.once('pointerdown', markHandled);
-    s.click(100, 100);
-    expect(s.askText).not.toHaveBeenCalled();
-    s.viewport.once('pointerdown', resetHandled);
-    s.askText.mockResolvedValueOnce(null);
-    s.click(100, 100);
-    expect(s.askText).toHaveBeenCalledOnce();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(s.texts()).toEqual([]);
-  });
-
-  it('adds no text to a scene the GM left while the dialog was open', async () => {
-    const s = scene();
-    s.tool({ mode: 'text' });
-    let answer: (words: string) => void = () => undefined;
-    s.askText.mockReturnValueOnce(new Promise((resolve) => { answer = resolve; }));
-    s.click(100, 100);
-    s.store.getState().setMapPath('maps/other.atlasmap');
-    answer('Gate');
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(s.texts()).toEqual([]);
   });
 });
 
@@ -372,7 +324,7 @@ describe('the Draw tool on the map: limits and views', () => {
     s.tool({ mode: 'text' });
     s.click(80, 150);
     expect(s.full).toHaveBeenLastCalledWith('texts');
-    expect(s.askText).not.toHaveBeenCalled();
+    expect(s.field()).toBeNull();
     // The eraser cuts nothing that would leave more drawings than the level holds, and says so once a sweep.
     s.tool({ mode: 'eraser', size: 's' });
     s.drag([[200, 60], [200, 100], [200, 140]]);

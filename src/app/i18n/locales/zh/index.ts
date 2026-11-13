@@ -49,7 +49,6 @@ import { toolbar } from './toolbar';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
-import { text } from './text';
 import { audio } from './audio';
 import { editToken } from './editToken';
 import { hex } from './hex';
@@ -133,7 +132,6 @@ export const zh: Translation = {
   ...hotkey,
   ...pin,
   ...laser,
-  ...text,
   ...audio,
   ...editToken,
   ...hex,

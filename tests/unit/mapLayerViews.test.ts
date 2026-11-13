@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Container, Graphics, Text } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
-import { readDrawing } from '../../src/app/annotations/annotationList';
+import { readDrawing, readText } from '../../src/app/annotations/annotationList';
 import type { DrawingAnnotation } from '../../src/app/annotations/annotationTypes';
 import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../../src/app/pixi/drawingLayer';
 import { DoorIcons, type DoorIconsState } from '../../src/app/pixi/lighting/DoorIcons';
@@ -73,12 +73,12 @@ describe('a text view', () => {
 
   it('draws a text at its place, turned and scaled, and follows its edits', () => {
     cleanup = stubJsdomGraphics();
-    const view = createTextElementView(element);
+    const view = createTextElementView(readText('t', element)!);
     expect(view.label).toBe('t');
     expect(view.position).toMatchObject({ x: 100, y: 50 });
     expect(view.rotation).toBeCloseTo(Math.PI / 2);
     expect(view.scale.x).toBe(2);
-    updateTextElementView(view, { ...element, text: 'Door', x: 10, rotation: undefined, scale: undefined });
+    updateTextElementView(view, readText('t', { ...element, text: 'Door', x: 10, rotation: undefined, scale: undefined })!);
     expect((view.getChildByLabel(TEXT_CONTENT_LABEL) as Text).text).toBe('Door');
     expect(view.position.x).toBe(10);
     expect(view.rotation).toBe(0);

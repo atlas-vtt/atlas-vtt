@@ -6,7 +6,7 @@ import type { Point } from '../types/visionTypes';
 import type { DrawFont, DrawToolChoices, TextInput } from './annotationTypes';
 import { textHeight } from './drawSizes';
 
-/** The family a text is written in for each face the tool offers. */
+/** The family a text is written in for each face the tool offers: the names the stylesheet's `@font-face` rules declare. */
 export const FONT_FAMILIES: Readonly<Record<DrawFont, string>> = {
   medieval: 'Atlas Fantaisie Artistique',
   scifi: 'Atlas Oxanium',
@@ -19,7 +19,8 @@ export const TEXT_PLATE = { backgroundColor: '#000000', padding: 8, borderRadius
 /**
  * The text `text` centred on `at`, with the tool's choices, on a map whose cells are `cell` wide:
  * its colour, its height from the size, its face, its look (a plate, the outline, or neither),
- * its alignment and weight, who sees it and where it lies. It is as wide as its words.
+ * its alignment and weight, who sees it and where it lies. It is as wide as its words; whoever
+ * gives it a width adds `width` and `breaks`.
  */
 export function madeText(text: string, at: Point, tool: DrawToolChoices, cell: number): TextInput {
   return {

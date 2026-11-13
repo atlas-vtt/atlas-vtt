@@ -12,8 +12,10 @@ export interface AnnotationsDraft extends LevelView {
   selectedIds: string[];
 }
 
-/** No drawing can be without these, nor any text: a change that names one as undefined leaves it. */
-const REQUIRED = new Set<string>(['type', 'points', 'color', 'width', 'opacity', 'x', 'y', 'text', 'fontSize', 'fontFamily']);
+/** No drawing can be without these: a change that names one as undefined leaves it. */
+const DRAWING_NEEDS = new Set<string>(['type', 'points', 'color', 'width', 'opacity']);
+/** Nor any text without these. Its `width` and `opacity` are its own to lose: a text without a width is as wide as its words. */
+const TEXT_NEEDS = new Set<string>(['x', 'y', 'text', 'fontSize', 'fontFamily', 'color']);
 
 export const newAnnotationId = (prefix: 'drawing' | 'text'): string => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
@@ -49,14 +51,23 @@ export function newDrawing(draft: LevelView, data: DrawingInput, order: number |
   };
 }
 
-/** Writes `changes` to one drawing or text: those of `fields` they name, undefined removing what can be removed. */
-export function changeAnnotation(entry: DrawingStroke | TextElement, changes: Readonly<Record<string, unknown>>, fields: readonly string[]): void {
+function change(entry: DrawingStroke | TextElement, changes: Readonly<Record<string, unknown>>, fields: readonly string[], needs: ReadonlySet<string>): void {
   for (const field of fields) {
     if (!(field in changes)) continue;
     const value = changes[field];
     if (value !== undefined) Reflect.set(entry, field, owned(field, value));
-    else if (!REQUIRED.has(field)) Reflect.deleteProperty(entry, field);
+    else if (!needs.has(field)) Reflect.deleteProperty(entry, field);
   }
+}
+
+/** Writes `changes` to a drawing: those of `fields` they name, undefined removing what a drawing can be without. */
+export function changeDrawing(drawing: DrawingStroke, changes: Readonly<Record<string, unknown>>, fields: readonly string[]): void {
+  change(drawing, changes, fields, DRAWING_NEEDS);
+}
+
+/** Writes `changes` to a text: those of `fields` they name, undefined removing what a text can be without. */
+export function changeText(text: TextElement, changes: Readonly<Record<string, unknown>>, fields: readonly string[]): void {
+  change(text, changes, fields, TEXT_NEEDS);
 }
 
 function shift(points: unknown, dx: number, dy: number): void {

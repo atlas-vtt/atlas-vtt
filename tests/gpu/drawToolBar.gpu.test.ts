@@ -321,6 +321,36 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-content`)).toBeNull();
   });
 
+  it('disables the tools that would change a selection that is all locked, in Select mode, the bar as it was; the lock\'s own switch and Clear still work', async () => {
+    const pen = store.getState().addDrawing({ ...PEN, locked: true });
+    const label = store.getState().addText({ x: 0, y: 0, text: 'Gate', fontSize: 24, fontFamily: 'Arial', color: '#ffffff', locked: true });
+    mount();
+    await choose('select');
+    const tools = rect(TOOLS);
+    const disabled = (): string[] => names(TOOLS).filter((name) => button(name).getAttribute('aria-disabled') === 'true');
+    // Nothing selected: only what needs a selection waits for one.
+    expect(disabled()).toEqual(['To front', 'To back', 'Lock']);
+    act(() => store.getState().setSelection([pen, label]));
+    expect(disabled()).toEqual(['Colour', 'Size', 'Players see it', 'On the map', 'To front', 'To back']);
+    expect(rect(TOOLS)).toEqual(tools);
+    // A press on one of them opens nothing and changes nothing.
+    act(() => button('Colour').closest<HTMLElement>('.atlas-dropdown-menu')!.querySelector<HTMLElement>('span')!.click());
+    expect(document.querySelector(`${TOOLS} .atlas-dropdown-content`)).toBeNull();
+    // With one that is not locked among them, the tools change that one.
+    const free = store.getState().addDrawing(PEN);
+    act(() => store.getState().setSelection([pen, free]));
+    expect(disabled()).toEqual([]);
+    // Unlocked from the bar, everything is at hand again.
+    act(() => store.getState().setSelection([pen, label]));
+    act(() => button('Lock').click());
+    expect(store.getState().objects.drawings[pen]).not.toHaveProperty('locked');
+    expect(disabled()).toEqual([]);
+    // In a mode that draws, a pick is what is drawn next: a locked selection takes nothing from it, and stops nothing.
+    act(() => store.getState().updateAnnotations([pen, label], { locked: true }));
+    await choose('pen');
+    expect(disabled()).toEqual([]);
+  });
+
   it('stays in the session view and takes no choice, each button saying why; the players\' view has no bars', async () => {
     mount();
     await choose('line');

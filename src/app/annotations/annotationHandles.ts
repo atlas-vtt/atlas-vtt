@@ -2,14 +2,15 @@
  * The handles of selected annotations, as geometry: which ones a selection has, where each stands
  * at a zoom, and which one a point takes. One frame for one annotation or for several: corners
  * scale, sides stretch, a handle above the frame turns. A line made with the Line mode shows its
- * points in place of the sides. Sizes are screen pixels, so the handles keep their size at every zoom.
+ * points in place of the sides, and one text has the two sides that set the width its words wrap
+ * at. Sizes are screen pixels, so the handles keep their size at every zoom.
  */
 
 import type { Point } from '../types/visionTypes';
 import type { TextMeasure } from './annotationBounds';
 import { frameCorners, framePoint, inFrame, selectionFrame, type Frame, type FramePlace } from './annotationFrame';
 import { mapFrame, mapPoint, type Transform } from './annotationTransform';
-import type { Annotation, DrawingAnnotation } from './annotationTypes';
+import type { Annotation, DrawingAnnotation, TextAnnotation } from './annotationTypes';
 import { edgeNear, linePointsOf } from './linePoints';
 
 /** The handles' look and reach, in screen pixels. */
@@ -28,6 +29,8 @@ export const HANDLE_LOOK = {
   edge: 6,
   /** A side shorter than this has no handle of its own: the corners at its ends are all there is room for. */
   sideRoom: 44,
+  /** The same for the sides of one text, which change what no corner does (its width): they show on a single line too. */
+  wrapSideRoom: 24,
 } as const;
 
 /** One thing of a selection the pointer can take. */
@@ -54,6 +57,11 @@ export interface HandleSet {
   /** The one line whose points show, with those points; null for any other selection. */
   readonly line: DrawingAnnotation | null;
   readonly points: readonly Point[];
+  /**
+   * The one text whose left and right sides set the width its words wrap at, where a text alone is
+   * selected: its sides are no stretch, and its corners scale it. Null for any other selection.
+   */
+  readonly wrap: TextAnnotation | null;
 }
 
 const NO_POINTS: readonly Point[] = [];
@@ -68,14 +76,16 @@ export function handlesOf(annotations: readonly Annotation[], measure?: TextMeas
   const frame = selectionFrame(annotations, measure);
   const [only, ...more] = annotations;
   if (!frame || !only) return null;
-  if (more.length > 0) return { frame, ink: 0, corners: true, sides: true, turn: true, proportional: false, line: null, points: NO_POINTS };
-  if (only.kind === 'text' || only.shape === 'stamp') return { frame, ink: 0, corners: true, sides: false, turn: true, proportional: true, line: null, points: NO_POINTS };
+  const none = { line: null, points: NO_POINTS, wrap: null };
+  if (more.length > 0) return { frame, ink: 0, corners: true, sides: true, turn: true, proportional: false, ...none };
+  if (only.kind === 'text') return { frame, ink: 0, corners: true, sides: false, turn: true, proportional: true, ...none, wrap: only };
+  if (only.shape === 'stamp') return { frame, ink: 0, corners: true, sides: false, turn: true, proportional: true, ...none };
   const ink = only.width / 2;
   const points = linePointsOf(only);
-  if (!points) return { frame, ink, corners: true, sides: true, turn: true, proportional: false, line: null, points: NO_POINTS };
+  if (!points) return { frame, ink, corners: true, sides: true, turn: true, proportional: false, ...none };
   // Two points are all a straight line is: dragging one turns and scales it.
   const whole = points.length > 2;
-  return { frame, ink, corners: whole, sides: false, turn: whole, proportional: false, line: only, points };
+  return { frame, ink, corners: whole, sides: false, turn: whole, proportional: false, line: only, points, wrap: null };
 }
 
 /** `handles` as a gesture's transform shows them while it lasts: the frame turned or scaled with what it holds. */
@@ -112,12 +122,15 @@ export function handleSpots(handles: HandleSet, zoom: number): HandleSpot[] {
   if (handles.corners) {
     for (const place of CORNERS) spots.push({ ref: { kind: 'corner', ...place }, at: framePoint(handles.frame, place, grow) });
   }
-  if (handles.sides) {
+  if (handles.sides || handles.wrap) {
     const width = 2 * (handles.frame.halfWidth + grow) * zoom;
     const height = 2 * (handles.frame.halfHeight + grow) * zoom;
+    const room = handles.sides ? HANDLE_LOOK.sideRoom : HANDLE_LOOK.wrapSideRoom;
     for (const place of SIDES) {
+      // A text has the two sides its width lies between.
+      if (!handles.sides && place.x === 0) continue;
       // A handle in the middle of a side needs the side to be long enough to hold it between its corners.
-      if ((place.x === 0 ? width : height) >= HANDLE_LOOK.sideRoom) spots.push({ ref: { kind: 'side', ...place }, at: framePoint(handles.frame, place, grow) });
+      if ((place.x === 0 ? width : height) >= room) spots.push({ ref: { kind: 'side', ...place }, at: framePoint(handles.frame, place, grow) });
     }
   }
   return spots;

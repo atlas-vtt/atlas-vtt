@@ -166,9 +166,9 @@ export type AnnotationChanges = DrawingChanges & TextChanges;
 /**
  * Where one annotation lies after its group was moved, turned or scaled (`placeAnnotations`): the
  * fields of its geometry, each its own kind's (`width` is a line's width or a stamp's footprint on
- * a drawing, the wrap width on a text).
+ * a drawing, the wrap width on a text, which goes with the `breaks` its lines then have).
  */
-export type AnnotationPlace = Pick<AnnotationChanges, 'points' | 'anchors' | 'holes' | 'x' | 'y' | 'rotation' | 'scale' | 'width' | 'fontSize'>;
+export type AnnotationPlace = Pick<AnnotationChanges, 'points' | 'anchors' | 'holes' | 'x' | 'y' | 'rotation' | 'scale' | 'width' | 'fontSize' | 'breaks'>;
 
 /** The fields of a drawing and of a text that the store's changes write; anything else in a change is passed over. */
 export const DRAWING_FIELDS: readonly (keyof DrawingChanges)[] = [

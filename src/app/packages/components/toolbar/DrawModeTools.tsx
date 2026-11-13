@@ -51,9 +51,17 @@ interface DrawModeToolProps {
   locked: string | null
 }
 
-/** One tool of a mode's bar. A switch whose selected drawings differ shows as off, and a press switches all of them on. */
-export function DrawModeTool({ id, access, locked }: DrawModeToolProps): React.ReactElement {
+/**
+ * One tool of a mode's bar. A switch whose selected drawings differ shows as off, and a press
+ * switches all of them on. Where everything selected is locked, the tools that would change it
+ * are disabled and say why.
+ */
+export function DrawModeTool({ id, access, locked: viewLocked }: DrawModeToolProps): React.ReactElement {
   const { style, pick, selected, annotations } = access
+  const selecting = useAtlasStore((state) => state.drawTool.mode === 'select')
+  // In Select mode a pick changes what is selected, and a locked drawing takes none: the tools say so. The lock's own switch and Clear still work.
+  const allLocked = selecting && selected.length > 0 && selected.every((annotation) => annotation.locked)
+  const locked = viewLocked ?? (allLocked && id !== 'lock' && id !== 'clear' && id !== 'eraseWhole' ? t('draw.unlockFirst') : null)
   const eraseWhole = useAtlasStore((state) => state.drawTool.eraseWhole)
   const setDrawTool = useAtlasStore((state) => state.setDrawTool)
   const updateAnnotations = useAtlasStore((state) => state.updateAnnotations)
@@ -89,7 +97,7 @@ export function DrawModeTool({ id, access, locked }: DrawModeToolProps): React.R
     case 'back': return <Action icon={SendToBack} label={t('draw.toBack')} locked={noneSelected} onClick={() => orderAnnotations(ids(), 'back')} />
     case 'lock': {
       const on = shownLock(selected) === true
-      return <Switch icon={on ? Lock : LockOpen} label={t('draw.lock')} on={on} onChange={(lock) => updateAnnotations(ids(), { locked: lock ? true : undefined })} locked={noneSelected} />
+      return <Switch icon={on ? Lock : LockOpen} label={t('draw.lock')} on={on} onChange={(lock) => updateAnnotations(ids(), { locked: lock ? true : undefined })} locked={viewLocked ?? (selected.length === 0 ? t('draw.selectFirst') : null)} />
     }
     case 'clear': {
       const has = (scope: ClearScope): boolean => {
@@ -97,7 +105,7 @@ export function DrawModeTool({ id, access, locked }: DrawModeToolProps): React.R
         if (scope === 'players') return annotations.some((annotation) => annotation.by !== null)
         return annotations.length > 0
       }
-      return <ClearMenu levelled={levelled} has={has} onClear={clearAnnotations} locked={locked} />
+      return <ClearMenu levelled={levelled} has={has} onClear={clearAnnotations} locked={viewLocked} />
     }
   }
 }

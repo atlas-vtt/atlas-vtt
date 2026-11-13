@@ -158,6 +158,8 @@ export const BOUNDARIES = {
       "src/app/pixi/drawingLayer.ts",
       "src/app/pixi/mapIcons.ts",
       "src/app/pixi/textElementView.ts",
+      "src/app/pixi/textLayout.ts",
+      "src/app/pixi/textFonts.ts",
       "src/app/pixi/lighting/DoorIcons.ts",
       "src/app/pixi/token-renderer/SensedOutlines.ts",
       "src/app/statblocks/model/templateTypes.ts",

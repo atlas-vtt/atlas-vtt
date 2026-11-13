@@ -68,7 +68,6 @@ import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
-import { text } from './text';
 import { audio } from './audio';
 import { draw } from './draw';
 import { dungeon } from './dungeon';
@@ -183,7 +182,6 @@ export const en = {
   ...hotkey,
   ...pin,
   ...laser,
-  ...text,
   ...audio,
   ...draw,
   ...dungeon,

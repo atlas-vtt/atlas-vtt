@@ -8,7 +8,7 @@ import { annotationBounds } from '../../annotations/annotationBounds';
 import { turnAbout } from '../../annotations/annotationTransform';
 import { levelObjects } from '../../levels/levelObjects';
 import type { AnnotationEdit } from '../annotations/AnnotationEdit';
-import { measureTextView } from '../textElementView';
+import { measureTextView } from '../textLayout';
 import { tokenDiameterInCells } from '../token-renderer/tokenSizing';
 import { GroupRotateButton } from './GroupRotateButton';
 import { formationMiddle, pointerTurn, snapTurn, turnTokens, type Footprint, type Point, type TokenAtStart } from './groupTurn';
