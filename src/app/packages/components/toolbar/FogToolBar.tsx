@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { CloudOff, MoreHorizontal, PaintBucket, Trash2 } from "lucide-react"
+import { CloudOff, LayoutGrid, MoreHorizontal, PaintBucket, Trash2 } from "lucide-react"
 import { areaIsHidden, fogAreaList, isFogArea } from "../../../fog/fogAreas"
 import { hasCells } from "../../../fog/fogCells"
+import { hasRoomWalls } from "../../../fog/fogRooms"
 import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogToolFor, fogWhat, isFogTool, type FogShape, type FogWhat } from "../../../fog/fogToolChoices"
 import { DEFAULT_GM_FOG_OPACITY, GM_FOG_OPACITY_RANGE } from "../../../fog/gmFogOpacity"
 import { t } from "../../../i18n"
@@ -11,11 +12,12 @@ import { hasLevels } from "../../../levels/sceneLevels"
 import { useAtlasUI } from "../../../react/root/AtlasUIContext"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { showNotice } from "../../../ui/notice"
+import { wallList } from "../../../vision/wallList"
 import { DropdownMenu } from "../primitives/DropdownMenu"
 import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { ToolButton } from "../primitives/ToolButton"
-import { TooltipProvider } from "../primitives/tooltip"
+import { LabelTooltip, TooltipProvider } from "../primitives/tooltip"
 import { FOG_AREA_SHAPES, FOG_SHAPES, FOG_WHATS } from "./fogToolChoices"
 import { ChoiceButtons, GroupBreak, TOOL_BAR_CHOICE_CLASS, ToolOptionsBars } from "./ToolOptionsBar"
 
@@ -41,17 +43,20 @@ function FogBars(): React.ReactElement {
   const setActiveTool = useAtlasStore((state) => state.setActiveTool)
   const setFogTool = useAtlasStore((state) => state.setFogTool)
   const cells = useAtlasStore((state) => hasCells(state.grid))
+  const walls = useHasWalls()
+  const noWalls = useNoWallsReason()
   const areas = what === 'areas'
-  /** Why a shape cannot be chosen now, or null: cells are the grid's, and an area cannot be brushed. */
+  /** Why a shape cannot be chosen now, or null: cells are the grid's, rooms the walls', and an area cannot be brushed. */
   const unavailableShape = (value: FogShape): string | null => {
     if (value === 'cells' && !cells) return t('fog.cellsNeedGrid')
+    if (value === 'room' && !walls) return noWalls
     return value === 'brush' && areas ? t('fog.brushNeedsOutline') : null
   }
-  // Left where it can no longer be chosen (the map lost its grid), the tool takes its first shape: in Areas, the first with an outline.
-  const cellsLeft = shape === 'cells' && !cells
+  // Left where it can no longer be chosen (the map lost its grid, the level its walls), the tool takes its first shape: in Areas, the first with an outline.
+  const shapeLeft = (shape === 'cells' && !cells) || (shape === 'room' && !walls)
   useEffect(() => {
-    if (cellsLeft) setFogTool({ shape: DEFAULT_FOG_TOOL.shape })
-  }, [cellsLeft, setFogTool])
+    if (shapeLeft) setFogTool({ shape: DEFAULT_FOG_TOOL.shape })
+  }, [shapeLeft, setFogTool])
   const choose = (next: FogWhat): void => {
     const { tool, areas } = fogToolFor(next)
     setFogTool({ areas })
@@ -72,6 +77,17 @@ function FogBars(): React.ReactElement {
       </div>
     </TooltipProvider>
   )
+}
+
+/** Whether the level shown has walls that end a room. */
+function useHasWalls(): boolean {
+  return useAtlasStore((state) => hasRoomWalls(wallList(levelObjects(state).walls)))
+}
+
+/** Why rooms cannot be found: the level shown has no walls. A scene without levels has no level to name. */
+function useNoWallsReason(): string {
+  const levelled = useAtlasStore((state) => hasLevels(state.levels))
+  return levelled ? t('fog.roomNeedsLevelWalls') : t('fog.roomNeedsWalls')
 }
 
 /** The brush's size as the size button shows it: a dot that grows with the brush. */
@@ -153,14 +169,26 @@ function WholeMap(): React.ReactElement {
   )
 }
 
-/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, and deleting the areas of the level shown. */
+/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, an area for every room of the level shown, and deleting its areas. */
 function MoreMenu(): React.ReactElement {
+  const { renderer } = useAtlasUI()
   const settings = useAtlasSettings()
   const [open, setOpen] = useState(false)
   const toggle = useCallback((): void => setOpen((before) => !before), [])
   const fog = useAtlasStore((state) => levelObjects(state).fog)
   const deleteFogAreas = useAtlasStore((state) => state.deleteFogAreas)
+  const addRoomAreas = useAtlasStore((state) => state.addRoomAreas)
   const levelled = useAtlasStore((state) => hasLevels(state.levels))
+  const walls = useHasWalls()
+  const noWalls = useNoWallsReason()
+  const areasFromWalls = (): void => {
+    const { rooms, made, full } = addRoomAreas(renderer?.getMapRect() ?? null)
+    if (made > 0) showNotice(t('fog.areasMade', { count: made }))
+    if (full) showNotice(t('fog.areasFull'))
+    else if (made === 0) showNotice(rooms > 0 ? t('fog.roomsAreAreas') : t('fog.noRooms'))
+    setOpen(false)
+  }
+  const fromWalls = <DropdownMenuItem icon={LayoutGrid} label={t('fog.areasFromWalls')} disabled={!walls} onClick={areasFromWalls} />
   const deleteAreas = (): void => {
     // Every area of the level, also those past the number that are read.
     deleteFogAreas(Object.keys(fog).filter((id) => isFogArea(fog[id])))
@@ -189,6 +217,10 @@ function MoreMenu(): React.ReactElement {
           disabled={!settings}
           onChange={(next) => settings?.setGmFogOpacity(next / 100)}
         />
+      </div>
+      <div className="atlas-dropdown-section">
+        {/* The row stays where it is without walls, and says why. */}
+        {walls ? fromWalls : <LabelTooltip side="right" label={noWalls}><div>{fromWalls}</div></LabelTooltip>}
       </div>
       <div className="atlas-dropdown-section">
         <DropdownMenuItem

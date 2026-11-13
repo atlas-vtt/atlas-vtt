@@ -16,6 +16,7 @@ import { isFogTool } from '../../fog/fogToolChoices';
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { MapRect } from '../../grid/cellNumbering';
 import { destroyTree } from '../utils/destroyTree';
+import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
 import { FogAreaLayer } from './FogAreaLayer';
 import { mayRenameFogArea, showFogAreaMenu } from './fogAreaMenu';
@@ -82,6 +83,7 @@ export class FogOfWarRenderer {
         showStroke: (stroke) => this.picture.drawStroke(stroke),
         showCommitted: () => this.showCommitted(),
       },
+      mapRect,
       keysBelongToMap: (event) => this.keysBelongToMap?.(event) ?? true,
       isUndoKey: (event) => this.isUndoKey?.(event),
       showsPlayers: () => this.showsPlayers?.() ?? null,
@@ -201,6 +203,7 @@ export class FogOfWarRenderer {
   private followStore(): void {
     let previous = this.store.getState();
     let prevFog = viewedFog(previous);
+    let prevWalls = levelObjects(previous)?.walls;
 
     this.unsubscribe = this.store.subscribe((state) => {
       // Clear old pixels; coverage lookups synchronize their own map identity.
@@ -220,8 +223,11 @@ export class FogOfWarRenderer {
         || (viewChanged && !state.isGMView) || (state.isPlayerView && !previous.isPlayerView);
       const fog = viewedFog(state);
       const fogChanged = fog !== prevFog || mapChanged;
+      const walls = levelObjects(state)?.walls;
+      const wallsChanged = walls !== prevWalls;
       previous = state;
       prevFog = fog;
+      prevWalls = walls;
 
       if (toolChanged) {
         if (isFogTool(state.activeTool)) this.enableFogMode();
@@ -230,6 +236,9 @@ export class FogOfWarRenderer {
 
       // The tool's choices (its bar, the brush's keys)
       if (choicesChanged) this.gesture.follow(state.fogTool);
+
+      // The room outlined under a resting pointer is one of the walls as they were
+      if (wallsChanged && isFogTool(state.activeTool) && !this.gesture.active) this.gesture.rest();
 
       // Another level, a load, the players' view: what is under way goes
       if (pictureLeft) this.gesture.drop();

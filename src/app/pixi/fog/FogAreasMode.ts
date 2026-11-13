@@ -17,8 +17,8 @@ import type { FogStrokeHost } from './fogStrokeOutcome';
 export interface FogAreasHost {
   /** Begins the shape chosen at a place: a drag, or a polygon's first corner. */
   begin(world: Point, screen: Point, keys: PlaceKeys): void;
-  /** Whether the shape chosen is placed click by click, so a click begins it. */
-  clicksCorners(): boolean;
+  /** A click in place that selected no area: where the shape chosen is placed by clicks, it is one (a polygon's corner, the room clicked in). */
+  click(world: Point, screen: Point, keys: PlaceKeys): void;
   /** The pointer is on a handle: what showed where a shape would begin goes. */
   rest(): void;
 }
@@ -92,7 +92,7 @@ export class FogAreasMode {
   /**
    * The pointer was released. True where that ended something of the mode's: a drag of the
    * selected area, or a click, which selects the area under it (none: lets go of the selection)
-   * and, where the shape is placed click by click, begins it unless the click selected.
+   * and, where the shape is placed by clicks, is one of them unless the click selected.
    */
   release(): boolean {
     const ended = this.editor.release();
@@ -111,7 +111,7 @@ export class FogAreasMode {
       }
       if (under === null) this.editor.select(null);
     }
-    if (this.deps.host.clicksCorners()) this.deps.host.begin(press.world, press.screen, press.keys);
+    this.deps.host.click(press.world, press.screen, press.keys);
     return true;
   }
 

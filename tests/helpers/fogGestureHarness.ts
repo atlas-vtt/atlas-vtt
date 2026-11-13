@@ -3,6 +3,7 @@ import type { FederatedPointerEvent, Graphics } from 'pixi.js';
 import { DEFAULT_FOG_TOOL, type FogShape, type FogToolChoices } from '../../src/app/fog/fogToolChoices';
 import { FogDrag } from '../../src/app/pixi/fog/FogDrag';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
+import { FogRoomClick } from '../../src/app/pixi/fog/FogRoomClick';
 import { FogSnapping, type FogGuideMark, type PlaceKeys } from '../../src/app/pixi/fog/FogSnapping';
 import { PlainFogStroke } from '../../src/app/pixi/fog/fogStrokeOutcome';
 import type { ShapeStroke } from '../../src/app/tools/shapeStroke';
@@ -92,6 +93,8 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
     areas: { on: false, cancel: () => undefined, move: () => false, release: () => false },
     drag: new FogDrag(outline as unknown as Graphics, snapping, () => 1),
     polygon: { active: false, drop: () => false, rescale: vi.fn() },
+    // Rooms have a test of their own (fogRoomClick.test.ts): this map has none.
+    rooms: new FogRoomClick({ store: store as never, mapRect: () => null, outline: outline as unknown as Graphics, zoom: () => 1, selects: () => false, select: () => undefined, fill: () => undefined }),
     snapping,
     flipped: false,
     pointer: null,

@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 
 vi.mock('../../src/app/ui/notice', () => ({ showNotice: vi.fn() }));
 
+import { areaOutline, fogAreaList } from '../../src/app/fog/fogAreas';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
 import { FogToolBar } from '../../src/app/packages/components/toolbar/FogToolBar';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
@@ -14,6 +15,7 @@ import { SettingsService } from '../../src/app/services/SettingsService';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
+import type { WallInput } from '../../src/app/types/wallTypes';
 import { showNotice } from '../../src/app/ui/notice';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { memoryPluginData } from '../mocks/pluginData';
@@ -53,7 +55,15 @@ const pressed = (name: string): boolean => button(name).getAttribute('aria-press
 const inert = (name: string): boolean => button(name).getAttribute('aria-disabled') === 'true';
 const fogOf = (store: ViewAtlasStore): unknown[] => Object.values(store.getState().objects.fog);
 const WHATS = ['Hide', 'Reveal', 'Areas'];
-const TOOLS = ['Brush', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Brush size', 'Cover all', 'Reveal all', 'More'];
+/** The four walls of a room, one per side. */
+const roomWalls = (x: number, y: number, width: number, height: number): WallInput[] => [
+  { type: 'solid', p1: { x, y }, p2: { x: x + width, y } },
+  { type: 'solid', p1: { x: x + width, y }, p2: { x: x + width, y: y + height } },
+  { type: 'solid', p1: { x: x + width, y: y + height }, p2: { x, y: y + height } },
+  { type: 'solid', p1: { x, y: y + height }, p2: { x, y } },
+];
+const addWalls = (store: ViewAtlasStore, walls: readonly WallInput[]): string[] => walls.map((wall) => store.getState().addWall(wall));
+const TOOLS = ['Brush', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Room', 'Brush size', 'Cover all', 'Reveal all', 'More'];
 
 describe('FogToolBar', () => {
   it('shows while the fog tool hides or reveals, and not for another tool, while the toolbar is arranged, a scene loads, or for players', async () => {
@@ -177,6 +187,103 @@ describe('FogToolBar', () => {
     act(() => store.setState((state) => ({ grid: { ...state.grid, size: 70 } })));
     expect(inert('Cells')).toBe(false);
     expect(store.getState().fogTool.shape).toBe('brush');
+  });
+
+  it('shows Room disabled on a level without walls, and falls back when the walls go while Room is chosen', () => {
+    const { store } = renderBar();
+    expect(inert('Room')).toBe(true);
+    fireEvent.click(button('Room'));
+    expect(store.getState().fogTool.shape).toBe('brush');
+    // A wall that stops only light ends no room.
+    act(() => { store.getState().addWall({ type: 'solid', blocks: 'light', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } }); });
+    expect(inert('Room')).toBe(true);
+    let walls: string[] = [];
+    act(() => { walls = addWalls(store, roomWalls(140, 140, 280, 280)); });
+    expect(inert('Room')).toBe(false);
+    fireEvent.click(button('Room'));
+    expect(store.getState().fogTool.shape).toBe('room');
+    expect(pressed('Room')).toBe(true);
+    // The size button is the brush's.
+    expect(inert('Brush size')).toBe(true);
+    // The walls go: the brush takes Room's place, and the bar keeps its buttons.
+    act(() => store.getState().deleteWalls(walls));
+    expect(inert('Room')).toBe(true);
+    expect(store.getState().fogTool.shape).toBe('brush');
+    expect(names(toolsBar())).toEqual(TOOLS);
+    // In Areas, the rectangle does.
+    act(() => { addWalls(store, roomWalls(140, 140, 280, 280)); });
+    fireEvent.click(button('Areas'));
+    fireEvent.click(button('Room'));
+    expect(store.getState().fogTool.shape).toBe('room');
+    act(() => store.getState().deleteWalls(Object.keys(store.getState().objects.walls)));
+    expect(store.getState().fogTool.shape).toBe('rectangle');
+  });
+
+  it('counts the walls of the level shown: Room is off on a level whose walls are all on another', () => {
+    const { store } = renderBar();
+    act(() => {
+      store.setState({ levels: LEVELS, viewedLevel: 'ground' });
+      addWalls(store, roomWalls(140, 140, 280, 280));
+    });
+    expect(inert('Room')).toBe(false);
+    fireEvent.click(button('Room'));
+    act(() => store.getState().setViewedLevel('upper'));
+    expect(inert('Room')).toBe(true);
+    expect(store.getState().fogTool.shape).toBe('brush');
+  });
+
+  it('makes an area of every room from More, in one undo step, none of a room that is an area already, and says how many', () => {
+    const { store } = renderBar();
+    const history = getHistoryStore(store)!;
+    const row = (): HTMLButtonElement => screen.getByRole('button', { name: 'Areas from walls' });
+    fireEvent.click(button('More'));
+    // Without walls the row stays, not to be chosen.
+    expect(row().disabled).toBe(true);
+    act(() => {
+      addWalls(store, [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280), ...roomWalls(700, 490, 280, 140)]);
+      // One room is an area already, drawn by hand a little off its walls.
+      store.getState().addFogArea({ type: 'rectangle', x: 141, y: 139, width: 279, height: 282 }, 'Hall');
+    });
+    expect(row().disabled).toBe(false);
+    const before = history.getState().pastStates.length;
+    fireEvent.click(row());
+    const areas = fogAreaList(store.getState().objects.fog);
+    expect(areas).toHaveLength(3);
+    expect(areas.filter((area) => area.type === 'lasso').map((area) => areaOutline(area).map(({ x, y }) => `${x},${y}`).sort())).toEqual(expect.arrayContaining([
+      ['700,140', '700,420', '910,140', '910,420'],
+      ['700,490', '700,630', '980,490', '980,630'],
+    ]));
+    // Hidden, each one click from revealed.
+    expect(areas.every((area) => !area.isErasing)).toBe(true);
+    expect(history.getState().pastStates).toHaveLength(before + 1);
+    expect(showNotice).toHaveBeenLastCalledWith('2 areas made');
+    // The menu closed on the choice.
+    expect(screen.queryByRole('button', { name: 'Areas from walls' })).toBeNull();
+
+    // Again: every room is an area, and nothing is written.
+    fireEvent.click(button('More'));
+    fireEvent.click(row());
+    expect(fogAreaList(store.getState().objects.fog)).toHaveLength(3);
+    expect(history.getState().pastStates).toHaveLength(before + 1);
+    expect(showNotice).toHaveBeenLastCalledWith('Every room is an area already');
+
+    act(() => history.getState().undo());
+    expect(fogAreaList(store.getState().objects.fog)).toHaveLength(1);
+  });
+
+  it('says so where the walls enclose no room, or one room alone', () => {
+    const { store } = renderBar();
+    // Three sides of a room: its ground runs out to the map's edge.
+    act(() => { addWalls(store, roomWalls(140, 140, 280, 280).slice(0, 3)); });
+    fireEvent.click(button('More'));
+    fireEvent.click(screen.getByRole('button', { name: 'Areas from walls' }));
+    expect(fogOf(store)).toEqual([]);
+    expect(showNotice).toHaveBeenLastCalledWith('No rooms found');
+    act(() => { addWalls(store, roomWalls(140, 140, 280, 280).slice(3)); });
+    fireEvent.click(button('More'));
+    fireEvent.click(screen.getByRole('button', { name: 'Areas from walls' }));
+    expect(fogOf(store)).toHaveLength(1);
+    expect(showNotice).toHaveBeenLastCalledWith('1 area made');
   });
 
   it('opens the brush\'s size from the size button, whose dot grows with the brush', () => {

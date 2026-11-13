@@ -1,11 +1,15 @@
 /** Fog operations (`FogOperation`) in the view store: scene objects of one level each, every change one undo step. */
 
-import { areaGeometry, areaIsHidden, areaName, areaOutline, flippedArea, isFogArea, MAX_AREA_NAME, MAX_FOG_AREAS, type FogArea, type FogAreaGeometry, type FogAreaShape } from '../fog/fogAreas';
+import { areaGeometry, areaIsHidden, areaName, areaOutline, flippedArea, fogAreaOutlines, isFogArea, MAX_AREA_NAME, MAX_FOG_AREAS, type FogArea, type FogAreaGeometry, type FogAreaShape } from '../fog/fogAreas';
+import { planRoomAreas, type RoomAreasMade } from '../fog/fogRoomAreas';
+import { roomsOfWalls, roomTexel } from '../fog/fogRooms';
 import type { MapRect } from '../grid/cellNumbering';
+import { levelObjects } from '../levels/levelObjects';
 import { onLevel, placedOnViewedLevel, viewedLevelId } from '../levels/sceneLevels';
 import type { FogAreaMark, FogOperation, FogOperationInput } from '../types/fogTypes';
 import type { Point } from '../types/visionTypes';
 import type { ViewState } from '../types/viewState';
+import { wallList } from '../vision/wallList';
 
 /**
  * What changes of an area. `points` is a new outline, which makes its operation a lasso; `x`,
@@ -57,9 +61,14 @@ export interface FogSlice {
   restoreFogArea: (area: FogArea) => boolean;
   /** Deletes those of `ids` that are areas of the level shown, in one undo step. */
   deleteFogAreas: (ids: readonly string[]) => void;
+  /**
+   * Makes an area, hidden, of every room the walls of the level shown enclose, in one undo step:
+   * none of a room that an area already is. `mapRect` is the map as the view draws it.
+   */
+  addRoomAreas: (mapRect: MapRect | null) => RoomAreasMade;
 }
 
-type FogDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects'>;
+type FogDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'grid'>;
 
 type ImmerSet = (fn: (draft: FogDraft) => void) => void;
 
@@ -270,6 +279,21 @@ export function createFogActions(set: ImmerSet, get: () => FogDraft): FogSlice {
       set((draft) => {
         for (const id of areas) delete draft.objects.fog[id];
       });
+    },
+
+    addRoomAreas: (mapRect) => {
+      const view = get();
+      if (!isArea(mapRect)) return { rooms: 0, made: 0, full: false };
+      const { walls, fog } = levelObjects(view);
+      const cell = view.grid?.size ?? 0;
+      const rooms = roomsOfWalls(wallList(walls), mapRect, cell);
+      const plan = planRoomAreas(rooms, fogAreaOutlines(fog), roomTexel(mapRect, cell), MAX_FOG_AREAS - viewedAreaCount(view));
+      const areas = plan.shapes.flatMap((shape) => {
+        const geometry = areaGeometry(shape);
+        return geometry ? [{ ...geometry, isErasing: false, area: {} }] : [];
+      });
+      if (areas.length > 0) set((draft) => { append(draft, areas); });
+      return { rooms: rooms.length, made: areas.length, full: plan.full };
     },
   };
 }

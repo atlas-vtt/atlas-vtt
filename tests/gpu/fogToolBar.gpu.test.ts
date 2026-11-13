@@ -83,10 +83,10 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(tools.height).toBeCloseTo(whats.height, 1);
     expect(rects(`${WHATS} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual([32, 32, 32]);
     const controls = rects(`${TOOLS} .atlas-tool-button`);
-    expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual(Array.from({ length: 9 }, () => [32, 32]));
-    // Brush, Rectangle, Polygon, Lasso, Cells, the size | Cover all, Reveal all | More
-    expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([8, 8, 8, 8, 8, 16, 8, 16]);
-    expect(controls[0]!.left - tools.left).toBeCloseTo(tools.right - controls[8]!.right, 1);
+    expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual(Array.from({ length: 10 }, () => [32, 32]));
+    // Brush, Rectangle, Polygon, Lasso, Cells, Room, the size | Cover all, Reveal all | More
+    expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([8, 8, 8, 8, 8, 8, 16, 8, 16]);
+    expect(controls[0]!.left - tools.left).toBeCloseTo(tools.right - controls[9]!.right, 1);
   });
 
   it('shows the brush\'s size as a round dot in the middle of its button, which grows with the brush', async () => {
@@ -126,6 +126,18 @@ describe('the fog tool\'s bars above the toolbar', () => {
       expect(places()).toEqual(buttons);
     };
     for (const name of ['Reveal', 'Hide', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Brush']) {
+      act(() => button(name).click());
+      same();
+    }
+    // Room is off without walls and on with them, in the same place.
+    expect(button('Room').getAttribute('aria-disabled')).toBe('true');
+    act(() => {
+      for (const [x1, y1, x2, y2] of [[70, 70, 350, 70], [350, 70, 350, 350], [350, 350, 70, 350], [70, 350, 70, 70]] as const) {
+        store.getState().addWall({ type: 'solid', p1: { x: x1, y: y1 }, p2: { x: x2, y: y2 } });
+      }
+    });
+    same();
+    for (const name of ['Room', 'Areas', 'Hide', 'Brush']) {
       act(() => button(name).click());
       same();
     }
@@ -169,13 +181,13 @@ describe('the fog tool\'s bars above the toolbar', () => {
   });
 
   it('keeps every button inside its bar and the bars and the More menu inside a narrow view', async () => {
-    // Three things the tool does and nine buttons beside them: 540 px with the gap between the bars.
-    await page.viewport(560, 700);
+    // Three things the tool does and ten buttons beside them: 580 px with the gap between the bars.
+    await page.viewport(600, 700);
     mount(320);
     await settled();
     expect(rect(WHATS).left).toBeGreaterThanOrEqual(0);
-    expect(rect(TOOLS).right).toBeLessThanOrEqual(560);
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(560);
+    expect(rect(TOOLS).right).toBeLessThanOrEqual(600);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(600);
     for (const selector of [WHATS, TOOLS]) {
       const bar = rect(selector);
       for (const item of rects(`${selector} .atlas-tool-button`)) {
@@ -187,7 +199,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
     await vi.waitFor(() => {
       const menu = rect(`${TOOLS} .atlas-dropdown-content`);
       expect(menu.left).toBeGreaterThanOrEqual(0);
-      expect(menu.right).toBeLessThanOrEqual(560);
+      expect(menu.right).toBeLessThanOrEqual(600);
     });
   });
 });

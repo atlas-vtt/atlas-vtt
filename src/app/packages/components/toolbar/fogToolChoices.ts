@@ -1,4 +1,4 @@
-import { Cloud, Eraser, Grid3x3, Lasso, Paintbrush, Pentagon, Square, SquareDashed } from "lucide-react"
+import { Cloud, DoorOpen, Eraser, Grid3x3, Lasso, Paintbrush, Pentagon, Square, SquareDashed } from "lucide-react"
 import type { FogShape, FogWhat } from "../../../fog/fogToolChoices"
 import { t } from "../../../i18n"
 import type { ToolChoice } from "./ToolOptionsBar"
@@ -20,7 +20,8 @@ export const FOG_SHAPES: readonly ToolChoice<FogShape>[] = [
   { value: 'polygon', icon: Pentagon, label: t('fog.polygon'), tip: t('fog.polygonTip') },
   { value: 'lasso', icon: Lasso, label: t('toolbar.lasso') },
   { value: 'cells', icon: Grid3x3, label: t('fog.cells'), tip: t('fog.cellsTip') },
+  { value: 'room', icon: DoorOpen, label: t('fog.room'), tip: t('fog.roomTip') },
 ]
 
-/** The shapes while the tool makes areas: the same buttons, each saying what a shape begun inside an area does. */
-export const FOG_AREA_SHAPES: readonly ToolChoice<FogShape>[] = FOG_SHAPES.map((shape) => ({ ...shape, tip: t('fog.areaShapeTip') }))
+/** The shapes while the tool makes areas: the same buttons, each saying what a shape begun inside an area does; a room is clicked, not begun. */
+export const FOG_AREA_SHAPES: readonly ToolChoice<FogShape>[] = FOG_SHAPES.map((shape) => ({ ...shape, tip: t(shape.value === 'room' ? 'fog.roomAreaTip' : 'fog.areaShapeTip') }))

@@ -111,6 +111,26 @@ export function trimmedAreas(areas: ReadonlyArray<Outline>, shapes: ReadonlyArra
   });
 }
 
+/** What a shape covers, in square map pixels: its outlines less their holes. */
+function areaOfShape(shape: QShape): number {
+  let twice = 0;
+  for (const ring of shape) {
+    for (let i = 0; i < ring.length; i += 2) {
+      const next = (i + 2) % ring.length;
+      twice += ring[i]! * ring[next + 1]! - ring[next]! * ring[i + 1]!;
+    }
+  }
+  return Math.abs(twice) / 2 / (Q_SCALE * Q_SCALE);
+}
+
+/** The share of `outline` that `other` covers, from 0 to 1; 0 where either cannot be read or `outline` encloses nothing. */
+export function coveredShare(outline: Outline, other: Outline): number {
+  const [own, others] = [shapeOf(outline), shapeOf(other)];
+  const whole = own ? areaOfShape(own) : 0;
+  if (!own || !others || !(whole > 0)) return 0;
+  return areaOfShape(intersectShapes(own, others)) / whole;
+}
+
 /**
  * The outer outlines of what `shapes` cover together, one per piece: shapes that touch are one
  * piece, and what a piece encloses belongs to it. Shapes that lie apart, each one outline, come

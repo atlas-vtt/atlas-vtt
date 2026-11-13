@@ -48,6 +48,10 @@
 - Cover all hides every area with the map and Reveal all reveals them. The areas stay, each one click from the other state
 - Rectangles and polygons snap to the corners and edges of areas
 - More deletes all areas
+- Room: on a map with walls, click inside a room to hide or reveal it. The room under the pointer is outlined before you click
+- A room ends at its walls and at every door, open or closed. Walls that stop only light, and windows, end none
+- In Areas, a click with Room makes the room an area. A room that is an area already is selected instead
+- More makes areas from walls: one area for every room the walls enclose, in one step
 
 ## Improved
 

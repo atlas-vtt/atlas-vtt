@@ -1,6 +1,7 @@
 /**
  * The fog tool's gesture: a drag with the brush, the lasso, the rectangle or over cells
- * (`FogDrag`), or a polygon placed click by click (`FogPolygon`). What it leaves is its outcome's
+ * (`FogDrag`), a polygon placed click by click (`FogPolygon`), or a click in a room the walls
+ * enclose (`FogRoomClick`). What it leaves is its outcome's
  * (`FogStrokeOutcome`): fog hidden or revealed, or in Areas mode an area (`FogAreasMode`, which
  * also selects and edits areas). It is shown while it is under way and committed when it ends,
  * as one undo step.
@@ -9,6 +10,7 @@ import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
+import type { MapRect } from '../../grid/cellNumbering';
 import type { Point } from '../../types/visionTypes';
 import { isFogTool, type FogShape, type FogToolChoices } from '../../fog/fogToolChoices';
 import { DEFAULT_MAP_HOTKEYS, matchesHotkey } from '../../keyboard/mapHotkeys';
@@ -20,6 +22,7 @@ import { FogAreasMode } from './FogAreasMode';
 import { FogCursorPreview } from './FogCursorPreview';
 import { FogDrag } from './FogDrag';
 import { FogPolygon } from './FogPolygon';
+import { FogRoomClick } from './FogRoomClick';
 import { FogSnapGuide } from './FogSnapGuide';
 import { FogSnapping, placeKeysOf, type PlaceKeys } from './FogSnapping';
 import { FogStrokeKeys } from './FogStrokeKeys';
@@ -33,6 +36,8 @@ export interface FogGestureDeps {
   readonly canvas: () => HTMLCanvasElement;
   readonly store: StoreApi<ViewAtlasState>;
   readonly host: FogStrokeHost;
+  /** The map as the view draws it, which rooms are found on; unset or null, the Room shape finds none. */
+  readonly mapRect?: () => MapRect | null;
   /** Whether a key pressed while a polygon waits for its next corner is this map's to take; unset, every key outside a text field is. */
   readonly keysBelongToMap?: (event: KeyboardEvent) => boolean;
   /** Whether a key is the map's undo as the GM has bound it; unset or undefined, the key it has by default. */
@@ -48,6 +53,7 @@ export class FogGesture {
   private makesAreas: boolean;
   private readonly drag: FogDrag;
   private readonly polygon: FogPolygon;
+  private readonly rooms: FogRoomClick;
   private readonly snapping: FogSnapping;
   /** What a shape leaves while the tool hides or reveals. */
   private readonly plain: PlainFogStroke;
@@ -69,6 +75,7 @@ export class FogGesture {
   private readonly onZoomed = (): void => {
     this.polygon.rescale();
     this.areas.rescale();
+    this.rooms.rescale();
   };
 
   constructor(private readonly deps: FogGestureDeps) {
@@ -91,11 +98,21 @@ export class FogGesture {
       ...(deps.showsPlayers && { showsPlayers: deps.showsPlayers }),
       host: {
         begin: (world, screen, keys) => this.begin(world, screen, keys),
-        clicksCorners: () => this.shape === 'polygon',
+        click: (world, screen, keys) => this.click(world, screen, keys),
         rest: () => this.rest(),
       },
     });
     this.drag = new FogDrag(this.outline, this.snapping, zoom);
+    this.rooms = new FogRoomClick({
+      store, outline: this.outline, zoom,
+      mapRect: () => deps.mapRect?.() ?? null,
+      selects: () => this.areas.on && !this.flipped,
+      select: (areaId) => this.areas.editor.select(areaId),
+      fill: (world, room) => {
+        this.outcome().begin(world);
+        this.commit([{ type: 'lasso', points: room }]);
+      },
+    });
     this.polygon = new FogPolygon(this.outline, this.snapping, {
       zoom,
       reveals: () => this.reveals(),
@@ -147,6 +164,7 @@ export class FogGesture {
   /** Ends what is under way without committing it; the picture is the caller's to draw. */
   cancel(): void {
     this.drag.cancel();
+    this.rooms.forget();
     this.polygon.drop();
     this.areas.cancel();
     this.keys.release();
@@ -275,8 +293,12 @@ export class FogGesture {
     else this.begin(world, screen, keys);
   }
 
-  /** Begins the shape chosen at `world`, or places the next corner of the polygon under way. */
+  /** Begins the shape chosen at `world`, or places the next corner of the polygon under way. A room is no shape until the press is released in place. */
   private begin(world: Point, screen: Point, keys: PlaceKeys): void {
+    if (this.shape === 'room') {
+      if (!this.areas.on) this.rooms.press(screen);
+      return;
+    }
     if (!this.active) this.outcome().begin(world);
     if (this.shape === 'polygon') {
       this.polygon.press(world, screen, keys);
@@ -313,6 +335,7 @@ export class FogGesture {
       this.pointer = world;
       // Before a press, the guide shows where a first corner would land, and Cells the cell under the pointer.
       if (this.shape === 'polygon') this.polygon.move(world, keys);
+      else if (this.shape === 'room') this.rooms.hover(world, { x: event.global.x, y: event.global.y });
       else this.drag.hover(this.shape, world, keys, state.grid, this.color());
     }
   }
@@ -323,15 +346,23 @@ export class FogGesture {
     if (!this.active) this.rest();
   }
 
-  /** Nothing would begin where the pointer is: the guide and the outline of the cell under it go. */
-  private rest(): void {
+  /** Nothing would begin where the pointer is, or what would has changed (the walls): the guide and the outline of the cell or room under it go. */
+  rest(): void {
     this.snapping.clear();
     this.drag.cancel();
+    this.rooms.forget();
   }
 
   private pointerUp(): void {
     if (!this.active && this.areas.release()) return;
     if (this.drag.active) this.commit(this.drag.finish());
+    else if (this.pointer) this.rooms.release(this.pointer);
+  }
+
+  /** A click in Areas mode that selected no area: a polygon's first corner, or the room clicked in. */
+  private click(world: Point, screen: Point, keys: PlaceKeys): void {
+    if (this.shape === 'polygon') this.begin(world, screen, keys);
+    else if (this.shape === 'room') this.rooms.click(world);
   }
 
   /** A gesture ended: its outcome writes its shapes in one undo step, or the picture goes back to the scene's where they leave nothing. */
