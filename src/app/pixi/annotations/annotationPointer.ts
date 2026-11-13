@@ -26,8 +26,9 @@ export interface AnnotationPointerHandlers {
   /**
    * The cursor over a handle or an annotation a press would take, which it marks; null over none.
    * `covered` says whether a token lies there, which the move and select tools give the press to.
+   * `free` while Alt is held: a mode that places by a press then takes nothing of its own kind.
    */
-  cursorAt(worldX: number, worldY: number, covered: () => boolean): string | null;
+  cursorAt(worldX: number, worldY: number, covered: () => boolean, free?: boolean): string | null;
   /** The pointer left the canvas, or is over something that takes the press before any annotation. */
   leave(): void;
 }

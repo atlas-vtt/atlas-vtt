@@ -3,7 +3,7 @@ import type { Viewport } from 'pixi-viewport';
 import type { TextMeasure } from '../../annotations/annotationBounds';
 import { HANDLE_LOOK, handleAt, isGrip, type HandleRef } from '../../annotations/annotationHandles';
 import { annotationsAt } from '../../annotations/annotationHit';
-import { takesPress, withGroups } from '../../annotations/annotationPress';
+import { ownKind, takesOwn, takesPress, withGroups, type OwnKind } from '../../annotations/annotationPress';
 import type { Annotation, AnnotationPlace, TextAnnotation } from '../../annotations/annotationTypes';
 import { withPointRemoved } from '../../annotations/linePoints';
 import { beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
@@ -54,10 +54,12 @@ export interface AnnotationInteractionDeps {
  * Selecting and reshaping drawings and texts: the one place that takes the pointer for them. The
  * tool in hand says what a press takes (`pressScope`): every annotation in the Draw tool's Select
  * mode, those above the tokens in the move and select tools, and in the Draw tool's other modes
- * only the handles of what is selected, which is the one just made. A press selects (with its
- * group; Shift adds or takes away) and drags; a press on a handle scales, stretches, turns or moves
- * a line's point; a right click opens the menu (the press released in place: a right-drag pans); a
- * double click edits a text or removes a line's point.
+ * only the handles of what is selected, which is the one just made, and what a mode that places
+ * by a press has of its own kind under the pointer (`ownKind`: a stamp in Stamp mode, a text in
+ * Text mode, unless Alt is held). A press selects (with its group; Shift adds or takes away) and
+ * drags; a press on a handle scales, stretches, turns or moves a line's point; a right click opens
+ * the menu (the press released in place: a right-drag pans); a double click edits a text or
+ * removes a line's point, and so does the first click on a text in Text mode.
  */
 export class AnnotationInteraction {
   /** What the dispatch calls. */
@@ -67,7 +69,7 @@ export class AnnotationInteraction {
     menuAt: (x, y) => this.menuAt({ x, y }),
     openMenu: (x, y, event) => this.openMenu({ x, y }, event),
     dragAlong: (event) => this.dragAlong(event),
-    cursorAt: (x, y, covered) => this.cursorAt({ x, y }, covered),
+    cursorAt: (x, y, covered, free) => this.cursorAt({ x, y }, covered, free === true),
     leave: () => this.leave(),
   };
 
@@ -198,10 +200,17 @@ export class AnnotationInteraction {
     this.deps.handles.show(this.deps.gmView() && !this.deps.typing() ? selectionPicture(this.read(), this.zoom, this.deps.measure) : null);
   }
 
-  /** The topmost annotation at `point` that the tool in hand takes. */
-  private taken(point: Point, read: SelectionRead): Annotation | null {
-    if (read.scope !== 'all' && read.scope !== 'above') return null;
-    return annotationsAt(point, HIT_TOLERANCE / this.zoom, read.list, this.deps.measure).find((annotation) => takesPress(read.scope, annotation)) ?? null;
+  /** The kind the Draw mode in hand takes by a press where one lies under the pointer; none while `free` (Alt) is held. */
+  private own(free: boolean): OwnKind | null {
+    const { activeTool, drawTool } = this.deps.store.getState();
+    return ownKind(activeTool, drawTool.mode, free);
+  }
+
+  /** The topmost annotation at `point` that the tool in hand takes: by its scope, or as one of the kind `own`. */
+  private taken(point: Point, read: SelectionRead, own: OwnKind | null = null): Annotation | null {
+    if (read.scope !== 'all' && read.scope !== 'above' && own === null) return null;
+    return annotationsAt(point, HIT_TOLERANCE / this.zoom, read.list, this.deps.measure)
+      .find((annotation) => takesPress(read.scope, annotation) || takesOwn(own, annotation)) ?? null;
   }
 
   private handleUnder(point: Point, read: SelectionRead): HandleRef | null {
@@ -237,12 +246,13 @@ export class AnnotationInteraction {
     if (!this.works()) return false;
     const read = this.read();
     const state = this.deps.store.getState();
-    if (read.scope === 'made') {
-      // The press is on no handle: what was just made is let go of, and the press draws the next.
+    const own = read.scope === 'made' ? this.own(event.altKey === true) : null;
+    const at = this.taken(point, read, own);
+    if (read.scope === 'made' && !at) {
+      // The press is on no handle and on nothing the mode takes: what was just made is let go of, and the press draws the next.
       if (read.selected.length > 0) state.setSelection(this.without(read.selected.map(({ id }) => id)));
       return false;
     }
-    const at = this.taken(point, read);
     const handle = this.handleUnder(point, read);
     if (!at) {
       // Inside the frame, on none of what it holds: the selection is moved.
@@ -250,11 +260,13 @@ export class AnnotationInteraction {
       this.startMove(this.read(), null, event);
       return true;
     }
-    if (at.kind === 'text' && this.doubleClicks.pressed(at.id, event.global)) {
+    // Text mode opens a text with the first click; a locked one is only selected.
+    if (at.kind === 'text' && ((own === 'text' && !at.locked) || this.doubleClicks.pressed(at.id, event.global))) {
       this.deps.editText(at);
       return true;
     }
-    const group = withGroups([at.id], read.list, read.scope);
+    // A group is selected as one, also from the mode that takes only one kind of it.
+    const group = withGroups([at.id], read.list, own ? 'all' : read.scope);
     const selected = state.selectedIds.includes(at.id);
     if (event.shiftKey) {
       state.setSelection(selected ? this.without(group) : [...this.without(group), ...group]);
@@ -317,7 +329,7 @@ export class AnnotationInteraction {
     return this.deps.menu?.(read.selected, at, { x: event.clientX, y: event.clientY }) ?? false;
   }
 
-  private cursorAt(point: Point, covered: () => boolean): string | null {
+  private cursorAt(point: Point, covered: () => boolean, free = false): string | null {
     if (this.gestures.dragging) return 'grabbing';
     if (!this.works()) {
       this.leave();
@@ -331,7 +343,8 @@ export class AnnotationInteraction {
       return gripCursor(handle, read.handles.frame.rotation);
     }
     this.setHot(null);
-    const at = this.taken(point, read);
+    const own = read.scope === 'made' ? this.own(free) : null;
+    const at = this.taken(point, read, own);
     // The frame's inside moves the selection, but not in a mode that draws: there a press in it draws.
     const inside = handle?.kind === 'body' && read.scope !== 'made';
     // A token is asked for only where something of this lies: the move and select tools give it the press.
@@ -341,6 +354,8 @@ export class AnnotationInteraction {
     }
     // What is framed already needs no outline of its own.
     this.hover(at && !read.framed.includes(at) ? at : null);
+    // One of the mode's own kind is taken by a click, as a handle is.
+    if (own) return 'pointer';
     return at?.locked ? 'default' : 'move';
   }
 

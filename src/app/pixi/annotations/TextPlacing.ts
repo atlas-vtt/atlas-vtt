@@ -22,7 +22,8 @@ export interface TextPlacingHost {
  * The Draw tool's presses in its Text mode, on a viewport: a press released in place starts a
  * text as wide as its words there, a drag one that is as wide as the drag and wraps. While the
  * drag lasts a mark shows the line the first words will stand in. The primary button only, and no
- * press that a pin, a badge or a handle took; a lost pointer starts nothing.
+ * press that a pin, a badge, a handle or a text that is there took (`ownKind`: that text is opened);
+ * a lost pointer starts nothing.
  */
 export class TextPlacing {
   private enabled = false;

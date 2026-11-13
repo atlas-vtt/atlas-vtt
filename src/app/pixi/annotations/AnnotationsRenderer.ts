@@ -2,7 +2,6 @@ import { Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import { annotationList, annotationsLeftOut } from '../../annotations/annotationList';
-import type { DrawMode } from '../../annotations/annotationTypes';
 import { fillsCells } from '../../annotations/cellsMode';
 import { UnderWay, type UnderWaySource } from '../../annotations/underWay';
 import { snapDrawPoint } from '../../annotations/drawSnap';
@@ -27,8 +26,10 @@ import { AnnotationLayer } from './AnnotationLayer';
 import { annotationMenu } from './annotationMenu';
 import { showAnnotationsFullNotice } from './annotationNotices';
 import { AnnotationPlayersView } from './annotationPlayersView';
+import type { AnnotationPointerHandlers } from './annotationPointer';
 import { ClickPlacing } from './ClickPlacing';
 import { DrawInput } from './DrawInput';
+import { DrawPlacing } from './DrawPlacing';
 import { DrawToolHost, type FullOf } from './DrawToolHost';
 import { activeDrawMode } from './drawToolState';
 import { MapTexts } from './MapTexts';
@@ -76,7 +77,8 @@ const COVERS_MAP = ['isDMScreenOpen', 'isCommandPaletteOpen', 'isAssetManagerOpe
  * tool's input (`DrawInput`, `ClickPlacing`) with what it writes (`DrawToolHost`), who sees
  * what (`AnnotationPlayersView`), and selecting and reshaping them: one set of handles
  * (`AnnotationHandles`) and one place that takes the pointer for them (`selecting`, which the
- * viewport's dispatch asks through its `pointer`). A text is typed on the map itself (`texts`:
+ * viewport's dispatch asks through `pointer`: with what a press of the tool will place shown
+ * under the pointer, `DrawPlacing`). A text is typed on the map itself (`texts`:
  * a press of the Text mode starts one, a double click or the menu opens one that is there).
  *
  * The tool works on the GM's view of the canvas alone: while the canvas shows the players' picture
@@ -93,12 +95,14 @@ export class AnnotationsRenderer {
 
   /** The drawing a gesture of the Draw tool is making now, for whoever shows it elsewhere than on this canvas. */
   readonly underWay: UnderWaySource;
+  /** What the viewport's dispatch asks about drawings and texts: `selecting.pointer`, and under the pointer what a press of the Draw tool will place. */
+  readonly pointer: AnnotationPointerHandlers;
 
   private readonly store: StoreApi<ViewAtlasState>;
   private readonly viewport: Viewport;
   private readonly sharpening: TextSharpening;
   /**
-   * Where the tool's own marks go (the eraser's ring; handles and hover belong here too): above
+   * Where the tool's own marks go (the eraser's ring, what a press will place; handles and hover belong here too): above
    * the drawings, and the GM's alone. Never in a players' frame or a picture of the scene, and
    * hidden while the canvas shows the players' picture.
    */
@@ -109,6 +113,7 @@ export class AnnotationsRenderer {
   private readonly host: DrawToolHost;
   private readonly input: DrawInput;
   private readonly clicks: ClickPlacing;
+  private readonly placing: DrawPlacing;
   private readonly texts: MapTexts;
   private readonly unsubscribe: () => void;
   /** The records the list was last read from. */
@@ -145,6 +150,16 @@ export class AnnotationsRenderer {
     this.views = new PictureViews(viewport, (views, whole) => this.layer.setViews(views, whole));
     this.unsubscribe = store.subscribe((state, previous) => this.follow(state, previous));
     const snapGrid = (): GridGeometry | null => ((store.getState().grid?.snapToGrid ?? true) ? options.grid() : null);
+    /** What the tool's gestures and what it shows under the pointer both read of the view. */
+    const tool = {
+      viewport,
+      store,
+      chrome: this.chrome,
+      snapGrid,
+      cellGrid: () => (fillsCells(store.getState().grid) ? options.grid() : null),
+      mapRect: () => options.mapRect?.() ?? null,
+      gmView: () => !this.showsPlayers(),
+    };
     const full = options.full ?? showAnnotationsFullNotice;
     this.full = full;
     this.texts = new MapTexts({
@@ -160,7 +175,10 @@ export class AnnotationsRenderer {
         this.layer.fontsArrived();
         this.selecting.remeasure();
       },
-      typingChanged: () => this.selecting.redraw(),
+      typingChanged: () => {
+        this.selecting.redraw();
+        this.placing.refresh();
+      },
       requestRender: () => options.requestRender?.(),
     });
     this.selecting = new AnnotationInteraction({
@@ -187,20 +205,16 @@ export class AnnotationsRenderer {
     }, options.now);
     const underWay = new UnderWay();
     this.underWay = underWay;
-    this.host = new DrawToolHost({
-      viewport,
-      store,
-      underWay,
-      layerOf: (place, hidden) => this.layer.layerOf(place, hidden),
-      measure: this.layer.measure,
-      chrome: this.chrome,
-      snapGrid,
-      cellGrid: () => (fillsCells(store.getState().grid) ? options.grid() : null),
-      mapRect: () => options.mapRect?.() ?? null,
-      gmView: () => !this.showsPlayers(),
-      full,
+    this.host = new DrawToolHost({ ...tool, underWay, layerOf: (place, hidden) => this.layer.layerOf(place, hidden), measure: this.layer.measure, full });
+    this.placing = new DrawPlacing({
+      ...tool,
+      stamps: this.layer.stamps,
+      taken: this.selecting.pointer,
+      typing: () => this.texts.typing.active,
+      requestRender: () => options.requestRender?.(),
     });
-    this.input = new DrawInput(viewport, this.host.gestures, {
+    this.pointer = this.placing.pointer;
+    this.input = new DrawInput(viewport, this.placing.around(this.host.gestures), {
       typed: (event) => isTextEntryTarget(event.target),
       areMaps: (event) => options.keysBelongToMap?.(event) ?? true,
     });
@@ -208,7 +222,7 @@ export class AnnotationsRenderer {
 
     const state = store.getState();
     this.read(state);
-    this.toolChanged(state, null);
+    this.toolChanged(state);
     this.refreshVisibility();
     this.tellLeftOut(state);
   }
@@ -243,6 +257,7 @@ export class AnnotationsRenderer {
     }
     this.host.toolChanged();
     this.selecting.redraw();
+    this.placing.refresh();
   }
 
   /**
@@ -287,6 +302,7 @@ export class AnnotationsRenderer {
     this.watch(false);
     this.input.destroy();
     this.clicks.destroy();
+    this.placing.destroy();
     this.host.destroy();
     this.selecting.destroy();
     this.handles.destroy();
@@ -317,11 +333,12 @@ export class AnnotationsRenderer {
     if (left) this.input.stop();
     this.texts.follow(state, previous, left);
     if (state.isGMView !== previous.isGMView || state.isPlayerView !== previous.isPlayerView) this.refreshVisibility();
-    if (mode !== before) this.toolChanged(state, before);
+    if (mode !== before) this.toolChanged(state);
     else if (state.drawTool.size !== previous.drawTool.size || state.grid !== previous.grid) this.host.toolChanged();
     this.read(state);
     // After the layer has the new records: a gesture's preview ends on what they say.
     this.selecting.follow();
+    this.placing.follow();
     const loaded = previous.isMapLoading && !state.isMapLoading;
     if (loaded || state.mapPath !== previous.mapPath) this.toldLeftOut.clear();
     if (loaded || !sameScene) this.tellLeftOut(state);
@@ -378,13 +395,11 @@ export class AnnotationsRenderer {
   };
 
   /** The Draw tool came into hand, went, or works in another mode. */
-  private toolChanged(state: ViewAtlasState, before: DrawMode | null): void {
+  private toolChanged(state: ViewAtlasState): void {
     const mode = activeDrawMode(state);
     this.input.setEnabled(mode !== null);
     this.clicks.setEnabled(mode === 'stamp');
     this.texts.setMode(mode);
-    if (mode === 'text') this.viewport.cursor = 'text';
-    else if (before === 'text') this.viewport.cursor = 'default';
     this.host.toolChanged();
   }
 }

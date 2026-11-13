@@ -98,7 +98,8 @@ export class AnnotationLayer {
   private readonly entries = new Map<string, Entry>();
   /** The entries by the annotations of the list as it is now. */
   private byAnnotation = new Map<Annotation, Entry>();
-  private readonly stamps: StampTextures;
+  /** The symbols of this layer's stamps: whoever draws a stamp beside them (the one a press will place) takes them from here. */
+  readonly stamps: StampTextures;
   private list: readonly Annotation[] = [];
   /** The parts of the world the pictures show; null shows everything. */
   private views: readonly Box[] | null = null;

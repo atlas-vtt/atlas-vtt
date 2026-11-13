@@ -338,8 +338,8 @@ describe('the Draw tool on the map: stamps', () => {
     expect(s.drawings()).toEqual([expect.objectContaining({ type: 'icon', icon: 'skull', color: '#00ff00', width: stampSize('m', CELL), opacity: 1, points: [pt(105, 175)] })]);
     // A stamp two cells wide sits where four cells meet; Alt places any stamp freely.
     s.store.getState().setDrawTool({ size: 'l' });
-    s.click(80, 150);
-    expect(s.drawings()[1]?.points).toEqual([pt(70, 140)]);
+    s.click(220, 290);
+    expect(s.drawings()[1]?.points).toEqual([pt(210, 280)]);
     s.click(81, 151, { alt: true });
     expect(s.drawings()[2]?.points).toEqual([pt(81, 151)]);
     // A press that pans places none.

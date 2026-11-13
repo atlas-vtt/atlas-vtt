@@ -2012,6 +2012,7 @@ export class TokenRenderer {
       this.interactionController.handleViewportTokenHover(null);
       this.uiManager.setHoverState(null);
       this.mapFeatureHandlers?.leave();
+      this.annotationHandlers?.leave();
       return;
     }
 
@@ -2075,7 +2076,7 @@ export class TokenRenderer {
 
     // A handle of the selected drawings and texts, or one of them a press would take: after the markers, and after a token where the tool gives it the press
     if (markerCursor) this.annotationHandlers?.leave();
-    const annotationCursor = markerCursor ? null : this.annotationHandlers?.cursorAt(worldPos.x, worldPos.y, () => this.hitTestTokens(worldPos.x, worldPos.y) !== null) ?? null;
+    const annotationCursor = markerCursor ? null : this.annotationHandlers?.cursorAt(worldPos.x, worldPos.y, () => this.hitTestTokens(worldPos.x, worldPos.y) !== null, e.altKey === true) ?? null;
     const takenCursor = markerCursor ?? annotationCursor;
     if (takenCursor) {
       this.interactionController.handleViewportTokenHover(null);

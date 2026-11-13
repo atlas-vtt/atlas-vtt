@@ -169,6 +169,8 @@ export const BOUNDARIES = {
       "src/app/pixi/annotations/drawToolState.ts",
       "src/app/pixi/annotations/TextPlacing.ts",
       "src/app/pixi/annotations/textTypingRules.ts",
+      "src/app/pixi/annotations/PlacingPreview.ts",
+      "src/app/pixi/annotations/cellMarks.ts",
       "src/app/pixi/measure/pointerTrack.ts",
       "src/app/pixi/rotateHandleLook.ts",
       "src/app/pixi/fog/FogCursorPreview.ts",

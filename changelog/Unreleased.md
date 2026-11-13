@@ -5,6 +5,7 @@
 - More colours, four sizes that fit the map's grid, dashes, arrowheads, curves, fills and see-through ink
 - Drag a line or a shape, or place a line click by click. Space adds a corner, Shift keeps it straight, square or round
 - Shapes and stamps snap to the grid. Hold Alt to place them freely
+- The pointer shows what a click will place: the stamp itself, a dot as wide as the line, the cell to fill
 - The eraser cuts exactly where it passes, through filled shapes too. Hold Alt to remove whole drawings
 - B selects the tool and steps through its modes, T opens Text, E switches to the eraser and back
 

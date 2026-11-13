@@ -53,6 +53,13 @@ export interface DrawScene {
    * whether it opened their menu.
    */
   press(x: number, y: number, keys?: PointerKeys): boolean;
+  /**
+   * The pointer over the map at (x, y), as the viewport's dispatch tells the drawings and texts of
+   * every move there: the cursor they answer, null for the system's own.
+   */
+  hover(x: number, y: number, keys?: PointerKeys): string | null;
+  /** The pointer left the canvas. */
+  leave(): void;
   /** `press`, the moves through the rest of `path`, and the release at its end. */
   pull(path: readonly (readonly [number, number])[], keys?: PointerKeys): boolean;
   /** A press, the moves through `path`, and the release at its end. */
@@ -134,6 +141,11 @@ export function drawScene(options: { grid?: GridGeometry | null; playerView?: bo
       viewport.emit('pointerdown', event);
       return taken;
     },
+    hover(x, y, keys = {}): string | null {
+      const world = viewport.toWorld(x, y);
+      return renderer.pointer.cursorAt(world.x, world.y, () => false, keys.alt ?? false);
+    },
+    leave: () => renderer.pointer.leave(),
     pull(path, keys): boolean {
       const [first, ...rest] = path;
       const last = path[path.length - 1];

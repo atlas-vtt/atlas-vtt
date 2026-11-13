@@ -774,6 +774,25 @@ describe('TokenRenderer Integration Tests', () => {
       expect(press(600, 600, 2)).toEqual(['menu?']);
     });
 
+    it('asks them for the cursor of every move with the Draw tool, with Alt as it is held, and shows what they answer', () => {
+      const asked: boolean[] = [];
+      let answer: string | null = 'none';
+      tokenRenderer.setAnnotationHandlers({
+        gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, leave: () => undefined,
+        cursorAt: (_x, _y, _covered, free) => { asked.push(free === true); return answer; },
+      });
+      store.getState().setActiveTool('draw');
+      // What a press will place is the cursor: the system's is hidden, over a token too.
+      viewport.emit('pointermove', pointerEvent(105, 105));
+      expect(viewport.cursor).toBe('none');
+      viewport.emit('pointermove', { ...pointerEvent(600, 600), altKey: true } as FederatedPointerEvent);
+      expect(asked).toEqual([false, true]);
+      // Nothing to place, nothing to take: the system's cursor is back.
+      answer = null;
+      viewport.emit('pointermove', pointerEvent(600, 600));
+      expect(viewport.cursor).toBe('default');
+    });
+
     it('leaves a right press on them unhandled, so a right-drag that starts on a fill pans and opens nothing', () => {
       store.getState().setActiveTool('move');
       asked.length = 0;

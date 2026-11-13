@@ -18,6 +18,7 @@ import type { Point } from '../../types/visionTypes';
 import type { Box } from '../../vision/polygonBounds';
 import { paintInk } from '../drawingLayer';
 import { destroyTree } from '../utils/destroyTree';
+import { paintClearing } from './cellMarks';
 
 export interface CellsPaintingDeps {
   readonly store: StoreApi<ViewAtlasState>;
@@ -54,11 +55,6 @@ interface CellsDrag {
   /** What cell fills of the look cover already: worked out when the first cell is shown. */
   covered: QShape | null;
 }
-
-/** The marks over cells an unfill will clear: a light veil in a dark and a light line, which read on any map. */
-const CLEARING = { veil: 0.28, dark: 0x000000, light: 0xffffff, line: 1.5 } as const;
-
-const flat = (ring: readonly Point[]): number[] => ring.flatMap(({ x, y }) => [x, y]);
 
 /** An area of the cells being filled as the drawing it will be part of: a fill without a line, in the cells' look. */
 function partDrawing({ outline, holes }: FilledPart, look: CellFillLook): LiveDrawing {
@@ -183,7 +179,7 @@ export class CellsPainting {
 
   private show(drag: CellsDrag): void {
     if (drag.unfill) {
-      this.mark(addedParts(drag.shape, []));
+      paintClearing(this.clearing, addedParts(drag.shape, []), this.deps.zoom());
       return;
     }
     drag.covered ??= coveredByFills(drag.look, annotationList(levelObjects(this.deps.store.getState())));
@@ -193,25 +189,5 @@ export class CellsPainting {
     const parts = addedParts(shapeWithin(drag.shape, drag.bounds), drag.covered);
     this.deps.underWay.show(parts.filter(({ outline }) => outline.length >= 3).map((part) => partDrawing(part, drag.look)), false);
     paintInk(this.filling, { fill: { parts, alpha: CELL_FILL_OPACITY }, lines: [], heads: [], even: null, width: 0, alpha: 1 }, drag.look.color);
-  }
-
-  /** Marks the cells an unfill will clear. */
-  private mark(parts: readonly FilledPart[]): void {
-    const graphics = this.clearing;
-    const line = CLEARING.line / this.deps.zoom();
-    graphics.clear();
-    for (const { outline, holes } of parts) {
-      if (outline.length < 3) continue;
-      graphics.poly(flat(outline), true).fill({ color: CLEARING.light, alpha: CLEARING.veil });
-      for (const hole of holes) graphics.poly(flat(hole), true).cut();
-    }
-    for (const [color, width] of [[CLEARING.dark, 3 * line], [CLEARING.light, line]] as const) {
-      for (const { outline, holes } of parts) {
-        for (const ring of [outline, ...holes]) {
-          if (ring.length >= 3) graphics.poly(flat(ring), true);
-        }
-      }
-      graphics.stroke({ color, width, alpha: 0.9, join: 'round' });
-    }
   }
 }
