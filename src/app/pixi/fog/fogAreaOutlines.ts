@@ -3,6 +3,7 @@
  * one around a revealed area, in the theme's accent over a dark line, as wide on screen at any zoom.
  */
 import type { Graphics } from 'pixi.js';
+import { outlineRings } from '../../fog/fogKeyhole';
 import type { Point } from '../../types/visionTypes';
 
 /** Screen pixels. */
@@ -66,7 +67,8 @@ function traceDashes(g: Graphics, outline: readonly Point[], on: number, off: nu
 export function drawAreaOutlines(g: Graphics, areas: readonly AreaOutline[], zoom: number, accent: number): void {
   g.clear();
   const pixel = 1 / (Number.isFinite(zoom) && zoom > 0 ? zoom : 1);
-  const drawn = areas.filter((area) => area.outline.length >= 3);
+  // A room around rooms is one outline with slits to what it encloses: its rings are drawn, never the slits.
+  const drawn = areas.flatMap(({ outline, dashed }) => (outline.length >= 3 ? outlineRings(outline) : []).map((ring) => ({ outline: ring, dashed })));
   if (drawn.length === 0) return;
   // Every casing first, then every line: one stroke each, however many areas there are.
   for (const pass of ['casing', 'line'] as const) {

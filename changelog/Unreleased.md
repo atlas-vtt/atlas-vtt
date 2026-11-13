@@ -76,7 +76,7 @@
 ## Improved
 
 - On Windows and Linux, the window's minimise, maximise and close buttons stay out of sight over a map and the other Atlas pages, so the widgets in the top-right corner can be seen. Move the pointer to the corner to show them
-- A lasso and a rectangle show the fog they will leave while you draw them
+- A shape shows the fog it will leave while you draw it. What it will reveal shows to you alone until you let go
 - The fog brush's ring, the cell under the pointer and a polygon's corners show on light maps and on dark ones
 - The fog rectangle snaps to the grid only while Snap is on
 
