@@ -15,7 +15,7 @@ interface Drift { x: number; y: number }
 const DRIFTS: Readonly<Record<MeasureEffect, readonly [Drift, Drift, Drift, Drift]>> = {
   // The fire's body and tongues (each at a part of it), unused, the turbulence that bends them, embers.
   fire: [{ x: 0, y: -0.32 }, { x: 0, y: -0.66 }, { x: 0.03, y: -0.13 }, { x: 0.02, y: -0.45 }],
-  // The breath that moves where the frost lies thick, the mist over it; the needles lie still.
+  // The breath that moves how far the rime reaches, the mist over it; the ice and its crystals lie still.
   frost: [{ x: 0.022, y: 0.012 }, { x: -0.015, y: 0.02 }, { x: 0, y: 0 }, { x: 0, y: 0 }],
   // The charged haze.
   lightning: [{ x: 0.03, y: -0.02 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }],
