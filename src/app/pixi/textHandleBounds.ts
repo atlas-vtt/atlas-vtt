@@ -1,5 +1,6 @@
 import type { Viewport } from 'pixi-viewport';
 import type { TextElement } from '../types';
+import { annotationNodeIn } from './annotations/AnnotationLayer';
 
 /** A text's extent in its handles' frame: the text's position and rotation, with its scale applied. */
 export interface TextHandleBounds {
@@ -14,9 +15,7 @@ export interface TextHandleBounds {
  * the view because a handle drag shows a scale the store does not hold yet.
  */
 export function textHandleBounds(viewport: Viewport, text: TextElement): TextHandleBounds | null {
-  const view = viewport.children
-    .find((child) => child.label === 'textContainer')
-    ?.children.find((child) => child.label === text.id);
+  const view = annotationNodeIn(viewport, text.id);
   if (!view) return null;
 
   const bounds = view.getLocalBounds();

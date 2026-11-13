@@ -2,6 +2,8 @@ import {
   MAX_COORDINATE, MAX_DOOR_BADGES, MAX_DRAWING_POINTS, MAX_DRAWINGS, MAX_FONT_NAME, MAX_TEXT_LENGTH, MAX_TEXTS,
   type SharedAnnotations, type SharedDoor, type SharedDrawing, type SharedGrid, type SharedText,
 } from '../protocol/index.ts';
+import { annotationList } from '../../annotations/annotationList';
+import type { DrawingAnnotation, TextAnnotation } from '../../annotations/annotationTypes';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { GridOptions } from '../../grid/GridSystem';
 import { subtractShapes } from '../../lighting/polygonClip';
@@ -71,45 +73,52 @@ function boxOf(points: readonly { x: number; y: number }[], reach: number): Box 
   return box;
 }
 
-function sharedDrawing(stroke: DrawingStroke): SharedDrawing | null {
-  const width = clamp(stroke.width, 0, 100_000, 4);
-  if (!Array.isArray(stroke.points)) return null;
-  const opacity = clamp(stroke.opacity, 0, 1, 1);
-  const colour = ringColour(stroke.color);
-  if (stroke.type === 'icon') {
-    const centre = stroke.points[0];
-    if (centre === undefined || typeof stroke.icon !== 'string' || !/^[a-z0-9-]{1,40}$/.test(stroke.icon)) return null;
-    return { type: 'icon', points: [centre.x, centre.y], colour, width, opacity, icon: stroke.icon };
+/**
+ * A drawing in the words the page reads: a stamp, or its line as a pen's stroke through its
+ * points, whatever shape it is. Nothing of what the page does not read yet (a fill, dashes,
+ * arrowheads) goes with it.
+ */
+function sharedDrawing(drawing: DrawingAnnotation): SharedDrawing | null {
+  const width = clamp(drawing.width, 0, 100_000, 4);
+  const colour = ringColour(drawing.color);
+  const { opacity, points } = drawing;
+  if (drawing.shape === 'stamp') {
+    const centre = points[0];
+    if (centre === undefined || drawing.icon === null || !/^[a-z0-9-]{1,40}$/.test(drawing.icon)) return null;
+    return { type: 'icon', points: [centre.x, centre.y], colour, width, opacity, icon: drawing.icon };
   }
-  return { type: 'pen', points: stroke.points.flatMap((point) => [point.x, point.y]), colour, width, opacity };
+  return { type: 'pen', points: points.flatMap((point) => [point.x, point.y]), colour, width, opacity };
 }
 
 /** A box sure to hold a text however its font draws it: generous, so a text is never hidden that fog does not cover. */
-function textBox(text: TextElement): Box | null {
-  if (!onMap(text.x) || !onMap(text.y) || typeof text.text !== 'string') return null;
+function textBox(text: TextAnnotation): Box | null {
+  if (!onMap(text.x) || !onMap(text.y)) return null;
   const lines = text.text.split('\n');
   const size = clamp(text.fontSize, 1, 10_000, 16);
-  const padding = (text.padding || 8) * 2;
+  const padding = text.padding * 2;
   const width = lines.reduce((longest, line) => Math.max(longest, line.length), 0) * size + padding;
   const height = lines.length * size * 1.5 + padding;
   const reach = (Math.hypot(width, height) / 2) * clamp(text.scale, 0.001, 1_000, 1);
   return { minX: text.x - reach, minY: text.y - reach, maxX: text.x + reach, maxY: text.y + reach };
 }
 
-function sharedText(text: TextElement): SharedText {
-  const font = typeof text.fontFamily === 'string' ? text.fontFamily.slice(0, MAX_FONT_NAME) : FALLBACK_FONT;
+function sharedText(text: TextAnnotation): SharedText {
+  const font = text.fontFamily.slice(0, MAX_FONT_NAME);
   return {
     x: text.x, y: text.y, text: text.text.slice(0, MAX_TEXT_LENGTH), fontSize: clamp(text.fontSize, 1, 10_000, 16), fontFamily: FONT.test(font) ? font : FALLBACK_FONT,
-    colour: ringColour(text.color), background: text.backgroundColor ? ringColour(text.backgroundColor) : null, padding: clamp(text.padding || 8, 0, 10_000, 8),
-    radius: clamp(text.borderRadius, 0, 10_000, 0), opacity: clamp(text.opacity || 1, 0, 1, 1), align: text.align === 'left' || text.align === 'right' ? text.align : 'center', bold: text.bold === true, italic: text.italic === true,
-    rotation: clamp(text.rotation, -360, 360, 0), scale: clamp(text.scale || 1, 0.001, 1_000, 1),
+    colour: ringColour(text.color), background: text.backgroundColor ? ringColour(text.backgroundColor) : null, padding: clamp(text.padding, 0, 10_000, 8),
+    radius: clamp(text.borderRadius, 0, 10_000, 0), opacity: text.opacity, align: text.align, bold: text.bold, italic: text.italic,
+    rotation: clamp(text.rotation, -360, 360, 0), scale: clamp(text.scale, 0.001, 1_000, 1),
   };
 }
 
 /**
- * The drawings and texts players see: all of them, as the players' frame draws them above the
- * lighting, but those committed fog covers whole (the frame's fog hides them, so they are not
- * sent). Fog that cannot be read covers everything; nothing is sent then.
+ * The drawings and texts players see, as the players' frame draws them above the lighting: read
+ * as everything reads them (`annotationList`), without those the GM keeps to themselves
+ * (`hidden`), without those on the map (they lie under the lighting, and a page that drew them
+ * above it would show them over rooms nobody has seen), and without those committed fog covers
+ * whole (the frame's fog hides them, so they are not sent). Fog that cannot be read covers
+ * everything; nothing is sent then.
  */
 export function sharedAnnotations(
   drawings: Readonly<Record<string, DrawingStroke>>,
@@ -118,24 +127,24 @@ export function sharedAnnotations(
 ): SharedAnnotations {
   if (fog === null) return { drawings: [], texts: [] };
   const shownDrawings: SharedDrawing[] = [];
+  const shownTexts: SharedText[] = [];
   let points = 0;
-  for (const stroke of Object.values(drawings)) {
-    if (!Array.isArray(stroke.points)) continue;
-    const centre = stroke.type === 'icon' ? stroke.points.slice(0, 1) : stroke.points;
-    const box = boxOf(centre, Math.max(1, clamp(stroke.width, 0, 100_000, 4) / 2));
+  for (const annotation of annotationList({ drawings, texts })) {
+    if (annotation.hidden || annotation.layer !== 'above') continue;
+    if (annotation.kind === 'text') {
+      if (shownTexts.length === MAX_TEXTS) continue;
+      const box = textBox(annotation);
+      if (box !== null && !underFog(box, fog)) shownTexts.push(sharedText(annotation));
+      continue;
+    }
+    if (shownDrawings.length === MAX_DRAWINGS) continue;
+    const reached = annotation.shape === 'stamp' ? annotation.points.slice(0, 1) : annotation.points;
+    const box = boxOf(reached, Math.max(1, clamp(annotation.width, 0, 100_000, 4) / 2));
     if (box === null || underFog(box, fog)) continue;
-    const shared = sharedDrawing(stroke);
+    const shared = sharedDrawing(annotation);
     if (shared === null || points + shared.points.length / 2 > MAX_DRAWING_POINTS) continue;
     points += shared.points.length / 2;
     shownDrawings.push(shared);
-    if (shownDrawings.length === MAX_DRAWINGS) break;
-  }
-  const shownTexts: SharedText[] = [];
-  for (const text of Object.values(texts)) {
-    const box = textBox(text);
-    if (box === null || underFog(box, fog)) continue;
-    shownTexts.push(sharedText(text));
-    if (shownTexts.length === MAX_TEXTS) break;
   }
   return { drawings: shownDrawings, texts: shownTexts };
 }

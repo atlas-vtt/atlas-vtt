@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // A tool's own bars above the main toolbar: its modes, and beside them the
-// choices that go with them (`ToolOptionsBar`; the lighting and measure tools)
+// choices that go with them (`ToolOptionsBar`; the lighting, measure and Draw tools)
 // ═══════════════════════════════════════════════════════════════════════════
 // Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The bars have the
 // toolbar's padding and corners with smaller buttons, so they read as its second level, and are
@@ -66,7 +66,7 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
   }
 }
 
-// The colour the next measurement takes, as the icon of the button that opens the colours.
+// The colour the next measurement or drawing takes, as the icon of the button that opens the colours.
 .atlas-tool-bar__dot {
   display: block;
   flex: none;
@@ -75,4 +75,25 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
   height: $spacing-l;
   border-radius: 50%;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
+}
+
+// Where the selected drawings differ in colour, the dot shows none: an empty ring.
+.atlas-tool-bar__dot--mixed {
+  border-color: var(--text-muted);
+}
+
+// The letter A in a face the Draw tool writes in, as the Font button and its menu show it: an icon's size.
+.atlas-tool-bar__letter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: $icon-s;
+  height: $icon-s;
+  font-size: $icon-s;
+  line-height: 1;
+
+  &--medieval { font-family: $font-atlas-display; }
+  &--scifi { font-family: $font-dice-scifi; font-weight: 600; }
+  &--mono { font-family: var(--font-monospace); }
 }

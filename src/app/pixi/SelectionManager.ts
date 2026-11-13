@@ -6,7 +6,9 @@ import { isHandled } from "./utils/handledEvents";
 import { isPrimaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { EventEmitter } from 'events';
-import { getDrawingBounds, type DrawingBounds } from './drawingGeometry';
+import { annotationList } from '../annotations/annotationList';
+import { drawingBox } from './selection/drawingBox';
+import type { Box } from './selection/selectionGeometry';
 import { SelectionHighlights } from './selection/SelectionHighlights';
 import { NO_BARS, selectionTargets } from './selection/selectionTargets';
 import type { BarsSpan } from './token-renderer/types';
@@ -359,11 +361,11 @@ export class SelectionManager {
     this.store.getState().setSelection(selectedIds);
   }
   
-  private getDrawingBoundsById(): Array<[string, DrawingBounds]> {
-    const entries: Array<[string, DrawingBounds]> = [];
-    for (const stroke of Object.values(levelObjects(this.store.getState()).drawings)) {
-      const bounds = getDrawingBounds(stroke);
-      if (bounds) entries.push([stroke.id, bounds]);
+  /** The drawings a marquee or lasso of these tools takes: those above the tokens that are not locked. A drawing on the map is map. */
+  private getDrawingBoundsById(): Array<[string, Box]> {
+    const entries: Array<[string, Box]> = [];
+    for (const annotation of annotationList(levelObjects(this.store.getState()))) {
+      if (annotation.kind === 'drawing' && annotation.layer === 'above' && !annotation.locked) entries.push([annotation.id, drawingBox(annotation)]);
     }
     return entries;
   }

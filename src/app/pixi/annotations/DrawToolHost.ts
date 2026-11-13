@@ -1,0 +1,211 @@
+import type { Container } from 'pixi.js';
+import type { Viewport } from 'pixi-viewport';
+import type { StoreApi } from 'zustand';
+import type { TextMeasure } from '../../annotations/annotationBounds';
+import { annotationIndex } from '../../annotations/annotationHit';
+import { annotationList, annotationRoom } from '../../annotations/annotationList';
+import type { DrawLayer, DrawMode } from '../../annotations/annotationTypes';
+import { drawCell, eraserRadius, stampSize } from '../../annotations/drawSizes';
+import { snapDrawPoint, snapStampPoint } from '../../annotations/drawSnap';
+import { sweepChange } from '../../annotations/eraseSweep';
+import { liveDrawing, madeDrawing, madeStamp, type MadeShape } from '../../annotations/madeDrawing';
+import { madeText } from '../../annotations/madeText';
+import type { GridGeometry } from '../../grid/gridDistance';
+import { levelObjects } from '../../levels/levelObjects';
+import type { ViewAtlasState } from '../../storeFactory';
+import { beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
+import type { Point } from '../../types/visionTypes';
+import { FogCursorPreview } from '../fog/FogCursorPreview';
+import type { ClickPlacingHost } from './ClickPlacing';
+import type { DrawInputHost } from './DrawInput';
+import type { GestureMode } from './drawGesture';
+import { activeDrawMode } from './drawToolState';
+import { LiveStroke } from './LiveStroke';
+
+/** What a level can hold no more of. */
+export type FullOf = 'drawings' | 'texts';
+
+export interface DrawToolDeps {
+  readonly viewport: Viewport;
+  readonly store: StoreApi<ViewAtlasState>;
+  /** The layer the drawing under way is shown in: the one a drawing like it will lie in. */
+  layerOf(place: DrawLayer, hidden: boolean): Container;
+  /** The measure the layer's texts are drawn by: the eraser reaches a text where it is drawn. */
+  readonly measure: TextMeasure;
+  /** Where the tool's own marks go, which only the GM's view of the canvas shows: the eraser's ring. */
+  readonly chrome: Container;
+  /** The grid points snap to; null without a grid or while its Snap is off. */
+  snapGrid(): GridGeometry | null;
+  /** Whether the canvas shows the GM's view: the tool works there alone. */
+  gmView(): boolean;
+  /** Tells the GM that the level shown holds as many drawings or texts as it may. */
+  full(of: FullOf): void;
+  /** Asks the GM for a text's words; null where none are given. */
+  askText(): Promise<string | null>;
+}
+
+const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'eraser'];
+
+/**
+ * What the Draw tool's gestures do to the scene: the drawing under way is shown as it will stay
+ * (`LiveStroke`), a finished one is written with the tool's choices (`madeDrawing`), a click of the
+ * Stamp mode places the tool's symbol and one of the Text mode asks for a text's words. The
+ * eraser cuts what its sweep passes (`sweepChange`), every step of it written at once and the
+ * whole sweep one undo step; its ring follows the pointer. A level that is full takes nothing more,
+ * and says so.
+ */
+export class DrawToolHost {
+  /** What `DrawInput` asks and tells. */
+  readonly gestures: DrawInputHost;
+  /** What `ClickPlacing` asks and tells. */
+  readonly clicks: ClickPlacingHost;
+
+  private readonly live = new LiveStroke();
+  private readonly ring: FogCursorPreview;
+  /** An eraser's sweep is under way: its undo step is open. */
+  private sweeping = false;
+  /** The sweep under way was already told that the level is full. */
+  private toldFull = false;
+  private destroyed = false;
+
+  constructor(private readonly deps: DrawToolDeps) {
+    this.ring = new FogCursorPreview(deps.viewport);
+    deps.chrome.addChild(this.ring.getDisplayObject());
+    this.gestures = {
+      mode: () => this.gestureMode(),
+      point: (world, free) => snapDrawPoint(deps.snapGrid(), world, free),
+      started: (mode) => this.started(mode),
+      changed: (shape) => this.changed(shape),
+      swept: (path, alt) => this.swept(path, alt),
+      finished: (made) => this.finished(made),
+      cancelled: () => this.dropped(),
+      hovered: (world) => this.hovered(world),
+    };
+    this.clicks = {
+      mode: () => {
+        const mode = this.mode();
+        return mode === 'stamp' || mode === 'text' ? mode : null;
+      },
+      stamp: (world, free) => this.stamp(world, free),
+      text: (world) => void this.text(world),
+    };
+    this.toolChanged();
+  }
+
+  /** The tool, its mode or its size may be another, or the canvas shows another view: the eraser's ring shows by them. */
+  toolChanged(): void {
+    if (this.mode() !== 'eraser') {
+      this.ring.hide();
+      return;
+    }
+    const { drawTool, grid } = this.deps.store.getState();
+    this.ring.setBrushRadius(eraserRadius(drawTool.size, drawCell(grid)));
+    if (!this.ring.shown) this.ring.show(true);
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+    this.endSweep();
+    this.live.destroy();
+    this.ring.destroy();
+  }
+
+  /** The mode the tool works in now; null while another tool is in hand, or the canvas shows the players' picture. */
+  private mode(): DrawMode | null {
+    return this.deps.gmView() ? activeDrawMode(this.deps.store.getState()) : null;
+  }
+
+  private gestureMode(): GestureMode | null {
+    const mode = this.mode();
+    return mode !== null && GESTURES.includes(mode) ? (mode as GestureMode) : null;
+  }
+
+  private get zoom(): number {
+    return Math.abs(this.deps.viewport.scale.x) || 1;
+  }
+
+  private started(mode: GestureMode): void {
+    if (mode !== 'eraser' || this.sweeping) return;
+    this.sweeping = true;
+    this.toldFull = false;
+    // One sweep cuts many drawings, a step at a time: all of it is one undo step.
+    beginHistoryTransaction(this.deps.store);
+  }
+
+  private changed(shape: MadeShape): void {
+    const { drawTool, grid } = this.deps.store.getState();
+    const drawing = liveDrawing(shape, drawTool, drawCell(grid));
+    if (drawing) this.live.show(this.deps.layerOf(drawTool.layer, !drawTool.players), drawing, this.zoom);
+    else this.live.clear();
+  }
+
+  private swept(path: readonly Point[], alt: boolean): void {
+    const state = this.deps.store.getState();
+    const objects = levelObjects(state);
+    const list = annotationList(objects);
+    if (list.length === 0) return;
+    const { drawTool } = state;
+    const sweep = { points: path, radius: eraserRadius(drawTool.size, drawCell(state.grid)) };
+    const change = sweepChange(annotationIndex(list, this.deps.measure), sweep, alt || drawTool.eraseWhole);
+    if (!change) return;
+    // A cut leaves more drawings than it takes: where the level cannot hold them, nothing is cut.
+    if (change.added.length - change.removed.length > annotationRoom(objects).drawings) {
+      if (!this.toldFull) this.deps.full('drawings');
+      this.toldFull = true;
+      return;
+    }
+    if (change.removed.length > 0) state.replaceDrawings(change.removed, change.added);
+    if (change.texts.length > 0) state.deleteAnnotations(change.texts);
+  }
+
+  private finished(made: MadeShape | null): void {
+    this.endSweep();
+    if (made) {
+      const state = this.deps.store.getState();
+      const drawing = madeDrawing(made, state.drawTool, drawCell(state.grid), this.zoom);
+      if (drawing && this.hasRoom('drawings')) state.addDrawing(drawing);
+    }
+    // After the drawing is on the map: the stroke never blinks between the two.
+    this.live.clear();
+  }
+
+  private dropped(): void {
+    this.endSweep();
+    this.live.clear();
+  }
+
+  private hovered(world: Point): void {
+    if (this.ring.shown) this.ring.updatePosition(world.x, world.y);
+  }
+
+  private stamp(world: Point, free: boolean): void {
+    if (!this.hasRoom('drawings')) return;
+    const state = this.deps.store.getState();
+    const cell = drawCell(state.grid);
+    const at = snapStampPoint(this.deps.snapGrid(), world, free, stampSize(state.drawTool.size, cell));
+    state.addDrawing(madeStamp(at, state.drawTool, cell));
+  }
+
+  /** Asks for the words of a text at `world` and adds it; none where the GM gives none, or looks at another scene or level by then, or closed the view. */
+  private async text(world: Point): Promise<void> {
+    if (!this.hasRoom('texts')) return;
+    const { mapPath, viewedLevel } = this.deps.store.getState();
+    const words = await this.deps.askText();
+    const state = this.deps.store.getState();
+    if (!words || this.destroyed || state.mapPath !== mapPath || state.viewedLevel !== viewedLevel || !this.hasRoom('texts')) return;
+    state.addText(madeText(words, world, state.drawTool, drawCell(state.grid)));
+  }
+
+  /** Whether the level shown takes one more; tells the GM where it does not. */
+  private hasRoom(of: FullOf): boolean {
+    if (annotationRoom(levelObjects(this.deps.store.getState()))[of] > 0) return true;
+    this.deps.full(of);
+    return false;
+  }
+
+  private endSweep(): void {
+    if (!this.sweeping) return;
+    this.sweeping = false;
+    endHistoryTransaction(this.deps.store);
+  }
+}

@@ -150,9 +150,7 @@ export interface ViewAtlasState extends ViewState {
   addDrawing: AnnotationsSlice['addDrawing'];
   addDrawings: AnnotationsSlice['addDrawings'];
   moveDrawings: AnnotationsSlice['moveDrawings'];
-  placeDrawings: AnnotationsSlice['placeDrawings'];
   updateDrawings: AnnotationsSlice['updateDrawings'];
-  deleteDrawing: AnnotationsSlice['deleteDrawing'];
   clearDrawings: AnnotationsSlice['clearDrawings'];
   setDrawings: AnnotationsSlice['setDrawings'];
   updateAnnotations: AnnotationsSlice['updateAnnotations'];

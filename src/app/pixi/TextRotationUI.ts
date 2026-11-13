@@ -13,6 +13,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { levelObjects } from '../levels/levelObjects';
+import { annotationNodeIn } from './annotations/AnnotationLayer';
 import { textHandleBounds } from './textHandleBounds';
 
 /** Gap between the top of the text and the handle. */
@@ -208,9 +209,7 @@ export class TextRotationUI {
     this.temporaryRotation = newRotation;
     this.container.rotation = (newRotation * Math.PI) / 180;
 
-    const textContainer = this.viewport.children
-      .find((child) => child.label === 'textContainer')
-      ?.children.find((child) => child.label === this.activeTextId);
+    const textContainer = annotationNodeIn(this.viewport, this.activeTextId);
 
     if (textContainer) {
       textContainer.rotation = (newRotation * Math.PI) / 180;
@@ -233,6 +232,11 @@ export class TextRotationUI {
     this.viewport.cursor = 'default';
     this.drawHandle();
   };
+
+  /** The handles' layer: the GM's own, which neither a players' frame nor a picture of the scene shows. */
+  get layer(): Container {
+    return this.container;
+  }
 
   destroy(): void {
     this.hide();

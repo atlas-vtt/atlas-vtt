@@ -62,9 +62,42 @@ export function orderedToolbarIds(defaultIds: readonly string[], custom: readonl
   return order;
 }
 
+/**
+ * Controls that took in others, each with the ids it took in: Draw is the former Draw and Text
+ * controls. A stored layout may be an older version's (settings are shared between devices), where
+ * the two were hidden apart, and the ids it took in are unknown ids here, kept as stored.
+ */
+const FORMER_CONTROLS: ReadonlyMap<string, readonly string[]> = new Map<ToolbarControlId, readonly string[]>([['draw', ['text']]]);
+
+/**
+ * The ids of a stored hidden list that this version hides: a control that took in others only
+ * where every one of those is hidden too. A GM who hid the pen and kept Text in the bar keeps the
+ * tool, which is now the one that writes.
+ */
+export function hiddenAfterMerges(hidden: readonly string[]): string[] {
+  return hidden.filter(id => (FORMER_CONTROLS.get(id) ?? []).every(former => hidden.includes(former)));
+}
+
+/**
+ * A hidden list as it is stored: with the ids a hidden control took in, so that the control
+ * reads as hidden again (`hiddenAfterMerges`) and a device on an older version hides all of it.
+ */
+export function hiddenWithFormerIds(hidden: readonly string[]): string[] {
+  const former = hidden.flatMap(id => FORMER_CONTROLS.get(id) ?? []).filter(id => !hidden.includes(id));
+  return [...hidden, ...new Set(former)];
+}
+
+/**
+ * The ids taken in by the controls that a stored hidden list hid and `next` shows: they leave the
+ * list with their control, so that showing it again undoes what hiding it stored.
+ */
+function formerIdsShown(hidden: readonly string[], next: ReadonlySet<string>): ReadonlySet<string> {
+  return new Set(hiddenAfterMerges(hidden).filter(id => !next.has(id)).flatMap(id => FORMER_CONTROLS.get(id) ?? []));
+}
+
 export function resolveToolbarLayout(stored: StoredToolbarLayout): ToolbarLayout {
   const order = orderedToolbarIds(DEFAULT_TOOLBAR_ORDER, stored.order ?? []).filter(isToolbarControlId);
-  const hidden = new Set((stored.hidden ?? []).filter(isToolbarUnitId).filter(isHideableToolbarControl));
+  const hidden = new Set(hiddenAfterMerges(stored.hidden ?? []).filter(isToolbarUnitId).filter(isHideableToolbarControl));
   return { order, hidden };
 }
 
@@ -86,8 +119,9 @@ function sameIds(a: readonly string[], b: readonly string[]): boolean {
 /** A resolved layout in stored form: only what differs from the default, with the unknown ids of `previous` kept. */
 export function storedToolbarLayout(previous: StoredToolbarLayout, next: ToolbarLayout): StoredToolbarLayout {
   const order = withUnknownIds(next.order, previous.order ?? []);
-  const unknownHidden = (previous.hidden ?? []).filter(id => !isToolbarUnitId(id));
-  const hidden = [...(next.hidden.has(UNDO_BAR_ID) ? [UNDO_BAR_ID] : []), ...next.order.filter(id => next.hidden.has(id)), ...unknownHidden];
+  const shownAgain = formerIdsShown(previous.hidden ?? [], next.hidden);
+  const unknownHidden = (previous.hidden ?? []).filter(id => !isToolbarUnitId(id) && !shownAgain.has(id));
+  const hidden = hiddenWithFormerIds([...(next.hidden.has(UNDO_BAR_ID) ? [UNDO_BAR_ID] : []), ...next.order.filter(id => next.hidden.has(id)), ...unknownHidden]);
   return {
     ...(!sameIds(order, DEFAULT_TOOLBAR_ORDER) && { order }),
     ...(hidden.length > 0 && { hidden }),

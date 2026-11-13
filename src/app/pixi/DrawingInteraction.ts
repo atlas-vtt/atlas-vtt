@@ -3,7 +3,10 @@ import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
-import { hitTestDrawing } from './drawingGeometry';
+import { annotationsAt } from '../annotations/annotationHit';
+import { annotationList } from '../annotations/annotationList';
+import type { DrawingAnnotation } from '../annotations/annotationTypes';
+import { measureTextView } from './textElementView';
 import { isPrimaryPress, isSecondaryPress } from './utils/pointerButtons';
 import { MAP_ICON_LABELS } from './mapIcons';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
@@ -27,21 +30,23 @@ const INK_COLORS = [
 export class DrawingInteraction {
   private endDrag: (() => void) | null = null;
 
+  /** `shown` says whether the canvas shows a drawing now: one it hides takes no press. */
   constructor(
     private viewport: Viewport,
-    private store: StoreApi<ViewAtlasState>
+    private store: StoreApi<ViewAtlasState>,
+    private readonly shown: (drawing: DrawingAnnotation) => boolean = () => true,
   ) {}
 
-  /** Topmost drawing under a world-space point, or null. */
+  /**
+   * The topmost drawing under a world-space point that these tools take, or null: one above the
+   * tokens that is not locked. A drawing on the map is map, and moves in the Draw tool alone.
+   */
   public hitTest(worldX: number, worldY: number): string | null {
-    const drawings = Object.values(levelObjects(this.store.getState())?.drawings ?? {});
-    const tolerance = HIT_TOLERANCE_PX / this.viewport.scale.x;
-    const point = { x: worldX, y: worldY };
-
-    // Later drawings render on top, so test them first
-    for (let i = drawings.length - 1; i >= 0; i--) {
-      const stroke = drawings[i]!;
-      if (hitTestDrawing(stroke, point, tolerance)) return stroke.id;
+    const list = annotationList(levelObjects(this.store.getState()));
+    if (list.length === 0) return null;
+    const tolerance = HIT_TOLERANCE_PX / (Math.abs(this.viewport.scale.x) || 1);
+    for (const annotation of annotationsAt({ x: worldX, y: worldY }, tolerance, list, measureTextView)) {
+      if (annotation.kind === 'drawing' && annotation.layer === 'above' && !annotation.locked && this.shown(annotation)) return annotation.id;
     }
     return null;
   }

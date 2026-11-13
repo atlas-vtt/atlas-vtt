@@ -11,6 +11,12 @@ export const MAP_LAYER_Z = {
   /** Water, lava and acid moving on the map image, beneath the grid and all the lighting lights after the map. */
   liquids: -1,
   /**
+   * Drawings and texts put on the map: above the map image and its liquids, under the grid, the
+   * measured areas and the tokens, so a filled room keeps its grid lines and the lighting lights
+   * it like the floor.
+   */
+  annotationsOnMap: -0.5,
+  /**
    * The bodies of measured areas (their wash, the cells they cover, their outline): lit like the
    * floor and covered by the tokens. The grid and the tokens stand at 0 too and lie in the order
    * they were added, so the layer is put between them (`placeUnderTokens`).
@@ -36,8 +42,8 @@ export const MAP_LAYER_Z = {
   gridAlignment: 99,
   /** The button above a group selection that turns it: above the tokens' bars, which must not cover it. */
   groupRotate: 101,
-  /** Text objects and the preview of the one being placed. */
-  text: 500,
+  /** Drawings and texts above the tokens, in their one order: above the lighting, below the fog, so what is hidden stays hidden. */
+  annotations: 900,
   /**
    * The names of pins: above the fog (1000), so a name is never cut off by it. A name shows only
    * where its pin does: every pin for the GM, for players only pins out of the fog (`PlayerPins`).

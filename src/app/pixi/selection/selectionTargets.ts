@@ -1,9 +1,9 @@
 import { Point, type Container } from 'pixi.js';
 import type { DrawingStroke } from '../../types';
-import { getDrawingBounds } from '../drawingGeometry';
 import { getTokenRingOuterDiameter } from '../token-renderer/tokenRingMetrics';
 import { TOKEN_HANDLE_LABEL } from '../token-renderer/tokenSizing';
 import type { BarsSpan, TokenGroupContainer } from '../token-renderer/types';
+import { drawingRecordBox } from './drawingBox';
 import { boxOutline, tokenOutline, type Box } from './selectionGeometry';
 import type { SelectionTarget } from './SelectionHighlights';
 
@@ -32,7 +32,7 @@ export function selectionTargets(ids: readonly string[], sources: SelectionSourc
       continue;
     }
     const drawing = sources.drawings[id];
-    const drawingBounds = drawing ? getDrawingBounds(drawing) : null;
+    const drawingBounds = drawing ? drawingRecordBox(id, drawing) : null;
     if (drawingBounds) {
       targets.push(boxTarget(id, drawingBounds, true));
       continue;

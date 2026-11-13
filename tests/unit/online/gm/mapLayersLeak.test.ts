@@ -80,14 +80,33 @@ describe("what players are sent of the map's layers", () => {
         return [`pin_${key}`, { id: `pin_${key}`, kind: 'pin', x: free(random), y: free(random), notePath: `Notes/Secret ${key}.md`, label: `Pin ${key}` } as unknown as NotePin];
       }));
       const fogged = { colour: colourOf(random), text: `Trap ${word(random)}` };
-      const drawings: Record<string, DrawingStroke> = {
+      // What the GM keeps to themselves (`hidden`) and what lies on the map, each in a colour or with words nothing else has.
+      const secret = { colour: colourOf(random), stamp: colourOf(random), text: `Ambush ${word(random)}`, switched: colourOf(random), switchedText: `Cache ${word(random)}` };
+      const floor = { colour: colourOf(random), text: `Crypt ${word(random)}` };
+      const room = { colour: colourOf(random) };
+      const line = (): { x: number; y: number }[] => [{ x: free(random), y: free(random) }, { x: free(random), y: free(random) }];
+      const corner = { x: free(random), y: free(random) };
+      const outline = [corner, { x: corner.x + 80, y: corner.y }, { x: corner.x + 80, y: corner.y + 60 }, { x: corner.x, y: corner.y + 60 }, corner];
+      const drawingsAt = (step: number): Record<string, DrawingStroke> => ({
         hidden: { id: 'hidden', kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: inFog(random), y: inFog(random) }, { x: inFog(random), y: inFog(random) }], color: fogged.colour, width: 4, opacity: 1 },
-        shown: { id: 'shown', kind: 'drawing', timestamp: 2, type: 'pen', points: [{ x: free(random), y: free(random) }, { x: free(random), y: free(random) }], color: '#ffffff', width: 4, opacity: 1 },
-      };
-      const texts: Record<string, TextElement> = {
+        shown: { id: 'shown', kind: 'drawing', timestamp: 2, type: 'pen', points: line(), color: '#ffffff', width: 4, opacity: 1 },
+        secret: { id: 'secret', kind: 'drawing', timestamp: 3, type: 'pen', points: line(), color: secret.colour, width: 4, opacity: 1, hidden: true },
+        secretStamp: { id: 'secretStamp', kind: 'drawing', timestamp: 4, type: 'icon', icon: 'skull', points: [{ x: free(random), y: free(random) }], color: secret.stamp, width: 70, opacity: 1, hidden: true },
+        floor: { id: 'floor', kind: 'drawing', timestamp: 5, type: 'line', points: line(), color: floor.colour, width: 4, opacity: 1, layer: 'map' },
+        // Shown at first, then kept from the players: nothing of it may go out once it is.
+        switched: { id: 'switched', kind: 'drawing', timestamp: 6, type: 'pen', points: line(), color: secret.switched, width: 4, opacity: 1, ...(step >= STEPS / 2 && { hidden: true as const }) },
+        // A shape players see goes out as the line a pen would have drawn, and nothing of its look with it.
+        room: { id: 'room', kind: 'drawing', timestamp: 7, type: 'rectangle', points: outline, color: room.colour, width: 4, opacity: 1, fill: 'soft', dash: 'dashed', group: 'g1', order: 3 },
+      });
+      const textsAt = (step: number): Record<string, TextElement> => ({
         hidden: { id: 'hidden', kind: 'text', x: FOGGED.x + FOGGED.size / 2, y: FOGGED.y + FOGGED.size / 2, text: fogged.text, fontSize: 12, fontFamily: 'serif', color: '#ffffff' },
         shown: { id: 'shown', kind: 'text', x: 100, y: 100, text: 'Tavern', fontSize: 24, fontFamily: 'serif', color: '#ffffff' },
-      };
+        secret: { id: 'secret', kind: 'text', x: free(random), y: free(random), text: secret.text, fontSize: 24, fontFamily: 'serif', color: '#ffffff', hidden: true },
+        floor: { id: 'floor', kind: 'text', x: free(random), y: free(random), text: floor.text, fontSize: 24, fontFamily: 'serif', color: '#ffffff', layer: 'map' },
+        switched: { id: 'switched', kind: 'text', x: free(random), y: free(random), text: secret.switchedText, fontSize: 24, fontFamily: 'serif', color: '#ffffff', ...(step >= STEPS / 2 && { hidden: true as const }) },
+      });
+      let drawings = drawingsAt(0);
+      let texts = textsAt(0);
       const lit = trial % 2 === 0;
       const showNames = trial % 3 === 0;
       const sceneWalls = walls(random);
@@ -114,7 +133,11 @@ describe("what players are sent of the map's layers", () => {
       table.layers = fakeLayers({ state: () => current, source: GENERIC_SOURCE, bounds: MAP, grid: () => ({ size: 70, type: 'square' }) });
       table.share.start();
       const hiddenPlaces = new Set<number>();
+      let sentBeforeHiding = 0;
       for (let step = 0; step < STEPS; step += 1) {
+        if (step === STEPS / 2) sentBeforeHiding = table.sent.length;
+        drawings = drawingsAt(step);
+        texts = textsAt(step);
         current = scene();
         for (const entry of tokens) if (entry.hidden) hiddenPlaces.add(roundPlace(current.objects.tokens[entry.id]?.x ?? 0));
         table.perception = gmPerception(current, GENERIC_SOURCE, MAP);
@@ -140,6 +163,24 @@ describe("what players are sent of the map's layers", () => {
       expect(sent, `${label}: a drawing fog covers`).not.toContain(fogged.colour);
       expect(sent, `${label}: a text fog covers`).not.toContain(fogged.text);
       expect(sent, `${label}: a text players see`).toContain('Tavern');
+      expect(sent, `${label}: a drawing the GM keeps to themselves`).not.toContain(secret.colour);
+      expect(sent, `${label}: a stamp the GM keeps to themselves`).not.toContain(secret.stamp);
+      expect(sent, `${label}: a text the GM keeps to themselves`).not.toContain(secret.text);
+      expect(sent, `${label}: a drawing on the map`).not.toContain(floor.colour);
+      expect(sent, `${label}: a text on the map`).not.toContain(floor.text);
+      // What was shown and then hidden went out while it was shown, and never again.
+      const [early, late] = [traffic(table.sent.slice(0, sentBeforeHiding)), traffic(table.sent.slice(sentBeforeHiding))];
+      expect(early, `${label}: a drawing while players see it`).toContain(secret.switched);
+      expect(early, `${label}: a text while players see it`).toContain(secret.switchedText);
+      expect(late, `${label}: a drawing once it is hidden`).not.toContain(secret.switched);
+      expect(late, `${label}: a text once it is hidden`).not.toContain(secret.switchedText);
+      const lastAnnotations = ofKind(table.sent, 'annotations').at(-1);
+      expect(lastAnnotations?.drawings.map(({ type }) => type).sort(), `${label}: the drawings players are left with`).toEqual(['pen', 'pen']);
+      expect(lastAnnotations?.texts.map(({ text }) => text), `${label}: the texts players are left with`).toEqual(['Tavern']);
+      // A shape is told as the line through its points, with nothing of what only a newer page reads.
+      expect(lastAnnotations?.drawings.find(({ colour }) => colour === room.colour)?.points).toEqual(outline.flatMap(({ x, y }) => [x, y]));
+      const told = JSON.stringify(ofKind(table.sent, 'annotations'));
+      for (const field of ['hidden', 'layer', 'fill', 'dash', 'group', 'order', 'anchors']) expect(told, `${label}: the field ${field}`).not.toContain(`"${field}"`);
       for (const entry of tokens) {
         expect(sent, `${label}: a GM token id`).not.toContain(entry.id);
         expect(sent, `${label}: a token's vault path`).not.toContain(entry.path);

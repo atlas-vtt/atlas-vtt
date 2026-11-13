@@ -26,6 +26,9 @@ export const MAP_HOTKEYS = [
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
   { id: 'erase', label: t('hotkey.erase'), group: t('hotkey.group.tools'), defaultKey: 'e', dmOnly: true },
   { id: 'text', label: t('hotkey.text'), group: t('hotkey.group.tools'), defaultKey: 't', dmOnly: true },
+  // Run only while the Draw tool is in use (`useToolbarHotkeys`).
+  { id: 'drawSmaller', label: t('hotkey.drawSmaller'), group: t('hotkey.group.tools'), defaultKey: ',', dmOnly: true },
+  { id: 'drawLarger', label: t('hotkey.drawLarger'), group: t('hotkey.group.tools'), defaultKey: '.', dmOnly: true },
   { id: 'measure', label: t('hotkey.measure'), group: t('hotkey.group.tools'), defaultKey: 'm' },
   // Runs only while the measure tool is in use (`useToolbarHotkeys`).
   { id: 'measureKeep', label: t('hotkey.measureKeep'), group: t('hotkey.group.tools'), defaultKey: 'k', dmOnly: true },

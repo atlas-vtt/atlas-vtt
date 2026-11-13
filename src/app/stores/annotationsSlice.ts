@@ -10,7 +10,7 @@ import {
 } from '../annotations/annotationTypes';
 import { elsewhereThanViewedLevel, placedOnViewedLevel } from '../levels/sceneLevels';
 import type { DrawingStroke, TextElement } from '../types';
-import { changeAnnotation, copiedPoints, newAnnotationId, newDrawing, removeAnnotations, shiftDrawing, type AnnotationsDraft } from './annotationWrites';
+import { changeAnnotation, newAnnotationId, newDrawing, removeAnnotations, shiftDrawing, type AnnotationsDraft } from './annotationWrites';
 
 export interface AnnotationsSlice {
   /** Adds a text on the level shown, above every annotation there unless its data names an `order`, and returns its id. */
@@ -26,10 +26,7 @@ export interface AnnotationsSlice {
   addDrawings: (data: readonly DrawingInput[]) => string[];
   /** Moves drawings by (dx, dy): their points, and the anchors and holes that lie with them. */
   moveDrawings: (ids: string[], dx: number, dy: number) => void;
-  /** Gives each listed drawing these points (a group turned as one); others keep theirs. */
-  placeDrawings: (points: Readonly<Record<string, ReadonlyArray<{ x: number; y: number }>>>) => void;
   updateDrawings: (ids: string[], updates: Partial<Pick<DrawingStroke, 'color' | 'icon'>>) => void;
-  deleteDrawing: (id: string) => void;
   /** Removes the drawings of the level the view shows; other floors keep theirs. */
   clearDrawings: () => void;
   setDrawings: (drawings: Record<string, DrawingStroke>) => void;
@@ -138,24 +135,10 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
       }
     }),
 
-    placeDrawings: (points) => set((draft) => {
-      for (const [id, placed] of Object.entries(points)) {
-        const drawing = draft.objects.drawings[id];
-        if (drawing) drawing.points = copiedPoints(placed);
-      }
-    }),
-
     updateDrawings: (ids, updates) => set((draft) => {
       for (const id of ids) {
         const drawing = draft.objects.drawings[id];
         if (drawing) Object.assign(drawing, updates);
-      }
-    }),
-
-    deleteDrawing: (id) => set((draft) => {
-      if (draft.objects.drawings[id]) {
-        delete draft.objects.drawings[id];
-        draft.selectedIds = draft.selectedIds.filter((selectedId) => selectedId !== id);
       }
     }),
 

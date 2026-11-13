@@ -15,12 +15,11 @@ import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from 'events';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
-import { DrawingRenderer } from '../../../src/app/pixi/DrawingRenderer';
+import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/AnnotationsRenderer';
 import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
-import { TextTool } from '../../../src/app/tools/TextTool';
 import { TokenStatblockLinkService } from '../../../src/app/services/TokenStatblockLinkService';
 import { AssetService } from '../../../src/app/services/AssetService';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
@@ -805,10 +804,11 @@ describe('TokenRenderer Integration Tests', () => {
     };
 
     it.each(MARKERS)('draws no stroke and stamps no icon on %s', (_marker, x) => {
-      const drawing = new DrawingRenderer(viewport, eventBus, store);
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
       try {
-        for (const tool of ['draw-pen', 'draw-icon'] as const) {
-          store.getState().setActiveTool(tool);
+        store.getState().setActiveTool('draw');
+        for (const mode of ['pen', 'stamp'] as const) {
+          store.getState().setDrawTool({ mode });
           click(x);
         }
         expect(store.getState().objects.drawings).toEqual({});
@@ -850,16 +850,16 @@ describe('TokenRenderer Integration Tests', () => {
     });
 
     it.each(MARKERS)('opens no text box on %s', (_marker, x) => {
-      const text = new TextTool(viewport, store, gridSystem, eventBus);
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
       try {
-        store.getState().setActiveTool('text');
-        text.activate();
+        store.getState().setDrawTool({ mode: 'text' });
+        store.getState().setActiveTool('draw');
         click(x);
         expect(promptForText).not.toHaveBeenCalled();
         click(OFF_MARKERS);
         expect(promptForText).toHaveBeenCalledTimes(1);
       } finally {
-        text.deactivate();
+        drawing.destroy();
       }
     });
 

@@ -15,6 +15,7 @@ import { useViewStoreHook, useAtlasStore } from './ViewStoreContext';
 import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
+import { DrawToolBar } from '../packages/components/toolbar/DrawToolBar';
 import { LightingToolBar } from '../packages/components/toolbar/LightingToolBar';
 import { MeasureToolBar } from '../packages/components/toolbar/MeasureToolBar';
 import { DMScreenFromStore } from './components/DMScreen';
@@ -219,6 +220,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
               <>
                 {!isPlayerView && <PanelBoundary name="the lighting tools"><LightingToolBar /></PanelBoundary>}
                 <PanelBoundary name="the measure tools"><MeasureToolBar playerView={isPlayerView} /></PanelBoundary>
+                {!isPlayerView && <PanelBoundary name="the draw tools"><DrawToolBar /></PanelBoundary>}
               </>
             )}
           >

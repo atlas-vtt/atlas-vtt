@@ -234,16 +234,10 @@ export type ToolMode =
   | 'fog-erase'
   | 'measure'
   | 'pointer'
-  | 'text'
   | 'note-pin'
   | 'dice'
   | 'laser-pointer'
-  | 'draw-pen'
-  | 'draw-eraser'
-  | 'draw-icon'
-  | 'draw-line'
-  | 'draw-rectangle'
-  | 'draw-circle'
+  | 'draw'
   | 'audio';
 
  

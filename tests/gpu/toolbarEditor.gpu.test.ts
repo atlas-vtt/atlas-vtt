@@ -141,7 +141,8 @@ describe('the toolbar editor in a real layout', () => {
     fireEvent.keyDown(handle('draw', 'bar'), { key: 'Delete' });
     fireEvent.keyDown(handle('pin', 'bar'), { key: 'Delete' });
     await eachFrame(SETTLE_FRAMES, watch(() => null));
-    expect(settings.getToolbarLayout().hidden).toEqual(['draw', 'pin']);
+    // A hidden Draw tool is stored with the id of the Text control it took in.
+    expect(settings.getToolbarLayout().hidden).toEqual(['draw', 'pin', 'text']);
     fireEvent.click(screen.getByRole('button', { name: 'Reset toolbar' }));
     await eachFrame(SETTLE_FRAMES, watch(() => null));
     expect(settings.getToolbarLayout()).toEqual({});

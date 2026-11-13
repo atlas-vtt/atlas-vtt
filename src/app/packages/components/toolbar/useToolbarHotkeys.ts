@@ -1,7 +1,11 @@
+import { useEffect, useRef } from "react"
 import { useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { useMapHotkeys } from "../../../keyboard/useMapHotkeys"
 import { AMBIENT_AUDIO_ENABLED } from "../../../featureFlags"
+import { DEFAULT_DRAW_TOOL, type DrawMode } from "../../../annotations/annotationTypes"
+import { stepDrawSize } from "./drawStyleStore"
+import { eraserOrBack, nextDrawMode } from "./drawToolChoices"
 import { nextMeasureMode } from "./measureToolChoices"
 import type { Tool } from "./toolFaces"
 import { levelObjects } from '../../../levels/levelObjects';
@@ -10,7 +14,6 @@ import { mapTokens } from "../../../tokens/offMap"
 
 const MOVE_TOOLS: readonly Tool[] = ["move", "laser-pointer"]
 const FOG_TOOLS: readonly Tool[] = ["fog", "eraser"]
-const DRAW_TOOLS: readonly Tool[] = ["draw-pen", "draw-icon", "draw-eraser"]
 
 /** The next tool of a family: its first tool when another family is active. */
 function cycleTool<T extends Tool>(family: readonly T[], activeTool: Tool): T {
@@ -26,7 +29,11 @@ interface ToolbarHotkeyActions {
   closeMenus: () => void
 }
 
-/** The toolbar's map hotkeys; a family's key cycles through its tools, the measure tool's through its modes. */
+/**
+ * The toolbar's map hotkeys; a family's key cycles through its tools, the measure and Draw tools'
+ * through their modes. While the Draw tool is in use the eraser's key is its eraser's, and two
+ * keys step its size; in the session view, where its bars take no choice, they do nothing.
+ */
 export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: boolean, actions: ToolbarHotkeyActions): void {
   const store = useViewStoreHook()
   const { app, renderer } = useAtlasUI()
@@ -35,11 +42,30 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
   const dmOnly = (action: () => void) => (): void => {
     if (!isPlayerView) action()
   }
+  /** An action of the Draw tool's bars: only while the tool is in use, in the GM's view. */
+  const whileDrawing = (action: () => void) => dmOnly(() => {
+    const state = store.getState()
+    if (state.activeTool === "draw" && state.isGMView) action()
+  })
+
+  // The mode the Draw tool had before its eraser, which the eraser's key goes back to.
+  const drawnWith = useRef<DrawMode>(DEFAULT_DRAW_TOOL.mode)
+  useEffect(() => {
+    const note = (mode: DrawMode): void => {
+      if (mode !== "eraser") drawnWith.current = mode
+    }
+    note(store.getState().drawTool.mode)
+    return store.subscribe((state) => note(state.drawTool.mode))
+  }, [store])
 
   useMapHotkeys({
     move: () => selectTool(cycleTool(MOVE_TOOLS, activeTool())),
     fog: dmOnly(() => selectTool(cycleTool(FOG_TOOLS, activeTool()))),
-    text: dmOnly(() => selectTool("text")),
+    // The Draw tool in its Text mode.
+    text: dmOnly(() => {
+      store.getState().setDrawTool({ mode: "text" })
+      selectTool("draw")
+    }),
     // The tool keeps its mode while another tool is in use; pressed again while measuring, the key steps to the next mode.
     measure: () => {
       const state = store.getState()
@@ -52,8 +78,20 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
       const state = store.getState()
       if (state.activeTool === "measure") state.setMeasureTool({ keep: !state.measureTool.keep })
     }),
-    draw: dmOnly(() => selectTool(cycleTool(DRAW_TOOLS, activeTool()))),
-    erase: dmOnly(() => selectTool("eraser")),
+    // The tool keeps its mode while another tool is in use; pressed again while drawing, the key steps to the next mode.
+    draw: dmOnly(() => {
+      const state = store.getState()
+      if (state.activeTool !== "draw") selectTool("draw")
+      else if (state.isGMView) state.setDrawTool({ mode: nextDrawMode(state.drawTool.mode) })
+    }),
+    // The Draw tool's eraser while that tool is in use, and from it back to the mode before; else the fog's.
+    erase: dmOnly(() => {
+      const state = store.getState()
+      if (state.activeTool !== "draw") selectTool("eraser")
+      else if (state.isGMView) state.setDrawTool({ mode: eraserOrBack(state.drawTool.mode, drawnWith.current) })
+    }),
+    drawSmaller: whileDrawing(() => stepDrawSize(store, -1)),
+    drawLarger: whileDrawing(() => stepDrawSize(store, 1)),
     gmView: dmOnly(toggleGMView),
     selectAll: dmOnly(() => {
       // Only what the canvas shows: session view hides tokens, which must not be selected unseen.

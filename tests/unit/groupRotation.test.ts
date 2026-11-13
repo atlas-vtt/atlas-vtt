@@ -103,6 +103,33 @@ describe('GroupRotation', () => {
     expect(store.getState().objects.drawings.pen!.points).toEqual([{ x: 105, y: 0 }]);
   });
 
+  it('turns the anchors and the holes that lie with a drawing\'s points, keeps its other fields, and puts all of it back on Escape', () => {
+    const { store, rotation, press, move, release } = setup();
+    const path = {
+      id: 'pen', kind: 'drawing', timestamp: 0, type: 'line', color: '#000000', width: 2, opacity: 1, later: 'kept',
+      points: [{ x: 105, y: 0 }, { x: 115, y: 0 }],
+      anchors: [{ x: 105, y: 0 }, { x: 115, y: 0 }],
+      holes: [[{ x: 105, y: 10 }, { x: 110, y: 10 }, { x: 110, y: 20 }]],
+    } as DrawingStroke;
+    store.setState({ objects: { ...store.getState().objects, drawings: { pen: path } } });
+    const drawing = (): DrawingStroke => store.getState().objects.drawings.pen!;
+
+    press(105, -30);
+    move(170, 35);
+    rotation.cancel();
+    expect(drawing()).toEqual(path);
+
+    press(105, -30);
+    move(170, 35);
+    release();
+    expect(drawing()).toEqual({
+      ...path,
+      points: [{ x: 140, y: 35 }, { x: 140, y: 45 }],
+      anchors: [{ x: 140, y: 35 }, { x: 140, y: 45 }],
+      holes: [[{ x: 130, y: 35 }, { x: 130, y: 40 }, { x: 120, y: 40 }]],
+    });
+  });
+
   it('puts the tokens down exactly where the last step of the turn showed them, off the grid at 45°', () => {
     const { store, press, move, release, tokens } = setup();
     press(105, -30);

@@ -37,6 +37,3 @@ export const MAP_ICON_LABELS: Record<string, string> = {
 };
 
 export type MapIconName = keyof typeof MAP_ICON_SVG;
-
-/** Icon footprint in world units — one standard square grid cell. */
-export const MAP_ICON_SIZE = 70;

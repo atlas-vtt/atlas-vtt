@@ -3,6 +3,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_DRAW_TOOL } from '../../src/app/annotations/annotationTypes';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { StoredToolbarLayout } from '../../src/app/toolbar/toolbarLayout';
 import { DEFAULT_LASER_POINTER_SETTINGS, type LaserPointerSettings } from '../../src/app/tools/laserPointerSettings';
@@ -16,6 +17,7 @@ const setSelection = vi.fn();
 const openAssetManager = vi.fn();
 const closeAssetManager = vi.fn();
 const setInitiativeTrackerOpen = vi.fn();
+const setDrawTool = vi.fn();
 
 let capturedShortcuts: Record<string, (event: KeyboardEvent) => void> = {};
 /** The tokens the canvas shows; session view hides some of the store's. */
@@ -62,6 +64,8 @@ const storeState = {
   setLightingTool: vi.fn(),
   measureTool: { mode: 'ruler', keep: false, players: true, color: null, lineWidth: 1 },
   setMeasureTool: vi.fn(),
+  drawTool: DEFAULT_DRAW_TOOL,
+  setDrawTool,
   setSelection,
   openAssetManager,
   closeAssetManager,
@@ -69,6 +73,7 @@ const storeState = {
 
 const storeHook = {
   getState: () => storeState,
+  subscribe: () => () => undefined,
 };
 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
@@ -162,7 +167,7 @@ afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 const shownControls = (container: HTMLElement): string[] =>
   Array.from(container.querySelectorAll<HTMLElement>('[data-toolbar-item]:not([hidden])')).map((el) => el.dataset.toolbarItem ?? '');
 
-describe('MainToolbar text tool', () => {
+describe('MainToolbar and the Draw tool', () => {
   beforeEach(() => {
     capturedShortcuts = {};
     settings = undefined;
@@ -176,14 +181,21 @@ describe('MainToolbar text tool', () => {
     openAssetManager.mockReset();
     closeAssetManager.mockReset();
     setInitiativeTrackerOpen.mockReset();
+    setDrawTool.mockReset();
   });
 
-  it('activates the text tool from the T shortcut', () => {
+  it('selects the Draw tool in its Text mode from the T shortcut, and in the mode it has from B', () => {
     render(<MainToolbar viewId="view-1" />);
 
     capturedShortcuts.text(new KeyboardEvent('keydown', { key: 't' }));
+    expect(setDrawTool).toHaveBeenCalledWith({ mode: 'text' });
+    expect(setActiveTool).toHaveBeenCalledWith('draw');
 
-    expect(setActiveTool).toHaveBeenCalledWith('text');
+    setDrawTool.mockReset();
+    setActiveTool.mockReset();
+    capturedShortcuts.draw(new KeyboardEvent('keydown', { key: 'b' }));
+    expect(setActiveTool).toHaveBeenCalledWith('draw');
+    expect(setDrawTool).not.toHaveBeenCalled();
   });
 
   it('selects only the tokens the canvas shows with select all', () => {
@@ -195,11 +207,14 @@ describe('MainToolbar text tool', () => {
     expect(setSelection).toHaveBeenCalledWith(['hero']);
   });
 
-  it('renders the text tool button enabled', () => {
+  it('renders one button for drawing and text, named by the mode in hand, which selects the tool', () => {
     render(<MainToolbar viewId="view-1" />);
 
-    const button = screen.getByRole('button', { name: 'Text Tool' }) as HTMLButtonElement;
+    expect(screen.queryByRole('button', { name: 'Text Tool' })).toBeNull();
+    const button = screen.getByRole('button', { name: 'Pen' }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
+    button.click();
+    expect(setActiveTool).toHaveBeenCalledWith('draw');
   });
 
   it('has the Lighting tool to the left of the note pin', () => {
@@ -211,7 +226,7 @@ describe('MainToolbar text tool', () => {
 
   it('shows the default layout where Atlas\' settings cannot be reached', () => {
     const { container } = render(<MainToolbar viewId="view-1" />);
-    expect(shownControls(container)).toEqual(['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin', 'dice', 'loot', 'assets', 'palette']);
+    expect(shownControls(container)).toEqual(['move', 'fog', 'draw', 'measure', 'wall', 'pin', 'dice', 'loot', 'assets', 'palette']);
   });
 
   it('arranges the GM\'s bar by the stored layout and keeps hidden controls mounted', () => {
@@ -220,8 +235,21 @@ describe('MainToolbar text tool', () => {
       hidden: ['fog'],
     });
     const { container } = render(<MainToolbar viewId="view-1" />);
-    expect(shownControls(container)).toEqual(['palette', 'dice', 'move', 'draw', 'text', 'measure', 'wall', 'pin', 'loot', 'assets']);
+    expect(shownControls(container)).toEqual(['palette', 'dice', 'move', 'draw', 'measure', 'wall', 'pin', 'loot', 'assets']);
     expect(container.querySelector('[data-toolbar-item="fog"]')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('shows Draw where an older layout hid it and kept Text, and hides it where both were hidden', () => {
+    settings = settingsWithLayout({ hidden: ['draw'] });
+    const kept = render(<MainToolbar viewId="view-1" />);
+    expect(shownControls(kept.container)).toContain('draw');
+    kept.unmount();
+
+    settings = settingsWithLayout({ hidden: ['draw', 'text'] });
+    const { container } = render(<MainToolbar viewId="view-1" />);
+    expect(shownControls(container)).not.toContain('draw');
+    expect(container.querySelector('[data-toolbar-item="draw"]')?.hasAttribute('hidden')).toBe(true);
+    expect(container.querySelector('[data-toolbar-item="text"]')).toBeNull();
   });
 
   it('ignores the stored layout in the player view', () => {
@@ -237,13 +265,13 @@ describe('MainToolbar text tool', () => {
     expect(container.querySelector('[data-toolbar-item="wall"]')?.hasAttribute('hidden')).toBe(true);
   });
 
-  it('accepts the text tool in the store', () => {
+  it('accepts the Draw tool in the store', () => {
     const store = createViewAtlasStore({} as never, 'test-view');
     store.getState().setPersistenceEnabled(false);
 
-    store.getState().setActiveTool('text');
+    store.getState().setActiveTool('draw');
 
-    expect(store.getState().activeTool).toBe('text');
+    expect(store.getState().activeTool).toBe('draw');
   });
 
   it('still refuses the ambient audio tool, which is withheld from this release', () => {

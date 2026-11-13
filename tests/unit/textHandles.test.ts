@@ -1,39 +1,27 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
-import type { Container, EventSystem, FederatedPointerEvent } from 'pixi.js';
-import { Viewport } from 'pixi-viewport';
-import { TextRenderer } from '../../src/app/pixi/TextRenderer';
-import type { GridSystem } from '../../src/app/grid/GridSystem';
-import { createViewAtlasStore } from '../../src/app/storeFactory';
-import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
-
-type ViewStore = ReturnType<typeof createViewAtlasStore>;
+import { afterEach, describe, it, expect } from 'vitest';
+import type { Container, FederatedPointerEvent } from 'pixi.js';
+import { drawScene, type DrawScene } from '../helpers/drawScene';
 
 interface Harness {
-  renderer: TextRenderer;
-  viewport: Viewport;
-  store: ViewStore;
+  scene: DrawScene;
+  viewport: DrawScene['viewport'];
+  store: DrawScene['store'];
   id: string;
 }
 
 const HANDLE_RADIUS = 13;
 
 let harness: Harness | null = null;
-let restoreGraphics: () => void = () => {};
 
 function setup(): Harness {
-  const events = { domElement: document.createElement('canvas') } as unknown as EventSystem;
-  const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, events });
-  const { app } = createInMemoryApp({ files: {} });
-  const store = createViewAtlasStore(app, 'text-handles-view');
-  store.getState().setPersistenceEnabled(false);
-  const renderer = new TextRenderer(viewport, {} as GridSystem, () => {}, store);
+  const scene = drawScene();
+  const { viewport, store } = scene;
   const id = store.getState().addText({
     x: 100, y: 100, text: 'Here', fontSize: 24, fontFamily: 'Arial', color: '#ffffff',
   });
   store.getState().setSelection([id]);
-  harness = { renderer, viewport, store, id };
+  harness = { scene, viewport, store, id };
   return harness;
 }
 
@@ -46,8 +34,7 @@ function child(h: Harness, label: string): Container {
   return found;
 }
 
-const textView = (h: Harness): Container =>
-  h.renderer.getContainer().children.find((c) => c.label === h.id)!;
+const textView = (h: Harness): Container => h.scene.node('text', h.id)!;
 const rotateHandle = (h: Harness): Container => child(h, 'textRotationUI').getChildByLabel('textRotationHandle')!;
 const rightResizeHandle = (h: Harness): Container => child(h, 'textResizeUI').getChildByLabel('resizeHandle_right')!;
 
@@ -57,15 +44,9 @@ function scaledTop(h: Harness, scale: number): number {
 }
 
 describe('text handles', () => {
-  beforeEach(() => {
-    restoreGraphics = stubJsdomGraphics();
-  });
-
   afterEach(() => {
-    harness?.renderer.destroy();
-    harness?.viewport.destroy();
+    harness?.scene.destroy();
     harness = null;
-    restoreGraphics();
   });
 
   it('keeps the rotate handle above an enlarged text', () => {

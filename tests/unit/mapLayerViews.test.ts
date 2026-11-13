@@ -2,7 +2,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Container, Graphics, Text } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
-import { DrawingLayer } from '../../src/app/pixi/drawingLayer';
+import { readDrawing } from '../../src/app/annotations/annotationList';
+import type { DrawingAnnotation } from '../../src/app/annotations/annotationTypes';
+import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../../src/app/pixi/drawingLayer';
 import { DoorIcons, type DoorIconsState } from '../../src/app/pixi/lighting/DoorIcons';
 import { createTextElementView, TEXT_CONTENT_LABEL, updateTextElementView } from '../../src/app/pixi/textElementView';
 import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
@@ -24,26 +26,45 @@ afterEach(() => {
   cleanup = null;
 });
 
-function stroke(id: string, x: number): DrawingStroke {
-  return { id, kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x, y: 0 }, { x: x + 10, y: 10 }], color: '#ff0000', width: 4, opacity: 1 };
-}
+const read = (drawing: Partial<DrawingStroke>): DrawingAnnotation => {
+  const annotation = readDrawing('d', { id: 'd', kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: 0, y: 0 }, { x: 10, y: 10 }], color: '#ff0000', width: 4, opacity: 1, ...drawing });
+  if (!annotation) throw new Error('Expected a drawing');
+  return annotation;
+};
 
-describe('the drawing layer', () => {
-  it('keeps one node per drawing, reuses it while the record is unchanged and removes what is gone', () => {
-    const container = new Container();
-    const layer = new DrawingLayer(container);
-    const a = stroke('a', 0);
-    layer.sync({ a, b: stroke('b', 50) });
-    expect(container.children).toHaveLength(2);
-    const first = container.children[0];
-    layer.sync({ a });
-    expect(container.children).toEqual([first]);
-    layer.sync({ a: { ...a, color: '#00ff00' } });
-    expect(container.children).toEqual([first]);
-    layer.sync({ a, icon: { ...stroke('icon', 20), type: 'icon', icon: 'skull', points: [{ x: 20, y: 30 }], width: 40 } });
-    expect(container.children).toHaveLength(2);
-    expect(container.children[1]?.position).toMatchObject({ x: 20, y: 30 });
-    layer.destroy();
+describe('a drawing as it is drawn', () => {
+  it('draws a line, a fill and a dot into one graphics, in place of what it held', () => {
+    cleanup = stubJsdomGraphics();
+    const graphics = new Graphics();
+    paintDrawing(graphics, read({}), 0.2);
+    const line = graphics.context.instructions.map(({ action }) => action);
+    expect(line).toEqual(['stroke']);
+    const room = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }];
+    paintDrawing(graphics, read({ type: 'rectangle', points: room, fill: 'soft' }), 0.2);
+    expect(graphics.context.instructions.map(({ action }) => action)).toEqual(['fill', 'stroke']);
+    paintDrawing(graphics, read({ points: [{ x: 5, y: 5 }] }), 0.2);
+    expect(graphics.context.instructions.map(({ action }) => action)).toEqual(['fill']);
+    graphics.destroy();
+  });
+
+  it('shows a stamp at its place, as wide as its footprint, turned, and tells when its symbol comes in', async () => {
+    const textures = new StampTextures();
+    const sprite = createStampSprite();
+    const changed = vi.fn();
+    const stamp = read({ type: 'icon', icon: 'skull', points: [{ x: 20, y: 30 }], width: 40, opacity: 0.5, rotation: 90 });
+    placeStamp(sprite, stamp, textures, changed);
+    expect(sprite.position).toMatchObject({ x: 20, y: 30 });
+    expect(sprite.alpha).toBe(0.5);
+    expect(sprite.rotation).toBeCloseTo(Math.PI / 2);
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+    expect([sprite.width, sprite.height]).toEqual([40, 40]);
+    // A stamp that only moved or grew keeps its symbol: nothing comes in again.
+    placeStamp(sprite, read({ type: 'icon', icon: 'skull', points: [{ x: 60, y: 30 }], width: 80, opacity: 0.5 }), textures, changed);
+    expect(sprite.position.x).toBe(60);
+    expect(sprite.width).toBe(80);
+    expect(changed).toHaveBeenCalledOnce();
+    sprite.destroy();
+    textures.destroy();
   });
 });
 

@@ -23,6 +23,7 @@ function context(overrides: Partial<ToolbarContext> = {}): ToolbarContext {
   return {
     activeTool,
     measureMode: 'ruler',
+    drawMode: 'pen',
     selectTool: vi.fn(),
     hotkeyLabel: (id) => id,
     openMenu: null,
@@ -38,7 +39,7 @@ function context(overrides: Partial<ToolbarContext> = {}): ToolbarContext {
 const item = (id: ToolbarControlId, ctx: ToolbarContext): ToolbarItemBody => TOOLBAR_CONTROL_ITEMS[id](ctx);
 const placement = ({ pinned, active }: ToolbarItemBody): { pinned: boolean; active: boolean } => ({ pinned, active });
 
-const GROUPS: readonly ToolMenu[] = ['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin'];
+const GROUPS: readonly ToolMenu[] = ['move', 'fog', 'measure', 'wall', 'pin'];
 
 describe('toolbar control items', () => {
   it('builds an item for every control of the catalog', () => {
@@ -67,6 +68,20 @@ describe('toolbar control items', () => {
     expect(ctx.selectTool).toHaveBeenCalledWith('measure');
     // Ranges, which measures nothing by a press, shows by its own name too.
     expect(item('measure', context({ measureMode: 'ranges' })).menuEntry.label).toBe('Ranges');
+  });
+
+  it('shows the Draw tool by the mode it draws in, as a button without a menu that selects the one tool', () => {
+    expect(item('draw', context())).toMatchObject({ kind: 'button', pinned: false, active: false });
+    expect(item('draw', context()).menuEntry).toMatchObject({ label: 'Pen', shortcut: 'draw', isActive: false });
+    expect(item('draw', context({ drawMode: 'text' })).menuEntry.label).toBe('Text');
+    const ctx = context({ activeTool: 'draw', drawMode: 'eraser' });
+    const body = item('draw', ctx);
+    expect(placement(body)).toEqual({ pinned: true, active: true });
+    expect(body.menuEntry).toMatchObject({ label: 'Eraser', isActive: true });
+    body.menuEntry.onSelect();
+    expect(ctx.selectTool).toHaveBeenCalledWith('draw');
+    // A mode the bar does not offer shows as the pen.
+    expect(item('draw', context({ drawMode: 'cells' })).menuEntry.label).toBe('Pen');
   });
 
   it('pins and activates the note pin while it is in use, and the dice while their tray is open', () => {

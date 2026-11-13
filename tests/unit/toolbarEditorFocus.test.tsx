@@ -142,7 +142,7 @@ describe('Lighting in the editor', () => {
 
 describe('a press outside the editor', () => {
   it('ends edit mode with the left button, and not on the bars, the tray or with the right button', () => {
-    const harness = renderToolbar({ stored: { hidden: ['text'] }, undoBar: true });
+    const harness = renderToolbar({ stored: { hidden: ['measure'] }, undoBar: true });
     startEditing(harness);
     const outside = document.body.appendChild(document.createElement('div'));
     const press = (target: Element, button = 0): void => {
@@ -152,7 +152,7 @@ describe('a press outside the editor', () => {
     };
 
     press(handle(harness.container, 'fog'));
-    press(handle(harness.container, 'text', 'tray'));
+    press(handle(harness.container, 'measure', 'tray'));
     press(handle(harness.container, 'undo'));
     press(outside, 2);
     expect(harness.store.getState().isToolbarEditing).toBe(true);

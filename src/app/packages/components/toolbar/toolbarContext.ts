@@ -1,12 +1,13 @@
 import type React from "react"
 import type { DiceTool } from "../../../tools/DiceTool"
+import type { DrawMode } from "../../../annotations/annotationTypes"
 import type { MapHotkeyId } from "../../../keyboard/mapHotkeys"
 import type { MeasureMode } from "../../../measure/measureTypes"
 import type { Tool } from "./toolFaces"
 import type { ToolGroupControls } from "./ToolGroup"
 
 /** Tool groups whose options menu is open; only one at a time. */
-export type ToolMenu = 'move' | 'fog' | 'draw' | 'text' | 'measure' | 'wall' | 'pin'
+export type ToolMenu = 'move' | 'fog' | 'measure' | 'wall' | 'pin'
 
 /**
  * What MainToolbar hands every control's item builder. Gates (player view,
@@ -16,6 +17,8 @@ export interface ToolbarContext {
   activeTool: Tool
   /** The mode the measure tool measures in: its button shows it. */
   measureMode: MeasureMode
+  /** The mode the Draw tool draws in: its button shows it. */
+  drawMode: DrawMode
   selectTool: (tool: Tool) => void
   hotkeyLabel: (id: MapHotkeyId) => string
   openMenu: ToolMenu | null

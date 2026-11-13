@@ -11,6 +11,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { levelObjects } from '../levels/levelObjects';
+import { annotationNodeIn } from './annotations/AnnotationLayer';
 import { textHandleBounds } from './textHandleBounds';
 
 /** Resting look of a resize handle: a dark pill with a faint outlined inset. */
@@ -222,11 +223,7 @@ export class TextResizeUI {
     this.temporaryScale = newScale;
     
     // Update visual scale
-    const textContainer = this.viewport.children.find(
-      child => child.label === 'textContainer'
-    )?.children.find(
-      child => child.label === this.activeTextId
-    );
+    const textContainer = annotationNodeIn(this.viewport, this.activeTextId);
     
     if (textContainer) {
       textContainer.scale.set(newScale);
@@ -262,6 +259,11 @@ export class TextResizeUI {
       drawIdleHandleBackground(bg);
     });
   };
+
+  /** The handles' layer: the GM's own, which neither a players' frame nor a picture of the scene shows. */
+  get layer(): Container {
+    return this.container;
+  }
 
   destroy(): void {
     this.hide();

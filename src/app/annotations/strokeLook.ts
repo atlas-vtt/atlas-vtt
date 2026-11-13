@@ -145,22 +145,31 @@ export function shaft(points: readonly Point[], width: number, ends: DrawEnds): 
 }
 
 /**
- * The ink of lines `width` wide with round joins and round ends, and of `shapes` filled, as areas
- * that do not overlap: filled once, they are one even tone where the lines cross each other,
- * themselves or the shapes. `shapes` are outlines (arrowheads), filled by the nonzero rule.
+ * The ink of lines `width` wide with round joins and round ends, and of `shapes` filled, as one
+ * shape of the clipping grid; null for points the grid cannot hold. `shapes` are outlines
+ * (arrowheads), filled by the nonzero rule.
+ */
+export function inkShape(lines: readonly (readonly Point[])[], width: number, shapes: readonly (readonly Point[])[] = []): QShape | null {
+  if (![...lines, ...shapes].every((points) => onClipGrid(points, Math.max(0, width)))) return null;
+  const radius = width > 0 && Number.isFinite(width) ? Math.max(1, lengthQ(width / 2)) : 0;
+  let ink: QShape = inflatePolylines(lines.filter((line) => line.length > 0).map(pointsQ), radius);
+  for (const shape of shapes) {
+    if (shape.length >= 3) ink = unionShapes(ink, normalizePolygon(pointsQ(shape)));
+  }
+  return ink;
+}
+
+/**
+ * The ink of `inkShape` as areas that do not overlap: filled once, they are one even tone where
+ * the lines cross each other, themselves or the shapes.
  *
  * Worked out on the clipping grid: the outline lies within a quarter pixel of the exact one (an
  * eighth for the grid's rounding of points and width, an eighth for the corners of its round
  * parts). Nothing for points the grid cannot hold.
  */
 export function inkOutline(lines: readonly (readonly Point[])[], width: number, shapes: readonly (readonly Point[])[] = []): FilledPart[] {
-  if (![...lines, ...shapes].every((points) => onClipGrid(points, Math.max(0, width)))) return [];
-  const radius = width > 0 && Number.isFinite(width) ? Math.max(1, lengthQ(width / 2)) : 0;
-  let ink: QShape = inflatePolylines(lines.filter((line) => line.length > 0).map(pointsQ), radius);
-  for (const shape of shapes) {
-    if (shape.length >= 3) ink = unionShapes(ink, normalizePolygon(pointsQ(shape)));
-  }
-  return filledParts(ink);
+  const ink = inkShape(lines, width, shapes);
+  return ink ? filledParts(ink) : [];
 }
 
 /** The ink of one line `width` wide (see `inkOutline`): what a see-through stroke is filled as. */
