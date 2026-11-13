@@ -144,14 +144,9 @@ export interface ViewAtlasState extends ViewState {
   // Drawings and texts (from annotationsSlice.ts)
   addText: AnnotationsSlice['addText'];
   updateText: AnnotationsSlice['updateText'];
-  moveText: AnnotationsSlice['moveText'];
-  deleteText: AnnotationsSlice['deleteText'];
   setTexts: AnnotationsSlice['setTexts'];
   addDrawing: AnnotationsSlice['addDrawing'];
   addDrawings: AnnotationsSlice['addDrawings'];
-  moveDrawings: AnnotationsSlice['moveDrawings'];
-  updateDrawings: AnnotationsSlice['updateDrawings'];
-  clearDrawings: AnnotationsSlice['clearDrawings'];
   setDrawings: AnnotationsSlice['setDrawings'];
   updateAnnotations: AnnotationsSlice['updateAnnotations'];
   moveAnnotations: AnnotationsSlice['moveAnnotations'];

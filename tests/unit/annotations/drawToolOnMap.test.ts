@@ -403,18 +403,17 @@ describe('the Draw tool on the map: limits and views', () => {
     expect(s.drawings()).toEqual([]);
   });
 
-  it('lets a text take the pointer only while the tool is not working on the map', () => {
+  it('draws and erases over a text: in a mode that works on the map, a text takes no press', () => {
     const s = scene();
-    const takes = (): boolean => s.renderer.layer.above.interactiveChildren;
-    expect(takes()).toBe(true);
-    for (const mode of ['pen', 'line', 'rectangle', 'ellipse', 'eraser', 'stamp', 'text'] as const) {
+    holding(s, {}, { vault: { x: 200, y: 300 } });
+    for (const mode of ['pen', 'line', 'rectangle', 'ellipse'] as const) {
       s.tool({ mode });
-      expect(takes(), mode).toBe(false);
+      // What the mode before made is let go of: its handles would take a press on them.
+      s.store.getState().clearSelection();
+      const before = s.drawings().length;
+      expect(s.pull([[200, 300], [270, 370]]), mode).toBe(false);
+      expect(s.drawings(), mode).toHaveLength(before + 1);
+      expect(s.texts()[0], mode).toMatchObject({ x: 200, y: 300 });
     }
-    s.tool({ mode: 'select' });
-    expect(takes()).toBe(true);
-    s.tool({ mode: 'pen' });
-    s.store.getState().setActiveTool('move');
-    expect(takes()).toBe(true);
   });
 });

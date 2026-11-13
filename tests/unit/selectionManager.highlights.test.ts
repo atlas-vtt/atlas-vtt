@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Container, Sprite, type Graphics } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { DEFAULT_DRAW_TOOL } from '../../src/app/annotations/annotationTypes';
 import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 import { HIGHLIGHT_EDGE, SELECTION_LOOK } from '../../src/app/pixi/selection/selectionGeometry';
 import { INK_SHADE_REACH as SHADE_REACH } from '../../src/app/pixi/utils/canvasInk';
@@ -33,7 +34,7 @@ function setup(selectedIds: string[], bars: (zoom: number) => BarsSpan = () => (
   const viewport = Object.assign(new Container(), { toWorld: (point: { x: number; y: number }) => point });
   const fog = { smoke: fogArea(viewport) };
   const store = createStore(subscribeWithSelector(() => ({
-    selectedIds, activeTool: 'select', selectionMode: 'box',
+    selectedIds, activeTool: 'select', drawTool: DEFAULT_DRAW_TOOL, selectionMode: 'box',
     objects: { tokens: { goblin: { id: 'goblin' }, orc: { id: 'orc' } }, drawings: {} },
   })));
   const manager = new SelectionManager(viewport as never, () => tokens, () => fog, store as never, new EventEmitter());

@@ -4,13 +4,14 @@ import type { ViewAtlasStore } from '../../storeFactory';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { mapTokens } from '../../tokens/offMap';
-import { anchorsAndHolesMoved } from '../../annotations/annotationList';
-import type { AnnotationPlace } from '../../annotations/annotationTypes';
+import { annotationBounds } from '../../annotations/annotationBounds';
+import { turnAbout } from '../../annotations/annotationTransform';
 import { levelObjects } from '../../levels/levelObjects';
+import type { AnnotationEdit } from '../annotations/AnnotationEdit';
+import { measureTextView } from '../textElementView';
 import { tokenDiameterInCells } from '../token-renderer/tokenSizing';
-import { drawingRecordBox } from './drawingBox';
 import { GroupRotateButton } from './GroupRotateButton';
-import { formationMiddle, pointerTurn, snapTurn, turnPoints, turnTokens, type Footprint, type Point, type TokenAtStart } from './groupTurn';
+import { formationMiddle, pointerTurn, snapTurn, turnTokens, type Footprint, type Point, type TokenAtStart } from './groupTurn';
 import type { Box } from './selectionGeometry';
 
 /** What the tokens' renderer does for a group being turned. */
@@ -35,24 +36,15 @@ export interface GroupRotationDeps {
   frame(): Box | null;
   /** Holds the group frame turned, or lets it follow the group again. */
   turnFrame(turn: FrameTurn | null): void;
+  /**
+   * The drawings and texts among `ids` as a gesture that turns with the group (`AnnotationEdit`:
+   * the same code that turns them from their own handles); null where none of them turns.
+   */
+  annotations?(ids: readonly string[]): AnnotationEdit | null;
   /** Shows the selection again from what the canvas holds now. */
   refresh(): void;
   accent(): number;
   reducedMotion(): boolean;
-}
-
-/** What of a drawing turns with its group. */
-type DrawingPlace = Pick<AnnotationPlace, 'points' | 'anchors' | 'holes'>;
-
-const copyPoint = ({ x, y }: Point): Point => ({ x, y });
-
-/** `place` turned `degrees` about `centre`: the points, and with them the anchors and holes it has. */
-function turnedPlace(place: DrawingPlace, centre: Point, degrees: number): DrawingPlace {
-  return {
-    points: turnPoints(place.points ?? [], centre, degrees),
-    ...(place.anchors && { anchors: turnPoints(place.anchors, centre, degrees) }),
-    ...(place.holes && { holes: place.holes.map((ring) => turnPoints(ring, centre, degrees)) }),
-  };
 }
 
 interface Turn {
@@ -61,18 +53,18 @@ interface Turn {
   readonly centre: Point;
   readonly from: Point;
   readonly tokens: readonly TokenAtStart[];
-  /** The selected drawings as the turn found them: their points, and the anchors and holes that lie with them. */
-  readonly drawings: ReadonlyArray<{ readonly id: string; readonly place: DrawingPlace }>;
+  /** The selected drawings and texts that turn with the tokens; null for none. */
+  readonly annotations: AnnotationEdit | null;
   degrees: number;
   /** The pointer has turned the group: an undo step is open and the tokens are held. */
   started: boolean;
 }
 
 /**
- * Turns a selection of two or more as one rigid group from the button above its frame: every
- * token orbits the pivot and faces as much further round, drawings turn their points (and the
- * anchors and holes that lie with them). The pivot is
- * the middle of the tokens' footprints and the drawings, put on the grid so that a quarter turn
+ * Turns a selection of two or more that holds tokens as one rigid group from the button above its
+ * frame: every token orbits the pivot and faces as much further round, and the drawings and texts
+ * selected with them turn as their own handles would turn them (`annotations`). The pivot is
+ * the middle of the tokens' footprints and the annotations, put on the grid so that a quarter turn
  * (a sixth on hexes) lands a formation standing on cells on cells (`gridPivot`); other angles
  * leave it off the grid, as Owlbear Rodeo does. The angle snaps as a single token's does.
  * Releasing puts the tokens down where the turn showed them, through a drop (on top of the
@@ -184,17 +176,15 @@ export class GroupRotation {
       return [{ id, x: token.x, y: token.y, rotation: token.rotation }];
     });
     if (starts.length === 0) return;
-    const drawings = selectedIds.flatMap((id) => {
-      const drawing = objects.drawings[id];
-      const bounds = drawing ? drawingRecordBox(id, drawing) : null;
-      if (!drawing || !bounds) return [];
-      footprints.push(bounds);
-      return [{ id, place: { points: drawing.points.map(copyPoint), ...anchorsAndHolesMoved(drawing, copyPoint) } }];
-    });
+    const annotations = this.deps.annotations?.(selectedIds) ?? null;
+    for (const annotation of annotations?.annotations ?? []) {
+      const { minX, minY, maxX, maxY } = annotationBounds(annotation, measureTextView);
+      footprints.push({ x: minX, y: minY, width: maxX - minX, height: maxY - minY });
+    }
     const middle = formationMiddle(footprints);
     if (!middle) return;
     const centre = host.pivot(middle);
-    this.turn = { host, frame, centre, from: viewport.toWorld(event.global), tokens: starts, drawings, degrees: 0, started: false };
+    this.turn = { host, frame, centre, from: viewport.toWorld(event.global), tokens: starts, annotations, degrees: 0, started: false };
     viewport.plugins.pause('drag');
     this.listen(true);
     this.button.setHeld(true);
@@ -224,7 +214,7 @@ export class GroupRotation {
     this.end(false);
   };
 
-  /** The group as turned `degrees`: the tokens face round at once, their places and the drawings follow in the store. */
+  /** The group as turned `degrees`: the tokens face round at once, their places and the annotations follow in the store. */
   private show(turn: Turn, degrees: number): void {
     const { store } = this.deps;
     // Before the store moves anything: the frame holds still from here, or it would frame the turned group anew
@@ -232,9 +222,7 @@ export class GroupRotation {
     const turned = turnTokens(turn.tokens, turn.centre, degrees);
     turn.host.showFacings(new Map(turned.map(({ id, rotation }) => [id, rotation])));
     store.getState().setTokenPositions(turned.map(({ id, x, y }) => ({ id, x, y })));
-    if (turn.drawings.length > 0) {
-      store.getState().placeAnnotations(Object.fromEntries(turn.drawings.map(({ id, place }) => [id, turnedPlace(place, turn.centre, degrees)])));
-    }
+    turn.annotations?.show(turnAbout(turn.centre, degrees));
     this.button.show(turn.frame, this.zoom, { pivot: turn.centre, degrees });
   }
 
@@ -272,6 +260,8 @@ export class GroupRotation {
     const { store } = this.deps;
     // Exactly where the turn showed them: the pivot keeps a clean turn on the grid
     store.getState().dropTokens(turnTokens(turn.tokens, turn.centre, turn.degrees));
+    // Every step of theirs is in the store already, inside this turn's undo step.
+    turn.annotations?.commit(() => undefined);
     turn.host.showFacings(null);
     endHistoryTransaction(store);
   }
@@ -280,7 +270,7 @@ export class GroupRotation {
     const { store } = this.deps;
     turn.host.showFacings(null);
     store.getState().setTokenPositions(turn.tokens.map(({ id, x, y }) => ({ id, x, y })));
-    if (turn.drawings.length > 0) store.getState().placeAnnotations(Object.fromEntries(turn.drawings.map(({ id, place }) => [id, place])));
+    turn.annotations?.drop();
     holdTokens(store, []);
     abandonHistoryTransaction(store);
   }

@@ -36,7 +36,7 @@ describe('drawings and texts in the store', () => {
     expect(drawings()[id]!.points).toEqual(ROOM.points);
     expect(drawings()[id]!.points).not.toBe(frozen.points);
     expect(drawings()[id]!.holes![0]).not.toBe(ROOM.holes![0]);
-    store.getState().moveDrawings([id], 1, 1);
+    store.getState().moveAnnotations([id], 1, 1);
     expect(ROOM.points[0]).toEqual({ x: 0, y: 0 });
 
     const placed = store.getState().addDrawing({ ...PEN, order: -4 });
@@ -121,12 +121,8 @@ describe('drawings and texts in the store', () => {
     // The hints still fit: a moved curve keeps its anchors
     expect(annotationList(store.getState().objects).find(({ id }) => id === curve)).toMatchObject({ shape: 'line', anchors: shifted(CURVE.anchors!, 5, -3) });
 
-    // The older action moves drawings alone, with all that lies with their points
-    store.getState().moveDrawings([room, label], -5, 3);
+    undo();
     expect(drawings()[room]!.holes).toEqual(ROOM.holes);
-    expect(texts()[label]).toMatchObject({ x: 15, y: 17 });
-    undo();
-    undo();
     expect(drawings()[curve]!.anchors).toEqual(CURVE.anchors);
   });
 

@@ -71,7 +71,6 @@ import { laser } from './laser';
 import { text } from './text';
 import { audio } from './audio';
 import { draw } from './draw';
-import { drawing } from './drawing';
 import { dungeon } from './dungeon';
 import { dungeonProp } from './dungeonProp';
 import { dungeonScene } from './dungeonScene';
@@ -187,7 +186,6 @@ export const en = {
   ...text,
   ...audio,
   ...draw,
-  ...drawing,
   ...dungeon,
   ...dungeonProp,
   ...dungeonScene,

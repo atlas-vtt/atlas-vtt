@@ -59,7 +59,6 @@ import { pin } from './pin';
 import { laser } from './laser';
 import { text } from './text';
 import { audio } from './audio';
-import { drawing } from './drawing';
 import { editToken } from './editToken';
 import { templateEditor } from './templateEditor';
 import { tables } from './tables';
@@ -167,7 +166,6 @@ export const ru: Translation = {
   ...laser,
   ...text,
   ...audio,
-  ...drawing,
   ...editToken,
   ...hex,
   ...light,

@@ -8,14 +8,14 @@ type Positions = Record<string, { x: number; y: number }>;
 
 /**
  * Alt/Option-drag: copies the dragged tokens where they stand, so the drag carries the copies
- * away and the originals stay put. Drawings in the selection are copied too; their copies stay
- * behind while the drawing drag keeps moving the originals, which reads the same on screen.
+ * away and the originals stay put. Drawings and texts in the selection are copied too; their copies
+ * stay behind while their own drag keeps moving the originals, which reads the same on screen.
  * The moving group becomes the selection, unless it is a token dragged from outside the
  * selection (`fromSelection` false): that copy moves alone and the selection stays as it was.
  *
  * Call it inside the drag's history transaction, which makes the copy and the move one undo
  * step, and before anything has moved: the token drag registers its pointer listener before
- * the drawing drag, so this runs first on the move that crosses the drag threshold.
+ * the annotations' own, so this runs first on the move that crosses the drag threshold.
  * Returns the token copies' ids with their start positions, or null when nothing was copied.
  */
 export function copyDragSelection(
@@ -27,12 +27,13 @@ export function copyDragSelection(
   const state = store.getState();
   const tokenIds = dragIds.filter((id) => mapTokens(levelObjects(state))[id] && initialPositions[id]);
   if (tokenIds.length === 0) return null;
-  const drawingIds = fromSelection ? state.selectedIds.filter((id) => levelObjects(state).drawings[id]) : [];
+  const objects = levelObjects(state);
+  const annotationIds = fromSelection ? state.selectedIds.filter((id) => objects.drawings[id] || objects.texts[id]) : [];
 
   // Tokens are inserted first, in the order they were collected, so copies line up with tokenIds.
-  const copies = state.insertMapObjects(collectMapObjects(levelObjects(state), [...tokenIds, ...drawingIds]));
+  const copies = state.insertMapObjects(collectMapObjects(objects, [...tokenIds, ...annotationIds]));
   const ids = copies.slice(0, tokenIds.length);
-  if (fromSelection) state.setSelection([...ids, ...drawingIds]);
+  if (fromSelection) state.setSelection([...ids, ...annotationIds]);
 
   const positions: Positions = {};
   ids.forEach((id, index) => {

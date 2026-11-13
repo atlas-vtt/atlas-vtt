@@ -49,7 +49,9 @@ const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'e
 /**
  * What the Draw tool's gestures do to the scene: the drawing under way is shown as it will stay
  * (`LiveStroke`), a finished one is written with the tool's choices (`madeDrawing`), a click of the
- * Stamp mode places the tool's symbol and one of the Text mode asks for a text's words. The
+ * Stamp mode places the tool's symbol and one of the Text mode asks for a text's words. What was
+ * made is selected, so it can be pulled right at once; but not a pen's stroke, since the next
+ * stroke often starts on the end of the last, where a handle would take the press. The
  * eraser cuts what its sweep passes (`sweepChange`), every step of it written at once and the
  * whole sweep one undo step; its ring follows the pointer. A level that is full takes nothing more,
  * and says so.
@@ -125,6 +127,8 @@ export class DrawToolHost {
   }
 
   private started(mode: GestureMode): void {
+    // The pen works with nothing selected: what an earlier mode left selected is let go of.
+    if (mode === 'pen') this.deselect();
     if (mode !== 'eraser' || this.sweeping) return;
     this.sweeping = true;
     this.toldFull = false;
@@ -163,7 +167,10 @@ export class DrawToolHost {
     if (made) {
       const state = this.deps.store.getState();
       const drawing = madeDrawing(made, state.drawTool, drawCell(state.grid), this.zoom);
-      if (drawing && this.hasRoom('drawings')) state.addDrawing(drawing);
+      if (drawing && this.hasRoom('drawings')) {
+        const id = state.addDrawing(drawing);
+        if (made.mode !== 'pen') this.select(id);
+      }
     }
     // After the drawing is on the map: the stroke never blinks between the two.
     this.live.clear();
@@ -183,7 +190,7 @@ export class DrawToolHost {
     const state = this.deps.store.getState();
     const cell = drawCell(state.grid);
     const at = snapStampPoint(this.deps.snapGrid(), world, free, stampSize(state.drawTool.size, cell));
-    state.addDrawing(madeStamp(at, state.drawTool, cell));
+    this.select(state.addDrawing(madeStamp(at, state.drawTool, cell)));
   }
 
   /** Asks for the words of a text at `world` and adds it; none where the GM gives none, or looks at another scene or level by then, or closed the view. */
@@ -193,7 +200,20 @@ export class DrawToolHost {
     const words = await this.deps.askText();
     const state = this.deps.store.getState();
     if (!words || this.destroyed || state.mapPath !== mapPath || state.viewedLevel !== viewedLevel || !this.hasRoom('texts')) return;
-    state.addText(madeText(words, world, state.drawTool, drawCell(state.grid)));
+    this.select(state.addText(madeText(words, world, state.drawTool, drawCell(state.grid))));
+  }
+
+  /** What was just made is selected: it shows its handles until the next press elsewhere, and the bars show its style. */
+  private select(id: string): void {
+    this.deps.store.getState().setSelection([id]);
+  }
+
+  /** Takes the drawings and texts out of the selection. */
+  private deselect(): void {
+    const state = this.deps.store.getState();
+    const { drawings, texts } = levelObjects(state);
+    const others = state.selectedIds.filter((id) => !drawings[id] && !texts[id]);
+    if (others.length !== state.selectedIds.length) state.setSelection(others);
   }
 
   /** Whether the level shown takes one more; tells the GM where it does not. */

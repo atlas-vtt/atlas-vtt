@@ -109,20 +109,24 @@ describe('the canvas in the players\' picture and the drawings', () => {
     expect(shown()).toMatchObject({ secret: true, trap: true, note: true });
   });
 
-  it('keeps a selected text\'s handles out of a frame for others, and lets what the canvas hides leave the selection', () => {
+  it('keeps the handles of what is selected out of a frame for others, and lets what the canvas hides leave the selection', () => {
     const { renderer, s } = harness();
-    const handles = (): boolean[] => ['textRotationUI', 'textResizeUI'].map((name) => s.viewport.children.find((child) => child.label === name)?.visible === true);
+    const frame = s.renderer.chrome.getChildByLabel('annotation-frame', true)!.children[0] as unknown as { context: { instructions: unknown[] } };
+    /** Whether a render now would draw the selection's frame and handles. */
+    const handles = (): boolean => s.renderer.chrome.visible && frame.context.instructions.length > 0;
     s.store.getState().setSelection(['note']);
-    expect(handles()).toEqual([true, true]);
-    let during: boolean[] = [];
+    expect(handles()).toBe(true);
+    let during: boolean | undefined;
     renderer.withPlayerSafeFrame(() => { during = handles(); }, SETTINGS, FRAME);
-    expect(during).toEqual([false, false]);
-    expect(renderer.captureSceneFrame({} as never, handles)).toEqual([false, false]);
-    expect(handles()).toEqual([true, true]);
-    // In session view the hidden text is not there to be selected: its handles go with it.
+    expect(during).toBe(false);
+    expect(renderer.captureSceneFrame({} as never, handles)).toBe(false);
+    expect(handles()).toBe(true);
+    // In session view the hidden text is not there to be selected, and no handle shows for anything.
     s.store.getState().setGMView(false);
     expect(s.store.getState().selectedIds).toEqual([]);
-    expect(handles()).toEqual([false, false]);
+    expect(handles()).toBe(false);
+    s.store.getState().setSelection(['sign']);
+    expect(handles()).toBe(false);
     // What players see stays selected.
     s.store.getState().setGMView(true);
     s.store.getState().setSelection(['sign', 'shown', 'secret']);
@@ -151,18 +155,21 @@ describe('the canvas in the players\' picture and the drawings', () => {
     expect(shown()).toMatchObject({ shown: true, secret: false, trap: false, note: false });
   });
 
-  it('takes no press on a drawing the canvas hides', () => {
+  it('takes no press on a drawing the canvas hides, and none on any while it shows the players\' picture', () => {
     const { s } = harness();
-    s.store.setState({ objects: { ...s.store.getState().objects, drawings: { secret: pen('secret', { hidden: true }) } } });
-    expect(s.renderer.drawings.hitTest(50, 0)).toBe('secret');
+    s.store.setState({ objects: { ...s.store.getState().objects, drawings: { secret: pen('secret', { hidden: true }), shown: pen('shown', { points: [{ x: 0, y: 40 }, { x: 100, y: 40 }] }) }, texts: {} } });
+    expect(s.renderer.selecting.pointer.cursorAt(50, 0, () => false)).toBe('move');
     s.store.getState().setGMView(false);
-    expect(s.renderer.drawings.hitTest(50, 0)).toBeNull();
+    expect(s.renderer.selecting.pointer.cursorAt(50, 0, () => false)).toBeNull();
+    expect(s.press(50, 0)).toBe(false);
+    expect(s.press(50, 40)).toBe(false);
+    expect(s.store.getState().selectedIds).toEqual([]);
   });
 
-  it('takes no press of the select tool on a drawing that lies on the map, or is locked', () => {
+  it('takes no press of the move tool on a drawing that lies on the map, or is locked', () => {
     const { s } = harness();
-    s.store.setState({ objects: { ...s.store.getState().objects, drawings: { floor: pen('floor', { layer: 'map' }), kept: pen('kept', { locked: true, points: [{ x: 0, y: 40 }, { x: 100, y: 40 }] }) } } });
-    expect(s.renderer.drawings.hitTest(50, 0)).toBeNull();
-    expect(s.renderer.drawings.hitTest(50, 40)).toBeNull();
+    s.store.setState({ objects: { ...s.store.getState().objects, drawings: { floor: pen('floor', { layer: 'map' }), kept: pen('kept', { locked: true, points: [{ x: 0, y: 40 }, { x: 100, y: 40 }] }) }, texts: {} } });
+    expect(s.press(50, 0)).toBe(false);
+    expect(s.press(50, 40)).toBe(false);
   });
 });

@@ -1,13 +1,14 @@
 import { Container, Graphics, type Sprite } from 'pixi.js';
 import type { TextMeasure } from '../../annotations/annotationBounds';
 import { annotationIndex } from '../../annotations/annotationHit';
-import type { Annotation, DrawLayer, TextAnnotation } from '../../annotations/annotationTypes';
+import type { Annotation, DrawLayer } from '../../annotations/annotationTypes';
 import { curveTolerance } from '../../annotations/drawingInk';
 import type { Box } from '../../vision/polygonBounds';
 import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../drawingLayer';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import { createTextElementView, measureTextView, textElementOf, updateTextElementView } from '../textElementView';
 import { destroyTree } from '../utils/destroyTree';
+import { LayerPreview } from './LayerPreview';
 
 /** How pale the GM sees what only the GM sees. */
 export const HIDDEN_ANNOTATION_ALPHA = 0.5;
@@ -33,8 +34,6 @@ export interface AnnotationLayerOptions {
   readonly sharpness?: TextSharpness;
   /** The picture changed in a way nothing else tells of: a stamp's symbol came in. */
   readonly changed?: () => void;
-  /** A text's view was made: whoever lets the pointer take texts sets it up. */
-  readonly textView?: (text: TextAnnotation, view: Container) => void;
 }
 
 type NodeKind = 'text' | 'stamp' | 'ink';
@@ -48,6 +47,8 @@ interface Entry {
   kind: NodeKind;
   /** The record is another than the one `node` was drawn from. */
   stale: boolean;
+  /** `node` shows where a gesture under way would leave it, not what its record says (`LayerPreview`). */
+  previewed: boolean;
 }
 
 const keyOf = (annotation: Annotation): string => `${annotation.kind}:${annotation.id}`;
@@ -55,24 +56,14 @@ const kindOf = (annotation: Annotation): NodeKind => (annotation.kind === 'text'
 
 /** The four layers by their labels, in the order they lie in their parent. */
 const LAYERS = { onMap: 'annotations-on-map', onMapHidden: 'annotations-on-map-hidden', above: 'annotations', aboveHidden: 'annotations-hidden' } as const;
-const LAYER_LABELS: ReadonlySet<string> = new Set(Object.values(LAYERS));
 
 /**
- * The node the annotation `id` is drawn in, among the annotation layers `parent` holds; null while
- * no picture has shown it. For whoever has the map's container and no layer to ask (`AnnotationLayer.node`).
+ * A container of annotations: a render group, so a pan moves it as one and a change in it builds
+ * its own instructions alone. Nothing in it takes the pointer: one dispatch decides what a press
+ * takes, from the annotations' geometry.
  */
-export function annotationNodeIn(parent: Container, id: string): Container | null {
-  for (const layer of parent.children) {
-    if (!LAYER_LABELS.has(layer.label)) continue;
-    const node = layer.children.find((child) => child.label === id);
-    if (node) return node;
-  }
-  return null;
-}
-
-/** A container of annotations: a render group, so a pan moves it as one and a change in it builds its own instructions alone. */
-function layer(label: string, zIndex: number, takesPointer: boolean): Container {
-  return new Container({ label, zIndex, isRenderGroup: true, sortableChildren: true, eventMode: takesPointer ? 'passive' : 'none', interactiveChildren: takesPointer });
+function layer(label: string, zIndex: number): Container {
+  return new Container({ label, zIndex, isRenderGroup: true, sortableChildren: true, eventMode: 'none', interactiveChildren: false });
 }
 
 /**
@@ -88,12 +79,14 @@ function layer(label: string, zIndex: number, takesPointer: boolean): Container 
  * calls `build` in each frame's tick while `building`. Shared with every page that shows a map.
  */
 export class AnnotationLayer {
-  readonly onMap = layer(LAYERS.onMap, MAP_LAYER_Z.annotationsOnMap, false);
-  readonly onMapHidden = layer(LAYERS.onMapHidden, MAP_LAYER_Z.annotationsOnMap, false);
-  readonly above = layer(LAYERS.above, MAP_LAYER_Z.annotations, true);
-  readonly aboveHidden = layer(LAYERS.aboveHidden, MAP_LAYER_Z.annotations, true);
+  readonly onMap = layer(LAYERS.onMap, MAP_LAYER_Z.annotationsOnMap);
+  readonly onMapHidden = layer(LAYERS.onMapHidden, MAP_LAYER_Z.annotationsOnMap);
+  readonly above = layer(LAYERS.above, MAP_LAYER_Z.annotations);
+  readonly aboveHidden = layer(LAYERS.aboveHidden, MAP_LAYER_Z.annotations);
   /** How many annotations were drawn since the layer was made: what a change cost. */
   drawn = 0;
+  /** Shows annotations where a gesture under way would leave them, before the store hears of it. */
+  readonly previews: LayerPreview;
 
   private readonly entries = new Map<string, Entry>();
   /** The entries by the annotations of the list as it is now. */
@@ -111,6 +104,7 @@ export class AnnotationLayer {
     this.onMapHidden.alpha = HIDDEN_ANNOTATION_ALPHA;
     this.aboveHidden.alpha = HIDDEN_ANNOTATION_ALPHA;
     parent.addChild(this.onMap, this.onMapHidden, this.above, this.aboveHidden);
+    this.previews = new LayerPreview((annotation) => this.entries.get(keyOf(annotation)), () => this.entries.values(), (entry, shown) => this.draw(entry as Entry, shown));
   }
 
   /** The measure the texts are found, framed and culled by: the size their views are drawn at. */
@@ -127,12 +121,6 @@ export class AnnotationLayer {
   layerOf(place: DrawLayer, hidden: boolean): Container {
     if (place === 'map') return hidden ? this.onMapHidden : this.onMap;
     return hidden ? this.aboveHidden : this.above;
-  }
-
-  /** Whether the texts above the tokens take the pointer; they do until told otherwise. */
-  setTextsTakePointer(take: boolean): void {
-    this.above.interactiveChildren = take;
-    this.aboveHidden.interactiveChildren = take;
   }
 
   /** What the drawing or text `id` is drawn in (a text's view, a stamp's sprite, a drawing's graphics); null while no picture has shown it. */
@@ -153,7 +141,7 @@ export class AnnotationLayer {
     list.forEach((annotation, index) => {
       let entry = this.byAnnotation.get(annotation) ?? this.entries.get(keyOf(annotation));
       if (!entry) {
-        entry = { annotation, index, node: null, kind: kindOf(annotation), stale: true };
+        entry = { annotation, index, node: null, kind: kindOf(annotation), stale: true, previewed: false };
         this.entries.set(keyOf(annotation), entry);
       } else if (entry.annotation !== annotation) {
         entry.annotation = annotation;
@@ -264,15 +252,21 @@ export class AnnotationLayer {
     entry.node = null;
   }
 
-  /** Draws an entry from its record: into the node it has where that is of its kind, else into a new one, in the layer it lies in now. */
-  private draw(entry: Entry): void {
-    const { annotation } = entry;
+  /**
+   * Draws an entry from its record, or as `shown` in its place (`LayerPreview`): into the node it has
+   * where that is of its kind, else into a new one, in the layer it lies in now.
+   */
+  private draw(entry: Entry, shown?: Annotation): void {
+    const annotation = shown ?? entry.annotation;
     const kind = kindOf(annotation);
     if (entry.kind !== kind) {
       this.discard(entry);
       entry.kind = kind;
     }
-    entry.stale = false;
+    if (!shown) {
+      entry.stale = false;
+      entry.previewed = false;
+    }
     this.drawn += 1;
     let node = entry.node;
     if (annotation.kind === 'text') {
@@ -280,12 +274,13 @@ export class AnnotationLayer {
       if (node) updateTextElementView(node, element);
       else node = createTextElementView(element);
       this.options.sharpness?.track(annotation.id, node);
-      if (!entry.node) this.options.textView?.(annotation, node);
     } else if (annotation.shape === 'stamp') {
       node ??= createStampSprite();
       placeStamp(node as Sprite, annotation, this.stamps, this.options.changed);
     } else {
       node ??= new Graphics({ eventMode: 'none' });
+      // A move shown ahead of its write moved the node itself (`LayerPreview.previewMove`).
+      node.position.set(0, 0);
       paintDrawing(node as Graphics, annotation, curveTolerance(this.options.zoom(), annotation.width));
     }
     node.label = annotation.id;

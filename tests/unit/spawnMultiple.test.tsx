@@ -115,16 +115,17 @@ describe('spawning and dragging out copies', () => {
     expect(getHistoryStore(store)!.getState().pastStates.length).toBe(steps + 1);
   });
 
-  it('Alt-drag copies selected drawings too and keeps the moving group selected', () => {
+  it('Alt-drag copies selected drawings and texts too and keeps the moving group selected', () => {
     const store = createStore();
     const [token] = store.getState().addTokens([{ x: 25, y: 25, imagePath: 'tokens/goblin.png' }]);
     const drawing = store.getState().addDrawing({ type: 'line', points: [{ x: 0, y: 0 }, { x: 50, y: 0 }], color: '#fff', width: 2, opacity: 1 });
-    store.getState().setSelection([token!, drawing]);
+    const text = store.getState().addText({ x: 60, y: 60, text: 'Gate', fontSize: 24, fontFamily: 'Arial', color: '#ffffff' });
+    store.getState().setSelection([token!, drawing, text]);
 
-    const copies = copyDragSelection(store, [token!, drawing], { [token!]: { x: 25, y: 25 } })!;
+    const copies = copyDragSelection(store, [token!, drawing, text], { [token!]: { x: 25, y: 25 } })!;
 
-    const drawings = Object.keys(store.getState().objects.drawings);
-    expect(drawings).toHaveLength(2);
-    expect(store.getState().selectedIds).toEqual([...copies.ids, drawing]);
+    expect(Object.keys(store.getState().objects.drawings)).toHaveLength(2);
+    expect(Object.keys(store.getState().objects.texts)).toHaveLength(2);
+    expect(store.getState().selectedIds).toEqual([...copies.ids, drawing, text]);
   });
 });

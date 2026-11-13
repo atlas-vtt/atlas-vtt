@@ -1,10 +1,8 @@
+// @vitest-environment jsdom
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { FederatedPointerEvent } from 'pixi.js';
-import type { Viewport } from 'pixi-viewport';
-import type { StoreApi } from 'zustand';
 import { PinRenderer } from '../../src/app/pixi/PinRenderer';
-import { DrawingInteraction } from '../../src/app/pixi/DrawingInteraction';
-import type { ViewAtlasState } from '../../src/app/storeFactory';
+import { drawScene } from '../helpers/drawScene';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({ openContextMenuGlobal }));
@@ -28,15 +26,13 @@ it('opens a pin\'s menu at the pointer in the window, not at its position on the
 });
 
 it('opens a drawing\'s menu at the pointer in the window, not at its position on the canvas', () => {
-  const state = {
-    isPlayerView: false,
-    selectedIds: ['drawing-1'],
-    objects: { drawings: { 'drawing-1': { id: 'drawing-1', type: 'freehand', color: '#ffffff' } } },
-  };
-  const store = { getState: () => state } as unknown as StoreApi<ViewAtlasState>;
-  const interaction = new DrawingInteraction({} as Viewport, store);
+  const scene = drawScene();
+  const id = scene.store.getState().addDrawing({ type: 'pen', points: [{ x: 200, y: 270 }, { x: 260, y: 270 }], color: '#ffffff', width: 4, opacity: 1 });
+  scene.store.getState().setActiveTool('move');
 
-  interaction.handleViewportPointerDown('drawing-1', rightPress);
+  expect(scene.renderer.selecting.pointer.secondaryDown(220, 270, rightPress)).toBe(true);
 
+  expect(scene.store.getState().selectedIds).toEqual([id]);
   expect(openContextMenuGlobal).toHaveBeenCalledWith(expect.any(Array), { x: 520, y: 310 });
+  scene.destroy();
 });

@@ -51,7 +51,6 @@ import { pin } from './pin';
 import { laser } from './laser';
 import { text } from './text';
 import { audio } from './audio';
-import { drawing } from './drawing';
 import { editToken } from './editToken';
 import { hex } from './hex';
 import { light } from './light';
@@ -136,7 +135,6 @@ export const zh: Translation = {
   ...laser,
   ...text,
   ...audio,
-  ...drawing,
   ...editToken,
   ...hex,
   ...light,

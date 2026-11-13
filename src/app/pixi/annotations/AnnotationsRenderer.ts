@@ -1,21 +1,24 @@
-import { Container } from 'pixi.js';
+import { Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import { annotationList } from '../../annotations/annotationList';
 import type { DrawMode } from '../../annotations/annotationTypes';
+import { snapDrawPoint } from '../../annotations/drawSnap';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { isTextEntryTarget } from '../../keyboard/textEntry';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasState } from '../../storeFactory';
-import { DrawingInteraction } from '../DrawingInteraction';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import type { TesseraView } from '../mosaicCanvas/levelOfDetail';
 import type { LayerVisibility } from '../playerSafeFrame';
-import { TextInteraction } from '../TextInteraction';
 import { TextSharpening, type TextSharpnessHost } from '../TextSharpening';
+import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
+import { copyAnnotationsMoved, editTextWords } from './annotationActions';
+import { AnnotationHandles } from './AnnotationHandles';
+import { AnnotationInteraction } from './AnnotationInteraction';
 import { AnnotationLayer } from './AnnotationLayer';
-import { askForText, showAnnotationsFullNotice } from './annotationNotices';
+import { askForText, askForTextEdit, showAnnotationsFullNotice } from './annotationNotices';
 import { AnnotationPlayersView } from './annotationPlayersView';
 import { ClickPlacing } from './ClickPlacing';
 import { DrawInput } from './DrawInput';
@@ -37,14 +40,20 @@ export interface AnnotationsRendererOptions {
    * mode); null where nobody can say yet, and unset: then the store's own view switches say it.
    */
   showsPlayers?(): boolean | null;
-  /** A selected text moved or changed: the selection is drawn again. */
-  selectionChanged?(): void;
   /** The picture changed in a way PIXI does not see (a stamp's symbol came in). */
   requestRender?(): void;
   /** Tells the GM that the level shown is full; unset, a notice. */
   readonly full?: (of: FullOf) => void;
   /** Asks the GM for a text's words; unset, the text dialog. */
   readonly askText?: () => Promise<string | null>;
+  /** Asks the GM for the words of a text that is there, as it is edited; null leaves them. Unset, the text dialog. */
+  readonly askTextEdit?: (words: string) => Promise<string | null>;
+  /** The theme's accent, in which the handles are drawn; unset, Obsidian's. */
+  readonly accent?: () => number;
+  /** Starts the drag of the selected tokens with a press that took an annotation selected with them. */
+  dragTokens?(event: FederatedPointerEvent): void;
+  /** The clock a double click is told by, milliseconds; unset, the page's. */
+  readonly now?: () => number;
 }
 
 /** A renderer nothing more is known of: the screen's pixels to a point, as `PixiAppManager` sets up every view's. */
@@ -53,23 +62,25 @@ const SCREEN_SHARPNESS_HOST: TextSharpnessHost = { resolution: () => window.devi
 /** What lies over the whole map once it is open: the GM then works there, and no longer on what was being drawn. */
 const COVERS_MAP = ['isDMScreenOpen', 'isCommandPaletteOpen', 'isAssetManagerOpen'] as const;
 
-/** The modes in which the tool works on the map by itself: a text then takes no press, so the tool draws and erases over it. */
-const WORKING_MODES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'eraser', 'stamp', 'text'];
-
 /**
  * The drawings and texts of one map view: owns their layer (`AnnotationLayer`, drawn from the
  * store, so undo, redo and another level show at once), what keeps the texts sharp, the Draw
- * tool's input (`DrawInput`, `ClickPlacing`) with what it writes (`DrawToolHost`), and who sees
- * what (`AnnotationPlayersView`). Selecting, moving and the menus of what is on the map are the
- * two interactions it holds for the select and move tools (`drawings`, and the texts' own).
+ * tool's input (`DrawInput`, `ClickPlacing`) with what it writes (`DrawToolHost`), who sees
+ * what (`AnnotationPlayersView`), and selecting and reshaping them: one set of handles
+ * (`AnnotationHandles`) and one place that takes the pointer for them (`selecting`, which the
+ * viewport's dispatch asks through its `pointer`).
  *
  * The tool works on the GM's view of the canvas alone: while the canvas shows the players' picture
  * no gesture starts and one under way is dropped, so nothing is drawn or erased that is not shown.
  */
 export class AnnotationsRenderer {
   readonly layer: AnnotationLayer;
-  /** Selects and drags drawings with the select and move tools: the viewport's dispatch hands it the pointer. */
-  readonly drawings: DrawingInteraction;
+  /**
+   * Selecting and reshaping drawings and texts: what the viewport's dispatch asks about them
+   * (`pointer`), what Escape and Delete are theirs to take, and what the selection's highlights and
+   * a group of tokens that is turned ask of them.
+   */
+  readonly selecting: AnnotationInteraction;
 
   private readonly store: StoreApi<ViewAtlasState>;
   private readonly viewport: Viewport;
@@ -82,7 +93,7 @@ export class AnnotationsRenderer {
   readonly chrome = new Container({ label: 'annotation-chrome', zIndex: MAP_LAYER_Z.annotations, eventMode: 'none', interactiveChildren: false });
   private readonly players: AnnotationPlayersView;
   private readonly views: PictureViews;
-  private readonly texts: TextInteraction | null;
+  private readonly handles: AnnotationHandles;
   private readonly host: DrawToolHost;
   private readonly input: DrawInput;
   private readonly clicks: ClickPlacing;
@@ -92,6 +103,8 @@ export class AnnotationsRenderer {
   private textsRecord: unknown = null;
   /** The camera is followed in the view's tick: only while there is something to show or hide. */
   private ticking = false;
+  /** The zoom the handles were last drawn at. */
+  private zoom = Number.NaN;
 
   constructor(private readonly options: AnnotationsRendererOptions) {
     const { viewport, store } = options;
@@ -102,27 +115,41 @@ export class AnnotationsRenderer {
       zoom: () => Math.abs(viewport.scale.x) || 1,
       sharpness: this.sharpening,
       changed: () => options.requestRender?.(),
-      textView: (text, view) => this.texts?.adopt(text.id, view),
     });
     viewport.addChild(this.chrome);
+    this.handles = new AnnotationHandles({
+      zoom: () => Math.abs(viewport.scale.x) || 1,
+      accent: options.accent ?? ((): number => cssColorToHexNumber(getObsidianAccentColor())),
+      changed: () => options.requestRender?.(),
+    });
+    this.chrome.addChild(this.handles.view);
     this.players = new AnnotationPlayersView([...this.layer.gmLayers, this.chrome]);
     this.views = new PictureViews(viewport, (views, whole) => this.layer.setViews(views, whole));
-    // Before the texts' interaction listens: a changed text is drawn before its handles are placed by it.
     this.unsubscribe = store.subscribe((state, previous) => this.follow(state, previous));
-    this.drawings = new DrawingInteraction(viewport, store, (drawing) => !drawing.hidden || !this.showsPlayers());
-    // A view that is the players' own takes no press on a text.
-    this.texts = store.getState().isPlayerView
-      ? null
-      : new TextInteraction(viewport, store, () => options.selectionChanged?.(), { view: (id) => this.layer.node('text', id), touched: () => this.sharpening.touch() });
+    const snapGrid = (): GridGeometry | null => ((store.getState().grid?.snapToGrid ?? true) ? options.grid() : null);
+    const full = options.full ?? showAnnotationsFullNotice;
+    this.selecting = new AnnotationInteraction({
+      viewport,
+      store,
+      layer: this.layer.previews,
+      handles: this.handles,
+      measure: this.layer.measure,
+      gmView: () => !this.showsPlayers(),
+      touched: () => this.sharpening.touch(),
+      snap: (world, free) => snapDrawPoint(snapGrid(), world, free),
+      editText: (text) => void editTextWords(store, text, options.askTextEdit ?? askForTextEdit),
+      copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
+      dragTokens: (event) => options.dragTokens?.(event),
+    }, options.now);
     this.host = new DrawToolHost({
       viewport,
       store,
       layerOf: (place, hidden) => this.layer.layerOf(place, hidden),
       measure: this.layer.measure,
       chrome: this.chrome,
-      snapGrid: () => ((store.getState().grid?.snapToGrid ?? true) ? options.grid() : null),
+      snapGrid,
       gmView: () => !this.showsPlayers(),
-      full: options.full ?? showAnnotationsFullNotice,
+      full,
       askText: options.askText ?? askForText,
     });
     this.input = new DrawInput(viewport, this.host.gestures, {
@@ -142,14 +169,14 @@ export class AnnotationsRenderer {
     return this.input.drawing;
   }
 
-  /** What a players' frame changes for its one render: what only the GM sees is left out, and so are a selected text's handles. */
+  /** What a players' frame changes for its one render: what only the GM sees is left out, the handles and the hover with it. */
   getPlayerViewLayers(): LayerVisibility[] {
-    return [...this.players.playerViewLayers(), ...this.handleLayers()];
+    return this.players.playerViewLayers();
   }
 
   /** What a picture of the scene changes for its render: it is the GM's, without what the GM keeps from the players and without the tool's and the selection's marks. */
   getPictureLayers(): LayerVisibility[] {
-    return [...this.players.pictureLayers(), ...this.handleLayers()];
+    return this.players.pictureLayers();
   }
 
   /**
@@ -165,6 +192,7 @@ export class AnnotationsRenderer {
       this.deselectHidden();
     }
     this.host.toolChanged();
+    this.selecting.redraw();
   }
 
   /**
@@ -197,6 +225,7 @@ export class AnnotationsRenderer {
   /** The map is no longer what the GM looks at (another tab, another scene): a shape under way is dropped, a sweep ends where it is. */
   leave(): void {
     this.input.stop();
+    this.selecting.leaveGesture();
   }
 
   destroy(): void {
@@ -205,16 +234,11 @@ export class AnnotationsRenderer {
     this.input.destroy();
     this.clicks.destroy();
     this.host.destroy();
-    this.texts?.destroy();
-    this.drawings.destroy();
+    this.selecting.destroy();
+    this.handles.destroy();
     this.layer.destroy();
     this.sharpening.destroy();
     destroyTree(this.chrome);
-  }
-
-  /** A selected text's handles as a frame for others shows them: not at all. They show and hide by the selection, so only a frame's one render overrides them. */
-  private handleLayers(): LayerVisibility[] {
-    return (this.texts?.handleLayers ?? []).map((layer) => ({ layer, visible: false }));
   }
 
   /** Takes what only the GM sees out of the selection. */
@@ -240,6 +264,8 @@ export class AnnotationsRenderer {
     if (mode !== before) this.toolChanged(state, before);
     else if (state.drawTool.size !== previous.drawTool.size || state.grid !== previous.grid) this.host.toolChanged();
     this.read(state);
+    // After the layer has the new records: a gesture's preview ends on what they say.
+    this.selecting.follow();
   }
 
   /** Draws the annotations of the level shown when a record of theirs is another. */
@@ -270,6 +296,11 @@ export class AnnotationsRenderer {
   private readonly tick = (): void => {
     this.views.look();
     if (this.layer.building) this.layer.build();
+    const zoom = Math.abs(this.viewport.scale.x) || 1;
+    if (zoom === this.zoom) return;
+    this.zoom = zoom;
+    // The handles keep their size on screen.
+    this.selecting.redraw();
   };
 
   /** The Draw tool came into hand, went, or works in another mode. */
@@ -277,7 +308,6 @@ export class AnnotationsRenderer {
     const mode = activeDrawMode(state);
     this.input.setEnabled(mode !== null);
     this.clicks.setEnabled(mode === 'stamp' || mode === 'text');
-    this.layer.setTextsTakePointer(mode === null || !WORKING_MODES.includes(mode));
     if (mode === 'text') this.viewport.cursor = 'text';
     else if (before === 'text') this.viewport.cursor = 'default';
     this.host.toolChanged();

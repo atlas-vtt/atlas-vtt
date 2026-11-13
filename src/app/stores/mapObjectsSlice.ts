@@ -19,6 +19,7 @@ import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
 import { placedLevelLink } from '../levels/levelLinkCopies';
 import { isRecord } from '../utils/guards';
 import { placedAnnotationCopies } from '../annotations/annotationCopies';
+import { unlockedIds } from '../annotations/annotationLock';
 import { orderOnTop } from '../annotations/annotationStack';
 
 export interface MapObjectsSlice {
@@ -145,7 +146,8 @@ export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStor
     removeMapObjects: (ids) => set((draft) => {
       const { tokens, drawings, texts, pins, levelLinks } = draft.objects;
       const links = isRecord(levelLinks) ? levelLinks : {};
-      const removed = new Set(ids.filter((id) => tokens[id] || drawings[id] || texts[id] || pins[id] || links[id]));
+      // A locked drawing or text stays, and stays selected: Delete and cut are changes of it.
+      const removed = new Set(unlockedIds(ids, draft.objects).filter((id) => tokens[id] || drawings[id] || texts[id] || pins[id] || links[id]));
       const removedToken = [...removed].some((id) => tokens[id]);
       for (const id of removed) {
         delete tokens[id];

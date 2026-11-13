@@ -3,6 +3,7 @@ import { useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { useMapHotkeys } from "../../../keyboard/useMapHotkeys"
 import { AMBIENT_AUDIO_ENABLED } from "../../../featureFlags"
+import { annotationList } from "../../../annotations/annotationList"
 import { DEFAULT_DRAW_TOOL, type DrawMode } from "../../../annotations/annotationTypes"
 import { stepDrawSize } from "./drawStyleStore"
 import { eraserOrBack, nextDrawMode } from "./drawToolChoices"
@@ -94,6 +95,13 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     drawLarger: whileDrawing(() => stepDrawSize(store, 1)),
     gmView: dmOnly(toggleGMView),
     selectAll: dmOnly(() => {
+      const state = store.getState()
+      // The Draw tool's Select mode selects drawings and texts alone, as its marquee does; in the session view it selects nothing.
+      if (state.activeTool === "draw" && state.drawTool.mode === "select") {
+        const ids = state.isGMView ? annotationList(levelObjects(state)).map(({ id }) => id) : []
+        if (ids.length > 0) state.setSelection(ids)
+        return
+      }
       // Only what the canvas shows: session view hides tokens, which must not be selected unseen.
       const tokenIds = renderer?.getTokenRenderer()?.visibleTokenIds() ?? Object.keys(mapTokens(levelObjects(store.getState())))
       if (tokenIds.length > 0) store.getState().setSelection(tokenIds)

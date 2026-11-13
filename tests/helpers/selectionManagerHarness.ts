@@ -2,8 +2,9 @@ import { EventEmitter } from 'events';
 import { Container, Sprite, type FederatedPointerEvent } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { SelectionManager } from '../../src/app/pixi/SelectionManager';
-import type { DrawingStroke } from '../../src/app/types';
+import { DEFAULT_DRAW_TOOL } from '../../src/app/annotations/annotationTypes';
+import { SelectionManager, type AnnotationSelectionHost } from '../../src/app/pixi/SelectionManager';
+import type { DrawingStroke, TextElement } from '../../src/app/types';
 
 export type ScreenPoint = [number, number];
 
@@ -20,8 +21,13 @@ export interface SelectionScene {
   /** Token groups by id, as the token renderer hands them over. */
   tokens: Record<string, Container>;
   drawings?: Record<string, DrawingStroke>;
+  texts?: Record<string, TextElement>;
   /** Fog sprites by id, as the fog renderer hands them over. */
   fog?: Record<string, Container>;
+  /** The tool in hand; the select tool unless named. `'draw'` is the Draw tool in its Select mode. */
+  tool?: 'select' | 'move' | 'draw';
+  /** What the view's drawings and texts tell the selection; unset, nothing. */
+  annotations?: AnnotationSelectionHost;
 }
 
 /** A token group at (x, y) with art 70 px wide; the canvas shows it or hides it, as with the GM view switch off. */
@@ -44,18 +50,20 @@ export function penStroke(id: string, points: Array<{ x: number; y: number }>): 
  * A `SelectionManager` with the select tool, on a viewport whose world
  * coordinates are its screen coordinates, over the given tokens, drawings and fog.
  */
-export function selectionHarness({ selectionMode = 'box', tokens, drawings = {}, fog = {} }: SelectionScene): SelectionHarness {
+export function selectionHarness({ selectionMode = 'box', tokens, drawings = {}, texts = {}, fog = {}, tool = 'select', annotations }: SelectionScene): SelectionHarness {
   const viewport = Object.assign(new Container(), { toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }) });
   const tokenRecords = Object.fromEntries(Object.keys(tokens).map((id) => [id, { id }]));
   const store = createStore(subscribeWithSelector(() => ({
     selectedIds: [] as string[],
-    activeTool: 'select',
+    activeTool: tool,
+    drawTool: { ...DEFAULT_DRAW_TOOL, mode: 'select' },
     selectionMode,
-    objects: { tokens: tokenRecords, drawings },
+    objects: { tokens: tokenRecords, drawings, texts },
     setSelection(ids: string[]) { store.setState({ selectedIds: ids }); },
   })));
   const manager = new SelectionManager(viewport as never, () => tokens, () => fog, store as never, new EventEmitter());
   manager.setHitTestTokensProvider(() => null);
+  if (annotations) manager.setAnnotationHost(annotations);
   const event = ([x, y]: ScreenPoint): FederatedPointerEvent => ({ button: 0, global: { x, y }, stopPropagation: () => undefined }) as unknown as FederatedPointerEvent;
   const layer = manager.getPlayerViewLayers()[0]!.layer as Container;
   return {

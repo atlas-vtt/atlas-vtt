@@ -2,8 +2,8 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { annotationList } from '../../../src/app/annotations/annotationList';
-import { AnnotationLayer, annotationNodeIn, BUILD_POINTS, HIDDEN_ANNOTATION_ALPHA, type TextSharpness } from '../../../src/app/pixi/annotations/AnnotationLayer';
+import { annotationList, readDrawing, readText } from '../../../src/app/annotations/annotationList';
+import { AnnotationLayer, BUILD_POINTS, HIDDEN_ANNOTATION_ALPHA, type TextSharpness } from '../../../src/app/pixi/annotations/AnnotationLayer';
 import { AnnotationPlayersView } from '../../../src/app/pixi/annotations/annotationPlayersView';
 import { PictureViews } from '../../../src/app/pixi/annotations/PictureViews';
 import { MAP_LAYER_Z } from '../../../src/app/pixi/mapLayerOrder';
@@ -106,9 +106,6 @@ describe('AnnotationLayer', () => {
     expect(MAP_LAYER_Z.annotationsOnMap).toBeGreaterThan(MAP_LAYER_Z.liquids);
     expect(MAP_LAYER_Z.annotationsOnMap).toBeLessThan(MAP_LAYER_Z.measureBodies);
     expect(s.layer.above.zIndex).toBe(MAP_LAYER_Z.annotations);
-    // Found from the map's container too, by whoever has no layer to ask.
-    expect(annotationNodeIn(s.parent, 'trap')).toBe(s.layer.node('drawing', 'trap'));
-    expect(annotationNodeIn(s.parent, 'nothing')).toBeNull();
   });
 
   it('moves a node into the other layer when its drawing is shown to the players, or hidden from them', () => {
@@ -197,26 +194,58 @@ describe('AnnotationLayer', () => {
     expect(s.layer.drawn).toBe(whole);
   });
 
-  it('tells whoever lets the pointer take texts of each view once, and whoever keeps them sharp of each drawing of it', () => {
-    const parent = new Container();
-    const textView = vi.fn();
-    const sharpness = { track: vi.fn<TextSharpness['track']>(), forget: vi.fn<TextSharpness['forget']>() };
-    const layer = new AnnotationLayer(parent, { zoom: () => 1, sharpness, textView });
+  it('tells whoever keeps the texts sharp of each drawing of a text', () => {
+    const s = scene();
     const t = label('t');
-    layer.setList(annotationList({ texts: { t } }));
-    layer.setList(annotationList({ texts: { t: { ...t, x: 80 } } }));
-    expect(textView).toHaveBeenCalledOnce();
-    expect(textView).toHaveBeenCalledWith(expect.objectContaining({ id: 't' }), layer.node('text', 't'));
-    expect(sharpness.track).toHaveBeenCalledTimes(2);
-    expect(layer.node('text', 't')?.x).toBe(80);
+    s.show({}, { t });
+    s.show({}, { t: { ...t, x: 80 } });
+    expect(s.sharpness.track).toHaveBeenCalledTimes(2);
+    expect(s.layer.node('text', 't')?.x).toBe(80);
   });
 
-  it('lets the texts above the tokens take the pointer, never those on the map', () => {
+  it('lets nothing it draws take the pointer: one dispatch decides what a press takes', () => {
     const s = scene();
-    expect(s.layer.above.interactiveChildren).toBe(true);
-    expect(s.layer.onMap.interactiveChildren).toBe(false);
-    s.layer.setTextsTakePointer(false);
-    expect([s.layer.above.interactiveChildren, s.layer.aboveHidden.interactiveChildren]).toEqual([false, false]);
+    s.show({ a: pen('a') }, { t: label('t') });
+    for (const layer of [s.layer.above, s.layer.aboveHidden, s.layer.onMap, s.layer.onMapHidden]) expect([layer.eventMode, layer.interactiveChildren]).toEqual(['none', false]);
+    expect(s.layer.node('text', 't')?.listenerCount('pointerdown')).toBe(0);
+  });
+
+  it('shows a move ahead of its write by moving what is drawn, and draws nothing for it', () => {
+    const s = scene();
+    const a = pen('a');
+    const t = label('t');
+    s.show({ a }, { t });
+    const drawn = s.layer.drawn;
+    const [line, text] = [readDrawing('a', a)!, readText('t', t)!];
+    s.layer.previews.previewMove([line, text], 30, -10);
+    expect([s.layer.node('drawing', 'a')?.x, s.layer.node('drawing', 'a')?.y]).toEqual([30, -10]);
+    expect([s.layer.node('text', 't')?.x, s.layer.node('text', 't')?.y]).toEqual([80, 40]);
+    expect(s.layer.drawn).toBe(drawn);
+    // Dropped, both are where their records have them.
+    s.layer.previews.endPreview();
+    expect([s.layer.node('drawing', 'a')?.x, s.layer.node('text', 't')?.x, s.layer.node('text', 't')?.y]).toEqual([0, 50, 50]);
+  });
+
+  it('shows a reshaped drawing and a placed text ahead of their write, and their records again when the write comes or the gesture is dropped', () => {
+    const s = scene();
+    const a = pen('a');
+    const t = label('t');
+    s.show({ a }, { t });
+    const drawn = s.layer.drawn;
+    s.layer.previews.preview([readDrawing('a', { ...a, points: [{ x: 0, y: 0 }, { x: 300, y: 0 }] })!, readText('t', { ...t, x: 90, rotation: 90, scale: 2 })!]);
+    const text = s.layer.node('text', 't')!;
+    expect([text.x, text.scale.x, text.rotation]).toEqual([90, 2, Math.PI / 2]);
+    // The drawing was drawn again, the text only placed.
+    expect(s.layer.drawn).toBe(drawn + 1);
+    // The write: the new records are drawn, and ending the preview draws nothing more.
+    s.show({ a: { ...a, points: [{ x: 0, y: 0 }, { x: 300, y: 0 }] } }, { t: { ...t, x: 90, rotation: 90, scale: 2 } });
+    const written = s.layer.drawn;
+    s.layer.previews.endPreview();
+    expect(s.layer.drawn).toBe(written);
+    // Dropped instead, what was shown ahead goes back to its record.
+    s.layer.previews.preview([readText('t', { ...t, x: 500 })!]);
+    s.layer.previews.endPreview();
+    expect(s.layer.node('text', 't')?.x).toBe(90);
   });
 
   it('destroys its nodes and its layers', () => {

@@ -4,6 +4,7 @@ import { vi, type Mock } from 'vitest';
 import type { DrawToolChoices } from '../../src/app/annotations/annotationTypes';
 import type { GridGeometry } from '../../src/app/grid/gridDistance';
 import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsRenderer';
+import { markHandled, resetHandled } from '../../src/app/pixi/utils/handledEvents';
 import type { FullOf } from '../../src/app/pixi/annotations/DrawToolHost';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { DrawingStroke, TextElement } from '../../src/app/types';
@@ -16,6 +17,8 @@ export interface PointerKeys {
   shift?: boolean;
   alt?: boolean;
   pointerId?: number;
+  /** The press follows the one before it at once, as a double click's second does; else a second passes between two presses. */
+  soon?: boolean;
 }
 
 export const CELL = 70;
@@ -30,11 +33,23 @@ export interface DrawScene {
   full: Mock<(of: FullOf) => void>;
   /** What the text dialog answers. */
   askText: Mock<() => Promise<string | null>>;
+  /** What the dialog answers that edits a text's words. */
+  askTextEdit: Mock<(words: string) => Promise<string | null>>;
+  /** Told when a press on an annotation starts the drag of the tokens selected with it. */
+  dragTokens: Mock<() => void>;
   /** Whether the canvas shows the players' picture, as a peek would make it: null leaves it to the store. */
   players: { shown: boolean | null };
   /** Takes the Draw tool into hand in `mode`, with other choices where given. */
   tool(choices: Partial<DrawToolChoices>): void;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointertap', x: number, y: number, keys?: PointerKeys): void;
+  /**
+   * A press as the viewport's dispatch (`TokenRenderer`) hands it to the drawings and texts before
+   * the viewport's other listeners hear it: the handles first, then what the tool in hand takes;
+   * a secondary press asks for the menu. Whether they took it.
+   */
+  press(x: number, y: number, keys?: PointerKeys): boolean;
+  /** `press`, the moves through the rest of `path`, and the release at its end. */
+  pull(path: readonly (readonly [number, number])[], keys?: PointerKeys): boolean;
   /** A press, the moves through `path`, and the release at its end. */
   drag(path: readonly (readonly [number, number])[], keys?: PointerKeys): void;
   /** A click in place: a press and its release. */
@@ -58,27 +73,54 @@ export function drawScene(options: { grid?: GridGeometry | null; playerView?: bo
   if (options.playerView) store.setState({ isPlayerView: true });
   const full = vi.fn<(of: FullOf) => void>();
   const askText = vi.fn<() => Promise<string | null>>(() => Promise.resolve('Gate'));
+  const askTextEdit = vi.fn<(words: string) => Promise<string | null>>((words) => Promise.resolve(`${words}!`));
+  const dragTokens = vi.fn<() => void>();
   const players: DrawScene['players'] = { shown: null };
   const grid = options.grid === undefined ? SQUARE_GRID : options.grid;
   const renderer = new AnnotationsRenderer({
-    viewport, store, grid: () => grid, full, askText, showsPlayers: () => players.shown,
+    viewport, store, grid: () => grid, full, askText, askTextEdit, showsPlayers: () => players.shown, accent: () => 0x8a5cf5, now: () => clock, dragTokens,
     ...(options.keysBelongToMap && { keysBelongToMap: options.keysBelongToMap }),
   });
+  let clock = 0;
   const boundary = new EventBoundary(viewport);
+  const eventOf = (x: number, y: number, keys: PointerKeys): FederatedPointerEvent => {
+    const event = new FederatedPointerEvent(boundary);
+    event.button = keys.button ?? 0;
+    event.shiftKey = keys.shift ?? false;
+    event.altKey = keys.alt ?? false;
+    event.pointerId = keys.pointerId ?? 1;
+    event.global.set(x, y);
+    return event;
+  };
   const scene: DrawScene = {
-    renderer, viewport, store, full, askText, players,
+    renderer, viewport, store, full, askText, askTextEdit, dragTokens, players,
     tool(choices): void {
       store.getState().setDrawTool(choices);
       store.getState().setActiveTool('draw');
     },
     pointer(type, x, y, keys = {}): void {
-      const event = new FederatedPointerEvent(boundary);
-      event.button = keys.button ?? 0;
-      event.shiftKey = keys.shift ?? false;
-      event.altKey = keys.alt ?? false;
-      event.pointerId = keys.pointerId ?? 1;
-      event.global.set(x, y);
-      viewport.emit(type, event);
+      viewport.emit(type, eventOf(x, y, keys));
+    },
+    press(x, y, keys = {}): boolean {
+      if (!keys.soon) clock += 1000;
+      const event = eventOf(x, y, keys);
+      resetHandled(event);
+      const world = viewport.toWorld(event.global);
+      const taken = event.button === 2
+        ? renderer.selecting.pointer.secondaryDown(world.x, world.y, event)
+        : renderer.selecting.pointer.gripDown(world.x, world.y, event) || renderer.selecting.pointer.pointerDown(world.x, world.y, event);
+      if (taken) markHandled(event);
+      viewport.emit('pointerdown', event);
+      return taken;
+    },
+    pull(path, keys): boolean {
+      const [first, ...rest] = path;
+      const last = path[path.length - 1];
+      if (!first || !last) return false;
+      const taken = scene.press(first[0], first[1], keys);
+      for (const [x, y] of rest) scene.pointer('pointermove', x, y, keys);
+      scene.pointer('pointerup', last[0], last[1], keys);
+      return taken;
     },
     drag(path, keys): void {
       const [first, ...rest] = path;

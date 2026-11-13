@@ -5,6 +5,8 @@ import { Container, Sprite } from 'pixi.js';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { snapTokenCenter } from '../../src/app/grid/gridPlacement';
+import { annotationList } from '../../src/app/annotations/annotationList';
+import { AnnotationEdit, type EditLayer } from '../../src/app/pixi/annotations/AnnotationEdit';
 import { GroupRotation, type GroupTurnHost } from '../../src/app/pixi/selection/GroupRotation';
 import { gridPivot } from '../../src/app/pixi/selection/groupTurn';
 import type { DrawingStroke, TokenEntity } from '../../src/app/types';
@@ -31,6 +33,8 @@ vi.mock('../../src/app/pixi/utils/measureLabel', async () => {
 });
 
 const CELL = 70;
+/** A turn with tokens writes the store at every step: the layer shows nothing ahead of it. */
+const NO_PREVIEW: EditLayer = { preview: () => undefined, previewMove: () => undefined, endPreview: () => undefined };
 const squareCell = (point: { x: number; y: number }): { x: number; y: number } =>
   ({ x: (Math.floor(point.x / CELL) + 0.5) * CELL, y: (Math.floor(point.y / CELL) + 0.5) * CELL });
 
@@ -63,6 +67,11 @@ function setup(activeTool: 'select' | 'draw-pen' = 'select') {
   const turnFrame = vi.fn();
   const rotation = new GroupRotation({
     viewport: viewport as never, store, host: () => host, frame: () => frame, turnFrame, refresh: () => undefined,
+    // As the view's drawings and texts hand them out (`AnnotationInteraction.turnAlong`)
+    annotations: (ids) => {
+      const turning = annotationList(store.getState().objects).filter((annotation) => ids.includes(annotation.id));
+      return turning.length > 0 ? new AnnotationEdit(turning, NO_PREVIEW, undefined, (places) => store.getState().placeAnnotations(places)) : null;
+    },
     accent: () => 0x8a5cf5, reducedMotion: () => true,
   });
   rotation.follow(frame, ['a', 'b'], false);

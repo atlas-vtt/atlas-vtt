@@ -13,3 +13,8 @@ export function showAnnotationsFullNotice(of: FullOf): void {
 export function askForText(): Promise<string | null> {
   return promptForText({ title: t('text.add'), confirmLabel: t('creator.create'), placeholder: t('text.placeholder') });
 }
+
+/** Asks the GM for the words of a text that is on the map, starting from `words`; null where they are left as they are. */
+export function askForTextEdit(words: string): Promise<string | null> {
+  return promptForText({ title: t('text.editTitle'), confirmLabel: t('common.save'), initialValue: words });
+}

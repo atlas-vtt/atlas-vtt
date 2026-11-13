@@ -61,6 +61,7 @@ import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
 import type { MapFeaturePointerHandlers } from './mapFeatures/MapFeatureInteraction';
 import type { LightPointerHandlers } from './lighting/LightInteraction';
 import type { MeasurePointerHandlers } from './measure/measureHandle';
+import type { AnnotationPointerHandlers } from './annotations/annotationPointer';
 import { runInBackground } from '../utils/backgroundTask';
 import { isModHeld } from '../keyboard/modKey';
 import type { AreaToolPointer } from './areas/PolygonAreaEditor';
@@ -148,11 +149,9 @@ export class TokenRenderer {
   // Fog provider pattern — wired by PixiRendererOrchestrator
   private fogHitTestProvider?: (worldX: number, worldY: number) => string | null;
   private fogClickHandler?: (fogId: string, e: FederatedPointerEvent) => void;
-  private drawingHitTestProvider?: (worldX: number, worldY: number) => string | null;
   /** Whether a world point lies inside the frame drawn around a selection of two or more. */
   private groupFrameHitTest?: (worldX: number, worldY: number) => boolean;
-  private drawingClickHandler?: (drawingId: string, e: FederatedPointerEvent) => void;
-  private drawingDragStartHandler?: (e: FederatedPointerEvent) => void;
+  private annotationHandlers?: AnnotationPointerHandlers;
 
   // Pin provider pattern — wired by PixiRendererOrchestrator
   private pinHitTestProvider?: (worldX: number, worldY: number) => string | null;
@@ -1554,17 +1553,18 @@ export class TokenRenderer {
     this.groupFrameHitTest = fn;
   }
 
-  public setDrawingHitTestProvider(fn: (worldX: number, worldY: number) => string | null): void {
-    this.drawingHitTestProvider = fn;
+  /**
+   * Drawings and texts: which of them a press takes is theirs to say (`AnnotationInteraction`), by
+   * the tool in hand. The dispatch asks them where their turn comes: their handles before the
+   * tokens, they themselves after tokens and the group frame.
+   */
+  public setAnnotationHandlers(handlers: AnnotationPointerHandlers): void {
+    this.annotationHandlers = handlers;
   }
 
-  public setDrawingClickHandler(fn: (drawingId: string, e: FederatedPointerEvent) => void): void {
-    this.drawingClickHandler = fn;
-  }
-
-  /** Called when a group drag starts, so selected drawings follow the tokens. */
-  public setDrawingDragStartHandler(fn: (e: FederatedPointerEvent) => void): void {
-    this.drawingDragStartHandler = fn;
+  /** Starts the drag of the selected tokens with the press `e`: a press on a drawing or text drags the tokens selected with it. */
+  public dragSelectedTokens(e: FederatedPointerEvent): void {
+    this.startTokenGroupDrag(e);
   }
 
   public setPlacementGuard(active: () => boolean): void {
@@ -1738,11 +1738,11 @@ export class TokenRenderer {
     if (tokenIds.length > 0) this.interactionController.handleViewportGroupDragStart(tokenIds, e);
   }
 
-  /** Drag the whole selection, tokens and drawings alike. */
+  /** Drag the whole selection, tokens, drawings and texts alike. */
   private startGroupDrag(e: FederatedPointerEvent): void {
     e.stopPropagation();
     this.startTokenGroupDrag(e);
-    this.drawingDragStartHandler?.(e);
+    this.annotationHandlers?.dragAlong(e);
   }
 
   /** Set up viewport-level pointer handlers. Called once during init. */
@@ -1816,6 +1816,11 @@ export class TokenRenderer {
       // A token takes the right-click from a linked hex or fog beneath it, as it takes the left-click
       const tokenTools = activeTool === 'select' || activeTool === 'move';
       const onToken = tokenTools && this.hitTestTokens(worldPos.x, worldPos.y) !== null;
+      // A drawing or text lies above linked hexes, features and fog: its menu opens on the press, where a press would take it
+      if (!onToken && this.annotationHandlers?.secondaryDown(worldPos.x, worldPos.y, e)) {
+        markHandled(e);
+        return;
+      }
       // Linked hexes and fog cover whole stretches of the map: their press stays unhandled, so a
       // right-drag still pans, and the menu opens when the button is released in place
       if (tokenTools && !onToken && this.hexLinkHandlers) {
@@ -1870,6 +1875,18 @@ export class TokenRenderer {
       return;
     }
 
+    // ── Handles of the selected drawings and texts: small marks above everything they frame ──
+    if (primary && this.annotationHandlers?.gripDown(worldPos.x, worldPos.y, e)) {
+      markHandled(e);
+      return;
+    }
+
+    // ── Draw tool: its Select mode takes drawings and texts; its other modes draw (`DrawInput`) ──
+    if (activeTool === 'draw') {
+      if (primary && this.annotationHandlers?.pointerDown(worldPos.x, worldPos.y, e)) markHandled(e);
+      return;
+    }
+
     // ── Stairs tool: drawing and reshaping stairs between levels ─────────
     if (activeTool === 'stairs' && primary && this.stairsTool?.pointerDown(worldPos, e)) {
       markHandled(e);
@@ -1908,8 +1925,8 @@ export class TokenRenderer {
     if (tokenId) {
       markHandled(e);
       this.interactionController.handleViewportTokenPointerDown(tokenId, e);
-      // Drawings selected alongside the token follow its drag; a token from outside the selection moves alone
-      if (primary && this.store.getState().selectedIds.includes(tokenId)) this.drawingDragStartHandler?.(e);
+      // Drawings and texts selected alongside the token follow its drag; a token from outside the selection moves alone
+      if (primary && this.store.getState().selectedIds.includes(tokenId)) this.annotationHandlers?.dragAlong(e);
       return;
     }
 
@@ -1920,15 +1937,10 @@ export class TokenRenderer {
       return;
     }
 
-    // 3. Hit-test drawings (select + drag, or context menu; tokens selected alongside follow a drag)
-    if (this.drawingHitTestProvider && this.drawingClickHandler) {
-      const drawingId = this.drawingHitTestProvider(worldPos.x, worldPos.y);
-      if (drawingId) {
-        markHandled(e);
-        this.drawingClickHandler(drawingId, e);
-        if (primary) this.startTokenGroupDrag(e);
-        return;
-      }
+    // 3. Drawings and texts above the tokens (select + drag; tokens selected alongside follow the drag)
+    if (primary && this.annotationHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
+      markHandled(e);
+      return;
     }
 
     // 4. Linked hexes open their note on click; the event stays unhandled, so a drag still pans or selects
@@ -1985,6 +1997,7 @@ export class TokenRenderer {
     this.mapFeatureHandlers?.leave();
     this.lightHandlers?.leave();
     this.measureHandlers?.leave();
+    this.annotationHandlers?.leave();
     this.interactionController.handleViewportTokenHover(null);
     this.uiManager.setHoverState(null);
   };
@@ -2028,6 +2041,7 @@ export class TokenRenderer {
         this.uiManager.setHoverState(null);
         this.hexLinkHandlers?.hover(null, e);
         this.mapFeatureHandlers?.leave();
+        this.annotationHandlers?.leave();
         this.applyCursor('pointer');
         return;
       }
@@ -2058,12 +2072,16 @@ export class TokenRenderer {
       return;
     }
 
-    if (markerCursor) {
+    // A handle of the selected drawings and texts, or one of them a press would take: after the markers, and after a token where the tool gives it the press
+    if (markerCursor) this.annotationHandlers?.leave();
+    const annotationCursor = markerCursor ? null : this.annotationHandlers?.cursorAt(worldPos.x, worldPos.y, () => this.hitTestTokens(worldPos.x, worldPos.y) !== null) ?? null;
+    const takenCursor = markerCursor ?? annotationCursor;
+    if (takenCursor) {
       this.interactionController.handleViewportTokenHover(null);
       this.uiManager.setHoverState(null);
       this.hexLinkHandlers?.hover(null, e);
       this.mapFeatureHandlers?.leave();
-      this.applyCursor(markerCursor);
+      this.applyCursor(takenCursor);
       return;
     }
 

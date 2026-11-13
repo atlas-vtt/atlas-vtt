@@ -162,6 +162,7 @@
     "src/app/pixi/measurePartsVisibility.ts",
     "src/app/pixi/mapLayerOrder.ts",
     "src/app/pixi/annotations/AnnotationLayer.ts",
+    "src/app/pixi/annotations/LayerPreview.ts",
     "src/app/pixi/annotations/LiveStroke.ts",
     "src/app/pixi/annotations/annotationPlayersView.ts",
     "src/app/pixi/annotations/drawGesture.ts",

@@ -207,6 +207,27 @@ describe('MainToolbar and the Draw tool', () => {
     expect(setSelection).toHaveBeenCalledWith(['hero']);
   });
 
+  it('selects every drawing and text, and no token, with select all in the Draw tool\'s Select mode', () => {
+    visibleTokenIds = ['hero'];
+    const before = { activeTool: storeState.activeTool, drawTool: storeState.drawTool, objects: storeState.objects };
+    Object.assign(storeState, {
+      activeTool: 'draw',
+      drawTool: { ...DEFAULT_DRAW_TOOL, mode: 'select' },
+      objects: {
+        tokens: {},
+        drawings: { mark: { id: 'mark', kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: 0, y: 0 }, { x: 9, y: 9 }], color: '#ffffff', width: 4, opacity: 1, layer: 'map' } },
+        texts: { sign: { id: 'sign', kind: 'text', x: 0, y: 0, text: 'Gate', fontSize: 24, fontFamily: 'Arial', color: '#ffffff', locked: true } },
+      },
+    });
+    try {
+      render(<MainToolbar viewId="view-1" />);
+      capturedShortcuts.selectAll(new KeyboardEvent('keydown', { key: 'a', metaKey: true }));
+      expect(setSelection).toHaveBeenCalledWith(['sign', 'mark']);
+    } finally {
+      Object.assign(storeState, before);
+    }
+  });
+
   it('renders one button for drawing and text, named by the mode in hand, which selects the tool', () => {
     render(<MainToolbar viewId="view-1" />);
 

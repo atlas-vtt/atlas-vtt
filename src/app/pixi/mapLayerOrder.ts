@@ -36,8 +36,6 @@ export const MAP_LAYER_Z = {
   selection: 99,
   /** The ruler being drawn and the measurements left on the map. */
   measure: 99,
-  /** The rotate and resize handles of a selected text. */
-  textHandles: 99,
   /** The grid alignment tool's points, edges and cursor. */
   gridAlignment: 99,
   /** The button above a group selection that turns it: above the tokens' bars, which must not cover it. */

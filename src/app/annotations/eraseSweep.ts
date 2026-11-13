@@ -6,6 +6,7 @@
 
 import { boxOutline, inTurnedBox, textBox, type TextMeasure } from './annotationBounds';
 import type { AnnotationIndex } from './annotationHit';
+import { isLocked } from './annotationLock';
 import type { DrawingInput, TextAnnotation } from './annotationTypes';
 import { erased, type EraseSweep } from './eraseCut';
 import { linesDistanceSq } from './lineMath';
@@ -43,7 +44,7 @@ export function sweepChange(index: AnnotationIndex, sweep: EraseSweep, whole: bo
   }
   const change: SweepChange = { removed: [], added: [], texts: [] };
   for (const annotation of index.touching({ minX: minX - radius, minY: minY - radius, maxX: maxX + radius, maxY: maxY + radius })) {
-    if (annotation.locked) continue;
+    if (isLocked(annotation)) continue;
     if (annotation.kind === 'text') {
       if (reachesText(sweep, annotation, index.measure)) change.texts.push(annotation.id);
       continue;

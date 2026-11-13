@@ -524,8 +524,8 @@ export class PixiRendererOrchestrator { // Renamed class
       keysBelongToMap: (event) => canRunMapHotkeys(event, this.viewId),
       // Before the tokens are drawn nobody knows of a peek: the store's own view switches say it then
       showsPlayers: () => (this.tokenRenderer ? this.tokenRenderer.playersSeeOnCanvas() !== null : null),
-      selectionChanged: () => this.selectionManager?.updateSelectionOverlay(),
       requestRender: () => requestRender(this.pixiAppManager.app),
+      dragTokens: (event) => this.tokenRenderer?.dragSelectedTokens(event),
     });
     this.annotations = annotations;
     this.eventBusUnsubscribers.push(onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => annotations.leave()));
@@ -1077,8 +1077,8 @@ export class PixiRendererOrchestrator { // Renamed class
       const settings = SettingsService.forApp(this.obsApp);
       // Escape key
       if (matchesMapHotkey(e, 'cancel', settings)) {
-        // A group being turned is put back; the selection stays
-        if (this.selectionManager?.handleEscape()) {
+        // A group being turned, or a drawing being reshaped, is put back; the selection stays
+        if (this.selectionManager?.handleEscape() || this.annotations?.selecting.handleEscape()) {
           e.preventDefault();
           return;
         }
@@ -1103,8 +1103,8 @@ export class PixiRendererOrchestrator { // Renamed class
 
       // Delete selected tokens on Delete or Backspace key
       if (!this.store.getState().isPlayerView && (matchesMapHotkey(e, 'delete', settings) || matchesMapHotkey(e, 'deleteAlt', settings))) {
-        // The kept measurement under the pointer goes before anything selected does
-        if (this.measureRenderer?.handles.handleDelete() || this.levelLinks?.handleDelete() || this.lighting?.handleDelete()) {
+        // The kept measurement under the pointer, and a line's point under it, go before anything selected does
+        if (this.measureRenderer?.handles.handleDelete() || this.annotations?.selecting.handleDelete() || this.levelLinks?.handleDelete() || this.lighting?.handleDelete()) {
           e.preventDefault();
           return;
         }
@@ -1158,16 +1158,15 @@ export class PixiRendererOrchestrator { // Renamed class
         (fogId, e) => this.fogRenderer!.handleViewportFogPointerDown(fogId, e)
       );
     }
-    // The drawings are made after the first wiring pass, so they are resolved when asked
-    this.tokenRenderer.setDrawingHitTestProvider(
-      (x, y) => this.annotations?.drawings.hitTest(x, y) ?? null
-    );
-    this.tokenRenderer.setDrawingClickHandler(
-      (drawingId, e) => this.annotations?.drawings.handleViewportPointerDown(drawingId, e)
-    );
-    this.tokenRenderer.setDrawingDragStartHandler(
-      (e) => this.annotations?.drawings.startDrag(e)
-    );
+    // The drawings and texts are made after the first wiring pass, so they are resolved when asked
+    this.tokenRenderer.setAnnotationHandlers({
+      gripDown: (x, y, e) => this.annotations?.selecting.pointer.gripDown(x, y, e) ?? false,
+      pointerDown: (x, y, e) => this.annotations?.selecting.pointer.pointerDown(x, y, e) ?? false,
+      secondaryDown: (x, y, e) => this.annotations?.selecting.pointer.secondaryDown(x, y, e) ?? false,
+      dragAlong: (e) => this.annotations?.selecting.pointer.dragAlong(e),
+      cursorAt: (x, y, covered) => this.annotations?.selecting.pointer.cursorAt(x, y, covered) ?? null,
+      leave: () => this.annotations?.selecting.pointer.leave(),
+    });
     this.wireAnnotations();
     if (this.pinRenderer) {
       this.tokenRenderer.setPinHitTestProvider(
@@ -1215,6 +1214,12 @@ export class PixiRendererOrchestrator { // Renamed class
     this.stopAnnotationsFollowingPlayers?.();
     this.stopAnnotationsFollowingPlayers = this.tokenRenderer?.onPlayersViewChange(() => annotations.refreshVisibility());
     annotations.refreshVisibility();
+    // The selection marks what the annotations' own handles do not frame, and turns them with a group of tokens
+    this.selectionManager?.setAnnotationHost({
+      framedIds: () => annotations.selecting.framedIds,
+      selectable: () => annotations.selecting.works(),
+      turnAlong: (ids) => annotations.selecting.turnAlong(ids),
+    });
   }
 
   /** Lets MeasureRenderer read the current map's measurement settings and hear when they change, and follow what the players see of the tokens. */

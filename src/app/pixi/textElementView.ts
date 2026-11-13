@@ -75,6 +75,13 @@ export function updateTextElementView(container: Container, element: TextElement
   container.scale.set(element.scale || 1);
 }
 
+/** Puts a view made by `createTextElementView` where `place` says, turned and scaled so: its words and look stay as they are drawn. */
+export function placeTextElementView(container: Container, place: Pick<TextAnnotation, 'x' | 'y' | 'rotation' | 'scale'>): void {
+  container.position.set(place.x, place.y);
+  container.rotation = (place.rotation * Math.PI) / 180;
+  container.scale.set(place.scale);
+}
+
 /**
  * A read text as the record its view is drawn from: every field as the reader took it, so a text
  * whose file holds something else than a size or a colour is drawn as it is found and framed.

@@ -697,7 +697,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'token-2', x: 315, y: 105 }));
       await waitForTokens('token-1', 'token-2');
       const drawingDrag = vi.fn();
-      tokenRenderer.setDrawingDragStartHandler(drawingDrag);
+      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, secondaryDown: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
 
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(store.getState().selectedIds).toEqual([]);
@@ -711,10 +711,64 @@ describe('TokenRenderer Integration Tests', () => {
       expect(store.getState().selectedIds).toEqual(['token-2']);
       expect(drawingDrag).not.toHaveBeenCalled();
 
-      // A selected token's press still takes the selected drawings along
+      // A selected token's press still takes the selected drawings and texts along
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(drawingDrag).toHaveBeenCalledTimes(1);
       viewport.emit('pointerup', pointerEvent(315, 105));
+    });
+  });
+
+  describe('Drawings and texts in the dispatch', () => {
+    /** What the dispatch asked of the drawings and texts for one press, in order. */
+    const asked: string[] = [];
+    const answers = { grip: false, press: true, menu: true };
+    const press = (x: number, y: number, button = 0): string[] => {
+      asked.length = 0;
+      viewport.emit('pointerdown', { ...pointerEvent(x, y), button } as FederatedPointerEvent);
+      viewport.emit('pointerup', pointerEvent(x, y));
+      return [...asked];
+    };
+
+    beforeEach(async () => {
+      Object.assign(answers, { grip: false, press: true, menu: true });
+      tokenRenderer.setAnnotationHandlers({
+        gripDown: () => { asked.push('grip'); return answers.grip; },
+        pointerDown: () => { asked.push('press'); return answers.press; },
+        secondaryDown: () => { asked.push('menu'); return answers.menu; },
+        dragAlong: () => undefined, cursorAt: () => null, leave: () => undefined,
+      });
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
+      await waitForTokens('token-1');
+    });
+
+    it('asks for their handles before a token, and for themselves only after it', () => {
+      store.getState().setActiveTool('move');
+      // On the token: no handle there, so the token takes the press and no drawing is asked.
+      expect(press(105, 105)).toEqual(['grip']);
+      expect(press(600, 600)).toEqual(['grip', 'press']);
+      // A handle that stands over the token takes the press from it.
+      answers.grip = true;
+      store.getState().clearSelection();
+      expect(press(105, 105)).toEqual(['grip']);
+      expect(store.getState().selectedIds).toEqual([]);
+    });
+
+    it('lets the Draw tool give them every press, over a token too, and no other tool any', () => {
+      store.getState().setActiveTool('draw');
+      expect(press(105, 105)).toEqual(['grip', 'press']);
+      expect(store.getState().selectedIds).toEqual([]);
+      for (const tool of ['measure', 'fog', 'note-pin'] as const) {
+        store.getState().setActiveTool(tool);
+        expect(press(600, 600), tool).toEqual(['grip']);
+      }
+    });
+
+    it('asks for their menu on a right press, but not over a token, whose menu it is', () => {
+      store.getState().setActiveTool('move');
+      expect(press(600, 600, 2)).toEqual(['menu']);
+      expect(press(105, 105, 2)).toEqual([]);
+      store.getState().setActiveTool('draw');
+      expect(press(105, 105, 2)).toEqual(['menu']);
     });
   });
 
