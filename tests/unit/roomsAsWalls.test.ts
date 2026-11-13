@@ -297,3 +297,53 @@ describe('rock filled back in', () => {
     expect(store.temporal.getState().pastStates).toHaveLength(0);
   });
 });
+
+describe('an edit of the walls', () => {
+  /** How often the level's walls changed for whoever follows the store, while `run` ran. */
+  function wallWrites(store: ViewAtlasStore, run: () => void): number {
+    let writes = 0;
+    const stop = store.subscribe((state, previous) => {
+      if (levelObjects(state).walls !== levelObjects(previous).walls) writes++;
+    });
+    run();
+    stop();
+    return writes;
+  }
+
+  it('reaches the store as one write and one undo step, however many walls a carve takes and makes', () => {
+    const { store, rect } = setup();
+    rect({ x: 100, y: 100 }, { x: 300, y: 300 });
+    rect({ x: 500, y: 100 }, { x: 700, y: 300 });
+    const before = walls(store);
+    store.temporal.getState().clear();
+    // Across both rooms: walls of each go, pieces of them stay, and the rock between gets new ones.
+    expect(wallWrites(store, () => rect({ x: 200, y: 150 }, { x: 600, y: 250 }))).toBe(1);
+    expect(walls(store).length).toBeGreaterThan(before.length);
+    expect(store.temporal.getState().pastStates).toHaveLength(1);
+    store.temporal.getState().undo();
+    expect(walls(store)).toEqual(before);
+  });
+
+  it('takes walls away and adds others together: the new ones on the level shown, the gone ones out of the selection', () => {
+    const { store } = setup([{ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } }, { type: 'door', p1: { x: 100, y: 0 }, p2: { x: 100, y: 100 }, closed: true }]);
+    const [wall, door] = walls(store);
+    store.getState().setSelection([wall!.id, door!.id]);
+    let ids: string[] = [];
+    const add = [{ type: 'solid' as const, p1: { x: 0, y: 0 }, p2: { x: 50, y: 0 } }, { type: 'solid' as const, p1: { x: 50, y: 0 }, p2: { x: 100, y: 0 }, chainId: 'c' }];
+    expect(wallWrites(store, () => {
+      ids = store.getState().editWalls([wall!.id], add);
+    })).toBe(1);
+    expect(new Set(ids).size).toBe(2);
+    expect(walls(store).map(({ id }) => id).sort()).toEqual([door!.id, ...ids].sort());
+    expect(ids.map((id) => store.getState().objects.walls[id])).toEqual(add.map((data, index) => ({ id: ids[index], kind: 'wall', ...data })));
+    expect(store.getState().selectedIds).toEqual([door!.id]);
+    store.temporal.getState().undo();
+    expect(walls(store).map(({ id }) => id).sort()).toEqual([wall!.id, door!.id].sort());
+  });
+
+  it('writes nothing for an edit without walls', () => {
+    const { store } = setup();
+    expect(wallWrites(store, () => expect(store.getState().editWalls([], [])).toEqual([]))).toBe(0);
+    expect(store.temporal.getState().pastStates).toHaveLength(0);
+  });
+});
