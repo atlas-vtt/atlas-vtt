@@ -105,6 +105,8 @@ export function namesHotkey(label: string): boolean {
 }
 /** The note pin's picker while it is open: not once it fades out, nor while what it creates works in its place. */
 const NOTE_PIN_PICKER = '.atlas-note-pin-dropdown:not(.atlas-panel-leaving):not(.atlas-away)';
+/** The Draw tool's symbol flyout while it is open (`StampSymbolTool`). */
+const STAMP_SYMBOLS = '.atlas-stamp-symbols .pin-place-flyout.is-open';
 export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean {
   if (handledByAnotherControl(event) || event.isComposing || !isActiveAtlasLeaf(viewId)) return false;
   if (isTextEntryTarget(event.target)) return false;
@@ -112,5 +114,7 @@ export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean
   if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
   // The note pin's picker takes a name: a key pressed while it is open, on one of its buttons too, is no shortcut of the map
   if (activeDocument.querySelector(NOTE_PIN_PICKER)) return false;
+  // Nor while the Stamp mode's symbols are open: a name typed there searches them
+  if (activeDocument.querySelector(STAMP_SYMBOLS)) return false;
   return true;
 }

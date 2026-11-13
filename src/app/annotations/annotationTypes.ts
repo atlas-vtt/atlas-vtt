@@ -93,6 +93,8 @@ export interface DrawingAnnotation extends ReadAnnotation {
   readonly fill: DrawFill | null;
   /** Rings cut out of the fill, each at least three points; empty without a fill. */
   readonly holes: readonly (readonly Point[])[];
+  /** A fill made cell by cell, which the Cells mode grows and clears; never without a fill. */
+  readonly cells: boolean;
   readonly dash: DrawDash | null;
   /** Arrowheads; null for none, and always for a closed line. */
   readonly ends: DrawEnds | null;
@@ -211,6 +213,8 @@ export interface DrawToolChoices {
   icon: string;
   /** The eraser removes each whole drawing it touches. */
   eraseWhole: boolean;
+  /** Where the Cells mode's fills lie: its own choice, since a coloured cell is map more often than a mark. */
+  cellsLayer: DrawLayer;
   /** The Cells mode clears cells where it would fill them. */
   cellsUnfill: boolean;
 }
@@ -231,8 +235,9 @@ export const DEFAULT_DRAW_TOOL: DrawToolChoices = {
   align: 'center',
   bold: false,
   italic: false,
-  icon: 'door-open',
+  icon: 'door',
   eraseWhole: false,
+  cellsLayer: 'map',
   cellsUnfill: false,
 };
 

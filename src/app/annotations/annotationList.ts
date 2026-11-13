@@ -127,6 +127,7 @@ function drawingOf(id: string, value: Record<string, unknown>): DrawingAnnotatio
     opacity: unitShare(value.opacity),
     fill: filled,
     holes: filled ? holesOf(value.holes) : [],
+    cells: filled !== null && value.cells === true,
     dash: !stamp && (dash === 'dashed' || dash === 'dotted') ? dash : null,
     ends: !stamp && !closed && points.length >= 2 && (ends === 'end' || ends === 'both') ? ends : null,
     anchors: read.anchors,
@@ -183,7 +184,7 @@ function textOf(id: string, value: Record<string, unknown>): TextAnnotation | nu
  * not lie on it, is a free shape (`annotationFit.ts`). A colour that is not `#rrggbb` reads as
  * white, a width that is no size as M on a map without a grid, an opacity outside 0 to 1 as the
  * nearest in it, `hidden` and `locked` only where they are `true`, a fill only on a closed line
- * and arrowheads only on an open one.
+ * (and `cells` only on a fill) and arrowheads only on an open one.
  */
 export function readDrawing(id: string, value: unknown): DrawingAnnotation | null {
   if (!isRecord(value)) return null;

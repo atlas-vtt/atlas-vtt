@@ -49,6 +49,11 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
   }
 }
 
+// A wrapper that only finds its button for a flyout: the button lies in the bar as if it stood there itself.
+.atlas-tool-bar__holder {
+  display: contents;
+}
+
 // Groups are told apart by space alone (no divider lines): the break adds a gap to the gap.
 .atlas-tool-bar__break {
   flex: none;

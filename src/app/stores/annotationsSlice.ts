@@ -7,6 +7,8 @@
  * removes it.
  */
 
+import { newGroupId } from '../annotations/annotationCopies';
+import { groupable, ungroupable } from '../annotations/annotationGroups';
 import { changesTaken, isLocked, unlockedIds } from '../annotations/annotationLock';
 import { annotationStack, orderOnTop, reordered, type StackedAnnotation } from '../annotations/annotationStack';
 import {
@@ -49,6 +51,14 @@ export interface AnnotationsSlice {
    * is not among them.
    */
   orderAnnotations: (ids: readonly string[], to: 'front' | 'back') => void;
+  /**
+   * Makes one group of drawings and texts, in one write: each that is not locked gets the same new
+   * `group`, whatever group it was in. Nothing for fewer than two of them, or where they are one
+   * group already.
+   */
+  groupAnnotations: (ids: readonly string[]) => void;
+  /** Takes the group off drawings and texts, in one write; a locked one keeps its group. Nothing where none of them is in one. */
+  ungroupAnnotations: (ids: readonly string[]) => void;
   /**
    * Removes drawings and adds others in one write: the eraser's cut. What is added keeps every
    * field it is handed, its `order` too (a piece lies where its drawing lay), and returns its ids.
@@ -163,6 +173,30 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
         for (const { id, kind, order } of moves) {
           const entry = draft.objects[kind][id];
           if (entry) entry.order = order;
+        }
+      });
+    },
+
+    groupAnnotations: (ids) => {
+      const { drawings, texts } = get().objects;
+      const entries = ids.flatMap((id) => drawings[id] ?? texts[id] ?? []);
+      if (!groupable(entries)) return;
+      const group = newGroupId();
+      set((draft) => {
+        for (const id of unlockedIds(ids, draft.objects)) {
+          const entry = draft.objects.drawings[id] ?? draft.objects.texts[id];
+          if (entry) entry.group = group;
+        }
+      });
+    },
+
+    ungroupAnnotations: (ids) => {
+      const { drawings, texts } = get().objects;
+      if (!ungroupable(ids.flatMap((id) => drawings[id] ?? texts[id] ?? []))) return;
+      set((draft) => {
+        for (const id of unlockedIds(ids, draft.objects)) {
+          const entry = draft.objects.drawings[id] ?? draft.objects.texts[id];
+          if (entry) delete entry.group;
         }
       });
     },

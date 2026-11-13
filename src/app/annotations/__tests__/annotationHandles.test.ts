@@ -147,6 +147,10 @@ describe('a line\'s points', () => {
     const long = Array.from({ length: MAX_LINE_HANDLES + 1 }, (_, index) => pt(index * 10, index % 2));
     expect(linePointsOf(drawing({ type: 'line', points: long }))).toBeNull();
     expect(linePointsOf(drawing({ type: 'line', points: long.slice(1) }))).toHaveLength(MAX_LINE_HANDLES);
+    // A fill made of cells is no line to reshape point by point: its cells are filled and cleared.
+    const cell = { type: 'line', points: [pt(0, 0), pt(70, 0), pt(70, 70), pt(0, 70), pt(0, 0)], width: 0, fill: 'solid' };
+    expect(linePointsOf(drawing(cell))).toHaveLength(4);
+    expect(linePointsOf(drawing({ ...cell, cells: true }))).toBeNull();
   });
 
   it('move one at a time; a closed line\'s first corner takes its last along', () => {

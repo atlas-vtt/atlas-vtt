@@ -1,15 +1,13 @@
 import React, { useCallback, useMemo, useState } from "react"
-import { CircleDashed, Stamp, Trash2 } from "lucide-react"
+import { CircleDashed, Trash2 } from "lucide-react"
 import type { ClearScope } from "../../../annotations/annotationTypes"
 import { t } from "../../../i18n"
-import { MAP_ICON_LABELS } from "../../../pixi/mapIcons"
 import { DropdownMenu } from "../primitives/DropdownMenu"
 import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownSwatchGrid } from "../primitives/DropdownSwatchGrid"
 import { ToolButton } from "../primitives/ToolButton"
-import { LabelTooltip } from "../primitives/tooltip"
 import { MIXED, type Shown } from "./drawStyle"
-import { CLEAR_SCOPES, DRAW_COLOR_SWATCHES, STAMP_ICONS, type DrawMenuChoice } from "./drawToolChoices"
+import { CLEAR_SCOPES, DRAW_COLOR_SWATCHES, type DrawMenuChoice } from "./drawToolChoices"
 import type { DrawIcon } from "./drawToolIcons"
 import { TOOL_BAR_CHOICE_CLASS } from "./ToolOptionsBar"
 
@@ -114,44 +112,6 @@ export function ColourMenu({ value, onChange, locked }: ColourMenuProps): React.
               close()
             }}
           />
-        </div>
-      )}
-    </BarMenu>
-  )
-}
-
-interface SymbolMenuProps {
-  /** The symbol's key, or `MIXED` where the selected stamps differ. */
-  value: Shown<string>
-  onChange: (icon: string) => void
-  locked: string | null
-}
-
-/** The symbol the Stamp mode places, which opens the symbols above the bar. */
-export function SymbolMenu({ value, onChange, locked }: SymbolMenuProps): React.ReactElement {
-  const chosen = STAMP_ICONS.find(({ key }) => key === value)
-  const name = chosen ? MAP_ICON_LABELS[chosen.key] : undefined
-  return (
-    <BarMenu label={t('draw.symbol')} subtitle={locked ?? name} icon={chosen?.icon ?? Stamp} locked={locked}>
-      {(close) => (
-        <div className="atlas-dropdown-section">
-          <div className="atlas-icon-grid" role="group" aria-label={t('draw.symbol')}>
-            {STAMP_ICONS.map(({ key, icon: Icon }) => (
-              <LabelTooltip key={key} label={MAP_ICON_LABELS[key] ?? key}>
-                <button
-                  type="button"
-                  aria-pressed={key === value}
-                  className={`atlas-icon-grid__item${key === value ? " atlas-icon-grid__item--active" : ""}`}
-                  onClick={() => {
-                    onChange(key)
-                    close()
-                  }}
-                >
-                  <Icon className="h-4 w-4" />
-                </button>
-              </LabelTooltip>
-            ))}
-          </div>
         </div>
       )}
     </BarMenu>

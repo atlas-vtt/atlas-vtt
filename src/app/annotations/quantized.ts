@@ -38,7 +38,8 @@ export function pointsQ(points: readonly Point[]): number[] {
   return coordinates;
 }
 
-function ringPoints(ring: QPolygon): Point[] {
+/** A ring of the grid in world pixels. */
+export function ringPoints(ring: QPolygon): Point[] {
   const points: Point[] = [];
   for (let i = 0; i < ring.length; i += 2) points.push({ x: ring[i]! / Q_SCALE, y: ring[i + 1]! / Q_SCALE });
   return points;

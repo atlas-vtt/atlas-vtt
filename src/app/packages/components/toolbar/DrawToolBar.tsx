@@ -7,7 +7,7 @@ import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { MOTION_FAST_MS, easeOut } from "../../../utils/motion"
 import { TooltipProvider } from "../primitives/tooltip"
 import { DrawModeTool } from "./DrawModeTools"
-import { DRAW_MODE_CHOICES, drawModeChoice, drawModeTools } from "./drawToolChoices"
+import { DRAW_MODE_CHOICES, drawModeChoice, drawModeTools, drawModeUnavailable } from "./drawToolChoices"
 import { ChoiceButtons, GroupBreak, ToolOptionsBars } from "./ToolOptionsBar"
 import { useDrawStyle } from "./useDrawStyle"
 
@@ -35,17 +35,19 @@ export function DrawToolBar(): React.ReactElement {
 
 function DrawBars(): React.ReactElement {
   const mode = useAtlasStore((state) => state.drawTool.mode)
+  const grid = useAtlasStore((state) => state.grid)
   const setDrawTool = useAtlasStore((state) => state.setDrawTool)
   const locked = useLockedReason()
-  const choice = drawModeChoice(mode)
-  // A mode the bar does not offer gives way to the one whose button the bar shows for it.
+  const choice = drawModeChoice(mode, grid)
+  // A mode that cannot be chosen on this map (Cells without a grid) gives way to the one whose button the bar shows for it.
   useEffect(() => {
     if (choice.value !== mode) setDrawTool({ mode: choice.value })
   }, [choice.value, mode, setDrawTool])
   return (
     <TooltipProvider delayDuration={300}>
       <div role="toolbar" aria-label={t('draw.modes')} className="atlas-tool-bar atlas-tool-bar--modes">
-        <ChoiceButtons kind="mode" locked={locked} choices={DRAW_MODE_CHOICES} value={choice.value} onChange={(value) => setDrawTool({ mode: value })} />
+        <ChoiceButtons kind="mode" locked={locked} choices={DRAW_MODE_CHOICES} value={choice.value} unavailable={(value) => drawModeUnavailable(value, grid)}
+          onChange={(value) => setDrawTool({ mode: value })} />
       </div>
       <ModeTools mode={choice.value} name={choice.label} locked={locked} />
     </TooltipProvider>

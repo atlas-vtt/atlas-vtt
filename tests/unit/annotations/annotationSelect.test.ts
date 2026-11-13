@@ -450,10 +450,10 @@ describe('the menu and the double click', () => {
     const s = scene((made) => { ids = [made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)])), made.store.getState().addText(label(500, 300))]; });
     expect(s.press(200, 100, { button: 2 })).toBe(true);
     expect(selected(s)).toEqual([ids[0]]);
-    expect(labels()).toEqual(['Hide from players', 'On the map', 'Lock', 'To front', 'To back', 'Duplicate', 'Delete']);
+    expect(labels()).toEqual(['Hide from players', 'On the map', 'Lock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
     openContextMenuGlobal.mockClear();
     s.press(500, 300, { button: 2 });
-    expect(labels()).toEqual(['Edit', 'Hide from players', 'On the map', 'Lock', 'To front', 'To back', 'Duplicate', 'Delete']);
+    expect(labels()).toEqual(['Edit', 'Hide from players', 'On the map', 'Lock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
     expect(s.press(600, 500, { button: 2 })).toBe(false);
   });
 
@@ -488,10 +488,10 @@ describe('the menu and the double click', () => {
     const s = scene((made) => { ids = [made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)], { locked: true })), made.store.getState().addText(label(500, 300, { locked: true }))]; });
     const offered = (): string[] => (openContextMenuGlobal.mock.calls.at(-1)?.[0] ?? []).flatMap((entry) => (entry.type === 'item' && !entry.disabled ? [entry.label] : []));
     s.press(500, 300, { button: 2 });
-    expect(labels()).toEqual(['Edit', 'Hide from players', 'On the map', 'Unlock', 'To front', 'To back', 'Duplicate', 'Delete']);
+    expect(labels()).toEqual(['Edit', 'Hide from players', 'On the map', 'Unlock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
     expect(offered()).toEqual(['Unlock', 'Duplicate']);
     // A row chosen all the same changes nothing.
-    for (const row of ['Edit', 'Hide from players', 'On the map', 'To front', 'To back', 'Delete']) choose(row);
+    for (const row of ['Edit', 'Hide from players', 'On the map', 'Group', 'Ungroup', 'To front', 'To back', 'Delete']) choose(row);
     expect(s.texts()[0]).toMatchObject({ x: 500, y: 300, locked: true });
     expect(s.texts()[0]).not.toHaveProperty('hidden');
     expect(s.field()).toBeNull();

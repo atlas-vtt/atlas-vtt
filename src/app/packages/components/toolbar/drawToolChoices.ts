@@ -1,11 +1,12 @@
 import {
-  AlignCenter, AlignLeft, AlignRight, Captions, Circle, CircleX, DoorClosed, DoorOpen, Eraser, Flame, Footprints, Gem, KeyRound, Lock, Minus,
-  MousePointer2, MoveDiagonal, MoveUpRight, Package, Pencil, Skull, Slash, Square, Stamp, Swords, TriangleAlert, Type, TypeOutline,
+  AlignCenter, AlignLeft, AlignRight, Captions, Circle, Eraser, Grid2x2Plus, Grid2x2X, Minus,
+  MousePointer2, MoveDiagonal, MoveUpRight, PaintBucket, Pencil, Slash, Square, Stamp, Type, TypeOutline,
 } from "lucide-react"
 import {
   DEFAULT_DRAW_TOOL, DRAW_MODES, DRAW_SIZES,
   type ClearScope, type DrawDash, type DrawEnds, type DrawFill, type DrawFont, type DrawMode, type DrawSize, type TextAlign, type TextLook,
 } from "../../../annotations/annotationTypes"
+import { fillsCells, type CellsGridState } from "../../../annotations/cellsMode"
 import { t } from "../../../i18n"
 import { DashedIcon, DottedIcon, FONT_ICONS, PlainEndsIcon, SIZE_ICONS, SoftFillIcon, SolidFillIcon, type DrawIcon } from "./drawToolIcons"
 import { MAP_COLOR_SWATCHES } from "./mapColorSwatches"
@@ -13,8 +14,8 @@ import type { ToolChoice } from "./ToolOptionsBar"
 
 type ModeFace = Omit<ToolChoice<DrawMode>, 'value'>
 
-/** The modes the bar offers, each with its face; a mode without one (Cells) is not built yet. */
-const MODE_FACES: Readonly<Partial<Record<DrawMode, ModeFace>>> = {
+/** The modes the bar offers, each with its face. */
+const MODE_FACES: Readonly<Record<DrawMode, ModeFace>> = {
   select: { icon: MousePointer2, label: t('draw.mode.select'), tip: t('draw.mode.selectTip') },
   pen: { icon: Pencil, label: t('draw.mode.pen') },
   line: { icon: Slash, label: t('draw.mode.line'), tip: t('draw.mode.lineTip') },
@@ -22,32 +23,46 @@ const MODE_FACES: Readonly<Partial<Record<DrawMode, ModeFace>>> = {
   ellipse: { icon: Circle, label: t('draw.mode.ellipse') },
   text: { icon: Type, label: t('draw.mode.text'), tip: t('draw.mode.textTip') },
   stamp: { icon: Stamp, label: t('draw.mode.stamp') },
+  cells: { icon: PaintBucket, label: t('draw.mode.cells'), tip: t('draw.mode.cellsTip') },
   eraser: { icon: Eraser, label: t('draw.mode.eraser') },
 }
 
-/** What a press of the Draw tool does: the modes that are built, in the bar's order. */
-export const DRAW_MODE_CHOICES: readonly ToolChoice<DrawMode>[] = DRAW_MODES.flatMap((mode) => {
-  const face = MODE_FACES[mode]
-  return face ? [{ value: mode, ...face }] : []
-})
+/** What a press of the Draw tool does: the modes, in the bar's order. */
+export const DRAW_MODE_CHOICES: readonly ToolChoice<DrawMode>[] = DRAW_MODES.map((mode) => ({ value: mode, ...MODE_FACES[mode] }))
 
-/** The bar's button for a mode; the default mode's for one the bar does not offer. */
-export function drawModeChoice(mode: DrawMode): ToolChoice<DrawMode> {
-  return DRAW_MODE_CHOICES.find((choice) => choice.value === mode)
+/**
+ * Why a mode cannot be chosen on a map with this grid, or null: the Cells mode fills the grid's
+ * cells, so it needs a grid that is there and shown.
+ */
+export function drawModeUnavailable(mode: DrawMode, grid: CellsGridState | null | undefined): string | null {
+  return mode === 'cells' && !fillsCells(grid) ? t('draw.cellsNeedGrid') : null
+}
+
+/**
+ * The bar's button for a mode; the default mode's for one that cannot be chosen on a map with
+ * this grid (unset: every mode can).
+ */
+export function drawModeChoice(mode: DrawMode, grid?: CellsGridState | null): ToolChoice<DrawMode> {
+  const offered = grid === undefined || drawModeUnavailable(mode, grid) === null
+  return (offered ? DRAW_MODE_CHOICES.find((choice) => choice.value === mode) : undefined)
     ?? DRAW_MODE_CHOICES.find((choice) => choice.value === DEFAULT_DRAW_TOOL.mode)
     ?? DRAW_MODE_CHOICES[0]!
 }
 
-/** The mode after `mode` in the bar, the first after the last: what the tool's key steps to. */
-export function nextDrawMode(mode: DrawMode): DrawMode {
+/** The mode after `mode` in the bar that can be chosen on a map with `grid`, the first after the last: what the tool's key steps to. */
+export function nextDrawMode(mode: DrawMode, grid: CellsGridState | null | undefined): DrawMode {
   const index = DRAW_MODE_CHOICES.findIndex((choice) => choice.value === mode)
-  return DRAW_MODE_CHOICES[(index + 1) % DRAW_MODE_CHOICES.length]!.value
+  for (let step = 1; step <= DRAW_MODE_CHOICES.length; step++) {
+    const next = DRAW_MODE_CHOICES[(index + step) % DRAW_MODE_CHOICES.length]!.value
+    if (drawModeUnavailable(next, grid) === null) return next
+  }
+  return mode
 }
 
 /** What the eraser's key switches to: the eraser, and from it back to the mode in hand before (`before`). */
-export function eraserOrBack(mode: DrawMode, before: DrawMode): DrawMode {
+export function eraserOrBack(mode: DrawMode, before: DrawMode, grid: CellsGridState | null | undefined): DrawMode {
   if (mode !== 'eraser') return 'eraser'
-  return before === 'eraser' ? DEFAULT_DRAW_TOOL.mode : drawModeChoice(before).value
+  return before === 'eraser' ? DEFAULT_DRAW_TOOL.mode : drawModeChoice(before, grid ?? null).value
 }
 
 /** A tool of a mode's bar. */
@@ -55,26 +70,28 @@ export type DrawToolId =
   | 'color' | 'size' | 'players' | 'layer'
   | 'seeThrough' | 'dash' | 'ends' | 'curved' | 'fill'
   | 'font' | 'look' | 'align' | 'bold' | 'italic'
-  | 'icon' | 'eraseWhole' | 'front' | 'back' | 'lock' | 'clear'
+  | 'icon' | 'cellsLayer' | 'cellsFill' | 'cellsUnfill' | 'eraseWhole' | 'front' | 'back' | 'lock' | 'group' | 'ungroup' | 'clear'
 
 /** What every drawing has: first in the bar of every mode that makes or changes drawings, in this order, so they never move between modes. */
 export const COMMON_DRAW_TOOLS: readonly DrawToolId[] = ['color', 'size', 'players', 'layer']
 
 /** The tools of each mode, in groups: the common four, then what only the mode has. */
-const MODE_TOOLS: Readonly<Partial<Record<DrawMode, readonly (readonly DrawToolId[])[]>>> = {
-  select: [COMMON_DRAW_TOOLS, ['front', 'back', 'lock'], ['clear']],
+const MODE_TOOLS: Readonly<Record<DrawMode, readonly (readonly DrawToolId[])[]>> = {
+  select: [COMMON_DRAW_TOOLS, ['front', 'back', 'lock', 'group', 'ungroup'], ['clear']],
   pen: [COMMON_DRAW_TOOLS, ['seeThrough']],
   line: [COMMON_DRAW_TOOLS, ['dash', 'ends', 'curved', 'fill', 'seeThrough']],
   rectangle: [COMMON_DRAW_TOOLS, ['dash', 'fill']],
   ellipse: [COMMON_DRAW_TOOLS, ['dash', 'fill']],
   text: [COMMON_DRAW_TOOLS, ['font', 'look', 'align', 'bold', 'italic']],
   stamp: [COMMON_DRAW_TOOLS, ['icon']],
+  // A cell has no size but the grid's, and the mode keeps a layer of its own (`cellsLayer`).
+  cells: [['color', 'players', 'cellsLayer'], ['cellsFill', 'cellsUnfill']],
   eraser: [['size'], ['eraseWhole'], ['clear']],
 }
 
-/** The groups of tools a mode's bar holds; none for a mode that is not built. */
+/** The groups of tools a mode's bar holds. */
 export function drawModeTools(mode: DrawMode): readonly (readonly DrawToolId[])[] {
-  return MODE_TOOLS[mode] ?? []
+  return MODE_TOOLS[mode]
 }
 
 /** One row of a tool's menu: a choice, its icon (the button's face while it is the choice made) and its name. */
@@ -125,21 +142,11 @@ export const ALIGN_CHOICES: readonly DrawMenuChoice<TextAlign>[] = [
 /** The colours a drawing can take: the map's colours, black and white among them. Each is stored as it is. */
 export const DRAW_COLOR_SWATCHES = MAP_COLOR_SWATCHES
 
-/** The symbols the Stamp mode places; keys match `MAP_ICON_SVG` in `pixi/mapIcons.ts`. */
-export const STAMP_ICONS: readonly { key: string; icon: DrawIcon }[] = [
-  { key: 'door-open', icon: DoorOpen },
-  { key: 'door-closed', icon: DoorClosed },
-  { key: 'lock', icon: Lock },
-  { key: 'key-round', icon: KeyRound },
-  { key: 'triangle-alert', icon: TriangleAlert },
-  { key: 'skull', icon: Skull },
-  { key: 'flame', icon: Flame },
-  { key: 'package', icon: Package },
-  { key: 'gem', icon: Gem },
-  { key: 'swords', icon: Swords },
-  { key: 'footprints', icon: Footprints },
-  { key: 'circle-x', icon: CircleX },
-]
+/** What the Cells mode does with the cells a drag passes: one of the two, each a button of its bar. */
+export const CELLS_CHOICES: Readonly<Record<'cellsFill' | 'cellsUnfill', Omit<ToolChoice<string>, 'value'>>> = {
+  cellsFill: { icon: Grid2x2Plus, label: t('draw.cells.fill') },
+  cellsUnfill: { icon: Grid2x2X, label: t('draw.cells.unfill'), tip: t('draw.cells.unfillTip') },
+}
 
 /** What Clear offers, in its menu's order, each with the text of its row on a scene with levels and on one without. */
 export const CLEAR_SCOPES: readonly { scope: ClearScope; label: string; labelOnLevel: string }[] = [

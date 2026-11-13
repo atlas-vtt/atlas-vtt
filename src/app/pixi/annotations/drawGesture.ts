@@ -3,7 +3,8 @@
  * under way out, and at its end what was made. The look it gets and what is written are its
  * owner's (`madeDrawing`).
  *
- * The grammar is the measure tool's. The pen and the eraser work while the button is down. A
+ * The grammar is the measure tool's. The pen, the eraser and the Cells mode work while the button
+ * is down (the last two pass along a path: a sweep, which leaves no shape of its own). A
  * line, a rectangle or an ellipse runs from press to release when the press moves; a press
  * released in place starts one placed click by click: every click is a line's next corner (a
  * click on its last corner, as the second click of a double click is, or Enter ends it; a click
@@ -23,7 +24,10 @@ export const CORNER_REACH = 8;
 export const MAX_LINE_CORNERS = 1000;
 
 /** The modes that draw by a gesture. */
-export type GestureMode = 'pen' | 'line' | 'rectangle' | 'ellipse' | 'eraser';
+export type GestureMode = 'pen' | 'line' | 'rectangle' | 'ellipse' | 'cells' | 'eraser';
+
+/** Whether a gesture of `mode` is a sweep: the pointer's path is all it is (the eraser's, the Cells mode's). */
+export const sweeps = (mode: GestureMode | null): mode is 'cells' | 'eraser' => mode === 'eraser' || mode === 'cells';
 
 /** Where the pointer is, as the gesture is told of it. */
 export interface DrawPointer {
@@ -44,9 +48,9 @@ export type DrawGestureResult =
   | { readonly kind: 'none' }
   /** The shape under way changed: read `DrawGesture.shape`. */
   | { readonly kind: 'live' }
-  /** The eraser went from `from` to `to` (one place for a dab). */
+  /** A sweep went from `from` to `to` (one place for a dab). */
   | { readonly kind: 'sweep'; readonly from: Point; readonly to: Point }
-  /** The gesture is over: `made` is what was drawn, null after the eraser's sweep. */
+  /** The gesture is over: `made` is what was drawn, null after a sweep. */
   | { readonly kind: 'finish'; readonly made: MadeShape | null }
   /** The gesture is over and left nothing. */
   | { readonly kind: 'cancel' };
@@ -61,9 +65,9 @@ const near = (a: Point, b: Point, zoom: number): boolean => Math.hypot(a.x - b.x
 
 export class DrawGesture {
   private current: GestureMode | null = null;
-  /** A pen's points so far; a line's corners; a box's first corner. Empty for the eraser. */
+  /** A pen's points so far; a line's corners; a box's first corner. Empty for a sweep. */
   private fixed: Point[] = [];
-  /** Where a line or a box ends now, and where the eraser is; null for the pen, whose points are all in `fixed`. */
+  /** Where a line or a box ends now, and where a sweep is; null for the pen, whose points are all in `fixed`. */
   private end: Point | null = null;
   /** Where the button went down, in screen pixels; null while it is up. */
   private pressedAt: Point | null = null;
@@ -85,13 +89,13 @@ export class DrawGesture {
   }
 
   /**
-   * The shape as it is now; null while none is drawn, and for the eraser. A pen's `points` are
+   * The shape as it is now; null while none is drawn, and for a sweep. A pen's `points` are
    * the gesture's own list, which only grows at its end: whoever draws it may keep what it drew
    * of the points before the last.
    */
   get shape(): MadeShape | null {
     const { current: mode, fixed, end } = this;
-    if (mode === null || mode === 'eraser') return null;
+    if (mode === null || sweeps(mode)) return null;
     if (mode === 'pen') return { mode, points: fixed, closed: false };
     if (!end) return null;
     if (mode === 'line' && this.closes(end)) return { mode, points: [...fixed], closed: true };
@@ -108,7 +112,7 @@ export class DrawGesture {
       this.fixed = [copy(at.raw)];
       return LIVE;
     }
-    if (mode === 'eraser') {
+    if (sweeps(mode)) {
       this.end = copy(at.raw);
       return { kind: 'sweep', from: this.end, to: this.end };
     }
@@ -131,7 +135,7 @@ export class DrawGesture {
     const mode = this.current;
     if (mode === null) return NONE;
     if (mode === 'pen') return this.pressedAt ? this.ink(at) : NONE;
-    if (mode === 'eraser') {
+    if (sweeps(mode)) {
       const from = this.end;
       if (!this.pressedAt || !from || same(from, at.raw)) return NONE;
       this.end = copy(at.raw);
@@ -146,7 +150,7 @@ export class DrawGesture {
     const mode = this.current;
     if (!this.pressedAt || mode === null) return NONE;
     this.pressedAt = null;
-    if (mode === 'eraser') return this.over(null);
+    if (sweeps(mode)) return this.over(null);
     if (mode === 'pen') {
       // The steadied line trails the pointer: the stroke ends where the pointer is.
       if (at.constrain) this.ink(at);
@@ -189,9 +193,9 @@ export class DrawGesture {
     return CANCEL;
   }
 
-  /** The tool's work ends by something else than its own keys: a shape under way is dropped, an eraser's sweep ends where it is. */
+  /** The tool's work ends by something else than its own keys: a shape under way is dropped, a sweep ends where it is. */
   stop(): DrawGestureResult {
-    return this.current === 'eraser' ? this.over(null) : this.cancel();
+    return sweeps(this.current) ? this.over(null) : this.cancel();
   }
 
   /** Whether a line that ends at `end` ends on its first corner, with an inside between: not one that only came back to where it began. */
@@ -255,7 +259,7 @@ export class DrawGesture {
     const mode = this.current;
     const end = this.end;
     const first = this.fixed[0];
-    if (!end || !first || mode === null || mode === 'pen' || mode === 'eraser') return NONE;
+    if (!end || !first || mode === null || mode === 'pen' || sweeps(mode)) return NONE;
     if (mode === 'line') return this.closes(end) ? this.finishLine(this.fixed, true) : this.finishLine([...this.fixed, end], false);
     return same(first, end) ? this.cancel() : this.over({ mode, points: [first, end], closed: false });
   }

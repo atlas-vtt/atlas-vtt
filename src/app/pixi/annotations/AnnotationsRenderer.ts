@@ -3,7 +3,9 @@ import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import { annotationList } from '../../annotations/annotationList';
 import type { DrawMode } from '../../annotations/annotationTypes';
+import { fillsCells } from '../../annotations/cellsMode';
 import { snapDrawPoint } from '../../annotations/drawSnap';
+import type { MapRect } from '../../grid/cellNumbering';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { isTextEntryTarget } from '../../keyboard/textEntry';
 import { levelObjects } from '../../levels/levelObjects';
@@ -32,8 +34,10 @@ import { PictureViews } from './PictureViews';
 export interface AnnotationsRendererOptions {
   readonly viewport: Viewport;
   readonly store: StoreApi<ViewAtlasState>;
-  /** The grid points snap to; null while the view has none. Whether the grid's Snap is on is read from the store. */
+  /** The grid points snap to and cells are filled by; null while the view has none. Whether its Snap is on, and whether it is shown, is read from the store. */
   grid(): GridGeometry | null;
+  /** The map, at whose edge a filled cell ends; unset or null, a cell is filled whole wherever it lies. */
+  mapRect?(): MapRect | null;
   /** What the texts must know of the view's renderer to stay sharp; unset, the screen's pixels to a point. */
   readonly sharpness?: TextSharpnessHost;
   /** Whether a key pressed now is this map's to take (`canRunMapHotkeys`); unset, every key outside a text field is. */
@@ -170,6 +174,8 @@ export class AnnotationsRenderer {
       measure: this.layer.measure,
       chrome: this.chrome,
       snapGrid,
+      cellGrid: () => (fillsCells(store.getState().grid) ? options.grid() : null),
+      mapRect: () => options.mapRect?.() ?? null,
       gmView: () => !this.showsPlayers(),
       full,
     });

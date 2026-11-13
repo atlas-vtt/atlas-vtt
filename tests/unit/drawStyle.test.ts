@@ -40,7 +40,7 @@ describe('what the Draw tool\'s bars show', () => {
     const tool = { ...TOOL, color: '#e93147', size: 'l' as const, dash: 'dotted' as const, font: 'mono' as const };
     expect(shownStyle(tool, [], CELL)).toEqual({
       color: '#e93147', size: 'l', players: true, layer: 'above', seeThrough: false, dash: 'dotted', ends: null, curved: false, fill: null,
-      font: 'mono', look: 'outline', align: 'center', bold: false, italic: false, icon: 'door-open',
+      font: 'mono', look: 'outline', align: 'center', bold: false, italic: false, icon: 'door',
     });
   });
 

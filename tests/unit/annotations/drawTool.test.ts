@@ -48,10 +48,15 @@ describe('the draw tool\'s choices', () => {
     expect(drawToolFrom('pen')).toEqual(DEFAULT_DRAW_TOOL);
     expect(drawToolFrom({
       mode: 'eraser', eraseWhole: true, color: 'red', size: 'xxl', players: 'no', layer: 'sky', dash: 'wavy', ends: 'both', fill: 'solid', curved: true,
-      font: 'comic', look: 'plate', align: 'right', bold: true, italic: 1, icon: '', seeThrough: true,
+      font: 'comic', look: 'plate', align: 'right', bold: true, italic: 1, icon: '', seeThrough: true, cellsLayer: 'sky', cellsUnfill: true,
     })).toEqual({ ...DEFAULT_DRAW_TOOL, ends: 'both', fill: 'solid', curved: true, look: 'plate', align: 'right', bold: true, seeThrough: true });
-    expect(drawToolFrom({ icon: 'skull', dash: 'dotted', layer: 'map', size: 's', color: '#000000' }))
-      .toEqual({ ...DEFAULT_DRAW_TOOL, icon: 'skull', dash: 'dotted', layer: 'map', size: 's', color: '#000000' });
+    expect(drawToolFrom({ icon: 'cauldron', dash: 'dotted', layer: 'map', size: 's', color: '#000000', cellsLayer: 'above' }))
+      .toEqual({ ...DEFAULT_DRAW_TOOL, icon: 'cauldron', dash: 'dotted', layer: 'map', size: 's', color: '#000000', cellsLayer: 'above' });
+    // One of the twelve symbols stamps had before is drawn still, and placed no more: the tool starts with its own.
+    expect(drawToolFrom({ icon: 'skull' }).icon).toBe(DEFAULT_DRAW_TOOL.icon);
+    expect(drawToolFrom({ icon: 'constructor' }).icon).toBe(DEFAULT_DRAW_TOOL.icon);
+    // The Cells mode fills on the map unless told otherwise, whatever the other modes' layer.
+    expect(DEFAULT_DRAW_TOOL).toMatchObject({ layer: 'above', cellsLayer: 'map', icon: 'door' });
   });
 
   it('start with the defaults where the device\'s storage holds something else or cannot be read', () => {

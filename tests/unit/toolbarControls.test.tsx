@@ -80,8 +80,7 @@ describe('toolbar control items', () => {
     expect(body.menuEntry).toMatchObject({ label: 'Eraser', isActive: true });
     body.menuEntry.onSelect();
     expect(ctx.selectTool).toHaveBeenCalledWith('draw');
-    // A mode the bar does not offer shows as the pen.
-    expect(item('draw', context({ drawMode: 'cells' })).menuEntry.label).toBe('Pen');
+    expect(item('draw', context({ drawMode: 'cells' })).menuEntry.label).toBe('Cells');
   });
 
   it('pins and activates the note pin while it is in use, and the dice while their tray is open', () => {
