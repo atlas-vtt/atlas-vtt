@@ -73,7 +73,11 @@ export class FogOfWarRenderer {
     this.container.zIndex = 1000;
     this.container.interactiveChildren = false;
 
-    this.picture = new FogPicture({ layer: this.container, app: pixiApp, store, mapRect, coverage: this.coverageCache });
+    this.picture = new FogPicture({
+      layer: this.container, app: pixiApp, store, mapRect, coverage: this.coverageCache,
+      showsPlayers: () => this.showsPlayers?.() ?? null,
+      onFadeEnd: () => this.syncShown(),
+    });
     this.gesture = new FogGesture({
       layer: this.container,
       viewport,
@@ -144,10 +148,19 @@ export class FogOfWarRenderer {
     return this.areas.badgeSpot(areaId);
   }
 
-  /** The canvas shows another view (the GM's or the players'): the marks of the fog's areas show or hide with it. */
+  /**
+   * The canvas shows another view (the GM's or the players', a peek included): the fog takes that
+   * view's opacity, and the marks of its areas show or hide with it.
+   */
   refreshVisibility(): void {
+    this.picture.followView();
     this.areas.refreshVisibility();
     this.gesture.refreshVisibility();
+  }
+
+  /** Whether the fog is fading from the picture before an edit to the one it has now. */
+  get fading(): boolean {
+    return this.picture.fading;
   }
 
   /** How opaque the fog is in the GM's view, as the GM set it for this device. */
@@ -174,7 +187,7 @@ export class FogOfWarRenderer {
   disableFogMode(): void {
     this.gesture.stop();
     this.showCommitted();
-    this.container.visible = Object.keys(viewedFog(this.store.getState())).length > 0;
+    this.container.visible = this.picture.hasFog;
   }
 
   destroy(): void {
@@ -188,15 +201,23 @@ export class FogOfWarRenderer {
 
   /**
    * Draws the fog as the scene holds it, on a canvas of the map's size; nothing during a load,
-   * whose end draws it. The layer shows while there is fog, or the fog tool to make some.
+   * whose end draws it. An `edit` of the fog fades in from the picture before it.
    */
-  private showCommitted(): void {
+  private showCommitted(edit = false): void {
+    if (this.store.getState().isMapLoading) return;
+    this.picture.fit();
+    this.picture.drawCommitted(edit);
+    this.syncShown();
+  }
+
+  /**
+   * The layer shows while there is fog, or the fog tool to make some. Fog that fades away shows
+   * until it has; geometry that cannot be drawn hides the whole map.
+   */
+  private syncShown(): void {
     const state = this.store.getState();
     if (state.isMapLoading) return;
-    this.picture.fit();
-    const rendered = this.picture.drawCommitted();
-    // Geometry that cannot be drawn hides the whole map
-    this.picture.sprite.visible = Object.keys(viewedFog(state)).length > 0 || !rendered;
+    this.picture.sprite.visible = this.picture.hasFog;
     this.container.visible = this.picture.sprite.visible || isFogTool(state.activeTool);
   }
 
@@ -218,8 +239,9 @@ export class FogOfWarRenderer {
       const choicesChanged = state.fogTool !== previous.fogTool;
       const loadingChanged = state.isMapLoading !== previous.isMapLoading;
       const viewChanged = state.isGMView !== previous.isGMView;
+      const levelChanged = state.viewedLevel !== previous.viewedLevel;
       // What waits for its next click (a polygon) must not outlast the picture it was begun on.
-      const pictureLeft = state.viewedLevel !== previous.viewedLevel || (state.isMapLoading && loadingChanged)
+      const pictureLeft = levelChanged || (state.isMapLoading && loadingChanged)
         || (viewChanged && !state.isGMView) || (state.isPlayerView && !previous.isPlayerView);
       const fog = viewedFog(state);
       const fogChanged = fog !== prevFog || mapChanged;
@@ -244,15 +266,20 @@ export class FogOfWarRenderer {
       if (pictureLeft) this.gesture.drop();
 
       // Fog changed (an edit, undo and redo, a load); nothing is drawn during a load, whose end
-      // draws the fog. Under a gesture its preview is drawn again, on the fog as it now is
+      // draws the fog. Under a gesture its preview is drawn again, on the fog as it now is. An
+      // edit fades in; the fog of another map or level, or of a load, is there at once
       if (fogChanged) {
         if (this.gesture.active) this.gesture.refresh();
-        else this.showCommitted();
+        else this.showCommitted(!mapChanged && !levelChanged && !loadingChanged);
       }
 
       if (loadingChanged) {
-        if (state.isMapLoading) this.container.visible = false;
-        else this.showCommitted();
+        if (state.isMapLoading) {
+          this.container.visible = false;
+          this.picture.endFade();
+        } else {
+          this.showCommitted();
+        }
       }
 
       // The GM view switch: the fog takes the other view's opacity

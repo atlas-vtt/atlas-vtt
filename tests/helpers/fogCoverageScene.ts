@@ -18,6 +18,7 @@ export function fogRect(id = 'paint', timestamp = 1, isErasing = false): FogRect
 }
 
 interface FogScene {
+  app: Application;
   store: ViewAtlasStore;
   fog: FogOfWarRenderer;
   events: EventEmitter;
@@ -36,9 +37,25 @@ interface FogScene {
 
 type BeforeRenderer = (store: ViewAtlasStore) => () => void;
 
-export function fogScenes(): { scene: (ops?: Record<string, FogOperation>, beforeRenderer?: BeforeRenderer) => Promise<FogScene> } {
+/** Answers `prefers-reduced-motion` as an operating system with animations switched off does, until the mocks are restored. */
+export function reduceMotion(): void {
+  const ask = window.matchMedia.bind(window);
+  const nothing = (): void => undefined;
+  vi.spyOn(window, 'matchMedia').mockImplementation((query) => (query.includes('prefers-reduced-motion')
+    ? { matches: true, media: query, onchange: null, addEventListener: nothing, removeEventListener: nothing, addListener: nothing, removeListener: nothing, dispatchEvent: () => false }
+    : ask(query)));
+}
+
+/**
+ * Scenes of fog on a map. A test reads the fog right after it changed, so a change shows at once,
+ * as with reduced motion; `fades` leaves the fog its fades, for the tests of those.
+ */
+export function fogScenes({ fades = false } = {}): { scene: (ops?: Record<string, FogOperation>, beforeRenderer?: BeforeRenderer) => Promise<FogScene> } {
   const cleanups: Array<() => void> = [];
-  beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    if (!fades) reduceMotion();
+  });
   afterEach(() => {
     while (cleanups.length) cleanups.pop()!();
     vi.restoreAllMocks();
@@ -83,7 +100,7 @@ export function fogScenes(): { scene: (ops?: Record<string, FogOperation>, befor
       renderer.destroy();
     });
     return {
-      store, fog, events, viewport,
+      app, store, fog, events, viewport,
       rgba(layers?: readonly LayerVisibility[]): Uint8ClampedArray {
         if (!layers) return pixels();
         let all = new Uint8ClampedArray();

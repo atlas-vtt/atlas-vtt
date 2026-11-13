@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Container, Graphics, Point, Texture, type Application, type EventSystem, type FederatedPointerEvent } from 'pixi.js';
+import { Container, Graphics, Point, Sprite, Texture, type Application, type EventSystem, type FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from 'events';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
@@ -280,6 +280,24 @@ describe('the badges of fog areas on the map', () => {
     tokens.refreshPlayerSight();
     expect(layer().visible).toBe(true);
     expect(fog.areaPointer().hitTest(BADGE.x, BADGE.y)).toBe(hall);
+  });
+
+  it('shows the fog as opaque as the players see it while the peek is held, on a scene without lighting too, and as the GM chose it once it is let go', () => {
+    const picture = fog.getContainer().children.find((child) => child instanceof Sprite)!;
+    store.getState().setSceneLighting({ enabled: false });
+    const chosen = picture.alpha;
+    expect(chosen).toBeLessThan(1);
+    let peeking = true;
+    tokens.setPlayerSightProvider(() => undefined, () => peeking);
+    tokens.refreshPlayerSight();
+    expect(picture.alpha).toBe(1);
+    expect(layer().visible).toBe(false);
+    // A picture of the scene stays the GM's
+    expect(fog.getGmViewLayers()).toContainEqual({ layer: picture, visible: picture.visible, alpha: chosen });
+    peeking = false;
+    tokens.refreshPlayerSight();
+    expect(picture.alpha).toBe(chosen);
+    expect(layer().visible).toBe(true);
   });
 
   it('shows only the areas of the level shown', () => {

@@ -52,6 +52,8 @@
 - A room ends at its walls and at every door, open or closed. Walls that stop only light, and windows, end none
 - In Areas, a click with Room makes the room an area. A room that is an area already is selected instead
 - More makes areas from walls: one area for every room the walls enclose, in one step
+- Fog fades: what you reveal fades away and new fog gathers, on your map and in the player window. With reduced motion it changes at once
+- Hold H to see the fog as your players see it, solid and without the areas' badges, also on a map without lighting
 
 ## Improved
 

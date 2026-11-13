@@ -71,6 +71,7 @@ describe('the fog on the canvas at the GM\'s opacity', () => {
     return Object.assign(Object.create(FogPicture.prototype) as FogPicture, {
       deps: { store: { getState: () => ({ isPlayerView: false, isGMView }) }, app: {} },
       gmOpacity: DEFAULT_GM_FOG_OPACITY,
+      fade: { running: false },
       sprite: { alpha: isGMView ? DEFAULT_GM_FOG_OPACITY : 1, visible: true },
     }) as unknown as PictureHarness;
   }

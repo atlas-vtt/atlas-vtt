@@ -358,7 +358,7 @@ function fogRenderer(): FogRendererHarness {
     // The store hands its listeners a new state object after every write
     store: { getState: () => ({ ...state }), subscribe: (listener: (state: SceneState) => void) => (listeners.push(listener), () => undefined) },
     gesture,
-    picture: { fit: vi.fn(), drawCommitted: drawn, clear: vi.fn(), followView: vi.fn(), sprite: { visible: false } },
+    picture: { fit: vi.fn(), drawCommitted: drawn, clear: vi.fn(), endFade: vi.fn(), followView: vi.fn(), hasFog: false, sprite: { visible: false } },
     container: { visible: true },
   }) as unknown as { followStore(): void };
   renderer.followStore();
@@ -407,6 +407,34 @@ describe('the fog renderer', () => {
     state.isMapLoading = false;
     notify();
     expect(gesture.drop).toHaveBeenCalledTimes(4);
+  });
+
+  it('asks its picture for a fade only for an edit of the fog shown: not for another level, another map or a load', () => {
+    const { state, drawn, notify } = fogRenderer();
+    state.objects = { fog: { a: {} } };
+    notify();
+    expect(drawn).toHaveBeenLastCalledWith(true);
+    state.viewedLevel = 'upper';
+    state.objects = { fog: { b: {} } };
+    notify();
+    expect(drawn).toHaveBeenLastCalledWith(false);
+    state.mapPath = 'maps/b.atlasmap';
+    state.objects = { fog: { c: {} } };
+    notify();
+    expect(drawn).toHaveBeenLastCalledWith(false);
+    // The fog that comes with the end of a load
+    state.isMapLoading = true;
+    notify();
+    drawn.mockClear();
+    state.isMapLoading = false;
+    state.objects = { fog: { d: {} } };
+    notify();
+    expect(drawn.mock.calls.every(([edit]) => edit === false)).toBe(true);
+    expect(drawn).toHaveBeenCalled();
+    // And an edit after it
+    state.objects = { fog: { d: {}, e: {} } };
+    notify();
+    expect(drawn).toHaveBeenLastCalledWith(true);
   });
 
   it('draws nothing for a store write that changes no fog', () => {
