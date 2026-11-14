@@ -43,9 +43,6 @@
 - Room: click inside a room to fill it with fog or clear it
 - Hide all rooms covers every room on the map in one step
 
-**Party tokens clear fog**
-- Fog can clear around the party's tokens as they move, as far as you set, and walls stop it
-
 ## Improved
 
 - Carving and filling rooms is much faster on large maps. Reported by ThatMattLatt

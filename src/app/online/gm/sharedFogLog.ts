@@ -86,9 +86,8 @@ function operationsOf(shape: QShape, alias: Alias): SharedFogOperation[] {
 }
 
 /**
- * The scene's fog as players are sent it. Fog is a log of operations that only grows: a GM paints
- * stroke after stroke and party tokens that clear fog write one with every step. While the log is
- * short every operation goes out by itself, so a new stroke reaches players as a small delta. Once
+ * The scene's fog as players are sent it. Fog is a log of operations that only grows: every stroke
+ * a GM paints stays in it. While the log is short every operation goes out by itself, so a new stroke reaches players as a small delta. Once
  * more than `FOLD_AFTER` follows the last fold, everything up to now is folded into the outlines it
  * comes to, so what players get is as large as the fog's shape, never its history. Folding onto the
  * last fold replays only what came after it; an undo past the fold, or a folded operation that

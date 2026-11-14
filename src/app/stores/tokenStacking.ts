@@ -48,17 +48,6 @@ export interface PlacedTokensState {
   };
   levels?: SceneLevels;
   _audioDirty: boolean;
-  fogExplore?: unknown;
-  tokensPutDown?: readonly string[] | undefined;
-}
-
-/**
- * Notes `ids` as the tokens put down last (`ViewState.tokensPutDown`), for the watch that clears
- * fog around the party's (`fogExploreWatch.ts`). Only a scene with that option on notes them, so
- * elsewhere a drop that changes nothing still writes nothing. Changes `state` in place (a store draft).
- */
-export function notePutDown(state: Pick<PlacedTokensState, 'fogExplore' | 'tokensPutDown'>, ids: readonly string[]): void {
-  if (state.fogExplore) state.tokensPutDown = ids;
 }
 
 /**
@@ -69,9 +58,8 @@ export function notePutDown(state: Pick<PlacedTokensState, 'fogExplore' | 'token
  * token that ends where its level has no floor (an opening, or where the view draws its map
  * transparent: `art`, `floorBelow`) falls to the first level below that has, in the same write; over
  * a chasm it stays. A token that changes level takes its auras along. Changes only what the scene
- * saves and undoes (the tokens' places, order and levels, and their auras' levels), the audio
- * flag and the note of which tokens were put down (`notePutDown`); letting go of held tokens is
- * pointer state, which `dropTokens` does.
+ * saves and undoes (the tokens' places, order and levels, and their auras' levels) and the audio
+ * flag; letting go of held tokens is pointer state, which `dropTokens` does.
  * Tokens not listed keep their objects. Changes `state` in place (a store draft); returns nothing,
  * so a recipe may hand its call on.
  */
@@ -99,8 +87,6 @@ export function placeTokens(state: PlacedTokensState, positions: readonly TokenP
   }
   const climbed = positions.filter(({ id }, index) => tokens[id]?.level !== levelsBefore[index]).map(({ id }) => id);
   if (climbed.length > 0) aurasToTokenLevels(state.objects, climbed);
-  const ids = positions.map(({ id }) => id);
-  raiseTokens(tokens, ids);
+  raiseTokens(tokens, positions.map(({ id }) => id));
   state._audioDirty = true;
-  notePutDown(state, ids);
 }

@@ -1,5 +1,5 @@
 import type { TokenEntity, Character, NotePin, TextElement, DrawingStroke } from '../types';
-import type { FogExplore, FogOperation } from './fogTypes';
+import type { FogOperation } from './fogTypes';
 import type { WallSegment } from './wallTypes';
 import type { LightSource, LightZone, SceneLighting } from './lightingTypes';
 import type { AudioSource } from './audioTypes';
@@ -95,8 +95,6 @@ export interface ViewState extends ViewUIState {
   playerFrames: SavedPlayerFrame[];
   /** The moods this scene links to; saved with the map, never undo-tracked. */
   sound: SceneSound | null;
-  /** Fog clears around party tokens as they are put down, this far; unset is off. Saved with the map, never undo-tracked. Read with `readFogExplore`. */
-  fogExplore?: FogExplore | undefined;
   /** What the players' tokens have explored, as a PNG data URL; saved with the map, never undo-tracked. */
   exploredMask: string | null;
   /** The explored memories of the levels above the first, by level id; the first level's is `exploredMask`. */
@@ -129,12 +127,6 @@ export interface ViewState extends ViewUIState {
 
   // Audio dirty flag (non-persisted)
   _audioDirty: boolean;
-  /**
-   * The tokens put down last (`notePutDown`: a drop, tokens added to the map), a new list each
-   * time: what tells a token put down from one that only moved (a drag under way, re-snapping,
-   * undo). Noted only while `fogExplore` is on. Never saved, never undo-tracked.
-   */
-  tokensPutDown?: readonly string[] | undefined;
 
   // Tool and selection state
   activeTool: 'move' | 'select' | 'fog' | 'draw' | 'measure' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'wall' | 'audio' | 'stairs';

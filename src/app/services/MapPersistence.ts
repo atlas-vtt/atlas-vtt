@@ -29,7 +29,7 @@ import type { LevelLink, LevelSurface, SceneLevel } from '../types/sceneLevelTyp
 import type { SceneSound } from '../sound/soundTypes';
 import { LEVELS_FILE_VERSION, readSceneLevels, sceneFileVersion } from '../levels/levelFile';
 
-import type { FogExplore, FogOperation } from '../types/fogTypes';
+import type { FogOperation } from '../types/fogTypes';
 import type { SavedPlayerFrame } from '../stores/playerFramesSlice';
 
 // Placeholder types until properly defined elsewhere
@@ -85,8 +85,6 @@ export interface MapFile {
   playerFrames?: SavedPlayerFrame[];
   /** The moods the scene links to; older versions ignore it and files of scenes without leave it out. Read with `readSceneSound`. */
   sound?: SceneSound;
-  /** Fog clears around party tokens as they are put down; older versions ignore it and files of scenes without leave it out. Read with `readFogExplore`. */
-  fogExplore?: FogExplore;
 }
 
 /** A token as found in older map files, where conditions were still called `statuses`. */

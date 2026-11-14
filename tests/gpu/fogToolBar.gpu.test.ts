@@ -175,16 +175,9 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(more.bottom).toBeLessThanOrEqual(rect(TOOLS).top);
     expect(more.left).toBeGreaterThanOrEqual(0);
     expect(more.right).toBeLessThanOrEqual(1400);
-    // The hint under the party switch wraps on the rows' width: the menu is no wider for it.
-    const hint = document.querySelector<HTMLElement>(`${TOOLS} .atlas-dropdown-hint`)!;
-    const row = rect(`${TOOLS} .atlas-dropdown-toggle-row`);
-    expect(hint.getBoundingClientRect().left).toBeCloseTo(row.left, 1);
-    expect(hint.getBoundingClientRect().right).toBeCloseTo(row.right, 1);
-    expect(hint.getBoundingClientRect().height).toBeGreaterThan(1.5 * parseFloat(getComputedStyle(hint).fontSize));
     expect(more.width).toBeLessThan(300);
-    // The menu has one text edge: its action begins on it with its icon, where the switch's and the sliders' names begin.
-    const edge = rect(`${TOOLS} .atlas-dropdown-toggle-row__label`).left;
-    expect(rect(`${TOOLS} .atlas-dropdown-slider-row .atlas-dropdown-label`).left + parseFloat(getComputedStyle(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row .atlas-dropdown-label`)!).paddingLeft)).toBeCloseTo(edge, 1);
+    // The menu has one text edge: its action begins on it with its icon, where the slider's name begins.
+    const edge = rect(`${TOOLS} .atlas-dropdown-slider-row .atlas-dropdown-label`).left + parseFloat(getComputedStyle(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row .atlas-dropdown-label`)!).paddingLeft);
     const across = rect(`${TOOLS} .atlas-dropdown-content .slider-root`);
     const actions = [...document.querySelectorAll<HTMLElement>(`${TOOLS} .atlas-dropdown-content .atlas-dropdown-menu-item`)];
     expect(actions.map((action) => action.textContent)).toEqual(['Hide all rooms']);

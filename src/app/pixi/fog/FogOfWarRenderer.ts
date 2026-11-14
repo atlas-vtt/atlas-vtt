@@ -2,8 +2,7 @@
  * The fog of a map view: owns the fog's layer, its picture (`FogPicture`), the fog tool's
  * gesture (`FogGesture`) and the mark of what its menu acts on (`FogMenuTarget`), and says when
  * the picture follows the scene. Fog takes presses only while the fog tool is chosen; a
- * right-click released in place opens its menu with the select and move tools too (`menuPointer`). It also hands its coverage to the watch that clears fog
- * around party tokens (`watchFogExplore`).
+ * right-click released in place opens its menu with the select and move tools too (`menuPointer`).
  */
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
@@ -19,7 +18,6 @@ import type { MapRect } from '../../grid/cellNumbering';
 import { destroyTree } from '../utils/destroyTree';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
-import { watchFogExplore } from '../../stores/fogExploreWatch';
 import { FogGesture } from './FogGesture';
 import { fogMenuOffered, showFogMenu } from './fogMenu';
 import { FogMenuTarget } from './FogMenuTarget';
@@ -42,7 +40,6 @@ export class FogOfWarRenderer {
   private readonly gesture: FogGesture;
   private readonly menuTarget: FogMenuTarget;
   private unsubscribe?: () => void;
-  private readonly stopExploring: () => void;
   /** Whether the canvas shows the players' view where the store's view switches do not say so (a peek); unset or null, they alone say it. */
   public showsPlayers: (() => boolean | null) | null = null;
   /** Whether a key pressed now is this map's to take (`canRunMapHotkeys`); unset, every key outside a text field is. */
@@ -96,7 +93,6 @@ export class FogOfWarRenderer {
 
     this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
     this.followStore();
-    this.stopExploring = watchFogExplore(store, { coverage: () => this.getCommittedCoverage(), mapRect });
 
     // The scene as the store holds it now: preloaded fog shows though no change of it follows.
     if (this.store.getState().isMapLoading) this.container.visible = false;
@@ -186,7 +182,6 @@ export class FogOfWarRenderer {
 
   destroy(): void {
     this.unsubscribe?.();
-    this.stopExploring();
     this.eventBus.off('map-image-updated', this.mapImageUpdatedHandler);
     this.gesture.destroy();
     this.menuTarget.destroy();

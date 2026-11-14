@@ -36,7 +36,7 @@ import { diceRandom } from './services/offlineDiceInputs';
 import type { MapMove } from './grid/mapStretch';
 import { objectsMovedWithMap } from './grid/mapStretchObjects';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
-import { notePutDown, placeTokens, raiseTokens, type TokenPlace } from './stores/tokenStacking';
+import { placeTokens, raiseTokens, type TokenPlace } from './stores/tokenStacking';
 import type { ArtFloors } from './levels/levelSurfaces';
 import type { DiceRollResult } from './types/diceTypes';
 import { isAtlasToolAvailable } from './tools/toolAvailability';
@@ -56,8 +56,6 @@ import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
 import { createAnnotationsActions, type AnnotationsSlice } from './stores/annotationsSlice';
 import { createFogActions, type FogSlice } from './stores/fogSlice';
-import { readFogExplore } from './fog/fogExplore';
-import type { FogExplore } from './types/fogTypes';
 import { createTurnMovesActions, type TurnMovesSlice } from './stores/turnMovesSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
@@ -266,8 +264,6 @@ export interface ViewAtlasState extends ViewState {
   countTurnMove: TurnMovesSlice['countTurnMove'];
   /** Links the scene to its moods; nothing to link clears the field. Written with the map, never an undo step. */
   setSceneSound: (sound: SceneSound | null) => void;
-  /** Sets how far fog clears around party tokens that are put down, or switches it off (null). Written with the map, never an undo step. */
-  setFogExplore: (explore: FogExplore | null) => void;
 
   // Frames saved for the players' TV (from playerFramesSlice.ts)
   addPlayerFrame: PlayerFramesSlice['addPlayerFrame'];
@@ -693,7 +689,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                 ids.push(id);
               }
               raiseTokens(draft.objects.tokens, ids);
-              notePutDown(draft, ids);
             });
             return ids;
           },
@@ -1301,7 +1296,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
             draft.playerFrames = [];
             draft.sound = null;
-            draft.fogExplore = undefined;
             draft.exploredMask = null;
             draft.exploredMasks = undefined;
             draft.exploredEdits = 0;
@@ -1433,7 +1427,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createTurnMovesActions(set),
           ...createPlayerFramesActions(set),
           setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),
-          setFogExplore: (explore) => set((draft) => { draft.fogExplore = readFogExplore(explore); }),
 
           // --- Per-view UI visibility (from uiSlice.ts) ---
           ...createInitialUIState(loadDrawTool(app)),
@@ -1491,7 +1484,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               // Left out until the GM saves one, so files of scenes without stay as they were
               ...(state.playerFrames.length > 0 && { playerFrames: state.playerFrames }),
               ...(state.sound && { sound: state.sound }),
-              ...(state.fogExplore && { fogExplore: state.fogExplore }),
             };
           },
           
@@ -1512,7 +1504,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               lighting: readSceneLighting(saved.lighting),
               playerFrames: readPlayerFrames(saved.playerFrames),
               sound: readSceneSound(saved.sound),
-              fogExplore: readFogExplore(saved.fogExplore),
               exploredMask: readExploredMask(saved.exploredMask),
               // Counted per session: a file never brings one.
               exploredEdits: current.exploredEdits,

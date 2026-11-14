@@ -17,9 +17,6 @@ const SESSION_KEYS = ['mapPath', 'camera', 'diceLog', 'lootRoller', 'sound'] as 
 /** The scene's floors and their explored memories, which a snapshot that has none takes away on restoring. */
 const LEVEL_KEYS = ['levels', 'exploredMasks'] as const;
 
-/** Scene options a file leaves out while they are off, which a snapshot taken with one off switches off on restoring. */
-const OPTION_KEYS = ['fogExplore'] as const;
-
 /**
  * One named state of a scene. It is the scene's persisted map envelope
  * (`{ state, version }`) plus a name, so every reader and migration of map
@@ -72,7 +69,6 @@ export function restoreSnapshot(current: PersistedMapEnvelope, snapshot: SceneSn
   const state: MapState = { ...current.state, ...snapshot.state, mapPath };
   // The floors are the scene's, not the session's: a snapshot taken with one floor brings back a scene of one floor.
   for (const key of LEVEL_KEYS) if (!(key in snapshot.state)) Reflect.deleteProperty(state, key);
-  for (const key of OPTION_KEYS) if (!(key in snapshot.state)) Reflect.deleteProperty(state, key);
   return {
     ...(version !== undefined ? { version } : {}),
     state,
