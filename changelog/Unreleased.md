@@ -69,6 +69,7 @@
 - The eye on a scene tab shows the scene to players again, in the player view and online, and the tab's close button closes it: both had become hard to click. Reported by Tanaros, Meisterdieb, George and Theo Chronis
 - Online, the eye on a floor shows that floor to players at once; before, they saw it only after a refresh. Reported by Theo Chronis
 - Ctrl/Cmd and hover shows a token's statblock with the measure tool and the other tools too, not only with Move and Select. Reported by George
+- The laser pointer is smooth again on Linux with AMD graphics, where it was drawn in coarse blocks, in Atlas and on the online players' page
 
 ## Atlas Online
 
