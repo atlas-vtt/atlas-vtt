@@ -190,7 +190,7 @@ describe('the table log\'s tab on the GM\'s map', () => {
     staysClear(tab);
   });
 
-  it('draws the player window bar as tall as the scene tabs, a rounded rectangle whose end buttons run concentric with its corners', async () => {
+  it('draws the player window bar as tall as the scene tabs, a rounded rectangle whose buttons run concentric with its corners on every side', async () => {
     await mount(1280, 600, { tabs: true, widgets: 0, levels: false, bar: true });
     const toolbar = document.querySelector<HTMLElement>('.atlas-player-window-bar > .atlas-vtt-toolbar')!;
     const bar = toolbar.getBoundingClientRect();
@@ -201,14 +201,15 @@ describe('the table log\'s tab on the GM\'s map', () => {
     const buttons = [...toolbar.querySelectorAll<HTMLElement>('.btn')];
     const first = buttons[0]!;
     const last = buttons.at(-1)!;
-    // Outer = inner + gap, on the corners that face the bar's: the gap from the bar's outer edge
+    // Outer = inner + gap: the gap from the bar's outer edge
     // to the button, within the half pixel the browser rounds the border's width by
     const gap = first.getBoundingClientRect().left - bar.left;
     const concentric = barRadius - gap;
-    const radii = [
-      getComputedStyle(first).borderTopLeftRadius, getComputedStyle(first).borderBottomLeftRadius,
-      getComputedStyle(last).borderTopRightRadius, getComputedStyle(last).borderBottomRightRadius,
-    ].map(parseFloat);
+    // Every corner of every button alike, inner corners too
+    const radii = buttons.flatMap((button) => {
+      const style = getComputedStyle(button);
+      return [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius];
+    }).map(parseFloat);
     for (const radius of radii) expect(Math.abs(radius - concentric)).toBeLessThanOrEqual(0.75);
     // The bar has the main toolbar's corner, and so has the tab bar
     expect(barRadius).toBe(16);

@@ -104,10 +104,12 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(controls[0]!.left - tools.left).toBeCloseTo(tools.right - controls.at(-1)!.right, 1);
     const corner = (selector: string): number => parseFloat(getComputedStyle(document.querySelector(selector)!).borderTopLeftRadius);
     expect(corner(TOOLS) / tools.height).toBeCloseTo(corner(MODES) / modes.height, 2);
-    // The end buttons are concentric with their bar, a menu's button too (the colour is the first tool).
-    const radius = (name: string): string => getComputedStyle(button(name)).borderTopLeftRadius;
-    expect(radius('Colour')).toBe(radius('Select'));
-    expect(radius('Size')).not.toBe(radius('Colour'));
+    // Every button is concentric with its bar on all sides, a menu's button too (the colour is the first tool).
+    const radii = (name: string): string[] => {
+      const style = getComputedStyle(button(name));
+      return [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius];
+    };
+    expect(new Set(['Colour', 'Size', 'Select'].flatMap(radii)).size).toBe(1);
     // The dot shows the colour in hand.
     const dot = document.querySelector<HTMLElement>(`${TOOLS} .atlas-tool-bar__dot`)!;
     expect(getComputedStyle(dot).backgroundColor).toBe('rgb(255, 255, 255)');

@@ -33,7 +33,7 @@
 }
 
 // What the chips hold, small: they stand over the map at any zoom, where a frame may be narrower
-// than a toolbar. Above the toolbar's own padding, gap and button size; its end buttons run
+// than a toolbar. Above the toolbar's own padding, gap and button size; its buttons run
 // concentric with its corner from 2 px inside.
 $chip-inset: 2px;
 
@@ -41,8 +41,7 @@ $chip-inset: 2px;
   gap: $chip-inset;
   padding: $chip-inset;
 
-  > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($chip-inset)}; }
-  > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($chip-inset)}; }
+  --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($chip-inset, $button-height-s * 0.5)};
 
   .atlas-tool-button > span > .btn {
     width: $button-height-s;
