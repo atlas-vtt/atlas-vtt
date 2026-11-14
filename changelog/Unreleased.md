@@ -54,10 +54,13 @@
 - A shape shows the fog it will leave while you draw it. What it will reveal shows to you alone until you let go
 - The fog brush's ring shows on light maps and on dark ones
 - Tools with options in the toolbar look like every other tool: hovering, pressing or choosing one highlights the whole tool as one rounded button, and the arrow beside it for its options has a highlight of its own
+- The player window bar has a Freeze button: players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead
 
 ## Fixed
 
 - Tokens and pins under fog can be clicked and dragged: fog no longer takes their clicks. Fog is changed with the fog tool only
+- The TrueScale frame and its bar on the map show only while TrueScale is on
+- The player window no longer says "Camera paused" after you come back to the scene it shows
 
 ## Fixed
 

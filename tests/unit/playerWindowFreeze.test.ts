@@ -140,6 +140,16 @@ describe('player camera freeze', () => {
     expect(shown(lastFrame())[2]).toBe(800);
   });
 
+  it('takes "Camera paused" away once a present ends a held frame', () => {
+    const { service, source, doc } = setup();
+    const indicator = (): string | undefined => doc.getElementById('atlas-player-freeze-indicator')?.style.display;
+    expect(indicator()).toBe('none');
+    service.holdCurrentFrame();
+    expect(indicator()).toBe('flex');
+    service.presentCanvas(source, 'scene-a');
+    expect(indicator()).toBe('none');
+  });
+
   it('holds a still frame while the DM is on another tab and returns to the frozen camera', () => {
     const { service, source, drawImage, setDmCamera, nextFrame, lastFrame } = setup();
     setDmCamera({ centerX: 10, centerY: 20, scale: 1 });

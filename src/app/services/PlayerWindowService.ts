@@ -415,6 +415,8 @@ export class PlayerWindowService {
       if (framing && !anotherScene) this.moveFrozenCamera(framing);
       else this.setFrozenCamera(framing);
     }
+    // The held frame is gone even where no freeze changed
+    this.updateFreezeIndicator();
     playerWindowStore.setState({ shownTabId: tabId });
     this.playerView?.updateSession({
       tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: this.isFrozen(), ...(anotherScene && !this.isFrozen() ? { camera: null } : {}),

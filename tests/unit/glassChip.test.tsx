@@ -73,7 +73,7 @@ function fakeService() {
       return true;
     }),
     playersToCamera: vi.fn((tabId: string) => playerWindowStore.getState().shownTabId === tabId),
-    isTrueScale: () => false,
+    isTrueScale: () => true,
     playerCameraAt: vi.fn((x: number, y: number) => ({ centerX: x, centerY: y, scale: 1 })),
     freezeCamera: vi.fn(() => {
       state.frozen = true;
@@ -156,6 +156,13 @@ function drag(to: { x: number; y: number; altKey?: boolean }[], release = true):
 }
 
 describe('the glass chip', () => {
+  it('is not there while TrueScale is off', () => {
+    service.isTrueScale = () => false;
+    render(<GlassChip view={fakeView()} />);
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(fakes.outlines).toHaveLength(0);
+  });
+
   it('is not there while the player window is closed', () => {
     playerWindowStore.setState({ isOpen: false, shownTabId: null });
     render(<GlassChip view={fakeView()} />);
@@ -387,9 +394,10 @@ describe('the glass chip', () => {
     it('keeps its place while the size of the players\' frame cannot be read for a moment', () => {
       render(<GlassChip view={fakeView()} />);
       drag([{ x: 163, y: 72 }]);
-      service.playerViewWorldSize.mockReturnValueOnce(null);
+      service.playerViewWorldSize.mockReturnValue(null);
       act(() => { playerWindowStore.setState({}); });
       expect(lastGlass()).toEqual([null, undefined]);
+      service.playerViewWorldSize.mockReturnValue({ width: 200, height: 100 });
       act(() => { playerWindowStore.setState({}); });
       expect(lastGlass()).toEqual(ghostAt(550, 400));
     });

@@ -8,7 +8,7 @@ import { playerWindowStore, resetPlayerWindowStore } from '../../src/app/stores/
 
 const context = vi.hoisted(() => ({
   settings: null as unknown,
-  service: { getWindow: vi.fn<() => Window | null>(), setCurtain: vi.fn(), destroy: vi.fn() },
+  service: { getWindow: vi.fn<() => Window | null>(), setCurtain: vi.fn(), toggleCameraFreeze: vi.fn(), isTrueScale: vi.fn(() => false), destroy: vi.fn() },
   closeImageDisplay: vi.fn(),
   fullScreen: { available: false, set: vi.fn(async () => undefined) },
 }));
@@ -37,6 +37,7 @@ describe('the player window bar', () => {
     HTMLElement.prototype.animate = vi.fn(() => ({ finished: Promise.resolve() }) as unknown as Animation);
     Element.prototype.scrollIntoView = vi.fn();
     context.service.getWindow.mockReturnValue(window);
+    context.service.isTrueScale.mockReturnValue(false);
     playerWindowStore.setState({ isOpen: true });
   });
   afterEach(() => {
@@ -60,6 +61,24 @@ describe('the player window bar', () => {
     act(() => playerWindowStore.setState({ curtain: true }));
     fireEvent.click(screen.getByRole('button', { name: 'Reveal the map' }));
     expect(context.service.setCurtain).toHaveBeenLastCalledWith(false);
+  });
+
+  it('freezes the player view and lets it follow again, with TrueScale off', () => {
+    render(<PlayerWindowBar view={null} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Freeze the player view' }));
+    expect(context.service.toggleCameraFreeze).toHaveBeenCalledOnce();
+    act(() => playerWindowStore.setState({ isFrozen: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Let the player view follow you' }));
+    expect(context.service.toggleCameraFreeze).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the freeze button but disables it while TrueScale is on', () => {
+    context.service.isTrueScale.mockReturnValue(true);
+    render(<PlayerWindowBar view={null} />);
+    const freeze = screen.getByRole('button', { name: 'With TrueScale on, pin the players on the frame on your map' });
+    expect(freeze.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(freeze);
+    expect(context.service.toggleCameraFreeze).not.toHaveBeenCalled();
   });
 
   it('offers taking back an image only while one is shown, as its last button', () => {
