@@ -73,3 +73,4 @@
 
 - Players may draw: a switch in the player view settings gives your online players a Draw tool of their own. They change and erase only what they drew
 - A map with more fog than players can be sent is shown covered to them, never open, and you are told
+- A dragged token's move reads for online players as it does for you: the line in the colour of the movement step, and moved / speed beside it, for their own tokens and every token they see
