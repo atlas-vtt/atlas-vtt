@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { framedAnnotations, ownKind, pressScope, reaches, takesOwn, takesPress, withGroups } from '../annotationPress';
+import { framedAnnotations, ownKind, pressScope, takesOwn, takesPress, withGroups } from '../annotationPress';
 import { DRAW_MODES } from '../annotationTypes';
 import { drawing, text } from './annotationKit';
 
@@ -10,27 +10,25 @@ const locked = text({ id: 'locked', locked: true });
 const hidden = text({ id: 'hidden', hidden: true });
 
 describe('what the tool in hand takes of drawings and texts', () => {
-  it('reaches every one with the move and select tools, and grabs at once only those above the tokens that are not locked', () => {
+  it('takes every one with the move and select tools: on the map, locked and hidden ones too', () => {
     for (const tool of ['move', 'select']) {
       const scope = pressScope(tool);
       expect(scope).toBe('move');
-      expect([above, onMap, locked, hidden].every((annotation) => reaches(scope, annotation))).toBe(true);
-      // One on the map or a locked one is selected by a click: a press there stays the map's.
-      expect([above, onMap, locked, hidden].map((annotation) => takesPress(scope, annotation))).toEqual([true, false, false, true]);
+      expect([above, onMap, locked, hidden].every((annotation) => takesPress(scope, annotation))).toBe(true);
     }
   });
 
   it('takes none by a press in the Draw tool: only the handles of what was just made', () => {
     const scope = pressScope('draw');
     expect(scope).toBe('made');
-    expect([above, onMap, locked, hidden].some((annotation) => takesPress(scope, annotation) || reaches(scope, annotation))).toBe(false);
+    expect([above, onMap, locked, hidden].some((annotation) => takesPress(scope, annotation))).toBe(false);
   });
 
   it('takes none in every other tool', () => {
     for (const tool of ['measure', 'wall', 'fog', 'eraser', 'note-pin', 'laser', 'audio', 'stairs']) {
       const scope = pressScope(tool);
       expect(scope).toBe('none');
-      expect(reaches(scope, above)).toBe(false);
+      expect(takesPress(scope, above)).toBe(false);
     }
   });
 
@@ -41,7 +39,7 @@ describe('what the tool in hand takes of drawings and texts', () => {
   it('takes every one alike in the players\' page\'s Draw tool in its Select mode', () => {
     const scope = pressScope('draw', 'select');
     expect(scope).toBe('all');
-    expect([above, onMap, locked, hidden].every((annotation) => takesPress(scope, annotation) && reaches(scope, annotation))).toBe(true);
+    expect([above, onMap, locked, hidden].every((annotation) => takesPress(scope, annotation))).toBe(true);
   });
 });
 

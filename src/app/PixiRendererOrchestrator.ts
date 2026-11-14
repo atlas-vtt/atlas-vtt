@@ -1241,7 +1241,6 @@ export class PixiRendererOrchestrator { // Renamed class
     // The selection marks what the annotations' own handles do not frame, and turns them with a group of tokens
     this.selectionManager?.setAnnotationHost({
       framedIds: () => annotations.selecting.framedIds,
-      selectable: () => annotations.selecting.works(),
       turnAlong: (ids) => annotations.selecting.turnAlong(ids),
     });
   }

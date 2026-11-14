@@ -18,7 +18,7 @@
 - With dynamic lighting, players see drawings only where they see or remember the map
 - Put a drawing under the tokens and the grid
 - Select drawings and texts with Move and Select: a bar under them changes colour, size and more, and locks or deletes them
-- Drawings under the tokens and locked ones are selected with a click, so they never move by accident
+- Move and Select moves tokens, drawings, stamps, texts and fills alike. A box or lasso selects tokens only
 - Lock, group, bring to front and send to back
 
 **Stamps and cells**

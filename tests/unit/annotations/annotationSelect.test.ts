@@ -64,52 +64,39 @@ describe('what a press takes, by the tool in hand', () => {
     text: s.store.getState().addText(label(500, 100)),
   });
 
-  it('takes those above the tokens by a press with the move and select tools, hidden ones too, and one on the map or a locked one by a click', () => {
+  it('takes every drawing and text by a press with the move and select tools: on the map, locked and hidden ones too', () => {
     let ids: Record<string, string> = {};
     const s = scene((made) => { ids = fill(made); });
     for (const tool of ['move', 'select'] as const) {
       s.store.getState().setActiveTool(tool);
       s.store.getState().clearSelection();
-      for (const [name, y] of [['above', 100], ['hidden', 400]] as const) {
-        expect(s.press(200, y)).toBe(true);
-        s.pointer('pointerup', 200, y);
+      for (const [name, y] of [['above', 100], ['onMap', 200], ['locked', 300], ['hidden', 400]] as const) {
+        expect(s.press(150, y)).toBe(true);
+        s.pointer('pointerup', 150, y);
         expect(selected(s)).toEqual([ids[name]]);
       }
       expect(s.press(500, 100)).toBe(true);
       s.pointer('pointerup', 500, 100);
       expect(selected(s)).toEqual([ids.text]);
-      // The press stays the map's (a marquee, a pan); released in place it selects.
-      for (const [name, y] of [['onMap', 200], ['locked', 300]] as const) {
-        s.store.getState().clearSelection();
-        expect(s.press(200, y)).toBe(false);
-        expect(selected(s)).toEqual([]);
-        s.pointer('pointerup', 200, y);
-        expect(selected(s)).toEqual([ids[name]]);
-        // Selected, a press takes it like any other.
-        expect(s.press(200, y)).toBe(true);
-        s.pointer('pointerup', 200, y);
-      }
+      expect(s.press(600, 500)).toBe(false);
     }
   });
 
-  it('moves one on the map once it is selected, and never by a drag that began on it before', () => {
+  it('moves one on the map and a text by a drag with the move tool, and a locked one nowhere', () => {
     let ids: Record<string, string> = {};
     const s = scene((made) => { ids = fill(made); });
-    expect(s.pull([[150, 200], [210, 260]])).toBe(false);
-    expect(read(s, ids.onMap!).kind === 'drawing' && (read(s, ids.onMap!) as { points: Point[] }).points[0]).toEqual(pt(100, 200));
-    expect(selected(s)).toEqual([]);
-    s.pull([[150, 200]]);
-    expect(selected(s)).toEqual([ids.onMap]);
     expect(s.pull([[150, 200], [210, 260]])).toBe(true);
     expect((read(s, ids.onMap!) as { points: Point[] }).points[0]).toEqual(pt(160, 260));
-    // A locked one is selected and moves nowhere.
-    s.pull([[150, 300]]);
+    expect(selected(s)).toEqual([ids.onMap]);
+    const text = s.texts()[0]!;
+    expect(s.pull([[500, 100], [560, 140]])).toBe(true);
+    expect([s.texts()[0]!.x - text.x, s.texts()[0]!.y - text.y]).toEqual([60, 40]);
+    expect(s.pull([[150, 300], [210, 360]])).toBe(true);
     expect(selected(s)).toEqual([ids.locked]);
-    s.pull([[150, 300], [210, 360]]);
     expect((read(s, ids.locked!) as { points: Point[] }).points[0]).toEqual(pt(100, 300));
   });
 
-  it('adds one on the map to the selection by a click with Shift, and takes it away again', () => {
+  it('adds one on the map to the selection with Shift, and takes it away again', () => {
     let ids: Record<string, string> = {};
     const s = scene((made) => { ids = fill(made); });
     s.pull([[150, 100]]);
@@ -232,11 +219,8 @@ describe('moving what is selected', () => {
     }
   });
 
-  it('selects a locked one by a click and moves it nowhere', () => {
+  it('selects a locked one and moves it nowhere', () => {
     const s = scene((made) => { made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)], { locked: true })); });
-    expect(s.pull([[200, 100], [260, 160]])).toBe(false);
-    expect(selected(s)).toHaveLength(0);
-    s.pull([[200, 100]]);
     expect(s.pull([[200, 100], [260, 160]])).toBe(true);
     expect(selected(s)).toHaveLength(1);
     expect(s.drawings()[0]?.points[0]).toEqual(pt(100, 100));

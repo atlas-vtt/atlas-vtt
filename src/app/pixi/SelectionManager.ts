@@ -6,11 +6,9 @@ import { isHandled } from "./utils/handledEvents";
 import { isPrimaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { EventEmitter } from 'events';
-import { annotationsIn } from '../annotations/annotationHit';
 import { annotationList } from '../annotations/annotationList';
-import { pressScope, takesPress, withGroups, type PressScope } from '../annotations/annotationPress';
+import { pressScope, type PressScope } from '../annotations/annotationPress';
 import type { Annotation } from '../annotations/annotationTypes';
-import type { SelectArea } from '../annotations/selectArea';
 import type { AnnotationEdit } from './annotations/AnnotationEdit';
 import { SelectionHighlights } from './selection/SelectionHighlights';
 import { measureTextView } from './textLayout';
@@ -28,8 +26,6 @@ import { mapTokens } from '../tokens/offMap';
 export interface AnnotationSelectionHost {
   /** The ids of the annotations their own handles frame: the selection marks them no second time. */
   framedIds(): ReadonlySet<string>;
-  /** Whether a marquee takes annotations now: on the GM's view of the canvas alone. */
-  selectable(): boolean;
   /** The annotations among `ids` as a gesture that turns with a group of tokens; null where none of them turns. */
   turnAlong(ids: readonly string[]): AnnotationEdit | null;
 }
@@ -312,11 +308,8 @@ export class SelectionManager {
       Math.abs(worldPos.x - this.selectionStart.x),
       Math.abs(worldPos.y - this.selectionStart.y)
     );
-    const area: SelectArea = lasso ? this.lassoPoints : { minX: box.x, minY: box.y, maxX: box.x + box.width, maxY: box.y + box.height };
-
-    // The Draw tool's Select mode takes drawings and texts alone, on the map too
-    const selectedIds = scope === 'all' ? [] : this.tokensIn(lasso ? this.lassoPoints : null, box);
-    selectedIds.push(...this.annotationsInArea(area, scope));
+    // A marquee takes tokens alone: drawings and texts are selected by a press, and the bar under them is theirs.
+    const selectedIds = this.tokensIn(lasso ? this.lassoPoints : null, box);
 
     if (this.marqueeGraphics && !this.marqueeGraphics.destroyed) {
       this.marqueeGraphics.clear();
@@ -342,19 +335,6 @@ export class SelectionManager {
       if (box.intersects(tokenRect) || box.contains(tokenRect.x, tokenRect.y)) ids.push(id);
     }
     return ids;
-  }
-
-  /**
-   * The drawings and texts `area` touches that the tool in hand takes (`takesPress`), each with its
-   * group: those above the tokens that are not locked, with the move and select tools (one on the
-   * map or a locked one is selected by a click). None while the canvas shows the players' picture.
-   */
-  private annotationsInArea(area: SelectArea, scope: PressScope): string[] {
-    if (this.annotationHost && !this.annotationHost.selectable()) return [];
-    const list = annotationList(levelObjects(this.store.getState()));
-    if (list.length === 0) return [];
-    const taken = annotationsIn(area, list, measureTextView).filter((annotation) => takesPress(scope, annotation));
-    return withGroups(taken.map(({ id }) => id), list, scope);
   }
 
   // Helper method to check if a target is part of a token hierarchy

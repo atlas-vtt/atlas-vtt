@@ -10,7 +10,7 @@ const U_VIA: ScreenPoint[] = [[150, 50], [150, 250], [250, 250], [250, 50], [350
 const U_TO: ScreenPoint = [50, 350];
 
 describe('SelectionManager lasso', () => {
-  it('selects what lies inside a concave lasso: tokens by their place, and every drawing it touches', () => {
+  it('selects the tokens inside a concave lasso by their place, and no drawing, which a press selects', () => {
     const { store, drag } = selectionHarness({
       selectionMode: 'lasso',
       tokens: { goblin: tokenSprite(100, 300, true), sentry: tokenSprite(200, 150, true) },
@@ -20,6 +20,6 @@ describe('SelectionManager lasso', () => {
 
     drag(U_FROM, U_TO, U_VIA);
 
-    expect(store.getState().selectedIds).toEqual(['goblin', 'scrawl']);
+    expect(store.getState().selectedIds).toEqual(['goblin']);
   });
 });
