@@ -190,16 +190,29 @@ describe('the table log\'s tab on the GM\'s map', () => {
     staysClear(tab);
   });
 
-  it('draws the player window bar as tall as the scene tabs, its buttons concentric in its capsule', async () => {
+  it('draws the player window bar as tall as the scene tabs, a rounded rectangle whose end buttons run concentric with its corners', async () => {
     await mount(1280, 600, { tabs: true, widgets: 0, levels: false, bar: true });
-    const bar = boxOf('.atlas-player-window-bar > .atlas-vtt-toolbar');
+    const toolbar = document.querySelector<HTMLElement>('.atlas-player-window-bar > .atlas-vtt-toolbar')!;
+    const bar = toolbar.getBoundingClientRect();
     expect(bar.height).toBeCloseTo(boxOf('.atlas-scene-tab-bar').height, 0);
-    const button = document.querySelector<HTMLElement>('.atlas-player-window-bar .btn')!;
-    const inset = button.getBoundingClientRect().top - bar.top;
-    expect(inset).toBeCloseTo(bar.bottom - button.getBoundingClientRect().bottom, 0);
-    // A capsule's half height is its button's half height plus the inset
-    expect(bar.height / 2).toBeCloseTo(button.getBoundingClientRect().height / 2 + inset, 0);
-    expect(parseFloat(getComputedStyle(button).borderTopLeftRadius)).toBeGreaterThanOrEqual(button.getBoundingClientRect().height / 2);
+    const barRadius = parseFloat(getComputedStyle(toolbar).borderTopLeftRadius);
+    // Not a capsule
+    expect(barRadius).toBeLessThan(bar.height / 2 - 1);
+    const buttons = [...toolbar.querySelectorAll<HTMLElement>('.btn')];
+    const first = buttons[0]!;
+    const last = buttons.at(-1)!;
+    // Outer = inner + gap, on the corners that face the bar's: the gap from the bar's outer edge
+    // to the button, within the half pixel the browser rounds the border's width by
+    const gap = first.getBoundingClientRect().left - bar.left;
+    const concentric = barRadius - gap;
+    const radii = [
+      getComputedStyle(first).borderTopLeftRadius, getComputedStyle(first).borderBottomLeftRadius,
+      getComputedStyle(last).borderTopRightRadius, getComputedStyle(last).borderBottomRightRadius,
+    ].map(parseFloat);
+    for (const radius of radii) expect(Math.abs(radius - concentric)).toBeLessThanOrEqual(0.75);
+    // The bar has the main toolbar's corner, and so has the tab bar
+    expect(barRadius).toBe(14);
+    expect(parseFloat(getComputedStyle(document.querySelector('.atlas-scene-tab-bar')!).borderTopLeftRadius)).toBe(14);
   });
 
   it('leaves the tabs where they were', async () => {

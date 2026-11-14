@@ -28,8 +28,7 @@ $tab-fade: 24px;
   pointer-events: auto;
 
   @include atlas-elevated-surface;
-  // Shorter than the radius allows, so the bar renders as a capsule.
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($toolbar-radius);
 }
 
 // Scrolls sideways with a trackpad or a mouse wheel (useTabStripOverflow);

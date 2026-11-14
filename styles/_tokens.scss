@@ -23,6 +23,10 @@ $radius-l:  var(--radius-m);   // 8px  – inner elements inside padded containe
 $radius-xl: var(--radius-l);   // 12px – panels, popovers, dropdowns
 $radius-2xl: var(--radius-xl); // 24px – full modals (matches --modal-radius)
 $radius-full: 9999px;          // For pills and circles
+// Every toolbar's corner (main toolbar, undo/redo bar, a tool's bars, scene tabs, player window bar,
+// the editor's tray): one radius, small enough that the shortest bar (36 px) stays a rounded
+// rectangle, large enough that the main toolbar's end buttons, 8 px inside, keep a corner.
+$toolbar-radius: 14px;
 
 // ── Shadows ──────────────────────────────────────────────────────────────────
 // Subtle shadow for cards and containers

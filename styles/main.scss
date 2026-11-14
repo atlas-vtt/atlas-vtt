@@ -502,7 +502,7 @@ body.theme-light {
     padding: $spacing-s;
     pointer-events: auto;
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($toolbar-radius);
 
     // The end controls sit $spacing-s inside the border, so their outer corners
     // run concentric with the bar's. Tool buttons, tool groups and the toggle
