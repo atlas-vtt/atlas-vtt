@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
-import { Container, type Graphics } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import { EventEmitter } from 'eventemitter3';
 import type { FogShape } from '../../src/app/fog/fogToolChoices';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
@@ -152,6 +152,33 @@ describe('what a shape will reveal, before it is committed', () => {
       expect(view.fog.fading).toBe(false);
     },
   );
+
+  it.each(shapes)('leaves nothing of an erasing %s on the map when the tool is left, or the players\' view shows, while it is under way', (shape) => {
+    for (const leave of [
+      (view: ReturnType<typeof fogView>): void => { view.store.getState().setActiveTool('move'); },
+      (view: ReturnType<typeof fogView>): void => { view.store.getState().setGMView(false); },
+    ]) {
+      const view = fogView('eraser', shape);
+      view.draw(shape, false);
+      expect(view.wash().shown).toBe(true);
+      leave(view);
+      expect(view.wash().shown).toBe(false);
+      expect(view.strokesOnCanvas()).toEqual([]);
+      expect(view.store.getState().objects.fog).toBe(COVER);
+    }
+  });
+
+  it.each(shapes)('leaves nothing drawn but the fog once an erasing %s is let go: no wash, no outline, no mark, and nothing remembered', (shape) => {
+    const view = fogView('eraser', shape);
+    view.draw(shape, false);
+    view.finish(shape, false);
+    expect(view.wash().shown).toBe(false);
+    // Every mark of the tool in the fog's layer is empty: the outline of what was under way, the snapping guide, the menu's mark.
+    const marks = view.fog.getContainer().children.filter((child): child is Graphics => child instanceof Graphics);
+    expect(marks.length).toBeGreaterThan(2);
+    expect(marks.filter((mark) => mark.visible && mark.getLocalBounds().width > 0).map((mark) => mark.label)).toEqual([]);
+    expect(Object.values(view.store.getState().objects.fog).some((operation) => 'area' in operation)).toBe(false);
+  });
 
   it.each(shapes)('draws a %s that hides on the fog\'s canvas while it is under way, and commits it without a fade', (shape) => {
     const view = fogView('fog', shape);

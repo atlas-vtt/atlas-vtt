@@ -11,7 +11,7 @@
 export type FogPictureStep = 'fade' | 'follow' | 'cut';
 
 export interface FogPictureChange {
-  /** The fog of the level shown was edited (a stroke, an area flipped, the whole map, undo and redo, another view): not a load, and not another level. */
+  /** The fog of the level shown was edited (a stroke, a choice of its menu, the whole map, undo and redo, another view): not a load, and not another level. */
   readonly edit: boolean;
   /** The picture already shows fog of this map and level, on a canvas of the size it has now. */
   readonly continues: boolean;

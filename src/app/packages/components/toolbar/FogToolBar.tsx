@@ -3,7 +3,7 @@ import { CloudOff, LayoutGrid, MoreHorizontal, PaintBucket } from "lucide-react"
 import { hasCells } from "../../../fog/fogCells"
 import { FOG_EXPLORE_DISTANCE, readFogExplore } from "../../../fog/fogExplore"
 import { hasRoomWalls } from "../../../fog/fogRooms"
-import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogToolFor, fogWhat, isFogTool, type FogShape, type FogWhat } from "../../../fog/fogToolChoices"
+import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, isFogTool, type FogShape } from "../../../fog/fogToolChoices"
 import { DEFAULT_GM_FOG_OPACITY, GM_FOG_OPACITY_RANGE } from "../../../fog/gmFogOpacity"
 import { t } from "../../../i18n"
 import { useAtlasSettings, useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
@@ -19,15 +19,15 @@ import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { ToolButton } from "../primitives/ToolButton"
 import { LabelTooltip, TooltipProvider } from "../primitives/tooltip"
-import { FOG_SHAPES, FOG_WHATS } from "./fogToolChoices"
+import { FOG_MODES, FOG_SHAPES } from "./fogToolChoices"
 import { ChoiceButtons, GroupBreak, TOOL_BAR_CHOICE_CLASS, ToolOptionsBars } from "./ToolOptionsBar"
 
 /** The dot on the size button, in pixels: as small and as large as the button's icon may be. */
 const SIZE_DOT = { min: 4, max: 16 } as const
 
 /**
- * The fog tool's bars above the main toolbar while the tool is chosen: what a stroke does (hide
- * or reveal), and beside it the shape it is drawn with, the brush's size, the two actions on the
+ * The fog tool's bars above the main toolbar while the tool is chosen: what a stroke does (add
+ * fog or erase it), and beside it the shape it is drawn with, the brush's size, the two actions on the
  * whole map and a menu for what is rarely changed. The second bar is the same whatever the tool
  * does, so nothing moves when a choice changes: what cannot be chosen now is shown disabled with
  * its reason. The GM's alone; hidden while the toolbar is arranged.
@@ -39,7 +39,7 @@ export function FogToolBar(): React.ReactElement {
 }
 
 function FogBars(): React.ReactElement {
-  const what = useAtlasStore(fogWhat)
+  const mode = useAtlasStore((state) => (state.activeTool === 'eraser' ? 'eraser' : 'fog'))
   const shape = useAtlasStore((state) => state.fogTool.shape)
   const setActiveTool = useAtlasStore((state) => state.setActiveTool)
   const setFogTool = useAtlasStore((state) => state.setFogTool)
@@ -56,11 +56,10 @@ function FogBars(): React.ReactElement {
   useEffect(() => {
     if (shapeLeft) setFogTool({ shape: DEFAULT_FOG_TOOL.shape })
   }, [shapeLeft, setFogTool])
-  const choose = (next: FogWhat): void => setActiveTool(fogToolFor(next))
   return (
     <TooltipProvider delayDuration={300}>
       <div role="toolbar" aria-label={t('fog.modes')} className="atlas-tool-bar atlas-tool-bar--modes">
-        <ChoiceButtons kind="mode" locked={null} choices={FOG_WHATS} value={what} onChange={choose} />
+        <ChoiceButtons kind="mode" locked={null} choices={FOG_MODES} value={mode} onChange={setActiveTool} />
       </div>
       <div role="toolbar" aria-label={t('fog.tools')} className="atlas-tool-bar atlas-tool-bar--tools">
         <ChoiceButtons kind="choice" locked={null} choices={FOG_SHAPES} value={shape} unavailable={unavailableShape} onChange={(next) => setFogTool({ shape: next })} />
@@ -145,7 +144,7 @@ function BrushSize(): React.ReactElement {
   )
 }
 
-/** Cover all and Reveal all: the whole map of the level shown, each one undo step. */
+/** Cover all and Delete all fog: the whole map of the level shown, each one undo step. */
 function WholeMap(): React.ReactElement {
   const { renderer } = useAtlasUI()
   const coverAllFog = useAtlasStore((state) => state.coverAllFog)
@@ -154,7 +153,7 @@ function WholeMap(): React.ReactElement {
   const levelled = useAtlasStore((state) => hasLevels(state.levels))
   // A scene without levels has no level to name.
   const coverTip = levelled ? t('fog.coverLevelTip') : t('fog.coverAllTip')
-  const revealTip = levelled ? t('fog.revealLevelTip') : t('fog.revealAllTip')
+  const deleteTip = levelled ? t('fog.deleteLevelTip') : t('fog.deleteAllTip')
   const noFog = levelled ? t('fog.noFogOnLevel') : t('fog.noFog')
   const cover = (): void => {
     if (!coverAllFog(renderer?.getMapRect() ?? null)) showNotice(t('fog.noMap'))
@@ -162,7 +161,7 @@ function WholeMap(): React.ReactElement {
   return (
     <>
       <ToolButton icon={PaintBucket} label={t('fog.coverAll')} subtitle={coverTip} isActive={false} onClick={cover} />
-      <ToolButton icon={CloudOff} label={t('fog.revealAll')} subtitle={anyFog ? revealTip : noFog} isActive={false} disabled={!anyFog} onClick={clearFog} />
+      <ToolButton icon={CloudOff} label={t('fog.deleteAll')} subtitle={anyFog ? deleteTip : noFog} isActive={false} disabled={!anyFog} onClick={clearFog} />
     </>
   )
 }
@@ -195,12 +194,12 @@ function MoreMenu(): React.ReactElement {
   const explore = usePartyClearsFog()
   const [open, setOpen] = useState(false)
   const toggle = useCallback((): void => setOpen((before) => !before), [])
-  const addRoomAreas = useAtlasStore((state) => state.addRoomAreas)
+  const hideAllRooms = useAtlasStore((state) => state.hideRooms)
   const walls = useHasWalls()
   const noWalls = useNoWallsReason()
   const hideRooms = (): void => {
-    const { rooms, made } = addRoomAreas(renderer?.getMapRect() ?? null)
-    if (made > 0) showNotice(t('fog.roomsHidden', { count: made }))
+    const { rooms, hidden } = hideAllRooms(renderer?.getMapRect() ?? null, renderer?.getFogCoverage()?.shape)
+    if (hidden > 0) showNotice(t('fog.roomsHidden', { count: hidden }))
     else showNotice(rooms > 0 ? t('fog.roomsAreHidden') : t('fog.noRooms'))
     setOpen(false)
   }

@@ -161,9 +161,11 @@ describe('the fog actions of the view store', () => {
     expect(added.store.getState().addFogOperations([rect(0), rect(200)])).toHaveLength(2);
     expect(typeof added.store.getState().addFogOperation(rect(400))).toBe('string');
     expect(ids(added.store)).toHaveLength(6);
-    // Areas are counted, flipped and made past them.
-    expect(added.store.getState().addFogArea({ type: 'rectangle', x: 0, y: 0, width: 50, height: 50 })).not.toBeNull();
-    expect(added.store.getState().flipFogArea('none')).toBe(false);
+    // What is revealed and remembered is counted, hidden and forgotten past them.
+    added.store.getState().revealFogGround([[{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 0, y: 50 }]]);
+    expect(ids(added.store)).toHaveLength(7);
+    expect(added.store.getState().hideFogArea('none')).toBe(false);
+    expect(added.store.getState().forgetFogArea('text')).toBe(false);
   });
 
   it('adds nothing, and no undo step, for an empty list', () => {

@@ -165,10 +165,10 @@ export interface ViewAtlasState extends ViewState {
   addFogOperations: FogSlice['addFogOperations'];
   clearFog: FogSlice['clearFog'];
   coverAllFog: FogSlice['coverAllFog'];
-  addFogArea: FogSlice['addFogArea'];
-  flipFogArea: FogSlice['flipFogArea'];
-  reshapeFogArea: FogSlice['reshapeFogArea'];
-  addRoomAreas: FogSlice['addRoomAreas'];
+  revealFogGround: FogSlice['revealFogGround'];
+  hideFogArea: FogSlice['hideFogArea'];
+  forgetFogArea: FogSlice['forgetFogArea'];
+  hideRooms: FogSlice['hideRooms'];
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
   /** Sets the explored memory of `level` (unset: the level the view shows; null: the first); a level the scene no longer has keeps none. */

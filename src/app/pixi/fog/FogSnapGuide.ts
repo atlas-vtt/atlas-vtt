@@ -1,8 +1,7 @@
 /**
  * Shows what a point of a fog shape snapped to: a ring round the place, which stays in sight in
- * its middle, and along the wall or the area's edge it lies on a thin line. In the theme's accent
- * over a dark line, as wide on screen at any zoom, so it shows on a light map and on a dark one.
- * The GM's alone.
+ * its middle, and along the wall it lies on a thin line. In the theme's accent over a dark line,
+ * as wide on screen at any zoom, so it shows on a light map and on a dark one. The GM's alone.
  */
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';

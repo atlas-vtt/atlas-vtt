@@ -13,7 +13,6 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { MapRect } from '../../grid/cellNumbering';
 import type { Point } from '../../types/visionTypes';
-import type { FogCoverage } from '../../fog/fogCoverage';
 import type { FogShape } from '../../fog/fogToolChoices';
 import { DEFAULT_MAP_HOTKEYS, matchesHotkey } from '../../keyboard/mapHotkeys';
 import { STROKE_COLORS, type StrokeShape } from '../../tools/shapeStroke';
@@ -45,8 +44,6 @@ export interface FogStrokeDeps {
   readonly isUndoKey?: (event: KeyboardEvent) => boolean | undefined;
   /** Whether the canvas shows the players' view though the store's view switches say the GM's (a peek). */
   readonly showsPlayers?: () => boolean | null;
-  /** The level's fog as it is committed; unset or null, a shape that hides fills no gap in the fog under it. */
-  readonly coverage?: () => FogCoverage | null;
 }
 
 /** The shapes that are drawn on the map; a room is clicked in. */
@@ -76,7 +73,7 @@ export class FogStroke {
     this.outline.eventMode = 'none';
     this.outline.zIndex = 1001;
     this.wash = new FogRevealWash(() => showsGmView(store.getState(), deps.showsPlayers));
-    // Over the fog (999), under the outlines of the remembered pieces (1000) and of the shape it fills.
+    // Over the fog (999), under the mark of what the fog's menu acts on (1000) and the outline of the shape it fills.
     this.wash.view.zIndex = 999.5;
     this.ring = new FogCursorPreview(viewport);
     this.ring.getDisplayObject().zIndex = 1002;
@@ -86,16 +83,12 @@ export class FogStroke {
 
     const zoom = (): number => viewport.scale.x;
     this.snapping = new FogSnapping({ store, zoom, guide: this.guide });
-    this.outcome = new FogStrokeOutcome(store, deps.host, this.wash, () => deps.coverage?.() ?? null);
+    this.outcome = new FogStrokeOutcome(store, deps.host, this.wash);
     this.drag = new FogDrag(this.outline, this.snapping, zoom);
     this.rooms = new FogRoomClick({
       store, outline: this.outline, zoom,
       mapRect: () => deps.mapRect?.() ?? null,
-      hides: () => !this.reveals(),
-      fill: (world, room) => {
-        this.outcome.begin(world);
-        this.commit([{ type: 'lasso', points: room }]);
-      },
+      fill: (room) => this.commit([{ type: 'lasso', points: room }]),
     });
     this.polygon = new FogPolygon(this.outline, this.snapping, {
       zoom,
@@ -152,7 +145,6 @@ export class FogStroke {
 
   /** Begins `shape` at `world`, or places the next corner of the polygon under way. */
   begin(shape: FogDrawnShape, world: Point, screen: Point, keys: PlaceKeys): void {
-    if (!this.active) this.outcome.begin(world);
     if (shape === 'polygon') {
       this.polygon.press(world, screen, keys);
     } else if (this.drag.begin(shape, world, keys, this.deps.store.getState().grid)) {

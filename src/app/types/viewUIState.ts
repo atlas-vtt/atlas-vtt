@@ -51,7 +51,7 @@ export interface ViewUIState {
   measureTool: MeasureToolOptions;
   /** The Draw tool's mode and choices: its bars set them, the tool reads them. Never saved with the scene; its style is remembered on the device. */
   drawTool: DrawToolChoices;
-  /** The fog tool's choices: its bars set them, the fog reads them. Whether it hides or reveals is the tool chosen (`fogWhat`). Never saved. */
+  /** The fog tool's choices: its bars set them, the fog reads them. Whether it adds fog or erases it is the tool chosen. Never saved. */
   fogTool: FogToolChoices;
   /** The lighting tool's mode and choices: the bar above the toolbar sets them, the controller hands them to its editors. */
   lightingTool: LightingToolOptions;

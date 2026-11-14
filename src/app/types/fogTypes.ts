@@ -31,12 +31,13 @@ export interface FogBrushStroke extends FogOperationBase {
 }
 
 /**
- * What makes a lasso or rectangle operation an area: fog Atlas remembers as one piece, hidden
- * while it paints and revealed while it erases (`fog/fogAreas.ts`). Whoever ignores the mark
- * reads the plain operation and shows the same fog.
+ * The mark of fog that was revealed from its menu and can be hidden again: it stands on the
+ * revealing lasso or rectangle operation that took the fog away (`fog/fogAreas.ts`). Whoever
+ * ignores the mark reads the plain operation and shows the same fog. On an operation that
+ * paints it means nothing.
  */
 export interface FogAreaMark {
-  /** A name an earlier build let the GM give the area. Nothing reads it; a file that holds one keeps it. */
+  /** A name an earlier build let the GM give. Nothing reads it; a file that holds one keeps it. */
   name?: string;
 }
 

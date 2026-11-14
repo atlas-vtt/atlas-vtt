@@ -13,28 +13,15 @@ export const FOG_BRUSH_SIZES = { min: 10, max: 200 } as const;
 
 export const DEFAULT_FOG_TOOL: FogToolChoices = { shape: 'brush', brushSize: 50 };
 
-/** What the fog tool does with a stroke. */
-export type FogWhat = 'hide' | 'reveal';
-
-/** The tools that are the fog tool: one hides, the other reveals. */
+/** The tools that are the fog tool: one adds fog, the other erases it. */
 export type FogToolId = 'fog' | 'eraser';
 
 export function isFogTool(tool: string): tool is FogToolId {
   return tool === 'fog' || tool === 'eraser';
 }
 
-/** What the fog tool does as it is set; `hide` too while another tool is in use and the fog tool would hide. */
-export function fogWhat(state: { activeTool: string }): FogWhat {
-  return state.activeTool === 'eraser' ? 'reveal' : 'hide';
-}
-
-/** The tool that does `what`. */
-export function fogToolFor(what: FogWhat): FogToolId {
-  return what === 'reveal' ? 'eraser' : 'fog';
-}
-
-/** Whether a stroke reveals: the revealing tool's does, and `flipped` (Alt held) makes a stroke do the other thing. */
-export function fogStrokeReveals(activeTool: string, flipped: boolean): boolean {
+/** Whether a stroke erases: the eraser's does, and `flipped` (Alt held) makes a stroke do the other thing. */
+export function fogStrokeErases(activeTool: string, flipped: boolean): boolean {
   return (activeTool === 'eraser') !== flipped;
 }
 

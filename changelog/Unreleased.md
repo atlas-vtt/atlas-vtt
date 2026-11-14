@@ -25,23 +25,22 @@
 - Cells colours squares and hexes: drag to fill them, Unfill to clear them
 
 **New Feature: Fog tools**
-- The fog tool has its own secondary toolbar: Hide and Reveal, and the shapes Brush, Rectangle, Polygon, Lasso, Cells and Room
-- Cover all hides the whole map in one step, Reveal all clears it. Undo takes either back
-- Rectangles and polygons snap to the grid, to walls and to fog you hid with a shape. Hold Ctrl or Cmd to place them freely
-- Cells hides or reveals whole grid cells, squares and hexes alike
-- Hold Alt to do the other thing: reveal with Hide, hide with Reveal. , and . size the brush; hold one to keep sizing
+- The fog tool has its own secondary toolbar: Fog and Eraser, and the shapes Brush, Rectangle, Polygon, Lasso, Cells and Room
+- Cover all hides the whole map in one step, Delete all fog clears it. Undo takes either back
+- Rectangles and polygons snap to the grid and to walls. Hold Ctrl or Cmd to place them freely
+- Cells adds or erases fog on whole grid cells, squares and hexes alike
+- Hold Alt to do the other thing: erase with Fog, add fog with Eraser. , and . size the brush; hold one to keep sizing
 - Fog fades when it changes, on your map and in the player window
 - More sets how dark fog looks to you in GM View. Hold H to see it as your players do
 
-**Reveal a whole room**
-- Fog you hide with a shape is remembered as one piece: right-click it and choose Reveal, right-click the place again to hide it
-- A new piece ends where the hidden pieces beside it begin, so revealing one never opens another. Start a shape inside a hidden piece to add to it
-- Right-click fog painted with the brush to reveal that body of fog and nothing else
-- While the fog tool is chosen, each piece shows a thin outline. Only you see it
+**Reveal, hide and delete fog**
+- Fog that touches is one: a room painted in two strokes is one fog
+- Right-click fog and choose Reveal to take it away. Right-click the place again and choose Hide to bring it back
+- Delete, in the same menu, removes the fog for good
 
 **Rooms from walls**
-- Room: on a map with walls, click inside a room to hide or reveal it. It ends at its walls and doors
-- Hide all rooms, in More, hides every room the walls enclose in one step, each a piece of its own
+- Room: on a map with walls, click inside a room to fill it with fog or erase it. It ends at its walls and doors
+- Hide all rooms, in More, covers every room the walls enclose in one step
 
 **Party tokens clear fog**
 - Switch it on in More: fog clears around the party's tokens as they are moved, as far as the distance you set. Walls stop it
@@ -52,7 +51,7 @@
 - Carving rooms and filling them in is quick on large maps: an edit on a cave with thousands of walls took several seconds and now takes a fraction of one. Reported by ThatMattLatt
 - On Windows and Linux, the window's minimise, maximise and close buttons stay out of sight over a map and the other Atlas pages, so the widgets in the top-right corner can be seen. Move the pointer to the corner to show them
 - The player view shows a dragged token's move as you see it: the line in the colour of the movement step, and moved / speed beside it, for every token the players can see
-- A shape shows the fog it will leave while you draw it. What it will reveal shows to you alone until you let go
+- A shape shows the fog it will leave while you draw it. What it will erase shows to you alone until you let go
 - The fog brush's ring shows on light maps and on dark ones
 - Tools with options in the toolbar look like every other tool: hovering, pressing or choosing one highlights the whole tool as one rounded button, and the arrow beside it for its options has a highlight of its own
 - The player window bar has a pause and play button: paused, players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead

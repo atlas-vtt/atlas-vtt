@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { areaGeometry, fittedArea, fogAreaList, joinedArea } from '../../src/app/fog/fogAreas';
-import { areaAt } from '../../src/app/fog/fogBody';
+import { fogAreaList, lassoOutline } from '../../src/app/fog/fogAreas';
+import { areaAt, fogBodyAt } from '../../src/app/fog/fogBody';
 import { fogCoverage } from '../../src/app/fog/fogCoverage';
 import { keyholed, outlineRings } from '../../src/app/fog/fogKeyhole';
 import { fogOperationShape } from '../../src/app/fog/fogOperationShape';
-import { isAreaOfRoom } from '../../src/app/fog/fogRoomAreas';
 import { roomAt } from '../../src/app/fog/fogRooms';
-import { NO_SNAP, snapPoint } from '../../src/app/fog/fogSnap';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { FogOperation } from '../../src/app/types/fogTypes';
@@ -108,62 +106,37 @@ describe('fog of an outline with a hole', () => {
   });
 });
 
-describe('an area with a hole', () => {
+describe('revealed fog with a hole, which is remembered', () => {
   it('is found by a place on its ground, and not by one in its hole', () => {
-    const corridor = { ...lasso('corridor', CORRIDOR, false, 1), area: {} };
-    const room = { ...lasso('room', rect(210, 210, 280, 420), false, 2), area: {} };
+    const corridor = { ...lasso('corridor', CORRIDOR, true, 1), area: {} };
+    const room = { ...lasso('room', rect(210, 210, 280, 420), true, 2), area: {} };
     const areas = fogAreaList({ corridor, room });
-    expect(areaAt(areas, at(175, 400), true)?.id).toBe('corridor');
-    expect(areaAt(areas, at(350, 420), true)?.id).toBe('room');
-    expect(areaAt(areas, at(630, 420), true)).toBeNull();
+    expect(areaAt(areas, at(175, 400))?.id).toBe('corridor');
+    expect(areaAt(areas, at(350, 420))?.id).toBe('room');
+    expect(areaAt(areas, at(630, 420))).toBeNull();
   });
 
-  it('is kept as it is when it becomes an area, however many corners it has', () => {
-    expect(areaGeometry({ type: 'lasso', points: CORRIDOR })).toEqual({ type: 'lasso', points: CORRIDOR });
-    // A round court of 400 corners round a round block of 100: more than an area's 200.
+  it('keeps its outline as it is, however many corners it has', () => {
+    expect(lassoOutline(CORRIDOR)).toEqual(CORRIDOR);
+    // A round court of 400 corners round a round block of 100.
     const round = (radius: number, count: number): Point[] => Array.from({ length: count }, (_, i) => at(500 + radius * Math.cos((i / count) * 2 * Math.PI), 500 + radius * Math.sin((i / count) * 2 * Math.PI)));
     const court = keyholed(round(400, 400), [round(100, 100)]);
-    expect(areaGeometry({ type: 'lasso', points: court })).toEqual({ type: 'lasso', points: court });
+    expect(lassoOutline(court)).toEqual(court);
   });
+});
 
-  it('is the room it was made of, and not the room without its hole', () => {
-    const corridor = roomAt(at(175, 400), segments(WALLS), MAP, CELL)!;
-    expect(isAreaOfRoom(corridor, CORRIDOR, 4)).toBe(true);
-    expect(isAreaOfRoom(corridor, [...corridor], 4)).toBe(true);
-    expect(isAreaOfRoom(corridor, OUTER, 4)).toBe(false);
-    expect(isAreaOfRoom(OUTER, CORRIDOR, 4)).toBe(false);
-  });
-
-  it('is fitted to its neighbours and added to, and keeps its hole', () => {
-    const net = 700 * 560 - 560 * 420;
-    // A neighbour over the corridor's left side: the corridor loses that side and its hole now opens on it.
-    const fitted = fittedArea(CORRIDOR, [rect(100, 100, 75, 700)]);
-    expect(Math.abs(signedArea(fitted))).toBe(net - 35 * 560);
-    expect(insideOutline(at(160, 400), fitted)).toBe(false);
-    expect(insideOutline(at(190, 400), fitted)).toBe(true);
-    expect(insideOutline(at(350, 420), fitted)).toBe(false);
-    // One that only touches it leaves it as it was drawn.
-    expect(fittedArea(CORRIDOR, [rect(0, 140, 140, 560)])).toEqual(CORRIDOR);
-
-    // A porch joined to its top: one outline still, the hole in it.
-    const joined = joinedArea(CORRIDOR, rect(400, 70, 140, 100))!;
-    expect(Math.abs(signedArea(joined))).toBe(net + 140 * 70);
-    expect(insideOutline(at(470, 100), joined)).toBe(true);
-    expect(IN_ROOMS.map((place) => insideOutline(place, joined))).toEqual([false, false]);
-    // A shape over the whole hole fills it.
-    expect(joinedArea(CORRIDOR, rect(200, 200, 580, 440))!.map(({ x, y }) => `${x},${y}`).sort()).toEqual(keys(OUTER).sort());
-
-  });
-
-  it('snaps a point to its corners and edges, the hole\'s too, and never to the slit', () => {
-    const candidates = { ...NO_SNAP, areas: [CORRIDOR] };
-    expect(snapPoint(at(773, 633), candidates, 8).to).toEqual({ kind: 'area-corner', point: at(770, 630) });
-    expect(snapPoint(at(500, 213), candidates, 8).to).toMatchObject({ kind: 'area-edge', from: at(770, 210), to: at(210, 210) });
-    const onOuter = snapPoint(at(500, 143), candidates, 8).to;
-    expect(onOuter).toMatchObject({ kind: 'area-edge', from: at(140, 140), to: at(840, 140) });
-    expect(onOuter?.point.y).toBe(140);
-    // Halfway along the slit from (140, 140) to (210, 210) there is nothing to land on.
-    expect(snapPoint(at(175, 175), candidates, 8).to).toBeNull();
+describe('a body of fog round a hole', () => {
+  it('is one outline with a slit to the hole: revealed with it, fog that stands free in the hole stays', () => {
+    const fog = { corridor: lasso('corridor', CORRIDOR, false, 1), island: { ...lasso('island', rect(350, 350, 70, 70), false, 2) } };
+    const body = fogBodyAt(fogCoverage(fog).shape, at(175, 400))!;
+    expect(Math.abs(signedArea(body))).toBe(700 * 560 - 560 * 420);
+    expect(outlineRings(body).map((ring) => keys(ring).sort()).sort()).toEqual([keys(BLOCK).sort(), keys(OUTER).sort()].sort());
+    const after = fogCoverage({ ...fog, reveal: lasso('reveal', body, true, 3) });
+    expect(IN_CORRIDOR.map((place) => after.covers(place))).toEqual([false, false, false, false]);
+    expect(after.covers(at(385, 385))).toBe(true);
+    // The island is a body of its own, and the open ground of the hole is none.
+    expect(keys(fogBodyAt(fogCoverage(fog).shape, at(385, 385))!).sort()).toEqual(keys(rect(350, 350, 70, 70)).sort());
+    expect(fogBodyAt(fogCoverage(fog).shape, at(600, 420))).toBeNull();
   });
 });
 
@@ -180,28 +153,25 @@ describe('hiding every room of walls round rooms, in the store', () => {
     return places.map((place) => fog.covers(place));
   };
 
-  it('makes three areas, and the corridor\'s flipped leaves the rooms inside hidden', () => {
+  it('paints the corridor without the rooms it runs round, and each room: together they are one body of fog', () => {
     const { store, undo } = scene();
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 3 });
-    const areas = fogAreaList(store.getState().objects.fog);
-    const corridor = areas.find((area) => area.type === 'lasso' && area.points.length > 4)!;
+    expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 3, hidden: 3 });
+    expect(Object.values(store.getState().objects.fog).every((operation) => operation.type === 'lasso' && !operation.isErasing && !('area' in operation))).toBe(true);
     expect(covered(store, [...IN_CORRIDOR, ...IN_ROOMS])).toEqual([true, true, true, true, true, true]);
-
-    expect(store.getState().flipFogArea(corridor.id)).toBe(true);
+    // The corridor's own fog leaves its rooms out: erased again, they stay.
+    const corridor = Object.values(store.getState().objects.fog).find((operation) => operation.type === 'lasso' && operation.points.length > 4)!;
+    store.getState().addFogOperation({ type: 'lasso', isErasing: true, points: corridor.type === 'lasso' ? corridor.points : [] });
     expect(covered(store, IN_CORRIDOR)).toEqual([false, false, false, false]);
     expect(covered(store, IN_ROOMS)).toEqual([true, true]);
+    // Pressed again, the corridor alone is painted: the rooms are fog already.
+    expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 3, hidden: 1 });
+    expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 3, hidden: 0 });
+    // Rooms that share walls touch: the three are one body.
+    const body = fogBodyAt(fogCoverage(store.getState().objects.fog).shape, IN_CORRIDOR[0]!)!;
+    expect(keys(body).sort()).toEqual(keys(OUTER).sort());
     undo();
-    expect(covered(store, [...IN_CORRIDOR, ...IN_ROOMS])).toEqual([true, true, true, true, true, true]);
-
-    // A room inside flipped reveals that room alone.
-    const left = areas.find((area) => area.type === 'lasso' && area.points.some((point) => point.x === 490) && area.points.some((point) => point.x === 210) && area.points.length === 4)!;
-    store.getState().flipFogArea(left.id);
-    expect(covered(store, IN_CORRIDOR)).toEqual([true, true, true, true]);
-    expect(covered(store, IN_ROOMS)).toEqual([false, true]);
-    // Pressed again, the room that was revealed is hidden again and nothing else is made: each room has its area.
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 1 });
-    expect(fogAreaList(store.getState().objects.fog)).toHaveLength(3);
-    expect(covered(store, [...IN_CORRIDOR, ...IN_ROOMS])).toEqual([true, true, true, true, true, true]);
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 0 });
+    undo();
+    undo();
+    expect(store.getState().objects.fog).toEqual({});
   });
 });

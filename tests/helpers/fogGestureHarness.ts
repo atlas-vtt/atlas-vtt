@@ -19,9 +19,6 @@ export interface FogGestureState {
   objects: { fog: Record<string, unknown>; walls: Record<string, unknown> };
   addFogOperation: ReturnType<typeof vi.fn>;
   addFogOperations: ReturnType<typeof vi.fn>;
-  /** A shape that hides is fog the map remembers as one piece: what the store is given of it. */
-  addFogArea: ReturnType<typeof vi.fn>;
-  reshapeFogArea: ReturnType<typeof vi.fn>;
 }
 
 /** The gesture as a test drives it: the pointer, and what its keys tell it (`FogStrokeKeys`). */
@@ -87,7 +84,7 @@ export const fogPointerAt = (x: number, y: number, keys: PressKeys = {}): Federa
 export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): FogGestureScene {
   const state: FogGestureState = {
     activeTool, fogTool: { ...DEFAULT_FOG_TOOL, shape }, isMapLoading: false, isGMView: true, grid: { size: 70 }, objects: { fog: {}, walls: {} },
-    addFogOperation: vi.fn(), addFogOperations: vi.fn(), addFogArea: vi.fn(() => 'piece'), reshapeFogArea: vi.fn(() => true),
+    addFogOperation: vi.fn(), addFogOperations: vi.fn(),
   };
   const picture: PictureCalls = { showStroke: vi.fn(), showCommitted: vi.fn() };
   const viewport = { pause: false, toWorld: (point: { x: number; y: number }) => point, scale: { x: 1 } };
@@ -112,11 +109,11 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
   // What is under way (`FogStroke`) and the routing of the pointer (`FogGesture`), built without their canvas.
   const stroke = Object.assign(Object.create(FogStroke.prototype) as FogStroke, {
     deps,
-    outcome: new FogStrokeOutcome(store as never, picture, reveal, () => null),
+    outcome: new FogStrokeOutcome(store as never, picture, reveal),
     drag: new FogDrag(outline as unknown as Graphics, snapping, () => 1),
     polygon: { active: false, drop: () => false, rescale: vi.fn() },
     // Rooms have a test of their own (fogRoomClick.test.ts): this map has none.
-    rooms: new FogRoomClick({ store: store as never, mapRect: () => null, outline: outline as unknown as Graphics, zoom: () => 1, hides: () => true, fill: () => undefined }),
+    rooms: new FogRoomClick({ store: store as never, mapRect: () => null, outline: outline as unknown as Graphics, zoom: () => 1, fill: () => undefined }),
     snapping,
     flipped: false,
     pointer: null,
