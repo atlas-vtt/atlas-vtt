@@ -27,6 +27,7 @@
 
 - Carving rooms and filling them in is quick on large maps: an edit on a cave with thousands of walls took several seconds and now takes a fraction of one. Reported by ThatMattLatt
 - On Windows and Linux, the window's minimise, maximise and close buttons stay out of sight over a map and the other Atlas pages, so the widgets in the top-right corner can be seen. Move the pointer to the corner to show them
+- The player view shows a dragged token's move as you see it: the line in the colour of the movement step, and moved / speed beside it, for every token the players can see
 
 ## Atlas Online
 

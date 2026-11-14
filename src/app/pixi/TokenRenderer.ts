@@ -346,7 +346,6 @@ export class TokenRenderer {
       (id) => this.tokenSprites[id]?.visible ?? false,
       () => showsDragDistance(SettingsService.forApp(this.obsApp)?.getDragDistance() ?? DEFAULT_DRAG_DISTANCE, this.store.getState().initiative.isActive),
       movement,
-      () => this.playerSight.showsPlayers() || this.isInPlayerMode(),
     );
     this.interactionController.setDragRuler(this.dragRuler);
     this.interactionController.setTokenMovement(movement);
