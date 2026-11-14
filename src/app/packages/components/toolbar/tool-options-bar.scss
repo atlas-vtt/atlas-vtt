@@ -10,7 +10,7 @@
 @use '../../../../../styles/mixins' as *;
 
 // The toolbar's inset and corner with smaller buttons.
-$bar-inset: $spacing-s;
+$bar-inset: $toolbar-inset;
 $bar-control: $button-height-m;
 $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
 
@@ -31,14 +31,12 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
   @include atlas-elevated-surface;
   @include atlas-panel-radius($toolbar-radius);
 
-  > :nth-child(1 of :not([aria-hidden])) { --atlas-bar-start-radius: #{$bar-end-radius}; }
-  > :nth-last-child(1 of :not([aria-hidden])) { --atlas-bar-end-radius: #{$bar-end-radius}; }
+  --atlas-bar-control-radius: #{$bar-end-radius};
 
   .atlas-tool-button > span > .btn--icon {
     width: $bar-control;
     height: $bar-control;
-    border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-      var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+    border-radius: var(--atlas-bar-control-radius, #{$radius-l});
     @include atlas-corner-shape;
   }
 }

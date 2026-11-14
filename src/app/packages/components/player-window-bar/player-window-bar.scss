@@ -1,5 +1,4 @@
 @use '../../../../../styles/tokens' as *;
-@use '../../../../../styles/mixins' as *;
 
 // The player window bar below the scene tabs (PlayerWindowBar.tsx). TrueScale's panel hangs from the
 // bar's left end (true-scale.scss), a menu from its own button.
@@ -7,23 +6,11 @@
   position: relative;
 }
 
-// As tall as the scene tab bar above it, not the main toolbar: its buttons are the tabs' height
-// and stand as far inside the border as the tabs do, so its end buttons' outer corners run
-// concentric with the toolbar's corner from there. Above the toolbar's own padding, gap and size.
-$bar-inset: 4px;
-$bar-button: 28px;
-
-.atlas-vtt-plugin .atlas-player-window-bar > .atlas-vtt-toolbar {
-  gap: $bar-inset;
-  padding: $bar-inset;
-
-  > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($bar-inset)}; }
-  > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($bar-inset)}; }
-
-  .atlas-tool-button > span > .btn {
-    width: $bar-button;
-    height: $bar-button;
-  }
+// As tall as the scene tab bar above it, not the main toolbar: its buttons are the tabs' height.
+// Padding, gap and corners are every bar's.
+.atlas-vtt-plugin .atlas-player-window-bar > .atlas-vtt-toolbar .atlas-tool-button > span > .btn {
+  width: 28px;
+  height: 28px;
 }
 
 .atlas-player-window-bar__menu {

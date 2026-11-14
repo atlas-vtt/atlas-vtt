@@ -9,9 +9,9 @@
 @use '../../../../../../styles/mixins' as *;
 @use 'toolbar-editor-shared' as *;
 
-$tray-inset: $spacing-xs;
+$tray-inset: $toolbar-inset;
 $tray-control: $button-height-m;
-// The tray's end controls run concentric with its corner, capped at half their height.
+// The tray's controls run concentric with its corner, capped at half their height.
 $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.5);
 
 // Over the bar's cell of the bottom row without taking a cell of its own (an absolutely
@@ -53,9 +53,7 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
   @include atlas-panel-radius($toolbar-radius);
   @include atlas-keep-in-view;
 
-  // A slot on its way out no longer holds an end.
-  > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{$tray-end-radius}; }
-  > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{$tray-end-radius}; }
+  --atlas-bar-control-radius: #{$tray-end-radius};
 }
 
 // The tray's buttons, and the tray face of a tool in flight.

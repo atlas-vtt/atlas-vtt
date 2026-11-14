@@ -35,7 +35,7 @@ describe('the lighting tool\'s bar above the toolbar', () => {
       h(AtlasUIContext.Provider, { value: ui }, h(ViewStoreProvider, {
         store,
         children: h(BottomToolbarRow, {
-          start: h('div', { className: 'atlas-vtt-toolbar', style: { width: 300, height: 52 } }),
+          start: h('div', { className: 'atlas-vtt-toolbar', style: { width: 300, height: 48 } }),
           // Outside the provider, as on the map.
           options: h(LightingToolBar),
           children: h('div', { className: 'atlas-vtt-toolbar atlas-main-toolbar', style: { width: 420 } }, h(TooltipProvider, null,
@@ -74,8 +74,8 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     expect(tools.bottom).toBeCloseTo(modes.bottom, 0);
     // Below whatever hangs from the toolbar, and still the bars' own to click.
     expect(document.elementFromPoint(modes.left + 24, modes.top + modes.height / 2)?.closest('.atlas-tool-bar--modes')).not.toBeNull();
-    // A second level: buttons of 32 px against the toolbar's 40, in the toolbar's 8 px of padding.
-    expect(modes.height).toBeCloseTo(50, 0);
+    // A second level: buttons of 32 px against the toolbar's 40, in the toolbar's 4 px of padding.
+    expect(modes.height).toBeCloseTo(42, 0);
     expect(modes.height).toBeLessThan(toolbar.height - 6);
     const buttons = [...document.querySelectorAll('.atlas-tool-bar--modes .atlas-tool-button')].map((button) => button.getBoundingClientRect());
     expect(buttons.map((button) => Math.round(button.width))).toEqual([32, 32, 32, 32, 32, 32]);
@@ -95,7 +95,7 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     expect(rect('.atlas-tool-bar--modes')).toEqual(modes);
     // Carve, fill and door, then the shapes, a doubled gap between them.
     const buttons = [...document.querySelectorAll('.atlas-tool-bar--tools .atlas-tool-button')].map((button) => button.getBoundingClientRect());
-    expect(buttons.slice(1).map((button, index) => Math.round(button.left - buttons[index]!.right))).toEqual([8, 8, 16, 8, 8, 8]);
+    expect(buttons.slice(1).map((button, index) => Math.round(button.left - buttons[index]!.right))).toEqual([4, 4, 8, 4, 4, 4]);
     // The lights mode has the lights to place as its tools.
     act(() => store.getState().setLightingTool({ mode: 'place-light' }));
     await vi.waitFor(() => expect(document.querySelectorAll('.atlas-tool-bar--tools .atlas-tool-button')).toHaveLength(5), { timeout: 2000 });

@@ -27,6 +27,9 @@ $radius-full: 9999px;          // For pills and circles
 // tabs, player window bar, the editor's tray, widgets, the online play button): one radius, the
 // roundest at which the shortest bars (39 px) stay rounded rectangles; panels take $radius-2xl.
 $toolbar-radius: 16px;
+// How far every bar's and card's controls stand inside its border, and the gap between them. Small,
+// so the controls' corners, concentric with $toolbar-radius, stay round (16 - 1.5 - 4 = 10.5 px).
+$toolbar-inset: $spacing-xs;
 
 // ── Shadows ──────────────────────────────────────────────────────────────────
 // Subtle shadow for cards and containers

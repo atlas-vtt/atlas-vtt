@@ -44,10 +44,10 @@ describe('the fog tool\'s bars above the toolbar', () => {
       h(AtlasUIContext.Provider, { value: ui }, h(ViewStoreProvider, {
         store,
         children: h(BottomToolbarRow, {
-          start: h('div', { className: 'atlas-vtt-toolbar', style: { width: 104, height: 52 } }),
+          start: h('div', { className: 'atlas-vtt-toolbar', style: { width: 104, height: 48 } }),
           // Both tools' bars share the slot, outside any tooltip provider, as on the map.
           options: h(React.Fragment, null, h(FogToolBar), h(MeasureToolBar, { playerView: false })),
-          children: h('div', { className: 'atlas-vtt-toolbar atlas-main-toolbar', style: { width: toolbarWidth, height: 52 } }),
+          children: h('div', { className: 'atlas-vtt-toolbar atlas-main-toolbar', style: { width: toolbarWidth, height: 48 } }),
         }),
       }))));
   };
@@ -85,7 +85,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
     const controls = rects(`${TOOLS} .atlas-tool-button`);
     expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual(Array.from({ length: 10 }, () => [32, 32]));
     // Brush, Rectangle, Polygon, Lasso, Cells, Room, the size | Cover all, Delete all fog | More
-    expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([8, 8, 8, 8, 8, 8, 16, 8, 16]);
+    expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([4, 4, 4, 4, 4, 4, 8, 4, 8]);
     expect(controls[0]!.left - tools.left).toBeCloseTo(tools.right - controls[9]!.right, 1);
   });
 
@@ -212,8 +212,8 @@ describe('the fog tool\'s bars above the toolbar', () => {
     for (const selector of [WHATS, TOOLS]) {
       const bar = rect(selector);
       for (const item of rects(`${selector} .atlas-tool-button`)) {
-        expect(item.left).toBeGreaterThanOrEqual(bar.left + 8);
-        expect(item.right).toBeLessThanOrEqual(bar.right - 8);
+        expect(item.left).toBeGreaterThanOrEqual(bar.left + 4);
+        expect(item.right).toBeLessThanOrEqual(bar.right - 4);
       }
     }
     act(() => button('More').click());

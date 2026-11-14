@@ -499,34 +499,49 @@ body.theme-light {
   .atlas-vtt-toolbar {
     display: flex;
     align-items: center;
-    gap: $spacing-s;  // Consistent spacing between all toolbar items
-    padding: $spacing-s;
+    gap: $toolbar-inset;
+    padding: $toolbar-inset;
     pointer-events: auto;
     @include atlas-elevated-surface;
     @include atlas-panel-radius($toolbar-radius);
 
-    // The end controls sit $spacing-s inside the border, so their outer corners
-    // run concentric with the bar's. Tool buttons, tool groups and the toggle
-    // read these; the corners between controls keep their own radius. Controls
-    // in the overflow menu are hidden, so the ends are the first and last shown;
-    // a control on its way out of the main toolbar no longer holds an end.
-    > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
-    > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
+    // Every control sits $toolbar-inset inside the border, so all its corners run concentric with
+    // the bar's: rounded alike on every side, never one radius towards the bar's edge and another
+    // inside it. Tool buttons, tool groups, their chevrons and the toggle read this; a bar with
+    // another inset sets it anew.
+    --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($toolbar-inset)};
 
-    // Menus opened from an end control are not part of the bar's outline.
+    // Menus opened from a control are not part of the bar's outline.
     .atlas-dropdown-content {
-      --atlas-bar-start-radius: initial;
-      --atlas-bar-end-radius: initial;
+      --atlas-bar-control-radius: initial;
     }
 
     .atlas-tool-button > span > .btn {
-      border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-        var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+      border-radius: var(--atlas-bar-control-radius, #{$radius-l});
     }
 
+    // The switch takes the controls' corner, and its thumb stands $toolbar-inset inside it (its
+    // padding and border), as every control stands inside the bar, so the thumb's corner is
+    // concentric with the switch's and still round: 6 px inside left it 3.5 px, a square.
     .atlas-toolbar-end > .atlas-toggle {
-      border-radius: var(--atlas-bar-start-radius, #{$radius-xl}) var(--atlas-bar-end-radius, #{$radius-xl})
-        var(--atlas-bar-end-radius, #{$radius-xl}) var(--atlas-bar-start-radius, #{$radius-xl});
+      $thumb: 40px - 2 * $toolbar-inset;
+
+      border-radius: var(--atlas-bar-control-radius, #{$radius-xl});
+
+      .atlas-toggle__switch {
+        padding: $toolbar-inset - $border-width-s;
+      }
+
+      .atlas-toggle__thumb {
+        width: $thumb;
+        height: $thumb;
+        border-radius: calc(var(--atlas-bar-control-radius, #{$radius-xl}) - #{$toolbar-inset});
+      }
+
+      // Across the switch's 60 px, less its padding and border on both sides and the thumb
+      .atlas-toggle__thumb--on {
+        transform: translateX(60px - 2 * $toolbar-inset - $thumb);
+      }
     }
   }
 
@@ -694,7 +709,7 @@ body.theme-light {
      ------------------------------------------------- */
   // As in Figma: the tool is a whole rounded button of its own, hovered, pressed and active like
   // every other tool, and the chevron beside it is a separate, narrower one with its own hover.
-  // The group paints nothing; it only keeps the bar's end corners (see .atlas-vtt-toolbar).
+  // The group paints nothing; it only takes the bar's control corner (see .atlas-vtt-toolbar).
   .atlas-tool-group {
     position: relative;
     display: flex;
@@ -702,14 +717,8 @@ body.theme-light {
     gap: $spacing-xs;
     padding: 0;
     @include atlas-corner-shape;
-    border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-      var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+    border-radius: var(--atlas-bar-control-radius, #{$radius-l});
 
-    // The chevron follows the tool, so the tool's right corners never take the bar's end radius.
-    > .atlas-tool-button button.btn {
-      border-top-right-radius: $radius-l !important;
-      border-bottom-right-radius: $radius-l !important;
-    }
   }
 
   // Muted until hovered; filled while its menu is open. Never takes the tool's accent.
@@ -719,7 +728,7 @@ body.theme-light {
     padding: 0;
     color: var(--text-muted);
     @include atlas-corner-shape;
-    border-radius: $radius-l var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l}) $radius-l !important;
+    border-radius: var(--atlas-bar-control-radius, #{$radius-l}) !important;
 
     &:hover,
     &.atlas-is-active {

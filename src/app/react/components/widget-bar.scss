@@ -74,9 +74,9 @@ $widget-bar-offset: $spacing-s;
 
   @include atlas-elevated-surface;
   @include atlas-panel-radius($toolbar-radius);
-  @include atlas-flex-row($spacing-s);
+  @include atlas-flex-row($toolbar-inset);
   position: relative;
-  padding: $spacing-s;
+  padding: $toolbar-inset;
   pointer-events: auto;
   transition: border-color $transition-normal $transition-ease,
               box-shadow $transition-normal $transition-ease-out,
@@ -92,11 +92,6 @@ $widget-bar-offset: $spacing-s;
   flex-shrink: 0;
   width: $button-height-l;
   height: $button-height-l;
-  border-radius: $radius-m;
-  // $spacing-s from the card's border on the left (and above and below while
-  // the bar rests): the outer corners run concentric with the card's.
-  @include atlas-panel-inset-radius($spacing-s, top-left, bottom-left);
-  background: color-mix(in oklch, var(--widget-color) 16%, transparent);
   color: var(--widget-color);
   transition: width $transition-normal $transition-ease-out,
               height $transition-normal $transition-ease-out;
