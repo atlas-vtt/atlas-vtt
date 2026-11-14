@@ -31,7 +31,7 @@ export function tokenCenterShift(gridType: GridType | undefined, cellSize: numbe
     : { x: radius / 2, y: cellSize / 2 };
 }
 
-/** Where the centre of a token of `tokenSize` snaps. `snapToCell` snaps a point to the centre of the cell containing it. */
+/** Token snapping: Tiny uses square-cell quarters, Small and Medium cell centres, even footprints intersections. */
 export function snapTokenCenter(
   point: Point,
   tokenSize: number,
@@ -39,6 +39,13 @@ export function snapTokenCenter(
   cellSize: number,
   snapToCell: (point: Point) => Point,
 ): Point {
+  if (!isHexGridType(gridType) && tokenDiameterInCells(tokenSize) <= 0.5) {
+    const cell = snapToCell(point);
+    return {
+      x: cell.x + (point.x <= cell.x ? -1 : 1) * cellSize / 4,
+      y: cell.y + (point.y <= cell.y ? -1 : 1) * cellSize / 4,
+    };
+  }
   const shift = tokenCenterShift(gridType, cellSize, tokenSize);
   const cell = snapToCell({ x: point.x - shift.x, y: point.y - shift.y });
   return { x: cell.x + shift.x, y: cell.y + shift.y };
@@ -47,13 +54,14 @@ export function snapTokenCenter(
 /**
  * Centre of a token resized from `fromSize` to `toSize`. Where tokens snap to a grid it keeps the cell its
  * footprint starts from (on a square grid its top-left corner), so an aligned token stays aligned at its new
- * size; elsewhere it keeps its centre.
+ * size. Small shares Medium's cell; Tiny takes its top-left quarter on square grids.
+ * Growing Tiny again uses the full cell containing its quarter. Elsewhere it keeps its centre.
  */
 export function resizedTokenCenter(
   center: Point,
   fromSize: number,
   toSize: number,
-  grid: { type?: GridType | undefined; size: number; snapToGrid?: boolean | undefined } | null | undefined,
+  grid: { type?: GridType | undefined; size: number; snapToGrid?: boolean | undefined; offsetX?: number | undefined; offsetY?: number | undefined } | null | undefined,
 ): Point {
   if (!grid || !(grid.snapToGrid ?? true)) return center;
   if (isHexGridType(grid.type)) {
@@ -61,6 +69,17 @@ export function resizedTokenCenter(
     const to = tokenCenterShift(grid.type, grid.size, toSize);
     return { x: center.x + to.x - from.x, y: center.y + to.y - from.y };
   }
-  const shift = ((tokenDiameterInCells(toSize) - tokenDiameterInCells(fromSize)) * grid.size) / 2;
-  return { x: center.x + shift, y: center.y + shift };
+  const fromTiny = tokenDiameterInCells(fromSize) <= 0.5;
+  const toTiny = tokenDiameterInCells(toSize) <= 0.5;
+  if (fromTiny && toTiny) return center;
+  const fromShift = (Math.max(1, tokenDiameterInCells(fromSize)) - 1) * grid.size / 2;
+  const anchor = fromTiny
+    ? {
+      x: Math.floor((center.x - (grid.offsetX ?? 0)) / grid.size) * grid.size + (grid.offsetX ?? 0) + grid.size / 2,
+      y: Math.floor((center.y - (grid.offsetY ?? 0)) / grid.size) * grid.size + (grid.offsetY ?? 0) + grid.size / 2,
+    }
+    : { x: center.x - fromShift, y: center.y - fromShift };
+  // Small only changes the artwork, not the occupied cell.
+  const shift = toTiny ? -grid.size / 4 : (Math.max(1, tokenDiameterInCells(toSize)) - 1) * grid.size / 2;
+  return { x: anchor.x + shift, y: anchor.y + shift };
 }

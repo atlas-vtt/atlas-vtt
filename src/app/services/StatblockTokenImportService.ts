@@ -29,6 +29,7 @@ interface ConvertingImport {
   path: string;
   name: string;
   showRing: boolean;
+  size?: number;
   converted: Promise<ProcessedImage>;
 }
 type PlannedImport = ConvertingImport | { item: StatblockImportItem };
@@ -119,14 +120,14 @@ export class StatblockTokenImportService {
       const converted = convertTokenArt(await vaultImageFile(this.app, image), showRing, signal);
       // Failures surface when the note is registered; notes never reached must not raise unhandled rejections.
       converted.catch(() => undefined);
-      return { path, name, showRing, converted };
+      return { path, name, showRing, converted, ...(row.size !== undefined && { size: row.size }) };
     } catch (error) {
       return { item: { path, name, status: 'failed', message: error instanceof Error ? error.message : t('sbToken.failed') } };
     }
   }
 
   private async register(entry: ConvertingImport, collection: string): Promise<StatblockImportItem> {
-    const { path, name, showRing } = entry;
+    const { path, name, showRing, size } = entry;
     let imagePath: string | undefined;
     let thumbnailPath: string | undefined;
     try {
@@ -135,6 +136,7 @@ export class StatblockTokenImportService {
       thumbnailPath = await AssetThumbnailService.getInstance(this.app, this.assets).tryThumbnailForImage(imagePath, thumbnail);
       const asset = await this.assets.addTokenAsset({
         name, imagePath, statblockPath: path, showRing, tags: [], collection, ...(thumbnailPath && { thumbnailPath }),
+        ...(size !== undefined && { size }),
       });
       return { path, name, status: 'created', message: t('sbToken.created'), asset };
     } catch (error) {

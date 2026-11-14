@@ -81,6 +81,16 @@ describe('statblock token import', () => {
 // The importer exercises real asset persistence; only the Obsidian filesystem is simulated.
 
 describe('bulk importing recognized statblock notes', () => {
+  it.each([['Tiny', 0.75], ['Small', 0.875], ['Large', 1.5]] as const)('persists the %s size on a newly imported asset', async (size, multiplier) => {
+    const { app, assets, frontmatter } = setup();
+    frontmatter[note]!.size = size;
+    const importer = new StatblockTokenImportService(app, assets);
+    expect((await importer.scan()).find(row => row.path === note)?.size).toBe(multiplier);
+    const result = await importer.import([note], 'Default');
+    expect(result.items[0]?.status).toBe('created');
+    expect((await assets.getTokenAssets())[0]?.size).toBe(multiplier);
+  });
+
   it('resolves YAML wikilinks, inline statblocks and remote/missing images without guessing from names', async () => {
     const { app, files, frontmatter, assets } = setup();
     frontmatter[note]!.image = [[image + '|portrait']];
