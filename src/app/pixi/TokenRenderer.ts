@@ -31,7 +31,7 @@ import { TextureCache } from './token-renderer/TextureCache';
 import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
-import { tokenMovement } from './token-renderer/tokenMovement';
+import { tokenMovement, type TokenMovement } from './token-renderer/tokenMovement';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { DEFAULT_DRAG_DISTANCE, showsDragDistance } from '../measure/dragDistance';
 import { SyncService } from './token-renderer/SyncService';
@@ -121,6 +121,7 @@ export class TokenRenderer {
   private uiManager: UIManager;
   private interactionController: InteractionController;
   private dragRuler: DragRuler;
+  private readonly movement: TokenMovement;
   private syncService: SyncService;
   
   
@@ -338,6 +339,7 @@ export class TokenRenderer {
     this.watchCanvasTurn();
 
     const movement = tokenMovement(this.obsApp, this.collectionSync.movement, this.collectionSync.measurement);
+    this.movement = movement;
     this.dragRuler = new DragRuler(
       new DragRulerView(this.viewport, this.tokenContainer),
       this.gridSystem,
@@ -1519,6 +1521,11 @@ export class TokenRenderer {
   }
 
   /** What the ruler of the drag under way measures, or null while it shows none. */
+  /** How the map's tokens move: its movement rules and each token's speed, as the drag ruler reads them. */
+  public tokenMovement(): TokenMovement {
+    return this.movement;
+  }
+
   public dragRulerPath(): DragRulerPath | null {
     return this.dragRuler.path();
   }

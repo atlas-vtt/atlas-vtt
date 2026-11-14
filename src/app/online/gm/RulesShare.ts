@@ -1,7 +1,8 @@
-import type { GmMessage, SharedRollDice, SharedRules } from '../protocol/index.ts';
+import type { GmMessage, SharedMoveStep, SharedRollDice, SharedRules } from '../protocol/index.ts';
 import { MAX_COORDINATE } from '../protocol/index.ts';
 import { areaRulesOf, readUnitName, resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
 import type { SceneState, SceneStore } from './atlasView.ts';
+import { sharedMoveSteps, type TokenMoves } from './moveShare.ts';
 
 export interface RulesSharePorts {
   send(body: GmMessage, to?: string): void;
@@ -15,6 +16,8 @@ export interface RulesSharePorts {
   rollDice?(): SharedRollDice | null;
   /** While the GM lets players draw: the cell their Draw tool's sizes are shares of; null while it does not. */
   draw?(): { readonly cell: number } | null;
+  /** How the tab's tokens move, or null while it cannot be read; without it players are sent no movement steps. */
+  tokenMoves?(): TokenMoves | null;
 }
 
 /**
@@ -54,7 +57,7 @@ const finiteOr = (value: number | undefined, fallback: number): number => (typeo
  * the grid's own, as Atlas's ruler falls back to), accent and whether everyone's cursor shows, and
  * the map's dice where the tab has them; null for a grid players cannot use.
  */
-export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null, draw: { readonly cell: number } | null = null): SharedRules | null {
+export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null, draw: { readonly cell: number } | null = null, moveSteps: readonly SharedMoveStep[] | null = null): SharedRules | null {
   if (grid === null || !Number.isFinite(grid.size) || !(grid.size > 0) || grid.size > MAX_COORDINATE) return null;
   const offsetX = finiteOr(grid.offsetX, 0);
   const offsetY = finiteOr(grid.offsetY, 0);
@@ -72,6 +75,7 @@ export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSe
     ...(cursors && { cursors }),
     ...(dice !== null && { dice }),
     ...(draw !== null && Number.isFinite(draw.cell) && draw.cell > 0 && draw.cell <= MAX_COORDINATE && { draw: { cell: draw.cell } }),
+    ...(moveSteps !== null && { moveSteps }),
   };
 }
 
@@ -102,7 +106,7 @@ export class RulesShare {
   update(): void {
     if (this.scene === null) return;
     const state = this.store.getState();
-    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null);
+    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null, sharedMoveSteps(this.ports.tokenMoves?.()?.rules()));
     if (rules === null) return;
     const body: GmMessage = { t: 'rules', scene: this.scene, ...rules };
     const text = JSON.stringify(body);

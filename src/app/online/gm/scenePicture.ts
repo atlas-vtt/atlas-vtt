@@ -1,4 +1,4 @@
-import { COLOUR_PATTERN, MAX_COORDINATE, MAX_NAME, MAX_TOKEN_CELLS, MAX_TOKEN_SIZE, MAX_TOKENS, type AssetRef, type Claim, type SharedToken, type SnapGrid } from '../protocol/index.ts';
+import { COLOUR_PATTERN, MAX_COORDINATE, MAX_NAME, MAX_TOKEN_CELLS, MAX_TOKEN_SIZE, MAX_TOKENS, type AssetRef, type Claim, type SharedToken, type SharedTokenMove, type SnapGrid } from '../protocol/index.ts';
 import { getTokenRingOuterDiameter } from '../../pixi/token-renderer/tokenRingMetrics';
 import { nameplateShownToPlayers } from '../../pixi/token-renderer/nameplateVisibility';
 import { computeTokenPixelSize, computeTokenStrokeWidth } from '../../pixi/token-renderer/tokenSizing';
@@ -32,6 +32,8 @@ export interface PictureInputs {
   readonly turn?: ReadonlySet<string>;
   /** The tokens that fight and may not move now, for they do not hold the turn (`movesOutOfTurn`); none without. */
   readonly held?: ReadonlySet<string>;
+  /** A token's speed and what it moved this turn (`sharedTokenMove`), or null for a token that tells none; without it none does. */
+  move?(token: TokenEntity): SharedTokenMove | null;
 }
 
 const WHITE = '#ffffff';
@@ -78,6 +80,7 @@ export function sharedTokens(inputs: PictureInputs): SharedToken[] {
     const claim = inputs.claimOf(id, token);
     const nameplate = nameplateShownToPlayers(token, inputs.mapShowsNameplates, inputs.showNames);
     const name = shown.name === null || !nameSent(claim, nameplate) ? null : shown.name.slice(0, MAX_NAME);
+    const move = inputs.move?.(token);
     shared.push({
       layer: finiteOr(token.layer, 0),
       token: {
@@ -96,6 +99,7 @@ export function sharedTokens(inputs: PictureInputs): SharedToken[] {
         ui: tokenUIOf(token, inputs.rules, nameplate && name !== null),
         ...(inputs.turn?.has(id) ? { turn: true as const } : {}),
         ...(inputs.held?.has(id) ? { held: true as const } : {}),
+        ...(move ? { move } : {}),
       },
     });
   }
