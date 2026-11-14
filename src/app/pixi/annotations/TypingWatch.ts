@@ -15,12 +15,24 @@ function within(target: EventTarget | null, selector: string): boolean {
   return node !== null && typeof node.instanceOf === 'function' && node.instanceOf(Element) && node.closest(selector) !== null;
 }
 
+/** The browser's presses that ended the typing of a text. */
+const enders = new WeakSet<object>();
+
+/**
+ * Whether `press` ended the typing of a text. Such a press starts no next text: whoever clicks
+ * beside a text they typed wants to be out of its field, not in a new one.
+ */
+export function endedTyping(press: object | null | undefined): boolean {
+  return press !== null && press !== undefined && enders.has(press);
+}
+
 /**
  * What ends the typing of a text from outside its field, and what keeps the keyboard with it,
  * heard in the canvas's own document and window while a field shows:
  *
  * - a press anywhere but in the field and the tool's bars finishes the text, in the capture phase,
- *   so the press then does what it does where it landed, on a map that already has the text;
+ *   so the press then does what it does where it landed, on a map that already has the text,
+ *   except start the next text (`endedTyping`);
  * - a press on the bars' buttons does not take the keyboard (its default is prevented; the click
  *   still comes), so a pick restyles the text and the next key is typed into it;
  * - the window closing finishes the text;
@@ -65,7 +77,9 @@ export class TypingWatch {
   }
 
   private readonly onPress = (event: PointerEvent): void => {
-    if (this.field && !this.field.contains(event.target) && !within(event.target, this.bars)) this.finish();
+    if (!this.field || this.field.contains(event.target) || within(event.target, this.bars)) return;
+    enders.add(event);
+    this.finish();
   };
 
   private readonly onMouseDown = (event: MouseEvent): void => {

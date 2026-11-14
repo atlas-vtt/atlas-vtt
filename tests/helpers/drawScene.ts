@@ -19,6 +19,8 @@ export interface PointerKeys {
   pointerId?: number;
   /** The press follows the one before it at once, as a double click's second does; else a second passes between two presses. */
   soon?: boolean;
+  /** The browser's own event the press comes from, where a test dispatched one in the document first. */
+  native?: Event;
 }
 
 export const CELL = 70;
@@ -110,6 +112,7 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
     event.altKey = keys.alt ?? false;
     event.pointerId = keys.pointerId ?? 1;
     event.global.set(x, y);
+    if (keys.native) event.nativeEvent = keys.native as PointerEvent;
     return event;
   };
   const scene: DrawScene = {

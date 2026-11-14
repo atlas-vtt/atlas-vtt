@@ -169,6 +169,30 @@ describe('typing a text on the map', () => {
     expect(s.texts()).toHaveLength(1);
   });
 
+  it('only finishes the text on a press beside it in Text mode: that press starts no next text, the one after it does', () => {
+    const s = scene();
+    s.tool({ mode: 'text' });
+    s.click(100, 100);
+    s.type('Gate');
+    // The browser's press reaches the document first, then the map, as one event.
+    const press = pressOn(s.viewport.options.events.domElement);
+    s.pull([[400, 300]], { native: press });
+    expect(s.field()).toBeNull();
+    expect(s.texts().map(({ text }) => text)).toEqual(['Gate']);
+    expect(selected(s)).toEqual([]);
+    // A drag from beside the text ends it too, and starts no text box.
+    s.click(100, 400);
+    s.type('Keep');
+    const drag = pressOn(s.viewport.options.events.domElement);
+    s.pull([[400, 300], [520, 300]], { native: drag });
+    expect(s.field()).toBeNull();
+    expect(s.texts().map(({ text }) => text)).toEqual(['Gate', 'Keep']);
+    // The next press is a press like any other.
+    const next = pressOn(s.viewport.options.events.domElement);
+    s.pull([[400, 300]], { native: next });
+    expect(s.field()?.value).toBe('');
+  });
+
   it('follows the tool\'s bars while a new text is typed, without a write', () => {
     const s = scene();
     s.tool({ mode: 'text', font: 'medieval', size: 'm' });
