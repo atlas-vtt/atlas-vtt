@@ -25,7 +25,7 @@ export const draw = {
   'draw.players': 'Players see it',
   'draw.playersOff': 'Only you see it',
   'draw.onMap': 'Under tokens',
-  'draw.onMapTip': 'Drawn on the floor: under the grid and the tokens, lit like the map',
+  'draw.onMapTip': 'Drawn on the floor: under the grid and the tokens',
   'draw.line': 'Line',
   'draw.line.solid': 'Solid',
   'draw.line.dashed': 'Dashed',

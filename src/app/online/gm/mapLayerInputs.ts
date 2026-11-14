@@ -182,9 +182,9 @@ export interface ToldAnnotationLists {
 /** What the lists are told by beside the scene's drawings, texts and fog. */
 export interface ToldBy {
   /**
-   * Whether players know of a drawing or text on the map (`KnownOnMap`): one they do not is not
-   * told. Without it every one is known: a scene whose map players see wherever fog does not
-   * cover it.
+   * Whether players know of a drawing or text (`KnownOnMap`): one they do not is not told, on
+   * the map or above the tokens. Without it every one is known: a scene whose map players see
+   * wherever fog does not cover it.
    */
   readonly known?: (annotation: Annotation) => boolean;
   /** The numbers the entries above the tokens and those on the map are told their places in the order by; without them, each list is numbered anew. */
@@ -217,12 +217,12 @@ function listsOf(entries: readonly Entry[], orders: SentOrders): { drawings: Sha
  * covers whole (the frame's fog hides them, so they are not sent). Fog that cannot be read covers
  * everything; nothing is sent then.
  *
- * Those above the tokens are told as the players' frame draws them, above the lighting. Those on
- * the map are told apart (`onMap`): they lie under the lighting, and a page that drew them above
- * it would show them over rooms nobody has seen, so a page that does not know the field shows
- * none of them. Of those only what players know of is told (`by.known`): a page is told an
- * entry's whole line and words, wherever its lighting then shows them. Both together stay within
- * what one message may carry.
+ * Both layers lie under the lighting, which shows a drawing only where players see or remember
+ * the map. Those on the map are told apart (`onMap`), so a page that does not know the field
+ * shows none of them. Of either layer only what players know of is told (`by.known`): a page is
+ * told an entry's whole line and words, wherever its lighting then shows them, and a page from
+ * before the layer above the tokens was lit draws that layer over rooms nobody has seen. Both
+ * together stay within what one message may carry.
  *
  * Each list's entries are numbered in the GM's order by numbers of their own (`by.orders`): the
  * GM's count what is not told too.
@@ -243,7 +243,7 @@ export function toldAnnotationLists(
   for (const annotation of annotationList({ drawings, texts })) {
     if (annotation.hidden) continue;
     const list = annotation.layer === 'map' ? onMap : above;
-    if (list === onMap && by.known?.(annotation) === false) continue;
+    if (by.known?.(annotation) === false) continue;
     if (annotation.kind === 'text') {
       if (room.texts === 0) continue;
       const box = textBox(annotation);
@@ -265,9 +265,14 @@ export function toldAnnotationLists(
   return { shared: onMap.length > 0 ? { ...lists, onMap: { drawings: mapped.drawings, texts: mapped.texts } } : lists, above: told.ids };
 }
 
-/** The drawings and texts on the map among those players may be told at all: not kept from them, in the order everything reads them. */
-export function onMapAnnotations(drawings: Readonly<Record<string, DrawingStroke>>, texts: Readonly<Record<string, TextElement>>): Annotation[] {
-  return annotationList({ drawings, texts }).filter((annotation) => annotation.layer === 'map' && !annotation.hidden);
+/**
+ * The drawings and texts players are told only once they know of them (`KnownOnMap`), among those
+ * they may be told at all: every one not kept from them, on the map and above the tokens alike,
+ * in the order everything reads them. Not what a player drew: its maker knows of it, and a page
+ * must be told a drawing to change or erase it.
+ */
+export function learnedAnnotations(drawings: Readonly<Record<string, DrawingStroke>>, texts: Readonly<Record<string, TextElement>>): Annotation[] {
+  return annotationList({ drawings, texts }).filter((annotation) => !annotation.hidden && annotation.by === null);
 }
 
 /** The drawings and texts players see (`toldAnnotationLists`). */

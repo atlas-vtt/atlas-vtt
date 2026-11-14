@@ -193,7 +193,8 @@ describe("what players are sent of the map's layers", () => {
       }
       expect(sent, `${label}: a drawing fog covers`).not.toContain(fogged.colour);
       expect(sent, `${label}: a text fog covers`).not.toContain(fogged.text);
-      expect(sent, `${label}: a text players see`).toContain('Tavern');
+      // On a lit scene players are told a drawing or text only once they have seen a part of it (the test below): what they are told of there is whatever their tokens happened to see.
+      if (!lit) expect(sent, `${label}: a text players see`).toContain('Tavern');
       expect(sent, `${label}: a drawing the GM keeps to themselves`).not.toContain(secret.colour);
       expect(sent, `${label}: a stamp the GM keeps to themselves`).not.toContain(secret.stamp);
       expect(sent, `${label}: a text the GM keeps to themselves`).not.toContain(secret.text);
@@ -219,21 +220,27 @@ describe("what players are sent of the map's layers", () => {
       for (const what of ['hidden', 'onMap', 'fogged', 'cellsHidden'] as const) expect(sent, `${label}: a drawing under way (${what})`).not.toContain(strokes[what]);
       // What was shown and then hidden went out while it was shown, and never again.
       const [early, late] = [traffic(table.sent.slice(0, sentBeforeHiding)), traffic(table.sent.slice(sentBeforeHiding))];
-      expect(early, `${label}: a drawing while players see it`).toContain(secret.switched);
-      expect(early, `${label}: a text while players see it`).toContain(secret.switchedText);
+      if (!lit) {
+        expect(early, `${label}: a drawing while players see it`).toContain(secret.switched);
+        expect(early, `${label}: a text while players see it`).toContain(secret.switchedText);
+      }
       expect(late, `${label}: a drawing once it is hidden`).not.toContain(secret.switched);
       expect(late, `${label}: a text once it is hidden`).not.toContain(secret.switchedText);
       const lastAnnotations = ofKind(table.sent, 'annotations').at(-1);
-      expect(lastAnnotations?.drawings.map(({ type }) => type).sort(), `${label}: the drawings players are left with`).toEqual(['pen', 'pen']);
-      expect(lastAnnotations?.texts.map(({ text }) => text), `${label}: the texts players are left with`).toEqual(['Tavern']);
-      // A shape is told as the line through its points, with what it is drawn by beside it and nothing else of it.
+      if (!lit) {
+        expect(lastAnnotations?.drawings.map(({ type }) => type).sort(), `${label}: the drawings players are left with`).toEqual(['pen', 'pen']);
+        expect(lastAnnotations?.texts.map(({ text }) => text), `${label}: the texts players are left with`).toEqual(['Tavern']);
+      }
+      // A shape is told as the line through its points, with what it is drawn by beside it and nothing else of it. A player drew this one: it is told on a lit scene too, seen or not.
       expect(lastAnnotations?.drawings.find(({ colour }) => colour === room.colour)).toEqual({
         type: 'pen', points: outline.flatMap(({ x, y }) => [x, y]), colour: room.colour, width: 4, opacity: 1, shape: 'rectangle', fill: 'soft', dash: 'dashed', order: expect.any(Number) as number,
       });
       // Places in the order are counted among what players were told above the tokens (five at first, three of them still), never the GM's own numbers.
       const places = [...(lastAnnotations?.drawings ?? []), ...(lastAnnotations?.texts ?? [])].map(({ order }) => order ?? 0);
-      expect(new Set(places).size, `${label}: the places in the order`).toBe(3);
-      expect(places.every((place) => Number.isInteger(place) && place >= 1 && place <= 5), `${label}: the places in the order`).toBe(true);
+      if (!lit) expect(new Set(places).size, `${label}: the places in the order`).toBe(3);
+      expect(new Set(places).size, `${label}: the places in the order`).toBe(places.length);
+      // On a lit scene an entry learned of later takes a place between its neighbours', which need not be whole.
+      if (!lit) expect(places.every((place) => Number.isInteger(place) && place >= 1 && place <= 5), `${label}: the places in the order`).toBe(true);
       const told = JSON.stringify([ofKind(table.sent, 'annotations'), marksSent]);
       for (const field of ['hidden', 'layer', 'group', 'locked', 'by', 'anchors', 'cells', 'timestamp', 'id']) expect(told, `${label}: the field ${field}`).not.toContain(`"${field}"`);
       for (const entry of tokens) {
@@ -255,7 +262,7 @@ describe("what players are sent of the map's layers", () => {
     }
   });
 
-  it('tells nothing that lies on the map of a room nobody has seen, all of it once a part is seen, and keeps telling it', async () => {
+  it('tells nothing of a room nobody has seen, on its map or above the tokens, all of it once a part is seen, and keeps telling it', async () => {
     const SIZE = 3000;
     // A closed room, and a hero who stands outside it in daylight.
     const room = { x: 1800, y: 1800, side: 400 };
@@ -270,7 +277,7 @@ describe("what players are sent of the map's layers", () => {
     const drawings: Record<string, DrawingStroke> = {
       sketch: { id: 'sketch', kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: inside.x - 100, y: inside.y }, { x: inside.x + 100, y: inside.y + 40 }], color: sketch.colour, width: 4, opacity: 1, layer: 'map', order: 4 },
       yard: { id: 'yard', kind: 'drawing', timestamp: 2, type: 'pen', points: [{ x: 300, y: 500 }, { x: 420, y: 520 }], color: yard.colour, width: 4, opacity: 1, layer: 'map', order: 7 },
-      // Above the tokens players see a drawing wherever fog does not cover it, as before.
+      // Above the tokens a drawing is lit like the floor too: in the room nobody has seen it is told no sooner than what lies on the map there.
       above: { id: 'above', kind: 'drawing', timestamp: 3, type: 'pen', points: [{ x: inside.x, y: inside.y - 50 }, { x: inside.x + 50, y: inside.y - 50 }], color: '#777777', width: 4, opacity: 1 },
     };
     const texts: Record<string, TextElement> = {
@@ -295,7 +302,7 @@ describe("what players are sent of the map's layers", () => {
     const outside = traffic(table.sent);
     expect(outside).toContain(yard.colour);
     expect(outside).toContain(yard.text);
-    expect(outside).toContain('#777777');
+    expect(outside, 'a drawing above the tokens of a room nobody has seen').not.toContain('#777777');
     expect(outside, 'a drawing on the map of a room nobody has seen').not.toContain(sketch.colour);
     expect(outside, 'a text on the map of a room nobody has seen').not.toContain(sketch.text);
     // Its place in the order says nothing of the two it is not told of.
@@ -306,6 +313,7 @@ describe("what players are sent of the map's layers", () => {
     const entered = ofKind(table.sent, 'annotations').at(-1);
     expect(JSON.stringify(entered?.onMap)).toContain(sketch.colour);
     expect(JSON.stringify(entered?.onMap)).toContain(sketch.text);
+    expect(entered?.drawings.map(({ colour }) => colour)).toEqual(['#777777']);
     // And out again: players remember the room, and nothing is taken back or told anew.
     const told = ofKind(table.sent, 'annotations').length;
     for (const place of [{ x: 400, y: 400 }, { x: 500, y: 450 }, { x: 400, y: 400 }]) await step(scene(place));
