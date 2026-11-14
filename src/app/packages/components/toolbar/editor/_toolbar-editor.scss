@@ -229,11 +229,6 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
   pointer-events: none;
 }
 
-// A tool group paints a fill of its own: the hover shows on top of it, still beneath the icon.
-.atlas-toolbar-handle:hover + .atlas-toolbar-item__content .atlas-tool-group {
-  background-image: linear-gradient(var(--background-modifier-hover), var(--background-modifier-hover));
-}
-
 // The content lies above the handle, so the handle's focus ring is drawn on top of the content.
 .atlas-toolbar-handle:focus-visible + :is(.atlas-toolbar-item__content, .atlas-toolbar-face)::after {
   @include toolbar-control-ring(var(--interactive-accent));

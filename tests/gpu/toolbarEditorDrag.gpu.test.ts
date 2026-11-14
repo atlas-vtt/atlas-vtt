@@ -191,7 +191,7 @@ describe('dragging in the toolbar editor', () => {
 
   it('closes the rightmost control live to make room on a full bar, and never the Command palette', async () => {
     // As wide as leaves Draw, a single button, no room beside the four that show (Fog is a single button too).
-    await page.viewport(712, 800);
+    await page.viewport(680, 800);
     // Hidden as this version stores it: with the id of the Text control it took in.
     await mount({ hidden: ['draw', 'text'] });
     expect(barIds()).toEqual(['move', 'fog', 'measure', 'palette']);

@@ -689,45 +689,41 @@ body.theme-light {
   }
 
   /* -------------------------------------------------
-     Split-button tool group (tool + chevron)
+     Tool group (tool + options chevron)
      ------------------------------------------------- */
+  // As in Figma: the tool is a whole rounded button of its own, hovered, pressed and active like
+  // every other tool, and the chevron beside it is a separate, narrower one with its own hover.
+  // The group paints nothing; it only keeps the bar's end corners (see .atlas-vtt-toolbar).
   .atlas-tool-group {
     position: relative;
     display: flex;
     align-items: center;
-    background: var(--background-secondary);
-    // At either end of the toolbar, the outer corners follow the bar's (see .atlas-vtt-toolbar).
+    gap: $spacing-xs;
+    padding: 0;
     @include atlas-corner-shape;
     border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
       var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+
+    // The chevron follows the tool, so the tool's right corners never take the bar's end radius.
+    > .atlas-tool-button button.btn {
+      border-top-right-radius: $radius-l !important;
+      border-bottom-right-radius: $radius-l !important;
+    }
+  }
+
+  // Muted until hovered; filled while its menu is open. Never takes the tool's accent.
+  #{$toolbars} .atlas-tool-group button.btn.atlas-tool-group__chevron {
+    width: $icon-m;
+    height: $button-height-l;
     padding: 0;
-    gap: 0;
+    color: var(--text-muted);
+    @include atlas-corner-shape;
+    border-radius: $radius-l var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l}) $radius-l !important;
 
-    // The two halves of the split button have no background or radius of their own. Only they:
-    // the options menu hangs inside the group, and its buttons are the menu's to shape
-    // (dropdown-menu.scss). `:where` keeps the reset below `.btn.is-active` above.
-    > :where(.atlas-tool-button) button.btn,
-    > :where(.atlas-dropdown-menu) > button.btn {
-      border-radius: 0 !important;
-      background: transparent !important;
-    }
-
-    // Round only the outer edges of the tool button
-    > .atlas-tool-button:first-child button.btn {
-      border-top-left-radius: var(--atlas-bar-start-radius, #{$radius-l}) !important;
-      border-bottom-left-radius: var(--atlas-bar-start-radius, #{$radius-l}) !important;
-    }
-
-    // …and of the chevron that ends the group
-    > .atlas-dropdown-menu:last-child > button.btn {
-      border-top-right-radius: var(--atlas-bar-end-radius, #{$radius-l}) !important;
-      border-bottom-right-radius: var(--atlas-bar-end-radius, #{$radius-l}) !important;
-    }
-
-    // Chevron: match parent height and subtle separator
-    .atlas-dropdown-trigger {
-      height: $button-height-l; // match tool button height (40px)
-      border-left: $border-width-s solid var(--divider-color);
+    &:hover,
+    &.atlas-is-active {
+      background: var(--background-modifier-hover) !important;
+      color: var(--text-normal) !important;
     }
   }
 
