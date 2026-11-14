@@ -4,7 +4,7 @@ import type { TextMeasure } from '../../annotations/annotationBounds';
 import { handlesOf, mapHandles, type HandleRef, type HandleSet } from '../../annotations/annotationHandles';
 import { readDrawing, readText } from '../../annotations/annotationList';
 import { moveBy, scaleByHandle, turnAbout, turnBetween, type Transform } from '../../annotations/annotationTransform';
-import type { Annotation, AnnotationPlace, TextAnnotation } from '../../annotations/annotationTypes';
+import type { Annotation, AnnotationPlace, DrawingAnnotation, TextAnnotation } from '../../annotations/annotationTypes';
 import { withPointAdded, withPointMoved } from '../../annotations/linePoints';
 import { draggedWidth, placeBesideSide } from '../../annotations/textWidth';
 import type { Point } from '../../types/visionTypes';
@@ -39,6 +39,11 @@ export interface GestureDeps {
   readonly showHandles: (handles: HandleSet | null, held: HandleRef | null) => void;
   /** Writes where a gesture left the annotations: one write, one undo step. */
   readonly write: PlaceWriter;
+  /**
+   * Where a stamp `footprint` world pixels wide comes to lie when it is dropped at `at`: on its
+   * cell where the grid snaps, unless `free`. Unset: where it is dropped.
+   */
+  readonly snapStamp?: (at: Point, footprint: number, free: boolean) => Point;
   /** A drag of annotations alone ended, whatever ended it: the pointer rests where it was let go, still with the drag's cursor. */
   readonly settled?: () => void;
 }
@@ -121,9 +126,13 @@ export class AnnotationGestures {
     const edit = new AnnotationEdit(annotations, this.deps.layer, this.deps.touched, live ? this.deps.write : null);
     let offset = { x: 0, y: 0 };
     let copies = false;
+    // One stamp moved by itself lands on a cell, as a placed one does. With others, or with tokens, it keeps its place among them.
+    const [only, ...more] = annotations;
+    const stamp = !live && more.length === 0 && only?.kind === 'drawing' && only.shape === 'stamp' ? only : null;
     this.track(annotations, event, live, {
       start: () => options.withTokens?.begin(),
-      step: (drag, move) => {
+      step: (dragged, move) => {
+        const drag = stamp ? this.toCell(stamp, dragged, move.altKey === true) : dragged;
         offset = drag;
         copies = move.altKey === true && options.copy !== undefined;
         const transform = moveBy(drag.x, drag.y);
@@ -178,6 +187,15 @@ export class AnnotationGestures {
         else edit.drop();
       },
     });
+  }
+
+  /** How far `stamp` moves when it is dragged by `drag`: to the cell it then lies on where the grid snaps, unless `free` (Alt). */
+  private toCell(stamp: DrawingAnnotation, drag: Point, free: boolean): Point {
+    const from = stamp.points[0];
+    const snap = this.deps.snapStamp;
+    if (!from || !snap) return drag;
+    const to = snap({ x: from.x + drag.x, y: from.y + drag.y }, stamp.width, free);
+    return { x: to.x - from.x, y: to.y - from.y };
   }
 
   /** Adds a point to `line` (the one line `handles` shows) at `at`, after its point `after`: one write. */

@@ -4,7 +4,7 @@ import type { StoreApi } from 'zustand';
 import { annotationList, annotationsLeftOut } from '../../annotations/annotationList';
 import { fillsCells } from '../../annotations/cellsMode';
 import { UnderWay, type UnderWaySource } from '../../annotations/underWay';
-import { snapDrawPoint } from '../../annotations/drawSnap';
+import { snapDrawPoint, snapStampPoint } from '../../annotations/drawSnap';
 import type { MapRect } from '../../grid/cellNumbering';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { isTextEntryTarget } from '../../keyboard/textEntry';
@@ -193,6 +193,7 @@ export class AnnotationsRenderer {
       gmView: () => !this.showsPlayers(),
       touched: () => this.sharpening.touch(),
       snap: (world, free) => snapDrawPoint(snapGrid(), world, free),
+      snapStamp: (at, footprint, free) => snapStampPoint(snapGrid(), at, free, footprint),
       editText: (text) => this.texts.edit(text),
       typing: () => this.texts.typing.active,
       // A text whose face is still loading is never measured: its side handle changes its width alone until the face is there.

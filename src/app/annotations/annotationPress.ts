@@ -9,9 +9,10 @@ import type { Annotation, DrawMode } from './annotationTypes';
 /**
  * What the tool in hand takes of the annotations of the level shown:
  * - `'all'` (the Draw tool's Select mode): every one, on the map too, hidden and locked ones too;
- * - `'made'` (the Draw tool's other modes): only the handles of what is selected, which is the one
- *   just made (a pen's stroke is not selected, so the pen has none), and in a mode that places by
- *   a press the annotations of its own kind (`ownKind`);
+ * - `'made'` (the Draw tool's other modes): only the handles of what is selected, which is the
+ *   stamp or the text just made (a stroke, a line and a shape are not selected once drawn, so
+ *   those modes have none of their own), and in a mode that places by a press the annotations of
+ *   its own kind (`ownKind`);
  * - `'above'` (the move and select tools): those above the tokens that are not locked;
  * - `'none'`: none, and no handles.
  */

@@ -81,14 +81,15 @@ describe('Stamp mode and a stamp that is there', () => {
     const s = scene((made) => { id = made.store.getState().addDrawing(stamp(105, 175)); });
     s.tool({ mode: 'stamp' });
     expect(s.pull([[100, 170], [200, 240]])).toBe(true);
-    expect(s.drawings()).toEqual([expect.objectContaining({ id, points: [pt(205, 245)] })]);
+    // Dropped in the next cell, it sits on that cell.
+    expect(s.drawings()).toEqual([expect.objectContaining({ id, points: [pt(175, 245)] })]);
     expect(steps(s)).toBe(1);
     s.press(200, 240);
     s.pointer('pointermove', 400, 400);
     expect(s.hover(400, 400)).toBe('grabbing');
     expect(s.renderer.selecting.handleEscape()).toBe(true);
     s.pointer('pointerup', 400, 400);
-    expect(s.drawings()[0]?.points).toEqual([pt(205, 245)]);
+    expect(s.drawings()[0]?.points).toEqual([pt(175, 245)]);
     expect(steps(s)).toBe(1);
   });
 

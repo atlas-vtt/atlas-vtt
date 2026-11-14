@@ -32,6 +32,8 @@ export interface AnnotationInteractionDeps {
   touched(): void;
   /** Where a line's point lies for the pointer at `world`. */
   snap(world: Point, free: boolean): Point;
+  /** Where a stamp `footprint` wide that is dragged to `at` comes to lie: on its cell where the grid snaps, unless `free`. Unset: at `at`. */
+  snapStamp?(at: Point, footprint: number, free: boolean): Point;
   /** Opens a text for editing. */
   editText(text: TextAnnotation): void;
   /** Whether a text is being typed: its field stands where its frame would. */
@@ -61,9 +63,9 @@ export interface AnnotationInteractionDeps {
  * Selecting and reshaping drawings and texts: the one place that takes the pointer for them. The
  * tool in hand says what a press takes (`pressScope`): every annotation in the Draw tool's Select
  * mode, those above the tokens in the move and select tools, and in the Draw tool's other modes
- * only the handles of what is selected, which is the one just made, and what a mode that places
- * by a press has of its own kind under the pointer (`ownKind`: a stamp in Stamp mode, a text in
- * Text mode, unless Alt is held). A press selects (with its group; Shift adds or takes away) and
+ * only the handles of what is selected (the stamp or text just made: a drawn shape is not
+ * selected), and what a mode that places by a press has of its own kind under the pointer
+ * (`ownKind`: a stamp in Stamp mode, a text in Text mode, unless Alt is held). A press selects (with its group; Shift adds or takes away) and
  * drags; a press on a handle scales, stretches, turns or moves a line's point; a right click opens
  * the menu (the press released in place: a right-drag pans); a double click edits a text or
  * removes a line's point, and so does the first click on a text in Text mode.
@@ -105,6 +107,7 @@ export class AnnotationInteraction {
       measure: deps.measure,
       touched: () => deps.touched(),
       snap: (world, free) => deps.snap(world, free),
+      snapStamp: (at, footprint, free) => deps.snapStamp?.(at, footprint, free) ?? at,
       wordsBox: (text) => deps.wordsBox(text),
       breaksAt: (text, width) => deps.breaksAt(text, width),
       showHandles: (handles, held) => {
@@ -266,7 +269,7 @@ export class AnnotationInteraction {
     const own = read.scope === 'made' ? this.own(event.altKey === true) : null;
     const at = this.taken(point, read, own);
     if (read.scope === 'made' && !at) {
-      // The press is on no handle and on nothing the mode takes: what was just made is let go of, and the press draws the next.
+      // The press is on no handle and on nothing the mode takes: what is selected is let go of, and the press draws or places.
       if (read.selected.length > 0) state.setSelection(this.without(read.selected.map(({ id }) => id)));
       return false;
     }

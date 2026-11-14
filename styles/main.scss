@@ -614,7 +614,9 @@ body.theme-light {
   // ghost of a tool moving between them.
   $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost, .atlas-tool-bar)';
 
-  /* Make all buttons in toolbar transparent by default, except those with their own look. */
+  /* Make all buttons in toolbar transparent by default, except those with their own look.
+     None shows that it has the focus, by the pointer or by a key: a button that was clicked keeps
+     the focus, and the next hotkey would ring it beside the tool in hand. */
   #{$toolbars} button.btn:not(#{$own-look}),
   #{$toolbars} button.btn--toolbar {
     background: transparent !important;
@@ -630,19 +632,18 @@ body.theme-light {
     }
   }
 
-  // Pointer focus stays quiet; keyboard focus gets the shared ring. The quiet rule leaves
-  // :focus-visible alone: as `:focus:not(…)` it outranked the ring's rule below.
-  #{$toolbars} button.btn:focus:not(:focus-visible):not(#{$own-look}),
-  #{$toolbars} button.btn--toolbar:focus:not(:focus-visible) {
-    outline: none !important;
-    box-shadow: none !important;
+  // Nor does a switch or a segmented option of a toolbar, or of a menu that hangs from one: a
+  // click leaves the focus on it and the menu open. A chosen option keeps the shadow it rests with.
+  #{$toolbars} .atlas-toggle:focus-visible {
+    outline: none;
   }
 
-  // A segmented option keeps the button's own ring, as in a dialog (`:where`: no added weight).
-  #{$toolbars} button.btn:focus-visible:where(:not(.atlas-segmented__option)),
-  #{$toolbars} button.btn--toolbar:focus-visible {
-    outline: 2px solid var(--interactive-accent) !important;
-    outline-offset: -2px;
+  #{$toolbars} .atlas-segmented__option:focus-visible {
+    box-shadow: none;
+
+    &.atlas-active {
+      box-shadow: $shadow-sm;
+    }
   }
 
   #{$toolbars} button.btn:hover:not(#{$own-look}),

@@ -26,8 +26,8 @@ export function selectedAnnotations(state: ViewAtlasState): readonly Annotation[
 /**
  * A pick in the tool's bars. With drawings or texts selected that the pick is a style of, they
  * take it, in one undo step. It becomes what is drawn next where nothing selected takes it, and
- * in every mode that makes something: there the selected one is the one just made, and the next
- * is expected to look like it. In Select mode a pick changes the selected ones alone.
+ * in every mode that makes something: there the selected one is the stamp or the text just made,
+ * and the next is expected to look like it. In Select mode a pick changes the selected ones alone.
  */
 export function pickDrawStyle<Field extends StyleField>(store: ViewAtlasStore, field: Field, value: DrawStyle[Field]): void {
   const state = store.getState()

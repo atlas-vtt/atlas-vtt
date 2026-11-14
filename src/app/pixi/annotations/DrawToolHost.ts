@@ -60,9 +60,11 @@ const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'c
 /**
  * What the Draw tool's gestures do to the scene: the drawing under way is shown as it will stay
  * (`LiveStroke`), a finished one is written with the tool's choices (`madeDrawing`), and a press of
- * the Stamp mode places the tool's symbol (a text is typed on the map: `TextTyping`). What was
- * made is selected, so it can be pulled right at once; but not a pen's stroke, since the next
- * stroke often starts on the end of the last, where a handle would take the press. The
+ * the Stamp mode places the tool's symbol (a text is typed on the map: `TextTyping`). A stroke, a
+ * line, a rectangle or an ellipse is not selected once it is made, and one that begins lets go of
+ * what was selected: the tool stays in hand and the next shape often starts on the end or the
+ * corner of the last, where a handle would take the press. A stamp is selected, so it can be
+ * nudged or turned at once. The
  * eraser cuts what its sweep passes (`sweepChange`), every step of it written at once and the
  * whole sweep one undo step; its ring follows the pointer. A drawing that can take no further cut
  * stays as it is, which the GM is told once a sweep. The Cells mode fills or clears the
@@ -150,9 +152,11 @@ export class DrawToolHost {
   }
 
   private started(mode: GestureMode): void {
-    if (mode !== 'eraser') this.deps.underWay.begin();
-    // The pen and the Cells mode work with nothing selected: what an earlier mode left selected is let go of.
-    if (mode === 'pen' || mode === 'cells') this.deselect();
+    if (mode !== 'eraser') {
+      this.deps.underWay.begin();
+      // What is drawn is drawn with nothing selected: what an earlier mode left selected is let go of.
+      this.deselect();
+    }
     if (mode === 'cells') {
       this.painting = true;
       this.cells.begin();
@@ -224,9 +228,8 @@ export class DrawToolHost {
       const state = this.deps.store.getState();
       const drawing = madeDrawing(made, state.drawTool, drawCell(state.grid), this.zoom);
       if (drawing && this.hasRoom('drawings')) {
-        const id = state.addDrawing(drawing);
+        state.addDrawing(drawing);
         added = true;
-        if (made.mode !== 'pen') this.select(id);
       }
     }
     // After the drawing is on the map: the stroke never blinks between the two.
@@ -255,7 +258,7 @@ export class DrawToolHost {
     this.select(state.addDrawing(madeStamp(at, state.drawTool, cell)));
   }
 
-  /** What was just made is selected: it shows its handles until the next press elsewhere, and the bars show its style. */
+  /** The stamp just placed is selected: it shows its handles until the next press elsewhere, and the bars show its style. */
   private select(id: string): void {
     this.deps.store.getState().setSelection([id]);
   }

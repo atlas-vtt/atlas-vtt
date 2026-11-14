@@ -403,30 +403,27 @@ describe('a line\'s points', () => {
 });
 
 describe('what the Draw tool just made', () => {
-  it('is selected and shows its handles; a press on one reshapes it, and a press elsewhere draws the next', () => {
+  it('is selected and shows its handles where a press placed it; a press on one reshapes it, and a press elsewhere places the next', () => {
     const s = scene();
-    s.tool({ mode: 'rectangle' });
-    s.pull([[70, 70], [210, 140]]);
+    s.tool({ mode: 'stamp' });
+    s.pull([[105, 105]]);
     const [first] = s.drawings();
     expect(selected(s)).toEqual([first?.id]);
     const corner = grip(s, 'corner', 1, 1);
     expect(s.pull([[corner.x, corner.y], [corner.x + 70, corner.y + 70]])).toBe(true);
     expect(s.drawings()).toHaveLength(1);
-    expect(s.drawings()[0]?.points[2]).toEqual(pt(280, 210));
-    // Inside its frame is no handle: the press lets go of it and draws.
-    expect(s.pull([[140, 140], [210, 210]])).toBe(false);
+    expect(s.drawings()[0]?.width).toBeGreaterThan(first?.width ?? 0);
+    // Beside it is neither a handle nor a stamp: the press lets go of it and places.
+    expect(s.pull([[420, 420]])).toBe(false);
     expect(s.drawings()).toHaveLength(2);
     expect(selected(s)).toEqual([s.drawings()[1]?.id]);
   });
 
-  it('is selected after a line, a stamp and a text alike', () => {
+  it('is selected after a stamp and a text alike', () => {
     const s = scene();
-    s.tool({ mode: 'line' });
-    s.pull([[70, 70], [210, 140]]);
-    expect(selected(s)).toEqual([s.drawings()[0]?.id]);
     s.tool({ mode: 'stamp' });
     s.pull([[400, 400]]);
-    expect(selected(s)).toEqual([s.drawings()[1]?.id]);
+    expect(selected(s)).toEqual([s.drawings()[0]?.id]);
     s.tool({ mode: 'text' });
     s.press(500, 500);
     s.pointer('pointerup', 500, 500);
@@ -447,21 +444,6 @@ describe('what the Draw tool just made', () => {
     expect(s.pull([[120, 40], [180, 90], [240, 60]])).toBe(false);
     expect(s.drawings()).toHaveLength(2);
     expect(s.drawings()[0]?.points[0]).toEqual(pt(10, 10));
-    expect(selected(s)).toEqual([]);
-  });
-
-  it('is let go of when a pen stroke begins, whatever mode made it', () => {
-    const s = scene();
-    s.tool({ mode: 'rectangle' });
-    s.pull([[70, 70], [210, 140]]);
-    expect(selected(s)).toHaveLength(1);
-    s.tool({ mode: 'pen' });
-    // The stroke as the pen itself hears it, without the dispatch that lets go of a selection on its way.
-    s.pointer('pointerdown', 400, 400);
-    expect(selected(s)).toEqual([]);
-    s.pointer('pointermove', 460, 420);
-    s.pointer('pointerup', 520, 400);
-    expect(s.drawings()).toHaveLength(2);
     expect(selected(s)).toEqual([]);
   });
 });

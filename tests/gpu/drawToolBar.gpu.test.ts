@@ -2,7 +2,7 @@ import '../setup/obsidianDom';
 import React from 'react';
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import type { DrawMode } from '../../src/app/annotations/annotationTypes';
 import { TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
@@ -498,5 +498,29 @@ describe('the Draw tool\'s bars above the toolbar', () => {
 
     act(() => store.setState({ isGMView: true, isPlayerView: true }));
     await vi.waitFor(() => expect(document.querySelector('.atlas-tool-bars')).toBeNull(), { timeout: 2000 });
+  });
+
+  it('rings no button that has the focus, in the tools\' bars and in the toolbar: a mode clicked and then a hotkey shows one mode', async () => {
+    mount();
+    await settled();
+    // What the main toolbar and its menus hold: a button as `ToolButton` makes them, a switch, the options of a segmented control.
+    const inToolbar = (className: string): HTMLButtonElement => {
+      const item = document.querySelector('.atlas-main-toolbar')!.appendChild(document.createElement('button'));
+      item.className = className;
+      return item;
+    };
+    const main = inToolbar('btn btn--toolbar btn--icon');
+    const others = [inToolbar('atlas-toggle'), inToolbar('btn atlas-segmented__option'), inToolbar('btn atlas-segmented__option atlas-active')];
+    // The shadow's shape: a colour may be written in another notation.
+    const look = (item: HTMLElement): { outline: string; shadow: string } => ({ outline: getComputedStyle(item).outlineStyle, shadow: getComputedStyle(item).boxShadow.replace(/\w+\([^)]*\)/g, 'colour') });
+    for (const item of [button('Rectangle'), button('Size'), main, ...others]) {
+      const resting = look(item);
+      if (!others.includes(item)) expect(resting).toEqual({ outline: 'none', shadow: 'none' });
+      // A key first, so the focus that follows counts as the keyboard's: what a click and then a hotkey leave.
+      await userEvent.keyboard('{Shift}');
+      act(() => item.focus());
+      expect(item.matches(':focus-visible')).toBe(true);
+      expect(look(item)).toEqual(resting);
+    }
   });
 });
