@@ -43,10 +43,10 @@ function byId(list: readonly Annotation[]): Map<string, Annotation> {
   return map;
 }
 
-/** What says whether a press on the empty map draws a marquee, and what it takes: the tool, and the Draw tool's mode. */
-const marqueeScope = (state: Pick<ViewAtlasState, 'activeTool' | 'drawTool'>): PressScope => pressScope(state.activeTool, state.drawTool.mode);
-/** A marquee is drawn with the move and select tools, and in the Draw tool's Select mode. */
-const drawsMarquee = (scope: PressScope): boolean => scope === 'all' || scope === 'above';
+/** What says whether a press on the empty map draws a marquee, and what it takes: the tool. */
+const marqueeScope = (state: Pick<ViewAtlasState, 'activeTool'>): PressScope => pressScope(state.activeTool);
+/** A marquee is drawn with the move and select tools. */
+const drawsMarquee = (scope: PressScope): boolean => scope === 'move';
 
 export class SelectionManager {
   private viewport: Viewport;
@@ -183,7 +183,7 @@ export class SelectionManager {
     this._unsubscribeFromToolChanges = this.store.subscribe(
       marqueeScope,
       (scope: PressScope) => {
-        // A marquee is drawn with the move and select tools, and in the Draw tool's Select mode
+        // A marquee is drawn with the move and select tools
         if (drawsMarquee(scope)) {
           // Switching between the two must not add the handlers a second time
           this.viewport.off('pointerdown', this.marqueeDownHandler);
@@ -346,8 +346,8 @@ export class SelectionManager {
 
   /**
    * The drawings and texts `area` touches that the tool in hand takes (`takesPress`), each with its
-   * group: every one in the Draw tool's Select mode, those above the tokens that are not locked
-   * with the move and select tools. None while the canvas shows the players' picture.
+   * group: those above the tokens that are not locked, with the move and select tools (one on the
+   * map or a locked one is selected by a click). None while the canvas shows the players' picture.
    */
   private annotationsInArea(area: SelectArea, scope: PressScope): string[] {
     if (this.annotationHost && !this.annotationHost.selectable()) return [];

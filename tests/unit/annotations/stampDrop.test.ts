@@ -28,7 +28,7 @@ describe('a stamp dragged with the pointer', () => {
   it('lands on the cell it is dropped in, in Select mode, in Stamp mode and with the move tool', () => {
     s = drawScene();
     const id = s.store.getState().addDrawing(stamp(105, 175));
-    const tools = [() => s.tool({ mode: 'select' }), () => s.tool({ mode: 'stamp' }), () => s.store.getState().setActiveTool('move')];
+    const tools = [() => s.store.getState().setActiveTool('select'), () => s.tool({ mode: 'stamp' }), () => s.store.getState().setActiveTool('move')];
     const drops: [Point, Point][] = [[{ x: 228, y: 262 }, { x: 245, y: 245 }], [{ x: 312, y: 150 }, { x: 315, y: 175 }], [{ x: 79, y: 141 }, { x: 105, y: 175 }]];
     tools.forEach((take, index) => {
       take();
@@ -42,7 +42,7 @@ describe('a stamp dragged with the pointer', () => {
   it('shows where it will land while it is dragged: the frame stands on the cell, and the drop is one undo step', () => {
     s = drawScene();
     const id = s.store.getState().addDrawing(stamp(105, 175));
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     getHistoryStore(s.store)!.getState().clear();
     s.press(105, 175);
     s.pointer('pointermove', 228, 262);
@@ -57,7 +57,7 @@ describe('a stamp dragged with the pointer', () => {
   it('lands where cells meet when it spans an even number of cells, as a placed one does', () => {
     s = drawScene();
     const id = s.store.getState().addDrawing(stamp(140, 140, { width: 2 * CELL }));
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     s.pull([[140, 140], [270, 300]]);
     expect(at(id)).toEqual({ x: 280, y: 280 });
   });
@@ -66,7 +66,7 @@ describe('a stamp dragged with the pointer', () => {
     s = drawScene();
     s.store.getState().setSnapToGrid(false);
     const id = s.store.getState().addDrawing(stamp(105, 175));
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     s.pull([[105, 175], [228, 262]]);
     expect(at(id)).toEqual({ x: 228, y: 262 });
   });
@@ -74,7 +74,7 @@ describe('a stamp dragged with the pointer', () => {
   it('goes off the grid with Alt held, itself and not a copy, in Select mode, in Stamp mode and with the move tool', () => {
     s = drawScene();
     const id = s.store.getState().addDrawing(stamp(105, 175));
-    const tools = [() => s.tool({ mode: 'select' }), () => s.tool({ mode: 'stamp' }), () => s.store.getState().setActiveTool('move')];
+    const tools = [() => s.store.getState().setActiveTool('select'), () => s.tool({ mode: 'stamp' }), () => s.store.getState().setActiveTool('move')];
     const drops: Point[] = [{ x: 228, y: 262 }, { x: 312, y: 150 }, { x: 79, y: 141 }];
     tools.forEach((take, index) => {
       take();
@@ -91,7 +91,7 @@ describe('a stamp dragged with the pointer', () => {
     const state = s.store.getState();
     const a = state.addDrawing(stamp(105, 175));
     const b = state.addDrawing(stamp(315, 175));
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     state.setSelection([a, b]);
     s.pull([[105, 175], [118, 187]], { alt: true });
     expect(at(a)).toEqual({ x: 105, y: 175 });
@@ -103,7 +103,7 @@ describe('a stamp dragged with the pointer', () => {
     const state = s.store.getState();
     const a = state.addDrawing(stamp(105, 175));
     const b = state.addDrawing(stamp(315, 175));
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     state.setSelection([a, b]);
     s.pull([[105, 175], [118, 187]]);
     expect(at(a)).toEqual({ x: 118, y: 187 });

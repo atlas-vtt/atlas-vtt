@@ -94,7 +94,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(tools.bottom).toBeCloseTo(modes.bottom, 0);
     expect(tools.height).toBeCloseTo(modes.height, 1);
     expect(modes.height).toBeCloseTo(42, 0);
-    expect(names(MODES)).toEqual(['Select', 'Pen', 'Line', 'Rectangle', 'Ellipse', 'Text', 'Stamp', 'Cells', 'Eraser']);
+    expect(names(MODES)).toEqual(['Pen', 'Line', 'Rectangle', 'Ellipse', 'Text', 'Stamp', 'Cells', 'Eraser']);
     expect(rects(`${MODES} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual(MODE_NAMES.map(() => 32));
     // The pen's tools: the four every drawing has, a doubled gap, and its see-through ink. Buttons of 32 px, 4 px apart, menus' buttons among them.
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'See-through']);
@@ -109,7 +109,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
       const style = getComputedStyle(button(name));
       return [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius];
     };
-    expect(new Set(['Colour', 'Size', 'Select'].flatMap(radii)).size).toBe(1);
+    expect(new Set(['Colour', 'Size', 'Pen'].flatMap(radii)).size).toBe(1);
     // The dot shows the colour in hand.
     const dot = document.querySelector<HTMLElement>(`${TOOLS} .atlas-tool-bar__dot`)!;
     expect(getComputedStyle(dot).backgroundColor).toBe('rgb(255, 255, 255)');
@@ -155,11 +155,11 @@ describe('the Draw tool\'s bars above the toolbar', () => {
       expect(names(TOOLS).slice(0, 4)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens']);
       expect(rects(`${TOOLS} .atlas-tool-button`).slice(0, 4).map((item) => item.left)).toEqual(common);
     }
-    // Buttons of 32 px, 4 px apart and from the bar's edge, a group 4 px further: the widest pair is 330 + 8 + 374 px.
-    expect(Math.round(modes.width)).toBe(330);
-    expect(widths).toEqual({ select: 374, pen: 190, line: 334, rectangle: 226, ellipse: 226, text: 226, stamp: 190, cells: 190, eraser: 122 });
-    // Select has the most tools; no mode's bar is wider than its.
-    expect(Math.max(...Object.values(widths))).toBe(widths.select);
+    // Buttons of 32 px, 4 px apart and from the bar's edge, a group 4 px further: the widest pair is 294 + 8 + 334 px.
+    expect(Math.round(modes.width)).toBe(294);
+    expect(widths).toEqual({ pen: 190, line: 334, rectangle: 226, ellipse: 226, text: 226, stamp: 190, cells: 190, eraser: 122 });
+    // Line has the most tools; no mode's bar is wider than its.
+    expect(Math.max(...Object.values(widths))).toBe(widths.line);
     // Rectangle and ellipse have the same tools: one bar, which stays mounted between them.
     await choose('rectangle');
     const bar = document.querySelector(TOOLS);
@@ -186,10 +186,6 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(names(TOOLS)).toEqual(['Colour', 'Players see it', 'Under tokens', 'Fill', 'Unfill']);
     expect(gaps()).toEqual([4, 4, 8, 4]);
     if (import.meta.env.VITE_DRAW_LOOKS) await page.screenshot({ path: '__screenshots__/draw-3-looks/bars-cells.png' });
-    await choose('select');
-    expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'To front', 'To back', 'Lock', 'Group', 'Ungroup', 'Clear']);
-    if (import.meta.env.VITE_DRAW_LOOKS) await page.screenshot({ path: '__screenshots__/draw-3-looks/bars-select.png' });
-    expect(gaps()).toEqual([4, 4, 4, 8, 4, 4, 4, 4, 8]);
     await choose('eraser');
     expect(names(TOOLS)).toEqual(['Size', 'Whole drawings', 'Clear']);
     expect(gaps()).toEqual([8, 8]);
@@ -215,10 +211,10 @@ describe('the Draw tool\'s bars above the toolbar', () => {
         }
       }
     }
-    // The widest pair, Select's: both bars side by side with room to spare.
-    await choose('select');
+    // The widest pair, Line's: both bars side by side with room to spare.
+    await choose('line');
     expect(rect(MODES).width + 8 + rect(TOOLS).width).toBeLessThanOrEqual(900);
-    expect(Math.round(rect(MODES).width + 8 + rect(TOOLS).width)).toBe(712);
+    expect(Math.round(rect(MODES).width + 8 + rect(TOOLS).width)).toBe(636);
   });
 
   it('offers no None for a selected drawing that is nothing but its fill: the row stays in its place, disabled', async () => {
@@ -390,35 +386,6 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(store.getState().drawTool).toMatchObject({ players: false, layer: 'map', curved: true, seeThrough: true });
   });
 
-  it('shows the style of what is selected, none where they differ, and a pick changes them', async () => {
-    mount();
-    const red = store.getState().addDrawing(PEN);
-    const blue = store.getState().addDrawing({ ...PEN, color: '#086ddd', hidden: true });
-    await choose('select');
-    const dot = (): HTMLElement => document.querySelector<HTMLElement>(`${TOOLS} .atlas-tool-bar__dot`)!;
-    expect(getComputedStyle(dot()).backgroundColor).toBe('rgb(255, 255, 255)');
-    expect(button('To front').getAttribute('aria-disabled')).toBe('true');
-
-    act(() => store.getState().setSelection([red]));
-    expect(getComputedStyle(dot()).backgroundColor).toBe('rgb(233, 49, 71)');
-    expect(button('Players see it').getAttribute('aria-pressed')).toBe('true');
-    expect(button('To front').getAttribute('aria-disabled')).toBeNull();
-
-    act(() => store.getState().setSelection([red, blue]));
-    expect(dot().classList.contains('atlas-tool-bar__dot--mixed')).toBe(true);
-    expect(button('Players see it').getAttribute('aria-pressed')).toBe('false');
-    const tools = rect(TOOLS);
-    act(() => button('Players see it').click());
-    expect(store.getState().objects.drawings[blue]!.hidden).toBeUndefined();
-    expect(button('Players see it').getAttribute('aria-pressed')).toBe('true');
-    act(() => button('Lock').click());
-    expect(store.getState().objects.drawings[red]!.locked).toBe(true);
-    expect(button('Lock').getAttribute('aria-pressed')).toBe('true');
-    expect(rect(TOOLS)).toEqual(tools);
-    // What is drawn next stays as it was.
-    expect(store.getState().drawTool).toMatchObject({ color: '#ffffff', players: true });
-  });
-
   it('offers Clear only what is there, each scope disabled while it has nothing', async () => {
     mount();
     await choose('eraser');
@@ -444,41 +411,12 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-content`)).toBeNull();
   });
 
-  it('disables the tools that would change a selection that is all locked, in Select mode, the bar as it was; the lock\'s own switch and Clear still work', async () => {
+  it('takes a locked selection\'s style into nothing it draws next, and stops nothing: a pick is what is drawn next', async () => {
     const pen = store.getState().addDrawing({ ...PEN, locked: true });
-    const label = store.getState().addText({ x: 0, y: 0, text: 'Gate', fontSize: 24, fontFamily: 'Arial', color: '#ffffff', locked: true });
     mount();
-    await choose('select');
-    const tools = rect(TOOLS);
-    const disabled = (): string[] => names(TOOLS).filter((name) => button(name).getAttribute('aria-disabled') === 'true');
-    // Nothing selected: only what needs a selection waits for one.
-    expect(disabled()).toEqual(['To front', 'To back', 'Lock', 'Group', 'Ungroup']);
-    act(() => store.getState().setSelection([pen, label]));
-    expect(disabled()).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'To front', 'To back', 'Group', 'Ungroup']);
-    expect(rect(TOOLS)).toEqual(tools);
-    // A press on one of them opens nothing and changes nothing.
-    act(() => button('Colour').closest<HTMLElement>('.atlas-dropdown-menu')!.querySelector<HTMLElement>('span')!.click());
-    expect(document.querySelector(`${TOOLS} .atlas-dropdown-content`)).toBeNull();
-    // With one that is not locked among them, the tools change that one.
-    const free = store.getState().addDrawing(PEN);
-    act(() => store.getState().setSelection([pen, free]));
-    expect(disabled()).toEqual(['Group', 'Ungroup']);
-    // Unlocked from the bar, everything is at hand again: two that are no group can be made one.
-    act(() => store.getState().setSelection([pen, label]));
-    act(() => button('Lock').click());
-    expect(store.getState().objects.drawings[pen]).not.toHaveProperty('locked');
-    expect(disabled()).toEqual(['Ungroup']);
-    act(() => button('Group').click());
-    expect(store.getState().objects.drawings[pen]!.group).toBe(store.getState().objects.texts[label]!.group);
-    expect(store.getState().objects.drawings[pen]!.group).toMatch(/^group_/);
-    expect(disabled()).toEqual(['Group']);
-    expect(rect(TOOLS)).toEqual(tools);
-    act(() => button('Ungroup').click());
-    expect(store.getState().objects.drawings[pen]).not.toHaveProperty('group');
-    expect(disabled()).toEqual(['Ungroup']);
-    // In a mode that draws, a pick is what is drawn next: a locked selection takes nothing from it, and stops nothing.
-    act(() => store.getState().updateAnnotations([pen, label], { locked: true }));
     await choose('pen');
+    act(() => store.getState().setSelection([pen]));
+    const disabled = (): string[] => names(TOOLS).filter((name) => button(name).getAttribute('aria-disabled') === 'true');
     expect(disabled()).toEqual([]);
   });
 
@@ -491,7 +429,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(rect(MODES)).toEqual(modes);
     expect(rect(TOOLS)).toEqual(tools);
     const all = [...document.querySelectorAll<HTMLElement>('.atlas-tool-bar .atlas-tool-button button')];
-    expect(all).toHaveLength(9 + 9);
+    expect(all).toHaveLength(8 + 9);
     for (const item of all) expect(item.getAttribute('aria-disabled'), nameOf(item)).toBe('true');
     // A press opens no menu and changes nothing.
     act(() => button('Size').closest<HTMLElement>('.atlas-dropdown-menu')!.querySelector<HTMLElement>('span')!.click());

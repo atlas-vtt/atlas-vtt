@@ -1,7 +1,7 @@
 ## New
 
 **New Feature: Draw tool**
-- Draw and Text are now one tool with its own toolbar: Select, Pen, Line, Rectangle, Ellipse, Text, Stamp, Cells and Eraser
+- Draw and Text are now one tool with its own toolbar: Pen, Line, Rectangle, Ellipse, Text, Stamp, Cells and Eraser
 - More colours, four sizes that fit the grid, dashes, arrowheads, curves, fills and see-through ink
 - Drag to draw a line or shape, or click point by point
 - Shapes and stamps snap to the grid, hold Alt to place them freely
@@ -17,7 +17,8 @@
 - Hide a drawing or text from your players
 - With dynamic lighting, players see drawings only where they see or remember the map
 - Put a drawing under the tokens and the grid
-- Select mode moves, resizes and turns drawings and texts, and edits a line's points
+- Select drawings and texts with Move and Select: a bar under them changes colour, size and more, and locks or deletes them
+- Drawings under the tokens and locked ones are selected with a click, so they never move by accident
 - Lock, group, bring to front and send to back
 
 **Stamps and cells**

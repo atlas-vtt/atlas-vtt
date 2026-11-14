@@ -1,5 +1,5 @@
 import React from "react"
-import { Blend, BringToFront, Eye, EyeOff, Group, Layers2, Lock, LockOpen, SendToBack, Shapes, Spline, Ungroup } from "lucide-react"
+import { Blend, BringToFront, Eye, EyeOff, Group, Layers2, Lock, LockOpen, SendToBack, Shapes, Spline, Trash2, Ungroup } from "lucide-react"
 import { groupable, ungroupable } from "../../../annotations/annotationGroups"
 import type { ClearScope } from "../../../annotations/annotationTypes"
 import { t } from "../../../i18n"
@@ -13,6 +13,7 @@ import { ChoiceMenu, ClearMenu, ColourMenu } from "./DrawToolMenus"
 import { StampSymbolTool } from "./StampSymbolTool"
 import { TOOL_BAR_CHOICE_CLASS } from "./ToolOptionsBar"
 import type { DrawStyleAccess } from "./useDrawStyle"
+import { useBarSide } from "./barSide"
 
 interface SwitchProps {
   icon: DrawIcon
@@ -29,7 +30,7 @@ function Switch({ icon, label, tip, on, onChange, locked }: SwitchProps): React.
   const subtitle = locked ?? tip
   return (
     <ToolButton icon={icon} label={label} {...(subtitle !== undefined && { subtitle })} isActive={on} pressed={on} disabled={locked !== null}
-      onClick={() => onChange(!on)} className={TOOL_BAR_CHOICE_CLASS} />
+      onClick={() => onChange(!on)} className={TOOL_BAR_CHOICE_CLASS} tooltipSide={useBarSide()} />
   )
 }
 
@@ -39,11 +40,16 @@ interface ActionProps {
   /** Why it cannot be done now, or null. */
   locked: string | null
   onClick: () => void
+  /** It takes something away: its button says so in the theme's warning colour. */
+  destructive?: boolean
 }
 
 /** A tool that does one thing to what is selected. */
-function Action({ icon, label, locked, onClick }: ActionProps): React.ReactElement {
-  return <ToolButton icon={icon} label={label} {...(locked !== null && { subtitle: locked })} isActive={false} disabled={locked !== null} onClick={onClick} />
+function Action({ icon, label, locked, onClick, destructive = false }: ActionProps): React.ReactElement {
+  return (
+    <ToolButton icon={icon} label={label} {...(locked !== null && { subtitle: locked })} isActive={false} disabled={locked !== null} onClick={onClick}
+      tooltipSide={useBarSide()} {...(destructive && { className: 'atlas-tool-bar__destructive' })} />
+  )
 }
 
 /** The tools a selection that is all locked leaves at hand: its unlocking, and those that change no selected drawing. */
@@ -54,6 +60,8 @@ interface DrawModeToolProps {
   access: DrawStyleAccess
   /** Why the bars take no choice now, or null. */
   locked: string | null
+  /** A pick changes what is selected alone, not what the Draw tool makes next: the bar under a selection. */
+  selectionOnly?: boolean
 }
 
 /**
@@ -61,11 +69,10 @@ interface DrawModeToolProps {
  * switches all of them on. Where everything selected is locked, the tools that would change it
  * are disabled and say why.
  */
-export function DrawModeTool({ id, access, locked: viewLocked }: DrawModeToolProps): React.ReactElement {
+export function DrawModeTool({ id, access, locked: viewLocked, selectionOnly = false }: DrawModeToolProps): React.ReactElement {
   const { style, pick, selected, annotations } = access
-  const selecting = useAtlasStore((state) => state.drawTool.mode === 'select')
-  // In Select mode a pick changes what is selected, and a locked drawing takes none: the tools say so. The lock's own switch and Clear still work.
-  const allLocked = selecting && selected.length > 0 && selected.every((annotation) => annotation.locked)
+  // Where a pick changes what is selected alone, a locked drawing takes none: the tools say so. The lock's own switch still works.
+  const allLocked = selectionOnly && selected.length > 0 && selected.every((annotation) => annotation.locked)
   const locked = viewLocked ?? (allLocked && !FOR_LOCKED.has(id) ? t('draw.unlockFirst') : null)
   const eraseWhole = useAtlasStore((state) => state.drawTool.eraseWhole)
   const cellsLayer = useAtlasStore((state) => state.drawTool.cellsLayer)
@@ -76,6 +83,7 @@ export function DrawModeTool({ id, access, locked: viewLocked }: DrawModeToolPro
   const ungroupAnnotations = useAtlasStore((state) => state.ungroupAnnotations)
   const orderAnnotations = useAtlasStore((state) => state.orderAnnotations)
   const clearAnnotations = useAtlasStore((state) => state.clearAnnotations)
+  const deleteAnnotations = useAtlasStore((state) => state.deleteAnnotations)
   const levelled = useAtlasStore((state) => hasLevels(state.levels))
   const ids = (): string[] => selected.map((annotation) => annotation.id)
   const noneSelected = locked ?? (selected.length === 0 ? t('draw.selectFirst') : null)
@@ -115,6 +123,7 @@ export function DrawModeTool({ id, access, locked: viewLocked }: DrawModeToolPro
       return <Switch icon={Shapes} label={t('draw.eraseWhole')} tip={t('draw.eraseWholeTip')} on={eraseWhole} onChange={(on) => setDrawTool({ eraseWhole: on })} locked={locked} />
     case 'front': return <Action icon={BringToFront} label={t('draw.toFront')} locked={noneSelected} onClick={() => orderAnnotations(ids(), 'front')} />
     case 'back': return <Action icon={SendToBack} label={t('draw.toBack')} locked={noneSelected} onClick={() => orderAnnotations(ids(), 'back')} />
+    case 'delete': return <Action icon={Trash2} label={t('common.delete')} locked={noneSelected} destructive onClick={() => deleteAnnotations(ids())} />
     case 'lock': {
       const on = shownLock(selected) === true
       return <Switch icon={on ? Lock : LockOpen} label={t('draw.lock')} on={on} onChange={(lock) => updateAnnotations(ids(), { locked: lock ? true : undefined })} locked={viewLocked ?? (selected.length === 0 ? t('draw.selectFirst') : null)} />

@@ -46,7 +46,7 @@ function standalone(drawings: Record<string, DrawingStroke>): {
   layer.setList(annotationList({ drawings, texts: {} }));
   const placed: Placed[] = [];
   const state: SelectingState = {
-    activeTool: 'draw', drawTool: { ...DEFAULT_DRAW_TOOL, mode: 'select' }, selectedIds: [],
+    activeTool: 'move', drawTool: DEFAULT_DRAW_TOOL, selectedIds: [],
     objects: { drawings, texts: {}, tokens: {} },
     setSelection: (ids) => {
       state.selectedIds = ids;

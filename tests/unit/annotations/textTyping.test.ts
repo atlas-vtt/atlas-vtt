@@ -253,10 +253,10 @@ describe('typing a text on the map', () => {
 });
 
 describe('editing a text on the map', () => {
-  it('opens the field on a double click, in the Draw tool\'s Select mode and with the move tool, and writes the words in one step', () => {
+  it('opens the field on a double click, with the move and select tools, and writes the words in one step', () => {
     const s = scene([{}]);
-    for (const [tool, words] of [['draw', 'Vault!'], ['move', 'Vault!!']] as const) {
-      s.tool({ mode: 'select' });
+    for (const [tool, words] of [['select', 'Vault!'], ['move', 'Vault!!']] as const) {
+      s.store.getState().setActiveTool('move');
       s.store.getState().setActiveTool(tool);
       doubleClick(s, 300, 300);
       const field = s.field()!;
@@ -275,7 +275,7 @@ describe('editing a text on the map', () => {
     const long = 'abcde '.repeat(MAX_TEXT_LENGTH / 2);
     const s = scene([{ text: long }]);
     const record = s.texts()[0]!;
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     doubleClick(s, 300, 300);
     const field = s.field()!;
     expect(field.maxLength).toBe(MAX_TEXT_LENGTH);
@@ -293,7 +293,7 @@ describe('editing a text on the map', () => {
 
   it('opens it from the menu\'s Edit', () => {
     const s = scene([{}]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     s.press(300, 300, { button: 2 });
     const edit = (openContextMenuGlobal.mock.calls.at(-1)?.[0] ?? []).find((entry) => entry.type === 'item' && entry.label === 'Edit');
     if (edit?.type === 'item') edit.onClick?.();
@@ -302,7 +302,7 @@ describe('editing a text on the map', () => {
 
   it('puts back what the text said on Escape, and writes nothing where nothing changed', () => {
     const s = scene([{}]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     doubleClick(s, 300, 300);
     s.type('Crypt');
     s.fieldKey('Escape');
@@ -314,7 +314,7 @@ describe('editing a text on the map', () => {
 
   it('deletes a text that is left empty, in one step', () => {
     const s = scene([{}]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     doubleClick(s, 300, 300);
     s.type('');
     s.fieldKey('Enter');
@@ -325,7 +325,7 @@ describe('editing a text on the map', () => {
 
   it('opens no field on a locked text', () => {
     const s = scene([{ locked: true }]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     doubleClick(s, 300, 300);
     expect(s.field()).toBeNull();
     expect(s.texts()[0]).toMatchObject({ text: 'Vault', locked: true });
@@ -333,7 +333,7 @@ describe('editing a text on the map', () => {
 
   it('hides the text\'s own drawing on the canvas while its field shows, and shows it to every other picture as the map has it', () => {
     const s = scene([{}]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     const words = (): { visible: boolean } => s.node('text', s.ids[0]!)!.getChildByLabel(TEXT_CONTENT_LABEL)!;
     expect(words().visible).toBe(true);
     doubleClick(s, 300, 300);
@@ -351,7 +351,7 @@ describe('editing a text on the map', () => {
 
   it('grows from the top of its box while it is edited: a line that is added stands under those before it', () => {
     const s = scene([{ align: 'left' }]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     const before = s.texts()[0]!;
     doubleClick(s, 300, 300);
     s.type('Vault\nof the old king');
@@ -365,7 +365,7 @@ describe('editing a text on the map', () => {
 
   it('follows the bars as they restyle the text that is edited: each pick is its own step, and the words are written once', () => {
     const s = scene([{ fontFamily: FONT_FAMILIES.medieval }]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     doubleClick(s, 300, 300);
     s.type('Crypt');
     pickDrawStyle(s.store, 'font', 'mono');
@@ -377,7 +377,7 @@ describe('editing a text on the map', () => {
 
   it('shows a text that is bold, slanted and aligned as it is while it is edited, and its new words keep all three', () => {
     const s = scene([{ align: 'right', bold: true, italic: true }]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     const before = s.texts()[0]!;
     doubleClick(s, 300, 300);
     const root = s.host.querySelector<HTMLElement>('.atlas-map-text-field')!;
@@ -409,7 +409,7 @@ describe('the side handles of a text', () => {
     const s = scene([{ text: 'aaa bbb ccc', fontFamily: FONT_FAMILIES.mono, width: 200, breaks: [4] }]);
     // The face is declared and not loaded yet.
     const stop = watchTextFonts({ check: () => false, load: () => new Promise(() => undefined) }, () => undefined);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     s.store.getState().setSelection(s.ids);
     const right = sideGrip(s, 1);
     s.pull([[right.x, right.y], [right.x - 20, right.y], [right.x - 40, right.y]]);
@@ -423,7 +423,7 @@ describe('the side handles of a text', () => {
   it('set the width its words wrap at, keep the other side and the top where they are, and save where the lines break, in one step', () => {
     // Three words of 3 letters and the spaces between them: 88 wide, one line 10 high.
     const s = scene([{ text: 'aaa bbb ccc', scale: 2 }]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     s.store.getState().setSelection(s.ids);
     const right = sideGrip(s, 1);
     // The right side comes 40 in on the map: 20 in the text's own units, which is 68, where only two words fit.
@@ -448,7 +448,7 @@ describe('the side handles of a text', () => {
 
   it('show the words wrapped while the side is dragged, and put everything back on Escape', () => {
     const s = scene([{ text: 'aaa bbb ccc', scale: 2 }]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     s.store.getState().setSelection(s.ids);
     const words = (): string => (s.node('text', s.ids[0]!)!.getChildByLabel(TEXT_CONTENT_LABEL) as unknown as { text: string }).text;
     const left = sideGrip(s, -1);
@@ -464,7 +464,7 @@ describe('the side handles of a text', () => {
 
   it('scale a text with a width by its corners without changing where it wraps', () => {
     const s = scene([{ text: 'aaa bbb ccc', width: 60, breaks: [4, 8] }]);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     s.store.getState().setSelection(s.ids);
     const handles = handlesOf(annotationList(levelObjects(s.store.getState())), s.renderer.layer.measure)!;
     const corner = handleSpots(handles, 1).find(({ ref }) => ref.kind === 'corner' && ref.x === 1 && ref.y === 1)!.at;

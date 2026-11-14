@@ -11,6 +11,7 @@ import { MIXED, type Shown } from "./drawStyle"
 import { CLEAR_SCOPES, DRAW_COLOR_SWATCHES, type DrawMenuChoice } from "./drawToolChoices"
 import type { DrawIcon } from "./drawToolIcons"
 import { TOOL_BAR_CHOICE_CLASS } from "./ToolOptionsBar"
+import { useBarSide } from "./barSide"
 
 interface BarMenuProps {
   /** The tool's name. */
@@ -27,8 +28,9 @@ interface BarMenuProps {
   children: (close: () => void) => React.ReactNode
 }
 
-/** A tool of a bar that opens its choices above its button, as the measure tool's look does. */
+/** A tool of a bar that opens its choices beside its button, away from what the bar stands by (`useBarSide`), as the measure tool's look does. */
 function BarMenu({ label, subtitle, icon, locked, disabled = false, children }: BarMenuProps): React.ReactElement {
+  const side = useBarSide()
   const [open, setOpen] = useState(false)
   const inert = disabled || locked !== null
   // The wrapper around the trigger takes the click, also where the button itself takes none.
@@ -40,11 +42,11 @@ function BarMenu({ label, subtitle, icon, locked, disabled = false, children }: 
       isOpen={shown}
       onToggle={toggle}
       label={label}
-      position="top"
+      position={side}
       align="center"
       triggerButton={(
         <ToolButton icon={icon} label={label} {...(subtitle !== undefined && { subtitle })} isActive={false} disabled={inert} menuExpanded={shown}
-          onClick={() => undefined} className={TOOL_BAR_CHOICE_CLASS} />
+          onClick={() => undefined} className={TOOL_BAR_CHOICE_CLASS} tooltipSide={side} />
       )}
     >
       {children(close)}

@@ -214,8 +214,7 @@ describe('the field a map text is typed in', () => {
     for (const wraps of [false, true]) {
       it(`lies on the text within a pixel, in the ${font} face, ${wraps ? 'wrapped' : 'as wide as its words'}, at three zooms and two turns`, async () => {
         const s = await open();
-        s.store.getState().setDrawTool({ mode: 'select' });
-        s.store.getState().setActiveTool('draw');
+        s.store.getState().setActiveTool('move');
         for (const rotation of [0, 30]) {
           const id = s.store.getState().addText(label({
             fontFamily: FONT_FAMILIES[font], rotation, text: wraps ? WORDS.wrapped : WORDS.plain,
@@ -315,8 +314,7 @@ describe('the field a map text is typed in', () => {
 
   it('is in no players\' frame, and neither is what is typed into it: the players see the text as the map has it until it is written', async () => {
     const s = await open();
-    s.store.getState().setDrawTool({ mode: 'select' });
-    s.store.getState().setActiveTool('draw');
+    s.store.getState().setActiveTool('move');
     s.store.getState().addText(label({}));
     s.store.getState().clearSelection();
     s.look(2000, 2000, 1);
@@ -435,8 +433,7 @@ describe.skipIf(!wantsPictures)('pictures of the field beside the text it stands
     const ground = new Graphics({ zIndex: -1 });
     paintGround(ground);
     s.viewport.addChild(ground);
-    s.store.getState().setDrawTool({ mode: 'select' });
-    s.store.getState().setActiveTool('draw');
+    s.store.getState().setActiveTool('move');
     const looks = [
       { name: 'outline', x: 250, y: 120, more: { outline: true as const, fontFamily: FONT_FAMILIES.medieval } },
       { name: 'plate', x: 700, y: 120, more: { ...TEXT_PLATE, fontFamily: FONT_FAMILIES.scifi, rotation: 8 } },

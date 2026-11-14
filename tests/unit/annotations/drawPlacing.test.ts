@@ -203,7 +203,7 @@ describe('Text mode and a text that is there', () => {
 
   it('moves a text pressed twice in quick succession when the second press drags, in Select mode and with the move tool', () => {
     const s = scene((made) => { made.store.getState().addText(label(200, 300)); });
-    for (const take of [() => s.tool({ mode: 'select' }), () => s.store.getState().setActiveTool('move')]) {
+    for (const take of [() => s.store.getState().setActiveTool('select'), () => s.store.getState().setActiveTool('move')]) {
       take();
       const from = s.texts()[0]!;
       s.pull([[from.x, from.y]]);
@@ -268,7 +268,7 @@ describe('what a press will place, under the pointer', () => {
     s.tool({ mode: 'text' });
     expect(s.hover(100, 170)).toBe('text');
     expect(placing(s)).toBeNull();
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     expect(s.hover(100, 170)).toBeNull();
     expect(placing(s)).toBeNull();
   });

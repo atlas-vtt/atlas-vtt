@@ -3,7 +3,6 @@ import type { Message } from '../../types';
 export const draw = {
   'draw.modes': 'Draw modes',
   'draw.mode.select': 'Select',
-  'draw.mode.selectTip': 'Click or drag to select drawings',
   'draw.mode.pen': 'Pen',
   'draw.mode.line': 'Line',
   'draw.mode.lineTip': 'Drag for a line, or click point by point',
@@ -65,6 +64,7 @@ export const draw = {
   'draw.groupNeedsTwo': 'Select two drawings or more',
   'draw.ungroupNeedsGroup': 'Select a group first',
   'draw.selectFirst': 'Select a drawing first',
+  'draw.selectionBar': 'Selected drawings',
   'draw.unlockFirst': 'Unlock it first',
   'draw.menu.drawnBy': 'Drawn by {name}',
   'draw.menu.edit': 'Edit',

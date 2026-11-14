@@ -9,6 +9,7 @@ const CELL = 70;
 describe('a pick in the Draw tool\'s bars', () => {
   it('becomes what is drawn next while nothing is selected, without an undo step', () => {
     const { store, steps, drawings } = setup();
+    store.getState().setActiveTool('draw');
     const pen = store.getState().addDrawing(PEN);
     const before = steps();
     pickDrawStyle(store, 'color', '#e93147');
@@ -18,12 +19,12 @@ describe('a pick in the Draw tool\'s bars', () => {
     expect(steps()).toBe(before);
   });
 
-  it('changes the selected drawings and texts in one undo step, and in Select mode leaves what is drawn next alone', () => {
+  it('changes the selected drawings and texts in one undo step, and with the move tool (the bar under a selection) leaves what is drawn next alone', () => {
     const { store, steps, undo, drawings, texts } = setup();
     const pen = store.getState().addDrawing(PEN);
     const label = store.getState().addText(LABEL);
     const other = store.getState().addDrawing(PEN);
-    store.getState().setDrawTool({ mode: 'select' });
+    store.getState().setActiveTool('move');
     store.getState().setSelection([pen, label, 'a-token']);
     expect(selectedAnnotations(store.getState()).map(({ id }) => id)).toEqual([pen, label]);
     const before = steps();
@@ -51,7 +52,7 @@ describe('a pick in the Draw tool\'s bars', () => {
     const { store, steps, undo, drawings } = setup();
     const pen = store.getState().addDrawing(PEN);
     const stamp = store.getState().addDrawing({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], color: '#ffffff', width: 70, opacity: 1 });
-    store.getState().setDrawTool({ mode: 'select' });
+    store.getState().setActiveTool('move');
     store.getState().setSelection([pen, stamp]);
     const before = steps();
     pickDrawStyle(store, 'size', 'l');
@@ -63,12 +64,16 @@ describe('a pick in the Draw tool\'s bars', () => {
     expect(drawings()[stamp]!.width).toBe(70);
   });
 
-  it('is the tool\'s own where nothing selected has such a style', () => {
+  it('is the tool\'s own where nothing selected has such a style, in the Draw tool; with the move tool it changes nothing', () => {
     const { store, steps } = setup();
     const pen = store.getState().addDrawing(PEN);
-    store.getState().setDrawTool({ mode: 'select' });
+    store.getState().setActiveTool('move');
     store.getState().setSelection([pen]);
     const before = steps();
+    pickDrawStyle(store, 'font', 'mono');
+    expect(store.getState().drawTool.font).not.toBe('mono');
+    store.getState().setActiveTool('draw');
+    store.getState().setSelection([pen]);
     pickDrawStyle(store, 'font', 'mono');
     expect(store.getState().drawTool.font).toBe('mono');
     expect(steps()).toBe(before);
@@ -76,6 +81,7 @@ describe('a pick in the Draw tool\'s bars', () => {
 
   it('changes the one just made and what is drawn next alike in a mode that makes something', () => {
     const { store, steps, drawings } = setup();
+    store.getState().setActiveTool('draw');
     store.getState().setDrawTool({ mode: 'pen' });
     const pen = store.getState().addDrawing(PEN);
     store.getState().setSelection([pen]);
@@ -89,7 +95,7 @@ describe('a pick in the Draw tool\'s bars', () => {
   it('curves a selected line in one step, which undo takes back', () => {
     const { store, steps, undo, drawings } = setup();
     const room = store.getState().addDrawing(ROOM);
-    store.getState().setDrawTool({ mode: 'select' });
+    store.getState().setActiveTool('move');
     store.getState().setSelection([room]);
     const before = steps();
     pickDrawStyle(store, 'curved', true);
@@ -106,7 +112,7 @@ describe('a pick in the Draw tool\'s bars', () => {
     const below = store.getState().addDrawing(PEN);
     store.setState({ viewedLevel: 'upper' });
     const above = store.getState().addDrawing(PEN);
-    store.getState().setDrawTool({ mode: 'select' });
+    store.getState().setActiveTool('move');
     store.getState().setSelection([below, above]);
     pickDrawStyle(store, 'color', '#e93147');
     expect(drawings()[above]!.color).toBe('#e93147');
@@ -117,6 +123,7 @@ describe('a pick in the Draw tool\'s bars', () => {
 describe('stepping the size', () => {
   it('steps the tool\'s size and stops at the ends', () => {
     const { store } = setup();
+    store.getState().setActiveTool('draw');
     expect(store.getState().drawTool.size).toBe('m');
     stepDrawSize(store, 1);
     stepDrawSize(store, 1);
@@ -130,7 +137,7 @@ describe('stepping the size', () => {
     const { store, drawings } = setup();
     const thin = store.getState().addDrawing({ ...PEN, width: strokeWidth('s', CELL) });
     const thick = store.getState().addDrawing({ ...PEN, width: strokeWidth('xl', CELL) });
-    store.getState().setDrawTool({ mode: 'select' });
+    store.getState().setActiveTool('move');
     store.getState().setSelection([thin]);
     stepDrawSize(store, 1);
     expect(drawings()[thin]!.width).toBeCloseTo(strokeWidth('m', CELL));

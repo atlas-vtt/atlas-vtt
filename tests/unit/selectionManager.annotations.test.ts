@@ -24,10 +24,10 @@ const scene = {
 };
 
 describe('a marquee and the drawings and texts', () => {
-  it('takes drawings and texts alone in the Draw tool\'s Select mode: on the map and locked ones too, and no token', () => {
+  it('draws none in the Draw tool: a press there draws', () => {
     const { store, drag } = selectionHarness({ ...scene, tool: 'draw' });
     drag([0, 0], [400, 400]);
-    expect(store.getState().selectedIds).toEqual(['sign', 'above', 'floor', 'kept']);
+    expect(store.getState().selectedIds).toEqual([]);
   });
 
   it('takes tokens, and the drawings and texts above them that are not locked, with the select and move tools', () => {
@@ -39,17 +39,18 @@ describe('a marquee and the drawings and texts', () => {
   });
 
   it('takes what it touches, and none of what lies beside it', () => {
-    const { store, drag } = selectionHarness({ ...scene, tool: 'draw' });
+    const drawings = { above: stroke('above', 150), below: stroke('below', 200) };
+    const { store, drag } = selectionHarness({ tokens: {}, drawings, texts: scene.texts, tool: 'move' });
     // Across the end of two lines, well short of the text.
     drag([280, 140], [320, 210]);
-    expect(store.getState().selectedIds).toEqual(['above', 'floor']);
+    expect(store.getState().selectedIds).toEqual(['above', 'below']);
     drag([500, 500], [600, 600]);
     expect(store.getState().selectedIds).toEqual([]);
   });
 
   it('takes a group as one, by lasso too', () => {
     const drawings = { wall: stroke('wall', 150, { group: 'room' }), door: stroke('door', 600, { group: 'room' }), other: stroke('other', 700) };
-    const { store, drag } = selectionHarness({ tokens: {}, drawings, tool: 'draw', selectionMode: 'lasso' });
+    const { store, drag } = selectionHarness({ tokens: {}, drawings, tool: 'move', selectionMode: 'lasso' });
     drag([80, 130], [80, 170], [[320, 130], [320, 170]]);
     expect(store.getState().selectedIds).toEqual(['wall', 'door']);
   });

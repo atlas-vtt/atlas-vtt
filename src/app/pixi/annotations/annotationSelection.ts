@@ -1,7 +1,7 @@
 import type { TextMeasure } from '../../annotations/annotationBounds';
 import { handlesOf, type HandleSet } from '../../annotations/annotationHandles';
 import { annotationList } from '../../annotations/annotationList';
-import { framedAnnotations, pressScope, takesPress, type PressScope } from '../../annotations/annotationPress';
+import { framedAnnotations, pressScope, type PressScope } from '../../annotations/annotationPress';
 import type { Annotation } from '../../annotations/annotationTypes';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
@@ -24,7 +24,7 @@ export interface SelectionRead {
   readonly framedIds: ReadonlySet<string>;
   /** Those of the framed that may be moved: the ones that are not locked. */
   readonly free: readonly Annotation[];
-  /** What a drag of the selection moves: `free`, or with tokens, which leave nothing framed, the selected ones the tool takes. */
+  /** What a drag of the selection moves: `free`, or with tokens, which leave nothing framed, the selected ones that are not locked. */
   readonly movable: readonly Annotation[];
   /** The frame and handles of `free`; null for none. */
   readonly handles: HandleSet | null;
@@ -51,7 +51,7 @@ export function readSelection(state: SelectionState, measure: TextMeasure | unde
   // Tokens that move are other records at every step: only whether one is selected counts.
   const withTokens = same && previous.from.tokens === tokens
     ? previous.withTokens
-    : scope === 'above' && selectedIds.some((id) => tokens[id] !== undefined);
+    : scope === 'move' && selectedIds.some((id) => tokens[id] !== undefined);
   if (same && previous.list === list && previous.withTokens === withTokens) return previous;
   let selected = NONE;
   if (selectedIds.length > 0 && list.length > 0) {
@@ -63,6 +63,6 @@ export function readSelection(state: SelectionState, measure: TextMeasure | unde
   }
   const framed = framedAnnotations(selected, scope, withTokens);
   const free = framed.filter((annotation) => !annotation.locked);
-  const movable = withTokens ? selected.filter((annotation) => takesPress(scope, annotation)) : free;
+  const movable = withTokens ? selected.filter((annotation) => !annotation.locked) : free;
   return { list, scope, selected, withTokens, framed, framedIds: new Set(framed.map(({ id }) => id)), free, movable, handles: handlesOf(free, measure), from };
 }

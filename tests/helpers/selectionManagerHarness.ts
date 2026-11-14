@@ -22,7 +22,7 @@ export interface SelectionScene {
   tokens: Record<string, Container>;
   drawings?: Record<string, DrawingStroke>;
   texts?: Record<string, TextElement>;
-  /** The tool in hand; the select tool unless named. `'draw'` is the Draw tool in its Select mode. */
+  /** The tool in hand; the select tool unless named. `'draw'` is the Draw tool, which draws no marquee. */
   tool?: 'select' | 'move' | 'draw';
   /** What the view's drawings and texts tell the selection; unset, nothing. */
   annotations?: AnnotationSelectionHost;

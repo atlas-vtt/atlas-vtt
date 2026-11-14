@@ -32,7 +32,7 @@ function scene(fill: (s: DrawScene) => string[]): { s: DrawScene; ids: string[] 
   const ids = fill(s);
   getHistoryStore(s.store)!.getState().clear();
   s.store.getState().clearSelection();
-  s.tool({ mode: 'select' });
+  s.store.getState().setActiveTool('move');
   return { s, ids };
 }
 

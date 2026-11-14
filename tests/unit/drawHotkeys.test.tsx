@@ -60,11 +60,11 @@ describe('the Draw tool\'s keys', () => {
     expect(tool(store)).toBe('draw');
     expect(mode(store)).toBe('ellipse');
     const seen: string[] = [];
-    for (let step = 0; step < 9; step++) {
+    for (let step = 0; step < 8; step++) {
       press('b');
       seen.push(mode(store));
     }
-    expect(seen).toEqual(['text', 'stamp', 'cells', 'eraser', 'select', 'pen', 'line', 'rectangle', 'ellipse']);
+    expect(seen).toEqual(['text', 'stamp', 'cells', 'eraser', 'pen', 'line', 'rectangle', 'ellipse']);
     expect(tool(store)).toBe('draw');
   });
 

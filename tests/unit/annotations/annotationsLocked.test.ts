@@ -125,7 +125,7 @@ describe('a locked drawing or text in the store', () => {
 
   it('takes no pick of the bars, in Select mode', () => {
     const s = locked();
-    s.store.getState().setDrawTool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     const before = s.steps();
     pickDrawStyle(s.store, 'color', '#e93147');
     pickDrawStyle(s.store, 'size', 'xl');
