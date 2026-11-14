@@ -92,10 +92,6 @@ $widget-bar-offset: $spacing-s;
   flex-shrink: 0;
   width: $button-height-l;
   height: $button-height-l;
-  // $toolbar-inset from the card's border on the left (and above and below while
-  // the bar rests): concentric with the card's corner, on every side alike.
-  @include atlas-panel-inset-radius($toolbar-inset);
-  background: color-mix(in oklch, var(--widget-color) 16%, transparent);
   color: var(--widget-color);
   transition: width $transition-normal $transition-ease-out,
               height $transition-normal $transition-ease-out;
