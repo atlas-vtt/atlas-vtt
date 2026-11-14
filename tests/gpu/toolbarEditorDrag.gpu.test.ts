@@ -165,8 +165,8 @@ describe('dragging in the toolbar editor', () => {
     expect(document.body.classList.contains('atlas-toolbar-grabbing')).toBe(false);
   });
 
-  it('overflows from the right at 520 px, and a tool dragged onto the full bar lands in "More tools"', async () => {
-    await page.viewport(520, 800);
+  it('overflows from the right at 480 px, and a tool dragged onto the full bar lands in "More tools"', async () => {
+    await page.viewport(480, 800);
     // Hidden as this version stores it: with the id of the Text control it took in.
     await mount({ hidden: ['draw', 'text'] });
     // The active tool (Move) and the Command palette are pinned; everything else left from the right.
@@ -191,7 +191,7 @@ describe('dragging in the toolbar editor', () => {
 
   it('closes the rightmost control live to make room on a full bar, and never the Command palette', async () => {
     // As wide as leaves Draw, a single button, no room beside the four that show (Fog is a single button too).
-    await page.viewport(664, 800);
+    await page.viewport(616, 800);
     // Hidden as this version stores it: with the id of the Text control it took in.
     await mount({ hidden: ['draw', 'text'] });
     expect(barIds()).toEqual(['move', 'fog', 'measure', 'palette']);
@@ -233,8 +233,8 @@ describe('dragging in the toolbar editor', () => {
     const well = openWell();
     if (!well) throw new Error('no well at the start');
     expect(query('.atlas-main-toolbar').firstElementChild).toBe(well);
-    expect(getComputedStyle(well).borderTopLeftRadius).toBe('6.5px');
-    expect(getComputedStyle(well).borderBottomLeftRadius).toBe('6.5px');
+    expect(getComputedStyle(well).borderTopLeftRadius).toBe('10.5px');
+    expect(getComputedStyle(well).borderBottomLeftRadius).toBe('10.5px');
 
     await glide({ x: bar.left + 2, y }, { x: bar.left + bar.width - 2, y });
     await settle(30);
@@ -242,8 +242,8 @@ describe('dragging in the toolbar editor', () => {
     if (!last) throw new Error('no well at the end');
     expect(last.previousElementSibling).toBe(slot('palette'));
     // After the last control comes the GM view switch, which keeps the bar's end corner.
-    expect(getComputedStyle(query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle')).borderTopRightRadius).toBe('6.5px');
-    expect(getComputedStyle(query('[data-toolbar-item="move"] .atlas-tool-group')).borderTopLeftRadius).toBe('6.5px');
+    expect(getComputedStyle(query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle')).borderTopRightRadius).toBe('10.5px');
+    expect(getComputedStyle(query('[data-toolbar-item="move"] .atlas-tool-group')).borderTopLeftRadius).toBe('10.5px');
     await userEvent.keyboard('{Escape}');
     await mouse.up(bar.left, y);
   });

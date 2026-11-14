@@ -9,7 +9,7 @@
 @use '../../../../../../styles/mixins' as *;
 @use 'toolbar-editor-shared' as *;
 
-$tray-inset: $spacing-xs;
+$tray-inset: $toolbar-inset;
 $tray-control: $button-height-m;
 // The tray's controls run concentric with its corner, capped at half their height.
 $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.5);

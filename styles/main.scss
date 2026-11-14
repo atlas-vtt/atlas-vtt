@@ -499,17 +499,17 @@ body.theme-light {
   .atlas-vtt-toolbar {
     display: flex;
     align-items: center;
-    gap: $spacing-s;  // Consistent spacing between all toolbar items
-    padding: $spacing-s;
+    gap: $toolbar-inset;
+    padding: $toolbar-inset;
     pointer-events: auto;
     @include atlas-elevated-surface;
     @include atlas-panel-radius($toolbar-radius);
 
-    // Every control sits $spacing-s inside the border, so all its corners run concentric with the
-    // bar's: rounded alike on every side, never one radius towards the bar's edge and another
+    // Every control sits $toolbar-inset inside the border, so all its corners run concentric with
+    // the bar's: rounded alike on every side, never one radius towards the bar's edge and another
     // inside it. Tool buttons, tool groups, their chevrons and the toggle read this; a bar with
     // another inset sets it anew.
-    --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($spacing-s)};
+    --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($toolbar-inset)};
 
     // Menus opened from a control are not part of the bar's outline.
     .atlas-dropdown-content {

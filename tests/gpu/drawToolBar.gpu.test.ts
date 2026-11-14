@@ -42,7 +42,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
       h(AtlasUIContext.Provider, { value: ui }, h(ViewStoreProvider, {
         store,
         children: h(BottomToolbarRow, {
-          start: h('div', { className: 'atlas-vtt-toolbar', style: { width: 104, height: 52 } }),
+          start: h('div', { className: 'atlas-vtt-toolbar', style: { width: 104, height: 48 } }),
           // The tools' bars share the slot, outside any tooltip provider, as on the map.
           options: h(React.Fragment, null, h(LightingToolBar), h(MeasureToolBar, { playerView: false }), h(DrawToolBar)),
           children: h('div', { className: 'atlas-vtt-toolbar atlas-main-toolbar', style: { width: toolbarWidth, height: 58, boxSizing: 'border-box' } }, h(TooltipProvider, null)),
@@ -93,14 +93,14 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(modes.left).toBeCloseTo(toolbar.left, 0);
     expect(tools.bottom).toBeCloseTo(modes.bottom, 0);
     expect(tools.height).toBeCloseTo(modes.height, 1);
-    expect(modes.height).toBeCloseTo(50, 0);
+    expect(modes.height).toBeCloseTo(42, 0);
     expect(names(MODES)).toEqual(['Select', 'Pen', 'Line', 'Rectangle', 'Ellipse', 'Text', 'Stamp', 'Cells', 'Eraser']);
     expect(rects(`${MODES} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual(MODE_NAMES.map(() => 32));
-    // The pen's tools: the four every drawing has, a doubled gap, and its see-through ink. Buttons of 32 px, 8 px apart, menus' buttons among them.
+    // The pen's tools: the four every drawing has, a doubled gap, and its see-through ink. Buttons of 32 px, 4 px apart, menus' buttons among them.
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'See-through']);
     const controls = rects(`${TOOLS} .atlas-tool-button`);
     expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual(controls.map(() => [32, 32]));
-    expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([8, 8, 8, 16]);
+    expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([4, 4, 4, 8]);
     expect(controls[0]!.left - tools.left).toBeCloseTo(tools.right - controls.at(-1)!.right, 1);
     const corner = (selector: string): number => parseFloat(getComputedStyle(document.querySelector(selector)!).borderTopLeftRadius);
     expect(corner(TOOLS) / tools.height).toBeCloseTo(corner(MODES) / modes.height, 2);
@@ -155,9 +155,9 @@ describe('the Draw tool\'s bars above the toolbar', () => {
       expect(names(TOOLS).slice(0, 4)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens']);
       expect(rects(`${TOOLS} .atlas-tool-button`).slice(0, 4).map((item) => item.left)).toEqual(common);
     }
-    // Buttons of 32 px, 8 px apart and from the bar's edge, a group 8 px further: the widest pair is 370 + 8 + 426 px.
-    expect(Math.round(modes.width)).toBe(370);
-    expect(widths).toEqual({ select: 426, pen: 218, line: 378, rectangle: 258, ellipse: 258, text: 258, stamp: 218, cells: 218, eraser: 146 });
+    // Buttons of 32 px, 4 px apart and from the bar's edge, a group 4 px further: the widest pair is 330 + 8 + 374 px.
+    expect(Math.round(modes.width)).toBe(330);
+    expect(widths).toEqual({ select: 374, pen: 190, line: 334, rectangle: 226, ellipse: 226, text: 226, stamp: 190, cells: 190, eraser: 122 });
     // Select has the most tools; no mode's bar is wider than its.
     expect(Math.max(...Object.values(widths))).toBe(widths.select);
     // Rectangle and ellipse have the same tools: one bar, which stays mounted between them.
@@ -176,23 +176,23 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     };
     await choose('line');
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Line', 'Ends', 'Curved', 'Fill', 'See-through']);
-    expect(gaps()).toEqual([8, 8, 8, 16, 8, 8, 8, 8]);
+    expect(gaps()).toEqual([4, 4, 4, 8, 4, 4, 4, 4]);
     await choose('text');
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Font', 'Look']);
-    expect(gaps()).toEqual([8, 8, 8, 16, 8]);
+    expect(gaps()).toEqual([4, 4, 4, 8, 4]);
     await choose('stamp');
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'Symbol']);
     await choose('cells');
     expect(names(TOOLS)).toEqual(['Colour', 'Players see it', 'Under tokens', 'Fill', 'Unfill']);
-    expect(gaps()).toEqual([8, 8, 16, 8]);
+    expect(gaps()).toEqual([4, 4, 8, 4]);
     if (import.meta.env.VITE_DRAW_LOOKS) await page.screenshot({ path: '__screenshots__/draw-3-looks/bars-cells.png' });
     await choose('select');
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'To front', 'To back', 'Lock', 'Group', 'Ungroup', 'Clear']);
     if (import.meta.env.VITE_DRAW_LOOKS) await page.screenshot({ path: '__screenshots__/draw-3-looks/bars-select.png' });
-    expect(gaps()).toEqual([8, 8, 8, 16, 8, 8, 8, 8, 16]);
+    expect(gaps()).toEqual([4, 4, 4, 8, 4, 4, 4, 4, 8]);
     await choose('eraser');
     expect(names(TOOLS)).toEqual(['Size', 'Whole drawings', 'Clear']);
-    expect(gaps()).toEqual([16, 16]);
+    expect(gaps()).toEqual([8, 8]);
   });
 
   it('fits both bars of every mode in a row 900 px wide, every button inside its bar', async () => {
@@ -210,15 +210,15 @@ describe('the Draw tool\'s bars above the toolbar', () => {
       for (const selector of [MODES, TOOLS]) {
         const bar = rect(selector);
         for (const item of rects(`${selector} .atlas-tool-button`)) {
-          expect(item.left).toBeGreaterThanOrEqual(bar.left + 8);
-          expect(item.right).toBeLessThanOrEqual(bar.right - 8);
+          expect(item.left).toBeGreaterThanOrEqual(bar.left + 4);
+          expect(item.right).toBeLessThanOrEqual(bar.right - 4);
         }
       }
     }
     // The widest pair, Select's: both bars side by side with room to spare.
     await choose('select');
     expect(rect(MODES).width + 8 + rect(TOOLS).width).toBeLessThanOrEqual(900);
-    expect(Math.round(rect(MODES).width + 8 + rect(TOOLS).width)).toBe(804);
+    expect(Math.round(rect(MODES).width + 8 + rect(TOOLS).width)).toBe(712);
   });
 
   it('offers no None for a selected drawing that is nothing but its fill: the row stays in its place, disabled', async () => {

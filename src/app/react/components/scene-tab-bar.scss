@@ -3,7 +3,7 @@
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
 
-$tab-bar-inset: 4px;
+$tab-bar-inset: $toolbar-inset;
 $tab-height: 28px;
 $tab-action: 16px;
 // A tab's one inset: its padding, the gap between its parts, and how far its controls stand inside it on every side.

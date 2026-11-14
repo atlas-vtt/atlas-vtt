@@ -10,7 +10,7 @@
 @use '../../../../../styles/mixins' as *;
 
 // The toolbar's inset and corner with smaller buttons.
-$bar-inset: $spacing-s;
+$bar-inset: $toolbar-inset;
 $bar-control: $button-height-m;
 $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
 

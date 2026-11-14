@@ -70,12 +70,12 @@ describe('the toolbar editor in a real layout', () => {
       ...[...document.querySelectorAll('.atlas-main-toolbar .atlas-tool-button > span > .btn')].flatMap(allCorners),
       ...allCorners(toggle),
     ];
-    expect(new Set(corners())).toEqual(new Set(['6.5px']));
+    expect(new Set(corners())).toEqual(new Set(['10.5px']));
     // The switch's thumb, 7 px inside it, keeps a corner of its own
     expect(getComputedStyle(toggle.querySelector('.atlas-toggle__thumb')!).borderTopLeftRadius).toBe('4px');
     await startEditing();
-    expect(new Set(corners())).toEqual(new Set(['6.5px']));
-    expect(getComputedStyle(handle('move', 'bar')).borderTopLeftRadius).toBe('6.5px');
+    expect(new Set(corners())).toEqual(new Set(['10.5px']));
+    expect(getComputedStyle(handle('move', 'bar')).borderTopLeftRadius).toBe('10.5px');
   });
 
   it('leaves the bar and the undo bar where they are as editing starts', async () => {
