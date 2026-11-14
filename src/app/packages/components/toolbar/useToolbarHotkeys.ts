@@ -24,9 +24,9 @@ function cycleTool<T extends Tool>(family: readonly T[], activeTool: Tool): T {
   return family[(index + 1) % family.length]!
 }
 
-/** Steps the fog brush's size, only while the fog tool is in use. */
-function stepFogBrush(state: ViewAtlasState, direction: 1 | -1): void {
-  if (isFogTool(state.activeTool)) state.setFogTool({ brushSize: steppedBrushSize(state.fogTool.brushSize, direction) })
+/** Steps the fog brush's size, only while the fog tool is in use; `held`: by the finer step of a key held down. */
+function stepFogBrush(state: ViewAtlasState, direction: 1 | -1, held: boolean): void {
+  if (isFogTool(state.activeTool)) state.setFogTool({ brushSize: steppedBrushSize(state.fogTool.brushSize, direction, held) })
 }
 
 interface ToolbarHotkeyActions {
@@ -50,12 +50,16 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
   const dmOnly = (action: () => void) => (): void => {
     if (!isPlayerView) action()
   }
-  /** The size of the tool in use, a step smaller or larger: the Draw tool's in the GM's view, else the fog brush. */
-  const stepSize = (direction: 1 | -1) => dmOnly(() => {
+  /**
+   * The size of the tool in use, a step smaller or larger: the Draw tool's in the GM's view, else
+   * the fog brush. A held key goes on sizing the brush; the Draw tool has four named sizes, one a press.
+   */
+  const stepSize = (direction: 1 | -1) => (event: KeyboardEvent): void => {
+    if (isPlayerView) return
     const state = store.getState()
-    if (state.activeTool !== "draw") stepFogBrush(state, direction)
-    else if (state.isGMView) stepDrawSize(store, direction)
-  })
+    if (state.activeTool !== "draw") stepFogBrush(state, direction, event.repeat)
+    else if (state.isGMView && !event.repeat) stepDrawSize(store, direction)
+  }
 
   // The mode the Draw tool had before its eraser, which the eraser's key goes back to.
   const drawnWith = useRef<DrawMode>(DEFAULT_DRAW_TOOL.mode)

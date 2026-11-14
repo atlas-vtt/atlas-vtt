@@ -29,7 +29,7 @@
 - Cover all hides the whole map in one step, Reveal all clears it. Undo takes either back
 - Rectangles and polygons snap to the grid, to walls and to other areas. Hold Ctrl or Cmd to place them freely
 - Cells hides or reveals whole grid cells, squares and hexes alike
-- Hold Alt to do the other thing: reveal with Hide, hide with Reveal. , and . size the brush
+- Hold Alt to do the other thing: reveal with Hide, hide with Reveal. , and . size the brush; hold one to keep sizing
 - Fog fades when it changes, on your map and in the player window
 - More sets how dark fog looks to you in GM View. Hold H to see it as your players do
 
