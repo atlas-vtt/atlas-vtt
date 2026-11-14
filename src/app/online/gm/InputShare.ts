@@ -4,7 +4,8 @@ import type { SceneState, SceneStore } from './atlasView.ts';
 import { toBase64 } from './assetServe.ts';
 import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 import { Pacer, type PacerClock } from '../marks/index.ts';
-import { fogPastLimits, sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
+import { sharedLightingScene, sharedSight } from './sceneInputs.ts';
+import { SharedFogLog } from './sharedFogLog.ts';
 import { SequencedList } from './sequencedList.ts';
 import { maskBytes } from './exploredMaskAlpha.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
@@ -64,6 +65,7 @@ export class InputShare {
   private scene: { readonly id: string; readonly lit: boolean } | null = null;
   private readonly last = new Map<GmMessage['t'], Sent>();
   private fogOf: unknown = undefined;
+  private readonly fogLog = new SharedFogLog();
   /** The scene's fog is more than players can be sent, and the GM was told. */
   private fogTooMuch = false;
   private lighting: LightingKey | null = null;
@@ -100,6 +102,7 @@ export class InputShare {
     this.fog.reset();
     this.sight.reset();
     this.fogOf = undefined;
+    this.fogLog.reset();
     this.fogTooMuch = false;
     this.fogAliases.clear();
     this.lighting = null;
@@ -158,8 +161,8 @@ export class InputShare {
     if (scene === null || !state.mapLoaded || state.isMapLoading) return;
     if (levelObjects(state).fog !== this.fogOf) {
       this.fogOf = levelObjects(state).fog;
-      this.fog.publish(scene.id, { fog: sharedFog(levelObjects(state).fog, (key) => this.fogAlias(key)) });
-      this.tellFogTooMuch(fogPastLimits(levelObjects(state).fog));
+      this.fog.publish(scene.id, { fog: this.fogLog.shared(levelObjects(state).fog, (key) => this.fogAlias(key)) });
+      this.tellFogTooMuch(this.fogLog.tooMuch);
     }
     if (!scene.lit) return;
     const source = this.ports.lightingSource();

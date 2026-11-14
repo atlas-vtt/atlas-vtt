@@ -75,4 +75,4 @@
 ## Atlas Online
 
 - Players may draw: a switch in the player view settings gives online players their own Draw tool
-- A map with too much fog to send shows fully covered to players, and you are told
+- Fog cleared all evening reaches players: they get its shape, not every stroke. A long session's fog no longer left their map without fog
