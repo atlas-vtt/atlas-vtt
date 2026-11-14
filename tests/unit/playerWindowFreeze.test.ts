@@ -11,6 +11,7 @@ import { playerWindowStore } from '../../src/app/stores/playerWindowStore';
 import type { PlayerFrame, Screen } from '../../src/app/types/playerFrame';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { framePiece, sizePlayerWindow } from '../mocks/playerFrameSource';
+import { SCENE_DIP_MS } from '../../src/app/services/playerSceneFade';
 
 vi.mock('obsidian', async (importOriginal) => ({ ...(await importOriginal<typeof import('obsidian')>()), Notice: vi.fn() }));
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.restoreAllMocks(); vi.mocked(Notice).mockClear(); });
@@ -110,7 +111,11 @@ describe('player camera freeze', () => {
     expect(shown(lastFrame())).toEqual(before);
     expect(session.camera).toEqual({ centerX: 100, centerY: 200, scale: 2, width: 400, height: 300 });
 
+    // Through the dip to black: the GM's view once the sheet is down
+    let now = performance.now();
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
     service.toggleCameraFreeze();
+    now += SCENE_DIP_MS;
     nextFrame();
     expect(lastFrame()).toMatchObject({ centerX: 900, centerY: 900 });
     expect(session).toMatchObject({ frozen: false, camera: { centerX: 900, centerY: 900, scale: 3 } });

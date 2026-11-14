@@ -143,6 +143,45 @@ function openWindow(reducedMotion = false): {
   };
 }
 
+describe('letting frozen players follow the GM again', () => {
+  it('dips them to black and lifts on the GM\'s view, as for another scene', () => {
+    const { service, sheetDown, at } = openWindow();
+    at(0);
+    service.freezeCamera({ centerX: 500, centerY: 300, scale: 2 });
+    at(100);
+    service.toggleCameraFreeze();
+    expect(service.isFrozen()).toBe(false);
+    expect(sheetDown()).toBe(true);
+    at(100 + SCENE_DIP_MS - 1);
+    expect(sheetDown()).toBe(true);
+    at(100 + SCENE_DIP_MS);
+    expect(sheetDown()).toBe(false);
+  });
+
+  it('does not dip where the GM\'s view is where they were held, nor with no glide or reduced motion', () => {
+    const same = openWindow();
+    same.at(0);
+    same.service.freezeCamera({ centerX: 0, centerY: 0, scale: 1 });
+    same.service.unfreezeCamera();
+    expect(same.sheetDown()).toBe(false);
+    same.service.destroy();
+
+    const off = openWindow();
+    off.at(0);
+    off.settings.setTableTvSettings({ viewGlideMs: 0 });
+    off.service.freezeCamera({ centerX: 500, centerY: 300, scale: 2 });
+    off.service.unfreezeCamera();
+    expect(off.sheetDown()).toBe(false);
+    off.service.destroy();
+
+    const reduced = openWindow(true);
+    reduced.at(0);
+    reduced.service.freezeCamera({ centerX: 500, centerY: 300, scale: 2 });
+    reduced.service.unfreezeCamera();
+    expect(reduced.sheetDown()).toBe(false);
+  });
+});
+
 describe('a change of the presented scene', () => {
   it('dips to black, keeps the old frame until it is, and lifts on the new scene', () => {
     const { service, capture, next, sheetDown, at } = openWindow();

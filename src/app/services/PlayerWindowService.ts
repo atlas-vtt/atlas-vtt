@@ -130,9 +130,17 @@ export class PlayerWindowService {
     this.setFrozenCamera(camera ?? this.cameraPlayersSee());
   }
 
-  /** Lets players follow the GM's camera again, without a word: the glass's pin. */
+  /**
+   * Lets players follow the GM's camera again, without a word: the glass's pin. Where that shows
+   * them another place, they dip through black to it, as to another scene, never jump.
+   */
   public unfreezeCamera(): void {
-    if (this.frozenCamera) this.setFrozenCamera(null);
+    const frozen = this.frozenCamera;
+    if (!frozen) return;
+    const following = this.streamSource?.getCamera?.();
+    const samePlace = following && following.centerX === frozen.centerX && following.centerY === frozen.centerY && following.scale === frozen.scale;
+    if (!samePlace && !this.heldFrame) this.dipToNextScene();
+    this.setFrozenCamera(null);
   }
 
   /**
