@@ -71,6 +71,8 @@
 - Online, the eye on a floor shows that floor to players at once; before, they saw it only after a refresh. Reported by Theo Chronis
 - Ctrl/Cmd and hover shows a token's statblock with the measure tool and the other tools too, not only with Move and Select. Reported by George
 - The laser pointer is smooth again on Linux with AMD graphics, where it was drawn in coarse blocks, in Atlas and on the online players' page
+- The toolbar and the tool bars no longer vanish after an animation fails
+- A toolbar, bar or panel that could not be shown comes back by itself a moment later
 
 ## Atlas Online
 
