@@ -1,6 +1,7 @@
 import type { Message } from '../../types';
 
 export const fog = {
+  'fog.cellCount': { one: '{count} cell', other: '{count} cells' },
   'fog.modes': 'Fog',
   'fog.tools': 'Fog shapes and actions',
   'fog.fog': 'Fog',
@@ -33,10 +34,6 @@ export const fog = {
   'fog.noFogOnLevel': 'No fog on this level',
   'fog.more': 'More',
   'fog.gmOpacity': 'Fog opacity in GM View',
-  'fog.explore': 'Party tokens clear fog',
-  'fog.exploreHint': 'Fog clears around a party token when it is moved, up to walls.',
-  'fog.exploreDistance': 'Distance',
-  'fog.exploreCells': { one: '{count} cell', other: '{count} cells' },
   'fog.hideRooms': 'Hide all rooms',
   'fog.roomsHidden': { one: '{count} room hidden', other: '{count} rooms hidden' },
   'fog.noRooms': 'No rooms found',

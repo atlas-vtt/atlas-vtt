@@ -189,10 +189,10 @@ describe('the canvas in the players\' picture and the drawings', () => {
     expect(s.store.getState().selectedIds).toEqual([]);
   });
 
-  it('takes no press of the move tool on a drawing that lies on the map, or is locked', () => {
+  it('takes the press of the move tool on a drawing that lies on the map, and on a locked one', () => {
     const { s } = harness();
     s.store.setState({ objects: { ...s.store.getState().objects, drawings: { floor: pen('floor', { layer: 'map' }), kept: pen('kept', { locked: true, points: [{ x: 0, y: 40 }, { x: 100, y: 40 }] }) }, texts: {} } });
-    expect(s.press(50, 0)).toBe(false);
-    expect(s.press(50, 40)).toBe(false);
+    expect(s.press(50, 0)).toBe(true);
+    expect(s.press(50, 40)).toBe(true);
   });
 });

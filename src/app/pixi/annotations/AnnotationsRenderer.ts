@@ -14,6 +14,8 @@ import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import type { TesseraView } from '../mosaicCanvas/levelOfDetail';
 import type { LayerVisibility } from '../playerSafeFrame';
+import type { Frame } from '../../annotations/annotationFrame';
+import { selectionMenuStyles } from '../../packages/components/toolbar/selectionMenuStyles';
 import { textFontReady } from '../textFonts';
 import { measureTextView, textBreaks, textLayout } from '../textLayout';
 import { TextSharpening, type TextSharpnessHost } from '../TextSharpening';
@@ -165,6 +167,7 @@ export class AnnotationsRenderer {
     const full = options.full ?? showAnnotationsFullNotice;
     this.full = full;
     this.barMenus = new BarMenuPress(() => viewport.options.events.domElement);
+    this.barMenus.setEnabled(true);
     this.texts = new MapTexts({
       viewport,
       store,
@@ -202,7 +205,7 @@ export class AnnotationsRenderer {
       copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
       dragTokens: (event) => options.dragTokens?.(event),
       menu: (selected, clicked, at) => {
-        const entries = annotationMenu(selected, clicked, store.getState(), (text) => this.texts.edit(text));
+        const entries = annotationMenu(selected, clicked, store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, store));
         if (entries.length > 0) openContextMenuGlobal(entries, at);
         return entries.length > 0;
       },
@@ -237,6 +240,17 @@ export class AnnotationsRenderer {
   /** A gesture of the Draw tool is under way: a press belongs to it, wherever it lands. */
   get drawing(): boolean {
     return this.input.drawing;
+  }
+
+  /**
+   * The frame the bar under a selection stands below, in world pixels: around the drawings and
+   * texts the move or select tool has selected, locked ones too (`framedFrame`). Null while there is
+   * none to show it under: another tool, nothing framed, the selection or a handle being dragged, a
+   * text being typed or the canvas showing the players' picture.
+   */
+  barFrame(): Frame | null {
+    const tool = this.store.getState().activeTool;
+    return tool === 'move' || tool === 'select' ? this.selecting.framedFrame() : null;
   }
 
   /** What a players' frame changes for its one render: what only the GM sees is left out, the handles and the hover with it. */
@@ -407,7 +421,6 @@ export class AnnotationsRenderer {
   private toolChanged(state: ViewAtlasState): void {
     const mode = activeDrawMode(state);
     this.input.setEnabled(mode !== null);
-    this.barMenus.setEnabled(mode !== null);
     this.clicks.setEnabled(mode === 'stamp');
     this.texts.setMode(mode);
     this.host.toolChanged();

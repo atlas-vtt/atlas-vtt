@@ -65,16 +65,6 @@ type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : n
 /** Input type for creating a fog operation (without auto-generated fields) */
 export type FogOperationInput = DistributiveOmit<FogOperation, 'id' | 'kind' | 'timestamp'>;
 
-// ── Scene option ────────────────────────────────────────────────────────
-
-/**
- * The scene's option that fog clears around party tokens as they are put down: `distance` is how
- * far, in grid cells. Unset is off. Read with `readFogExplore` (`fog/fogExplore.ts`).
- */
-export interface FogExplore {
-  distance: number;
-}
-
 // ── Helper ──────────────────────────────────────────────────────────────
 
 export interface FogBounds {

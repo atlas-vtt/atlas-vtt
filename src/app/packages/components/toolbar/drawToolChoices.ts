@@ -1,10 +1,10 @@
 import {
   Captions, Circle, Eraser, Grid2x2Plus, Grid2x2X, Minus,
-  MousePointer2, MoveDiagonal, MoveUpRight, PaintBucket, Pencil, Slash, Square, Stamp, Type, TypeOutline,
+  MoveDiagonal, MoveUpRight, PaintBucket, Pencil, Slash, Square, Stamp, Type, TypeOutline,
 } from "lucide-react"
 import {
   DEFAULT_DRAW_TOOL, DRAW_MODES, DRAW_SIZES,
-  type ClearScope, type DrawDash, type DrawEnds, type DrawFill, type DrawFont, type DrawMode, type DrawSize, type TextLook,
+  type ClearScope, type DrawDash, type DrawEnds, type DrawFill, type DrawFont, type DrawMode, type DrawSize, type GmDrawMode, type TextLook,
 } from "../../../annotations/annotationTypes"
 import { fillsCells, type CellsGridState } from "../../../annotations/cellsMode"
 import { t } from "../../../i18n"
@@ -15,8 +15,7 @@ import type { ToolChoice } from "./ToolOptionsBar"
 type ModeFace = Omit<ToolChoice<DrawMode>, 'value'>
 
 /** The modes the bar offers, each with its face. */
-const MODE_FACES: Readonly<Record<DrawMode, ModeFace>> = {
-  select: { icon: MousePointer2, label: t('draw.mode.select'), tip: t('draw.mode.selectTip') },
+const MODE_FACES: Readonly<Record<GmDrawMode, ModeFace>> = {
   pen: { icon: Pencil, label: t('draw.mode.pen') },
   line: { icon: Slash, label: t('draw.mode.line'), tip: t('draw.mode.lineTip') },
   rectangle: { icon: Square, label: t('draw.mode.rectangle') },
@@ -70,14 +69,13 @@ export type DrawToolId =
   | 'color' | 'size' | 'players' | 'layer'
   | 'seeThrough' | 'dash' | 'ends' | 'curved' | 'fill'
   | 'font' | 'look'
-  | 'icon' | 'cellsLayer' | 'cellsFill' | 'cellsUnfill' | 'eraseWhole' | 'front' | 'back' | 'lock' | 'group' | 'ungroup' | 'clear'
+  | 'icon' | 'cellsLayer' | 'cellsFill' | 'cellsUnfill' | 'eraseWhole' | 'front' | 'back' | 'lock' | 'group' | 'ungroup' | 'clear' | 'delete'
 
 /** What every drawing has: first in the bar of every mode that makes or changes drawings, in this order, so they never move between modes. */
 export const COMMON_DRAW_TOOLS: readonly DrawToolId[] = ['color', 'size', 'players', 'layer']
 
 /** The tools of each mode, in groups: the common four, then what only the mode has. */
-const MODE_TOOLS: Readonly<Record<DrawMode, readonly (readonly DrawToolId[])[]>> = {
-  select: [COMMON_DRAW_TOOLS, ['front', 'back', 'lock', 'group', 'ungroup'], ['clear']],
+const MODE_TOOLS: Readonly<Record<GmDrawMode, readonly (readonly DrawToolId[])[]>> = {
   pen: [COMMON_DRAW_TOOLS, ['seeThrough']],
   line: [COMMON_DRAW_TOOLS, ['dash', 'ends', 'curved', 'fill', 'seeThrough']],
   rectangle: [COMMON_DRAW_TOOLS, ['dash', 'fill']],
@@ -89,9 +87,9 @@ const MODE_TOOLS: Readonly<Record<DrawMode, readonly (readonly DrawToolId[])[]>>
   eraser: [['size'], ['eraseWhole'], ['clear']],
 }
 
-/** The groups of tools a mode's bar holds. */
+/** The groups of tools a mode's bar holds; none for the players' Select mode, which the GM's bar does not offer. */
 export function drawModeTools(mode: DrawMode): readonly (readonly DrawToolId[])[] {
-  return MODE_TOOLS[mode]
+  return mode === 'select' ? [] : MODE_TOOLS[mode]
 }
 
 /** One row of a tool's menu: a choice, its icon (the button's face while it is the choice made) and its name. */

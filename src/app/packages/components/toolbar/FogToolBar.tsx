@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { CloudOff, LayoutGrid, MoreHorizontal, PaintBucket } from "lucide-react"
 import { hasCells } from "../../../fog/fogCells"
-import { FOG_EXPLORE_DISTANCE, readFogExplore } from "../../../fog/fogExplore"
 import { hasRoomWalls } from "../../../fog/fogRooms"
 import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, isFogTool, type FogShape } from "../../../fog/fogToolChoices"
 import { DEFAULT_GM_FOG_OPACITY, GM_FOG_OPACITY_RANGE } from "../../../fog/gmFogOpacity"
@@ -16,7 +15,6 @@ import { wallList } from "../../../vision/wallList"
 import { DropdownMenu } from "../primitives/DropdownMenu"
 import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
-import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { ToolButton } from "../primitives/ToolButton"
 import { LabelTooltip, TooltipProvider } from "../primitives/tooltip"
 import { FOG_MODES, FOG_SHAPES } from "./fogToolChoices"
@@ -100,7 +98,7 @@ function BrushSize(): React.ReactElement {
   const setFogTool = useAtlasStore((state) => state.setFogTool)
   const hotkeyLabel = useHotkeyLabels()
   // How wide the brush is in cells of the map's grid, to a tenth: pixels say nothing at the table. Nothing on a map without a grid.
-  const inCells = (radius: number): string => (cell > 0 ? t('fog.exploreCells', { count: Math.round((20 * radius) / cell) / 10 }) : '')
+  const inCells = (radius: number): string => (cell > 0 ? t('fog.cellCount', { count: Math.round((20 * radius) / cell) / 10 }) : '')
   const [wanted, setWanted] = useState(false)
   const open = wanted && brush
   const toggle = useCallback((): void => setWanted((before) => brush && !before), [brush])
@@ -166,32 +164,10 @@ function WholeMap(): React.ReactElement {
   )
 }
 
-/** The scene's option that fog clears around party tokens as they are put down, as the More menu shows it. */
-interface PartyClearsFog {
-  on: boolean
-  /** How far, in cells: while the option is off, the distance it had last, which it comes back with. */
-  distance: number
-  toggle: () => void
-  setDistance: (distance: number) => void
-}
-
-/** The option lives in the scene; the distance of one switched off is kept here, for as long as the bar shows. */
-function usePartyClearsFog(): PartyClearsFog {
-  const distance = useAtlasStore((state) => readFogExplore(state.fogExplore)?.distance ?? null)
-  const setFogExplore = useAtlasStore((state) => state.setFogExplore)
-  const [kept, setKept] = useState<number>(FOG_EXPLORE_DISTANCE.initial)
-  const toggle = (): void => {
-    if (distance !== null) setKept(distance)
-    setFogExplore(distance === null ? { distance: kept } : null)
-  }
-  return { on: distance !== null, distance: distance ?? kept, toggle, setDistance: (next) => setFogExplore({ distance: next }) }
-}
-
-/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, fog that clears around the party, and hiding every room of the level shown. */
+/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, and hiding every room of the level shown. */
 function MoreMenu(): React.ReactElement {
   const { renderer } = useAtlasUI()
   const settings = useAtlasSettings()
-  const explore = usePartyClearsFog()
   const [open, setOpen] = useState(false)
   const toggle = useCallback((): void => setOpen((before) => !before), [])
   const hideAllRooms = useAtlasStore((state) => state.hideRooms)
@@ -203,7 +179,7 @@ function MoreMenu(): React.ReactElement {
     else showNotice(rooms > 0 ? t('fog.roomsAreHidden') : t('fog.noRooms'))
     setOpen(false)
   }
-  // The menu has no row that is ticked: its actions begin on its text edge, like its switch and sliders.
+  // The menu has no row that is ticked: its actions begin on its text edge, like its slider.
   const fromWalls = <DropdownMenuItem flush icon={LayoutGrid} label={t('fog.hideRooms')} disabled={!walls} onClick={hideRooms} />
   const percent = (opacity: number): number => Math.round(opacity * 100)
   return (
@@ -227,21 +203,6 @@ function MoreMenu(): React.ReactElement {
           // Shown where Atlas' settings cannot be reached, with nothing to set.
           disabled={!settings}
           onChange={(next) => settings?.setGmFogOpacity(next / 100)}
-        />
-      </div>
-      <div className="atlas-dropdown-section">
-        <DropdownToggleRow label={t('fog.explore')} value={explore.on} onChange={explore.toggle} />
-        <p className="atlas-dropdown-hint">{t('fog.exploreHint')}</p>
-        {/* The distance stays where it is while the switch is off. */}
-        <DropdownSliderRow
-          label={t('fog.exploreDistance')}
-          value={explore.distance}
-          min={FOG_EXPLORE_DISTANCE.min}
-          // A scene may hold a longer distance than the bar offers.
-          max={Math.max(FOG_EXPLORE_DISTANCE.offered, explore.distance)}
-          format={(cells) => t('fog.exploreCells', { count: cells })}
-          disabled={!explore.on}
-          onChange={explore.setDistance}
         />
       </div>
       <div className="atlas-dropdown-section">

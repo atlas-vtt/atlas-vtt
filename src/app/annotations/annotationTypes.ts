@@ -192,8 +192,15 @@ export const TEXT_FIELDS: readonly (keyof TextChanges)[] = [
 export const TEXT_FIELDS_BESIDE_DRAWINGS: readonly (keyof TextChanges)[] = TEXT_FIELDS.filter((field) => field !== 'width' && field !== 'opacity');
 
 /** What the Draw tool does with a press. */
+/**
+ * What a press of a Draw tool does. `'select'` is the players' page's own: a player selects their
+ * drawings in their Draw tool. The GM selects drawings with the move and select tools, so the GM's
+ * Draw tool does not offer it (`DRAW_MODES`).
+ */
 export type DrawMode = 'select' | 'pen' | 'line' | 'rectangle' | 'ellipse' | 'text' | 'stamp' | 'cells' | 'eraser';
-export const DRAW_MODES: readonly DrawMode[] = ['select', 'pen', 'line', 'rectangle', 'ellipse', 'text', 'stamp', 'cells', 'eraser'];
+/** The GM's Draw tool's modes, in its bar's order. */
+export const DRAW_MODES: readonly GmDrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'text', 'stamp', 'cells', 'eraser'];
+export type GmDrawMode = Exclude<DrawMode, 'select'>;
 
 /** The Draw tool's choices, held in the view's store: its bars set them, the tool reads them. Never saved with the scene. */
 export interface DrawToolChoices {

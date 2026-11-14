@@ -60,19 +60,23 @@ describe('the Draw tool\'s keys', () => {
     expect(tool(store)).toBe('draw');
     expect(mode(store)).toBe('ellipse');
     const seen: string[] = [];
-    for (let step = 0; step < 9; step++) {
+    for (let step = 0; step < 8; step++) {
       press('b');
       seen.push(mode(store));
     }
-    expect(seen).toEqual(['text', 'stamp', 'cells', 'eraser', 'select', 'pen', 'line', 'rectangle', 'ellipse']);
+    expect(seen).toEqual(['text', 'stamp', 'cells', 'eraser', 'pen', 'line', 'rectangle', 'ellipse']);
     expect(tool(store)).toBe('draw');
   });
 
-  it('steps over the Cells mode on a map whose grid is switched off', () => {
+  it('steps over the Cells mode on a map whose grid is hidden and snapped to by nothing, and not where things snap to it', () => {
     const store = mount();
     store.getState().setGridVisible(false);
     store.getState().setDrawTool({ mode: 'stamp' });
     press('b');
+    press('b');
+    expect(mode(store)).toBe('cells');
+    store.getState().setSnapToGrid(false);
+    store.getState().setDrawTool({ mode: 'stamp' });
     press('b');
     expect(mode(store)).toBe('eraser');
   });

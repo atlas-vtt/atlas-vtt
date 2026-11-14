@@ -8,25 +8,27 @@ import type { Annotation, DrawMode } from './annotationTypes';
 
 /**
  * What the tool in hand takes of the annotations of the level shown:
- * - `'all'` (the Draw tool's Select mode): every one, on the map too, hidden and locked ones too;
- * - `'made'` (the Draw tool's other modes): only the handles of what is selected, which is the
- *   stamp or the text just made (a stroke, a line and a shape are not selected once drawn, so
- *   those modes have none of their own), and in a mode that places by a press the annotations of
- *   its own kind (`ownKind`);
- * - `'above'` (the move and select tools): those above the tokens that are not locked;
+ * - `'move'` (the move and select tools, the way the GM selects and moves what lies on the map):
+ *   every one, on the map too, hidden and locked ones too, after tokens and pins; a locked one is
+ *   selected and moves nowhere. A marquee takes tokens alone (`SelectionManager`);
+ * - `'made'` (the Draw tool): only the handles of what is selected, which is the stamp or the
+ *   text just made (a stroke, a line and a shape are not selected once drawn, so those modes
+ *   have none of their own), and in a mode that places by a press the annotations of its own
+ *   kind (`ownKind`);
+ * - `'all'` (the players' page's Draw tool in its Select mode, `DrawMode`): every one alike; also
+ *   the group rule's own scope for a mode that takes its own kind;
  * - `'none'`: none, and no handles.
  */
-export type PressScope = 'all' | 'made' | 'above' | 'none';
+export type PressScope = 'all' | 'made' | 'move' | 'none';
 
-export function pressScope(activeTool: string, mode: DrawMode): PressScope {
+export function pressScope(activeTool: string, mode?: DrawMode): PressScope {
   if (activeTool === 'draw') return mode === 'select' ? 'all' : 'made';
-  return activeTool === 'move' || activeTool === 'select' ? 'above' : 'none';
+  return activeTool === 'move' || activeTool === 'select' ? 'move' : 'none';
 }
 
-/** Whether a press, a hover or a marquee in `scope` takes `annotation`. */
-export function takesPress(scope: PressScope, annotation: Annotation): boolean {
-  if (scope === 'all') return true;
-  return scope === 'above' && annotation.layer === 'above' && !annotation.locked;
+/** Whether a press or a hover in `scope` takes `annotation`: every one with the move and select tools and in the players' Select mode, none in the Draw tool's other modes. */
+export function takesPress(scope: PressScope, _annotation: Annotation): boolean {
+  return scope === 'all' || scope === 'move';
 }
 
 /** The kinds of annotation a Draw mode places by one press. */
@@ -88,14 +90,11 @@ export function withGroups(ids: readonly string[], list: readonly Annotation[], 
 }
 
 /**
- * The annotations among `selected` that the handles frame in `scope`. The Draw tool frames every
- * selected one. The move and select tools frame those they take, and none while a token is
- * selected with them (`withTokens`): a selection with tokens has the tokens' group frame.
+ * The annotations among `selected` that the handles frame in `scope`: every selected one, and in
+ * the move tool none while a token is selected with them (`withTokens`): a selection with tokens
+ * has the tokens' group frame.
  */
 export function framedAnnotations(selected: readonly Annotation[], scope: PressScope, withTokens: boolean): readonly Annotation[] {
   if (scope === 'none' || selected.length === 0) return [];
-  if (scope !== 'above') return selected;
-  if (withTokens) return [];
-  const taken = selected.filter((annotation) => takesPress(scope, annotation));
-  return taken.length === selected.length ? selected : taken;
+  return scope === 'move' && withTokens ? [] : selected;
 }

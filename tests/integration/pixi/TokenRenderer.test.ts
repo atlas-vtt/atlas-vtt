@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, onTestFinished, vi } from 'vitest';
 import {
   Container,
   Point,
@@ -1080,10 +1080,23 @@ describe('TokenRenderer Integration Tests', () => {
       expect(left).toHaveBeenCalledWith({ pin: expect.objectContaining({ id: 'token-1' }) });
     });
 
-    it('should offer the statblock hover with every tool that leaves tokens alone, the measure tool too', async () => {
+    it.each(['measure', 'fog', 'eraser', 'draw', 'wall', 'audio', 'stairs', 'asset', 'note-pin', 'laser-pointer'] as const)('should offer the statblock hover with the %s tool, whose own pointer takes the move', async (tool) => {
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105, kind: 'character', statblockPath: 'Goblin.md' }));
       await waitForTokens('token-1');
-      store.setState({ activeTool: 'measure' });
+      store.setState({ activeTool: tool });
+      // Each tool takes the move with a cursor of its own, as it does on the map
+      tokenRenderer.setWallPointerMoveHandler(() => undefined);
+      tokenRenderer.setWallCursorProvider(() => 'crosshair');
+      tokenRenderer.setAudioPointerMoveHandler(() => undefined);
+      tokenRenderer.setStairsTool({ pointerDown: () => true, pointerMove: () => undefined, pointerUp: () => undefined, doubleClick: () => undefined, cursorAt: () => 'crosshair' });
+      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
+      // The fog tool's own brush, ring and guide listen to the same moves
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
+      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      onTestFinished(() => {
+        fog.destroy();
+        vi.restoreAllMocks();
+      });
       const hovered = vi.fn();
       const left = vi.fn();
       eventBus.on('pin-hover-preview', hovered);

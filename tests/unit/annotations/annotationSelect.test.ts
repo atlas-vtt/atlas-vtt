@@ -31,13 +31,13 @@ afterEach(() => {
   current = undefined;
 });
 
-/** A scene with the Draw tool in its Select mode, its history empty once `fill` has put its drawings there. */
+/** A scene with the move tool in hand, its history empty once `fill` has put its drawings there. */
 function scene(fill: (s: DrawScene) => void = () => undefined, options?: Parameters<typeof drawScene>[0]): DrawScene {
   const s = current = drawScene(options);
   fill(s);
   getHistoryStore(s.store)!.getState().clear();
   s.store.getState().clearSelection();
-  s.tool({ mode: 'select' });
+  s.store.getState().setActiveTool('move');
   return s;
 }
 
@@ -64,40 +64,46 @@ describe('what a press takes, by the tool in hand', () => {
     text: s.store.getState().addText(label(500, 100)),
   });
 
-  it('takes every drawing and text in the Draw tool\'s Select mode: on the map, locked and hidden ones too', () => {
-    let ids: Record<string, string> = {};
-    const s = scene((made) => { ids = fill(made); });
-    for (const [name, y] of [['above', 100], ['onMap', 200], ['locked', 300], ['hidden', 400]] as const) {
-      expect(s.press(200, y)).toBe(true);
-      s.pointer('pointerup', 200, y);
-      expect(selected(s)).toEqual([ids[name]]);
-    }
-    expect(s.press(500, 100)).toBe(true);
-    s.pointer('pointerup', 500, 100);
-    expect(selected(s)).toEqual([ids.text]);
-    expect(s.press(600, 500)).toBe(false);
-  });
-
-  it('takes those above the tokens with the move and select tools, and neither one on the map nor a locked one', () => {
+  it('takes every drawing and text by a press with the move and select tools: on the map, locked and hidden ones too', () => {
     let ids: Record<string, string> = {};
     const s = scene((made) => { ids = fill(made); });
     for (const tool of ['move', 'select'] as const) {
       s.store.getState().setActiveTool(tool);
       s.store.getState().clearSelection();
-      expect(s.press(200, 400)).toBe(true);
-      s.pointer('pointerup', 200, 400);
-      expect(selected(s)).toEqual([ids.hidden]);
-      s.store.getState().clearSelection();
-      expect(s.press(200, 200)).toBe(false);
-      expect(s.press(200, 300)).toBe(false);
-      expect(selected(s)).toEqual([]);
-      expect(s.press(200, 100)).toBe(true);
-      s.pointer('pointerup', 200, 100);
-      expect(selected(s)).toEqual([ids.above]);
+      for (const [name, y] of [['above', 100], ['onMap', 200], ['locked', 300], ['hidden', 400]] as const) {
+        expect(s.press(150, y)).toBe(true);
+        s.pointer('pointerup', 150, y);
+        expect(selected(s)).toEqual([ids[name]]);
+      }
       expect(s.press(500, 100)).toBe(true);
       s.pointer('pointerup', 500, 100);
       expect(selected(s)).toEqual([ids.text]);
+      expect(s.press(600, 500)).toBe(false);
     }
+  });
+
+  it('moves one on the map and a text by a drag with the move tool, and a locked one nowhere', () => {
+    let ids: Record<string, string> = {};
+    const s = scene((made) => { ids = fill(made); });
+    expect(s.pull([[150, 200], [210, 260]])).toBe(true);
+    expect((read(s, ids.onMap!) as { points: Point[] }).points[0]).toEqual(pt(160, 260));
+    expect(selected(s)).toEqual([ids.onMap]);
+    const text = s.texts()[0]!;
+    expect(s.pull([[500, 100], [560, 140]])).toBe(true);
+    expect([s.texts()[0]!.x - text.x, s.texts()[0]!.y - text.y]).toEqual([60, 40]);
+    expect(s.pull([[150, 300], [210, 360]])).toBe(true);
+    expect(selected(s)).toEqual([ids.locked]);
+    expect((read(s, ids.locked!) as { points: Point[] }).points[0]).toEqual(pt(100, 300));
+  });
+
+  it('adds one on the map to the selection with Shift, and takes it away again', () => {
+    let ids: Record<string, string> = {};
+    const s = scene((made) => { ids = fill(made); });
+    s.pull([[150, 100]]);
+    s.pull([[150, 200]], { shift: true });
+    expect(selected(s)).toEqual([ids.above, ids.onMap]);
+    s.pull([[150, 200]], { shift: true });
+    expect(selected(s)).toEqual([ids.above]);
   });
 
   it('takes none in any other tool, nor in a mode of the Draw tool that draws', () => {
@@ -213,7 +219,7 @@ describe('moving what is selected', () => {
     }
   });
 
-  it('selects a locked one in Select mode and moves it nowhere', () => {
+  it('selects a locked one and moves it nowhere', () => {
     const s = scene((made) => { made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)], { locked: true })); });
     expect(s.pull([[200, 100], [260, 160]])).toBe(true);
     expect(selected(s)).toHaveLength(1);
@@ -452,12 +458,20 @@ describe('the menu and the double click', () => {
   const labels = (): string[] => (openContextMenuGlobal.mock.calls[0]?.[0] ?? []).flatMap((entry) => (entry.type === 'item' ? [entry.label] : []));
   const choose = (name: string): unknown => openContextMenuGlobal.mock.calls.at(-1)?.[0].flatMap((entry) => (entry.type === 'item' && entry.label === name ? [entry] : []))[0]?.onClick();
 
-  it('opens on the press, for drawings and texts alike, with no colours and no sizes', () => {
+  it('opens on the press, for drawings and texts alike, with their colour and size in submenus', () => {
     let ids: string[] = [];
     const s = scene((made) => { ids = [made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)])), made.store.getState().addText(label(500, 300))]; });
     expect(s.press(200, 100, { button: 2 })).toBe(true);
     expect(selected(s)).toEqual([ids[0]]);
     expect(labels()).toEqual(['Hide from players', 'Under tokens', 'Lock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
+    const submenus = (openContextMenuGlobal.mock.calls[0]?.[0] ?? []).flatMap((entry) => (entry.type === 'submenu' ? [entry] : []));
+    expect(submenus.map(({ label }) => label)).toEqual(['Colour', 'Size']);
+    // A colour picked there changes the selected one alone, in one step, and not what the Draw tool makes next.
+    const colours = submenus[0]!.children as { label: string; onClick: () => void }[];
+    colours.find(({ label }) => label === 'Red')!.onClick();
+    expect(s.drawings()[0]!.color).toBe('#e93147');
+    expect(s.store.getState().drawTool.color).not.toBe('#e93147');
+    expect(steps(s)).toBe(1);
     openContextMenuGlobal.mockClear();
     s.press(500, 300, { button: 2 });
     expect(labels()).toEqual(['Edit', 'Hide from players', 'Under tokens', 'Lock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
@@ -477,7 +491,7 @@ describe('the menu and the double click', () => {
     expect(steps(s)).toBe(3);
     openContextMenuGlobal.mockClear();
     s.press(200, 100, { button: 2 });
-    expect(labels().slice(0, 3)).toEqual(['Show to players', 'Above the tokens', 'Unlock']);
+    expect(labels().slice(0, 5)).toEqual(['Colour', 'Size', 'Show to players', 'Above the tokens', 'Unlock']);
     // Locked, they take their unlocking first.
     choose('Unlock');
     s.press(200, 100, { button: 2 });
@@ -495,7 +509,7 @@ describe('the menu and the double click', () => {
     const s = scene((made) => { ids = [made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)], { locked: true })), made.store.getState().addText(label(500, 300, { locked: true }))]; });
     const offered = (): string[] => (openContextMenuGlobal.mock.calls.at(-1)?.[0] ?? []).flatMap((entry) => (entry.type === 'item' && !entry.disabled ? [entry.label] : []));
     s.press(500, 300, { button: 2 });
-    expect(labels()).toEqual(['Edit', 'Hide from players', 'Under tokens', 'Unlock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
+    expect(labels()).toEqual(['Edit', 'Colour', 'Size', 'Hide from players', 'Under tokens', 'Unlock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
     expect(offered()).toEqual(['Unlock', 'Duplicate']);
     // A row chosen all the same changes nothing.
     for (const row of ['Edit', 'Hide from players', 'Under tokens', 'Group', 'Ungroup', 'To front', 'To back', 'Delete']) choose(row);

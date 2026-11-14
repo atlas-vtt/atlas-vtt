@@ -722,6 +722,11 @@ export class PixiRendererOrchestrator { // Renamed class
     });
   }
 
+  /** The drawings and texts of the view: what the bar under a selection asks where to stand. Null before the map's layers are built. */
+  public getAnnotations(): AnnotationsRenderer | null {
+    return this.annotations ?? null;
+  }
+
   public getMapImage(): MosaicCanvas | null {
     return this.mapImage;
   }
@@ -1236,7 +1241,6 @@ export class PixiRendererOrchestrator { // Renamed class
     // The selection marks what the annotations' own handles do not frame, and turns them with a group of tokens
     this.selectionManager?.setAnnotationHost({
       framedIds: () => annotations.selecting.framedIds,
-      selectable: () => annotations.selecting.works(),
       turnAlong: (ids) => annotations.selecting.turnAlong(ids),
     });
   }

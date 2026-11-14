@@ -47,6 +47,17 @@ describe('the Draw tool on the map: cells', () => {
     expect(s.drawings()).toEqual([]);
   });
 
+  it('fills the cells of a hidden grid that things snap to, and none where it is hidden and nothing snaps to it', () => {
+    const s = scene();
+    s.store.getState().setGridVisible(false);
+    s.drag([mid(1, 1), mid(2, 1)]);
+    expect(s.drawings()).toHaveLength(1);
+    expect(s.drawings()[0]).toMatchObject({ cells: true });
+    s.store.getState().setSnapToGrid(false);
+    s.drag([mid(4, 4), mid(5, 4)]);
+    expect(s.drawings()).toHaveLength(1);
+  });
+
   it('fills one cell by a click, and the cells between two places the pointer jumped', () => {
     const s = scene();
     s.click(...mid(4, 4));
@@ -198,13 +209,14 @@ describe('the Draw tool on the map: cells', () => {
     expect(xs(s.drawings()[0]!)).toEqual([0, 2 * CELL]);
   });
 
-  it('fills nothing on a map without a grid, or with its grid switched off', () => {
+  it('fills nothing on a map without a grid, or with its grid hidden and nothing snapping to it', () => {
     const none = scene({ grid: null });
     none.drag([mid(1, 1), mid(2, 1)]);
     expect(none.drawings()).toEqual([]);
     none.destroy();
     const off = scene();
     off.store.getState().setGridVisible(false);
+    off.store.getState().setSnapToGrid(false);
     off.drag([mid(1, 1), mid(2, 1)]);
     expect(off.drawings()).toEqual([]);
     expect(live(off.renderer.layer.onMap)).toBeNull();

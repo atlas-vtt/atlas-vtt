@@ -2007,7 +2007,8 @@ export class TokenRenderer {
 
     const worldPos = this.viewport.toWorld(e.global);
     const activeTool = this.store.getState().activeTool;
-    if (activeTool !== 'select' && activeTool !== 'move') {
+    const tokenTool = activeTool === 'select' || activeTool === 'move';
+    if (!tokenTool) {
       this.hexLinkHandlers?.hover(null, e);
       this.mapFeatureHandlers?.leave();
     }
@@ -2044,6 +2045,9 @@ export class TokenRenderer {
       this.lastHoveredPinId = null;
     }
 
+    // Other tools leave tokens alone, but the statblock preview (Ctrl/Cmd held) answers with every one of them, whatever the tool does with the move
+    if (!tokenTool) this.interactionController.handleViewportTokenHover(this.hitTestTokens(worldPos.x, worldPos.y), e);
+
     // Measurement handles, light markers and range rings: hover and cursor from any tool
     if (measureCursor) this.lightHandlers?.leave();
     const markerCursor = measureCursor ?? this.lightHandlers?.cursorAt(worldPos.x, worldPos.y) ?? null;
@@ -2068,7 +2072,7 @@ export class TokenRenderer {
     const annotationCursor = markerCursor ? null : this.annotationHandlers?.cursorAt(worldPos.x, worldPos.y, () => this.hitTestTokens(worldPos.x, worldPos.y) !== null, e.altKey === true) ?? null;
     const takenCursor = markerCursor ?? annotationCursor;
     if (takenCursor) {
-      this.interactionController.handleViewportTokenHover(null);
+      if (tokenTool) this.interactionController.handleViewportTokenHover(null);
       this.uiManager.setHoverState(null);
       this.hexLinkHandlers?.hover(null, e);
       this.mapFeatureHandlers?.leave();
@@ -2083,9 +2087,8 @@ export class TokenRenderer {
       return;
     }
 
-    // Token hover: only for select/move tools; the statblock preview (Ctrl/Cmd held) answers with every tool
-    if (activeTool !== 'select' && activeTool !== 'move') {
-      this.interactionController.handleViewportTokenHover(this.hitTestTokens(worldPos.x, worldPos.y), e);
+    // Token hover: only for select/move tools
+    if (!tokenTool) {
       this.uiManager.setHoverState(null);
       this.viewport.cursor = 'default';
       return;

@@ -188,7 +188,7 @@ describe('where a text with a width keeps its line breaks', () => {
     // Written without them (by hand, by an older tool), it has them as soon as it is on the map, within the step that put it there.
     expect(s.store.getState().objects.texts[id]).toMatchObject({ breaks: [8] });
     expect(steps(s)).toBe(1);
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     s.store.getState().setSelection([id]);
     s.store.getState().updateText(id, { breaks: [4, 8] });
     const before = steps(s);

@@ -10,34 +10,36 @@ const locked = text({ id: 'locked', locked: true });
 const hidden = text({ id: 'hidden', hidden: true });
 
 describe('what the tool in hand takes of drawings and texts', () => {
-  it('takes every one in the Draw tool\'s Select mode: on the map, hidden and locked ones too', () => {
-    const scope = pressScope('draw', 'select');
-    expect(scope).toBe('all');
-    expect([above, onMap, locked, hidden].every((annotation) => takesPress(scope, annotation))).toBe(true);
-  });
-
-  it('takes none by a press in the Draw tool\'s other modes: only the handles of what was just made', () => {
-    for (const mode of DRAW_MODES.filter((one) => one !== 'select')) {
-      const scope = pressScope('draw', mode);
-      expect(scope).toBe('made');
-      expect([above, onMap, locked, hidden].some((annotation) => takesPress(scope, annotation))).toBe(false);
-    }
-  });
-
-  it('takes those above the tokens that are not locked with the move and select tools, never one on the map', () => {
+  it('takes every one with the move and select tools: on the map, locked and hidden ones too', () => {
     for (const tool of ['move', 'select']) {
-      const scope = pressScope(tool, 'select');
-      expect(scope).toBe('above');
-      expect([above, onMap, locked, hidden].map((annotation) => takesPress(scope, annotation))).toEqual([true, false, false, true]);
+      const scope = pressScope(tool);
+      expect(scope).toBe('move');
+      expect([above, onMap, locked, hidden].every((annotation) => takesPress(scope, annotation))).toBe(true);
     }
   });
 
-  it('takes none in every other tool, whatever mode the Draw tool was left in', () => {
+  it('takes none by a press in the Draw tool: only the handles of what was just made', () => {
+    const scope = pressScope('draw');
+    expect(scope).toBe('made');
+    expect([above, onMap, locked, hidden].some((annotation) => takesPress(scope, annotation))).toBe(false);
+  });
+
+  it('takes none in every other tool', () => {
     for (const tool of ['measure', 'wall', 'fog', 'eraser', 'note-pin', 'laser', 'audio', 'stairs']) {
-      const scope = pressScope(tool, 'select');
+      const scope = pressScope(tool);
       expect(scope).toBe('none');
       expect(takesPress(scope, above)).toBe(false);
     }
+  });
+
+  it('offers the GM\'s Draw tool no Select mode: the move and select tools select drawings', () => {
+    expect(DRAW_MODES).not.toContain('select');
+  });
+
+  it('takes every one alike in the players\' page\'s Draw tool in its Select mode', () => {
+    const scope = pressScope('draw', 'select');
+    expect(scope).toBe('all');
+    expect([above, onMap, locked, hidden].every((annotation) => takesPress(scope, annotation))).toBe(true);
   });
 });
 
@@ -71,8 +73,7 @@ describe('what a mode that places by a press takes of its own kind', () => {
       expect(ownKind(tool, 'stamp'), tool).toBeNull();
       expect(ownKind(tool, 'text'), tool).toBeNull();
     }
-    expect(pressScope('draw', 'stamp')).toBe('made');
-    expect(pressScope('draw', 'text')).toBe('made');
+    expect(pressScope('draw')).toBe('made');
     expect(takesPress('made', stamp)).toBe(false);
   });
 });
@@ -90,23 +91,21 @@ describe('a group', () => {
     expect(withGroups(['above'], list, 'all')).toEqual(['above']);
   });
 
-  it('brings only the members the tool takes: with the move tool not the one on the map', () => {
-    expect(withGroups(['wall'], list, 'above')).toEqual(['wall', 'sign']);
+  it('brings every member with the move tool, the one on the map too: a group is one', () => {
+    expect(withGroups(['wall'], list, 'move')).toEqual(['wall', 'floor', 'sign']);
   });
 });
 
 describe('what the handles frame', () => {
   const selected = [above, onMap, locked];
 
-  it('is every selected annotation in the Draw tool', () => {
-    expect(framedAnnotations(selected, 'all', false)).toBe(selected);
+  it('is every selected annotation, on the map and locked ones too', () => {
     expect(framedAnnotations(selected, 'made', false)).toBe(selected);
+    expect(framedAnnotations(selected, 'move', false)).toBe(selected);
   });
 
-  it('is what the move and select tools take, and nothing while a token is selected with them', () => {
-    expect(framedAnnotations(selected, 'above', false)).toEqual([above]);
-    expect(framedAnnotations(selected, 'above', true)).toEqual([]);
-    expect(framedAnnotations([above], 'above', false)).toEqual([above]);
+  it('is nothing with the move tool while a token is selected with them: the tokens\' group frame holds them', () => {
+    expect(framedAnnotations(selected, 'move', true)).toEqual([]);
   });
 
   it('is nothing in a tool that takes no annotation', () => {

@@ -59,8 +59,7 @@ async function open(): Promise<Scene> {
     app.destroy(true, { children: true });
   });
   const id = store.getState().addDrawing({ type: 'rectangle', points: rectanglePoints({ x: 200, y: 150 }, { x: 400, y: 250 }), color: '#202020', width: 2, opacity: 1 });
-  store.getState().setDrawTool({ mode: 'select' });
-  store.getState().setActiveTool('draw');
+  store.getState().setActiveTool('move');
   store.getState().setSelection([id]);
   return {
     app, viewport, store, annotations,

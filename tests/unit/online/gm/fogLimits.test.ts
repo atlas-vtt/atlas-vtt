@@ -1,92 +1,109 @@
-import { MAX_FOG_OPERATIONS, MAX_FOG_POINTS, parseFog } from '../../../../src/app/online/protocol/index.ts';
-import { fogPastLimits, sharedFog } from '../../../../src/app/online/gm/sceneInputs.ts';
+import { MAX_FOG_OPERATIONS, parseFog, type SharedFog, type SharedFogOperation } from '../../../../src/app/online/protocol/index.ts';
+import { FOLD_AFTER, SharedFogLog } from '../../../../src/app/online/gm/sharedFogLog.ts';
+import { fogCoverage } from '../../../../src/app/fog/fogCoverage';
+import { inflateShape, subtractShapes } from '../../../../src/app/lighting/polygonClip';
 import type { FogOperation } from '../../../../src/app/types/fogTypes';
+import { Q_SCALE, type QShape } from '../../../../src/app/types/shapeTypes';
 import { describe, expect, it } from 'vitest';
 import { sceneState, sequenced, shareHarness } from './shareHarness.ts';
 
-const TOO_MUCH = 'This map has too much fog for online players. They see it covered until you clear some.';
-const alias = (key: string): string => key.padStart(24, '0').slice(-24).replace(/[^0-9a-f]/g, '0');
+let ids = 0;
+const alias = (): string => (ids++).toString(16).padStart(24, '0');
 
-const rectangle = (id: string, timestamp: number): FogOperation => ({ id, kind: 'fog', timestamp, isErasing: false, type: 'rectangle', x: timestamp % 900, y: 0, width: 50, height: 50 });
-/** `count` rectangles, each a tick after the one before. */
-function rectangles(count: number): Record<string, FogOperation> {
-  const fog: Record<string, FogOperation> = {};
-  for (let index = 0; index < count; index += 1) fog[`r${index}`] = rectangle(`r${index}`, index + 1);
+type Fog = Record<string, FogOperation>;
+const rectangle = (id: string, timestamp: number, x: number, y: number, size = 50): FogOperation => ({ id, kind: 'fog', timestamp, isErasing: false, type: 'rectangle', x, y, width: size, height: size });
+
+/** The map covered, then a party walking a winding path clearing a disc round each step, one lasso a step. */
+function walked(steps: number): Fog {
+  const fog: Fog = { cover: rectangle('cover', 0, 0, 0, 6000) };
+  for (let step = 0; step < steps; step += 1) {
+    const cx = 300 + (step * 7) % 5400;
+    const cy = 300 + 2000 * Math.sin(step / 40) + 2000;
+    const points = Array.from({ length: 48 }, (_, i) => ({ x: cx + 150 * Math.cos((i / 48) * 2 * Math.PI), y: cy + 150 * Math.sin((i / 48) * 2 * Math.PI) }));
+    fog[`step${step}`] = { id: `step${step}`, kind: 'fog', timestamp: step + 1, isErasing: true, type: 'lasso', points };
+  }
   return fog;
 }
-/** One lasso round a circle with `count` corners: twice as many numbers on the wire. */
-function lasso(count: number): FogOperation {
-  const points = Array.from({ length: count }, (_, index) => ({ x: 500 + 400 * Math.cos((index / count) * 2 * Math.PI), y: 500 + 400 * Math.sin((index / count) * 2 * Math.PI) }));
-  return { id: 'lasso', kind: 'fog', timestamp: 1, isErasing: false, type: 'lasso', points };
+
+/** The fog a player's page replays from what it was sent, as `apps/play`'s `fogOperations` builds it. */
+function replayed(sent: readonly SharedFogOperation[]): QShape {
+  const record: Fog = {};
+  sent.forEach((shared, index) => {
+    const base = { id: `f${index}`, kind: 'fog' as const, timestamp: index, isErasing: shared.erase };
+    const points = shared.type === 'rectangle' ? [] : Array.from({ length: shared.points.length / 2 }, (_, i) => ({ x: shared.points[i * 2]!, y: shared.points[i * 2 + 1]! }));
+    record[`f${index}`] = shared.type === 'rectangle' ? { ...base, type: 'rectangle', x: shared.x, y: shared.y, width: shared.width, height: shared.height }
+      : shared.type === 'brush' ? { ...base, type: 'brush', points, brushRadius: shared.radius } : { ...base, type: 'lasso', points };
+  });
+  return fogCoverage(record).shape;
 }
 
-describe('fog that is more than players can be sent', () => {
-  it('goes out whole up to as many operations as a message may carry, and as unreadable past them', () => {
-    const most = rectangles(MAX_FOG_OPERATIONS);
-    expect(fogPastLimits(most)).toBe(false);
-    const sent = sharedFog(most, alias);
-    expect(sent).toHaveLength(MAX_FOG_OPERATIONS);
-    // What goes out is what a player's page reads.
-    expect(parseFog(JSON.parse(JSON.stringify(sent)))).toHaveLength(MAX_FOG_OPERATIONS);
+function expectSameFog(sent: SharedFog, fog: Fog): void {
+  expect(sent).not.toBeNull();
+  // What goes out is what a player's page reads, and replays to the GM's own fog: a fold rounds
+  // crossings in another order, so it may differ by slivers, never by half a pixel's width.
+  expect(parseFog(JSON.parse(JSON.stringify(sent)))).toHaveLength(sent!.length);
+  const players = replayed(sent!);
+  const gm = fogCoverage(fog).shape;
+  const sliver = (shape: QShape): QShape => inflateShape(shape, -Q_SCALE / 4);
+  expect(sliver(subtractShapes(players, gm))).toEqual([]);
+  expect(sliver(subtractShapes(gm, players))).toEqual([]);
+}
 
-    const over = { ...most, last: rectangle('last', MAX_FOG_OPERATIONS + 1) };
-    expect(fogPastLimits(over)).toBe(true);
-    expect(sharedFog(over, alias)).toBeNull();
-    // Unreadable fog covers the players' whole map; the operations themselves they would refuse, and show none.
-    expect(parseFog(null)).toBeNull();
-    expect(parseFog(Object.values(over).map(({ id: _id, kind: _kind, timestamp: _timestamp, isErasing, ...shape }) => ({ ...shape, erase: isErasing })))).toBeUndefined();
+describe('the fog players are sent', () => {
+  it('is every operation by itself while the log is short', () => {
+    const fog = walked(20);
+    const sent = new SharedFogLog().shared(fog, alias);
+    expect(sent).toHaveLength(21);
+    expectSameFog(sent, fog);
   });
 
-  it('goes out whole up to as many points as a message may carry, and as unreadable past them', () => {
-    const most = { lasso: lasso(MAX_FOG_POINTS / 2) };
-    expect(fogPastLimits(most)).toBe(false);
-    const sent = sharedFog(most, alias);
-    expect(sent).toHaveLength(1);
-    expect(parseFog(sent)).toHaveLength(1);
+  it('is the shape of a long evening of party steps, not its history', () => {
+    const fog = walked(1200);
+    const log = new SharedFogLog();
+    const sent = log.shared(fog, alias);
+    expect(log.tooMuch).toBe(false);
+    expect(sent!.length).toBeLessThan(FOLD_AFTER.operations);
+    expectSameFog(sent, fog);
+  }, 60_000);
 
-    // One corner more, in another operation: the points of all count together.
-    const over = { ...most, brush: { id: 'brush', kind: 'fog', timestamp: 2, isErasing: true, type: 'brush', points: [{ x: 10, y: 10 }], brushRadius: 20 } satisfies FogOperation };
-    expect(fogPastLimits(over)).toBe(true);
-    expect(sharedFog(over, alias)).toBeNull();
-    expect(sharedFog({ lasso: lasso(MAX_FOG_POINTS / 2 + 1) }, alias)).toBeNull();
+  it('folds onto the last fold, keeps its ids, and sends what follows it by itself', () => {
+    const fog = walked(FOLD_AFTER.operations + 1);
+    const log = new SharedFogLog();
+    const folded = log.shared(fog, alias)!;
+    const more = { ...fog, last: rectangle('last', 10_000, 100, 100) };
+    const next = log.shared(more, alias)!;
+    expect(next.slice(0, -1)).toEqual(folded);
+    expect(next.at(-1)).toMatchObject({ type: 'rectangle' });
+    expectSameFog(next, more);
+  }, 60_000);
+
+  it('folds anew when an undo reaches past the fold', () => {
+    const fog = walked(FOLD_AFTER.operations + 1);
+    const log = new SharedFogLog();
+    log.shared(fog, alias);
+    const { step3: _gone, ...undone } = fog;
+    expectSameFog(log.shared(undone, alias), undone);
+  }, 60_000);
+
+  it('covers the map where even its shape is more operations than a message carries', () => {
+    const specks: Fog = {};
+    for (let index = 0; index <= MAX_FOG_OPERATIONS; index += 1) specks[`s${index}`] = rectangle(`s${index}`, index + 1, (index % 100) * 20, Math.floor(index / 100) * 20, 10);
+    const log = new SharedFogLog();
+    expect(log.shared(specks, alias)).toBeNull();
+    expect(log.tooMuch).toBe(true);
   });
 
-  it('counts a record that holds entries that are no operations without failing', () => {
-    const broken = { none: null, number: 7, text: 'fog', points: { points: 'none' } } as unknown as Record<string, FogOperation>;
-    expect(fogPastLimits(broken)).toBe(false);
-    expect(sharedFog(broken, alias)).toBeNull();
+  it('covers the map where an operation cannot be read', () => {
+    const broken = { none: null, number: 7 } as unknown as Fog;
+    expect(new SharedFogLog().shared(broken, alias)).toBeNull();
   });
 
-  it('covers the map for players who join, and tells the GM once until some is cleared', async () => {
+  it('goes out to players for a long log, and tells the GM nothing', async () => {
     const base = sceneState();
-    const withFog = (fog: Record<string, FogOperation>): ReturnType<typeof sceneState> => sceneState({ objects: { ...base.objects, fog } });
-    const over = { ...rectangles(MAX_FOG_OPERATIONS), last: rectangle('last', MAX_FOG_OPERATIONS + 1) };
-    const table = shareHarness(withFog(over), new Map([['maps/cave.webp', new Uint8Array([9, 9, 9])]]));
+    const table = shareHarness(sceneState({ objects: { ...base.objects, fog: walked(FOLD_AFTER.operations + 1) } }), new Map([['maps/cave.webp', new Uint8Array([9, 9, 9])]]));
     table.share.start();
     await table.advance(2_000);
-    const held = (): unknown => sequenced(table.sent, 'fog').at(-1)?.fog;
-    expect(held()).toBeNull();
-    expect(table.notices).toEqual([TOO_MUCH]);
-
-    // More fog still: players stay covered, and the GM is not told again.
-    await table.set(withFog({ ...over, more: rectangle('more', MAX_FOG_OPERATIONS + 2) }));
-    await table.advance(2_000);
-    expect(held()).toBeNull();
-    expect(table.notices).toEqual([TOO_MUCH]);
-
-    // A player who joins now gets the same: the map covered, never open.
-    table.sent.length = 0;
-    table.share.resend('ana');
-    expect(table.sent.filter(({ body }) => body.t === 'fog').map(({ body, to }) => [body.t === 'fog' ? body.fog : undefined, to])).toEqual([[null, 'ana']]);
-
-    // Some of it cleared: the fog goes out again.
-    await table.set(withFog(rectangles(10)));
-    await table.advance(2_000);
-    expect(sequenced(table.sent, 'fog').at(-1)?.fog).toHaveLength(10);
-    expect(table.notices).toEqual([TOO_MUCH]);
-    // Past the limit again, the GM is told again.
-    await table.set(withFog(over));
-    await table.advance(2_000);
-    expect(table.notices).toEqual([TOO_MUCH, TOO_MUCH]);
+    expect(sequenced(table.sent, 'fog').at(-1)?.fog).toHaveLength(2);
+    expect(table.notices).toEqual([]);
   }, 30_000);
 });

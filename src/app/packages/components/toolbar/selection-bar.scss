@@ -1,0 +1,25 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The bar under drawings and texts selected on the map (`SelectionBar`): the look
+// of a tool's bars above the main toolbar (`tool-options-bar.scss`), standing on
+// the map under what it changes
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+
+@use '../../../../../styles/tokens' as *;
+
+.atlas-selection-bar {
+  // Placed with `translate` by useSelectionBarPlace, which also sets the middle of the edge that
+  // faces the selection as its transform origin, so the scale it opens and closes with grows out
+  // from under what is selected.
+  position: absolute;
+  left: 0;
+  top: 0;
+  // Under the light popover (45), which never shows with it, above the map.
+  z-index: 44;
+  width: max-content;
+}
+
+// Delete says what it does in the theme's warning colour as the pointer comes to it.
+.atlas-tool-bar button.btn.atlas-tool-bar__destructive:hover:not(:disabled) {
+  color: var(--text-error) !important;
+}

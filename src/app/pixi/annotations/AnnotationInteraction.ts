@@ -1,6 +1,7 @@
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { TextMeasure } from '../../annotations/annotationBounds';
+import { selectionFrame, type Frame } from '../../annotations/annotationFrame';
 import { HANDLE_LOOK, handleAt, isGrip, type HandleRef } from '../../annotations/annotationHandles';
 import { annotationsAt } from '../../annotations/annotationHit';
 import { ownKind, takesOwn, takesPress, withGroups, type OwnKind } from '../../annotations/annotationPress';
@@ -61,15 +62,15 @@ export interface AnnotationInteractionDeps {
 
 /**
  * Selecting and reshaping drawings and texts: the one place that takes the pointer for them. The
- * tool in hand says what a press takes (`pressScope`): every annotation in the Draw tool's Select
- * mode, those above the tokens in the move and select tools, and in the Draw tool's other modes
- * only the handles of what is selected (the stamp or text just made: a drawn shape is not
- * selected), and what a mode that places by a press has of its own kind under the pointer
- * (`ownKind`: a stamp in Stamp mode; a text in Text mode, unless Alt is held). A press selects (with its group; Shift adds or takes away) and
- * drags; a press on a handle scales, stretches, turns or moves a line's point; a right click opens
- * the menu (the press released in place: a right-drag pans); a double click edits a text or
- * removes a line's point, and so does the first click on a text in Text mode; a text opens on the
- * release in place, so a drag from it moves it.
+ * tool in hand says what a press takes (`pressScope`): every annotation in the move and select
+ * tools, and in the Draw tool only the handles of what is selected (the stamp or text just made:
+ * a drawn shape is not selected), and what a mode that places by a press has of its own kind under
+ * the pointer (`ownKind`: a stamp in Stamp mode; a text in Text mode, unless Alt is held). A press
+ * selects (with its group; Shift adds or takes away) and drags, on the map too (a locked one moves
+ * nowhere); a press on a handle scales, stretches, turns or moves a line's point; a right click opens the menu
+ * (the press released in place: a right-drag pans); a double click edits a text or removes a
+ * line's point, and so does the first click on a text in Text mode; a text opens on the release in
+ * place, so a drag from it moves it.
  */
 export class AnnotationInteraction {
   /** What the dispatch calls. */
@@ -191,6 +192,18 @@ export class AnnotationInteraction {
     return annotations.length > 0 ? new AnnotationEdit(annotations, this.deps.layer, () => this.deps.touched(), (places) => this.deps.store.getState().placeAnnotations(places)) : null;
   }
 
+  /**
+   * The frame around everything the handles frame now, locked ones too, which have no handles of
+   * their own; null while nothing is framed, something is dragged, a text is typed or the canvas
+   * shows the players' picture. What the bar under a selection stands below.
+   */
+  framedFrame(): Frame | null {
+    if (!this.works() || this.gestures.dragging) return null;
+    const read = this.read();
+    if (read.framed.length === 0) return null;
+    return read.handles !== null && read.free.length === read.framed.length ? read.handles.frame : selectionFrame(read.framed, this.deps.measure);
+  }
+
   /** The ids of the annotations the handles frame now: the selection's highlights leave them out. */
   get framedIds(): ReadonlySet<string> {
     return this.read().framedIds;
@@ -227,7 +240,7 @@ export class AnnotationInteraction {
 
   /** The topmost annotation at `point` that the tool in hand takes: by its scope, or as one of the kind `own`. */
   private taken(point: Point, read: SelectionRead, own: OwnKind | null = null): Annotation | null {
-    if (read.scope !== 'all' && read.scope !== 'above' && own === null) return null;
+    if (read.scope !== 'all' && read.scope !== 'move' && own === null) return null;
     return annotationsAt(point, HIT_TOLERANCE / this.zoom, read.list, this.deps.measure)
       .find((annotation) => takesPress(read.scope, annotation) || takesOwn(own, annotation)) ?? null;
   }
@@ -372,7 +385,7 @@ export class AnnotationInteraction {
     // The frame's inside moves the selection, but not in a mode that draws: there a press in it draws.
     const inside = handle?.kind === 'body' && read.scope !== 'made';
     // A token is asked for only where something of this lies: the move and select tools give it the press.
-    if ((!at && !inside) || (read.scope === 'above' && covered())) {
+    if ((!at && !inside) || (read.scope === 'move' && covered())) {
       this.hover(null);
       return null;
     }

@@ -2,6 +2,7 @@
 import type { Container, EventSystem } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DrawingInput } from '../../../src/app/annotations/annotationTypes';
+import { SELECTION_BAR } from '../../../src/app/pixi/annotations/BarMenuPress';
 import { DRAW_TOOL_BARS } from '../../../src/app/pixi/annotations/TypingWatch';
 import { drawScene, type DrawScene } from '../../helpers/drawScene';
 
@@ -90,13 +91,18 @@ describe('a press beside an open menu of the Draw tool\'s bars', () => {
     expect(s.store.getState().selectedIds).toEqual([]);
   });
 
-  it('is not the Draw tool\'s to judge with another tool in hand', () => {
+  it('only closes a menu of the bar under a selection with the move tool: what is selected stays, nothing else is taken', () => {
     s = drawScene();
-    const id = s.store.getState().addDrawing(box(100, 100));
-    barsWithMenu(true);
+    const [first, second] = [s.store.getState().addDrawing(box(100, 100)), s.store.getState().addDrawing(box(400, 100))];
     s.store.getState().setActiveTool('move');
-    expect(pressOnMap(170, 170)).toBe(true);
-    expect(s.store.getState().selectedIds).toEqual([id]);
+    s.store.getState().setSelection([first]);
+    bars = document.body.createDiv({ cls: SELECTION_BAR });
+    const button = bars.createEl('button', { attr: { 'aria-haspopup': 'menu', 'aria-expanded': 'true' } });
+    expect(pressOnMap(470, 170)).toBe(true);
+    expect(s.store.getState().selectedIds).toEqual([first]);
+    button.setAttribute('aria-expanded', 'false');
+    expect(pressOnMap(470, 170)).toBe(true);
+    expect(s.store.getState().selectedIds).toEqual([second]);
   });
 });
 
@@ -184,7 +190,7 @@ describe('the cursor after a drag of a drawing', () => {
   it('is the arrow again after Escape put the drawing back from under the pointer', () => {
     s = drawScene();
     s.store.getState().addDrawing(box(100, 100));
-    s.tool({ mode: 'select' });
+    s.store.getState().setActiveTool('move');
     expect(cursorAfterDrag(() => expect(s.renderer.selecting.handleEscape()).toBe(true))).toBe('default');
   });
 });

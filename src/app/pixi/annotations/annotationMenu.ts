@@ -13,14 +13,15 @@ export type AnnotationMenuStore = Pick<ViewAtlasState, 'updateAnnotations' | 'or
  * The context menu of drawings and texts, one for both: `selected` is every annotation it changes
  * (the selection the right-click made or found), `clicked` the one under the pointer. A row that
  * switches something says what it will do: where every selected one is hidden it shows them, else
- * it hides them. No colours and no sizes: the tool's bars have them. A locked one takes nothing
+ * it hides them. `styles` are the rows that change how they look (colour and size), which come
+ * after Edit; the bar under a selection has those and more. A locked one takes nothing
  * but its unlocking (`annotationLock.ts`): the rows speak of the others, and where every selected
  * one is locked only Unlock and Duplicate can be chosen. Group makes one group of what is
  * selected and Ungroup takes it apart; each can be chosen only where it changes something.
  * A drawing or text an online player made says so in a first row that does nothing, where the
  * player is known (`annotationAuthor`).
  */
-export function annotationMenu(selected: readonly Annotation[], clicked: Annotation | null, store: AnnotationMenuStore, edit: (text: TextAnnotation) => void): ContextMenuEntry[] {
+export function annotationMenu(selected: readonly Annotation[], clicked: Annotation | null, store: AnnotationMenuStore, edit: (text: TextAnnotation) => void, styles: readonly ContextMenuEntry[] = []): ContextMenuEntry[] {
   const ids = selected.map(({ id }) => id);
   if (ids.length === 0) return [];
   const free = selected.filter((annotation) => !isLocked(annotation));
@@ -33,6 +34,7 @@ export function annotationMenu(selected: readonly Annotation[], clicked: Annotat
   const author = annotationAuthor(clicked?.by ?? null);
   if (author !== null) entries.push({ type: 'item', label: t('draw.menu.drawnBy', { name: author }), icon: 'user', disabled: true, onClick: () => undefined }, MENU_SEPARATOR);
   if (clicked?.kind === 'text') entries.push({ type: 'item', label: t('draw.menu.edit'), icon: 'pencil', disabled: isLocked(clicked), onClick: () => edit(clicked) });
+  if (styles.length > 0) entries.push(...styles, MENU_SEPARATOR);
   entries.push(
     {
       type: 'item',
