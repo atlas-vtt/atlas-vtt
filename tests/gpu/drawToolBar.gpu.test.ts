@@ -360,14 +360,17 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(button('Under tokens').getAttribute('aria-pressed')).toBe('true');
     act(() => button('Under tokens').click());
     expect(store.getState().drawTool).toMatchObject({ cellsLayer: 'above', layer: 'above' });
+    // Hidden, the grid is still there while things snap to it; hidden and snapped to by nothing, it is no grid to fill.
     act(() => store.getState().setGridVisible(false));
+    expect(button('Cells').getAttribute('aria-disabled')).toBeNull();
+    act(() => store.getState().setSnapToGrid(false));
     await settled('pen');
     expect(store.getState().drawTool.mode).toBe('pen');
     expect(button('Cells').getAttribute('aria-disabled')).toBe('true');
     expect(rect(MODES)).toEqual(modes);
     act(() => button('Cells').click());
     expect(store.getState().drawTool.mode).toBe('pen');
-    act(() => store.getState().setGridVisible(true));
+    act(() => store.getState().setSnapToGrid(true));
     expect(button('Cells').getAttribute('aria-disabled')).toBeNull();
   });
 

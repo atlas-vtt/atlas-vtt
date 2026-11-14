@@ -8,7 +8,9 @@ import {
 const MODES = DRAW_MODE_CHOICES.map((choice) => choice.value);
 const GRID = { enabled: true, size: 70 };
 const NO_GRID = { enabled: false, size: 70 };
-const GRID_OFF = { enabled: true, visible: false, size: 70 };
+const GRID_OFF = { enabled: true, visible: false, snapToGrid: false, size: 70 };
+/** Hidden, and still there: tokens and drawings snap to it. */
+const GRID_HIDDEN = { enabled: true, visible: false, size: 70 };
 
 describe('the Draw tool\'s modes', () => {
   it('offers every mode, in the tool\'s order, each under its own name', () => {
@@ -17,9 +19,12 @@ describe('the Draw tool\'s modes', () => {
     expect(new Set(DRAW_MODE_CHOICES.map((choice) => choice.label)).size).toBe(MODES.length);
   });
 
-  it('cannot fill cells without a grid that is there and shown, and says why', () => {
+  it('fills the cells of a grid that is shown or that things snap to, hidden or not; without one it says why', () => {
     expect(drawModeUnavailable('cells', GRID)).toBeNull();
-    for (const grid of [NO_GRID, GRID_OFF, { enabled: true, size: 0 }, null, undefined]) expect(drawModeUnavailable('cells', grid)).toBe('Turn on the grid to colour cells');
+    expect(drawModeUnavailable('cells', GRID_HIDDEN)).toBeNull();
+    expect(drawModeUnavailable('cells', { ...GRID_HIDDEN, snapToGrid: true })).toBeNull();
+    expect(drawModeUnavailable('cells', { ...GRID, snapToGrid: false })).toBeNull();
+    for (const grid of [NO_GRID, GRID_OFF, { enabled: true, size: 0 }, null, undefined]) expect(drawModeUnavailable('cells', grid)).toBe('Show the grid or snap to it to colour cells');
     for (const mode of MODES.filter((mode) => mode !== 'cells')) expect(drawModeUnavailable(mode, null)).toBeNull();
   });
 
@@ -38,6 +43,7 @@ describe('the Draw tool\'s modes', () => {
     expect(nextDrawMode('eraser', GRID)).toBe('pen');
     expect(nextDrawMode('stamp', GRID)).toBe('cells');
     expect(nextDrawMode('stamp', GRID_OFF)).toBe('eraser');
+    expect(nextDrawMode('stamp', GRID_HIDDEN)).toBe('cells');
     expect(nextDrawMode('cells', NO_GRID)).toBe('eraser');
   });
 
