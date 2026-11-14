@@ -59,16 +59,18 @@ export interface PlayerViewSwitch {
 
 /** What players see, as switches: the palette's player view settings and the player window bar's menu show the same ones. */
 export interface PlayerViewSwitches {
-  /** The widgets, initiative and dice rolls, and online the players' cursors and whether players may draw. */
-  interface: PlayerViewSwitch[];
-  /** Rendering up to 4K, on this device. */
+  /** The widgets, initiative and dice rolls: the player window and online players alike. */
+  shared: PlayerViewSwitch[];
+  /** The players' cursors and whether players may draw: online play only, none while it is switched off. */
+  online: PlayerViewSwitch[];
+  /** Rendering up to 4K, on this device: the player window only. */
   view4k: PlayerViewSwitch;
   /**
    * One per resource of the rules the open scene plays by, bars and wheels alike; none for a map
    * that plays by no rules. The player window shows the wheels they see at rest, as it cannot hover or select.
    */
   resources: PlayerViewSwitch[];
-  /** The tokens' nameplates. */
+  /** The tokens' nameplates, for the player window and online players alike. */
   tokens: PlayerViewSwitch[];
 }
 
@@ -100,7 +102,8 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
   };
 
   return {
-    interface: [...UI_SWITCHES, ...(onlinePlay ? ONLINE_SWITCHES : [])].map(switchOf),
+    shared: UI_SWITCHES.map(switchOf),
+    online: onlinePlay ? ONLINE_SWITCHES.map(switchOf) : [],
     view4k: { id: 'view4k', label: t('lpv.view4k'), value: view4k, onToggle: () => settings?.setPlayerView4k(!view4k) },
     resources: source.kind === 'none' ? [] : slottedResources(resources).map(({ definition: resource, slot }) => ({
       id: `resource:${resource.key}`,

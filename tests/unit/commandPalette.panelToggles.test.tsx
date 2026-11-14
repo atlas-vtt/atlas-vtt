@@ -11,7 +11,7 @@ vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowServi
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTab: vi.fn() }));
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/SceneSnapshotsPanel', () => ({
   SceneSnapshotsPanel: ({ onRestore }: { onRestore: () => void }) => <button onClick={onRestore}>Restore snapshot</button>,
 }));

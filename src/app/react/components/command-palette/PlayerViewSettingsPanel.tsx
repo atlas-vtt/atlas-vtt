@@ -12,7 +12,7 @@ const renderSwitch = ({ id, label, hint, value, onToggle }: PlayerViewSwitch): R
   <SettingToggleRow key={id} label={label} hint={hint} value={value} onToggle={onToggle} />
 );
 
-export function LocalPlayerViewSettingsPanel(): React.ReactElement {
+export function PlayerViewSettingsPanel(): React.ReactElement {
   const { app, view } = useAtlasUI();
   const settingsService: SettingsService | undefined = view?.serviceManager?.getSettingsService();
   const switches = usePlayerViewSwitches(settingsService);
@@ -20,26 +20,32 @@ export function LocalPlayerViewSettingsPanel(): React.ReactElement {
   return (
     <div className="atlas-command-palette-panel">
       <div className="atlas-command-palette-panel-column">
-        <h3 className="atlas-command-palette-panel-heading">{t('lpv.interface')}</h3>
-        {switches.interface.map(renderSwitch)}
+        <h3 className="atlas-command-palette-panel-heading">{t('lpv.shared')}</h3>
+        {switches.shared.map(renderSwitch)}
+        {switches.resources.map(renderSwitch)}
+        {switches.tokens.map(renderSwitch)}
+      </div>
+
+      <div className="atlas-command-palette-panel-column">
+        <h3 className="atlas-command-palette-panel-heading">{t('lpv.playerWindow')}</h3>
         <SettingToggleRow
           label={switches.view4k.label}
           hint={t('lpv.view4kHint')}
           value={switches.view4k.value}
           onToggle={switches.view4k.onToggle}
         />
-      </div>
-
-      <div className="atlas-command-palette-panel-column">
-        <h3 className="atlas-command-palette-panel-heading">{t('lpv.tokens')}</h3>
-        {switches.resources.map(renderSwitch)}
-        {switches.tokens.map(renderSwitch)}
         <SettingRow label={t('lpv.notePreviews')} hint={t('lpv.notePreviewsHint')}>{null}</SettingRow>
-
         <Button variant="default" size="sm" className="atlas-command-palette-cta" onClick={() => void openPlayerWindow(app)}>
           <MonitorUp />
           {t('lpv.openWindow')}
         </Button>
+
+        {switches.online.length > 0 && (
+          <>
+            <h3 className="atlas-command-palette-panel-heading">{t('lpv.online')}</h3>
+            {switches.online.map(renderSwitch)}
+          </>
+        )}
       </div>
     </div>
   );

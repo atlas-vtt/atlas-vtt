@@ -57,6 +57,7 @@
 - The player window bar has a pause and play button: paused, players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead. Playing again fades them through black to your view, as for another scene, instead of jumping
 - The player window bar is slimmer: as tall as the scene tabs above it
 - Every toolbar, widget and the online play button have the same rounded corners, and the bars at the bottom stand as close to the edges of the map as those at the top. The scene tabs are no longer a pill, and every button in a bar is rounded alike on all sides, the GM view switch too. Buttons sit closer to their bar's edge and to each other, so their corners are rounder and the bars a little smaller
+- Local player view settings are now Player view settings, in three sections: what applies to the player window and online players alike, what only the player window uses, and what only online play uses. The player window bar's menu no longer lists the online switches
 - Widget icons stand on the widget itself, without a tinted tile behind them that did not follow the widget when it grew or shrank
 
 ## Fixed

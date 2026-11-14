@@ -49,7 +49,7 @@ import { SettingsPanelHeader } from './command-palette/SettingsPanelHeader';
 import { GridSettingsPanel } from './command-palette/GridSettingsPanel';
 import { TokenSettingsPanel } from './command-palette/TokenSettingsPanel';
 import { WidgetSettingsPanel } from './command-palette/WidgetSettingsPanel';
-import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewSettingsPanel';
+import { PlayerViewSettingsPanel } from './command-palette/PlayerViewSettingsPanel';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
 import { GraphicsPanel } from './command-palette/GraphicsPanel';
@@ -94,7 +94,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'grid-settings': { title: t('palette.panel.grid'), icon: <Grid /> },
   'token-settings': { title: t('palette.panel.tokens'), icon: <Users /> },
   'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
-  'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
+  'local-player-view-settings': { title: t('palette.panel.playerView'), icon: <MonitorUp /> },
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
   'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
@@ -426,7 +426,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "local-player-view-settings",
       icon: <UserCheck />,
-      label: t('palette.localPlayerViewSettings'),
+      label: t('palette.playerViewSettings'),
       section: "settings",
       hasSubmenu: true,
       submenu: [
@@ -905,7 +905,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
           />
         );
       case 'local-player-view-settings':
-        return <LocalPlayerViewSettingsPanel />;
+        return <PlayerViewSettingsPanel />;
       case 'dice-settings':
         return <DiceSettingsPanel />;
       case 'experimental-features':

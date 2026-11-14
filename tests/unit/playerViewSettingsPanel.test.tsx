@@ -3,7 +3,7 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { LocalPlayerViewSettingsPanel } from '../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel';
+import { PlayerViewSettingsPanel } from '../../src/app/react/components/command-palette/PlayerViewSettingsPanel';
 
 import { AMMO, HP, STRESS } from '../mocks/resourceFixtures';
 
@@ -18,7 +18,7 @@ afterEach(() => { cleanup(); vi.useRealTimers(); context.resources = []; context
 it('updates every supported setting and follows settings changed elsewhere', () => {
   vi.useFakeTimers();
   context.settings = new SettingsService({} as any);
-  render(<LocalPlayerViewSettingsPanel />);
+  render(<PlayerViewSettingsPanel />);
   const settings = context.settings as SettingsService;
   for (const [label, key] of [
     ['Show initiative panel', 'showInitiative'], ['Show widgets', 'showWidgets'],
@@ -37,14 +37,18 @@ it('updates every supported setting and follows settings changed elsewhere', () 
   expect(screen.getByText('Note previews are not shared with the player window.')).toBeTruthy();
 });
 
-it('offers the cursor switch only while online play is switched on', () => {
+it('offers the cursor switch only while online play is switched on, in a section of its own', () => {
   context.settings = new SettingsService({} as never);
   const settings = context.settings as SettingsService;
-  const { unmount } = render(<LocalPlayerViewSettingsPanel />);
+  const { unmount } = render(<PlayerViewSettingsPanel />);
   expect(screen.queryByRole('switch', { name: 'Show everyone\'s cursors' })).toBeNull();
+  expect(screen.getByRole('heading', { name: 'Local and online' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Player window' })).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: 'Online play' })).toBeNull();
   unmount();
   settings.setExperimental('onlinePlay', true);
-  render(<LocalPlayerViewSettingsPanel />);
+  render(<PlayerViewSettingsPanel />);
+  expect(screen.getByRole('heading', { name: 'Online play' })).toBeTruthy();
   const toggle = screen.getByRole('switch', { name: 'Show everyone\'s cursors' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
   fireEvent.click(toggle);
@@ -54,11 +58,11 @@ it('offers the cursor switch only while online play is switched on', () => {
 it('offers Players may draw only while online play is switched on, off until the GM switches it on, and says what it does', () => {
   context.settings = new SettingsService({} as never);
   const settings = context.settings as SettingsService;
-  const { unmount } = render(<LocalPlayerViewSettingsPanel />);
+  const { unmount } = render(<PlayerViewSettingsPanel />);
   expect(screen.queryByRole('switch', { name: 'Players may draw' })).toBeNull();
   unmount();
   settings.setExperimental('onlinePlay', true);
-  render(<LocalPlayerViewSettingsPanel />);
+  render(<PlayerViewSettingsPanel />);
   const toggle = screen.getByRole('switch', { name: 'Players may draw' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
   expect(screen.getByText('Online players get a Draw tool of their own. You can change and clear what they draw.')).toBeTruthy();
@@ -70,7 +74,7 @@ it('offers Players may draw only while online play is switched on, off until the
 it('offers a switch for every resource of the open scene\'s collection, bars and wheels alike', () => {
   context.settings = new SettingsService({} as never);
   context.resources = [{ ...HP, visibleToPlayers: true }, STRESS, AMMO];
-  render(<LocalPlayerViewSettingsPanel />);
+  render(<PlayerViewSettingsPanel />);
 
   expect(screen.getByRole('switch', { name: 'Show HP bars' }).getAttribute('aria-checked')).toBe('true');
   expect(screen.getByRole('switch', { name: 'Show Stress bars' }).getAttribute('aria-checked')).toBe('false');
@@ -87,7 +91,7 @@ it('offers no resource switches for a scene outside every collection', () => {
   context.settings = new SettingsService({} as never);
   context.resources = [HP];
   context.collection = null;
-  render(<LocalPlayerViewSettingsPanel />);
+  render(<PlayerViewSettingsPanel />);
   expect(screen.queryByRole('switch', { name: 'Show HP bars' })).toBeNull();
 });
 
@@ -95,7 +99,7 @@ it('lists all six sockets in their order, whatever the order of the list', () =>
   context.settings = new SettingsService({} as never);
   const named = (name: string, slot: number) => ({ ...AMMO, key: name.toLowerCase(), name, slot });
   context.resources = [named('Grit', 5), { ...AMMO, slot: 3 }, { ...STRESS, slot: 1 }, { ...HP, slot: 4 }, named('Luck', 2), named('Mana', 0)];
-  render(<LocalPlayerViewSettingsPanel />);
+  render(<PlayerViewSettingsPanel />);
   const names = ['Show Mana bars', 'Show Stress bars', 'Show Luck wheels', 'Show Ammo wheels', 'Show HP wheels', 'Show Grit wheels'];
   const toggles = names.map((name) => screen.getByRole('switch', { name }));
   expect(screen.getAllByRole('switch', { name: /bars|wheels/ })).toEqual(toggles);
