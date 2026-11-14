@@ -43,6 +43,7 @@ import { picker } from './picker';
 import { settings } from './settings';
 import { snapshots } from './snapshots';
 import { levels } from './levels';
+import { measure } from './measure';
 import { openings } from './openings';
 import { rooms } from './rooms';
 import { statblock } from './statblock';
@@ -67,9 +68,8 @@ import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
-import { text } from './text';
 import { audio } from './audio';
-import { drawing } from './drawing';
+import { draw } from './draw';
 import { dungeon } from './dungeon';
 import { dungeonProp } from './dungeonProp';
 import { dungeonScene } from './dungeonScene';
@@ -109,6 +109,7 @@ import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
 import { uvtt } from './uvtt';
+import { fog } from './fog';
 
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
@@ -157,6 +158,7 @@ export const en = {
   ...settings,
   ...snapshots,
   ...levels,
+  ...measure,
   ...openings,
   ...rooms,
   ...statblock,
@@ -181,9 +183,8 @@ export const en = {
   ...hotkey,
   ...pin,
   ...laser,
-  ...text,
   ...audio,
-  ...drawing,
+  ...draw,
   ...dungeon,
   ...dungeonProp,
   ...dungeonScene,
@@ -197,6 +198,7 @@ export const en = {
   ...image,
   'index.unreadable': 'Atlas VTT could not read its asset index ({path}) and left it untouched. Restart Obsidian to try again.',
   'index.rebuilding': 'Atlas VTT could not read its asset index and is rebuilding it from your collection files. The unreadable file was kept as {path}.',
+  'index.folderMoved': 'The Atlas folder was moved to "{path}". Atlas finds its library only in "{folder}" at the top of the vault: move the folder back there and your maps, scenes and tokens are back.',
   ...link,
   ...mapPreview,
   ...names,
@@ -225,4 +227,5 @@ export const en = {
   ...videoMap,
   ...uvttFloors,
   ...uvtt,
+  ...fog,
 } as const;

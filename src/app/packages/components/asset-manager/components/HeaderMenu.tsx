@@ -41,8 +41,6 @@ export interface HeaderMenuProps {
   /** The key that opens the menu, shown in the button's tooltip; it is registered by whoever opens it through `handle`. */
   shortcut?: ModShortcut;
   handle?: React.Ref<HeaderMenuHandle> | undefined;
-  /** A popover an item opens, hung from the trigger as the menu is (the Create menu's starter tokens choice). */
-  children?: React.ReactNode;
 }
 
 /**
@@ -53,7 +51,7 @@ export interface HeaderMenuProps {
  */
 export function HeaderMenu({
   label, className = '', triggerClassName, triggerVariant = 'ghost', iconTrigger = false,
-  triggerContent, align = 'end', items, shortcut, handle, children,
+  triggerContent, align = 'end', items, shortcut, handle,
 }: HeaderMenuProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -139,7 +137,6 @@ export function HeaderMenu({
           ))}
         </div>
       )}
-      {children}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { readFogEdge, type FogEdge } from '../fog/fogEdge';
+import { readDragDistance, type DragDistance } from '../measure/dragDistance';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import type { App, Plugin } from 'obsidian';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
@@ -21,8 +22,8 @@ import {
   TUTORIAL_IDS,
 } from './atlasSettings';
 import {
-  loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
-  saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
+  loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
+  saveAnimateMaps, saveGmFogOpacity, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
 } from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
@@ -307,6 +308,18 @@ export class SettingsService {
     this.notify();
   }
 
+  /** How opaque fog is in the GM's view, 0 to 1 (`readGmFogOpacity`); players' fog is always opaque. */
+  getGmFogOpacity(): number {
+    return loadGmFogOpacity(this.app);
+  }
+
+  /** The GM's fog opacity is this device's, as its screen decides what shows through: local storage, not the synced settings. */
+  setGmFogOpacity(opacity: number): void {
+    const before = this.getGmFogOpacity();
+    saveGmFogOpacity(this.app, opacity);
+    if (this.getGmFogOpacity() !== before) this.notify();
+  }
+
   getLaserPointerSettings(): LaserPointerSettings {
     return resolveLaserPointerSettings(this.settings.laserPointer);
   }
@@ -336,6 +349,17 @@ export class SettingsService {
   setDiceDisplay(display: DiceDisplay): void {
     if (this.settings.diceDisplay === display) return;
     this.settings.diceDisplay = display;
+    this.commit();
+  }
+
+  /** When a dragged token shows its distance: the stored choice, or always when the file holds something else. */
+  getDragDistance(): DragDistance {
+    return readDragDistance(this.settings.dragDistance);
+  }
+
+  setDragDistance(choice: DragDistance): void {
+    if (this.settings.dragDistance === choice) return;
+    this.settings.dragDistance = choice;
     this.commit();
   }
 

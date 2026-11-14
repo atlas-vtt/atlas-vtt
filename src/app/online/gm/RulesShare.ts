@@ -1,7 +1,8 @@
-import type { GmMessage, SharedRollDice, SharedRules } from '../protocol/index.ts';
+import type { GmMessage, SharedMoveStep, SharedRollDice, SharedRules } from '../protocol/index.ts';
 import { MAX_COORDINATE } from '../protocol/index.ts';
-import { resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
+import { areaRulesOf, readUnitName, resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
 import type { SceneState, SceneStore } from './atlasView.ts';
+import { sharedMoveSteps, type TokenMoves } from './moveShare.ts';
 
 export interface RulesSharePorts {
   send(body: GmMessage, to?: string): void;
@@ -13,6 +14,40 @@ export interface RulesSharePorts {
   cursorsShown?(): boolean;
   /** The map's dice, by which a page offers advantage on a roll for no token of a set of its own; null while the tab has none. */
   rollDice?(): SharedRollDice | null;
+  /** While the GM lets players draw: the cell their Draw tool's sizes are shares of; null while it does not. */
+  draw?(): { readonly cell: number } | null;
+  /** How the tab's tokens move, or null while it cannot be read; without it players are sent no movement steps. */
+  tokenMoves?(): TokenMoves | null;
+}
+
+/**
+ * The diagonal rule as every page can read it. An older page has no word for `manhattan` and
+ * refuses rules it cannot read whole, so it is told the nearest rule it knows (5/10/5); the rule
+ * itself goes out beside it (`SharedMeasurement.manhattan`).
+ */
+function sharedDiagonalRule(rule: MeasurementSettings['diagonalRule']): SharedRules['measurement']['diagonalRule'] {
+  return rule === 'manhattan' ? 'alternating' : rule;
+}
+
+/**
+ * The unit as every page can read it. A unit the GM named goes out as `custom`, so an older page
+ * reads the bare number, never another unit's sign after it; the name goes out beside it
+ * (`SharedMeasurement.unitName`).
+ */
+function sharedUnitType(unitType: MeasurementSettings['unitType'], unitName: string | undefined): SharedRules['measurement']['unitType'] {
+  return unitName ? 'custom' : unitType;
+}
+
+/** What an older page does not read of a measurement: the rules that came later, each told only where it is not what such a page takes it for. */
+function laterRules(settings: MeasurementSettings): Pick<SharedRules['measurement'], 'manhattan' | 'coneEnd' | 'cellRule' | 'unitName'> {
+  const { cellRule, coneEnd } = areaRulesOf(settings);
+  const unitName = readUnitName(settings.unitName);
+  return {
+    ...(settings.diagonalRule === 'manhattan' && { manhattan: true as const }),
+    ...(coneEnd === 'flat' && { coneEnd }),
+    ...(cellRule !== 'half' && { cellRule }),
+    ...(unitName !== undefined && { unitName }),
+  };
 }
 
 const finiteOr = (value: number | undefined, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
@@ -22,25 +57,32 @@ const finiteOr = (value: number | undefined, fallback: number): number => (typeo
  * the grid's own, as Atlas's ruler falls back to), accent and whether everyone's cursor shows, and
  * the map's dice where the tab has them; null for a grid players cannot use.
  */
-export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null): SharedRules | null {
+export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null, draw: { readonly cell: number } | null = null, moveSteps: readonly SharedMoveStep[] | null = null): SharedRules | null {
   if (grid === null || !Number.isFinite(grid.size) || !(grid.size > 0) || grid.size > MAX_COORDINATE) return null;
   const offsetX = finiteOr(grid.offsetX, 0);
   const offsetY = finiteOr(grid.offsetY, 0);
   if (Math.abs(offsetX) > MAX_COORDINATE || Math.abs(offsetY) > MAX_COORDINATE) return null;
-  const { mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle } = measurement ?? resolveMeasurementSettings(undefined, grid);
+  const settings = measurement ?? resolveMeasurementSettings(undefined, grid);
+  const { mode, unitType, unitName, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle } = settings;
   return {
     grid: { type: grid.type ?? 'square', size: grid.size, offsetX, offsetY },
     snap: grid.snapToGrid ?? true,
-    measurement: { mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands: rangeBands.map(({ name, maxSquares }) => ({ name, maxSquares })), coneAngle },
+    measurement: {
+      mode, unitType: sharedUnitType(unitType, unitName), unitDistance, ruleDistance, diagonalRule: sharedDiagonalRule(diagonalRule),
+      rangeBands: rangeBands.map(({ name, maxSquares }) => ({ name, maxSquares })), coneAngle, ...laterRules(settings),
+    },
     accent,
     ...(cursors && { cursors }),
     ...(dice !== null && { dice }),
+    ...(draw !== null && Number.isFinite(draw.cell) && draw.cell > 0 && draw.cell <= MAX_COORDINATE && { draw: { cell: draw.cell } }),
+    ...(moveSteps !== null && { moveSteps }),
   };
 }
 
 /**
  * The shared scene's rules (`sharedRules`), sent to all when the scene is shared, to a player who
- * joins, and again whenever they changed when `update` looks (once a second, with the scene's poll).
+ * joins, and again whenever they changed when `update` looks (once a second, with the scene's poll):
+ * so a GM who lets players draw, or no longer, is followed by a running table within that second.
  */
 export class RulesShare {
   private readonly store: SceneStore;
@@ -64,7 +106,7 @@ export class RulesShare {
   update(): void {
     if (this.scene === null) return;
     const state = this.store.getState();
-    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null);
+    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null, sharedMoveSteps(this.ports.tokenMoves?.()?.rules()));
     if (rules === null) return;
     const body: GmMessage = { t: 'rules', scene: this.scene, ...rules };
     const text = JSON.stringify(body);

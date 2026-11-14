@@ -38,6 +38,7 @@ export const campaign: Translation = {
   'campaign.systemTitle': '{name}: игровая система',
   'campaign.closeSystem': 'Закрыть настройки игровой системы',
   'campaign.systemNoneSummary': 'Каждая карта играется по правилам своей коллекции',
+  'campaign.systemWhenPlayed': 'Карты играются по этим правилам, только пока запущен онлайн-стол этой кампании.',
   'campaign.delete': 'Удалить кампанию',
   'campaign.deleteTitle': 'Удалить «{name}»?',
   'campaign.deleteMessage': 'Сцены, карты и токены, которые она использовала, останутся в библиотеке.',

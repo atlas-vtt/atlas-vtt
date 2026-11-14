@@ -39,7 +39,8 @@ describe('a world map whose image cannot be sent', () => {
 
   it('says why: missing, too large, no image players can open, or not kept by the store', async () => {
     expect(await read('Maps/Gone.png', {})).toEqual({ map: null, problem: 'missing' });
-    expect(await read('Maps/Huge.png', { 'Maps/Huge.png': { stat: stat(ASSET_CAPS.image + 1), image: null } })).toEqual({ map: null, problem: 'too-large' });
+    const huge = png(9000, 9000);
+    expect(await read('Maps/Huge.png', { 'Maps/Huge.png': { stat: stat(ASSET_CAPS.image + 1), image: { bytes: huge, mime: 'image/png' } } })).toEqual({ map: null, problem: 'too-large' });
     expect(await read('Maps/World.svg', { 'Maps/World.svg': { stat: stat(10), image: null } })).toEqual({ map: null, problem: 'unreadable' });
     expect(await read('Maps/Broken.png', { 'Maps/Broken.png': { stat: stat(3), image: { bytes: new Uint8Array([1, 2, 3]), mime: 'image/png' } } })).toEqual({ map: null, problem: 'unreadable' });
     const shire = png(800, 600);
@@ -50,6 +51,15 @@ describe('a world map whose image cannot be sent', () => {
     const shire = png(8504, 6591);
     const { map, problem } = await read('Maps/Shire.png', { 'Maps/Shire.png': { stat: stat(shire.length), image: { bytes: shire, mime: 'image/png' } } });
     expect(map).toMatchObject({ map: { width: 8504, height: 6591 } });
+    expect(problem).toBeNull();
+  });
+
+  it('sends an image larger than the store keeps one as its tile pyramid, where one is made', async () => {
+    const huge = png(30000, 20000);
+    const pyramids = fakeStoring();
+    const storing = { ...pyramids, mapRef: async (bytes: Uint8Array<ArrayBuffer>, mime: string) => ({ ...(await pyramids.refOf(bytes, mime, { kind: 'tiles', rank: 0 }))!, tiles: true as const }) };
+    const { map, problem } = await read('Maps/Huge.png', { 'Maps/Huge.png': { stat: stat(ASSET_CAPS.image + 1), image: { bytes: huge, mime: 'image/png' } } }, storing);
+    expect(map).toMatchObject({ map: { image: { tiles: true }, width: 30000, height: 20000 } });
     expect(problem).toBeNull();
   });
 

@@ -129,6 +129,25 @@ $portrait-size: 72px;
   text-wrap: pretty;
 }
 
+// ── Markdown of several blocks ──────────────────────────────────────────────
+// A text's first paragraph runs on in its line (`StatblockMarkdown`); the blocks after it (paragraphs, a list, a
+// quote) stand under it, each a line-wide inline box and never a block. The text's element and the elements around
+// it are inline, and the Chromium of older Obsidian installers (130, Electron 33) sets a block inside an inline box
+// of a multi-column card into a column beyond the card, with every block of the card after it.
+.atlas-sb-markdown > :is(p, ul, ol, dl, blockquote, pre, h1, h2, h3, h4, h5, h6, hr, div, section, details) {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: $spacing-s 0 0;
+  vertical-align: top;
+}
+
+.atlas-sb-markdown > table {
+  display: inline-table;
+  margin: $spacing-s 0 0;
+  vertical-align: top;
+}
+
 // ── Traits and spells ───────────────────────────────────────────────────────
 // Every trait but the first (never `* + *`, see statblocks/render/_sheet-lists.scss).
 .atlas-sb-traits > :where(:not(:first-child)) {

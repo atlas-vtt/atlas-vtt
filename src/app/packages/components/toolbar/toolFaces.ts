@@ -1,8 +1,12 @@
 import { t } from '../../../i18n';
 import type React from "react"
-import { Circle, Cloud, Eraser, Flashlight, Hand, Lightbulb, MapPin, Pencil, Ruler, Stamp, Triangle, Type } from "lucide-react"
+import { Cloud, Eraser, Flashlight, Hand, Lightbulb, MapPin } from "lucide-react"
+import type { DrawMode } from "../../../annotations/annotationTypes"
+import type { MeasureMode } from "../../../measure/measureTypes"
 import { StairsIcon } from "../../../react/components/StairsIcon"
 import type { ViewAtlasState } from "../../../storeFactory"
+import { drawModeChoice } from "./drawToolChoices"
+import { measureModeChoice } from "./measureToolChoices"
 
 export type Tool = ViewAtlasState["activeTool"]
 
@@ -17,17 +21,6 @@ export interface ToolFace {
   /** The tool a click selects. */
   tool: Tool
   isActive: boolean
-}
-
-/** The shape the measure renderer draws for each measure tool. */
-export const MEASURE_SHAPES = { "measure": "line", "measure-circle": "circle", "measure-cone": "cone" } as const
-
-export type MeasureTool = keyof typeof MEASURE_SHAPES
-
-export const MEASURE_TOOLS: readonly MeasureTool[] = ["measure", "measure-circle", "measure-cone"]
-
-export function isMeasureTool(tool: Tool): tool is MeasureTool {
-  return tool in MEASURE_SHAPES
 }
 
 export function moveToolFace(activeTool: Tool): ToolFace {
@@ -50,25 +43,21 @@ export function fogToolFace(activeTool: Tool): ToolFace {
   }
 }
 
-export function drawToolFace(activeTool: Tool): ToolFace {
-  if (activeTool === "draw-eraser") return { icon: Eraser, label: t('toolbar.drawingEraser'), tool: activeTool, isActive: true }
-  if (activeTool === "draw-icon") return { icon: Stamp, label: t('toolbar.iconStamp'), tool: activeTool, isActive: true }
-  return { icon: Pencil, label: t('toolbar.drawTool'), tool: "draw-pen", isActive: activeTool === "draw-pen" }
+/** The Draw tool is one tool: its face is the mode a press draws in (`drawTool.mode`, the bar above the toolbar). */
+export function drawToolFace(activeTool: Tool, mode: DrawMode): ToolFace {
+  const { icon, label } = drawModeChoice(mode)
+  return { icon, label, tool: "draw", isActive: activeTool === "draw" }
 }
 
-export function measureToolFace(activeTool: Tool): ToolFace {
-  if (activeTool === "measure-circle") return { icon: Circle, label: t('toolbar.measureCircle'), tool: activeTool, isActive: true }
-  if (activeTool === "measure-cone") return { icon: Triangle, label: t('toolbar.measureCone'), tool: activeTool, isActive: true }
-  return { icon: Ruler, label: t('toolbar.measureLine'), tool: "measure", isActive: activeTool === "measure" }
+/** The measure tool is one tool: its face is the mode a press measures in (`measureTool.mode`, the bar above the toolbar). */
+export function measureToolFace(activeTool: Tool, mode: MeasureMode): ToolFace {
+  const { icon, label } = measureModeChoice(mode)
+  return { icon, label, tool: "measure", isActive: activeTool === "measure" }
 }
 
 /** Face of a tool without family members. */
 export function singleToolFace(tool: Tool, icon: ToolFace["icon"], label: string, activeTool: Tool): ToolFace {
   return { icon, label, tool, isActive: activeTool === tool }
-}
-
-export function textToolFace(activeTool: Tool): ToolFace {
-  return singleToolFace("text", Type, t('toolbar.textTool'), activeTool)
 }
 
 export function lightingToolFace(activeTool: Tool): ToolFace {

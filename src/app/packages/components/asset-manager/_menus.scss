@@ -120,11 +120,3 @@
   background-color: var(--divider-color);
   margin: $spacing-xs;
 }
-
-// The starter tokens choice the Create menu's "Get starter tokens…" opens: hung from the Create button where the
-// menu was, at the window's end.
-.atlas-starter-menu-anchor .atlas-starter-choice--end {
-  top: calc(100% + #{$spacing-xs});
-  right: 0;
-  margin-top: 0;
-}

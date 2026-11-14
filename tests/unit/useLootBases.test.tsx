@@ -73,6 +73,21 @@ describe('useLootBases', () => {
     expect(result.current).toMatchObject({ loaded: true, basesAvailable: false });
   });
 
+  it('is loaded with a base whose file cannot be read, and reads the base once the vault says it changed', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { app, emit } = vaultApp({ [PATH]: 'views:\n  - name: Weapons\n' });
+    const read = app.vault.cachedRead;
+    app.vault.cachedRead = () => Promise.reject(new Error('The file is not on this device.'));
+    const { result } = renderHook(() => useLootBases(app, [PATH]));
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.bases[0]).toMatchObject({ name: 'Items', missing: false, unreadable: true, views: [] });
+
+    app.vault.cachedRead = read;
+    act(() => emit('modify', PATH));
+    await waitFor(() => expect(result.current.bases[0]?.views.map((view) => view.name)).toEqual(['Weapons']));
+    expect(result.current.bases[0]?.unreadable).toBeUndefined();
+  });
+
   it('reads a base again when its file changes, and leaves other files alone', async () => {
     const files = { [PATH]: 'views:\n  - name: Weapons\n' };
     const { app, emit } = vaultApp(files);

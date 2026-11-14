@@ -2,7 +2,8 @@ import { TFile, type App } from 'obsidian';
 import { NO_STRETCH } from '../grid/mapStretch';
 import { hexLayoutOfGrid, pinDisplayPoint } from '../grid/hexLinks';
 import { t } from '../i18n';
-import type { WorldMapEntrance, WorldMapLevel, WorldMapQuest, WorldMapTree } from '../online/gm/book/worldMapGate.ts';
+import type { WorldMapEntrance, WorldMapLevel, WorldMapQuest, WorldMapSign, WorldMapTree } from '../online/gm/book/worldMapGate.ts';
+import { isReadablePin } from '../online/gm/pins/ReadablePins.ts';
 import { sentPinFace } from '../online/gm/pins/sentPinFace.ts';
 import { readQuest } from '../campaigns/quests/questProperties';
 import { linksReadableNote, noteFile, pinNoteLink } from '../tools/pinNoteLink';
@@ -43,14 +44,17 @@ interface SceneRead {
   readonly levels: SceneLevel[] | undefined;
 }
 
-/** A scene file's pins that are shown (not the GM's alone), with a link and a place that can be read, on floor `floor`, whose map they stand on. */
-function shownPins({ state, levels }: SceneRead, floor: string | null): NotePin[] {
+/** A scene file's pins with an id, a link and a place that can be read, on floor `floor`, whose map they stand on. */
+function floorPins({ state, levels }: SceneRead, floor: string | null): NotePin[] {
   const objects = isRecord(state.objects) ? state.objects : {};
   const pins = isRecord(objects.pins) ? Object.values(objects.pins) : [];
   return pins
-    .filter((pin): pin is NotePin => isRecord(pin) && pin.gmOnly !== true && typeof pin.notePath === 'string' && Number.isFinite(pin.x) && Number.isFinite(pin.y))
+    .filter((pin): pin is NotePin => isRecord(pin) && typeof pin.id === 'string' && typeof pin.notePath === 'string' && Number.isFinite(pin.x) && Number.isFinite(pin.y))
     .filter((pin) => floor === null || onLevel(pin, floor, levels));
 }
+
+/** The pins of a floor that are shown (not the GM's alone). */
+const shownPins = (pins: readonly NotePin[]): NotePin[] => pins.filter((pin) => pin.gmOnly !== true);
 
 /** The saved state of a scene file, or null when it cannot be read. */
 async function readScene(app: App, mapPath: string): Promise<SceneRead | null> {
@@ -131,12 +135,17 @@ class TreeReader {
     const entrances: WorldMapEntrance[] = [];
     const leadsTo: TreeMap[] = [];
     const quests: WorldMapQuest[] = [];
-    for (const pin of shownPins(scene, shown)) {
+    const pins = floorPins(scene, shown);
+    const placing = new Set<string>();
+    for (const pin of shownPins(pins)) {
       const point = pinDisplayPoint(pin, layout);
       const note = linkedNote(this.app, pin, mapPath);
       if (note !== null) {
         this.notePaths.add(note.path);
-        if (note.id !== undefined) quests.push({ x: point.x, y: point.y, id: note.id });
+        if (note.id !== undefined) {
+          quests.push({ x: point.x, y: point.y, id: note.id });
+          placing.add(pin.id);
+        }
         continue;
       }
       const target = await this.target(mapPath, pin);
@@ -145,7 +154,11 @@ class TreeReader {
       entrances.push({ x: point.x, y: point.y, to, ...sentPinFace(pin) });
       if (!leadsTo.some((known) => keyOf(known) === to)) leadsTo.push(target);
     }
-    return { level: { key, title, image, stretch: placement, entrances, ...(quests.length > 0 && { quests }) }, leadsTo };
+    const signs: WorldMapSign[] = pins.filter((pin) => isReadablePin(pin) && !placing.has(pin.id)).map((pin) => {
+      const point = pinDisplayPoint(pin, layout);
+      return { x: point.x, y: point.y, map: mapPath, pin: pin.id, link: pin.notePath, ...sentPinFace(pin) };
+    });
+    return { level: { key, title, image, stretch: placement, entrances, ...(quests.length > 0 && { quests }), ...(signs.length > 0 && { signs }) }, leadsTo };
   }
 }
 
@@ -158,7 +171,8 @@ class TreeReader {
  * floor's map, a map of its own in the tree, as it opens on the GM's map. Every image must be its
  * map's artwork (a floor's: the map its scene file names for it), wherever it lies in the vault: a
  * map without one is left out with the maps only it leads to, and a world map without one is none. A pin that links a quest note places
- * the quest on its map (`WorldMapLevel.quests`) once the note has its id.
+ * the quest on its map (`WorldMapLevel.quests`) once the note has its id; any other pin the GM made
+ * readable is a sign on its map (`WorldMapLevel.signs`).
  */
 export async function worldMapTree(app: App, assetId: string, maxLevels: number): Promise<WorldMapTreeRead | null> {
   const assets = AssetService.getInstance(app);

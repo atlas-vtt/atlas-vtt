@@ -1,10 +1,11 @@
 /**
  * Game system rules as the settings dialogs show and check them: what the rules read as where they
- * follow their preset (dice set, initiative, senses, lights), and whether they can be saved.
+ * follow their preset (dice set, initiative, movement, senses, lights), and whether they can be saved.
  */
 
 import { areRangeBandsValid } from '../grid/measurementFormat';
 import { isUnitDistance } from '../grid/unitDistance';
+import { isValidMovementRules, type MovementRules } from '../measure/movementRules';
 import { savedResources } from '../resources/resourceDefinitions';
 import type { ResourceDefinition } from '../resources/resourceTypes';
 import type { CollectionGridDefaults } from '../types/collectionSettingsTypes';
@@ -19,6 +20,7 @@ import { sameTypedSideParts } from './initiativeSideRules';
 import { sameTypedCardParts } from './initiativeCardRules';
 import { sameTypedModifierSources } from './initiativeModifierSources';
 import { collectionLightPresets } from './lightPresetRules';
+import { collectionMovementRules } from './movementRules';
 import type { RulesSettings } from './mapRules';
 import { sensesAreValid } from './senseEditing';
 import { collectionSenses } from './senseRules';
@@ -31,6 +33,10 @@ export interface RulesView {
   initiative: InitiativeRules;
   /** The initiative rules of the game system alone; typing them again stores none of the rules' own. */
   systemInitiative: InitiativeRules;
+  /** The movement rules as typed, else the system's. */
+  movement: MovementRules;
+  /** The movement rules of the game system alone; typing them again stores none of the rules' own. */
+  systemMovement: MovementRules;
   senses: readonly SenseDefinition[];
   /** The senses of the game system alone; an edit that ends there again stores none of the rules' own. */
   systemSenses: readonly SenseDefinition[];
@@ -62,10 +68,15 @@ export function viewOfRules(settings: EditedRules, presets: readonly SystemPrese
   const systemInitiative = collectionInitiativeRules({ systemPresetId: settings.systemPresetId }, presets);
   // The rules as they are typed, half a roll included; only stored rules are parsed.
   const initiative = settings.initiative ?? systemInitiative;
+  // The system's speed for creatures that state none reads in the unit being typed.
+  const systemMovement = collectionMovementRules({ systemPresetId: settings.systemPresetId, gridDefaults }, presets);
+  // As typed, a step still without a name included; only stored rules are parsed.
+  const movement = settings.movement ?? systemMovement;
   const senses = collectionSenses(settings, presets);
   const isValid = areRangeBandsValid(gridDefaults.abstractRangeBands)
     && isUnitDistance(gridDefaults.unitDistance)
     && isValidInitiativeRules(initiative)
+    && isValidMovementRules(movement)
     && sensesAreValid(senses)
     // A resource without a name or a statblock field could never show.
     && resources.every((resource) => resource.name.trim() !== '' && resource.field.trim() !== '');
@@ -73,6 +84,8 @@ export function viewOfRules(settings: EditedRules, presets: readonly SystemPrese
     diceSet,
     initiative,
     systemInitiative,
+    movement,
+    systemMovement,
     senses,
     systemSenses: collectionSenses({ systemPresetId: settings.systemPresetId }, presets),
     systemRules: {
@@ -82,6 +95,7 @@ export function viewOfRules(settings: EditedRules, presets: readonly SystemPrese
       // A preset names its dice set; only dice no set rolls are written out as rules.
       ...(settings.diceSetId ? { diceSetId: settings.diceSetId } : { dice: diceRulesOfSet(diceSet) }),
       initiative,
+      movement,
       resources: savedResources(resources),
       ...(settings.defaultTokenVision && { defaultTokenVision: settings.defaultTokenVision }),
       senses,

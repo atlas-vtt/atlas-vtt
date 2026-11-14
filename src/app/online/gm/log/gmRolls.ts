@@ -19,9 +19,9 @@ export type GmRollRefusal = 'roll' | 'speaker' | 'unavailable';
 
 /**
  * A GM's roll from the log. A public roll is thrown by the shared tab's dice tool like one from the
- * tray (players see it as they see the GM's rolls); a private one is rolled quietly, so Atlas's own
- * player window does not show it, and goes into the log for its audience. A roll button is rolled as
- * it says.
+ * tray and reaches the players whatever the player view's "show dice rolls" setting says; a private
+ * one is rolled quietly, so Atlas's own player window does not show it, and goes into the log for its
+ * audience. A roll button is rolled as it says.
  */
 export async function gmRoll(draft: GmRollDraft, log: TableLog, dice: SceneDice | null, store: SceneStore | null): Promise<GmRollRefusal | null> {
   const request = draft.request === undefined ? undefined : log.requestOf('gm', draft.request);

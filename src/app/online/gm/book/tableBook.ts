@@ -36,6 +36,8 @@ export interface TableBookPorts {
   readonly cards: ArmedCards;
   /** The rest requests' cards changed. */
   cardsChanged(): void;
+  /** The log entries that tell who found readable pins (`FoundShare.foundPins`). */
+  foundPins(): ReadonlyMap<string, string>;
 }
 
 /** A running table's books, and what they hang on while it runs. */
@@ -77,6 +79,7 @@ export function tableBook(ports: TableBookPorts): TableBook {
       return file === null ? null : { mtime: file.stat.mtime, size: file.stat.size };
     },
     worldMap: () => gatedWorldMap(),
+    foundPins: () => ports.foundPins(),
     notice: (text) => showNotice(text),
     quests: async () => storedQuests.of(await gatedQuests()),
     editResource: (edit, answer) => {

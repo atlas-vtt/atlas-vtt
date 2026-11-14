@@ -9,7 +9,7 @@ import { GridSystem, type GridOptions } from '../../src/app/grid/GridSystem';
 import { mapImageViewOf } from './fakeMapImageView';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
-import { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
+import { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { captureSceneFrame } from '../../src/app/pixi/sceneFrameCapture';
 import { gmPictureLayers, playerFrameLayers, wirePlayerMeasurements } from './playerMeasureWiring';
@@ -105,7 +105,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
     // As the lighting wires it: its sight while the canvas shows the players' view.
     const showsPlayers = (): boolean => lighting.peeking || !store.getState().isGMView;
     tokens.setPlayerSightProvider(() => (showsPlayers() ? lighting.perception : undefined), showsPlayers);
-    const measure = new MeasureRenderer(viewport, events, store, grid);
+    const measure = new MeasureRenderer(viewport, store, grid);
     const unwire = wirePlayerMeasurements({ measure, tokens, store, grid, lighting: () => lighting.perception });
     const target = RenderTexture.create({ width: pane.width, height: pane.height });
     cleanups.push(() => {

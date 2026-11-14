@@ -457,8 +457,9 @@
 @mixin atlas-input-focus {
   &:focus {
     outline: none;
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
+    // The accent softened into the border, with a faint ring: the field in use is told at once, without a hard line.
+    border-color: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 14%, transparent);
   }
 }
 

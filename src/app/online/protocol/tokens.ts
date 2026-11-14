@@ -58,7 +58,21 @@ export interface SharedToken {
    * is another's. The GM refuses its moves (`move-refused` with reason `turn`). Absent from older GMs.
    */
   readonly held?: true;
+  /**
+   * How far the token moves in one move (`speed`) and what it has moved in the running turn where
+   * the map counts that (`moved`), both in the map's game units: its drag reads against the scene's
+   * movement steps (`SharedRules.moveSteps`). Absent for a token without a speed and from older GMs.
+   */
+  readonly move?: SharedTokenMove;
 }
+
+export interface SharedTokenMove {
+  readonly speed: number;
+  readonly moved?: number;
+}
+
+/** The fastest a token is told to move and the farthest it is told to have moved, in game units. */
+export const MAX_MOVE_DISTANCE = 1_000_000;
 
 const isFiniteIn = (value: unknown, min: number, max: number): value is number => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 const isSize = (value: unknown): value is number => isFiniteIn(value, Number.MIN_VALUE, MAX_TOKEN_SIZE);
@@ -67,6 +81,12 @@ function parseRing(value: unknown): SharedToken['ring'] | undefined {
   if (value === null) return null;
   if (!isRecord(value) || typeof value.colour !== 'string' || !COLOUR_PATTERN.test(value.colour) || !isSize(value.size)) return undefined;
   return { colour: value.colour, size: value.size };
+}
+
+/** A token's `move`, or undefined for none and for one that cannot be read: its drag then reads as its distance alone. */
+export function parseTokenMove(value: unknown): SharedTokenMove | undefined {
+  if (!isRecord(value) || !isFiniteIn(value.speed, Number.MIN_VALUE, MAX_MOVE_DISTANCE)) return undefined;
+  return { speed: value.speed, ...(isFiniteIn(value.moved, Number.MIN_VALUE, MAX_MOVE_DISTANCE) && { moved: value.moved }) };
 }
 
 function parseToken(value: unknown): SharedToken | null {
@@ -82,7 +102,8 @@ function parseToken(value: unknown): SharedToken | null {
   const badge = parseBadge(value.badge);
   const ui = parseTokenUI(value.ui);
   if (badge === undefined || ui === undefined) return null;
-  return { id: value.id, x, y, size, cells, rotation, art: asset, name, ring, claim: value.claim as Claim, badge, ui, ...(value.turn === true ? { turn: true as const } : {}), ...(value.held === true ? { held: true as const } : {}) };
+  const move = parseTokenMove(value.move);
+  return { id: value.id, x, y, size, cells, rotation, art: asset, name, ring, claim: value.claim as Claim, badge, ui, ...(value.turn === true ? { turn: true as const } : {}), ...(value.held === true ? { held: true as const } : {}), ...(move !== undefined && { move }) };
 }
 
 /** The tokens of a `tokens` message, or null when the list or any token in it is malformed. */

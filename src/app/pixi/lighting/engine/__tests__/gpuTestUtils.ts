@@ -46,6 +46,16 @@ export function readUnorm(renderer: WebGLRenderer, target: RenderTexture): Float
   return Float32Array.from(bytes, (v) => v / 255);
 }
 
+/**
+ * Sets the share of the map the GM's picture is never darker than (`GM_FLOOR.shown`), for the
+ * engine's present composite; 0 is the picture without that floor. Call after the scene is built.
+ */
+export function setGmFloor(engine: LightingEngine, shown: number): void {
+  const group = (engine as unknown as { composite: { filter: { resources: { compositeUniforms: { uniforms: { uGmFloor: number }; update(): void } } } } }).composite.filter.resources.compositeUniforms;
+  group.uniforms.uGmFloor = shown;
+  group.update();
+}
+
 /** Reads one screen pixel of a render as 0..255 sRGB channels. */
 export type PixelReader = (sx: number, sy: number) => readonly [number, number, number];
 

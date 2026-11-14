@@ -4,7 +4,7 @@ import { abilityLink, plainAbilityName } from '../../../../src/app/online/gm/boo
 import type { EditInputs } from '../../../../src/app/online/gm/book/statblockChecks.ts';
 import { drawnStatblock } from '../../../../src/app/online/gm/book/statblockSheet.ts';
 import { storedRead } from '../../../../src/app/online/gm/book/statblockSheets.ts';
-import type { AbilityEntry, AbilityInput, BookStatblock } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_BOOK_TITLE, parseBookStatblock, type AbilityEntry, type AbilityInput, type BookStatblock } from '../../../../src/app/online/protocol/index.ts';
 import type { StatblockTemplate, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { resolvedOf } from './statblockSheet/sheetKit';
 import { propertiesOf, templateOf } from './statblockNotes.ts';
@@ -15,6 +15,24 @@ describe('an ability name that links', () => {
     expect(plainAbilityName('[[Spells/Eldritch Blast#Blast|Eldritch Blast]]')).toBe('Eldritch Blast');
     expect(plainAbilityName('_[[Crimson Rite]]_')).toBe('Crimson Rite');
     expect(plainAbilityName('Sneak_Attack 2*3*4')).toBe('Sneak_Attack 2*3*4');
+  });
+
+  it('reads as its words where its heading has brackets of its own', () => {
+    expect(plainAbilityName('[Rage (3/day)](#Rage%20(3/day))')).toBe('Rage (3/day)');
+    expect(plainAbilityName('**[Channel Divinity (2/Short Rest)](<#Channel Divinity (2/Short Rest)>)**')).toBe('Channel Divinity (2/Short Rest)');
+    expect(abilityLink('[Rage (3/day)](#Rage%20(3/day))')).toBe('#Rage (3/day)');
+    expect(abilityLink('**[Channel Divinity (2/Short Rest)](<#Channel Divinity (2/Short Rest)>)**')).toBe('#Channel Divinity (2/Short Rest)');
+    // Brackets that do not close, and text after the link, are no link of the whole name.
+    expect(abilityLink('[Rage](#Rage (3/day)')).toBeNull();
+    expect(abilityLink('[Rage](#Rage) (3/day)')).toBeNull();
+    expect(abilityLink('[Rage](#Rage)[Fury](#Fury)')).toBeNull();
+    expect(plainAbilityName('[Rage](#Rage) (3/day)')).toBe('Rage (3/day)');
+  });
+
+  it('reads a link with a title as its words and its address alone', () => {
+    expect(plainAbilityName('**[Rage](#Rage "Rage (3/day)")**')).toBe('Rage');
+    expect(abilityLink('**[Rage](#Rage "Rage (3/day)")**')).toBe('#Rage');
+    expect(abilityLink("[Channel Divinity](<#Channel Divinity (2/Short Rest)> 'Twice')")).toBe('#Channel Divinity (2/Short Rest)');
   });
 
   it('names its heading or note only where the name is the link alone', () => {
@@ -68,5 +86,62 @@ describe('an ability whose name links, as its player is sent it', () => {
     const inputs: EditInputs = { resolved, sent, read: (field) => storedRead(fields, field) };
     expect(checkAbilityEdit(inputs, { t: 'book-ability', op: 'edit', list: 'actions', key: rite.key, entry: { name: '[[GM Secrets]]', text: '', parts: {} } })).toBeNull();
     expect(checkAbilityEdit(inputs, { t: 'book-ability', op: 'add', list: 'actions', after: null, entry: { name: '[x](#Plans)', text: '', parts: {} } })).toBeNull();
+  });
+});
+
+const WAVE = 'Tidal Wave of the Drowned and Forgotten Kings';
+const SMITE = 'Blinding Smite of the Dawn That Never Came';
+const STEP = 'Misty Step Through the Veil Between the Worlds';
+const WAVE_LINK = `[${WAVE}](#${encodeURI(WAVE)})`;
+const SMITE_LINK = `**[${SMITE}](#${encodeURI(SMITE)})**`;
+const STEP_LINK = `[[#${STEP}|${STEP}]]`;
+const WARCRY = `${'War Cry of the Ninth Legion '.repeat(4)}at Dawn`;
+const LONG_NOTE = [
+  '---', 'statblock: true', 'atlas-template: test-template-abc123', 'name: Ana', 'actions:',
+  `  - name: "${WAVE_LINK}"`, `  - name: "${SMITE_LINK}"`, `  - name: "${STEP_LINK}"`, '  - name: "[Rage (3/day)](#Rage%20(3/day))"',
+  `  - name: ${WARCRY}`, '    desc: Shouted.', '---', '',
+].join('\n');
+const longFields = propertiesOf(LONG_NOTE) ?? {};
+const longResolved = resolvedOf(TEMPLATE, longFields);
+const LONG_LINKED: Record<string, string> = { [`#${WAVE}`]: 'The sea rises.', [`#${SMITE}`]: 'The blade shines.', [`#${STEP}`]: 'You step through.', '#Rage (3/day)': 'You rage.' };
+const longDrawn = async (): Promise<BookStatblock> => (await drawnStatblock({ resolved: longResolved, definitions: [], resources: undefined, readLink: async (link) => LONG_LINKED[link] ?? null })).statblock!;
+
+describe('an ability whose name is a link longer than a line', () => {
+  it('is longer than a name a page takes, as the note writes it', () => {
+    for (const link of [WAVE_LINK, SMITE_LINK, STEP_LINK]) expect(link.length).toBeGreaterThan(MAX_BOOK_TITLE);
+  });
+
+  it('shows the words of the whole link and the text it names, and reads on a page', async () => {
+    const sent = await longDrawn();
+    expect(parseBookStatblock(JSON.parse(JSON.stringify(sent)))).toEqual(sent);
+    expect(entries(sent).slice(0, 4).map((entry) => [entry.name, entry.text.opening])).toEqual([
+      [WAVE, 'The sea rises.'], [SMITE, 'The blade shines.'], [STEP, 'You step through.'], ['Rage (3/day)', 'You rage.'],
+    ]);
+  });
+
+  it('carries no half of the link as its written name', async () => {
+    const [wave, smite, step, rage] = entries(await longDrawn());
+    for (const entry of [wave, smite, step]) expect(entry?.written).toEqual({ text: { opening: '' } });
+    expect(rage?.written).toEqual({ name: '[Rage (3/day)](#Rage%20(3/day))', text: { opening: '' } });
+  });
+
+  it('keeps the link in the note when its player saves the ability under the words it shows', async () => {
+    const sent = await longDrawn();
+    const [wave, , , , warcry] = entries(sent);
+    const inputs: EditInputs = { resolved: longResolved, sent, read: (field) => storedRead(longFields, field) };
+    const edit = (key: string, entry: AbilityInput) => checkAbilityEdit(inputs, { t: 'book-ability', op: 'edit', list: 'actions', key, entry });
+    expect(edit(wave!.key, { name: WAVE, text: '', parts: {} })?.patches).toEqual([]);
+    expect(edit(wave!.key, { name: WAVE, text: 'It drowns the hall.', parts: {} })?.patches).toEqual([
+      { op: 'set', path: ['actions', 0], base: { name: WAVE_LINK }, next: { name: WAVE_LINK, desc: 'It drowns the hall.' } },
+    ]);
+    // Another name is the player's to give.
+    expect(edit(wave!.key, { name: 'Tidal Wave', text: '', parts: {} })?.patches).toEqual([
+      { op: 'set', path: ['actions', 0], base: { name: WAVE_LINK }, next: { name: 'Tidal Wave' } },
+    ]);
+    // A name that is no link is cut where a line ends, and written as it is sent.
+    expect(warcry?.name).toBe([...WARCRY].slice(0, MAX_BOOK_TITLE).join('').trim());
+    expect(edit(warcry!.key, { name: warcry!.name, text: 'Shouted.', parts: {} })?.patches).toEqual([
+      { op: 'set', path: ['actions', 4], base: { name: WARCRY, desc: 'Shouted.' }, next: { name: warcry!.name, desc: 'Shouted.' } },
+    ]);
   });
 });

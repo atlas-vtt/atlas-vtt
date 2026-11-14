@@ -45,4 +45,5 @@ export const loot: Translation = {
   'loot.openPlayerView': '打开玩家视图，才能把战利品展示给玩家。',
   'loot.query.note': 'Atlas 读取此视图用于战利品抽取。在地图上打开战利品抽取即可从中抽取。',
   'loot.query.name': 'Atlas 战利品',
+  'loot.unreadable': '无法读取',
 };

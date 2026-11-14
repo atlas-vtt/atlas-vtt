@@ -86,6 +86,7 @@ export const pin: Translation = {
   'pin.label.letter': 'Буквы (A, B, C…)',
   'pin.crossCollection': 'Пин ведёт на сцену другой коллекции. Свяжите его со сценой этой коллекции.',
   'pin.openMapFailed': 'Не удалось открыть связанную карту',
+  'pin.needsGmView': 'Переключитесь на вид мастера ({key}), чтобы ставить пины',
   'pin.iconGroup': 'Значок пина',
   'pin.search.placeholder': 'Поиск заметок, карт и стычек…',
   'pin.search.label': 'Поиск заметок, карт и стычек',

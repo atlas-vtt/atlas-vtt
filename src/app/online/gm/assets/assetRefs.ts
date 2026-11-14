@@ -1,7 +1,7 @@
 import { ASSET_CAPS, AUDIO_MIME_TYPE, type AssetRef } from '../../protocol/index.ts';
 import type { LiveSegments } from '../sound/liveSegments.ts';
 import { TESSERA_SPEC } from '../../../pixi/mosaicCanvas/pyramid';
-import { ASSET_RANKS, ASSET_USES, type AssetStoring, type AssetUse, type FloorMaps } from './assetUses.ts';
+import { ASSET_USES, pyramidRank, type AssetStoring, type AssetUse, type FloorMaps, type MapStanding } from './assetUses.ts';
 import type { FileHashes, FileStat } from './fileHashes.ts';
 import { headerPyramid } from './pyramidPlan.ts';
 import type { PyramidPublishing } from './pyramidPublishing.ts';
@@ -103,9 +103,9 @@ export class AssetRefs implements AssetStoring {
     this.deps.release(ref);
   }
 
-  async mapRef(bytes: Uint8Array<ArrayBuffer>, mime: string, path: string): Promise<AssetRef | null> {
-    const pyramid = await this.pyramid(await this.deps.hashes.of(bytes, path), bytes, mime, path, true);
-    return pyramid ?? this.refOf(bytes, mime, { ...ASSET_USES.map, map: path }, path);
+  async mapRef(bytes: Uint8Array<ArrayBuffer>, mime: string, path: string, standing: MapStanding = 'presented'): Promise<AssetRef | null> {
+    const pyramid = await this.pyramid(await this.deps.hashes.of(bytes, path), bytes, mime, path, true, standing);
+    return pyramid ?? this.refOf(bytes, mime, standing === 'book' ? ASSET_USES.image : { ...ASSET_USES.map, map: path }, path);
   }
 
   floorMaps(maps: FloorMaps): void {
@@ -130,13 +130,13 @@ export class AssetRefs implements AssetStoring {
    * image's header, and it goes up level by level as this device cuts it. Undefined where it goes as
    * an image (no header to read, no pyramid store, or a pyramid of this image failed before).
    */
-  private async pyramid(hash: string, bytes: Uint8Array<ArrayBuffer>, mime: string, path: string, handed: boolean): Promise<AssetRef | undefined> {
+  private async pyramid(hash: string, bytes: Uint8Array<ArrayBuffer>, mime: string, path: string, handed: boolean, offFloor?: MapStanding): Promise<AssetRef | undefined> {
     const { pyramids } = this.deps;
     if (pyramids === undefined || this.deps.tilesRefused() || !pyramids.drawable(hash)) return undefined;
     const shape = await headerPyramid(bytes);
     if (shape === null) return undefined;
-    const pyramid = pyramids.make(hash, path, shape);
-    const id = await this.deps.register({ key: pyramidKey(hash, TESSERA_SPEC), hash, size: pyramid.bytes, mime, use: { kind: 'tiles', rank: ASSET_RANKS.map }, source: { pyramid }, handed });
+    const pyramid = pyramids.make(hash, path, shape, offFloor);
+    const id = await this.deps.register({ key: pyramidKey(hash, TESSERA_SPEC), hash, size: pyramid.bytes, mime, use: { kind: 'tiles', rank: pyramidRank(offFloor ?? 'presented', false) }, source: { pyramid }, handed });
     return id === undefined ? undefined : { hash, size: pyramid.bytes, mime, id, tiles: true };
   }
 }

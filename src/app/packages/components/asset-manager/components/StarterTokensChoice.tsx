@@ -27,15 +27,13 @@ interface StarterTokensChoiceProps {
   size: number;
   /** Opened from the keyboard: focus goes to the chosen option. A press leaves it, or the option shows a ring. */
   focusChoice: boolean;
-  /** Centred on the download button; `end` lines it up with the end of the header's Create button. */
-  align?: 'center' | 'end';
 }
 
 /**
  * The popover the download button opens: which statblocks the starter tokens come with, then
  * Download. Arrow keys move through the choices; Escape closes it before the asset manager hears it.
  */
-export function StarterTokensChoice({ choice, onChoose, onDownload, onClose, placement, size, focusChoice, align = 'center' }: StarterTokensChoiceProps): React.JSX.Element {
+export function StarterTokensChoice({ choice, onChoose, onDownload, onClose, placement, size, focusChoice }: StarterTokensChoiceProps): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const keepInView = useKeepInView(ref, true, placement);
   useDialogEscape(ref, onClose);
@@ -60,7 +58,7 @@ export function StarterTokensChoice({ choice, onChoose, onDownload, onClose, pla
       ref={ref}
       role="dialog"
       aria-label={t('am.bestiary.statblocks')}
-      className={cn('atlas-dropdown-content', `atlas-dropdown-content--${placement}`, align === 'end' ? 'atlas-starter-choice--end' : 'atlas-dropdown-content--center', 'atlas-starter-choice', keepInView.capped && 'atlas-keep-in-view--capped')}
+      className={cn('atlas-dropdown-content', `atlas-dropdown-content--${placement}`, 'atlas-dropdown-content--center', 'atlas-starter-choice', keepInView.capped && 'atlas-keep-in-view--capped')}
       style={keepInView.style}
     >
       <div role="radiogroup" aria-label={t('am.bestiary.statblocks')} onKeyDown={step}>

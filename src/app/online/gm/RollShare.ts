@@ -10,7 +10,7 @@ export type RollNotes = Pick<LoggedRoll, 'flavor' | 'speaker' | 'request'>;
 
 export interface RollSharePorts {
   send(body: GmMessage, to?: string): void;
-  /** Whether players see the GM's own rolls: the player view's "show dice rolls" setting. */
+  /** Whether players see the GM's rolls made without a roll mode: the player view's "show dice rolls" setting. */
   showGmRolls(): boolean;
   /** Which token of the shared scene the players see a roll's origin as, as the local player window asks. */
   scene(): RollSceneLookup | null;
@@ -40,16 +40,16 @@ export function sharedRoll(result: DiceRollResult): SharedRoll {
 
 /**
  * Every roll of the shared tab, as its bus announces it, to the players: players' rolls always, the
- * GM's only while the player view shows dice rolls. Each is prepared as the local player window
- * prepares it (`rollForPlayers`): it names its token only when the players see that token, and only
- * by the id they know it by; who rolled it is a relay id or `'gm'`.
+ * GM's public rolls from the log always, the GM's other rolls only while the player view shows dice
+ * rolls. Each is prepared as the local player window prepares it (`rollForPlayers`): it names its
+ * token only when the players see that token, and only by the id they know it by; who rolled it is a
+ * relay id or `'gm'`.
  */
 export class RollShare {
   private readonly ports: RollSharePorts;
   private dice: DiceSource | null = null;
-  /** The player whose roll is being made, while it is, and what it carries. */
-  private roller: string | null = null;
-  private notes: RollNotes = {};
+  /** The roll being made, while one is: whose it is, what it carries and whether it was made public by choice. */
+  private making: { readonly who: string; readonly notes: RollNotes; readonly chosenPublic: boolean } | null = null;
 
   constructor(ports: RollSharePorts) {
     this.ports = ports;
@@ -67,24 +67,25 @@ export class RollShare {
     this.dice = null;
   }
 
-  /** Runs `run`, during which a roll announced is `who`'s and carries `notes` into the log. */
-  rollAs(who: string, run: () => void, notes: RollNotes = {}): void {
-    const previous = { roller: this.roller, notes: this.notes };
-    this.roller = who;
-    this.notes = notes;
+  /**
+   * Runs `run`, during which a roll announced is `who`'s and carries `notes` into the log. A roll
+   * `chosenPublic` (the GM picked Public roll for it) reaches the players whatever the player view's
+   * setting, which decides only the GM's rolls made without a mode.
+   */
+  rollAs(who: string, run: () => void, notes: RollNotes = {}, chosenPublic = false): void {
+    const previous = this.making;
+    this.making = { who, notes, chosenPublic };
     try {
       run();
     } finally {
-      this.roller = previous.roller;
-      this.notes = previous.notes;
+      this.making = previous;
     }
   }
 
   private readonly rolled = (result: DiceRollResult, origin?: DiceRollOrigin): void => {
-    const who = this.roller ?? 'gm';
-    const notes = this.notes;
+    const { who, notes, chosenPublic } = this.making ?? { who: 'gm', notes: {}, chosenPublic: false };
     // A GM's roll the players are not shown is in the GM's own log only.
-    if (who === 'gm' && !this.ports.showGmRolls()) return void this.ports.logged?.({ who, roll: sharedRoll(result), token: null, shared: false, ...notes }, result.source);
+    if (who === 'gm' && !chosenPublic && !this.ports.showGmRolls()) return void this.ports.logged?.({ who, roll: sharedRoll(result), token: null, shared: false, ...notes }, result.source);
     const dice = this.dice;
     const scene = this.ports.scene();
     // Only an origin in this tab can name a token the shared scene shows.

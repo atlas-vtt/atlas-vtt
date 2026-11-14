@@ -47,7 +47,15 @@ describe('toolbar catalog', () => {
   });
 
   it('keeps the bar order the toolbar had before it could be arranged', () => {
-    expect(DEFAULT_TOOLBAR_ORDER).toEqual(['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin', 'audio', 'dice', 'loot', 'assets', 'palette']);
+    expect(DEFAULT_TOOLBAR_ORDER).toEqual(['move', 'fog', 'draw', 'measure', 'wall', 'pin', 'audio', 'dice', 'loot', 'assets', 'palette']);
+  });
+
+  it('has one control for drawing and text: the Text control went into Draw, which kept its id and its place', () => {
+    expect(isToolbarControlId('draw')).toBe(true);
+    expect(isToolbarControlId('text')).toBe(false);
+    expect(toolbarControl('draw').hotkey).toBe('draw');
+    // The text key stays a map hotkey of its own: it selects the tool in its Text mode.
+    expect(MAP_HOTKEYS.some(hotkey => hotkey.id === 'text')).toBe(true);
   });
 
   it('looks controls up by id', () => {

@@ -8,7 +8,6 @@ import measure from '../../../assets/toolbar/measure.webp'
 import move from '../../../assets/toolbar/move.webp'
 import palette from '../../../assets/toolbar/palette.webp'
 import pin from '../../../assets/toolbar/pin.webp'
-import text from '../../../assets/toolbar/text.webp'
 import undo from '../../../assets/toolbar/undo.webp'
 import wall from '../../../assets/toolbar/wall.webp'
 
@@ -19,5 +18,5 @@ import wall from '../../../assets/toolbar/wall.webp'
  * then shows its text alone.
  */
 export const TOOLBAR_SCREENSHOTS = {
-  move, fog, draw, text, measure, wall, pin, audio: null, dice, loot, assets, palette, undo,
+  move, fog, draw, measure, wall, pin, audio: null, dice, loot, assets, palette, undo,
 } satisfies Record<ToolbarUnitId, string | null>

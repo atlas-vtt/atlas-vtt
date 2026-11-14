@@ -112,34 +112,10 @@ describe('the map token menu and statblocks', () => {
     TemplateLibrary.release(app);
   });
 
-  it('opens the note from Edit Statblock for a native statblock, with its statblock beside it', () => {
-    const { app, rightClick } = setup(NATIVE);
+  it('offers nothing about the statblock of a token that has one: editing and unlinking are the asset manager\'s', () => {
+    const { rightClick } = setup(NATIVE);
     rightClick();
-    expect(labels()).not.toContain('Create statblock');
-    const edit = entryNamed('Edit Statblock');
-    if (edit?.type === 'item') void edit.onClick();
-    expect(openStatblockEditor).toHaveBeenCalledWith(app, { notePath: NATIVE, collectionId: 'marsh', from: 'map' });
-    expect(app.workspace.openLinkText).not.toHaveBeenCalled();
-  });
-
-  it('opens a Fantasy Statblocks statblock\'s note from Edit Statblock as before (M6)', async () => {
-    const { app, rightClick } = setup(FANTASY);
-    rightClick();
-    const edit = entryNamed('Edit Statblock');
-    if (edit?.type === 'item') await edit.onClick();
-    expect(app.workspace.openLinkText).toHaveBeenCalledWith(FANTASY, '', true);
-    expect(openStatblockEditor).not.toHaveBeenCalled();
-  });
-
-  it('keeps opening the note for every statblock while the switch is off', async () => {
-    for (const path of [FANTASY, NATIVE]) {
-      const { app, rightClick } = setup(path, false);
-      rightClick();
-      const edit = entryNamed('Edit Statblock');
-      if (edit?.type === 'item') await edit.onClick();
-      expect(app.workspace.openLinkText).toHaveBeenCalledWith(path, '', true);
-      vi.restoreAllMocks();
-    }
-    expect(openStatblockEditor).not.toHaveBeenCalled();
+    expect(labels()).toContain('Edit token');
+    for (const label of ['Edit Statblock', 'Unlink statblock', 'Link statblock…', 'Create statblock']) expect(labels()).not.toContain(label);
   });
 });

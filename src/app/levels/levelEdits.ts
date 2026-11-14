@@ -62,12 +62,17 @@ function withLevels(scene: LevelScene, levels: SceneLevel[], objects: ViewState[
   };
 }
 
+/** The scene's levels; of a scene without any, the one level an edit that needs a level gives it: named `firstName`, it holds everything the scene has. */
+export function levelsOrFirst(scene: Pick<ViewState, 'levels' | 'background'>, firstName: string): readonly SceneLevel[] {
+  return scene.levels?.length ? scene.levels : [{ id: newLevelId(), name: firstName, elevation: { bottom: 0, top: LEVEL_HEIGHT }, background: scene.background }];
+}
+
 /**
  * The scene's levels with `level` added on top. A scene without levels gets its first level too,
  * named `firstName`, which holds everything the scene had.
  */
 export function withLevelAdded(scene: Pick<ViewState, 'levels' | 'background'>, added: { name: string; background: string | null }, firstName: string): SceneLevel[] {
-  const levels = scene.levels?.length ? scene.levels : [{ id: newLevelId(), name: firstName, elevation: { bottom: 0, top: LEVEL_HEIGHT }, background: scene.background }];
+  const levels = levelsOrFirst(scene, firstName);
   const bottom = Math.max(...levels.map((level) => level.elevation.top));
   return [...levels, { id: newLevelId(), name: added.name, elevation: { bottom, top: bottom + LEVEL_HEIGHT }, background: added.background }];
 }
@@ -90,8 +95,8 @@ export function withLevelChanged(levels: readonly SceneLevel[], id: string, chan
  * Null where nothing changes (no roof removed from a scene without levels).
  */
 export function withLevelRoof(scene: Pick<ViewState, 'levels' | 'background'>, id: string | null, foreground: string | null, firstName: string): SceneLevel[] | null {
-  const levels = scene.levels?.length ? scene.levels : foreground ? [{ id: newLevelId(), name: firstName, elevation: { bottom: 0, top: LEVEL_HEIGHT }, background: scene.background }] : null;
-  if (!levels) return null;
+  if (!scene.levels?.length && !foreground) return null;
+  const levels = levelsOrFirst(scene, firstName);
   const target = id ?? levels[0]!.id;
   return levels.map((level) => {
     if (level.id !== target) return level;

@@ -55,11 +55,10 @@ $picker-max-width: 360px;
 
 .atlas-collection-dropdown-trigger {
   @include atlas-select-trigger($control-height);
-  // Found by its edge alone, as the header's search is (3:1 in both themes).
   border-color: $am-control-border !important;
 
   &:hover {
-    border-color: var(--text-muted) !important;
+    border-color: $am-control-border-hover !important;
   }
 
   &.atlas-open {

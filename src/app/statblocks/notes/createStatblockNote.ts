@@ -33,22 +33,28 @@ export interface NewStatblockNote {
 
 export interface CreatedStatblockNote {
   file: TFile;
-  /** Whether the token was linked; false without a token. */
+  /** Whether the token was linked; false without a token, and when linking failed (the note stays). */
   linked: boolean;
 }
 
 const FALLBACK_NAME = t('statblockEditor.newStatblock');
 
-/** Creates the note and links the token to it. Throws when the note cannot be created. */
+/**
+ * Creates the note and links the token to it. Throws only when the note cannot be created:
+ * once it is written, a failed link is logged, reported as `linked: false` and the note kept.
+ */
 export async function createStatblockNote(app: App, note: NewStatblockNote): Promise<CreatedStatblockNote> {
   const folder = await targetFolder(app, note.folder);
   const path = freeNotePath(app, folder, noteFileName(note.name));
   const body = note.body ?? await savedTemplateBody(app, note.templateId);
   const file = await app.vault.create(path, statblockNoteText({ ...note, name: shownName(note.name, path), body }));
-  const linked = note.tokenImagePath === undefined
-    ? false
-    : await TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(note.tokenImagePath, file.path);
-  return { file, linked };
+  if (note.tokenImagePath === undefined) return { file, linked: false };
+  try {
+    return { file, linked: await TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(note.tokenImagePath, file.path) };
+  } catch (error) {
+    console.error(`[Atlas] Linking ${note.tokenImagePath} to the new statblock ${file.path} failed:`, error);
+    return { file, linked: false };
+  }
 }
 
 /**

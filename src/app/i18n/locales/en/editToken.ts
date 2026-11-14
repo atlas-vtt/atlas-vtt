@@ -7,6 +7,8 @@ export const editToken = {
   'editToken.name': 'Name',
   'editToken.namePlaceholder': 'Token name',
   'editToken.showNameplate': 'Show nameplate',
+  'editToken.speed': 'Speed',
+  'editToken.speedDefault': 'Default: {value}',
   'editToken.resources': 'Resources',
   'editToken.token': 'Token',
   'editToken.resetStatblock': 'Reset to statblock default',

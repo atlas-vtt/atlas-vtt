@@ -4,7 +4,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LibraryTemplate, TemplateLookup } from '../../../../src/app/statblocks/model/resolvedTypes';
 import { NewStatblockButton, createStatblockMenuEntry } from '../../../../src/app/statblocks/editor/create/RoleMenu';
-import { roleChoicesOf, type RoleChoice } from '../../../../src/app/statblocks/editor/create/roleChoices';
+import { roleChoicesOf } from '../../../../src/app/statblocks/editor/create/roleChoices';
+import type { TemplateOffer } from '../../../../src/app/statblocks/editor/create/templateOffers';
 
 afterEach(cleanup);
 
@@ -12,8 +13,9 @@ const named = (name: string): LibraryTemplate => ({ name } as LibraryTemplate);
 const LOOKUP: TemplateLookup = {
   get: (id) => ({ 'builtin:generic-creature': named('Creature'), 'marsh-k7m2qa': named('Marsh creature') } as Record<string, LibraryTemplate>)[id] ?? null,
 };
-const MONSTER: RoleChoice = { roleId: 'monster', name: 'Monster', templateName: 'Marsh creature' };
-const NPC: RoleChoice = { roleId: 'npc', name: 'NPC', templateName: 'NPC' };
+const MONSTER: TemplateOffer = { templateId: 'marsh-k7m2qa', roleId: 'monster', label: 'Monster', detail: 'Marsh creature' };
+const NPC: TemplateOffer = { templateId: 'builtin:generic-npc', roleId: 'npc', label: 'NPC', detail: 'NPC' };
+const FEN: TemplateOffer = { templateId: 'fen-b3x9aa', label: 'Fen creature', detail: 'Your template' };
 
 describe('role choices', () => {
   it('names each role\'s template, the generic one where the library lacks it, none while the library loads', () => {
@@ -35,7 +37,18 @@ describe('Create statblock in a context menu', () => {
     const entry = createStatblockMenuEntry([MONSTER], onChoose);
     expect(entry).toMatchObject({ type: 'item', label: 'Create statblock' });
     if (entry.type === 'item') void entry.onClick();
-    expect(onChoose).toHaveBeenCalledWith('monster');
+    expect(onChoose).toHaveBeenCalledWith(MONSTER);
+  });
+
+  it('lists the templates no role starts from after the roles, under a line (#656)', () => {
+    const onChoose = vi.fn();
+    const entry = createStatblockMenuEntry([MONSTER, NPC, FEN], onChoose);
+    if (entry.type !== 'submenu' || typeof entry.children === 'function') throw new Error('expected a submenu');
+    expect(entry.children.map((child) => (child.type === 'item' ? child.label : child.type))).toEqual(['Monster', 'NPC', 'custom', 'Fen creature']);
+    expect(entry.children[3]).toMatchObject({ detail: 'Your template' });
+    const fen = entry.children[3];
+    if (fen?.type === 'item') void fen.onClick();
+    expect(onChoose).toHaveBeenCalledWith(FEN);
   });
 
   it('opens the role menu with several: each role with its template muted, never repeating the name', () => {
@@ -54,7 +67,7 @@ describe('New statblock… in a dialog', () => {
     const onChoose = vi.fn();
     render(<NewStatblockButton choices={[MONSTER]} onChoose={onChoose} />);
     fireEvent.click(screen.getByRole('button', { name: 'New statblock' }));
-    expect(onChoose).toHaveBeenCalledWith('monster');
+    expect(onChoose).toHaveBeenCalledWith(MONSTER);
   });
 
   it('opens the role menu with several and says when it is open', async () => {
@@ -66,7 +79,7 @@ describe('New statblock… in a dialog', () => {
     await waitFor(() => expect(onMenuOpenChange).toHaveBeenLastCalledWith(true));
 
     fireEvent.click(screen.getByRole('menuitem', { name: /Monster/ }));
-    expect(onChoose).toHaveBeenCalledWith('monster');
+    expect(onChoose).toHaveBeenCalledWith(MONSTER);
     await waitFor(() => expect(onMenuOpenChange).toHaveBeenLastCalledWith(false));
   });
 });

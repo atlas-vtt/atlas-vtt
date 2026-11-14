@@ -16,7 +16,7 @@ import { builtIn, hiddenParts, nameField, portraitField, runInStat, sizeField } 
 const MODIFIER = 'floor((value - 10) / 2)';
 const DEXTERITY_MODIFIER = 'floor((stats.1 - 10) / 2)';
 
-export const FIVE_E_2024_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2024-monster', '5E (2024 rules)', 5, {
+export const FIVE_E_2024_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2024-monster', '5E (2024 rules)', 6, {
   // A bonus without dice rolls with the system's dice set, whatever the collection rolls (revision 5).
   diceSetId: D20_DICE_SET_ID,
   source: SRD_5_2_1_SOURCE,
@@ -31,7 +31,7 @@ export const FIVE_E_2024_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2024-mon
     { key: 'initiative', label: 'Initiative', type: 'number', meaning: 'initiative' },
     { key: 'hp', label: 'HP', type: 'number', meaning: 'hit-points' },
     { key: 'hit_dice', label: 'Hit Dice', type: 'dice' },
-    { key: 'speed', label: 'Speed', type: 'text' },
+    { key: 'speed', label: 'Speed', type: 'text', meaning: 'speed' },
     {
       key: 'stats', label: 'Abilities', type: 'scores', addRows: false, addColumns: false, slots: ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'],
       slotKeys: ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'],

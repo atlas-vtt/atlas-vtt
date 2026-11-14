@@ -18,7 +18,6 @@ import { CollectionGlyph } from './collectionGlyph';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
 import { tabHasFolders } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
-import type { StarterTokensEntry } from '../hooks/useStarterTokensEntry';
 
 export interface HeaderProps {
   app: App;
@@ -40,8 +39,6 @@ export interface HeaderProps {
   onCreateFolder: () => void;
   /** Opens the Create menu from the manager's Cmd/Ctrl+N (`useAssetManagerShortcuts`). */
   createMenu?: React.Ref<HeaderMenuHandle>;
-  /** The Tokens tab's "Get starter tokens…" in the Create menu, after Create tokens. */
-  starterTokens?: StarterTokensEntry | null;
   sidebarToggleLabel: string;
   onToggleSidebar: () => void;
   sel: Pick<
@@ -72,7 +69,6 @@ export function Header({
   onCreateCollection,
   onCreateFolder,
   createMenu,
-  starterTokens = null,
   sidebarToggleLabel,
   onToggleSidebar,
   sel,
@@ -136,16 +132,13 @@ export function Header({
             handle={createMenu}
             items={[
               { key: 'token', label: t('am.header.createToken'), icon: <TokenIcon />, onSelect: onCreateTokens },
-              ...(starterTokens ? [starterTokens.item] : []),
               { key: 'map', label: t('am.header.addMap'), icon: <MapIcon />, onSelect: onCreateMap },
               { key: 'dungeon', label: t('am.header.generateDungeon'), icon: <Castle />, onSelect: onGenerateDungeon },
               { key: 'encounter', label: t('am.header.createEncounter'), icon: <Swords />, onSelect: onCreateEncounter },
               { key: 'folder', label: t('am.header.newFolder'), icon: <FolderPlus />, disabled: !tabHasFolders(activeTab), onSelect: onCreateFolder },
               { key: 'collection', label: t('am.header.createCollection'), icon: <CollectionGlyph />, separated: true, onSelect: onCreateCollection },
             ]}
-          >
-            {starterTokens?.popover}
-          </HeaderMenu>
+          />
         </div>
       </div>
     </header>

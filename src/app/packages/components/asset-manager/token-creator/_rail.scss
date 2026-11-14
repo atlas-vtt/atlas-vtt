@@ -174,7 +174,6 @@
   height: var(--input-height);
   padding: 0 $spacing-xs 0 $spacing-s;
   background: var(--background-modifier-form-field);
-  // Found by its edge alone, as the header's search is (3:1 in both themes).
   border: $border-width-s solid $am-control-border;
   border-radius: $radius-m;
 
@@ -259,13 +258,13 @@
   @include am-hint-text;
 }
 
-// The rail's selects are found by their edge alone, as the header's search is (3:1 in both themes).
+// The rail's selects take the window's field edge.
 .atlas-token-creator__rail :is(.atlas-select-trigger, .atlas-setting-dropdown.text-icon-button) {
   border-color: $am-control-border !important;
 
 
   &:hover {
-    border-color: var(--text-muted) !important;
+    border-color: $am-control-border-hover !important;
   }
 
   &.atlas-open {

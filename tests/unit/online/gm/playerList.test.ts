@@ -23,7 +23,7 @@ const SCENE: SceneFacts = {
 const snapshot = (over: Partial<OnlineSnapshot>): OnlineSnapshot => ({ status: 'online', link: null, campaignId: null, sharedLeaf: null, sharedName: null, sharedTokens: {}, players: [], playerTokens: [], seats: null, gate: null, rests: [], cardOrder: [], ...over });
 
 function actions(): ListActions & { selectToken: ReturnType<typeof vi.fn<(id: string) => void>> } {
-  return { selectToken: vi.fn<(id: string) => void>(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), kick: vi.fn(), copyPlayerCode: vi.fn(() => Promise.resolve(true)), newPlayerCode: vi.fn(), askRename: vi.fn(), askRemoveFromCampaign: vi.fn(), playerPrompt: () => false, selected: () => [], imageSrc: (path) => `app://vault/${path}` };
+  return { selectToken: vi.fn<(id: string) => void>(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), kick: vi.fn(), drawingsOf: vi.fn((playerId: string) => (playerId === ANA.id ? 3 : 0)), clearDrawings: vi.fn(), copyPlayerCode: vi.fn(() => Promise.resolve(true)), newPlayerCode: vi.fn(), askRename: vi.fn(), askRemoveFromCampaign: vi.fn(), playerPrompt: () => false, selected: () => [], imageSrc: (path) => `app://vault/${path}` };
 }
 
 function list(over: Partial<OnlineSnapshot>): { el: HTMLElement; does: ReturnType<typeof actions> } {
@@ -90,7 +90,7 @@ describe('the players of an online table', () => {
     it('releases the token the player is shown by alone, and keeps their other tokens', () => {
       const { el, does } = list({ players: [ANA], playerTokens: [{ tokenId: 'cleric', label: 'Cleric', ownerId: ANA.id }, { tokenId: 'wolf', label: 'Wolf', ownerId: ANA.id }] });
       const entries = menuOf(el);
-      expect(titles(entries)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Release all', 'Copy code', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
+      expect(titles(entries)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Release all', 'Clear drawings', 'Copy code', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
       run(entries, 'Release Cleric');
       expect(does.release).toHaveBeenCalledWith(['cleric']);
       run(entries, 'Release all');
@@ -99,7 +99,7 @@ describe('the players of an online table', () => {
 
     it('offers one release for a player with one token, and none to run for a player without', () => {
       const one = menuOf(list({ players: [ANA], playerTokens: [{ tokenId: 'cleric', label: 'Cleric', ownerId: ANA.id }] }).el);
-      expect(titles(one)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Copy code', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
+      expect(titles(one)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Clear drawings', 'Copy code', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
       const none = menuOf(list({ players: [BEN], playerTokens: [] }).el);
       expect(none.find((entry) => entry.title === 'Release all')?.disabled).toBe(true);
     });
@@ -134,6 +134,20 @@ describe('a player of the campaign', () => {
     expect(entries.slice(-2).map((entry) => [entry.title, entry.warning])).toEqual([['Remove from table', true], ['Remove from campaign', true]]);
     expect(entries.find((entry) => entry.title === 'Remove from table')?.apart).toBe(true);
     expect(entries.find((entry) => entry.title === 'Copy code')?.apart).toBe(true);
+  });
+
+  it('clears that player\'s drawings from its menu, and offers nothing to clear where they drew nothing', () => {
+    const { el, does } = list({ players: [ANA, BEN] });
+    const more = [...el.querySelectorAll<HTMLButtonElement>('.atlas-online-player__more')];
+    menus.opened.length = 0;
+    more[0]?.click();
+    const ana = menus.opened.at(-1) ?? [];
+    expect(ana.find((entry) => entry.title === 'Clear drawings')).toMatchObject({ disabled: false, apart: true });
+    run(ana, 'Clear drawings');
+    expect(does.clearDrawings).toHaveBeenCalledWith(ANA.id);
+    more[1]?.click();
+    // The row keeps its place with nothing drawn, disabled.
+    expect((menus.opened.at(-1) ?? []).find((entry) => entry.title === 'Clear drawings')?.disabled).toBe(true);
   });
 
   it('never has a code in the list: no digits, no field', () => {

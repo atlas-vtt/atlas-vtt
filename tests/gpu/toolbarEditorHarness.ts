@@ -46,7 +46,7 @@ const UTILITIES = `
 `;
 const h = React.createElement;
 
-export const DEFAULT_BAR = ['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin', 'dice', 'loot', 'assets', 'palette'];
+export const DEFAULT_BAR = ['move', 'fog', 'draw', 'measure', 'wall', 'pin', 'dice', 'loot', 'assets', 'palette'];
 /** Longer than any of the editor's springs. */
 export const SETTLE_FRAMES = 90;
 
@@ -152,8 +152,6 @@ export async function mountToolbar(stored: StoredToolbarLayout = {}): Promise<To
       getNotePreviewUIManager: () => null,
       getRendererService: () => null,
     },
-    setFogBrushSize: vi.fn(),
-    clearAllFog: vi.fn(),
     openSceneBrowser: vi.fn(),
   };
   const ui = { app, view, pixiApp: null, renderer: { getTokenRenderer: () => ({ visibleTokenIds: () => [] }) } } as unknown as AtlasUIContextValue;

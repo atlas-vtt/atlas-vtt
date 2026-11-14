@@ -8,6 +8,8 @@ export interface DropdownSliderRowProps {
   max: number
   step?: number
   unit?: string
+  /** How the value reads where a unit after the number does not say it (a count with its plural); it replaces `unit`. */
+  format?: (value: number) => string
   /** Shown, but not to be set: its value means nothing right now. */
   disabled?: boolean
   onChange: (value: number) => void
@@ -21,15 +23,17 @@ export const DropdownSliderRow: FC<DropdownSliderRowProps> = ({
   max,
   step = 1,
   unit = "px",
+  format,
   disabled = false,
   onChange,
 }) => {
   const labelId = useId()
+  const text = format ?? ((shown: number): string => `${shown}${unit}`)
   return (
     <div className={`atlas-dropdown-slider-row${disabled ? ' atlas-dropdown-slider-row--disabled' : ''}`}>
       <div className="atlas-dropdown-slider-row__head">
         <span id={labelId} className="atlas-dropdown-label">{label}</span>
-        <span className="atlas-dropdown-slider-row__value">{value}{unit}</span>
+        <span className="atlas-dropdown-slider-row__value">{text(value)}</span>
       </div>
       <Slider
         aria-labelledby={labelId}
@@ -38,7 +42,7 @@ export const DropdownSliderRow: FC<DropdownSliderRowProps> = ({
         max={max}
         step={step}
         disabled={disabled}
-        getValueText={(v: number) => `${v}${unit}`}
+        getValueText={text}
         onValueChange={(v: number[]) => onChange(v[0] ?? value)}
       />
     </div>

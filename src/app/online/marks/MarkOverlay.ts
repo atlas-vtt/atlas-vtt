@@ -1,16 +1,19 @@
-import { MARKS_INTERVAL_MS } from '../protocol/index.ts';
+import { MARKS_INTERVAL_MS, type SharedStroke } from '../protocol/index.ts';
 import { Application, Container } from 'pixi.js';
 import { getDomHost } from '../../host/dom';
 import { addRendererSystemsByEntry } from '../../pixi/utils/rendererSystems';
 import { RemoteDrags, type RemoteDrag } from './RemoteDrags.ts';
 import { RemoteLasers, type RemoteLaser } from './RemoteLasers.ts';
-import { RemoteMeasures, type MeasureRules, type RemoteMeasure } from './RemoteMeasures.ts';
+import { RemoteMeasures, type LayBodies, type MeasureRules, type RemoteMeasure } from './RemoteMeasures.ts';
+import { RemoteStrokes } from './RemoteStrokes.ts';
 
 /** Marks to draw: lasers and measurements, each by its sender, and the rulers of drags made elsewhere. */
 export interface Marks {
   readonly lasers: readonly RemoteLaser[];
   readonly measures: readonly RemoteMeasure[];
   readonly drags?: readonly RemoteDrag[];
+  /** The drawings others are making, each as its sender last told it: only what a message brought, shown once. */
+  readonly strokes?: readonly SharedStroke[];
 }
 
 /** Where Atlas draws a map: its canvas and the viewport's camera (Atlas's own copy of PIXI, read only). */
@@ -25,6 +28,11 @@ export interface OverlayHost {
     on(event: 'moved' | 'zoomed', listener: () => void): unknown;
     off(event: 'moved' | 'zoomed', listener: () => void): unknown;
   };
+  /**
+   * Puts a layer into the map itself, under its tokens and its lighting: the bodies of the areas
+   * players measure, lit like the floor. Without it those areas show their outline and size alone.
+   */
+  readonly layBodies?: LayBodies;
 }
 
 /** Frames drawn with nothing left to animate before the overlay stops its ticker. */
@@ -34,7 +42,9 @@ const IDLE_FRAMES = 2;
  * Marks drawn on a transparent canvas of their own, laid over another PIXI application's canvas
  * (Atlas's, which runs its own copy of PIXI that this one must not draw into). It lets every pointer
  * event through (`.atlas-online-marks`), follows the other viewport's camera, and draws only while
- * something moves. Its canvas and WebGL context are made with the first marks to show.
+ * something moves. Its canvas and WebGL context are made with the first marks to show. It is the
+ * GM's, so the areas players measure have their outline on it (`RemoteMeasurePorts.gmOutlines`);
+ * their bodies lie in the map under it, where the host lays them (`OverlayHost.layBodies`).
  */
 export class MarkOverlay {
   private readonly rules: () => MeasureRules | null;
@@ -44,6 +54,9 @@ export class MarkOverlay {
   private lasers: RemoteLasers | null = null;
   private measures: RemoteMeasures | null = null;
   private drags: RemoteDrags | null = null;
+  private strokes: RemoteStrokes | null = null;
+  /** The drawings under way last shown: told once to what draws them, since each tells what came since the one before. */
+  private strokesTold: readonly SharedStroke[] | undefined = undefined;
   private host: OverlayHost | null = null;
   private marks: Marks = { lasers: [], measures: [] };
   private idle = 0;
@@ -55,7 +68,7 @@ export class MarkOverlay {
    * the same display frame, would draw them by the camera of the frame before as often as not.
    */
   private readonly onCamera = (): void => {
-    const shown = this.lasers?.busy === true || this.marks.measures.length > 0 || this.drags?.showing === true;
+    const shown = this.lasers?.busy === true || this.marks.measures.length > 0 || this.drags?.showing === true || (this.marks.strokes?.length ?? 0) > 0 || this.strokes?.busy === true;
     if (shown && this.followCamera()) this.app?.render();
     this.wake();
   };
@@ -68,7 +81,7 @@ export class MarkOverlay {
   /** Shows the players' marks over `host`'s map. */
   show(marks: Marks, host: OverlayHost): void {
     this.marks = marks;
-    const empty = marks.lasers.length === 0 && marks.measures.length === 0 && (marks.drags?.length ?? 0) === 0;
+    const empty = marks.lasers.length === 0 && marks.measures.length === 0 && (marks.drags?.length ?? 0) === 0 && (marks.strokes?.length ?? 0) === 0;
     if (this.app === null) {
       if (!empty && this.starting === null) {
         this.start(host).catch((error: unknown) => console.error('Atlas Online: the marks overlay could not start, so players\' marks are not drawn.', error));
@@ -80,7 +93,17 @@ export class MarkOverlay {
     this.lasers?.update(marks.lasers, now);
     this.measures?.update(marks.measures, now);
     this.drags?.update(marks.drags ?? []);
+    this.tellStrokes(marks.strokes ?? [], now);
     this.wake();
+  }
+
+  /** Hands the drawings under way on, each list once: a pen's stroke tells the points since its last message. */
+  private tellStrokes(strokes: readonly SharedStroke[], now: number): void {
+    if (strokes === this.strokesTold || this.strokes === null) return;
+    this.strokesTold = strokes;
+    // A drawing that was made lies on the GM's own map already: its stroke goes at once.
+    if (strokes.some((stroke) => stroke.kept === true)) this.strokes.drawingsTold(now);
+    this.strokes.update(strokes, now);
   }
 
   dispose(): void {
@@ -89,6 +112,7 @@ export class MarkOverlay {
     this.lasers?.destroy();
     this.measures?.destroy();
     this.drags?.destroy();
+    this.strokes?.destroy();
     this.app?.destroy({ removeView: true }, { children: true });
     this.app = null;
   }
@@ -107,9 +131,11 @@ export class MarkOverlay {
       const world = new Container({ sortableChildren: true });
       app.stage.addChild(world);
       this.lasers = new RemoteLasers(app.renderer, () => this.zoom, MARKS_INTERVAL_MS);
-      this.measures = new RemoteMeasures(() => this.zoom, this.rules, MARKS_INTERVAL_MS);
+      this.measures = new RemoteMeasures({ zoom: () => this.zoom, rules: this.rules, interval: MARKS_INTERVAL_MS, gmOutlines: true });
       this.drags = new RemoteDrags(() => this.zoom, this.rules);
-      world.addChild(this.drags.paths, this.measures.container, this.lasers.container, this.drags.labels);
+      const strokeLayer = new Container({ label: 'remote-strokes' });
+      this.strokes = new RemoteStrokes({ layer: () => strokeLayer, zoom: () => this.zoom, interval: MARKS_INTERVAL_MS });
+      world.addChild(strokeLayer, this.drags.paths, this.measures.container, this.lasers.container, this.drags.labels);
       app.ticker.add(() => this.tick());
       this.app = app;
       this.world = world;
@@ -125,16 +151,20 @@ export class MarkOverlay {
     this.host = host;
     const canvas = this.app?.canvas;
     if (canvas !== undefined) host.canvas.after(canvas);
+    this.measures?.layBodies(host.layBodies ?? null);
     this.resized.observe(host.canvas);
     host.viewport.on('moved', this.onCamera);
     host.viewport.on('zoomed', this.onCamera);
   }
 
   private detach(): void {
+    if (this.host === null) return;
     this.resized.disconnect();
-    this.host?.viewport.off('moved', this.onCamera);
-    this.host?.viewport.off('zoomed', this.onCamera);
+    this.host.viewport.off('moved', this.onCamera);
+    this.host.viewport.off('zoomed', this.onCamera);
     this.host = null;
+    // The bodies leave the map they lay in; what was drawn with them is drawn again over the next map.
+    this.measures?.layBodies(null);
   }
 
   private wake(): void {
@@ -171,8 +201,9 @@ export class MarkOverlay {
     const now = performance.now();
     this.lasers?.tick(now);
     this.measures?.tick(now);
+    this.strokes?.tick(now);
     // A pointer or an end still on its way to where its sender left it keeps the frames coming.
-    if (this.lasers?.busy !== true && this.measures?.busy !== true) this.idle += 1;
+    if (this.lasers?.busy !== true && this.measures?.busy !== true && this.strokes?.busy !== true) this.idle += 1;
     if (this.idle >= IDLE_FRAMES) app.ticker.stop();
   }
 }

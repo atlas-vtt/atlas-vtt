@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { startTransition, useState } from 'react';
-import { TFolder, App as ObsidianApp } from 'obsidian';
+import type { App as ObsidianApp } from 'obsidian';
 import type { AnyAsset, CollectionOption, EncounterAsset, TokenAsset, Folder, Tab, InputModalState } from '../types';
 import { saveEncounter, type EncounterTokenDraft } from '../../../../encounters/encounterSaveService';
 import type { AssetService } from '../../../../services/AssetService';
@@ -10,6 +10,8 @@ import { useCollectionTransfer, type CollectionTransferActions } from './useColl
 import { t } from '../../../../i18n';
 import { folderIdOf, tabFolderPath } from '../utils/assetFolders';
 import { useFolderMove } from './useFolderMove';
+import { moveFoldersInto, type FolderMoveContext } from '../utils/folderMoveActions';
+import { runInBackground } from '../../../../utils/backgroundTask';
 import { tabHasFolders } from '../utils/tabKinds';
 import type { CollectionPick } from '../utils/collectionTransferActions';
 
@@ -74,7 +76,6 @@ export interface AssetCrudActions extends CollectionTransferActions {
   /** Whether a new folder of this name would take the place of a file or folder already there. */
   isFolderNameTaken: (folderName: string) => boolean;
   deleteAssetFromVault: (asset: { id: string; name: string }) => Promise<boolean>;
-  deleteFolderFromVault: (folder: Folder) => Promise<void>;
   moveAssetsToFolder: (assetIds: string[], targetFolderId: string | null) => Promise<void>;
   handleDrop: (targetFolderId: string | null) => void;
   handleSaveAsEncounter: (tokenAssets: AnyAsset[]) => Promise<void>;
@@ -99,6 +100,8 @@ export function useAssetCrud(
   setAssets: React.Dispatch<React.SetStateAction<AnyAsset[]>>,
   /** Opens a folder of the tab shown (null: its top level) with the moved cards selected: where a move's notice takes the GM. */
   openFolder: (folderId: string | null, assetIds: readonly string[]) => void,
+  /** What follows folders a drop moved into another folder: Back and Forward, and the folders selected. */
+  folderMoves: Pick<FolderMoveContext, 'followFolderMoves' | 'setSelectedFolderIds'>,
 ): AssetCrudActions {
 
   const [isTokenCreatorOpen, setIsTokenCreatorOpen] = useState(false);
@@ -190,32 +193,6 @@ export function useAssetCrud(
     }
   };
 
-  const deleteFolderFromVault = async (folder: Folder): Promise<void> => {
-    if (!app) return;
-    try {
-      let folderPath = tabFolderPath(selectedCollection, folder.type);
-      const buildFullPath = (f: Folder): string => {
-        if (f.parentId) {
-          const parent = folders.find((p) => p.id === f.parentId);
-          if (parent) return `${buildFullPath(parent)}/${f.name}`;
-        }
-        return f.name;
-      };
-      if (folder.parentId) {
-        const parent = folders.find((p) => p.id === folder.parentId);
-        if (parent) folderPath = `${folderPath}/${buildFullPath(parent)}`;
-      }
-      folderPath = `${folderPath}/${folder.name}`;
-
-      const folderFile = app.vault.getAbstractFileByPath(folderPath);
-      if (folderFile instanceof TFolder && folderFile.children.length === 0) {
-        await app.fileManager.trashFile(folderFile);
-      }
-    } catch (error) {
-      console.error('[useAssetCrud] Error deleting folder:', error);
-    }
-  };
-
   const moveAssetsToFolder = useFolderMove({
     app, assetService, activeTab, selectedCollection, folders, setAssets, loadAssetsForActiveTab, openFolder,
   });
@@ -226,11 +203,12 @@ export function useAssetCrud(
       // The party is shown flat: a card let go on its background stays in the folder it lies in.
       if (tabHasFolders(activeTab)) void moveAssetsToFolder(draggedItems.ids, targetFolderId);
     } else {
-      setFolders((prev) =>
-        prev.map((f) =>
-          draggedItems.ids.includes(f.id) ? { ...f, parentId: targetFolderId } : f
-        )
-      );
+      const { followFolderMoves, setSelectedFolderIds } = folderMoves;
+      const context: FolderMoveContext = {
+        app, assetService, tabBasePath: tabFolderPath(selectedCollection, activeTab),
+        followFolderMoves, setSelectedFolderIds, loadFoldersForActiveTab, loadAssetsForActiveTab,
+      };
+      runInBackground(moveFoldersInto(context, draggedItems.ids, targetFolderId), 'Moving folders into a folder', t('am.folder.moveFailed'));
     }
     setDraggedItems(null);
     setDropTarget(null);
@@ -286,7 +264,7 @@ export function useAssetCrud(
     setTargetFolderName, setSettingsModalCollectionId, setIsCreateCollectionModalOpen, showCreatedCollection, setInputModalState,
     handleCreateFolder, handleCreateMap,
     handleCreateCollection, handleRefresh,
-    createFolderInVault, isFolderNameTaken, deleteAssetFromVault, deleteFolderFromVault,
+    createFolderInVault, isFolderNameTaken, deleteAssetFromVault,
     moveAssetsToFolder, handleDrop, handleSaveAsEncounter,
     ...transfer,
   };

@@ -26,7 +26,8 @@ $campaigns-shown: 5;
     font-weight: $font-weight-semibold;
   }
 
-  .atlas-online-campaigns__note {
+  .atlas-online-campaigns__note,
+  .atlas-online-campaigns__system {
     padding: 0 $online-text-inset;
   }
 

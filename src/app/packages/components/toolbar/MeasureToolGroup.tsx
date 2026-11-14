@@ -1,63 +1,81 @@
-import { t } from '../../../i18n';
 import React, { useState } from "react"
-import { Circle, Ruler, Triangle } from "lucide-react"
-import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
+import { AnimatePresence } from "framer-motion"
+import { SlidersHorizontal } from "lucide-react"
+import { t } from "../../../i18n"
+import { useAtlasSettings, useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
+import { DEFAULT_DRAG_DISTANCE, type DragDistance } from "../../../measure/dragDistance"
+import { CollectionSettingsModal } from "../../../react/components/CollectionSettingsModal"
+import { useMapCollectionId } from "../../../react/hooks/useMapCollectionId"
+import { useAtlasUI } from "../../../react/root/AtlasUIContext"
+import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
-import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
+import { SegmentedControl, type SegmentedOption } from "../primitives/SegmentedControl"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
-import { MEASURE_SHAPES, measureToolFace, type MeasureTool } from "./toolFaces"
-import { useEmitViewEvent } from "./useEmitViewEvent"
+import { measureToolFace } from "./toolFaces"
 
-const SHAPE_OPTIONS: readonly { tool: MeasureTool; icon: typeof Ruler; label: string }[] = [
-  { tool: "measure", icon: Ruler, label: t('toolbar.line') },
-  { tool: "measure-circle", icon: Circle, label: t('toolbar.circle') },
-  { tool: "measure-cone", icon: Triangle, label: t('toolbar.cone') },
+const DRAG_DISTANCE_OPTIONS: readonly SegmentedOption<DragDistance>[] = [
+  { value: 'always', label: t('toolbar.dragDistanceAlways') },
+  { value: 'combat', label: t('toolbar.dragDistanceCombat') },
+  { value: 'never', label: t('toolbar.dragDistanceNever') },
 ]
 
-/** Line, circle and cone measurements, and whether they stay on the map. */
-export function MeasureToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: ToolGroupControls): React.ReactElement {
+/**
+ * The measure tool. What a press measures and what becomes of a measurement are the bars above
+ * the toolbar (`MeasureToolBar`); the menu keeps what has a value: when a dragged token shows its
+ * distance (Atlas' own setting, for every map) and, for the GM, the way to the collection's rules
+ * of measuring.
+ */
+export function MeasureToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, closeMenu }: ToolGroupControls): React.ReactElement {
   const hotkeyLabel = useHotkeyLabels()
-  const emit = useEmitViewEvent()
-  const [persist, setPersist] = useState(false)
-  const face = measureToolFace(activeTool)
+  const settings = useAtlasSettings()
+  const mode = useAtlasStore((state) => state.measureTool.mode)
+  const { view } = useAtlasUI()
+  const playerView = useAtlasStore((state) => state.isPlayerView) || view?.getViewType?.() === 'atlas-vtt-player'
+  const collectionId = useMapCollectionId()
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const face = measureToolFace(activeTool, mode)
 
   return (
-    <ToolGroup
-      face={face}
-      shortcut={hotkeyLabel('measure')}
-      menuLabel={t('toolbar.measureOptions')}
-      menuOpen={menuOpen}
-      onSelect={() => selectTool(face.tool)}
-      onMenuToggle={toggleMenu}
-    >
-      <div className="atlas-dropdown-section">
-        {SHAPE_OPTIONS.map(({ tool, icon, label }) => (
-          <DropdownMenuItem
-            key={tool}
-            icon={icon}
-            label={label}
-            isActive={activeTool === tool}
-            onClick={() => {
-              emit('measure-shape-changed', MEASURE_SHAPES[tool]);
-              selectTool(tool);
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="atlas-dropdown-separator"></div>
-
-      <div className="atlas-dropdown-section">
-        <DropdownToggleRow
-          label={t('toolbar.persist')}
-          value={persist}
-          onChange={() => {
-            const next = !persist;
-            setPersist(next);
-            emit('measure-persistence-changed', next);
-          }}
-        />
-      </div>
-    </ToolGroup>
+    <>
+      <ToolGroup
+        face={face}
+        shortcut={hotkeyLabel('measure')}
+        menuLabel={t('toolbar.measureOptions')}
+        menuOpen={menuOpen}
+        onSelect={() => selectTool(face.tool)}
+        onMenuToggle={toggleMenu}
+      >
+        <div className="atlas-dropdown-section">
+          <div className="atlas-dropdown-stack">
+            <span className="atlas-dropdown-label">{t('toolbar.dragDistance')}</span>
+            <SegmentedControl<DragDistance>
+              value={settings?.getDragDistance() ?? DEFAULT_DRAG_DISTANCE}
+              options={DRAG_DISTANCE_OPTIONS}
+              ariaLabel={t('toolbar.dragDistance')}
+              onChange={(choice) => settings?.setDragDistance(choice)}
+            />
+          </div>
+        </div>
+        {!playerView && (
+          <div className="atlas-dropdown-section">
+            {/* A map outside every collection has no rules of its own to open. */}
+            <DropdownMenuItem
+              icon={SlidersHorizontal}
+              label={t('toolbar.measureRules')}
+              disabled={collectionId === null}
+              onClick={() => {
+                setRulesOpen(true)
+                closeMenu()
+              }}
+            />
+          </div>
+        )}
+      </ToolGroup>
+      <AnimatePresence>
+        {rulesOpen && collectionId !== null && (
+          <CollectionSettingsModal isOpen collectionId={collectionId} initialTab="grid" onClose={() => setRulesOpen(false)} />
+        )}
+      </AnimatePresence>
+    </>
   )
 }

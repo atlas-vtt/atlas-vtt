@@ -780,38 +780,6 @@ export class AtlasView extends FileView {
   }
 
   /**
-   * Set fog brush size
-   * Delegates to ToolController
-   */
-  public setFogBrushSize(size: number): void {
-    this._serviceManager.getToolController().setFogBrushSize(size);
-  }
-
-  /**
-   * Clear all fog
-   * Delegates to ToolController
-   */
-  public clearAllFog(): void {
-    this._serviceManager.getToolController().clearAllFog();
-  }
-
-  /**
-   * Set measurement shape
-   * Delegates to ToolController
-   */
-  public setMeasureShape(shape: 'line' | 'cone' | 'circle'): void {
-    this._serviceManager.getToolController().setMeasureShape(shape);
-  }
-
-  /**
-   * Set measurement persistence
-   * Delegates to ToolController
-   */
-  public setMeasurePersistence(persist: boolean): void {
-    this._serviceManager.getToolController().setMeasurePersistence(persist);
-  }
-
-  /**
    * Get the service manager
    * Exposes the service manager for UI components
    */

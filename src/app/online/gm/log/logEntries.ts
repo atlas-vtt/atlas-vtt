@@ -19,7 +19,7 @@ export function rollFaceOf(source: DiceRollResult['source'], tokens: Readonly<Re
   return { face: { name: name.slice(0, MAX_FACE_TEXT), image: image === undefined || image === '' || image.length > MAX_FACE_TEXT ? null : image } };
 }
 
-/** The readable pin a found note's entry was found at: the map, the pin's id there and its link as it was then. */
+/** The readable pin a found note's entry was found at: the map, the pin's id there and the link the entry follows (the pin's, as the GM last pointed it). */
 export interface FoundPin {
   readonly map: string;
   readonly pin: string;
