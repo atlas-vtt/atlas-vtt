@@ -43,7 +43,7 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
   pointer-events: auto;
   font-size: $font-ui-small;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($toolbar-radius);
 }
 
 // Clips the button's fill to the corner; the badge lies outside it, over the corner.

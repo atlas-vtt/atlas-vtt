@@ -57,7 +57,7 @@
 - Tools with options in the toolbar look like every other tool: hovering, pressing or choosing one highlights the whole tool as one rounded button, and the arrow beside it for its options has a highlight of its own
 - The player window bar has a pause and play button: paused, players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead
 - The player window bar is slimmer: as tall as the scene tabs above it
-- Every toolbar has the same rounded corners: the main toolbar, the undo bar, a tool's own bars, the scene tabs and the player window bar. The scene tabs are no longer a pill
+- Every toolbar, widget and the online play button have the same rounded corners, and the bars at the bottom stand as close to the edges of the map as those at the top. The scene tabs are no longer a pill
 
 ## Fixed
 

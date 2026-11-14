@@ -211,8 +211,8 @@ describe('the table log\'s tab on the GM\'s map', () => {
     ].map(parseFloat);
     for (const radius of radii) expect(Math.abs(radius - concentric)).toBeLessThanOrEqual(0.75);
     // The bar has the main toolbar's corner, and so has the tab bar
-    expect(barRadius).toBe(14);
-    expect(parseFloat(getComputedStyle(document.querySelector('.atlas-scene-tab-bar')!).borderTopLeftRadius)).toBe(14);
+    expect(barRadius).toBe(16);
+    expect(parseFloat(getComputedStyle(document.querySelector('.atlas-scene-tab-bar')!).borderTopLeftRadius)).toBe(16);
   });
 
   it('leaves the tabs where they were', async () => {

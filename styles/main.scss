@@ -432,9 +432,10 @@ body.theme-light {
   // into its overflow menu when they do not fit.
   .atlas-bottom-toolbar-row {
     position: fixed;
-    bottom: $spacing-l;
-    left: $spacing-l;
-    right: $spacing-l;
+    // As far from the view's edges as the top bar row
+    bottom: $spacing-s;
+    left: $spacing-s;
+    right: $spacing-s;
     display: grid;
     grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
     align-items: end;
