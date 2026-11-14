@@ -49,36 +49,25 @@ describe('the points of a grid a fog shape lands on', () => {
 });
 
 describe('snapping a point of a fog shape', () => {
-  const area = [{ x: 200, y: 200 }, { x: 300, y: 200 }, { x: 300, y: 300 }, { x: 200, y: 300 }];
   const wall = { p1: { x: 104, y: 97 }, p2: { x: 304, y: 97 } };
 
   it('lands on each kind of place within reach, and says which', () => {
-    expect(snapPoint({ x: 203, y: 196 }, only({ areas: [area] }), REACH)).toEqual({ point: { x: 200, y: 200 }, to: { kind: 'area-corner', point: { x: 200, y: 200 } } });
     expect(snapPoint({ x: 100, y: 100 }, only({ walls: [wall] }), REACH)).toEqual({ point: { x: 104, y: 97 }, to: { kind: 'wall-end', point: { x: 104, y: 97 } } });
     expect(snapPoint({ x: 66, y: 73 }, only({ grid: SQUARES }), REACH)).toEqual({ point: { x: 70, y: 70 }, to: { kind: 'grid', point: { x: 70, y: 70 } } });
     // The place on the line nearest the pointer, with the line it lies on.
-    expect(snapPoint({ x: 250, y: 204 }, only({ areas: [area] }), REACH)).toEqual({ point: { x: 250, y: 200 }, to: { kind: 'area-edge', point: { x: 250, y: 200 }, from: { x: 200, y: 200 }, to: { x: 300, y: 200 } } });
     expect(snapPoint({ x: 180, y: 91 }, only({ walls: [wall] }), REACH)).toEqual({ point: { x: 180, y: 97 }, to: { kind: 'wall', point: { x: 180, y: 97 }, from: wall.p1, to: wall.p2 } });
-    // The edge that closes an area's outline is one of its edges.
-    expect(snapPoint({ x: 196, y: 250 }, only({ areas: [area] }), REACH).to).toMatchObject({ kind: 'area-edge', point: { x: 200, y: 250 }, from: { x: 200, y: 300 }, to: { x: 200, y: 200 } });
   });
 
-  it('prefers an area\'s corner, then a wall\'s end, then the grid, then an edge, whichever is nearer', () => {
-    // An area's corner eight pixels away, a wall's end and a point of the grid at one or two.
+  it('prefers a wall\'s end, then the grid, then a wall, whichever is nearer', () => {
+    // A wall's end and a point of the grid at one or two pixels.
     const pointer = { x: 206, y: 205 };
-    const corner = [{ x: 200, y: 200 }, { x: 400, y: 200 }, { x: 400, y: 400 }];
     const end = { p1: { x: 207, y: 206 }, p2: { x: 207, y: 500 } };
     const grid: GridGeometry = { type: 'square', size: 10, offsetX: 5, offsetY: 5 };
-    const all = only({ areas: [corner], walls: [end], grid });
-    expect(snapPoint(pointer, all, REACH).to).toMatchObject({ kind: 'area-corner', point: { x: 200, y: 200 } });
     expect(snapPoint(pointer, only({ walls: [end], grid }), REACH).to).toMatchObject({ kind: 'wall-end', point: { x: 207, y: 206 } });
     // The grid's point lies on the pointer; the wall's line passes a pixel away.
     expect(snapPoint({ x: 206, y: 255 }, only({ walls: [end], grid }), REACH).to).toMatchObject({ kind: 'grid', point: { x: 205, y: 255 } });
     // On a coarse grid no point is near: the wall's line takes the pointer.
     expect(snapPoint({ x: 206, y: 255 }, only({ walls: [end], grid: SQUARES }), REACH).to).toMatchObject({ kind: 'wall', point: { x: 207, y: 255 } });
-    // Of an area's edge and a wall on the same line, the area's.
-    const edge = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }];
-    expect(snapPoint({ x: 50, y: 3 }, only({ areas: [edge], walls: [{ p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } }] }), REACH).to?.kind).toBe('area-edge');
   });
 
   it('reaches no farther than its reach, but always finds the grid while there is one', () => {

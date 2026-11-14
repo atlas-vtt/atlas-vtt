@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/app/ui/notice', () => ({ showNotice: vi.fn() }));
 
-import { areaOutline, fogAreaList, type FogArea } from '../../src/app/fog/fogAreas';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
@@ -35,7 +34,6 @@ interface RoomScene {
   release(): void;
   click(at: Place, keys?: Keys): void;
   fog: () => FogOperation[];
-  areas: () => readonly FogArea[];
   steps: () => number;
   undo: () => void;
 }
@@ -98,7 +96,6 @@ function roomScene(what: 'hide' | 'reveal' = 'hide', mapRect: MapRect | null = M
       scene.release();
     },
     fog: () => Object.values(store.getState().objects.fog),
-    areas: () => fogAreaList(store.getState().objects.fog),
     steps: () => history.getState().pastStates.length,
     undo: () => history.getState().undo(),
   };
@@ -109,12 +106,12 @@ const corners = (points: readonly { x: number; y: number }[]): string[] => point
 const lasso = (operation: FogOperation | undefined): string[] => corners((operation as FogLassoFill | undefined)?.points ?? []);
 
 describe('a click with the Room shape', () => {
-  it('hides the room the walls enclose around it, as one piece of fog that is remembered and one undo step', () => {
+  it('fills the room the walls enclose around it with fog, as one plain shape and one undo step', () => {
     const s = roomScene('hide');
     s.click([200, 200]);
-    expect(s.fog()).toEqual([expect.objectContaining({ type: 'lasso', isErasing: false, area: {} })]);
+    expect(s.fog()).toEqual([expect.objectContaining({ type: 'lasso', isErasing: false })]);
     expect(lasso(s.fog()[0])).toEqual(HALL);
-    expect(corners(areaOutline(s.areas()[0]!))).toEqual(HALL);
+    expect(s.fog()[0]).not.toHaveProperty('area');
     expect(s.steps()).toBe(1);
     // The room on the other side of the door, open as it is, is another.
     s.click([600, 300]);
@@ -125,19 +122,18 @@ describe('a click with the Room shape', () => {
     expect(showNotice).not.toHaveBeenCalled();
   });
 
-  it('reveals with the revealing tool, and does the other thing while Alt is held', () => {
+  it('erases with the eraser, and does the other thing while Alt is held', () => {
     const reveal = roomScene('reveal');
     reveal.click([200, 200]);
     expect(reveal.fog()).toEqual([expect.objectContaining({ type: 'lasso', isErasing: true })]);
-    // Plain erasing: nothing is remembered of it.
-    expect(reveal.areas()).toEqual([]);
     reveal.click([600, 300], { altKey: true });
-    expect(reveal.fog()[1]).toMatchObject({ isErasing: false, area: {} });
+    expect(reveal.fog()[1]).toMatchObject({ isErasing: false });
     const hide = roomScene('hide');
     hide.click([200, 200], { altKey: true });
     expect(hide.fog()).toEqual([expect.objectContaining({ isErasing: true })]);
     expect(lasso(hide.fog()[0])).toEqual(HALL);
-    expect(hide.areas()).toEqual([]);
+    // Plain fog and plain erasing: no operation carries a mark.
+    expect([...reveal.fog(), ...hide.fog()].some((operation) => 'area' in operation)).toBe(false);
   });
 
   it('does nothing but say so where the walls enclose no room: outside them, in a wall, and on a scene without a map', () => {
@@ -216,66 +212,12 @@ describe('the room under the pointer', () => {
   });
 });
 
-describe('a click in a room that is remembered already', () => {
-  it('makes no second piece of a room that is hidden: nothing changes, and no undo step', () => {
+describe('a click in a room that is fog already', () => {
+  it('paints it again, like any shape drawn over fog: the tool does what it is asked', () => {
     const s = roomScene('hide');
     s.click([200, 200]);
-    s.click([300, 300]);
-    expect(s.areas()).toHaveLength(1);
-    expect(s.fog()).toHaveLength(1);
-    expect(s.steps()).toBe(1);
-  });
-
-  it('hides the room\'s piece again where it was revealed, and reveals it with the revealing tool, each one undo step', () => {
-    const s = roomScene('hide');
-    s.click([200, 200]);
-    const [hall] = s.areas();
-    s.store.getState().flipFogArea(hall!.id);
-    const before = s.steps();
-    s.click([300, 300]);
-    expect(s.fog()).toEqual([expect.objectContaining({ id: hall!.id, isErasing: false })]);
-    expect(s.steps()).toBe(before + 1);
-
-    s.store.getState().setActiveTool('eraser');
-    s.click([300, 300]);
-    expect(s.fog()).toEqual([expect.objectContaining({ id: hall!.id, isErasing: true })]);
-    expect(s.steps()).toBe(before + 2);
-    // Revealed already, the room is cleared of whatever other fog lies in it.
     s.click([300, 300]);
     expect(s.fog()).toHaveLength(2);
-    expect(s.fog()[1]).toMatchObject({ type: 'lasso', isErasing: true });
-    expect(s.fog()[1]).not.toHaveProperty('area');
-    // Alt turns the click around: the piece is hidden again.
-    s.click([300, 300], { altKey: true });
-    expect(s.fog()[0]).toMatchObject({ id: hall!.id, isErasing: false });
-  });
-
-  it('takes a shape drawn by hand a little inside the walls for that room too', () => {
-    const drawn = roomScene('hide');
-    const vault = drawn.store.getState().addFogArea({ type: 'rectangle', x: 429, y: 141, width: 270, height: 278 })!;
-    drawn.store.getState().flipFogArea(vault);
-    // A click beside it, in the room.
-    drawn.click([426, 300]);
-    expect(drawn.areas()).toEqual([expect.objectContaining({ id: vault, isErasing: false })]);
-  });
-
-  it('fits a room to the hidden pieces that lie in it, like any shape that hides', () => {
-    const s = roomScene('hide');
-    // A piece over the hall's left half.
-    s.store.getState().addFogArea({ type: 'rectangle', x: 100, y: 100, width: 180, height: 360 });
-    const before = s.steps();
-    s.click([350, 300]);
-    expect(s.areas()).toHaveLength(2);
-    const room = s.areas().find((area) => area.type === 'lasso')!;
-    expect(corners(areaOutline(room))).toEqual(['280,140', '280,420', '420,140', '420,420']);
-    expect(s.steps()).toBe(before + 1);
-  });
-
-  it('says so where the walls enclose no room', () => {
-    const s = roomScene('hide');
-    s.click([200, 200]);
-    s.click([900, 800]);
-    expect(showNotice).toHaveBeenLastCalledWith('The walls here do not enclose a room.');
-    expect(s.areas()).toHaveLength(1);
+    expect(s.steps()).toBe(2);
   });
 });

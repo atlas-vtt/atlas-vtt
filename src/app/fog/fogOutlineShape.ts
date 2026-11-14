@@ -1,13 +1,12 @@
 /**
  * Between an outline (a closed run of corners in map pixels) and the filled shape fog is worked
- * out with (`QShape`): the shape an outline fills, and the one outline of a shape that is one piece.
+ * out with (`QShape`): the shape an outline fills, its rings as corners, and what it covers.
  */
 
-import { normalizePolygon, shapeParts } from '../lighting/polygonClip';
+import { normalizePolygon } from '../lighting/polygonClip';
 import { quantizeCoordinate } from '../lighting/quantizedPoint';
 import { Q_SCALE, type QPolygon, type QShape } from '../types/shapeTypes';
 import type { Point } from '../types/visionTypes';
-import { keyholed } from './fogKeyhole';
 
 type Outline = readonly Point[];
 
@@ -45,24 +44,6 @@ export function areaOfShape(shape: QShape): number {
     }
   }
   return Math.abs(twice) / 2 / (Q_SCALE * Q_SCALE);
-}
-
-/** Whether the shape has a hole: a ring that runs against its first, which is an outer one. */
-export function hasHoles(shape: QShape): boolean {
-  return shape.length > 1 && shapeParts(shape).some((part) => part.holes.length > 0);
-}
-
-/**
- * The one outline of a shape that is one piece: its ring where it has no hole; with holes, null,
- * or with `holed` the ring with a slit to each (`keyholed`). Null for a shape of several pieces or none.
- */
-export function oneOutline(shape: QShape, holed = false): Point[] | null {
-  const [only] = shape;
-  if (only && shape.length === 1) return pointsOf(only);
-  if (!holed || shape.length === 0) return null;
-  const [part, ...others] = shapeParts(shape);
-  if (!part || others.length > 0) return null;
-  return keyholed(pointsOf(part.outline), part.holes.map(pointsOf));
 }
 
 /** The corners of `outline` put where `given` has a corner in the same eighth of a pixel: a shape's corners are rounded to eighths, the outlines it was made of are not. */

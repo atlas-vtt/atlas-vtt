@@ -77,11 +77,13 @@ describe('when a change of the fog starts a fade', () => {
     expect(view.fog.fading).toBe(false);
   });
 
-  it('fades undo and redo, an area flipped and the whole map hidden or revealed', () => {
+  it('fades undo and redo, fog revealed and hidden again from its menu, and the whole map covered or cleared', () => {
     const view = fogView({});
-    const hall = view.store.getState().addFogArea({ type: 'rectangle', x: 100, y: 100, width: 200, height: 200 })!;
+    view.store.getState().addFogOperation({ type: 'rectangle', isErasing: false, x: 100, y: 100, width: 200, height: 200 });
+    const hall = [{ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 300, y: 300 }, { x: 100, y: 300 }];
     for (const edit of [
-      (): void => { view.store.getState().flipFogArea(hall); },
+      (): void => { view.store.getState().revealFogGround([hall]); },
+      (): void => { view.store.getState().hideFogArea(Object.keys(view.store.getState().objects.fog)[1]!); },
       (): void => { view.store.temporal.getState().undo(); },
       (): void => { view.store.temporal.getState().redo(); },
       (): void => { view.store.getState().coverAllFog(MAP); },

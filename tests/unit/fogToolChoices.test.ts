@@ -1,31 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { clampBrushSize, DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogStrokeReveals, fogToolFor, fogWhat, isFogTool, settledFogTool, steppedBrushSize } from '../../src/app/fog/fogToolChoices';
+import { clampBrushSize, DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogStrokeErases, isFogTool, settledFogTool, steppedBrushSize } from '../../src/app/fog/fogToolChoices';
 import { DEFAULT_GM_FOG_OPACITY, readGmFogOpacity } from '../../src/app/fog/gmFogOpacity';
 
 describe('what the fog tool does', () => {
-  it('hides with the fog tool and reveals with its eraser', () => {
-    expect(fogWhat({ activeTool: 'fog' })).toBe('hide');
-    expect(fogWhat({ activeTool: 'eraser' })).toBe('reveal');
-    // Another tool in use: the fog tool would hide.
-    expect(fogWhat({ activeTool: 'move' })).toBe('hide');
-  });
-
-  it('names the tool for each thing it does, which reads back as that thing', () => {
-    expect(fogToolFor('hide')).toBe('fog');
-    expect(fogToolFor('reveal')).toBe('eraser');
-    for (const what of ['hide', 'reveal'] as const) expect(fogWhat({ activeTool: fogToolFor(what) })).toBe(what);
-  });
-
   it('knows its two tools', () => {
     expect(['fog', 'eraser'].every(isFogTool)).toBe(true);
     expect(['move', 'measure', 'draw-eraser', ''].some(isFogTool)).toBe(false);
   });
 
   it('turns a stroke around while Alt is held', () => {
-    expect(fogStrokeReveals('fog', false)).toBe(false);
-    expect(fogStrokeReveals('eraser', false)).toBe(true);
-    expect(fogStrokeReveals('fog', true)).toBe(true);
-    expect(fogStrokeReveals('eraser', true)).toBe(false);
+    expect(fogStrokeErases('fog', false)).toBe(false);
+    expect(fogStrokeErases('eraser', false)).toBe(true);
+    expect(fogStrokeErases('fog', true)).toBe(true);
+    expect(fogStrokeErases('eraser', true)).toBe(false);
   });
 });
 

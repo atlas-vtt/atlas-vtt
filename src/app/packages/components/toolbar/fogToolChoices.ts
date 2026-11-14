@@ -1,15 +1,16 @@
 import { Cloud, DoorOpen, Eraser, Grid3x3, Lasso, Paintbrush, Pentagon, Square } from "lucide-react"
-import type { FogShape, FogWhat } from "../../../fog/fogToolChoices"
+import type { FogShape, FogToolId } from "../../../fog/fogToolChoices"
 import { t } from "../../../i18n"
 import type { ToolChoice } from "./ToolOptionsBar"
 
 /**
- * What the fog tool does with a stroke, in the bar's order. Hide and Reveal have the faces the
- * toolbar's button shows for them (`fogToolFace`), and say which key turns a stroke around.
+ * The fog tool's two modes, in the bar's order: the tool that adds fog and the one that erases
+ * it. They have the faces the toolbar's button shows for them (`fogToolFace`), and say which key
+ * turns a stroke around.
  */
-export const FOG_WHATS: readonly ToolChoice<FogWhat>[] = [
-  { value: 'hide', icon: Cloud, label: t('fog.hide'), tip: t('fog.hideTip') },
-  { value: 'reveal', icon: Eraser, label: t('fog.reveal'), tip: t('fog.revealTip') },
+export const FOG_MODES: readonly ToolChoice<FogToolId>[] = [
+  { value: 'fog', icon: Cloud, label: t('fog.fog'), tip: t('fog.fogTip') },
+  { value: 'eraser', icon: Eraser, label: t('fog.eraser'), tip: t('fog.eraserTip') },
 ]
 
 /** The shapes fog is drawn with, in the bar's order; a tip says the keys a shape has. */

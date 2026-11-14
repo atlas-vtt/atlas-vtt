@@ -84,7 +84,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(rects(`${WHATS} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual([32, 32]);
     const controls = rects(`${TOOLS} .atlas-tool-button`);
     expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual(Array.from({ length: 10 }, () => [32, 32]));
-    // Brush, Rectangle, Polygon, Lasso, Cells, Room, the size | Cover all, Reveal all | More
+    // Brush, Rectangle, Polygon, Lasso, Cells, Room, the size | Cover all, Delete all fog | More
     expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([4, 4, 4, 4, 4, 4, 8, 4, 8]);
     expect(controls[0]!.left - tools.left).toBeCloseTo(tools.right - controls[9]!.right, 1);
   });
@@ -125,7 +125,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
       expect(rect(TOOLS)).toEqual(tools);
       expect(places()).toEqual(buttons);
     };
-    for (const name of ['Reveal', 'Hide', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Brush']) {
+    for (const name of ['Eraser', 'Fog', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Brush']) {
       act(() => button(name).click());
       same();
     }
@@ -137,7 +137,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
       }
     });
     same();
-    for (const name of ['Room', 'Reveal', 'Hide', 'Brush']) {
+    for (const name of ['Room', 'Eraser', 'Fog', 'Brush']) {
       act(() => button(name).click());
       same();
     }
@@ -146,10 +146,10 @@ describe('the fog tool\'s bars above the toolbar', () => {
       act(() => store.getState().setFogTool({ brushSize }));
       same();
     }
-    expect(button('Reveal all').getAttribute('aria-disabled')).toBe('true');
+    expect(button('Delete all fog').getAttribute('aria-disabled')).toBe('true');
     act(() => button('Cover all').click());
     expect(Object.keys(store.getState().objects.fog)).toHaveLength(1);
-    expect(button('Reveal all').getAttribute('aria-disabled')).toBeNull();
+    expect(button('Delete all fog').getAttribute('aria-disabled')).toBeNull();
     same();
   });
 

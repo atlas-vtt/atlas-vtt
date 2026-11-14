@@ -1,55 +1,40 @@
 /**
- * Fog areas: the fog Atlas remembers as one piece. A shape drawn to hide is a lasso or rectangle
- * operation with a mark (`FogAreaMark`), which is revealed and hidden again as a whole. An area
- * is hidden while its operation paints and revealed while it erases, so whoever ignores the mark
- * replays the plain operation and shows the same fog. The GM never reads the word: to them it is
- * fog that a right-click reveals. Everything that reads areas reads them here.
+ * Fog that was revealed from its menu and can be hidden again: a revealing lasso or rectangle
+ * operation with a mark (`FogAreaMark`), which holds the outline of the fog it took away. It
+ * erases like any other, so whoever ignores the mark replays the plain operation and shows the
+ * same fog. Nothing that paints is one: a mark on a painting operation (an earlier build wrote
+ * them) is ignored. Everything that reads the mark reads it here.
  */
 
 import type { FogAreaMark, FogLassoFill, FogOperation, FogRectangleFill } from '../types/fogTypes';
 import type { Point } from '../types/visionTypes';
 import { hasArea } from '../vision/polygonArea';
-import { simplifiedOutline } from './fogAreaShapes';
 import { validateFogOperation } from './fogOperationShape';
 
-export { fittedArea, joinedArea, simplifiedOutline } from './fogAreaShapes';
-
-/** The areas of one level that are read; a record that holds more keeps them as plain fog. */
+/** The revealed fog of one level that is remembered; a record that holds more keeps the rest as plain fog taken away. */
 export const MAX_FOG_AREAS = 500;
-/** The corners an area's outline is thinned towards when it is made. */
-export const MAX_AREA_CORNERS = 200;
 
-/** A fog operation that is an area. */
-export type FogArea = (FogLassoFill | FogRectangleFill) & { area: FogAreaMark };
-
-/** The outline an area is given: corners in world pixels, or a rectangle along the axes. */
-export type FogAreaShape =
-  | { readonly type: 'lasso'; readonly points: readonly Point[] }
-  | { readonly type: 'rectangle'; readonly x: number; readonly y: number; readonly width: number; readonly height: number };
-
-/** The fields of an operation that say where it lies. */
-export type FogAreaGeometry =
-  | { type: 'lasso'; points: Point[] }
-  | { type: 'rectangle'; x: number; y: number; width: number; height: number };
+/** A revealing fog operation whose fog can be hidden again. */
+export type FogArea = (FogLassoFill | FogRectangleFill) & { area: FogAreaMark; isErasing: true };
 
 type Operations = Readonly<Record<string, FogOperation>>;
 
 const isObject = (value: unknown): value is object => typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Whether `operation` is an area: a lasso or a rectangle that carries the mark. A mark that is no object is none. */
+/** Whether `operation` is revealed fog that is remembered: a lasso or a rectangle that erases and carries the mark. A mark that is no object is none. */
 export function isFogArea(operation: FogOperation | undefined): operation is FogArea {
   // A map file is kept as it came: an entry may be anything.
   const entry: unknown = operation;
-  if (!isObject(entry) || !('type' in entry) || !('area' in entry)) return false;
-  return (entry.type === 'lasso' || entry.type === 'rectangle') && isObject(entry.area);
+  if (!isObject(entry) || !('type' in entry) || !('area' in entry) || !('isErasing' in entry)) return false;
+  return (entry.type === 'lasso' || entry.type === 'rectangle') && entry.isErasing === true && isObject(entry.area);
 }
 
 const lists = new WeakMap<Operations, readonly FogArea[]>();
 
 /**
- * The areas among `fog`, the fog of one level, ordered by id so that they keep their order
- * whatever was flipped last; no more than `MAX_FOG_AREAS`. An area's id is its key in the
- * record, which is how the store finds it. The same list while the record is the same.
+ * The remembered revealed fog among `fog`, the fog of one level, ordered by id; no more than
+ * `MAX_FOG_AREAS`. Its id is its key in the record, which is how the store finds it. The same
+ * list while the record is the same.
  */
 export function fogAreaList(fog: Operations): readonly FogArea[] {
   const known = lists.get(fog);
@@ -63,11 +48,6 @@ export function fogAreaList(fog: Operations): readonly FogArea[] {
   }
   lists.set(fog, areas);
   return areas;
-}
-
-/** Whether the area hides what it covers: it does while its operation paints. */
-export function areaIsHidden(area: Pick<FogOperation, 'isErasing'>): boolean {
-  return !area.isErasing;
 }
 
 const isPlace = (point: unknown): point is Point =>
@@ -105,54 +85,20 @@ export function areaOutline(operation: FogLassoFill | FogRectangleFill): readonl
   return outline;
 }
 
-const outlineLists = new WeakMap<Operations, ReadonlyArray<readonly Point[]>>();
-
-/** The outlines of the areas among `fog`, for whoever snaps to their corners and edges. The same list while the record is the same. */
-export function fogAreaOutlines(fog: Operations): ReadonlyArray<readonly Point[]> {
-  let list = outlineLists.get(fog);
-  if (!list) {
-    list = fogAreaList(fog).map(areaOutline).filter((outline) => outline.length >= 3);
-    outlineLists.set(fog, list);
-  }
-  return list;
-}
-
 /**
- * The area switched between hidden and revealed. `now` is the time it acts at, which the caller
- * sets after every operation of the scene: a revealed area clears what was hidden before the
- * flip, a hidden one covers what was revealed before it.
+ * `outline` as the corners a lasso operation holds: as they are given, to the last one, so that
+ * a body of fog revealed with it, and hidden with it again, is exactly that fog. Null where it
+ * encloses nothing or cannot be fog: fewer than three corners, corners on one line, a place that
+ * is no number or beyond what fog reaches.
  */
-export function flippedArea<Area extends FogArea>(area: Area, now: number): Area {
-  return { ...area, isErasing: areaIsHidden(area), timestamp: now };
-}
-
-function readable(geometry: FogAreaGeometry): boolean {
+export function lassoOutline(outline: readonly Point[]): Point[] | null {
+  if (!outline.every(isPlace)) return null;
+  const points = outline.map(({ x, y }) => ({ x, y }));
+  if (points.length < 3 || !hasArea(points)) return null;
   try {
-    validateFogOperation({ id: '', kind: 'fog', timestamp: 0, isErasing: false, ...geometry });
-    return true;
+    validateFogOperation({ id: '', kind: 'fog', timestamp: 0, isErasing: true, type: 'lasso', points });
+    return points;
   } catch {
-    return false;
+    return null;
   }
-}
-
-/**
- * What an operation holds for an area of `shape`: a rectangle with its corner and size, a lasso
- * thinned towards `MAX_AREA_CORNERS` corners without covering more than the shape
- * (`simplifiedOutline`). Null where the shape encloses nothing or cannot be
- * fog: fewer than three corners, corners on one line, a place that is no number or beyond what
- * fog reaches.
- */
-export function areaGeometry(shape: FogAreaShape): FogAreaGeometry | null {
-  let geometry: FogAreaGeometry;
-  if (shape.type === 'rectangle') {
-    const { x, y, width, height } = shape;
-    if (![x, y, width, height].every(Number.isFinite) || width === 0 || height === 0) return null;
-    geometry = { type: 'rectangle', x: Math.min(x, x + width), y: Math.min(y, y + height), width: Math.abs(width), height: Math.abs(height) };
-  } else {
-    if (!shape.points.every(isPlace)) return null;
-    const points = simplifiedOutline(shape.points, MAX_AREA_CORNERS);
-    if (points.length < 3 || !hasArea(points)) return null;
-    geometry = { type: 'lasso', points };
-  }
-  return readable(geometry) ? geometry : null;
 }

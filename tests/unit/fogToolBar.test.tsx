@@ -6,7 +6,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 
 vi.mock('../../src/app/ui/notice', () => ({ showNotice: vi.fn() }));
 
-import { areaOutline, fogAreaList } from '../../src/app/fog/fogAreas';
+import { fogAreaList } from '../../src/app/fog/fogAreas';
+import { fogCoverage } from '../../src/app/fog/fogCoverage';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
 import { FogToolBar } from '../../src/app/packages/components/toolbar/FogToolBar';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
@@ -41,7 +42,7 @@ function renderBar(mapRect: MapRect | null = MAP): { store: ViewAtlasStore; sett
   const store = createViewAtlasStore(app, `fog-bar-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.setState({ activeTool: 'fog', isMapLoading: false });
-  const ui = { app, view: null, pixiApp: null, renderer: { getMapRect: () => mapRect } } as unknown as AtlasUIContextValue;
+  const ui = { app, view: null, pixiApp: null, renderer: { getMapRect: () => mapRect, getFogCoverage: () => null } } as unknown as AtlasUIContextValue;
   // No tooltip provider around it: the map's bottom row has none, so the bars bring their own.
   render(<AtlasUIContext.Provider value={ui}><ViewStoreProvider store={store}><FogToolBar /></ViewStoreProvider></AtlasUIContext.Provider>);
   return { store, settings };
@@ -54,7 +55,7 @@ const button = (name: string): HTMLElement => screen.getByRole('button', { name 
 const pressed = (name: string): boolean => button(name).getAttribute('aria-pressed') === 'true';
 const inert = (name: string): boolean => button(name).getAttribute('aria-disabled') === 'true';
 const fogOf = (store: ViewAtlasStore): unknown[] => Object.values(store.getState().objects.fog);
-const WHATS = ['Hide', 'Reveal'];
+const WHATS = ['Fog', 'Eraser'];
 /** The four walls of a room, one per side. */
 const roomWalls = (x: number, y: number, width: number, height: number): WallInput[] => [
   { type: 'solid', p1: { x, y }, p2: { x: x + width, y } },
@@ -63,7 +64,7 @@ const roomWalls = (x: number, y: number, width: number, height: number): WallInp
   { type: 'solid', p1: { x, y: y + height }, p2: { x, y } },
 ];
 const addWalls = (store: ViewAtlasStore, walls: readonly WallInput[]): string[] => walls.map((wall) => store.getState().addWall(wall));
-const TOOLS = ['Brush', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Room', 'Brush size', 'Cover all', 'Reveal all', 'More'];
+const TOOLS = ['Brush', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Room', 'Brush size', 'Cover all', 'Delete all fog', 'More'];
 
 describe('FogToolBar', () => {
   it('shows while the fog tool hides or reveals, and not for another tool, while the toolbar is arranged, a scene loads, or for players', async () => {
@@ -88,8 +89,8 @@ describe('FogToolBar', () => {
     const { store } = renderBar();
     expect(names(whatBar())).toEqual(WHATS);
     expect(names(toolsBar())).toEqual(TOOLS);
-    expect(pressed('Hide')).toBe(true);
-    for (const [name, tool] of [['Reveal', 'eraser'], ['Hide', 'fog']] as const) {
+    expect(pressed('Fog')).toBe(true);
+    for (const [name, tool] of [['Eraser', 'eraser'], ['Fog', 'fog']] as const) {
       fireEvent.click(button(name));
       expect(store.getState().activeTool).toBe(tool);
       expect(pressed(name)).toBe(true);
@@ -98,15 +99,15 @@ describe('FogToolBar', () => {
     }
     // The tool's key shows in the bar.
     act(() => store.getState().setActiveTool('eraser'));
-    expect(pressed('Reveal')).toBe(true);
-    expect(pressed('Hide')).toBe(false);
+    expect(pressed('Eraser')).toBe(true);
+    expect(pressed('Fog')).toBe(false);
   });
 
-  it('offers every shape, the brush too, whether the tool hides or reveals: nothing is off because of what it does', () => {
+  it('offers every shape, the brush too, with Fog and with Eraser: nothing is off because of what the tool does', () => {
     renderBar();
-    for (const what of ['Hide', 'Reveal', 'Hide']) {
+    for (const what of ['Fog', 'Eraser', 'Fog']) {
       fireEvent.click(button(what));
-      expect(['Hide', 'Reveal', 'Brush', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Brush size'].some(inert)).toBe(false);
+      expect(['Fog', 'Eraser', 'Brush', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Brush size'].some(inert)).toBe(false);
     }
   });
 
@@ -119,10 +120,10 @@ describe('FogToolBar', () => {
       expect(pressed(name)).toBe(true);
     }
     expect(button('Brush').classList.contains('atlas-tool-bar__choice')).toBe(true);
-    expect(button('Hide').classList.contains('atlas-tool-bar__choice')).toBe(false);
+    expect(button('Fog').classList.contains('atlas-tool-bar__choice')).toBe(false);
     // The shape stays when the tool turns to revealing.
     fireEvent.click(button('Lasso'));
-    fireEvent.click(button('Reveal'));
+    fireEvent.click(button('Eraser'));
     expect(pressed('Lasso')).toBe(true);
   });
 
@@ -182,29 +183,27 @@ describe('FogToolBar', () => {
     expect(store.getState().fogTool.shape).toBe('brush');
   });
 
-  it('hides every room from More, in one undo step, makes no second piece of a room that has one, and says how many', () => {
+  it('hides every room from More as plain fog, in one undo step, skips a room that is fog already, and says how many', () => {
     const { store } = renderBar();
     const history = getHistoryStore(store)!;
     const row = (): HTMLButtonElement => screen.getByRole('button', { name: 'Hide all rooms' });
+    const covers = (x: number, y: number): boolean => fogCoverage(store.getState().objects.fog).covers({ x, y });
     fireEvent.click(button('More'));
     // Without walls the row stays, not to be chosen.
     expect(row().disabled).toBe(true);
     act(() => {
       addWalls(store, [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280), ...roomWalls(700, 490, 280, 140)]);
-      // One room is hidden already, by a shape drawn by hand a little off its walls.
-      store.getState().addFogArea({ type: 'rectangle', x: 141, y: 139, width: 279, height: 282 });
+      // One room is fog already, painted by hand a little past its walls.
+      store.getState().addFogOperation({ type: 'rectangle', isErasing: false, x: 139, y: 139, width: 282, height: 282 });
     });
     expect(row().disabled).toBe(false);
     const before = history.getState().pastStates.length;
     fireEvent.click(row());
-    const areas = fogAreaList(store.getState().objects.fog);
-    expect(areas).toHaveLength(3);
-    expect(areas.filter((area) => area.type === 'lasso').map((area) => areaOutline(area).map(({ x, y }) => `${x},${y}`).sort())).toEqual(expect.arrayContaining([
-      ['700,140', '700,420', '910,140', '910,420'],
-      ['700,490', '700,630', '980,490', '980,630'],
-    ]));
-    // Hidden, each one right-click from revealed.
-    expect(areas.every((area) => !area.isErasing)).toBe(true);
+    expect(fogOf(store)).toHaveLength(3);
+    // Plain fog: nothing carries a mark.
+    expect(fogAreaList(store.getState().objects.fog)).toEqual([]);
+    expect(fogOf(store).some((operation) => 'area' in (operation as object))).toBe(false);
+    expect([covers(300, 300), covers(800, 300), covers(800, 550), covers(560, 300)]).toEqual([true, true, true, false]);
     expect(history.getState().pastStates).toHaveLength(before + 1);
     expect(showNotice).toHaveBeenLastCalledWith('2 rooms hidden');
     // The menu closed on the choice.
@@ -213,15 +212,15 @@ describe('FogToolBar', () => {
     // Again: every room is hidden, and nothing is written.
     fireEvent.click(button('More'));
     fireEvent.click(row());
-    expect(fogAreaList(store.getState().objects.fog)).toHaveLength(3);
+    expect(fogOf(store)).toHaveLength(3);
     expect(history.getState().pastStates).toHaveLength(before + 1);
     expect(showNotice).toHaveBeenLastCalledWith('Every room is hidden already');
 
-    // A room revealed since is hidden again, as the piece it is.
-    act(() => { store.getState().flipFogArea(areas[0]!.id); });
+    // A room erased since is hidden again.
+    act(() => { store.getState().addFogOperation({ type: 'rectangle', isErasing: true, x: 690, y: 480, width: 300, height: 160 }); });
     fireEvent.click(button('More'));
     fireEvent.click(row());
-    expect(fogAreaList(store.getState().objects.fog).map((area) => area.isErasing)).toEqual([false, false, false]);
+    expect(covers(800, 550)).toBe(true);
     expect(showNotice).toHaveBeenLastCalledWith('1 room hidden');
   });
 
@@ -267,8 +266,8 @@ describe('FogToolBar', () => {
     expect(row.classList.contains('atlas-dropdown-menu-item--flush')).toBe(true);
     expect(row.querySelector('.atlas-dropdown-menu-item__check')).toBeNull();
     expect(row.firstElementChild?.tagName.toLowerCase()).toBe('svg');
-    // Nothing in the menu deletes: Reveal all is the clean slate.
-    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull();
+    // Nothing in the menu deletes: Delete all fog stands in the bar.
+    expect(within(document.querySelector<HTMLElement>('.atlas-dropdown-content')!).queryByRole('button', { name: /delete/i })).toBeNull();
   });
 
   it('opens the brush\'s size from the size button, whose dot grows with the brush', () => {
@@ -321,19 +320,19 @@ describe('FogToolBar', () => {
   it('covers the whole map in one undo step, and reveals all in another', () => {
     const { store } = renderBar();
     const history = getHistoryStore(store)!;
-    expect(inert('Reveal all')).toBe(true);
-    fireEvent.click(button('Reveal all'));
+    expect(inert('Delete all fog')).toBe(true);
+    fireEvent.click(button('Delete all fog'));
     expect(history.getState().pastStates).toHaveLength(0);
 
     fireEvent.click(button('Cover all'));
     expect(fogOf(store)).toEqual([expect.objectContaining({ type: 'rectangle', isErasing: false, ...MAP })]);
     expect(history.getState().pastStates).toHaveLength(1);
-    expect(inert('Reveal all')).toBe(false);
+    expect(inert('Delete all fog')).toBe(false);
 
-    fireEvent.click(button('Reveal all'));
+    fireEvent.click(button('Delete all fog'));
     expect(fogOf(store)).toEqual([]);
     expect(history.getState().pastStates).toHaveLength(2);
-    expect(inert('Reveal all')).toBe(true);
+    expect(inert('Delete all fog')).toBe(true);
     act(() => history.getState().undo());
     expect(fogOf(store)).toHaveLength(1);
     act(() => history.getState().undo());
@@ -356,11 +355,11 @@ describe('FogToolBar', () => {
       store.getState().coverAllFog(MAP);
       store.getState().setViewedLevel('upper');
     });
-    expect(inert('Reveal all')).toBe(true);
-    fireEvent.click(button('Reveal all'));
+    expect(inert('Delete all fog')).toBe(true);
+    fireEvent.click(button('Delete all fog'));
     expect(fogOf(store)).toHaveLength(1);
     act(() => store.getState().setViewedLevel('ground'));
-    expect(inert('Reveal all')).toBe(false);
+    expect(inert('Delete all fog')).toBe(false);
   });
 
   it('sets how opaque fog is in the GM\'s view from More, kept on this device', () => {
@@ -430,31 +429,33 @@ describe('FogToolBar', () => {
     expect(screen.getByRole('switch', { name: 'Party tokens clear fog' }).getAttribute('aria-checked')).toBe('false');
   });
 
-  it('reveals all as a clean slate: the fog that was remembered goes with the rest, a revealed piece too', () => {
+  it('deletes all fog as a clean slate: what was revealed and is remembered goes with the rest, and Cover all forgets it too', () => {
     const { store } = renderBar();
-    let hall = '';
-    act(() => { hall = store.getState().addFogArea({ type: 'rectangle', x: 100, y: 0, width: 50, height: 50 })!; });
-    expect(inert('Reveal all')).toBe(false);
-    fireEvent.click(button('Reveal all'));
-    expect(fogOf(store)).toEqual([]);
-    expect(inert('Reveal all')).toBe(true);
-    // A piece that is revealed hides nothing, and is still there to forget.
+    const hall = [{ x: 100, y: 0 }, { x: 150, y: 0 }, { x: 150, y: 50 }, { x: 100, y: 50 }];
     act(() => {
-      hall = store.getState().addFogArea({ type: 'rectangle', x: 100, y: 0, width: 50, height: 50 })!;
-      store.getState().flipFogArea(hall);
+      store.getState().addFogOperation({ type: 'lasso', isErasing: false, points: hall });
+      store.getState().revealFogGround([hall]);
     });
-    expect(inert('Reveal all')).toBe(false);
-    // Cover all hides it again with the map.
+    expect(fogAreaList(store.getState().objects.fog)).toHaveLength(1);
+    expect(inert('Delete all fog')).toBe(false);
+    fireEvent.click(button('Delete all fog'));
+    expect(fogOf(store)).toEqual([]);
+    expect(inert('Delete all fog')).toBe(true);
+    // Fog that was revealed hides nothing, and is still there to delete.
+    act(() => { store.getState().revealFogGround([hall]); });
+    expect(inert('Delete all fog')).toBe(false);
+    // Covered, it is plain fog taken away under the cover.
     fireEvent.click(button('Cover all'));
-    expect(store.getState().objects.fog[hall]).toMatchObject({ isErasing: false });
-    fireEvent.click(button('Reveal all'));
+    expect(fogAreaList(store.getState().objects.fog)).toEqual([]);
+    expect(fogCoverage(store.getState().objects.fog).covers({ x: 125, y: 25 })).toBe(true);
+    fireEvent.click(button('Delete all fog'));
     expect(fogOf(store)).toEqual([]);
   });
 
   it('takes every choice in the session view too, where fog is painted as players see it', () => {
     const { store } = renderBar();
     act(() => store.setState({ isGMView: false }));
-    expect(['Hide', 'Reveal', 'Brush', 'Rectangle', 'Lasso', 'Brush size', 'Cover all', 'More'].some(inert)).toBe(false);
+    expect(['Fog', 'Eraser', 'Brush', 'Rectangle', 'Lasso', 'Brush size', 'Cover all', 'More'].some(inert)).toBe(false);
     fireEvent.click(button('Lasso'));
     expect(store.getState().fogTool.shape).toBe('lasso');
   });

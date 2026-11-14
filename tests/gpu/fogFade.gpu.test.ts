@@ -329,7 +329,7 @@ describe('a fade and the renders it asks for', () => {
 
 describe('the peek', () => {
   it('shows the fog as the players see it while it is held, and as the GM does when it is let go', async () => {
-    const s = await scene(both(KEPT, { ...ROOM, area: {} }));
+    const s = await scene(both(KEPT, ROOM));
     const seen = gm(s);
     const theirs = players(s);
     expect(apart(seen, theirs)).toBeGreaterThan(100);

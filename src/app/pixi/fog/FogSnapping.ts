@@ -5,7 +5,6 @@
  */
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
-import { fogAreaOutlines } from '../../fog/fogAreas';
 import { NO_SNAP, snapHeldPoint, snapPoint, type FogSnap, type FogSnapCandidates } from '../../fog/fogSnap';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
@@ -83,6 +82,6 @@ export class FogSnapping {
 
   private candidates(): FogSnapCandidates {
     const objects = levelObjects(this.deps.store.getState());
-    return { grid: this.grid(), walls: wallList(objects.walls), areas: fogAreaOutlines(objects.fog) };
+    return { grid: this.grid(), walls: wallList(objects.walls) };
   }
 }

@@ -1,3 +1,4 @@
+import type { FogCoverage } from './fog/fogCoverage';
 import { HARD_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
 import { createSceneSource } from './plugin/host/sceneSource';
 import { canRunMapHotkeys, DEFAULT_MAP_HOTKEYS, matchesHotkey, matchesMapHotkey } from './keyboard/mapHotkeys';
@@ -1209,6 +1210,11 @@ export class PixiRendererOrchestrator { // Renamed class
         // Future: hover feedback for audio sources
       });
     }
+  }
+
+  /** The fog of the level shown as it is committed; null where there is none to ask, or it cannot be worked out. */
+  public getFogCoverage(): FogCoverage | null {
+    return this.fogRenderer?.getCommittedCoverage() ?? null;
   }
 
   /** The fog's menu opens on a right-click, and the fog tool's marks show, only while the canvas shows the GM's view: not in session view, a peek or the palette's player mode. */

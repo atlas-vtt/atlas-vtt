@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { areaOutline, fogAreaList } from '../../src/app/fog/fogAreas';
 import { canvasBadgeTheme } from '../../src/app/pixi/utils/canvasBadgeColors';
 import type { ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
+import type { FogOperation } from '../../src/app/types/fogTypes';
 import type { WallInput } from '../../src/app/types/wallTypes';
 import { fogScenes } from '../helpers/fogCoverageScene';
 
@@ -220,39 +220,43 @@ describe('the fog tool\'s Room shape on the map', () => {
     expect(accentAlong(outside, 16, 20, 108)).toBe(0);
   });
 
-  it('hides every room the walls enclose as a piece of its own, in one undo step, and marks none of them on the map', async () => {
+  it('hides every room the walls enclose with plain fog, in one undo step, and marks none of them on the map', async () => {
     const s = await scene();
     s.showMapImage(MAP);
     withWalls(s.store);
     const history = getHistoryStore(s.store)!;
+    const fog = (): FogOperation[] => Object.values(s.store.getState().objects.fog);
 
-    expect(s.store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 3 });
+    expect(s.store.getState().hideRooms(MAP, s.fog.getCommittedCoverage()?.shape)).toEqual({ rooms: 3, hidden: 3 });
     expect(history.getState().pastStates).toHaveLength(1);
-    const areas = fogAreaList(s.store.getState().objects.fog);
-    expect(areas.map((area) => areaOutline(area).map(({ x, y }) => `${x},${y}`).sort()).sort()).toEqual([
+    expect(fog().map((operation) => (operation.type === 'lasso' ? operation.points : []).map(({ x, y }) => `${x},${y}`).sort()).sort()).toEqual([
       ['112,16', '112,80', '64,16', '64,80'],
       ['16,16', '16,80', '64,16', '64,80'],
       ['24,122', '24,98', '56,122', '56,98'],
     ]);
+    expect(fog().some((operation) => operation.isErasing || 'area' in operation)).toBe(false);
     expectFogOver(s.frame(), [HALL, VAULT, CELL]);
 
-    // With another tool than the fog tool nothing marks the rooms: a picture of the scene is the GM's canvas.
-    s.store.getState().setActiveTool('move');
-    const gm = s.rgba();
-    const picture = s.rgba(s.fog.getGmViewLayers());
-    expect(gm.some((value, at) => Math.abs(value - picture[at]!) > 8)).toBe(false);
+    // With the fog tool or another, nothing marks the rooms: a picture of the scene is the GM's canvas.
+    for (const tool of ['fog', 'move'] as const) {
+      s.store.getState().setFogTool({ shape: 'rectangle' });
+      s.store.getState().setActiveTool(tool);
+      const gm = s.rgba();
+      const picture = s.rgba(s.fog.getGmViewLayers());
+      expect(gm.some((value, at) => Math.abs(value - picture[at]!) > 8)).toBe(false);
+    }
 
-    // One room revealed: the vault and the cell stay hidden.
-    s.store.getState().flipFogArea(areas.find((area) => areaOutline(area).some((corner) => corner.x === 16))!.id);
+    // One room erased: the vault, which touches it, and the cell stay hidden.
+    s.store.getState().addFogOperation({ type: 'rectangle', isErasing: true, x: 16, y: 16, width: 48, height: 64 });
     expectFogOver(s.frame(), [VAULT, CELL]);
 
-    // Again: the room that was revealed is hidden again as the piece it is, and nothing else is made.
-    expect(s.store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 1 });
-    expect(fogAreaList(s.store.getState().objects.fog)).toHaveLength(3);
+    // Again: the room that was erased is painted again, and nothing else.
+    expect(s.store.getState().hideRooms(MAP, s.fog.getCommittedCoverage()?.shape)).toEqual({ rooms: 3, hidden: 1 });
+    expect(fog()).toHaveLength(5);
     expectFogOver(s.frame(), [HALL, VAULT, CELL]);
-    expect(s.store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 0 });
+    expect(s.store.getState().hideRooms(MAP, s.fog.getCommittedCoverage()?.shape)).toEqual({ rooms: 3, hidden: 0 });
     for (let step = 0; step < 3; step++) history.getState().undo();
-    expect(fogAreaList(s.store.getState().objects.fog)).toEqual([]);
+    expect(fog()).toEqual([]);
     expectFogOver(s.frame(), []);
   });
 });

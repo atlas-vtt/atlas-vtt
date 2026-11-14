@@ -1,9 +1,8 @@
 /**
  * The fog of a map view: owns the fog's layer, its picture (`FogPicture`), the fog tool's
- * gesture (`FogGesture`) and the outlines of the fog it remembers as pieces
- * (`FogAreaOutlineLayer`), and says when the picture follows the scene. Fog takes presses only
- * while the fog tool is chosen; a right-click released in place opens its menu with the select
- * and move tools too (`menuPointer`). It also hands its coverage to the watch that clears fog
+ * gesture (`FogGesture`) and the mark of what its menu acts on (`FogMenuTarget`), and says when
+ * the picture follows the scene. Fog takes presses only while the fog tool is chosen; a
+ * right-click released in place opens its menu with the select and move tools too (`menuPointer`). It also hands its coverage to the watch that clears fog
  * around party tokens (`watchFogExplore`).
  */
 import * as PIXI from 'pixi.js';
@@ -21,9 +20,9 @@ import { destroyTree } from '../utils/destroyTree';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
 import { watchFogExplore } from '../../stores/fogExploreWatch';
-import { FogAreaOutlineLayer } from './FogAreaOutlineLayer';
 import { FogGesture } from './FogGesture';
 import { fogMenuOffered, showFogMenu } from './fogMenu';
+import { FogMenuTarget } from './FogMenuTarget';
 import { FogPicture, viewedFog } from './FogPicture';
 import { showsGmView } from './fogVisibilityPolicy';
 
@@ -41,7 +40,7 @@ export class FogOfWarRenderer {
   private readonly coverageCache = new FogCoverageCache();
   private readonly picture: FogPicture;
   private readonly gesture: FogGesture;
-  private readonly areas: FogAreaOutlineLayer;
+  private readonly menuTarget: FogMenuTarget;
   private unsubscribe?: () => void;
   private readonly stopExploring: () => void;
   /** Whether the canvas shows the players' view where the store's view switches do not say so (a peek); unset or null, they alone say it. */
@@ -90,11 +89,10 @@ export class FogOfWarRenderer {
       keysBelongToMap: (event) => this.keysBelongToMap?.(event) ?? true,
       isUndoKey: (event) => this.isUndoKey?.(event),
       showsPlayers: () => this.showsPlayers?.() ?? null,
-      coverage: () => this.getCommittedCoverage(),
     });
 
-    this.areas = new FogAreaOutlineLayer({ viewport, store, showsPlayers: () => this.showsPlayers?.() ?? null });
-    this.container.addChild(this.areas.view);
+    this.menuTarget = new FogMenuTarget({ viewport, store, showsPlayers: () => this.showsPlayers?.() ?? null });
+    this.container.addChild(this.menuTarget.view);
 
     this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
     this.followStore();
@@ -122,35 +120,35 @@ export class FogOfWarRenderer {
 
   /** Local player captures share the GM's renderer but must not share its fog opacity or the tool's marks. */
   getPlayerViewLayers(): LayerVisibility[] {
-    return [...this.picture.playerLayers(), ...this.gesture.playerLayers(), { layer: this.areas.view, visible: false }];
+    return [...this.picture.playerLayers(), ...this.gesture.playerLayers(), { layer: this.menuTarget.view, visible: false }];
   }
 
   /**
    * The fog as translucent as the GM view shows it, also while the canvas is in session view:
-   * for a picture of the scene, which leaves out the outlines of remembered fog and the marks of the tool like the GM's other markers.
+   * for a picture of the scene, which leaves out the mark of the fog's menu and the marks of the tool like the GM's other markers.
    */
   getGmViewLayers(): LayerVisibility[] {
-    return [...this.picture.gmLayers(), { layer: this.areas.view, visible: false }, ...this.gesture.playerLayers()];
+    return [...this.picture.gmLayers(), { layer: this.menuTarget.view, visible: false }, ...this.gesture.playerLayers()];
   }
 
-  /** The fog's menu for the viewport's dispatch: a right-click released in place on fog, or on the open ground of a remembered piece. */
+  /** The fog's menu for the viewport's dispatch: a right-click released in place on fog, or on the open ground of fog that was revealed from it. */
   menuPointer(): FogMenuPointerHandlers {
     return {
       menuAt: (x, y) => this.offersMenu() && fogMenuOffered(this.store, this.getCommittedCoverage(), { x, y }),
       openMenu: (x, y, screenX, screenY) => {
         if (!this.offersMenu()) return;
-        showFogMenu(this.store, () => this.getCommittedCoverage(), { x, y }, { x: screenX, y: screenY }, (outlines) => this.areas.setTarget(outlines));
+        showFogMenu(this.store, () => this.getCommittedCoverage(), { x, y }, { x: screenX, y: screenY }, (outlines) => this.menuTarget.show(outlines));
       },
     };
   }
 
   /**
    * The canvas shows another view (the GM's or the players', a peek included): the fog takes that
-   * view's opacity, and the outlines of remembered fog show or hide with it.
+   * view's opacity, and the tool's marks show or hide with it.
    */
   refreshVisibility(): void {
     this.picture.followView();
-    this.areas.refreshVisibility();
+    this.menuTarget.refreshVisibility();
     this.gesture.refreshVisibility();
   }
 
@@ -191,7 +189,7 @@ export class FogOfWarRenderer {
     this.stopExploring();
     this.eventBus.off('map-image-updated', this.mapImageUpdatedHandler);
     this.gesture.destroy();
-    this.areas.destroy();
+    this.menuTarget.destroy();
     this.picture.destroy();
     if (!this.container.destroyed) destroyTree(this.container);
   }
@@ -270,7 +268,7 @@ export class FogOfWarRenderer {
 
       // Fog changed (an edit, undo and redo, a load); nothing is drawn during a load, whose end
       // draws the fog. A stroke the canvas shows is drawn again, on the fog as it now is; one
-      // it does not show (a shape that will reveal, an area's outline) leaves the canvas to the
+      // it does not show (a shape that will erase) leaves the canvas to the
       // fog. An edit fades in; the fog of another map or level, or of a load, is there at once
       if (fogChanged) {
         const { active } = this.gesture;

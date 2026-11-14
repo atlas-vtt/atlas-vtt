@@ -1,9 +1,9 @@
 /**
  * Where a point of a fog shape lands: on what lies close to the pointer, so fog drawn along the
  * map's own lines ends exactly on them. In this order, each within `reach` of the pointer: a
- * corner of an area, a wall's end, a point of the grid, then the edge of an area or a wall. A
- * pointer near none of them lands on the grid's nearest point, as every tool's points do while
- * the grid's Snap is on. Rectangles and polygons snap; the brush and the lasso never do.
+ * wall's end, a point of the grid, then a wall. A pointer near none of them lands on the grid's
+ * nearest point, as every tool's points do while the grid's Snap is on. Rectangles and polygons
+ * snap; the brush and the lasso never do.
  */
 
 import type { GridGeometry } from '../grid/gridDistance';
@@ -11,7 +11,6 @@ import { isHexGridType } from '../grid/hexGeometry';
 import { snapAreaOrigin } from '../measure/measureSnap';
 import type { Point } from '../types/visionTypes';
 import { heldToEighth, keepsDirection } from './fogConstrain';
-import { outlineRings } from './fogKeyhole';
 
 /** A wall as snapping reads it: its two ends. */
 export interface FogSnapLine {
@@ -24,14 +23,12 @@ export interface FogSnapCandidates {
   /** The grid whose points it snaps to: null where the grid's Snap is off, the map has no grid or the shape takes none. */
   readonly grid: GridGeometry | null;
   readonly walls: readonly FogSnapLine[];
-  /** The outlines of the fog's areas, each a closed run of corners. */
-  readonly areas: ReadonlyArray<readonly Point[]>;
 }
 
 /** What a point snapped to: a place, or a place on a line from `from` to `to`. */
 export type FogSnapTarget =
-  | { readonly kind: 'area-corner' | 'wall-end' | 'grid'; readonly point: Point }
-  | { readonly kind: 'area-edge' | 'wall'; readonly point: Point; readonly from: Point; readonly to: Point };
+  | { readonly kind: 'wall-end' | 'grid'; readonly point: Point }
+  | { readonly kind: 'wall'; readonly point: Point; readonly from: Point; readonly to: Point };
 
 /** Where a point lands, and what it snapped to there; null where it stays under the pointer. */
 export interface FogSnap {
@@ -40,7 +37,7 @@ export interface FogSnap {
 }
 
 /** Nothing to snap to: every point stays where the pointer is. */
-export const NO_SNAP: FogSnapCandidates = { grid: null, walls: [], areas: [] };
+export const NO_SNAP: FogSnapCandidates = { grid: null, walls: [] };
 
 const isPlace = (point: Point): boolean => Number.isFinite(point.x) && Number.isFinite(point.y);
 
@@ -78,7 +75,6 @@ class Nearest {
 
 /** Keeps the line whose nearest place to the pointer is the nearest within reach; a line without length has no such place. */
 class NearestLine {
-  private kind: 'area-edge' | 'wall' = 'wall';
   private from: Point | null = null;
   private to: Point | null = null;
   private x = 0;
@@ -86,7 +82,7 @@ class NearestLine {
 
   constructor(private readonly point: Point, private best: number) {}
 
-  offer(kind: 'area-edge' | 'wall', a: Point, b: Point): void {
+  offer(a: Point, b: Point): void {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const length = dx * dx + dy * dy;
@@ -95,10 +91,9 @@ class NearestLine {
     const x = a.x + dx * along;
     const y = a.y + dy * along;
     const away = Math.hypot(this.point.x - x, this.point.y - y);
-    // The first of two as near stays: an area's edge before a wall on the same line.
+    // The first of two as near stays.
     if (!(away <= this.best) || (this.from !== null && away === this.best)) return;
     this.best = away;
-    this.kind = kind;
     this.from = a;
     this.to = b;
     this.x = x;
@@ -107,14 +102,11 @@ class NearestLine {
 
   target(): FogSnapTarget | null {
     if (!this.from || !this.to) return null;
-    return { kind: this.kind, point: { x: this.x, y: this.y }, from: { ...this.from }, to: { ...this.to } };
+    return { kind: 'wall', point: { x: this.x, y: this.y }, from: { ...this.from }, to: { ...this.to } };
   }
 }
 
 function nearestCorner(point: Point, candidates: FogSnapCandidates, reach: number): FogSnapTarget | null {
-  const corners = new Nearest(point, reach);
-  for (const area of candidates.areas) for (const corner of area) corners.offer(corner);
-  if (corners.found) return { kind: 'area-corner', point: { ...corners.found } };
   const ends = new Nearest(point, reach);
   for (const wall of candidates.walls) {
     ends.offer(wall.p1);
@@ -125,13 +117,7 @@ function nearestCorner(point: Point, candidates: FogSnapCandidates, reach: numbe
 
 function nearestEdge(point: Point, candidates: FogSnapCandidates, reach: number): FogSnapTarget | null {
   const nearest = new NearestLine(point, reach);
-  for (const area of candidates.areas) {
-    // An area with a hole is its own edge and the hole's: the slit between them is no edge of it.
-    for (const ring of outlineRings(area)) {
-      for (let i = 0; i < ring.length; i++) nearest.offer('area-edge', ring[i]!, ring[(i + 1) % ring.length]!);
-    }
-  }
-  for (const wall of candidates.walls) nearest.offer('wall', wall.p1, wall.p2);
+  for (const wall of candidates.walls) nearest.offer(wall.p1, wall.p2);
   return nearest.target();
 }
 

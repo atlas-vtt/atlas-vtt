@@ -1,8 +1,9 @@
 /**
- * What a right-click on the map offers of its fog: one entry. On fog it is Reveal: the piece
- * Atlas remembers there (an area) where the point lies in one that is hidden, else the body of
- * loose fog under the pointer (`fogBody.ts`). On open ground inside a remembered piece that is
- * revealed it is Hide, which hides that piece again. Nothing anywhere else.
+ * What a right-click on the map offers of its fog. On fog, whatever painted it: Reveal and
+ * Delete, which both act on the whole body of fog under the pointer (`fogBody.ts`: fog that
+ * touches is one). Delete erases it for good; Reveal erases it and remembers it (`fogAreas.ts`).
+ * On the open ground of fog that was revealed so: Hide, which brings that fog back, and Delete,
+ * which forgets it. Nothing anywhere else.
  */
 import { areaOutline, fogAreaList } from '../../fog/fogAreas';
 import { areaAt, fogBodyAt } from '../../fog/fogBody';
@@ -17,53 +18,63 @@ type Store = Pick<ViewAtlasStore, 'getState'>;
 /** The level's fog as it is committed; null where it cannot be worked out. */
 type Coverage = () => FogCoverage | null;
 
-/** The fog's menu at a point: its one entry, and the outlines of what the entry will act on. */
+/** The fog's menu at a point: its entries, and the outlines of what they act on. */
 export interface FogMenu {
   readonly entries: ContextMenuEntry[];
   readonly outlines: ReadonlyArray<readonly Point[]>;
 }
 
-/** Whether the fog has a menu at the world `point`: it is in fog, or on the open ground of a remembered piece that is revealed. */
+/** Whether the fog has a menu at the world `point`: it is in fog, or on the open ground of fog that was revealed and is remembered. */
 export function fogMenuOffered(store: Store, coverage: FogCoverage | null, point: Point): boolean {
   if (!coverage) return false;
-  return coverage.covers(point) || areaAt(fogAreaList(viewedFog(store.getState())), point, false) !== null;
+  return coverage.covers(point) || areaAt(fogAreaList(viewedFog(store.getState())), point) !== null;
 }
 
-/** Removes the body of loose fog under `point` as the fog is now, in one undo step. */
-function revealBody(store: Store, coverage: Coverage, point: Point): void {
+/** The body of fog under `point` as the fog is now. */
+function bodyNow(coverage: Coverage, point: Point): Point[] | null {
   const fog = coverage();
-  if (!fog) return;
-  const state = store.getState();
-  const body = fogBodyAt(fog.shape, point, fogAreaList(viewedFog(state)));
-  state.addFogOperations(body.map((points) => ({ type: 'lasso', isErasing: true, points })));
+  return fog ? fogBodyAt(fog.shape, point) : null;
 }
+
+const entry = (label: string, icon: string, onClick: () => void): ContextMenuEntry => ({ type: 'item', label, icon, onClick });
+/** Delete comes last, told apart as what it is. */
+const remove = (onClick: () => void): ContextMenuEntry => ({ type: 'item', label: t('common.delete'), icon: 'trash-2', destructive: true, onClick });
 
 /** The fog's menu at the world `point` of the level shown; null where it has none. */
 export function fogMenuAt(store: Store, coverage: Coverage, point: Point): FogMenu | null {
   const fog = coverage();
   if (!fog) return null;
-  const areas = fogAreaList(viewedFog(store.getState()));
-  const covered = fog.covers(point);
-  const piece = areaAt(areas, point, covered);
-  if (piece) {
-    const entry: ContextMenuEntry = {
-      type: 'item',
-      label: covered ? t('fog.reveal') : t('fog.hide'),
-      icon: covered ? 'eye' : 'eye-off',
-      onClick: () => { store.getState().flipFogArea(piece.id); },
+  if (fog.covers(point)) {
+    const body = fogBodyAt(fog.shape, point);
+    if (!body) return null;
+    return {
+      entries: [
+        entry(t('fog.reveal'), 'eye', () => {
+          const now = bodyNow(coverage, point);
+          if (now) store.getState().revealFogGround([now]);
+        }),
+        remove(() => {
+          const now = bodyNow(coverage, point);
+          if (now) store.getState().addFogOperation({ type: 'lasso', isErasing: true, points: now });
+        }),
+      ],
+      outlines: [body],
     };
-    return { entries: [entry], outlines: [areaOutline(piece)] };
   }
-  if (!covered) return null;
-  const outlines = fogBodyAt(fog.shape, point, areas);
-  if (outlines.length === 0) return null;
-  return { entries: [{ type: 'item', label: t('fog.reveal'), icon: 'eye', onClick: () => revealBody(store, coverage, point) }], outlines };
+  const revealed = areaAt(fogAreaList(viewedFog(store.getState())), point);
+  if (!revealed) return null;
+  return {
+    entries: [
+      entry(t('fog.hide'), 'eye-off', () => { store.getState().hideFogArea(revealed.id); }),
+      remove(() => { store.getState().forgetFogArea(revealed.id); }),
+    ],
+    outlines: [areaOutline(revealed)],
+  };
 }
 
 /**
- * Opens the fog's menu for the world `point` at a screen point. `mark` is told what the entry
- * will act on while the menu is open, and null once it has closed. False where the fog has no
- * menu there.
+ * Opens the fog's menu for the world `point` at a screen point. `mark` is told what its entries
+ * act on while the menu is open, and null once it has closed. False where the fog has no menu there.
  */
 export function showFogMenu(
   store: Store,

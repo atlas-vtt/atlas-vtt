@@ -393,7 +393,7 @@ describe('the fog tool\'s polygon', () => {
 });
 
 describe('the fog tool\'s cells', () => {
-  it('hide the cells of a drag round a cell as one piece that leaves that cell open, in one undo step', () => {
+  it('hide the cells of a drag that encloses a hole as several shapes in one undo step', () => {
     const s = polygonScene();
     s.store.getState().setFogTool({ shape: 'cells' });
     const camera = (s.gesture as unknown as { deps: { viewport: Container } }).deps.viewport;
@@ -404,10 +404,15 @@ describe('the fog tool\'s cells', () => {
     for (const [x, y] of [[175, 35], [175, 175], [35, 175], [35, 105]] as const) pointer('pointermove', x, y);
     expect(s.fog()).toEqual([]);
     pointer('pointerup', 35, 105);
-    expect(s.fog()).toEqual([expect.objectContaining({ type: 'lasso', isErasing: false, area: {} })]);
+    expect(s.fog()).toHaveLength(4);
+    expect(s.fog().every((operation) => operation.type === 'lasso' && !operation.isErasing && !('area' in operation))).toBe(true);
+    // They act in the order given, each a tick after the one before.
+    const times = s.fog().map((operation) => operation.timestamp);
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+    expect(new Set(times).size).toBe(4);
+    // Fog that touches is one: the eight cells are one body, and the cell in their middle is not in it.
     const fog = fogCoverage(s.store.getState().objects.fog);
-    // The eight cells passed are hidden, the one in their middle is not.
-    expect([fog.covers({ x: 35, y: 35 }), fog.covers({ x: 175, y: 105 }), fog.covers({ x: 35, y: 105 }), fog.covers({ x: 105, y: 105 })]).toEqual([true, true, true, false]);
+    expect([fog.covers({ x: 35, y: 35 }), fog.covers({ x: 175, y: 105 }), fog.covers({ x: 105, y: 105 })]).toEqual([true, true, false]);
     expect(s.steps()).toBe(1);
     s.undo();
     expect(s.fog()).toEqual([]);
