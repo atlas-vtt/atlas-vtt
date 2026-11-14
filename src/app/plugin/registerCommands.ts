@@ -219,7 +219,7 @@ function registerStatblockCommands(plugin: Plugin): void {
 
   plugin.addCommand({
     id: 'new-statblock-template',
-    name: 'New statblock template…',
+    name: t('command.newStatblockTemplate'),
     checkCallback: (checking) => {
       if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
       if (!checking) runInBackground(openTemplateGallery(app), 'Opening the template gallery');

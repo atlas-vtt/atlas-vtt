@@ -1,7 +1,7 @@
 import React, { useId } from 'react';
 import { X } from 'lucide-react';
 import { t } from '../../../i18n';
-import { senseKind, takesRange } from '../../../gameSystems/senseEditing';
+import { senseDisplayName, senseKind, takesRange } from '../../../gameSystems/senseEditing';
 import type { SenseRow } from '../../../lighting/tokenLighting';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
@@ -36,7 +36,7 @@ interface SenseRowFieldsProps {
 /** One sense of a list being edited: its name, its range where it takes one, and its remove button. */
 export function SenseRowFields({ row, definition, unit, fromStatblock, inputRef, onRangeChange, onRemove }: SenseRowFieldsProps): React.ReactElement {
   const rangeLabel = useId();
-  const name = definition?.name ?? UNKNOWN_SENSE;
+  const name = definition ? senseDisplayName(definition) : UNKNOWN_SENSE;
   // A stored distance limits any sense, so it shows on one that takes none as well.
   const hasRange = definition === undefined || takesRange(definition) || row.range.trim() !== '';
   return (
@@ -88,7 +88,7 @@ export function InheritedSenseRow({ sense, definition, unit }: InheritedSenseRow
   return (
     <li className="atlas-sense-row atlas-sense-row--inherited">
       <span className="atlas-sense-row__name">
-        {definition?.name ?? UNKNOWN_SENSE}
+        {definition ? senseDisplayName(definition) : UNKNOWN_SENSE}
         <StatblockTag />
       </span>
       {reach && <span className="atlas-sense-row__reach">{reach}</span>}

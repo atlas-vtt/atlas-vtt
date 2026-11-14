@@ -2,6 +2,11 @@
   "version": "0.15.1-beta.0",
   "releases": [
     {
+      "version": "0.15.1-beta.0",
+      "title": "Coming in 0.15.1",
+      "markdown": "## New\n- Italian interface and in-app guides, following Obsidian’s language, including command-palette, graphics, scene-level, experimental, collection-sense, initiative and plugin settings. Texts added or changed since the translation was prepared fall back to English."
+    },
+    {
       "version": "0.15.0",
       "date": "2026-11-13",
       "title": "Measure tool, spell effects and movement",

@@ -10,13 +10,13 @@ import { SettingsService } from '../services/SettingsService';
 export const EXPERIMENTAL_FEATURES = [
   {
     id: 'statblockEditor',
-    label: 'Statblock editor',
-    hint: 'Statblock roles and templates: a collection\'s Statblocks settings, and editing statblocks in Atlas. While off, statblocks show as before.',
+    label: t('experimental.statblockEditor'),
+    hint: t('experimental.statblockEditorHint'),
   },
   {
     id: 'onlinePlay',
-    label: 'Online play',
-    hint: 'Host a table that players join from their browsers: the online control at the bottom left of a map, and the account settings. While off, Atlas connects to nothing.',
+    label: t('experimental.onlinePlay'),
+    hint: t('experimental.onlinePlayHint'),
   },
   {
     id: 'sound',

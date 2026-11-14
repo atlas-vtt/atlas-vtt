@@ -1,0 +1,101 @@
+import type { Translation } from '../../types';
+
+export const creator = {
+  "creator.all": "Tutti",
+  "creator.batch": "In blocco",
+  "creator.chooseNew": "Scegli una nuova immagine",
+  "creator.collection": "Collezione",
+  "creator.countOf": "{count} di {total}",
+  "creator.create": "Crea",
+  "creator.createTag": "Crea \"{name}\"",
+  "creator.creating": "Creazione…",
+  "creator.creatingTag": "Creazione dell’etichetta…",
+  "creator.cropHint": "Trascina per riposizionare · Scorri per regolare lo zoom · Doppio clic per reimpostare",
+  "creator.dropAnywhere": "Trascina le immagini dove vuoi",
+  "creator.emptyHint": "Trascina le immagini in qualsiasi punto di questa finestra. Puoi ritagliarle, regolare lo zoom e assegnare un nome a ciascuna prima di crearle.",
+  "creator.firstTag": "Scrivi un nome per creare la tua prima etichetta.",
+  "creator.imageSource": "Origine dell’immagine",
+
+  "creator.statblockNotes": "Scegli note con blocchi statistiche…",
+  "creator.map.browse": "oppure fai clic per cercare immagini di mappe",
+  "creator.map.count": {
+    "one": "{count} mappa",
+    "other": "{count} mappe"
+  },
+  "creator.map.create": "Crea mappe",
+  "creator.map.drop": "Rilascia per aggiungere mappe",
+  "creator.map.edit": "Modifica mappa",
+  "creator.map.name": "Nome della mappa",
+  "creator.map.none": "Ancora nessuna mappa",
+  "creator.map.noneToCreate": "Nessuna mappa da creare",
+  "creator.map.optimizeFailed": "Impossibile ottimizzare {name}. La mappa non può essere aggiornata.",
+  "creator.map.ready": {
+    "one": "{count} mappa pronta",
+    "other": "{count} mappe pronte"
+  },
+  "creator.noCollections": "Nessuna collezione trovata",
+  "creator.none": "Nessuno",
+  "creator.reduction": "Il file salvato occupa il {percent}% in meno rispetto a quello caricato",
+  "creator.removeSelected": "Rimuovi selezionati",
+  "creator.replaceImage": "Sostituisci immagine",
+  "creator.resetCrop": "Reimposta ritaglio",
+  "creator.resetZoom": "Reimposta zoom al {percent}%",
+  "creator.ringHidden": "Bordo del token nascosto",
+  "creator.ringMixed": "Impostazioni del bordo dei token diverse tra loro",
+  "creator.ringShown": "Bordo del token visibile",
+  "creator.saveFailed": "Impossibile salvare questa anteprima.",
+  "creator.searchCollections": "Cerca collezioni…",
+  "creator.searchTags": "Cerca o crea etichette",
+  "creator.searchTagsPlaceholder": "Cerca o crea etichette…",
+  "creator.select": "Seleziona {name}",
+  "creator.selected": "{count} selezionati",
+  "creator.selection": "Selezione",
+  "creator.size": "Dimensioni",
+  "creator.statblocksHint": "Aggiungi le creature del vault alle stesse schede di anteprima delle immagini caricate.",
+  "creator.tags": "Etichette",
+  "creator.toggleAllRings": "Anello per tutti i token",
+  "creator.toggleRing": "Anello del token",
+  "creator.toggleRingFor": "Anello del token {name}",
+  "creator.token.browse": "oppure fai clic per cercare immagini di token",
+  "creator.token.count": {
+    "one": "{count} token",
+    "other": "{count} token"
+  },
+  "creator.token.create": "Crea token",
+  "creator.token.drop": "Rilascia per aggiungere token",
+  "creator.token.edit": "Modifica token",
+  "creator.token.name": "Nome del token",
+  "creator.token.none": "Ancora nessun token",
+  "creator.token.noneToCreate": "Nessun token da creare",
+  "creator.token.optimizeFailed": "Impossibile ottimizzare {name}. Il token non può essere aggiornato.",
+  "creator.token.ready": {
+    "one": "{count} token pronto",
+    "other": "{count} token pronti"
+  },
+  "creator.untitled": "Senza titolo",
+  "creator.update": "Aggiorna",
+  "creator.updating": "Aggiornamento…",
+
+  "creator.willReplace": "L’immagine attuale verrà sostituita",
+  "creator.zoom": "Zoom",
+  "creator.zoomIn": "Ingrandisci",
+  "creator.zoomInSelected": "Ingrandisci selezionati",
+  "creator.zoomOut": "Riduci",
+  "creator.zoomOutSelected": "Riduci selezionati",
+  "creator.token.saveFailedCount": {
+    "one": "Impossibile salvare {count} token: {error}",
+    "other": "Impossibile salvare {count} token: {error}"
+  },
+  "creator.map.saveFailedCount": {
+    "one": "Impossibile salvare {count} mappa: {error}",
+    "other": "Impossibile salvare {count} mappe: {error}"
+  },
+  "creator.indexWriteFailed": "impossibile scrivere l’indice delle risorse.",
+  "creator.saving.updateMap": "Aggiornamento della mappa",
+  "creator.saving.updateToken": "Aggiornamento del token",
+  "creator.saving.addMaps": "Aggiunta delle mappe",
+  "creator.saving.createTokens": "Creazione dei token",
+  "creator.optimizingImages": "Ottimizzazione delle immagini",
+  "creator.savePreviewsFailed": "Impossibile salvare le anteprime.",
+  "creator.scaledDown": "Ridotta da {from} px alle dimensioni massime consentite per una mappa"
+} satisfies Translation;

@@ -411,6 +411,7 @@
 .atlas-starter-choice__text {
   @include atlas-flex-col($gap: $spacing-xs);
   min-width: 0;
+  white-space: normal;
 
   small {
     color: var(--text-muted);
