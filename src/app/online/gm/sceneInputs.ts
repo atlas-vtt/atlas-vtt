@@ -1,5 +1,5 @@
 import {
-  MAX_SIGHT_TOKENS, type JsonRecord, type SharedEffect, type SharedFog, type SharedFogOperation, type SharedLightingScene, type SharedSight,
+  MAX_SIGHT_TOKENS, type JsonRecord, type SharedEffect, type SharedFogOperation, type SharedLightingScene, type SharedSight,
   type SharedVision, type SharedWall, type SightToken,
 } from '../protocol/index.ts';
 import { validateFogOperation } from '../../fog/fogOperationShape';
@@ -25,7 +25,8 @@ import { measureLightKey, measureLights } from '../../measure/measureLights';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
-function sharedOperation(operation: FogOperation, id: string): SharedFogOperation {
+/** One stored fog operation as players get it: its geometry with the GM's drag offset applied, named `id`. */
+export function sharedOperation(operation: FogOperation, id: string): SharedFogOperation {
   const ox = operation.offsetX ?? 0;
   const oy = operation.offsetY ?? 0;
   const erase = operation.isErasing;
@@ -35,18 +36,16 @@ function sharedOperation(operation: FogOperation, id: string): SharedFogOperatio
 }
 
 /**
- * The scene's committed fog as players get it: every operation in the order Atlas replays them
- * (by time, then as stored), with its drag offset applied and the random id `alias` gives its key
- * (so a delta can name it). Null when an operation cannot be read, which covers the whole map for
- * the players as it does in Atlas's own player frame.
+ * The scene's committed fog in the order Atlas replays it (by time, then as stored), each with its
+ * key in the store. Null when an operation cannot be read, which covers the whole map for the
+ * players as it does in Atlas's own player frame.
  */
-export function sharedFog(operations: Readonly<Record<string, FogOperation>>, alias: (key: string) => string): SharedFog {
+export function orderedFog(operations: Readonly<Record<string, FogOperation>>): (readonly [string, FogOperation])[] | null {
   try {
-    const ordered = Object.entries(operations).map(([key, operation], index) => {
+    return Object.entries(operations).map(([key, operation], index) => {
       validateFogOperation(operation);
       return { key, operation, index };
-    }).sort((a, b) => a.operation.timestamp - b.operation.timestamp || a.index - b.index);
-    return ordered.map(({ key, operation }) => sharedOperation(operation, alias(key)));
+    }).sort((a, b) => a.operation.timestamp - b.operation.timestamp || a.index - b.index).map(({ key, operation }) => [key, operation] as const);
   } catch {
     return null;
   }

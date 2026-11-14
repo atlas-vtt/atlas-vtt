@@ -4,34 +4,31 @@ import { CoinIcon } from "../../../react/components/CoinIcon"
 import { DiceDropdownMenu } from "../../../react/components/dice/DiceDropdownMenu"
 import type { ToolbarControlId } from "../../../toolbar/toolbarCatalog"
 import { ToolButton } from "../primitives/ToolButton"
-import { DrawToolGroup } from "./DrawToolGroup"
-import { FogToolGroup } from "./FogToolGroup"
 import { LightingToolGroup } from "./LightingToolGroup"
 import { MeasureToolGroup } from "./MeasureToolGroup"
 import { MoveToolGroup } from "./MoveToolGroup"
 import { PinToolGroup } from "./PinToolGroup"
-import { TextToolGroup } from "./TextToolGroup"
-import { drawToolFace, fogToolFace, lightingToolFace, measureToolFace, moveToolFace, pinToolFace, textToolFace, type Tool, type ToolFace } from "./toolFaces"
+import { drawToolFace, fogToolFace, lightingToolFace, measureToolFace, moveToolFace, pinToolFace, singleToolFace, type ToolFace } from "./toolFaces"
 import { buttonItem, toolGroupItem, type ToolbarItemBody } from "./toolbarItems"
 import type { ToolbarContext } from "./toolbarContext"
 import { t } from "../../../i18n"
 
-/** A tool without family members: pinned while in use. */
-function toolButtonItem(ctx: ToolbarContext, tool: Tool, icon: ToolFace["icon"], label: string, shortcut: string): ToolbarItemBody {
-  const inUse = ctx.activeTool === tool
-  return buttonItem({ icon, label, shortcut, isActive: inUse, pinned: inUse, onClick: () => ctx.selectTool(tool) })
+/** A tool without a menu: pinned while in use. */
+function toolButtonItem(ctx: ToolbarContext, face: ToolFace, shortcut: string): ToolbarItemBody {
+  return buttonItem({ icon: face.icon, label: face.label, shortcut, isActive: face.isActive, pinned: face.isActive, onClick: () => ctx.selectTool(face.tool) })
 }
 
 /** How each control of the catalog (`toolbar/toolbarCatalog.ts`) renders in the bar and in "More tools". */
 export const TOOLBAR_CONTROL_ITEMS = {
   move: ctx => toolGroupItem(ctx, 'move', moveToolFace(ctx.activeTool), <MoveToolGroup {...ctx.groupControls('move')} />),
-  fog: ctx => toolGroupItem(ctx, 'fog', fogToolFace(ctx.activeTool), <FogToolGroup {...ctx.groupControls('fog')} />),
-  draw: ctx => toolGroupItem(ctx, 'draw', drawToolFace(ctx.activeTool), <DrawToolGroup {...ctx.groupControls('draw')} />),
-  text: ctx => toolGroupItem(ctx, 'text', textToolFace(ctx.activeTool), <TextToolGroup {...ctx.groupControls('text')} />),
+  // The fog tool has no menu: its bars above the toolbar hold all of it.
+  fog: ctx => toolButtonItem(ctx, fogToolFace(ctx.activeTool), ctx.hotkeyLabel('fog')),
+  // The Draw tool has no menu: its bars above the toolbar hold all of it.
+  draw: ctx => toolButtonItem(ctx, drawToolFace(ctx.activeTool, ctx.drawMode), ctx.hotkeyLabel('draw')),
   measure: ctx => toolGroupItem(ctx, 'measure', measureToolFace(ctx.activeTool, ctx.measureMode), <MeasureToolGroup {...ctx.groupControls('measure')} />),
   wall: ctx => toolGroupItem(ctx, 'wall', lightingToolFace(ctx.activeTool), <LightingToolGroup {...ctx.groupControls('wall')} />),
   pin: ctx => toolGroupItem(ctx, 'pin', pinToolFace(ctx.activeTool), <PinToolGroup {...ctx.groupControls('pin')} />),
-  audio: ctx => toolButtonItem(ctx, "audio", Volume2, t('toolbar.ambientSound'), ctx.hotkeyLabel('audio')),
+  audio: ctx => toolButtonItem(ctx, singleToolFace("audio", Volume2, t('toolbar.ambientSound'), ctx.activeTool), ctx.hotkeyLabel('audio')),
   dice: ({ dice, hotkeyLabel }) => ({
     kind: 'button',
     // The dice tray hangs from this button.

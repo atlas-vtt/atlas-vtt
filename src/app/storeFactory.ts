@@ -8,8 +8,7 @@ import type { StorageValue } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import type { App, Plugin } from 'obsidian';
 import type AtlasVTTPlugin from '../../main';
-import type { TokenEntity, Character, NotePin, TextElement, DrawingStroke } from './types';
-import type { FogOperation, FogOperationInput } from './types/fogTypes';
+import type { TokenEntity, Character, NotePin } from './types';
 import type { WallSegment, WallInput } from './types/wallTypes';
 import { DEFAULT_SCENE_LIGHTING, type LightChanges, type LightInput, type LightZoneChanges, type LightZoneInput, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
 import type { AudioSource, AudioInput } from './types/audioTypes';
@@ -23,6 +22,7 @@ import { normalizeImagePath } from './utils/pathUtils';
 import { createInitiativeActions } from './stores/initiativeSlice';
 import type { InitiativeTurnActions } from './stores/initiativeTurnActions';
 import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
+import { loadDrawTool, saveDrawTool } from './services/deviceSettings';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
 import { isRecord } from './utils/guards';
@@ -47,13 +47,15 @@ import { movedFolderPathOf, movedPathOf, rewriteMapReferences } from './services
 import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
-import { elsewhereThanViewedLevel, firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId } from './levels/sceneLevels';
+import { firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId } from './levels/sceneLevels';
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
 import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
+import { createAnnotationsActions, type AnnotationsSlice } from './stores/annotationsSlice';
+import { createFogActions, type FogSlice } from './stores/fogSlice';
 import { createTurnMovesActions, type TurnMovesSlice } from './stores/turnMovesSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
@@ -139,32 +141,32 @@ export interface ViewAtlasState extends ViewState {
   moveNotePin: (id: string, x: number, y: number) => void;
   deleteNotePin: (id: string) => void;
 
-  // Text element actions
-  addText: (data: Omit<TextElement, 'id' | 'kind'>) => string;
-  updateText: (id: string, updates: Partial<Omit<TextElement, 'id' | 'kind'>>) => void;
-  moveText: (id: string, x: number, y: number) => void;
-  deleteText: (id: string) => void;
-  setTexts: (texts: Record<string, TextElement>) => void;
+  // Drawings and texts (from annotationsSlice.ts)
+  addText: AnnotationsSlice['addText'];
+  updateText: AnnotationsSlice['updateText'];
+  setTexts: AnnotationsSlice['setTexts'];
+  addDrawing: AnnotationsSlice['addDrawing'];
+  addDrawings: AnnotationsSlice['addDrawings'];
+  setDrawings: AnnotationsSlice['setDrawings'];
+  updateAnnotations: AnnotationsSlice['updateAnnotations'];
+  moveAnnotations: AnnotationsSlice['moveAnnotations'];
+  placeAnnotations: AnnotationsSlice['placeAnnotations'];
+  deleteAnnotations: AnnotationsSlice['deleteAnnotations'];
+  orderAnnotations: AnnotationsSlice['orderAnnotations'];
+  groupAnnotations: AnnotationsSlice['groupAnnotations'];
+  ungroupAnnotations: AnnotationsSlice['ungroupAnnotations'];
+  replaceDrawings: AnnotationsSlice['replaceDrawings'];
+  clearAnnotations: AnnotationsSlice['clearAnnotations'];
 
-  // Drawing actions
-  addDrawing: (data: Omit<DrawingStroke, 'id' | 'kind' | 'timestamp'>) => string;
-  moveDrawings: (ids: string[], dx: number, dy: number) => void;
-  /** Gives each listed drawing these points (a group turned as one); others keep theirs. */
-  placeDrawings: (points: Readonly<Record<string, ReadonlyArray<{ x: number; y: number }>>>) => void;
-  updateDrawings: (ids: string[], updates: Partial<Pick<DrawingStroke, 'color' | 'icon'>>) => void;
-  deleteDrawing: (id: string) => void;
-  /** Removes the drawings of the level the view shows; other floors keep theirs. */
-  clearDrawings: () => void;
-  setDrawings: (drawings: Record<string, DrawingStroke>) => void;
-
-  // Fog actions
-  addFogOperation: (data: FogOperationInput) => string;
-  deleteFogOperation: (id: string) => void;
-  deleteFogOperations: (ids: string[]) => void;
-  duplicateFogOperations: (ids: string[]) => void;
-  setFogOperations: (fog: Record<string, FogOperation>) => void;
-  /** Removes the fog of the level the view shows; other floors keep theirs. */
-  clearFog: () => void;
+  // Fog actions (from fogSlice.ts)
+  addFogOperation: FogSlice['addFogOperation'];
+  addFogOperations: FogSlice['addFogOperations'];
+  clearFog: FogSlice['clearFog'];
+  coverAllFog: FogSlice['coverAllFog'];
+  revealFogGround: FogSlice['revealFogGround'];
+  hideFogArea: FogSlice['hideFogArea'];
+  forgetFogArea: FogSlice['forgetFogArea'];
+  hideRooms: FogSlice['hideRooms'];
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
   /** Sets the explored memory of `level` (unset: the level the view shows; null: the first); a level the scene no longer has keeps none. */
@@ -176,6 +178,8 @@ export interface ViewAtlasState extends ViewState {
   updateWall: (id: string, changes: Partial<WallSegment>) => void;
   deleteWall: (id: string) => void;
   deleteWalls: (ids: string[]) => void;
+  /** Takes walls away and adds others in one write, so whatever follows the walls works them out once; returns the ids of the added ones. */
+  editWalls: (remove: readonly string[], add: readonly WallInput[]) => string[];
   toggleDoor: (id: string) => void;
   /** Locks a door, closing it, or unlocks it; a locked door does not open (`toggleDoor`). */
   setDoorLocked: (id: string, locked: boolean) => void;
@@ -273,7 +277,7 @@ export interface ViewAtlasState extends ViewState {
   placeOffMapToken: MapObjectsSlice['placeOffMapToken'];
 
   // Map state management
-  deleteMapObject: (type: 'token' | 'fog' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => void;
+  deleteMapObject: (type: 'token' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => void;
   clearMapState: () => void;
   plugin?: Plugin;
   setTokenSettings: (settings: ViewAtlasState['tokenSettings']) => void;
@@ -320,6 +324,8 @@ export interface ViewAtlasState extends ViewState {
   openMeasurePopover: UISlice['openMeasurePopover'];
   closeMeasurePopover: UISlice['closeMeasurePopover'];
   setMeasureTool: UISlice['setMeasureTool'];
+  setDrawTool: UISlice['setDrawTool'];
+  setFogTool: UISlice['setFogTool'];
   setLightingTool: UISlice['setLightingTool'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
@@ -937,19 +943,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // --- Copy, paste and duplicate (from mapObjectsSlice.ts) ---
           ...createMapObjectsActions(set, get),
 
-          deleteMapObject: (type: 'token' | 'fog' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => set((draft) => {
+          deleteMapObject: (type: 'token' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => set((draft) => {
             switch (type) {
               case 'token':
                 if (draft.objects.tokens[id]) {
                   delete draft.objects.tokens[id];
                   dropTokenAuras(draft, [id]);
                   // Remove from selection if selected
-                  draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
-                }
-                break;
-              case 'fog':
-                if (draft.objects.fog[id]) {
-                  delete draft.objects.fog[id];
                   draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
                 }
                 break;
@@ -1074,164 +1074,11 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
 
-          // Text element actions
-          addText: (data) => {
-            const id = `text_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-            set((draft) => {
-              const textElement: TextElement = {
-                id,
-                kind: 'text',
-                ...data,
-                ...placedOnViewedLevel(draft),
-              };
-              draft.objects.texts[id] = textElement;
-            });
-            return id;
-          },
+          // Drawings and texts (from annotationsSlice.ts)
+          ...createAnnotationsActions(set, get),
 
-          updateText: (id, updates) => set((draft) => {
-            const text = draft.objects.texts[id];
-            if (text) {
-              Object.assign(text, updates);
-            }
-          }),
-
-          moveText: (id, x, y) => set((draft) => {
-            const text = draft.objects.texts[id];
-            if (text) {
-              text.x = x;
-              text.y = y;
-            }
-          }),
-
-          deleteText: (id) => set((draft) => {
-            if (draft.objects.texts[id]) {
-              delete draft.objects.texts[id];
-              draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
-            }
-          }),
-
-          setTexts: (texts) => set((draft) => {
-            draft.objects.texts = texts;
-          }),
-
-          // Drawing actions
-          addDrawing: (data) => {
-            const id = `drawing_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-            set((draft) => {
-              const drawingStroke: DrawingStroke = {
-                id,
-                kind: 'drawing',
-                timestamp: Date.now(),
-                ...data,
-                // Create a deep copy of points array to avoid frozen object issues
-                points: data.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y })),
-                ...placedOnViewedLevel(draft),
-              };
-              draft.objects.drawings[id] = drawingStroke;
-            });
-            return id;
-          },
-
-          moveDrawings: (ids, dx, dy) => set((draft) => {
-            for (const id of ids) {
-              const drawing = draft.objects.drawings[id];
-              if (!drawing) continue;
-              for (const point of drawing.points) {
-                point.x += dx;
-                point.y += dy;
-              }
-            }
-          }),
-
-          placeDrawings: (points) => set((draft) => {
-            for (const [id, placed] of Object.entries(points)) {
-              const drawing = draft.objects.drawings[id];
-              if (drawing) drawing.points = placed.map(({ x, y }) => ({ x, y }));
-            }
-          }),
-
-          updateDrawings: (ids, updates) => set((draft) => {
-            for (const id of ids) {
-              const drawing = draft.objects.drawings[id];
-              if (drawing) Object.assign(drawing, updates);
-            }
-          }),
-
-          deleteDrawing: (id) => set((draft) => {
-            if (draft.objects.drawings[id]) {
-              delete draft.objects.drawings[id];
-              draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
-            }
-          }),
-
-          clearDrawings: () => set((draft) => {
-            draft.objects.drawings = elsewhereThanViewedLevel(draft.objects.drawings, draft);
-          }),
-
-          setDrawings: (drawings) => set((draft) => {
-            // Create a new object to ensure Immer detects the change
-            draft.objects.drawings = { ...drawings };
-          }),
-
-          // Fog actions
-          addFogOperation: (data) => {
-            const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-            set((draft) => {
-              const op: FogOperation = {
-                id,
-                kind: 'fog',
-                timestamp: Date.now(),
-                ...data,
-                ...placedOnViewedLevel(draft),
-              };
-              draft.objects.fog[id] = op;
-            });
-            return id;
-          },
-
-          deleteFogOperation: (id) => set((draft) => {
-            if (draft.objects.fog[id]) {
-              delete draft.objects.fog[id];
-              draft.selectedIds = draft.selectedIds.filter(sid => sid !== id);
-            }
-          }),
-
-          deleteFogOperations: (ids) => set((draft) => {
-            for (const id of ids) {
-              delete draft.objects.fog[id];
-            }
-            draft.selectedIds = draft.selectedIds.filter(sid => !ids.includes(sid));
-          }),
-
-          duplicateFogOperations: (ids) => set((draft) => {
-            if (!ids || !Array.isArray(ids)) return;
-            const newIds: string[] = [];
-            ids.forEach(id => {
-              const original = draft.objects.fog[id];
-              if (original && !original.isErasing) {
-                const newId = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-                const offset = 40;
-                draft.objects.fog[newId] = {
-                  ...original,
-                  id: newId,
-                  timestamp: Date.now(),
-                  offsetX: (original.offsetX ?? 0) + offset,
-                  offsetY: (original.offsetY ?? 0) + offset,
-                };
-                newIds.push(newId);
-              }
-            });
-            draft.selectedIds = newIds;
-          }),
-
-          setFogOperations: (fog) => set((draft) => {
-            draft.objects.fog = { ...fog };
-          }),
-
-          clearFog: () => set((draft) => {
-            draft.objects.fog = elsewhereThanViewedLevel(draft.objects.fog, draft);
-          }),
+          // Fog actions (from fogSlice.ts)
+          ...createFogActions(set, get),
 
           setSceneLighting: (changes) => set((draft) => {
             Object.assign(draft.lighting, changes);
@@ -1293,6 +1140,25 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.selectedIds = draft.selectedIds.filter(sid => !ids.includes(sid));
             draft._audioDirty = true;
           }),
+
+          editWalls: (remove, add) => {
+            const stamp = Date.now();
+            const ids = add.map(() => `wall_${stamp}_${Math.random().toString(36).slice(2, 11)}`);
+            if (remove.length === 0 && add.length === 0) return ids;
+            set((draft) => {
+              for (const id of remove) delete draft.objects.walls[id];
+              const levels = placedOnViewedLevels(draft);
+              add.forEach((data, index) => {
+                draft.objects.walls[ids[index]!] = { id: ids[index]!, kind: 'wall', ...levels, ...data };
+              });
+              if (remove.length > 0) {
+                const gone = new Set(remove);
+                draft.selectedIds = draft.selectedIds.filter((id) => !gone.has(id));
+              }
+              draft._audioDirty = true;
+            });
+            return ids;
+          },
 
           toggleDoor: (id) => set((draft) => {
             const wall = draft.objects.walls[id];
@@ -1563,8 +1429,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),
 
           // --- Per-view UI visibility (from uiSlice.ts) ---
-          ...createInitialUIState(),
-          ...createUIActions(set),
+          ...createInitialUIState(loadDrawTool(app)),
+          ...createUIActions(set, (choices) => saveDrawTool(app, choices)),
 
         })),
         {

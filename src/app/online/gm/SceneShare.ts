@@ -264,6 +264,7 @@ export class SceneShare {
     this.ports.showPlayerMarks?.({ lasers: [], measures: [] });
     this.ports.showPlayerDrags?.([]);
     this.ports.showPlayerCursors?.([]);
+    this.ports.showPlayerStrokes?.([]);
     for (const share of this.floors.values()) share.viewChanged();
   }
 

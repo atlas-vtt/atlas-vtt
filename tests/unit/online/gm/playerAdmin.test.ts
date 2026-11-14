@@ -17,7 +17,7 @@ const snapshot = (over: Partial<OnlineSnapshot> = {}): OnlineSnapshot => ({ stat
 
 function actions(): PanelActions {
   return {
-    selectToken: vi.fn(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), mark: vi.fn(), kick: vi.fn(), selected: () => [], imageSrc: (path) => path,
+    selectToken: vi.fn(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), mark: vi.fn(), kick: vi.fn(), drawingsOf: () => 0, clearDrawings: vi.fn(), selected: () => [], imageSrc: (path) => path,
     copyPlayerCode: vi.fn(() => Promise.resolve(true)), newPlayerCode: vi.fn(), renamePlayer: vi.fn(), removeFromCampaign: vi.fn(), addPlayer: vi.fn(() => ({ id: 'd'.repeat(20), name: 'Dora', code: '731904' })), newLink: vi.fn(),
     start: vi.fn(), choose: vi.fn(), search: vi.fn(), openCampaigns: vi.fn(), stop: vi.fn(), share: vi.fn(), copy: () => Promise.resolve(true), toggleQr: vi.fn(), close: vi.fn(), hideImage: vi.fn(), openAccountPage: vi.fn(),
     newCode: vi.fn(), copyCode: vi.fn(), setRequireCode: vi.fn(), setAskToJoin: vi.fn(),

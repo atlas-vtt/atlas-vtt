@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Container, Text } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
+import { readText } from '../../src/app/annotations/annotationList';
 import { TEXT_SETTLE_MS, TextSharpening } from '../../src/app/pixi/TextSharpening';
 import { createTextElementView, TEXT_CONTENT_LABEL } from '../../src/app/pixi/textElementView';
 import type { TextElement } from '../../src/app/types';
@@ -59,7 +60,7 @@ function setup(deviceRatio = 1): Harness {
     clock,
     deviceRatio: ratio,
     add: (id, element = {}) => {
-      const view = createTextElementView({ id, kind: 'text', x: 400, y: 300, text: 'Guard room', fontSize: 24, fontFamily: 'serif', color: '#ffffff', ...element });
+      const view = createTextElementView(readText(id, { id, kind: 'text', x: 400, y: 300, text: 'Guard room', fontSize: 24, fontFamily: 'serif', color: '#ffffff', ...element })!);
       sharpening.track(id, view);
       return { view, text: view.getChildByLabel(TEXT_CONTENT_LABEL) as Text };
     },
@@ -214,6 +215,43 @@ describe('TextSharpening', () => {
     // 800 units wide in the stub's measure: 4096 pixels are the longest side.
     expect(text.resolution).toBeLessThan(6);
     expect(Math.ceil(800 * text.resolution)).toBe(4096);
+  });
+
+  it('counts the room a text\'s picture keeps around its letters: an Outline text is held to the limits with it', () => {
+    const h = setup(2);
+    h.viewport.show(5);
+    const plain = h.add('a', { text: 'x'.repeat(100), scale: 5 }).text;
+    const outlined = h.add('b', { text: 'x'.repeat(100), scale: 5, outline: true }).text;
+    const side = (text: Text): number => Math.ceil((text.getLocalBounds().width + 2 * text.style.padding) * text.resolution);
+    expect(outlined.style.padding).toBeGreaterThan(0);
+    expect(outlined.resolution).toBeLessThan(plain.resolution);
+    // Its picture fills the longest side the limits allow, and never passes it.
+    expect(side(outlined)).toBeLessThanOrEqual(4096);
+    expect(side(outlined)).toBeGreaterThan(4096 - 8);
+    expect(Math.ceil(plain.getLocalBounds().width * outlined.resolution)).toBeLessThan(4096 - 8);
+  });
+
+  it('leaves the halo out of a text that is too small on every picture, and draws it once a picture shows it large enough', () => {
+    const h = setup();
+    const halo = (text: Text): number => text.style.stroke?.width ?? 0;
+    // 24 high: under 12 pixels below half of the map's size.
+    h.viewport.show(0.25);
+    const { text } = h.add('a', { outline: true });
+    expect(halo(text)).toBe(0);
+    h.viewport.show(1);
+    h.viewport.tick();
+    expect(halo(text)).toBeGreaterThan(0);
+    h.viewport.show(0.25);
+    h.viewport.tick();
+    expect(halo(text)).toBe(0);
+    // A players' frame that shows it large keeps the halo, whatever the GM's camera.
+    const release = h.sharpening.addDemandRegion({ rect: { x: 0, y: 0, width: 800, height: 600 }, worldPerScreenPixel: 1 });
+    expect(halo(text)).toBeGreaterThan(0);
+    release();
+    // A text no picture shows keeps what it has.
+    h.viewport.show(1, 9000, 9000);
+    rest(h);
+    expect(halo(text)).toBeGreaterThan(0);
   });
 
   it('measures an edited text again', () => {

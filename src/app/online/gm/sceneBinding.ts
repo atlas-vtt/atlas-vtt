@@ -13,6 +13,8 @@ import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
 import { companionTimers } from './companionTimers.ts';
 import { dragRulerOf } from './dragRulers.ts';
+import { tokenMovesOf } from './moveShare.ts';
+import { decodeMaskAlpha } from './exploredMaskAlpha.ts';
 import { GmMarks } from './gmMarks.ts';
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
@@ -102,6 +104,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     marks.showPlayers({ lasers: [], measures: [] });
     marks.showPlayerDrags([]);
     marks.showPlayerCursors([]);
+    marks.showPlayerStrokes([]);
   });
   const share: SceneShare = new SceneShare(store, {
     tokenSource: () => asTokenSource(shownRenderer()),
@@ -112,6 +115,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     showPlayerDrags: (drags) => shown() && marks.showPlayerDrags(drags),
     gmDragRuler: () => dragRulerOf(shownRenderer()),
     showPlayerCursors: (cursors) => shown() && marks.showPlayerCursors(cursors),
+    showPlayerStrokes: (strokes) => shown() && marks.showPlayerStrokes(strokes),
     nameOf: (player) => ports.nameOf(player),
     accent: lastWhileShown(shown, () => accentColour(leaf.view.containerEl.ownerDocument)),
     atlasSettings: () => atlasPlayerSettings(ports.app),
@@ -119,7 +123,9 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     mapLayers: () => (shown() ? mapLayerSourceOf(renderer, leaf.view) : null),
     showNames: () => atlasPlayerSettings(ports.app).showNames,
     tokenRules: () => tokenRulesOf(shownRenderer()),
+    tokenMoves: () => tokenMovesOf(shownRenderer()),
     readImage: (path) => ports.readImage(path),
+    decodeMask: decodeMaskAlpha,
     stored: ports.stored,
     send: (body, to) => live() && ports.send(body, to),
     sendLive: (body, key, to) => live() && ports.sendLive(body, key, to),

@@ -1,5 +1,5 @@
 import type * as React from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type { Tab } from '../types';
 import { tabs } from '../types';
 import type { AssetData } from './useAssetData';
@@ -14,13 +14,10 @@ import { SettingsService } from '../../../../services/SettingsService';
 import { handledByAnotherControl } from '../../../../keyboard/tooltipEscape';
 import { hasOpenDialog } from '../utils/openDialogs';
 import { isPressOutsideWindow } from '../utils/outsidePress';
-import { focusSearchUntouched, isSearchUntouched } from '../components/search/searchFocus';
 import { typeToSearch } from '../components/search/typeToSearch';
 
 /** Layers that open over the manager and take their keys for themselves: Escape closes them, never the manager under them. */
 const OPEN_LAYERS = '.modal-container, .prompt, .suggestion-container, .menu, .atlas-ctx-menu, [role="menu"], .atlas-text-dialog-backdrop, .atlas-asset-manager-move-modal';
-/** The window's search field where it stands in the toolbar row; a narrow header folds it into a button, which opens it over the row. */
-const SEARCH_FIELD = '.atlas-am-toolbar:not([data-compact~="search"]) .atlas-asset-manager-search input';
 /** Keys that bring focus into the grid from anywhere in the manager that does not use them itself. */
 const GRID_ENTRY_KEYS = new Set(['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End']);
 /** Where those keys already have a use: lists, menus, dialogs, sliders, text. */
@@ -63,16 +60,10 @@ export function useAssetManagerEffects({
   // and must not pull focus out of the search field while typing.
   // A dialog that closed gave focus back to what opened it (`useFocusReturn`): only focus resting outside the window
   // (on the map, a dialog going away, nowhere) comes to the window itself.
-  // As it opens, the window's search takes focus (decision #38), unless it is folded into a button.
-  const openedAt = useRef(false);
   useEffect(() => {
     const root = modalRef.current;
-    const opening = isOpen && !openedAt.current;
-    openedAt.current = isOpen;
     if (!isOpen || isAnySubModalOpen || !root || root.contains(root.ownerDocument.activeElement)) return;
-    const search = opening ? root.querySelector<HTMLInputElement>(SEARCH_FIELD) : null;
-    if (search) focusSearchUntouched(search);
-    else root.focus();
+    root.focus();
   }, [isOpen, isAnySubModalOpen]);
 
   useEffect(() => {
@@ -102,7 +93,7 @@ export function useAssetManagerEffects({
       }
       if (GRID_ENTRY_KEYS.has(e.key) && !e.defaultPrevented && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const target = e.target as Partial<Element> | null;
-        if ((isTextEntryTarget(e.target) && !isSearchUntouched(e.target)) || target?.closest?.(OWNS_ARROWS)) return;
+        if (isTextEntryTarget(e.target) || target?.closest?.(OWNS_ARROWS)) return;
         if (focusGrid(containerRef.current)) e.preventDefault();
         return;
       }

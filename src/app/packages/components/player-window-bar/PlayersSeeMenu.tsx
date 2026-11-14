@@ -21,8 +21,9 @@ const row = ({ id, label, value, onToggle }: PlayerViewSwitch): React.ReactEleme
 )
 
 /**
- * What players see, the switches of the command palette's player view settings in a menu below
- * its button, and closing the player window as its last row.
+ * What players see, the switches of the command palette's player view settings that reach the
+ * player window in a menu below its button (online play's own stay in the palette), and closing
+ * the player window as its last row.
  */
 export function PlayersSeeMenu({ open, onToggle, settings }: PlayersSeeMenuProps): React.ReactElement {
   const switches = usePlayerViewSwitches(settings)
@@ -51,7 +52,7 @@ export function PlayersSeeMenu({ open, onToggle, settings }: PlayersSeeMenuProps
           onKeyDown={(event) => event.stopPropagation()}
         >
           <div className="atlas-dropdown-section">
-            {switches.interface.map(row)}
+            {switches.shared.map(row)}
             {row(switches.view4k)}
           </div>
           {tokens.length > 0 && <div className="atlas-dropdown-section">{tokens.map(row)}</div>}

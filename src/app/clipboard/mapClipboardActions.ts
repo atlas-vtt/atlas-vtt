@@ -9,6 +9,7 @@ import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
 import { hasLevels } from '../levels/sceneLevels';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { tellCopiesLeftOut } from '../pixi/annotations/annotationNotices';
 import { withoutOffMap } from '../tokens/offMap';
 
 type ClipboardStore = Pick<StoreApi<ViewAtlasState>, 'getState'>;
@@ -77,6 +78,7 @@ export async function pasteClipboard(store: ClipboardStore, target: Point): Prom
   if (countMapObjects(content) === 0) return [];
   const placed = placeMapObjects(content, pasteOffset(content, target, state.grid), state.grid, levelObjects(state));
   tellStairsLeftOut(state, placed);
+  tellCopiesLeftOut(levelObjects(state), placed);
   return state.insertMapObjects(placed);
 }
 
@@ -85,6 +87,9 @@ export function duplicateSelection(store: ClipboardStore): string[] {
   const state = store.getState();
   const ids = editableSelection(state);
   const content = copyableContent(state, ids);
-  if (content) tellStairsLeftOut(state, content);
+  if (content) {
+    tellStairsLeftOut(state, content);
+    tellCopiesLeftOut(levelObjects(state), content);
+  }
   return state.duplicateMapObjects(ids);
 }

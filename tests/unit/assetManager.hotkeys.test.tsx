@@ -7,7 +7,6 @@ import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { useMapHotkeys } from '../../src/app/keyboard/useMapHotkeys';
 import { useAssetManagerEffects } from '../../src/app/packages/components/asset-manager/hooks/useAssetManagerEffects';
-import { isSearchUntouched } from '../../src/app/packages/components/asset-manager/components/search/searchFocus';
 
 type EffectDeps = Parameters<typeof useAssetManagerEffects>[0];
 
@@ -160,29 +159,8 @@ it('brings focus into the grid with an arrow key from anywhere that does not use
   expect(document.activeElement).toBe(input);
 });
 
-it('focuses its search as it opens, untouched, so one Escape closes it (#38)', () => {
+it('focuses the window, not its search, as it opens', () => {
   setup({ toolbar: '' });
-  fireEvent.keyDown(document.body, { key: 'a' });
-  const input = screen.getByRole('textbox');
-  expect(document.activeElement).toBe(input);
-  expect(isSearchUntouched(input)).toBe(true);
-  fireEvent.keyDown(input, { key: 'Escape' });
-  expect(screen.queryByTestId('manager')).toBeNull();
-});
-
-it('lets the arrows of an untouched search reach the grid', () => {
-  setup({ toolbar: '' });
-  fireEvent.keyDown(document.body, { key: 'a' });
-  const grid = document.createElement('div');
-  grid.className = 'atlas-asset-grid-virtual';
-  grid.innerHTML = '<div role="option" tabindex="0">Wolf</div>';
-  screen.getByRole('textbox').closest('.atlas-am-toolbar')!.after(grid);
-  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'ArrowDown' });
-  expect(document.activeElement?.textContent).toBe('Wolf');
-});
-
-it('focuses the window instead where a narrow header folds its search into a button', () => {
-  setup({ toolbar: 'tabs search' });
   fireEvent.keyDown(document.body, { key: 'a' });
   expect(document.activeElement).toBe(screen.getByTestId('manager'));
 });

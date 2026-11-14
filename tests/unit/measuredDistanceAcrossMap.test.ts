@@ -45,7 +45,7 @@ function measureToolLabels(grid: SnappingGridOptions, dCol: number, dRow: number
 
 /** A drag ruler on `grid` for a token of `tokenSize`, and what it last drew. */
 function dragRuler(grid: SnappingGridOptions, tokenSize: number, snapToGrid = true): { ruler: DragRuler; label: () => string } {
-  const view = { draw: vi.fn<DragRulerView['draw']>(), clear: vi.fn(), destroy: vi.fn(), layers: [], playersLayers: [] };
+  const view = { draw: vi.fn<DragRulerView['draw']>(), clear: vi.fn(), destroy: vi.fn(), layers: [] };
   const state = { grid: { snapToGrid }, objects: { tokens: { t1: { id: 't1', size: tokenSize } } } };
   const ruler = new DragRuler(
     view as unknown as DragRulerView,

@@ -30,6 +30,7 @@ const HOST_CLASS = 'atlas-notice-host';
  */
 export function animateNotice(notice: Notice): void {
   const el = notice.containerEl;
+  if (windowIsGone(el)) return;
   el.parentElement?.addClass(HOST_CLASS);
   const reduce = prefersReducedMotion(el);
   // Motion starts on the next frame; until then the notice would show at rest.
@@ -42,6 +43,7 @@ export function animateNotice(notice: Notice): void {
   notice.hide = (): void => {
     if (leaving) return;
     leaving = true;
+    if (windowIsGone(el)) return remove(el);
     el.addClass('atlas-notice--leaving');
     if (reduce) {
       // Ended by its own callback, never by waiting on it: Motion makes no animation of a value that
@@ -53,6 +55,15 @@ export function animateNotice(notice: Notice): void {
     const closed = -(el.offsetHeight + (parseFloat(getComputedStyle(el).marginBottom) || 0));
     void animate(el, { marginTop: `${closed}px` }, CLOSE_UP).then(() => remove(el));
   };
+}
+
+/**
+ * Whether the window the notice was shown in has closed since. Obsidian shows a notice in the window
+ * that is active, a popout too, and code may hide it after that window went: nothing is animated
+ * there any more, and Motion's animation of it could not start.
+ */
+function windowIsGone(el: HTMLElement): boolean {
+  return el.ownerDocument.defaultView === null;
 }
 
 /** What Obsidian's own `hide` ends with: the notice goes, and its container once it is empty. */

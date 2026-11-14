@@ -17,7 +17,7 @@ vi.mock('../../src/app/utils/activeLeafGuard', () => ({ isShortcutScopeActive: (
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/LightingSettingsPanel', () => ({ LightingSettingsPanel: () => <div data-testid="lighting-page" /> }));
 vi.mock('../../src/app/react/components/command-palette/GraphicsPanel', () => ({ GraphicsPanel: () => <div data-testid="graphics-page" /> }));
 
@@ -161,7 +161,7 @@ describe('Atlas search actions', () => {
     fireEvent.keyDown(input, { key: 'Tab' });
     expect(screen.getByRole('button', { name: /^Enter Player Mode/ }).classList.contains('atlas-focused')).toBe(true);
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(screen.getByRole('button', { name: /^Freeze Player Camera/ }).classList.contains('atlas-focused')).toBe(true);
+    expect(screen.getByRole('button', { name: /^Pause Player View/ }).classList.contains('atlas-focused')).toBe(true);
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onClose).toHaveBeenCalledOnce();
@@ -179,7 +179,7 @@ describe('Atlas search actions', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it.each(['Grid settings', 'Token settings', 'Widget settings', 'Local player view settings'])('preserves native Tab navigation inside %s', (label) => {
+  it.each(['Grid settings', 'Token settings', 'Widget settings', 'Player view settings'])('preserves native Tab navigation inside %s', (label) => {
     const store = create(() => ({}));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>);
     fireEvent.click(screen.getByRole('button', { name: label }));

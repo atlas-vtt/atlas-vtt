@@ -1,9 +1,11 @@
 import { t } from '../../../i18n';
 import type React from "react"
-import { Cloud, Eraser, Flashlight, Hand, Lightbulb, MapPin, Pencil, Stamp, Type } from "lucide-react"
+import { Cloud, Eraser, Flashlight, Hand, Lightbulb, MapPin } from "lucide-react"
+import type { DrawMode } from "../../../annotations/annotationTypes"
 import type { MeasureMode } from "../../../measure/measureTypes"
 import { StairsIcon } from "../../../react/components/StairsIcon"
 import type { ViewAtlasState } from "../../../storeFactory"
+import { drawModeChoice } from "./drawToolChoices"
 import { measureModeChoice } from "./measureToolChoices"
 
 export type Tool = ViewAtlasState["activeTool"]
@@ -41,10 +43,10 @@ export function fogToolFace(activeTool: Tool): ToolFace {
   }
 }
 
-export function drawToolFace(activeTool: Tool): ToolFace {
-  if (activeTool === "draw-eraser") return { icon: Eraser, label: t('toolbar.drawingEraser'), tool: activeTool, isActive: true }
-  if (activeTool === "draw-icon") return { icon: Stamp, label: t('toolbar.iconStamp'), tool: activeTool, isActive: true }
-  return { icon: Pencil, label: t('toolbar.drawTool'), tool: "draw-pen", isActive: activeTool === "draw-pen" }
+/** The Draw tool is one tool: its face is the mode a press draws in (`drawTool.mode`, the bar above the toolbar). */
+export function drawToolFace(activeTool: Tool, mode: DrawMode): ToolFace {
+  const { icon, label } = drawModeChoice(mode)
+  return { icon, label, tool: "draw", isActive: activeTool === "draw" }
 }
 
 /** The measure tool is one tool: its face is the mode a press measures in (`measureTool.mode`, the bar above the toolbar). */
@@ -56,10 +58,6 @@ export function measureToolFace(activeTool: Tool, mode: MeasureMode): ToolFace {
 /** Face of a tool without family members. */
 export function singleToolFace(tool: Tool, icon: ToolFace["icon"], label: string, activeTool: Tool): ToolFace {
   return { icon, label, tool, isActive: activeTool === tool }
-}
-
-export function textToolFace(activeTool: Tool): ToolFace {
-  return singleToolFace("text", Type, t('toolbar.textTool'), activeTool)
 }
 
 export function lightingToolFace(activeTool: Tool): ToolFace {
