@@ -19,6 +19,8 @@ export interface StatblockSharePorts {
   panelWidth?(): number | undefined;
   /** How players are handed the whole texts a statblock names. */
   readonly stored?: AssetStoring | undefined;
+  /** The text a link in an ability's name of a note names. */
+  readLink?(path: string, link: string): Promise<string | null>;
   /** The note at `path` was read or its statblock drawn anew, or an edit of it is under way: the books of its characters are looked at again. */
   changed(path: string): void;
   /**
@@ -62,7 +64,7 @@ export class StatblockShare {
   /** The statblock a character's player gets now: none without a note, undefined while its note is read or drawn. */
   of(character: PlayedCharacter | null): DrawnStatblock | undefined {
     if (character === null || character.statblockPath === null) return NO_STATBLOCK;
-    return this.sheets.drawn(character.statblockPath, character.drawnWith.definitions, character.drawnWith.resources);
+    return this.sheets.drawn(character.statblockPath, character.key, character.drawnWith.definitions, character.drawnWith.resources);
   }
 
   /** A character's note as it is drawn now; undefined before it was read. */

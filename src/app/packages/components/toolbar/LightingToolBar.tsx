@@ -1,0 +1,114 @@
+import React from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { t } from "../../../i18n"
+import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
+import { hasLevels } from "../../../levels/sceneLevels"
+import type { WallToolSubMode } from "../../../lighting/lightingTool"
+import { chosenLightPreset } from "../../../lighting/lightPresetChoice"
+import { exploredMemoryEditable } from "../../../lighting/sceneLightingOptions"
+import { useMapLightPresets } from "../../../react/hooks/useMapLightPresets"
+import { useAtlasStore } from "../../../react/ViewStoreContext"
+import { MOTION_FAST_MS, easeOut } from "../../../utils/motion"
+import { TooltipProvider } from "../primitives/tooltip"
+import { DRAW_MODES, LIGHTING_MODES, MEMORY_ACTIONS, MEMORY_SHAPES, ROOM_ACTIONS, ROOM_SHAPES, lightChoices } from "./lightingToolChoices"
+import { ChoiceButtons, GroupBreak, ToolOptionsBars } from "./ToolOptionsBar"
+
+/** Why a mode cannot be chosen now, or null where it can. */
+export function useUnavailableModes(): (mode: WallToolSubMode) => string | null {
+  // Explored memory is edited only on a lit scene that remembers; openings look down to another level.
+  const memoryEditable = useAtlasStore((state) => exploredMemoryEditable(state.lighting))
+  const levelled = useAtlasStore((state) => hasLevels(state.levels))
+  return (mode) => {
+    if (mode === 'explored-memory' && !memoryEditable) return t('sceneLight.memoryNeeded')
+    if (mode === 'level-surface' && !levelled) return t('openings.needsLevels')
+    return null
+  }
+}
+
+/** Why the bars take no choice now, or null: the lighting is edited in the GM's view, and the session view shows the players'. */
+function useLockedReason(): string | null {
+  const isGMView = useAtlasStore((state) => state.isGMView)
+  const hotkeyLabel = useHotkeyLabels()
+  return isGMView ? null : t('toolbar.lightingNeedsGmView', { key: hotkeyLabel('gmView') })
+}
+
+/** The current mode's tools, in groups; none for a mode where a click only places one thing. */
+function useModeTools(mode: WallToolSubMode, locked: string | null): React.ReactElement[] {
+  const drawMode = useAtlasStore((state) => state.lightingTool.drawMode)
+  const lightPreset = useAtlasStore((state) => state.lightingTool.lightPreset)
+  const presets = useMapLightPresets()
+  const setLightingTool = useAtlasStore((state) => state.setLightingTool)
+  const roomTool = useAtlasStore((state) => state.roomTool)
+  const setRoomTool = useAtlasStore((state) => state.setRoomTool)
+  const brush = useAtlasStore((state) => state.exploredBrush)
+  const setBrush = useAtlasStore((state) => state.setExploredBrush)
+
+  if (mode === 'draw') return [
+    <ChoiceButtons key="draw" kind="choice" locked={locked} choices={DRAW_MODES} value={drawMode} onChange={(value) => setLightingTool({ drawMode: value })} />,
+  ]
+  if (mode === 'rooms') return [
+    <ChoiceButtons key="action" kind="choice" locked={locked} choices={ROOM_ACTIONS} value={roomTool.action} onChange={(action) => setRoomTool({ action })} />,
+    // A door is dragged across an opening and has no shape: the shapes stay, disabled, so the bar keeps its width.
+    <ChoiceButtons key="shape" kind="choice" locked={locked} choices={ROOM_SHAPES} value={roomTool.shape} onChange={(shape) => setRoomTool({ shape })}
+      unavailable={() => (roomTool.action === 'door' ? t('rooms.doorHint') : null)} />,
+  ]
+  if (mode === 'explored-memory') return [
+    <ChoiceButtons key="action" kind="choice" locked={locked} choices={MEMORY_ACTIONS} value={brush.mode} onChange={(value) => setBrush({ mode: value })} />,
+    <ChoiceButtons key="shape" kind="choice" locked={locked} choices={MEMORY_SHAPES} value={brush.shape} onChange={(shape) => setBrush({ shape })} />,
+  ]
+  if (mode === 'place-light') return [
+    // The collection's torch until a light is chosen, and again once the collection no longer has the chosen one.
+    <ChoiceButtons key="light" kind="choice" locked={locked} choices={lightChoices(presets)} value={chosenLightPreset(presets, lightPreset).id} onChange={(id) => setLightingTool({ lightPreset: id })} />,
+  ]
+  // Zones and openings: a click places a corner, and there is nothing to choose.
+  return []
+}
+
+/**
+ * The lighting tool's bars above the main toolbar while the tool is chosen, with the toolbar's
+ * corners and smaller buttons: its modes, from the toolbar's left edge, and after them a bar of
+ * the current mode's tools, which a mode with none leaves out. The modes bar keeps its width, so
+ * neither bar moves when the mode changes. The tool's menu keeps the sizes, the
+ * light to place and the scene's lighting. In the session view the bars stay and take no choice
+ * (each button says why): gone without a word, they read as broken. Hidden in the players' view
+ * and while the toolbar is arranged.
+ */
+export function LightingToolBar(): React.ReactElement {
+  const shown = useAtlasStore((state) => state.activeTool === 'wall' && !state.isPlayerView
+    && !state.isToolbarEditing && !state.isMapLoading)
+  return <ToolOptionsBars shown={shown}><LightingBars /></ToolOptionsBars>
+}
+
+function LightingBars(): React.ReactElement {
+  const mode = useAtlasStore((state) => state.lightingTool.mode)
+  const setLightingTool = useAtlasStore((state) => state.setLightingTool)
+  const unavailable = useUnavailableModes()
+  const locked = useLockedReason()
+  const tools = useModeTools(mode, locked)
+  const reduced = useReducedMotion()
+  const slide = reduced ? 0 : -6
+  const modeName = LIGHTING_MODES.find((choice) => choice.value === mode)?.label ?? ''
+  return (
+    <TooltipProvider delayDuration={300}>
+      <div role="toolbar" aria-label={t('toolbar.lightingModes')} className="atlas-tool-bar atlas-tool-bar--modes">
+        <ChoiceButtons kind="mode" locked={locked} choices={LIGHTING_MODES} value={mode} unavailable={unavailable} onChange={(value) => setLightingTool({ mode: value })} />
+      </div>
+      {/* One mode's tools leave before the next mode's come out of the modes bar's side; the modes bar never moves. */}
+      <AnimatePresence mode="wait" initial={false}>
+        {tools.length > 0 && (
+          <motion.div
+            key={mode}
+            role="toolbar"
+            aria-label={t('toolbar.modeTools', { mode: modeName })}
+            className="atlas-tool-bar atlas-tool-bar--tools"
+            initial={{ opacity: 0, x: slide }}
+            animate={{ opacity: 1, x: 0, transition: { duration: MOTION_FAST_MS * 1.5 / 1000, ease: easeOut } }}
+            exit={{ opacity: 0, transition: { duration: MOTION_FAST_MS / 1000, ease: easeOut } }}
+          >
+            {tools.map((group, index) => <React.Fragment key={group.key}>{index > 0 && <GroupBreak />}{group}</React.Fragment>)}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </TooltipProvider>
+  )
+}

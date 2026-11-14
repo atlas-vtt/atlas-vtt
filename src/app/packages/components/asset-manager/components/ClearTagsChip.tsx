@@ -37,7 +37,8 @@ export function ClearTagsChip({ count, onClear, label }: ClearTagsChipProps): Re
               className="atlas-tags-clear"
               onClick={(e) => { e.stopPropagation(); onClear(); }}
             >
-              <span className="atlas-tags-clear-count">{count}</span>
+              {/* The name says the count in words; the digit is for the eye. */}
+              <span className="atlas-tags-clear-count" aria-hidden="true">{count}</span>
               <X />
             </Button>
           </LabelTooltip>

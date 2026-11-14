@@ -6,7 +6,7 @@ import { webCodecsWindowDecode, wholeFileWindowDecode, type WindowDecode } from 
 import type { SoundContext } from '@/app/sound/engine/audioNodes';
 import { SOUND_RATE } from '@/app/sound/engine/soundMath';
 import { measurePlace, measureSpread, wrapFrameNear, type PlaceMeasure } from './loopMeasure';
-import { layerOf, render, tableOf } from './soundHarness';
+import { COPY_TAGS, layerOf, render, tableOf } from './soundHarness';
 
 /**
  * Real encoders over noise-like and tonal signals of 2 s at 44.1 kHz, each a true loop unless named `cut` (a stretch
@@ -131,7 +131,7 @@ describe('loops, on real encoders', () => {
   /** Null where this browser has no such decoder: Playwright's Chromium has no AAC, Chrome and Obsidian do. */
   async function imported(name: string, loop = true): Promise<SoundImportResult | null> {
     try {
-      return await importer.run({ source: await blobOf(name), kind: 'ambience', loop });
+      return await importer.run({ ...COPY_TAGS, source: await blobOf(name), kind: 'ambience', loop });
     } catch (error) {
       if (error instanceof Error && error.message.includes('cannot decode')) return null;
       throw error;
@@ -194,7 +194,7 @@ describe('loops, on real encoders', () => {
   });
 
   it.each([44_100, 48_000])('lossless noise and a tone at %i Hz stay exact where they already loop', async (rate) => {
-    const result = await importer.run({ source: waveOf(rate, bed(2 * rate, 110, true)), kind: 'ambience', loop: true });
+    const result = await importer.run({ ...COPY_TAGS, source: waveOf(rate, bed(2 * rate, 110, true)), kind: 'ambience', loop: true });
     const loop = await rendered(result);
     report(`wave ${rate}`, result, loop);
     expect(result.frames).toBe(SOURCE_FRAMES);
@@ -234,7 +234,7 @@ describe('loops, on real encoders', () => {
     it('gets none of it: no end found, no crossfade, nothing rotated', async () => {
       const cut = await imported('drone-cut.lame-tag.mp3', false);
       expect(CUT_FRAMES).toBe(70_080);
-      const plainWave = await importer.run({ source: waveOf(44_100, bed(CUT_FRAMES, 77, false)), kind: 'ambience', loop: false });
+      const plainWave = await importer.run({ ...COPY_TAGS, source: waveOf(44_100, bed(CUT_FRAMES, 77, false)), kind: 'ambience', loop: false });
       expect(cut?.seam).toBeUndefined();
       expect(cut?.frames).toBe(CUT_FRAMES);
       expect(plainWave.seam).toBeUndefined();
@@ -256,7 +256,7 @@ describe('loops, on real encoders', () => {
       ['crossfaded', false],
     ] as const)('%s: its windows join and it wraps as a short sound does', async (seam, wraps) => {
       const frames = 62 * 44_100;
-      const result = await importer.run({ source: waveOf(44_100, bed(frames, 62 * 110, wraps)), kind: 'ambience', loop: true });
+      const result = await importer.run({ ...COPY_TAGS, source: waveOf(44_100, bed(frames, 62 * 110, wraps)), kind: 'ambience', loop: true });
       expect(result.seam).toBe(seam);
       expect(result.frames).toBeGreaterThan(WHOLE_DECODE_FRAMES);
       if (wraps) expect(result.frames).toBe(62 * SOUND_RATE);

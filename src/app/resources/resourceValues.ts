@@ -1,5 +1,4 @@
 import type { ResourceDefinition, ResourceHolder, ResourceValue } from './resourceTypes';
-import { t } from '../i18n';
 
 export function clampValue(value: ResourceValue): ResourceValue {
   const max = Math.max(0, value.max);
@@ -31,6 +30,21 @@ export function isDefeated(token: ResourceHolder, definitions: readonly Resource
     const value = token.resources?.[definition.key];
     return definition.defeatedWhenSpent === true && value !== undefined && isSpent(definition, value);
   });
+}
+
+const defeatTests = new Map<string, (token: ResourceHolder) => boolean>();
+
+/**
+ * `isDefeated` by `definitions` as one function, or undefined where none defeats a token. Definitions that defeat
+ * alike (the same keys and directions) give the same function, so rules that hold it compare by identity.
+ */
+export function defeatTest(definitions: readonly ResourceDefinition[]): ((token: ResourceHolder) => boolean) | undefined {
+  const defeating = definitions.filter((definition) => definition.defeatedWhenSpent === true);
+  if (defeating.length === 0) return undefined;
+  const key = JSON.stringify(defeating.map(({ key: resource, direction }) => [resource, direction]));
+  let test = defeatTests.get(key);
+  if (!test) defeatTests.set(key, test = (token) => isDefeated(token, defeating));
+  return test;
 }
 
 /** Whether the token holds a resource that defeats it when spent. */
@@ -75,13 +89,4 @@ export function defeatedResources(token: ResourceHolder, definitions: readonly R
 /** The token's resources with every defined one back at its start: full when draining, empty when filling. */
 export function restedResources(token: ResourceHolder, definitions: readonly ResourceDefinition[]): Record<string, ResourceValue> | undefined {
   return mapDefined(token, definitions, (definition, value) => startingValue(definition, value.max));
-}
-
-/** The keys of the two bars every map had before resources were defined per collection. */
-const FIRST_BARS: readonly string[] = ['hp', 'stress'];
-
-/** The Reset entry of a token's menu: worded as it always was where the collection has no resource beyond those two bars. */
-export function resetLabel(definitions: readonly ResourceDefinition[]): string {
-  const onlyFirstBars = definitions.every(({ key }) => FIRST_BARS.includes(key));
-  return onlyFirstBars ? t('token.reset') : t('resource.resetAll');
 }

@@ -23,11 +23,6 @@ const THEME = `
   button, input { corner-shape: var(--corner-shape); }
   button { height: 30px; }
 `;
-// Exercise a real gutter on platforms whose native scrollbars otherwise overlay the content.
-const CLASSIC_SCROLLBAR = `
-  .atlas-vtt-plugin .atlas-collection-settings-content { scrollbar-width: auto; scrollbar-color: auto; }
-  .atlas-vtt-plugin .atlas-collection-settings-content::-webkit-scrollbar { width: 8px; height: 8px; }
-`;
 const NAMES = ['HP', 'STR', 'Ammo', 'Luck', 'Mana', 'Grit'];
 const h = React.createElement;
 
@@ -46,7 +41,7 @@ function Dialog(): React.ReactElement {
 
 describe('the socket editor of the Resources tab', () => {
   const style = document.createElement('style');
-  style.textContent = THEME + css + CLASSIC_SCROLLBAR;
+  style.textContent = THEME + css;
 
   beforeEach(async () => {
     await page.viewport(760, 860);
@@ -130,7 +125,7 @@ describe('the socket editor of the Resources tab', () => {
     reference.remove();
   });
 
-  it('keeps everything in place when the scrollbar appears, with equal room on both sides', async () => {
+  it('keeps everything in place when the content starts to scroll, with equal room on both sides', async () => {
     const content = document.querySelector<HTMLElement>('.atlas-collection-settings-content')!;
     const stage = document.querySelector('.atlas-csm-token-stage')!;
     const before = stage.getBoundingClientRect();
@@ -139,8 +134,9 @@ describe('the socket editor of the Resources tab', () => {
     content.createDiv().style.minHeight = '2000px';
     await new Promise((resolve) => requestAnimationFrame(resolve));
     expect(content.scrollHeight).toBeGreaterThan(content.clientHeight);
-    // The scrollbar takes room here, as in Obsidian: a hidden one would prove nothing
-    expect(content.offsetWidth).toBeGreaterThan(content.clientWidth);
+    // The browser tests show native scrollbars (`vitest.config.mts`), and Atlas' scroll areas hide theirs: the
+    // overlay scrollbar drawn instead takes no room.
+    expect(content.offsetWidth).toBe(content.clientWidth);
     const after = stage.getBoundingClientRect();
     expect(after.left).toBe(before.left);
     expect(after.width).toBe(before.width);

@@ -34,6 +34,11 @@ $shadow-md: var(--shadow-s);
 // Elevated shadow for modals and floating panels (Obsidian's modal shadow)
 $shadow-elevated: var(--shadow-l);
 
+// Shadows and the veil behind a dialog are dark in both themes. `--mono-0` is the theme's
+// background end (white in light mode), so it never colours either.
+$shadow-color: black;
+$scrim: color-mix(in oklch, #{$shadow-color} 40%, transparent);
+
 // ── Typography ───────────────────────────────────────────────────────────────
 // Obsidian's fixed UI type ramp. Use these instead of rem/px font sizes so the
 // plugin scales with the user's interface font settings.
@@ -80,9 +85,14 @@ $z-atlas-modal: 10000;
 // Inside a map's UI layer: note previews stack above its bars (100) and below
 // its overlays, such as the DM screen (1000) and the command palette (999)
 $z-atlas-note-preview: 500;
-// Dice rolls stand above those overlays: a roll made from a statblock on the DM
-// screen must show. Menus (2000 and up) still open over them.
+// Rolls shown inside a surface (the statblock beside its note, the player window)
+// stand above that surface's own overlays.
 $z-atlas-dice-rolls: 1100;
+// A map's rolls (`.atlas-dice-rolls--front`, in the portal host under <body>) stand in
+// front of every Atlas surface, the asset manager, statblock previews (modal + 2) and
+// dialogs included: a roll answers the user's own click and must be seen. Only
+// notices and the onboarding stand above them; menus (9999) open below them.
+$z-atlas-dice-rolls-front: $z-atlas-modal + 3;
 
 // ── Transitions ──────────────────────────────────────────────────────────────
 $transition-fast: 100ms;
@@ -107,10 +117,16 @@ $button-height-s: 24px;
 $button-height-m: 32px;
 $button-height-l: 40px;
 
+// A count pill or badge: a 12 px label on a line of its own height, so the pill needs no vertical padding.
+$count-pill-height: 20px;
+
 // Input heights
 $input-height-s: 28px;
 $input-height-m: 36px;
 $input-height-l: 44px;
+
+// The smallest target a coarse pointer (a finger) gets: WCAG 2.5.5, Apple HIG.
+$touch-target: 44px;
 
 // Close button: the "×" of every panel. One size, and one gap to the panel's
 // border above and beside it, whatever the panel's size or radius.

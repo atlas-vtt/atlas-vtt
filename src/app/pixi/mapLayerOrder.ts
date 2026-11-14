@@ -10,6 +10,12 @@ export const MAP_LAYER_Z = {
   mapImage: -2,
   /** Water, lava and acid moving on the map image, beneath the grid and all the lighting lights after the map. */
   liquids: -1,
+  /**
+   * The bodies of measured areas (their wash, the cells they cover, their outline): lit like the
+   * floor and covered by the tokens. The grid and the tokens stand at 0 too and lie in the order
+   * they were added, so the layer is put between them (`placeUnderTokens`).
+   */
+  measureBodies: 0,
   /** The cells under tokens being placed by hand, and their ripples when put down (GM only). */
   placementCells: 91,
   /** The hover, press and Shift-preview highlight of linked hexes (GM only). */
@@ -32,6 +38,11 @@ export const MAP_LAYER_Z = {
   groupRotate: 101,
   /** Text objects and the preview of the one being placed. */
   text: 500,
+  /**
+   * The names of pins: above the fog (1000), so a name is never cut off by it. A name shows only
+   * where its pin does: every pin for the GM, for players only pins out of the fog (`PlayerPins`).
+   */
+  pinNames: 1010,
   /** Tokens being placed by hand (GM only): above everything on the map but the laser. */
   placement: 1100,
 } as const;

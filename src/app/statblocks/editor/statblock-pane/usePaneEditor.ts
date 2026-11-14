@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { App } from 'obsidian';
 import type { FieldKey, FieldValue, StatblockTemplate, TemplateField } from '../../model/templateTypes';
-import { deepEqual } from '../../notes/listIdentity';
+import { readAfterOwnWrite, sendOwnWrite, type OwnWrite } from '../../notes/ownFieldWrites';
 import type { NotePatch } from '../../notes/patchTypes';
 import type { BlockChrome } from '../../render/blockChrome';
 import { foldedIds, type FoldedBlock } from '../../render/foldRule';
@@ -64,12 +64,6 @@ function inCell(target: EditTarget, spots: EditableSpots, read: (field: Template
   return sameCell(cell, target.cell === 'last' ? null : target.cell) ? target : { ...target, cell };
 }
 
-/** A write of the pane's own the note may not hold yet: what it started from and what it wrote. */
-interface OwnWrite {
-  base: FieldValue | undefined;
-  mine: FieldValue | undefined;
-}
-
 /** Rendering a value's slot never changes: what it shows comes from the controller's context. */
 const VALUE_EDITING: ValueEditing = {
   slot: renderPaneSlot, entry: renderPaneEntry, addEntry: renderPaneAddEntry, table: renderPaneTable, counters: renderPaneCounters,
@@ -112,15 +106,10 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
 
   const read = useCallback((field: TemplateField) => readField(latest.current.record, field), []);
 
-  const readFresh = useCallback((field: TemplateField): FieldRead => {
-    const now = readField(latest.current.record, field);
-    const own = ownWrites.current.get(field.key);
-    if (!own) return now;
-    if (deepEqual(now.value, own.base)) return { value: own.mine, key: field.key, viaFormerKey: false };
-    // The note took the write, or something else changed it since: what it holds is the value.
-    ownWrites.current.delete(field.key);
-    return now;
-  }, []);
+  const readFresh = useCallback(
+    (field: TemplateField): FieldRead => readAfterOwnWrite(readField(latest.current.record, field), field.key, ownWrites.current),
+    [],
+  );
 
   const setConflict = useCallback((key: FieldKey, conflict: FieldConflict | null): void => {
     setConflicts((previous) => {
@@ -140,9 +129,7 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
     const current = latest.current.options;
     if (!patches.length || !current.writable) return;
     const own = edit ? { base: edit.base, mine: edit.mine } : null;
-    if (own) ownWrites.current.set(field.key, own);
-    const outcome = await services.writer.write(notePath, patches);
-    if ((outcome.conflicts.length || outcome.problem) && ownWrites.current.get(field.key) === own) ownWrites.current.delete(field.key);
+    const outcome = await sendOwnWrite(ownWrites.current, field.key, own, () => services.writer.write(notePath, patches));
     if (outcome.conflicts.length) setConflict(field.key, { ...edit, canKeepMine: edit !== undefined });
     else setConflict(field.key, null);
     current.onWriteProblem(outcome.problem);

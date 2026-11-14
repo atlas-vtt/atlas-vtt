@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { openContextMenuGlobal } from '../root/ContextMenuContext';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { useAtlasSettings } from '../../keyboard/useMapHotkeys';
 import { useNumberEditing } from './useNumberEditing';
 import { listedByCards, listedBySides, listedSides } from '../../initiative/sides';
+import { playerTokensRevision, subscribePlayerTokens } from '../../characters/playerTokens';
 import { useStartCombat } from './useStartCombat';
 import { defeatedCombatants } from '../../initiative/defeated';
 import { shownItems } from '../../initiative/listSegments';
@@ -61,6 +62,8 @@ export const InitiativeTracker: React.FC = () => {
   const bySides = listedBySides(initiative, rules);
   const byCards = listedByCards(initiative, rules);
   const sides = useMemo(() => listedSides(initiative, rules), [initiative, rules]);
+  // A token's side also follows the library and the played campaign's players (`sideOf`)
+  const playerTokens = useSyncExternalStore(subscribePlayerTokens, playerTokensRevision, playerTokensRevision);
 
   // Store actions
   const nextTurn = useAtlasStore((s) => s.nextTurn);
@@ -101,7 +104,7 @@ export const InitiativeTracker: React.FC = () => {
       bySides, sides, fightRuns: initiative.isActive, round: initiative.round,
       fromTurn: layout.fromTurn, collapsed: layout.collapsed,
     }),
-    [sortedEntries, tokens, bySides, sides, initiative.isActive, initiative.round, layout.fromTurn, layout.collapsed],
+    [sortedEntries, tokens, bySides, sides, initiative.isActive, initiative.round, layout.fromTurn, layout.collapsed, playerTokens],
   );
   const shownOrder = useMemo(() => shownItems(segments), [segments]);
   // A drag reorders by a card's place among all combatants, whatever place the list shows it at

@@ -1,4 +1,4 @@
-import type { FederatedPointerEvent } from 'pixi.js';
+import type { Container, FederatedPointerEvent } from 'pixi.js';
 
 /**
  * Tracks pointer presses already claimed by the viewport-level dispatch (a token, a pin, a door
@@ -29,4 +29,15 @@ export function isHandledTap(event: FederatedPointerEvent): boolean {
 export function resetHandled(event: FederatedPointerEvent): void {
   handledEvents.delete(event);
   handledPresses.delete(event.pointerId);
+}
+
+/**
+ * Lets `listener` hear the presses on `viewport` after every listener it has now. A reader of
+ * `isHandled` must come after the dispatch: heard before it, a press still says what the
+ * dispatch found of the press before, and nothing of what it will find of this one. The
+ * dispatch (`TokenRenderer`) is built with the first map's grid, after the view's renderers.
+ */
+export function hearPressesLast(viewport: Container, listener: (event: FederatedPointerEvent) => void): void {
+  viewport.off('pointerdown', listener);
+  viewport.on('pointerdown', listener);
 }

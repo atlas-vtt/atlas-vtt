@@ -8,7 +8,7 @@ import { t } from '../../../i18n';
 
 /** Atlas's own interface layer in a map view, in which its dice log stands. */
 const ATLAS_UI = '.atlas-ui';
-/** The place in Atlas's top bar row directly below the scene tabs, where the unread tab stands. */
+/** The place in Atlas's top bar row directly below the scene tabs, where the log's tab stands. */
 const BELOW_TABS = '.atlas-top-bar-start__below';
 const OFFLINE_TEXT = t('online.log.offline');
 
@@ -32,7 +32,7 @@ export interface TableLogMountDeps {
 /**
  * The table's log on one Atlas map view (the shared tab's): its host element in Atlas's interface
  * layer, where Atlas's dice log would open, and the takeover of that log's switch. While closed it
- * shows a tab that counts what came in, directly below the scene tabs. The panel's state belongs to
+ * shows a tab that opens it and counts what came in, directly below the scene tabs. The panel's state belongs to
  * the table and outlives the mount.
  */
 export class TableLogMount {

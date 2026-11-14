@@ -21,7 +21,7 @@ afterEach(() => {
   Reflect.deleteProperty(window, 'FantasyStatblocks');
 });
 
-/** Edit Token for a token linked to the goblin's statblock, whose senses line is `senses`. */
+/** Edit token for a token linked to the goblin's statblock, whose senses line is `senses`. */
 function open(senses: string | undefined, vision: TokenVision = { enabled: true }, linked = true): () => TokenEntity {
   current = creatureVault();
   if (senses !== undefined) current.frontmatter[GOBLIN]!.senses = senses;
@@ -36,7 +36,7 @@ const save = (): void => act(() => screen.getByRole('button', { name: 'Save' }).
 const rows = (): HTMLElement[] => screen.queryAllByRole('listitem');
 const sightRange = (): HTMLInputElement => screen.getByLabelText(/^Sight range/) as HTMLInputElement;
 
-describe('Edit Token for a token with a linked statblock', () => {
+describe('Edit token for a token with a linked statblock', () => {
   it('shows the statblock\'s senses once it is read, tagged, and saves none while they are not edited', async () => {
     const saved = open('darkvision 60 ft., tremorsense 30 ft., passive Perception 9');
     await waitFor(() => expect(rows()).toHaveLength(2));

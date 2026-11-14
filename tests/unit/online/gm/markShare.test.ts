@@ -1,4 +1,4 @@
-import { MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, type PlayerLaser, type PlayerMeasure } from '../../../../src/app/online/protocol/index.ts';
+import { MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, parsePlayerMessage, type PlayerLaser, type PlayerMeasure } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { checkLaser, checkMeasure, MARKS_PER_SECOND, nearMap, swatchColour } from '../../../../src/app/online/gm/markCheck.ts';
 import { LASER_SILENCE_MS } from '../../../../src/app/online/gm/MarkShare.ts';
@@ -52,14 +52,14 @@ describe('MarkShare', () => {
     harness.advance(MARKS_INTERVAL_MS);
     harness.laser.at = [5, 5];
     harness.laser.changed();
-    await harness.measure({ live: { shape: 'sphere', start: { x: 1, y: 1 }, end: { x: 3, y: 4 } }, kept: [] });
+    await harness.measure({ live: { shape: 'circle', points: [{ x: 1, y: 1 }, { x: 3, y: 4 }], pressed: { x: 1, y: 1 } }, kept: [] });
     harness.advance(MARKS_INTERVAL_MS);
     const marks = lastMarks(harness);
     expect(harness.sent.every(({ to }) => to === undefined)).toBe(true);
     expect(marks?.lasers.map((entry) => entry.who)).toEqual(['gm', ANA]);
     expect(marks?.lasers[0]).toMatchObject({ who: 'gm', color: '#ff0059', at: [5, 5], on: false });
     expect(marks?.measures).toEqual([
-      { who: 'gm', color: '#123456', live: { shape: 'circle', a: [1, 1], b: [3, 4] }, kept: [] },
+      { who: 'gm', color: '#123456', live: { shape: 'circle', a: [1, 1], b: [3, 4] }, kept: [], full: { live: { shape: 'circle', pts: [1, 1, 3, 4] }, kept: [] } },
       { who: BEN, color: '#66ffa9', live: { shape: 'line', a: [10, 10], b: [80, 10] }, kept: [] },
     ]);
     expect(harness.shown?.lasers.map((entry) => entry.who)).toEqual([ANA]);
@@ -179,10 +179,11 @@ describe('MarkShare', () => {
   it('sends a measurement being dragged on with the time since its end was last told: the GM\'s own, and a player\'s as it came', async () => {
     const harness = markHarness();
     harness.share.setScene('s1');
-    const drag = (x: number): Promise<void> => harness.measure({ live: { shape: 'line', start: { x: 0, y: 0 }, end: { x, y: 0 } }, kept: [] });
+    const pressed = { x: 0, y: 0 };
+    const drag = (x: number): Promise<void> => harness.measure({ live: { shape: 'ruler', points: [{ x: 0, y: 0 }, { x, y: 0 }], pressed }, kept: [] });
     await drag(0);
     harness.advance(MARKS_INTERVAL_MS);
-    expect(lastMarks(harness)?.measures[0]).toEqual({ who: 'gm', color: '#123456', live: { shape: 'line', a: [0, 0], b: [0, 0] }, kept: [] });
+    expect(lastMarks(harness)?.measures[0]).toEqual({ who: 'gm', color: '#123456', live: { shape: 'line', a: [0, 0], b: [0, 0] }, kept: [], full: { live: { shape: 'ruler', pts: [0, 0, 0, 0] }, kept: [] } });
     harness.advance(7);
     await drag(10);
     harness.advance(8);
@@ -199,7 +200,7 @@ describe('MarkShare', () => {
     ]);
     harness.advance(MARKS_INTERVAL_MS);
     expect(lastMarks(harness)?.measures).toEqual([
-      { who: 'gm', color: '#123456', live: { shape: 'line', a: [0, 0], b: [20, 0] }, kept: [], span: MARKS_INTERVAL_MS + 15 },
+      { who: 'gm', color: '#123456', live: { shape: 'line', a: [0, 0], b: [20, 0] }, kept: [], span: MARKS_INTERVAL_MS + 15, full: { live: { shape: 'ruler', pts: [0, 0, 20, 0] }, kept: [] } },
       { who: BEN, color: '#66ffa9', live: { shape: 'line', a: [10, 10], b: [90, 10] }, kept: [], span: 405 },
       { who: ANA, color: '#66ffa9', live: { shape: 'line', a: [10, 10], b: [80, 10] }, kept: [], span: 9 },
     ]);
@@ -209,6 +210,87 @@ describe('MarkShare', () => {
     harness.advance(MARKS_INTERVAL_MS);
     expect(lastMarks(harness)?.measures.map((entry) => entry.span)).toEqual([0, undefined, undefined]);
     expect(checkMeasure(measure({ live: { shape: 'line', a: [0, 0], b: [0, 9000] }, span: 33 }), CONTEXT)).toEqual({ color: '#66ffa9', live: null, kept: [] });
+  });
+
+  it('takes a player\'s measurements told in full, shows them to the GM, and sends them on in full and in the older words it makes of them', async () => {
+    const harness = markHarness();
+    harness.share.setScene('s1');
+    const route = { shape: 'ruler', pts: [10, 10, 80, 10, 80, 80] } as const;
+    const wall = { shape: 'line', pts: [0, 0, 140, 0], width: 70 } as const;
+    const burst = { shape: 'circle', pts: [300, 300, 370, 300] } as const;
+    // The page said nothing in the older words, and something else in them once: neither is what goes on.
+    harness.share.receive(BEN, measure({ live: null, kept: [], full: { live: route, kept: [wall, burst] }, span: 40 }));
+    expect(harness.shown?.measures).toEqual([{ who: BEN, color: '#66ffa9', live: null, kept: [], full: { live: route, kept: [wall, burst] }, span: 40 }]);
+    harness.advance(MARKS_INTERVAL_MS);
+    const legs = [{ shape: 'line', a: [10, 10], b: [80, 10] }, { shape: 'line', a: [80, 10], b: [80, 80] }];
+    expect(lastMarks(harness)?.measures).toEqual([
+      { who: BEN, color: '#66ffa9', live: legs[1], kept: [{ shape: 'circle', a: [300, 300], b: [370, 300] }, legs[0]], span: 40, full: { live: route, kept: [wall, burst] } },
+    ]);
+    harness.share.receive(BEN, measure({ live: { shape: 'cone', a: [1, 1], b: [2, 2] }, kept: [], full: { live: null, kept: [wall] } }));
+    harness.advance(MARKS_INTERVAL_MS);
+    expect(lastMarks(harness)?.measures).toEqual([{ who: BEN, color: '#66ffa9', live: null, kept: [], full: { live: null, kept: [wall] } }]);
+    // On a level with walls a circle that stops at them is not told in the older words, as the GM's own is not.
+    await harness.measure({ live: null, kept: [], walled: true });
+    harness.share.receive(BEN, measure({ live: null, kept: [], full: { live: burst, kept: [{ ...burst, free: true }] } }));
+    harness.advance(MARKS_INTERVAL_MS);
+    expect(lastMarks(harness)?.measures).toEqual([
+      { who: BEN, color: '#66ffa9', live: null, kept: [{ shape: 'circle', a: [300, 300], b: [370, 300] }], full: { live: burst, kept: [{ ...burst, free: true }] } },
+    ]);
+    // A page that has none left in full has none, whatever it says in the older words.
+    harness.share.receive(BEN, measure({ full: { live: null, kept: [] } }));
+    harness.advance(MARKS_INTERVAL_MS);
+    expect(lastMarks(harness)?.measures).toEqual([]);
+    expect(harness.shown?.measures).toEqual([]);
+  });
+
+  it('leaves out of a player\'s full measurements those off the map, and with the one being drawn its span', () => {
+    const near = { shape: 'square', pts: [10, 10, 80, 10] } as const;
+    const far = { shape: 'ruler', pts: [10, 10, 80, 10, 80, 9000] } as const;
+    expect(checkMeasure(measure({ live: null, kept: [], full: { live: far, kept: [far, near] }, span: 33 }), CONTEXT)).toEqual({ color: '#66ffa9', live: null, kept: [], full: { live: null, kept: [near] } });
+    expect(checkMeasure(measure({ live: null, kept: [], full: { live: near, kept: [] }, span: 33 }), CONTEXT)).toEqual({ color: '#66ffa9', live: null, kept: [], full: { live: near, kept: [] }, span: 33 });
+  });
+
+  it('takes no colour of its own, no effect and no aura from a player: those are the GM\'s to put on the table', () => {
+    const HERO = '0123456789abcdef01234567';
+    const burst = { shape: 'circle', pts: [300, 300, 370, 300] } as const;
+    const dressed = { ...burst, color: '#ec7500', effect: 'fire', aura: { token: HERO, reach: 30 } } as const;
+    const message = parsePlayerMessage({ ...measure({ live: null, kept: [] }), full: { live: { ...dressed, free: true }, kept: [dressed, { shape: 'ruler', pts: [0, 0, 70, 0], color: '#ffffff' }] } });
+    if (message?.t !== 'measure') throw new Error('the message was not read');
+    expect(checkMeasure(message, CONTEXT)?.full).toEqual({ live: { ...burst, free: true }, kept: [burst, { shape: 'ruler', pts: [0, 0, 70, 0] }] });
+    const harness = markHarness();
+    harness.share.setScene('s1');
+    harness.share.receive(BEN, message);
+    harness.advance(MARKS_INTERVAL_MS);
+    for (const told of [harness.shown?.measures, lastMarks(harness)?.measures]) {
+      expect(told?.map((entry) => entry.who)).toEqual([BEN]);
+      expect(JSON.stringify(told)).not.toMatch(/effect|aura|#ec7500|#ffffff/);
+    }
+  });
+
+  it('tells the GM\'s own kept areas with their colour and look, and an aura by its token, while players see that token', async () => {
+    const HERO = '0123456789abcdef01234567';
+    const harness = markHarness();
+    harness.aliases = { hero: HERO };
+    harness.share.setScene('s1');
+    const fire = { id: 'fire', kind: 'measure', shape: 'cone', points: [{ x: 0, y: 0 }, { x: 0, y: 70 }], color: '#ec7500', effect: 'fire' } as const;
+    const aura = { id: 'aura', kind: 'measure', shape: 'circle', points: [{ x: 500, y: 0 }, { x: 640, y: 0 }], follows: 'hero', aura: 10, effect: 'mist' } as const;
+    await harness.measure({ live: null, kept: [{ ...fire, points: [...fire.points] }, { ...aura, points: [...aura.points] }] });
+    harness.advance(MARKS_INTERVAL_MS);
+    expect(lastMarks(harness)?.measures).toEqual([{
+      who: 'gm', color: '#123456', live: null, kept: [{ shape: 'cone', a: [0, 0], b: [0, 70] }],
+      full: { live: null, kept: [{ shape: 'cone', pts: [0, 0, 0, 70], color: '#ec7500', effect: 'fire' }, { shape: 'circle', pts: [500, 0, 640, 0], effect: 'mist', aura: { token: HERO, reach: 10 } }] },
+    }]);
+    // The token goes out of the players' sight: its aura goes with it, at the next look.
+    const sentBefore = harness.sent.length;
+    harness.seen = (id) => id !== 'hero';
+    harness.share.update();
+    harness.advance(MARKS_INTERVAL_MS);
+    expect(harness.sent.length).toBe(sentBefore + 1);
+    expect(lastMarks(harness)?.measures[0]?.full?.kept).toEqual([{ shape: 'cone', pts: [0, 0, 0, 70], color: '#ec7500', effect: 'fire' }]);
+    // Nothing is told again while nothing changes.
+    harness.share.update();
+    harness.advance(MARKS_INTERVAL_MS);
+    expect(harness.sent.length).toBe(sentBefore + 1);
   });
 
   it('forgets a laser that went silent, a player who left and the marks of another scene', () => {

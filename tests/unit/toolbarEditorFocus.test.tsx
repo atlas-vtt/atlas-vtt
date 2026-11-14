@@ -58,12 +58,12 @@ describe('focus around the editor menu', () => {
     const harness = renderToolbar({ space: 200 });
     startEditing(harness);
     fireEvent.click(moreTools());
-    fireEvent.click(within(screen.getByRole('menu', { name: 'More tools' })).getByRole('menuitem', { name: /^Asset Manager/ }));
+    fireEvent.click(within(screen.getByRole('menu', { name: 'More tools' })).getByRole('menuitem', { name: /^Asset manager/ }));
     fireEvent.keyDown(await screen.findByRole('menuitem', { name: 'Hide' }), { key: 'Escape' });
     await waitFor(() => expect(document.activeElement).toBe(moreTools()));
 
     fireEvent.click(moreTools());
-    fireEvent.click(within(screen.getByRole('menu', { name: 'More tools' })).getByRole('menuitem', { name: /^Asset Manager/ }));
+    fireEvent.click(within(screen.getByRole('menu', { name: 'More tools' })).getByRole('menuitem', { name: /^Asset manager/ }));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
     expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['assets'] });
     await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Hide' })).toBeNull());

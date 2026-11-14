@@ -30,8 +30,8 @@ const drag = (x: number, y: number): PlayerDrag => ({ t: 'drag', scene: SCENE, i
 describe('a player\'s token on stairs the GM drew', () => {
   it('goes to the level they lead to, in the move\'s one undo step', () => {
     const t = table(['ground', 'upper']);
-    t.moves.receive(ANA, move(500, 500));
-    expect(t.store.getState().objects.tokens.ogre).toMatchObject({ x: 500, y: 500, level: 'upper' });
+    t.moves.receive(ANA, move(525, 525));
+    expect(t.store.getState().objects.tokens.ogre).toMatchObject({ x: 525, y: 525, level: 'upper' });
     expect(t.history.getState().pastStates).toHaveLength(1);
     t.history.getState().undo();
     expect(t.store.getState().objects.tokens.ogre?.level).toBeUndefined();
@@ -42,14 +42,14 @@ describe('a player\'s token on stairs the GM drew', () => {
     t.moves.drag(ANA, drag(300, 300));
     t.moves.drag(ANA, drag(500, 500));
     expect(t.store.getState().objects.tokens.ogre?.level).toBeUndefined();
-    t.moves.receive(ANA, move(500, 500));
+    t.moves.receive(ANA, move(525, 525));
     expect(t.store.getState().objects.tokens.ogre?.level).toBe('upper');
   });
 
   it('stays on its level where the stairs offer several: only the GM picks an elevator\'s floor', () => {
     const t = table('all');
-    t.moves.receive(ANA, move(500, 500));
-    expect(t.store.getState().objects.tokens.ogre).toMatchObject({ x: 500, y: 500 });
+    t.moves.receive(ANA, move(525, 525));
+    expect(t.store.getState().objects.tokens.ogre).toMatchObject({ x: 525, y: 525 });
     expect(t.store.getState().objects.tokens.ogre?.level).toBeUndefined();
   });
 });

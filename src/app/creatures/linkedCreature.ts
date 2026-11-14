@@ -8,7 +8,7 @@ import {
   type FantasyStatblocksCreature,
 } from '../services/FantasyStatblocksService';
 import type { StatblockSource } from '../statblocks/model/resolvedTypes';
-import { cachedFrontmatter, statblockSourceOf, type FrontmatterRecord } from '../statblocks/notes/statblockSource';
+import { cachedFrontmatter, parseStatblockFence, statblockSourceOf, type FrontmatterRecord } from '../statblocks/notes/statblockSource';
 import { namedTraitLists } from './frontmatterTraits';
 import { boundedFields, namedStatblock } from './statblockValues';
 
@@ -59,9 +59,26 @@ export function frontmatterCreature(frontmatter: FrontmatterRecord, path: string
  * The creature a Fantasy Statblocks note's frontmatter defines, as the plugin's watcher parses it. A note is
  * not Atlas' own text, so all that is read of its frontmatter is read within one budget.
  */
-export function fantasyFrontmatterCreature(frontmatter: FrontmatterRecord, path: string): FantasyStatblocksCreature {
+function fantasyFrontmatterCreature(frontmatter: FrontmatterRecord, path: string): FantasyStatblocksCreature {
   const fields = boundedFields(frontmatter);
   return frontmatterCreature({ ...fields, ...namedTraitLists(fields) }, path);
+}
+
+/**
+ * The creature of a frontmatter statblock (`statblock: true`) that Fantasy
+ * Statblocks has not parsed, given the note's text: its "Parse Frontmatter" is
+ * off by default, and the plugin then draws only the ```statblock fence the
+ * note holds. So the fence wins where there is one, else the frontmatter.
+ */
+export async function unparsedFrontmatterCreature(
+  app: App,
+  frontmatter: FrontmatterRecord,
+  text: string,
+  path: string,
+): Promise<FantasyStatblocksCreature> {
+  const fence = parseStatblockFence(text);
+  const creature = fence ? await resolveCreatureFromFence(app, fence, path) : null;
+  return creature ? { ...creature, path } : fantasyFrontmatterCreature(frontmatter, path);
 }
 
 function markdownFile(app: App, path: string): TFile | null {
@@ -74,9 +91,11 @@ function markdownFile(app: App, path: string): TFile | null {
  * it (`statblockSourceOf`). Native notes read only their own frontmatter, never
  * the bestiary's copy, which lags behind Atlas' writes. Everything else keeps
  * Fantasy Statblocks' order: its bestiary entry when the plugin parsed the
- * note, else the note's frontmatter (the plugin parses notes only with "auto
- * parse" on), else the note's ```statblock fence, else the bestiary creature
- * of the note's name, as token links always have.
+ * note, else what the plugin draws in the note: the ```statblock fence of a
+ * frontmatter statblock it has not parsed (it parses notes only with "auto
+ * parse" on), else that note's frontmatter, else the fence of a note without
+ * the marker, else the bestiary creature of the note's name, as token links
+ * always have.
  *
  * While Fantasy Statblocks still parses the vault (`isBestiaryResolved`), null
  * means "not known yet": a creature read by name is not there until the parse
@@ -109,7 +128,11 @@ async function linkedCreatureAsGiven(
 
   const file = markdownFile(app, notePath);
   if (file && source?.kind === 'atlas') return frontmatterCreature(cachedFrontmatter(app, file) ?? {}, notePath);
-  if (file && source?.kind === 'fs-frontmatter') return fantasyFrontmatterCreature(cachedFrontmatter(app, file) ?? {}, notePath);
+  if (file && source?.kind === 'fs-frontmatter') {
+    // Only the plugin reads a fence, so without it the note is not read.
+    const text = api ? await app.vault.cachedRead(file) : '';
+    return unparsedFrontmatterCreature(app, cachedFrontmatter(app, file) ?? {}, text, notePath);
+  }
   if (source?.kind === 'fs-fence') {
     const creature = await resolveCreatureFromFence(app, source.params, notePath);
     if (creature) return { ...creature, path: notePath };

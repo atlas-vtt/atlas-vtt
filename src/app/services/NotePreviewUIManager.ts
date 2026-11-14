@@ -5,7 +5,7 @@ import type { NotePin } from '../types';
 import { toTokenVitals, type TokenVitals } from './statblockVitalsSync';
 import { NotePreviewWindow } from './NotePreviewWindow';
 import { StatblockPreviewWindow } from './StatblockPreviewWindow';
-import { isStatblockNote, statblockNoteKnown, unparsedFrontmatterStatblock } from '../statblocks/resolve/statblockNote';
+import { isStatblockNote, statblockNoteKnown } from '../statblocks/resolve/statblockNote';
 import { MapLinkPreview } from './MapLinkPreview';
 import { EncounterFolderPreview } from './EncounterFolderPreview';
 import { isEncounterFolderLink } from '../links/atlasLinkTargets';
@@ -166,12 +166,8 @@ export class NotePreviewUIManager {
     // Reset modifier key state when window gains focus to avoid stuck state
     window.addEventListener('focus', this.boundHandleFocus);
 
-    // The pin's note opens in the workspace, which replaces its preview
-    this.eventBus.on('close-active-preview', (notePath: string) => {
-      const preview = this.findPreview(notePath);
-      if (preview?.originatingPin) this.store.getState().removePinnedNotePreview(preview.originatingPin.id);
-      preview?.hide(true);
-    });
+    // The pin's note opens in the workspace, which replaces its hover preview; a pinned one stays as it was left
+    this.eventBus.on('close-active-preview', (notePath: string) => this.hidePreview(notePath));
 
     // The map's state is about to be saved and replaced: record how each pinned note was left first
     this.eventBus.on('map-unloading', () => {
@@ -367,10 +363,9 @@ export class NotePreviewUIManager {
     const file = this.app.vault.getAbstractFileByPath(linkedFilePath(pin.notePath));
     if (file instanceof TFile && 'type' in pin && pin.type === 'token') {
       // Only a note whose statblock is in a fence is read; a hide or another hover meanwhile wins.
-      // A frontmatter statblock Fantasy Statblocks has not parsed shows as the note, where the plugin draws any fence it holds.
+      // The same predicate as the asset manager's and the DM screen's, so all three draw a note alike.
       const hides = this.hideCount;
-      const isStatblock = !unparsedFrontmatterStatblock(this.app, file)
-        && (statblockNoteKnown(this.app, file) || await isStatblockNote(this.app, file));
+      const isStatblock = statblockNoteKnown(this.app, file) || await isStatblockNote(this.app, file);
       if (hides !== this.hideCount) return;
 
       if (isStatblock) {

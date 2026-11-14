@@ -13,7 +13,7 @@ import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { SceneModelBuilder, type SceneModel } from '../../vision/sceneModel';
 import { PerceptionMemo, tokenPerception, type TokenPerception } from '../../vision/tokenPerception';
-import { PLAYER_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
+import { perceptionOptions } from '../../vision/perception';
 import { isLit, type LightingSource } from './atlasLighting.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { PlayerTokenSource, SceneState } from './atlasView.ts';
@@ -98,7 +98,8 @@ export class FloorSight {
     const sceneLit = isLit(state);
     const lighting = sceneLit ? this.lighting() : null;
     const rules = this.ports.lightingSource()?.rules();
-    const lit = lighting === null ? undefined : tokenPerception(lighting.currentSight(), lighting.ambientLight(), lighting.lightReaches(), { ...tokens }, { conditions: rules?.conditions ?? [], held: heldForSight(state) }, this.memo);
+    const options = perceptionOptions(rules, heldForSight(state));
+    const lit = lighting === null ? undefined : tokenPerception(lighting.currentSight(), lighting.ambientLight(), lighting.lightReaches(), { ...tokens }, options, this.memo);
     // Lit, but its lighting cannot be read: nothing is seen
     if (sceneLit && lit === undefined) return () => 'unseen';
     const coverage = this.fog.get(objects.fog, levelMapKey(state.mapPath, state));
@@ -108,7 +109,7 @@ export class FloorSight {
     return (id) => {
       const token = tokens[id];
       if (token === undefined || (fogged && (coverage === null || coverage.covers(token)))) return 'unseen';
-      if (roofed && !PLAYER_SIGHT_POLICY.alwaysSeen(token)) return 'unseen';
+      if (roofed && !options.policy.alwaysSeen(token)) return 'unseen';
       return lit?.(id) ?? 'seen';
     };
   }

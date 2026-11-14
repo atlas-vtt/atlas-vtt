@@ -47,11 +47,6 @@
   }
 }
 
-.atlas-transfer-checkbox {
-  @include atlas-flex-row($gap: $spacing-s);
-  cursor: pointer;
-}
-
 .atlas-transfer-section {
   @include atlas-flex-col($gap: $spacing-m);
 
@@ -105,6 +100,7 @@
 
   &__header {
     @include atlas-flex-row($gap: $spacing-m);
+    @include atlas-coarse-checkbox-hit;
 
     input {
       flex-shrink: 0;
@@ -184,16 +180,19 @@
     visibility: hidden;
   }
 
-  // Height animates through the grid track; closing is quicker than opening.
+  // The height snaps (animating the grid track laid the dialog out on every frame);
+  // the rows of an opened group settle in where they stand, on the compositor.
   &__panel {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows $transition-press $transition-ease-out;
 
     &[data-expanded='true'] {
       grid-template-rows: 1fr;
-      transition-duration: $transition-normal;
     }
+  }
+
+  &__panel[data-expanded='true'] &__items {
+    animation: atlas-transfer-rows-in $transition-normal $transition-ease-out;
   }
 
   &__clip {
@@ -234,7 +233,7 @@
 
   &__hint {
     flex-shrink: 0;
-    color: var(--text-faint);
+    color: var(--text-muted);
     font-size: $font-ui-smaller;
   }
 
@@ -242,7 +241,7 @@
   &__linked {
     flex-shrink: 0;
     margin-left: auto;
-    color: var(--text-faint);
+    color: var(--text-muted);
     font-size: $font-ui-smaller;
     font-variant-numeric: tabular-nums;
   }
@@ -336,8 +335,24 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atlas-transfer-group__chevron,
-  .atlas-transfer-group__panel {
+  .atlas-transfer-group__chevron {
     transition: none;
+  }
+
+  .atlas-transfer-group__panel[data-expanded='true'] .atlas-transfer-group__items {
+    animation-name: atlas-transfer-rows-fade;
+  }
+}
+
+@keyframes atlas-transfer-rows-in {
+  from {
+    opacity: 0;
+    transform: translateY(-#{$spacing-xs});
+  }
+}
+
+@keyframes atlas-transfer-rows-fade {
+  from {
+    opacity: 0;
   }
 }

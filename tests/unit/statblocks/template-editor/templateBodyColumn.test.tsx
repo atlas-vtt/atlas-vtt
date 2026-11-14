@@ -10,6 +10,7 @@ import { followTemplateBodies } from '../../../../src/app/statblocks/library/tem
 import { templateBodyPath } from '../../../../src/app/statblocks/library/templatePaths';
 import { TemplateSession } from '../../../../src/app/statblocks/library/TemplateSession';
 import { MARSH_CREATURE } from '../../../fixtures/statblockTemplateFixtures';
+import { QuitTasks } from '../../../helpers/obsidianQuit';
 import { described } from '../library/sessionVault';
 import { MARSH_ID, MARSH_PATH, TEMPLATE_FOLDER } from '../library/templateTexts';
 import { editorViews, saveButton, saveOffered } from './editorViewKit';
@@ -45,13 +46,17 @@ const MARSH_NOTE = templateBodyPath(MARSH_PATH);
 /** Obsidian's Markdown view as far as the column drives it: its file, its text and its editor's focus. */
 class NoteView extends MarkdownView {
   readonly editor = { focus: vi.fn() };
+  /** The editor's text; `data` is the text as last saved. */
+  text = 'As typed.';
+  data = 'As typed.';
+  readonly save = vi.fn(async (): Promise<void> => { this.data = this.text; });
   constructor(leaf: WorkspaceLeaf, readonly shown: TFile) {
     super(leaf);
     this.file = shown;
     this.containerEl.createDiv({ cls: 'cm-content', attr: { contenteditable: 'true', tabindex: '-1' } });
   }
   getViewData(): string {
-    return 'As typed.';
+    return this.text;
   }
 }
 
@@ -195,6 +200,29 @@ describe('the template\'s note in the left column', () => {
     fireEvent.click(screen.getByRole('button', { name: START_FROM_NOTE }));
     expect(chooser.skip).toBe(MARSH_NOTE);
     expect(leaves).toHaveLength(0);
+  });
+});
+
+describe('the template\'s note when Obsidian quits', () => {
+  // A quit task of any kind sends Obsidian's quit the long way round, which up to 1.14 ends
+  // with Obsidian still running on macOS: the note is waited for only while it has text to save.
+  it('has Obsidian wait for its save only while it holds unsaved text', async () => {
+    views.vault.writeExternally(MARSH_NOTE, '## Lair\n');
+    await views.open({ file: MARSH_PATH });
+    await waitFor(() => expect(hosted()).toBeTruthy());
+    const note = leaves[0]!.view!;
+
+    const saved = new QuitTasks();
+    views.vault.workspace.trigger('quit', saved);
+    expect(saved.isEmpty()).toBe(true);
+    expect(note.save).not.toHaveBeenCalled();
+
+    note.text = 'Typed since.';
+    const unsaved = new QuitTasks();
+    views.vault.workspace.trigger('quit', unsaved);
+    expect(unsaved.isEmpty()).toBe(false);
+    await unsaved.promise();
+    expect(note.data).toBe('Typed since.');
   });
 });
 

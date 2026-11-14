@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, type LucideIcon } from 'lucide-react';
 import type { FacetOption } from '../../../../../creatures/creatureFilterEngine';
 import type { OptionState } from '../../../../../types/creatureFilterTypes';
 import { Button } from '../../../primitives/button';
@@ -13,6 +13,8 @@ export const SHOWN_OPTIONS = 8;
 
 interface OptionFilterProps {
   title: string;
+  /** The glyph before the title (`filterGlyph`). */
+  icon?: LucideIcon | null | undefined;
   options: readonly FacetOption[];
   onChange: (key: string, state: OptionState) => void;
 }
@@ -33,7 +35,7 @@ export function shownOptions(options: readonly FacetOption[], query: string): Fa
  * An options filter: a title over its most common options as chips, never more than a few, and
  * beside the title a search that finds the others among them.
  */
-export function OptionFilter({ title, options, onChange }: OptionFilterProps): React.JSX.Element {
+export function OptionFilter({ title, icon, options, onChange }: OptionFilterProps): React.JSX.Element {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,7 +84,7 @@ export function OptionFilter({ title, options, onChange }: OptionFilterProps): R
 
   const shown = shownOptions(options, query);
   return (
-    <FilterSection title={title} active={options.some((option) => option.state !== null)} action={action}>
+    <FilterSection title={title} icon={icon} active={options.some((option) => option.state !== null)} action={action}>
       {shown.length > 0
         ? <OptionChips label={title} options={shown} onChange={onChange} />
         : <p className="atlas-filter-panel__hint">{t('filters.noOptionMatch')}</p>}

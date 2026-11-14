@@ -14,5 +14,13 @@ export const transfer = {
   'transfer.move.withoutLinks': 'Move without links',
   'transfer.moveFailed': 'Could not move {what}: {error}',
   'transfer.moved': 'Moved {what} to {target}',
+  'transfer.openCollection': 'Open collection',
+  'transfer.pick.confirm.copy': 'Copy',
+  'transfer.pick.confirm.move': 'Move',
+  'transfer.pick.info.copy': 'Copying {what}',
+  'transfer.pick.info.move': 'Moving {what}',
+  'transfer.pick.target': 'Target collection',
+  'transfer.pick.title.copy': 'Copy to collection',
+  'transfer.pick.title.move': 'Move to collection',
   'transfer.selection': 'The selection',
 } as const satisfies Record<string, Message>;

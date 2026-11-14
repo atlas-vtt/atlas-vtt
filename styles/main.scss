@@ -15,16 +15,22 @@
 @use '../src/app/online/marks/styles/marks';
 @use '../src/app/online/tableLog/styles/table-log';
 @use './native-tooltips';
+@use './native-checkboxes';
 @use './notices';
+// At the root, outside the plugin's namespace: its scope includes the floating layer under <body>.
+@use '../src/app/packages/components/asset-manager/open-window';
 @use './scroll-lock';
 @use './portal-host';
+// At the root too: Atlas' scroll areas are found by class, in every window and floating layer.
+@use './overlay-scrollbars';
 
-// Registered so `atlas-scrollbar-while-scrolling` can fade the thumb. At-rules
-// must stay at the root: inside the scope block below they would be invalid.
-@property --atlas-scrollbar-thumb {
-  syntax: '<color>';
-  inherits: false;
-  initial-value: transparent;
+// Atlas' scroll shadow (`atlas-scroll-shadow`): always dark, lighter on the light theme's pale surfaces.
+body.theme-dark {
+  --atlas-scroll-shadow: rgb(0 0 0 / 0.45);
+}
+
+body.theme-light {
+  --atlas-scroll-shadow: rgb(0 0 0 / 0.14);
 }
 
 /*! Fonts bundled below, unmodified:
@@ -89,6 +95,7 @@
   @import '../src/app/packages/components/primitives/context-menu.scss';
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
+  @import '../src/app/packages/components/toolbar/tool-options-bar.scss';
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
   @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/toolbar/editor/toolbar-card';
@@ -113,6 +120,7 @@
   @import '../src/app/react/components/dm-screen/sound/sound-pane.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-moods.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-dialog.scss';
+  @import '../src/app/react/components/dm-screen/sound/sound-consent.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-desk.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-music.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-strips.scss';
@@ -120,6 +128,7 @@
   @import '../src/app/react/components/dm-screen/sound/library/library.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library-head.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library-rows.scss';
+  @import '../src/app/react/components/dm-screen/sound/library/library-converting.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library-narrow.scss';
   @import '../src/app/react/components/player-dashboard.scss';
   @import '../src/app/react/components/dashboard/dashboard.scss';
@@ -162,6 +171,8 @@
   @import '../src/app/react/components/collection-settings/random-tables/random-tables-tab.scss';
   @import '../src/app/react/components/collection-settings/random-tables/item-rarities.scss';
   @import '../src/app/react/components/collection-settings/statblock-field-chips.scss';
+  @import '../src/app/react/components/collection-settings/setting-row.scss';
+  @import '../src/app/react/components/collection-settings/movement-rules.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-lab.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-lab-options.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-tray.scss';
@@ -224,7 +235,7 @@
   //
   // The row is no layer of its own (absolute and without a z-index, where a
   // fixed element always is one): its bars stand at 100, below the map's
-  // overlays, while the dice rolls hanging from its right end stand above them.
+  // overlays such as the DM screen.
   .atlas-top-bar-row {
     position: absolute;
     top: $spacing-s;
@@ -277,9 +288,10 @@
       margin-top: $spacing-s;
     }
 
-    // The right end holds the widget bar and, below it, the DM's dice rolls
-    // (dice-roll.scss). Without widgets it is empty and the rolls start at the
-    // top, as far from the top edge as from the right. When tabs and widgets
+    // The right end holds the widget bar and the mark the DM's dice rolls are
+    // placed by: they stand in its top right corner, over the widgets, in front
+    // of everything (dice-roll.scss). Without widgets it is empty and the rolls
+    // start at the top, as far from the top edge as from the right. When tabs and widgets
     // do not fit side by side the tabs scroll and the widgets stack
     // (useWidgetStack), so the widgets never give way themselves.
     > .atlas-top-bar-end {
@@ -305,15 +317,15 @@
       // padding, and `--shadow-l` reaches 120px down and 90px aside (Obsidian's
       // `0 30px 90px`), so below and left get all of it; above and right the
       // view's edge is closer than that anyway. The rows scroll by wheel and
-      // touch without a scrollbar: one would take its width from the padding
-      // at the right, and the cards would end short of the view's edge.
+      // touch without a scrollbar, not even the overlay one: it would stand at
+      // the edge of the shadows' room, far from the cards.
       > .atlas-widget-bar > .atlas-widget-container {
         $shadow-room: 120px;
 
         max-height: 50vh;
         overflow: hidden auto;
         overscroll-behavior: contain;
-        scrollbar-width: none;
+        @include atlas-scrollbar-none;
         padding: $spacing-xl $spacing-xl $shadow-room $shadow-room;
         margin: (-$spacing-xl) (-$spacing-xl) (-$shadow-room) (-$shadow-room);
       }
@@ -429,6 +441,38 @@
     display: flex;
   }
 
+  // The active tool's own bars, from the toolbar's left edge (absolute, so the row's
+  // lines are named: an absolute grid child's auto line is the row's edge). The turn banner
+  // stands clear of them (`--atlas-toolbar-lift`, BottomToolbarRow); the toolbar's menus and
+  // the dice tray open in their own place, over the bars, so the bars lie below the toolbar
+  // and everything that hangs from it. One cell holds them all: the bars of the tool that was
+  // left fade where the next tool's rise, so those never start beside the ones leaving.
+  .atlas-bottom-toolbar-row__options {
+    position: absolute;
+    z-index: -1;
+    // From the toolbar's left edge to the row's right edge. Bars that need more room than that (a
+    // narrow view) lie in a track wider than the slot, which ends at the slot's end: they move
+    // left by what they lack and stay in the view.
+    grid-area: 1 / 2 / 2 / 4;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    justify-content: end;
+    justify-items: start;
+    padding-bottom: $spacing-s;
+    pointer-events: none;
+
+    > * {
+      grid-area: 1 / 1;
+    }
+
+    &:empty {
+      display: none;
+    }
+  }
+
   .atlas-bottom-toolbar-row__start {
     grid-column: 1;
   }
@@ -533,16 +577,6 @@
   /* Pin overlay styles - REPLACED WITH PIXI-BASED PIN RENDERER */
   // .atlas-pin-icon styles removed - now rendered in PIXI
 
-  /* Tab system styles */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-    
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
   /* Map picker modal styles */
   .atlas-map-picker-list {
     margin-top: 1rem;
@@ -566,7 +600,7 @@
   $own-look: '.atlas-dice-tray *, .atlas-segmented__option, .atlas-toolbar-tray__done';
   // The bars whose buttons these rules shape: the toolbars, the toolbar editor's tray, and the
   // ghost of a tool moving between them.
-  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost)';
+  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost, .atlas-tool-bar)';
 
   /* Make all buttons in toolbar transparent by default, except those with their own look. */
   #{$toolbars} button.btn:not(#{$own-look}),
@@ -986,6 +1020,17 @@
     visibility: hidden;
   }
 
+  // ── Show name: Atlas' switch and its text, on the icon row's inner edge ──
+  .pin-name-row {
+    @include atlas-flex-row($gap: $spacing-s);
+    padding: 0 $spacing-xs;
+  }
+
+  .pin-name-row__text {
+    cursor: pointer;
+    user-select: none;
+  }
+
   // ── Search ─────────────────────────────────────────────────────
   .pin-search-wrapper {
     position: relative;
@@ -1016,9 +1061,8 @@
   }
 
   // ── Results ────────────────────────────────────────────────────
-  .pin-results {
+  .atlas-pin-results {
     @include atlas-flex-col($gap: $spacing-xs);
-    @include atlas-scrollbar;
     max-height: 240px;
     overflow-y: auto;
     // The icon row sets the panel's width; a long note name truncates instead of widening it

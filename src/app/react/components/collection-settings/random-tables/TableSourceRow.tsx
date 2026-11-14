@@ -2,6 +2,7 @@ import React, { useId, useState } from 'react';
 import { AlertTriangle, ChevronRight, EyeOff, Trash2 } from 'lucide-react';
 import { Button } from '../../../../packages/components/primitives/button';
 import { SegmentedControl } from '../../../../packages/components/primitives/SegmentedControl';
+import { ToggleSwitch } from '../../../../packages/components/primitives/Toggle';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import type { App } from 'obsidian';
 import type { CollectionTable } from '../../../../randomTables/TableNoteReader';
@@ -149,15 +150,7 @@ export function TableSourceRow({ app, found, onChange, onRemove }: TableSourceRo
               )}
               <div className="atlas-rt-row__option">
                 <span id={switchId} className="atlas-rt-row__label">{t('tables.noRepeats')}</span>
-                <label className="atlas-csm-switch">
-                  <input
-                    type="checkbox"
-                    aria-labelledby={switchId}
-                    checked={source.noRepeats === true}
-                    onChange={(event) => set({ noRepeats: event.target.checked })}
-                  />
-                  <span className="atlas-csm-switch-track" />
-                </label>
+                <ToggleSwitch labelledBy={switchId} value={source.noRepeats === true} onChange={() => set({ noRepeats: source.noRepeats !== true })} />
               </div>
             </>
           )}

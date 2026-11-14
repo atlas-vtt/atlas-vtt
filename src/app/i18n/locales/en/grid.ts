@@ -25,6 +25,8 @@ export const grid = {
   'grid.tableTvTrueScale': 'True scale on table TV',
   'grid.tableTvTrueScaleHint': 'Off for maps without an aligned grid, such as region maps: the TV then follows your zoom',
   'grid.unit': 'Unit',
+  'grid.unitName': 'Unit name',
+  'grid.unitNameHint': 'For this scene, like mi or ly. Empty uses the usual unit',
   'grid.unitOfCampaign': 'For every map while the campaign is played',
   'grid.unitOfCollection': 'For every scene of the collection',
   'grid.unitOfScene': 'For this scene',

@@ -25,8 +25,9 @@ export const common: Translation = {
   'common.done': 'Готово',
   'common.continue': 'Продолжить',
   'common.none': 'Нет',
-  'common.select': 'Выбрать...',
+  'common.select': 'Выбрать…',
   'common.confirm': 'Подтвердить',
+  'common.valueEmpty': 'Значение не может быть пустым',
   'common.duplicate': 'Дублировать',
   'common.copy': 'Копировать',
 };

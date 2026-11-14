@@ -31,10 +31,11 @@ const STAIRS: LevelLink = {
   flight: { foot: 2, rows: 3 },
 };
 
-/** A table whose scene has two levels and the stairs, with the ogre at a place on a level; `walls` as the scene's. */
+/** A table whose scene has two levels and the stairs on a grid of 100 px cells, with the ogre at a place on a level; `walls` as the scene's. */
 function table(x: number, y: number, level = 'ground', walls: () => MoveWalls | null = () => null): Table {
   const t = realTable(createViewAtlasStore, walls);
   runUntracked(t.store, () => t.store.setState((draft) => {
+    if (draft.grid !== null) draft.grid.size = 100;
     (draft as unknown as { levels: SceneLevel[] }).levels = LEVELS;
     draft.objects.levelLinks = { stairs: STAIRS };
     Object.assign(draft.objects.tokens.ogre!, { x, y, level });
@@ -63,6 +64,8 @@ function fortress(): { t: Table; stair: DungeonStair; at: (c: CellPoint) => { x:
   const stair = model.floors[0]!.stairs[0]!;
   const t = realTable(createViewAtlasStore, () => null);
   runUntracked(t.store, () => t.store.setState((draft) => {
+    // The scene's grid is the dungeon's, so a token put down ends on a cell of it.
+    if (draft.grid !== null) Object.assign(draft.grid, { size: FORTRESS_PX, offsetX: -placement.originCell.x * FORTRESS_PX, offsetY: -placement.originCell.y * FORTRESS_PX });
     (draft as unknown as { levels: SceneLevel[] }).levels = levels;
     draft.objects.levelLinks = parts.scene.levelLinks;
     Object.assign(draft.objects.tokens.ogre!, { level: levels[0]!.id });

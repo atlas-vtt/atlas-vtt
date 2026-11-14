@@ -87,6 +87,12 @@ function viewMapImage(app: App, renderer: MapRenderer): MosaicCanvas | null {
     picture: MAP_THUMBNAIL_SIZE,
     video: vaultMapVideos(app, service, pixi.renderer, pixi.canvas),
   });
+  // Every image the view comes to show can be seen whole, also one no load brought: another
+  // level's, a changed background, the map drawn with another stretch.
+  mapImage.onChange((change) => {
+    const rect = mapImage.worldRect;
+    if (change === 'image' && rect) fitZoomRange(viewport, rect);
+  });
   renderer.setMapImage(mapImage);
   return mapImage;
 }

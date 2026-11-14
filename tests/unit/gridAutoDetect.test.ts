@@ -9,6 +9,7 @@ vi.mock('../../src/app/pixi/spectralEngine/spectralEngineService', () => ({
 
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { autoDetectGridOnFirstLoad } from '../../src/app/services/gridAutoDetect';
+import { getHistoryStore } from '../../src/app/stores/history';
 import type { GridState } from '../../src/app/types/gridTypes';
 
 const SETTLED_GRID: GridState = { enabled: true, visible: true, type: 'square', size: 70, offsetX: 0, offsetY: 0, color: '#00FFFF', opacity: 0.5 };
@@ -105,13 +106,36 @@ describe('autoDetectGridOnFirstLoad', () => {
     expect(store.getState().grid?.visible).toBe(true);
   });
 
-  it('writes nothing once the load it belongs to was overtaken while the map was read', async () => {
+  it('writes no answer once the load it belongs to was overtaken while the map was read', async () => {
     detectGridFromMapImage.mockResolvedValue({ gridType: 'square', cellSize: 50, offsetX: 1, offsetY: 2, confidence: 0.9 });
     const store = setup(NEW_GRID);
 
     await autoDetectGridOnFirstLoad(store, mapImage, () => false);
 
-    expect(store.getState().grid).toEqual(NEW_GRID);
+    expect(store.getState().grid).toEqual({ ...SETTLED_GRID, visible: false, snapToGrid: false });
+  });
+
+  it('has looked at the scene from the moment the search begins, so a scene left meanwhile is not searched again', async () => {
+    detectGridFromMapImage.mockReturnValue(new Promise(() => undefined));
+    const store = setup(NEW_GRID);
+    const history = getHistoryStore(store);
+    const steps = history?.getState().pastStates.length;
+
+    void autoDetectGridOnFirstLoad(store, mapImage);
+
+    expect(store.getState().grid).toEqual({ ...SETTLED_GRID, visible: false, snapToGrid: false });
+    expect(history?.getState().pastStates).toHaveLength(steps ?? 0);
+    await expect(autoDetectGridOnFirstLoad(store, mapImage)).resolves.toBe('skipped');
+    expect(detectGridFromMapImage).toHaveBeenCalledOnce();
+  });
+
+  it('has looked at the scene although showing the answer fails', async () => {
+    detectGridFromMapImage.mockResolvedValue({ gridType: 'square', cellSize: 64, offsetX: 3, offsetY: 5, confidence: 0.9 });
+    const store = setup(NEW_GRID);
+
+    await expect(autoDetectGridOnFirstLoad(store, mapImage, () => true, { found: () => Promise.reject(new Error('the map could not be drawn')) })).rejects.toThrow();
+
+    expect(store.getState().grid).not.toHaveProperty('autoDetect');
   });
 
   it('never runs in the player view', async () => {
@@ -141,7 +165,7 @@ describe('autoDetectGridOnFirstLoad', () => {
     await vi.waitFor(() => expect(shown).not.toBeNull());
 
     // The scan has the answer; the scene's grid waits for it to be revealed.
-    expect(store.getState().grid).toHaveProperty('autoDetect', true);
+    expect(store.getState().grid).toMatchObject({ size: 70, visible: false });
     shown!();
     await expect(detection).resolves.toBe('found');
     expect(events).toEqual(['found 64']);
@@ -149,7 +173,7 @@ describe('autoDetectGridOnFirstLoad', () => {
     expect(store.temporal.getState().pastStates).toHaveLength(steps);
   });
 
-  it('tells the show where the map has no grid, and writes nothing once the scene was left while the answer showed', async () => {
+  it('tells the show where the map has no grid, and writes no answer once the scene was left while the answer showed', async () => {
     detectGridFromMapImage.mockResolvedValue(null);
     const none = vi.fn();
     await expect(autoDetectGridOnFirstLoad(setup(NEW_GRID), mapImage, () => true, { none })).resolves.toBe('none');
@@ -160,6 +184,6 @@ describe('autoDetectGridOnFirstLoad', () => {
     let current = true;
     const left = autoDetectGridOnFirstLoad(store, mapImage, () => current, { found: () => { current = false; return Promise.resolve(); } });
     await expect(left).resolves.toBe('skipped');
-    expect(store.getState().grid).toHaveProperty('autoDetect', true);
+    expect(store.getState().grid).toEqual({ ...SETTLED_GRID, visible: false, snapToGrid: false });
   });
 });

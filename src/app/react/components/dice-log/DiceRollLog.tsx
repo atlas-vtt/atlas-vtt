@@ -120,7 +120,7 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
       </div>
 
       {/* Scrollable list */}
-      <div ref={listRef} className="dice-roll-log__list">
+      <div ref={listRef} className="atlas-dice-roll-log__list">
         {history.length === 0 ? (
           <div className="dice-roll-log__empty">
             <Dices className="dice-roll-log__empty-icon" />

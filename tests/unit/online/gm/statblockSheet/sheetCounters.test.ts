@@ -43,6 +43,16 @@ describe('Counters on a player\'s sheet', () => {
     expect(node?.field).toMatchObject({ key: 'slots', type: 'counters', base: sheetBase(ROWS) });
   });
 
+  it('shows a row that takes its template\'s maximum at the template\'s as it is now, and hands the page the stored rows at it', () => {
+    const stored = [{ name: '1st level', max: 3, used: 3, templateMax: 3 }, { name: 'Ki', max: 3, used: 1, reset: 'Short rest' }];
+    const node = countersOf(drawn({ slots: stored }));
+    expect(node?.counters).toEqual([
+      { name: '1st level', max: 2, used: 2, reset: null, regain: null },
+      { name: 'Ki', max: 3, used: 1, reset: 'Short rest', regain: null },
+    ]);
+    expect(node?.field).toMatchObject({ base: sheetBase(stored), value: [{ name: '1st level', max: 2, used: 2, templateMax: 3 }, stored[1]] });
+  });
+
   it('sends no refills, whatever the template file still holds', () => {
     expect(drawn({ slots: ROWS })).not.toHaveProperty('refills');
   });

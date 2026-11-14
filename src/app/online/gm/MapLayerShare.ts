@@ -17,6 +17,7 @@ import { WidgetShare } from './WidgetShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
 import { mapTokens } from '../../tokens/offMap';
+import type { NotePin } from '../../types';
 
 export interface MapLayerSharePorts extends PacerClock {
   send(body: GmMessage, to?: string): void;
@@ -30,11 +31,15 @@ export interface MapLayerSharePorts extends PacerClock {
   randomId(): string;
   /** The log entry that tells who found the pin `pinId` of the map `mapPath`, or null while nobody has. */
   foundPin?(mapPath: string, pinId: string): string | null;
+  /** The shared map's pins (of the level shown) whenever the GM changed them, and once for each scene shared. */
+  pinsChanged?(mapPath: string, pins: Readonly<Record<string, NotePin>>): void;
   /** The number a token's look-alike badge shows the players (`TokenShare.badgeOf`); none without. */
   badgeOf?(tokenId: string): number | null;
   /** The id players know a token by in their token list (`TokenShare.listedAlias`); none for a token they are not sent. */
   tokenAlias?(tokenId: string): string | undefined;
 }
+
+const NO_PINS: Readonly<Record<string, NotePin>> = Object.freeze({});
 
 /** The shortest time between two sends of the map's layers, as for the token list. */
 export const MAP_LAYER_INTERVAL_MS = 66;
@@ -77,6 +82,7 @@ export class MapLayerShare {
   private annotationsSent: SharedAnnotations | null = null;
   private readonly liquids: SharedLiquids;
   private liquidsSent: readonly SharedLiquid[] | null = null;
+  private pinsSeen: Readonly<Record<string, NotePin>> | null = null;
 
   constructor(store: SceneStore, ports: MapLayerSharePorts) {
     this.store = store;
@@ -99,6 +105,7 @@ export class MapLayerShare {
     this.liquidsSent = null;
     this.art.clear();
     this.pins.clear();
+    this.pinsSeen = null;
     this.fog.reset();
     this.pacer.cancel();
     this.widgets.setScene(scene?.id ?? null);
@@ -150,6 +157,7 @@ export class MapLayerShare {
       art: (path) => this.art.get(path),
     });
     this.publish({ t: 'initiative', scene: scene.id, list });
+    this.tellPins(state);
     const pins = this.readablePins(state, source, fog);
     if (pins !== null) this.publish({ t: 'pins', scene: scene.id, pins: this.pins.shared(pins, (pinId) => this.ports.foundPin?.(state.mapPath ?? '', pinId) ?? null) });
     if (!scene.lit) return;
@@ -174,6 +182,14 @@ export class MapLayerShare {
 
   private readablePins(state: SceneState, source: MapLayerSource, fog: FogCoverage | null): ListedPin[] | null {
     return this.pins.listed(state, { lit: this.scene?.lit === true, fog, seen: (points) => source.pointsSeen(points, fog) });
+  }
+
+  /** Tells of the shown level's pins when they are not the ones last told of. */
+  private tellPins(state: SceneState): void {
+    const pins = levelObjects(state).pins ?? NO_PINS;
+    if (pins === this.pinsSeen) return;
+    this.pinsSeen = pins;
+    this.ports.pinsChanged?.(state.mapPath ?? '', pins);
   }
 
   /** The drawings and texts, worked out again only when they or the fog changed. */

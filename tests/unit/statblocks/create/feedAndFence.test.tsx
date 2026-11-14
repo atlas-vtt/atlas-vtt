@@ -77,7 +77,7 @@ describe('the DM screen\'s statblock menu', () => {
     withStatblockEditor(app());
     const { onOpened } = feed(FANTASY);
     chooseEdit();
-    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith('', FANTASY, true);
+    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith(FANTASY, '', true);
     expect(openStatblockEditor).not.toHaveBeenCalled();
     expect(onOpened).toHaveBeenCalled();
   });

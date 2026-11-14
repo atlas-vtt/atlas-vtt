@@ -1,8 +1,9 @@
 import type { LaserState, MarkPoint } from '../protocol/index.ts';
 import { SpanMeter } from './SpanMeter.ts';
+import { isPrimaryPress } from '../../pixi/utils/pointerButtons';
 
-/** A pointer event as a viewport sends it: the button and where it is on the canvas. */
-export type TapEvent = { readonly button: number } & Readonly<Record<'global', { readonly x: number; readonly y: number }>>;
+/** A pointer event as a viewport sends it: the button, whether Ctrl is held with it, and where it is on the canvas. */
+export type TapEvent = { readonly button: number; readonly ctrlKey?: boolean } & Readonly<Record<'global', { readonly x: number; readonly y: number }>>;
 
 type TapEventName = 'pointerdown' | 'pointermove' | 'pointerup' | 'pointerupoutside';
 
@@ -135,9 +136,10 @@ export class PointerTap implements LaserSource {
 
   private down(event: TapEvent): void {
     const at = this.track(event);
-    if (event.button === 0 && at !== null) this.press = { serial: (this.press?.serial ?? 0) + 1, at };
+    const primary = isPrimaryPress({ button: event.button, ctrlKey: event.ctrlKey === true });
+    if (primary && at !== null) this.press = { serial: (this.press?.serial ?? 0) + 1, at };
     const quick = event.button === 1;
-    if (!quick && !(event.button === 0 && this.isLaser())) return;
+    if (!quick && !(primary && this.isLaser())) return;
     this.quick ||= quick;
     this.pointing = true;
     if (at !== null) this.addPoint(at);

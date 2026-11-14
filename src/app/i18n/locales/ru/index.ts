@@ -2,6 +2,7 @@ import type { Translation } from '../../types';
 import { align } from './align';
 import { atlasLinks } from './atlasLinks';
 import { am } from './am';
+import { assetGrid } from './assetGrid';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
 import { clock } from './clock';
@@ -109,6 +110,7 @@ export const ru: Translation = {
   ...align,
   ...atlasLinks,
   ...am,
+  ...assetGrid,
   ...bundle,
   ...cleanup,
   ...clock,
@@ -176,6 +178,7 @@ export const ru: Translation = {
   ...image,
   'index.unreadable': 'Atlas VTT не смог прочитать индекс ресурсов ({path}) и не стал его менять. Перезапустите Obsidian, чтобы попробовать снова.',
   'index.rebuilding': 'Atlas VTT не смог прочитать индекс ресурсов и восстанавливает его по файлам коллекций. Нечитаемый файл сохранён как {path}.',
+  'index.folderMoved': 'Папка Atlas перемещена в «{path}». Atlas находит свою библиотеку только в папке «{folder}» в корне хранилища: верните папку туда, и ваши карты, сцены и токены вернутся.',
   ...link,
   ...mapPreview,
   ...names,

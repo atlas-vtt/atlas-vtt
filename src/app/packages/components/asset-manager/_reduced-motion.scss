@@ -1,0 +1,19 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Asset Manager – Reduced motion
+// ═══════════════════════════════════════════════════════════════════════════
+// Under reduced motion nothing in the asset manager travels, turns or grows:
+// colours and opacity still change over time, every transform (a chevron
+// turning, a tag chip or a popover rising into place) jumps to its end. Motion
+// that framer-motion drives honours the setting in its own variants
+// (gridMotion.ts, sidebarMotion.ts).
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-asset-manager-modal,
+  .atlas-asset-manager-move-modal,
+  .atlas-filter-panel {
+    &,
+    * {
+      transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+    }
+  }
+}

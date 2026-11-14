@@ -6,7 +6,7 @@ export const dashboard = {
   'dashboard.statblockScope': 'Statblocks shown',
   'dashboard.linkNote': 'Link a note to this map',
   'dashboard.linkOther': 'Link a different note',
-  'dashboard.loading': 'Loading statblocks...',
+  'dashboard.loading': 'Loading statblocks…',
   'dashboard.openNote': 'Open note in new tab',
   'dashboard.pickNote': 'Pick a note to keep beside the map',
   'dashboard.justNow': 'Just now',

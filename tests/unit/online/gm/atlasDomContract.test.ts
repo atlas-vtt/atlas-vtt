@@ -17,7 +17,7 @@ describe("Atlas's markup the control relies on", () => {
     expect(row).toContain(`className="${ROW_CLASS}"`);
     expect(row).toContain(`className="${START_CLASS}"`);
     // The row measures the start slot, so the spacer's width reaches the toolbar's room.
-    expect(row).toMatch(/observeResize\(\[row, startSlot, endSlot\]/);
+    expect(row).toMatch(/observeResize\(\[row, startSlot, endSlot[,\]]/);
   });
 
   it('has the token portrait the panel draws, and the bars the collapsed control stands level with', () => {

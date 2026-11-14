@@ -7,6 +7,8 @@
  */
 
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
+import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lightingTool';
+import { DEFAULT_MEASURE_TOOL, type MeasureToolOptions } from '../measure/measureTypes';
 import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */
@@ -31,7 +33,10 @@ export interface UISlice extends ViewUIState {
   closeLevelLinkPopover: () => void;
   openLevelSurfacePopover: (surfaceId: string) => void;
   closeLevelSurfacePopover: () => void;
-  setSceneLightingPanelOpen: (open: boolean) => void;
+  openMeasurePopover: (measureId: string) => void;
+  closeMeasurePopover: () => void;
+  setMeasureTool: (changes: Partial<MeasureToolOptions>) => void;
+  setLightingTool: (changes: Partial<LightingToolOptions>) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
   /** Starting the toolbar editor closes the dice tray, which hangs where the tray goes. */
@@ -60,7 +65,9 @@ export function createInitialUIState(): Pick<
   | 'lightZonePopover'
   | 'levelLinkPopover'
   | 'levelSurfacePopover'
-  | 'isSceneLightingPanelOpen'
+  | 'measurePopover'
+  | 'measureTool'
+  | 'lightingTool'
   | 'heldTokens'
   | 'exploredBrush'
   | 'isToolbarEditing'
@@ -82,7 +89,9 @@ export function createInitialUIState(): Pick<
     lightZonePopover: null,
     levelLinkPopover: null,
     levelSurfacePopover: null,
-    isSceneLightingPanelOpen: false,
+    measurePopover: null,
+    measureTool: DEFAULT_MEASURE_TOOL,
+    lightingTool: DEFAULT_LIGHTING_TOOL,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
     isToolbarEditing: false,
@@ -113,7 +122,10 @@ export function createUIActions(
   | 'closeLevelLinkPopover'
   | 'openLevelSurfacePopover'
   | 'closeLevelSurfacePopover'
-  | 'setSceneLightingPanelOpen'
+  | 'openMeasurePopover'
+  | 'closeMeasurePopover'
+  | 'setMeasureTool'
+  | 'setLightingTool'
   | 'setHeldTokens'
   | 'setExploredBrush'
   | 'setToolbarEditing'
@@ -149,10 +161,12 @@ export function createUIActions(
     openLightPopover: (lightId) => set((draft) => {
       draft.lightPopover = lightId;
       draft.lightZonePopover = null;
+      draft.measurePopover = null;
     }),
     openLightZonePopover: (zoneId) => set((draft) => {
       draft.lightZonePopover = zoneId;
       draft.lightPopover = null;
+      draft.measurePopover = null;
     }),
     closeLightZonePopover: () => set((draft) => { draft.lightZonePopover = null; }),
     openLevelLinkPopover: (linkId) => set((draft) => { draft.levelLinkPopover = linkId; }),
@@ -160,7 +174,14 @@ export function createUIActions(
     openLevelSurfacePopover: (surfaceId) => set((draft) => { draft.levelSurfacePopover = surfaceId; }),
     closeLevelSurfacePopover: () => set((draft) => { draft.levelSurfacePopover = null; }),
     closeLightPopover: () => set((draft) => { draft.lightPopover = null; }),
-    setSceneLightingPanelOpen: (open) => set((draft) => { draft.isSceneLightingPanelOpen = open; }),
+    openMeasurePopover: (measureId) => set((draft) => {
+      draft.measurePopover = measureId;
+      draft.lightPopover = null;
+      draft.lightZonePopover = null;
+    }),
+    closeMeasurePopover: () => set((draft) => { draft.measurePopover = null; }),
+    setMeasureTool: (changes) => set((draft) => { draft.measureTool = { ...draft.measureTool, ...changes }; }),
+    setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),
     setToolbarEditing: (on) => set((draft) => {

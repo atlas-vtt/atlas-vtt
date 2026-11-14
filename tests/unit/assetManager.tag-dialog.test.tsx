@@ -80,7 +80,7 @@ it('searches and toggles tags without dismissing the asset manager', () => {
   expect(savedTags(onSetTags.mock.calls[0]![0])).toEqual([['token', ['Dragon']], ['scene', ['Dragon']]]);
   expect(screen.getByText('Dragon').closest('.atlas-tag-search__item')?.classList.contains('atlas-tag-search__item--selected')).toBe(true);
   expect(onClose).not.toHaveBeenCalled();
-  expect(screen.queryByText('Manage Tags')).not.toBeNull();
+  expect(screen.queryByText('Manage tags')).not.toBeNull();
 });
 
 it.each(['Done', 'Cancel', 'Close', 'backdrop'])('%s dismisses only the tag dialog, preserving outside-click dismissal afterward', (action) => {
@@ -88,7 +88,7 @@ it.each(['Done', 'Cancel', 'Close', 'backdrop'])('%s dismisses only the tag dial
   clickWithMouseDown(action === 'backdrop'
     ? screen.getByRole('textbox').closest('.atlas-modal-overlay')!
     : screen.getByRole('button', { name: action }));
-  expect(screen.queryByText('Manage Tags')).toBeNull();
+  expect(screen.queryByText('Manage tags')).toBeNull();
   expect(onClose).not.toHaveBeenCalled();
 
   fireEvent.mouseDown(document.body);
@@ -100,7 +100,7 @@ it('creates a tag without dismissing the asset manager', () => {
   fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Undead' } });
   clickWithMouseDown(screen.getByText('Create “Undead”'));
   expect(onCreateTag).toHaveBeenCalledExactlyOnceWith('Undead', expect.any(Array));
-  expect(screen.queryByText('Manage Tags')).toBeNull();
+  expect(screen.queryByText('Manage tags')).toBeNull();
   expect(onClose).not.toHaveBeenCalled();
 });
 
@@ -145,7 +145,7 @@ it('ignores its own Escape shortcut while a collection transfer dialog is open',
   expect(onClose).not.toHaveBeenCalled();
 });
 
-describe('the asset menu\'s Manage Tags dialog', () => {
+describe('the asset menu\'s Manage tags dialog', () => {
   const UNDEAD = { id: 'undead', name: 'Undead' };
 
   afterEach(() => {
@@ -171,7 +171,7 @@ describe('the asset menu\'s Manage Tags dialog', () => {
   const row = (name: string): Element => screen.getByText(name).closest('.atlas-tag-search__item')!;
   const isSelected = (name: string): boolean => row(name).classList.contains('atlas-tag-search__item--selected');
 
-  it('shows and removes a tag the token carries by name, as Edit Token stores it', () => {
+  it('shows and removes a tag the token carries by name, as Edit token stores it', () => {
     const { setTagsOfAssets, token } = openFor(['Undead']);
     expect(isSelected('Undead')).toBe(true);
     clickWithMouseDown(row('Undead'));

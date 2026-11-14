@@ -16,7 +16,8 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
 // The column carries .atlas-vtt-plugin itself (see DiceRollDisplay). For the DM
 // it stands at the top right of the map, out of the middle where the DM works:
 // a roll is read for a moment and goes, so it lies over the widgets and whatever
-// else stands there. The player window centres it (player-window.scss).
+// else stands there. The player window centres it (player-window.scss), the
+// statblock beside its note holds it in its pane (statblock-pane.scss).
 &.atlas-dice-rolls {
   position: absolute;
   top: 0;
@@ -27,6 +28,32 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   pointer-events: none;
   @include atlas-flex-col($spacing-s);
   align-items: flex-end;
+}
+
+// A map's rolls (useMapRollLayer): in the portal host, in front of every Atlas surface
+// (the asset manager and its blurred backdrop, previews, dialogs), placed on the mark the
+// map's top bar holds at its right end, so they stand where they did inside the view.
+&.atlas-dice-rolls--front {
+  position: fixed;
+  top: anchor(top);
+  right: anchor(right);
+  z-index: $z-atlas-dice-rolls-front;
+}
+
+// The map's view is behind another tab: so are its rolls.
+&.atlas-dice-rolls--away {
+  display: none;
+}
+
+// The mark the map's rolls are placed by: the top right corner of the top bar's right end.
+// It has a size so that a ResizeObserver hears it vanish when the view is hidden.
+.atlas-dice-rolls-anchor {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
 }
 
 .atlas-dice-roll {

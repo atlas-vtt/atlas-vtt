@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App, TFile } from 'obsidian';
-import { isLootBaseLoaded, LootBaseReader, needsBases, type LootBase } from '../../src/app/loot/LootBaseReader';
-import { fakeQueries as queries } from '../mocks/fakeLootQueries';
+import { isLootBaseLoaded, isLootBaseUnreadable, LootBaseReader, needsBases, type LootBase } from '../../src/app/loot/LootBaseReader';
+import { fakeQueries as queries, LootBaseQuery } from '../mocks/fakeLootQueries';
 import type { LootQuerySnapshot } from '../../src/app/loot/lootItem';
 
 vi.mock('../../src/app/loot/lootQueryView', () => import('../mocks/fakeLootQueries'));
@@ -28,9 +28,17 @@ function appWith(files: Record<string, string>): App {
   return app;
 }
 
-function reader(files: Record<string, string>, path = 'Loot/Items.base'): { reader: LootBaseReader; latest: () => LootBase | undefined } {
+function reader(files: Record<string, string>, path = 'Loot/Items.base', app = appWith(files)): { reader: LootBaseReader; latest: () => LootBase | undefined } {
   let latest: LootBase | undefined;
-  return { reader: new LootBaseReader(appWith(files), path, (base) => { latest = base; }), latest: () => latest };
+  return { reader: new LootBaseReader(app, path, (base) => { latest = base; }), latest: () => latest };
+}
+
+/** A vault whose files are listed and, while `failing.on`, cannot be read: a file not on this device, one a sync tool holds. */
+function appFailing(files: Record<string, string>, failing: { on: boolean }): App {
+  const app = appWith(files);
+  const read = app.vault.cachedRead;
+  app.vault.cachedRead = (file: TFile) => (failing.on ? Promise.reject(new Error('The file is not on this device.')) : read(file));
+  return app;
 }
 
 beforeEach(() => {
@@ -79,12 +87,83 @@ describe('LootBaseReader', () => {
     expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
   });
 
-  it('treats a base it cannot parse as one without views', async () => {
+  it('says a base that is no YAML could not be read, and reads it once it is', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const { reader: items, latest } = reader({ 'Loot/Items.base': 'views: [unclosed' });
+    const files = { 'Loot/Items.base': 'views: [unclosed' };
+    const { reader: items, latest } = reader(files);
     await items.load();
-    expect(latest()).toMatchObject({ missing: false, views: [] });
+    expect(latest()).toMatchObject({ name: 'Items', missing: false, unreadable: true, views: [] });
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
+    expect(isLootBaseUnreadable(latest() as LootBase)).toBe(true);
     expect(queries.started).toHaveLength(0);
+
+    files['Loot/Items.base'] = BASE_YAML;
+    await items.load();
+    expect(isLootBaseUnreadable(latest() as LootBase)).toBe(false);
+    expect(latest()?.views.map((view) => view.status)).toEqual(['loading', 'loading']);
+  });
+
+  it('reads an empty base as one without views', async () => {
+    for (const text of ['', '# Nothing yet\n']) {
+      const { reader: items, latest } = reader({ 'Loot/Items.base': text });
+      await items.load();
+      expect(latest()).toMatchObject({ missing: false, views: [] });
+      expect(isLootBaseUnreadable(latest() as LootBase)).toBe(false);
+    }
+  });
+
+  it('says a base whose file cannot be read could not be read, instead of reading for ever', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const files = { 'Loot/Items.base': BASE_YAML };
+    const failing = { on: true };
+    const { reader: items, latest } = reader(files, 'Loot/Items.base', appFailing(files, failing));
+    await expect(items.load()).resolves.toBeUndefined();
+
+    expect(latest()).toMatchObject({ name: 'Items', missing: false, unreadable: true, views: [] });
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
+    expect(isLootBaseUnreadable(latest() as LootBase)).toBe(true);
+    expect(needsBases(latest() as LootBase)).toBe(false);
+    expect(queries.started).toHaveLength(0);
+
+    // The file is read anew when the vault says it changed.
+    failing.on = false;
+    await items.load();
+    expect(isLootBaseUnreadable(latest() as LootBase)).toBe(false);
+    queries.of('Weapons').listener.onSnapshot(SNAPSHOT);
+    queries.of('Armor').listener.onSnapshot(SNAPSHOT);
+    expect(latest()?.views.map((view) => view.status)).toEqual(['ready', 'ready']);
+  });
+
+  it('reports a base deleted while it was read as not in the vault', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const files: Record<string, string> = { 'Loot/Items.base': BASE_YAML };
+    const app = appWith(files);
+    app.vault.cachedRead = () => {
+      delete files['Loot/Items.base'];
+      return Promise.reject(new Error('ENOENT'));
+    };
+    const { reader: items, latest } = reader(files, 'Loot/Items.base', app);
+    await items.load();
+    expect(latest()).toMatchObject({ missing: true, views: [] });
+    expect(isLootBaseUnreadable(latest() as LootBase)).toBe(false);
+  });
+
+  it('leaves a read that failed after the base was read again out of what it reports', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const files = { 'Loot/Items.base': BASE_YAML };
+    const app = appWith(files);
+    const read = app.vault.cachedRead;
+    let fail = (_error: Error): void => undefined;
+    app.vault.cachedRead = () => new Promise<string>((_resolve, reject) => { fail = reject; });
+    const { reader: items, latest } = reader(files, 'Loot/Items.base', app);
+    const first = items.load();
+
+    app.vault.cachedRead = read;
+    await items.load();
+    fail(new Error('The file is not on this device.'));
+    await first;
+    expect(isLootBaseUnreadable(latest() as LootBase)).toBe(false);
+    expect(latest()?.views.map((view) => view.name)).toEqual(['Weapons', 'Armor']);
   });
 
   it('marks every view unavailable without running queries while Bases is off', async () => {
@@ -109,6 +188,47 @@ describe('LootBaseReader', () => {
     queries.of('Weapons').listener.onSnapshot(SNAPSHOT);
     expect(latest()?.views[0]?.status).toBe('ready');
     expect(needsBases(latest() as LootBase)).toBe(false);
+  });
+
+  it('stops reading a view whose results cannot be read, and takes its items should they come after all', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { reader: items, latest } = reader({ 'Loot/Items.base': BASE_YAML });
+    await items.load();
+    queries.of('Armor').listener.onSnapshot(SNAPSHOT);
+
+    queries.of('Weapons').listener.onUnreadable(new Error('no order'));
+    expect(latest()?.views.map((view) => view.status)).toEqual(['unreadable', 'ready']);
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
+    expect(isLootBaseUnreadable(latest() as LootBase)).toBe(true);
+    expect(needsBases(latest() as LootBase)).toBe(false);
+
+    queries.of('Weapons').listener.onSnapshot(SNAPSHOT);
+    expect(latest()?.views[0]?.status).toBe('ready');
+    expect(isLootBaseUnreadable(latest() as LootBase)).toBe(false);
+  });
+
+  it('stops reading a view whose rows are no rows', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { reader: items, latest } = reader({ 'Loot/Items.base': BASE_YAML });
+    await items.load();
+
+    queries.of('Weapons').listener.onSnapshot({ ...SNAPSHOT, entries: null } as unknown as LootQuerySnapshot);
+    expect(latest()?.views[0]).toMatchObject({ status: 'unreadable', items: [] });
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(false);
+    queries.of('Armor').listener.onSnapshot(SNAPSHOT);
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
+  });
+
+  it('stops reading a view Obsidian fails to start, and reads the others', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(LootBaseQuery.prototype, 'start').mockRejectedValueOnce(new Error('render failed'));
+    const { reader: items, latest } = reader({ 'Loot/Items.base': BASE_YAML });
+    await items.load();
+
+    expect(latest()?.views.map((view) => view.status)).toEqual(['unreadable', 'loading']);
+    queries.of('Armor').listener.onSnapshot(SNAPSHOT);
+    expect(latest()?.views.map((view) => view.status)).toEqual(['unreadable', 'ready']);
+    expect(isLootBaseLoaded(latest() as LootBase)).toBe(true);
   });
 
   it('stops its queries and ignores their late results', async () => {

@@ -5,13 +5,12 @@ import { VideoMapRefusedError } from '../../../../import/videoMaps/videoMapConve
 import { isVideoMapPath } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { convertForPreview } from './tokenImages';
 import type { CreatorMode, EditTokenInput, PreviewImage, TokenPreview, TokenPreviewPatch } from './types';
-import { t } from '../../../../i18n';
-import { cropReset } from './cropMath';
+import { previewFromEdit, previewFromFile, revokeIfBlob, withQueuedPatches } from './previewItems';
 import { useBatchProgress } from './useBatchProgress';
 import type { ProgressCount } from '../../primitives/useLingeringTask';
+import { creatorDraft, forgetCreatorDraft, keepCreatorDraft, type KeptConversion, type PreviewConversionKind } from './creatorDraft';
 
-/** What a background conversion produced: a framed token's default crop, or the whole image. */
-export type PreviewConversionKind = 'default-crop' | 'whole';
+export type { PreviewConversionKind } from './creatorDraft';
 
 export interface TokenPreviewsApi {
   previews: TokenPreview[];
@@ -44,39 +43,6 @@ export interface TokenPreviewsApi {
  */
 const PATCH_FLUSH_MS = 150;
 
-function revokeIfBlob(url: string): void {
-  if (url.startsWith('blob:')) URL.revokeObjectURL(url);
-}
-
-/** Cards show the converted image once it is ready, never the upload itself, which may be far too large to paint cheaply. */
-function previewFromFile(file: File): TokenPreview {
-  const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
-  return {
-    id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-    file,
-    previewUrl: '',
-    name: baseName || t('creator.untitled'),
-    ...cropReset({ file }),
-    isSelected: true,
-    isOptimizing: true,
-  };
-}
-
-function previewFromEdit(token: EditTokenInput): TokenPreview {
-  return {
-    id: token.id,
-    tags: token.tags,
-    showRing: token.showRing ?? true,
-    ...(token.size !== undefined && { size: token.size }),
-    file: null,
-    previewUrl: token.imageUrl,
-    name: token.name,
-    ...cropReset({ file: null }),
-    isSelected: true,
-    isOptimizing: false,
-  };
-}
-
 interface PendingOptimization {
   result: Promise<ProcessedImage | undefined>;
   kind: PreviewConversionKind;
@@ -89,13 +55,21 @@ interface PendingOptimization {
  * conversion, selection and per-preview edits. Uploads are converted in
  * parallel by the image workers and their results reach the list in batches;
  * removing a preview cancels its conversion. Blob URLs are revoked when a
- * preview is removed or on unmount.
+ * preview is removed or on unmount. With `keepsDraft` (creating, not editing)
+ * the list starts from the draft a closed creator left and is kept as the draft
+ * when this one closes (`creatorDraft.ts`), conversions that had not finished
+ * starting again on the next open.
  */
-export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
-  const [defaultRing, setDefaultRing] = useState(true);
-  const [previews, setPreviews] = useState<TokenPreview[]>([]);
+export function useTokenPreviews(mode: CreatorMode, keepsDraft = false): TokenPreviewsApi {
+  const [restored] = useState(() => (keepsDraft ? creatorDraft(mode) : undefined));
+  const [defaultRing, setDefaultRing] = useState(restored?.defaultRing ?? true);
+  const [previews, setPreviews] = useState<TokenPreview[]>(() => [...(restored?.previews ?? [])]);
   const previewsRef = useRef(previews);
-  const liveIds = useRef(new Set<string>());
+  const liveIds = useRef(new Set(previews.map((p) => p.id)));
+  const defaultRingRef = useRef(defaultRing);
+  defaultRingRef.current = defaultRing;
+  const keepsDraftRef = useRef(keepsDraft);
+  keepsDraftRef.current = keepsDraft;
   const changePreviews = useCallback((update: (current: TokenPreview[]) => TokenPreview[]): void => {
     const next = update(previewsRef.current);
     previewsRef.current = next;
@@ -103,7 +77,9 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
     setPreviews(next);
   }, []);
 
-  const pendingRef = useRef(new Map<string, PendingOptimization>());
+  const pendingRef = useRef(new Map<string, PendingOptimization>(
+    [...(restored?.conversions ?? [])].map(([id, kept]) => [id, { ...kept, controller: new AbortController(), settled: true }]),
+  ));
   const { progress: optimization, start: startOptimizations, finish: finishOptimizations, drop: dropOptimization, clear: clearOptimizations } = useBatchProgress();
 
   // Finished conversions wait here until the next flush applies them in one list update.
@@ -120,12 +96,7 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
     if (finished > 0) finishOptimizations(finished);
     patches.forEach((patch, id) => { if (!liveIds.current.has(id) && patch.previewUrl) revokeIfBlob(patch.previewUrl); });
     if (![...patches.keys()].some((id) => liveIds.current.has(id))) return;
-    changePreviews((prev) => prev.map((p) => {
-      const patch = patches.get(p.id);
-      if (!patch) return p;
-      if (patch.previewUrl) revokeIfBlob(p.previewUrl);
-      return { ...p, ...patch };
-    }));
+    changePreviews((prev) => withQueuedPatches(prev, patches));
   }, [changePreviews, finishOptimizations]);
 
   const scheduleFlush = useCallback((): void => {
@@ -157,11 +128,6 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
     clearOptimizations();
   }, [clearOptimizations]);
 
-  useEffect(() => () => {
-    cancelAllOptimizations();
-    previewsRef.current.forEach(p => revokeIfBlob(p.previewUrl));
-    previewsRef.current = [];
-  }, [cancelAllOptimizations]);
 
   const patchPreview = useCallback((id: string, patch: Partial<TokenPreview>): void => {
     changePreviews((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
@@ -193,19 +159,7 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
     }
   }, [mode, queuePatch]);
 
-  const addImages = useCallback((images: PreviewImage[]): void => {
-    // A statblock or a vault image is added once; the same key never names both.
-    const sourceOf = (image: Pick<PreviewImage, 'statblockPath' | 'vaultPath'>): string | undefined => image.statblockPath ?? image.vaultPath;
-    const paths = new Set(previewsRef.current.flatMap(p => sourceOf(p) ?? []));
-    const fresh = images.filter(image => {
-      const source = sourceOf(image);
-      const takes = image.file.type.startsWith('image/') || (mode === 'map' && isVideoMapPath(image.file.name));
-      if (!takes || (source && paths.has(source))) return false;
-      if (source) paths.add(source);
-      return true;
-    }).map(image => ({ ...previewFromFile(image.file), ...image, tags: image.tags ?? [], showRing: image.showRing ?? defaultRing }));
-    if (fresh.length === 0) return;
-    changePreviews((prev) => [...prev, ...fresh]);
+  const startConversions = useCallback((fresh: readonly TokenPreview[]): void => {
     startOptimizations(fresh.length);
     for (const preview of fresh) {
       const controller = new AbortController();
@@ -222,7 +176,48 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
       });
       pendingRef.current.set(preview.id, pending);
     }
-  }, [mode, optimizeOne, defaultRing, changePreviews, startOptimizations, scheduleFlush]);
+  }, [mode, optimizeOne, startOptimizations, scheduleFlush]);
+
+  const addImages = useCallback((images: PreviewImage[]): void => {
+    // A statblock or a vault image is added once; the same key never names both.
+    const sourceOf = (image: Pick<PreviewImage, 'statblockPath' | 'vaultPath'>): string | undefined => image.statblockPath ?? image.vaultPath;
+    const paths = new Set(previewsRef.current.flatMap(p => sourceOf(p) ?? []));
+    const fresh = images.filter(image => {
+      const source = sourceOf(image);
+      const takes = image.file.type.startsWith('image/') || (mode === 'map' && isVideoMapPath(image.file.name));
+      if (!takes || (source && paths.has(source))) return false;
+      if (source) paths.add(source);
+      return true;
+    }).map(image => ({ ...previewFromFile(image.file), ...image, tags: image.tags ?? [], showRing: image.showRing ?? defaultRing }));
+    if (fresh.length === 0) return;
+    changePreviews((prev) => [...prev, ...fresh]);
+    startConversions(fresh);
+  }, [mode, defaultRing, changePreviews, startConversions]);
+
+  // A draft's images whose conversion had not finished convert again; the others keep theirs.
+  useEffect(() => {
+    if (!restored) return;
+    forgetCreatorDraft(mode);
+    const waiting = restored.previews.filter(p => p.isOptimizing && p.file && !p.refused);
+    if (waiting.length > 0) startConversions(waiting);
+  }, [restored, mode, startConversions]);
+
+  useEffect(() => () => {
+    if (!keepsDraftRef.current) {
+      cancelAllOptimizations();
+      previewsRef.current.forEach(p => revokeIfBlob(p.previewUrl));
+      previewsRef.current = [];
+      return;
+    }
+    // Conversions that finished but were not shown yet go into the draft; those still running start again next time.
+    const kept = withQueuedPatches(previewsRef.current, queuedPatches.current);
+    kept.forEach(({ id }) => queuedPatches.current.delete(id));
+    const conversions = new Map<string, KeptConversion>();
+    pendingRef.current.forEach(({ result, kind, settled }, id) => { if (settled) conversions.set(id, { result, kind }); });
+    cancelAllOptimizations();
+    keepCreatorDraft(mode, { previews: kept, defaultRing: defaultRingRef.current, conversions });
+    previewsRef.current = [];
+  }, [cancelAllOptimizations, mode]);
 
   const reset = useCallback((editToken?: EditTokenInput | null): void => {
     previewsRef.current.forEach((p) => revokeIfBlob(p.previewUrl));

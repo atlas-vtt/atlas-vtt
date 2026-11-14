@@ -7,9 +7,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  scrollbar-gutter: stable;
   padding: 0 $spacing-s $spacing-s;
-  padding-inline-end: max(0px, #{$spacing-s} - var(--atlas-scrollbar-gutter, 0px));
   outline: none;
 
   &:focus-visible {

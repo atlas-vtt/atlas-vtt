@@ -121,7 +121,6 @@ $tone-size: 22px;
 }
 
 .atlas-sound-look__crests {
-  @include atlas-scrollbar;
   @include atlas-flex-col($spacing-s);
   --atlas-sound-tone: var(--atlas-sound-tone-light);
   align-items: stretch;

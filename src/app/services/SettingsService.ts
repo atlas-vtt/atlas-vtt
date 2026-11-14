@@ -1,4 +1,5 @@
 import { readFogEdge, type FogEdge } from '../fog/fogEdge';
+import { readDragDistance, type DragDistance } from '../measure/dragDistance';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import type { App, Plugin } from 'obsidian';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
@@ -339,6 +340,17 @@ export class SettingsService {
     this.commit();
   }
 
+  /** When a dragged token shows its distance: the stored choice, or always when the file holds something else. */
+  getDragDistance(): DragDistance {
+    return readDragDistance(this.settings.dragDistance);
+  }
+
+  setDragDistance(choice: DragDistance): void {
+    if (this.settings.dragDistance === choice) return;
+    this.settings.dragDistance = choice;
+    this.commit();
+  }
+
   /** Whether the GM's initiative cards show names: off unless the file says `true`. */
   showsInitiativeNames(): boolean {
     return this.settings.initiativeNames === true;
@@ -445,6 +457,21 @@ export class SettingsService {
 
   setFogEdge(changes: Partial<FogEdge>): void {
     this.settings.fogEdge = { ...this.getFogEdge(), ...changes };
+    this.commit();
+  }
+
+  /** Whether the GM hid the sidebar's starter tokens offer in the collection with this uid. */
+  isStarterOfferHidden(collectionUid: string): boolean {
+    return this.settings.hiddenStarterOffers?.includes(collectionUid) === true;
+  }
+
+  /** Hides or shows the sidebar's starter tokens offer in one collection; the list is left out of the file once empty. */
+  setStarterOfferHidden(collectionUid: string, hidden: boolean): void {
+    if (this.isStarterOfferHidden(collectionUid) === hidden) return;
+    const others = (this.settings.hiddenStarterOffers ?? []).filter((uid) => uid !== collectionUid);
+    const next = hidden ? [...others, collectionUid] : others;
+    // Kept as a key while empty, so a reload while the save waits still sees this change (`reload`).
+    this.settings.hiddenStarterOffers = next.length > 0 ? next : undefined;
     this.commit();
   }
 

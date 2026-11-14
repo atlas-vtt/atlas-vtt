@@ -1,6 +1,7 @@
 import { align } from './align';
 import { atlasLinks } from './atlasLinks';
 import { am } from './am';
+import { assetGrid } from './assetGrid';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
 import { clock } from './clock';
@@ -42,7 +43,9 @@ import { picker } from './picker';
 import { settings } from './settings';
 import { snapshots } from './snapshots';
 import { levels } from './levels';
+import { measure } from './measure';
 import { openings } from './openings';
+import { rooms } from './rooms';
 import { statblock } from './statblock';
 import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
@@ -113,6 +116,7 @@ export const en = {
   ...align,
   ...atlasLinks,
   ...am,
+  ...assetGrid,
   ...bundle,
   ...cleanup,
   ...clock,
@@ -154,7 +158,9 @@ export const en = {
   ...settings,
   ...snapshots,
   ...levels,
+  ...measure,
   ...openings,
+  ...rooms,
   ...statblock,
   ...statblockEditor,
   ...switcher,
@@ -193,6 +199,7 @@ export const en = {
   ...image,
   'index.unreadable': 'Atlas VTT could not read its asset index ({path}) and left it untouched. Restart Obsidian to try again.',
   'index.rebuilding': 'Atlas VTT could not read its asset index and is rebuilding it from your collection files. The unreadable file was kept as {path}.',
+  'index.folderMoved': 'The Atlas folder was moved to "{path}". Atlas finds its library only in "{folder}" at the top of the vault: move the folder back there and your maps, scenes and tokens are back.',
   ...link,
   ...mapPreview,
   ...names,

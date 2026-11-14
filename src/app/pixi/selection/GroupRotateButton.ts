@@ -5,6 +5,7 @@ import { paintRotateHandle, rotateIconTexture, ROTATE_ICON_SHARE } from '../rota
 import { destroyTree } from '../utils/destroyTree';
 import { isDarkTheme } from '../utils/canvasBadgeColors';
 import { MeasureLabel } from '../utils/measureLabel';
+import { isPrimaryPress } from '../utils/pointerButtons';
 import { ValueTransition } from '../utils/ValueTransition';
 import type { Box } from './selectionGeometry';
 import { drawGroupStem } from './selectionInk';
@@ -73,7 +74,7 @@ export class GroupRotateButton {
     this.handle.on('pointerover', () => this.setHovered(true));
     this.handle.on('pointerout', () => this.setHovered(false));
     this.handle.on('pointerdown', (event) => {
-      if (event.button !== 0) return;
+      if (!isPrimaryPress(event)) return;
       event.stopPropagation();
       deps.press(event);
     });

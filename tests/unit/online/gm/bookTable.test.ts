@@ -140,13 +140,13 @@ describe('the players\' books at a running table', () => {
     const sheets = ofType(delivered(socket).slice(since), 'book', 'book-sheet', 'book-item');
     expect(sheets).toMatchObject([{ to: ANA, body: { t: 'book-sheet', character: { name: 'Brannoch', resources: [{ current: 2, max: 12 }, { key: 'doom' }] } } }]);
 
-    // Hidden by the GM, the character stays Ana's as it last was; nothing is read of the hidden token.
+    // Hidden by the GM, the character stays Ana's and her sheet follows it: the map hides the token from the others, not her character from her.
     since = delivered(socket).length;
     tab.store.set(cave({ brannoch: { isHidden: true, name: 'Brannoch the Betrayer', resources: { hp: { current: 1, max: 12 } } } }));
     await advance(1_000);
-    expect(ofType(delivered(socket).slice(since), 'book', 'book-sheet')).toEqual([]);
-    expect(traffic(delivered(socket))).not.toContain('Betrayer');
-    expect(lootRecipients()[0]).toEqual({ id: ANA, name: 'Ana', character: 'Brannoch' });
+    expect(ofType(delivered(socket).slice(since), 'book', 'book-sheet')).toMatchObject([{ to: ANA, body: { t: 'book-sheet', character: { name: 'Brannoch the Betrayer', resources: [{ current: 1, max: 12 }] } } }]);
+    expect(traffic(delivered(socket).filter(({ to }) => to !== ANA))).not.toContain('Betrayer');
+    expect(lootRecipients()[0]).toEqual({ id: ANA, name: 'Ana', character: 'Brannoch the Betrayer' });
 
     // The GM gives Brannoch to Ben: Ana keeps what she wrote and has no sheet, and nothing goes into a character's book from her.
     tab.store.set(cave());

@@ -20,9 +20,9 @@ import { levelObjects } from '../../levels/levelObjects';
 
 /** Between the marker's edge, or the bright ring, and the popover. */
 const GAP = 12;
-/** The bars of the map view the popover keeps clear of: scene tabs above, the toolbars and the toolbar editor's tray below. */
+/** The bars of the map view the popover keeps clear of: scene tabs above, the toolbars, a tool's own bars and the toolbar editor's tray below. */
 const TOP_BARS = '.atlas-scene-tab-bar';
-const BOTTOM_BARS = '.atlas-bottom-toolbar-row .atlas-vtt-toolbar, .atlas-bottom-toolbar-row .atlas-toolbar-tray';
+const BOTTOM_BARS = '.atlas-bottom-toolbar-row .atlas-vtt-toolbar, .atlas-bottom-toolbar-row .atlas-tool-bar, .atlas-bottom-toolbar-row .atlas-toolbar-tray';
 
 interface Frame {
   /** The canvas within the area the popover is placed in. */
@@ -80,9 +80,11 @@ export function useZonePopoverPosition(ref: React.RefObject<HTMLElement | null>,
  * or turning the light does not move the popover under the pointer. The function it returns is
  * for when the beam's width or direction was set and let go: the popover then makes way if the
  * beam's handles came to lie under it. When `id` changes, the same popover travels to the
- * other target. `read` says where the target is and how far its rings reach.
+ * other target. `read` says where the target is and how far its rings reach. With `growsDown`, a
+ * popover that changes its height where it stands (a fold opening in it) keeps its top edge while
+ * it stands beside its target: what was pressed stays under the pointer.
  */
-export function useMapPopoverPosition(ref: React.RefObject<HTMLElement | null>, id: string, read: ReadTarget): () => void {
+export function useMapPopoverPosition(ref: React.RefObject<HTMLElement | null>, id: string, read: ReadTarget, { growsDown = false }: { growsDown?: boolean } = {}): () => void {
   const store = useViewStoreHook();
   const { renderer, pixiApp } = useAtlasUI();
   const target = useRef(id);
@@ -121,6 +123,8 @@ export function useMapPopoverPosition(ref: React.RefObject<HTMLElement | null>, 
     /** The beam whose handles it keeps clear of. */
     let beam: VisionCone | undefined;
     let placedFor = '';
+    /** The height the popover had when it took its place: beside its target it stays level with it by that height (`growsDown`). */
+    let level = frame.size.height;
 
     const update = (how?: 'anew' | 'beam'): void => {
       const anew = how === 'anew';
@@ -133,10 +137,13 @@ export function useMapPopoverPosition(ref: React.RefObject<HTMLElement | null>, 
       const key = `${at.x},${at.y},${zoom},${bright},${dim}`;
       if (key === placedFor && !how) return;
       placedFor = key;
+      // Another target's popover may be another size, and is measured before it takes its place.
+      if (anew) frame = measure();
       if (anew || !choice) {
         choice = null;
         ring = bright;
         beam = light.beam;
+        level = frame.size.height;
       }
       // The beam was set and let go: it is the beam to keep clear of from now on.
       if (how === 'beam') beam = light.beam;
@@ -150,13 +157,15 @@ export function useMapPopoverPosition(ref: React.RefObject<HTMLElement | null>, 
         size: frame.size,
         area: frame.area,
         inset: frame.inset,
+        ...(growsDown && { level }),
       };
       let placement = placeLightPopover({ ...input, handles: handlesOf(beam), ringClearance: ring * zoom + GAP, current: choice });
       if (choice && !placement.kept) {
         // Its place no longer holds: it moves to the best one for the ring and the beam as they are now.
         ring = bright;
         beam = light.beam;
-        placement = placeLightPopover({ ...input, handles: handlesOf(beam), ringClearance: ring * zoom + GAP, current: null });
+        level = frame.size.height;
+        placement = placeLightPopover({ ...input, level, handles: handlesOf(beam), ringClearance: ring * zoom + GAP, current: null });
       }
       choice = placement.choice;
       element.style.translate = `${placement.x}px ${placement.y}px`;
@@ -180,7 +189,7 @@ export function useMapPopoverPosition(ref: React.RefObject<HTMLElement | null>, 
       stopObserving();
       place.current = null;
     };
-  }, [ref, renderer, pixiApp, store]);
+  }, [ref, renderer, pixiApp, store, growsDown]);
 
   useLayoutEffect(() => {
     const element = ref.current;

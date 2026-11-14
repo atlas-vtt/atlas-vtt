@@ -45,6 +45,7 @@ export const loot: Translation = {
   'loot.openPlayerView': 'Откройте экран игроков, чтобы показать им добычу.',
   'loot.query.note': 'Atlas использует это представление в генераторе добычи. Откройте генератор на карте, чтобы бросать.',
   'loot.query.name': 'Добыча Atlas',
+  'loot.unreadable': 'Не удалось прочитать',
   'loot.give.all': 'Все игроки',
   'loot.give.copies': '{count} × {item}',
   'loot.give.done': '{name} получает: {item}',

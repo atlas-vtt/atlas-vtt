@@ -5,12 +5,12 @@ import { COUNTER_ROW_KEYS, readCounterRow, shownCounterRows, withCountersSet, ty
 /**
  * The value a Counters field holds once a player's whole list is in, or null where it changes more
  * than uses and maximums: a page sends every row back (one pip, or a row's maximum), and only `used`
- * and `max` may differ from what the note holds now (its rows, or the template's preset rows where it
- * holds none), uses as a whole number up to the row's maximum, a changed maximum from 1 to
- * `MAX_COUNTER` (a row of none is not drawn, so a player never takes one away). Names, recovery
- * buttons and regained formulas (compared exactly, as written) and their order must be the note's,
- * and a row holds nothing else. A note whose rows are no counters is never changed. Every other key
- * a row of the note holds stays as it is.
+ * and `max` may differ from what the card shows now (the note's rows, one that takes its template's
+ * maximum at that, or the template's preset rows where it holds none), uses as a whole number up to
+ * the row's maximum, a changed maximum from 1 to `MAX_COUNTER` (a row of none is not drawn, so a
+ * player never takes one away). Names, recovery buttons and regained formulas (compared exactly, as
+ * written) and their order must be the note's, and a row holds nothing else. A note whose rows are
+ * no counters is never changed. Every other key a row of the note holds stays as it is.
  */
 export function countersAfterEdit(field: TemplateField, stored: FieldValue | undefined, value: SheetRaw): FieldValue | null {
   const now = shownCounterRows(field, stored);

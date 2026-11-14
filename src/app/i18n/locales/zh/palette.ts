@@ -30,7 +30,7 @@ export const palette: Translation = {
   'palette.panel.widgets': '小组件设置',
   'palette.playerDashboard': '玩家仪表盘配置',
   'palette.sceneSnapshots': '场景快照',
-  'palette.searchPlaceholder': '搜索命令...',
+  'palette.searchPlaceholder': '搜索命令…',
   'palette.openPlayerWindow': '打开玩家窗口',
   'palette.sendMapToPlayerView': '把当前地图送到玩家视图',
   'palette.showMapInPlayerWindow': '在本地玩家窗口中显示当前地图',

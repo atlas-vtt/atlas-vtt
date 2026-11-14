@@ -23,6 +23,12 @@ export const CYBERPUNK_RED: SystemPreset = {
       diagonalRule: 'equidistant',
       abstractRangeBands: [],
     },
+    // A move is twice the MOVE stat in metres (MOVE squares), and as far again where the action is
+    // spent on a second move. MOVE is each character's own, so the rules give no speed.
+    movement: {
+      steps: [{ name: 'Move', multiple: 2, color: '#22c55e' }, { name: 'Run', multiple: 4, color: '#f59e0b' }],
+      countPerTurn: true,
+    },
     // A 10 rolls one more d10 and adds it, a 1 rolls one more and subtracts it; neither goes on.
     dice: { defaultRoll: '1d10', crit: 'natural', explode: { dice: 'default', repeats: false, highFaces: 1, lowFaces: 1 } },
     diceSetId: EXPLODING_D10_DICE_SET_ID,

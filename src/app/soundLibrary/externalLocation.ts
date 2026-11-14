@@ -2,7 +2,7 @@ import { isAudioPath } from './soundFiles';
 import type { NodeFiles, NodeStat } from './nodeFiles';
 import { isListableName, joinRelative, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathTakenError, SoundVaultPathError, sortedListing, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
-import { readAsBlob, writeFromBlob } from './externalBytes';
+import { readAsBlob, readRangeOf, writeFromBlob } from './externalBytes';
 
 const isMissing = (error: unknown): boolean => {
   const code: unknown = error instanceof Object ? Reflect.get(error, 'code') : undefined;
@@ -149,6 +149,10 @@ export class ExternalLocation implements SoundLocation {
     return readAsBlob(this.deps.files.fs, absolute, onStep);
   }
 
+  async readRange(path: string, start: number, end: number): Promise<Uint8Array<ArrayBuffer>> {
+    return readRangeOf(this.deps.files.fs, await this.absolute(path), start, end);
+  }
+
   resourceUrl(path: string): string | null {
     return this.deps.resourceUrl?.(this.plain(path)) ?? null;
   }
@@ -173,6 +177,19 @@ export class ExternalLocation implements SoundLocation {
   async write(path: string, content: Blob): Promise<void> {
     const target = await this.absolute(path);
     await writeFromBlob(this.deps.files.fs, target, content, path);
+  }
+
+  async replace(path: string, content: Blob): Promise<void> {
+    await writeFromBlob(this.deps.files.fs, await this.absolute(path), content, path, 'w');
+  }
+
+  canTrash(): boolean {
+    return this.deps.trashItem !== null;
+  }
+
+  async canWrite(): Promise<boolean> {
+    const { constants } = this.deps.files.fs;
+    return this.fs.access(this.root, constants.W_OK).then(() => true, () => false);
   }
 
   async trash(path: string): Promise<void> {

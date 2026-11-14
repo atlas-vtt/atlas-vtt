@@ -1,5 +1,5 @@
 import { workSlices } from '../utils/workSlices';
-import { isWithin, nameOfRelative, parentOfRelative } from './soundPaths';
+import { isWithin, nameOfRelative, parentOfRelative, twinCandidates } from './soundPaths';
 import type { SoundFileEntry, SoundListing, SoundLocation } from './soundLocation';
 
 /** While a walk runs, the view hears of it this often: counts settle without a render per folder. */
@@ -13,6 +13,9 @@ export interface IndexedFile {
 }
 
 const EMPTY_LISTING: SoundListing = { folders: [], files: [] };
+
+/** How a file is found by name: of one size, or of any where the size is left out. */
+const identityOf = (name: string, size?: number): string => `${size ?? '*'}|${name}`;
 
 /** What a flat list sorts by, worked out once per file: a collator on thousands of names per report of a walk costs frames. `Track 2` before `Track 10`, `Émile` among the e. */
 const sortKey = (name: string): string => name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\d+/g, (digits) => digits.padStart(8, '0'));
@@ -36,7 +39,7 @@ export class FolderTree {
   private readonly missing = new Set<string>();
   private counts: Map<string, number> | null = null;
   private indexed: IndexedFile[] | null = null;
-  private byIdentity: Map<string, SoundFileEntry> | null = null;
+  private byIdentity: Map<string, SoundFileEntry | null> | null = null;
   private walking = false;
   private walkedOnce = false;
   private wantsWalk = false;
@@ -61,13 +64,26 @@ export class FolderTree {
   }
 
   /**
+   * The file a record of `path` stands for: where it says, else its converted file or its source there
+   * (`twinCandidates`, the Opus file first), else the file of its name and size anywhere (`fileNamed`).
+   */
+  recordFile(path: string, audioSize: number | undefined): SoundFileEntry | null {
+    return this.fileAt(path)
+      ?? twinCandidates(path).map((twin) => this.fileAt(twin)).find((entry) => entry !== null)
+      ?? (audioSize === undefined ? null : this.fileNamed(nameOfRelative(path), audioSize));
+  }
+
+  /**
    * The file of a name and size, once every folder was read, so it is not the first of several that happens to have
-   * been reached yet: the first in path order, so every device holding these files finds the same one.
+   * been reached yet: the first in path order, so every device holding these files finds the same one. Else the
+   * file of a twin name (`twinCandidates`) whatever its size, since a conversion on one device changed it, but only
+   * where the root holds that name once: of two albums' `01.mp3` neither is a record's `01.opus`.
    */
   fileNamed(name: string, size: number): SoundFileEntry | null {
     if (!this.walkedOnce) return null;
-    this.byIdentity ??= this.identities();
-    return this.byIdentity.get(`${size}|${name}`) ?? null;
+    const identities = (this.byIdentity ??= this.identities());
+    const twin = twinCandidates(name).find((candidate) => identities.has(identityOf(candidate)));
+    return identities.get(identityOf(name, size)) ?? (twin === undefined ? null : identities.get(identityOf(twin)) ?? null);
   }
 
   /** Reads a folder now; a folder that is being read is not read twice. */
@@ -207,12 +223,15 @@ export class FolderTree {
     this.byIdentity = null;
   }
 
-  private identities(): Map<string, SoundFileEntry> {
-    const identities = new Map<string, SoundFileEntry>();
+  /** The first file in path order of each name and size; of each name whatever its size, the file, or null where several have it. */
+  private identities(): Map<string, SoundFileEntry | null> {
+    const identities = new Map<string, SoundFileEntry | null>();
     for (const file of this.files.values()) {
-      const identity = `${file.size}|${file.name}`;
-      const first = identities.get(identity);
-      if (!first || file.path < first.path) identities.set(identity, file);
+      const sized = identityOf(file.name, file.size);
+      const first = identities.get(sized);
+      if (!first || file.path < first.path) identities.set(sized, file);
+      const named = identityOf(file.name);
+      identities.set(named, identities.has(named) ? null : file);
     }
     return identities;
   }

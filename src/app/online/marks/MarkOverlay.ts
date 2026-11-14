@@ -4,7 +4,7 @@ import { getDomHost } from '../../host/dom';
 import { addRendererSystemsByEntry } from '../../pixi/utils/rendererSystems';
 import { RemoteDrags, type RemoteDrag } from './RemoteDrags.ts';
 import { RemoteLasers, type RemoteLaser } from './RemoteLasers.ts';
-import { RemoteMeasures, type MeasureRules, type RemoteMeasure } from './RemoteMeasures.ts';
+import { RemoteMeasures, type LayBodies, type MeasureRules, type RemoteMeasure } from './RemoteMeasures.ts';
 
 /** Marks to draw: lasers and measurements, each by its sender, and the rulers of drags made elsewhere. */
 export interface Marks {
@@ -25,6 +25,11 @@ export interface OverlayHost {
     on(event: 'moved' | 'zoomed', listener: () => void): unknown;
     off(event: 'moved' | 'zoomed', listener: () => void): unknown;
   };
+  /**
+   * Puts a layer into the map itself, under its tokens and its lighting: the bodies of the areas
+   * players measure, lit like the floor. Without it those areas show their outline and size alone.
+   */
+  readonly layBodies?: LayBodies;
 }
 
 /** Frames drawn with nothing left to animate before the overlay stops its ticker. */
@@ -34,7 +39,9 @@ const IDLE_FRAMES = 2;
  * Marks drawn on a transparent canvas of their own, laid over another PIXI application's canvas
  * (Atlas's, which runs its own copy of PIXI that this one must not draw into). It lets every pointer
  * event through (`.atlas-online-marks`), follows the other viewport's camera, and draws only while
- * something moves. Its canvas and WebGL context are made with the first marks to show.
+ * something moves. Its canvas and WebGL context are made with the first marks to show. It is the
+ * GM's, so the areas players measure have their outline on it (`RemoteMeasurePorts.gmOutlines`);
+ * their bodies lie in the map under it, where the host lays them (`OverlayHost.layBodies`).
  */
 export class MarkOverlay {
   private readonly rules: () => MeasureRules | null;
@@ -107,7 +114,7 @@ export class MarkOverlay {
       const world = new Container({ sortableChildren: true });
       app.stage.addChild(world);
       this.lasers = new RemoteLasers(app.renderer, () => this.zoom, MARKS_INTERVAL_MS);
-      this.measures = new RemoteMeasures(() => this.zoom, this.rules, MARKS_INTERVAL_MS);
+      this.measures = new RemoteMeasures({ zoom: () => this.zoom, rules: this.rules, interval: MARKS_INTERVAL_MS, gmOutlines: true });
       this.drags = new RemoteDrags(() => this.zoom, this.rules);
       world.addChild(this.drags.paths, this.measures.container, this.lasers.container, this.drags.labels);
       app.ticker.add(() => this.tick());
@@ -125,16 +132,20 @@ export class MarkOverlay {
     this.host = host;
     const canvas = this.app?.canvas;
     if (canvas !== undefined) host.canvas.after(canvas);
+    this.measures?.layBodies(host.layBodies ?? null);
     this.resized.observe(host.canvas);
     host.viewport.on('moved', this.onCamera);
     host.viewport.on('zoomed', this.onCamera);
   }
 
   private detach(): void {
+    if (this.host === null) return;
     this.resized.disconnect();
-    this.host?.viewport.off('moved', this.onCamera);
-    this.host?.viewport.off('zoomed', this.onCamera);
+    this.host.viewport.off('moved', this.onCamera);
+    this.host.viewport.off('zoomed', this.onCamera);
     this.host = null;
+    // The bodies leave the map they lay in; what was drawn with them is drawn again over the next map.
+    this.measures?.layBodies(null);
   }
 
   private wake(): void {

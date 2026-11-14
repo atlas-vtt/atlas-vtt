@@ -77,6 +77,16 @@ it('lets the collection input receive focus and clicks without dismissing the ma
   expect(onClose).not.toHaveBeenCalled();
 });
 
+it('names its field by the dialog title and ties an error to it', async () => {
+  setup();
+  const input = screen.getByRole('textbox', { name: 'Create New Collection' });
+  fireEvent.change(input, { target: { value: '   ' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  const error = screen.getByRole('alert');
+  expect(input.getAttribute('aria-invalid')).toBe('true');
+  expect(input.getAttribute('aria-describedby')).toBe(error.id);
+});
+
 it.each(['Cancel', 'Close'])('%s dismisses only the collection dialog', async (name) => {
   const { onClose, onConfirm } = setup();
   clickWithMouseDown(screen.getByRole('button', { name }));

@@ -44,15 +44,13 @@ body.atlas-sb-panel-resizing * {
 }
 
 .atlas-vtt-plugin {
-  // The scrollbar's room is kept whether or not the statblock scrolls, so the card's width never
-  // depends on how tall it is: the note view and the template editor draw it at one width.
+  // Its scrollbar lies over the content and takes no room, so the card's width never depends on how
+  // tall it is: the note view and the template editor draw it at one width.
   .atlas-sb-note-panel__scroll {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    scrollbar-gutter: stable;
     overscroll-behavior: contain;
-    @include atlas-scrollbar;
   }
 
   // The panel's left edge: a hit area inside the panel, so the editor's own

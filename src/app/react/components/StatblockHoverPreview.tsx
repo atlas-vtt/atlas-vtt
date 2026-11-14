@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { TFile, App } from 'obsidian';
 import { LinkedStatblock } from '../../statblocks/render/LinkedStatblock';
 import type { TokenVitals } from '../../services/statblockVitalsSync';
@@ -70,11 +70,17 @@ function calculatePreviewPosition(
   const viewportHeight = window.innerHeight;
   const viewportWidth = window.innerWidth;
 
-  /** Vertical placement is the same whichever side the preview ends up on. */
+  // The window alone limits the height. A limit taken from the room under the preview's own top,
+  // which follows its measured height, held a preview placed against the lower edge at the height
+  // it had then (its skeleton's): the statblock that arrived scrolled inside it and never grew.
+  const maxHeight = Math.max(0, viewportHeight - 2 * gaps.block);
+  const height = Math.min(contentHeight, maxHeight);
+
+  /** Centred on `centerY` and moved as far as it takes to stand inside the window; the same on either side. */
   const verticalFor = (centerY: number): React.CSSProperties => {
-    const maxTop = viewportHeight - contentHeight - gaps.block;
-    const top = Math.max(gaps.block, Math.min(centerY - contentHeight / 2, maxTop));
-    return { top, maxHeight: viewportHeight - top - gaps.block };
+    const maxTop = viewportHeight - height - gaps.block;
+    const top = Math.max(gaps.block, Math.min(centerY - height / 2, maxTop));
+    return { top, maxHeight };
   };
 
   // If we have an anchor rect (e.g., initiative card), position relative to it
@@ -162,7 +168,9 @@ export function StatblockHoverPreview({
     measure();
 
     if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver((entries) => measure(entries));
+      // Placed anew in the frame that changed its size, or a statblock taller than the skeleton
+      // it replaces is drawn once where the skeleton stood, over the window's edge.
+      const observer = new ResizeObserver((entries) => flushSync(() => measure(entries)));
       observer.observe(container);
       return () => observer.disconnect();
     }
@@ -193,7 +201,7 @@ export function StatblockHoverPreview({
   return createPortal(
     <div ref={containerRef} className={className} style={positionStyles}>
       {app && (
-        <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} />
+        <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} pressableCounters />
       )}
     </div>,
     portalHost()

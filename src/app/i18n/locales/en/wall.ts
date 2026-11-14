@@ -13,6 +13,7 @@ export const wall = {
   'wall.lockDoor': 'Lock door',
   'wall.unlockDoor': 'Unlock door',
   'wall.removeDoor': 'Remove door',
+  'wall.addPoint': 'Add point',
   'wall.removePoint': 'Remove point',
   'wall.blocks': 'Blocks',
   'wall.blocksBoth': 'Sight and light',

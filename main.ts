@@ -13,6 +13,7 @@ import { t } from './src/app/i18n';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
 import { TemplateLibrary } from './src/app/statblocks/library/TemplateLibrary';
 import { registerStatblockFence } from './src/app/statblocks/render/statblockFence';
+import { registerStatblockLinkPreview } from './src/app/statblocks/render/statblockLinkPreview';
 import { registerNoteStatblockPanels } from './src/app/statblocks/editor/note-panel/noteStatblockPanels';
 import { TemplateEditorView } from './src/app/statblocks/editor/TemplateEditorView';
 import { TEMPLATE_EDITOR_VIEW_TYPE } from './src/app/statblocks/editor/templateEditorState';
@@ -53,6 +54,7 @@ import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSe
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { registerOverlayScrollbars } from './src/app/plugin/overlayScrollbars';
 import { registerPageListenerRelease } from './src/app/plugin/pageListenerRelease';
 import { releasePortalHosts } from './src/app/host/portalHost';
 import { supportSettingsSection } from './src/app/settings/supportSettingsSection';
@@ -74,6 +76,7 @@ import { SoundRecordStore } from './src/app/soundLibrary/SoundRecordStore';
 import { nameQuestCampaigns } from './src/app/campaigns/quests/nameQuestCampaigns';
 import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
+import { registerPlayerTokens } from './src/app/plugin/playerTokens';
 import { registerSoundDirector } from './src/app/plugin/soundDirector';
 import { SoundDirector } from './src/app/soundDirector/SoundDirector';
 import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
@@ -168,6 +171,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.register(recordCampaignPlay(this.app, campaignFiles, campaignsRead));
     // And keeps one set of values for each of its player characters, shared by every map view.
     registerPartySync(this, campaignFiles, campaignsRead);
+    // Whose tokens are the players' is the library's and the played campaign's to say, for the sides of a fight.
+    registerPlayerTokens(this, campaignPlayers, campaignsRead);
     // The vault's dice sets are vault files too; collections and templates pick from them.
     void DiceSetFiles.open(this.app).load().catch((error: unknown) => console.error('[Atlas] Reading the dice sets failed:', error));
     // Settings carried over even when the data file migration failed, so they are not lost to the defaults.
@@ -186,6 +191,7 @@ export default class AtlasVTTPlugin extends Plugin {
     registerVaultSync(this);
     registerObsidianSyncNotice(this);
     registerDiceStageRelease(this);
+    registerOverlayScrollbars(this);
     registerMapProcessingStatus(this);
     registerAccentColorSync(this);
     // Views first, so workspace restore can resolve persisted Atlas tabs
@@ -193,6 +199,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerAtlasViews();
     // Before the first await, so notes restored at startup draw their statblock fence.
     registerStatblockFence(this, (path) => { editInStatblockPane(this.app, path, { collectionId: null, from: 'note' }); });
+    // A native statblock note is frontmatter alone: its link preview shows its card.
+    registerStatblockLinkPreview(this);
     // Statblock edits reach their notes before a window closes or Obsidian quits.
     registerNoteWriterFlush(this);
     // A template's note moves and goes with its template file.

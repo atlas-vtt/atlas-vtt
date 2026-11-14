@@ -155,7 +155,6 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
 }
 
 .atlas-loot-roller__sidebar {
-  @include atlas-scrollbar;
   min-height: 0;
   padding: $loot-padding;
   overflow-y: auto;

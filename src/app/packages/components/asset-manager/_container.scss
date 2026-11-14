@@ -39,7 +39,7 @@
 .atlas-asset-manager-backdrop {
   position: absolute;
   inset: 0;
-  background-color: color-mix(in oklch, var(--mono-0) 40%, transparent);
+  background-color: $scrim;
   backdrop-filter: blur(6px);
   z-index: $z-sticky;
   pointer-events: auto;
@@ -107,7 +107,6 @@
   }
 
   * {
-    @include atlas-scrollbar;
   }
 }
 
