@@ -520,13 +520,27 @@ body.theme-light {
       border-radius: var(--atlas-bar-control-radius, #{$radius-l});
     }
 
-    // The switch takes the controls' corner; its thumb, 6 px and a border inside it, steps down
-    // from there, and keeps a corner of its own where that would leave none.
+    // The switch takes the controls' corner, and its thumb stands $toolbar-inset inside it (its
+    // padding and border), as every control stands inside the bar, so the thumb's corner is
+    // concentric with the switch's and still round: 6 px inside left it 3.5 px, a square.
     .atlas-toolbar-end > .atlas-toggle {
+      $thumb: 40px - 2 * $toolbar-inset;
+
       border-radius: var(--atlas-bar-control-radius, #{$radius-xl});
 
+      .atlas-toggle__switch {
+        padding: $toolbar-inset - $border-width-s;
+      }
+
       .atlas-toggle__thumb {
-        border-radius: max(#{$radius-s}, calc(var(--atlas-bar-control-radius, #{$radius-xl}) - 6px - #{$border-width-s}));
+        width: $thumb;
+        height: $thumb;
+        border-radius: calc(var(--atlas-bar-control-radius, #{$radius-xl}) - #{$toolbar-inset});
+      }
+
+      // Across the switch's 60 px, less its padding and border on both sides and the thumb
+      .atlas-toggle__thumb--on {
+        transform: translateX(60px - 2 * $toolbar-inset - $thumb);
       }
     }
   }

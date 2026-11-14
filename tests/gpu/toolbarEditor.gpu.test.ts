@@ -71,8 +71,15 @@ describe('the toolbar editor in a real layout', () => {
       ...allCorners(toggle),
     ];
     expect(new Set(corners())).toEqual(new Set(['10.5px']));
-    // The switch's thumb, 7 px inside it, keeps a corner of its own
-    expect(getComputedStyle(toggle.querySelector('.atlas-toggle__thumb')!).borderTopLeftRadius).toBe('4px');
+    // The switch's thumb stands 4 px inside it, its corner concentric with the switch's: 10.5 - 4
+    const thumb = toggle.querySelector<HTMLElement>('.atlas-toggle__thumb')!;
+    expect(getComputedStyle(thumb).borderTopLeftRadius).toBe('6.5px');
+    const switchBox = toggle.querySelector('.atlas-toggle__switch')!.getBoundingClientRect();
+    const thumbBox = thumb.getBoundingClientRect();
+    expect(thumbBox.top - switchBox.top).toBeCloseTo(4, 1);
+    expect(switchBox.bottom - thumbBox.bottom).toBeCloseTo(4, 1);
+    // At either end, as far from that edge as from the top
+    expect(Math.abs(switchBox.right - thumbBox.right - 4) < 0.5 || Math.abs(thumbBox.left - switchBox.left - 4) < 0.5).toBe(true);
     await startEditing();
     expect(new Set(corners())).toEqual(new Set(['10.5px']));
     expect(getComputedStyle(handle('move', 'bar')).borderTopLeftRadius).toBe('10.5px');
