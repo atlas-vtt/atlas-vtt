@@ -58,6 +58,7 @@
 - The player window bar is slimmer: as tall as the scene tabs above it
 - Every toolbar, widget and the online play button have the same rounded corners, and the bars at the bottom stand as close to the edges of the map as those at the top. The scene tabs are no longer a pill, and every button in a bar is rounded alike on all sides, the GM view switch too. Buttons sit closer to their bar's edge and to each other, so their corners are rounder and the bars a little smaller
 - Local player view settings are now Player view settings, in three sections: what applies to the player window and online players alike, what only the player window uses, and what only online play uses. The player window bar's menu no longer lists the online switches
+- The command palette's search finds a command by any of its words, in any order and with a typo: "player settings" or "players" find Player view settings. The best match comes first, so Enter opens it
 - Widget icons stand on the widget itself, without a tinted tile behind them that did not follow the widget when it grew or shrank
 
 ## Fixed
