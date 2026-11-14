@@ -24,7 +24,23 @@ $ctx-inset: $spacing-xs;
   overflow-y: auto;
   overscroll-behavior: contain;
   z-index: $z-atlas-dropdown;
-  @include atlas-scrollbar;
+  // Appears at once and fades out. Closed, it stays mounted while `atlas-ctx-menu-leave` runs (Radix
+  // unmounts it at that animation's end), and a menu opened meanwhile turns back from the fade's
+  // current opacity, since a transition reverses where an animation would start again.
+  transition: opacity $transition-fast $transition-ease-out;
+
+  &[data-state='closed'] {
+    opacity: 0;
+    pointer-events: none;
+    animation: atlas-ctx-menu-leave $transition-fast linear;
+  }
+}
+
+// Changes nothing that is drawn: it only lasts as long as the fade, which the transition does.
+@keyframes atlas-ctx-menu-leave {
+  to {
+    --atlas-ctx-menu-leaving: 1;
+  }
 }
 
 // A menu too tall for its window (`useMenuFit`); `--atlas-ctx-rows` is how many rows fit

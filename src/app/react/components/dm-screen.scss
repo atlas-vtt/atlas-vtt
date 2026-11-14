@@ -378,16 +378,8 @@ $page-shift: clamp(24px, 3cqi, 56px);
     transparent 100%
   );
 
-  // Hide scrollbar but keep scrolling functionality
-  &::-webkit-scrollbar {
-    display: none;
-  }
-
-  // Hide scrollbar for Firefox
-  scrollbar-width: none;
-
-  // Hide scrollbar for IE/Edge
-  -ms-overflow-style: none;
+  // Scrolls without a scrollbar, under its fading edge.
+  @include atlas-scrollbar-none;
 }
 
 // `StatblockFeeds` sizes and places the statblocks itself (dm-screen/feedLayout.ts).

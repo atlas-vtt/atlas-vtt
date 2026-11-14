@@ -341,7 +341,7 @@ describe('a campaign\'s game system', () => {
     return result;
   }
   const row = (): HTMLButtonElement => screen.getByRole('button', { name: 'Game system' });
-  const dialog = (): HTMLElement => screen.getByRole('dialog', { name: 'Cairn: Game System' });
+  const dialog = (): HTMLElement => screen.getByRole('dialog', { name: 'Cairn: Game system' });
   const closed = async (): Promise<void> => { await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull()); };
 
   it('is none until one is picked, and then the system every map of the campaign plays by', async () => {
@@ -354,7 +354,7 @@ describe('a campaign\'s game system', () => {
 
     fireEvent.click(within(dialog()).getByRole('radio', { name: /D&D 5e/ }));
     expect(within(dialog()).getByRole('button', { name: 'Dice' })).toBeTruthy();
-    expect(within(dialog()).queryByRole('button', { name: 'Default Widgets' })).toBeNull();
+    expect(within(dialog()).queryByRole('button', { name: 'Default widgets' })).toBeNull();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Save' }));
     await closed();
 

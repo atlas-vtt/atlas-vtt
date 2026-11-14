@@ -5,7 +5,6 @@ export const resource: Translation = {
   'resource.current': '{label}: текущее',
   'resource.max': '{label}: максимум',
   'resource.maxShort': 'Макс. {name}',
-  'resource.resetAll': 'Сбросить (восстановить ресурсы, без состояний)',
   'resource.tab.hint': 'Щёлкните гнездо, чтобы поставить в него ресурс, и перетащите ресурс в другое гнездо, чтобы переместить. Каждый ресурс берёт число из поля статблока токена; токены, в чьём статблоке этого поля нет, его не показывают.',
   'resource.tab.sockets': 'Гнёзда ресурсов',
   'resource.tab.nameplate': 'Имя',

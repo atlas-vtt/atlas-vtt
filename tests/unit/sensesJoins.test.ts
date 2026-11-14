@@ -81,7 +81,7 @@ describe('senses, from where they are edited to what sight does', () => {
     vi.restoreAllMocks();
   });
 
-  it('sees by the senses Edit Token saves', () => {
+  it('sees by the senses Edit token saves', () => {
     const { definitions } = mapSenseRules(current.app, AssetService.getInstance(current.app), state);
     const form = visionForm({ enabled: true }, definitions);
     const vision = visionFromForm({ ...form, range: '80', senses: [{ id: 'dnd5e-darkvision', range: '90' }, { id: 'dnd5e-tremorsense', range: '' }] });
@@ -95,7 +95,7 @@ describe('senses, from where they are edited to what sight does', () => {
     expect(visionForm(vision, definitions).senses).toEqual([{ id: 'dnd5e-darkvision', range: '90' }, { id: 'dnd5e-tremorsense', range: '' }]);
   });
 
-  it('shows in Edit Token the senses and the sight range a token takes from its statblock, as sight uses them', async () => {
+  it('shows in Edit token the senses and the sight range a token takes from its statblock, as sight uses them', async () => {
     current.frontmatter[GOBLIN]!.senses = 'blindsight 30 ft. (blind beyond this radius), darkvision 60 ft., passive Perception 9';
     await read();
     const linked = token({ statblockPath: GOBLIN });

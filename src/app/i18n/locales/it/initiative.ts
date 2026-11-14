@@ -1,7 +1,7 @@
 import type { Translation } from '../../types';
 
 export const initiative = {
-  "initiative.abilityScore": "Punteggio di caratteristica",
+
   "initiative.abilityScoreHint": "Il campo contiene un punteggio come DES 16, di cui viene aggiunto il modificatore: (punteggio − 10) ÷ 2, arrotondato per difetto",
   "initiative.card": "scheda dell’iniziativa",
   "initiative.clear": "Svuota iniziativa",
@@ -9,10 +9,10 @@ export const initiative = {
   "initiative.edit": "Modifica iniziativa",
   "initiative.editHint": "Invio per salvare · Esc per annullare",
   "initiative.bannerRound": "Round {round}",
-  "initiative.fallback": "Se un blocco statistiche non ha nessuno dei due: {field}",
-  "initiative.fallbackScore": "Se un blocco statistiche non ha nessuno dei due: {field}, interpretato come punteggio di caratteristica",
+
+
   "initiative.modifier": "Modificatore",
-  "initiative.modifierField": "Campo del modificatore",
+
   "initiative.modifierFromStatblock": "automatico",
   "initiative.modifierHint": "Il campo del blocco statistiche il cui valore viene aggiunto a ogni tiro. Se manca, viene usato il campo contrassegnato come iniziativa nel modello Atlas.",
   "initiative.modifierPlaceholder": "ad es. initiative",
@@ -40,7 +40,7 @@ export const initiative = {
   "initiative.rules.turnOrderHint": "Ogni combattente ha un valore, ottenuto con un tiro o inserito a mano, e agisce in ordine decrescente.",
   "initiative.rules.sidesHint": "I giocatori e i loro avversari si alternano come due squadre, in qualsiasi ordine all’interno di ciascuna. Non vengono effettuati tiri.",
   "initiative.rules.appliesHint": "Si applica a ogni scena della collezione; un combattimento in corso mantiene le impostazioni con cui è iniziato.",
-  "initiative.rules.roll": "Tiro di iniziativa",
+
   "initiative.rules.rollError": "Inserisci un gruppo di dadi, come 1d20 o 1d10.",
   "initiative.rules.actsFirst": "Agisce per primo",
   "initiative.rules.sidesOfTokens": "Un token con la visione attivata appartiene alla squadra dei giocatori; sposta gli altri dalla loro scheda nell’indicatore.",
@@ -97,4 +97,19 @@ export const initiative = {
   "initiative.modifierMissing": {"one": "{count} combattente ha tirato senza modificatore: il suo blocco statistiche non contiene un numero nel campo \"{field}\". Scegli il campo in Impostazioni della collezione → Widget predefiniti", "other": "{count} combattenti hanno tirato senza modificatore: i loro blocchi statistiche non contengono un numero nel campo \"{field}\". Scegli il campo in Impostazioni della collezione → Widget predefiniti"},
   "initiative.modifierMissingCampaign": {"one": "{count} combattente ha tirato senza modificatore: il suo blocco statistiche non contiene un numero nel campo \"{field}\". La campagna {campaign} stabilisce le regole: scegli il campo in Sistema di gioco → Iniziativa", "other": "{count} combattenti hanno tirato senza modificatore: i loro blocchi statistiche non contengono un numero nel campo \"{field}\". La campagna {campaign} stabilisce le regole: scegli il campo in Sistema di gioco → Iniziativa"},
 
+
+  "initiative.rules.order": "Ordine",
+  "initiative.rules.rollShort": "Tiro",
+  "initiative.rules.rollInfo": "I dadi che ogni combattente tira per l’iniziativa, ad esempio 1d20.",
+  "initiative.modifierShort": "Modificatore",
+  "initiative.modifierNone": "Nessuno",
+  "initiative.modifierCustom": "Inserisci una chiave…",
+  "initiative.fieldGroup.suggested": "Suggeriti",
+  "initiative.fieldGroup.scores": "Punteggi di caratteristica",
+  "initiative.fieldGroup.other": "Altri campi",
+  "initiative.abilityScoreShort": "Leggi come punteggio di caratteristica",
+  "initiative.fallbackLabel": "Alternativa",
+  "initiative.fallbackInfo": "Campo da leggere quando un blocco statistiche non contiene né il campo del modificatore né quello contrassegnato come iniziativa nel suo modello.",
+  "initiative.fallbackValue": "{field}",
+  "initiative.fallbackScoreValue": "{field}, come punteggio di caratteristica",
 } satisfies Translation;

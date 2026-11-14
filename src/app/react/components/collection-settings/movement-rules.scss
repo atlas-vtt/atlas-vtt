@@ -1,0 +1,73 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Collection Settings: the Movement group of the Grid and measure tab
+// (MovementRulesSection.tsx). Its rows are the range bands' rows; only a step's
+// colour dot and the sign before its number are its own.
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The dot is a control of the row's height; the colours hang from it over the page.
+$dot: 20px;
+// A swatch is as large as a small control, eight to a row.
+$swatch: $button-height-s;
+
+.atlas-csm-step-colour {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+.atlas-csm-step-colour__dot {
+  width: $dot;
+  height: $dot;
+  padding: 0;
+  border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
+  border-radius: $radius-full;
+  // A circle on every platform: Obsidian's corner shape for buttons would make it a squircle.
+  corner-shape: round;
+  box-shadow: none;
+  cursor: pointer;
+  transition: scale $transition-fast $transition-ease;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    scale: 1.15;
+  }
+}
+
+.atlas-csm-step-colour__colours {
+  @include atlas-elevated-surface;
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + #{$spacing-s});
+  left: 0;
+  padding: $spacing-s;
+
+  // The swatches have a size of their own here: Obsidian gives every button a height.
+  .atlas-swatch-grid {
+    grid-template-columns: repeat(8, $swatch);
+  }
+
+  .atlas-swatch {
+    width: $swatch;
+    height: $swatch;
+  }
+}
+
+// Above the dot, where the page ends too soon below it.
+.atlas-csm-step-colour__colours--up {
+  top: auto;
+  bottom: calc(100% + #{$spacing-s});
+}
+
+// "× 2": the sign stands before the number, in the row's quiet colour.
+.atlas-csm-step-times {
+  @include atlas-flex-row($spacing-xs);
+  flex: none;
+}
+
+.atlas-csm-step-times__sign {
+  color: var(--text-muted);
+  font-size: $font-ui-small;
+}

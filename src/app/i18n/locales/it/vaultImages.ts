@@ -1,7 +1,7 @@
 import type { Translation } from '../../types';
 
 export const vaultImages = {
-  "vaultImages.source": "Dal vault",
+  "vaultImages.source": "Scegli dal vault…",
   "vaultImages.hint": "Aggiungi le immagini già presenti nel vault alle stesse schede di anteprima delle immagini caricate. I tuoi file restano dove sono.",
   "vaultImages.intro.token": "Scegli immagini dal vault per creare token. Ritagliale e assegna bordi e nomi nelle schede di anteprima.",
   "vaultImages.intro.map": "Scegli immagini dal vault per creare mappe. Assegna i nomi nelle schede di anteprima.",

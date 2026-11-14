@@ -8,6 +8,8 @@
 import { useEffect, useState, type RefObject } from 'react';
 import { MarkdownView, type App, type OpenViewState, type TFile, type WorkspaceLeaf } from 'obsidian';
 import { closeDetachedNoteLeaf, openDetachedNoteLeaf } from '../../../../services/detachedNoteLeaf';
+import { waitBeforeQuit } from '../../../../utils/quitTasks';
+import { holdsUnsavedText } from '../../../../utils/unsavedText';
 import { noteOpenBody } from '../../../library/templateBodyNotes';
 import { templateBodyPath } from '../../../library/templatePaths';
 import type { TemplateId } from '../../../model/templateTypes';
@@ -70,10 +72,11 @@ export function useHostedNote(
     let leaf: WorkspaceLeaf | null = null;
     let stopReading: (() => void) | null = null;
     let closed = false;
-    // Obsidian saves the notes of its own leaves before it quits; this leaf is none of them.
+    // Before it quits Obsidian saves the unsaved notes of its own leaves; this leaf is none of them.
     const quitting = app.workspace.on('quit', (tasks) => {
       const view = leaf?.view;
-      if (view instanceof MarkdownView) tasks.add(() => view.save());
+      if (!(view instanceof MarkdownView) || !holdsUnsavedText(view)) return;
+      waitBeforeQuit(tasks, view.save(), 'Saving a template\'s note');
     });
     const shown = (opened: WorkspaceLeaf | null): void => {
       const view = opened?.view;

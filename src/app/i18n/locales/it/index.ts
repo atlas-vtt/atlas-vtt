@@ -1,3 +1,4 @@
+import { measure } from './measure';
 import type { Translation } from '../../types';
 import { experimental } from './experimental';
 import { align } from './align';
@@ -105,6 +106,7 @@ import { wall } from './wall';
 import { widgets } from './widgets';
 
 export const it = {
+  ...measure,
   ...experimental,
   ...align,
   ...am,

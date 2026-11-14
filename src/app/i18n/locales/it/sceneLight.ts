@@ -12,7 +12,7 @@ export const sceneLight = {
   "sceneLight.forgetExplored": "Dimentica aree esplorate",
   "sceneLight.openSettings": "Impostazioni dell’illuminazione…",
   "sceneLight.settings": "Impostazioni dell’illuminazione",
-  "sceneLight.closeSettings": "Chiudi impostazioni dell’illuminazione",
+
   "sceneLight.tokenVision": "Visione dei token",
   "sceneLight.tokenVisionOn": "I giocatori vedono solo ciò che vedono i loro token",
   "sceneLight.tokenVisionOff": "I giocatori vedono tutto ciò che è illuminato",

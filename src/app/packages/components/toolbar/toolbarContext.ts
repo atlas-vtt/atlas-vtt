@@ -1,6 +1,7 @@
 import type React from "react"
 import type { DiceTool } from "../../../tools/DiceTool"
 import type { MapHotkeyId } from "../../../keyboard/mapHotkeys"
+import type { MeasureMode } from "../../../measure/measureTypes"
 import type { Tool } from "./toolFaces"
 import type { ToolGroupControls } from "./ToolGroup"
 
@@ -13,6 +14,8 @@ export type ToolMenu = 'move' | 'fog' | 'draw' | 'text' | 'measure' | 'wall' | '
  */
 export interface ToolbarContext {
   activeTool: Tool
+  /** The mode the measure tool measures in: its button shows it. */
+  measureMode: MeasureMode
   selectTool: (tool: Tool) => void
   hotkeyLabel: (id: MapHotkeyId) => string
   openMenu: ToolMenu | null

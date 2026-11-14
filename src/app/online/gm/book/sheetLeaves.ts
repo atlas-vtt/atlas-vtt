@@ -1,6 +1,6 @@
 import {
   bookLine, isResourceKey, MAX_BOOK_TITLE, MAX_COUNTER, MAX_COUNTERS, MAX_FORMULA, MAX_SHEET_LIST, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS,
-  type SheetCounter, type SheetField, type SheetNode, type SheetPair, type SheetValue,
+  type SheetCounter, type SheetField, type SheetNode, type SheetPair, type SheetRaw, type SheetValue,
 } from '../../protocol/index.ts';
 import { valuePrompt, type BlockDisplay } from '../../../statblocks/render/blockDisplay';
 import { MAX_TRACK_BOXES } from '../../../statblocks/render/values/trackBoxes';
@@ -178,6 +178,23 @@ function sheetCounter(row: CounterRow): SheetCounter | null {
   return { name: row.name, max: row.max, used: row.used, reset: row.reset, regain: row.regain };
 }
 
+const isStoredRow = (value: SheetRaw | undefined): value is { readonly [key: string]: SheetRaw } => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The field with each stored row at the maximum and uses the card shows, where they are not the
+ * row's own (a row that takes its template's maximum, changed since): a page builds its edit from
+ * these rows, and one sent with the stored maximum would read as the player setting it.
+ */
+function fieldAsShown(field: SheetField, rows: readonly CounterRow[]): SheetField {
+  if (!Array.isArray(field.value)) return field;
+  const stored: readonly SheetRaw[] = field.value;
+  const value = stored.map((each, index) => {
+    const row = rows[index];
+    return row && isStoredRow(each) && each.max !== row.max ? { ...each, max: row.max, used: row.used } : each;
+  });
+  return { ...field, value };
+}
+
 /**
  * A Counters block: every row as the note holds it (or the template's preset rows, where it holds
  * none), rows without uses included, so the page writes back the whole list in the note's order.
@@ -193,7 +210,7 @@ function countersNode(build: SheetBuild, block: CountersBlock, display: BlockDis
   const rows = known ? shownCounterRows(known, value) : null;
   const counters = rows && rows.length <= MAX_COUNTERS ? rows.map(sheetCounter) : null;
   if (!counters?.every((row): row is SheetCounter => row !== null)) return { k: 'value', value: sheetValue(build, label, valueText(value), 'plain', null, null) };
-  return { k: 'counters', label, counters, field };
+  return { k: 'counters', label, counters, field: field && rows ? fieldAsShown(field, rows) : field };
 }
 
 /** What a player may change of the field a block shows: nothing where its fallback stands in for the field's value. */

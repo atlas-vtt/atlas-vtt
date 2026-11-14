@@ -1,4 +1,4 @@
-import { App, WorkspaceLeaf, TFile, ItemView, MarkdownRenderer, MarkdownView, Component, setIcon } from 'obsidian';
+import { App, WorkspaceLeaf, TFile, ItemView, Keymap, MarkdownRenderer, MarkdownView, Component, setIcon } from 'obsidian';
 import { createPinButton, showPinState, startPreviewWindowDrag, type PreviewWindowReach } from './previewWindowControls';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../utils/embeddedLeafFocus';
 import { runInBackground } from '../utils/backgroundTask';
@@ -419,10 +419,9 @@ export class NotePreviewWindow {
         
         const href = link.getAttribute('href');
         if (href) {
-          // Open the link in the main workspace, not in the preview
-          // This preserves the map view context
-          const newLeaf = e.metaKey || e.ctrlKey;
-          runInBackground(this.app.workspace.openLinkText(href, '', newLeaf), `Opening link ${href}`, t('preview.openLinkFailed'));
+          // Beside the map, never over it: a tab of its own, or the pane Obsidian's modifiers ask for
+          const pane = Keymap.isModEvent(e) || 'tab';
+          runInBackground(this.app.workspace.openLinkText(href, '', pane), `Opening link ${href}`, t('preview.openLinkFailed'));
         }
       });
     };
@@ -691,51 +690,18 @@ export class NotePreviewWindow {
   }
   
   /**
-   * Open the file in the main workspace
+   * Opens the note in a tab of its own beside the map, as a click on its pin does. A pinned
+   * preview stays as it was left; a hover preview makes way for the note.
    */
-  private async openFile(): Promise<void> {
-    const file = this.app.vault.getAbstractFileByPath(this.notePath);
-    if (!(file instanceof TFile)) {
+  private openFile(): void {
+    if (!(this.app.vault.getAbstractFileByPath(this.notePath) instanceof TFile)) {
       console.error(`[NotePreviewWindow] Cannot open file: ${this.notePath}`);
       return;
     }
-    
-    // Check if this is an atlas map file
-    if (file.extension === 'atlasmap') {
-      // Open map in Atlas VTT view
-      const leaves = this.app.workspace.getLeavesOfType('atlas-vtt');
-      const existingLeaf = leaves[0];
-      if (existingLeaf) {
-        await existingLeaf.setViewState({
-          type: 'atlas-vtt',
-          state: { file: file.path }
-        });
-        this.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
-      } else {
-        const newLeaf = this.app.workspace.getLeaf(true);
-        await newLeaf.setViewState({
-          type: 'atlas-vtt',
-          state: { file: file.path }
-        });
-        this.app.workspace.setActiveLeaf(newLeaf, { focus: true });
-      }
-      this.close();
-    } else {
-      // Open the file normally
-      const leaf = this.app.workspace.getLeaf(false);
-      await leaf.openFile(file);
-      this.app.workspace.setActiveLeaf(leaf, { focus: true });
-      
-      // If we have a header to scroll to, handle it
-      if (this.headerToScrollTo) {
-        runInBackground(openPinNote(this.app, this.originalNotePath, false), `Opening ${this.originalNotePath}`, t('loot.openFailed'));
-      }
-      this.close(); // Close the preview after opening the file
-    }
+    runInBackground(openPinNote(this.app, this.originalNotePath, true), `Opening ${this.originalNotePath}`, t('loot.openFailed'));
+    this.hide();
   }
-  
 
-  
   private async waitForViewReady(): Promise<void> {
     if (!this.leaf?.view) {
       console.warn('[NotePreviewWindow] No leaf view in waitForViewReady');

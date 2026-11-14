@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
 import { hitTestDrawing } from './drawingGeometry';
+import { isPrimaryPress, isSecondaryPress } from './utils/pointerButtons';
 import { MAP_ICON_LABELS } from './mapIcons';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
 import { t } from '../i18n';
@@ -53,12 +54,12 @@ export class DrawingInteraction {
     const selectedIds = state.selectedIds;
     const isSelected = selectedIds.includes(drawingId);
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       if (!isSelected) state.setSelection([drawingId]);
       this.showContextMenu(drawingId, e);
       return;
     }
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
 
     if (e.shiftKey) {
       state.setSelection(isSelected ? selectedIds.filter((id) => id !== drawingId) : [...selectedIds, drawingId]);

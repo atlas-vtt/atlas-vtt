@@ -12,11 +12,11 @@ export const token = {
   "token.hide": "Nascondi",
   "token.saveEncounter": "Salva come incontro",
   "token.addInitiative": "Aggiungi all’iniziativa",
-  "token.editStatblock": "Modifica blocco statistiche",
+
   "token.makePlayerCharacter": "Rendi personaggio giocante",
   "token.noLongerPlayerCharacter": "Rimuovi stato di personaggio giocante",
   "token.playerCharacterFailed": "Impossibile modificare lo stato di personaggio giocante di questo token.",
   "token.linkFailed": "Impossibile collegare il blocco statistiche",
   "token.ringColor": "Colore del bordo",
-  "token.reset": "Ripristina (PF massimi, rimuovi condizioni)"
+  "token.reset": "Ripristina"
 } satisfies Translation;

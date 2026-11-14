@@ -63,14 +63,17 @@ describe('typing a spawn count', () => {
   it('steps the card counter to absolute counts', () => {
     const onSpawnCountChange = vi.fn();
     const handlers: AssetCardHandlers = {
-      onSelect: vi.fn(), onContextMenu: vi.fn(), onOpen: vi.fn(), onDragStart: vi.fn(), onDragEnd: vi.fn(),
-      onSpawnCountChange, onOpenStatblock: vi.fn(),
+      onSelect: vi.fn(), onContextMenu: vi.fn(), onOpen: vi.fn(), onDelete: vi.fn(), onDragStart: vi.fn(), onDragEnd: vi.fn(),
+      onSpawnCountChange, onOpenStatblock: vi.fn(), onArtNeeded: vi.fn(),
     };
     render(<TooltipProvider><AssetCard asset={goblin} isSelected={false} isDragging={false} spawnCount={3} {...handlers} /></TooltipProvider>);
-    fireEvent.click(screen.getByText('+'));
-    fireEvent.click(screen.getByText('−'));
+    // The badge draws its words from `data-label`; it lies in the card's hidden art well.
+    const step = (label: string): HTMLElement => document.querySelector<HTMLElement>(`.atlas-asset-spawn-badge [data-label="${label}"]`)!;
+    expect(step('×3')).not.toBeNull();
+    fireEvent.click(step('+'));
+    fireEvent.click(step('−'));
     expect(onSpawnCountChange.mock.calls).toEqual([['goblin', 4], ['goblin', 2]]);
-    fireEvent.click(screen.getByText('Go'));
+    fireEvent.click(step('Go'));
     expect(handlers.onOpen).toHaveBeenCalledWith(goblin, 3);
   });
 });

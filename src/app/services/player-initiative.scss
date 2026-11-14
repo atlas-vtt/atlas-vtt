@@ -36,7 +36,7 @@
     gap: $spacing-s;
     min-height: 0;
     overflow-y: auto;
-    scrollbar-width: none;
+    @include atlas-scrollbar-none;
   }
 
   // A side of a fight by sides: its combatants under its name

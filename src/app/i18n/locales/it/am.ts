@@ -22,52 +22,49 @@ export const am = {
     "one": "Questa cartella contiene {count} risorsa. Verrà spostata nella cartella superiore.",
     "other": "Questa cartella contiene {count} risorse. Verranno spostate nella cartella superiore."
   },
-  "am.folder.createSubfolder": "Crea nuova sottocartella",
+  "am.folder.createSubfolder": "Crea sottocartella",
   "am.folder.delete": "Elimina cartella",
   "am.folder.deleteTitle": "Elimina cartella",
   "am.folder.exists": "Esiste già una cartella chiamata \"{name}\" in questa posizione",
   "am.folder.moveTo": "Sposta contenuti in \"{name}\"",
-  "am.folder.moveToRoot": "Sposta contenuti nella cartella principale",
+  "am.folder.moveToRoot": "Sposta contenuti al livello principale",
   "am.folder.nameEmpty": "Il nome della cartella non può essere vuoto",
   "am.folder.newName": "Inserisci il nuovo nome della cartella",
-  "am.folder.newSubfolder": "Nuova sottocartella",
+  "am.folder.newSubfolder": "Crea sottocartella",
   "am.folder.renameTitle": "Rinomina cartella \"{name}\"",
   "am.folder.subfolderEmpty": "Il nome della sottocartella non può essere vuoto",
   "am.folder.subfolderExists": "Esiste già una sottocartella chiamata \"{name}\"",
   "am.folder.subfolderName": "Inserisci il nome della sottocartella",
   "am.menu.ascending": "Crescente",
-  "am.menu.changeStatblock": "Cambia blocco statistiche",
-  "am.menu.confirmDelete": "Vuoi eliminare \"{name}\"?",
-  "am.menu.confirmDeleteMany": {
-    "one": "Vuoi eliminare {count} elemento selezionato?",
-    "other": "Vuoi eliminare {count} elementi selezionati?"
-  },
-  "am.menu.copyToCollection": "Copia nella collezione",
-  "am.menu.deleteItemTitle": "Elimina elemento",
+  "am.menu.changeStatblock": "Cambia blocco statistiche…",
+
+
+  "am.menu.copyToCollection": "Copia nella collezione…",
+
   "am.menu.deleteItems": {
     "one": "Elimina {count} elemento",
     "other": "Elimina {count} elementi"
   },
-  "am.menu.deleteItemsTitle": "Elimina elementi",
+
   "am.manage.deleteItems": {
     "one": "Elimina {count} elemento",
     "other": "Elimina {count} elementi"
   },
   "am.menu.descending": "Decrescente",
-  "am.menu.editToken": "Modifica token",
-  "am.menu.linkStatblock": "Collega blocco statistiche",
-  "am.menu.moveToCollection": "Sposta nella collezione",
-  "am.menu.moveToFolder": "Sposta nella cartella",
+  "am.menu.editToken": "Modifica token…",
+  "am.menu.linkStatblock": "Collega blocco statistiche…",
+  "am.menu.moveToCollection": "Sposta nella collezione…",
+  "am.menu.moveToFolder": "Sposta nella cartella…",
   "am.menu.nTokens": {
     "one": "{count} token",
     "other": "{count} token"
   },
-  "am.menu.newFolder": "Nuova cartella",
+  "am.menu.newFolder": "Crea cartella…",
   "am.menu.newName": "Inserisci il nuovo nome",
   "am.menu.refresh": "Aggiorna",
-  "am.menu.renameEncounter": "Rinomina incontro",
-  "am.menu.renameMap": "Rinomina mappa",
-  "am.menu.renameScene": "Rinomina scena",
+  "am.menu.renameEncounter": "Rinomina incontro…",
+  "am.menu.renameMap": "Rinomina mappa…",
+  "am.menu.renameScene": "Rinomina scena…",
   "am.menu.renameSceneFailed": "Impossibile rinominare la scena",
   "am.menu.renameTitle": "Rinomina \"{name}\"",
   "am.menu.saveAsEncounter": {
@@ -75,7 +72,7 @@ export const am = {
     "other": "Salva {count} token come incontro"
   },
   "am.menu.openSceneFailed": "Impossibile aprire la scena",
-  "am.menu.createScene": "Crea scena",
+  "am.menu.createScene": "Crea scena…",
   "am.menu.sortBy": "Ordina per",
   "am.menu.spawn": "Posiziona sulla mappa",
   "am.menu.spawnEncounter": "Posiziona incontro",
@@ -85,7 +82,7 @@ export const am = {
     "other": "Posiziona {count} token sulla mappa"
   },
   "am.menu.addToInitiative": "Aggiungi all’iniziativa",
-  "am.menu.tags": "Etichette",
+  "am.menu.tags": "Etichette…",
   "am.menu.unlinkStatblock": "Scollega blocco statistiche",
   "am.deleteFailed": "Impossibile eliminare la risorsa \"{name}\": {error}",
   "am.spawnedPartial": "Posizionati {count} token su {expected} da \"{name}\" (alcuni avevano immagini mancanti)",
@@ -130,11 +127,11 @@ export const am = {
   "am.bestiary.statblocks": "Blocchi statistiche",
   "am.header.forward": "Avanti",
   "am.header.selected": "selezionati",
-  "am.header.newFolder": "Nuova cartella",
+  "am.header.newFolder": "Crea cartella…",
   "am.header.create": "Crea",
-  "am.header.createToken": "Crea token",
-  "am.header.addMap": "Aggiungi mappa",
-  "am.header.createCollection": "Crea collezione",
+  "am.header.createToken": "Crea token…",
+  "am.header.addMap": "Crea mappe…",
+  "am.header.createCollection": "Crea collezione…",
   "am.link.missing": "Installa e attiva il plugin Fantasy Statblocks per collegare i blocchi statistiche.",
   "am.link.title": "Collega blocco statistiche",
   "am.link.search": "Cerca blocchi statistiche",
@@ -154,12 +151,12 @@ export const am = {
   "am.create.next": "Avanti",
   "am.create.collection": "Crea collezione",
   "am.create.newSystem": "Nuovo sistema di gioco",
-  "am.create.newCollection": "Nuova collezione",
+  "am.create.newCollection": "Crea collezione",
   "am.create.name": "Nome",
   "am.create.system": "Sistema di gioco",
   "am.scene.nameTaken": "Esiste già una scena chiamata \"{name}\"",
   "am.scene.createFailed": "Impossibile creare la scena: {error}",
-  "am.scene.new": "Nuova scena",
+  "am.scene.new": "Crea scena",
   "am.scene.name": "Nome della scena",
   "am.scene.namePlaceholder": "Inserisci il nome della scena",
   "am.scene.create": "Crea scena",
@@ -173,7 +170,7 @@ export const am = {
   "am.tab.tokens": "Token",
   "am.tab.party": "Giocatori",
   "am.card.select": "Seleziona {name}",
-  "am.card.statblockLinked": "Blocco statistiche collegato – fai clic per aprire",
+
   "am.card.decrease": "Diminuisci quantità da posizionare",
   "am.card.increase": "Aumenta quantità da posizionare",
   "am.card.spawn": {
@@ -191,26 +188,26 @@ export const am = {
   "am.tagPicker.empty": "Ancora nessuna etichetta. Scrivi un nome per crearne una.",
   "am.breadcrumb": "Percorso della cartella",
   "am.clearTags": {
-    "one": "Rimuovi filtro per etichetta",
-    "other": "Rimuovi {count} filtri per etichetta"
-  },
+  "one": "Rimuovi {count} filtro per etichetta",
+  "other": "Rimuovi {count} filtri per etichetta"
+},
   "am.empty.noMatch": "Nessun risultato in “{tab}” con questi filtri",
   "am.empty.none": "La sezione “{tab}” è ancora vuota",
   "am.empty.clearFilters": "Rimuovi filtri",
-  "am.empty.hint": "Usa il pulsante + per aggiungere elementi oppure modifica la ricerca e i filtri delle etichette.",
+
   "am.empty.partyHint": "Fai clic destro su un personaggio e scegli Rendi personaggio giocante.",
   "am.folders": "Cartelle",
-  "am.folder.newTitle": "Nuova cartella",
-  "am.folder.createsInside": "Crea una cartella nella cartella attuale di {tab}.",
-  "am.folder.createsTop": "Crea una cartella al livello principale di {tab}.",
+
+
+
   "am.folder.name": "Nome della cartella",
   "am.folder.namePlaceholder": "Inserisci il nome della cartella",
   "am.folder.create": "Crea cartella",
   "am.row.moreActions": "Altre azioni",
   "am.move.title": "Sposta nella cartella",
-  "am.move.target": "Seleziona la cartella di destinazione:",
+  "am.move.target": "Cartella di destinazione",
   "am.move.search": "Cerca cartelle…",
-  "am.move.root": "Cartella principale",
+  "am.move.root": "Livello principale",
   "am.move.move": "Sposta",
   "am.tabs.assetType": "Tipo di risorsa",
   "am.tabs.current": "Tipo di risorsa: {name}",
@@ -238,6 +235,9 @@ export const am = {
   },
   "am.impact.more": "{names} e altri {count}",
   "am.manage.mapTags": "Etichette delle mappe",
-  "am.manage.characterTags": "Etichette dei personaggi",
+  "am.manage.characterTags": "Etichette dei token",
   "am.manage.collections": "Collezioni"
+,
+  "am.bestiary.hide": "Nascondi per questa collezione",
+  "am.bestiary.hidden": "Token iniziali nascosti per questa collezione",
 } satisfies Translation;

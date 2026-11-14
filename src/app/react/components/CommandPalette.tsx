@@ -26,7 +26,7 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge } from 'lucide-react';
+  Replace, Gauge, SunMoon } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
@@ -44,7 +44,6 @@ import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
 import { EASE_OUT_CONTROL_POINTS as EASE_OUT } from '../../utils/motion';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
-import { OverlayScroll } from '../../packages/components/primitives/OverlayScroll';
 import { CommandItem } from './command-palette/CommandItem';
 import { SettingsPanelHeader } from './command-palette/SettingsPanelHeader';
 import { GridSettingsPanel } from './command-palette/GridSettingsPanel';
@@ -54,6 +53,7 @@ import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewS
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
 import { GraphicsPanel } from './command-palette/GraphicsPanel';
+import { LightingSettingsPanel } from './command-palette/LightingSettingsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
 import { replaceMapImage } from './levels/replaceMapImage';
@@ -98,6 +98,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: t('palette.panel.experimental'), icon: <FlaskConical /> },
   'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
+  'lighting-settings': { title: t('sceneLight.settings'), icon: <SunMoon /> },
 };
 
 export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
@@ -451,6 +452,23 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
           icon: null,
           label: t('diceSettings.display'),
           section: "dice",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
+      id: "lighting-settings",
+      icon: <SunMoon />,
+      label: t('sceneLight.settings'),
+      keywords: ["lighting", "light", "vision", "sight", "explored", "memory", "fog of war", "darkvision", "dark", "tint"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "lighting-all-settings",
+          icon: null,
+          label: t('sceneLight.settingsHint'),
+          section: "lighting",
           hasSubmenu: false,
         },
       ],
@@ -894,6 +912,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         return <ExperimentalFeaturesPanel />;
       case 'graphics-settings':
         return <GraphicsPanel />;
+      case 'lighting-settings':
+        return <LightingSettingsPanel />;
     }
   };
 
@@ -954,6 +974,12 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                             <Move />
                             {t('palette.enterAlignment')}
                           </Button>
+                        ) : activePanel === 'lighting-settings' ? (
+                          // How much the picture may cost this device is the Graphics page's.
+                          <Button variant="ghost" size="sm" onClick={() => setActiveSubmenu('graphics-settings')}>
+                            <Gauge />
+                            {t('graphics.command')}
+                          </Button>
                         ) : undefined
                       }
                     />
@@ -999,9 +1025,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                     </>
                   )}
 
-                  <OverlayScroll
+                  <div
                     ref={optionsContainerRef}
-                    frameClassName="atlas-command-palette-options-frame"
                     className="atlas-command-palette-options"
                     onMouseMove={handleMouseMove}
                   >
@@ -1026,7 +1051,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                         )}
                       </div>
                     )}
-                  </OverlayScroll>
+                  </div>
 
                   {!activePanel && (
                     <div className="atlas-command-palette-footer">

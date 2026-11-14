@@ -10,7 +10,7 @@ export const toolbarEdit = {
   "toolbarEdit.text.label": "Testo",
   "toolbarEdit.text.description": "Scrivi etichette e brevi note direttamente sulla mappa.",
   "toolbarEdit.measure.label": "Misura",
-  "toolbarEdit.measure.description": "Misura una distanza o l’estensione di un cerchio o di un cono nelle unità della griglia.",
+  "toolbarEdit.measure.description": "Misura una distanza o un’area, conservala sulla mappa oppure visualizza la portata di un token.",
   "toolbarEdit.wall.label": "Illuminazione",
   "toolbarEdit.wall.description": "Disegna muri e porte, posiziona luci e scegli ciò che ogni token può vedere.",
   "toolbarEdit.pin.label": "Segnaposto nota",

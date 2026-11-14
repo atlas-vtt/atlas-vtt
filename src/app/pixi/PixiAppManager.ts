@@ -5,6 +5,7 @@ import { RenderScheduler } from "./RenderScheduler";
 import { destroyTree } from "./utils/destroyTree";
 import { addRendererSystemsByEntry } from "./utils/rendererSystems";
 import { showNoGraphicsNotice } from './noGraphicsNotice';
+import { refitZoomRange } from './fitMapRect';
 import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
 
 
@@ -223,6 +224,8 @@ export class PixiAppManager {
     if (viewport.screenWidth === width && viewport.screenHeight === height) return;
     const { x, y } = viewport.center;
     viewport.resize(width, height);
+    // The zoom that shows the whole map depends on the screen: a smaller pane needs a lower least zoom.
+    refitZoomRange(viewport);
     const moved = viewport.center.x !== x || viewport.center.y !== y;
     viewport.moveCenter(x, y);
     // As after a pan: what follows the camera (the laser's dot, handles, what is drawn for the screen only) follows.

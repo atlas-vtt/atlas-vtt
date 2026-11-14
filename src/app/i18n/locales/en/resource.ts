@@ -19,7 +19,6 @@ export const resource = {
   'resource.changeAmount': 'Change of {label}',
   'resource.changePlaceholder': '−8 or +5',
   'resource.maxShort': 'Max {name}',
-  'resource.resetAll': 'Reset (Restore Resources, Clear Status)',
   'resource.tab.hint': "Click a socket to put a resource there, and drag it to another socket to move it. Each resource reads its number from a field of the token's statblock; tokens whose statblock lacks that field don't show it.",
   'resource.tab.sockets': 'Resource sockets',
   'resource.tab.nameplate': 'Name',

@@ -21,6 +21,7 @@ function withWalls(): Setup & { wall: string; door: string; steps: () => number;
   const made = setup();
   const { store } = made;
   store.getState().setActiveTool('wall');
+  store.getState().setLightingTool({ mode: 'draw' });
   const wall = store.getState().addWall({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 } });
   const door = store.getState().addWall({ type: 'door', closed: true, p1: { x: 100, y: 500 }, p2: { x: 300, y: 500 } });
   const history = getHistoryStore(store)!;

@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { App } from 'obsidian';
+import { CampaignPlay } from '../../../campaigns/campaignPlay';
 import { campaignRules } from '../../../campaigns/campaignSystem';
 import type { Campaign } from '../../../campaigns/campaignTypes';
 import type { CampaignService } from '../../../campaigns/CampaignService';
+import { useCampaignPlay } from '../../../campaigns/useCampaignPlay';
 import { viewOfRules } from '../../../gameSystems/rulesView';
 import { vanillaSystemSettings } from '../../../gameSystems/systemRules';
 import { resourceFieldSuggestions } from '../../../resources/resourceFieldSuggestions';
@@ -16,6 +18,7 @@ import { RULES_TABS, RulesSettingsTabs, type SettingsTab } from '../collection-s
 import { SettingsDialog } from '../collection-settings/SettingsDialog';
 import { useCollectionCreatures } from '../collection-settings/useCollectionCreatures';
 import { useRulesDraft } from '../collection-settings/useRulesDraft';
+import { useUnsavedChanges } from '../collection-settings/useUnsavedChanges';
 import { useSystemPresets } from '../../hooks/useSystemPresets';
 import { useDiceSets } from '../../hooks/useDiceSets';
 import { usePlayedCollections } from './usePlayedCollections';
@@ -61,9 +64,17 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
     const { system, presets } = opened.current;
     load(system ? campaignRules(system, presets) : vanillaSystemSettings());
   }, [load]);
+  const hasChanges = useUnsavedChanges({ hasSystem, draft }, campaign.id);
 
   const view = viewOfRules(draft, systemPresets.presets, diceSets.sets);
   const canSave = !hasSystem || view.isValid;
+  // Maps play by a campaign's system only while its online table is open: said where a GM sets rules no map shows yet.
+  const isPlayed = useCampaignPlay(CampaignPlay.forApp(app)) === campaign.id;
+  const whenPlayedNotice = hasSystem && !isPlayed && (
+    <div className="atlas-csm-played-notice" role="note">
+      <span className="atlas-csm-played-notice__text">{t('campaign.systemWhenPlayed')}</span>
+    </div>
+  );
 
   const save = (): void => {
     try {
@@ -95,6 +106,7 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
       title={t('campaign.systemTitle', { name: campaign.name })}
       closeLabel={t('campaign.closeSystem')}
       canSave={canSave}
+      hasChanges={hasChanges}
       onSave={save}
       onClose={onClose}
       size="fullscreen"
@@ -112,6 +124,7 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
         fieldSuggestions={resourceFieldSuggestions([], statblockRecords)}
         initiativeFieldSuggestions={modifierFields.suggestions}
         modifierStatblocks={modifierFields.statblocks}
+        rulesNotice={whenPlayedNotice}
       />
     </SettingsDialog>
   );

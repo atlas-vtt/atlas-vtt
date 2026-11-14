@@ -5,22 +5,28 @@ import {
   requireApiVersion,
   stringifyYaml,
   type App,
+  type BasesEntry,
+  type BasesPropertyId,
   type Plugin,
   type QueryController,
 } from 'obsidian';
 import { LOOT_QUERY_VIEW } from './lootBaseQuery';
 import { roleProperties, type LootQueryEntry, type LootQuerySnapshot } from './lootItem';
 import { t } from '../i18n';
+import { isRecord } from '../utils/guards';
 
 /** What a running query hears from the view Obsidian made for it. */
 export interface LootQueryListener {
   onSnapshot: (snapshot: LootQuerySnapshot) => void;
   /** Obsidian made no view for the query: Bases is off, or was turned off and on since Atlas registered its view. */
   onUnavailable: () => void;
+  /** Obsidian ran the view, but what it gave could not be read as rows; a later result may be. */
+  onUnreadable: (error: unknown) => void;
 }
 
 interface QueryRoute {
   onSnapshot: LootQueryListener['onSnapshot'];
+  onUnreadable: LootQueryListener['onUnreadable'];
   /** Called when Obsidian creates the view for the query. */
   onAttach: () => void;
 }
@@ -37,9 +43,25 @@ export const LOOT_VIEW_GRACE_MS = 3000;
 const routes = new Map<string, QueryRoute>();
 let basesAvailable = false;
 
-function textOf(value: { toString(): string } | null): string | undefined {
-  const text = value?.toString().trim();
-  return text && text !== 'null' ? text : undefined;
+/**
+ * What `read` gives as text. It reads a note's value, so nothing about it is taken for granted:
+ * one Obsidian cannot give, or gives as no text (tags that are no list of words), is no value.
+ */
+function textOf(read: () => unknown): string | undefined {
+  try {
+    const text = read();
+    if (typeof text !== 'string') return undefined;
+    const trimmed = text.trim();
+    return trimmed && trimmed !== 'null' ? trimmed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The note a row of a view's results stands for; null for a row that names none. */
+function noteOf(entry: unknown): Pick<LootQueryEntry, 'path' | 'name'> | null {
+  const file = isRecord(entry) ? entry.file : undefined;
+  return isRecord(file) && typeof file.path === 'string' && typeof file.basename === 'string' ? { path: file.path, name: file.basename } : null;
 }
 
 /** The running query a view instance belongs to, by the host Atlas rendered it into. */
@@ -95,20 +117,37 @@ function tryRegister(): boolean {
 
       onDataUpdated(): void {
         if (!this.route) return;
+        let snapshot: LootQuerySnapshot;
+        try {
+          snapshot = this.snapshot();
+        } catch (error) {
+          // One row never fails the view (`rowOf`); what fails here is the view itself
+          this.route.onUnreadable(error);
+          return;
+        }
+        this.route.onSnapshot(snapshot);
+      }
+
+      private snapshot(): LootQuerySnapshot {
         const order = this.config.getOrder();
         // The view's columns, and the properties the roller reads by name wherever the view shows them.
         const roles = Object.values(roleProperties([...order, ...this.allProperties]));
         const read = [...new Set([...order, ...roles])];
-        const entries: LootQueryEntry[] = this.data.data.map((entry) => {
-          const values: Record<string, string> = {};
-          for (const id of read) {
-            const text = textOf(entry.getValue(id));
-            if (text) values[id] = text;
-          }
-          return { path: entry.file.path, name: entry.file.basename, values };
-        });
+        const entries = this.data.data.flatMap((entry) => this.rowOf(entry, read) ?? []);
         const displayNames = Object.fromEntries(read.map((id) => [id, this.config.getDisplayName(id)]));
-        this.route.onSnapshot({ entries, order, displayNames });
+        return { entries, order, displayNames };
+      }
+
+      /** A row with the properties `read` as text; a value that cannot be read is left out, never the row. */
+      private rowOf(entry: BasesEntry, read: readonly BasesPropertyId[]): LootQueryEntry | null {
+        const note = noteOf(entry);
+        if (!note) return null;
+        const values: Record<string, string> = {};
+        for (const id of read) {
+          const text = textOf(() => entry.getValue(id)?.toString());
+          if (text) values[id] = text;
+        }
+        return { ...note, values };
       }
     }
 
@@ -146,7 +185,7 @@ export class LootBaseQuery {
 
   async start(): Promise<void> {
     this.stop();
-    routes.set(this.id, { onSnapshot: this.listener.onSnapshot, onAttach: () => { this.attached = true; } });
+    routes.set(this.id, { onSnapshot: this.listener.onSnapshot, onUnreadable: this.listener.onUnreadable, onAttach: () => { this.attached = true; } });
     const host = document.body.createDiv({
       cls: 'atlas-loot-query-host',
       attr: { [HOST_ATTRIBUTE]: this.id, 'aria-hidden': 'true' },

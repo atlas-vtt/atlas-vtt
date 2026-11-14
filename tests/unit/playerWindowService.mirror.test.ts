@@ -112,7 +112,10 @@ describe('player window mirroring', () => {
     const source = (service as any).streamSource;
     source.store = createStore(() => ({}));
 
+    expect(service.awaitsSource()).toBe(false);
     service.releaseSource(source.store);
+    // Until a view shows players the presented scene again
+    expect(service.awaitsSource()).toBe(true);
     // At once: a hidden window has no next frame, and the closing view must not stay referenced
     expect(renders.stopListening).toHaveBeenCalledTimes(1);
     nextFrame();
@@ -121,6 +124,8 @@ describe('player window mirroring', () => {
     expect((service as any).streamSource.store).toBeUndefined();
     expect(service.isWindowOpen()).toBe(true);
     expect(renders.capture).toHaveBeenCalledTimes(1);
+    service.releaseHeldFrame(frameSource({ withPlayerSafeFrame: vi.fn() }));
+    expect(service.awaitsSource()).toBe(false);
   });
 
   it.each(['presentCanvas', 'releaseHeldFrame'] as const)('lets go of the previous canvas at once on %s', (swap) => {

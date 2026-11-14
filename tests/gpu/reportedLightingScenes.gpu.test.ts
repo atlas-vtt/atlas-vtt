@@ -173,7 +173,7 @@ describe('the scenes of the lighting crash reports, drawn under strict GL', () =
     frames();
     expect(watch.findings).toEqual([]);
 
-    // Edit Token, Carries a light, Save: the scene's first light.
+    // Edit token, Carries a light, Save: the scene's first light.
     set({ tokens: party({ light: CARRIED }) });
     frames();
     expect(watch.findings).toEqual([]);

@@ -15,7 +15,7 @@ export const common = {
   "common.opacity": "Opacità",
   "common.open": "Apri",
   "common.overwrite": "Sovrascrivi",
-  "common.quoted": "\"{name}\"",
+  "common.quoted": "“{name}”",
   "common.remove": "Rimuovi",
   "common.rename": "Rinomina",
   "common.reset": "Reimposta",

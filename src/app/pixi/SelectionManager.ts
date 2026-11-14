@@ -3,6 +3,7 @@ import { Viewport } from "pixi-viewport";
 // For Token Sprite type if needed
 import { getObsidianAccentColor, cssColorToHexNumber } from "./utils/colorUtils";
 import { isHandled } from "./utils/handledEvents";
+import { isPrimaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { EventEmitter } from 'events';
 import { getDrawingBounds, type DrawingBounds } from './drawingGeometry';
@@ -180,7 +181,7 @@ export class SelectionManager {
     if (activeTool !== 'select' && activeTool !== 'move') return;
     
     // Only handle left mouse button (button 0) for marquee selection
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
 
     // Skip if another handler already claimed this event (e.g. token or fog click)
     if (isHandled(e)) return;

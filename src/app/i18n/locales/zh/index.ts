@@ -2,6 +2,7 @@ import type { Translation } from '../../types';
 import { align } from './align';
 import { atlasLinks } from './atlasLinks';
 import { am } from './am';
+import { assetGrid } from './assetGrid';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
 import { clock } from './clock';
@@ -86,6 +87,7 @@ export const zh: Translation = {
   ...align,
   ...atlasLinks,
   ...am,
+  ...assetGrid,
   ...bundle,
   ...cleanup,
   ...clock,
@@ -145,6 +147,7 @@ export const zh: Translation = {
   ...image,
   'index.unreadable': 'Atlas VTT 无法读取素材索引（{path}），因此没有改动它。请重启 Obsidian 再试。',
   'index.rebuilding': 'Atlas VTT 无法读取素材索引，正在根据合集文件重建。无法读取的文件已保留为 {path}。',
+  'index.folderMoved': 'Atlas 文件夹已移到「{path}」。Atlas 只在仓库顶层的「{folder}」中查找素材库：把文件夹移回那里，你的地图、场景和棋子就都回来了。',
   ...link,
   ...mapPreview,
   ...names,

@@ -1,5 +1,6 @@
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
+@use 'encounter-builder-narrow';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Encounter builder: a sidebar with the search and every filter, and beside it
@@ -53,9 +54,11 @@ $sidebar-width: 320px;
   flex: 1;
   min-width: 0;
   margin: 0;
+  // Every dialog's title style (atlas-modal-header).
   color: var(--text-normal);
-  font-size: $font-ui-medium;
-  font-weight: var(--font-semibold);
+  font-size: $font-ui-large;
+  font-weight: $font-weight-semibold;
+  line-height: var(--line-height-tight);
 }
 
 .atlas-encounter-builder__search {
@@ -74,19 +77,9 @@ $sidebar-width: 320px;
   }
 }
 
-.atlas-encounter-builder__filters-frame {
-  flex: 1;
-}
-
 .atlas-encounter-builder__filters {
+  flex: 1;
   padding-bottom: $spacing-l;
-}
-
-// The scrollbar lies over the filters' padding and takes no room (`OverlayScroll`); here it
-// shows only while the filters scroll or it is dragged, not merely under the pointer.
-.atlas-encounter-builder__filters-frame.atlas-overlay-scroll:hover:not(:has(> [data-scrolling])) > .atlas-overlay-scroll__track:not([data-dragging]) > .atlas-overlay-scroll__thumb {
-  opacity: 0;
-  transition-duration: $transition-slow;
 }
 
 // ── Main: the count and chips, the feed, the tray floating over its foot ────
@@ -152,7 +145,8 @@ $chip-height: 24px;
 // Room above the first row for the cards' notches and their shadow (the feed clips what scrolls),
 // and below the last for the tray floating over it.
 $notch-height: 28px;
-$notch-shadow-reach: 16px;
+// With half the notch, a step of the 4 px scale.
+$notch-shadow-reach: 18px;
 $tray-room: 72px;
 
 .atlas-encounter-builder__feed {
@@ -163,7 +157,6 @@ $tray-room: 72px;
   padding: calc(#{$notch-height} / 2 + #{$notch-shadow-reach}) 0 $tray-room;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
 }
 
 .atlas-encounter-builder__notice {
@@ -177,9 +170,9 @@ $tray-room: 72px;
 }
 
 // ── A creature in the feed ───────────────────────────────────────────────────
-// Clicked like a card in a deck builder. Its notch rides on the middle of its top
-// edge, in the gap between feeds' cards: Add while the pointer is on the card,
-// the count once picked, with − and + while the pointer is on it.
+// Clicked like a card in a deck builder, or focused and Enter pressed. Its notch
+// rides on the middle of its top edge, in the gap between feeds' cards: Add while
+// the pointer or focus is on the card, the count once picked, with − and + then.
 
 .atlas-encounter-card {
   position: relative;
@@ -189,7 +182,12 @@ $tray-room: 72px;
     transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
   }
 
-  &:hover .atlas-statblock {
+  // Focus shows as the pointer's hover does, no ring (the asset manager draws none).
+  &:focus {
+    outline: none;
+  }
+
+  &:is(:hover, :focus) .atlas-statblock {
     border-color: color-mix(in oklch, var(--interactive-accent) 35%, var(--background-modifier-border));
   }
 
@@ -517,7 +515,6 @@ input.atlas-encounter-tray__name-input {
   @include atlas-flex-row($spacing-m);
   flex-shrink: 0;
   padding-inline-start: $spacing-s;
-  border-inline-start: $border-width-s solid var(--background-modifier-border);
 }
 
 .atlas-encounter-tray__count,

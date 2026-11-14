@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
+import type { AreaMap } from '../../measure/areaOnMap';
 import { resolveLaserPointerSettings, type LaserPointerSettings } from '../../tools/laserPointerSettings';
 import type { SightRules } from '../../vision/sightRules';
 import type { SceneState } from './atlasView.ts';
@@ -99,6 +100,18 @@ export function measurementOf(renderer: unknown): MeasurementSettings | null {
   if (typeof provider !== 'function') return null;
   try {
     return (provider as () => MeasurementSettings).call(measure);
+  } catch {
+    return null;
+  }
+}
+
+/** The map of an Atlas tab as its measured areas are shaped by it (`MeasureRenderer.areaMap`): its rules and the walls of the level shown; null where it cannot be read. */
+export function tabAreaMap(renderer: unknown): AreaMap | null {
+  const measure = field(renderer, 'measureRenderer');
+  const read = field(measure, 'areaMap');
+  if (typeof read !== 'function') return null;
+  try {
+    return (read as () => AreaMap).call(measure);
   } catch {
     return null;
   }

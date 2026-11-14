@@ -1,5 +1,6 @@
 import type { App, EventRef } from 'obsidian';
 import { libraryTokenOf } from '../characters/playerCharacters';
+import { readOwnSection } from '../online/gm/pins/foundNotes.ts';
 import type { StatblockGate } from '../online/gm/book/statblockGate.ts';
 import { AssetService } from '../services/AssetService';
 import { TemplateLibrary } from '../statblocks/library/TemplateLibrary';
@@ -36,6 +37,7 @@ export function characterStatblockGate(app: App): StatblockGate {
     libraryStatblock: (placed) => libraryTokenOf(placed, AssetService.getInstance(app).loadedTokenAssets())?.statblockPath ?? null,
     diceSet: (path) => templateDiceSet(app, path),
     read: (path) => readStatblock(app, path),
+    readLink: (path, link) => readOwnSection(app, link, path),
     write: async (path, patches) => {
       const { applied, conflicts, problem } = await NoteFieldWriter.forApp(app).write(path, patches);
       return { applied, conflicts, problem };

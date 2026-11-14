@@ -42,7 +42,7 @@
 }
 
 .atlas-asset-manager-breadcrumb {
-  @include atlas-flex-row($gap: 2px);
+  @include atlas-flex-row($gap: 0);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -69,7 +69,13 @@
     font-size: $font-ui-small;
     cursor: pointer;
     white-space: nowrap;
-    max-width: 180px;
+    // The folders between the tab and the open one give way first; the tab and the open folder keep theirs.
+    flex: 0 4 auto;
+    min-width: 0;
+
+    &:first-of-type {
+      flex-shrink: 0;
+    }
 
     span {
       @include atlas-truncate;
@@ -82,9 +88,18 @@
       color: var(--text-faint);
     }
 
+    // Where the GM is: no press does anything, but a cut name still shows whole on hover. It gives way only past half
+    // the row.
     &.atlas-current {
+      flex-shrink: 0;
+      max-width: 50%;
       color: var(--text-normal);
-      pointer-events: none;
+      cursor: default;
+
+      &:hover,
+      &:active {
+        background: transparent;
+      }
     }
   }
 }
@@ -147,7 +162,8 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  @include atlas-scroll-padding($spacing-l);
+  @include atlas-scroll-shadow(fixed);
+  padding: $spacing-l;
   display: flex;
   flex-direction: column;
   gap: $spacing-l;
@@ -167,14 +183,23 @@
 
 .atlas-section-header-row {
   @include atlas-flex-row($gap: $spacing-s);
+  // Where the selection does not fit beside the name and count (a narrow window), it takes a row of its own
+  // rather than covering them.
+  flex-wrap: wrap;
   // The header's hover reaches past the content's edge on the left only, so
   // whatever stands at the row's end ends on that edge.
   margin-left: -$spacing-xs;
 
   .atlas-section-header {
-    flex: 1;
-    min-width: 0;
+    // Never narrower than its name and count.
+    flex: 1 0 auto;
+    max-width: 100%;
     margin: 0;
+  }
+
+  // At the row's end on either row.
+  .atlas-selection-info {
+    margin-left: auto;
   }
 }
 
@@ -186,10 +211,12 @@
   border-radius: $radius-s;
   cursor: pointer;
   user-select: none;
-  color: var(--text-muted);
+  // A label in normal text with its count muted: told from the muted 13 px card names below it by colour, size and
+  // weight at once.
+  color: var(--text-normal);
 
   &:hover {
-    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
   }
 
   &:active {
@@ -198,14 +225,14 @@
 
   h3 {
     margin: 0;
-    font-size: $font-ui-small;
-    font-weight: $font-weight-medium;
+    @include atlas-section-label;
+    // Follows the header's hover.
     color: inherit;
   }
 
   .atlas-section-count {
     font-size: $font-ui-smaller;
-    color: var(--text-faint);
+    color: var(--text-muted);
     font-variant-numeric: tabular-nums;
   }
 
@@ -230,12 +257,15 @@
   height: 24px;
   padding: 0 2px 0 $spacing-s;
   background: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
-  color: var(--text-accent);
+  @include atlas-accent-text;
   // Concentric with the clear button, 2px inside it.
   border-radius: calc(#{$radius-s} + 2px);
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;
   white-space: nowrap;
+  // Alone on its row and still too long, its text ends in an ellipsis.
+  min-width: 0;
+  max-width: 100%;
   opacity: 1;
   transform: translateX(0);
   transition: opacity 150ms $transition-ease-out, transform 150ms $transition-ease-out;
@@ -245,7 +275,15 @@
     transform: translateX(4px);
   }
 
+  .atlas-selection-info__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .atlas-clear-selection-btn {
+    flex-shrink: 0;
+
     &.btn,
     &.btn--icon {
       width: 20px;
@@ -309,13 +347,32 @@
 
 .atlas-starter-offer__panel {
   @include atlas-flex-col($gap: $spacing-s);
-  width: 280px;
+  width: 320px;
+  max-width: 100%;
 }
 
-// The download button and the popover it opens; the anchor spans its column.
+// The download button (the call to action) with the GM's own way in beside it; a narrow pane stacks them.
+.atlas-starter-offer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-s;
+}
+
+// The download button and the popover it opens. In the sidebar's column it is as tall as its button; in the empty
+// state's row it takes the row's room (a flex basis there is a width; in a column it would be a height).
 .atlas-dropdown-menu.atlas-starter-anchor {
   display: block;
   width: 100%;
+}
+
+.atlas-starter-offer__actions .atlas-dropdown-menu.atlas-starter-anchor {
+  flex: 1 1 160px;
+  width: auto;
+  min-width: 0;
+}
+
+.atlas-empty-state .atlas-starter-offer__create.btn {
+  flex: 0 1 auto;
 }
 
 // Which statblocks the starter tokens come with, under (or over) the download button.
@@ -352,7 +409,7 @@
 }
 
 .atlas-starter-choice__text {
-  @include atlas-flex-col($gap: 2px);
+  @include atlas-flex-col($gap: $spacing-xs);
   min-width: 0;
   white-space: normal;
 
@@ -382,8 +439,8 @@
 }
 
 .atlas-empty-state .atlas-starter-offer__fine {
-  @include atlas-flex-col($gap: 2px);
-  color: var(--text-faint);
+  @include atlas-flex-col($gap: $spacing-xs);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
 }
 

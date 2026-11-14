@@ -12,7 +12,7 @@ import { SoundDirector } from '../../src/app/soundDirector/SoundDirector';
 import { MoodStore } from '../../src/app/soundLibrary/MoodStore';
 import { SoundLibrary } from '../../src/app/soundLibrary/SoundLibrary';
 import { SoundRecordStore } from '../../src/app/soundLibrary/SoundRecordStore';
-import { SoundRoots } from '../../src/app/soundLibrary/SoundRoots';
+import { SoundRoots, type OriginalsChoice } from '../../src/app/soundLibrary/SoundRoots';
 import type { SharedSoundRoots } from '../../src/app/soundLibrary/soundRootsStore';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { withSound } from '../mocks/experimentalFeatures';
@@ -37,6 +37,8 @@ export interface LibraryRigOptions {
   local?: Partial<Record<SoundKind, string>>;
   shared?: SharedSoundRoots;
   seconds?: (url: string) => number | null;
+  /** The GM's choice about originals for a folder on disk; none where unset, so nothing converts. */
+  originals?: OriginalsChoice | null;
 }
 
 /** The real library over roots held in memory, provided for `app`. */
@@ -44,12 +46,15 @@ export function fakeLibrary(app: App, options: LibraryRigOptions = {}): Pick<Lib
   const locations = { music: new FakeSoundLocation(), ambience: new FakeSoundLocation() };
   const local: Partial<Record<SoundKind, string>> = { ...options.local };
   let shared: SharedSoundRoots = options.shared ?? {};
+  let originals = options.originals ?? null;
   const roots = new SoundRoots({
     shared: () => shared,
     setShared: (next) => { shared = next; },
     onSharedChange: () => () => undefined,
     local: (kind) => local[kind] ?? null,
     setLocal: (kind, path) => { if (path) local[kind] = path; else delete local[kind]; },
+    localOriginals: () => originals,
+    setLocalOriginals: (_kind, choice) => { originals = choice; },
     vaultBase: () => '/vault',
     realPath: async (path) => path,
   });

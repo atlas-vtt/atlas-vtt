@@ -12,7 +12,7 @@ import { boundField, fieldsShownBy } from '../model/treeQueries';
 import { isContainerBlock, type ContainerBlock, type CountersBlock, type FieldKey, type TemplateBlock, type TemplateField } from '../model/templateTypes';
 import { isDrawnCounter, shownCounterRows } from '../values/counterValues';
 import type { SheetState } from './sheetState';
-import { trackedShown } from './values/trackedShown';
+import { readingTrackedCurrent, trackedShown } from './values/trackedShown';
 import { blockText, isPatternBlock } from './values/blockText';
 import { hasText, shownPattern, type ShownText } from './values/shownText';
 import { t } from '../../i18n';
@@ -89,8 +89,8 @@ export function isUnboundBlock(block: TemplateBlock): boolean {
 function tokenHolds(block: TemplateBlock, sheet: SheetState): boolean {
   if (block.type === 'image') return Boolean(sheet.token?.art);
   if (block.type === 'track') return Boolean(block.resource && sheet.token?.resources?.[block.resource]) || trackedShown(block.field, sheet) !== null;
-  // A tracked number whose maximum another field holds shows though its own field is empty
-  if (block.type === 'stat') return trackedShown(block.field, sheet) !== null;
+  // A tracked number whose maximum another field holds shows though its own field is empty; a pattern of the block's own writes it instead
+  if (block.type === 'stat') return !block.pattern && trackedShown(block.field, sheet) !== null;
   if (block.type === 'metric') return block.fields.some((key) => key !== '' && trackedShown(key, sheet) !== null);
   return false;
 }
@@ -137,11 +137,12 @@ function decide(block: TemplateBlock, sheet: SheetState): BlockDisplay | null {
   if (tokenHolds(block, sheet)) return VALUE;
   if (block.type === 'text' && !block.field) return VALUE;
 
-  if (blockVisibility(block, sheet.reader, visibilityFields(block)) !== 'show') return emptyDisplay(block, sheet);
+  const read = block.type === 'stat' ? readingTrackedCurrent(block.field, sheet) : sheet;
+  if (blockVisibility(block, read.reader, visibilityFields(block)) !== 'show') return emptyDisplay(block, sheet);
   if (block.type === 'counters' && !countersShowSomething(block, sheet)) return emptyDisplay(block, sheet);
   if (!isPatternBlock(block)) return VALUE;
 
-  const text = blockText(block, sheet);
+  const text = blockText(block, read);
   if (hasText(text)) return { state: 'value', text };
   return emptyDisplay(block, sheet) ?? (text.problems.length > 0 ? { state: 'value', text } : null);
 }

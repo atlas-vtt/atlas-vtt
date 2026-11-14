@@ -1,7 +1,7 @@
 import type { Translation } from '../../types';
 
 export const preview: Translation = {
-  'preview.loading': '正在加载...',
+  'preview.loading': '正在加载…',
   'preview.pin': '固定窗口',
   'preview.unpin': '取消固定',
   'preview.openFile': '打开文件',

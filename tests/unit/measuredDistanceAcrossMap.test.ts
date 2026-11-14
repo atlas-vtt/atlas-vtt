@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { Container, Text } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PATHFINDER_2E } from '../../src/app/gameSystems/presets/pathfinder2e';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
@@ -38,7 +37,7 @@ function measureToolLabels(grid: SnappingGridOptions, dCol: number, dRow: number
     const to = pointInCell(grid, col + dCol, row + dRow);
     scene.pointer('pointerdown', from.x, from.y);
     scene.pointer('pointermove', to.x, to.y);
-    labels.add(scene.parts().flatMap((part) => (part instanceof Container ? part.children : [])).find((part): part is Text => part instanceof Text)!.text);
+    labels.add(scene.liveLabels()[0]!.text);
     scene.pointer('pointerup', to.x, to.y);
   }
   return [...labels];
@@ -46,7 +45,7 @@ function measureToolLabels(grid: SnappingGridOptions, dCol: number, dRow: number
 
 /** A drag ruler on `grid` for a token of `tokenSize`, and what it last drew. */
 function dragRuler(grid: SnappingGridOptions, tokenSize: number, snapToGrid = true): { ruler: DragRuler; label: () => string } {
-  const view = { draw: vi.fn<DragRulerView['draw']>(), clear: vi.fn(), destroy: vi.fn(), layers: [] };
+  const view = { draw: vi.fn<DragRulerView['draw']>(), clear: vi.fn(), destroy: vi.fn(), layers: [], playersLayers: [] };
   const state = { grid: { snapToGrid }, objects: { tokens: { t1: { id: 't1', size: tokenSize } } } };
   const ruler = new DragRuler(
     view as unknown as DragRulerView,

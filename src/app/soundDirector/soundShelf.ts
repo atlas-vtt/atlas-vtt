@@ -12,10 +12,9 @@ export class SoundShelf {
   private read = false;
   private copies: SoundCopies | null = null;
   private maker: { dispose(): void } | null = null;
-  private cache: { close(): Promise<void> } | null = null;
 
   constructor(
-    private readonly deps: Pick<SoundDirectorDeps, 'files' | 'createCache' | 'createMaker' | 'prepareSource' | 'readRecords' | 'readPeaks'>,
+    private readonly deps: Pick<SoundDirectorDeps, 'files' | 'createFolder' | 'createMaker' | 'prepareSource' | 'readRecords'>,
     private readonly onRefused: (record: SoundRecord, reason: SoundRefusal) => void,
     /** A copy that played while it was made is stored. */
     private readonly onStored: (key: string) => void = () => undefined,
@@ -23,10 +22,8 @@ export class SoundShelf {
 
   open(): SoundCopies {
     const maker = this.deps.createMaker();
-    const cache = this.deps.createCache();
     this.maker = maker;
-    this.cache = cache;
-    this.copies = new SoundCopies(this.deps.files, cache, maker, (buffer) => this.deps.prepareSource(buffer), this.onRefused, (copy, frames) => this.deps.readPeaks(copy, frames), undefined, this.onStored);
+    this.copies = new SoundCopies(this.deps.files, this.deps.createFolder(), maker, (buffer) => this.deps.prepareSource(buffer), this.onRefused, undefined, this.onStored);
     return this.copies;
   }
 
@@ -35,8 +32,6 @@ export class SoundShelf {
     this.copies = null;
     this.maker?.dispose();
     this.maker = null;
-    void this.cache?.close();
-    this.cache = null;
   }
 
   recordOf(id: string): SoundRecord | null {
@@ -44,12 +39,14 @@ export class SoundShelf {
   }
 
   recordOfKey(key: string): SoundRecord | null {
-    const id = this.copies?.recordIdOf(key);
+    const id = this.idOfKey(key);
     return id ? this.recordOf(id) : null;
   }
 
+  /** The record of a copy: of those it was found for, the newest that has a record, else the newest. */
   idOfKey(key: string): string | null {
-    return this.copies?.recordIdOf(key) ?? null;
+    const ids = this.copies?.recordIdsOf(key) ?? [];
+    return ids.find((id) => this.records.has(id)) ?? ids[0] ?? null;
   }
 
   has(id: string): boolean {
@@ -104,11 +101,22 @@ export class SoundShelf {
     this.copies?.request(records, urgent);
   }
 
-  pinOnly(keys: ReadonlySet<string>): void {
-    this.copies?.pinOnly(keys);
+  /** The library changed: a sound refused as outside every linked folder is looked at again where it now lies in one. */
+  recheckOutside(): void {
+    this.copies?.recheckOutside();
   }
 
-  /** A copy the cache gave up under a sound is made again; the player keeps asking in the meantime. */
+  /** The background's conversions since it last stood empty; null while it has nothing to do. */
+  background(): ReturnType<SoundCopies['background']> {
+    return this.copies?.background() ?? null;
+  }
+
+  /** Holds the background's conversions until resumed or the next start; a press still converts. */
+  pauseBackground(paused: boolean): void {
+    this.copies?.pauseBackground(paused);
+  }
+
+  /** A copy whose file went from under a sound is asked for again; the player keeps asking in the meantime. */
   copyFailed(key: string, error: unknown): void {
     console.error(`[Atlas] Could not play the sound ${key}`, error);
     const record = this.recordOfKey(key);

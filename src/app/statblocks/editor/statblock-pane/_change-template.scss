@@ -3,36 +3,35 @@
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
+@use '../../../../../styles/sidebar-dialog' as *;
 
 .atlas-vtt-plugin.atlas-sb-change-template-overlay {
   @include atlas-modal-overlay($z-atlas-modal);
 }
 
 .atlas-vtt-plugin {
+  // A dialog with a sidebar (`_sidebar-dialog.scss`): the library runs its full height.
   .atlas-sb-change-template {
     @include atlas-modal-window;
+    @include atlas-sidebar-dialog($side-track: 240px);
     width: 880px;
     height: 600px;
   }
 
   .atlas-sb-change-template__header {
-    @include atlas-modal-header;
+    @include atlas-sidebar-dialog-header;
   }
 
+  // Lends the library and the preview to the window's grid.
   .atlas-sb-change-template__body {
-    display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
-    flex: 1;
-    min-height: 0;
+    display: contents;
   }
 
   .atlas-sb-change-template__list {
+    @include atlas-sidebar-dialog-side;
     @include atlas-flex-col($spacing-s);
     padding: $spacing-s;
     overflow-y: auto;
-    background: var(--background-secondary);
-    border-inline-end: $border-width-s solid var(--divider-color);
-    @include atlas-scrollbar;
   }
 
   .atlas-sb-change-template__group {
@@ -83,10 +82,9 @@
   }
 
   .atlas-sb-change-template__preview {
+    @include atlas-sidebar-dialog-body;
     @include atlas-flex-col($spacing-l);
     padding: $spacing-l;
-    overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   .atlas-sb-change-template__unshown {
@@ -96,6 +94,6 @@
   }
 
   .atlas-sb-change-template__footer {
-    @include atlas-modal-footer;
+    @include atlas-sidebar-dialog-footer;
   }
 }

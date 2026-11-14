@@ -1,5 +1,6 @@
 import { isCount, parseAsset, parseAssetProgress, parseVideoAsset, type AssetProgress, type AssetRef } from './asset.ts';
-import { isBookType, isPlayerBookType, parseBookCover, parseBookMessage, parseBookTokenMessage, parsePlayerBookMessage, type BookMessage, type BookTokenMessage, type PlayerBookCover, type PlayerBookMessage, type PlayerBookParts } from './book.ts';
+import { isBookType, isPlayerBookType, parseBookCover, parseBookParts, parseBookMessage, parseBookTokenMessage, parsePlayerBookMessage, type BookMessage, type BookTokenMessage, type PlayerBookCover, type PlayerBookMessage, type PlayerBookParts } from './book.ts';
+import { parseSignFound, type PlayerSignFound } from './bookLevels.ts';
 import { parseBookRestMessage, type BookRestMessage } from './bookRest.ts';
 import { isDeltaOf, parseDelta, parseSeq, type DeltaMessage, type DeltaOf } from './delta.ts';
 import { parseFloor, type SharedFloor } from './floor.ts';
@@ -129,7 +130,7 @@ export interface PlayerResync {
   readonly of: DeltaOf;
 }
 
-export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSoundState;
+export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSignFound | PlayerSoundState;
 
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
@@ -230,13 +231,14 @@ export function parsePlayerMessage(value: unknown): PlayerMessage | null {
   if (value.t === 'move' || value.t === 'drag') return parsePlayerMove(value, value.t);
   if (value.t === 'drag-cancel') return parseDragCancel(value);
   if (value.t === 'pin-found') return parsePinFound(value, isSceneId);
+  if (value.t === 'sign-found') return parseSignFound(value);
   if (value.t === 'roll') return parsePlayerRoll(value);
   if (value.t === 'laser' || value.t === 'measure' || value.t === 'cursor') return parsePlayerMark(value);
   if (isPlayerLogType(value.t)) return parsePlayerLog(value);
   if (isPlayerBookType(value.t)) return parsePlayerBookMessage(value);
   if (value.t === 'book-token') return parseBookTokenMessage(value);
   if (value.t === 'book-rest') return parseBookRestMessage(value);
-  if (value.t === 'book-parts') return { t: 'book-parts' };
+  if (value.t === 'book-parts') return parseBookParts(value);
   if (value.t === 'book-cover') return parseBookCover(value);
   if (value.t === 'sound-state') return parsePlayerSoundState(value);
   if (value.t === 'resync') return isSceneId(value.scene) && isDeltaOf(value.of) ? { t: 'resync', scene: value.scene, of: value.of } : null;

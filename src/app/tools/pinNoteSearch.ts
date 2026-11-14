@@ -62,7 +62,7 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
     },
   });
 
-  const results = container.createDiv({ cls: 'pin-results', attr: { id: listId, role: 'listbox', ...STANDING_LIST } });
+  const results = container.createDiv({ cls: 'atlas-pin-results', attr: { id: listId, role: 'listbox', ...STANDING_LIST } });
 
   const footer = container.createDiv({ cls: 'pin-footer' });
   const footerHints: Array<[key: string, label: string]> = [['↑↓', t('pin.search.navigate')], ['Enter', t('pin.search.select')], ['Esc', t('pin.search.cancel')]];

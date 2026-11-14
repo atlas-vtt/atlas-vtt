@@ -8,11 +8,11 @@ import tabsCss from '../../src/app/react/components/scene-tab-bar.scss?inline';
 import switcherCss from '../../src/app/react/components/levels/level-switcher.scss?inline';
 import barCss from '../../src/app/packages/components/player-window-bar/player-window-bar.scss?inline';
 import { roomAbove } from '../../src/app/online/gm/dock/dockDom';
-import { LogUnreadTab } from '../../src/app/online/tableLog/LogUnreadTab';
+import { LogTab } from '../../src/app/online/tableLog/LogTab';
 import { DASHBOARD_THEME } from './dashboardTheme';
 
 /**
- * Online play's unread table log on the GM's map: it hangs directly below the scene tabs, in their
+ * The tab of online play's table log on the GM's map: it hangs directly below the scene tabs, in their
  * place where there are none, and stays clear of the tabs, the widgets, the dice rolls and the levels
  * switch at any width. The map UI as `UIRoot` lays it out, styled by the plugin's real stylesheets;
  * screenshots in `__screenshots__`.
@@ -88,7 +88,7 @@ const boxOf = (selector: string): DOMRect => document.querySelector(selector)!.g
 const boxesOf = (selector: string): DOMRect[] => [...document.querySelectorAll(selector)].map((element) => element.getBoundingClientRect());
 const overlaps = (a: DOMRect, b: DOMRect): boolean => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
 
-describe('the table log\'s unread tab on the GM\'s map', () => {
+describe('the table log\'s tab on the GM\'s map', () => {
   const style = document.createElement('style');
   style.textContent = DASHBOARD_THEME + css + tabsCss + switcherCss + barCss;
   // Obsidian's workspace leaf: it holds the view's fixed elements and their stacking.
@@ -108,14 +108,14 @@ describe('the table log\'s unread tab on the GM\'s map', () => {
     document.body.className = '';
   });
 
-  /** A map view `width` × `height` laid out as `layout`, with three messages unread. */
-  async function mount(width: number, height: number, layout: Layout): Promise<{ view: DOMRect; tab: DOMRect }> {
+  /** A map view `width` × `height` laid out as `layout`, with `unread` messages unread. */
+  async function mount(width: number, height: number, layout: Layout, unread = 3): Promise<{ view: DOMRect; tab: DOMRect }> {
     document.body.className = 'theme-dark';
     leaf.style.cssText = `position: relative; width: ${width}px; height: ${height}px; contain: strict`;
     leaf.innerHTML = mapUi(layout);
     document.body.append(leaf);
     root = createRoot(leaf.querySelector<HTMLElement>('.atlas-online-log-tab-host')!);
-    root.render(createElement(LogUnreadTab, { count: 3, onOpen: () => undefined }));
+    root.render(createElement(LogTab, { count: unread, onOpen: () => undefined }));
     await expect.poll(() => leaf.querySelector('.atlas-online-log-tab__button')).not.toBeNull();
     // The tab slides in; measure where it rests.
     for (const animation of document.getAnimations()) animation.finish();
@@ -172,6 +172,17 @@ describe('the table log\'s unread tab on the GM\'s map', () => {
       staysClear(tab);
     });
   }
+
+  it('stands in the same place with nothing unread, without a count', async () => {
+    const counting = (await mount(640, 600, { tabs: true, widgets: LABELS.length, levels: true })).tab;
+    expect(leaf.querySelector('.atlas-online-log-tab__count')).not.toBeNull();
+    root?.unmount();
+    const { tab } = await mount(640, 600, { tabs: true, widgets: LABELS.length, levels: true }, 0);
+    await page.screenshot({ path: '__screenshots__/atlas-online-log-tab-read-640.png', element: leaf });
+    expect(leaf.querySelector('.atlas-online-log-tab__count')).toBeNull();
+    for (const edge of ['left', 'top', 'width', 'height'] as const) expect(tab[edge], edge).toBeCloseTo(counting[edge], 1);
+    staysClear(tab);
+  });
 
   it('keeps clear of a levels switch with several floors in a short view', async () => {
     const { tab } = await mount(900, 420, { tabs: true, widgets: 0, levels: true });

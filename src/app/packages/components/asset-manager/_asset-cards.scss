@@ -1,5 +1,6 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
+@use 'variables' as *;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Asset Manager – Asset card
@@ -7,9 +8,7 @@
 // Artwork first: the image fills a square well, the name sits beneath it.
 // The card itself is borderless; hover tints it, selection rings the whole card.
 
-.atlas-asset-card-tooltip {
-  z-index: $z-tooltip;
-}
+// The card's tooltip lies in the floating layer, outside this namespace: its rules are in `_open-window.scss`.
 
 .atlas-asset-card {
   position: relative;
@@ -21,9 +20,11 @@
   cursor: pointer;
   outline: none;
   color: var(--text-normal);
-  transition: box-shadow $transition-fast $transition-ease;
+  // Hover and selection change at once: a shadow transition repaints every card that changes, for 100 ms each.
 
-  &:hover {
+  // The ⋯ button beside the card (`CardMoreButton`) lies over its art: the pointer on it is on the card.
+  &:hover,
+  &:has(+ .atlas-asset-card-actions:hover) {
     background: var(--background-modifier-hover);
 
     .atlas-asset-card-checkbox {
@@ -129,10 +130,12 @@
       background: var(--background-secondary);
     }
 
+    // A count is status, which the art's top end carries (statblock, animation, spawn count); the bottom end is
+    // the ⋯ button's.
     .atlas-encounter-preview-overflow {
       position: absolute;
+      top: $spacing-s;
       right: $spacing-s;
-      bottom: $spacing-s;
       min-width: 22px;
       height: 22px;
       padding: 0 $spacing-xs;
@@ -145,8 +148,26 @@
       align-items: center;
       justify-content: center;
       box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+
+      // The count is drawn, not written: the card's name holds no text of the hidden art well.
+      &::before {
+        content: attr(data-count);
+      }
     }
   }
+}
+
+// ── Caption ─────────────────────────────────────────────────────────────────
+// The name's line, and on a scene card the status line under it (`SceneMarkers`, `_scene-marks.scss`, decision #51):
+// the name keeps the whole first line, and every scene card has the status line, empty or not, so scene cards keep
+// one height.
+
+.atlas-asset-card-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
 }
 
 // ── Name ────────────────────────────────────────────────────────────────────
@@ -158,7 +179,7 @@
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;
   line-height: var(--line-height-tight);
-  color: var(--text-muted);
+  @include am-hint-text;
   @include atlas-truncate;
 }
 
@@ -173,13 +194,32 @@
   transition: opacity $transition-fast $transition-ease;
   pointer-events: none;
 
-  input[type='checkbox'] {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    cursor: pointer;
-    pointer-events: auto;
-    accent-color: var(--interactive-accent);
+}
+
+// Drawn like Obsidian's checkbox, but no form control: the card is the grid's one control
+// (an option holds no focusable element), so this box is for the pointer only.
+.atlas-asset-card-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: $border-width-s solid $am-checkbox-border;
+  border-radius: var(--checkbox-radius);
+  background: var(--background-primary);
+  color: var(--checkbox-marker-color);
+  cursor: pointer;
+  pointer-events: auto;
+
+  &.atlas-checked {
+    border-color: var(--checkbox-color);
+    background: var(--checkbox-color);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+    stroke-width: 3;
   }
 }
 
@@ -201,6 +241,12 @@
   &:active {
     transform: scale(0.95);
   }
+
+  // The linked note is gone: a click links another.
+  &--missing,
+  &--missing:hover {
+    color: var(--text-error);
+  }
 }
 
 // Marks a map whose video plays over its first frame; the card shows that frame.
@@ -210,6 +256,31 @@
   right: $spacing-s;
   z-index: 2;
   @include atlas-statblock-badge(22px);
+}
+
+// What a map card is, on its art's bottom-left corner (the processing pill takes the right): scenes made from a map
+// share its name and art. A pill of the badges' look, with the card's own text colour.
+.atlas-asset-kind-badge {
+  position: absolute;
+  left: $spacing-s;
+  bottom: $spacing-s;
+  z-index: 2;
+  height: 22px;
+  padding: 0 $spacing-s;
+  display: flex;
+  align-items: center;
+  border-radius: $radius-full;
+  background: var(--background-primary);
+  box-shadow: 0 0 0 $border-width-s var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  line-height: 1;
+  pointer-events: none;
+
+  &::before {
+    content: attr(data-label);
+  }
 }
 
 // A map image still being cut into tiles: a quiet pill on the artwork's bottom-right corner,
@@ -254,8 +325,14 @@
   border-radius: $radius-full;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
-  box-shadow: 0 1px 3px color-mix(in oklch, var(--mono-0) 40%, transparent);
+  box-shadow: 0 1px 3px color-mix(in oklch, #{$shadow-color} 40%, transparent);
   overflow: hidden;
+
+  // The badge's words come from `data-label` (`SpawnCountBadge`).
+  .atlas-spawn-btn::before,
+  .atlas-spawn-count::before {
+    content: attr(data-label);
+  }
 
   .atlas-spawn-btn {
     all: unset;

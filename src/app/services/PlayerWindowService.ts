@@ -342,7 +342,7 @@ export class PlayerWindowService {
 
   /**
    * Keep players on the last frame and let go of the map view that owns `store`,
-   * which is closing. Presenting another scene resumes live mirroring.
+   * which is closing. Presenting another scene, or a view loading the presented one, resumes live mirroring.
    */
   public releaseSource(store: StoreApi<ViewAtlasState>): void {
     if (!this.streamSource || this.streamSource.store !== store) return;
@@ -350,6 +350,11 @@ export class PlayerWindowService {
     this.sceneOverlays.forEach((overlay) => overlay.releaseSource?.());
     this.streamSource = CLOSED_SOURCE;
     this.followSource();
+  }
+
+  /** Whether the open window lost the map view it showed (`releaseSource`) and no view shows players a scene since. */
+  public awaitsSource(): boolean {
+    return this.isWindowOpen() && this.streamSource === CLOSED_SOURCE;
   }
 
   /**

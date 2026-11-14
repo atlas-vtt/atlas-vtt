@@ -13,7 +13,6 @@
 
 .atlas-file-tables__input {
   overflow-y: auto;
-  @include atlas-scrollbar;
 }
 
 .atlas-file-tables__choose {
@@ -90,10 +89,4 @@
 
 .atlas-file-tables__preview {
   @include atlas-flex-col($spacing-l);
-}
-
-.atlas-file-tables__header-check {
-  @include atlas-flex-row($spacing-s);
-  color: var(--text-muted);
-  font-size: $font-ui-small;
 }

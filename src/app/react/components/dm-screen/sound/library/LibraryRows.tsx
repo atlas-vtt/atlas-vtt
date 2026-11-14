@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { t } from '../../../../../i18n';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packages/components/primitives/Skeleton';
-import { useScrollbarGutter } from '../../../../../packages/components/primitives/useScrollbarGutter';
 import type { SoundKind, SoundRecord } from '../../../../../sound/soundTypes';
 import { soundsNow, type HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
@@ -15,7 +14,7 @@ import { soundRecordOf, type StoredSound } from '../../../../../soundLibrary/sou
 import { showNotice } from '../../../../../ui/notice';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { useSoundValue } from '../useSound';
-import { useSoundingKey } from './useLibrary';
+import { useShelfRevision, useSoundingKey } from './useLibrary';
 import { useSoundHold } from '../soundHold';
 import { LibraryRow, type RowHandlers } from './LibraryRow';
 import { entryOfRow, filesOfRows, selectionAfter, type LibraryRow as Row, type RootShelf } from './rowModel';
@@ -80,8 +79,6 @@ function RowsSkeleton(): React.JSX.Element {
 /** What the library lists, or a search's hits: only those in view are mounted, so thousands scroll like ten. */
 export function LibraryRows({ rows, loading, preparing, emptyText, onClearSearch, library, director, actions, soundsByPath, shelves, held, onDropFiles }: LibraryRowsProps): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null);
-  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
-  useScrollbarGutter(scrollElement);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -92,7 +89,7 @@ export function LibraryRows({ rows, loading, preparing, emptyText, onClearSearch
   const hold = useSoundHold(director);
   // Paused music is in no list the mix holds: its track keeps its mark by its id.
   const heldTrack = hold !== null && soundingKey !== null ? director.shelf.idOfKey(soundingKey) : null;
-  useSoundValue(director, (snapshot) => snapshot.shelfRevision);
+  useShelfRevision(director);
 
   const rowHeight = useRowHeight();
   const virtualizer = useVirtualizer({
@@ -210,10 +207,7 @@ export function LibraryRows({ rows, loading, preparing, emptyText, onClearSearch
 
   return (
     <div
-      ref={(element) => {
-        scroller.current = element;
-        setScrollElement(element);
-      }}
+      ref={scroller}
       className="atlas-sound-lib__rows"
       role="grid"
       aria-label={t('audio.library.rowsLabel')}

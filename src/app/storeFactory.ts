@@ -51,7 +51,10 @@ import { elsewhereThanViewedLevel, firstLevelId, placedOnViewedLevel, placedOnVi
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
+import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
+import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
+import { createTurnMovesActions, type TurnMovesSlice } from './stores/turnMovesSlice';
 import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
 import type { SceneSound } from './sound/soundTypes';
@@ -130,7 +133,7 @@ export interface ViewAtlasState extends ViewState {
 
   // Note Pin actions
   /** With `hex`, the note is linked to the hex containing (x, y) rather than pinned to the point. */
-  addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean; sceneLevel?: string }) => string;
+  addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean; sceneLevel?: string; showName?: boolean }) => string;
   /** A field given as undefined is removed. */
   updateNotePin: (id: string, updates: { [K in keyof Omit<NotePin, 'id' | 'kind'>]?: NotePin[K] | undefined }) => void;
   moveNotePin: (id: string, x: number, y: number) => void;
@@ -239,9 +242,22 @@ export interface ViewAtlasState extends ViewState {
   addMapFeatures: MapFeaturesSlice['addMapFeatures'];
   updateMapFeature: MapFeaturesSlice['updateMapFeature'];
   deleteMapFeature: MapFeaturesSlice['deleteMapFeature'];
+
+  // The rooms mode's choices (from roomsSlice.ts)
+  roomTool: RoomsSlice['roomTool'];
+  setRoomTool: RoomsSlice['setRoomTool'];
   // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
   addLiquids: LiquidsSlice['addLiquids'];
   deleteLiquid: LiquidsSlice['deleteLiquid'];
+  // Measurements that stay on the map (from measuresSlice.ts)
+  addMeasure: MeasuresSlice['addMeasure'];
+  updateMeasure: MeasuresSlice['updateMeasure'];
+  deleteMeasure: MeasuresSlice['deleteMeasure'];
+  clearMeasures: MeasuresSlice['clearMeasures'];
+  setTokenAuras: MeasuresSlice['setTokenAuras'];
+
+  // Movement counted per turn (from turnMovesSlice.ts)
+  countTurnMove: TurnMovesSlice['countTurnMove'];
   /** Links the scene to its moods; nothing to link clears the field. Written with the map, never an undo step. */
   setSceneSound: (sound: SceneSound | null) => void;
 
@@ -301,7 +317,10 @@ export interface ViewAtlasState extends ViewState {
   closeLevelLinkPopover: UISlice['closeLevelLinkPopover'];
   openLevelSurfacePopover: UISlice['openLevelSurfacePopover'];
   closeLevelSurfacePopover: UISlice['closeLevelSurfacePopover'];
-  setSceneLightingPanelOpen: UISlice['setSceneLightingPanelOpen'];
+  openMeasurePopover: UISlice['openMeasurePopover'];
+  closeMeasurePopover: UISlice['closeMeasurePopover'];
+  setMeasureTool: UISlice['setMeasureTool'];
+  setLightingTool: UISlice['setLightingTool'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
   setToolbarEditing: UISlice['setToolbarEditing'];
@@ -341,13 +360,15 @@ export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewAtlasState['tokenSettings']> =
   tokenRingSize: 1,
 };
 
-const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'playerFrames' | 'sound'> => ({
+const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'turnMoves' | 'fightsStarted' | 'playerFrames' | 'sound'> => ({
   lighting: { ...DEFAULT_SCENE_LIGHTING },
   playerFrames: [],
   sound: null,
   exploredMask: null,
   exploredEdits: 0,
   partyValues: {},
+  turnMoves: {},
+  fightsStarted: 0,
   schema: ATLAS_SCHEMA,
   version: ATLAS_VERSION,
   mapPath: null,
@@ -744,6 +765,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
 
           deleteToken: (id) => set((draft) => {
             delete draft.objects.tokens[id];
+            dropTokenAuras(draft, [id]);
           }),
 
           setTokens: (map) => set((draft) => {
@@ -903,6 +925,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             ids.forEach(id => delete draft.objects.tokens[id]);
+            dropTokenAuras(draft, ids);
             
             // Remove deleted token IDs from selection
             draft.selectedIds = draft.selectedIds.filter(selectedId => !ids.includes(selectedId));
@@ -919,6 +942,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               case 'token':
                 if (draft.objects.tokens[id]) {
                   delete draft.objects.tokens[id];
+                  dropTokenAuras(draft, [id]);
                   // Remove from selection if selected
                   draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
                 }
@@ -1004,6 +1028,9 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               }
               if (options?.sceneLevel) {
                 newPin.sceneLevel = options.sceneLevel;
+              }
+              if (options?.showName) {
+                newPin.showName = true;
               }
               if (isPinLabelKind(icon)) {
                 newPin.label = nextPinLabel(draft.objects.pins, icon);
@@ -1406,6 +1433,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.exploredMask = null;
             draft.exploredMasks = undefined;
             draft.exploredEdits = 0;
+            draft.turnMoves = {};
             draft.levels = undefined;
             draft.levelAlignments = undefined;
             draft.viewedLevel = null;
@@ -1526,7 +1554,11 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createSceneLevelsActions(set, get),
           ...createLevelSurfacesActions(set),
           ...createMapFeaturesActions(set),
+          roomTool: DEFAULT_ROOM_TOOL,
+          ...createRoomsSlice(set),
           ...createLiquidsActions(set),
+          ...createMeasuresActions(set),
+          ...createTurnMovesActions(set),
           ...createPlayerFramesActions(set),
           setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),
 
@@ -1611,6 +1643,9 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               exploredEdits: current.exploredEdits,
               // The campaign's, never the scene's.
               partyValues: current.partyValues,
+              // Counted while the scene is open: a file never brings them.
+              turnMoves: current.turnMoves,
+              fightsStarted: current.fightsStarted,
             };
           },
 

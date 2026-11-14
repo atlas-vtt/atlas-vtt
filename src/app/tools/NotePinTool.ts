@@ -7,6 +7,7 @@ import { runInBackground } from '../utils/backgroundTask';
 import { resolvePinIcon } from '../types/pinIcons';
 import { createPinIconPalette, type PinIconPalette } from './pinIconPalette';
 import { createPinNoteSearch } from './pinNoteSearch';
+import { createPinNameSwitch } from './pinNameSwitch';
 import { dungeonCreateEntry, noteCreateEntry, type PinCreateEntry } from './pinCreateEntries';
 import type { PinActionEventDetail } from '../types/atlasWindowEvents';
 import { animatePanelIn, animatePanelOutAndRemove } from '../ui/panelMotion';
@@ -25,6 +26,9 @@ import { linkedEncounterFolder } from '../encounters/encounterFolders';
 import { rollEncounterFolder } from '../encounters/encounterFolderRoll';
 import { atlasViewOfStore } from '../plugin/atlasLeaves';
 import { portalHost } from '../host/portalHost';
+import { isTextEntryTarget } from '../keyboard/textEntry';
+import { DEFAULT_MAP_HOTKEYS, formatHotkey } from '../keyboard/mapHotkeys';
+import { SettingsService } from '../services/SettingsService';
 
 interface NotePinDropdownResult {
   accepted: boolean;
@@ -32,6 +36,8 @@ interface NotePinDropdownResult {
   icon?: string;
   /** The floor a scene made for the pin opens on. */
   sceneLevel?: string;
+  /** The new pin shows its name. */
+  showName?: boolean;
 }
 
 /**
@@ -42,9 +48,13 @@ export class NotePinTool {
   private obsidianApp: App;
   private isActive = false;
   private pinDropdown: HTMLElement | null = null;
+  /** Tells whoever opened the picker how it closed. */
+  private settlePick: ((result: NotePinDropdownResult) => void) | null = null;
   private iconPalette: PinIconPalette | null = null;
   private store: StoreApi<ViewAtlasState>;
   private currentPreviewIcon: string = 'pin';
+  /** Whether new pins show their name: the last choice, so a map of place names needs it once. */
+  private nextShowName = false;
   private storeUnsubscribe: (() => void) | null = null;
   private pinActionHandler: ((e: CustomEvent<PinActionEventDetail>) => void) | null = null;
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -92,6 +102,13 @@ export class NotePinTool {
         return;
       }
 
+      // Pins are the GM's: the players' view shows none, so one placed there could not be seen
+      if (!this.store.getState().isGMView) {
+        const hotkeys = SettingsService.forApp(this.app)?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS;
+        showNotice(t('pin.needsGmView', { key: formatHotkey(hotkeys.gmView) }));
+        return;
+      }
+
       // Shift links the note to the clicked hex instead of pinning it to the point
       const hexLayout = e.shiftKey ? this.preview.hexLayout() : null;
       if (hexLayout) {
@@ -111,7 +128,7 @@ export class NotePinTool {
       if (source !== this.store) return;
 
       if (action === 'open') {
-        // Explicitly tell NotePreviewUIManager to hide any preview for this pin's notePath
+        // The note's hover preview makes way for the note itself; NotePreviewUIManager keeps a pinned one
         this.eventBus.emit('close-active-preview', pin.notePath);
         this.openLinkedNote(pin);
       } else if (action === 'edit') {
@@ -162,6 +179,7 @@ export class NotePinTool {
     return new Promise<NotePinDropdownResult>((resolve) => {
       try {
         this.closeDropdown();
+        this.settlePick = resolve;
 
       // New pins default to the last used icon so a numbered run needs no re-selection
       let selectedIcon = resolvePinIcon(editedPin?.icon || this.currentPreviewIcon);
@@ -176,14 +194,21 @@ export class NotePinTool {
         selected: selectedIcon,
         onSelect: (icon) => {
           if (editedPin) {
-            this.closeDropdown();
-            resolve({ accepted: true, notePath: editedPin.notePath, icon });
+            this.closeDropdown({ accepted: true, notePath: editedPin.notePath, icon });
             return;
           }
           selectedIcon = icon;
           this.currentPreviewIcon = icon;
           this.eventBus.emit('pin-preview-update-icon', { icon });
         },
+      });
+
+      // ── Show name: applies at once to a pin being edited, else to the pins placed next ──
+      let showName = editedPin ? editedPin.showName === true : this.nextShowName;
+      createPinNameSwitch(dropdown, () => showName, () => {
+        showName = !showName;
+        if (editedPin) this.store.getState().updateNotePin(editedPin.id, { showName: showName ? true : undefined });
+        else this.nextShowName = showName;
       });
 
       // ── Search, results and key hints ──
@@ -193,13 +218,20 @@ export class NotePinTool {
         mapPath,
         createEntries: this.createEntries(mapPath),
         onPick: (notePath, sceneLevel) => {
-          this.closeDropdown();
-          resolve({ accepted: true, notePath, icon: selectedIcon, ...(sceneLevel && { sceneLevel }) });
+          this.closeDropdown({ accepted: true, notePath, icon: selectedIcon, showName, ...(sceneLevel && { sceneLevel }) });
         },
-        onCancel: () => {
+        onCancel: () => this.closeDropdown(),
+      });
+
+      // Keys pressed on the picker's buttons are the picker's: Escape closes it, and a name typed there is meant for the search
+      dropdown.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
           this.closeDropdown();
-          resolve({ accepted: false });
-        },
+          return;
+        }
+        const typesCharacter = e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey;
+        if (typesCharacter && !isTextEntryTarget(e.target)) noteSearch.focus();
       });
 
       // ── Position & mount ──
@@ -248,10 +280,7 @@ export class NotePinTool {
 
       // Outside click handler
       const handleOutsideClick = (e: MouseEvent): void => {
-        if (dropdown && !dropdown.contains(e.target as Node) && !noteSearch.isCreating()) {
-          this.closeDropdown();
-          resolve({ accepted: false });
-        }
+        if (dropdown && !dropdown.contains(e.target as Node) && !noteSearch.isCreating()) this.closeDropdown();
       };
       this.outsideClickHandler = handleOutsideClick;
       // The click that opened the dropdown must not close it. Closing cancels the wait, or the
@@ -276,9 +305,13 @@ export class NotePinTool {
   }
 
   /**
-   * Closes the note pin dropdown if it's open
+   * Closes the note pin dropdown if it's open, and tells whoever opened it how it closed: with
+   * `result`, or as not accepted when a tool change, another picker or the view's end closed it.
    */
-  private closeDropdown(): void {
+  private closeDropdown(result: NotePinDropdownResult = { accepted: false }): void {
+    const settle = this.settlePick;
+    this.settlePick = null;
+    settle?.(result);
     if (this.pinDropdown) {
       if (this.outsideClickTimer !== null) {
         window.clearTimeout(this.outsideClickTimer);
@@ -347,7 +380,7 @@ export class NotePinTool {
     const result = await this.showNotePinDropdown(worldX, worldY);
 
     if (result.accepted && result.notePath) {
-      this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
+      this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
     }
     this.releasePreviewAfterDropdown();
   }
@@ -367,7 +400,7 @@ export class NotePinTool {
     } else {
       const result = await this.showNotePinDropdown(center.x, center.y);
       if (result.accepted && result.notePath) {
-        this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
+        this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
       }
     }
     this.releasePreviewAfterDropdown();

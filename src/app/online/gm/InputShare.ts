@@ -177,7 +177,7 @@ export class InputShare {
       this.publish({ t: 'lighting', scene: scene.id, ...lighting });
       if (this.lighting !== null) this.lighting.sent = lighting;
     }
-    this.sight.publish(scene.id, sharedSight({ state, rules, shown, tokenAlias: (id) => this.ports.tokenAlias(id), lightAlias: (id) => this.lightAlias(id) }));
+    this.sight.publish(scene.id, sharedSight({ state, rules, shown, tokenAlias: (id) => this.ports.tokenAlias(id), lightAlias: (id) => this.lightAlias(id), measurement: source.measurement() }));
   }
 
   /** The walls, zones and senses, worked out again only when what they are made of changed. */

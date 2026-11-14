@@ -1,5 +1,6 @@
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
+@use '../../../../../../styles/sidebar-dialog' as *;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Token Creator – Window shell, header, footer, preview grid, drop overlay
@@ -7,14 +8,19 @@
 
 .atlas-token-creator {
   @include atlas-modal-overlay($z-atlas-modal);
+  // The window asks the room the overlay gives it (one column below `$creator-stack-below`).
+  container: atlas-creator / inline-size;
 }
 
+// Narrower than this the rail and the previews no longer fit side by side (300 px of rail and room for one card).
+$creator-stack-below: 600px;
+
+// A dialog with a sidebar (`_sidebar-dialog.scss`): the rail runs its full height, the title row, the previews and
+// the actions stand beside it.
 .atlas-token-creator__window {
   @include atlas-modal-window;
+  @include atlas-sidebar-dialog($side-track: 300px);
   position: relative;
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  grid-template-rows: auto 1fr auto;
   width: 100%;
   height: 100%;
   max-width: 1280px;
@@ -29,15 +35,60 @@
   }
 }
 
+// ── One column (WCAG 1.4.10 Reflow: 320 CSS px, 400 % zoom) ─────────────────
+// Header, rail, previews, footer stacked, and the window scrolls as a whole: the title and × stay at its top, Create
+// at its foot, each sticky on the surface's own background. The previews keep a scroller of their own, of a fixed
+// height, since their list is virtual and reads where its own box is scrolled.
+@container atlas-creator (max-width: #{$creator-stack-below}) {
+  // Under the window's own class: the parts' base rules (here and in `_rail.scss`) come later in the stylesheet.
+  .atlas-token-creator__window {
+    grid-template-columns: minmax(0, 1fr);
+    // Each part as tall as its content: `auto` rows would shrink to the window's height and lay them over each other.
+    grid-template-rows: repeat(4, max-content);
+    grid-template-areas: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    > .atlas-token-creator__header,
+    > .atlas-token-creator__footer {
+      position: sticky;
+      z-index: 3;
+      grid-column: 1;
+      background: var(--background-primary);
+    }
+
+    > .atlas-token-creator__header {
+      top: 0;
+      grid-row: 1;
+    }
+
+    > .atlas-token-creator__rail {
+      grid-column: 1;
+      grid-row: 2;
+      overflow: visible;
+    }
+
+    > .atlas-token-creator__previews {
+      grid-column: 1;
+      grid-row: 3;
+      height: 420px;
+    }
+
+    > .atlas-token-creator__footer {
+      bottom: 0;
+      grid-row: 4;
+    }
+  }
+}
+
 // ── Header ──────────────────────────────────────────────────────────────────
 
 .atlas-token-creator__header {
-  grid-column: 2;
-  grid-row: 1;
-  @include atlas-modal-header;
+  @include atlas-sidebar-dialog-header;
 
   .atlas-token-creator__subtitle {
-    padding: 2px $spacing-s;
+    padding: 0 $spacing-s;
+    line-height: $count-pill-height;
     border-radius: $radius-full;
     background: var(--background-secondary);
     font-size: $font-ui-smaller;
@@ -50,20 +101,25 @@
 // ── Footer ──────────────────────────────────────────────────────────────────
 
 .atlas-token-creator__footer {
-  grid-column: 2;
-  grid-row: 3;
-  @include atlas-modal-footer;
+  @include atlas-sidebar-dialog-footer;
   justify-content: space-between;
+  // A narrow window puts the buttons on a line of their own before the status would break into words.
+  flex-wrap: wrap;
 
   .atlas-token-creator__status {
     @include atlas-flex-row($gap: $spacing-xs);
+    min-width: 0;
     font-size: $font-ui-small;
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .atlas-token-creator__actions {
     @include atlas-flex-row($gap: $spacing-s);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
 
     > .btn:last-child {
       @include atlas-modal-corner-control(bottom-right);
@@ -72,28 +128,27 @@
 
   .atlas-token-creator__kbd {
     margin-left: $spacing-xs;
-    padding: 1px $spacing-xs;
+    padding: 0 $spacing-xs;
     border-radius: $radius-s;
-    background: color-mix(in oklch, var(--mono-0) 18%, transparent);
+    // A key cap drawn by its outline: a fill lightened the light accent under it to 3:1, the key in full text-on-accent
+    // keeps the button's own contrast (5.5:1 light, 6.6:1 dark).
+    background: transparent;
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--text-on-accent) 50%, transparent);
     font-family: var(--font-interface);
     font-size: $font-ui-smaller;
     font-weight: $font-weight-normal;
     line-height: 1.4;
-    color: color-mix(in oklch, var(--text-on-accent) 80%, transparent);
+    color: var(--text-on-accent);
   }
 }
 
 // ── Preview grid ────────────────────────────────────────────────────────────
 
 .atlas-token-creator__previews {
+  @include atlas-sidebar-dialog-body($layer: fixed);
   // The origin of the virtual lists' offsets inside it
   position: relative;
-  grid-column: 2;
-  grid-row: 2;
-  min-height: 0;
-  overflow-y: auto;
   padding: $spacing-l;
-  @include atlas-scrollbar;
 
   &.atlas-empty {
     display: flex;
@@ -229,4 +284,9 @@
   box-shadow: none;
   padding: 0;
   .modal-close-button { display: none; }
+}
+
+// Obsidian ends a menu button's label with 2 px (off the 4 px scale); the button's gap stands between label and chevron.
+.atlas-token-creator .atlas-obsidian-menu-dropdown .text-button-label {
+  padding-inline-end: 0;
 }

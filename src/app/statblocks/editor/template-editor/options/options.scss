@@ -29,7 +29,6 @@ $options-width: 320px;
   .atlas-te-options__panel {
     @include atlas-elevated-surface;
     @include atlas-panel-radius($radius-2xl);
-    @include atlas-scrollbar;
     box-sizing: border-box;
     width: $options-width;
     max-width: calc(100vw - #{2 * $spacing-l});

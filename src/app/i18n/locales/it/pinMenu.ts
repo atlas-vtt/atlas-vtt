@@ -3,5 +3,5 @@ import type { Translation } from '../../types';
 export const pinMenu = {
   "pinMenu.open": "Apri nota",
   "pinMenu.edit": "Modifica segnaposto",
-  "pinMenu.readable": "Leggibile dai giocatori"
+  "pinMenu.readable": "Mostra ai giocatori"
 } satisfies Translation;

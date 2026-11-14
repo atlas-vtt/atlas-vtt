@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const filters: Translation = {
   'filters.removeChip': '移除 {category}：{label}',
-  'filters.removeAll': '全部移除',
+  'filters.removeAll': '清除',
   'filters.active': '当前筛选',
   'filters.all': '全部',
   'filters.withStatblock': '有属性块',
@@ -29,4 +29,5 @@ export const filters: Translation = {
   'filters.filterBy': '筛选',
   'filters.excludeField': '排除{field}',
   'filters.keyword.range': '{label}：一个值或范围，例如 {example1} 或 {example2}',
+  'filters.noValueMatch': '没有与「{value}」匹配的结果',
 };

@@ -76,7 +76,7 @@ it.each(['token', 'map'] as const)('persists selected and newly created tags whe
 it('persists selected and newly created tags when creating a scene', async () => {
   mount(<CreateSceneModal isOpen onClose={() => {}} onSceneCreated={() => {}}
     selectedCollection="default" assetService={service as unknown as AssetService} />);
-  fireEvent.change(screen.getByPlaceholderText('Enter scene name'), { target: { value: 'Forest scene' } });
+  fireEvent.change(screen.getByLabelText('Scene name'), { target: { value: 'Forest scene' } });
   await selectAndCreateTags('maps');
   expect(service.addAsset).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Create scene' }));

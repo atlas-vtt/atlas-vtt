@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const filters = {
   "filters.removeChip": "Rimuovi {category}: {label}",
-  "filters.removeAll": "Rimuovi tutti",
+  "filters.removeAll": "Rimuovi",
   "filters.active": "Filtri attivi",
   "filters.all": "Tutti",
   "filters.withStatblock": "Con blocco statistiche",

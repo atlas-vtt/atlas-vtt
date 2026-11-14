@@ -7,6 +7,9 @@ import type { FieldSuggestion } from '../../../resources/resourceFieldSuggestion
 import type { NamedModifierStatblock } from '../../../initiative/modifierPreview';
 import type { InitiativeRules } from '../../../types/initiativeRulesTypes';
 import { InitiativeFields } from './InitiativeFields';
+import { InfoMark } from './InfoMark';
+import { SettingRow } from './SettingRow';
+import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { t } from '../../../i18n';
 
 interface DefaultWidgetsTabProps {
@@ -51,25 +54,20 @@ export function DefaultWidgetsTab({
 
   return (
     <>
-      <p className="atlas-csm-hint">
-        These defaults apply to new maps of the collection.
-      </p>
-      {WIDGET_OPTIONS.map((w) => (
-        <div key={w.key} className="atlas-csm-toggle-row">
-          <div>
-            <div className="atlas-csm-toggle-label">{w.label}</div>
-            <div className="atlas-csm-hint">{w.description}</div>
-          </div>
-          <label className="atlas-csm-switch">
-            <input
-              type="checkbox"
-              checked={!!defaultWidgets[w.key]}
-              onChange={() => toggle(w.key)}
-            />
-            <span className="atlas-csm-switch-track" />
-          </label>
-        </div>
-      ))}
+      <section className="atlas-csm-section" aria-labelledby="atlas-csm-widgets-title">
+        <span className="atlas-csm-label-row">
+          <h4 id="atlas-csm-widgets-title" className="atlas-csm-section-title">{t('csm.widgets.title')}</h4>
+          <InfoMark label={t('csm.widgets.newMapsInfo')} />
+        </span>
+        {WIDGET_OPTIONS.map((w) => (
+          <SettingRow
+            key={w.key}
+            label={w.label}
+            info={w.description}
+            control={(labelId) => <ToggleSwitch labelledBy={labelId} value={!!defaultWidgets[w.key]} onChange={() => toggle(w.key)} />}
+          />
+        ))}
+      </section>
       {initiativeNotice}
       <InitiativeFields initiative={initiative} onChange={onInitiativeChange} fieldSuggestions={initiativeFieldSuggestions} modifierStatblocks={modifierStatblocks} />
     </>

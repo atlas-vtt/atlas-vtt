@@ -19,8 +19,8 @@
   // Above the body (z-index 1), so the menus and search popovers that drop
   // below the header take clicks.
   z-index: 2;
+  // No divider line under it: the header's spacing sets it apart from the grid.
   padding: $spacing-m;
-  border-bottom: $border-width-s solid var(--divider-color);
   min-height: 0;
 }
 

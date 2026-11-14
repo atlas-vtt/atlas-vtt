@@ -3,9 +3,11 @@ import type { App } from 'obsidian';
 import { StatblockFeeds } from '../../../../react/components/dm-screen/StatblockFeeds';
 import { observeResize } from '../../../../utils/observeResize';
 import type { Quantity } from '../../../../encounters/encounterQuantity';
+import { t } from '../../../../i18n';
 import type { TokenAsset } from '../types';
 import { CreatureCard } from './CreatureCard';
 import { flashCard } from './flashCard';
+import { useFeedKeys } from './useFeedKeys';
 
 interface RosterFeedProps {
   app: App;
@@ -32,6 +34,7 @@ export function RosterFeed({ app, creatures, refinement, countOf, onCountChange,
   const [limit, setLimit] = useState(PAGE);
   const shown = creatures.slice(0, limit);
   const more = creatures.length > limit;
+  const keys = useFeedKeys(shown, scrollerRef);
 
   // Another search starts at the top again with the first page.
   useLayoutEffect(() => {
@@ -82,10 +85,27 @@ export function RosterFeed({ app, creatures, refinement, countOf, onCountChange,
   }, [reveal, creatures, limit]);
 
   return (
-    <div ref={scrollerRef} className="atlas-encounter-builder__feed">
+    <div
+      ref={scrollerRef}
+      className="atlas-encounter-builder__feed"
+      role="feed"
+      aria-label={t('encounter.builder.creatures')}
+      aria-busy={more}
+      onKeyDown={keys.onKeyDown}
+      onFocus={keys.onFocus}
+    >
       <StatblockFeeds>
-        {shown.map((token) => (
-          <CreatureCard key={token.id} app={app} token={token} count={countOf(token.id)} onCountChange={onCountChange} />
+        {shown.map((token, index) => (
+          <CreatureCard
+            key={token.id}
+            app={app}
+            token={token}
+            count={countOf(token.id)}
+            onCountChange={onCountChange}
+            tabbable={token.id === keys.tabbableId}
+            position={index + 1}
+            setSize={creatures.length}
+          />
         ))}
       </StatblockFeeds>
     </div>

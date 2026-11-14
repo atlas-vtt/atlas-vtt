@@ -21,6 +21,8 @@ export { imageMimeType, isLit, LIGHTING_REFUSAL };
 export type { SceneSharePorts };
 
 const DEFAULT_CELL = 70;
+/** The shortest time between two scenes sent again to one player who acts in a scene no longer shared. */
+const CATCH_UP_MS = 1000;
 
 /**
  * The shared scene of one Atlas tab: what each player sees of it. A scene with several levels is
@@ -38,6 +40,8 @@ export class SceneShare {
   private readonly audience = new FloorAudience();
   /** The token each player last moved or acted with, by GM id. */
   private readonly acting = new Map<string, string>();
+  /** When each player was last sent the scene again for acting in one no longer shared (`catchUp`). */
+  private readonly caughtUp = new Map<string, number>();
   /** The ids players know tokens by, the same on every floor, and what rolls and books read of the floors' lists. */
   private readonly tokens: FloorTokens;
   /** The random id the floors of the scene's map share, by map path. */
@@ -116,6 +120,7 @@ export class SceneShare {
     this.shareOf(player)?.playerLeft(player);
     this.audience.delete(player);
     this.acting.delete(player);
+    this.caughtUp.delete(player);
   }
 
   /** Assets players were handed may no longer be stored: every floor reads its map and art again. */
@@ -140,9 +145,24 @@ export class SceneShare {
   receive(from: string, body: unknown): void {
     const message = parsePlayerMessage(body);
     if (message === null) return;
+    if (message.t === 'roll' || message.t === 'move' || message.t === 'drag') this.catchUp(from, message.scene);
     if (message.t === 'roll') return this.dice.receive(from, message);
     this.shareOf(from)?.receive(from, message);
     if (message.t === 'move' || message.t === 'drag') this.noteActing(from, message.scene, message.id);
+  }
+
+  /**
+   * A player acted (a roll, a move) in a scene their floor no longer shares: their page is out of
+   * step with the table, whatever made it so, and every act of theirs would be refused. They are sent
+   * their floor's scene and lists whole, as a joiner is, at most every `CATCH_UP_MS`.
+   */
+  private catchUp(from: string, named: string): void {
+    const shared = this.shareOf(from)?.sceneId ?? null;
+    if (shared === null || named === shared) return;
+    const now = this.ports.now();
+    if (now - (this.caughtUp.get(from) ?? Number.NEGATIVE_INFINITY) < CATCH_UP_MS) return;
+    this.caughtUp.set(from, now);
+    this.resend(from);
   }
 
   /** The GM id of a token by the id players know it by in the list of `scene`, while that is a floor's last list. */

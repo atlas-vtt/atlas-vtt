@@ -17,6 +17,7 @@ export const hotkey = {
   'hotkey.erase': 'Eraser',
   'hotkey.text': 'Text tool',
   'hotkey.measure': 'Measure tools',
+  'hotkey.measureKeep': 'Keep measurements',
   'hotkey.pin': 'Note pin',
   'hotkey.wall': 'Lighting (walls and lights)',
   'hotkey.audio': 'Ambient audio',

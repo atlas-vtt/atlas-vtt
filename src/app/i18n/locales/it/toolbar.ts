@@ -5,7 +5,7 @@ export const toolbar = {
   "toolbar.assetManager": "Gestione risorse",
   "toolbar.bold": "Grassetto",
   "toolbar.brushSize": "Dimensione del pennello",
-  "toolbar.circle": "Cerchio/sfera",
+  "toolbar.circle": "Cerchio",
   "toolbar.colour": "Colore",
   "toolbar.commandPalette": "Riquadro comandi",
   "toolbar.cone": "Cono",
@@ -21,7 +21,7 @@ export const toolbar = {
   "toolbar.ink": "Inchiostro",
   "toolbar.laser": "Puntatore laser",
   "toolbar.lassoSelection": "Selezione a lazo",
-  "toolbar.line": "Linea",
+
   "toolbar.lootRoller": "Tabelle casuali",
   "toolbar.measureOptions": "Opzioni di misurazione",
   "toolbar.moveOptions": "Opzioni di spostamento",
@@ -29,16 +29,16 @@ export const toolbar = {
   "toolbar.stairs": "Scale",
   "toolbar.penSize": "Dimensione della penna",
   "toolbar.pen": "Penna",
-  "toolbar.persist": "Mantieni misurazioni",
+
   "toolbar.rollDice": "Tira dadi",
   "toolbar.size": "Dimensioni",
   "toolbar.textOptions": "Opzioni del testo",
   "toolbar.textTool": "Strumento testo",
   "toolbar.moveSelect": "Sposta/seleziona",
   "toolbar.drawTool": "Strumento disegno",
-  "toolbar.measureCircle": "Misura cerchio",
-  "toolbar.measureCone": "Misura cono",
-  "toolbar.measureLine": "Misura linea",
+
+
+
   "toolbar.brush": "Pennello",
   "toolbar.lasso": "Lazo",
   "toolbar.rectangle": "Rettangolo",

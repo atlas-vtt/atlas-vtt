@@ -48,7 +48,6 @@
   min-height: 0;
   overflow-y: auto;
   padding: $spacing-s;
-  @include atlas-scrollbar;
 }
 
 // ── Tag item ────────────────────────────────────────────────────────────────
@@ -76,13 +75,14 @@
       color: var(--interactive-accent);
     }
 
+    // The check and the tint mark the row; its words stay in text colours, which read on the tint in both themes.
     .atlas-tag-search__item-name {
-      color: var(--interactive-accent);
+      color: var(--text-normal);
       font-weight: $font-weight-medium;
     }
 
     .atlas-tag-search__item-count {
-      color: var(--text-accent);
+      @include atlas-accent-text;
     }
 
     &:hover {
@@ -131,7 +131,7 @@
   align-items: center;
   justify-content: center;
   font-size: $font-ui-smaller;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
@@ -144,7 +144,7 @@
   gap: $spacing-s;
   padding: $spacing-s $spacing-m;
   border-radius: $radius-l;
-  color: var(--interactive-accent);
+  @include atlas-accent-text;
   cursor: pointer;
 
   &:hover {
@@ -160,7 +160,7 @@
 
 .atlas-tag-search__empty {
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-muted);
   padding: $spacing-2xl $spacing-l;
   font-size: var(--font-ui-small);
 }

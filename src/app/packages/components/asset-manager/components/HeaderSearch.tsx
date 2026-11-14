@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import React, { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import type { App } from 'obsidian';
@@ -10,6 +10,13 @@ import { useSearchShortcut } from '../hooks/useSearchShortcut';
 import { AdvancedFilterPanel } from './search/AdvancedFilterPanel';
 import { SearchSuggestions } from './search/SearchSuggestions';
 import { t } from '../../../../i18n';
+import { modShortcut } from '../utils/modShortcut';
+import { isSearchUntouched, touchSearch } from './search/searchFocus';
+
+/** Keys an untouched, empty search leaves to the window: Escape closes it, the arrows enter the grid. */
+const WINDOW_KEYS_WHILE_UNTOUCHED = new Set(['Escape', 'ArrowDown', 'ArrowUp']);
+/** Keys pressed on their own for a shortcut (Cmd+2): they use nothing of the field. */
+const MODIFIER_KEYS = new Set(['Meta', 'Control', 'Alt', 'Shift']);
 
 export interface HeaderSearchProps {
   app: App;
@@ -24,6 +31,8 @@ export interface HeaderSearchProps {
   label?: string;
   /** Whether Cmd/Ctrl+F focuses the field while it is mounted; leave it off where the field stays mounted out of sight. */
   shortcut?: boolean;
+  /** Whether the tooltips name Cmd/Ctrl+F; by default where the field registers it, also where its window does. */
+  shortcutShown?: boolean;
   /** Offers the filter panel at the field's end; off where the filters are shown beside the field anyway. */
   filterButton?: boolean;
 }
@@ -35,8 +44,9 @@ export interface HeaderSearchProps {
  * field then opens over the toolbar row while it has focus (see `_header.scss`),
  * so Cmd/Ctrl+F opens it as well.
  */
-export function HeaderSearch({ app, search, onSearch, query, label, shortcut = true, filterButton = true }: HeaderSearchProps): React.JSX.Element {
-  const labelId = useId();
+export function HeaderSearch({
+  app, search, onSearch, query, label, shortcut = true, shortcutShown = shortcut, filterButton = true,
+}: HeaderSearchProps): React.JSX.Element {
   const toggleRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const filtersButtonRef = useRef<HTMLButtonElement>(null);
@@ -46,6 +56,8 @@ export function HeaderSearch({ app, search, onSearch, query, label, shortcut = t
   useSearchShortcut(app, inputRef, shortcut);
   const closeFilters = useCallback(() => setFiltersOpen(false), []);
   const hasFilters = filterButton && filters.panel !== null;
+  const focusKey = shortcutShown ? modShortcut('f') : null;
+  const focusKeycap = focusKey ? { shortcut: focusKey.label } : {};
 
   // A tab without filters closes the panel, so it does not open again on the way back.
   useEffect(() => {
@@ -53,18 +65,31 @@ export function HeaderSearch({ app, search, onSearch, query, label, shortcut = t
   }, [hasFilters]);
   const isActive = search !== '' || filters.activeCount > 0;
 
+  /**
+   * Escape takes one layer per press, as Spotlight and VS Code do: the suggestions close (the
+   * autocomplete), then the query clears, then focus leaves the field for the window it lies
+   * in, whose next Escape is its own (closing the asset manager).
+   */
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (autocomplete.onKeyDown(event)) return;
-    // Collapsed, Escape closes the field first instead of the whole asset manager.
-    if (event.key !== 'Escape' || toggleRef.current?.offsetParent == null) return;
+    // Focused as the window opened and empty: Escape closes the window and the arrows reach the grid (decision #38).
+    if (isSearchUntouched(event.currentTarget) && search === '' && WINDOW_KEYS_WHILE_UNTOUCHED.has(event.key)) return;
+    if (!MODIFIER_KEYS.has(event.key) && event.key !== 'Escape') touchSearch(event.currentTarget);
+    if (autocomplete.onKeyDown(event) || event.key !== 'Escape') return;
     event.preventDefault();
     event.stopPropagation();
-    inputRef.current?.blur();
+    if (search !== '') {
+      onSearch('');
+      return;
+    }
+    const input = inputRef.current;
+    input?.blur();
+    // Focus stays in the window, whose keys stay live: a collapsed field closes with it.
+    input?.parentElement?.closest<HTMLElement>('[tabindex="-1"]')?.focus({ preventScroll: true });
   };
 
   return (
     <div className="atlas-am-search">
-      <LabelTooltip label={search ? t('search.current', { query: search }) : t('search.label')}>
+      <LabelTooltip label={search ? t('search.current', { query: search }) : t('search.label')} {...focusKeycap}>
         <Button
           ref={toggleRef}
           variant="ghost"
@@ -72,6 +97,7 @@ export function HeaderSearch({ app, search, onSearch, query, label, shortcut = t
           className={`atlas-am-icon-btn atlas-am-search-toggle ${isActive ? 'atlas-active' : ''}`}
           onClick={() => inputRef.current?.focus()}
           aria-label={t('search.label')}
+          aria-keyshortcuts={focusKey?.aria}
         >
           <Search />
         </Button>
@@ -79,17 +105,26 @@ export function HeaderSearch({ app, search, onSearch, query, label, shortcut = t
 
       <div className="atlas-asset-manager-search">
         <Search />
-        <span id={labelId} hidden>{label ?? t('search.assets')}</span>
-        <input
-          ref={inputRef}
-          type="text"
-          value={search}
-          placeholder={filters.panel ? t('search.placeholderFilters') : t('search.placeholder')}
-          spellCheck={false}
-          onKeyDown={handleKeyDown}
-          aria-labelledby={labelId}
-          {...autocomplete.inputProps}
-        />
+        {/* Names the key on hover; never while the field has focus, where the suggestions hang (and it opens focused). */}
+        <LabelTooltip
+          label={t('search.label')}
+          {...focusKeycap}
+          describe
+          suppressed={!focusKey}
+          opensWhen={() => inputRef.current !== inputRef.current?.ownerDocument.activeElement}
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={search}
+            placeholder={filters.panel ? t('search.placeholderFilters') : t('search.placeholder')}
+            spellCheck={false}
+            onKeyDown={handleKeyDown}
+            aria-label={label ?? t('search.assets')}
+            aria-keyshortcuts={focusKey?.aria}
+            {...autocomplete.inputProps}
+          />
+        </LabelTooltip>
         {search && (
           <LabelTooltip label={t('common.clearSearch')}>
             <Button
@@ -108,7 +143,8 @@ export function HeaderSearch({ app, search, onSearch, query, label, shortcut = t
         {query && filterButton && (
           <>
             <span className="atlas-am-search-divider" aria-hidden="true" />
-            <LabelTooltip label={t('filters.title')}>
+            {/* The name holds the badge's count, which it shows (axe label-content-name-mismatch). */}
+            <LabelTooltip label={filters.activeCount > 0 ? t('assetGrid.filtersActive', { count: filters.activeCount }) : t('filters.title')}>
               <Button
                 ref={filtersButtonRef}
                 variant="ghost"
@@ -117,10 +153,13 @@ export function HeaderSearch({ app, search, onSearch, query, label, shortcut = t
                 disabled={!hasFilters}
                 aria-expanded={filtersOpen}
                 aria-haspopup="dialog"
-                onClick={() => setFiltersOpen(!filtersOpen)}
+                // A transition: React renders the panel (about 200 elements, four histograms with sliders) in slices
+                // between frames instead of in the click's task, which dropped the frame the panel entered on (F4).
+                onClick={() => startTransition(() => setFiltersOpen(!filtersOpen))}
               >
                 <SlidersHorizontal />
-                {filters.activeCount > 0 && <span className="atlas-am-filters-badge">{filters.activeCount}</span>}
+                {/* The active filters are listed as chips; the digit is for the eye, so the name stays "Filters". */}
+                {filters.activeCount > 0 && <span className="atlas-am-filters-badge" aria-hidden="true">{filters.activeCount}</span>}
               </Button>
             </LabelTooltip>
           </>

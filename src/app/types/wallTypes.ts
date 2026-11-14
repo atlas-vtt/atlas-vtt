@@ -31,6 +31,12 @@ export interface WallSegment extends OnLevels {
    */
   limited?: boolean | undefined;
   chainId?: string;               // Groups segments from same draw action
+  /**
+   * On a wall the rooms mode made: the side, looking from `p1` to `p2`, a room's floor lies on; rock
+   * lies on the other. It tells a room from rock that rooms close in between them (`wallSpaces`).
+   * Unset on walls drawn by hand, which say nothing of either side.
+   */
+  floor?: 'left' | 'right' | undefined;
 }
 
 /** Input for creating a wall (without auto-generated id/kind) */

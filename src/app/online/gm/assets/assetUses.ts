@@ -11,15 +11,18 @@ export const ASSET_RANKS = { map: 0, art: 1, sound: 1.5, floorMap: 2, mapLevels:
 
 /**
  * Who looks at a map: players on the presented floor, players standing on another floor, nobody (a
- * floor of the shared scene no player stands on), or nobody yet (a scene open beside the shared one).
+ * floor of the shared scene no player stands on), players in their book (the world map and the maps
+ * it leads into), or nobody yet (a scene open beside the shared one).
  */
-export type MapStanding = 'presented' | 'watched' | 'rest' | 'staged';
+export type MapStanding = 'presented' | 'watched' | 'rest' | 'book' | 'staged';
 
 /** Each standing's rank before and after its pyramid's overview level went. */
 const STANDING_RANKS: Record<MapStanding, readonly [number, number]> = {
   presented: [ASSET_RANKS.map, ASSET_RANKS.mapLevels],
   watched: [ASSET_RANKS.floorMap, ASSET_RANKS.floorLevels],
   rest: [ASSET_RANKS.restMap, ASSET_RANKS.restLevels],
+  // As the world map went when it went as one image: after the table's maps, art, sounds and video.
+  book: [ASSET_RANKS.extra, ASSET_RANKS.extra],
   staged: [ASSET_RANKS.staged, ASSET_RANKS.staged],
 };
 
@@ -78,10 +81,12 @@ export interface AssetStoring {
   /** The reference of a vault file without keeping its bytes (an animated map's video); null where it cannot be read. */
   fileRef(path: string, mime: string, use: AssetUse): Promise<AssetRef | null>;
   /**
-   * The reference of a scene's map image at `path` (these `bytes`): its tile pyramid (`tiles: true`)
-   * where this device can build one pages can draw, else the image, as `refOf` hands it.
+   * The reference of a map image at `path` (these `bytes`): its tile pyramid (`tiles: true`) where this
+   * device can build one pages can draw, else the image, as `refOf` hands it. `standing`: who looks at
+   * it where it is no floor of the shared scene, the presented scene's map unless it is a map of the
+   * book (`book`), which then goes as an image of the book where it goes as one.
    */
-  mapRef(bytes: Uint8Array<ArrayBuffer>, mime: string, path: string): Promise<AssetRef | null>;
+  mapRef(bytes: Uint8Array<ArrayBuffer>, mime: string, path: string, standing?: MapStanding): Promise<AssetRef | null>;
   /** Players hold a reference no more (one a newer one replaced): it need not go up, and its share is named no more. */
   release(ref: AssetRef): void;
   /**

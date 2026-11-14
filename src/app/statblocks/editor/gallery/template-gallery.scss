@@ -5,6 +5,7 @@
 @use 'sass:math';
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
+@use '../../../../../styles/sidebar-dialog' as *;
 @use 'attribution-popover';
 
 // A card is a real 320 px render shown in a 200 px frame.
@@ -17,8 +18,10 @@ $frame-height: 250px;
 }
 
 .atlas-vtt-plugin {
+  // A dialog with a sidebar (`_sidebar-dialog.scss`): the sources run its full height.
   .atlas-te-gallery {
     @include atlas-modal-window;
+    @include atlas-sidebar-dialog($side-track: 200px);
     width: 880px;
     height: 600px;
 
@@ -28,24 +31,21 @@ $frame-height: 250px;
   }
 
   .atlas-te-gallery__header {
-    @include atlas-modal-header;
+    @include atlas-sidebar-dialog-header;
   }
 
+  // Lends the sources and the cards to the window's grid.
   .atlas-te-gallery__body {
-    display: grid;
-    grid-template-columns: 200px minmax(0, 1fr);
-    flex: 1;
-    min-height: 0;
+    display: contents;
   }
 
   // ── Sources: the collection settings' vertical tabs ─────────────────────
   .atlas-te-gallery__sources {
+    @include atlas-sidebar-dialog-side;
     @include atlas-flex-col($spacing-s);
     align-items: stretch;
     padding: $spacing-s;
     overflow-y: auto;
-    background: var(--background-secondary);
-    border-inline-end: $border-width-s solid var(--divider-color);
   }
 
   .atlas-te-gallery__source {
@@ -68,14 +68,16 @@ $frame-height: 250px;
       color: var(--text-normal);
       box-shadow: $shadow-sm;
     }
+
+    // In the window's top-left corner, concentric with it.
+    &:first-child {
+      @include atlas-panel-inset-radius($spacing-s, top-left);
+    }
   }
 
   .atlas-te-gallery__content {
-    min-width: 0;
-    min-height: 0;
+    @include atlas-sidebar-dialog-body;
     padding: $spacing-l;
-    overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   // ── Cards ───────────────────────────────────────────────────────────────
@@ -225,7 +227,9 @@ $frame-height: 250px;
 
   // ── Footer ──────────────────────────────────────────────────────────────
   .atlas-te-gallery__footer {
-    @include atlas-modal-footer;
+    @include atlas-sidebar-dialog-footer;
+    // In a narrow window the role's field takes a line of its own over the buttons.
+    flex-wrap: wrap;
   }
 
   .atlas-te-gallery__use-for {
@@ -238,6 +242,7 @@ $frame-height: 250px;
   }
 
   .atlas-te-gallery__use-for-label {
+    white-space: nowrap;
     color: var(--text-muted);
     font-size: $font-ui-small;
   }

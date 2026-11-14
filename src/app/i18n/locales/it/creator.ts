@@ -15,8 +15,8 @@ export const creator = {
   "creator.emptyHint": "Trascina le immagini in qualsiasi punto di questa finestra. Puoi ritagliarle, regolare lo zoom e assegnare un nome a ciascuna prima di crearle.",
   "creator.firstTag": "Scrivi un nome per creare la tua prima etichetta.",
   "creator.imageSource": "Origine dell’immagine",
-  "creator.importPreviews": "Anteprime di importazione",
-  "creator.statblockNotes": "Note con blocchi statistiche",
+
+  "creator.statblockNotes": "Scegli note con blocchi statistiche…",
   "creator.map.browse": "oppure fai clic per cercare immagini di mappe",
   "creator.map.count": {
     "one": "{count} mappa",
@@ -35,7 +35,7 @@ export const creator = {
   },
   "creator.noCollections": "Nessuna collezione trovata",
   "creator.none": "Nessuno",
-  "creator.reduction": "Riduzione delle dimensioni grazie all’ottimizzazione",
+  "creator.reduction": "Il file salvato occupa il {percent}% in meno rispetto a quello caricato",
   "creator.removeSelected": "Rimuovi selezionati",
   "creator.replaceImage": "Sostituisci immagine",
   "creator.resetCrop": "Reimposta ritaglio",
@@ -53,9 +53,9 @@ export const creator = {
   "creator.size": "Dimensioni",
   "creator.statblocksHint": "Aggiungi le creature del vault alle stesse schede di anteprima delle immagini caricate.",
   "creator.tags": "Etichette",
-  "creator.toggleAllRings": "Mostra/nascondi il bordo di tutti i token",
-  "creator.toggleRing": "Mostra/nascondi il bordo del token",
-  "creator.toggleRingFor": "Mostra/nascondi il bordo di {name}",
+  "creator.toggleAllRings": "Anello per tutti i token",
+  "creator.toggleRing": "Anello del token",
+  "creator.toggleRingFor": "Anello del token {name}",
   "creator.token.browse": "oppure fai clic per cercare immagini di token",
   "creator.token.count": {
     "one": "{count} token",
@@ -75,7 +75,7 @@ export const creator = {
   "creator.untitled": "Senza titolo",
   "creator.update": "Aggiorna",
   "creator.updating": "Aggiornamento…",
-  "creator.uploadImages": "Carica immagini",
+
   "creator.willReplace": "L’immagine attuale verrà sostituita",
   "creator.zoom": "Zoom",
   "creator.zoomIn": "Ingrandisci",

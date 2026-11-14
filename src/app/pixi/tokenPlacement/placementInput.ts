@@ -1,6 +1,7 @@
 import { Point as PixiPoint, type Application, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { watchClick } from '../utils/clickRelease';
+import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
 import { setCanvasCursor } from '../utils/canvasCursor';
 import { canRunMapHotkeys, matchesMapHotkey } from '../../keyboard/mapHotkeys';
 import type { SettingsService } from '../../services/SettingsService';
@@ -48,7 +49,7 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
     queueMicrotask(() => { if (session.active) setCanvasCursor(canvas, cursor()); });
   };
   const onPress = (event: PointerEvent): void => {
-    if (event.target !== canvas || event.button !== 0) return;
+    if (event.target !== canvas || !isPrimaryPress(event)) return;
     event.stopPropagation();
     event.preventDefault();
     session.pressAt(screenOf(event), event.shiftKey);
@@ -80,7 +81,7 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
     event.preventDefault();
   };
   const onRightPress = (event: FederatedPointerEvent): void => {
-    if (event.button !== 2 || session.pressing) return;
+    if (!isSecondaryPress(event) || session.pressing) return;
     stopRightClick?.();
     stopRightClick = watchClick(viewport, event, () => session.cancel());
   };

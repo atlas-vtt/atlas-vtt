@@ -2,10 +2,11 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { App, Scope, TFile } from 'obsidian';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AssetManager from '../../src/app/packages/components/asset-manager/AssetManager';
 import type { AnyAsset, Folder, TokenAsset } from '../../src/app/packages/components/asset-manager/types';
 import { CreatureIndex } from '../../src/app/creatures/CreatureIndex';
+import { focusSearchUntouched, isSearchUntouched } from '../../src/app/packages/components/asset-manager/components/search/searchFocus';
 
 // The real header, search, filter panel and chips over an in-memory vault of statblock notes.
 const FRONTMATTER: Record<string, Record<string, unknown>> = {
@@ -85,7 +86,7 @@ const search = (): HTMLInputElement => screen.getByRole('combobox');
 const suggestionLabels = (): string[] => screen.queryAllByRole('option').map((option) => option.textContent ?? '');
 const chips = (): string[] => {
   const bar = screen.queryByRole('region', { name: 'Active filters' });
-  return bar ? within(bar).getAllByRole('button').map((button) => button.textContent ?? '').filter((text) => text !== 'Reset') : [];
+  return bar ? within(bar).getAllByRole('button').map((button) => button.textContent ?? '').filter((text) => text !== 'Clear filters') : [];
 };
 
 async function openManager(): Promise<void> {
@@ -113,7 +114,7 @@ it('turns a picked value into a filter chip and clears it from the text', async 
   type('t:b');
   fireEvent.click(screen.getByRole('option', { name: /beast/ }));
   expect(shown()).toEqual(['Bear', 'Wolf']);
-  expect(chips()).toEqual(['Typebeast']);
+  expect(chips()).toEqual(['Type beast']);
   expect(search().value).toBe('');
 });
 
@@ -124,7 +125,7 @@ it('completes keywords with Tab and commits typed filters with Enter', async () 
   expect(search().value).toBe('cr:');
   type('red cr>=1');
   fireEvent.keyDown(search(), { key: 'Enter' });
-  expect(chips()).toEqual(['Challenge rating≥ 1']);
+  expect(chips()).toEqual(['Challenge rating ≥ 1']);
   expect(search().value).toBe('red');
 });
 
@@ -153,19 +154,19 @@ it('sets the same filters in the filter panel, and removes them from the chips',
   fireEvent.click(within(panel).getByRole('radio', { name: 'All' }));
   fireEvent.click(within(within(panel).getByRole('group', { name: 'Type' })).getByRole('button', { name: /^dragon/ }));
   expect(shown()).toEqual(['Dragon']);
-  expect(screen.getByRole('button', { name: 'Filters' }).textContent).toBe('1');
+  expect(screen.getByRole('button', { name: 'Filters, 1 active' }).textContent).toBe('1');
 
   fireEvent.click(screen.getByRole('button', { name: 'Remove Type: dragon' }));
   expect(shown()).toHaveLength(5);
 });
 
-it('groups several values of a filter in one chip, and Reset clears everything', async () => {
+it('groups several values of a filter in one chip, and Clear filters clears everything', async () => {
   await openManager();
   type('type:beast type:dragon tag:forest goblin');
   fireEvent.keyDown(search(), { key: 'Enter' });
-  expect(chips()).toEqual(['Type2', 'TagForest']);
+  expect(chips()).toEqual(['Type2', 'Tag Forest']);
   expect(search().value).toBe('goblin');
-  fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
   expect(chips()).toEqual([]);
   expect(search().value).toBe('');
   expect(shown()).toHaveLength(5);
@@ -184,13 +185,13 @@ it('excludes an option with a double-click, Alt-click or a typed minus', async (
 
   doubleClick();
   expect(shown()).toEqual(['Dragon', 'Goblin', 'Innkeeper']);
-  expect(chips()).toEqual(['Typenot beast']);
+  expect(chips()).toEqual(['Type not beast']);
   expect(beast().getAttribute('aria-label')).toBe('beast, 2, excluded');
   doubleClick();
   expect(chips()).toEqual([]);
 
   fireEvent.click(beast(), { altKey: true });
-  expect(chips()).toEqual(['Typenot beast']);
+  expect(chips()).toEqual(['Type not beast']);
   type('-t:dragon');
   fireEvent.keyDown(search(), { key: 'Enter' });
   expect(shown()).toEqual(['Goblin', 'Innkeeper']);
@@ -206,7 +207,7 @@ it('offers the statblocks of the subfolders where the open folder only holds fol
   expect(shown()).toEqual([]);
   fireEvent.click(screen.getByRole('button', { name: 'Filters' }));
   const types = within(screen.getByRole('dialog', { name: 'Filters' })).getByRole('group', { name: 'Type' });
-  expect(within(types).getAllByRole('button').map((button) => button.textContent)).toEqual(['beast2', 'dragon1', 'humanoid1']);
+  expect(within(types).getAllByRole('button').map((button) => button.textContent)).toEqual(['beast 2', 'dragon 1', 'humanoid 1']);
   fireEvent.click(within(types).getByRole('button', { name: /^beast/ }), { detail: 1 });
   expect(shown()).toEqual(['Bear', 'Wolf']);
 });
@@ -224,9 +225,9 @@ it('starts at the root of a collection it switches to, also with filters active'
   expect(shown()).toEqual(['Bear']);
 
   fireEvent.click(document.querySelector('.atlas-collection-dropdown-trigger')!);
-  fireEvent.click(screen.getByRole('button', { name: 'Other' }));
-  expect(chips()).toEqual(['Challenge rating1']);
-  fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+  fireEvent.click(screen.getByRole('option', { name: 'Other' }));
+  expect(chips()).toEqual(['Challenge rating 1']);
+  fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
   expect(shown()).toEqual(['Acid Burrower', 'Dryad']);
 });
 
@@ -255,4 +256,47 @@ it('keeps the filter button on every tab, disabled where a tab has no filters ye
   fireEvent.click(screen.getAllByRole('button', { name: /^Tokens/ })[0]!);
   expect((screen.getByRole('button', { name: 'Filters' }) as HTMLButtonElement).disabled).toBe(false);
   expect(screen.queryByRole('dialog', { name: 'Filters' })).toBeNull();
+});
+
+describe('the search focused as the window opens (#38)', () => {
+  it('waits with its suggestions for the first key or press, and filters as typed', async () => {
+    await openManager();
+    fireEvent.keyDown(search(), { key: 'Escape' });
+    act(() => search().blur());
+    act(() => focusSearchUntouched(search()));
+    expect(document.activeElement).toBe(search());
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+
+    type('wol');
+    expect(shown()).toEqual(['Wolf']);
+    expect(isSearchUntouched(search())).toBe(false);
+  });
+
+  it('opens its suggestions on a press in the field', async () => {
+    await openManager();
+    fireEvent.keyDown(search(), { key: 'Escape' });
+    act(() => search().blur());
+    act(() => focusSearchUntouched(search()));
+    fireEvent.pointerDown(search());
+    expect(suggestionLabels().some((label) => label.startsWith('cr:'))).toBe(true);
+  });
+
+  it('leaves Escape and the arrows to the window while untouched and empty, and keeps them once used', async () => {
+    await openManager();
+    fireEvent.keyDown(search(), { key: 'Escape' });
+    act(() => search().blur());
+    act(() => focusSearchUntouched(search()));
+    const reached = vi.fn();
+    document.addEventListener('keydown', reached);
+    fireEvent.keyDown(search(), { key: 'Escape' });
+    fireEvent.keyDown(search(), { key: 'ArrowDown' });
+    expect(reached.mock.calls.map(([event]) => [(event as KeyboardEvent).key, (event as KeyboardEvent).defaultPrevented]))
+      .toEqual([['Escape', false], ['ArrowDown', false]]);
+
+    reached.mockClear();
+    fireEvent.keyDown(search(), { key: 'x' });
+    fireEvent.keyDown(search(), { key: 'Escape' });
+    document.removeEventListener('keydown', reached);
+    expect(reached.mock.calls.map(([event]) => (event as KeyboardEvent).key)).toEqual(['x']);
+  });
 });
