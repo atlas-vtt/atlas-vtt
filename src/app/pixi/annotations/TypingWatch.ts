@@ -1,4 +1,5 @@
 import { isTextEntryTarget } from '../../keyboard/textEntry';
+import { markEndedTyping } from './typingEnds';
 
 /** What the watch asks of the field a text is typed in. */
 export interface WatchedField {
@@ -13,17 +14,6 @@ export const DRAW_TOOL_BARS = '.atlas-bottom-toolbar-row__options';
 function within(target: EventTarget | null, selector: string): boolean {
   const node = target as Node | null;
   return node !== null && typeof node.instanceOf === 'function' && node.instanceOf(Element) && node.closest(selector) !== null;
-}
-
-/** The browser's presses that ended the typing of a text. */
-const enders = new WeakSet<object>();
-
-/**
- * Whether `press` ended the typing of a text. Such a press starts no next text: whoever clicks
- * beside a text they typed wants to be out of its field, not in a new one.
- */
-export function endedTyping(press: object | null | undefined): boolean {
-  return press !== null && press !== undefined && enders.has(press);
 }
 
 /**
@@ -78,7 +68,7 @@ export class TypingWatch {
 
   private readonly onPress = (event: PointerEvent): void => {
     if (!this.field || this.field.contains(event.target) || within(event.target, this.bars)) return;
-    enders.add(event);
+    markEndedTyping(event);
     this.finish();
   };
 

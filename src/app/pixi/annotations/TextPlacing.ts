@@ -5,7 +5,7 @@ import { trackPointer } from '../measure/pointerTrack';
 import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { DRAW_DRAG_THRESHOLD } from './drawGesture';
-import { endedTyping } from './TypingWatch';
+import { endedTyping } from './typingEnds';
 
 /** What a press of the Draw tool's Text mode asks of, and tells, whoever types the text. */
 export interface TextPlacingHost {

@@ -10,14 +10,15 @@ const FIRST_USE = 'animation.startTime = startTime ?? this.calcStartTime();';
 const GUARD = 'if (!animation) return false;';
 
 type Transform = (code: string, id: string) => { code: string } | undefined;
-type GenerateBundle = (this: { error: (message: string) => never }) => void;
+type GenerateBundle = (this: { error: (message: string) => never; getModuleIds: () => IterableIterator<string> }) => void;
 
-function hooks(): { transform: Transform; generateBundle: () => void } {
+/** The plugin's hooks, in a build whose modules are `modules` (framer-motion's file among them unless told otherwise). */
+function hooks(modules: readonly string[] = [ANIMATOR]): { transform: Transform; generateBundle: () => void } {
   const plugin = motionNativeAnimation();
   const fail = (message: string): never => { throw new Error(message); };
   return {
     transform: plugin.transform as Transform,
-    generateBundle: () => (plugin.generateBundle as GenerateBundle).call({ error: fail }),
+    generateBundle: () => (plugin.generateBundle as GenerateBundle).call({ error: fail, getModuleIds: () => modules.values() }),
   };
 }
 
@@ -62,5 +63,9 @@ describe('the guard the build puts into framer-motion', () => {
     const found = hooks();
     found.transform(library, ANIMATOR);
     expect(() => found.generateBundle()).not.toThrow();
+  });
+
+  it('leaves a build without the library alone: a test\'s own small bundle needs no guard', () => {
+    expect(() => hooks(['/repo/tests/fixtures/desktop-runtime.ts']).generateBundle()).not.toThrow();
   });
 });

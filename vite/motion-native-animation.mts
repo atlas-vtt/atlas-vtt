@@ -41,8 +41,8 @@ function isAnimator(file: string): boolean {
 
 /**
  * Keeps an animation the browser refuses from taking every other one down (`withMissingAnimationGuard`),
- * in the bundle and in the dependencies Vite prepares for the browser tests. A build that never
- * came by the library's file fails.
+ * in the bundle and in the dependencies Vite prepares for the browser tests. A build that holds the
+ * library and never came by its file fails.
  */
 export function motionNativeAnimation(): Plugin {
   // Never reset: a rebuild in watch mode transforms only the files that changed
@@ -73,7 +73,9 @@ export function motionNativeAnimation(): Plugin {
       return { code: withMissingAnimationGuard(code), map: null };
     },
     generateBundle() {
-      if (!guarded) this.error('framer-motion\'s browser animations were not found in the bundle; review vite/motion-native-animation.mts');
+      // A bundle without the library (a test's own small build) needs no guard; one with it must have come by the file.
+      const withMotion = [...this.getModuleIds()].some((id) => id.replaceAll('\\', '/').includes('/framer-motion/'));
+      if (withMotion && !guarded) this.error('framer-motion\'s browser animations were not found in the bundle; review vite/motion-native-animation.mts');
     },
   };
 }

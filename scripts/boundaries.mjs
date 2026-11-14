@@ -168,6 +168,7 @@ export const BOUNDARIES = {
       "src/app/pixi/annotations/TurnGrip.ts",
       "src/app/pixi/annotations/drawToolState.ts",
       "src/app/pixi/annotations/TextPlacing.ts",
+      "src/app/pixi/annotations/typingEnds.ts",
       "src/app/pixi/annotations/textTypingRules.ts",
       "src/app/pixi/annotations/PlacingPreview.ts",
       "src/app/pixi/annotations/cellMarks.ts",
