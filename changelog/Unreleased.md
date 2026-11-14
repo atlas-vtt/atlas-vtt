@@ -1,79 +1,77 @@
 ## New
 
 **New Feature: Draw tool**
-- Draw and Text are one tool now, with its own secondary toolbar: Select, Pen, Line, Rectangle, Ellipse, Text, Stamp, Cells and Eraser
-- More colours, four sizes that fit the map's grid, dashes, arrowheads, curves, fills and see-through ink
-- Drag a line or a shape, or place a line click by click. Space adds a corner, Shift keeps it straight, square or round
-- Shapes and stamps snap to the grid. Hold Alt to place them freely
-- The pointer shows what a click will place: the stamp itself, a dot as wide as the line, the cell to fill
-- The eraser cuts exactly where it passes, through filled shapes too. Hold Alt to remove whole drawings
-- B selects the tool and steps through its modes, T opens Text, E switches to the eraser and back
+- Draw and Text are now one tool with its own toolbar: Select, Pen, Line, Rectangle, Ellipse, Text, Stamp, Cells and Eraser
+- More colours, four sizes that fit the grid, dashes, arrowheads, curves, fills and see-through ink
+- Drag to draw a line or shape, or click point by point
+- Shapes and stamps snap to the grid, hold Alt to place them freely
+- The pointer shows what a click will place
+- The eraser cuts only where it passes, hold Alt to remove whole drawings
+- Shortcuts: B for the Draw tool, T for Text, E for the eraser
 
 **Text on the map**
-- Type directly on the map: click for a label, drag for a text box whose words wrap
-- Three fonts (Medieval, Sci-fi, Mono) and three looks: an outline that reads on any map, a dark plate, or plain
+- Type on the map: click for a label, drag for a text box
+- Three fonts (Medieval, Sci-fi, Mono) and three looks (outline, dark plate, plain)
 
 **Hide, layer and edit drawings**
-- Players see it: switch it off and a drawing or text is yours alone
-- With dynamic lighting, drawings, stamps and texts are lit like the map: players see them only where they see or remember the map
-- Under tokens: lays a drawing on the floor, under the grid and the tokens
-- Select mode selects only drawings and texts. A frame with handles moves, resizes and turns them, and a line's points can be dragged, added and removed
+- Hide a drawing or text from your players
+- With dynamic lighting, players see drawings only where they see or remember the map
+- Put a drawing under the tokens and the grid
+- Select mode moves, resizes and turns drawings and texts, and edits a line's points
 - Lock, group, bring to front and send to back
 
 **Stamps and cells**
-- Stamps use every pin symbol, in any colour. A medium stamp is one grid cell
-- Cells colours squares and hexes: drag to fill them, Unfill to clear them
+- Stamps use every pin symbol in any colour
+- Cells colours whole squares and hexes
 
 **New Feature: Fog tools**
-- The fog tool has its own secondary toolbar: Fog and Eraser, and the shapes Brush, Rectangle, Polygon, Lasso, Cells and Room
-- Cover all hides the whole map in one step, Delete all fog clears it. Undo takes either back
-- Rectangles and polygons snap to the grid and to walls. Hold Ctrl or Cmd to place them freely
-- Cells adds or erases fog on whole grid cells, squares and hexes alike
-- Hold Alt to do the other thing: erase with Fog, add fog with Eraser. , and . size the brush; hold one to keep sizing
+- The fog tool has its own toolbar: Fog and Eraser, with the shapes Brush, Rectangle, Polygon, Lasso, Cells and Room
+- Cover all hides the whole map, Delete all fog clears it
+- Rectangles and polygons snap to the grid and to walls, hold Ctrl or Cmd to place them freely
+- Cells adds or erases fog on whole grid cells
+- Hold Alt to do the opposite: erase with Fog, add fog with Eraser
+- , and . change the brush size
 - Fog fades when it changes, on your map and in the player window
-- More sets how dark fog looks to you in GM View. Hold H to see it as your players do
+- Set how dark fog looks to you in GM View, and hold H to see it as your players do
 
 **Reveal, hide and delete fog**
-- Fog that touches is one: a room painted in two strokes is one fog
-- Right-click fog and choose Reveal to take it away. Right-click the place again and choose Hide to bring it back
-- Delete, in the same menu, removes the fog for good
+- Fog that touches becomes one area
+- Right-click fog to reveal it, hide it again or delete it
 
 **Rooms from walls**
-- Room: on a map with walls, click inside a room to fill it with fog or erase it. It ends at its walls and doors
-- Hide all rooms, in More, covers every room the walls enclose in one step
+- Room: click inside a room to fill it with fog or clear it
+- Hide all rooms covers every room on the map in one step
 
 **Party tokens clear fog**
-- Switch it on in More: fog clears around the party's tokens as they are moved, as far as the distance you set. Walls stop it
-- Undo takes the move and the fog it cleared back together
+- Fog can clear around the party's tokens as they move, as far as you set, and walls stop it
 
 ## Improved
 
-- Carving rooms and filling them in is quick on large maps: an edit on a cave with thousands of walls took several seconds and now takes a fraction of one. Reported by ThatMattLatt
-- On Windows and Linux, the window's minimise, maximise and close buttons stay out of sight over a map and the other Atlas pages, so the widgets in the top-right corner can be seen. Move the pointer to the corner to show them
-- The player view shows a dragged token's move as you see it: the line in the colour of the movement step, and moved / speed beside it, for every token the players can see
-- A shape shows the fog it will leave while you draw it. What it will erase shows to you alone until you let go
-- The fog brush's ring shows on light maps and on dark ones
-- Tools with options in the toolbar look like every other tool: hovering, pressing or choosing one highlights the whole tool as one rounded button, and the arrow beside it for its options has a highlight of its own
-- The player window bar has a pause and play button: paused, players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead. Playing again fades them through black to your view, as for another scene, instead of jumping
-- The player window bar is slimmer: as tall as the scene tabs above it
-- Every toolbar, widget and the online play button have the same rounded corners, and the bars at the bottom stand as close to the edges of the map as those at the top. The scene tabs are no longer a pill, and every button in a bar is rounded alike on all sides, the GM view switch too. Buttons sit closer to their bar's edge and to each other, so their corners are rounder and the bars a little smaller
-- Local player view settings are now Player view settings, in three sections: what applies to the player window and online players alike, what only the player window uses, and what only online play uses. The player window bar's menu no longer lists the online switches
-- The command palette's search finds a command by any of its words, in any order and with a typo: "player settings" or "players" find Player view settings. The best match comes first, so Enter opens it
-- Widget icons stand on the widget itself, without a tinted tile behind them that did not follow the widget when it grew or shrank
+- Carving and filling rooms is much faster on large maps. Reported by ThatMattLatt
+- On Windows and Linux, the window buttons hide over a map so they no longer cover the widgets
+- Players see a dragged token's move as you do, in the player window and online
+- A fog shape shows what it will cover or erase while you draw it
+- The fog brush's ring shows on light and dark maps
+- Tools with options highlight as one button, like every other tool
+- The player window bar has a pause and play button: paused, players keep their view while you pan and zoom
+- The player window bar is slimmer
+- All toolbars, widgets and buttons have the same rounded corners and spacing
+- Local player view settings are now Player view settings, in three sections
+- The command palette's search finds a command by any of its words, even with a typo
+- Widget icons no longer have a tinted tile behind them
 
 ## Fixed
 
-- Tokens and pins under fog can be clicked and dragged: fog no longer takes their clicks
-- The TrueScale frame and its bar on the map show only while TrueScale is on
-- TrueScale and Full screen on the TV have icons of their own in the player window bar
-- The player window no longer says "Camera paused" after you come back to the scene it shows
-- The eye on a scene tab shows the scene to players again, in the player view and online, and the tab's close button closes it: both had become hard to click. Reported by Tanaros, Meisterdieb, George and Theo Chronis
-- Online, the eye on a floor shows that floor to players at once; before, they saw it only after a refresh. Reported by Theo Chronis
-- Ctrl/Cmd and hover shows a token's statblock with the measure tool and the other tools too, not only with Move and Select. Reported by George
-- The laser pointer is smooth again on Linux with AMD graphics, where it was drawn in coarse blocks, in Atlas and on the online players' page
+- Tokens and pins under fog can be clicked and dragged
+- The TrueScale frame and its bar show only while TrueScale is on
+- TrueScale and Full screen on the TV have their own icons in the player window bar
+- The player window no longer says "Camera paused" after you return to its scene
+- The eye and the close button on a scene tab are easy to click again. Reported by Tanaros, Meisterdieb, George and Theo Chronis
+- Online, the eye on a floor shows that floor to players at once. Reported by Theo Chronis
+- Ctrl/Cmd and hover shows a token's statblock with every tool. Reported by George
+- The laser pointer is smooth again on Linux with AMD graphics
 
 ## Atlas Online
 
-- Players may draw: a switch in the player view settings gives your online players a Draw tool of their own. They change and erase only what they drew
-- A map with more fog than players can be sent is shown covered to them, never open, and you are told
-- A dragged token's move reads for online players as it does for you: the line in the colour of the movement step, and moved / speed beside it, for their own tokens and every token they see
+- Players may draw: a switch in the player view settings gives online players their own Draw tool
+- A map with too much fog to send shows fully covered to players, and you are told
