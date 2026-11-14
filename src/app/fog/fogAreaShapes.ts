@@ -1,16 +1,16 @@
 /**
- * The outlines fog areas are given as they are drawn and edited: a new one fitted to its
- * neighbours, a shape joined to an area or taken away from it, and a freehand outline with few
- * enough corners to keep. An area is always one outline, so an edit that would leave two pieces
- * or nothing is none, and so is one that would leave a hole in an area that has none. An area
- * with holes (a corridor round a room: `fogKeyhole.ts`) keeps them, each on a slit of no width.
+ * The outlines fog areas are given as they are drawn: a new one fitted to its neighbours, a
+ * shape joined to an area, and a freehand outline with few enough corners to keep. An area is
+ * always one outline, so a join that would leave two pieces is none, and so is one that would
+ * leave a hole in an area that has none. An area with holes (a corridor round a room:
+ * `fogKeyhole.ts`) keeps them, each on a slit of no width.
  */
 
-import { inflateShape, intersectShapes, shapeParts, subtractShapes, unionShapes } from '../lighting/polygonClip';
+import { inflateShape, intersectShapes, subtractShapes, unionShapes } from '../lighting/polygonClip';
 import { simplifyStroke } from '../pixi/lighting/wallEdits';
 import type { QShape } from '../types/shapeTypes';
 import type { Point } from '../types/visionTypes';
-import { areaOfShape, hasHoles, onCornersOf, oneOutline, pointsOf, shapeOf } from './fogOutlineShape';
+import { areaOfShape, hasHoles, onCornersOf, oneOutline, shapeOf } from './fogOutlineShape';
 
 type Outline = readonly Point[];
 
@@ -80,24 +80,6 @@ export function joinedArea(area: Outline, ...shapes: Outline[]): Point[] | null 
   return all && own ? oneOutline(all, hasHoles(own)) : null;
 }
 
-/**
- * Each of `areas` without what `shapes` cover of it together: undefined for an area they cover
- * nothing of (one they only touch too), which stays as it is; null where what is left is no
- * single outline: pieces, nothing, or a hole in an area that had none. The shapes are worked out
- * once, however many areas there are.
- */
-export function trimmedAreas(areas: ReadonlyArray<Outline>, shapes: ReadonlyArray<Outline>): Array<Point[] | null | undefined> {
-  const taken = unionOf(shapes);
-  if (!taken || taken.length === 0) return areas.map(() => undefined);
-  const reach = boxOf(shapes.flat());
-  return areas.map((area) => {
-    if (area.length < 3 || !boxesMeet(boxOf(area), reach)) return undefined;
-    const own = shapeOf(area);
-    if (!own || intersectShapes(own, taken).length === 0) return undefined;
-    return oneOutline(subtractShapes(own, taken), hasHoles(own));
-  });
-}
-
 /** The share of `outline` that `other` covers, from 0 to 1; 0 where either cannot be read or `outline` encloses nothing. */
 export function coveredShare(outline: Outline, other: Outline): number {
   const [own, others] = [shapeOf(outline), shapeOf(other)];
@@ -115,21 +97,6 @@ export function coveredShareOfAll(outline: Outline, others: ReadonlyArray<Outlin
   // Rings of several shapes fill what any of them fills.
   const rings = others.flatMap((other) => (other.length >= 3 && boxesMeet(box, boxOf(other)) ? shapeOf(other) ?? [] : []));
   return rings.length === 0 ? 0 : areaOfShape(intersectShapes(own, rings)) / whole;
-}
-
-/**
- * The outer outlines of what `shapes` cover together, one per piece: shapes that touch are one
- * piece, and what a piece encloses belongs to it. Shapes that lie apart, each one outline, come
- * back as they were given, to the last bit.
- */
-export function outerOutlines(shapes: ReadonlyArray<Outline>): Point[][] {
-  const given = shapes.map((shape) => shape.map((point) => ({ x: point.x, y: point.y })));
-  if (given.length <= 1) return given;
-  const all = unionOf(shapes);
-  if (!all) return given;
-  const parts = shapeParts(all);
-  if (parts.length === given.length && parts.every((part) => part.holes.length === 0)) return given;
-  return parts.map((part) => pointsOf(part.outline));
 }
 
 /**

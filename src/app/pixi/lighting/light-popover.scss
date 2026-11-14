@@ -257,8 +257,7 @@ $gap: $spacing-s;
 // Stairs' ways share it alike, and an opening's choice of open or floor.
 .atlas-light-popover--zone,
 .atlas-light-popover--stairs,
-.atlas-light-popover--opening,
-.atlas-light-popover--fog-area {
+.atlas-light-popover--opening {
   .atlas-light-popover__range > input {
     padding: 0 $spacing-s;
     text-align: start;

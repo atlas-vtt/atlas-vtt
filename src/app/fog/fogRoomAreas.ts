@@ -1,7 +1,8 @@
 /**
- * Areas from walls: which of a map's rooms (`fogRooms.ts`) become fog areas. A room that an area
- * already is gets none, nor does one the areas there are cover most of (a room the GM drew an
- * area in by hand); every other gets one, fitted to the areas there are like any new area.
+ * Hiding every room: which of a map's rooms (`fogRooms.ts`) become fog areas, remembered pieces
+ * of fog. A room that an area already is gets none (a revealed one is hidden again), nor does
+ * one the areas there are cover most of (a room the GM hid a shape in by hand); every other gets
+ * one, fitted to the areas there are like any new area.
  */
 
 import { coveredShare, coveredShareOfAll, fittedArea } from './fogAreaShapes';
@@ -58,35 +59,44 @@ export function areaOfRoom(room: Outline, areas: ReadonlyArray<Outline>, reach: 
   return areas.findIndex((area) => isAreaOfRoom(room, area, reach));
 }
 
+/** A remembered piece as the plan reads it. */
+export interface RoomPiece {
+  readonly outline: Outline;
+  /** Whether it hides what it covers. */
+  readonly hidden: boolean;
+}
+
 export interface RoomAreaPlan {
   /** The outlines of the areas to make, one per room that is none yet. */
   readonly shapes: FogAreaShape[];
-  /** Rooms were left without an area because the level holds as many as it can. */
-  readonly full: boolean;
+  /** The places among the pieces of those that are a room and revealed: they are hidden again. */
+  readonly hide: number[];
 }
 
 /**
- * The areas to make of `rooms`: none for a room that one of `areas` already is or that `areas`
- * cover more than half of together, and no more than `most`. Each is fitted to the areas there
- * are, so it ends where they begin.
+ * What hides `rooms`: no new area for a room that one of `pieces` already is (that piece is
+ * hidden again where it is revealed) or that `pieces` cover more than half of together. Each
+ * new one is fitted to the areas there are, so it ends where they begin.
  */
-export function planRoomAreas(rooms: ReadonlyArray<Outline>, areas: ReadonlyArray<Outline>, reach: number, most: number): RoomAreaPlan {
+export function planRoomAreas(rooms: ReadonlyArray<Outline>, pieces: ReadonlyArray<RoomPiece>, reach: number): RoomAreaPlan {
+  const areas = pieces.map((piece) => piece.outline);
   const shapes: FogAreaShape[] = [];
-  let full = false;
+  const hide = new Set<number>();
   for (const room of rooms) {
-    if (areaOfRoom(room, areas, reach) >= 0 || coveredShareOfAll(room, areas) > COVERED_SHARE) continue;
-    if (shapes.length >= most) full = true;
-    else shapes.push({ type: 'lasso', points: fittedArea(room, areas) });
+    const own = areaOfRoom(room, areas, reach);
+    if (own >= 0) {
+      if (!pieces[own]!.hidden) hide.add(own);
+      continue;
+    }
+    if (coveredShareOfAll(room, areas) <= COVERED_SHARE) shapes.push({ type: 'lasso', points: fittedArea(room, areas) });
   }
-  return { shapes, full };
+  return { shapes, hide: [...hide] };
 }
 
-/** What making areas of a level's rooms came to (the store's `addRoomAreas`). */
+/** What hiding a level's rooms came to (the store's `addRoomAreas`). */
 export interface RoomAreasMade {
   /** The rooms the walls enclose. */
   rooms: number;
-  /** The areas made of them. */
+  /** The rooms hidden: those an area was made of, and those whose area was revealed. */
   made: number;
-  /** Rooms were left without an area because the level holds as many as it can. */
-  full: boolean;
 }

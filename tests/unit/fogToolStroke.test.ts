@@ -34,7 +34,7 @@ describe('the fog tool\'s stroke', () => {
     lasso.tool.pointerMove(at(90, 121));
     expect(lasso.guide.mark).toBeNull();
     lasso.tool.pointerUp();
-    expect(lasso.state.addFogOperation).toHaveBeenCalledWith({ type: 'lasso', isErasing: false, points: [{ x: 33, y: 33 }, { x: 141, y: 37 }, { x: 90, y: 121 }] });
+    expect(lasso.state.addFogArea).toHaveBeenCalledWith({ type: 'lasso', points: [{ x: 33, y: 33 }, { x: 141, y: 37 }, { x: 90, y: 121 }] });
 
     const brush = fogTool('fog', 'brush');
     brush.tool.pointerDown(at(33, 33));
@@ -55,7 +55,7 @@ describe('the fog tool\'s stroke', () => {
     rectangle.tool.pointerDown(at(33, 33));
     rectangle.tool.pointerMove(at(141, 121));
     rectangle.tool.pointerUp();
-    expect(rectangle.state.addFogOperation).toHaveBeenCalledWith({ type: 'rectangle', isErasing: false, x: 33, y: 33, width: 108, height: 88 });
+    expect(rectangle.state.addFogArea).toHaveBeenCalledWith({ type: 'rectangle', x: 33, y: 33, width: 108, height: 88 });
 
     for (const key of ['ctrlKey', 'metaKey'] as const) {
       const free = fogTool('fog', 'rectangle');
@@ -64,7 +64,7 @@ describe('the fog tool\'s stroke', () => {
       free.tool.pointerMove(fogPointerAt(141, 121, { [key]: true }));
       expect(free.guide.mark).toBeNull();
       free.tool.pointerUp();
-      expect(free.state.addFogOperation).toHaveBeenCalledWith({ type: 'rectangle', isErasing: false, x: 33, y: 33, width: 108, height: 88 });
+      expect(free.state.addFogArea).toHaveBeenCalledWith({ type: 'rectangle', x: 33, y: 33, width: 108, height: 88 });
     }
   });
 
@@ -81,7 +81,7 @@ describe('the fog tool\'s stroke', () => {
     tool.pointerMove(at(205, 215));
     expect(guide.mark).toMatchObject({ kind: 'grid', point: { x: 210, y: 210 } });
     tool.pointerUp();
-    expect(state.addFogOperation).toHaveBeenCalledWith({ type: 'rectangle', isErasing: false, x: 104, y: 97, width: 106, height: 113 });
+    expect(state.addFogArea).toHaveBeenCalledWith({ type: 'rectangle', x: 104, y: 97, width: 106, height: 113 });
     // The guide goes with the stroke, and when the pointer leaves the map.
     expect(guide.mark).toBeNull();
     tool.pointerMove(at(100, 100));
@@ -100,14 +100,14 @@ describe('the fog tool\'s stroke', () => {
     expect(picture.showStroke.mock.lastCall?.[0]).toMatchObject({ type: 'rectangle', x: 0, y: 0, width: 210, height: 140 });
     tool.rekey({ shift: true, free: false });
     tool.pointerUp();
-    expect(state.addFogOperation).toHaveBeenCalledWith({ type: 'rectangle', isErasing: false, x: 0, y: 0, width: 210, height: 210 });
+    expect(state.addFogArea).toHaveBeenCalledWith({ type: 'rectangle', x: 0, y: 0, width: 210, height: 210 });
 
     // Towards the upper left the square grows that way.
     const back = fogTool('fog', 'rectangle');
     back.tool.pointerDown(at(280, 280));
     back.tool.pointerMove(fogPointerAt(211, 69, { shiftKey: true }));
     back.tool.pointerUp();
-    expect(back.state.addFogOperation).toHaveBeenCalledWith({ type: 'rectangle', isErasing: false, x: 70, y: 70, width: 210, height: 210 });
+    expect(back.state.addFogArea).toHaveBeenCalledWith({ type: 'rectangle', x: 70, y: 70, width: 210, height: 210 });
   });
 
   it('hides the cells a drag passes as one shape, shown while the pointer is down, and nothing off a grid', () => {
@@ -123,7 +123,7 @@ describe('the fog tool\'s stroke', () => {
     tool.pointerMove(at(200, 30));
     expect(picture.showStroke).toHaveBeenCalledTimes(2);
     tool.pointerUp();
-    expect(state.addFogOperation).toHaveBeenCalledExactlyOnceWith({ type: 'lasso', isErasing: false, points: [{ x: 0, y: 0 }, { x: 210, y: 0 }, { x: 210, y: 70 }, { x: 0, y: 70 }] });
+    expect(state.addFogArea).toHaveBeenCalledExactlyOnceWith({ type: 'lasso', points: [{ x: 0, y: 0 }, { x: 210, y: 0 }, { x: 210, y: 70 }, { x: 0, y: 70 }] });
     expect(state.addFogOperations).not.toHaveBeenCalled();
     expect(tool.keys.release).toHaveBeenCalled();
 
@@ -197,7 +197,7 @@ describe('the fog tool\'s stroke', () => {
     tool.pointerMove(at(140, 0));
     tool.pointerMove(at(140, 140));
     tool.pointerUp();
-    expect(state.addFogOperation).toHaveBeenCalledExactlyOnceWith({ type: 'lasso', isErasing: false, points: [{ x: 0, y: 0 }, { x: 140, y: 0 }, { x: 140, y: 140 }] });
+    expect(state.addFogArea).toHaveBeenCalledExactlyOnceWith({ type: 'lasso', points: [{ x: 0, y: 0 }, { x: 140, y: 0 }, { x: 140, y: 140 }] });
   });
 
   it('takes the brush\'s size from the tool\'s choices, and keeps a stroke under way while only the size changes', () => {
@@ -236,7 +236,7 @@ describe('the fog tool\'s stroke', () => {
     expect(picture.showStroke.mock.lastCall?.[0]).toMatchObject({ type: 'rectangle', isErasing: false });
     expect(wash.shapes).toEqual([]);
     tool.pointerUp();
-    expect(state.addFogOperation).toHaveBeenCalledWith({ type: 'rectangle', isErasing: false, x: 0, y: 0, width: 140, height: 140 });
+    expect(state.addFogArea).toHaveBeenCalledWith({ type: 'rectangle', x: 0, y: 0, width: 140, height: 140 });
     expect(tool.keys.release).toHaveBeenCalled();
   });
 
@@ -347,7 +347,7 @@ describe('the fog tool\'s stroke', () => {
     tool.pointerUp();
     expect(tool.drag.stroke.active).toBe(false);
     // The rectangle's corners snap to the 70 px grid's.
-    expect(state.addFogOperation).toHaveBeenCalledExactlyOnceWith({ type: 'rectangle', isErasing: false, x: 140, y: 140, width: 70, height: 70 });
+    expect(state.addFogArea).toHaveBeenCalledExactlyOnceWith({ type: 'rectangle', x: 140, y: 140, width: 70, height: 70 });
   });
 
   it('takes no press while another tool is chosen', () => {

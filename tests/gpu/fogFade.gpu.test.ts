@@ -329,14 +329,14 @@ describe('a fade and the renders it asks for', () => {
 
 describe('the peek', () => {
   it('shows the fog as the players see it while it is held, and as the GM does when it is let go', async () => {
-    const s = await scene(both(KEPT, { ...ROOM, area: { name: 'Hall' } }));
+    const s = await scene(both(KEPT, { ...ROOM, area: {} }));
     const seen = gm(s);
     const theirs = players(s);
     expect(apart(seen, theirs)).toBeGreaterThan(100);
     let held = true;
     s.fog.showsPlayers = () => held;
     s.fog.refreshVisibility();
-    // Opaque fog, and no badge on the hall
+    // Opaque fog, and no mark on the hall
     expect(apart(gm(s), theirs)).toBe(0);
     // A picture of the scene is still the GM's
     expect(red(picture(s), IN_KEPT)).toBeGreaterThan(100);

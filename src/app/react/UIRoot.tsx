@@ -3,7 +3,6 @@ import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
 import { LevelSurfacePopoverHost } from '../pixi/levelSurfaces/LevelSurfacePopover';
 import { MeasurePopoverHost } from './components/measure/MeasurePopover';
-import { FogAreaPopoverHost } from './components/fog/FogAreaPopover';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
 import { MainToolbar } from '../packages/components/MainToolbar';
@@ -272,7 +271,6 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && <PanelBoundary name="the players' glass"><GlassChip view={view} /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the measurement's settings"><MeasurePopoverHost /></PanelBoundary>}
-          {!isPlayerView && <PanelBoundary name="the fog area's name"><FogAreaPopoverHost /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}
           

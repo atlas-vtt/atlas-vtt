@@ -119,7 +119,7 @@ export class PixiRendererOrchestrator { // Renamed class
   /** The drawings and texts on the map, and the Draw tool that makes them. */
   private annotations?: AnnotationsRenderer;
   private stopAnnotationsFollowingPlayers: (() => void) | undefined;
-  private stopFogAreasFollowingPlayers: (() => void) | undefined;
+  private stopFogFollowingPlayers: (() => void) | undefined;
   /** The GM view's walls, lights and sight; the player view has none. */
   private lighting?: LightingController;
   /** The roof of the level shown, above the lighting. */
@@ -1159,7 +1159,7 @@ export class PixiRendererOrchestrator { // Renamed class
 
     if (this.fogRenderer) {
       this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
-      this.wireFogAreas(this.fogRenderer, this.tokenRenderer);
+      this.wireFogMenu(this.fogRenderer, this.tokenRenderer);
     }
     // The drawings and texts are made after the first wiring pass, so they are resolved when asked
     this.tokenRenderer.setAnnotationHandlers({
@@ -1211,12 +1211,12 @@ export class PixiRendererOrchestrator { // Renamed class
     }
   }
 
-  /** The badges of fog areas take the pointer with any tool, and show only while the canvas shows the GM's view: not in session view, a peek or the palette's player mode. */
-  private wireFogAreas(fog: FogOfWarRenderer, tokens: TokenRenderer): void {
-    tokens.setFogAreaHandlers(fog.areaPointer());
+  /** The fog's menu opens on a right-click, and the fog tool's marks show, only while the canvas shows the GM's view: not in session view, a peek or the palette's player mode. */
+  private wireFogMenu(fog: FogOfWarRenderer, tokens: TokenRenderer): void {
+    tokens.setFogMenuHandlers(fog.menuPointer());
     fog.showsPlayers = () => tokens.playersSeeOnCanvas() !== null;
-    this.stopFogAreasFollowingPlayers?.();
-    this.stopFogAreasFollowingPlayers = tokens.onPlayersViewChange(() => fog.refreshVisibility());
+    this.stopFogFollowingPlayers?.();
+    this.stopFogFollowingPlayers = tokens.onPlayersViewChange(() => fog.refreshVisibility());
     fog.refreshVisibility();
   }
 
@@ -1369,7 +1369,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.measureRenderer?.destroy(); // Destroy MeasureRenderer
     this.laserPointerRenderer?.destroy(); // Destroy LaserPointerRenderer
     this.stopAnnotationsFollowingPlayers?.();
-    this.stopFogAreasFollowingPlayers?.();
+    this.stopFogFollowingPlayers?.();
     this.annotations?.destroy();
     this.lighting?.destroy();
     this.roofs?.destroy();

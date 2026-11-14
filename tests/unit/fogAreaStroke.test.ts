@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { areaOutline, outerOutlines, trimmedAreas, type FogArea, type FogAreaShape } from '../../src/app/fog/fogAreas';
-import { areaAtPoint, areaStrokeKind, insideOutline, planAreaStroke } from '../../src/app/fog/fogAreaStroke';
+import { intersectShapes } from '../../src/app/lighting/polygonClip';
+import { shapeContains } from '../../src/app/lighting/shapeContains';
+import type { FogArea, FogAreaShape } from '../../src/app/fog/fogAreas';
+import { planHideStroke } from '../../src/app/fog/fogAreaStroke';
+import { fogCoverage } from '../../src/app/fog/fogCoverage';
+import { outlineRings } from '../../src/app/fog/fogKeyhole';
+import { shapeOf } from '../../src/app/fog/fogOutlineShape';
 import type { StrokeShape } from '../../src/app/tools/shapeStroke';
+import type { FogOperation } from '../../src/app/types/fogTypes';
+import type { QShape } from '../../src/app/types/shapeTypes';
 import type { Point } from '../../src/app/types/visionTypes';
 
 const box = (x: number, y: number, width: number, height: number): Point[] =>
@@ -15,135 +22,104 @@ const area = (id: string, x: number, y: number, width: number, height: number, i
 const corners = (outline: readonly Point[]): string[] => outline.map((point) => `${point.x},${point.y}`).sort();
 const at = (...points: [number, number][]): string[] => points.map(([x, y]) => `${x},${y}`).sort();
 const outlineOf = (shape: FogAreaShape): readonly Point[] => (shape.type === 'lasso' ? shape.points : box(shape.x, shape.y, shape.width, shape.height));
+/** The fog of a level that holds `operations`, as the plan is handed it. */
+const fogOf = (...operations: FogOperation[]): QShape => fogCoverage(Object.fromEntries(operations.map((operation) => [operation.id, operation]))).shape;
 
 /** The hall, and the cellar to its right with a gap between them. */
 const HALL = area('hall', 0, 0, 100, 100);
 const CELLAR = area('cellar', 150, 0, 100, 100);
 
-describe('what a shape drawn in Areas mode becomes', () => {
-  it('is a new area begun outside every area, whatever Alt says', () => {
-    expect(areaStrokeKind(null, false)).toBe('new');
-    expect(areaStrokeKind(null, true)).toBe('new');
+describe('a shape that hides, begun outside every hidden piece', () => {
+  it('stays the rectangle it was drawn as where it meets no piece', () => {
+    expect(planHideStroke([rect(300, 0, 50, 50)], [HALL, CELLAR], null, fogOf(HALL, CELLAR)))
+      .toEqual({ add: [{ type: 'rectangle', x: 300, y: 0, width: 50, height: 50 }], join: null, paint: [] });
   });
 
-  it('is added to the area it begins in, or with Alt taken away', () => {
-    expect(areaStrokeKind('hall', false)).toBe('join');
-    expect(areaStrokeKind('hall', true)).toBe('trim');
-  });
-});
-
-describe('the area under a point', () => {
-  it('is the one whose outline holds the point', () => {
-    expect(areaAtPoint([HALL, CELLAR], { x: 50, y: 50 })?.id).toBe('hall');
-    expect(areaAtPoint([HALL, CELLAR], { x: 200, y: 50 })?.id).toBe('cellar');
-    expect(areaAtPoint([HALL, CELLAR], { x: 125, y: 50 })).toBeNull();
-    expect(insideOutline({ x: 50, y: 50 }, [{ x: 0, y: 0 }, { x: 100, y: 0 }])).toBe(false);
-  });
-
-  it('is the smallest of areas that lie in each other, whichever comes first', () => {
-    const closet = area('closet', 40, 40, 20, 20);
-    expect(areaAtPoint([HALL, closet], { x: 50, y: 50 })?.id).toBe('closet');
-    expect(areaAtPoint([closet, HALL], { x: 50, y: 50 })?.id).toBe('closet');
-    expect(areaAtPoint([closet, HALL], { x: 10, y: 10 })?.id).toBe('hall');
-  });
-});
-
-describe('a new area', () => {
-  it('stays the rectangle it was drawn as where it meets no area', () => {
-    const plan = planAreaStroke([rect(300, 0, 50, 50)], [HALL, CELLAR], null, false);
-    expect(plan).toEqual({ kind: 'new', add: [{ type: 'rectangle', x: 300, y: 0, width: 50, height: 50 }], reshape: [], refused: 0 });
-  });
-
-  it('is fitted to the areas it would overlap, and overlaps none', () => {
-    const plan = planAreaStroke([rect(50, 50, 150, 100)], [HALL, CELLAR], null, false);
+  it('is fitted to the hidden pieces it would overlap, and overlaps none', () => {
+    const plan = planHideStroke([rect(50, 50, 150, 100)], [HALL, CELLAR], null, fogOf(HALL, CELLAR));
     expect(plan.add).toHaveLength(1);
     const fitted = outlineOf(plan.add[0]!);
     // What the hall and the cellar cover of it is cut off.
     expect(corners(fitted)).toEqual(at([100, 50], [150, 50], [150, 100], [200, 100], [200, 150], [50, 150], [50, 100], [100, 100]));
-    // Neither covers anything of it.
-    expect(trimmedAreas([fitted], [areaOutline(HALL), areaOutline(CELLAR)])).toEqual([undefined]);
+    for (const piece of [HALL, CELLAR]) expect(intersectShapes(shapeOf(fitted)!, shapeOf(outlineOf(piece))!)).toEqual([]);
+    // Their fog lies under the rest of it: nothing more to paint.
+    expect(plan.paint).toEqual([]);
   });
 
-  it('is nothing while the shape is none yet', () => {
-    expect(planAreaStroke([], [HALL], null, false)).toEqual({ kind: 'new', add: [], reshape: [], refused: 0 });
-    expect(planAreaStroke([{ type: 'brush', points: [{ x: 0, y: 0 }], brushRadius: 20 }], [], null, false).add).toEqual([]);
+  it('lies over a revealed piece as it was drawn: what is hidden there is this shape\'s', () => {
+    const open = area('hall', 0, 0, 100, 100, true);
+    const plan = planHideStroke([rect(50, 50, 150, 100)], [open], null, fogOf(open));
+    expect(plan).toEqual({ add: [{ type: 'rectangle', x: 50, y: 50, width: 150, height: 100 }], join: null, paint: [] });
   });
 
-  it('is one area per outline of several shapes: shapes that touch are one, and what they enclose is theirs', () => {
-    const apart = planAreaStroke([lasso(box(300, 0, 50, 50)), lasso(box(400, 0, 50, 50))], [], null, false);
-    expect(apart.add.map((shape) => corners(outlineOf(shape)))).toEqual([at([300, 0], [350, 0], [350, 50], [300, 50]), at([400, 0], [450, 0], [450, 50], [400, 50])]);
+  it('is nothing while the shape is none yet, and for a brush stroke, which is plain paint', () => {
+    expect(planHideStroke([], [HALL], null, fogOf(HALL))).toEqual({ add: [], join: null, paint: [] });
+    expect(planHideStroke([{ type: 'brush', points: [{ x: 0, y: 0 }], brushRadius: 20 }], [], null, [])).toEqual({ add: [], join: null, paint: [] });
+    expect(planHideStroke([lasso([{ x: 0, y: 0 }, { x: 5, y: 5 }])], [], null, [])).toEqual({ add: [], join: null, paint: [] });
+  });
 
-    // Rows of cells around a cell left out: one area, the cell in the middle with it.
-    const ring = planAreaStroke([lasso(box(0, 0, 150, 50)), lasso(box(0, 50, 50, 50)), lasso(box(100, 50, 50, 50)), lasso(box(0, 100, 150, 50))], [], null, false);
+  it('is one piece per outline of several shapes: shapes that touch are one, and a cell they leave out in their middle stays open', () => {
+    // Shapes that lie apart come back as they were given, to the last bit.
+    const apart = planHideStroke([lasso(box(300, 0, 50.3, 50)), lasso(box(400, 0, 50, 50))], [], null, []);
+    expect(apart.add).toEqual([{ type: 'lasso', points: box(300, 0, 50.3, 50) }, { type: 'lasso', points: box(400, 0, 50, 50) }]);
+
+    // Rows of cells around a cell left out: one piece, with the cell in the middle as a hole in it.
+    const ring = planHideStroke([lasso(box(0, 0, 150, 50)), lasso(box(0, 50, 50, 50)), lasso(box(100, 50, 50, 50)), lasso(box(0, 100, 150, 50))], [], null, []);
     expect(ring.add).toHaveLength(1);
-    expect(corners(outlineOf(ring.add[0]!))).toEqual(at([0, 0], [150, 0], [150, 150], [0, 150]));
+    const outline = outlineOf(ring.add[0]!);
+    expect(outlineRings(outline).map((part) => corners(part)).sort()).toEqual([at([0, 0], [150, 0], [150, 150], [0, 150]), at([50, 50], [100, 50], [100, 100], [50, 100])].sort());
+    const fog = fogOf({ id: 'ring', kind: 'fog', timestamp: 1, isErasing: false, type: 'lasso', points: [...outline] });
+    expect([shapeContains(fog, { x: 25, y: 75 }), shapeContains(fog, { x: 75, y: 75 })]).toEqual([true, false]);
   });
 
-  it('is fitted to the areas made before it in the same stroke', () => {
-    const plan = planAreaStroke([lasso(box(300, 0, 50, 50)), lasso(box(400, 0, 50, 50))], [area('wide', 340, 0, 70, 50)], null, false);
+  it('is fitted to the pieces made before it in the same stroke', () => {
+    const wide = area('wide', 340, 0, 70, 50);
+    const plan = planHideStroke([lasso(box(300, 0, 50, 50)), lasso(box(400, 0, 50, 50))], [wide], null, fogOf(wide));
     expect(plan.add.map((shape) => corners(outlineOf(shape)))).toEqual([at([300, 0], [340, 0], [340, 50], [300, 50]), at([410, 0], [450, 0], [450, 50], [410, 50])]);
   });
+
+  it('paints plain fog where it lies over a hidden piece whose fog was cleared since', () => {
+    // The party walked into the hall: its right half lies open, though the piece still counts as hidden.
+    const explored: FogOperation = { id: 'explored', kind: 'fog', timestamp: 2, isErasing: true, type: 'rectangle', x: 50, y: 0, width: 50, height: 100 };
+    const plan = planHideStroke([rect(60, 20, 100, 30)], [HALL], null, fogOf(HALL, explored));
+    expect(plan.add.map((shape) => corners(outlineOf(shape)))).toEqual([at([100, 20], [160, 20], [160, 50], [100, 50])]);
+    expect(plan.paint.map(corners)).toEqual([at([60, 20], [100, 20], [100, 50], [60, 50])]);
+    // Where the fog cannot be worked out, no gap is filled.
+    expect(planHideStroke([rect(60, 20, 100, 30)], [HALL], null, null).paint).toEqual([]);
+  });
 });
 
-describe('a shape begun inside an area', () => {
-  it('is added to that area alone, which stays one outline', () => {
-    const plan = planAreaStroke([rect(50, 50, 100, 100)], [HALL, CELLAR], 'hall', false);
-    expect(plan.kind).toBe('join');
+describe('a shape that hides, begun inside a hidden piece', () => {
+  it('is added to that piece alone, which stays one outline', () => {
+    const plan = planHideStroke([rect(50, 50, 100, 100)], [HALL, CELLAR], 'hall', fogOf(HALL, CELLAR));
     expect(plan.add).toEqual([]);
-    expect(plan.refused).toBe(0);
-    expect(plan.reshape.map(({ id }) => id)).toEqual(['hall']);
-    expect(corners(plan.reshape[0]!.points)).toEqual(at([0, 0], [100, 0], [100, 50], [150, 50], [150, 150], [50, 150], [50, 100], [0, 100]));
+    expect(plan.paint).toEqual([]);
+    expect(plan.join?.id).toBe('hall');
+    expect(corners(plan.join!.points)).toEqual(at([0, 0], [100, 0], [100, 50], [150, 50], [150, 150], [50, 150], [50, 100], [0, 100]));
   });
 
-  it('is refused where the two would enclose a gap', () => {
+  it('is a piece of its own where the two would enclose a gap', () => {
     // A band that leaves the hall, turns round and comes back to it.
     const band = lasso([{ x: 90, y: 10 }, { x: 200, y: 10 }, { x: 200, y: 90 }, { x: 90, y: 90 }, { x: 90, y: 80 }, { x: 190, y: 80 }, { x: 190, y: 20 }, { x: 90, y: 20 }]);
-    expect(planAreaStroke([band], [HALL], 'hall', false)).toEqual({ kind: 'join', add: [], reshape: [], refused: 1 });
+    const plan = planHideStroke([band], [HALL], 'hall', fogOf(HALL));
+    expect(plan.join).toBeNull();
+    expect(plan.add).toHaveLength(1);
   });
 
-  it('is a new area where the area it began in is gone', () => {
-    expect(planAreaStroke([rect(300, 0, 50, 50)], [HALL], 'gone', false).kind).toBe('new');
-  });
-});
-
-describe('a shape begun inside an area with Alt', () => {
-  it('is taken away from every area it covers, and from no other', () => {
-    const plan = planAreaStroke([rect(50, 50, 150, 100)], [HALL, CELLAR, area('far', 400, 0, 50, 50)], 'hall', true);
-    expect(plan.kind).toBe('trim');
-    expect(plan.refused).toBe(0);
-    expect(plan.reshape.map(({ id }) => id)).toEqual(['hall', 'cellar']);
-    expect(corners(plan.reshape[0]!.points)).toEqual(at([0, 0], [100, 0], [100, 50], [50, 50], [50, 100], [0, 100]));
-    expect(corners(plan.reshape[1]!.points)).toEqual(at([150, 0], [250, 0], [250, 100], [200, 100], [200, 50], [150, 50]));
+  it('changes no outline where it lies inside the piece, and paints only what was cleared there', () => {
+    expect(planHideStroke([rect(20, 20, 30, 30)], [HALL], 'hall', fogOf(HALL))).toEqual({ add: [], join: null, paint: [] });
+    const explored: FogOperation = { id: 'explored', kind: 'fog', timestamp: 2, isErasing: true, type: 'rectangle', x: 50, y: 0, width: 50, height: 100 };
+    const plan = planHideStroke([rect(20, 20, 60, 30)], [HALL], 'hall', fogOf(HALL, explored));
+    expect(plan.add).toEqual([]);
+    expect(plan.join).toBeNull();
+    expect(plan.paint.map(corners)).toEqual([at([50, 20], [80, 20], [80, 50], [50, 50])]);
   });
 
-  it('leaves an area it would pierce, split or take whole as it is, and says how many', () => {
-    expect(planAreaStroke([rect(40, 40, 20, 20)], [HALL], 'hall', true)).toEqual({ kind: 'trim', add: [], reshape: [], refused: 1 });
-    // Through the cellar from side to side, and all of a closet.
-    const closet = area('closet', 60, 60, 10, 10);
-    const plan = planAreaStroke([rect(50, 40, 250, 40)], [HALL, CELLAR, closet], 'hall', true);
-    expect(plan.reshape.map(({ id }) => id)).toEqual(['hall']);
-    expect(plan.refused).toBe(2);
-  });
-
-  it('leaves an area it only touches alone', () => {
-    const plan = planAreaStroke([rect(50, 100, 50, 50)], [HALL], 'hall', true);
-    expect(plan).toEqual({ kind: 'trim', add: [], reshape: [], refused: 0 });
-  });
-});
-
-describe('outlines taken together', () => {
-  it('come back as they were given where they lie apart', () => {
-    const shapes = [box(0, 0, 10.3, 10), box(50, 0, 10, 10)];
-    expect(outerOutlines(shapes)).toEqual(shapes);
-    expect(outerOutlines([box(0, 0, 10, 10)])).toEqual([box(0, 0, 10, 10)]);
-    expect(outerOutlines([])).toEqual([]);
-  });
-
-  it('are each trimmed by all the shapes at once: untouched where the shapes cover nothing of one, none where they leave it in pieces', () => {
-    const trimmed = trimmedAreas([box(0, 0, 100, 100), box(100, 0, 100, 100), box(300, 0, 100, 100), box(0, 200, 100, 100)], [box(50, 50, 30, 100), box(280, 40, 200, 20)]);
-    expect(corners(trimmed[0]!)).toEqual(at([0, 0], [100, 0], [100, 100], [80, 100], [80, 50], [50, 50], [50, 100], [0, 100]));
-    // The second only touches the first shape, the third is cut through, the fourth lies away from both.
-    expect(trimmed.slice(1)).toEqual([undefined, null, undefined]);
-    expect(trimmedAreas([box(0, 0, 100, 100)], [])).toEqual([undefined]);
+  it('is a piece of its own where the piece it began in is gone, or revealed since', () => {
+    expect(planHideStroke([rect(300, 0, 50, 50)], [HALL], 'gone', fogOf(HALL)).add).toHaveLength(1);
+    const open = area('hall', 0, 0, 100, 100, true);
+    const plan = planHideStroke([rect(50, 50, 100, 100)], [open], 'hall', fogOf(open));
+    expect(plan.join).toBeNull();
+    expect(plan.add).toEqual([{ type: 'rectangle', x: 50, y: 50, width: 100, height: 100 }]);
   });
 });

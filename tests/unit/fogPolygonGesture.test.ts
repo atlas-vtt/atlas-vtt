@@ -2,6 +2,7 @@
 import { Container, Point, type FederatedPointerEvent, type Graphics, type PointData } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fogCoverage } from '../../src/app/fog/fogCoverage';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
@@ -374,8 +375,8 @@ describe('the fog tool\'s polygon', () => {
     s.click(0, 0);
     s.move(138, 4);
     const layers = s.gesture.playerLayers();
-    // The ring, the outline, the guide, the wash over what will be revealed, and what Areas mode shows: a stroke's outlines and the handles.
-    expect(layers).toHaveLength(6);
+    // The ring, the outline, the guide and the wash over what will be revealed.
+    expect(layers).toHaveLength(4);
     expect(layers.every((entry) => entry.visible === false)).toBe(true);
     // The guide shows on the GM's canvas where the next corner lands.
     expect(layers.some((entry) => entry.layer.visible && entry.layer.position.x === 140 && entry.layer.position.y === 0)).toBe(true);
@@ -392,7 +393,7 @@ describe('the fog tool\'s polygon', () => {
 });
 
 describe('the fog tool\'s cells', () => {
-  it('hide the cells of a drag that encloses a hole as several shapes in one undo step', () => {
+  it('hide the cells of a drag round a cell as one piece that leaves that cell open, in one undo step', () => {
     const s = polygonScene();
     s.store.getState().setFogTool({ shape: 'cells' });
     const camera = (s.gesture as unknown as { deps: { viewport: Container } }).deps.viewport;
@@ -403,12 +404,10 @@ describe('the fog tool\'s cells', () => {
     for (const [x, y] of [[175, 35], [175, 175], [35, 175], [35, 105]] as const) pointer('pointermove', x, y);
     expect(s.fog()).toEqual([]);
     pointer('pointerup', 35, 105);
-    expect(s.fog()).toHaveLength(4);
-    expect(s.fog().every((operation) => operation.type === 'lasso' && !operation.isErasing)).toBe(true);
-    // They act in the order given, each a tick after the one before.
-    const times = s.fog().map((operation) => operation.timestamp);
-    expect(times).toEqual([...times].sort((a, b) => a - b));
-    expect(new Set(times).size).toBe(4);
+    expect(s.fog()).toEqual([expect.objectContaining({ type: 'lasso', isErasing: false, area: {} })]);
+    const fog = fogCoverage(s.store.getState().objects.fog);
+    // The eight cells passed are hidden, the one in their middle is not.
+    expect([fog.covers({ x: 35, y: 35 }), fog.covers({ x: 175, y: 105 }), fog.covers({ x: 35, y: 105 }), fog.covers({ x: 105, y: 105 })]).toEqual([true, true, true, false]);
     expect(s.steps()).toBe(1);
     s.undo();
     expect(s.fog()).toEqual([]);

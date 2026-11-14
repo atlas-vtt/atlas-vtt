@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  areaBadgeSpot, areaGeometry, areaIsHidden, areaName, areaOutline, flippedArea, fogAreaList, fogAreaOutlines, isFogArea,
-  MAX_AREA_CORNERS, MAX_AREA_NAME, MAX_FOG_AREAS, type FogArea,
+  areaGeometry, areaIsHidden, areaOutline, flippedArea, fogAreaList, fogAreaOutlines, isFogArea,
+  MAX_AREA_CORNERS, MAX_FOG_AREAS, type FogArea,
 } from '../../src/app/fog/fogAreas';
 import { fogCoverage } from '../../src/app/fog/fogCoverage';
 import type { FogBrushStroke, FogLassoFill, FogOperation, FogRectangleFill } from '../../src/app/types/fogTypes';
@@ -59,14 +59,6 @@ describe('which fog operations are areas', () => {
 });
 
 describe('what an area says of itself', () => {
-  const named = (name: unknown): FogArea => fromFile({ ...rectangle('a'), area: { name } }) as FogArea;
-
-  it('reads a name that is no text, or blank, as none', () => {
-    for (const name of [undefined, null, 5, {}, '', '   ']) expect(areaName(named(name))).toBeUndefined();
-    expect(areaName(named('  Crypt '))).toBe('Crypt');
-    expect(areaName(named('x'.repeat(200)))).toHaveLength(MAX_AREA_NAME);
-  });
-
   it('is hidden while it paints and revealed while it erases', () => {
     expect(areaIsHidden(rectangle('a', { area: {} }))).toBe(true);
     expect(areaIsHidden(rectangle('a', { area: {}, isErasing: true }))).toBe(false);
@@ -78,7 +70,7 @@ describe('what an area says of itself', () => {
     expect(areaOutline(lasso('a', { offsetX: 1, offsetY: 2 }))).toEqual([{ x: 1, y: 2 }, { x: 101, y: 2 }, { x: 1, y: 102 }]);
   });
 
-  it('has no outline, and so no badge, where its geometry cannot be read', () => {
+  it('has no outline where its geometry cannot be read', () => {
     const broken = [
       fromFile({ ...lasso('a'), points: 'none' }),
       fromFile({ ...lasso('a'), points: [{ x: 0, y: 0 }, { x: Number.NaN, y: 1 }, { x: 4, y: 4 }] }),
@@ -86,16 +78,7 @@ describe('what an area says of itself', () => {
       fromFile({ ...rectangle('a'), width: 'wide' }),
       rectangle('a', { offsetX: Infinity }),
     ] as (FogLassoFill | FogRectangleFill)[];
-    for (const area of broken) {
-      expect(areaOutline(area)).toEqual([]);
-      expect(areaBadgeSpot(area)).toBeNull();
-    }
-    // Corners on one line enclose nothing.
-    expect(areaBadgeSpot(lasso('a', { points: [{ x: 0, y: 0 }, { x: 5, y: 5 }, { x: 9, y: 9 }] }))).toBeNull();
-  });
-
-  it('puts its badge inside it', () => {
-    expect(areaBadgeSpot(rectangle('a', { x: 100, y: 100, width: 200, height: 100 }))).toMatchObject({ y: expect.closeTo(150, 0) });
+    for (const area of broken) expect(areaOutline(area)).toEqual([]);
   });
 });
 

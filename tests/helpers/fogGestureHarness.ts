@@ -6,7 +6,7 @@ import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { FogRoomClick } from '../../src/app/pixi/fog/FogRoomClick';
 import { FogSnapping, type FogGuideMark, type PlaceKeys } from '../../src/app/pixi/fog/FogSnapping';
 import { FogStroke } from '../../src/app/pixi/fog/FogStroke';
-import { PlainFogStroke } from '../../src/app/pixi/fog/fogStrokeOutcome';
+import { FogStrokeOutcome } from '../../src/app/pixi/fog/fogStrokeOutcome';
 import type { ShapeStroke, StrokeShape } from '../../src/app/tools/shapeStroke';
 
 /** What the gesture reads of the store. */
@@ -19,6 +19,9 @@ export interface FogGestureState {
   objects: { fog: Record<string, unknown>; walls: Record<string, unknown> };
   addFogOperation: ReturnType<typeof vi.fn>;
   addFogOperations: ReturnType<typeof vi.fn>;
+  /** A shape that hides is fog the map remembers as one piece: what the store is given of it. */
+  addFogArea: ReturnType<typeof vi.fn>;
+  reshapeFogArea: ReturnType<typeof vi.fn>;
 }
 
 /** The gesture as a test drives it: the pointer, and what its keys tell it (`FogStrokeKeys`). */
@@ -84,7 +87,7 @@ export const fogPointerAt = (x: number, y: number, keys: PressKeys = {}): Federa
 export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): FogGestureScene {
   const state: FogGestureState = {
     activeTool, fogTool: { ...DEFAULT_FOG_TOOL, shape }, isMapLoading: false, isGMView: true, grid: { size: 70 }, objects: { fog: {}, walls: {} },
-    addFogOperation: vi.fn(), addFogOperations: vi.fn(),
+    addFogOperation: vi.fn(), addFogOperations: vi.fn(), addFogArea: vi.fn(() => 'piece'), reshapeFogArea: vi.fn(() => true),
   };
   const picture: PictureCalls = { showStroke: vi.fn(), showCommitted: vi.fn() };
   const viewport = { pause: false, toWorld: (point: { x: number; y: number }) => point, scale: { x: 1 } };
@@ -105,18 +108,15 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
     show(erasing: boolean): void { Object.assign(this, { shown: true, erasing }); },
     hide(): void { this.shown = false; },
   };
-  // Areas mode has a test of its own (fogAreasMode.test.ts): here the tool hides or reveals.
-  const areas = { on: false, cancel: () => undefined, move: () => false, release: () => false };
   const deps = { store, viewport, host: picture };
   // What is under way (`FogStroke`) and the routing of the pointer (`FogGesture`), built without their canvas.
   const stroke = Object.assign(Object.create(FogStroke.prototype) as FogStroke, {
     deps,
-    areas: () => areas,
-    plain: new PlainFogStroke(store as never, picture, reveal),
+    outcome: new FogStrokeOutcome(store as never, picture, reveal, () => null),
     drag: new FogDrag(outline as unknown as Graphics, snapping, () => 1),
     polygon: { active: false, drop: () => false, rescale: vi.fn() },
     // Rooms have a test of their own (fogRoomClick.test.ts): this map has none.
-    rooms: new FogRoomClick({ store: store as never, mapRect: () => null, outline: outline as unknown as Graphics, zoom: () => 1, selects: () => false, select: () => undefined, fill: () => undefined }),
+    rooms: new FogRoomClick({ store: store as never, mapRect: () => null, outline: outline as unknown as Graphics, zoom: () => 1, hides: () => true, fill: () => undefined }),
     snapping,
     flipped: false,
     pointer: null,
@@ -124,7 +124,7 @@ export function fogGestureScene(activeTool: 'fog' | 'eraser', shape: FogShape): 
     ring,
     outline,
   });
-  const gesture = Object.assign(Object.create(FogGesture.prototype) as FogGesture, { deps, shape, makesAreas: false, areas, stroke, over: null }) as unknown as Routing;
+  const gesture = Object.assign(Object.create(FogGesture.prototype) as FogGesture, { deps, shape, stroke, over: null }) as unknown as Routing;
   const underWay = stroke as unknown as UnderWay;
   const tool: FogGestureHarness = {
     drag: stroke.drag,
