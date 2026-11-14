@@ -58,12 +58,11 @@ describe('what a mode that places by a press takes of its own kind', () => {
     expect([sign, locked, hidden, stamp, above, onMap].map((annotation) => takesOwn(own, annotation))).toEqual([true, true, true, false, false, false]);
   });
 
-  it('takes none while Alt is held: the press places on top', () => {
-    for (const mode of ['stamp', 'text'] as const) {
-      const own = ownKind('draw', mode, true);
-      expect(own).toBeNull();
-      expect([stamp, sign, above].some((annotation) => takesOwn(own, annotation))).toBe(false);
-    }
+  it('takes stamps with Alt held too, where Alt frees them from the grid; a text is then typed on top', () => {
+    expect(takesOwn(ownKind('draw', 'stamp', true), stamp)).toBe(true);
+    const own = ownKind('draw', 'text', true);
+    expect(own).toBeNull();
+    expect([stamp, sign, above].some((annotation) => takesOwn(own, annotation))).toBe(false);
   });
 
   it('is no rule of any other mode or tool, and changes no scope', () => {

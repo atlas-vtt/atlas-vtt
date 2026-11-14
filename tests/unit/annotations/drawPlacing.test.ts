@@ -118,15 +118,18 @@ describe('Stamp mode and a stamp that is there', () => {
     expect(steps(s)).toBe(0);
   });
 
-  it('stamps on top with Alt held: the stamp there is passed over, and the stamp to be shows at the pointer', () => {
+  it('takes the stamp there with Alt held too, and places off the grid beside it: Alt frees from the grid and stacks nothing', () => {
     const s = scene((made) => { made.store.getState().addDrawing(stamp(105, 175)); });
     s.tool({ mode: 'stamp' });
-    expect(s.hover(100, 170, { alt: true })).toBe('none');
-    expect(outlined(s)).toBe(false);
-    expect(placing(s)).toBe('stamp');
-    expect(at(part(s, 'placing-stamp'))).toEqual(pt(100, 170));
-    expect(s.pull([[100, 170]], { alt: true })).toBe(false);
-    expect(s.drawings().map(({ points }) => points[0])).toEqual([pt(105, 175), pt(100, 170)]);
+    expect(s.hover(100, 170, { alt: true })).toBe('pointer');
+    expect(outlined(s)).toBe(true);
+    expect(placing(s)).toBeNull();
+    expect(s.pull([[100, 170]], { alt: true })).toBe(true);
+    expect(s.drawings()).toHaveLength(1);
+    expect(s.hover(300, 290, { alt: true })).toBe('none');
+    expect(at(part(s, 'placing-stamp'))).toEqual(pt(300, 290));
+    expect(s.pull([[300, 290]], { alt: true })).toBe(false);
+    expect(s.drawings().map(({ points }) => points[0])).toEqual([pt(105, 175), pt(300, 290)]);
   });
 
   it('takes stamps alone: a line or a text under the pointer is stamped over', () => {

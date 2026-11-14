@@ -126,7 +126,8 @@ export class AnnotationGestures {
     const edit = new AnnotationEdit(annotations, this.deps.layer, this.deps.touched, live ? this.deps.write : null);
     let offset = { x: 0, y: 0 };
     let copies = false;
-    // One stamp moved by itself lands on a cell, as a placed one does. With others, or with tokens, it keeps its place among them.
+    // One stamp moved by itself lands on a cell, as a placed one does, and Alt frees it from the grid as it does a placed one,
+    // so Alt leaves no copy of it. With others, or with tokens, it keeps its place among them, and Alt copies them all.
     const [only, ...more] = annotations;
     const stamp = !live && more.length === 0 && only?.kind === 'drawing' && only.shape === 'stamp' ? only : null;
     this.track(annotations, event, live, {
@@ -134,7 +135,7 @@ export class AnnotationGestures {
       step: (dragged, move) => {
         const drag = stamp ? this.toCell(stamp, dragged, move.altKey === true) : dragged;
         offset = drag;
-        copies = move.altKey === true && options.copy !== undefined;
+        copies = !stamp && move.altKey === true && options.copy !== undefined;
         const transform = moveBy(drag.x, drag.y);
         edit.show(transform);
         this.deps.showHandles(options.handles ? mapHandles(options.handles, transform) : null, { kind: 'body' });

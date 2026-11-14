@@ -71,14 +71,31 @@ describe('a stamp dragged with the pointer', () => {
     expect(at(id)).toEqual({ x: 228, y: 262 });
   });
 
-  it('leaves its copy where Alt dropped it, and stays itself', () => {
+  it('goes off the grid with Alt held, itself and not a copy, in Select mode, in Stamp mode and with the move tool', () => {
     s = drawScene();
     const id = s.store.getState().addDrawing(stamp(105, 175));
+    const tools = [() => s.tool({ mode: 'select' }), () => s.tool({ mode: 'stamp' }), () => s.store.getState().setActiveTool('move')];
+    const drops: Point[] = [{ x: 228, y: 262 }, { x: 312, y: 150 }, { x: 79, y: 141 }];
+    tools.forEach((take, index) => {
+      take();
+      const from = at(id);
+      const to = drops[index]!;
+      expect(s.pull([[from.x, from.y], [to.x, to.y]], { alt: true })).toBe(true);
+      expect(at(id)).toEqual(to);
+      expect(s.drawings()).toHaveLength(1);
+    });
+  });
+
+  it('is copied by Alt only with others: two stamps dragged with Alt leave copies and stay', () => {
+    s = drawScene();
+    const state = s.store.getState();
+    const a = state.addDrawing(stamp(105, 175));
+    const b = state.addDrawing(stamp(315, 175));
     s.tool({ mode: 'select' });
-    s.pull([[105, 175], [228, 262]], { alt: true });
-    expect(at(id)).toEqual({ x: 105, y: 175 });
-    expect(s.drawings()).toHaveLength(2);
-    expect(s.drawings()[1]?.points[0]).toEqual({ x: 228, y: 262 });
+    state.setSelection([a, b]);
+    s.pull([[105, 175], [118, 187]], { alt: true });
+    expect(at(a)).toEqual({ x: 105, y: 175 });
+    expect(s.drawings()).toHaveLength(4);
   });
 
   it('keeps its place among what is moved with it: two stamps keep their shape, and so does a stamp moved with a line', () => {

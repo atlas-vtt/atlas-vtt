@@ -65,7 +65,7 @@ export interface AnnotationInteractionDeps {
  * mode, those above the tokens in the move and select tools, and in the Draw tool's other modes
  * only the handles of what is selected (the stamp or text just made: a drawn shape is not
  * selected), and what a mode that places by a press has of its own kind under the pointer
- * (`ownKind`: a stamp in Stamp mode, a text in Text mode, unless Alt is held). A press selects (with its group; Shift adds or takes away) and
+ * (`ownKind`: a stamp in Stamp mode; a text in Text mode, unless Alt is held). A press selects (with its group; Shift adds or takes away) and
  * drags; a press on a handle scales, stretches, turns or moves a line's point; a right click opens
  * the menu (the press released in place: a right-drag pans); a double click edits a text or
  * removes a line's point, and so does the first click on a text in Text mode.
@@ -218,7 +218,7 @@ export class AnnotationInteraction {
     this.deps.handles.show(this.deps.gmView() && !this.deps.typing() ? selectionPicture(this.read(), this.zoom, this.deps.measure) : null);
   }
 
-  /** The kind the Draw mode in hand takes by a press where one lies under the pointer; none while `free` (Alt) is held. */
+  /** The kind the Draw mode in hand takes by a press where one lies under the pointer; no text while `free` (Alt) is held. */
   private own(free: boolean): OwnKind | null {
     const { activeTool, drawTool } = this.deps.store.getState();
     return ownKind(activeTool, drawTool.mode, free);
