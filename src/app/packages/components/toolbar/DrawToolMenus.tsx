@@ -6,6 +6,7 @@ import { DropdownMenu } from "../primitives/DropdownMenu"
 import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownSwatchGrid } from "../primitives/DropdownSwatchGrid"
 import { ToolButton } from "../primitives/ToolButton"
+import { LabelTooltip } from "../primitives/tooltip"
 import { MIXED, type Shown } from "./drawStyle"
 import { CLEAR_SCOPES, DRAW_COLOR_SWATCHES, type DrawMenuChoice } from "./drawToolChoices"
 import type { DrawIcon } from "./drawToolIcons"
@@ -58,27 +59,35 @@ interface ChoiceMenuProps<Value> {
   value: Shown<Value>
   onChange: (value: Value) => void
   locked: string | null
+  /** Why a choice cannot be made now, or null: it stays in its place, disabled, and says so. */
+  unavailable?: (value: Value) => string | null
 }
 
 /** A tool with three or four choices: a button whose face is the choice made, and a small menu of them above it. */
-export function ChoiceMenu<Value>({ label, choices, value, onChange, locked }: ChoiceMenuProps<Value>): React.ReactElement {
+export function ChoiceMenu<Value>({ label, choices, value, onChange, locked, unavailable }: ChoiceMenuProps<Value>): React.ReactElement {
   const chosen = choices.find((choice) => choice.value === value)
   return (
     <BarMenu label={label} subtitle={locked ?? chosen?.label} icon={chosen?.icon ?? CircleDashed} locked={locked}>
       {(close) => (
         <div className="atlas-dropdown-section">
-          {choices.map((choice) => (
-            <DropdownMenuItem
-              key={choice.label}
-              icon={choice.icon}
-              label={choice.label}
-              isActive={choice === chosen}
-              onClick={() => {
-                onChange(choice.value)
-                close()
-              }}
-            />
-          ))}
+          {choices.map((choice) => {
+            const reason = unavailable?.(choice.value) ?? null
+            const row = (
+              <DropdownMenuItem
+                key={choice.label}
+                icon={choice.icon}
+                label={choice.label}
+                isActive={choice === chosen}
+                disabled={reason !== null}
+                onClick={() => {
+                  onChange(choice.value)
+                  close()
+                }}
+              />
+            )
+            // A disabled button hears no pointer: the row around it shows the reason.
+            return reason === null ? row : <LabelTooltip key={choice.label} side="right" label={reason}><div>{row}</div></LabelTooltip>
+          })}
         </div>
       )}
     </BarMenu>
@@ -105,6 +114,7 @@ export function ColourMenu({ value, onChange, locked }: ColourMenuProps): React.
           <DropdownSwatchGrid
             label={t('toolbar.colour')}
             labelHidden
+            fillsMenu
             swatches={DRAW_COLOR_SWATCHES}
             value={value === MIXED ? '' : value}
             onChange={(color) => {

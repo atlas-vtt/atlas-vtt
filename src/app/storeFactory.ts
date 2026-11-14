@@ -181,6 +181,8 @@ export interface ViewAtlasState extends ViewState {
   updateWall: (id: string, changes: Partial<WallSegment>) => void;
   deleteWall: (id: string) => void;
   deleteWalls: (ids: string[]) => void;
+  /** Takes walls away and adds others in one write, so whatever follows the walls works them out once; returns the ids of the added ones. */
+  editWalls: (remove: readonly string[], add: readonly WallInput[]) => string[];
   toggleDoor: (id: string) => void;
   /** Locks a door, closing it, or unlocks it; a locked door does not open (`toggleDoor`). */
   setDoorLocked: (id: string, locked: boolean) => void;
@@ -1149,6 +1151,25 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.selectedIds = draft.selectedIds.filter(sid => !ids.includes(sid));
             draft._audioDirty = true;
           }),
+
+          editWalls: (remove, add) => {
+            const stamp = Date.now();
+            const ids = add.map(() => `wall_${stamp}_${Math.random().toString(36).slice(2, 11)}`);
+            if (remove.length === 0 && add.length === 0) return ids;
+            set((draft) => {
+              for (const id of remove) delete draft.objects.walls[id];
+              const levels = placedOnViewedLevels(draft);
+              add.forEach((data, index) => {
+                draft.objects.walls[ids[index]!] = { id: ids[index]!, kind: 'wall', ...levels, ...data };
+              });
+              if (remove.length > 0) {
+                const gone = new Set(remove);
+                draft.selectedIds = draft.selectedIds.filter((id) => !gone.has(id));
+              }
+              draft._audioDirty = true;
+            });
+            return ids;
+          },
 
           toggleDoor: (id) => set((draft) => {
             const wall = draft.objects.walls[id];

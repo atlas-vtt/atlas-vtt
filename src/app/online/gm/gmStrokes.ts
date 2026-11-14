@@ -60,9 +60,7 @@ export class GmStrokes {
     const state = drawing.pen ? this.pen(drawing, fog, now) : this.whole(drawing, fog);
     if (state === undefined) {
       // Players are shown nothing of it now: what comes of it later starts anew.
-      this.told = false;
-      this.last = this.beforeLast = 0;
-      this.meter.reset();
+      this.forgetTold();
       return undefined;
     }
     this.told = true;
@@ -72,9 +70,13 @@ export class GmStrokes {
   /** Another scene: nothing is followed. */
   reset(): void {
     this.serial = null;
+    this.madeAt = null;
+    this.forgetTold();
+  }
+
+  private forgetTold(): void {
     this.told = false;
     this.last = this.beforeLast = 0;
-    this.madeAt = null;
     this.meter.reset();
   }
 

@@ -1,7 +1,8 @@
 import type { Point } from '../types/visionTypes';
 import type { WallInput, WallSegment } from '../types/wallTypes';
 import type { RoomArea } from './rooms';
-import { shapeContains } from './shapeContains';
+import { boxAround, boxOf, boxesMeet, grown, segmentGrid } from './segmentGrid';
+import { shapeContainment, shapeContains } from './shapeContains';
 import { along, beside, distanceTo, edgesWithShapeOnLeft, lengthOf, type Segment } from './wallSides';
 
 /**
@@ -12,12 +13,17 @@ import { along, beside, distanceTo, edgesWithShapeOnLeft, lengthOf, type Segment
  * another's, only gets walls where nothing was open before. Filling takes a shape out of the
  * floor: the walls inside it go, and its edge becomes wall wherever floor lies beyond.
  * Floor is what `wallSpaces` says of the walls before the edit.
+ *
+ * An edit looks only at the walls that reach the shape: a wall away from it stays as it is, so a
+ * carve costs what lies around it, however many walls the map has.
  */
 
 /** How near a line something lies to be on it, and how short a piece of wall is none, in pixels. */
 const ON_LINE = 0.5;
 /** How far beyond a shape's edge the ground there is asked about, in pixels: clear of the edge itself. */
 const BEYOND = 1.5;
+/** How far from a shape's box a wall may lie and still be looked at, in pixels: more than anything asked of a wall reaches. */
+const REACH = 4;
 
 /** Walls to take away by id and walls to add, as one edit (`WallEdit` of the wall editor). */
 export interface CarvedWalls {
@@ -77,19 +83,26 @@ function withoutIdentity(wall: WallSegment): WallInput {
 function edit(area: RoomArea, walls: readonly WallSegment[], floors: readonly RoomArea[], carving: boolean, chainId: string): CarvedWalls {
   // The shape's edge, the shape to the left of each piece of it.
   const outline = edgesWithShapeOnLeft(area);
-  const floor = (point: Point): boolean => floors.some((space) => shapeContains(space, point));
+  const around = boxAround(outline);
+  if (!around) return { remove: [], add: [] };
+  const reached = grown(around, REACH);
+  const spaces = floors.map((space) => shapeContainment(space));
+  const floor = (point: Point): boolean => spaces.some((inside) => inside(point));
   const middle = (piece: Segment): Point => along(piece, 0.5);
   /** The piece of the shape's edge a piece of wall runs along, if it does: not one it only crosses. */
   const edgeAlong = (piece: Segment): Segment | undefined => outline.find((edge) => [piece.p1, middle(piece), piece.p2].every((point) => distanceTo(edge, point) <= ON_LINE));
-  const floorEdges = floors.flatMap((space) => edgesWithShapeOnLeft(space));
+  const floorEdges = segmentGrid(floors.flatMap((space) => edgesWithShapeOnLeft(space)), ON_LINE);
   /** Where along `segment` the ground a step to either side of it turns from floor to rock. */
-  const groundTurns = (segment: Segment, sides: readonly ('left' | 'right')[]): number[] => sides.flatMap((side) => cuts(shifted(segment, side, BEYOND), floorEdges));
+  const groundTurns = (segment: Segment, sides: readonly ('left' | 'right')[]): number[] => sides.flatMap((side) => {
+    const line = shifted(segment, side, BEYOND);
+    return cuts(line, floorEdges.touching(boxOf(line)));
+  });
   const remove: string[] = [];
   const add: WallInput[] = [];
   const standing: Segment[] = [];
   for (const wall of walls) {
     const length = lengthOf(wall);
-    if (!(length > 0)) continue;
+    if (!(length > 0) || !boxesMeet(boxOf(wall), reached)) continue;
     const left = pieces(wall, [...cuts(wall, outline), ...(carving && plain(wall) ? groundTurns(wall, ['left', 'right']) : [])], (piece) => {
       const point = middle(piece);
       const edge = edgeAlong(piece);
@@ -108,10 +121,9 @@ function edit(area: RoomArea, walls: readonly WallSegment[], floors: readonly Ro
       standing.push(piece);
     }
   }
-  const others = [...standing, ...floorEdges];
   for (const edge of outline) {
     if (!(lengthOf(edge) > 0)) continue;
-    const fresh = pieces(edge, [...cuts(edge, others), ...groundTurns(edge, ['right'])], (piece) => {
+    const fresh = pieces(edge, [...cuts(edge, standing), ...cuts(edge, floorEdges.touching(boxOf(edge))), ...groundTurns(edge, ['right'])], (piece) => {
       const beyond = floor(beside(piece, 0.5, 'right', BEYOND));
       return beyond !== carving && standing.every((wall) => distanceTo(wall, middle(piece)) > ON_LINE);
     });

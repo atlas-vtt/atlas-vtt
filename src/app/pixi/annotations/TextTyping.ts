@@ -1,5 +1,5 @@
 import type { Viewport } from 'pixi-viewport';
-import { annotationRoom, readText } from '../../annotations/annotationList';
+import { annotationRoom, readText, withinTextLength } from '../../annotations/annotationList';
 import { isLocked } from '../../annotations/annotationLock';
 import type { TextAnnotation } from '../../annotations/annotationTypes';
 import { drawCell } from '../../annotations/drawSizes';
@@ -80,9 +80,9 @@ export class TextTyping {
   }
 
   /**
-   * Opens the field for a new text. A click's text (`width` null) is as wide as its words and
-   * stands at `at` with the side its alignment names; a dragged one starts at `at` and wraps at
-   * `width`. Either way its first line is centred on `at` from top to bottom.
+   * Opens the field for a new text, whose lines are centred. A click's text (`width` null) is as
+   * wide as its words and stands with its middle at `at`; a dragged one starts at `at` and wraps
+   * at `width`. Either way its first line is centred on `at` from top to bottom.
    */
   begin(at: Point, width: number | null): void {
     this.finish();
@@ -102,8 +102,7 @@ export class TextTyping {
     const wrap = width === null ? null : Math.max(width, empty.fontSize);
     const draft = wrap === null ? empty : { ...empty, width: wrap };
     const layout = textLayout(draft);
-    const side = draft.align === 'left' ? 0 : draft.align === 'right' ? 1 : 0.5;
-    const anchor = { x: wrap === null ? at.x : at.x + side * wrap, y: at.y - (layout.lineHeight * draft.scale) / 2 };
+    const anchor = { x: wrap === null ? at.x : at.x + wrap / 2, y: at.y - (layout.lineHeight * draft.scale) / 2 };
     this.open({ id: null, width: wrap, anchor, words: '', all: false });
   }
 
@@ -147,7 +146,8 @@ export class TextTyping {
       return;
     }
     const moved = Math.hypot(at.x - record.x, at.y - record.y) > 1e-6;
-    if (words !== record.text || moved) state.updateText(session.id, { text: words, x: at.x, y: at.y, ...(breaks && { breaks }) });
+    // What the field opened with is the text as it is read: a longer one from a file is written only once it was changed.
+    if (words !== withinTextLength(record.text) || moved) state.updateText(session.id, { text: words, x: at.x, y: at.y, ...(breaks && { breaks }) });
   }
 
   /** Closes the field and writes nothing: an edited text says what it said, a new one is dropped. */
@@ -243,7 +243,7 @@ export class TextTyping {
 
   /**
    * Sets the field as its text is now. The words' box grows from its anchor; where the text's
-   * alignment or size is another (`restyled`), the anchor is first taken anew from where the box lies.
+   * face or size is another (`restyled`), the anchor is first taken anew from where the box lies.
    */
   private apply(session: Session, restyled: boolean): void {
     const draft = this.drafted(session.id, session.width, session.field.value);

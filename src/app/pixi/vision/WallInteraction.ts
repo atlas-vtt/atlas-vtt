@@ -132,11 +132,7 @@ export class WallInteraction {
 
   /** Applies an edit of whole walls as one undo step, and clears the selection. */
   apply(edit: WallEdit): void {
-    const state = this.store.getState();
-    runHistoryTransaction(this.store, () => {
-      if (edit.remove.length > 0) state.deleteWalls(edit.remove);
-      for (const wall of edit.add) state.addWall(wall);
-    });
+    this.store.getState().editWalls(edit.remove, edit.add);
     this.clearSelection();
   }
 

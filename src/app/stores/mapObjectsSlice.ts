@@ -19,6 +19,7 @@ import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
 import { placedLevelLink } from '../levels/levelLinkCopies';
 import { isRecord } from '../utils/guards';
 import { placedAnnotationCopies } from '../annotations/annotationCopies';
+import { annotationRoom } from '../annotations/annotationList';
 import { unlockedIds } from '../annotations/annotationLock';
 import { orderOnTop } from '../annotations/annotationStack';
 
@@ -26,7 +27,9 @@ export interface MapObjectsSlice {
   /**
    * Adds the objects under fresh ids, selects them and returns the new ids. Stairs land on the level
    * shown (`placedLevelLink`), as many as the map has room for; in the stairs tool the last one's
-   * popover opens, since the tool selects stairs by it.
+   * popover opens, since the tool selects stairs by it. Drawings and texts are added as far as the
+   * level shown has room for them (`annotationRoom`): one past that would be shown by nothing.
+   * Whoever calls tells the GM of what was left out.
    */
   insertMapObjects: (content: MapObjectContent) => string[];
   /** Copies the objects one grid cell down and to the right, selects the copies and returns their ids. */
@@ -110,7 +113,12 @@ function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkR
 }
 
 export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStoreState): MapObjectsSlice {
-  const insert = (content: MapObjectContent): string[] => {
+  const insert = (copied: MapObjectContent): string[] => {
+    // Every copy comes through here (paste, duplicate, an Alt-drag): the level takes no more drawings and texts than are read.
+    const room = annotationRoom(levelObjects(get()));
+    const content = copied.drawings.length > room.drawings || copied.texts.length > room.texts
+      ? { ...copied, drawings: copied.drawings.slice(0, Math.max(0, room.drawings)), texts: copied.texts.slice(0, Math.max(0, room.texts)) }
+      : copied;
     if (countMapObjects(content) === 0) return [];
     // The map's limit counts the stairs of every level.
     const linkRoom = MAX_LEVEL_LINKS - levelLinkList(get().objects.levelLinks).length;

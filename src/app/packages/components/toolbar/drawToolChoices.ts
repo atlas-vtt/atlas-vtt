@@ -1,10 +1,10 @@
 import {
-  AlignCenter, AlignLeft, AlignRight, Captions, Circle, Eraser, Grid2x2Plus, Grid2x2X, Minus,
+  Captions, Circle, Eraser, Grid2x2Plus, Grid2x2X, Minus,
   MousePointer2, MoveDiagonal, MoveUpRight, PaintBucket, Pencil, Slash, Square, Stamp, Type, TypeOutline,
 } from "lucide-react"
 import {
   DEFAULT_DRAW_TOOL, DRAW_MODES, DRAW_SIZES,
-  type ClearScope, type DrawDash, type DrawEnds, type DrawFill, type DrawFont, type DrawMode, type DrawSize, type TextAlign, type TextLook,
+  type ClearScope, type DrawDash, type DrawEnds, type DrawFill, type DrawFont, type DrawMode, type DrawSize, type TextLook,
 } from "../../../annotations/annotationTypes"
 import { fillsCells, type CellsGridState } from "../../../annotations/cellsMode"
 import { t } from "../../../i18n"
@@ -69,7 +69,7 @@ export function eraserOrBack(mode: DrawMode, before: DrawMode, grid: CellsGridSt
 export type DrawToolId =
   | 'color' | 'size' | 'players' | 'layer'
   | 'seeThrough' | 'dash' | 'ends' | 'curved' | 'fill'
-  | 'font' | 'look' | 'align' | 'bold' | 'italic'
+  | 'font' | 'look'
   | 'icon' | 'cellsLayer' | 'cellsFill' | 'cellsUnfill' | 'eraseWhole' | 'front' | 'back' | 'lock' | 'group' | 'ungroup' | 'clear'
 
 /** What every drawing has: first in the bar of every mode that makes or changes drawings, in this order, so they never move between modes. */
@@ -82,7 +82,7 @@ const MODE_TOOLS: Readonly<Record<DrawMode, readonly (readonly DrawToolId[])[]>>
   line: [COMMON_DRAW_TOOLS, ['dash', 'ends', 'curved', 'fill', 'seeThrough']],
   rectangle: [COMMON_DRAW_TOOLS, ['dash', 'fill']],
   ellipse: [COMMON_DRAW_TOOLS, ['dash', 'fill']],
-  text: [COMMON_DRAW_TOOLS, ['font', 'look', 'align', 'bold', 'italic']],
+  text: [COMMON_DRAW_TOOLS, ['font', 'look']],
   stamp: [COMMON_DRAW_TOOLS, ['icon']],
   // A cell has no size but the grid's, and the mode keeps a layer of its own (`cellsLayer`).
   cells: [['color', 'players', 'cellsLayer'], ['cellsFill', 'cellsUnfill']],
@@ -131,12 +131,6 @@ export const LOOK_CHOICES: readonly DrawMenuChoice<TextLook>[] = [
   { value: 'outline', icon: TypeOutline, label: t('draw.look.outline') },
   { value: 'plate', icon: Captions, label: t('draw.look.plate') },
   { value: 'plain', icon: Type, label: t('draw.look.plain') },
-]
-
-export const ALIGN_CHOICES: readonly DrawMenuChoice<TextAlign>[] = [
-  { value: 'left', icon: AlignLeft, label: t('draw.align.left') },
-  { value: 'center', icon: AlignCenter, label: t('draw.align.center') },
-  { value: 'right', icon: AlignRight, label: t('draw.align.right') },
 ]
 
 /** The colours a drawing can take: the map's colours, black and white among them. Each is stored as it is. */

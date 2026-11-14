@@ -77,9 +77,14 @@ export function luminance(color: string): number {
 /** The luminance from which a colour counts as light: where black and white stand out from it alike. */
 const LIGHT_FROM = 0.179;
 
+/** The tone that stands out from `color`: the halo's dark for a light colour, its light for a dark one. */
+export function contrastOf(color: string): string {
+  return luminance(color) >= LIGHT_FROM ? HALO.dark : HALO.light;
+}
+
 /** The halo of a text of `color` and `fontSize`: dark under light text, light under dark. */
 export function haloOf(color: string, fontSize: number): TextHalo {
-  return { color: luminance(color) >= LIGHT_FROM ? HALO.dark : HALO.light, alpha: HALO.alpha, width: 2 * HALO.share * fontSize };
+  return { color: contrastOf(color), alpha: HALO.alpha, width: 2 * HALO.share * fontSize };
 }
 
 /** Whether a text that is `pixels` high on a picture carries its halo there. */

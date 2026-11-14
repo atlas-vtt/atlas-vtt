@@ -70,9 +70,10 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
   useMapHotkeys({
     move: () => selectTool(cycleTool(MOVE_TOOLS, activeTool())),
     fog: dmOnly(() => selectTool(cycleTool(FOG_TOOLS, activeTool()))),
-    // The Draw tool in its Text mode.
+    // The Draw tool in its Text mode; in the session view, where its bars take no choice, the tool keeps its mode.
     text: dmOnly(() => {
-      store.getState().setDrawTool({ mode: "text" })
+      const state = store.getState()
+      if (state.isGMView) state.setDrawTool({ mode: "text" })
       selectTool("draw")
     }),
     // The tool keeps its mode while another tool is in use; pressed again while measuring, the key steps to the next mode.

@@ -18,6 +18,13 @@ export const MAX_TEXTS = 500;
  * lifting at 120 Hz), so no drawing made before is passed over.
  */
 export const MAX_STROKE_POINTS = 20_000;
+/**
+ * The characters one text may have, as a string counts them: a longer one reads cut to this, and
+ * the field takes no more. The message to online players carries as many (`MAX_TEXT_LENGTH` in
+ * `online/protocol/annotations.ts`): the two must stay one number, which a test holds, since this
+ * file is shared code and cannot read that one.
+ */
+export const MAX_TEXT_LENGTH = 2000;
 /** The rings cut out of one drawing's fill (`DrawingStroke.holes`); a drawing with more reads without the rest. */
 export const MAX_HOLES = 256;
 /** The longest `group` and `by` a reader takes; a longer one reads as unset. */
@@ -45,8 +52,8 @@ export type DrawEnds = 'end' | 'both';
 export type DrawLayer = 'above' | 'map';
 export type TextLook = 'outline' | 'plate' | 'plain';
 export const TEXT_LOOKS: readonly TextLook[] = ['outline', 'plate', 'plain'];
+/** How the lines of a text that names one stand in its box; the tool writes none, and a text without one is centred. */
 export type TextAlign = 'left' | 'center' | 'right';
-export const TEXT_ALIGNS: readonly TextAlign[] = ['left', 'center', 'right'];
 /** The faces the tool offers; a text keeps the `fontFamily` it was written with. */
 export type DrawFont = 'medieval' | 'scifi' | 'mono';
 export const DRAW_FONTS: readonly DrawFont[] = ['medieval', 'scifi', 'mono'];
@@ -206,9 +213,6 @@ export interface DrawToolChoices {
   fill: DrawFill | null;
   font: DrawFont;
   look: TextLook;
-  align: TextAlign;
-  bold: boolean;
-  italic: boolean;
   /** The symbol the Stamp mode places. */
   icon: string;
   /** The eraser removes each whole drawing it touches. */
@@ -232,9 +236,6 @@ export const DEFAULT_DRAW_TOOL: DrawToolChoices = {
   fill: null,
   font: 'medieval',
   look: 'outline',
-  align: 'center',
-  bold: false,
-  italic: false,
   icon: 'door',
   eraseWhole: false,
   cellsLayer: 'map',

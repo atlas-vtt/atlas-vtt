@@ -14,7 +14,7 @@ import { isFiniteNumber, isRecord } from '../utils/guards';
 import { isHexColor } from '../utils/hexColor';
 import { fitsAnchors, fitsEllipse, fitsRectangle, isClosedPath } from './annotationFit';
 import {
-  DEFAULT_CELL, MAX_ANNOTATION_NAME, MAX_DRAWINGS, MAX_HOLES, MAX_STROKE_POINTS, MAX_TEXTS,
+  DEFAULT_CELL, MAX_ANNOTATION_NAME, MAX_DRAWINGS, MAX_HOLES, MAX_STROKE_POINTS, MAX_TEXT_LENGTH, MAX_TEXTS,
   type Annotation, type DrawingAnnotation, type DrawShape, type TextAnnotation,
 } from './annotationTypes';
 import { stampSize, strokeWidth, textHeight } from './drawSizes';
@@ -147,9 +147,18 @@ function breaksOf(value: unknown, text: string): readonly number[] | null {
   return value as number[];
 }
 
+/** `text` as long as a text may be at most (`MAX_TEXT_LENGTH`): cut after its last whole character that fits. */
+export function withinTextLength(text: string): string {
+  if (text.length <= MAX_TEXT_LENGTH) return text;
+  const last = text.charCodeAt(MAX_TEXT_LENGTH - 1);
+  // The first half of a character of two halves: it goes with its second.
+  return text.slice(0, last >= 0xd800 && last <= 0xdbff ? MAX_TEXT_LENGTH - 1 : MAX_TEXT_LENGTH);
+}
+
 function textOf(id: string, value: Record<string, unknown>): TextAnnotation | null {
   const { x, y, text, fontSize, fontFamily, backgroundColor, padding, borderRadius, opacity, width, align, scale, rotation } = value;
   if (!isFiniteNumber(x) || !isFiniteNumber(y) || typeof text !== 'string') return null;
+  const words = withinTextLength(text);
   const plate = isHexColor(backgroundColor) ? backgroundColor : null;
   return {
     ...shared(id, value),
@@ -157,7 +166,7 @@ function textOf(id: string, value: Record<string, unknown>): TextAnnotation | nu
     record: value as unknown as TextElement,
     x,
     y,
-    text,
+    text: words,
     fontSize: isSize(fontSize) ? fontSize : textHeight('m', DEFAULT_CELL),
     scale: isSize(scale) ? scale : 1,
     fontFamily: typeof fontFamily === 'string' && fontFamily !== '' ? fontFamily : FALLBACK_FONT,
@@ -169,7 +178,7 @@ function textOf(id: string, value: Record<string, unknown>): TextAnnotation | nu
     // A plate that names no opacity, or none, is solid, as plates always were.
     opacity: isSize(opacity) ? Math.min(1, opacity) : 1,
     width: isSize(width) ? width : null,
-    breaks: breaksOf(value.breaks, text),
+    breaks: breaksOf(value.breaks, words),
     align: align === 'left' || align === 'right' ? align : 'center',
     bold: value.bold === true,
     italic: value.italic === true,
@@ -199,6 +208,7 @@ export function readDrawing(id: string, value: unknown): DrawingAnnotation | nul
  * A text as it is read: `id` is its place in the record. None without a finite place and a text.
  * A colour that is not `#rrggbb` reads as white (a plate's as no plate), a font size that is no
  * size as M on a map without a grid, and everything else it cannot read as a text without it.
+ * A text longer than one may be reads cut to that (`withinTextLength`); its record keeps all of it.
  */
 export function readText(id: string, value: unknown): TextAnnotation | null {
   if (!isRecord(value)) return null;
@@ -257,6 +267,25 @@ export function annotationRoom(objects: AnnotationRecords): { drawings: number; 
     else room.texts--;
   }
   return room;
+}
+
+/**
+ * How many drawings and texts of `objects` (one level's) the list leaves out because the level
+ * holds more than it reads: they stay in the file and are shown by nothing. What cannot be read
+ * at all is not among them.
+ */
+export function annotationsLeftOut(objects: AnnotationRecords): { drawings: number; texts: number } {
+  const beyond = (record: unknown, one: (id: string, value: unknown) => Annotation | null, most: number): number => {
+    if (!isRecord(record)) return 0;
+    const entries = Object.entries(record);
+    if (entries.length <= most) return 0;
+    let read = 0;
+    for (const [id, value] of entries) {
+      if (one(id, value)) read++;
+    }
+    return Math.max(0, read - most);
+  };
+  return { drawings: beyond(objects.drawings, readDrawing, MAX_DRAWINGS), texts: beyond(objects.texts, readText, MAX_TEXTS) };
 }
 
 /**

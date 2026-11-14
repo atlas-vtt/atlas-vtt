@@ -81,6 +81,9 @@ const CLEARED: Readonly<Record<ClearScope, (entry: StackedAnnotation['entry']) =
   players: (entry) => typeof entry.by === 'string' && entry.by !== '',
 };
 
+const entriesOf = (ids: readonly string[], { drawings, texts }: AnnotationsDraft['objects']): (DrawingStroke | TextElement)[] =>
+  ids.flatMap((id) => drawings[id] ?? texts[id] ?? []);
+
 export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDraft): AnnotationsSlice {
   return {
     addText: (data) => {
@@ -178,9 +181,7 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
     },
 
     groupAnnotations: (ids) => {
-      const { drawings, texts } = get().objects;
-      const entries = ids.flatMap((id) => drawings[id] ?? texts[id] ?? []);
-      if (!groupable(entries)) return;
+      if (!groupable(entriesOf(ids, get().objects))) return;
       const group = newGroupId();
       set((draft) => {
         for (const id of unlockedIds(ids, draft.objects)) {
@@ -191,8 +192,7 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
     },
 
     ungroupAnnotations: (ids) => {
-      const { drawings, texts } = get().objects;
-      if (!ungroupable(ids.flatMap((id) => drawings[id] ?? texts[id] ?? []))) return;
+      if (!ungroupable(entriesOf(ids, get().objects))) return;
       set((draft) => {
         for (const id of unlockedIds(ids, draft.objects)) {
           const entry = draft.objects.drawings[id] ?? draft.objects.texts[id];

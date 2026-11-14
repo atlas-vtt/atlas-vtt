@@ -30,7 +30,9 @@ it('opens a drawing\'s menu at the pointer in the window, not at its position on
   const id = scene.store.getState().addDrawing({ type: 'pen', points: [{ x: 200, y: 270 }, { x: 260, y: 270 }], color: '#ffffff', width: 4, opacity: 1 });
   scene.store.getState().setActiveTool('move');
 
-  expect(scene.renderer.selecting.pointer.secondaryDown(220, 270, rightPress)).toBe(true);
+  expect(scene.renderer.selecting.pointer.menuAt(220, 270)).toBe(true);
+  expect(scene.store.getState().selectedIds).toEqual([]);
+  expect(scene.renderer.selecting.pointer.openMenu(220, 270, rightPress)).toBe(true);
 
   expect(scene.store.getState().selectedIds).toEqual([id]);
   expect(openContextMenuGlobal).toHaveBeenCalledWith(expect.any(Array), { x: 520, y: 310 });

@@ -13,6 +13,14 @@ const DOUBLE_CLICK_MS = 500;
 const altHeld = (e: FederatedPointerEvent): boolean => e.altKey === true;
 const shiftHeld = (e: FederatedPointerEvent): boolean => e.shiftKey === true;
 
+/** Where the pointer is, and the keys held there. */
+interface PointerAt {
+  world: Point;
+  screen: Point;
+  free: boolean;
+  constrain: boolean;
+}
+
 /** What the Draw tool's input asks of, and tells, whoever owns the drawings. */
 export interface DrawInputHost {
   /** The mode a press draws in now; null while the tool is not in hand, or its mode draws nothing by a gesture. */
@@ -60,7 +68,7 @@ export class DrawInput {
   /** Stops listening for what a gesture under way hears beyond the viewport; null while none is. */
   private letGo: (() => void) | null = null;
   /** Where the pointer was last, and the keys held then: a change of Shift or Alt places the end again. */
-  private pointer: { world: Point; screen: Point; free: boolean; constrain: boolean } | null = null;
+  private pointer: PointerAt | null = null;
   /** Where the button went down, in screen pixels, while it is down for a gesture. */
   private pressedAt: Point | null = null;
   /** The click that ended a shape, which a double click's second press follows. */
@@ -163,7 +171,7 @@ export class DrawInput {
     this.pressedAt = null;
     // A shape ended by a click may be followed by the second click of a double click. A pen's dot and an eraser's dab are no such click: the next one counts.
     const placed = mode === 'line' || mode === 'rectangle' || mode === 'ellipse';
-    const clicked = placed && result.kind !== 'live' && pressed !== null && Math.hypot(e.global.x - pressed.x, e.global.y - pressed.y) <= DRAW_DRAG_THRESHOLD;
+    const clicked = placed && result.kind !== 'live' && pressed !== null && withinClick(e.global, pressed);
     this.lastClick = clicked ? { at: pressed, time: this.now() } : null;
     this.apply(result, altHeld(e));
   };
@@ -225,8 +233,7 @@ export class DrawInput {
     if (!pointer) return;
     if (key === 'Alt') pointer.free = held;
     else pointer.constrain = held;
-    const { world, screen, free, constrain } = pointer;
-    this.apply(this.gesture.move({ raw: world, placed: this.host.point(world, free), screen, zoom: this.zoom, constrain }), free);
+    this.apply(this.gesture.move(this.told(pointer)), pointer.free);
   }
 
   private get zoom(): number {
@@ -236,11 +243,12 @@ export class DrawInput {
   /** The pointer of `e` as the gesture is told of it, remembered for a key that places it again. */
   private read(e: FederatedPointerEvent): DrawPointer {
     const { x, y } = this.viewport.toWorld(e.global);
-    const world = { x, y };
-    const screen = { x: e.global.x, y: e.global.y };
-    const free = altHeld(e);
-    const constrain = shiftHeld(e);
-    this.pointer = { world, screen, free, constrain };
+    this.pointer = { world: { x, y }, screen: { x: e.global.x, y: e.global.y }, free: altHeld(e), constrain: shiftHeld(e) };
+    return this.told(this.pointer);
+  }
+
+  /** `pointer` as the gesture is told of it. */
+  private told({ world, screen, free, constrain }: PointerAt): DrawPointer {
     return { raw: world, placed: this.host.point(world, free), screen, zoom: this.zoom, constrain };
   }
 
@@ -259,7 +267,7 @@ export class DrawInput {
   private followsLastClick(screen: Point): boolean {
     const last = this.lastClick;
     this.lastClick = null;
-    return last !== null && this.now() - last.time <= DOUBLE_CLICK_MS && Math.hypot(screen.x - last.at.x, screen.y - last.at.y) <= DRAW_DRAG_THRESHOLD;
+    return last !== null && this.now() - last.time <= DOUBLE_CLICK_MS && withinClick(screen, last.at);
   }
 
   private apply(result: DrawGestureResult, alt: boolean): void {
@@ -315,6 +323,11 @@ export class DrawInput {
     this.letGo?.();
     this.letGo = null;
   }
+}
+
+/** Whether two screen points are near enough to be one click. */
+function withinClick(a: Point, b: Point): boolean {
+  return Math.hypot(a.x - b.x, a.y - b.y) <= DRAW_DRAG_THRESHOLD;
 }
 
 function same(a: Point, b: Point): boolean {

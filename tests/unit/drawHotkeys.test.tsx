@@ -88,6 +88,22 @@ describe('the Draw tool\'s keys', () => {
     expect(tool(store)).toBe('draw');
   });
 
+  it('leaves the tool\'s mode alone in Session View, where its bars are locked: the text key only takes the tool into hand', () => {
+    const store = mount();
+    store.getState().setDrawTool({ mode: 'pen' });
+    store.setState({ isGMView: false });
+    press('t');
+    expect([tool(store), mode(store)]).toEqual(['draw', 'pen']);
+    // As the tool's own key and the eraser's leave it alone there.
+    press('b');
+    press('e');
+    press('t');
+    expect([tool(store), mode(store)]).toEqual(['draw', 'pen']);
+    store.setState({ isGMView: true });
+    press('t');
+    expect(mode(store)).toBe('text');
+  });
+
   it('switches to the tool\'s eraser and back to the mode before while drawing; elsewhere the key is the fog eraser', () => {
     const store = mount();
     press('e');

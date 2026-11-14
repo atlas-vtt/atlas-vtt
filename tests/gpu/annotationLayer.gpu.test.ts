@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CELL, type DrawToolChoices } from '../../src/app/annotations/annotationTypes';
 import { eraserRadius } from '../../src/app/annotations/drawSizes';
 import { segmentDistanceSq } from '../../src/app/annotations/lineMath';
+import { LIGHTING_QUALITY } from '../../src/app/lighting/lightingQuality';
 import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsRenderer';
 import { MAP_LAYER_Z } from '../../src/app/pixi/mapLayerOrder';
 import { RenderScheduler } from '../../src/app/pixi/RenderScheduler';
@@ -29,6 +30,8 @@ interface Scene {
   /** Takes the Draw tool into hand with these choices. */
   tool(choices: Partial<DrawToolChoices>): void;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number, alt?: boolean): void;
+  /** The pointer over the map at a screen point, as the viewport's dispatch tells the drawings of every move: the cursor they answer. */
+  hover(x: number, y: number, alt?: boolean): string | null;
   /** The GM's picture of the stage, and the players' frame of it. */
   gm(): Uint8ClampedArray;
   players(): Uint8ClampedArray;
@@ -79,6 +82,10 @@ async function open(width = WIDTH, height = HEIGHT): Promise<Scene> {
       event.altKey = alt;
       event.global.set(x, y);
       viewport.emit(type, event);
+    },
+    hover: (x, y, alt = false) => {
+      const world = viewport.toWorld(x, y);
+      return annotations.pointer.cursorAt(world.x, world.y, () => false, alt);
     },
     gm: () => picture(app, [], width, height),
     players: () => picture(app, annotations.getPlayerViewLayers(), width, height),
@@ -178,6 +185,31 @@ describe('the drawings on the map, as they are drawn', () => {
     [gm, players] = [s.gm(), s.players()];
     expect(ring(gm)).toBeGreaterThan(40);
     expect(ring(players)).toBe(0);
+
+    // What a press will place is the GM's cursor, and nobody else's picture: the stamp to be, see-through, and the pen's dot.
+    s.tool({ mode: 'stamp', icon: 'skull', color: '#00ffff', size: 'm' });
+    expect(s.hover(300, 60)).toBe('none');
+    /** The pixels of the stamp's cell that its symbol tints. */
+    const stamped = (pixels: Uint8ClampedArray): number => {
+      let count = 0;
+      for (let y = 25; y < 95; y++) for (let x = 265; x < 335; x++) if (at(pixels, x, y)[1] > 100) count++;
+      return count;
+    };
+    await vi.waitFor(() => expect(stamped(s.gm())).toBeGreaterThan(200));
+    // Six tenths of the symbol's colour: it is not on the map yet.
+    expect(Math.max(...[40, 50, 60, 70, 80].flatMap((y) => [280, 290, 300, 310, 320].map((x) => at(s.gm(), x, y)[1])))).toBeLessThan(170);
+    expect(stamped(s.players())).toBe(0);
+    expect(stamped(picture(s.app, s.annotations.getPictureLayers(), WIDTH, HEIGHT))).toBe(0);
+    s.tool({ mode: 'pen', color: '#ff00ff', size: 'xl' });
+    expect(s.hover(300, 60)).toBe('none');
+    [gm, players] = [s.gm(), s.players()];
+    expect(at(gm, 300, 60)).toEqual([255, 0, 255]);
+    expect(at(players, 300, 60)).toEqual([0, 0, 0]);
+    expect(at(picture(s.app, s.annotations.getPictureLayers(), WIDTH, HEIGHT), 300, 60)).toEqual([0, 0, 0]);
+    // Nothing of it was written.
+    expect(Object.keys(s.store.getState().objects.drawings)).toHaveLength(3);
+    s.annotations.pointer.leave();
+    expect(at(s.gm(), 300, 60)).toEqual([0, 0, 0]);
 
     // A stroke under way that players will not see is the GM's alone; one they will see grows in their frame too.
     s.tool({ mode: 'pen', color: '#0000ff', size: 'xl', players: false });
@@ -362,7 +394,7 @@ describe('what the drawings cost', () => {
   const share = (values: readonly number[], of: number): number => [...values].sort((a, b) => a - b)[Math.min(values.length - 1, Math.floor(values.length * of))]!;
   const ms = (value: number): string => `${value.toFixed(3)} ms`;
 
-  it('renders nothing while nothing changes: at rest, and with the pointer moving over the map with the pen in hand', async () => {
+  it('renders nothing while nothing changes: at rest, and with the pen in hand once the pointer rests; a move draws the pen\'s dot alone, once a frame', async () => {
     const s = await open();
     const scheduler = new RenderScheduler(s.app);
     cleanup.push(() => scheduler.destroy());
@@ -375,10 +407,21 @@ describe('what the drawings cost', () => {
     ticks(30);
     expect(rendered).not.toHaveBeenCalled();
     s.tool({ mode: 'pen' });
-    for (let x = 50; x < 350; x += 10) s.pointer('pointermove', x, 100);
     ticks(5);
     expect(rendered).not.toHaveBeenCalled();
+    // The dot under the pointer is the cursor: however many moves a frame brings, it is one render, and none once the pointer rests.
+    const built = s.annotations.layer.drawn;
+    for (let x = 50; x < 350; x += 10) {
+      s.pointer('pointermove', x, 100);
+      s.hover(x, 100);
+    }
+    ticks(1);
+    expect(rendered).toHaveBeenCalledTimes(1);
+    ticks(5);
+    expect(rendered).toHaveBeenCalledTimes(1);
+    expect(s.annotations.layer.drawn).toBe(built);
     // A stroke under way is a change, and so is its drawing.
+    rendered.mockClear();
     s.pointer('pointerdown', 50, 100);
     s.pointer('pointermove', 150, 120);
     ticks(1);
@@ -491,4 +534,136 @@ describe('what the drawings cost', () => {
     // The target is a millisecond of the tool's own work a move; the bound leaves room for a busy machine.
     expect(median(moves)).toBeLessThan(1);
   }, 120_000);
+
+  it('shows what a press will place for the price of a look under the pointer, in Stamp mode on a level as full as it may be', async () => {
+    const s = await open(1440, 900);
+    const random = seeded(11);
+    const drawings: Record<string, DrawingStroke> = {};
+    // Half of them stamps, which the mode takes under the pointer, half of them lines, which it passes over.
+    for (let index = 0; index < DRAWINGS + 1; index++) {
+      let x = random() * WORLD;
+      let y = random() * WORLD;
+      const id = `d${index}`;
+      const base = { id, kind: 'drawing' as const, timestamp: 1, color: '#ffffff', opacity: 1, order: index + 1 };
+      drawings[id] = index % 2
+        ? { ...base, type: 'icon', icon: 'skull', points: [{ x, y }], width: DEFAULT_CELL }
+        : { ...base, type: 'pen', width: 4, points: Array.from({ length: POINTS }, () => ({ x: x += (random() - 0.5) * 12, y: y += (random() - 0.5) * 12 })) };
+    }
+    s.store.setState({ objects: { ...s.store.getState().objects, drawings } });
+    let time = 1000;
+    const gl = (s.app.renderer as unknown as { gl: WebGL2RenderingContext }).gl;
+    const frame = (): number => {
+      const start = performance.now();
+      s.app.ticker.update(time += 16);
+      s.app.renderer.render({ container: s.app.stage });
+      gl.finish();
+      return performance.now() - start;
+    };
+    frame();
+    while (s.annotations.layer.building) frame();
+    const built = s.annotations.layer.drawn;
+    const rest = Array.from({ length: 30 }, frame);
+    s.tool({ mode: 'stamp', icon: 'skull', size: 'm' });
+    const heard = vi.fn();
+    const stop = s.store.subscribe(heard);
+    // The browser's clock ticks in tenths of a millisecond, so moves are timed a hundred at a time, a frame between the hundreds.
+    const BATCH = 100;
+    const moves: number[] = [];
+    const frames: number[] = [];
+    const cursors = new Map<string, number>();
+    for (let step = 0; step < 4800; step += BATCH) {
+      const answered: (string | null)[] = [];
+      // The whole of what a pointer move asks of the drawings: what is under the pointer, its mark, the stamp to be.
+      const start = performance.now();
+      for (let move = step; move < step + BATCH; move++) answered.push(s.hover(100 + move / 4, 450 + Math.sin(move / 160) * 300));
+      moves.push((performance.now() - start) / BATCH);
+      for (const cursor of answered) cursors.set(String(cursor), (cursors.get(String(cursor)) ?? 0) + 1);
+      frames.push(frame());
+    }
+    stop();
+    // No drawing on the map is drawn anew, and the store hears nothing.
+    expect(s.annotations.layer.drawn).toBe(built);
+    expect(heard).not.toHaveBeenCalled();
+    // The way led over stamps and beside them.
+    expect(cursors.get('pointer') ?? 0).toBeGreaterThan(200);
+    expect(cursors.get('none') ?? 0).toBeGreaterThan(2000);
+    console.info([
+      `Stamp mode over ${DRAWINGS + 1} drawings (${(DRAWINGS + 1) / 2} stamps, ${(DRAWINGS + 1) / 2} lines of ${POINTS} points) on a ${WORLD} px map, view 1440 × 900: ${moves.length * BATCH} pointer moves, ${cursors.get('pointer') ?? 0} of them over a stamp.`,
+      `The tool's own work per pointer move (what lies under the pointer, its outline, the stamp to be), by hundreds of moves: median ${ms(median(moves))}, 95 % under ${ms(share(moves, 0.95))}, most ${ms(Math.max(...moves))}; all ${moves.length * BATCH} moves together ${ms(moves.reduce((sum, move) => sum + move, 0) * BATCH)}.`,
+      `A frame after such moves (tick, render, GPU done): median ${ms(median(frames))}, 95 % under ${ms(share(frames, 0.95))}; at rest before, with the same drawings: median ${ms(median(rest))}.`,
+    ].join('\n'));
+    // The target is 0.3 ms a move.
+    expect(median(moves)).toBeLessThan(0.3);
+  }, 120_000);
+
+  it('prints what a pan over a lit scene costs with a level full of drawings, beside the same scene without them', async () => {
+    const MAP = 4096;
+    const view = await openLitView({ pane: { width: 1440, height: 900 }, map: MAP, quality: LIGHTING_QUALITY.balanced });
+    const { app, viewport, store, displayFrames } = view;
+    let annotations: AnnotationsRenderer | null = null;
+    const ownTicker = viewport.options.ticker;
+    cleanup.push(() => {
+      annotations?.destroy();
+      // The viewport takes itself off the ticker it was made with.
+      viewport.options.ticker = ownTicker;
+      view.dispose();
+    });
+    const random = seeded(11);
+    const state = store.getState();
+    // Rooms of a dungeon: walls in a lattice with gaps, a lamp in every other room, a little light of the scene's own.
+    state.setSceneLighting({ enabled: true, ambient: 0.2 });
+    for (let i = 1; i < 8; i++) {
+      for (let j = 0; j < 8; j++) {
+        state.addWall({ type: 'solid', p1: { x: i * 512, y: j * 512 + 80 }, p2: { x: i * 512, y: j * 512 + 432 } });
+        state.addWall({ type: 'solid', p1: { x: j * 512 + 80, y: i * 512 }, p2: { x: j * 512 + 432, y: i * 512 } });
+      }
+    }
+    for (let i = 0; i < 8; i++) {
+      for (let j = i % 2; j < 8; j += 2) state.addLight({ x: i * 512 + 256, y: j * 512 + 256, emission: { bright: 20, dim: 40, color: '#ffd9a0', intensity: 1, animation: 'none' } });
+    }
+    const gl = (app.renderer as unknown as { gl: WebGL2RenderingContext }).gl;
+    /** One display frame with the camera at `step` of a pan across the map, until the GPU is done with it. */
+    const frame = (step: number): number => {
+      viewport.moveCenter(900 + step * 9, 700 + step * 7);
+      const start = performance.now();
+      displayFrames(1);
+      gl.finish();
+      return performance.now() - start;
+    };
+    const pan = (): number[] => Array.from({ length: 240 }, (_, step) => frame(step));
+    displayFrames(60);
+    pan();
+    const bare = pan();
+
+    // A level as full as it may be: every tenth drawing lies on the map, under the lighting, the rest above it.
+    const drawings: Record<string, DrawingStroke> = {};
+    for (let index = 0; index < 2000; index++) {
+      let x = random() * MAP;
+      let y = random() * MAP;
+      const points = Array.from({ length: POINTS }, () => {
+        x += (random() - 0.5) * 12;
+        y += (random() - 0.5) * 12;
+        return { x, y };
+      });
+      const id = `d${index}`;
+      drawings[id] = { id, kind: 'drawing', timestamp: 1, type: 'pen', points, color: index % 2 ? '#ffffff' : '#ffcc00', width: 4, opacity: 1, order: index + 1, ...(index % 10 === 0 && { layer: 'map' as const }) };
+    }
+    // The drawings follow the camera in the view's own tick, as in a map view: the helper's viewport has another ticker.
+    viewport.options.ticker = app.ticker;
+    annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
+    store.setState({ objects: { ...store.getState().objects, drawings } });
+    displayFrames(60);
+    // The first pass draws what comes into view; the second finds everything drawn.
+    const first = pan();
+    for (let waited = 0; annotations.layer.building && waited < 600; waited++) displayFrames(1);
+    expect(annotations.layer.building).toBe(false);
+    const drawn = pan();
+    console.info([
+      `A pan over a lit scene (${MAP} px, 112 walls, 32 lights, Balanced, view 1440 × 900), a frame (tick, render, GPU done):`,
+      `without drawings: median ${ms(median(bare))}, 95 % under ${ms(share(bare, 0.95))};`,
+      `with 2,000 drawings of 100 points, 200 of them on the map, first pass (${annotations.layer.drawn} drawn by its end): median ${ms(median(first))}, 95 % under ${ms(share(first, 0.95))}, most ${ms(Math.max(...first))};`,
+      `the same pan again, everything drawn: median ${ms(median(drawn))}, 95 % under ${ms(share(drawn, 0.95))}, most ${ms(Math.max(...drawn))}.`,
+    ].join('\n'));
+    expect(annotations.layer.drawn).toBeGreaterThan(100);
+  }, 180_000);
 });

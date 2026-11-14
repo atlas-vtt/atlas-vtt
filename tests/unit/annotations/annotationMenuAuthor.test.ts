@@ -22,7 +22,7 @@ describe('who made a drawing, in its menu', () => {
     const entries = annotationMenu([mine], mine, store(), () => undefined);
     expect(entries[0]).toMatchObject({ type: 'item', label: 'Drawn by Ana', disabled: true });
     // The rows that change the drawing follow, as for any other: the GM changes a player's like their own.
-    expect(labels(entries).slice(1, 3)).toEqual(['Hide from players', 'On the map']);
+    expect(labels(entries).slice(1, 3)).toEqual(['Hide from players', 'Under tokens']);
   });
 
   it('is left out for the GM\'s own drawings, for a player nobody knows, and once no table tells the names', () => {

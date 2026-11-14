@@ -14,7 +14,8 @@ export interface ClickPlacingHost {
 
 /**
  * The Draw tool's presses in its Stamp mode, on a viewport: a stamp is placed by the press. The
- * primary button only, so a right-drag pans, and no press that a pin or a badge took.
+ * primary button only, so a right-drag pans, and no press that a pin, a badge, a handle or a stamp
+ * that is there took (`ownKind`).
  */
 export class ClickPlacing {
   private enabled = false;

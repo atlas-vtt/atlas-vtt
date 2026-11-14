@@ -134,6 +134,29 @@ describe('the canvas in the players\' picture and the drawings', () => {
     expect(s.store.getState().selectedIds).toEqual(['sign', 'shown']);
   });
 
+  it('keeps what a press will place out of a frame for others and a picture of the scene: the stamp to be, and the pen\'s dot', () => {
+    const { renderer, s } = harness();
+    /** Whether a render now would draw the mark `kind` of what a press will place. */
+    const placing = (kind: 'stamp' | 'dot') => (): boolean => {
+      const mark = s.renderer.chrome.getChildByLabel(`placing-${kind}`, true)!;
+      return s.renderer.chrome.visible && mark.parent!.visible && mark.visible;
+    };
+    for (const [mode, kind] of [['stamp', 'stamp'], ['pen', 'dot']] as const) {
+      s.tool({ mode });
+      expect(s.hover(500, 400)).toBe('none');
+      expect(placing(kind)()).toBe(true);
+      let during: boolean | undefined;
+      renderer.withPlayerSafeFrame(() => { during = placing(kind)(); }, SETTINGS, FRAME);
+      expect(during, mode).toBe(false);
+      expect(renderer.captureSceneFrame({} as never, placing(kind)), mode).toBe(false);
+      // The GM's canvas has it again, until it shows the players' picture itself.
+      expect(placing(kind)()).toBe(true);
+      s.store.getState().setGMView(false);
+      expect(placing(kind)()).toBe(false);
+      s.store.getState().setGMView(true);
+    }
+  });
+
   it('follows the tokens\' word of what the canvas shows, once it is wired to them', () => {
     const { renderer, s, shown } = harness();
     const listeners: Array<() => void> = [];

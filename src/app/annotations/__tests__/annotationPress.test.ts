@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { framedAnnotations, pressScope, takesPress, withGroups } from '../annotationPress';
+import { framedAnnotations, ownKind, pressScope, takesOwn, takesPress, withGroups } from '../annotationPress';
 import { DRAW_MODES } from '../annotationTypes';
 import { drawing, text } from './annotationKit';
 
@@ -38,6 +38,43 @@ describe('what the tool in hand takes of drawings and texts', () => {
       expect(scope).toBe('none');
       expect(takesPress(scope, above)).toBe(false);
     }
+  });
+});
+
+describe('what a mode that places by a press takes of its own kind', () => {
+  const stamp = drawing({ id: 'stamp', type: 'icon', icon: 'skull', points: [{ x: 5, y: 5 }], width: 70 });
+  const stampOnMap = drawing({ id: 'stamp-on-map', type: 'icon', icon: 'skull', points: [{ x: 5, y: 5 }], width: 70, layer: 'map', hidden: true, locked: true });
+  const sign = text({ id: 'sign' });
+
+  it('takes stamps in Stamp mode, wherever they lie and hidden and locked ones too, and neither strokes nor texts', () => {
+    const own = ownKind('draw', 'stamp');
+    expect(own).toBe('stamp');
+    expect([stamp, stampOnMap, above, onMap, sign, locked].map((annotation) => takesOwn(own, annotation))).toEqual([true, true, false, false, false, false]);
+  });
+
+  it('takes texts in Text mode, and neither stamps nor strokes', () => {
+    const own = ownKind('draw', 'text');
+    expect(own).toBe('text');
+    expect([sign, locked, hidden, stamp, above, onMap].map((annotation) => takesOwn(own, annotation))).toEqual([true, true, true, false, false, false]);
+  });
+
+  it('takes none while Alt is held: the press places on top', () => {
+    for (const mode of ['stamp', 'text'] as const) {
+      const own = ownKind('draw', mode, true);
+      expect(own).toBeNull();
+      expect([stamp, sign, above].some((annotation) => takesOwn(own, annotation))).toBe(false);
+    }
+  });
+
+  it('is no rule of any other mode or tool, and changes no scope', () => {
+    for (const mode of DRAW_MODES.filter((one) => one !== 'stamp' && one !== 'text')) expect(ownKind('draw', mode), mode).toBeNull();
+    for (const tool of ['move', 'select', 'measure', 'wall', 'fog']) {
+      expect(ownKind(tool, 'stamp'), tool).toBeNull();
+      expect(ownKind(tool, 'text'), tool).toBeNull();
+    }
+    expect(pressScope('draw', 'stamp')).toBe('made');
+    expect(pressScope('draw', 'text')).toBe('made');
+    expect(takesPress('made', stamp)).toBe(false);
   });
 });
 

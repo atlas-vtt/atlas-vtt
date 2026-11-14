@@ -8,7 +8,7 @@ import { boxOutline, inTurnedBox, textBox, type TextMeasure } from './annotation
 import type { AnnotationIndex } from './annotationHit';
 import { isLocked } from './annotationLock';
 import type { DrawingInput, TextAnnotation } from './annotationTypes';
-import { erased, type EraseSweep } from './eraseCut';
+import { cutBySweep, type EraseSweep } from './eraseCut';
 import { linesDistanceSq } from './lineMath';
 
 /** What a sweep changes: one `replaceDrawings` and one `deleteAnnotations`. */
@@ -19,6 +19,8 @@ export interface SweepChange {
   readonly added: DrawingInput[];
   /** The texts the sweep reached, which go whole. */
   readonly texts: string[];
+  /** The sweep reached a drawing it could not cut, which stays as it is: what would be left of it has more points than a drawing may. */
+  full?: true;
 }
 
 function reachesText(sweep: EraseSweep, text: TextAnnotation, measure: TextMeasure | undefined): boolean {
@@ -30,7 +32,8 @@ function reachesText(sweep: EraseSweep, text: TextAnnotation, measure: TextMeasu
 /**
  * What `sweep` changes of the annotations in `index`, or null where it reaches none: a drawing is
  * cut, or goes whole where `whole` says so; a text goes whole. A locked annotation is left alone:
- * its lock is against exactly this.
+ * its lock is against exactly this. A drawing that can take no further cut stays too, and the
+ * change says so (`full`), also where it is all the sweep reached.
  */
 export function sweepChange(index: AnnotationIndex, sweep: EraseSweep, whole: boolean): SweepChange | null {
   const { points, radius } = sweep;
@@ -49,10 +52,14 @@ export function sweepChange(index: AnnotationIndex, sweep: EraseSweep, whole: bo
       if (reachesText(sweep, annotation, index.measure)) change.texts.push(annotation.id);
       continue;
     }
-    const pieces = erased(annotation, sweep, whole);
+    const pieces = cutBySweep(annotation, sweep, whole);
     if (pieces === 'untouched') continue;
+    if (pieces === 'full') {
+      change.full = true;
+      continue;
+    }
     change.removed.push(annotation.id);
     change.added.push(...pieces);
   }
-  return change.removed.length > 0 || change.texts.length > 0 ? change : null;
+  return change.removed.length > 0 || change.texts.length > 0 || change.full ? change : null;
 }

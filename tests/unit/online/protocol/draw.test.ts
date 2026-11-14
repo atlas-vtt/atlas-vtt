@@ -5,7 +5,7 @@ import {
 } from '../../../../src/app/online/protocol/index.ts';
 
 const LOOK: DrawLook = { colour: '#e93147', size: 'm' };
-const TEXT_LOOK: DrawTextLook = { colour: '#086ddd', size: 'l', font: 'mono', look: 'plate', align: 'center' };
+const TEXT_LOOK: DrawTextLook = { colour: '#086ddd', size: 'l', font: 'mono', look: 'plate' };
 const read = (message: unknown): unknown => parsePlayerMessage(JSON.parse(JSON.stringify(message)));
 
 describe('a player\'s Draw tool on the wire', () => {
@@ -17,7 +17,7 @@ describe('a player\'s Draw tool on the wire', () => {
       { t: 'draw-add', scene: 's', n: 4, mode: 'line', pts: [0, 0, 5, 5, 9, 0], closed: true, look: { ...LOOK, dash: 'dotted', fill: 'solid', curved: true } },
       { t: 'draw-add', scene: 's', n: 5, mode: 'pen', pts: [0, 0], from: 480, look: LOOK },
       { t: 'draw-add', scene: 's', n: 6, mode: 'ellipse', pts: [0, 0, 5, 5], look: { ...LOOK, ends: 'both' } },
-      { t: 'draw-text', scene: 's', n: 7, x: 10, y: 20, text: 'Two\nlines', wrap: 80, breaks: [2], look: { ...TEXT_LOOK, bold: true, italic: true } },
+      { t: 'draw-text', scene: 's', n: 7, x: 10, y: 20, text: 'Two\nlines', wrap: 80, breaks: [2], look: TEXT_LOOK },
       { t: 'draw-change', scene: 's', n: 8, ids: ['1', '2a'], map: [1, 0, 0, 1, 10, -10, 0] },
       { t: 'draw-change', scene: 's', n: 9, ids: ['1'], style: { fill: null } },
       { t: 'draw-change', scene: 's', n: 10, ids: ['1'], line: { pts: [0, 0, 5, 5], anchors: [0, 0, 5, 5], from: 2 } },
@@ -45,15 +45,31 @@ describe('a player\'s Draw tool on the wire', () => {
   it('takes one change at a time, and one drawing or text where it is set anew', () => {
     const base = { t: 'draw-change', scene: 's', n: 1, ids: ['1'] };
     expect(read(base)).toBeNull();
-    expect(read({ ...base, map: [1, 0, 0, 1, 0, 0, 0], style: { bold: true } })).toBeNull();
+    expect(read({ ...base, map: [1, 0, 0, 1, 0, 0, 0], style: { seeThrough: true } })).toBeNull();
     expect(read({ ...base, ids: ['1', '2'], line: { pts: [0, 0, 1, 1] } })).toBeNull();
     expect(read({ ...base, ids: ['1', '2'], words: { x: 0, y: 0 } })).toBeNull();
     expect(read({ ...base, map: [1, 0, 0, 1, 0, 0] })).toBeNull();
     expect(read({ ...base, map: [5000, 0, 0, 1, 0, 0, 0] })).toBeNull();
     expect(read({ ...base, map: [1, 0, 0, 1, Number.POSITIVE_INFINITY, 0, 0] })).toBeNull();
     for (const ids of [[], ['1', '1'], ['A'], ['drawing_1700000000000_abcdefghi'], Array.from({ length: MAX_DRAW_IDS + 1 }, (_, index) => index.toString(36))]) {
-      expect(read({ ...base, ids, style: { bold: true } })).toBeNull();
+      expect(read({ ...base, ids, style: { seeThrough: true } })).toBeNull();
     }
+    // A pick is one field the bars have, with a value it takes: two are none, and so is a value of another kind.
+    expect(read({ ...base, style: { seeThrough: true } })).toEqual({ ...base, style: { seeThrough: true } });
+    expect(read({ ...base, style: { seeThrough: true, curved: true } })).toBeNull();
+    expect(read({ ...base, style: { seeThrough: 'yes' } })).toBeNull();
+    expect(read({ ...base, style: {} })).toBeNull();
+  });
+
+  it('does not read an alignment, a weight or a slant: a text\'s look and a pick that name one read as without it', () => {
+    const text = { t: 'draw-text', scene: 's', n: 1, x: 1, y: 1, text: 'Mill', look: TEXT_LOOK };
+    for (const more of [{ align: 'left' }, { bold: true }, { italic: true }, { align: 'justify', bold: 'very', italic: 0 }]) {
+      expect(read({ ...text, look: { ...TEXT_LOOK, ...more } })).toEqual(text);
+    }
+    const change = { t: 'draw-change', scene: 's', n: 2, ids: ['1'] };
+    expect(read({ ...change, style: { font: 'mono', bold: true, italic: false, align: 'right' } })).toEqual({ ...change, style: { font: 'mono' } });
+    // With nothing else in it, such a pick is a pick of nothing.
+    for (const style of [{ bold: true }, { italic: true }, { align: 'left' }]) expect(read({ ...change, style })).toBeNull();
   });
 
   it('cleans a text as a page must before it measures it, and takes only cleaned words', () => {

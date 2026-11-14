@@ -4,6 +4,7 @@ import type { Annotation } from '../../../../src/app/annotations/annotationTypes
 import { curvedPath, ellipsePoints, rectanglePoints } from '../../../../src/app/annotations/shapeOutlines';
 import type { FogCoverage } from '../../../../src/app/fog/fogCoverage';
 import { sharedAnnotations } from '../../../../src/app/online/gm/mapLayerInputs.ts';
+import { SentOrders } from '../../../../src/app/online/gm/sentOrders.ts';
 import { ToldAnnotations } from '../../../../src/app/online/marks/index.ts';
 import { MAX_DRAWING_POINTS, MAX_DRAWINGS, MAX_TEXT_LENGTH, MAX_TEXTS, parseAnnotations, type SharedAnnotations } from '../../../../src/app/online/protocol/index.ts';
 import type { DrawingStroke, TextElement } from '../../../../src/app/types';
@@ -59,27 +60,29 @@ describe('what players are told of drawings and texts', () => {
   const told = sharedAnnotations(drawings, texts, NO_FOG);
 
   it('says each drawing as its line and, beside it, what it is drawn by', () => {
+    // Each with its place in the order, numbered among what is told above the tokens: 1 to 9, the plate fifth and the wrapped text last.
     expect(told.drawings).toEqual([
-      { type: 'pen', points: [0, 0, 40, 10], colour: '#e93147', width: 4, opacity: 1 },
-      { type: 'pen', points: [5, 5], colour: '#e93147', width: 4, opacity: 0.5 },
-      { type: 'pen', points: expect.any(Array) as number[], colour: '#e93147', width: 0, opacity: 1, shape: 'ellipse', fill: 'solid', order: 2 },
-      { type: 'pen', points: outline.flatMap(({ x, y }) => [x, y]), colour: '#e93147', width: 4, opacity: 1, shape: 'rectangle', fill: 'soft', dash: 'dashed', order: 3 },
+      { type: 'pen', points: [0, 0, 40, 10], colour: '#e93147', width: 4, opacity: 1, order: 1 },
+      { type: 'pen', points: [5, 5], colour: '#e93147', width: 4, opacity: 0.5, order: 2 },
+      { type: 'pen', points: expect.any(Array) as number[], colour: '#e93147', width: 0, opacity: 1, shape: 'ellipse', fill: 'solid', order: 3 },
+      { type: 'pen', points: outline.flatMap(({ x, y }) => [x, y]), colour: '#e93147', width: 4, opacity: 1, shape: 'rectangle', fill: 'soft', dash: 'dashed', order: 4 },
       // A rectangle whose points are none any more is a line with corners.
-      { type: 'pen', points: [0, 0, 50, 0, 50, 30], colour: '#e93147', width: 4, opacity: 1, shape: 'line', order: 5 },
-      { type: 'icon', points: [300, 80], colour: '#e93147', width: 70, opacity: 1, icon: 'cauldron', turn: 45, order: 6 },
-      { type: 'pen', points: expect.any(Array) as number[], colour: '#e93147', width: 4, opacity: 0.5, shape: 'line', curved: true, dash: 'dotted', ends: 'both', order: 7 },
+      { type: 'pen', points: [0, 0, 50, 0, 50, 30], colour: '#e93147', width: 4, opacity: 1, shape: 'line', order: 6 },
+      { type: 'icon', points: [300, 80], colour: '#e93147', width: 70, opacity: 1, icon: 'cauldron', turn: 45, order: 7 },
+      { type: 'pen', points: expect.any(Array) as number[], colour: '#e93147', width: 4, opacity: 0.5, shape: 'line', curved: true, dash: 'dotted', ends: 'both', order: 8 },
     ]);
     expect(told.texts).toEqual([
-      expect.objectContaining({ text: 'Tavern', background: '#000000', radius: 4, opacity: 0.7, order: 4 }),
-      expect.objectContaining({ text: 'The road to the long barrow', outline: true, wrap: 120, breaks: [9, 16], align: 'left', bold: true, rotation: 30, scale: 1.5, order: 8 }),
+      expect.objectContaining({ text: 'Tavern', background: '#000000', radius: 4, opacity: 0.7, order: 5 }),
+      expect.objectContaining({ text: 'The road to the long barrow', outline: true, wrap: 120, breaks: [9, 16], align: 'left', bold: true, rotation: 30, scale: 1.5, order: 9 }),
     ]);
     expect(told.texts[0]).not.toHaveProperty('outline');
     expect(told.texts[0]).not.toHaveProperty('wrap');
   });
 
   it('tells those on the map apart from those above the tokens', () => {
-    expect(told.onMap?.drawings).toEqual([expect.objectContaining({ width: 0, opacity: 0.4, shape: 'line', fill: 'solid', holes: [[20, 20, 40, 20, 40, 40, 20, 40]], order: 1 })]);
-    expect(told.onMap?.texts).toEqual([expect.objectContaining({ text: 'Old Mill', outline: true })]);
+    // Numbered by themselves: the name under the floor, as the GM's map has them.
+    expect(told.onMap?.drawings).toEqual([expect.objectContaining({ width: 0, opacity: 0.4, shape: 'line', fill: 'solid', holes: [[20, 20, 40, 20, 40, 40, 20, 40]], order: 2 })]);
+    expect(told.onMap?.texts).toEqual([expect.objectContaining({ text: 'Old Mill', outline: true, order: 1 })]);
     expect(sharedAnnotations({ pen: drawings.pen! }, {}, NO_FOG)).not.toHaveProperty('onMap');
   });
 
@@ -90,6 +93,47 @@ describe('what players are told of drawings and texts', () => {
     for (const word of ['hidden', 'layer', 'locked', 'group', 'cells', 'anchors', 'timestamp', '"id"', '"by"', 'secret', 'wrapped', 'pond']) expect(sent, word).not.toContain(word);
     const marked = sharedAnnotations({ a: drawing('a', { locked: true, group: 'g-1', by: 'p'.repeat(20) }) }, { t: text('t', { locked: true, group: 'g-1', by: 'p'.repeat(20) }) }, NO_FOG);
     expect(JSON.stringify(marked)).not.toMatch(/locked|g-1|pppp/);
+  });
+
+  it('numbers what is told by itself, so the order says nothing of what is not told', () => {
+    const orders = (hidden: number): (number | undefined)[] => {
+      const some: Record<string, DrawingStroke> = { low: drawing('low', { order: 1 }), high: drawing('high', { order: 2 + hidden }) };
+      for (let index = 0; index < hidden; index += 1) some[`kept${index}`] = drawing(`kept${index}`, { hidden: true, order: 2 + index });
+      return sharedAnnotations(some, {}, NO_FOG).drawings.map(({ order }) => order);
+    };
+    // Whatever the GM made between the two and kept, players are told the same numbers.
+    expect(orders(0)).toEqual([1, 2]);
+    expect(orders(40)).toEqual([1, 2]);
+  });
+
+  it('keeps an entry\'s number while it is told, and puts one that comes between two between theirs', () => {
+    const orders = new SentOrders();
+    expect(orders.of(['a', 'b', 'c'])).toEqual([1, 2, 3]);
+    // On top: the next whole number. Nothing told before it is told anew.
+    expect(orders.of(['a', 'b', 'c', 'd'])).toEqual([1, 2, 3, 4]);
+    // One gone leaves its number unused; one shown between two (it was hidden, or under fog) lies between them.
+    expect(orders.of(['a', 'c', 'd'])).toEqual([1, 3, 4]);
+    expect(orders.of(['a', 'x', 'y', 'c', 'd'])).toEqual([1, 1 + 2 / 3, 1 + 4 / 3, 3, 4]);
+    // Sent to the back and brought to the front: only the one moved gets another number.
+    expect(orders.of(['d', 'a', 'x', 'y', 'c'])).toEqual([0, 1, 1 + 2 / 3, 1 + 4 / 3, 3]);
+    expect(orders.of(['a', 'x', 'y', 'c', 'd'])).toEqual([1, 1 + 2 / 3, 1 + 4 / 3, 3, 4]);
+    // What the eraser left of one drawing takes its place among the others.
+    const cut = orders.of(['a', 'x1', 'x2', 'y', 'c', 'd']);
+    expect([cut[0], cut[3], cut[4], cut[5]]).toEqual([1, 1 + 4 / 3, 3, 4]);
+    expect(cut[1]).toBeGreaterThan(1);
+    expect(cut[2]).toBeGreaterThan(cut[1]!);
+    expect(cut[2]).toBeLessThan(1 + 4 / 3);
+    // Where two numbers leave no room between them, all are given anew.
+    const tight = new SentOrders();
+    tight.of(['a', 'b']);
+    let ids = ['a', 'b'];
+    for (let index = 0; index < 60; index += 1) {
+      ids = [ids[0]!, `n${index}`, ...ids.slice(1)];
+      const numbers = tight.of(ids);
+      for (let at = 1; at < numbers.length; at += 1) expect(numbers[at]).toBeGreaterThan(numbers[at - 1]!);
+    }
+    expect(tight.of(ids)).toEqual(tight.of(ids));
+    expect(parseAnnotations(JSON.parse(JSON.stringify(sharedAnnotations({ a: drawing('a', {}), b: drawing('b', {}) }, {}, NO_FOG, { orders: { above: tight, onMap: new SentOrders() } }))) as Record<string, unknown>)).not.toBeNull();
   });
 
   it('is drawn by its reader as the GM draws it, each layer in the GM\'s one order', () => {
@@ -130,12 +174,12 @@ describe('what players are told of drawings and texts', () => {
     expect(capped.drawings.at(-1)?.colour).toBe('#00ff00');
   });
 
-  it('cuts a text to the longest a message carries, with the breaks that still lie in it', () => {
+  it('cuts a text to the longest a message carries; its saved breaks no longer fit it and are left out, so each side wraps it', () => {
     const long = text('long', { text: 'word '.repeat(600), width: 300, breaks: [100, 1000, 2000, 2500] });
     const [sent] = sharedAnnotations({}, { long }, NO_FOG).texts;
     expect(sent?.text).toHaveLength(MAX_TEXT_LENGTH);
-    expect(sent?.breaks).toEqual([100, 1000, 2000]);
-    expect(parseAnnotations(JSON.parse(JSON.stringify({ drawings: [], texts: [sent] })) as Record<string, unknown>)?.texts[0]?.breaks).toEqual([100, 1000, 2000]);
+    expect(sent?.wrap).toBe(300);
+    expect(sent?.breaks).toBeUndefined();
   });
 
   it('gives a drawing or text that says the same again the record it had, and another one otherwise', () => {

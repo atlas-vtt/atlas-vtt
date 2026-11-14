@@ -1,4 +1,4 @@
-import type { Container } from 'pixi.js';
+import { DOMAdapter, type Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import { forgetAnnotationIndexes } from '../../annotations/annotationHit';
@@ -68,9 +68,11 @@ export class MapTexts {
       accent: () => deps.accent(),
       place: (at, width) => this.typing.begin(at, width),
     });
-    // A view without a document's fonts (a test) has every face at once.
+    // A view without a document's fonts (a test) has every face at once. PIXI measures texts on a canvas of
+    // the document it was loaded in, which is another than the canvas' own in a second window: a face is
+    // there once both have it, or a text would be measured in a stand-in and keep its width.
     const fonts = viewport.options.events?.domElement?.ownerDocument?.fonts;
-    this.unwatchFonts = fonts && watchTextFonts(fonts, () => this.fontsArrived());
+    this.unwatchFonts = fonts && watchTextFonts(fonts, () => this.fontsArrived(), DOMAdapter.get().getFontFaceSet());
   }
 
   /** Opens the field on a text of the map. */

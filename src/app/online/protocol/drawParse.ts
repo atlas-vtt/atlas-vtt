@@ -1,6 +1,6 @@
 import { DRAWING_DASHES, DRAWING_ENDS, DRAWING_FILLS } from './annotations.ts';
 import {
-  DRAW_ALIGNS, DRAW_FONT_NAMES, DRAW_REFUSALS, DRAW_SHAPE_MODES, DRAW_SIZE_NAMES, DRAW_TEXT_LOOKS, isDrawBreaks, isDrawColour, isDrawCount, isDrawId, isDrawIds, isDrawScene, isDrawNumbers, isDrawPlace,
+  DRAW_FONT_NAMES, DRAW_REFUSALS, DRAW_SHAPE_MODES, DRAW_SIZE_NAMES, DRAW_TEXT_LOOKS, isDrawBreaks, isDrawColour, isDrawCount, isDrawId, isDrawIds, isDrawScene, isDrawNumbers, isDrawPlace,
   MAX_DRAW_NUMBERS, MAX_DRAW_REQUEST, MAX_OWN_ANCHOR_NUMBERS, MAX_PLAYER_DRAWINGS, MAX_PLAYER_STROKE_POINTS, MAX_PLAYER_TEXT_LENGTH, MAX_PLAYER_TEXTS, MAX_STROKE_SPAN_MS, isOneOf, parseDrawLook, parseDrawTextLook,
   type DrawLinePlace, type DrawMap, type DrawMine, type DrawOwn, type DrawRefused, type DrawShapeMode, type DrawStylePick, type DrawWordsPlace, type PlayerDrawChange, type PlayerDrawMessage,
 } from './draw.ts';
@@ -16,12 +16,18 @@ interface DrawRequest {
 
 const orNull = <T>(list: readonly T[], value: unknown): value is T | null => value === null || isOneOf(list, value);
 
-/** One pick of the tool's bars, or null for anything else: an object of exactly one field the bars have, with a value that field takes. */
+const PICK_FIELDS = ['colour', 'size', 'seeThrough', 'dash', 'ends', 'curved', 'fill', 'font', 'look'] as const;
+
+/**
+ * One pick of the tool's bars, or null for anything else: an object with exactly one field the
+ * bars have, with a value that field takes. A field the bars do not have is not read, so a pick
+ * of nothing else is none.
+ */
 export function parseDrawStyle(value: unknown): DrawStylePick | null {
   if (!isRecord(value)) return null;
-  const keys = Object.keys(value);
+  const keys = Object.keys(value).filter((key) => isOneOf(PICK_FIELDS, key));
   if (keys.length !== 1) return null;
-  const { colour, size, seeThrough, dash, ends, curved, fill, font, look, align, bold, italic } = value;
+  const { colour, size, seeThrough, dash, ends, curved, fill, font, look } = value;
   switch (keys[0]) {
     case 'colour': return isDrawColour(colour) ? { colour } : null;
     case 'size': return isOneOf(DRAW_SIZE_NAMES, size) ? { size } : null;
@@ -32,9 +38,6 @@ export function parseDrawStyle(value: unknown): DrawStylePick | null {
     case 'fill': return orNull(DRAWING_FILLS, fill) ? { fill } : null;
     case 'font': return isOneOf(DRAW_FONT_NAMES, font) ? { font } : null;
     case 'look': return isOneOf(DRAW_TEXT_LOOKS, look) ? { look } : null;
-    case 'align': return isOneOf(DRAW_ALIGNS, align) ? { align } : null;
-    case 'bold': return typeof bold === 'boolean' ? { bold } : null;
-    case 'italic': return typeof italic === 'boolean' ? { italic } : null;
     default: return null;
   }
 }

@@ -13,6 +13,7 @@ import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
 import { companionTimers } from './companionTimers.ts';
 import { dragRulerOf } from './dragRulers.ts';
+import { decodeMaskAlpha } from './exploredMaskAlpha.ts';
 import { GmMarks } from './gmMarks.ts';
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
@@ -122,6 +123,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     showNames: () => atlasPlayerSettings(ports.app).showNames,
     tokenRules: () => tokenRulesOf(shownRenderer()),
     readImage: (path) => ports.readImage(path),
+    decodeMask: decodeMaskAlpha,
     stored: ports.stored,
     send: (body, to) => live() && ports.send(body, to),
     sendLive: (body, key, to) => live() && ports.sendLive(body, key, to),

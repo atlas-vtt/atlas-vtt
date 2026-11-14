@@ -202,8 +202,11 @@ describe("what players are sent of the map's layers", () => {
       const apart = traffic(table.sent.filter(({ body }) => body.t !== 'annotations')) + JSON.stringify(annotationsSent.map(({ drawings: above, texts: words }) => ({ above, words })));
       expect(apart, `${label}: a drawing on the map among those above the tokens`).not.toContain(floor.colour);
       expect(apart, `${label}: a text on the map among those above the tokens`).not.toContain(floor.text);
-      expect(JSON.stringify(annotationsSent.at(-1)?.onMap), `${label}: what lies on the map`).toContain(floor.colour);
-      expect(JSON.stringify(annotationsSent.at(-1)?.onMap), `${label}: what lies on the map`).toContain(floor.text);
+      // On an unlit scene all of it that fog does not cover; on a lit one only what players have seen a part of (the test below).
+      if (!lit) {
+        expect(JSON.stringify(annotationsSent.at(-1)?.onMap), `${label}: what lies on the map`).toContain(floor.colour);
+        expect(JSON.stringify(annotationsSent.at(-1)?.onMap), `${label}: what lies on the map`).toContain(floor.text);
+      }
       for (const message of annotationsSent) {
         const former = formerParseAnnotations(JSON.parse(JSON.stringify(message)) as Record<string, unknown>);
         expect(former, `${label}: a reader of before refuses the message`).not.toBeNull();
@@ -225,8 +228,12 @@ describe("what players are sent of the map's layers", () => {
       expect(lastAnnotations?.texts.map(({ text }) => text), `${label}: the texts players are left with`).toEqual(['Tavern']);
       // A shape is told as the line through its points, with what it is drawn by beside it and nothing else of it.
       expect(lastAnnotations?.drawings.find(({ colour }) => colour === room.colour)).toEqual({
-        type: 'pen', points: outline.flatMap(({ x, y }) => [x, y]), colour: room.colour, width: 4, opacity: 1, shape: 'rectangle', fill: 'soft', dash: 'dashed', order: 3,
+        type: 'pen', points: outline.flatMap(({ x, y }) => [x, y]), colour: room.colour, width: 4, opacity: 1, shape: 'rectangle', fill: 'soft', dash: 'dashed', order: expect.any(Number) as number,
       });
+      // Places in the order are counted among what players were told above the tokens (five at first, three of them still), never the GM's own numbers.
+      const places = [...(lastAnnotations?.drawings ?? []), ...(lastAnnotations?.texts ?? [])].map(({ order }) => order ?? 0);
+      expect(new Set(places).size, `${label}: the places in the order`).toBe(3);
+      expect(places.every((place) => Number.isInteger(place) && place >= 1 && place <= 5), `${label}: the places in the order`).toBe(true);
       const told = JSON.stringify([ofKind(table.sent, 'annotations'), marksSent]);
       for (const field of ['hidden', 'layer', 'group', 'locked', 'by', 'anchors', 'cells', 'timestamp', 'id']) expect(told, `${label}: the field ${field}`).not.toContain(`"${field}"`);
       for (const entry of tokens) {
@@ -246,5 +253,72 @@ describe("what players are sent of the map's layers", () => {
         for (const mark of message.tokens) expect(hiddenPlaces.has(mark.x), `${label}: a hidden token's outline`).toBe(false);
       }
     }
+  });
+
+  it('tells nothing that lies on the map of a room nobody has seen, all of it once a part is seen, and keeps telling it', async () => {
+    const SIZE = 3000;
+    // A closed room, and a hero who stands outside it in daylight.
+    const room = { x: 1800, y: 1800, side: 400 };
+    const corners = [[room.x, room.y], [room.x + room.side, room.y], [room.x + room.side, room.y + room.side], [room.x, room.y + room.side]] as const;
+    const walled = Object.fromEntries(corners.map(([x, y], index): [string, WallSegment] => {
+      const [toX, toY] = corners[(index + 1) % 4]!;
+      return [`room${index}`, { id: `room${index}`, kind: 'wall', type: 'solid', p1: { x, y }, p2: { x: toX, y: toY } }];
+    }));
+    const inside = { x: room.x + room.side / 2, y: room.y + room.side / 2 };
+    const sketch = { colour: '#12ab34', text: 'Treasury of the Ninth' };
+    const yard = { colour: '#ab1234', text: 'Courtyard well' };
+    const drawings: Record<string, DrawingStroke> = {
+      sketch: { id: 'sketch', kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: inside.x - 100, y: inside.y }, { x: inside.x + 100, y: inside.y + 40 }], color: sketch.colour, width: 4, opacity: 1, layer: 'map', order: 4 },
+      yard: { id: 'yard', kind: 'drawing', timestamp: 2, type: 'pen', points: [{ x: 300, y: 500 }, { x: 420, y: 520 }], color: yard.colour, width: 4, opacity: 1, layer: 'map', order: 7 },
+      // Above the tokens players see a drawing wherever fog does not cover it, as before.
+      above: { id: 'above', kind: 'drawing', timestamp: 3, type: 'pen', points: [{ x: inside.x, y: inside.y - 50 }, { x: inside.x + 50, y: inside.y - 50 }], color: '#777777', width: 4, opacity: 1 },
+    };
+    const texts: Record<string, TextElement> = {
+      sketch: { id: 'sketch', kind: 'text', x: inside.x, y: inside.y + 100, text: sketch.text, fontSize: 24, fontFamily: 'serif', color: '#ffffff', layer: 'map' },
+      yard: { id: 'yard', kind: 'text', x: 400, y: 600, text: yard.text, fontSize: 24, fontFamily: 'serif', color: '#ffffff', layer: 'map' },
+    };
+    const scene = (hero: { x: number; y: number }, lighting = { enabled: true, ambient: 1 }): ReturnType<typeof sceneState> => sceneState({
+      lighting, objects: { ...sceneState().objects, walls: walled, drawings, texts, tokens: { hero: token('hero', { ...hero, vision: { enabled: true } }) } },
+    });
+    let current = scene({ x: 400, y: 400 });
+    const table = shareHarness(current, new Map([['maps/cave.webp', new Uint8Array([9, 9, 9])]]));
+    table.layers = fakeLayers({ state: () => current, source: GENERIC_SOURCE, bounds: { width: SIZE, height: SIZE } });
+    table.share.start();
+    const step = async (next: ReturnType<typeof sceneState>): Promise<void> => {
+      current = next;
+      await table.set(current);
+      await table.advance(MAP_LAYER_INTERVAL_MS);
+    };
+    await step(current);
+    // The hero walks around the room and looks at its walls from every side.
+    for (const place of [{ x: 1700, y: 1700 }, { x: 2300, y: 1700 }, { x: 2300, y: 2300 }, { x: 1700, y: 2300 }, { x: 400, y: 400 }]) await step(scene(place));
+    const outside = traffic(table.sent);
+    expect(outside).toContain(yard.colour);
+    expect(outside).toContain(yard.text);
+    expect(outside).toContain('#777777');
+    expect(outside, 'a drawing on the map of a room nobody has seen').not.toContain(sketch.colour);
+    expect(outside, 'a text on the map of a room nobody has seen').not.toContain(sketch.text);
+    // Its place in the order says nothing of the two it is not told of.
+    expect(ofKind(table.sent, 'annotations').at(-1)?.onMap?.drawings.map(({ order }) => order)).toEqual([2]);
+
+    // The hero steps into the room: now players are told what lies on its floor.
+    await step(scene(inside));
+    const entered = ofKind(table.sent, 'annotations').at(-1);
+    expect(JSON.stringify(entered?.onMap)).toContain(sketch.colour);
+    expect(JSON.stringify(entered?.onMap)).toContain(sketch.text);
+    // And out again: players remember the room, and nothing is taken back or told anew.
+    const told = ofKind(table.sent, 'annotations').length;
+    for (const place of [{ x: 400, y: 400 }, { x: 500, y: 450 }, { x: 400, y: 400 }]) await step(scene(place));
+    expect(ofKind(table.sent, 'annotations')).toHaveLength(told);
+    expect(JSON.stringify(ofKind(table.sent, 'annotations').at(-1)?.onMap)).toContain(sketch.text);
+
+    // A scene players see without their tokens' sight shows them all of the map, and tells them all that lies on it.
+    const dark = scene({ x: 400, y: 400 }, { enabled: false, ambient: 1 });
+    const unlit = shareHarness(dark, new Map([['maps/cave.webp', new Uint8Array([9, 9, 9])]]));
+    unlit.layers = fakeLayers({ state: () => dark, source: GENERIC_SOURCE, bounds: { width: SIZE, height: SIZE } });
+    unlit.share.start();
+    await unlit.set(dark);
+    await unlit.advance(MAP_LAYER_INTERVAL_MS);
+    expect(traffic(unlit.sent)).toContain(sketch.text);
   });
 });

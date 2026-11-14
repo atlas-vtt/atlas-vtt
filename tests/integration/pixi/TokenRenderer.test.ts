@@ -19,6 +19,7 @@ import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/Annotatio
 import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
+import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { TokenStatblockLinkService } from '../../../src/app/services/TokenStatblockLinkService';
 import { AssetService } from '../../../src/app/services/AssetService';
@@ -696,7 +697,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'token-2', x: 315, y: 105 }));
       await waitForTokens('token-1', 'token-2');
       const drawingDrag = vi.fn();
-      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, secondaryDown: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
+      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
 
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(store.getState().selectedIds).toEqual([]);
@@ -733,7 +734,8 @@ describe('TokenRenderer Integration Tests', () => {
       tokenRenderer.setAnnotationHandlers({
         gripDown: () => { asked.push('grip'); return answers.grip; },
         pointerDown: () => { asked.push('press'); return answers.press; },
-        secondaryDown: () => { asked.push('menu'); return answers.menu; },
+        menuAt: () => { asked.push('menu?'); return answers.menu; },
+        openMenu: () => { asked.push('menu'); return true; },
         dragAlong: () => undefined, cursorAt: () => null, leave: () => undefined,
       });
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
@@ -762,12 +764,48 @@ describe('TokenRenderer Integration Tests', () => {
       }
     });
 
-    it('asks for their menu on a right press, but not over a token, whose menu it is', () => {
+    it('opens their menu when a right press is released in place, but not over a token, whose menu it is', () => {
       store.getState().setActiveTool('move');
-      expect(press(600, 600, 2)).toEqual(['menu']);
+      expect(press(600, 600, 2)).toEqual(['menu?', 'menu']);
       expect(press(105, 105, 2)).toEqual([]);
       store.getState().setActiveTool('draw');
-      expect(press(105, 105, 2)).toEqual(['menu']);
+      expect(press(105, 105, 2)).toEqual(['menu?', 'menu']);
+      // Nothing of theirs there: nothing is opened, and whatever lies under them is asked next.
+      answers.menu = false;
+      expect(press(600, 600, 2)).toEqual(['menu?']);
+    });
+
+    it('asks them for the cursor of every move with the Draw tool, with Alt as it is held, and shows what they answer', () => {
+      const asked: boolean[] = [];
+      let answer: string | null = 'none';
+      tokenRenderer.setAnnotationHandlers({
+        gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, leave: () => undefined,
+        cursorAt: (_x, _y, _covered, free) => { asked.push(free === true); return answer; },
+      });
+      store.getState().setActiveTool('draw');
+      // What a press will place is the cursor: the system's is hidden, over a token too.
+      viewport.emit('pointermove', pointerEvent(105, 105));
+      expect(viewport.cursor).toBe('none');
+      viewport.emit('pointermove', { ...pointerEvent(600, 600), altKey: true } as FederatedPointerEvent);
+      expect(asked).toEqual([false, true]);
+      // Nothing to place, nothing to take: the system's cursor is back.
+      answer = null;
+      viewport.emit('pointermove', pointerEvent(600, 600));
+      expect(viewport.cursor).toBe('default');
+    });
+
+    it('leaves a right press on them unhandled, so a right-drag that starts on a fill pans and opens nothing', () => {
+      store.getState().setActiveTool('move');
+      asked.length = 0;
+      const down = { ...pointerEvent(600, 600), button: 2 } as FederatedPointerEvent;
+      viewport.emit('pointerdown', down);
+      expect(isHandled(down)).toBe(false);
+      expect(asked).toEqual(['menu?']);
+      // Past the viewport's own threshold the press is a pan.
+      viewport.emit('pointermove', { ...pointerEvent(600 + viewport.threshold + 20, 600), button: 2 } as FederatedPointerEvent);
+      viewport.emit('pointerup', { ...pointerEvent(600 + viewport.threshold + 20, 600), button: 2 } as FederatedPointerEvent);
+      expect(asked).toEqual(['menu?']);
+      expect(store.getState().selectedIds).toEqual([]);
     });
   });
 

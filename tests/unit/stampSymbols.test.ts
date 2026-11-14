@@ -59,8 +59,8 @@ describe('stamps and cell fills in the message to the players\' page', () => {
     const drawings = { a: stamp('a', 'cauldron', { rotation: 45 }), b: stamp('b', 'skull', { rotation: -90 }) };
     const shared = sharedAnnotations(drawings, {}, NO_FOG);
     expect(shared.drawings).toEqual([
-      { type: 'icon', points: [100, 100], colour: '#e93147', width: 70, opacity: 1, icon: 'cauldron', turn: 45 },
-      { type: 'icon', points: [100, 100], colour: '#e93147', width: 70, opacity: 1, icon: 'skull', turn: 270 },
+      { type: 'icon', points: [100, 100], colour: '#e93147', width: 70, opacity: 1, icon: 'cauldron', turn: 45, order: 1 },
+      { type: 'icon', points: [100, 100], colour: '#e93147', width: 70, opacity: 1, icon: 'skull', turn: 270, order: 2 },
     ]);
     expect(parseAnnotations(JSON.parse(JSON.stringify(shared)))).toEqual(shared);
   });
@@ -68,7 +68,7 @@ describe('stamps and cell fills in the message to the players\' page', () => {
   it('sends a cell fill as a line without a width whose inside is filled, one on the map apart from those above the tokens, and none that is hidden', () => {
     const drawings = { onMap: cells('onMap', { layer: 'map', color: '#e0ac00' }), hidden: cells('hidden', { hidden: true }), above: cells('above') };
     const shared = sharedAnnotations(drawings, {}, NO_FOG);
-    const fill = { type: 'pen', points: [0, 0, 70, 0, 70, 70, 0, 70, 0, 0], width: 0, opacity: 0.4, shape: 'line', fill: 'solid' };
+    const fill = { type: 'pen', points: [0, 0, 70, 0, 70, 70, 0, 70, 0, 0], width: 0, opacity: 0.4, shape: 'line', fill: 'solid', order: 1 };
     expect(shared.drawings).toEqual([{ ...fill, colour: '#086ddd' }]);
     expect(shared.onMap).toEqual({ drawings: [{ ...fill, colour: '#e0ac00' }], texts: [] });
     // That it was made cell by cell is the GM's tool's to know.

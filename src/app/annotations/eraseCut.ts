@@ -5,13 +5,16 @@
  * sweep passed. The pieces are free shapes that keep the look of what they were cut from.
  */
 
-import { inflatePolyline, normalizePolygon, subtractShapes } from '../lighting/polygonClip';
+import { inflatePolyline, subtractShapes } from '../lighting/polygonClip';
 import type { DrawingStroke } from '../types';
-import type { QShape } from '../types/shapeTypes';
 import type { Point } from '../types/visionTypes';
+import type { Box } from '../vision/polygonBounds';
 import { annotationBounds, boxOutline, inTurnedBox, stampBox } from './annotationBounds';
-import type { DrawEnds, DrawingAnnotation, DrawingInput } from './annotationTypes';
-import { inFill, linesDistanceSq } from './lineMath';
+import { MAX_HOLES, MAX_STROKE_POINTS, type DrawEnds, type DrawingAnnotation, type DrawingInput } from './annotationTypes';
+import { isCleanFill, madeClean } from './cleanFills';
+import { fillShape } from './drawingInk';
+import { windowCut } from './fillWindowCut';
+import { inFill, linesDistanceSq, segmentsDistanceSq } from './lineMath';
 import { filledParts, lengthQ, onClipGrid, pointsQ, type FilledPart } from './quantized';
 import { outsideSweep, type LinePiece } from './sweepCut';
 
@@ -21,27 +24,64 @@ export interface EraseSweep {
   readonly radius: number;
 }
 
-function reaches(sweep: EraseSweep, line: readonly Point[]): boolean {
-  return linesDistanceSq(sweep.points, line) <= sweep.radius * sweep.radius;
+/** The box around all a sweep reaches. */
+function sweepBox({ points, radius }: EraseSweep): Box {
+  let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const { x, y } of points) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  return { minX: minX - radius, minY: minY - radius, maxX: maxX + radius, maxY: maxY + radius };
+}
+
+/**
+ * Whether the line through `line` (closed for a `loop`) comes within the sweep's reach. `box` is
+ * the sweep's own: of a long line nearly every segment lies to one side of it, and is passed over
+ * with a comparison.
+ */
+function reaches(sweep: EraseSweep, box: Box, line: readonly Point[], loop = false): boolean {
+  const { points, radius } = sweep;
+  const last = loop ? line.length : Math.max(1, line.length - 1);
+  for (let i = 0; i < last; i++) {
+    const a = line[i]!;
+    const b = line[(i + 1) % line.length] ?? a;
+    if ((a.x < box.minX && b.x < box.minX) || (a.x > box.maxX && b.x > box.maxX) || (a.y < box.minY && b.y < box.minY) || (a.y > box.maxY && b.y > box.maxY)) continue;
+    for (let j = 0; j < Math.max(1, points.length - 1); j++) {
+      const c = points[j]!;
+      if (segmentsDistanceSq(a, b, c, points[j + 1] ?? c) <= radius * radius) return true;
+    }
+  }
+  return false;
 }
 
 /** Whether the sweep passes over a part of the drawing's fill: a point of its path inside it, or its edge within reach. */
-function reachesFill(sweep: EraseSweep, drawing: DrawingAnnotation): boolean {
+function reachesFill(sweep: EraseSweep, box: Box, drawing: DrawingAnnotation): boolean {
   if (sweep.points.some((point) => inFill(point, drawing.points, drawing.holes))) return true;
-  return reaches(sweep, drawing.points) || drawing.holes.some((hole) => reaches(sweep, [...hole, hole[0]!]));
+  return reaches(sweep, box, drawing.points) || drawing.holes.some((hole) => reaches(sweep, box, hole, true));
 }
 
 /**
  * The fill less the sweep, as the areas left of it; null where its points lie beyond what the
  * clipping grid holds, and the fill then stays as it is. Cut on that grid: the new edge lies
- * within a quarter pixel of the sweep's.
+ * within a quarter pixel of the sweep's. A fill known to be clean is cut around the sweep alone
+ * (`windowCut`), so a move over a fill of thousands of points costs what a move over a small one
+ * does; every other one is cleaned and cut whole. What is left is clean either way.
  */
 function fillLess(drawing: DrawingAnnotation, sweep: EraseSweep): FilledPart[] | null {
   const rings = [drawing.points, ...drawing.holes];
   if (!rings.every((ring) => onClipGrid(ring)) || !onClipGrid(sweep.points, sweep.radius)) return null;
-  let fill: QShape = normalizePolygon(pointsQ(drawing.points.slice(0, -1)));
-  for (const hole of drawing.holes) fill = subtractShapes(fill, normalizePolygon(pointsQ(hole)));
-  return filledParts(subtractShapes(fill, inflatePolyline(pointsQ(sweep.points), Math.max(1, lengthQ(sweep.radius)))));
+  const swept = inflatePolyline(pointsQ(sweep.points), Math.max(1, lengthQ(sweep.radius)));
+  const around = isCleanFill(drawing) ? windowCut(drawing.points, drawing.holes, swept) : null;
+  if (around) return around;
+  const fill = fillShape(drawing.points, drawing.holes);
+  return fill && filledParts(subtractShapes(fill, swept));
+}
+
+/** Whether a drawing of this outline and these holes is read whole (`annotationList`): one that is not must never be written. */
+export function readable({ outline, holes }: FilledPart): boolean {
+  return outline.length < MAX_STROKE_POINTS && holes.length <= MAX_HOLES && holes.reduce((sum, hole) => sum + hole.length, 0) <= MAX_STROKE_POINTS;
 }
 
 /** Every field of the record but the three the store gives a drawing: what a piece starts from, so it keeps fields this Atlas does not know. */
@@ -98,42 +138,56 @@ export function fillPiece(kept: DrawingInput, part: FilledPart): DrawingInput {
  *
  * Every piece keeps every other field of the drawing's record. Where a drawing comes apart into
  * several, they share one `group`: the drawing's own, or else its id.
+ *
+ * `'full'` where a piece would have more points or holes than a drawing may: the reader would pass
+ * it over or read it without some of its holes, so the cut is not made and the drawing stays.
  */
-export function erased(drawing: DrawingAnnotation, sweep: EraseSweep, whole: boolean): DrawingInput[] | 'untouched' {
+export function cutBySweep(drawing: DrawingAnnotation, sweep: EraseSweep, whole: boolean): DrawingInput[] | 'untouched' | 'full' {
   const { points, radius } = sweep;
   if (points.length === 0 || !(radius > 0) || !Number.isFinite(radius)) return 'untouched';
   const bounds = annotationBounds(drawing);
-  // A line's bounds hold its ink, so a sweep whose own box stays a radius clear of them reaches nothing.
-  let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity];
-  for (const { x, y } of points) {
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  }
-  if (minX - radius > bounds.maxX || maxX + radius < bounds.minX || minY - radius > bounds.maxY || maxY + radius < bounds.minY) return 'untouched';
+  const box = sweepBox(sweep);
+  // A line's bounds hold its ink, so a sweep whose own box stays clear of them reaches nothing.
+  if (box.minX > bounds.maxX || box.maxX < bounds.minX || box.minY > bounds.maxY || box.maxY < bounds.minY) return 'untouched';
   if (drawing.shape === 'stamp') {
-    const box = stampBox(drawing);
-    return points.some((point) => inTurnedBox(point, box)) || reaches(sweep, boxOutline(box)) ? [] : 'untouched';
+    const stamp = stampBox(drawing);
+    return points.some((point) => inTurnedBox(point, stamp)) || linesDistanceSq(points, boxOutline(stamp)) <= radius * radius ? [] : 'untouched';
   }
   const inked = drawing.width > 0;
   const filled = drawing.fill !== null && drawing.closed;
   const cut = inked ? outsideSweep(drawing.points, points, radius + drawing.width / 2, drawing.closed) : null;
-  const dabbed = filled && reachesFill(sweep, drawing);
+  const dabbed = filled && reachesFill(sweep, box, drawing);
   if (!cut && !dabbed) return 'untouched';
   if (whole) return [];
 
   const kept = keptFields(drawing.record);
   const pieces: DrawingInput[] = [];
   const lines: LinePiece[] = cut ?? (inked ? [{ points: drawing.points.map(({ x, y }) => ({ x, y })), fromStart: true, toEnd: true }] : []);
-  for (const line of lines) pieces.push(linePiece(kept, drawing, line));
+  for (const line of lines) {
+    if (line.points.length > MAX_STROKE_POINTS) return 'full';
+    pieces.push(linePiece(kept, drawing, line));
+  }
   if (filled) {
-    const parts = (dabbed ? fillLess(drawing, sweep) : null) ?? [{ outline: drawing.points.slice(0, -1).map(({ x, y }) => ({ x, y })), holes: drawing.holes.map((hole) => hole.map(({ x, y }) => ({ x, y }))) }];
-    for (const part of parts) pieces.push(fillPiece(kept, part));
+    const left = dabbed ? fillLess(drawing, sweep) : null;
+    // Whatever a cut leaves is clean; a fill that stays as it is, is what it was.
+    const clean = left !== null || isCleanFill(drawing);
+    const parts = left ?? [{ outline: drawing.points.slice(0, -1).map(({ x, y }) => ({ x, y })), holes: drawing.holes.map((hole) => hole.map(({ x, y }) => ({ x, y }))) }];
+    for (const part of parts) {
+      if (!readable(part)) return 'full';
+      const piece = fillPiece(kept, part);
+      if (clean) madeClean(piece);
+      pieces.push(piece);
+    }
   }
   if (pieces.length > 1) {
     const group = drawing.group ?? drawing.id;
     for (const piece of pieces) piece.group = group;
   }
   return pieces;
+}
+
+/** What `sweep` leaves of `drawing` (`cutBySweep`), for whoever has nobody to tell of a cut that cannot be made: the drawing is then `'untouched'`. */
+export function erased(drawing: DrawingAnnotation, sweep: EraseSweep, whole: boolean): DrawingInput[] | 'untouched' {
+  const cut = cutBySweep(drawing, sweep, whole);
+  return cut === 'full' ? 'untouched' : cut;
 }

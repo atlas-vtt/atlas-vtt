@@ -37,6 +37,8 @@ interface Scene {
   grid: GridSystem;
   tool(choices: Partial<DrawToolChoices>): void;
   drag(path: readonly (readonly [number, number])[]): void;
+  /** The pointer over the map at a screen point, as the viewport's dispatch tells the drawings of every move: the cursor they answer. */
+  hover(x: number, y: number, alt?: boolean): string | null;
   /** The stage as the GM sees it. */
   picture(): Uint8ClampedArray;
 }
@@ -118,6 +120,10 @@ async function open(type: GridType, options: { dark?: boolean; plain?: number; g
       for (const [x, y] of path.slice(1)) pointer('pointermove', x, y);
       pointer('pointerup', ...path.at(-1)!);
     },
+    hover: (x, y, alt = false) => {
+      const world = viewport.toWorld(x, y);
+      return annotations.pointer.cursorAt(world.x, world.y, () => false, alt);
+    },
     picture: () => {
       // The picture is of the map as it lies: without the frame of what was made last.
       store.getState().clearSelection();
@@ -136,13 +142,17 @@ const at = (pixels: Uint8ClampedArray, x: number, y: number): Rgb => {
   return [pixels[i]!, pixels[i + 1]!, pixels[i + 2]!];
 };
 
-async function save(pixels: Uint8ClampedArray, name: string, width = WIDTH, height = HEIGHT): Promise<void> {
-  const canvas = new OffscreenCanvas(width, height);
-  canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(pixels), width, height), 0, 0);
+async function saveCanvas(canvas: OffscreenCanvas, name: string, folder: string): Promise<void> {
   const bytes = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer());
   let binary = '';
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  await commands.writeFile(`out/draw-3-looks/${name}.png`, btoa(binary), 'base64');
+  await commands.writeFile(`out/${folder}/${name}.png`, btoa(binary), 'base64');
+}
+
+async function save(pixels: Uint8ClampedArray, name: string, width = WIDTH, height = HEIGHT, folder = 'draw-3-looks'): Promise<void> {
+  const canvas = new OffscreenCanvas(width, height);
+  canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(pixels), width, height), 0, 0);
+  await saveCanvas(canvas, name, folder);
 }
 
 /** The middle of a square cell, and the middle of the hex (q, r) of a pointy or flat grid. */
@@ -391,6 +401,119 @@ describe('stamps', () => {
     console.info(`[stamps] far out, the picture is off the average of what it stands for by ${off(tones.far).toFixed(1)} of 255, where sampled pixels would be off by ${off(tones.sampled).toFixed(1)} (mean tone ${mean.toFixed(1)}); in-between tones for each pixel of full ink: ${lifeSize.toFixed(3)} at life size, ${closeIn.toFixed(3)} four times as large`);
     expect(mean).toBeGreaterThan(30);
     expect(off(tones.far)).toBeLessThan(0.5 * off(tones.sampled));
+  });
+});
+
+describe('the cell a press will fill or clear, under the pointer', () => {
+  it('tints and outlines the cell under the pointer on the GM\'s canvas, writes nothing, and goes with the pointer', async () => {
+    const s = await open('square', { plain: 0x202020, gridColor: 0x202020 });
+    s.tool({ mode: 'cells', color: RED });
+    expect(s.hover(...square(2, 1))).toBe('none');
+    let pixels = s.picture();
+    const tinted = Math.round(0x20 + (0xe9 - 0x20) * CELL_FILL_OPACITY);
+    // The cell as its fill will tint it, its neighbours untouched, and a line of the colour along its edge.
+    for (const [dx, dy] of [[0, 0], [-28, -28], [28, 28]] as const) expect(Math.abs(at(pixels, square(2, 1)[0] + dx, square(2, 1)[1] + dy)[0] - tinted)).toBeLessThanOrEqual(2);
+    for (const [column, row] of [[1, 1], [3, 1], [2, 0], [2, 2]] as const) expect(at(pixels, ...square(column, row))).toEqual([0x20, 0x20, 0x20]);
+    expect(at(pixels, 2 * CELL, 1.5 * CELL)[0]).toBeGreaterThan(200);
+    expect(Object.keys(s.store.getState().objects.drawings)).toHaveLength(0);
+    // In another cell with the next move; nowhere once the pointer left.
+    s.hover(...square(4, 3));
+    pixels = s.picture();
+    expect(at(pixels, ...square(2, 1))).toEqual([0x20, 0x20, 0x20]);
+    expect(Math.abs(at(pixels, ...square(4, 3))[0] - tinted)).toBeLessThanOrEqual(2);
+    s.annotations.pointer.leave();
+    expect(at(s.picture(), ...square(4, 3))).toEqual([0x20, 0x20, 0x20]);
+  });
+
+  it('marks a cell to clear as the unfill drag marks it, and shows a hex its own shape', async () => {
+    const s = await open('hex-vertical', { plain: 0x202020, gridColor: 0x202020 });
+    s.tool({ mode: 'cells', color: BLUE });
+    s.drag([hex('hex-vertical', 2, 2)]);
+    s.tool({ mode: 'cells', cellsUnfill: true });
+    const [x, y] = hex('hex-vertical', 2, 2);
+    const filled = at(s.picture(), x, y);
+    expect(s.hover(x, y)).toBe('none');
+    // A light veil over the fill.
+    const veiled = at(s.picture(), x, y);
+    expect(veiled[0]).toBeGreaterThan(filled[0] + 20);
+    // A hex's corners lie outside the square around its middle: nothing of the mark is there.
+    expect(at(s.picture(), x + 33, y - 38)).toEqual([0x20, 0x20, 0x20]);
+    expect(Object.keys(s.store.getState().objects.drawings)).toHaveLength(1);
+  });
+});
+
+describe.skipIf(!LOOKS)('what a press will place: pictures to look at', () => {
+  const FOLDER = 'draw-qa2-looks';
+
+  it.each([false, true])('the stamp to be, snapped to its cell, beside stamps that are placed (dark map: %s)', async (dark) => {
+    const s = await open('square', { dark });
+    s.tool({ mode: 'stamp', icon: 'trap', color: RED, size: 'm' });
+    s.drag([square(1, 1)]);
+    s.tool({ mode: 'stamp', icon: 'treasure', color: YELLOW, size: 'm' });
+    s.drag([square(5, 3)]);
+    s.tool({ mode: 'stamp', icon: 'trap', color: RED, size: 'm' });
+    // The pointer is off the cell's middle: the stamp to be sits on the cell.
+    expect(s.hover(square(3, 2)[0] + 22, square(3, 2)[1] - 17)).toBe('none');
+    await vi.waitFor(() => expect(s.annotations.layer.building).toBe(false));
+    await save(s.picture(), `stamp-ghost-${dark ? 'dark' : 'light'}`, WIDTH, HEIGHT, FOLDER);
+    s.tool({ mode: 'stamp', icon: 'boss', color: dark ? '#ffffff' : '#000000', size: 'l' });
+    s.hover(square(3, 2)[0] + 22, square(3, 2)[1] - 17);
+    await save(s.picture(), `stamp-ghost-large-${dark ? 'dark' : 'light'}`, WIDTH, HEIGHT, FOLDER);
+  });
+
+  it.each([false, true])('the pen\'s dot in four sizes and three colours, at three zooms (dark map: %s)', async (dark) => {
+    const s = await open('square', { dark });
+    const TILE = 80;
+    const colours = ['#ffffff', '#000000', RED];
+    const sizes = ['s', 'm', 'l', 'xl'] as const;
+    const zooms = [1, 0.4, 2.5];
+    const sheet = new OffscreenCanvas(sizes.length * TILE * zooms.length + 16 * (zooms.length - 1), colours.length * TILE);
+    const ctx = sheet.getContext('2d')!;
+    for (const [group, zoom] of zooms.entries()) {
+      s.viewport.setZoom(zoom, true);
+      s.viewport.moveCenter(WIDTH / 2, HEIGHT / 2);
+      for (const [row, color] of colours.entries()) {
+        for (const [column, size] of sizes.entries()) {
+          s.tool({ mode: 'pen', color, size });
+          // Over the map's paper and over its ink.
+          const [x, y] = [200 + column * 40, 150 + row * 45];
+          expect(s.hover(x, y)).toBe('none');
+          const tile = new ImageData(TILE, TILE);
+          const pixels = s.picture();
+          for (let ty = 0; ty < TILE; ty++) {
+            const from = ((y - TILE / 2 + ty) * WIDTH + (x - TILE / 2)) * 4;
+            tile.data.set(pixels.subarray(from, from + TILE * 4), ty * TILE * 4);
+          }
+          ctx.putImageData(tile, group * (sizes.length * TILE + 16) + column * TILE, row * TILE);
+        }
+      }
+    }
+    await saveCanvas(sheet, `pen-dots-${dark ? 'dark' : 'light'}`, FOLDER);
+  });
+
+  it.each([false, true])('a line\'s start on the grid\'s corner, and where the pointer is with Alt (dark map: %s)', async (dark) => {
+    const s = await open('square', { dark });
+    s.tool({ mode: 'line', color: dark ? '#ffffff' : '#000000', size: 'm' });
+    expect(s.hover(3 * CELL + 9, 2 * CELL - 7)).toBe('none');
+    await save(s.picture(), `line-start-${dark ? 'dark' : 'light'}`, WIDTH, HEIGHT, FOLDER);
+    s.tool({ mode: 'rectangle', color: BLUE, size: 'l' });
+    s.hover(3 * CELL + 9, 2 * CELL - 7, true);
+    await save(s.picture(), `box-start-alt-${dark ? 'dark' : 'light'}`, WIDTH, HEIGHT, FOLDER);
+  });
+
+  it.each([['square', false], ['square', true], ['hex-vertical', false], ['hex-vertical', true]] as const)('the cell to fill and the cell to clear on a %s grid (dark map: %s)', async (type, dark) => {
+    const s = await open(type, { dark });
+    const cell = (a: number, b: number): [number, number] => (type === 'square' ? square(a, b) : hex(type, a, b));
+    s.tool({ mode: 'cells', color: RED });
+    s.drag([cell(1, 1), cell(2, 1), cell(3, 1)]);
+    s.tool({ mode: 'cells', color: BLUE });
+    s.drag([cell(1, 3), cell(2, 3)]);
+    // A cell the tool's colour will fill, beside fills of that colour and of another.
+    expect(s.hover(...cell(3, 3))).toBe('none');
+    await save(s.picture(), `cell-fill-${type}-${dark ? 'dark' : 'light'}`, WIDTH, HEIGHT, FOLDER);
+    s.tool({ mode: 'cells', cellsUnfill: true });
+    s.hover(...cell(2, 1));
+    await save(s.picture(), `cell-clear-${type}-${dark ? 'dark' : 'light'}`, WIDTH, HEIGHT, FOLDER);
   });
 });
 

@@ -48,10 +48,18 @@ export interface DrawScene {
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointertap', x: number, y: number, keys?: PointerKeys): void;
   /**
    * A press as the viewport's dispatch (`TokenRenderer`) hands it to the drawings and texts before
-   * the viewport's other listeners hear it: the handles first, then what the tool in hand takes;
-   * a secondary press asks for the menu. Whether they took it.
+   * the viewport's other listeners hear it: the handles first, then what the tool in hand takes.
+   * Whether they took it. A secondary press is a right click, released where it was pressed:
+   * whether it opened their menu.
    */
   press(x: number, y: number, keys?: PointerKeys): boolean;
+  /**
+   * The pointer over the map at (x, y), as the viewport's dispatch tells the drawings and texts of
+   * every move there: the cursor they answer, null for the system's own.
+   */
+  hover(x: number, y: number, keys?: PointerKeys): string | null;
+  /** The pointer left the canvas. */
+  leave(): void;
   /** `press`, the moves through the rest of `path`, and the release at its end. */
   pull(path: readonly (readonly [number, number])[], keys?: PointerKeys): boolean;
   /** A press, the moves through `path`, and the release at its end. */
@@ -67,7 +75,15 @@ export interface DrawScene {
   destroy(): void;
 }
 
-export function drawScene(options: { grid?: GridGeometry | null; playerView?: boolean; keysBelongToMap?: (event: KeyboardEvent) => boolean } = {}): DrawScene {
+export interface DrawSceneOptions {
+  grid?: GridGeometry | null;
+  playerView?: boolean;
+  keysBelongToMap?: (event: KeyboardEvent) => boolean;
+  /** Called with the store before the drawings and texts listen to it: what subscribes here hears every change before they do, as the selection's own marks do on the map. */
+  hearsFirst?: (store: ReturnType<typeof createViewAtlasStore>) => void;
+}
+
+export function drawScene(options: DrawSceneOptions = {}): DrawScene {
   const restoreGraphics = stubJsdomGraphics();
   const host = document.body.createDiv();
   const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events: { domElement: host.createEl('canvas') } as unknown as EventSystem });
@@ -76,6 +92,7 @@ export function drawScene(options: { grid?: GridGeometry | null; playerView?: bo
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/draw.atlasmap');
   if (options.playerView) store.setState({ isPlayerView: true });
+  options.hearsFirst?.(store);
   const full = vi.fn<(of: FullOf) => void>();
   const dragTokens = vi.fn<() => void>();
   const players: DrawScene['players'] = { shown: null };
@@ -123,13 +140,21 @@ export function drawScene(options: { grid?: GridGeometry | null; playerView?: bo
       const event = eventOf(x, y, keys);
       resetHandled(event);
       const world = viewport.toWorld(event.global);
-      const taken = event.button === 2
-        ? renderer.selecting.pointer.secondaryDown(world.x, world.y, event)
-        : renderer.selecting.pointer.gripDown(world.x, world.y, event) || renderer.selecting.pointer.pointerDown(world.x, world.y, event);
+      if (event.button === 2) {
+        // The press stays the viewport's; released in place, as here, it opens the menu.
+        viewport.emit('pointerdown', event);
+        return renderer.selecting.pointer.menuAt(world.x, world.y) && renderer.selecting.pointer.openMenu(world.x, world.y, event);
+      }
+      const taken = renderer.selecting.pointer.gripDown(world.x, world.y, event) || renderer.selecting.pointer.pointerDown(world.x, world.y, event);
       if (taken) markHandled(event);
       viewport.emit('pointerdown', event);
       return taken;
     },
+    hover(x, y, keys = {}): string | null {
+      const world = viewport.toWorld(x, y);
+      return renderer.pointer.cursorAt(world.x, world.y, () => false, keys.alt ?? false);
+    },
+    leave: () => renderer.pointer.leave(),
     pull(path, keys): boolean {
       const [first, ...rest] = path;
       const last = path[path.length - 1];

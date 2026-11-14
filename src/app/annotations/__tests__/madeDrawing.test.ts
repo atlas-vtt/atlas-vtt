@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Point } from '../../types/visionTypes';
 import { annotationIndex } from '../annotationHit';
-import { readDrawing } from '../annotationList';
+import { readDrawing, readText } from '../annotationList';
 import { DEFAULT_DRAW_TOOL, MAX_STROKE_POINTS, type DrawToolChoices } from '../annotationTypes';
 import { stampSize, strokeWidth, textHeight } from '../drawSizes';
 import { drawingInk, curveTolerance, SOFT_FILL } from '../drawingInk';
@@ -112,9 +112,11 @@ describe('madeStamp and madeText', () => {
       .toEqual({ type: 'icon', icon: 'skull', points: [p(35, 105)], color: '#ff0000', width: stampSize('l', CELL), opacity: 1, hidden: true, layer: 'map' });
   });
 
-  it('writes a text in the tool\'s look: its height, face, weight, and a plate, an outline or neither', () => {
-    const plain = madeText('Gate', p(10, 20), tool({ look: 'plain', size: 's', font: 'mono', italic: true }), CELL);
-    expect(plain).toEqual({ x: 10, y: 20, text: 'Gate', fontSize: textHeight('s', CELL), fontFamily: FONT_FAMILIES.mono, color: '#ffffff', align: 'center', bold: false, italic: true, rotation: 0, scale: 1 });
+  it('writes a text in the tool\'s look: its height, face, and a plate, an outline or neither, and no alignment, weight or slant', () => {
+    const plain = madeText('Gate', p(10, 20), tool({ look: 'plain', size: 's', font: 'mono' }), CELL);
+    expect(plain).toEqual({ x: 10, y: 20, text: 'Gate', fontSize: textHeight('s', CELL), fontFamily: FONT_FAMILIES.mono, color: '#ffffff', rotation: 0, scale: 1 });
+    // Read, such a text is centred and upright, as the tool's texts were while it wrote the three out.
+    expect(readText('t', { id: 't', kind: 'text', ...plain })).toMatchObject({ align: 'center', bold: false, italic: false });
     expect(madeText('Gate', p(0, 0), tool({ look: 'outline' }), CELL)).toMatchObject({ outline: true });
     const plate = madeText('Gate', p(0, 0), tool({ look: 'plate', players: false, layer: 'map' }), CELL);
     expect(plate).toMatchObject({ ...TEXT_PLATE, hidden: true, layer: 'map' });

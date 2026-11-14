@@ -29,6 +29,17 @@ export class PlayerAliases {
     return alias;
   }
 
+  /** Forgets the ids of `player`'s that `kept` does not keep: those of drawings and texts that are gone. */
+  keep(player: string, kept: (id: string) => boolean): void {
+    const known = this.players.get(player);
+    if (known === undefined) return;
+    for (const [id, alias] of known.byId) {
+      if (kept(id)) continue;
+      known.byId.delete(id);
+      known.byAlias.delete(alias);
+    }
+  }
+
   /** The scene's id `player` means by `alias`; none for one this player was never told. */
   idOf(player: string, alias: string): string | undefined {
     return this.players.get(player)?.byAlias.get(alias);

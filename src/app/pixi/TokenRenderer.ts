@@ -1817,9 +1817,10 @@ export class TokenRenderer {
       // A token takes the right-click from a linked hex beneath it, as it takes the left-click
       const tokenTools = activeTool === 'select' || activeTool === 'move';
       const onToken = tokenTools && this.hitTestTokens(worldPos.x, worldPos.y) !== null;
-      // A drawing or text lies above linked hexes and features: its menu opens on the press, where a press would take it
-      if (!onToken && this.annotationHandlers?.secondaryDown(worldPos.x, worldPos.y, e)) {
-        markHandled(e);
+      // A drawing or text lies above linked hexes and features. A fill and a selection's frame cover whole
+      // stretches of the map too: like theirs, its press stays unhandled and its menu opens on a release in place
+      if (!onToken && this.annotationHandlers?.menuAt(worldPos.x, worldPos.y)) {
+        this.openMenuOnRelease(e, (up) => this.annotationHandlers?.openMenu(worldPos.x, worldPos.y, up));
         return;
       }
       // Linked hexes cover whole stretches of the map: their press stays unhandled, so a
@@ -2005,6 +2006,7 @@ export class TokenRenderer {
       this.uiManager.setHoverState(null);
       this.mapFeatureHandlers?.leave();
       this.fogAreaHandlers?.hover(null);
+      this.annotationHandlers?.leave();
       return;
     }
 
@@ -2073,7 +2075,7 @@ export class TokenRenderer {
 
     // A handle of the selected drawings and texts, or one of them a press would take: after the markers, and after a token where the tool gives it the press
     if (markerCursor) this.annotationHandlers?.leave();
-    const annotationCursor = markerCursor ? null : this.annotationHandlers?.cursorAt(worldPos.x, worldPos.y, () => this.hitTestTokens(worldPos.x, worldPos.y) !== null) ?? null;
+    const annotationCursor = markerCursor ? null : this.annotationHandlers?.cursorAt(worldPos.x, worldPos.y, () => this.hitTestTokens(worldPos.x, worldPos.y) !== null, e.altKey === true) ?? null;
     const takenCursor = markerCursor ?? annotationCursor;
     if (takenCursor) {
       this.interactionController.handleViewportTokenHover(null);

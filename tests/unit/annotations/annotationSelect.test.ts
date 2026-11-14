@@ -368,12 +368,37 @@ describe('a line\'s points', () => {
     s.pull([[300, 100]], { soon: true });
     expect(s.drawings()[0]?.points).toEqual([pt(100, 100), pt(300, 300)]);
     expect(steps(s)).toBe(1);
-    // Over a point, Delete is the point's; the line has none to spare, and stays whole.
+    // The line has no point to spare: Delete over one of them is not the point's, and goes on to whoever deletes the selection.
     expect(s.renderer.selecting.handleDelete()).toBe(false);
     s.renderer.selecting.pointer.cursorAt(100, 100, () => false);
-    expect(s.renderer.selecting.handleDelete()).toBe(true);
+    expect(s.renderer.selecting.handleDelete()).toBe(false);
     expect(s.drawings()[0]?.points).toHaveLength(2);
     expect(steps(s)).toBe(1);
+  });
+
+  it('take Delete only where a point goes: not on a triangle, and not after the selection changed under the pointer', () => {
+    let id = '';
+    let other = '';
+    const s = scene((made) => {
+      id = path(made);
+      other = made.store.getState().addDrawing(line([pt(400, 400), pt(500, 400), pt(500, 500), pt(400, 400)], { type: 'line' }));
+    });
+    // A closed line keeps three points.
+    s.store.getState().setSelection([other]);
+    s.renderer.selecting.pointer.cursorAt(500, 400, () => false);
+    expect(s.renderer.selecting.handleDelete()).toBe(false);
+    expect(s.drawings().find((drawing) => drawing.id === other)?.points).toHaveLength(4);
+    // The pointer rests on a point of the path; a key then selects the triangle: Delete is no longer that point's.
+    s.store.getState().setSelection([id]);
+    s.renderer.selecting.pointer.cursorAt(300, 100, () => false);
+    s.store.getState().setSelection([other]);
+    expect(s.renderer.selecting.handleDelete()).toBe(false);
+    expect(s.drawings().map((drawing) => drawing.points.length)).toEqual([3, 4]);
+    // With the path selected again and the pointer on its corner, the corner goes.
+    s.store.getState().setSelection([id]);
+    s.renderer.selecting.pointer.cursorAt(300, 100, () => false);
+    expect(s.renderer.selecting.handleDelete()).toBe(true);
+    expect(s.drawings().find((drawing) => drawing.id === id)?.points).toEqual([pt(100, 100), pt(300, 300)]);
   });
 });
 
@@ -450,10 +475,10 @@ describe('the menu and the double click', () => {
     const s = scene((made) => { ids = [made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)])), made.store.getState().addText(label(500, 300))]; });
     expect(s.press(200, 100, { button: 2 })).toBe(true);
     expect(selected(s)).toEqual([ids[0]]);
-    expect(labels()).toEqual(['Hide from players', 'On the map', 'Lock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
+    expect(labels()).toEqual(['Hide from players', 'Under tokens', 'Lock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
     openContextMenuGlobal.mockClear();
     s.press(500, 300, { button: 2 });
-    expect(labels()).toEqual(['Edit', 'Hide from players', 'On the map', 'Lock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
+    expect(labels()).toEqual(['Edit', 'Hide from players', 'Under tokens', 'Lock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
     expect(s.press(600, 500, { button: 2 })).toBe(false);
   });
 
@@ -463,7 +488,7 @@ describe('the menu and the double click', () => {
     s.store.getState().setSelection(ids);
     s.press(200, 100, { button: 2 });
     choose('Hide from players');
-    choose('On the map');
+    choose('Under tokens');
     choose('Lock');
     expect(s.drawings()[0]).toMatchObject({ hidden: true, layer: 'map', locked: true });
     expect(s.texts()[0]).toMatchObject({ hidden: true, layer: 'map', locked: true });
@@ -488,10 +513,10 @@ describe('the menu and the double click', () => {
     const s = scene((made) => { ids = [made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)], { locked: true })), made.store.getState().addText(label(500, 300, { locked: true }))]; });
     const offered = (): string[] => (openContextMenuGlobal.mock.calls.at(-1)?.[0] ?? []).flatMap((entry) => (entry.type === 'item' && !entry.disabled ? [entry.label] : []));
     s.press(500, 300, { button: 2 });
-    expect(labels()).toEqual(['Edit', 'Hide from players', 'On the map', 'Unlock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
+    expect(labels()).toEqual(['Edit', 'Hide from players', 'Under tokens', 'Unlock', 'Group', 'Ungroup', 'To front', 'To back', 'Duplicate', 'Delete']);
     expect(offered()).toEqual(['Unlock', 'Duplicate']);
     // A row chosen all the same changes nothing.
-    for (const row of ['Edit', 'Hide from players', 'On the map', 'Group', 'Ungroup', 'To front', 'To back', 'Delete']) choose(row);
+    for (const row of ['Edit', 'Hide from players', 'Under tokens', 'Group', 'Ungroup', 'To front', 'To back', 'Delete']) choose(row);
     expect(s.texts()[0]).toMatchObject({ x: 500, y: 300, locked: true });
     expect(s.texts()[0]).not.toHaveProperty('hidden');
     expect(s.field()).toBeNull();
@@ -503,7 +528,7 @@ describe('the menu and the double click', () => {
     // With one that is not locked, the rows speak of that one and change it alone.
     s.store.getState().setSelection(ids);
     s.press(200, 100, { button: 2 });
-    expect(offered()).toEqual(['Hide from players', 'On the map', 'Lock', 'To front', 'To back', 'Duplicate', 'Delete']);
+    expect(offered()).toEqual(['Hide from players', 'Under tokens', 'Lock', 'To front', 'To back', 'Duplicate', 'Delete']);
     choose('Hide from players');
     expect(s.texts()[0]).toMatchObject({ hidden: true });
     expect(s.drawings()[0]).not.toHaveProperty('hidden');

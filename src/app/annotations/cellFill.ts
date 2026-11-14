@@ -16,10 +16,10 @@ import type { QPolygon, QShape } from '../types/shapeTypes';
 import type { Box } from '../vision/polygonBounds';
 import { annotationBounds } from './annotationBounds';
 import { isLocked } from './annotationLock';
-import { MAX_HOLES, MAX_STROKE_POINTS, type Annotation, type DrawingAnnotation, type DrawingInput, type DrawLayer } from './annotationTypes';
+import type { Annotation, DrawingAnnotation, DrawingInput, DrawLayer } from './annotationTypes';
 import type { GridCell } from './cellGrid';
 import { fillShape } from './drawingInk';
-import { fillPiece, keptFields } from './eraseCut';
+import { fillPiece, keptFields, readable } from './eraseCut';
 import { onClipGrid, pointsQ, ringPoints, type FilledPart } from './quantized';
 import { partHolds, pointInPart, ringArea, simpleParts } from './simpleRings';
 
@@ -58,11 +58,6 @@ function shapeOf(fill: DrawingAnnotation): QShape | null {
 const shapeArea = (shape: QShape): number => Math.abs(shape.reduce((sum, ring) => sum + ringArea(ring), 0));
 const partArea = (part: QShapePart): number => Math.abs(ringArea(part.outline)) - part.holes.reduce((sum, hole) => sum + Math.abs(ringArea(hole)), 0);
 const worldPart = (part: QShapePart): FilledPart => ({ outline: ringPoints(part.outline), holes: part.holes.map(ringPoints) });
-
-/** Whether a drawing of this outline and these holes is read whole (`annotationList`). */
-function readable({ outline, holes }: FilledPart): boolean {
-  return outline.length < MAX_STROKE_POINTS && holes.length <= MAX_HOLES && holes.reduce((sum, hole) => sum + hole.length, 0) <= MAX_STROKE_POINTS;
-}
 
 /** How far apart two boxes may lie and still count as touching: a fill's corners lie on the clipping grid, a cell's where the grid's lines put them. */
 const NEAR = 1;

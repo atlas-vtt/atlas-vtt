@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { annotationList, readDrawing } from '../../src/app/annotations/annotationList';
 import { DEFAULT_DRAW_TOOL, type Annotation, type DrawingAnnotation } from '../../src/app/annotations/annotationTypes';
 import { stampSize, strokeWidth, textHeight } from '../../src/app/annotations/drawSizes';
-import { MIXED, shownLock, shownStyle, styleWrites, type StyleWrite } from '../../src/app/packages/components/toolbar/drawStyle';
+import { fillIsAll, MIXED, shownLock, shownStyle, styleWrites, type StyleWrite } from '../../src/app/packages/components/toolbar/drawStyle';
 import { SEE_THROUGH } from '../../src/app/annotations/madeDrawing';
 import { FONT_FAMILIES, TEXT_PLATE } from '../../src/app/annotations/madeText';
 import type { DrawingStroke, TextElement } from '../../src/app/types';
@@ -40,7 +40,7 @@ describe('what the Draw tool\'s bars show', () => {
     const tool = { ...TOOL, color: '#e93147', size: 'l' as const, dash: 'dotted' as const, font: 'mono' as const };
     expect(shownStyle(tool, [], CELL)).toEqual({
       color: '#e93147', size: 'l', players: true, layer: 'above', seeThrough: false, dash: 'dotted', ends: null, curved: false, fill: null,
-      font: 'mono', look: 'outline', align: 'center', bold: false, italic: false, icon: 'door',
+      font: 'mono', look: 'outline', icon: 'door',
     });
   });
 
@@ -67,16 +67,17 @@ describe('what the Draw tool\'s bars show', () => {
   it('leaves a tool at the tool\'s own choice where nothing selected has such a style', () => {
     const tool = { ...TOOL, font: 'scifi' as const, fill: 'solid' as const, ends: 'both' as const, icon: 'gem' };
     const open = read(drawing('a', {}));
-    expect(shownStyle(tool, open, CELL)).toMatchObject({ font: 'scifi', look: 'outline', bold: false, fill: 'solid', icon: 'gem', ends: null });
+    expect(shownStyle(tool, open, CELL)).toMatchObject({ font: 'scifi', look: 'outline', fill: 'solid', icon: 'gem', ends: null });
     // A closed line has a fill and no ends; a fill without a line has no size and no dash.
     const room = read(drawing('r', { type: 'line', points: SQUARE, fill: 'soft', width: 0 }));
     expect(shownStyle({ ...tool, size: 'xl', dash: 'dotted' }, room, CELL)).toMatchObject({ fill: 'soft', ends: 'both', size: 'xl', dash: 'dotted' });
   });
 
-  it('reads a text\'s face, look, alignment and weight, and no face for one written before the tool had any', () => {
+  it('reads a text\'s face and look, and no face for one written before the tool had any', () => {
     const label = text('t', { fontFamily: FONT_FAMILIES.scifi, backgroundColor: '#000000', align: 'left', bold: true, italic: true });
-    expect(shownStyle(TOOL, read(label), CELL)).toMatchObject({ font: 'scifi', look: 'plate', align: 'left', bold: true, italic: true });
-    expect(shownStyle(TOOL, read(text('old', {})), CELL)).toMatchObject({ font: MIXED, look: 'plain', align: 'center', bold: false });
+    // An alignment, a weight and a slant are a text's own: the bars have no tool for them.
+    expect(shownStyle(TOOL, read(label), CELL)).toEqual({ ...shownStyle(TOOL, [], CELL), font: 'scifi', look: 'plate' });
+    expect(shownStyle(TOOL, read(text('old', {})), CELL)).toMatchObject({ font: MIXED, look: 'plain' });
     expect(shownStyle(TOOL, read(text('o', { outline: true }), text('p', {})), CELL).look).toBe(MIXED);
   });
 
@@ -124,8 +125,26 @@ describe('what a pick writes to the selected', () => {
       { ids: ['stamp'], changes: { width: stampSize('l', CELL) } },
     ]);
     expect(updates(styleWrites('size', 's', read(stamp), CELL))).toEqual([{ ids: ['stamp'], changes: { width: stampSize('s', CELL) } }]);
+    // A wrapped text that was scaled by its corners wraps where it did on the map: its width takes the scale the write removes.
+    const wrapped = text('wrapped', { width: 120, scale: 2.5, breaks: [5] });
+    const plain = text('plain', { width: 120, breaks: [5] });
+    expect(styleWrites('size', 'l', read(wrapped, plain, pen), CELL)).toEqual([
+      { kind: 'update', ids: ['plain', 'pen'], changes: { width: strokeWidth('l', CELL), fontSize: textHeight('l', CELL), scale: undefined, breaks: undefined } },
+      { kind: 'place', places: { wrapped: { width: 300, fontSize: textHeight('l', CELL), scale: undefined, breaks: undefined } } },
+    ]);
     // A fill without a line gets none.
     expect(styleWrites('size', 'l', read(drawing('fill', { type: 'line', points: SQUARE, fill: 'solid', width: 0 })), CELL)).toEqual([]);
+  });
+
+  it('never takes the fill off a drawing that is nothing but its fill', () => {
+    const cells = drawing('cells', { type: 'line', points: SQUARE, fill: 'solid', width: 0, cells: true });
+    const piece = drawing('piece', { type: 'line', points: SQUARE, fill: 'soft', width: 0 });
+    // A line would be left of the room, nothing of the other two.
+    expect(updates(styleWrites('fill', null, read(cells, room, piece), CELL))).toEqual([{ ids: ['room'], changes: { fill: undefined } }]);
+    expect(styleWrites('fill', null, read(cells, piece), CELL)).toEqual([]);
+    expect(updates(styleWrites('fill', 'soft', read(cells, room), CELL))).toEqual([{ ids: ['cells', 'room'], changes: { fill: 'soft' } }]);
+    // The Fill tool then offers no None, and says why.
+    expect([fillIsAll(read(cells, piece)), fillIsAll(read(cells, room)), fillIsAll(read(room)), fillIsAll(read(pen)), fillIsAll([])]).toEqual([true, false, false, false, false]);
   });
 
   it('writes a line\'s look to lines alone: see-through ink, dashes, arrowheads on open lines, a fill on closed ones', () => {
@@ -139,12 +158,9 @@ describe('what a pick writes to the selected', () => {
     expect(updates(styleWrites('fill', null, all, CELL))[0]!.changes).toEqual({ fill: undefined });
   });
 
-  it('writes a text\'s face, look, alignment and weight to texts alone, and a symbol to stamps alone', () => {
-    // Another face or weight sets the words in other letters: the saved line breaks go, and are worked out anew.
+  it('writes a text\'s face and look to texts alone, and a symbol to stamps alone', () => {
+    // Another face sets the words in other letters: the saved line breaks go, and are worked out anew.
     expect(updates(styleWrites('font', 'medieval', all, CELL))).toEqual([{ ids: ['label'], changes: { fontFamily: FONT_FAMILIES.medieval, breaks: undefined } }]);
-    expect(updates(styleWrites('align', 'right', all, CELL))).toEqual([{ ids: ['label'], changes: { align: 'right' } }]);
-    expect(updates(styleWrites('bold', true, all, CELL))[0]!.changes).toEqual({ bold: true, breaks: undefined });
-    expect(updates(styleWrites('italic', false, all, CELL))[0]!.changes).toEqual({ italic: false, breaks: undefined });
     // A look is a text's own write: the plate is the chip texts always had, see-through as it was, and goes whole.
     const plate = { backgroundColor: undefined, padding: undefined, borderRadius: undefined };
     expect(styleWrites('look', 'outline', all, CELL)).toEqual([{ kind: 'text', ids: ['label'], changes: { ...plate, outline: true } }]);

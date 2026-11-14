@@ -19,8 +19,9 @@ export const TEXT_PLATE = { backgroundColor: '#000000', padding: 8, borderRadius
 /**
  * The text `text` centred on `at`, with the tool's choices, on a map whose cells are `cell` wide:
  * its colour, its height from the size, its face, its look (a plate, the outline, or neither),
- * its alignment and weight, who sees it and where it lies. It is as wide as its words; whoever
- * gives it a width adds `width` and `breaks`.
+ * who sees it and where it lies. It names no alignment, weight or slant: its lines are centred
+ * and its letters upright, as every reader takes a text without them. It is as wide as its
+ * words; whoever gives it a width adds `width` and `breaks`.
  */
 export function madeText(text: string, at: Point, tool: DrawToolChoices, cell: number): TextInput {
   return {
@@ -32,9 +33,6 @@ export function madeText(text: string, at: Point, tool: DrawToolChoices, cell: n
     color: tool.color,
     ...(tool.look === 'plate' && TEXT_PLATE),
     ...(tool.look === 'outline' && { outline: true as const }),
-    align: tool.align,
-    bold: tool.bold,
-    italic: tool.italic,
     rotation: 0,
     scale: 1,
     ...(!tool.players && { hidden: true as const }),

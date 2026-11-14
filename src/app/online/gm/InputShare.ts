@@ -6,6 +6,7 @@ import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 import { Pacer, type PacerClock } from '../marks/index.ts';
 import { fogPastLimits, sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
 import { SequencedList } from './sequencedList.ts';
+import { maskBytes } from './exploredMaskAlpha.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelExploredMask } from '../../levels/sceneLevels';
@@ -31,20 +32,7 @@ export const INPUT_INTERVAL_MS = 66;
 /** The shortest time between two explored memories: the GM saves one every few seconds while tokens explore. */
 export const EXPLORED_INTERVAL_MS = 5_000;
 
-const PNG_DATA_URL = 'data:image/png;base64,';
-
 const loading = (state: SceneState): boolean => !state.mapLoaded || state.isMapLoading;
-
-/** The PNG bytes of a saved explored memory (a data URL), or null for none or anything else. */
-function maskBytes(mask: string | null): Uint8Array<ArrayBuffer> | null {
-  if (mask === null || !mask.startsWith(PNG_DATA_URL)) return null;
-  try {
-    const text = atob(mask.slice(PNG_DATA_URL.length));
-    return Uint8Array.from(text, (char) => char.charCodeAt(0));
-  } catch {
-    return null;
-  }
-}
 
 interface Sent {
   readonly scene: string;
