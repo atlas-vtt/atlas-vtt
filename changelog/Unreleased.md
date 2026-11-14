@@ -68,6 +68,7 @@
 - Online, the eye on a floor shows that floor to players at once. Reported by Theo Chronis
 - Ctrl/Cmd and hover shows a token's statblock with every tool. Reported by George
 - The laser pointer is smooth again on Linux with AMD graphics
+- The toolbar and the tools' bars no longer disappear after an animation fails
 
 ## Atlas Online
 

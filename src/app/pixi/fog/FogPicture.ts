@@ -189,6 +189,7 @@ export class FogPicture {
     this.fade.end();
     this.shown = null;
     this.compositor.updateBounds(bounds);
+    this.edgeMesh?.releaseFog();
     if (!this.texture.destroyed) this.texture.destroy(true);
     this.texture = PIXI.Texture.from(this.compositor.getCanvas());
     this.sprite.texture = this.texture;

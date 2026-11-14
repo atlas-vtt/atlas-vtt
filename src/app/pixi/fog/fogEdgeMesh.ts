@@ -240,6 +240,15 @@ export class FogEdgeMesh {
     this.mesh.shader = shown;
   }
 
+  /**
+   * Lets go of the fog's texture, which is about to be destroyed (its canvas takes another size):
+   * a shader must not name a destroyed one. The next render takes the sprite's texture again.
+   */
+  releaseFog(): void {
+    this.shader.resources.uFog = Texture.EMPTY.source;
+    if (this.fadeShader) this.fadeShader.resources.uFog = Texture.EMPTY.source;
+  }
+
   /** How far a fade has come: 0 shows the picture before, 1 the sprite's. */
   setMix(mix: number): void {
     this.group.uniforms.uMix = mix;
