@@ -63,6 +63,7 @@
 
 - Tokens and pins under fog can be clicked and dragged: fog no longer takes their clicks
 - The TrueScale frame and its bar on the map show only while TrueScale is on
+- TrueScale and Full screen on the TV have icons of their own in the player window bar
 - The player window no longer says "Camera paused" after you come back to the scene it shows
 - The eye on a scene tab shows the scene to players again, in the player view and online, and the tab's close button closes it: both had become hard to click. Reported by Tanaros, Meisterdieb, George and Theo Chronis
 - Online, the eye on a floor shows that floor to players at once; before, they saw it only after a refresh. Reported by Theo Chronis

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useStore } from "zustand"
-import { Blinds, ImageOff, Pause, Play, Scan } from "lucide-react"
+import { Blinds, ImageOff, Pause, Play, RulerDimensionLine } from "lucide-react"
 import type { AtlasView } from "../../../atlas-view"
 import { useAtlasSettings } from "../../../keyboard/useMapHotkeys"
 import { PlayerWindowService } from "../../../services/PlayerWindowService"
@@ -78,7 +78,7 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
       <div ref={rootRef} className="atlas-player-window-bar" onPointerEnter={refreshPlayerWindowDisplay}>
         <div className="atlas-vtt-toolbar">
           <ToolButton
-            icon={Scan}
+            icon={RulerDimensionLine}
             label={t("tableTv.heading")}
             isActive={menu === "trueScale"}
             menuExpanded={menu === "trueScale"}
