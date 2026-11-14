@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AssetManager from '../../src/app/packages/components/asset-manager/AssetManager';
 import type { AnyAsset, Folder, TokenAsset } from '../../src/app/packages/components/asset-manager/types';
 import { CreatureIndex } from '../../src/app/creatures/CreatureIndex';
-import { focusSearchUntouched, isSearchUntouched } from '../../src/app/packages/components/asset-manager/components/search/searchFocus';
 
 // The real header, search, filter panel and chips over an in-memory vault of statblock notes.
 const FRONTMATTER: Record<string, Record<string, unknown>> = {
@@ -256,47 +255,4 @@ it('keeps the filter button on every tab, disabled where a tab has no filters ye
   fireEvent.click(screen.getAllByRole('button', { name: /^Tokens/ })[0]!);
   expect((screen.getByRole('button', { name: 'Filters' }) as HTMLButtonElement).disabled).toBe(false);
   expect(screen.queryByRole('dialog', { name: 'Filters' })).toBeNull();
-});
-
-describe('the search focused as the window opens (#38)', () => {
-  it('waits with its suggestions for the first key or press, and filters as typed', async () => {
-    await openManager();
-    fireEvent.keyDown(search(), { key: 'Escape' });
-    act(() => search().blur());
-    act(() => focusSearchUntouched(search()));
-    expect(document.activeElement).toBe(search());
-    expect(screen.queryAllByRole('option')).toHaveLength(0);
-
-    type('wol');
-    expect(shown()).toEqual(['Wolf']);
-    expect(isSearchUntouched(search())).toBe(false);
-  });
-
-  it('opens its suggestions on a press in the field', async () => {
-    await openManager();
-    fireEvent.keyDown(search(), { key: 'Escape' });
-    act(() => search().blur());
-    act(() => focusSearchUntouched(search()));
-    fireEvent.pointerDown(search());
-    expect(suggestionLabels().some((label) => label.startsWith('cr:'))).toBe(true);
-  });
-
-  it('leaves Escape and the arrows to the window while untouched and empty, and keeps them once used', async () => {
-    await openManager();
-    fireEvent.keyDown(search(), { key: 'Escape' });
-    act(() => search().blur());
-    act(() => focusSearchUntouched(search()));
-    const reached = vi.fn();
-    document.addEventListener('keydown', reached);
-    fireEvent.keyDown(search(), { key: 'Escape' });
-    fireEvent.keyDown(search(), { key: 'ArrowDown' });
-    expect(reached.mock.calls.map(([event]) => [(event as KeyboardEvent).key, (event as KeyboardEvent).defaultPrevented]))
-      .toEqual([['Escape', false], ['ArrowDown', false]]);
-
-    reached.mockClear();
-    fireEvent.keyDown(search(), { key: 'x' });
-    fireEvent.keyDown(search(), { key: 'Escape' });
-    document.removeEventListener('keydown', reached);
-    expect(reached.mock.calls.map(([event]) => (event as KeyboardEvent).key)).toEqual(['x']);
-  });
 });

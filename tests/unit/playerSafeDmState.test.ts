@@ -45,7 +45,7 @@ describe('SelectionManager.getPlayerViewLayers', () => {
   it('hides the selection overlay, marquee and group rotate button for the player frame', () => {
     const viewport = new Container();
     const store = createStore(() => ({ selectedIds: [], activeTool: 'select', selectionMode: 'box', objects: { tokens: {}, drawings: {} } }));
-    const manager = new SelectionManager(viewport as never, () => ({}), () => ({}), store as never, new EventEmitter());
+    const manager = new SelectionManager(viewport as never, () => ({}), store as never, new EventEmitter());
     const layers = manager.getPlayerViewLayers();
 
     expect(layers).toHaveLength(3);

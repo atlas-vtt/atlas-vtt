@@ -13,7 +13,7 @@ vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindo
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
 describe('the toolbar editor in a real layout', () => {
@@ -44,7 +44,7 @@ describe('the toolbar editor in a real layout', () => {
     expect(document.querySelector('.atlas-toolbar-overflow')).toBeNull();
   });
 
-  it('hangs the tray 8 px above the bar, centred on it, as a capsule with concentric ends', async () => {
+  it('hangs the tray 8 px above the bar, centred on it, with the toolbar\'s corner and concentric ends', async () => {
     await mount({ hidden: ['loot'] });
     await startEditing();
     const bar = rectOf(query('.atlas-main-toolbar'));
@@ -52,20 +52,37 @@ describe('the toolbar editor in a real layout', () => {
     expect(Math.abs(bar.top - (tray.top + tray.height) - 8)).toBeLessThanOrEqual(0.5);
     expect(Math.abs(bar.left + bar.width / 2 - (tray.left + tray.width / 2))).toBeLessThanOrEqual(0.5);
     expect(tray.height).toBeLessThan(48);
-    expect(getComputedStyle(query('.atlas-toolbar-tray [data-tray-item="loot"] .btn')).borderTopLeftRadius).toBe('16px');
-    expect(getComputedStyle(query('.atlas-toolbar-tray__done')).borderTopRightRadius).toBe('16px');
+    expect(getComputedStyle(query('.atlas-toolbar-tray')).borderTopLeftRadius).toBe(getComputedStyle(query('.atlas-main-toolbar')).borderTopLeftRadius);
+    // 16 px less the border (1.5) and the inset (4)
+    expect(getComputedStyle(query('.atlas-toolbar-tray [data-tray-item="loot"] .btn')).borderTopLeftRadius).toBe('10.5px');
+    expect(getComputedStyle(query('.atlas-toolbar-tray__done')).borderTopRightRadius).toBe('10.5px');
   });
 
-  it('keeps the bar\'s end corners concentric with its own, in and out of edit mode', async () => {
+  it('keeps every control\'s corners concentric with the bar\'s, on every side, in and out of edit mode', async () => {
     await mount();
+    const allCorners = (element: Element): string[] => {
+      const style = getComputedStyle(element);
+      return [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius];
+    };
+    const toggle = query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle');
     const corners = (): string[] => [
-      getComputedStyle(query('.atlas-main-toolbar > [data-toolbar-item="move"] .atlas-tool-group')).borderTopLeftRadius,
-      getComputedStyle(query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle')).borderTopRightRadius,
+      ...allCorners(query('.atlas-main-toolbar > [data-toolbar-item="move"] .atlas-tool-group')),
+      ...[...document.querySelectorAll('.atlas-main-toolbar .atlas-tool-button > span > .btn')].flatMap(allCorners),
+      ...allCorners(toggle),
     ];
-    expect(corners()).toEqual(['14.5px', '14.5px']);
+    expect(new Set(corners())).toEqual(new Set(['10.5px']));
+    // The switch's thumb stands 4 px inside it, its corner concentric with the switch's: 10.5 - 4
+    const thumb = toggle.querySelector<HTMLElement>('.atlas-toggle__thumb')!;
+    expect(getComputedStyle(thumb).borderTopLeftRadius).toBe('6.5px');
+    const switchBox = toggle.querySelector('.atlas-toggle__switch')!.getBoundingClientRect();
+    const thumbBox = thumb.getBoundingClientRect();
+    expect(thumbBox.top - switchBox.top).toBeCloseTo(4, 1);
+    expect(switchBox.bottom - thumbBox.bottom).toBeCloseTo(4, 1);
+    // At either end, as far from that edge as from the top
+    expect(Math.abs(switchBox.right - thumbBox.right - 4) < 0.5 || Math.abs(thumbBox.left - switchBox.left - 4) < 0.5).toBe(true);
     await startEditing();
-    expect(corners()).toEqual(['14.5px', '14.5px']);
-    expect(getComputedStyle(handle('move', 'bar')).borderTopLeftRadius).toBe('14.5px');
+    expect(new Set(corners())).toEqual(new Set(['10.5px']));
+    expect(getComputedStyle(handle('move', 'bar')).borderTopLeftRadius).toBe('10.5px');
   });
 
   it('leaves the bar and the undo bar where they are as editing starts', async () => {
@@ -141,7 +158,8 @@ describe('the toolbar editor in a real layout', () => {
     fireEvent.keyDown(handle('draw', 'bar'), { key: 'Delete' });
     fireEvent.keyDown(handle('pin', 'bar'), { key: 'Delete' });
     await eachFrame(SETTLE_FRAMES, watch(() => null));
-    expect(settings.getToolbarLayout().hidden).toEqual(['draw', 'pin']);
+    // A hidden Draw tool is stored with the id of the Text control it took in.
+    expect(settings.getToolbarLayout().hidden).toEqual(['draw', 'pin', 'text']);
     fireEvent.click(screen.getByRole('button', { name: 'Reset toolbar' }));
     await eachFrame(SETTLE_FRAMES, watch(() => null));
     expect(settings.getToolbarLayout()).toEqual({});

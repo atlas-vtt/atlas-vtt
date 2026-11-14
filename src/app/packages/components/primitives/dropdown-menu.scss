@@ -126,6 +126,11 @@
   white-space: nowrap;
 }
 
+/* A row of a menu without ticks: icon / label / shortcut, the icon on the menu's text edge */
+.atlas-dropdown-menu-item--flush {
+  grid-template-columns: $icon-s 1fr auto;
+}
+
 .atlas-dropdown-menu-item__check {
   display: flex;
   align-items: center;
@@ -173,6 +178,18 @@
   padding-inline: var(--atlas-menu-text-inset, 0px);
   font-size: $font-ui-small;
   color: var(--text-normal);
+}
+
+/* A line under a row that says what the row does. It wraps within the menu and never widens it:
+   it asks for no width of its own and then takes the menu's. */
+.atlas-dropdown-hint {
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
+  margin: 0;
+  padding-inline: var(--atlas-menu-text-inset, 0px);
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
 }
 
 /* Slider row: name and value on the text edge, the track across the menu */
@@ -264,39 +281,6 @@
   font-style: italic;
 }
 
-/* Icon picker grid (draw tool → icon stamps) */
-.atlas-icon-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: $spacing-xs;
-}
-
-.atlas-icon-grid__item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: $spacing-xs;
-  border: $border-width-s solid transparent;
-  border-radius: $radius-l;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
-  }
-
-  &:active {
-    background: var(--background-modifier-active-hover);
-  }
-
-  &--active {
-    border-color: var(--interactive-accent);
-    color: var(--interactive-accent);
-  }
-}
-
 /* Colour swatch grid (text tool → colour) */
 .atlas-dropdown-swatches {
   @include atlas-flex-col($spacing-s);
@@ -318,6 +302,28 @@
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: $spacing-xs;
+}
+
+// Swatches that are all their menu holds stand in its corners: the swatch in a corner is
+// concentric with the menu there and keeps its own radius on its other corners. The grid has
+// eight columns, so the corners are the first and eighth swatch and the ends of the last row.
+// Counted by type: each swatch is followed by its tooltip's hidden name.
+.atlas-swatch-grid--fills-menu > .atlas-swatch {
+  &:first-of-type {
+    @include atlas-panel-inset-radius($spacing-s, top-left);
+  }
+
+  &:nth-of-type(8) {
+    @include atlas-panel-inset-radius($spacing-s, top-right);
+  }
+
+  &:nth-of-type(8n + 1):nth-last-of-type(-n + 8) {
+    @include atlas-panel-inset-radius($spacing-s, bottom-left);
+  }
+
+  &:nth-of-type(8n):last-of-type {
+    @include atlas-panel-inset-radius($spacing-s, bottom-right);
+  }
 }
 
 .atlas-swatch {

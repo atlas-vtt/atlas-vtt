@@ -12,7 +12,7 @@ vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindo
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
 const undoSlot = (): HTMLElement => query('.atlas-bottom-toolbar-row__start > .atlas-undo-bar');

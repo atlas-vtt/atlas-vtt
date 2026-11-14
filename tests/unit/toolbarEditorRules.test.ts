@@ -13,7 +13,7 @@ describe('moving a bar control', () => {
   it('steps one place left or right among the bar controls', () => {
     const right = movedToolbarLayout(DEFAULT, BAR, 'fog', 'right');
     expect(right && { from: right.from, to: right.to }).toEqual({ from: 2, to: 3 });
-    expect(right?.layout.order.slice(0, 4)).toEqual(['move', 'draw', 'fog', 'text']);
+    expect(right?.layout.order.slice(0, 4)).toEqual(['move', 'draw', 'fog', 'measure']);
     expect(movedToolbarLayout(DEFAULT, BAR, 'fog', 'left')?.layout.order.slice(0, 2)).toEqual(['fog', 'move']);
   });
 
@@ -33,7 +33,7 @@ describe('moving a bar control', () => {
   it('steps over controls the view does not show, which keep their places', () => {
     // Lighting sits between measure and pin but is off here: pin moving left lands before measure.
     const moved = movedToolbarLayout(DEFAULT, BAR, 'pin', 'left');
-    expect(moved?.layout.order).toEqual(['move', 'fog', 'draw', 'text', 'pin', 'measure', 'wall', 'audio', 'dice', 'loot', 'assets', 'palette']);
+    expect(moved?.layout.order).toEqual(['move', 'fog', 'draw', 'pin', 'measure', 'wall', 'audio', 'dice', 'loot', 'assets', 'palette']);
   });
 
   it('counts hidden controls nowhere', () => {

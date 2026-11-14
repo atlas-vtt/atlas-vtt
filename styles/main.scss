@@ -38,12 +38,14 @@ body.theme-light {
  *  (https://fontforge.org/archive/sfds/toyfonts.html).
  *  Oxanium, Copyright 2019 The Oxanium Project Authors (https://github.com/sevmeyer/oxanium),
  *  licensed under the SIL Open Font License, Version 1.1.
+ *  Courier Prime, Copyright 2015 The Courier Prime Project Authors
+ *  (https://github.com/quoteunquoteapps/CourierPrime), licensed under the SIL Open Font License, Version 1.1.
  *  Licence text: https://openfontlicense.org
  *  Credits: https://github.com/atlas-vtt/atlas-vtt/blob/main/THIRD_PARTY_NOTICES.md
  */
 
-// Atlas' display face: the 3D dice panel's numbers (dice-roll.scss) and the dashboard's
-// wordmark. At-rules stay at the root, like @property above.
+// Atlas' display face: the 3D dice panel's numbers (dice-roll.scss), the dashboard's wordmark
+// and the Draw tool's medieval text. At-rules stay at the root, like @property above.
 @font-face {
   font-family: 'Atlas Fantaisie Artistique';
   src: url('../src/app/assets/fonts/fantaisie-artistique.ttf') format('truetype');
@@ -52,11 +54,20 @@ body.theme-light {
   font-display: swap;
 }
 
-// The sci-fi face of the dice, chosen in Dice settings; a variable font from 200 to 800.
+// The sci-fi face of the dice, chosen in Dice settings, and of the Draw tool's text; a variable font from 200 to 800.
 @font-face {
   font-family: 'Atlas Oxanium';
   src: url('../src/app/assets/fonts/oxanium.ttf') format('truetype');
   font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+// The Draw tool's monospace text. One weight: bold and italic are the browser's own.
+@font-face {
+  font-family: 'Atlas Courier Prime';
+  src: url('../src/app/assets/fonts/courier-prime.ttf') format('truetype');
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
@@ -96,6 +107,8 @@ body.theme-light {
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
   @import '../src/app/packages/components/toolbar/tool-options-bar.scss';
+  @import '../src/app/packages/components/toolbar/fog-tool-bar.scss';
+  @import '../src/app/packages/components/toolbar/selection-bar.scss';
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
   @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/toolbar/editor/toolbar-card';
@@ -182,6 +195,7 @@ body.theme-light {
   @import '../src/app/services/embedded-leaf.scss';
   @import '../src/app/react/components/atlas-toast.scss';
   @import '../src/app/ui/text-input-dialog.scss';
+  @import '../src/app/pixi/annotations/text-field.scss';
   @import '../src/app/packages/components/shared/DiceTextInput';
 
 
@@ -419,9 +433,10 @@ body.theme-light {
   // into its overflow menu when they do not fit.
   .atlas-bottom-toolbar-row {
     position: fixed;
-    bottom: $spacing-l;
-    left: $spacing-l;
-    right: $spacing-l;
+    // As far from the view's edges as the top bar row
+    bottom: $spacing-s;
+    left: $spacing-s;
+    right: $spacing-s;
     display: grid;
     grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
     align-items: end;
@@ -485,34 +500,49 @@ body.theme-light {
   .atlas-vtt-toolbar {
     display: flex;
     align-items: center;
-    gap: $spacing-s;  // Consistent spacing between all toolbar items
-    padding: $spacing-s;
+    gap: $toolbar-inset;
+    padding: $toolbar-inset;
     pointer-events: auto;
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($toolbar-radius);
 
-    // The end controls sit $spacing-s inside the border, so their outer corners
-    // run concentric with the bar's. Tool buttons, tool groups and the toggle
-    // read these; the corners between controls keep their own radius. Controls
-    // in the overflow menu are hidden, so the ends are the first and last shown;
-    // a control on its way out of the main toolbar no longer holds an end.
-    > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
-    > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
+    // Every control sits $toolbar-inset inside the border, so all its corners run concentric with
+    // the bar's: rounded alike on every side, never one radius towards the bar's edge and another
+    // inside it. Tool buttons, tool groups, their chevrons and the toggle read this; a bar with
+    // another inset sets it anew.
+    --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($toolbar-inset)};
 
-    // Menus opened from an end control are not part of the bar's outline.
+    // Menus opened from a control are not part of the bar's outline.
     .atlas-dropdown-content {
-      --atlas-bar-start-radius: initial;
-      --atlas-bar-end-radius: initial;
+      --atlas-bar-control-radius: initial;
     }
 
     .atlas-tool-button > span > .btn {
-      border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-        var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+      border-radius: var(--atlas-bar-control-radius, #{$radius-l});
     }
 
+    // The switch takes the controls' corner, and its thumb stands $toolbar-inset inside it (its
+    // padding and border), as every control stands inside the bar, so the thumb's corner is
+    // concentric with the switch's and still round: 6 px inside left it 3.5 px, a square.
     .atlas-toolbar-end > .atlas-toggle {
-      border-radius: var(--atlas-bar-start-radius, #{$radius-xl}) var(--atlas-bar-end-radius, #{$radius-xl})
-        var(--atlas-bar-end-radius, #{$radius-xl}) var(--atlas-bar-start-radius, #{$radius-xl});
+      $thumb: 40px - 2 * $toolbar-inset;
+
+      border-radius: var(--atlas-bar-control-radius, #{$radius-xl});
+
+      .atlas-toggle__switch {
+        padding: $toolbar-inset - $border-width-s;
+      }
+
+      .atlas-toggle__thumb {
+        width: $thumb;
+        height: $thumb;
+        border-radius: calc(var(--atlas-bar-control-radius, #{$radius-xl}) - #{$toolbar-inset});
+      }
+
+      // Across the switch's 60 px, less its padding and border on both sides and the thumb
+      .atlas-toggle__thumb--on {
+        transform: translateX(60px - 2 * $toolbar-inset - $thumb);
+      }
     }
   }
 
@@ -602,7 +632,9 @@ body.theme-light {
   // ghost of a tool moving between them.
   $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost, .atlas-tool-bar)';
 
-  /* Make all buttons in toolbar transparent by default, except those with their own look. */
+  /* Make all buttons in toolbar transparent by default, except those with their own look.
+     None shows that it has the focus, by the pointer or by a key: a button that was clicked keeps
+     the focus, and the next hotkey would ring it beside the tool in hand. */
   #{$toolbars} button.btn:not(#{$own-look}),
   #{$toolbars} button.btn--toolbar {
     background: transparent !important;
@@ -618,19 +650,18 @@ body.theme-light {
     }
   }
 
-  // Pointer focus stays quiet; keyboard focus gets the shared ring. The quiet rule leaves
-  // :focus-visible alone: as `:focus:not(…)` it outranked the ring's rule below.
-  #{$toolbars} button.btn:focus:not(:focus-visible):not(#{$own-look}),
-  #{$toolbars} button.btn--toolbar:focus:not(:focus-visible) {
-    outline: none !important;
-    box-shadow: none !important;
+  // Nor does a switch or a segmented option of a toolbar, or of a menu that hangs from one: a
+  // click leaves the focus on it and the menu open. A chosen option keeps the shadow it rests with.
+  #{$toolbars} .atlas-toggle:focus-visible {
+    outline: none;
   }
 
-  // A segmented option keeps the button's own ring, as in a dialog (`:where`: no added weight).
-  #{$toolbars} button.btn:focus-visible:where(:not(.atlas-segmented__option)),
-  #{$toolbars} button.btn--toolbar:focus-visible {
-    outline: 2px solid var(--interactive-accent) !important;
-    outline-offset: -2px;
+  #{$toolbars} .atlas-segmented__option:focus-visible {
+    box-shadow: none;
+
+    &.atlas-active {
+      box-shadow: $shadow-sm;
+    }
   }
 
   #{$toolbars} button.btn:hover:not(#{$own-look}),
@@ -675,45 +706,35 @@ body.theme-light {
   }
 
   /* -------------------------------------------------
-     Split-button tool group (tool + chevron)
+     Tool group (tool + options chevron)
      ------------------------------------------------- */
+  // As in Figma: the tool is a whole rounded button of its own, hovered, pressed and active like
+  // every other tool, and the chevron beside it is a separate, narrower one with its own hover.
+  // The group paints nothing; it only takes the bar's control corner (see .atlas-vtt-toolbar).
   .atlas-tool-group {
     position: relative;
     display: flex;
     align-items: center;
-    background: var(--background-secondary);
-    // At either end of the toolbar, the outer corners follow the bar's (see .atlas-vtt-toolbar).
-    @include atlas-corner-shape;
-    border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-      var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+    gap: $spacing-xs;
     padding: 0;
-    gap: 0;
+    @include atlas-corner-shape;
+    border-radius: var(--atlas-bar-control-radius, #{$radius-l});
 
-    // The two halves of the split button have no background or radius of their own. Only they:
-    // the options menu hangs inside the group, and its buttons are the menu's to shape
-    // (dropdown-menu.scss). `:where` keeps the reset below `.btn.is-active` above.
-    > :where(.atlas-tool-button) button.btn,
-    > :where(.atlas-dropdown-menu) > button.btn {
-      border-radius: 0 !important;
-      background: transparent !important;
-    }
+  }
 
-    // Round only the outer edges of the tool button
-    > .atlas-tool-button:first-child button.btn {
-      border-top-left-radius: var(--atlas-bar-start-radius, #{$radius-l}) !important;
-      border-bottom-left-radius: var(--atlas-bar-start-radius, #{$radius-l}) !important;
-    }
+  // Muted until hovered; filled while its menu is open. Never takes the tool's accent.
+  #{$toolbars} .atlas-tool-group button.btn.atlas-tool-group__chevron {
+    width: $icon-m;
+    height: $button-height-l;
+    padding: 0;
+    color: var(--text-muted);
+    @include atlas-corner-shape;
+    border-radius: var(--atlas-bar-control-radius, #{$radius-l}) !important;
 
-    // …and of the chevron that ends the group
-    > .atlas-dropdown-menu:last-child > button.btn {
-      border-top-right-radius: var(--atlas-bar-end-radius, #{$radius-l}) !important;
-      border-bottom-right-radius: var(--atlas-bar-end-radius, #{$radius-l}) !important;
-    }
-
-    // Chevron: match parent height and subtle separator
-    .atlas-dropdown-trigger {
-      height: $button-height-l; // match tool button height (40px)
-      border-left: $border-width-s solid var(--divider-color);
+    &:hover,
+    &.atlas-is-active {
+      background: var(--background-modifier-hover) !important;
+      color: var(--text-normal) !important;
     }
   }
 
@@ -1239,6 +1260,20 @@ body.atlas-asset-manager-open > .menu {
 // The status bar would cover the bottom-right corner of a full-bleed Atlas view.
 body.atlas-hide-status-bar .status-bar {
   display: none;
+}
+
+// A frameless window on Windows and Linux draws its minimise, maximise and close buttons over the top-right
+// corner of an Atlas view, where a map keeps its widgets. They fade out and come back while the pointer is over them
+// (the container keeps its pointer events, so its hover still registers). macOS has native traffic lights instead.
+body.atlas-hide-window-controls:is(.mod-windows, .mod-linux) .titlebar-button-container.mod-right {
+  opacity: 0;
+  transition: opacity $transition-normal $transition-ease;
+
+  &:hover,
+  &:focus-within {
+    opacity: 1;
+    transition-duration: $transition-fast;
+  }
 }
 
 // File picker input used by "New map from image…"; only ever clicked programmatically.

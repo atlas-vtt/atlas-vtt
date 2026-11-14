@@ -83,12 +83,12 @@ describe('the slot a drop lands in', () => {
 
   it('lands after the shown control left of the slot, so controls not shown here keep their places', () => {
     // Lighting is not offered (its switch is off) and Note pin is in "More tools".
-    const shown: ToolbarControlId[] = ['move', 'fog', 'draw', 'text', 'measure', 'dice', 'palette'];
+    const shown: ToolbarControlId[] = ['move', 'fog', 'draw', 'measure', 'dice', 'palette'];
     expect(leftNeighbour(shown, 0)).toBeNull();
-    expect(leftNeighbour(shown, 5)).toBe('measure');
+    expect(leftNeighbour(shown, 4)).toBe('measure');
     expect(leftNeighbour(shown, 99)).toBe('palette');
-    const layout = withControlAfter(resolveToolbarLayout({}), 'assets', leftNeighbour(shown, 5));
-    expect(layout.order).toEqual(['move', 'fog', 'draw', 'text', 'measure', 'assets', 'wall', 'pin', 'audio', 'dice', 'loot', 'palette']);
+    const layout = withControlAfter(resolveToolbarLayout({}), 'assets', leftNeighbour(shown, 4));
+    expect(layout.order).toEqual(['move', 'fog', 'draw', 'measure', 'assets', 'wall', 'pin', 'audio', 'dice', 'loot', 'palette']);
     expect(layout.order.length).toBe(DEFAULT_TOOLBAR_ORDER.length);
   });
 });

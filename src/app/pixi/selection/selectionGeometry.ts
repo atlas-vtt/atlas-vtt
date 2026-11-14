@@ -67,7 +67,7 @@ export function tokenOutline(shape: TokenShape): SelectionOutline {
   return { kind: 'rect', width, height, rotation, cornerRadius: 0 };
 }
 
-/** The outline of a box (a drawing, a fog area), centred on the box's middle. */
+/** The outline of a box (a drawing), centred on the box's middle. */
 export function boxOutline(box: Box): SelectionOutline {
   return { kind: 'rect', width: box.width, height: box.height, rotation: 0, cornerRadius: 0 };
 }

@@ -23,6 +23,7 @@ function context(overrides: Partial<ToolbarContext> = {}): ToolbarContext {
   return {
     activeTool,
     measureMode: 'ruler',
+    drawMode: 'pen',
     selectTool: vi.fn(),
     hotkeyLabel: (id) => id,
     openMenu: null,
@@ -38,7 +39,7 @@ function context(overrides: Partial<ToolbarContext> = {}): ToolbarContext {
 const item = (id: ToolbarControlId, ctx: ToolbarContext): ToolbarItemBody => TOOLBAR_CONTROL_ITEMS[id](ctx);
 const placement = ({ pinned, active }: ToolbarItemBody): { pinned: boolean; active: boolean } => ({ pinned, active });
 
-const GROUPS: readonly ToolMenu[] = ['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin'];
+const GROUPS: readonly ToolMenu[] = ['move', 'measure', 'wall', 'pin'];
 
 describe('toolbar control items', () => {
   it('builds an item for every control of the catalog', () => {
@@ -51,10 +52,23 @@ describe('toolbar control items', () => {
   });
 
   it('pins and activates a tool group while its tool is in use or its options are open', () => {
-    expect(placement(item('fog', context()))).toEqual({ pinned: false, active: false });
-    expect(placement(item('fog', context({ activeTool: 'eraser' })))).toEqual({ pinned: true, active: true });
-    expect(placement(item('fog', context({ openMenu: 'fog' })))).toEqual({ pinned: true, active: true });
+    expect(placement(item('wall', context()))).toEqual({ pinned: false, active: false });
+    expect(placement(item('wall', context({ activeTool: 'wall' })))).toEqual({ pinned: true, active: true });
+    expect(placement(item('wall', context({ openMenu: 'wall' })))).toEqual({ pinned: true, active: true });
     expect(placement(item('measure', context({ activeTool: 'measure' })))).toEqual({ pinned: true, active: true });
+  });
+
+  it('shows the fog tool as a button without a menu, by the tool in use, and selects that tool', () => {
+    expect(item('fog', context())).toMatchObject({ kind: 'button', pinned: false, active: false });
+    expect(item('fog', context()).menuEntry).toMatchObject({ label: 'Fog Tool', shortcut: 'fog', isActive: false });
+    for (const tool of ['fog', 'eraser'] as const) {
+      const ctx = context({ activeTool: tool });
+      const body = item('fog', ctx);
+      expect(placement(body)).toEqual({ pinned: true, active: true });
+      expect(body.menuEntry).toMatchObject({ label: tool === 'eraser' ? 'Fog Eraser' : 'Fog Tool', isActive: true });
+      body.menuEntry.onSelect();
+      expect(ctx.selectTool).toHaveBeenCalledWith(tool);
+    }
   });
 
   it('shows the measure tool by the mode it measures in, whichever tool is in use, and selects the one tool', () => {
@@ -67,6 +81,19 @@ describe('toolbar control items', () => {
     expect(ctx.selectTool).toHaveBeenCalledWith('measure');
     // Ranges, which measures nothing by a press, shows by its own name too.
     expect(item('measure', context({ measureMode: 'ranges' })).menuEntry.label).toBe('Ranges');
+  });
+
+  it('shows the Draw tool by the mode it draws in, as a button without a menu that selects the one tool', () => {
+    expect(item('draw', context())).toMatchObject({ kind: 'button', pinned: false, active: false });
+    expect(item('draw', context()).menuEntry).toMatchObject({ label: 'Pen', shortcut: 'draw', isActive: false });
+    expect(item('draw', context({ drawMode: 'text' })).menuEntry.label).toBe('Text');
+    const ctx = context({ activeTool: 'draw', drawMode: 'eraser' });
+    const body = item('draw', ctx);
+    expect(placement(body)).toEqual({ pinned: true, active: true });
+    expect(body.menuEntry).toMatchObject({ label: 'Eraser', isActive: true });
+    body.menuEntry.onSelect();
+    expect(ctx.selectTool).toHaveBeenCalledWith('draw');
+    expect(item('draw', context({ drawMode: 'cells' })).menuEntry.label).toBe('Cells');
   });
 
   it('pins and activates the note pin while it is in use, and the dice while their tray is open', () => {
@@ -87,7 +114,7 @@ describe('toolbar control items', () => {
     expect(placement(item('palette', context({ palette: { open: true, setOpen: vi.fn() } })))).toEqual({ pinned: true, active: true });
   });
 
-  it('keeps a hidden tool group mounted, so its options are set up only once', () => {
+  it('keeps a hidden control mounted, so what it holds is set up only once', () => {
     const emit = vi.fn();
     const { app } = createInMemoryApp({ files: {} });
     const store = createViewAtlasStore(app, `toolbar-controls-${Math.random()}`);
@@ -105,9 +132,17 @@ describe('toolbar control items', () => {
       </AtlasUIContext.Provider>
     );
 
-    const { rerender } = render(bar(new Set()));
+    const { container, rerender } = render(bar(new Set()));
+    const slot = (): Element | null => container.querySelector('[data-toolbar-item="fog"]');
+    const button = (): Element | null => slot()?.querySelector('button') ?? null;
+    const first = button();
+    expect(first).not.toBeNull();
     rerender(bar(new Set(['fog'])));
+    expect(slot()?.hasAttribute('hidden')).toBe(true);
+    // The same element: a control that was unmounted would come back as a new one.
+    expect(button()).toBe(first);
     rerender(bar(new Set()));
-    expect(emit.mock.calls.filter(([event]) => event === 'fog-mode-changed')).toHaveLength(1);
+    expect(slot()?.hasAttribute('hidden')).toBe(false);
+    expect(button()).toBe(first);
   });
 });

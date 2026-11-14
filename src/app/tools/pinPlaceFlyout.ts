@@ -1,5 +1,8 @@
-import { PIN_PLACE_GROUPS, getPinIconDefinition, type PinIconId } from '../types/pinIcons';
+import { PIN_PLACE_GROUPS, getPinIconDefinition, type PinIconId, type PinPlaceGroup } from '../types/pinIcons';
 import { setPinGlyph, setPinTone } from './pinIconDom';
+import { placeNeighbour } from './pinPlaceRows';
+import { createPinPlaceSearch, type PinPlaceSearch, type PinPlaceSearchTexts } from './pinPlaceSearch';
+import './pin-icon-palette.scss';
 import { t } from '../i18n';
 
 /** Hover must rest this long before the flyout opens, so sweeping along the palette never flashes it. */
@@ -9,8 +12,6 @@ const CLOSE_DELAY_MS = 250;
 /** Distance between the slot and the flyout; the flyout's hit area bridges it. */
 const ANCHOR_GAP_PX = 8;
 const VIEWPORT_MARGIN_PX = 8;
-/** Places per row, for arrow key navigation; the stylesheet lays the grid out with the same count. */
-const COLUMNS = 8;
 
 /** Keeps a start coordinate between the window margin and `max` less the margin. */
 function clamp(start: number, max: number): number {
@@ -22,77 +23,119 @@ export interface PinPlaceFlyoutOptions {
   anchor: HTMLElement;
   selected: PinIconId | null;
   onSelect: (id: PinIconId) => void;
+  /** The icons offered, in groups; unset, the places. */
+  groups?: readonly PinPlaceGroup[];
+  /** What the flyout is called; unset, "Places". */
+  label?: string;
+  /** Unset, every icon shows in its own tone; false shows them all in the text's colour (they take a colour elsewhere). */
+  tones?: boolean;
+  /**
+   * Unset, the flyout opens while the pointer rests on the anchor and closes when it leaves. False
+   * leaves opening to whoever owns the anchor (`toggle`): it then closes by a pick, Escape or a
+   * press outside it.
+   */
+  hover?: boolean;
+  /** How far from the anchor the flyout opens, pixels, asked each time it opens; unset, the palette's gap. */
+  gap?: () => number;
+  /** A field that searches the icons by name; unset, none. */
+  search?: PinPlaceSearchTexts;
+  /** Told when the flyout opened or closed. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 export interface PinPlaceFlyout {
   open: (focus?: boolean) => void;
   close: () => void;
+  /** Opens the closed flyout with the focus in it, and closes the open one. */
+  toggle: () => void;
   setSelected: (id: PinIconId | null) => void;
   destroy: () => void;
 }
 
 /**
- * Panel of place icons, from the world down to a room, that opens above the
- * palette's location slot on hover, or on click and arrow keys.
+ * Panel of pin icons in groups (unless told otherwise the places, from the world down to a room)
+ * that opens above its anchor, the palette's location slot: on hover, or on click and arrow keys.
  */
 export function createPinPlaceFlyout(container: HTMLElement, options: PinPlaceFlyoutOptions): PinPlaceFlyout {
   const { anchor, onSelect } = options;
+  const groups = options.groups ?? PIN_PLACE_GROUPS;
+  const tones = options.tones ?? true;
+  const hover = options.hover ?? true;
+  const doc = anchor.ownerDocument;
   let selected = options.selected;
   let openTimer: number | null = null;
   let closeTimer: number | null = null;
+  let search: PinPlaceSearch | null = null;
 
-  const flyout = container.createDiv({ cls: 'pin-place-flyout', attr: { role: 'group', 'aria-label': t('pin.places') } });
+  const flyout = container.createDiv({ cls: 'pin-place-flyout', attr: { role: 'group', 'aria-label': options.label ?? t('pin.places') } });
   const caption = flyout.createDiv({ cls: 'pin-place-caption', attr: { 'aria-hidden': 'true' } });
   const captionGlyph = caption.createSpan({ cls: 'pin-place-caption-glyph' });
   const captionName = caption.createSpan({ cls: 'pin-place-caption-name' });
+  const searchField = options.search ? flyout.createDiv({ cls: 'pin-place-search-field' }) : null;
+  // An `atlas-` class makes it one of Atlas' scroll areas where it scrolls: its scrollbar lies over the icons and takes no room.
+  const list = flyout.createDiv({ cls: 'pin-place-groups atlas-pin-place-groups' });
+
+  const pick = (id: PinIconId): void => {
+    onSelect(id);
+    close();
+    anchor.focus();
+  };
 
   const buttons: HTMLButtonElement[] = [];
-  // Rows as laid out on screen: a group's last row may be short, so up and down cannot step by COLUMNS
-  const rows: HTMLButtonElement[][] = [];
-  for (const [groupIndex, group] of PIN_PLACE_GROUPS.entries()) {
-    const section = flyout.createDiv({ cls: 'pin-place-group' });
+  const named: { button: HTMLButtonElement; name: string }[] = [];
+  const sections: HTMLElement[] = [];
+  for (const [groupIndex, group] of groups.entries()) {
+    const section = list.createDiv({ cls: 'pin-place-group' });
     const heading = section.createDiv({ cls: 'pin-place-group-name', text: group.name });
     heading.id = `atlas-pin-places-${groupIndex}`;
     const grid = section.createDiv({ cls: 'pin-place-grid', attr: { role: 'radiogroup', 'aria-labelledby': heading.id } });
+    sections.push(section);
 
     for (const place of group.places) {
       const button = grid.createEl('button', {
         cls: 'pin-icon-btn',
         attr: { type: 'button', role: 'radio', 'aria-label': place.name, 'data-icon': place.id },
       });
-      setPinTone(button, place.tone);
+      if (tones) setPinTone(button, place.tone);
       setPinGlyph(button, place.id);
-      button.addEventListener('click', () => {
-        onSelect(place.id);
-        close();
-        anchor.focus();
-      });
+      button.addEventListener('click', () => pick(place.id));
       button.addEventListener('pointerenter', () => showCaption(place.id));
       button.addEventListener('focus', () => showCaption(place.id));
       buttons.push(button);
-      const lastRow = rows[rows.length - 1];
-      if (lastRow && lastRow.length < COLUMNS && lastRow[0]?.parentElement === grid) lastRow.push(button);
-      else rows.push([button]);
+      named.push({ button, name: place.name });
     }
   }
 
-  /** The place an arrow key leads to from `button`: the neighbour in reading order, or the same column one row up or down. */
-  function neighbour(button: HTMLButtonElement, key: string): HTMLButtonElement | undefined {
-    if (key === 'ArrowLeft' || key === 'ArrowRight') {
-      return buttons[buttons.indexOf(button) + (key === 'ArrowLeft' ? -1 : 1)];
-    }
-    const row = rows.findIndex((candidates) => candidates.includes(button));
-    const current = rows[row];
-    const next = rows[row + (key === 'ArrowUp' ? -1 : 1)];
-    if (!current || !next) return undefined;
-    return next[Math.min(current.indexOf(button), next.length - 1)];
+  const shownButtons = (): HTMLButtonElement[] => buttons.filter((button) => !button.hidden);
+
+  function focusButton(target: HTMLButtonElement): void {
+    buttons.forEach((button) => { button.tabIndex = button === target ? 0 : -1; });
+    target.focus();
   }
 
   function showCaption(id: PinIconId | null): void {
-    const place = getPinIconDefinition(id ?? 'location');
-    setPinTone(caption, place.tone);
+    const place = id ? getPinIconDefinition(id) : groups[0]?.places[0];
+    if (!place) return;
+    if (tones) setPinTone(caption, place.tone);
     setPinGlyph(captionGlyph, place.id);
     captionName.setText(place.name);
+  }
+
+  if (options.search && searchField) {
+    search = createPinPlaceSearch(searchField, list, {
+      texts: options.search,
+      buttons: named,
+      sections,
+      onPick: (button) => button.click(),
+      onClose: () => {
+        close();
+        anchor.focus();
+      },
+      onDown: () => {
+        const first = shownButtons()[0];
+        if (first) focusButton(first);
+      },
+    });
   }
 
   function setSelected(id: PinIconId | null): void {
@@ -131,24 +174,45 @@ export function createPinPlaceFlyout(container: HTMLElement, options: PinPlaceFl
       // Layout size: the bounding rect would include the closed state's scale
       const width = flyout.offsetWidth;
       const height = flyout.offsetHeight;
-      const roomAbove = slot.top - ANCHOR_GAP_PX - VIEWPORT_MARGIN_PX;
-      const roomBelow = window.innerHeight - slot.bottom - ANCHOR_GAP_PX - VIEWPORT_MARGIN_PX;
+      const gap = options.gap?.() ?? ANCHOR_GAP_PX;
+      const roomAbove = slot.top - gap - VIEWPORT_MARGIN_PX;
+      // The anchor's own window: a map in a popout has one of its own.
+      const view = doc.defaultView ?? window;
+      const roomBelow = view.innerHeight - slot.bottom - gap - VIEWPORT_MARGIN_PX;
       const above = roomAbove >= height || (roomBelow < height && roomAbove >= roomBelow);
-      const top = above ? slot.top - ANCHOR_GAP_PX - height : slot.bottom + ANCHOR_GAP_PX;
+      const top = above ? slot.top - gap - height : slot.bottom + gap;
       const left = slot.left + slot.width / 2 - width / 2;
-      flyout.style.left = `${clamp(left, window.innerWidth - width)}px`;
-      flyout.style.top = `${clamp(top, window.innerHeight - height)}px`;
+      flyout.style.left = `${clamp(left, view.innerWidth - width)}px`;
+      flyout.style.top = `${clamp(top, view.innerHeight - height)}px`;
+      // A search leaves fewer icons: the panel keeps the size it opened with, so it stays where it hangs.
+      if (search) flyout.style.height = `${height}px`;
       flyout.dataset.side = above ? 'top' : 'bottom';
       flyout.addClass('is-open');
       anchor.setAttribute('aria-expanded', 'true');
+      if (!hover) doc.addEventListener('pointerdown', onPressOutside, true);
+      options.onOpenChange?.(true);
     }
-    if (focus) buttons.find((button) => button.tabIndex === 0)?.focus();
+    if (!focus) return;
+    if (search) search.focus();
+    else buttons.find((button) => button.tabIndex === 0)?.focus();
   }
 
   function close(): void {
     clearTimers();
+    if (!isOpen()) return;
     flyout.removeClass('is-open');
     anchor.setAttribute('aria-expanded', 'false');
+    doc.removeEventListener('pointerdown', onPressOutside, true);
+    search?.clear();
+    flyout.style.removeProperty('height');
+    options.onOpenChange?.(false);
+  }
+
+  /** A press anywhere but in the flyout or on its anchor (whose own press toggles it). */
+  function onPressOutside(e: PointerEvent): void {
+    const target = e.target as Node | null;
+    if (target && (flyout.contains(target) || anchor.contains(target))) return;
+    close();
   }
 
   const scheduleOpen = (): void => {
@@ -176,15 +240,21 @@ export function createPinPlaceFlyout(container: HTMLElement, options: PinPlaceFl
       anchor.focus();
       return;
     }
+    if (search?.owns(e.target)) return;
+    // A name typed on an icon is meant for the search.
+    if (search && e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.stopPropagation();
+      search.focus();
+      return;
+    }
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
     const current = buttons.find((button) => button === e.target);
     if (!current) return;
     e.preventDefault();
     e.stopPropagation();
-    const target = neighbour(current, e.key);
-    if (!target) return;
-    buttons.forEach((button) => { button.tabIndex = button === target ? 0 : -1; });
-    target.focus();
+    const target = placeNeighbour(shownButtons(), current, e.key);
+    if (target) focusButton(target);
+    else if (search && e.key === 'ArrowUp') search.focus();
   };
 
   const onFlyoutLeave = (): void => {
@@ -194,20 +264,23 @@ export function createPinPlaceFlyout(container: HTMLElement, options: PinPlaceFl
 
   anchor.setAttribute('aria-haspopup', 'true');
   anchor.setAttribute('aria-expanded', 'false');
-  anchor.addEventListener('pointerenter', scheduleOpen);
-  anchor.addEventListener('pointerleave', scheduleClose);
+  if (hover) {
+    anchor.addEventListener('pointerenter', scheduleOpen);
+    anchor.addEventListener('pointerleave', scheduleClose);
+    flyout.addEventListener('pointerenter', scheduleOpen);
+  }
   anchor.addEventListener('keydown', onAnchorKeydown);
-  flyout.addEventListener('pointerenter', scheduleOpen);
-  flyout.addEventListener('pointerleave', onFlyoutLeave);
+  flyout.addEventListener('pointerleave', hover ? onFlyoutLeave : () => showCaption(selected));
   flyout.addEventListener('keydown', onFlyoutKeydown);
   setSelected(selected);
 
   return {
     open,
     close,
+    toggle: (): void => (isOpen() ? close() : open(true)),
     setSelected,
     destroy: (): void => {
-      clearTimers();
+      close();
       anchor.removeEventListener('pointerenter', scheduleOpen);
       anchor.removeEventListener('pointerleave', scheduleClose);
       anchor.removeEventListener('keydown', onAnchorKeydown);

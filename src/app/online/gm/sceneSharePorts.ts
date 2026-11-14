@@ -1,6 +1,7 @@
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { DiceSource } from './atlasDice.ts';
 import type { AtlasPlayerSettings, LightingSource } from './atlasLighting.ts';
+import type { MaskDecoder } from './exploredMaskAlpha.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { GmRuler } from './dragRulers.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
@@ -12,7 +13,7 @@ import type { TokenSharePorts } from './TokenShare.ts';
 import type { NotePin } from '../../types';
 
 /** What the shared scene of an Atlas tab reads of the tab and the table, and how it reaches players. */
-export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'nameOf'> {
+export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'showPlayerStrokes' | 'nameOf'> {
   notice(text: string): void;
   /** Sends a live message (where dragged tokens are now) ahead of other frames, the latest of a key winning; without it drags reach players through the token list only. */
   sendLive?(body: GmMessage, key: string, to?: string): void;
@@ -32,6 +33,8 @@ export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<
   dice?(): DiceSource | null;
   /** The shared tab's grid, doors, sensed tokens and collection; without it players get none of the map's layers. */
   mapLayers?(): MapLayerSource | null;
+  /** Reads a saved explored memory, by which players know what lies on the map of rooms they remember; without it they know it by sight alone. */
+  decodeMask?: MaskDecoder | undefined;
   /** Takes a roll of the shared tab into the table's log. */
   logRoll?(roll: LoggedRoll): void;
   /** The roll button of the log a player's roll answers, as they may roll it. */

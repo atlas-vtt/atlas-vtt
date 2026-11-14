@@ -18,16 +18,18 @@ interface DropdownSwatchGridProps {
   hint?: string
   /** A last cell after the swatches, e.g. a picker for any other colour. */
   children?: React.ReactNode
+  /** The swatches are all their menu holds, so the ones in its corners take the menu's curve. */
+  fillsMenu?: boolean
 }
 
 /** A row of colour swatches under its label for toolbar dropdowns and popovers; the current colour is ringed. */
-export function DropdownSwatchGrid({ label, labelHidden = false, swatches, value, onChange, hint, children }: DropdownSwatchGridProps): React.ReactElement {
+export function DropdownSwatchGrid({ label, labelHidden = false, swatches, value, onChange, hint, children, fillsMenu = false }: DropdownSwatchGridProps): React.ReactElement {
   const current = value.toLowerCase()
   const labelId = React.useId()
   return (
     <div className="atlas-dropdown-swatches" role="group" aria-labelledby={labelId}>
       <span id={labelId} className="atlas-dropdown-swatches__label" hidden={labelHidden}>{label}</span>
-      <div className="atlas-swatch-grid">
+      <div className={`atlas-swatch-grid${fillsMenu ? " atlas-swatch-grid--fills-menu" : ""}`}>
         {swatches.map((swatch) => {
           const isActive = current === swatch.value.toLowerCase()
           return (

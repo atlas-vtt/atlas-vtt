@@ -4,6 +4,7 @@ import { Container } from 'pixi.js';
 import { EventEmitter } from 'eventemitter3';
 import { createStore } from 'zustand/vanilla';
 import * as coverage from '../../src/app/fog/fogCoverage';
+import { DEFAULT_FOG_TOOL } from '../../src/app/fog/fogToolChoices';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { shownRollTokens, type RollSceneState } from '../../src/app/pixi/playerRollTokens';
 import { PlayerSightTokens } from '../../src/app/pixi/token-renderer/PlayerSightTokens';
@@ -27,11 +28,13 @@ it('names rolls from the fog the renderer already holds, working out nothing aga
   };
   const fog: Record<string, FogRectangleFill> = { paint: fogRectangle() };
   const store = createStore(() => ({
-    isPlayerView: false, isGMView: true, isMapLoading: false, mapLoaded: true, mapPath: MAP, activeTool: 'select',
+    isPlayerView: false, isGMView: true, isMapLoading: false, mapLoaded: true, mapPath: MAP, activeTool: 'select', fogTool: DEFAULT_FOG_TOOL,
     objects: { fog, tokens },
   }));
   const builds = vi.spyOn(coverage, 'fogCoverage');
-  const renderer = new FogOfWarRenderer(new Container() as never, { canvas: createEl('canvas') } as never, new EventEmitter() as never, store as never, () => null);
+  // A viewport without a ticker of its own, as the areas' layer reads it when it goes.
+  const viewport = Object.assign(new Container(), { options: {} });
+  const renderer = new FogOfWarRenderer(viewport as never, { canvas: createEl('canvas') } as never, new EventEmitter() as never, store as never, () => null);
   try {
     const sprites = Object.fromEntries(Object.values(tokens).map((t) => [t.id, { x: t.x, y: t.y } as TokenGroupContainer]));
     const sight = new PlayerSightTokens({ tokens: () => tokens as never, sprites: () => sprites, held: () => new Set() });

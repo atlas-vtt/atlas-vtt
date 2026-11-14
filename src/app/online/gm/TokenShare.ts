@@ -3,6 +3,7 @@ import { ArtRefs } from './artRefs.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
 import type { PlayerTokenSource, SceneStore } from './atlasView.ts';
 import type { ListedTokens } from './mineShare.ts';
+import { sharedTokenMove, type TokenMoves } from './moveShare.ts';
 import type { SeatSource } from './seatSource.ts';
 import { sharedTokens, snapGridOf } from './scenePicture.ts';
 import { SequencedList } from './sequencedList.ts';
@@ -30,6 +31,8 @@ export interface TokenSharePorts {
   showNames(): boolean;
   /** The map's resource and condition definitions as the GM's token renderer reads them, or null while they cannot be read: then no bar or condition is sent. */
   tokenRules?(): TokenRules | null;
+  /** How the tab's tokens move, or null while it cannot be read; without it players read a drag as its distance alone. */
+  tokenMoves?(): TokenMoves | null;
   /** Which tokens are player tokens; without it every token is the GM's. */
   seats?: Pick<SeatSource, 'claimOf'> | undefined;
   /** Atlas's settings for the players' view: whether they are shown the initiative list, and so the turn. */
@@ -248,8 +251,12 @@ export class TokenShare {
     // The GM decides which tokens wait for their turn: the page never works it out itself
     const moveRules = { movesOnTurn: settings?.movesOnTurn === true, showInitiative, definitions: rules.resources };
     const held = new Set([...shown.keys()].filter((id) => movesOutOfTurn(turnState, moveRules, id)));
+    const moves = this.ports.tokenMoves?.() ?? null;
+    const everyToken = mapTokens(levelObjects(state));
+    // A speed that comes from a statblock is known once the statblock is read: asked for here, sent with a later list.
+    moves?.prepare([...shown.keys()].flatMap((id) => everyToken[id] ?? []));
     const tokens = sharedTokens({
-      tokens: mapTokens(levelObjects(state)),
+      tokens: everyToken,
       shown,
       gridSize,
       showNames: this.ports.showNames(),
@@ -259,6 +266,7 @@ export class TokenShare {
       badge: (id) => numbers.get(id) ?? null,
       turn,
       held,
+      move: (token) => sharedTokenMove(turnState, moves, token),
       art: (path) => this.art.get(path),
       alias: (id) => {
         const alias = this.alias(id);

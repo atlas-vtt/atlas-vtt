@@ -15,7 +15,7 @@ vi.mock('../../src/app/utils/activeLeafGuard', async (importOriginal) => ({
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
 // Every control keeps a slot in the tray; those of tools on the bar are hidden.
@@ -164,7 +164,7 @@ describe('the editor menu', () => {
     fireEvent.contextMenu(handle(harness.container, 'fog', 'tray'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Show on toolbar' }));
     expect(harness.settings.getToolbarLayout()).toEqual({});
-    expect(liveRegion(harness.container)).toBe('Fog of war is back on the toolbar, position 2 of 11.');
+    expect(liveRegion(harness.container)).toBe('Fog of war is back on the toolbar, position 2 of 10.');
   });
 
   it('opens Hide from a row of "More tools" instead of running the control', async () => {
@@ -187,7 +187,7 @@ describe('the keyboard path', () => {
     const fog = handle(harness.container, 'fog');
     act(() => fog.focus());
     expect(fireEvent.keyDown(fog, { key: 'ArrowRight', altKey: true })).toBe(false);
-    expect(harness.settings.getToolbarLayout().order?.slice(0, 4)).toEqual(['move', 'draw', 'fog', 'text']);
+    expect(harness.settings.getToolbarLayout().order?.slice(0, 4)).toEqual(['move', 'draw', 'fog', 'measure']);
     expect(document.activeElement).toBe(handle(harness.container, 'fog'));
     expect(liveRegion(harness.container)).toBe('Fog of war moved from position 2 to 3.');
   });

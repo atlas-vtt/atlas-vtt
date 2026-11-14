@@ -9,6 +9,10 @@ export const MAX_RANGE_BANDS = 32;
 export const MAX_BAND_NAME = 64;
 /** The longest name of a unit. */
 export const MAX_UNIT_NAME = 12;
+/** The most movement steps a map names, the longest name of one and the largest multiple of a speed one reaches. */
+export const MAX_MOVE_STEPS = 4;
+export const MAX_MOVE_STEP_NAME = 24;
+export const MAX_MOVE_MULTIPLE = 100;
 
 /**
  * How the GM's Atlas labels a measured distance and shapes a measured area: the map's collection
@@ -37,12 +41,25 @@ export interface SharedMeasurement {
   readonly unitName?: string;
 }
 
+/** One step of movement: every distance up to `multiple` times a token's speed, past the step before, drawn in `colour` (`#rrggbb`). */
+export interface SharedMoveStep {
+  readonly name: string;
+  readonly multiple: number;
+  readonly colour: string;
+}
+
 /**
  * What a player's own tools work by in the shared scene: its grid, whether measurements snap to cell
  * centres, how distances are labelled, and the GM's accent colour (`#rrggbb`, null when it cannot be read).
  * `cursors` is set while the GM lets everyone see each other's cursor: only then does a player send theirs.
  * `dice` are the map's dice a roll naming no token of the player's own set is made with (added later:
  * an older GM sends none, and a page offers no advantage then).
+ * `draw` is set while the GM lets players draw on the map (added later): `cell` is the side of the
+ * cell the Draw tool's named sizes are shares of there, in world pixels. Without it the GM takes no
+ * drawing from a player.
+ * `moveSteps` are the steps a token's move falls into on this map, in rising order (added later): a
+ * drag of a token that tells its speed (`SharedToken.move`) takes its step's colour and reads
+ * against how far that step reaches. Without them a drag reads as its distance alone.
  */
 export interface SharedRules {
   readonly grid: SnapGrid;
@@ -51,6 +68,8 @@ export interface SharedRules {
   readonly accent: string | null;
   readonly cursors?: true;
   readonly dice?: SharedRollDice;
+  readonly draw?: { readonly cell: number };
+  readonly moveSteps?: readonly SharedMoveStep[];
 }
 
 export type RulesMessage = { readonly t: 'rules'; readonly scene: string } & SharedRules;
@@ -95,6 +114,20 @@ export function parseMeasurement(value: unknown): SharedMeasurement | null {
   };
 }
 
+/** The movement steps of a `rules` message, or undefined for none and for any that cannot be read: a drag then reads as its distance alone. */
+function parseMoveSteps(value: unknown): SharedMoveStep[] | undefined {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_MOVE_STEPS) return undefined;
+  const steps: SharedMoveStep[] = [];
+  for (const step of value as unknown[]) {
+    if (!isRecord(step)) return undefined;
+    const { name, multiple, colour } = step;
+    if (typeof name !== 'string' || name.length > MAX_MOVE_STEP_NAME || typeof colour !== 'string' || !ACCENT.test(colour)) return undefined;
+    if (typeof multiple !== 'number' || !(multiple > (steps.at(-1)?.multiple ?? 0)) || multiple > MAX_MOVE_MULTIPLE) return undefined;
+    steps.push({ name, multiple, colour });
+  }
+  return steps;
+}
+
 /** A `rules` message as the client reads it, or null for anything malformed; malformed dice are left out. */
 export function parseRules(value: Record<string, unknown>): RulesMessage | null {
   const { scene, snap, accent, cursors } = value;
@@ -104,5 +137,8 @@ export function parseRules(value: Record<string, unknown>): RulesMessage | null 
   if (accent !== null && (typeof accent !== 'string' || !ACCENT.test(accent))) return null;
   if (cursors !== undefined && cursors !== true) return null;
   const dice = parseRollDice(value.dice);
-  return { t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }), ...(dice !== undefined && { dice }) };
+  // A word about drawing that cannot be read is left out: players then do not draw.
+  const draw = isRecord(value.draw) && isDistance(value.draw.cell) ? { cell: value.draw.cell } : undefined;
+  const moveSteps = parseMoveSteps(value.moveSteps);
+  return { t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }), ...(dice !== undefined && { dice }), ...(draw !== undefined && { draw }), ...(moveSteps !== undefined && { moveSteps }) };
 }

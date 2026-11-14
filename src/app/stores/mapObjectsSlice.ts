@@ -18,12 +18,18 @@ import { levelObjects } from '../levels/levelObjects';
 import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
 import { placedLevelLink } from '../levels/levelLinkCopies';
 import { isRecord } from '../utils/guards';
+import { placedAnnotationCopies } from '../annotations/annotationCopies';
+import { annotationRoom } from '../annotations/annotationList';
+import { unlockedIds } from '../annotations/annotationLock';
+import { orderOnTop } from '../annotations/annotationStack';
 
 export interface MapObjectsSlice {
   /**
    * Adds the objects under fresh ids, selects them and returns the new ids. Stairs land on the level
    * shown (`placedLevelLink`), as many as the map has room for; in the stairs tool the last one's
-   * popover opens, since the tool selects stairs by it.
+   * popover opens, since the tool selects stairs by it. Drawings and texts are added as far as the
+   * level shown has room for them (`annotationRoom`): one past that would be shown by nothing.
+   * Whoever calls tells the GM of what was left out.
    */
   insertMapObjects: (content: MapObjectContent) => string[];
   /** Copies the objects one grid cell down and to the right, selects the copies and returns their ids. */
@@ -69,7 +75,8 @@ function addLinkCopies(draft: MapObjectsStoreState, content: MapObjectContent, r
   return ids;
 }
 
-function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkRoom: number): string[] {
+/** Adds the copies to `draft`; `top` is the order the first copied drawing or text takes (`orderOnTop`). */
+function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkRoom: number, top: number): string[] {
   const { objects } = draft;
   // Copies land on the level the view shows, as new objects do.
   const level = placedOnViewedLevel(draft);
@@ -81,12 +88,14 @@ function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkR
   }
   // Copies keep the order their originals lie in, above everything on the map.
   raiseTokens(objects.tokens, ids);
-  for (const drawing of content.drawings) {
+  // Copied drawings and texts lie above every other one of the level, in a group of their own.
+  const annotations = placedAnnotationCopies(content.drawings, content.texts, top);
+  for (const drawing of annotations.drawings) {
     const id = createObjectId('drawing');
     objects.drawings[id] = { ...drawing, id, timestamp: Date.now(), ...level };
     ids.push(id);
   }
-  for (const text of content.texts) {
+  for (const text of annotations.texts) {
     const id = createObjectId('text');
     objects.texts[id] = { ...text, id, ...level };
     ids.push(id);
@@ -104,13 +113,19 @@ function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkR
 }
 
 export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStoreState): MapObjectsSlice {
-  const insert = (content: MapObjectContent): string[] => {
+  const insert = (copied: MapObjectContent): string[] => {
+    // Every copy comes through here (paste, duplicate, an Alt-drag): the level takes no more drawings and texts than are read.
+    const room = annotationRoom(levelObjects(get()));
+    const content = copied.drawings.length > room.drawings || copied.texts.length > room.texts
+      ? { ...copied, drawings: copied.drawings.slice(0, Math.max(0, room.drawings)), texts: copied.texts.slice(0, Math.max(0, room.texts)) }
+      : copied;
     if (countMapObjects(content) === 0) return [];
     // The map's limit counts the stairs of every level.
     const linkRoom = MAX_LEVEL_LINKS - levelLinkList(get().objects.levelLinks).length;
+    const top = orderOnTop(get());
     let ids: string[] = [];
     set((draft) => {
-      ids = addCopies(draft, content, linkRoom);
+      ids = addCopies(draft, content, linkRoom, top);
     });
     return ids;
   };
@@ -139,7 +154,8 @@ export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStor
     removeMapObjects: (ids) => set((draft) => {
       const { tokens, drawings, texts, pins, levelLinks } = draft.objects;
       const links = isRecord(levelLinks) ? levelLinks : {};
-      const removed = new Set(ids.filter((id) => tokens[id] || drawings[id] || texts[id] || pins[id] || links[id]));
+      // A locked drawing or text stays, and stays selected: Delete and cut are changes of it.
+      const removed = new Set(unlockedIds(ids, draft.objects).filter((id) => tokens[id] || drawings[id] || texts[id] || pins[id] || links[id]));
       const removedToken = [...removed].some((id) => tokens[id]);
       for (const id of removed) {
         delete tokens[id];

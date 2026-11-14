@@ -9,10 +9,9 @@
 @use '../../../../../../styles/mixins' as *;
 @use 'toolbar-editor-shared' as *;
 
-$tray-inset: $spacing-xs;
+$tray-inset: $toolbar-inset;
 $tray-control: $button-height-m;
-// The tray is shorter than its radius allows, so it renders as a capsule: its end controls run
-// concentric with the capsule's ends, which caps their radius at half their height.
+// The tray's controls run concentric with its corner, capped at half their height.
 $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.5);
 
 // Over the bar's cell of the bottom row without taking a cell of its own (an absolutely
@@ -51,12 +50,10 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
   padding: $tray-inset;
   pointer-events: auto;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($toolbar-radius);
   @include atlas-keep-in-view;
 
-  // A slot on its way out no longer holds an end.
-  > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{$tray-end-radius}; }
-  > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{$tray-end-radius}; }
+  --atlas-bar-control-radius: #{$tray-end-radius};
 }
 
 // The tray's buttons, and the tray face of a tool in flight.
@@ -137,7 +134,7 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
 // bar's to a tool's as it takes the tray's face (`--atlas-ghost-bar-look`, 1 as a bar), and its
 // stroke lies inside its box, where the bar's border is, so it lands on the bar exactly.
 .atlas-toolbar-ghost[data-bar-unit] {
-  border-radius: calc(var(--atlas-ghost-bar-look, 0) * #{$radius-2xl} + (1 - var(--atlas-ghost-bar-look, 0)) * #{$radius-l});
+  border-radius: calc(var(--atlas-ghost-bar-look, 0) * #{$toolbar-radius} + (1 - var(--atlas-ghost-bar-look, 0)) * #{$radius-l});
   box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent), $shadow-elevated;
 }
 
@@ -227,11 +224,6 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
 .atlas-toolbar-handle + :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
   position: relative;
   pointer-events: none;
-}
-
-// A tool group paints a fill of its own: the hover shows on top of it, still beneath the icon.
-.atlas-toolbar-handle:hover + .atlas-toolbar-item__content .atlas-tool-group {
-  background-image: linear-gradient(var(--background-modifier-hover), var(--background-modifier-hover));
 }
 
 // The content lies above the handle, so the handle's focus ring is drawn on top of the content.

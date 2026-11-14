@@ -12,6 +12,7 @@ import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayer
 import type { TokenRules } from '../../../../src/app/online/gm/tokenUI.ts';
 import type { RemoteDrag } from '../../../../src/app/online/marks/index.ts';
 import type { GmRuler } from '../../../../src/app/online/gm/dragRulers.ts';
+import type { GmMarkSource } from '../../../../src/app/online/gm/MarkShare.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
 import { settled } from './settled.ts';
@@ -60,6 +61,8 @@ export interface ShareHarness {
   rules: TokenRules | null;
   /** What the GM's own drag ruler measures; none by default. */
   gmRuler: GmRuler | null;
+  /** The GM's own marks on the tab (measurements, laser, the drawing under way); none by default. */
+  marks: GmMarkSource | null;
   /** The rulers of the players' drags the GM's overlay was given, in order. */
   readonly playerDrags: (readonly RemoteDrag[])[];
   /** The rolls taken into the table's log. */
@@ -118,6 +121,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     layers: null,
     rules: null,
     gmRuler: null,
+    marks: null,
     playerDrags: [],
     logged: [],
     requests: () => null,
@@ -140,6 +144,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       tokenRules: () => harness.rules,
       tokenSource: () => (harness.rendered ? source : null),
       gmDragRuler: () => harness.gmRuler,
+      gmMarks: () => harness.marks,
       showPlayerDrags: (drags) => harness.playerDrags.push(drags),
       readImage: (path) => {
         const bytes = images.get(path);

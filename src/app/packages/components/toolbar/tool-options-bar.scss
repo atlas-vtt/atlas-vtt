@@ -1,23 +1,17 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // A tool's own bars above the main toolbar: its modes, and beside them the
-// choices that go with them (`ToolOptionsBar`; the lighting and measure tools)
+// choices that go with them (`ToolOptionsBar`; the lighting, measure and Draw tools)
 // ═══════════════════════════════════════════════════════════════════════════
 // Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The bars have the
 // toolbar's padding and corners with smaller buttons, so they read as its second level, and are
 // listed in main.scss' `$toolbars` for the buttons' look.
 
-@use 'sass:math';
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// The toolbar's inset with smaller buttons, and the toolbar's corner scaled with the bar's height:
-// the toolbar's own radius on a shorter bar left almost no straight edge between its corners and
-// read as a capsule, so the bar is the toolbar drawn smaller.
-$bar-inset: $spacing-s;
+// The toolbar's inset and corner with smaller buttons.
+$bar-inset: $toolbar-inset;
 $bar-control: $button-height-m;
-$bar-height: $bar-control + 2 * $bar-inset + 2 * $border-width-m;
-$toolbar-height: $button-height-l + 2 * $spacing-s + 2 * $border-width-m;
-$bar-radius: calc(#{$radius-2xl} * #{math.div($bar-height, $toolbar-height)});
 $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
 
 // The modes start at the toolbar's left edge and the tools follow them: the modes bar keeps its
@@ -35,18 +29,21 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
   padding: $bar-inset;
   pointer-events: auto;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($bar-radius);
+  @include atlas-panel-radius($toolbar-radius);
 
-  > :nth-child(1 of :not([aria-hidden])) { --atlas-bar-start-radius: #{$bar-end-radius}; }
-  > :nth-last-child(1 of :not([aria-hidden])) { --atlas-bar-end-radius: #{$bar-end-radius}; }
+  --atlas-bar-control-radius: #{$bar-end-radius};
 
   .atlas-tool-button > span > .btn--icon {
     width: $bar-control;
     height: $bar-control;
-    border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-      var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+    border-radius: var(--atlas-bar-control-radius, #{$radius-l});
     @include atlas-corner-shape;
   }
+}
+
+// A wrapper that only finds its button for a flyout: the button lies in the bar as if it stood there itself.
+.atlas-tool-bar__holder {
+  display: contents;
 }
 
 // Groups are told apart by space alone (no divider lines): the break adds a gap to the gap.
@@ -66,7 +63,7 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
   }
 }
 
-// The colour the next measurement takes, as the icon of the button that opens the colours.
+// The colour the next measurement or drawing takes, as the icon of the button that opens the colours.
 .atlas-tool-bar__dot {
   display: block;
   flex: none;
@@ -75,4 +72,25 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, $bar-control * 0.5);
   height: $spacing-l;
   border-radius: 50%;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
+}
+
+// Where the selected drawings differ in colour, the dot shows none: an empty ring.
+.atlas-tool-bar__dot--mixed {
+  border-color: var(--text-muted);
+}
+
+// The letter A in a face the Draw tool writes in, as the Font button and its menu show it: an icon's size.
+.atlas-tool-bar__letter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: $icon-s;
+  height: $icon-s;
+  font-size: $icon-s;
+  line-height: 1;
+
+  &--medieval { font-family: $font-atlas-display; }
+  &--scifi { font-family: $font-dice-scifi; font-weight: 600; }
+  &--mono { font-family: var(--font-monospace); }
 }

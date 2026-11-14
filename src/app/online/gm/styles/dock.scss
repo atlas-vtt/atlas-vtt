@@ -11,10 +11,10 @@
 @use 'qr';
 @use 'campaign-picker';
 
-// The collapsed control stands as high as Atlas's bars: a 40 px control with $spacing-s around it,
+// The collapsed control stands as high as Atlas's bars: a 40 px control with $toolbar-inset around it,
 // inside the border, so its top and bottom edges run level with the undo/redo bar and the toolbar.
 // Sizes are content sizes: the browser snaps the border to device pixels, as it does the bars'.
-$dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
+$dock-inner: calc(#{$button-height-l} + 2 * #{$toolbar-inset});
 
 // The room the control takes in the row: first in the start slot, so the undo/redo bar and the
 // toolbar always stand clear of the button. Its transparent border snaps like the control's.
@@ -43,7 +43,7 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
   pointer-events: auto;
   font-size: $font-ui-small;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($toolbar-radius);
 }
 
 // Clips the button's fill to the corner; the badge lies outside it, over the corner.

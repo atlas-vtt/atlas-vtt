@@ -4,13 +4,12 @@ import type { Viewport } from 'pixi-viewport';
 import type { EventEmitter } from 'events';
 import type { App } from 'obsidian';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
-import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
-import { ShapeStroke } from '../../src/app/tools/shapeStroke';
 import { PointerTap, type TapEvent, type TapViewport } from '../../src/app/online/marks/PointerTap.ts';
 import { setCtrlClickIsSecondary } from '../../src/app/pixi/utils/pointerButtons';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { Token } from '../../src/app/types';
+import { fogGestureScene, type FogGestureHarness } from '../helpers/fogGestureHarness';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
@@ -79,65 +78,24 @@ describe('Ctrl+click on a token', () => {
 });
 
 describe('Ctrl+click with the fog tool', () => {
-  interface FogToolHarness {
-    stroke: ShapeStroke;
-    onPointerDown(event: FederatedPointerEvent): void;
-    handleViewportFogPointerDown(fogId: string, event: FederatedPointerEvent): void;
-  }
-
-  function fogTool(): { tool: FogToolHarness; setSelection: ReturnType<typeof vi.fn> } {
-    const setSelection = vi.fn();
-    const state = { activeTool: 'fog', isMapLoading: false, isPlayerView: false, grid: { size: 70 }, objects: { fog: {} }, setSelection };
-    const tool = Object.assign(Object.create(FogOfWarRenderer.prototype) as FogOfWarRenderer, {
-      store: { getState: () => state },
-      viewport: { pause: false, toWorld: (point: { x: number; y: number }) => point },
-      stroke: Object.assign(new ShapeStroke(), { mode: 'rectangle' }),
-      container: {},
-      fogSprites: new Map(),
-      previewSprite: {},
-      renderPreviewFromStore: vi.fn(),
-      refreshBounds: vi.fn(),
-      rectPreviewGraphics: { clear: vi.fn(), rect: vi.fn(), stroke: vi.fn().mockReturnThis(), fill: vi.fn() },
-    }) as unknown as FogToolHarness;
-    return { tool, setSelection };
-  }
+  const fogTool = (): FogGestureHarness => fogGestureScene('fog', 'rectangle').tool;
 
   it('paints no fog on macOS', () => {
     runOn('mac');
-    const { tool } = fogTool();
+    const tool = fogTool();
 
-    tool.onPointerDown(ctrlPress());
+    tool.pointerDown(ctrlPress());
 
-    expect(tool.stroke.active).toBe(false);
+    expect(tool.drag.active).toBe(false);
   });
 
   it('paints fog on Windows and Linux as before', () => {
     runOn('windows');
-    const { tool } = fogTool();
+    const tool = fogTool();
 
-    tool.onPointerDown(ctrlPress());
+    tool.pointerDown(ctrlPress());
 
-    expect(tool.stroke.active).toBe(true);
-  });
-
-  it('opens a fog area\'s menu on macOS without selecting it', () => {
-    runOn('mac');
-    const { tool, setSelection } = fogTool();
-
-    tool.handleViewportFogPointerDown('fog-1', ctrlPress());
-
-    expect(openContextMenuGlobal).toHaveBeenCalledWith(expect.any(Array), { x: 520, y: 310 });
-    expect(setSelection).not.toHaveBeenCalled();
-  });
-
-  it('selects a fog area on Windows and Linux as before', () => {
-    runOn('windows');
-    const { tool, setSelection } = fogTool();
-
-    tool.handleViewportFogPointerDown('fog-1', ctrlPress());
-
-    expect(openContextMenuGlobal).not.toHaveBeenCalled();
-    expect(setSelection).toHaveBeenCalledOnce();
+    expect(tool.drag.active).toBe(true);
   });
 });
 

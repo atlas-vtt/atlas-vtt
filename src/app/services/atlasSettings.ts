@@ -94,6 +94,8 @@ export interface AtlasSettings {
     showCommandPalette: boolean;
     /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
     showCursors: boolean;
+    /** Online play: players draw and write on the shared map with a Draw tool of their own. */
+    playersDraw: boolean;
   };
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
@@ -138,6 +140,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showDiceRolls: false,
     showCommandPalette: false, // Hide command palette
     showCursors: false,
+    playersDraw: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };

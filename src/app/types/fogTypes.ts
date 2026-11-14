@@ -30,9 +30,21 @@ export interface FogBrushStroke extends FogOperationBase {
   brushRadius: number;
 }
 
+/**
+ * The mark of fog that was revealed from its menu and can be hidden again: it stands on the
+ * revealing lasso or rectangle operation that took the fog away (`fog/fogAreas.ts`). Whoever
+ * ignores the mark reads the plain operation and shows the same fog. On an operation that
+ * paints it means nothing.
+ */
+export interface FogAreaMark {
+  /** A name an earlier build let the GM give. Nothing reads it; a file that holds one keeps it. */
+  name?: string;
+}
+
 export interface FogLassoFill extends FogOperationBase {
   type: 'lasso';
   points: Array<{ x: number; y: number }>;
+  area?: FogAreaMark;
 }
 
 export interface FogRectangleFill extends FogOperationBase {
@@ -41,6 +53,7 @@ export interface FogRectangleFill extends FogOperationBase {
   y: number;
   width: number;
   height: number;
+  area?: FogAreaMark;
 }
 
 /** Discriminated union of all fog operation types */

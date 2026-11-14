@@ -3,6 +3,8 @@ import { useStore } from "zustand"
 import { Bookmark, Pin, PinOff, Play, Tv, X } from "lucide-react"
 import type { AtlasView } from "../../../atlas-view"
 import { playerWindowStore } from "../../../stores/playerWindowStore"
+import { PlayerWindowService } from "../../../services/PlayerWindowService"
+import { useAtlasSettings } from "../../../keyboard/useMapHotkeys"
 import { ToolButton } from "../primitives/ToolButton"
 import { LabelTooltip, TooltipProvider } from "../primitives/tooltip"
 import { t } from "../../../i18n"
@@ -11,7 +13,7 @@ import { SavedFrameChip } from "./SavedFrameChip"
 import "./glass.scss"
 
 /**
- * The handle of the glass (GM only, while the player window is open): a small capsule on the top
+ * The handle of the glass (GM only, while the player window is open and TrueScale is on): a small capsule on the top
  * edge of what players see on this map, as small as it can be since it stands over the map at any
  * zoom, so it holds words only on a ghost. Dragging it stages a frame, snapped to the grid's cells
  * (Alt frees it), while players stay where they are, dotted; its play button glides them there and
@@ -22,7 +24,9 @@ import "./glass.scss"
  */
 export function GlassChip({ view }: { view: AtlasView | null }): React.ReactElement | null {
   const isOpen = useStore(playerWindowStore, (state) => state.isOpen)
-  if (!isOpen || !view) return null
+  // Follows the TrueScale switch, which lives in the settings
+  useAtlasSettings()
+  if (!isOpen || !view || !PlayerWindowService.getInstance()?.isTrueScale()) return null
   return <OpenGlassChip view={view} />
 }
 

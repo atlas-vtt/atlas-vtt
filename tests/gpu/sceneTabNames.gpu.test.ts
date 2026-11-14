@@ -49,7 +49,7 @@ describe('the names on the scene tabs', () => {
   });
 
   /** The scenes (the six, unless named) open in a map view `width` px wide; the third is the one players are shown. */
-  async function mount(width: number, names: string[] = NAMES): Promise<void> {
+  async function mount(width: number, names: string[] = NAMES, handlers: Partial<Record<'onSwitchTab' | 'onCloseTab' | 'onPresentTab', (tabId: string) => void>> = {}): Promise<string[]> {
     const tabMetaStore = createTabMetaStore();
     const ids = names.map((name) => tabMetaStore.getState().addTab(`${name}.atlasmap`, name));
     tabMetaStore.getState().setActiveTab(ids[0]!);
@@ -60,9 +60,10 @@ describe('the names on the scene tabs', () => {
         h('div', { className: 'atlas-top-bar-row' },
           h('div', { className: 'atlas-top-bar-start' },
             h(AtlasUIContext.Provider, { value: ui },
-              h(SceneTabBar, { onSwitchTab: nothing, onCloseTab: nothing, onAddTab: nothing, onPresentTab: nothing, onMoveTab: nothing, onShowAllTabs: nothing, presentedTabId: ids[2]! })))))));
+              h(SceneTabBar, { onSwitchTab: nothing, onCloseTab: nothing, onAddTab: nothing, onPresentTab: nothing, onMoveTab: nothing, onShowAllTabs: nothing, presentedTabId: ids[2]!, ...handlers })))))));
     await frame();
     await frame();
+    return ids;
   }
 
   it('gives every name its tab\'s whole width where six scenes share a bar that cannot hold their names', async () => {
@@ -139,5 +140,26 @@ describe('the names on the scene tabs', () => {
       expect(layout()).toEqual(atRest);
     }
     await page.screenshot({ path: '__screenshots__/atlas-scene-tab-names-hover.png', element: document.querySelector('.atlas-top-bar-row')! });
+  });
+
+  it('takes a click on a tab\'s eye or close button for that button, not for the name the button lies over', async () => {
+    const calls: string[] = [];
+    const ids = await mount(900, NAMES, {
+      onSwitchTab: (id) => calls.push(`switch ${id}`),
+      onPresentTab: (id) => calls.push(`present ${id}`),
+      onCloseTab: (id) => calls.push(`close ${id}`),
+    });
+    for (const [index, tab] of tabs().entries()) {
+      const point = centreOf(tab);
+      await mouse.hover(point.x, point.y);
+      await frame();
+      for (const [action, kind] of actionsOf(tab).map((element, at) => [element, at === 0 ? 'present' : 'close'] as const)) {
+        calls.length = 0;
+        const { x, y } = centreOf(action);
+        await mouse.hover(x, y);
+        await mouse.click(x, y);
+        expect(calls, NAMES[index]).toEqual([`${kind} ${ids[index]!}`]);
+      }
+    }
   });
 });

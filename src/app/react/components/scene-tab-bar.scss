@@ -3,7 +3,7 @@
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
 
-$tab-bar-inset: 4px;
+$tab-bar-inset: $toolbar-inset;
 $tab-height: 28px;
 $tab-action: 16px;
 // A tab's one inset: its padding, the gap between its parts, and how far its controls stand inside it on every side.
@@ -28,8 +28,7 @@ $tab-fade: 24px;
   pointer-events: auto;
 
   @include atlas-elevated-surface;
-  // Shorter than the radius allows, so the bar renders as a capsule.
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($toolbar-radius);
 }
 
 // Scrolls sideways with a trackpad or a mouse wheel (useTabStripOverflow);
@@ -78,7 +77,8 @@ $tab-fade: 24px;
   gap: $tab-inset;
   height: $tab-height;
   padding: $tab-inset;
-  border-radius: $radius-l;
+  // Concentric with the bar's corner on every side, the end tabs and the add button alike.
+  border-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
   @include atlas-corner-shape;
   border: none;
   cursor: pointer;
@@ -157,6 +157,9 @@ $tab-fade: 24px;
   // never resizes on hover.
   &__action {
     position: absolute;
+    // Above the label: its fade (mask-image) makes it a stacking context, which would paint over the
+    // controls and take their clicks, as it comes after the eye in the tab.
+    z-index: 1;
     top: $tab-inset;
     display: flex;
     visibility: hidden;
@@ -248,17 +251,6 @@ $tab-fade: 24px;
   }
 }
 
-// The end tabs follow the capsule's ends: concentric means half their height.
-.atlas-scene-tab:first-child {
-  border-top-left-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
-  border-bottom-left-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
-}
-
 .atlas-scene-tab-bar__button {
   flex-shrink: 0;
-}
-
-.atlas-scene-tab-bar__add {
-  border-top-right-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
-  border-bottom-right-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
 }

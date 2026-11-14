@@ -22,9 +22,9 @@ describe("Atlas's markup the control relies on", () => {
 
   it('has the token portrait the panel draws, and the bars the collapsed control stands level with', () => {
     expect(read('src/app/packages/components/shared/tokenPortraitElement.ts')).toContain("cls: 'atlas-token-portrait'");
-    // dock.scss sizes the button as a 40 px control with $spacing-s around it, as Atlas's bars are.
+    // dock.scss sizes the button as a 40 px control with $toolbar-inset around it, as Atlas's bars are.
     const styles = read('styles/main.scss');
-    expect(styles).toMatch(/\.atlas-vtt-toolbar \{[^}]*padding: \$spacing-s;/);
+    expect(styles).toMatch(/\.atlas-vtt-toolbar \{[^}]*padding: \$toolbar-inset;/);
     expect(styles).toMatch(/\.btn--icon \{\s*width: \$button-height-l;\s*height: \$button-height-l;/);
   });
 

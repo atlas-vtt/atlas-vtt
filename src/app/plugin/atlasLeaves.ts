@@ -74,8 +74,11 @@ function mergeDuplicateAtlasLeaves(app: App): void {
   for (const extraLeaf of extraLeaves) {
     const extraView = extraLeaf.view;
     const file = isAtlasView(extraView) ? extraView.file : null;
-    if (!inMainWindow(workspace, extraLeaf)) showMainWindowNotice();
+    const inPopout = !inMainWindow(workspace, extraLeaf);
     extraLeaf.detach();
+    // Told once the leaf has gone: a notice shows in the window that is active, and that is the popout
+    // until its last leaf closes it. A notice put there went with the window before it had shown.
+    if (inPopout) showMainWindowNotice();
 
     if (file && isAtlasView(primaryLeaf.view)) {
       void primaryLeaf.view.onLoadFile(file);

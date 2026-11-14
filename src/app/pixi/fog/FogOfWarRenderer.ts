@@ -1,91 +1,53 @@
 /**
- * Fog coverage is drawn on one Canvas-backed sprite. Invisible per-operation
- * sprites retain the editing hit areas and selection/context-menu behavior.
+ * The fog of a map view: owns the fog's layer, its picture (`FogPicture`), the fog tool's
+ * gesture (`FogGesture`) and the mark of what its menu acts on (`FogMenuTarget`), and says when
+ * the picture follows the scene. Fog takes presses only while the fog tool is chosen; a
+ * right-click released in place opens its menu with the select and move tools too (`menuPointer`).
  */
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
 import type { EventEmitter } from 'events';
 import type { ViewAtlasState } from '../../storeFactory';
-import type { FogBounds, FogOperation } from '../../types/fogTypes';
 import type { FogEdge } from '../../fog/fogEdge';
-import { validateFogOperation } from '../../fog/fogOperationShape';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { FogCoverage } from '../../fog/fogCoverage';
-import { FogCanvasCompositor } from './FogCanvasCompositor';
-import { FogEdgeMesh } from './fogEdgeMesh';
-import { FogCursorPreview } from './FogCursorPreview';
-import { FogOperationCanvas } from './FogOperationCanvas';
-import { calculateOperationBounds } from './fogRenderUtils';
-import { hitTestFogOp, findConnectedFogOps } from './fogHitTest';
-import { extractConnectedComponentRects, fogWithErasers } from './fogComponentDelete';
-import { canInteractWithFog, resolveFogPreviewAlpha } from './fogVisibilityPolicy';
+import { isFogTool } from '../../fog/fogToolChoices';
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { MapRect } from '../../grid/cellNumbering';
 import { destroyTree } from '../utils/destroyTree';
-import { requestRender } from '../RenderScheduler';
-import { hearPressesLast, isHandled } from '../utils/handledEvents';
-import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
-import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
-import { STROKE_COLORS, ShapeStroke, type StrokeMode } from '../../tools/shapeStroke';
-import { drawStrokeArea } from '../utils/strokePreview';
-import { t } from '../../i18n';
-import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
-import { levelMapKey, placedOnViewedLevel } from '../../levels/sceneLevels';
+import { levelObjects } from '../../levels/levelObjects';
+import { levelMapKey } from '../../levels/sceneLevels';
+import { FogGesture } from './FogGesture';
+import { fogMenuOffered, showFogMenu } from './fogMenu';
+import { FogMenuTarget } from './FogMenuTarget';
+import { FogPicture, viewedFog } from './FogPicture';
+import { showsGmView } from './fogVisibilityPolicy';
 
-const DEFAULT_BOUNDS: FogBounds = { x: -2000, y: -2000, width: 4000, height: 4000 };
-const BOUNDS_PADDING = 200;
-const COMPONENT_DELETE_CELL_SIZE = 2;
-const COMPONENT_DELETE_ALPHA_THRESHOLD = 12;
-const COMPONENT_DELETE_MAX_RECTS = 320;
-const EMPTY_FOG: Readonly<Record<string, FogOperation>> = Object.freeze({});
-
-interface FogSpriteEntry {
-  sprite: PIXI.Sprite;
-  texture: PIXI.Texture;
-  opCanvas: FogOperationCanvas;
+/** What the viewport's dispatch (`TokenRenderer`) asks about the fog's menu, in the GM's view. */
+export interface FogMenuPointerHandlers {
+  /** Whether a right-click at the world point has the fog's menu: none while the canvas shows the players' view, or a shape is under way. */
+  menuAt(worldX: number, worldY: number): boolean;
+  /** Opens the fog's menu for the world point at a screen point. */
+  openMenu(worldX: number, worldY: number, screenX: number, screenY: number): void;
 }
 
-
 export class FogOfWarRenderer {
-  // PIXI display objects
-  private container: PIXI.Container;
-  private previewSprite: PIXI.Sprite;
-  /** Draws the fog's edge; there only while the fog has one. */
-  private edgeMesh: FogEdgeMesh | null = null;
-  private previewTexture: PIXI.Texture;
-  private lassoGraphics: PIXI.Graphics;
-  private rectPreviewGraphics: PIXI.Graphics;
-
-  // Per-operation sprites (paint ops only)
-  private fogSprites: Map<string, FogSpriteEntry> = new Map();
-
-  // Committed coverage and temporary drawing preview
+  private readonly container: PIXI.Container;
+  /** The committed shapes, shared by the picture and by whoever asks what the fog covers. */
   private readonly coverageCache = new FogCoverageCache();
-  private compositor: FogCanvasCompositor;
-  private cursorPreview: FogCursorPreview;
-
-  // Drawing state: the stroke under way, with the brush, lasso or rectangle
-  private readonly stroke = new ShapeStroke();
-  private isErasing = false;
-
-  // Store subscriptions
+  private readonly picture: FogPicture;
+  private readonly gesture: FogGesture;
+  private readonly menuTarget: FogMenuTarget;
   private unsubscribe?: () => void;
+  /** Whether the canvas shows the players' view where the store's view switches do not say so (a peek); unset or null, they alone say it. */
+  public showsPlayers: (() => boolean | null) | null = null;
+  /** Whether a key pressed now is this map's to take (`canRunMapHotkeys`); unset, every key outside a text field is. */
+  public keysBelongToMap: ((event: KeyboardEvent) => boolean) | null = null;
+  /** Whether a key is the map's undo as the GM has bound it; unset, the key it has by default. */
+  public isUndoKey: ((event: KeyboardEvent) => boolean) | null = null;
 
-  // Bound event handlers for cleanup
-  private pointerDownHandler: (e: PIXI.FederatedPointerEvent) => void;
-  private pointerMoveHandler: (e: PIXI.FederatedPointerEvent) => void;
-  private pointerUpHandler: () => void;
-  private readonly pointerLeaveHandler = (): void => this.onPointerLeave();
-  private fogBrushSizeChangedHandler: (size: number) => void;
-  private fogClearAllHandler: () => void;
-  private fogModeChangedHandler: (mode: StrokeMode) => void;
-  private readonly mapImageUpdatedHandler = (): void => {
-    if (!this.store.getState().isMapLoading) {
-      this.refreshBounds();
-      this.rebuildFogSprites();
-    }
-  };
+  private readonly mapImageUpdatedHandler = (): void => this.showCommitted();
 
   /**
    * @param mapRect the map image in world space, read whenever the fog sizes its canvas, so a
@@ -93,13 +55,12 @@ export class FogOfWarRenderer {
    * only says that it changed.
    */
   constructor(
-    private viewport: Viewport,
-    private _pixiApp: PIXI.Application,
-    private eventBus: EventEmitter,
-    private store: StoreApi<ViewAtlasState>,
-    private readonly mapRect: () => MapRect | null,
+    viewport: Viewport,
+    pixiApp: PIXI.Application,
+    private readonly eventBus: EventEmitter,
+    private readonly store: StoreApi<ViewAtlasState>,
+    mapRect: () => MapRect | null,
   ) {
-    // ── Container setup ─────────────────────────────────────────────
     this.container = new PIXI.Container();
     this.container.label = 'fogLayer';
     this.container.eventMode = 'none';
@@ -107,831 +68,220 @@ export class FogOfWarRenderer {
     this.container.zIndex = 1000;
     this.container.interactiveChildren = false;
 
-    // ── Coverage compositor + texture ────────────────────────────────
-    const bounds = this.calculateFogBounds();
-    this.compositor = new FogCanvasCompositor(bounds, 0.5, this.coverageCache, () => levelMapKey(this.store.getState().mapPath, this.store.getState()));
-
-    this.previewTexture = PIXI.Texture.from(this.compositor.getCanvas());
-    this.previewSprite = new PIXI.Sprite(this.previewTexture);
-    this.previewSprite.position.set(bounds.x, bounds.y);
-    this.previewSprite.width = bounds.width;
-    this.previewSprite.height = bounds.height;
-    this.previewSprite.alpha = resolveFogPreviewAlpha({
-      isPlayerView: this.store.getState().isPlayerView,
-      isGMView: this.store.getState().isGMView,
+    this.picture = new FogPicture({
+      layer: this.container, app: pixiApp, store, mapRect, coverage: this.coverageCache,
+      showsPlayers: () => this.showsPlayers?.() ?? null,
+      onFadeEnd: () => this.syncShown(),
     });
-    this.previewSprite.visible = false;
-    this.previewSprite.eventMode = 'none';
-    this.previewSprite.zIndex = 999; // Below per-op sprites during normal mode
-    this.container.addChild(this.previewSprite);
+    this.gesture = new FogGesture({
+      layer: this.container,
+      viewport,
+      canvas: () => pixiApp.canvas,
+      store,
+      host: {
+        showStroke: (stroke) => this.picture.drawStroke(stroke),
+        showCommitted: () => this.showCommitted(),
+      },
+      mapRect,
+      keysBelongToMap: (event) => this.keysBelongToMap?.(event) ?? true,
+      isUndoKey: (event) => this.isUndoKey?.(event),
+      showsPlayers: () => this.showsPlayers?.() ?? null,
+    });
 
-    // ── Lasso & rectangle preview graphics ──────────────────────────
-    this.lassoGraphics = new PIXI.Graphics();
-    this.lassoGraphics.eventMode = 'none';
-    this.lassoGraphics.zIndex = 1001;
-    this.container.addChild(this.lassoGraphics);
+    this.menuTarget = new FogMenuTarget({ viewport, store, showsPlayers: () => this.showsPlayers?.() ?? null });
+    this.container.addChild(this.menuTarget.view);
 
-    this.rectPreviewGraphics = new PIXI.Graphics();
-    this.rectPreviewGraphics.eventMode = 'none';
-    this.rectPreviewGraphics.zIndex = 1001;
-    this.container.addChild(this.rectPreviewGraphics);
+    this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
+    this.followStore();
 
-    // ── Cursor preview ──────────────────────────────────────────────
-    this.cursorPreview = new FogCursorPreview(this.viewport);
-    const cursorObj = this.cursorPreview.getDisplayObject();
-    cursorObj.zIndex = 1002;
-    this.container.addChild(cursorObj);
-
-    // ── Bound handlers ──────────────────────────────────────────────
-    this.pointerDownHandler = this.onPointerDown.bind(this);
-    this.pointerMoveHandler = this.onPointerMove.bind(this);
-    this.pointerUpHandler = this.onPointerUp.bind(this);
-    this.fogBrushSizeChangedHandler = (size: number) => this.setBrushSize(size);
-    this.fogClearAllHandler = () => this.clearAllFog();
-    this.fogModeChangedHandler = (mode: StrokeMode) => this.setFogMode(mode);
-
-    // ── Event listeners ─────────────────────────────────────────────
-    this.setupEventListeners();
-    this.setupStoreSubscriptions();
-
-    // Apply current store state immediately so preloaded fog is visible even
-    // when no subsequent fog change event fires.
-    this.applyInitialStoreState();
+    // The scene as the store holds it now: preloaded fog shows though no change of it follows.
+    if (this.store.getState().isMapLoading) this.container.visible = false;
+    else this.showCommitted();
   }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Public API
-  // ═══════════════════════════════════════════════════════════════════
 
   /** How the fog's edge looks, in every picture of the map. */
   setEdge(edge: FogEdge): void {
-    this.compositor.setEdgeWidth(edge.width, this.mapRect);
-    // The mesh's shader needs WebGL: elsewhere the sprite draws the canvas' blur, and every edge is soft
-    if (edge.width > 0 && this._pixiApp.renderer.name === 'webgl') {
-      if (this.edgeMesh) this.edgeMesh.setEdge(edge);
-      else this.edgeMesh = new FogEdgeMesh(this.previewSprite, edge);
-    } else {
-      this.edgeMesh?.destroy();
-      this.edgeMesh = null;
-    }
-    this.renderPreviewFromStore();
+    this.picture.setEdge(edge);
   }
 
   getContainer(): PIXI.Container {
     return this.container;
   }
 
-  /** The committed shape drawn by the compositor; null means invalid geometry. */
+  /** The committed shape the picture draws; null means invalid geometry. */
   getCommittedCoverage(): FogCoverage | null {
     const state = this.store.getState();
-    return this.coverageCache.get(levelObjects(state)?.fog ?? EMPTY_FOG, levelMapKey(state.mapPath, state));
+    return this.coverageCache.get(viewedFog(state), levelMapKey(state.mapPath, state));
   }
 
-  /** Local player captures share the DM renderer but must not share its fog preview opacity. */
+  /** Local player captures share the GM's renderer but must not share its fog opacity or the tool's marks. */
   getPlayerViewLayers(): LayerVisibility[] {
-    return [
-      { layer: this.previewSprite, visible: this.previewSprite.visible, alpha: 1 },
-      { layer: this.cursorPreview.getDisplayObject(), visible: false },
-      { layer: this.lassoGraphics, visible: false },
-      { layer: this.rectPreviewGraphics, visible: false },
-    ];
+    return [...this.picture.playerLayers(), ...this.gesture.playerLayers(), { layer: this.menuTarget.view, visible: false }];
   }
 
-  /** The fog as translucent as the GM view shows it, also while the canvas is in session view: for a picture of the scene. */
+  /**
+   * The fog as translucent as the GM view shows it, also while the canvas is in session view:
+   * for a picture of the scene, which leaves out the mark of the fog's menu and the marks of the tool like the GM's other markers.
+   */
   getGmViewLayers(): LayerVisibility[] {
-    return [{ layer: this.previewSprite, visible: this.previewSprite.visible, alpha: resolveFogPreviewAlpha({ isPlayerView: false, isGMView: true }) }];
+    return [...this.picture.gmLayers(), { layer: this.menuTarget.view, visible: false }, ...this.gesture.playerLayers()];
   }
 
-  /** Returns a map of fog sprite IDs → Containers for SelectionManager. */
-  getFogSprites(): Record<string, PIXI.Container> {
-    const result: Record<string, PIXI.Container> = {};
-    for (const [id, entry] of this.fogSprites) {
-      result[id] = entry.sprite;
-    }
-    return result;
+  /** The fog's menu for the viewport's dispatch: a right-click released in place on fog, or on the open ground of fog that was revealed from it. */
+  menuPointer(): FogMenuPointerHandlers {
+    return {
+      menuAt: (x, y) => this.offersMenu() && fogMenuOffered(this.store, this.getCommittedCoverage(), { x, y }),
+      openMenu: (x, y, screenX, screenY) => {
+        if (!this.offersMenu()) return;
+        showFogMenu(this.store, () => this.getCommittedCoverage(), { x, y }, { x: screenX, y: screenY }, (outlines) => this.menuTarget.show(outlines));
+      },
+    };
   }
 
-
-  /** Returns the fog operation id if (worldX, worldY) hits any visible fog pixel, null otherwise. */
-  public hitTestFog(worldX: number, worldY: number): string | null {
-    if (!canInteractWithFog({ isPlayerView: this.store.getState().isPlayerView })) {
-      return null;
-    }
-    const fogOps = levelObjects(this.store.getState())?.fog;
-    if (!fogOps) return null;
-
-    const allOps = Object.values(fogOps);
-    const paintOps = allOps.filter((op) => !op.isErasing);
-
-    for (const paintOp of paintOps) {
-      if (hitTestFogOp(worldX, worldY, paintOp, allOps)) {
-        return paintOp.id;
-      }
-    }
-    return null;
+  /**
+   * The canvas shows another view (the GM's or the players', a peek included): the fog takes that
+   * view's opacity, and the tool's marks show or hide with it.
+   */
+  refreshVisibility(): void {
+    this.picture.followView();
+    this.menuTarget.refreshVisibility();
+    this.gesture.refreshVisibility();
   }
 
-  /** Returns all fog op IDs that are part of the same visual region as `fogId`. */
-  public findMergedFogGroup(fogId: string): string[] {
-    const fogOps = levelObjects(this.store.getState())?.fog;
-    if (!fogOps) return [fogId];
-    const allOps = Object.values(fogOps);
-    const paintOps = allOps.filter((op) => !op.isErasing);
-    return findConnectedFogOps(fogId, paintOps, allOps);
+  /** Whether the fog is fading from the picture before an edit to the one it has now. */
+  get fading(): boolean {
+    return this.picture.fading;
   }
 
-  /** Handles a viewport-routed click on a fog sprite (selection, context menu). */
-  public handleViewportFogPointerDown(fogId: string, e: PIXI.FederatedPointerEvent): void {
-    if (!canInteractWithFog({ isPlayerView: this.store.getState().isPlayerView })) {
-      return;
-    }
-    e.stopPropagation();
-    const groupIds = this.findMergedFogGroup(fogId);
-
-    if (isSecondaryPress(e)) {
-      this.showFogContextMenu(groupIds, e);
-      return;
-    }
-
-    // Left-click → select the entire merged group
-    this.store.getState().setSelection(groupIds);
+  /** How opaque the fog is in the GM's view, as the GM set it for this device. */
+  setGmOpacity(opacity: number): void {
+    this.picture.setGmOpacity(opacity);
   }
+
+  /** The fog tool hears presses after the dispatch that claims them; called once that dispatch listens. */
+  reorderViewportListeners(): void {
+    this.gesture.hearPressesLast();
+  }
+
+  /** The fog tool was taken up, or changed between hiding and revealing. */
   enableFogMode(): void {
     if (this.store.getState().isMapLoading) return;
-    this.container.eventMode = 'static';
-    this.container.interactiveChildren = true;
     this.container.visible = true;
-
-    // Disable interaction on hit-test sprites during drawing
-    this.setFogSpritesInteractive(false);
-
-    // Refresh compositor display with all committed ops
-    this.refreshBounds();
-    this.renderPreviewFromStore();
-    this.previewSprite.visible = true;
-
-    if (this.stroke.mode === 'brush') {
-      this.cursorPreview.show(this.isErasing);
-    }
+    this.picture.fit();
+    this.picture.drawCommitted();
+    this.picture.sprite.visible = true;
+    this.gesture.start();
   }
 
+  /** Another tool was taken up: a stroke under way goes, and the fog shows as the scene holds it. */
   disableFogMode(): void {
-    this.container.interactiveChildren = false;
-
-    this.resetDrawingState();
-    this.cursorPreview.hide();
-
-    // Rebuild per-op hit-test sprites and refresh compositor display
-    if (!this.store.getState().isMapLoading) {
-      this.refreshBounds();
-      this.rebuildFogSprites();
-    }
-
-    // Always disable sprite-level interactivity outside fog editing mode.
-    // Viewport-level dispatch (via TokenRenderer) handles fog clicks instead.
-    this.setFogSpritesInteractive(false);
-
-    // Update container visibility
-    const fogOps = levelObjects(this.store.getState())?.fog;
-    if (!fogOps || Object.keys(fogOps).length === 0) {
-      this.container.visible = false;
-    } else {
-      this.container.visible = true;
-    }
+    this.gesture.stop();
+    this.showCommitted();
+    this.container.visible = this.picture.hasFog;
   }
 
   destroy(): void {
     this.unsubscribe?.();
-    this.edgeMesh?.destroy();
-
-    this.viewport.off('pointerdown', this.pointerDownHandler);
-    this.viewport.off('pointermove', this.pointerMoveHandler);
-    this.viewport.off('pointerup', this.pointerUpHandler);
-    this.viewport.off('pointerupoutside', this.pointerUpHandler);
-    this._pixiApp.canvas.removeEventListener('pointerleave', this.pointerLeaveHandler);
-
-    this.eventBus.off('fog-brush-size-changed', this.fogBrushSizeChangedHandler);
-    this.eventBus.off('fog-clear-all', this.fogClearAllHandler);
-    this.eventBus.off('fog-mode-changed', this.fogModeChangedHandler);
     this.eventBus.off('map-image-updated', this.mapImageUpdatedHandler);
-
-    this.cursorPreview.destroy();
-    this.compositor.destroy();
-
-    // Destroy per-op sprites
-    for (const entry of this.fogSprites.values()) {
-      entry.opCanvas.destroy();
-      if (!entry.texture.destroyed) entry.texture.destroy(true);
-      if (!entry.sprite.destroyed) entry.sprite.destroy();
-    }
-    this.fogSprites.clear();
-
-    if (this.lassoGraphics && !this.lassoGraphics.destroyed) {
-      this.lassoGraphics.destroy();
-    }
-    if (this.rectPreviewGraphics && !this.rectPreviewGraphics.destroyed) {
-      this.rectPreviewGraphics.destroy();
-    }
-    if (this.previewTexture && !this.previewTexture.destroyed) {
-      this.previewTexture.destroy(true);
-    }
-    if (this.container && !this.container.destroyed) {
-      destroyTree(this.container);
-    }
+    this.gesture.destroy();
+    this.menuTarget.destroy();
+    this.picture.destroy();
+    if (!this.container.destroyed) destroyTree(this.container);
   }
 
-  private clearAllFog(): void {
-    this.store.getState().clearFog();
+  /**
+   * Draws the fog as the scene holds it, on a canvas of the map's size; nothing during a load,
+   * whose end draws it. An `edit` of the fog fades in from the picture before it.
+   */
+  private showCommitted(edit = false): void {
+    if (this.store.getState().isMapLoading) return;
+    this.picture.fit();
+    this.picture.drawCommitted(edit);
+    this.syncShown();
   }
 
-  private setBrushSize(size: number): void {
-    this.stroke.brushRadius = size;
-    this.cursorPreview.setBrushRadius(size);
+  /**
+   * The layer shows while there is fog, or the fog tool to make some. Fog that fades away shows
+   * until it has; geometry that cannot be drawn hides the whole map.
+   */
+  private syncShown(): void {
+    const state = this.store.getState();
+    if (state.isMapLoading) return;
+    this.picture.sprite.visible = this.picture.hasFog;
+    this.container.visible = this.picture.sprite.visible || isFogTool(state.activeTool);
   }
 
-  setFogMode(mode: StrokeMode): void {
-    const wasActive = this.stroke.active;
-    this.resetDrawingState();
-    if (wasActive && !this.store.getState().isMapLoading) {
-      this.refreshBounds();
-      this.rebuildFogSprites();
-    }
-    this.stroke.mode = mode;
-
-    const tool = this.store.getState().activeTool;
-    const isFogActive = tool === 'fog' || tool === 'eraser';
-    if (isFogActive && mode === 'brush') {
-      this.cursorPreview.show(this.isErasing);
-    } else {
-      this.cursorPreview.hide();
-    }
+  /** Whether a right-click may open the fog's menu: the canvas shows the GM's view of a loaded scene, and no shape is under way. */
+  private offersMenu(): boolean {
+    const state = this.store.getState();
+    return !state.isMapLoading && showsGmView(state, this.showsPlayers ?? undefined) && !this.gesture.active;
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // Event wiring
-  // ═══════════════════════════════════════════════════════════════════
-
-  private setupEventListeners(): void {
-    this.viewport.on('pointerdown', this.pointerDownHandler);
-    this.viewport.on('pointermove', this.pointerMoveHandler);
-    this.viewport.on('pointerup', this.pointerUpHandler);
-    this.viewport.on('pointerupoutside', this.pointerUpHandler);
-    this._pixiApp.canvas.addEventListener('pointerleave', this.pointerLeaveHandler);
-
-    this.eventBus.on('fog-brush-size-changed', this.fogBrushSizeChangedHandler);
-    this.eventBus.on('fog-clear-all', this.fogClearAllHandler);
-    this.eventBus.on('fog-mode-changed', this.fogModeChangedHandler);
-    this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
-  }
-
-  private setupStoreSubscriptions(): void {
-    let prevTool = this.store.getState().activeTool;
-    let prevFog = levelObjects(this.store.getState())?.fog;
-    let prevLoading = this.store.getState().isMapLoading;
-    let prevMapPath = this.store.getState().mapPath;
-    let prevGMView = this.store.getState().isGMView;
+  private followStore(): void {
+    let previous = this.store.getState();
+    let prevFog = viewedFog(previous);
+    let prevWalls = levelObjects(previous)?.walls;
 
     this.unsubscribe = this.store.subscribe((state) => {
       // Clear old pixels; coverage lookups synchronize their own map identity.
-      const mapChanged = state.mapPath !== prevMapPath;
+      const mapChanged = state.mapPath !== previous.mapPath;
       if (mapChanged) {
-        prevMapPath = state.mapPath;
         this.container.visible = false;
-        this.resetDrawingState();
-        this.clearAllFogSprites();
-        this.compositor.clearCanvas();
+        this.gesture.cancel();
+        this.picture.clear();
       }
 
-      // Tool changes → enable/disable fog mode or toggle interaction
-      if (state.activeTool !== prevTool) {
-        prevTool = state.activeTool;
-        if (state.activeTool === 'fog' || state.activeTool === 'eraser') {
-          this.isErasing = state.activeTool === 'eraser';
-          this.enableFogMode();
-        } else {
-          this.disableFogMode();
-        }
+      const toolChanged = state.activeTool !== previous.activeTool;
+      const choicesChanged = state.fogTool !== previous.fogTool;
+      const loadingChanged = state.isMapLoading !== previous.isMapLoading;
+      const viewChanged = state.isGMView !== previous.isGMView;
+      const levelChanged = state.viewedLevel !== previous.viewedLevel;
+      // What waits for its next click (a polygon) must not outlast the picture it was begun on.
+      const pictureLeft = levelChanged || (state.isMapLoading && loadingChanged)
+        || (viewChanged && !state.isGMView) || (state.isPlayerView && !previous.isPlayerView);
+      const fog = viewedFog(state);
+      const fogChanged = fog !== prevFog || mapChanged;
+      const walls = levelObjects(state)?.walls;
+      const wallsChanged = walls !== prevWalls;
+      previous = state;
+      prevFog = fog;
+      prevWalls = walls;
+
+      if (toolChanged) {
+        if (isFogTool(state.activeTool)) this.enableFogMode();
+        else this.disableFogMode();
       }
 
-      // Fog data changes (undo/redo, map load, drag commit) → rebuild sprites
-      // Skip while a stroke is under way: its preview is on the canvas
-      // and during map loading (the isMapLoading→false handler rebuilds instead)
-      if (levelObjects(state)?.fog !== prevFog || mapChanged) {
-        prevFog = levelObjects(state)?.fog;
-        if (!this.stroke.active && !state.isMapLoading) {
-          this.refreshBounds();
-          this.rebuildFogSprites();
-        }
+      // The tool's choices (its bar, the brush's keys)
+      if (choicesChanged) this.gesture.follow(state.fogTool);
+
+      // The room outlined under a resting pointer is one of the walls as they were
+      if (wallsChanged && isFogTool(state.activeTool) && !this.gesture.active) this.gesture.rest();
+
+      // Another level, a load, the players' view: what is under way goes
+      if (pictureLeft) this.gesture.drop();
+
+      // Fog changed (an edit, undo and redo, a load); nothing is drawn during a load, whose end
+      // draws the fog. A stroke the canvas shows is drawn again, on the fog as it now is; one
+      // it does not show (a shape that will erase) leaves the canvas to the
+      // fog. An edit fades in; the fog of another map or level, or of a load, is there at once
+      if (fogChanged) {
+        const { active } = this.gesture;
+        if (!active || !this.picture.showsStroke) this.showCommitted(!mapChanged && !levelChanged && !loadingChanged);
+        if (active) this.gesture.refresh();
       }
 
-      // Map loading completed → load fog
-      if (state.isMapLoading !== prevLoading) {
-        prevLoading = state.isMapLoading;
+      if (loadingChanged) {
         if (state.isMapLoading) {
           this.container.visible = false;
+          this.picture.endFade();
         } else {
-          this.refreshBounds();
-          this.rebuildFogSprites();
+          this.showCommitted();
         }
       }
 
-      // GM view toggle → adjust fog opacity
-      if (state.isGMView !== prevGMView) {
-        prevGMView = state.isGMView;
-        this.previewSprite.alpha = resolveFogPreviewAlpha({
-          isPlayerView: state.isPlayerView,
-          isGMView: state.isGMView,
-        });
-      }
+      // The GM view switch: the fog takes the other view's opacity
+      if (viewChanged) this.picture.followView();
     });
-  }
-
-  private applyInitialStoreState(): void {
-    const state = this.store.getState();
-    this.previewSprite.alpha = resolveFogPreviewAlpha({
-      isPlayerView: state.isPlayerView,
-      isGMView: state.isGMView,
-    });
-
-    if (state.isMapLoading) {
-      this.container.visible = false;
-      this.previewSprite.visible = false;
-      return;
-    }
-
-    this.refreshBounds();
-    this.rebuildFogSprites();
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Per-operation sprite management
-  // ═══════════════════════════════════════════════════════════════════
-
-  /** Rebuild all per-operation sprites from store. */
-  private rebuildFogSprites(): void {
-    try {
-      const fogOps = levelObjects(this.store.getState())?.fog;
-      const allOps = fogOps ? Object.values(fogOps) : [];
-      // Prepare the committed picture before an editing proxy can fail.
-      const rendered = this.renderPreviewFromStore();
-      const tool = this.store.getState().activeTool;
-      this.previewSprite.visible = allOps.length > 0 || !rendered;
-      this.container.visible = this.previewSprite.visible || tool === 'fog' || tool === 'eraser';
-      if (!rendered) {
-        this.clearAllFogSprites();
-        return;
-      }
-      const paintOps = allOps.filter((op) => !op.isErasing);
-      const eraseOps = allOps.filter((op) => op.isErasing);
-
-      // Track which IDs are still in the store
-      const currentIds = new Set(paintOps.map((op) => op.id));
-
-      // Remove sprites for deleted operations
-      for (const [id, entry] of this.fogSprites) {
-        if (!currentIds.has(id)) {
-          entry.opCanvas.destroy();
-          if (!entry.texture.destroyed) entry.texture.destroy(true);
-          if (!entry.sprite.destroyed) {
-            this.container.removeChild(entry.sprite);
-            entry.sprite.destroy();
-          }
-          this.fogSprites.delete(id);
-        }
-      }
-
-      // Create or update hit-test sprites for each paint operation
-      for (const paintOp of paintOps) {
-        const bounds = calculateOperationBounds(paintOp);
-        if (bounds.width <= 0 || bounds.height <= 0) continue;
-
-        const existing = this.fogSprites.get(paintOp.id);
-        if (existing) {
-          existing.opCanvas.destroy();
-          if (!existing.texture.destroyed) existing.texture.destroy(true);
-
-          const opCanvas = new FogOperationCanvas(paintOp, eraseOps);
-          const wb = opCanvas.getWorldBounds();
-          const texture = PIXI.Texture.from(opCanvas.getCanvas());
-
-          existing.sprite.texture = texture;
-          existing.sprite.position.set(wb.x, wb.y);
-          existing.sprite.width = wb.width;
-          existing.sprite.height = wb.height;
-          existing.texture = texture;
-          existing.opCanvas = opCanvas;
-        } else {
-          this.createFogSprite(paintOp, eraseOps);
-        }
-      }
-
-      // Sprites stay non-interactive; viewport-level dispatch handles fog clicks.
-      this.setFogSpritesInteractive(false);
-    } catch (error) {
-      console.error('[FogOfWarRenderer] Error rebuilding fog sprites:', error);
-    }
-  }
-
-  private createFogSprite(paintOp: FogOperation, eraseOps: FogOperation[]): void {
-    const bounds = calculateOperationBounds(paintOp);
-    if (bounds.width <= 0 || bounds.height <= 0) return;
-
-    const opCanvas = new FogOperationCanvas(paintOp, eraseOps);
-    const wb = opCanvas.getWorldBounds();
-    const texture = PIXI.Texture.from(opCanvas.getCanvas());
-
-    const sprite = new PIXI.Sprite(texture);
-    sprite.position.set(wb.x, wb.y);
-    sprite.width = wb.width;
-    sprite.height = wb.height;
-    sprite.alpha = 0; // Invisible hit-test proxy — display via compositor
-    sprite.zIndex = paintOp.timestamp;
-    sprite.label = `fog_${paintOp.id}`;
-    sprite.eventMode = 'none';
-
-    this.container.addChild(sprite);
-    this.fogSprites.set(paintOp.id, { sprite, texture, opCanvas });
-  }
-
-  private clearAllFogSprites(): void {
-    for (const entry of this.fogSprites.values()) {
-      entry.opCanvas.destroy();
-      if (!entry.texture.destroyed) entry.texture.destroy(true);
-      if (!entry.sprite.destroyed) {
-        this.container.removeChild(entry.sprite);
-        entry.sprite.destroy();
-      }
-    }
-    this.fogSprites.clear();
-  }
-
-  private setFogSpritesInteractive(interactive: boolean): void {
-    for (const [, entry] of this.fogSprites) {
-      entry.sprite.eventMode = interactive ? 'static' : 'none';
-      entry.sprite.cursor = interactive ? 'pointer' : 'default';
-      entry.sprite.off('pointerdown');
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Fog sprite interaction (select / drag / context menu)
-  // ═══════════════════════════════════════════════════════════════════
-
-  private onFogSpritePointerDown(e: PIXI.FederatedPointerEvent, fogId: string): void {
-    e.stopPropagation();
-    const groupIds = this.findMergedFogGroup(fogId);
-
-    if (isSecondaryPress(e)) {
-      this.showFogContextMenu(groupIds, e);
-      return;
-    }
-
-    // Left-click → select the entire merged group
-    this.store.getState().setSelection(groupIds);
-  }
-
-  private showFogContextMenu(fogIds: string[], e: PIXI.FederatedPointerEvent): void {
-    const worldPos = this.viewport.toWorld(e.global);
-    openContextMenuGlobal([{
-      type: 'item',
-      label: t('common.delete'),
-      icon: 'trash',
-      destructive: true,
-      onClick: () => {
-        const erased = this.eraseConnectedVisibleRegionAt(worldPos.x, worldPos.y);
-        if (!erased) {
-          this.store.getState().deleteFogOperations(fogIds);
-        }
-      },
-    }], { x: e.clientX, y: e.clientY });
-  }
-
-  private eraseConnectedVisibleRegionAt(worldX: number, worldY: number): boolean {
-    const eraseRects = this.computeComponentEraseRects(worldX, worldY);
-    this.renderPreviewFromStore();
-    if (eraseRects.length === 0) {
-      return false;
-    }
-
-    const state = this.store.getState();
-    const nextFog = fogWithErasers(everyLevelObjects(state).fog, eraseRects, Date.now(), placedOnViewedLevel(state));
-    if (nextFog === null) {
-      return false;
-    }
-    state.setFogOperations(nextFog);
-    return true;
-  }
-
-  private computeComponentEraseRects(worldX: number, worldY: number): Array<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }> {
-    // The current fog as its shapes are: a faded edge would join pieces and reach past them.
-    this.renderPreviewFromStore(false);
-
-    const canvas = this.compositor.getCanvas();
-    const bounds = this.compositor.getBounds();
-    if (canvas.width <= 0 || canvas.height <= 0 || bounds.width <= 0 || bounds.height <= 0) {
-      return [];
-    }
-
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) {
-      return [];
-    }
-
-    const scaleX = canvas.width / bounds.width;
-    const scaleY = canvas.height / bounds.height;
-    const seedCanvasX = Math.floor((worldX - bounds.x) * scaleX);
-    const seedCanvasY = Math.floor((worldY - bounds.y) * scaleY);
-
-    if (
-      seedCanvasX < 0 ||
-      seedCanvasY < 0 ||
-      seedCanvasX >= canvas.width ||
-      seedCanvasY >= canvas.height
-    ) {
-      return [];
-    }
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const seedAlpha = imageData[(seedCanvasY * canvas.width + seedCanvasX) * 4 + 3] ?? 0;
-    if (seedAlpha <= COMPONENT_DELETE_ALPHA_THRESHOLD) {
-      return [];
-    }
-
-    const coarseW = Math.ceil(canvas.width / COMPONENT_DELETE_CELL_SIZE);
-    const coarseH = Math.ceil(canvas.height / COMPONENT_DELETE_CELL_SIZE);
-    const mask = new Uint8Array(coarseW * coarseH);
-
-    for (let gy = 0; gy < coarseH; gy++) {
-      for (let gx = 0; gx < coarseW; gx++) {
-        const startX = gx * COMPONENT_DELETE_CELL_SIZE;
-        const startY = gy * COMPONENT_DELETE_CELL_SIZE;
-        const endX = Math.min(canvas.width, startX + COMPONENT_DELETE_CELL_SIZE);
-        const endY = Math.min(canvas.height, startY + COMPONENT_DELETE_CELL_SIZE);
-        let occupied = 0;
-        for (let py = startY; py < endY && occupied === 0; py++) {
-          for (let px = startX; px < endX; px++) {
-            const alpha = imageData[(py * canvas.width + px) * 4 + 3] ?? 0;
-            if (alpha > COMPONENT_DELETE_ALPHA_THRESHOLD) {
-              occupied = 1;
-              break;
-            }
-          }
-        }
-        mask[gy * coarseW + gx] = occupied;
-      }
-    }
-
-    const seedCoarseX = Math.floor(seedCanvasX / COMPONENT_DELETE_CELL_SIZE);
-    const seedCoarseY = Math.floor(seedCanvasY / COMPONENT_DELETE_CELL_SIZE);
-    const coarseRects = extractConnectedComponentRects(mask, coarseW, coarseH, seedCoarseX, seedCoarseY);
-    if (coarseRects.length === 0 || coarseRects.length > COMPONENT_DELETE_MAX_RECTS) {
-      return [];
-    }
-
-    const worldPerCanvasX = bounds.width / canvas.width;
-    const worldPerCanvasY = bounds.height / canvas.height;
-
-    return coarseRects.map((rect) => {
-      const canvasStartX = rect.x * COMPONENT_DELETE_CELL_SIZE;
-      const canvasStartY = rect.y * COMPONENT_DELETE_CELL_SIZE;
-      const canvasEndX = Math.min(canvas.width, (rect.x + rect.width) * COMPONENT_DELETE_CELL_SIZE);
-      const canvasEndY = Math.min(canvas.height, (rect.y + rect.height) * COMPONENT_DELETE_CELL_SIZE);
-      return {
-        x: bounds.x + canvasStartX * worldPerCanvasX,
-        y: bounds.y + canvasStartY * worldPerCanvasY,
-        width: (canvasEndX - canvasStartX) * worldPerCanvasX,
-        height: (canvasEndY - canvasStartY) * worldPerCanvasY,
-      };
-    });
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Drawing pointer handlers (fog/eraser tool)
-  // ═══════════════════════════════════════════════════════════════════
-
-  /** The fog tools hear presses after the dispatch that claims them; called once that dispatch listens. */
-  public reorderViewportListeners(): void {
-    hearPressesLast(this.viewport, this.pointerDownHandler);
-  }
-
-  private onPointerDown(event: PIXI.FederatedPointerEvent): void {
-    const tool = this.store.getState().activeTool;
-    if (tool !== 'fog' && tool !== 'eraser') return;
-    // Only the primary button paints; the right button pans the map.
-    if (!isPrimaryPress(event)) return;
-    // A press a pin, door badge or light marker took paints no fog.
-    if (isHandled(event)) return;
-
-    this.previewSprite.visible = true;
-    this.stroke.begin(this.strokePoint(event));
-    this.previewStroke();
-  }
-
-  /** Where the pointer is on the map; a rectangle's corners snap to the grid's. */
-  private strokePoint(event: PIXI.FederatedPointerEvent): { x: number; y: number } {
-    const { x, y } = this.viewport.toWorld(event.global);
-    return this.stroke.mode === 'rectangle' ? this.snapToGridCorner(x, y) : { x, y };
-  }
-
-  private snapToGridCorner(x: number, y: number): { x: number; y: number } {
-    const grid = this.store.getState().grid;
-    if (!grid?.size) return { x, y };
-    const { size, offsetX = 0, offsetY = 0 } = grid;
-    return {
-      x: Math.round((x - offsetX) / size) * size + offsetX,
-      y: Math.round((y - offsetY) / size) * size + offsetY,
-    };
-  }
-
-  private onPointerMove(event: PIXI.FederatedPointerEvent): void {
-    const tool = this.store.getState().activeTool;
-
-    if (this.stroke.mode === 'brush' && (tool === 'fog' || tool === 'eraser')) {
-      const worldPos = this.viewport.toWorld(event.global);
-      this.cursorPreview.updatePosition(worldPos.x, worldPos.y);
-      // Back on the map after the pointer had left it.
-      if (!this.cursorPreview.shown) this.cursorPreview.show(tool === 'eraser');
-    }
-
-    if (!this.stroke.active) return;
-    this.stroke.extend(this.strokePoint(event));
-    this.previewStroke();
-  }
-
-  /** The pointer left the map's canvas: the brush's ring would stay where it last was. */
-  private onPointerLeave(): void {
-    this.cursorPreview.hide();
-  }
-
-  private onPointerUp(): void {
-    if (!this.stroke.active) return;
-    const shape = this.stroke.finish();
-    this.clearPreviewGraphics();
-    if (shape) this.store.getState().addFogOperation({ ...shape, isErasing: this.store.getState().activeTool === 'eraser' });
-    else if (!this.store.getState().isMapLoading) {
-      this.refreshBounds();
-      this.rebuildFogSprites();
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Preview helpers (live visual feedback during drawing)
-  // ═══════════════════════════════════════════════════════════════════
-
-  /** Shows the stroke under way: the brush on the fog itself, a lasso or rectangle as its outline. */
-  private previewStroke(): void {
-    const erasing = this.store.getState().activeTool === 'eraser';
-    const shape = this.stroke.shape();
-    if (shape?.type === 'brush') {
-      const tempOp: FogOperation = { id: '__preview__', kind: 'fog', timestamp: Date.now(), isErasing: erasing, ...shape };
-      const committed = levelObjects(this.store.getState())?.fog ?? EMPTY_FOG;
-      this.compositor.composite(committed, tempOp);
-      this.updatePreviewTexture();
-      return;
-    }
-    drawStrokeArea(this.stroke.mode === 'lasso' ? this.lassoGraphics : this.rectPreviewGraphics, this.stroke, erasing ? STROKE_COLORS.erase : STROKE_COLORS.paint);
-  }
-
-  private renderPreviewFromStore(fadeEdge = true): boolean {
-    const ops = levelObjects(this.store.getState())?.fog ?? EMPTY_FOG;
-    const rendered = this.compositor.composite(ops, undefined, fadeEdge);
-    this.updatePreviewTexture();
-    return rendered;
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Texture update
-  // ═══════════════════════════════════════════════════════════════════
-
-  private updatePreviewTexture(): void {
-    if (this.previewTexture && !this.previewTexture.destroyed) {
-      this.previewTexture.source.update();
-      // New pixels in an existing texture are invisible to the scene graph
-      requestRender(this._pixiApp);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Bounds calculation
-  // ═══════════════════════════════════════════════════════════════════
-
-  private calculateFogBounds(): FogBounds {
-    // Without a map image (none loaded yet) the fog covers what was painted, or a default area.
-    const chosen = this.mapRect() ?? this.calculateFogOpsBoundsCandidate();
-    if (!chosen) {
-      return DEFAULT_BOUNDS;
-    }
-
-    return {
-      x: chosen.x - BOUNDS_PADDING,
-      y: chosen.y - BOUNDS_PADDING,
-      width: chosen.width + BOUNDS_PADDING * 2,
-      height: chosen.height + BOUNDS_PADDING * 2,
-    };
-  }
-
-  private calculateFogOpsBoundsCandidate():
-    | {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-        area: number;
-        source: string;
-      }
-    | null {
-    const fog = levelObjects(this.store.getState())?.fog;
-    if (!fog) {
-      return null;
-    }
-
-    const ops = Object.values(fog);
-    try {
-      ops.forEach(validateFogOperation);
-    } catch {
-      // Use the map bounds so invalid saved geometry can reach the opaque fallback.
-      return null;
-    }
-    if (ops.length === 0) {
-      return null;
-    }
-
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-
-    for (const op of ops) {
-      if (op.isErasing) continue;
-      const bounds = calculateOperationBounds(op);
-      if (bounds.width <= 0 || bounds.height <= 0) {
-        continue;
-      }
-      minX = Math.min(minX, bounds.x);
-      minY = Math.min(minY, bounds.y);
-      maxX = Math.max(maxX, bounds.x + bounds.width);
-      maxY = Math.max(maxY, bounds.y + bounds.height);
-    }
-
-    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
-      return null;
-    }
-
-    const width = Math.max(1, maxX - minX);
-    const height = Math.max(1, maxY - minY);
-    return {
-      x: minX,
-      y: minY,
-      width,
-      height,
-      area: width * height,
-      source: `fog-ops:${ops.length}`,
-    };
-  }
-
-  private refreshBounds(): void {
-    const newBounds = this.calculateFogBounds();
-    const oldBounds = this.compositor.getBounds();
-
-    if (
-      Math.abs(newBounds.x - oldBounds.x) > 10 ||
-      Math.abs(newBounds.y - oldBounds.y) > 10 ||
-      Math.abs(newBounds.width - oldBounds.width) > 10 ||
-      Math.abs(newBounds.height - oldBounds.height) > 10
-    ) {
-      this.compositor.updateBounds(newBounds);
-
-      if (this.previewTexture && !this.previewTexture.destroyed) {
-        this.previewTexture.destroy(true);
-      }
-      this.previewTexture = PIXI.Texture.from(this.compositor.getCanvas());
-      this.previewSprite.texture = this.previewTexture;
-      this.previewSprite.position.set(newBounds.x, newBounds.y);
-      this.previewSprite.width = newBounds.width;
-      this.previewSprite.height = newBounds.height;
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Helpers
-  // ═══════════════════════════════════════════════════════════════════
-
-  private resetDrawingState(): void {
-    this.stroke.cancel();
-    this.clearPreviewGraphics();
-  }
-
-  private clearPreviewGraphics(): void {
-    if (this.lassoGraphics && !this.lassoGraphics.destroyed) {
-      this.lassoGraphics.clear();
-    }
-    if (this.rectPreviewGraphics && !this.rectPreviewGraphics.destroyed) {
-      this.rectPreviewGraphics.clear();
-    }
   }
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, onTestFinished, vi } from 'vitest';
 import {
   Container,
   Point,
@@ -15,12 +15,12 @@ import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from 'events';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
-import { DrawingRenderer } from '../../../src/app/pixi/DrawingRenderer';
+import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/AnnotationsRenderer';
 import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
+import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
-import { TextTool } from '../../../src/app/tools/TextTool';
 import { TokenStatblockLinkService } from '../../../src/app/services/TokenStatblockLinkService';
 import { AssetService } from '../../../src/app/services/AssetService';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
@@ -31,6 +31,7 @@ import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { DEFAULT_SETTINGS } from '../../../src/app/services/atlasSettings';
 import { fogCoverage } from '../../../src/app/fog/fogCoverage';
 import { fogRectangle } from '../../helpers/fogOperations';
+import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
 import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
@@ -42,8 +43,6 @@ vi.mock('../../../src/app/react/root/ContextMenuContext', () => ({
   closeContextMenuGlobal: vi.fn(),
 }));
 
-const promptForText = vi.hoisted(() => vi.fn(async () => null));
-vi.mock('../../../src/app/ui/textInputDialog', () => ({ promptForText }));
 
 // jsdom has no 2D canvas, so SVG icons cannot be rasterised here.
 vi.mock('../../../src/app/pixi/utils/lucideIconTexture', () => ({
@@ -698,7 +697,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'token-2', x: 315, y: 105 }));
       await waitForTokens('token-1', 'token-2');
       const drawingDrag = vi.fn();
-      tokenRenderer.setDrawingDragStartHandler(drawingDrag);
+      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
 
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(store.getState().selectedIds).toEqual([]);
@@ -712,10 +711,101 @@ describe('TokenRenderer Integration Tests', () => {
       expect(store.getState().selectedIds).toEqual(['token-2']);
       expect(drawingDrag).not.toHaveBeenCalled();
 
-      // A selected token's press still takes the selected drawings along
+      // A selected token's press still takes the selected drawings and texts along
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(drawingDrag).toHaveBeenCalledTimes(1);
       viewport.emit('pointerup', pointerEvent(315, 105));
+    });
+  });
+
+  describe('Drawings and texts in the dispatch', () => {
+    /** What the dispatch asked of the drawings and texts for one press, in order. */
+    const asked: string[] = [];
+    const answers = { grip: false, press: true, menu: true };
+    const press = (x: number, y: number, button = 0): string[] => {
+      asked.length = 0;
+      viewport.emit('pointerdown', { ...pointerEvent(x, y), button } as FederatedPointerEvent);
+      viewport.emit('pointerup', pointerEvent(x, y));
+      return [...asked];
+    };
+
+    beforeEach(async () => {
+      Object.assign(answers, { grip: false, press: true, menu: true });
+      tokenRenderer.setAnnotationHandlers({
+        gripDown: () => { asked.push('grip'); return answers.grip; },
+        pointerDown: () => { asked.push('press'); return answers.press; },
+        menuAt: () => { asked.push('menu?'); return answers.menu; },
+        openMenu: () => { asked.push('menu'); return true; },
+        dragAlong: () => undefined, cursorAt: () => null, leave: () => undefined,
+      });
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
+      await waitForTokens('token-1');
+    });
+
+    it('asks for their handles before a token, and for themselves only after it', () => {
+      store.getState().setActiveTool('move');
+      // On the token: no handle there, so the token takes the press and no drawing is asked.
+      expect(press(105, 105)).toEqual(['grip']);
+      expect(press(600, 600)).toEqual(['grip', 'press']);
+      // A handle that stands over the token takes the press from it.
+      answers.grip = true;
+      store.getState().clearSelection();
+      expect(press(105, 105)).toEqual(['grip']);
+      expect(store.getState().selectedIds).toEqual([]);
+    });
+
+    it('lets the Draw tool give them every press, over a token too, and no other tool any', () => {
+      store.getState().setActiveTool('draw');
+      expect(press(105, 105)).toEqual(['grip', 'press']);
+      expect(store.getState().selectedIds).toEqual([]);
+      for (const tool of ['measure', 'fog', 'note-pin'] as const) {
+        store.getState().setActiveTool(tool);
+        expect(press(600, 600), tool).toEqual(['grip']);
+      }
+    });
+
+    it('opens their menu when a right press is released in place, but not over a token, whose menu it is', () => {
+      store.getState().setActiveTool('move');
+      expect(press(600, 600, 2)).toEqual(['menu?', 'menu']);
+      expect(press(105, 105, 2)).toEqual([]);
+      store.getState().setActiveTool('draw');
+      expect(press(105, 105, 2)).toEqual(['menu?', 'menu']);
+      // Nothing of theirs there: nothing is opened, and whatever lies under them is asked next.
+      answers.menu = false;
+      expect(press(600, 600, 2)).toEqual(['menu?']);
+    });
+
+    it('asks them for the cursor of every move with the Draw tool, with Alt as it is held, and shows what they answer', () => {
+      const asked: boolean[] = [];
+      let answer: string | null = 'none';
+      tokenRenderer.setAnnotationHandlers({
+        gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, leave: () => undefined,
+        cursorAt: (_x, _y, _covered, free) => { asked.push(free === true); return answer; },
+      });
+      store.getState().setActiveTool('draw');
+      // What a press will place is the cursor: the system's is hidden, over a token too.
+      viewport.emit('pointermove', pointerEvent(105, 105));
+      expect(viewport.cursor).toBe('none');
+      viewport.emit('pointermove', { ...pointerEvent(600, 600), altKey: true } as FederatedPointerEvent);
+      expect(asked).toEqual([false, true]);
+      // Nothing to place, nothing to take: the system's cursor is back.
+      answer = null;
+      viewport.emit('pointermove', pointerEvent(600, 600));
+      expect(viewport.cursor).toBe('default');
+    });
+
+    it('leaves a right press on them unhandled, so a right-drag that starts on a fill pans and opens nothing', () => {
+      store.getState().setActiveTool('move');
+      asked.length = 0;
+      const down = { ...pointerEvent(600, 600), button: 2 } as FederatedPointerEvent;
+      viewport.emit('pointerdown', down);
+      expect(isHandled(down)).toBe(false);
+      expect(asked).toEqual(['menu?']);
+      // Past the viewport's own threshold the press is a pan.
+      viewport.emit('pointermove', { ...pointerEvent(600 + viewport.threshold + 20, 600), button: 2 } as FederatedPointerEvent);
+      viewport.emit('pointerup', { ...pointerEvent(600 + viewport.threshold + 20, 600), button: 2 } as FederatedPointerEvent);
+      expect(asked).toEqual(['menu?']);
+      expect(store.getState().selectedIds).toEqual([]);
     });
   });
 
@@ -795,7 +885,6 @@ describe('TokenRenderer Integration Tests', () => {
       tokenRenderer.setPinClickHandler(vi.fn());
       tokenRenderer.setDoorClickHandler((x) => x > 500 && x < 560);
       tokenRenderer.setLightHandlers({ pointerDown: (x) => x > 290 && x < 310, cursorAt: () => null, leave: () => undefined });
-      promptForText.mockClear();
     });
 
     const click = (x: number): void => {
@@ -805,10 +894,11 @@ describe('TokenRenderer Integration Tests', () => {
     };
 
     it.each(MARKERS)('draws no stroke and stamps no icon on %s', (_marker, x) => {
-      const drawing = new DrawingRenderer(viewport, eventBus, store);
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
       try {
-        for (const tool of ['draw-pen', 'draw-icon'] as const) {
-          store.getState().setActiveTool(tool);
+        store.getState().setActiveTool('draw');
+        for (const mode of ['pen', 'stamp'] as const) {
+          store.getState().setDrawTool({ mode });
           click(x);
         }
         expect(store.getState().objects.drawings).toEqual({});
@@ -849,17 +939,21 @@ describe('TokenRenderer Integration Tests', () => {
       }
     });
 
-    it.each(MARKERS)('opens no text box on %s', (_marker, x) => {
-      const text = new TextTool(viewport, store, gridSystem, eventBus);
+    it.each(MARKERS)('starts no text on %s', (_marker, x) => {
+      // The field a text is typed in lies over the canvas, in what holds it.
+      const host = document.body.appendChild(document.createElement('div'));
+      host.append(viewport.options.events.domElement);
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
       try {
-        store.getState().setActiveTool('text');
-        text.activate();
+        store.getState().setDrawTool({ mode: 'text' });
+        store.getState().setActiveTool('draw');
         click(x);
-        expect(promptForText).not.toHaveBeenCalled();
+        expect(host.querySelector('textarea')).toBeNull();
         click(OFF_MARKERS);
-        expect(promptForText).toHaveBeenCalledTimes(1);
+        expect(host.querySelector('textarea')).not.toBeNull();
       } finally {
-        text.deactivate();
+        drawing.destroy();
+        host.remove();
       }
     });
 
@@ -879,41 +973,78 @@ describe('TokenRenderer Integration Tests', () => {
     });
   });
 
+  // Fog is changed with the fog tool only: with any other tool a press goes to what lies under it.
+  describe('Fog under the select and move tools', () => {
+    let fog: FogOfWarRenderer;
+
+    beforeEach(() => {
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
+      fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      viewport.addChild(fog.getContainer());
+      fog.reorderViewportListeners();
+      store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
+      openContextMenuGlobal.mockClear();
+    });
+
+    afterEach(() => {
+      fog.destroy();
+      vi.restoreAllMocks();
+    });
+
+    it.each(['select', 'move'] as const)('gives a press on fog to the token under it with the %s tool', async (tool) => {
+      store.getState().setActiveTool(tool);
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
+      await waitForTokens('token-1');
+      expect(fog.getCommittedCoverage()?.covers({ x: 105, y: 105 })).toBe(true);
+      const fogBefore = store.getState().objects.fog;
+
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointerup', pointerEvent(105, 105));
+      expect(store.getState().selectedIds).toEqual(['token-1']);
+
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointermove', pointerEvent(180, 105));
+      viewport.emit('pointerup', pointerEvent(180, 105));
+      expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 175, y: 105 });
+      expect(store.getState().selectedIds).toEqual(['token-1']);
+      expect(store.getState().objects.fog).toBe(fogBefore);
+    });
+
+    it.each(['select', 'move'] as const)('leaves a press on fog over the empty map to the marquee and the pan with the %s tool: no fog is selected, moved or deleted', (tool) => {
+      store.getState().setActiveTool(tool);
+      const fogBefore = store.getState().objects.fog;
+
+      const press = pointerEvent(900, 900);
+      viewport.emit('pointerdown', press);
+      expect(isHandled(press)).toBe(false);
+      viewport.emit('pointermove', pointerEvent(960, 940));
+      viewport.emit('pointerup', pointerEvent(960, 940));
+      expect(store.getState().selectedIds).toEqual([]);
+
+      const rightPress = { ...pointerEvent(900, 900), button: 2 } as unknown as FederatedPointerEvent;
+      viewport.emit('pointerdown', rightPress);
+      viewport.emit('pointerup', rightPress);
+      expect(openContextMenuGlobal).not.toHaveBeenCalled();
+      expect(store.getState().objects.fog).toBe(fogBefore);
+    });
+  });
+
   describe('Right-click', () => {
     const rightClick = (x: number, y: number): FederatedPointerEvent =>
       ({ ...pointerEvent(x, y), button: 2, clientX: x + 300, clientY: y + 40 }) as unknown as FederatedPointerEvent;
 
-    it('opens the token menu at the pointer for a token inside fog, and the fog menu beside it', async () => {
-      const fogClickHandler = vi.fn();
-      tokenRenderer.setFogHitTestProvider(() => 'fog-1');
-      tokenRenderer.setFogClickHandler(fogClickHandler);
+    it('opens the token menu at the pointer for a token inside fog, and no menu on the fog beside it', async () => {
+      store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
       await waitForTokens('token-1');
+      openContextMenuGlobal.mockClear();
 
       viewport.emit('pointerdown', rightClick(105, 105));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-      expect(openContextMenuGlobal).toHaveBeenCalledWith(expect.any(Array), { x: 405, y: 145 });
+      expect(openContextMenuGlobal).toHaveBeenCalledExactlyOnceWith(expect.any(Array), { x: 405, y: 145 });
 
       viewport.emit('pointerdown', rightClick(900, 900));
       viewport.emit('pointerup', rightClick(900, 900));
-      expect(fogClickHandler).toHaveBeenCalledWith('fog-1', expect.anything());
-    });
-
-    it('leaves a right press on fog to the pan and opens the fog menu only when it is released in place', () => {
-      const fogClickHandler = vi.fn();
-      tokenRenderer.setFogHitTestProvider(() => 'fog-1');
-      tokenRenderer.setFogClickHandler(fogClickHandler);
-
-      viewport.emit('pointerdown', rightClick(900, 900));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-      viewport.emit('pointermove', rightClick(960, 900));
-      viewport.emit('pointerup', rightClick(960, 900));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-
-      viewport.emit('pointerdown', rightClick(900, 900));
-      viewport.emit('pointermove', rightClick(902, 900));
-      viewport.emit('pointerup', rightClick(902, 900));
-      expect(fogClickHandler).toHaveBeenCalledExactlyOnceWith('fog-1', expect.objectContaining({ clientX: 1202 }));
+      expect(openContextMenuGlobal).toHaveBeenCalledTimes(1);
     });
 
     it('leaves a right press with the wall tool to the pan and opens the wall menu only when it is released in place', () => {
@@ -946,6 +1077,35 @@ describe('TokenRenderer Integration Tests', () => {
       expect(hovered).toHaveBeenCalledTimes(1);
 
       canvas.dispatchEvent(new Event('pointerleave'));
+      expect(left).toHaveBeenCalledWith({ pin: expect.objectContaining({ id: 'token-1' }) });
+    });
+
+    it.each(['measure', 'fog', 'eraser', 'draw', 'wall', 'audio', 'stairs', 'asset', 'note-pin', 'laser-pointer'] as const)('should offer the statblock hover with the %s tool, whose own pointer takes the move', async (tool) => {
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105, kind: 'character', statblockPath: 'Goblin.md' }));
+      await waitForTokens('token-1');
+      store.setState({ activeTool: tool });
+      // Each tool takes the move with a cursor of its own, as it does on the map
+      tokenRenderer.setWallPointerMoveHandler(() => undefined);
+      tokenRenderer.setWallCursorProvider(() => 'crosshair');
+      tokenRenderer.setAudioPointerMoveHandler(() => undefined);
+      tokenRenderer.setStairsTool({ pointerDown: () => true, pointerMove: () => undefined, pointerUp: () => undefined, doubleClick: () => undefined, cursorAt: () => 'crosshair' });
+      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
+      // The fog tool's own brush, ring and guide listen to the same moves
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
+      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      onTestFinished(() => {
+        fog.destroy();
+        vi.restoreAllMocks();
+      });
+      const hovered = vi.fn();
+      const left = vi.fn();
+      eventBus.on('pin-hover-preview', hovered);
+      eventBus.on('pin-hide-preview', left);
+
+      viewport.emit('pointermove', { ...pointerEvent(105, 105), clientX: 105, clientY: 105 });
+      expect(hovered).toHaveBeenCalledWith(expect.objectContaining({ pin: expect.objectContaining({ id: 'token-1', notePath: 'Goblin.md' }) }));
+
+      viewport.emit('pointermove', { ...pointerEvent(600, 600), clientX: 600, clientY: 600 });
       expect(left).toHaveBeenCalledWith({ pin: expect.objectContaining({ id: 'token-1' }) });
     });
 

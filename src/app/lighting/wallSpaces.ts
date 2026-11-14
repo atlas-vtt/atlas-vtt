@@ -6,7 +6,8 @@ import { inflatePolyline, inflateShape, normalizePolygon, subtractShapes, unionS
 import { quantizeCoordinate } from './quantizedPoint';
 import { outlinesWithHoles, type RoomArea } from './rooms';
 import { sealedWalls } from './sealWalls';
-import { shapeContains } from './shapeContains';
+import { boxAround, segmentGrid, type SegmentGrid } from './segmentGrid';
+import { shapeContainment, shapeContains } from './shapeContains';
 import { along, beside, distanceTo, edgesWithShapeOnLeft, lengthOf, sideOf, type Segment as Line } from './wallSides';
 
 /**
@@ -32,6 +33,24 @@ const MARGIN = 64 * Q_SCALE;
 /** A space smaller than this, in square pixels, is a sliver between walls and no room. */
 const LEAST_AREA = 64;
 
+/** The strips kept from one question to the next, and the most of them: several maps' walls. */
+const strips = new Map<string, readonly QPolygon[]>();
+const MOST_STRIPS = 50_000;
+
+/**
+ * The strip of a wall with these ends (eighth pixels). Making one is a pass of the clipping
+ * library, and an edit changes a few walls of thousands, so the strips are kept by their ends.
+ */
+function stripOf(line: readonly number[]): readonly QPolygon[] {
+  const key = line.join(',');
+  let strip = strips.get(key);
+  if (!strip) {
+    if (strips.size >= MOST_STRIPS) strips.clear();
+    strips.set(key, strip = inflatePolyline(line, STRIP));
+  }
+  return strip;
+}
+
 type Segment = Pick<WallSegment, 'p1' | 'p2'>;
 
 const finite = ({ p1, p2 }: Segment): boolean => [p1.x, p1.y, p2.x, p2.y].every(Number.isFinite) && (p1.x !== p2.x || p1.y !== p2.y);
@@ -56,18 +75,18 @@ export function enclosedSpaces(segments: readonly Segment[]): RoomArea[] {
   const walls = segments.filter(finite);
   if (walls.length < 3) return [];
   try {
-    const strips: QPolygon[] = [];
+    const covered: QPolygon[] = [];
     let [left, top, right, bottom] = [Infinity, Infinity, -Infinity, -Infinity];
     for (const { p1, p2 } of walls) {
       const line = [quantizeCoordinate(p1.x), quantizeCoordinate(p1.y), quantizeCoordinate(p2.x), quantizeCoordinate(p2.y)];
-      strips.push(...inflatePolyline(line, STRIP));
+      covered.push(...stripOf(line));
       left = Math.min(left, line[0]!, line[2]!);
       right = Math.max(right, line[0]!, line[2]!);
       top = Math.min(top, line[1]!, line[3]!);
       bottom = Math.max(bottom, line[1]!, line[3]!);
     }
     const [x0, y0, x1, y1] = [left - MARGIN, top - MARGIN, right + MARGIN, bottom + MARGIN];
-    const free = subtractShapes(normalizePolygon([x0, y0, x1, y0, x1, y1, x0, y1]), unionShapes(strips, []));
+    const free = subtractShapes(normalizePolygon([x0, y0, x1, y0, x1, y1, x0, y1]), unionShapes(covered, []));
     return outlinesWithHoles(free)
       // The piece around everything reaches the edge that was looked at.
       .filter(({ outline }) => !outline.some((value, index) => (index % 2 === 0 ? value === x0 || value === x1 : value === y0 || value === y1)))
@@ -88,7 +107,11 @@ const NEAREST_ENDS = 4;
 const MOST_OPEN_ENDS = 400;
 
 const knowsFloor = (wall: WallSegment): boolean => wall.floor === 'left' || wall.floor === 'right';
-const runsAlong = (line: Line, outline: readonly Line[]): boolean => [0.1, 0.5, 0.9].every((share) => outline.some((edge) => distanceTo(edge, along(line, share)) <= ON_OUTLINE));
+/** Whether `line` runs along an outline, whose edges are filed for what comes within `ON_OUTLINE` of a place. */
+const runsAlong = (line: Line, outline: SegmentGrid<Line>): boolean => [0.1, 0.5, 0.9].every((share) => {
+  const point = along(line, share);
+  return outline.near(point).some((edge) => distanceTo(edge, point) <= ON_OUTLINE);
+});
 
 /** Whether two lines cross between their ends: lines that only meet at an end do not. */
 function cross(a: Line, b: Line): boolean {
@@ -120,7 +143,9 @@ export function openingClosures(walls: readonly WallSegment[], closed: readonly 
     const inside = beside(wall, 0.5, wall.floor === 'left' ? 'left' : 'right', Math.min(ASIDE, lengthOf(wall) / 2));
     return !closed.some((space) => shapeContains(space, inside));
   };
-  const open = ends.filter(({ point, wall }) => atOpenRoom(wall) && !real.some((other) => other !== wall && distanceTo(other, point) <= JOINED));
+  // Nearly every end is joined to another wall, which the walls near it tell: the room behind a wall is asked for only at the few that are not.
+  const joined = segmentGrid(real, JOINED);
+  const open = ends.filter(({ point, wall }) => !joined.near(point).some((other) => other !== wall && distanceTo(other, point) <= JOINED) && atOpenRoom(wall));
   if (open.length === 0 || open.length > MOST_OPEN_ENDS) return [];
   const closures = new Map<string, Line>();
   const key = (point: { x: number; y: number }): string => `${Math.round(point.x * 8)},${Math.round(point.y * 8)}`;
@@ -148,16 +173,16 @@ export function openingClosures(walls: readonly WallSegment[], closed: readonly 
   return [...closures.values()];
 }
 
-/** How the walls along a space's outline that know their floor side turn to it, each for its length. */
-function sidesOf(space: RoomArea, outline: readonly Line[], walls: readonly WallSegment[]): { floor: number; rock: number } {
+/** How the walls along a space's outline turn to it, each for its length: `walls` are ones that know their floor side. */
+function sidesOf(space: RoomArea, outline: SegmentGrid<Line>, walls: readonly WallSegment[]): { floor: number; rock: number } {
+  const inside = shapeContainment(space);
   let [floor, rock] = [0, 0];
   for (const wall of walls) {
-    if (!knowsFloor(wall)) continue;
     const length = lengthOf(wall);
     if (!(length > 0) || !runsAlong(wall, outline)) continue;
     const step = Math.min(ASIDE, length / 2);
-    const onLeft = shapeContains(space, beside(wall, 0.5, 'left', step));
-    const onRight = shapeContains(space, beside(wall, 0.5, 'right', step));
+    const onLeft = inside(beside(wall, 0.5, 'left', step));
+    const onRight = inside(beside(wall, 0.5, 'right', step));
     if (onLeft === onRight) continue;
     if ((wall.floor === 'left') === onLeft) floor += length;
     else rock += length;
@@ -234,10 +259,15 @@ export function floorOf(walls: readonly WallSegment[]): RoomArea[] {
   const closed = enclosedSpaces(sealed);
   const closures = openingClosures(walls, closed);
   const real = walls.filter(finite);
+  // A map has many closed pockets, most of them small: each asks only the walls beside it.
+  const sided = segmentGrid(walls.filter(knowsFloor), ON_OUTLINE);
   const floors = (closures.length === 0 ? closed : enclosedSpaces([...sealed, ...closures])).filter((space) => {
     const outline = edgesWithShapeOnLeft(space);
-    if (!closures.some((line) => runsAlong(line, outline))) {
-      const { floor, rock } = sidesOf(space, outline, walls);
+    const around = boxAround(outline);
+    if (!around) return false;
+    const filed = segmentGrid(outline, ON_OUTLINE);
+    if (!closures.some((line) => runsAlong(line, filed))) {
+      const { floor, rock } = sidesOf(space, filed, sided.touching(around));
       return rock <= floor;
     }
     const point = deepPoint(space, outline);

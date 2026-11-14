@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
+import { SelectionBarHost } from '../packages/components/toolbar/SelectionBar';
 import { LevelSurfacePopoverHost } from '../pixi/levelSurfaces/LevelSurfacePopover';
 import { MeasurePopoverHost } from './components/measure/MeasurePopover';
 import { App } from 'obsidian';
@@ -15,8 +16,10 @@ import { useViewStoreHook, useAtlasStore } from './ViewStoreContext';
 import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
+import { DrawToolBar } from '../packages/components/toolbar/DrawToolBar';
 import { LightingToolBar } from '../packages/components/toolbar/LightingToolBar';
 import { MeasureToolBar } from '../packages/components/toolbar/MeasureToolBar';
+import { FogToolBar } from '../packages/components/toolbar/FogToolBar';
 import { DMScreenFromStore } from './components/DMScreen';
 import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
@@ -217,8 +220,10 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
             )}
             options={(
               <>
+                {!isPlayerView && <PanelBoundary name="the fog tools"><FogToolBar /></PanelBoundary>}
                 {!isPlayerView && <PanelBoundary name="the lighting tools"><LightingToolBar /></PanelBoundary>}
                 <PanelBoundary name="the measure tools"><MeasureToolBar playerView={isPlayerView} /></PanelBoundary>
+                {!isPlayerView && <PanelBoundary name="the draw tools"><DrawToolBar /></PanelBoundary>}
               </>
             )}
           >
@@ -266,6 +271,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the players' glass"><GlassChip view={view} /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the selection bar"><SelectionBarHost /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the measurement's settings"><MeasurePopoverHost /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}

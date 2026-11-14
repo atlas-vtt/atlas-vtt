@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_TOOLBAR_ORDER, type ToolbarControlId } from '../../src/app/toolbar/toolbarCatalog';
 import {
   controlPlacement,
+  hiddenAfterMerges,
+  hiddenWithFormerIds,
   isDefaultToolbarLayout,
   nextVisitArmed,
   orderedToolbarIds,
@@ -79,6 +81,52 @@ describe('storedToolbarLayout', () => {
     expect(stored.order?.slice(0, 5)).toEqual(['future', 'draw', 'move', 'fog', 'later']);
     expect(stored.hidden).toEqual(['fog', 'future']);
     expect(resolveToolbarLayout(stored).order).toEqual(next.order);
+  });
+});
+
+describe('the Draw tool, which took in the Text control', () => {
+  const hiddenOf = (hidden: string[]): string[] => [...resolveToolbarLayout(readToolbarLayout({ hidden })).hidden];
+
+  it('shows Draw where an older layout hid it and kept Text in the bar', () => {
+    expect(hiddenOf(['draw'])).toEqual([]);
+    expect(hiddenOf(['fog', 'draw'])).toEqual(['fog']);
+    expect(hiddenAfterMerges(['draw', 'fog'])).toEqual(['fog']);
+  });
+
+  it('hides Draw where both were hidden, and shows it where only Text was', () => {
+    expect(hiddenOf(['draw', 'text'])).toEqual(['draw']);
+    expect(hiddenOf(['text', 'fog', 'draw'])).toEqual(['fog', 'draw']);
+    expect(hiddenOf(['text'])).toEqual([]);
+  });
+
+  it('keeps the Text id as stored, in the order and in the hidden list, and gives it no place in the bar', () => {
+    const previous = readToolbarLayout({ order: ['text', 'move', 'draw', 'fog'], hidden: ['text'] });
+    expect(previous).toEqual({ order: ['text', 'move', 'draw', 'fog'], hidden: ['text'] });
+    const layout = resolveToolbarLayout(previous);
+    expect(layout.order).not.toContain('text');
+    expect(layout.order.filter(id => ['move', 'draw', 'fog'].includes(id))).toEqual(['move', 'draw', 'fog']);
+    const stored = storedToolbarLayout(previous, withControlHidden(layout, 'fog'));
+    expect(stored.order?.slice(0, 3)).toEqual(['text', 'move', 'draw']);
+    expect(stored.hidden).toEqual(['fog', 'text']);
+  });
+
+  it('stores a hidden Draw with the Text id, so it reads as hidden again here and hides both on an older version', () => {
+    const stored = storedToolbarLayout({}, withControlHidden(DEFAULT, 'draw'));
+    expect(stored).toEqual({ hidden: ['draw', 'text'] });
+    expect([...resolveToolbarLayout(stored).hidden]).toEqual(['draw']);
+    expect(hiddenWithFormerIds(['undo', 'draw', 'text'])).toEqual(['undo', 'draw', 'text']);
+    expect(hiddenWithFormerIds(['fog'])).toEqual(['fog']);
+  });
+
+  it('drops the lone Draw of an older layout at the next change, and shows Draw again after it was hidden here', () => {
+    const older = readToolbarLayout({ hidden: ['draw'] });
+    expect(storedToolbarLayout(older, withControlHidden(resolveToolbarLayout(older), 'fog'))).toEqual({ hidden: ['fog'] });
+    const hidden = storedToolbarLayout({}, withControlHidden(DEFAULT, 'draw'));
+    const shown = storedToolbarLayout(hidden, withControlShown(resolveToolbarLayout(hidden), 'draw'));
+    // The Text id goes with it: showing undoes what hiding stored, also where an older version hid both.
+    expect(shown).toEqual({});
+    const both = readToolbarLayout({ hidden: ['fog', 'text', 'draw', 'future'] });
+    expect(storedToolbarLayout(both, withControlShown(resolveToolbarLayout(both), 'draw'))).toEqual({ hidden: ['fog', 'future'] });
   });
 });
 

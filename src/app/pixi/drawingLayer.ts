@@ -1,123 +1,178 @@
-import { Graphics, Sprite, type Container, type Texture } from 'pixi.js';
-import type { DrawingStroke } from '../types';
-import { MAP_ICON_SVG } from './mapIcons';
+import { Sprite, Texture, type Graphics } from 'pixi.js';
+import type { DrawingAnnotation } from '../annotations/annotationTypes';
+import { drawingInk, type DrawingInk } from '../annotations/drawingInk';
+import type { FilledPart } from '../annotations/quantized';
+import type { Point } from '../types/visionTypes';
+import { stampGlyph } from './mapIcons';
 import { createLucideIconTexture } from './utils/lucideIconTexture';
+import { createGlyphTexture } from './utils/pinIconTexture';
 
-/** Draws a pen stroke: a dot for a single point, else a round-capped line through the points. */
-export function drawStroke(
-  graphics: Graphics,
-  points: ReadonlyArray<{ x: number; y: number }>,
-  color: string,
-  width: number,
-  opacity: number,
-): void {
-  graphics.clear();
-  const first = points[0];
-  if (!first) return;
+/**
+ * The side a stamp's symbol is rasterised at, pixels: a stamp one cell wide is about this large on
+ * a screen of two pixels to the point at the closest zoom. With mipmaps, so that it is as clean
+ * from far out.
+ */
+const STAMP_TEXTURE_SIDE = 512;
 
-  if (points.length === 1) {
-    graphics.circle(first.x, first.y, width / 2).fill({ color, alpha: opacity });
+const flat = (ring: readonly Point[]): number[] => ring.flatMap(({ x, y }) => [x, y]);
+
+/**
+ * Fills `parts` in one tone. Areas without holes share one fill; an area with holes is a fill of
+ * its own, since a fill's holes are cut out of every area it has.
+ */
+function fillParts(graphics: Graphics, parts: readonly FilledPart[], color: string, alpha: number): void {
+  let plain = false;
+  for (const { outline, holes } of parts) {
+    if (outline.length < 3 || holes.length > 0) continue;
+    graphics.poly(flat(outline), true);
+    plain = true;
+  }
+  if (plain) graphics.fill({ color, alpha });
+  for (const { outline, holes } of parts) {
+    if (outline.length < 3 || holes.length === 0) continue;
+    graphics.poly(flat(outline), true).fill({ color, alpha });
+    for (const hole of holes) {
+      if (hole.length >= 3) graphics.poly(flat(hole), true).cut();
+    }
+  }
+}
+
+/** Draws `ink` in `color` into `graphics`, after what it already holds: the fill, then the line over it. */
+export function paintInk(graphics: Graphics, ink: DrawingInk, color: string): void {
+  const { width, alpha } = ink;
+  if (ink.fill) fillParts(graphics, ink.fill.parts, color, ink.fill.alpha);
+  if (ink.even) {
+    fillParts(graphics, ink.even, color, alpha);
     return;
   }
-
-  graphics.moveTo(first.x, first.y);
-  for (const point of points.slice(1)) {
-    graphics.lineTo(point.x, point.y);
+  let stroked = false;
+  let dotted = false;
+  for (const line of ink.lines) {
+    const first = line[0];
+    if (!first || line.length === 1) continue;
+    graphics.moveTo(first.x, first.y);
+    for (let i = 1; i < line.length; i++) graphics.lineTo(line[i]!.x, line[i]!.y);
+    stroked = true;
   }
-  graphics.stroke({ color, width, alpha: opacity, cap: 'round', join: 'round' });
+  if (stroked) graphics.stroke({ color, width, alpha, cap: 'round', join: 'round' });
+  for (const line of ink.lines) {
+    const only = line[0];
+    if (!only || line.length !== 1) continue;
+    graphics.circle(only.x, only.y, width / 2);
+    dotted = true;
+  }
+  if (dotted) graphics.fill({ color, alpha });
+  if (ink.heads.length === 0) return;
+  for (const head of ink.heads) graphics.poly(flat(head), true);
+  graphics.fill({ color, alpha });
 }
 
 /**
- * The stored drawings of a map in a container: one display object per pen stroke or icon
- * stamp, reused while its record is unchanged.
+ * Draws `drawing` (no stamp) into `graphics`, in place of what it held. `tolerance` is how far
+ * its curve may round the corners of its points (`curveTolerance`).
  */
-export class DrawingLayer {
-  private readonly nodes = new Map<string, Container>();
-  /** Stroke each node was last drawn from; a new reference means it moved or was restored by undo. */
-  private readonly rendered = new Map<string, DrawingStroke>();
-  private readonly iconTextures = new Map<string, Texture>();
+export function paintDrawing(graphics: Graphics, drawing: DrawingAnnotation, tolerance: number): void {
+  graphics.clear();
+  paintInk(graphics, drawingInk(drawing, tolerance), drawing.color);
+}
 
-  constructor(private readonly container: Container) {}
+/**
+ * The symbols of stamps as textures: one for each symbol, in white, which every stamp of it tints
+ * with its own colour. Rasterised when first asked for, `side` pixels a side: less than
+ * `STAMP_TEXTURE_SIDE` where memory is short and a stamp is never seen that large.
+ */
+export class StampTextures {
+  private readonly textures = new Map<string, Texture | null>();
+  private readonly pending = new Map<string, Promise<Texture | null>>();
+  private destroyed = false;
 
-  /** Shows exactly `drawings`: new ones are drawn, changed ones redrawn, the rest removed. */
-  sync(drawings: Readonly<Record<string, DrawingStroke>>): void {
-    for (const [id, node] of this.nodes) {
-      if (!drawings[id]) {
-        node.destroy();
-        this.nodes.delete(id);
-        this.rendered.delete(id);
-      }
+  constructor(private readonly side: number = STAMP_TEXTURE_SIDE) {}
+
+  /** The texture of `icon` once it is there; null for a symbol this Atlas does not know, or one that cannot be drawn. */
+  of(icon: string): Texture | Promise<Texture | null> | null {
+    const known = this.textures.get(icon);
+    if (known !== undefined) return known;
+    const glyph = stampGlyph(icon);
+    if (!glyph) return null;
+    if (glyph.kind === 'silhouette') {
+      const texture = createGlyphTexture(glyph.path, this.side);
+      this.textures.set(icon, texture);
+      return texture;
     }
-
-    for (const stroke of Object.values(drawings)) {
-      const previous = this.rendered.get(stroke.id);
-      if (previous === stroke) continue;
-      this.rendered.set(stroke.id, stroke);
-
-      let existing = this.nodes.get(stroke.id);
-      if (stroke.type === 'icon') {
-        // A restyled stamp needs a new texture; a moved one only a new position
-        if (existing && (previous?.icon !== stroke.icon || previous?.color !== stroke.color)) {
-          existing.destroy();
-          this.nodes.delete(stroke.id);
-          existing = undefined;
+    let pending = this.pending.get(icon);
+    if (!pending) {
+      pending = createLucideIconTexture(glyph.markup, '#ffffff', this.side, true).then((texture) => {
+        this.pending.delete(icon);
+        if (this.destroyed) {
+          texture.destroy(true);
+          return null;
         }
-        const center = stroke.points[0];
-        if (existing && center) existing.position.set(center.x, center.y);
-        else if (!existing) this.addIconNode(stroke);
-        continue;
-      }
-
-      let graphics = existing as Graphics | undefined;
-      if (!graphics) {
-        graphics = new Graphics();
-        graphics.eventMode = 'none';
-        this.container.addChild(graphics);
-        this.nodes.set(stroke.id, graphics);
-      }
-      drawStroke(graphics, stroke.points, stroke.color, stroke.width, stroke.opacity);
+        this.textures.set(icon, texture);
+        return texture;
+      }).catch((error: unknown) => {
+        this.pending.delete(icon);
+        console.error('[StampTextures] Failed to rasterise a symbol:', error);
+        return null;
+      });
+      this.pending.set(icon, pending);
     }
+    return pending;
   }
 
-  /** Forgets every node and frees the icon textures; the container is its owner's to destroy. */
   destroy(): void {
-    this.nodes.clear();
-    this.rendered.clear();
-    for (const texture of this.iconTextures.values()) texture.destroy(true);
-    this.iconTextures.clear();
+    this.destroyed = true;
+    for (const texture of this.textures.values()) texture?.destroy(true);
+    this.textures.clear();
   }
+}
 
-  /** Place an icon stamp; its texture is rasterised (and cached) on demand. */
-  private addIconNode(stroke: DrawingStroke): void {
-    const center = stroke.points[0];
-    const markup = stroke.icon ? MAP_ICON_SVG[stroke.icon] : undefined;
-    if (!center || !markup) return;
+/** The symbol a stamp's sprite shows: a texture that comes in late is for the symbol asked for last, at the width asked for last. */
+const shown = new WeakMap<Sprite, { icon: string; width: number }>();
 
-    const sprite = new Sprite();
-    sprite.eventMode = 'none';
-    sprite.anchor.set(0.5);
-    sprite.position.set(center.x, center.y);
-    sprite.width = stroke.width;
-    sprite.height = stroke.width;
-    sprite.alpha = stroke.opacity;
-    this.container.addChild(sprite);
-    this.nodes.set(stroke.id, sprite);
+/** A sprite for stamps: empty until `placeStamp` draws one into it. */
+export function createStampSprite(): Sprite {
+  const sprite = new Sprite(Texture.EMPTY);
+  sprite.eventMode = 'none';
+  sprite.anchor.set(0.5);
+  return sprite;
+}
 
-    const cacheKey = `${stroke.icon}-${stroke.color}`;
-    const cached = this.iconTextures.get(cacheKey);
-    if (cached) {
-      sprite.texture = cached;
-      return;
-    }
+function sized(sprite: Sprite, width: number): void {
+  sprite.width = width;
+  sprite.height = width;
+}
 
-    createLucideIconTexture(markup, stroke.color, 96)
-      .then((texture) => {
-        this.iconTextures.set(cacheKey, texture);
-        if (sprite.destroyed) return;
-        sprite.texture = texture;
-        sprite.width = stroke.width;
-        sprite.height = stroke.width;
-      })
-      .catch((err) => console.error('[DrawingLayer] Failed to rasterise icon:', err));
+/**
+ * Shows `stamp` in `sprite`: its symbol tinted in its colour, as wide as its footprint, about its
+ * centre, turned and as see-through as it is. `changed` is called once a symbol that was still
+ * being rasterised is in, since nothing else tells that the picture is another.
+ */
+export function placeStamp(sprite: Sprite, stamp: DrawingAnnotation, textures: StampTextures, changed?: () => void): void {
+  const centre = stamp.points[0]!;
+  const icon = stamp.icon ?? '';
+  sprite.position.set(centre.x, centre.y);
+  sprite.rotation = (stamp.rotation * Math.PI) / 180;
+  sprite.alpha = stamp.opacity;
+  sprite.tint = stamp.color;
+  sized(sprite, stamp.width);
+  const before = shown.get(sprite);
+  if (before?.icon === icon) {
+    before.width = stamp.width;
+    return;
   }
+  const wanted = { icon, width: stamp.width };
+  shown.set(sprite, wanted);
+  const texture = textures.of(icon);
+  if (texture instanceof Texture || texture === null) {
+    sprite.texture = texture ?? Texture.EMPTY;
+    sized(sprite, stamp.width);
+    return;
+  }
+  void texture.then((ready) => {
+    // The sprite may be gone by now, or show another stamp.
+    if (sprite.destroyed || shown.get(sprite) !== wanted) return;
+    sprite.texture = ready ?? Texture.EMPTY;
+    sized(sprite, wanted.width);
+    changed?.();
+  });
 }

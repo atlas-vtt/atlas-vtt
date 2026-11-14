@@ -12,5 +12,8 @@ export const playerBar = {
   'playerBar.toggleCurtain': 'Hide or reveal the map on the player window',
   'playerBar.playersSee': 'What players see',
   'playerBar.close': 'Close player window',
+  'playerBar.freeze': 'Pause the player view',
+  'playerBar.unfreeze': 'Play: the player view follows you again',
+  'playerBar.freezeTrueScale': 'With TrueScale on, pin the players on the frame on your map',
   'playerBar.takeBack': 'Take back the handout',
 } as const satisfies Record<string, Message>;

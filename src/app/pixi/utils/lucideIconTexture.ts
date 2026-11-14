@@ -1,5 +1,5 @@
 import { getDomHost } from '../../host/dom';
-import { Texture } from 'pixi.js';
+import { CanvasSource, Texture } from 'pixi.js';
 import { toError } from '../../utils/errors';
 
 /**
@@ -7,12 +7,14 @@ import { toError } from '../../utils/errors';
  * 24×24 Lucide icon) into a PIXI texture.
  *
  * SVG → data URI → Image → Canvas → Texture is the only reliable path in
- * PIXI v8; `Texture.from(svgString)` is not supported.
+ * PIXI v8; `Texture.from(svgString)` is not supported. With `mipmaps` the texture stays clean
+ * where it is drawn much smaller than `size`.
  */
 export async function createLucideIconTexture(
   innerSvg: string,
   color: string,
-  size: number
+  size: number,
+  mipmaps = false,
 ): Promise<Texture> {
   const canvas = getDomHost().createCanvas();
   canvas.width = size;
@@ -30,5 +32,6 @@ export async function createLucideIconTexture(
   });
 
   ctx.drawImage(img, 0, 0, size, size);
-  return Texture.from(canvas);
+  if (!mipmaps) return Texture.from(canvas);
+  return new Texture({ source: new CanvasSource({ resource: canvas, autoGenerateMipmaps: true, scaleMode: 'linear' }) });
 }

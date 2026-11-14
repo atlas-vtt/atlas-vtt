@@ -39,7 +39,7 @@ describe('the measure tool\'s bars above the toolbar', () => {
       h(AtlasUIContext.Provider, { value: ui }, h(ViewStoreProvider, {
         store,
         children: h(BottomToolbarRow, {
-          start: h('div', { className: 'atlas-vtt-toolbar', style: { width: 104, height: 52 } }),
+          start: h('div', { className: 'atlas-vtt-toolbar', style: { width: 104, height: 48 } }),
           // Both tools' bars share the slot, outside any tooltip provider, as on the map.
           options: h(React.Fragment, null, h(LightingToolBar), h(MeasureToolBar, { playerView: false })),
           children: h('div', { className: 'atlas-vtt-toolbar atlas-main-toolbar', style: { width: options.toolbarWidth ?? 420 } }, h(TooltipProvider, null,
@@ -79,15 +79,15 @@ describe('the measure tool\'s bars above the toolbar', () => {
     expect(choices.left).toBeCloseTo(modes.right + 8, 0);
     expect(choices.bottom).toBeCloseTo(modes.bottom, 0);
     expect(choices.height).toBeCloseTo(modes.height, 1);
-    expect(modes.height).toBeCloseTo(50, 0);
-    // Buttons of 32 px in 8 px of padding, 8 px apart, the colour's among them.
+    expect(modes.height).toBeCloseTo(42, 0);
+    // Buttons of 32 px in 4 px of padding, 4 px apart, the colour's among them.
     expect(rects(`${MODES} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual(MEASURE_MODES.map(() => 32));
     const controls = rects(`${CHOICES} .atlas-tool-button`);
     expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual([[32, 32], [32, 32], [32, 32], [32, 32]]);
-    expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([8, 8, 8]);
+    expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([4, 4, 4]);
     expect(controls[0]!.left - choices.left).toBeCloseTo(choices.right - controls[3]!.right, 1);
     const corner = (selector: string): number => parseFloat(getComputedStyle(document.querySelector(selector)!).borderTopLeftRadius);
-    expect(corner(CHOICES) / choices.height).toBeCloseTo(corner('.atlas-main-toolbar') / toolbar.height, 2);
+    expect(corner(CHOICES)).toBe(corner('.atlas-main-toolbar'));
     // The dot shows the colour the next measurement takes: the theme's accent until one is chosen.
     const dot = document.querySelector<HTMLElement>('.atlas-tool-bar__dot')!;
     expect(getComputedStyle(dot).backgroundColor).toBe('rgb(127, 109, 242)');
@@ -153,7 +153,7 @@ describe('the measure tool\'s bars above the toolbar', () => {
   });
 
   it('keeps every button inside its bar and the bars inside a narrow view', async () => {
-    await page.viewport(520, 700);
+    await page.viewport(480, 700);
     mount({ toolbarWidth: 320 });
     await settled();
     const choices = rect(CHOICES);
@@ -161,13 +161,13 @@ describe('the measure tool\'s bars above the toolbar', () => {
     expect(rect(MODES).left).toBeLessThan(rect('.atlas-main-toolbar').left);
     expect(choices.right).toBeCloseTo(rect('.atlas-bottom-toolbar-row').right, 0);
     expect(rect(MODES).left).toBeGreaterThanOrEqual(0);
-    expect(choices.right).toBeLessThanOrEqual(520);
-    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(520);
+    expect(choices.right).toBeLessThanOrEqual(480);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(480);
     for (const selector of [MODES, CHOICES]) {
       const bar = rect(selector);
       for (const item of rects(`${selector} .atlas-tool-button`)) {
-        expect(item.left).toBeGreaterThanOrEqual(bar.left + 8);
-        expect(item.right).toBeLessThanOrEqual(bar.right - 8);
+        expect(item.left).toBeGreaterThanOrEqual(bar.left + 4);
+        expect(item.right).toBeLessThanOrEqual(bar.right - 4);
       }
     }
   });

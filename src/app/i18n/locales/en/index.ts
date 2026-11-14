@@ -68,9 +68,8 @@ import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
-import { text } from './text';
 import { audio } from './audio';
-import { drawing } from './drawing';
+import { draw } from './draw';
 import { dungeon } from './dungeon';
 import { dungeonProp } from './dungeonProp';
 import { dungeonScene } from './dungeonScene';
@@ -110,6 +109,7 @@ import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
 import { uvtt } from './uvtt';
+import { fog } from './fog';
 
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
@@ -183,9 +183,8 @@ export const en = {
   ...hotkey,
   ...pin,
   ...laser,
-  ...text,
   ...audio,
-  ...drawing,
+  ...draw,
   ...dungeon,
   ...dungeonProp,
   ...dungeonScene,
@@ -228,4 +227,5 @@ export const en = {
   ...videoMap,
   ...uvttFloors,
   ...uvtt,
+  ...fog,
 } as const;
