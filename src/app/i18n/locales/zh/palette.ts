@@ -10,7 +10,7 @@ export const palette: Translation = {
   'palette.footer.navigate': '移动',
   'palette.footer.select': '选择',
   'palette.footer.switchTabs': '切换标签',
-  'palette.freezePlayerCamera': '冻结玩家镜头',
+  'palette.freezePlayerCamera': '暂停玩家视图',
   'palette.gridAppearance': '网格外观',
   'palette.gridSettings': '网格设置',
   'palette.localPlayerViewSettings': '本地玩家视图设置',

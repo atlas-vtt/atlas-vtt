@@ -66,9 +66,9 @@ const nameOf = (annotation: Annotation): string => `${annotation.kind}:${annotat
 const placeOf = (annotation: Annotation): unknown => (annotation.kind === 'text' ? `${annotation.x},${annotation.y}` : annotation.points);
 
 /**
- * Which drawings and texts on the map the players know of. What lies on the map is lit like the
- * floor and shows only where players see or remember the map, but a page is told all of what it
- * is told: its line, its words. So an entry on the map is told only once players have seen or
+ * Which drawings and texts of a scene the players know of, on the map and above the tokens
+ * alike. Both are lit like the floor and show only where players see or remember the map, but a
+ * page is told all of what it is told: its line, its words. So an entry is told only once players have seen or
  * remember a part of it: one of the places it is asked about (`samplePoints`) is in their sight
  * now or in their memory. A large one is told whole once any part of it is known.
  *

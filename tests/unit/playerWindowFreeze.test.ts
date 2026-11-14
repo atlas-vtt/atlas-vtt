@@ -87,7 +87,7 @@ function setup({ attach: attachNow = true } = {}): Harness {
   };
 }
 
-const NOTHING_TO_FREEZE = 'Players are not shown this scene yet, so there is nothing to freeze';
+const NOTHING_TO_FREEZE = 'Players are not shown this scene yet, so there is nothing to pause';
 
 describe('player camera freeze', () => {
   it('keeps rendering the live scene through the camera players saw when frozen', () => {
@@ -138,6 +138,16 @@ describe('player camera freeze', () => {
     nextFrame();
     // The window is 16:9: now the pane's width fills it
     expect(shown(lastFrame())[2]).toBe(800);
+  });
+
+  it('takes "Camera paused" away once a present ends a held frame', () => {
+    const { service, source, doc } = setup();
+    const indicator = (): string | undefined => doc.getElementById('atlas-player-freeze-indicator')?.style.display;
+    expect(indicator()).toBe('none');
+    service.holdCurrentFrame();
+    expect(indicator()).toBe('flex');
+    service.presentCanvas(source, 'scene-a');
+    expect(indicator()).toBe('none');
   });
 
   it('holds a still frame while the DM is on another tab and returns to the frozen camera', () => {
@@ -222,9 +232,9 @@ describe('player camera freeze', () => {
       vi.mocked(Notice).mockClear();
       service.toggleCameraFreeze();
       expect(session.camera).toMatchObject({ centerX: 300, centerY: 200, width: 400, height: 300 });
-      expect(vi.mocked(Notice).mock.calls).toEqual([['Player view camera frozen']]);
+      expect(vi.mocked(Notice).mock.calls).toEqual([['Player view paused']]);
       service.toggleCameraFreeze();
-      expect(vi.mocked(Notice).mock.calls.at(-1)).toEqual(['Player view camera unfrozen']);
+      expect(vi.mocked(Notice).mock.calls.at(-1)).toEqual(['Player view playing again']);
     });
 
     it('freezes players on the new scene\'s own view when it is frozen before its first frame comes', () => {

@@ -17,8 +17,9 @@
  * 12: measurements in full (`MeasureState.full`: a ruler with its corners, a square, a line with its width, an area that walls do not stop), taken from players and sent on to them, and the rules areas and distances go by (`SharedMeasurement.manhattan`, `coneEnd`, `cellRule`, `unitName`); the GM's own carry their colour, their effect and the token an aura lies around (`FullMeasure.color`, `effect`, `aura`), and a light says the area it glows from and the token it rides (`SharedLight.area`, `token`) (2026-11-12).
  * 13: drawings and texts as the Draw tool makes them (`DRAW_GM_LEVEL`): a drawing's shape, fill, holes, dashes and arrowheads beside its line, a stamp's turn, a text's outline and wrapped lines, the one order of both, those that lie on the map (`SharedAnnotations.onMap`), and the drawing under way (`MarksMessage.strokes`) (2026-11-13).
  * 14: players draw while the GM lets them (`SharedRules.draw`): their Draw tool's requests are taken (`draw-add`, `draw-text`, `draw-change`, `draw-remove`, `draw-erase`), each is told which drawings and texts are theirs (`draw-mine`, by the `rev` of the `annotations` message) and why a request was not taken (`draw-refused`), and the drawing a player is making is sent on in the marks (`stroke`) (2026-11-13).
+ * 15: a token's move as the GM reads it: the scene's movement steps (`SharedRules.moveSteps`) and each token's speed and what it moved in the running turn (`SharedToken.move`) (2026-11-14).
  */
-export const GM_LEVEL = 14;
+export const GM_LEVEL = 15;
 
 /** The level of a GM that names none: one from before levels, which serves level 1. */
 export const UNNAMED_GM_LEVEL = 1;

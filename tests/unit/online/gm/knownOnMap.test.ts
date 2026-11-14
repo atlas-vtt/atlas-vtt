@@ -162,6 +162,34 @@ describe('what players are told of the map by what they remember', () => {
     expect(decoded).toHaveLength(2);
   });
 
+  it('tells what lies above the tokens by the same rule: only what players have seen, and what a player drew at any time', () => {
+    const telling = new AnnotationTelling({ now: () => 0, map: () => MAP, changed: () => undefined });
+    let edge = 1000;
+    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(({ x }) => x < edge), sensed: () => [], rules: () => null };
+    const above = { layer: 'above' } as const;
+    const drawings = {
+      near: line('near', { x: 100, y: 100 }, { x: 200, y: 100 }, above),
+      far: line('far', { x: 1500, y: 100 }, { x: 1600, y: 100 }, { ...above, color: '#ab1234' }),
+      theirs: line('theirs', { x: 1500, y: 300 }, { x: 1600, y: 300 }, { ...above, color: '#0000ff', by: 'player-1' }),
+    };
+    const texts = { secret: { ...label('secret', { x: 1700, y: 500 }, 'Secret door'), ...above } };
+    const state = sceneState({ lighting: { enabled: true, ambient: 0 }, objects: { ...sceneState().objects, drawings, texts } });
+    const first = telling.lists(state, NO_FOG, true, source);
+    expect(first.shared.drawings.map(({ colour }) => colour)).toEqual(['#12ab34', '#0000ff']);
+    expect(first.shared.texts).toEqual([]);
+    expect(first.above).toEqual({ drawings: ['near', 'theirs'], texts: [] });
+    // The party walks on: the rest is seen and told, and stays told when they leave.
+    edge = 5000;
+    const state2 = { ...state };
+    const second = telling.lists({ ...state2, objects: { ...state.objects, drawings: { ...drawings } } }, NO_FOG, true, source);
+    expect(second.shared.drawings).toHaveLength(3);
+    expect(second.shared.texts.map(({ text }) => text)).toEqual(['Secret door']);
+    // Where players do not see by their tokens' sight, all of it is told at once.
+    const fresh = new AnnotationTelling({ now: () => 0, map: () => MAP, changed: () => undefined });
+    edge = 0;
+    expect(fresh.lists(state, NO_FOG, false, source).shared.drawings).toHaveLength(3);
+  });
+
   it('keeps what players know of a scene that is shared again, and knows nothing of another', () => {
     const telling = new AnnotationTelling({ now: () => 0, map: () => MAP, changed: () => undefined });
     let seen = true;

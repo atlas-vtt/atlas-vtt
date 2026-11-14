@@ -15,7 +15,8 @@
 
 **Hide, layer and edit drawings**
 - Players see it: switch it off and a drawing or text is yours alone
-- Under tokens: lays a drawing on the floor, under the grid and the tokens. It is lit like the map, so players see it only where they see the map
+- With dynamic lighting, drawings, stamps and texts are lit like the map: players see them only where they see or remember the map
+- Under tokens: lays a drawing on the floor, under the grid and the tokens
 - Select mode selects only drawings and texts. A frame with handles moves, resizes and turns them, and a line's points can be dragged, added and removed
 - Lock, group, bring to front and send to back
 
@@ -28,7 +29,7 @@
 - Cover all hides the whole map in one step, Reveal all clears it. Undo takes either back
 - Rectangles and polygons snap to the grid, to walls and to fog you hid with a shape. Hold Ctrl or Cmd to place them freely
 - Cells hides or reveals whole grid cells, squares and hexes alike
-- Hold Alt to do the other thing: reveal with Hide, hide with Reveal. , and . size the brush
+- Hold Alt to do the other thing: reveal with Hide, hide with Reveal. , and . size the brush; hold one to keep sizing
 - Fog fades when it changes, on your map and in the player window
 - More sets how dark fog looks to you in GM View. Hold H to see it as your players do
 
@@ -53,13 +54,16 @@
 - The player view shows a dragged token's move as you see it: the line in the colour of the movement step, and moved / speed beside it, for every token the players can see
 - A shape shows the fog it will leave while you draw it. What it will reveal shows to you alone until you let go
 - The fog brush's ring shows on light maps and on dark ones
+- Tools with options in the toolbar look like every other tool: hovering, pressing or choosing one highlights the whole tool as one rounded button, and the arrow beside it for its options has a highlight of its own
+- The player window bar has a pause and play button: paused, players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead
+- The player window bar is slimmer: as tall as the scene tabs above it
+- Every toolbar, widget and the online play button have the same rounded corners, and the bars at the bottom stand as close to the edges of the map as those at the top. The scene tabs are no longer a pill
 
 ## Fixed
 
 - Tokens and pins under fog can be clicked and dragged: fog no longer takes their clicks
-
-## Fixed
-
+- The TrueScale frame and its bar on the map show only while TrueScale is on
+- The player window no longer says "Camera paused" after you come back to the scene it shows
 - The eye on a scene tab shows the scene to players again, in the player view and online, and the tab's close button closes it: both had become hard to click. Reported by Tanaros, Meisterdieb, George and Theo Chronis
 - Online, the eye on a floor shows that floor to players at once; before, they saw it only after a refresh. Reported by Theo Chronis
 - Ctrl/Cmd and hover shows a token's statblock with the measure tool and the other tools too, not only with Move and Select. Reported by George
@@ -68,3 +72,4 @@
 
 - Players may draw: a switch in the player view settings gives your online players a Draw tool of their own. They change and erase only what they drew
 - A map with more fog than players can be sent is shown covered to them, never open, and you are told
+- A dragged token's move reads for online players as it does for you: the line in the colour of the movement step, and moved / speed beside it, for their own tokens and every token they see

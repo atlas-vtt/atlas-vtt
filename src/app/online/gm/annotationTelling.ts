@@ -6,7 +6,7 @@ import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { SceneState } from './atlasView.ts';
 import { rememberedAt, type MaskAlpha, type MaskDecoder } from './exploredMaskAlpha.ts';
 import { KnownOnMap, type KnownPlaces } from './knownOnMap.ts';
-import { onMapAnnotations, toldAnnotationLists, type ToldAnnotationLists } from './mapLayerInputs.ts';
+import { learnedAnnotations, toldAnnotationLists, type ToldAnnotationLists } from './mapLayerInputs.ts';
 import type { MapSize } from './moveCheck.ts';
 import { SentOrders } from './sentOrders.ts';
 
@@ -81,7 +81,7 @@ export class AnnotationTelling {
     const key: AnnotationKey = { drawings, texts, fog, known: gated ? this.known.version : null };
     const last = this.told;
     if (last !== null && last.key.drawings === key.drawings && last.key.texts === key.texts && last.key.fog === key.fog && last.key.known === key.known) return last.value;
-    const value = toldAnnotationLists(drawings, texts, fog, { orders: this.orders, ...(gated && { known: (annotation) => this.known.knows(annotation) }) });
+    const value = toldAnnotationLists(drawings, texts, fog, { orders: this.orders, ...(gated && { known: (annotation) => annotation.by !== null || this.known.knows(annotation) }) });
     this.told = { key, value };
     return value;
   }
@@ -97,11 +97,11 @@ export class AnnotationTelling {
     const { drawings, texts } = levelObjects(state);
     // Fog that cannot be read tells nothing at all just now: what is known waits for it.
     if (fog === null) return true;
-    const onMap = onMapAnnotations(drawings, texts);
+    const learned = learnedAnnotations(drawings, texts);
     const sight = source.sightParts?.();
     const places: KnownPlaces = { seen: (points) => source.pointsSeen(points, fog), ...(sight !== undefined && sight !== null && { sight }), memory: this.memoryOf(state) };
-    this.known.look(onMap, [drawings, texts, fog], places);
-    if (onMap.some((annotation) => !this.known.knows(annotation))) this.readMemory(state);
+    this.known.look(learned, [drawings, texts, fog], places);
+    if (learned.some((annotation) => !this.known.knows(annotation))) this.readMemory(state);
     return true;
   }
 

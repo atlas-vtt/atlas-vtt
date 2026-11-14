@@ -322,7 +322,7 @@ describe('the drawings on the map, as they are drawn', () => {
 describe('the drawings on the map, under the lighting', () => {
   const MAP = 256;
 
-  it('lights a drawing on the map like the floor, and leaves one above the tokens as it is', async () => {
+  it('lights every drawing like the floor: one on the map under the tokens, one above the tokens over them, and neither shows in a room no light reaches', async () => {
     const view = await openLitView({ pane: { width: MAP, height: MAP }, map: MAP });
     const { app, viewport, store, controller, displayFrames } = view;
     // The helper's floor stands in for the map image, which lies beneath everything.
@@ -332,6 +332,10 @@ describe('the drawings on the map, under the lighting', () => {
     tokens.tint = 0x3050d0;
     tokens.setSize(24, 24);
     tokens.position.set(60, 68);
+    const second = viewport.addChild(new Sprite(Texture.WHITE));
+    second.tint = 0x3050d0;
+    second.setSize(24, 24);
+    second.position.set(60, 168);
     const annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
     cleanup.push(() => { annotations.destroy(); view.dispose(); });
     const state = store.getState();
@@ -363,14 +367,16 @@ describe('the drawings on the map, under the lighting', () => {
     expect(lum(at(players, 40, 80, MAP))).toBeGreaterThan(150);
     expect(lum(at(players, 200, 80, MAP))).toBeLessThan(8);
     expect(at(players, 72, 80, MAP)[2]).toBeGreaterThan(at(players, 72, 80, MAP)[0] + 40);
-    // Above the tokens: as bright in the dark room as in the lit one.
-    expect(lum(at(players, 40, 180, MAP))).toBeGreaterThan(240);
-    expect(lum(at(players, 200, 180, MAP))).toBeGreaterThan(240);
+    // Above the tokens: lit as well, so players see it where they see the map, and it covers the token.
+    expect(lum(at(players, 40, 180, MAP))).toBeGreaterThan(150);
+    expect(lum(at(players, 200, 180, MAP))).toBeLessThan(8);
+    expect(at(players, 72, 180, MAP)[2]).toBeLessThan(at(players, 72, 180, MAP)[0] + 20);
     // The stroke under way lies on the map too: brighter than the lit floor beside it, and dark where the room is.
     expect(lum(at(players, 40, 40, MAP))).toBeGreaterThan(lum(at(players, 40, 58, MAP)) + 15);
     expect(lum(at(players, 200, 40, MAP))).toBeLessThan(8);
     // The GM reads the map's own drawing in the dark room too.
     expect(lum(at(read([]), 200, 80, MAP))).toBeGreaterThan(8);
+    expect(lum(at(read([]), 200, 180, MAP))).toBeGreaterThan(8);
   });
 });
 

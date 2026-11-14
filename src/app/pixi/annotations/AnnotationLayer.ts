@@ -72,8 +72,8 @@ function layer(label: string, zIndex: number): Container {
 
 /**
  * The drawings and texts of one level as they are drawn, from the list `annotationList` reads, in
- * its order, in four layers: on the map (under the grid, lit by the lighting like the floor) and
- * above the tokens, and beside each of the two a layer for what only the GM sees, drawn paler.
+ * its order, in four layers: on the map (under the grid) and above the tokens, both lit by the
+ * lighting like the floor, and beside each of the two a layer for what only the GM sees, drawn paler.
  * Whoever owns the layer shows the GM's two to nobody else (`annotationPlayersView`).
  *
  * An annotation is drawn when a picture first shows it and again only when its record is another

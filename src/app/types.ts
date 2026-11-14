@@ -167,7 +167,7 @@ export interface TextElement extends OnOneLevel {
   breaks?: number[];
   /** Only the GM sees it. Unset: players see it. */
   hidden?: true;
-  /** On the floor, lit like the map. Unset: above the tokens. */
+  /** On the floor, under the grid and the tokens. Unset: above the tokens. Both are lit like the map. */
   layer?: 'map';
   locked?: true;
   /** Its place in the one order of drawings and texts; unset lies under every annotation that has one above 0. */
@@ -217,7 +217,7 @@ export interface DrawingStroke extends OnOneLevel {
   rotation?: number;
   /** Only the GM sees it. Unset: players see it. */
   hidden?: true;
-  /** On the floor, lit like the map. Unset: above the tokens. */
+  /** On the floor, under the grid and the tokens. Unset: above the tokens. Both are lit like the map. */
   layer?: 'map';
   locked?: true;
   /** Its place in the one order of drawings and texts; unset lies under every annotation that has one above 0. */

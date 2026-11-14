@@ -27,7 +27,7 @@ $widget-bar-offset: $spacing-s;
 
 // The stack's one control, over its whole box (`useWidgetStack`); the cards under it are inert.
 .atlas-widget-stack-opener {
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($toolbar-radius);
   @include atlas-focus-ring;
   appearance: none;
   position: absolute;
@@ -73,7 +73,7 @@ $widget-bar-offset: $spacing-s;
   --widget-color: var(--interactive-accent);
 
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($toolbar-radius);
   @include atlas-flex-row($spacing-s);
   position: relative;
   padding: $spacing-s;

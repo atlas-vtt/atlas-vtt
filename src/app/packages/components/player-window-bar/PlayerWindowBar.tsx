@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useStore } from "zustand"
-import { Blinds, ImageOff, Scan } from "lucide-react"
+import { Blinds, ImageOff, Pause, Play, Scan } from "lucide-react"
 import type { AtlasView } from "../../../atlas-view"
 import { useAtlasSettings } from "../../../keyboard/useMapHotkeys"
 import { PlayerWindowService } from "../../../services/PlayerWindowService"
@@ -45,13 +45,14 @@ function useDismiss(root: RefObject<HTMLElement | null>, open: boolean, close: (
 
 /**
  * The player window bar (GM only, below the scene tabs while the player window is open), with the
- * look and corners of the undo/redo bar: TrueScale, full screen on the TV, the curtain, what
- * players see (and closing the window), and, while players are handed an image or loot, taking it
- * back. The handout's button comes last, so nothing moves under the pointer when it comes or goes.
+ * look and corners of the undo/redo bar: TrueScale, full screen on the TV, the curtain, pausing
+ * the player view (disabled while TrueScale is on), what players see (and closing the window), and, while players are handed an
+ * image or loot, taking it back. The handout's button comes last, so nothing moves under the pointer when it comes or goes.
  */
 export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.ReactElement | null {
   const isOpen = useStore(playerWindowStore, (s) => s.isOpen)
   const curtain = useStore(playerWindowStore, (s) => s.curtain)
+  const frozen = useStore(playerWindowStore, (s) => s.isFrozen)
   const handoutShown = useHandoutShown()
   const settings = useAtlasSettings()
   const [menu, setMenu] = useState<BarMenu | null>(null)
@@ -68,6 +69,8 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
   useDismiss(rootRef, menu !== null, closeMenu)
 
   if (!isOpen || !settings) return null
+  // TrueScale freezes with the pin on its frame; the button stays, so the bar keeps its shape
+  const trueScale = service?.isTrueScale() ?? false
   const toggleMenu = (which: BarMenu) => (): void => setMenu((open) => (open === which ? null : which))
   return (
     <TooltipProvider delayDuration={300}>
@@ -88,6 +91,14 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
             label={curtain ? t("playerBar.curtainUp") : t("playerBar.curtainDown")}
             isActive={curtain}
             onClick={() => service?.setCurtain(!curtain)}
+            tooltipSide="bottom"
+          />
+          <ToolButton
+            icon={frozen ? Play : Pause}
+            label={trueScale ? t("playerBar.freezeTrueScale") : frozen ? t("playerBar.unfreeze") : t("playerBar.freeze")}
+            isActive={frozen && !trueScale}
+            disabled={trueScale}
+            onClick={() => service?.toggleCameraFreeze()}
             tooltipSide="bottom"
           />
           <PlayersSeeMenu open={menu === "playersSee"} onToggle={toggleMenu("playersSee")} settings={settings} />

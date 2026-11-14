@@ -161,7 +161,7 @@ describe('Atlas search actions', () => {
     fireEvent.keyDown(input, { key: 'Tab' });
     expect(screen.getByRole('button', { name: /^Enter Player Mode/ }).classList.contains('atlas-focused')).toBe(true);
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(screen.getByRole('button', { name: /^Freeze Player Camera/ }).classList.contains('atlas-focused')).toBe(true);
+    expect(screen.getByRole('button', { name: /^Pause Player View/ }).classList.contains('atlas-focused')).toBe(true);
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onClose).toHaveBeenCalledOnce();

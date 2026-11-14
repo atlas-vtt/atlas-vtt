@@ -27,8 +27,8 @@ export const MAP_HOTKEYS = [
   { id: 'erase', label: t('hotkey.erase'), group: t('hotkey.group.tools'), defaultKey: 'e', dmOnly: true },
   { id: 'text', label: t('hotkey.text'), group: t('hotkey.group.tools'), defaultKey: 't', dmOnly: true },
   // Run only while the Draw tool or the fog tool is in use (`useToolbarHotkeys`): the size of whichever it is.
-  { id: 'drawSmaller', label: t('hotkey.drawSmaller'), group: t('hotkey.group.tools'), defaultKey: ',', dmOnly: true },
-  { id: 'drawLarger', label: t('hotkey.drawLarger'), group: t('hotkey.group.tools'), defaultKey: '.', dmOnly: true },
+  { id: 'drawSmaller', label: t('hotkey.drawSmaller'), group: t('hotkey.group.tools'), defaultKey: ',', dmOnly: true, repeats: true },
+  { id: 'drawLarger', label: t('hotkey.drawLarger'), group: t('hotkey.group.tools'), defaultKey: '.', dmOnly: true, repeats: true },
   { id: 'measure', label: t('hotkey.measure'), group: t('hotkey.group.tools'), defaultKey: 'm' },
   // Runs only while the measure tool is in use (`useToolbarHotkeys`).
   { id: 'measureKeep', label: t('hotkey.measureKeep'), group: t('hotkey.group.tools'), defaultKey: 'k', dmOnly: true },
@@ -92,8 +92,9 @@ export function hotkeyFromEvent(event: KeyboardEvent): string | null {
 export function matchesHotkey(event: KeyboardEvent, binding: string, allowRepeat = false): boolean {
   return !!binding && (allowRepeat || !event.repeat) && !event.isComposing && hotkeyFromEvent(event) === binding;
 }
+/** Whether `event` is the key of the action `id`. A key that is held counts only for an action that `repeats` (the size keys). */
 export function matchesMapHotkey(event: KeyboardEvent, id: MapHotkeyId, settings?: SettingsService): boolean {
-  return matchesHotkey(event, (settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS)[id]);
+  return matchesHotkey(event, (settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS)[id], event.repeat && 'repeats' in hotkeyAction(id));
 }
 const UNASSIGNED_HOTKEY = t('hotkey.unassigned');
 export function formatHotkey(binding: string): string {

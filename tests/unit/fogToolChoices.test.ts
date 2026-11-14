@@ -61,6 +61,21 @@ describe('the fog brush\'s size', () => {
     }
   });
 
+  it('steps a held key\'s brush by about a twentieth of itself, a pixel at least, so a held key sizes it smoothly', () => {
+    expect(steppedBrushSize(100, 1, true)).toBe(105);
+    expect(steppedBrushSize(100, -1, true)).toBe(95);
+    expect(steppedBrushSize(FOG_BRUSH_SIZES.min, 1, true)).toBeGreaterThan(FOG_BRUSH_SIZES.min);
+    let size: number = FOG_BRUSH_SIZES.min;
+    let steps = 0;
+    while (size < FOG_BRUSH_SIZES.max) {
+      size = steppedBrushSize(size, 1, true);
+      steps += 1;
+    }
+    // At 25 repeats a second, the whole range in two to four seconds.
+    expect(steps).toBeGreaterThan(40);
+    expect(steps).toBeLessThan(100);
+  });
+
   it('walks from the smallest brush to the largest and back, a step at a time, and stops at either end', () => {
     let size: number = FOG_BRUSH_SIZES.min;
     const up: number[] = [size];

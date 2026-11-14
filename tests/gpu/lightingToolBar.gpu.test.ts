@@ -79,9 +79,9 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     expect(modes.height).toBeLessThan(toolbar.height - 6);
     const buttons = [...document.querySelectorAll('.atlas-tool-bar--modes .atlas-tool-button')].map((button) => button.getBoundingClientRect());
     expect(buttons.map((button) => Math.round(button.width))).toEqual([32, 32, 32, 32, 32, 32]);
-    // The toolbar's corner in proportion to the bar's height, so it reads as the toolbar drawn smaller, never a capsule.
+    // Every toolbar has the same corner.
     const corner = (selector: string): number => parseFloat(getComputedStyle(document.querySelector(selector)!).borderTopLeftRadius);
-    expect(corner('.atlas-tool-bar--modes') / modes.height).toBeCloseTo(corner('.atlas-main-toolbar') / toolbar.height, 2);
+    expect(corner('.atlas-tool-bar--modes')).toBe(corner('.atlas-main-toolbar'));
   });
 
   it('moves nothing of the modes when another mode brings other tools', async () => {

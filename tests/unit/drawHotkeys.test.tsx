@@ -138,6 +138,15 @@ describe('the Draw tool\'s keys', () => {
     expect(getHistoryStore(store)!.getState().pastStates).toHaveLength(0);
   });
 
+  it('steps one named size a press: a held key does not run through the four sizes', () => {
+    const store = mount();
+    press('b');
+    press('.');
+    expect(store.getState().drawTool.size).toBe('l');
+    for (let i = 0; i < 5; i++) fireEvent.keyDown(window, { key: '.', repeat: true });
+    expect(store.getState().drawTool.size).toBe('l');
+  });
+
   it('takes no choice in the session view, where the bars take none: the tool is selected and keeps its mode and size', () => {
     const store = mount();
     store.getState().setGMView(false);

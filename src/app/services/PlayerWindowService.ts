@@ -415,6 +415,8 @@ export class PlayerWindowService {
       if (framing && !anotherScene) this.moveFrozenCamera(framing);
       else this.setFrozenCamera(framing);
     }
+    // The held frame is gone even where no freeze changed
+    this.updateFreezeIndicator();
     playerWindowStore.setState({ shownTabId: tabId });
     this.playerView?.updateSession({
       tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: this.isFrozen(), ...(anotherScene && !this.isFrozen() ? { camera: null } : {}),
@@ -614,9 +616,9 @@ export class PlayerWindowService {
         'stroke-linecap': 'round',
         'stroke-linejoin': 'round',
       } });
-      freezeIcon.createSvg('line', { attr: { x1: 2, y1: 12, x2: 22, y2: 12 } });
-      freezeIcon.createSvg('line', { attr: { x1: 12, y1: 2, x2: 12, y2: 22 } });
-      freezeIcon.createSvg('path', { attr: { d: 'M20 16l-4-4 4-4M4 8l4 4-4 4M16 4l-4 4-4-4M8 20l4-4 4 4' } });
+      // Lucide's pause
+      freezeIcon.createSvg('rect', { attr: { x: 14, y: 4, width: 4, height: 16, rx: 1 } });
+      freezeIcon.createSvg('rect', { attr: { x: 6, y: 4, width: 4, height: 16, rx: 1 } });
       freezeIndicator.createSpan({ text: t('player.paused') });
       freezeIndicator.style.display = this.frozenCamera || this.heldFrame ? 'flex' : 'none';
       
