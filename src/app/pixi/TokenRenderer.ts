@@ -2092,9 +2092,9 @@ export class TokenRenderer {
       return;
     }
 
-    // Token hover: only for select/move tools
+    // Token hover: only for select/move tools; the statblock preview (Ctrl/Cmd held) answers with every tool
     if (activeTool !== 'select' && activeTool !== 'move') {
-      this.interactionController.handleViewportTokenHover(null);
+      this.interactionController.handleViewportTokenHover(this.hitTestTokens(worldPos.x, worldPos.y), e);
       this.uiManager.setHoverState(null);
       this.viewport.cursor = 'default';
       return;

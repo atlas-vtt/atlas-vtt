@@ -1080,6 +1080,22 @@ describe('TokenRenderer Integration Tests', () => {
       expect(left).toHaveBeenCalledWith({ pin: expect.objectContaining({ id: 'token-1' }) });
     });
 
+    it('should offer the statblock hover with every tool that leaves tokens alone, the measure tool too', async () => {
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105, kind: 'character', statblockPath: 'Goblin.md' }));
+      await waitForTokens('token-1');
+      store.setState({ activeTool: 'measure' });
+      const hovered = vi.fn();
+      const left = vi.fn();
+      eventBus.on('pin-hover-preview', hovered);
+      eventBus.on('pin-hide-preview', left);
+
+      viewport.emit('pointermove', { ...pointerEvent(105, 105), clientX: 105, clientY: 105 });
+      expect(hovered).toHaveBeenCalledWith(expect.objectContaining({ pin: expect.objectContaining({ id: 'token-1', notePath: 'Goblin.md' }) }));
+
+      viewport.emit('pointermove', { ...pointerEvent(600, 600), clientX: 600, clientY: 600 });
+      expect(left).toHaveBeenCalledWith({ pin: expect.objectContaining({ id: 'token-1' }) });
+    });
+
     it('should drop the statblock hover of a token that went to another level', async () => {
       store.setState({
         levels: [
