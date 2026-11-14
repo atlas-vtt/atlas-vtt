@@ -160,8 +160,8 @@ describe('the table log\'s tab on the GM\'s map', () => {
       await page.screenshot({ path: `__screenshots__/atlas-player-window-bar-${width}.png`, element: leaf });
       const tabs = boxOf('.atlas-scene-tab-bar');
       const bar = boxOf('.atlas-player-window-bar .atlas-vtt-toolbar');
-      // Five buttons of 40 px with the bar's gaps and padding of 8 px, and its border
-      expect(bar.width).toBeCloseTo(250, -1);
+      // Five buttons of 28 px with the bar's gaps and padding of 4 px, and its border
+      expect(bar.width).toBeCloseTo(166, -1);
       expect(bar.left).toBeCloseTo(tabs.left, 0);
       expect(bar.top).toBeCloseTo(tabs.bottom + INSET, 0);
       expect(tab.left).toBeCloseTo(bar.left, 0);
@@ -188,6 +188,18 @@ describe('the table log\'s tab on the GM\'s map', () => {
     const { tab } = await mount(900, 420, { tabs: true, widgets: 0, levels: true });
     expect(boxOf('.atlas-level-switcher').top).toBeGreaterThanOrEqual(tab.bottom + INSET);
     staysClear(tab);
+  });
+
+  it('draws the player window bar as tall as the scene tabs, its buttons concentric in its capsule', async () => {
+    await mount(1280, 600, { tabs: true, widgets: 0, levels: false, bar: true });
+    const bar = boxOf('.atlas-player-window-bar > .atlas-vtt-toolbar');
+    expect(bar.height).toBeCloseTo(boxOf('.atlas-scene-tab-bar').height, 0);
+    const button = document.querySelector<HTMLElement>('.atlas-player-window-bar .btn')!;
+    const inset = button.getBoundingClientRect().top - bar.top;
+    expect(inset).toBeCloseTo(bar.bottom - button.getBoundingClientRect().bottom, 0);
+    // A capsule's half height is its button's half height plus the inset
+    expect(bar.height / 2).toBeCloseTo(button.getBoundingClientRect().height / 2 + inset, 0);
+    expect(parseFloat(getComputedStyle(button).borderTopLeftRadius)).toBeGreaterThanOrEqual(button.getBoundingClientRect().height / 2);
   });
 
   it('leaves the tabs where they were', async () => {
