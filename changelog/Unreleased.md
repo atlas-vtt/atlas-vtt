@@ -54,7 +54,7 @@
 - A shape shows the fog it will leave while you draw it. What it will reveal shows to you alone until you let go
 - The fog brush's ring shows on light maps and on dark ones
 - Tools with options in the toolbar look like every other tool: hovering, pressing or choosing one highlights the whole tool as one rounded button, and the arrow beside it for its options has a highlight of its own
-- The player window bar has a Freeze button: players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead
+- The player window bar has a pause and play button: paused, players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead
 
 ## Fixed
 

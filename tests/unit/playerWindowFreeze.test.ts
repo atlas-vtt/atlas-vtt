@@ -87,7 +87,7 @@ function setup({ attach: attachNow = true } = {}): Harness {
   };
 }
 
-const NOTHING_TO_FREEZE = 'Players are not shown this scene yet, so there is nothing to freeze';
+const NOTHING_TO_FREEZE = 'Players are not shown this scene yet, so there is nothing to pause';
 
 describe('player camera freeze', () => {
   it('keeps rendering the live scene through the camera players saw when frozen', () => {
@@ -232,9 +232,9 @@ describe('player camera freeze', () => {
       vi.mocked(Notice).mockClear();
       service.toggleCameraFreeze();
       expect(session.camera).toMatchObject({ centerX: 300, centerY: 200, width: 400, height: 300 });
-      expect(vi.mocked(Notice).mock.calls).toEqual([['Player view camera frozen']]);
+      expect(vi.mocked(Notice).mock.calls).toEqual([['Player view paused']]);
       service.toggleCameraFreeze();
-      expect(vi.mocked(Notice).mock.calls.at(-1)).toEqual(['Player view camera unfrozen']);
+      expect(vi.mocked(Notice).mock.calls.at(-1)).toEqual(['Player view playing again']);
     });
 
     it('freezes players on the new scene\'s own view when it is frozen before its first frame comes', () => {

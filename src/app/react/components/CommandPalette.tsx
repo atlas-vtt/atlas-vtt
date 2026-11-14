@@ -16,7 +16,7 @@ import {
   FlaskConical,
   Grid,
   Settings,
-  Snowflake,
+  Pause,
   MonitorUp,
   MonitorPlay,
   AppWindow,
@@ -337,7 +337,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     },
     {
       id: "freeze-player-camera",
-      icon: <Snowflake />,
+      icon: <Pause />,
       label: t('palette.freezePlayerCamera'),
       section: "mode",
       action: () => {

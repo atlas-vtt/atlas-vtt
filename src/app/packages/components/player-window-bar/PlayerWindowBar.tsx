@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useStore } from "zustand"
-import { Blinds, ImageOff, Scan, Snowflake } from "lucide-react"
+import { Blinds, ImageOff, Pause, Play, Scan } from "lucide-react"
 import type { AtlasView } from "../../../atlas-view"
 import { useAtlasSettings } from "../../../keyboard/useMapHotkeys"
 import { PlayerWindowService } from "../../../services/PlayerWindowService"
@@ -45,7 +45,7 @@ function useDismiss(root: RefObject<HTMLElement | null>, open: boolean, close: (
 
 /**
  * The player window bar (GM only, below the scene tabs while the player window is open), with the
- * look and corners of the undo/redo bar: TrueScale, full screen on the TV, the curtain, freezing
+ * look and corners of the undo/redo bar: TrueScale, full screen on the TV, the curtain, pausing
  * the player view (disabled while TrueScale is on), what players see (and closing the window), and, while players are handed an
  * image or loot, taking it back. The handout's button comes last, so nothing moves under the pointer when it comes or goes.
  */
@@ -94,7 +94,7 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
             tooltipSide="bottom"
           />
           <ToolButton
-            icon={Snowflake}
+            icon={frozen ? Play : Pause}
             label={trueScale ? t("playerBar.freezeTrueScale") : frozen ? t("playerBar.unfreeze") : t("playerBar.freeze")}
             isActive={frozen && !trueScale}
             disabled={trueScale}

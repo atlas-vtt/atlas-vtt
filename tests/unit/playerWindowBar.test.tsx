@@ -63,16 +63,16 @@ describe('the player window bar', () => {
     expect(context.service.setCurtain).toHaveBeenLastCalledWith(false);
   });
 
-  it('freezes the player view and lets it follow again, with TrueScale off', () => {
+  it('pauses the player view and plays it again, with TrueScale off', () => {
     render(<PlayerWindowBar view={null} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Freeze the player view' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pause the player view' }));
     expect(context.service.toggleCameraFreeze).toHaveBeenCalledOnce();
     act(() => playerWindowStore.setState({ isFrozen: true }));
-    fireEvent.click(screen.getByRole('button', { name: 'Let the player view follow you' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Play: the player view follows you again' }));
     expect(context.service.toggleCameraFreeze).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps the freeze button but disables it while TrueScale is on', () => {
+  it('keeps the pause button but disables it while TrueScale is on', () => {
     context.service.isTrueScale.mockReturnValue(true);
     render(<PlayerWindowBar view={null} />);
     const freeze = screen.getByRole('button', { name: 'With TrueScale on, pin the players on the frame on your map' });
