@@ -167,8 +167,7 @@ export interface ViewAtlasState extends ViewState {
   coverAllFog: FogSlice['coverAllFog'];
   addFogArea: FogSlice['addFogArea'];
   flipFogArea: FogSlice['flipFogArea'];
-  updateFogArea: FogSlice['updateFogArea'];
-  deleteFogAreas: FogSlice['deleteFogAreas'];
+  reshapeFogArea: FogSlice['reshapeFogArea'];
   addRoomAreas: FogSlice['addRoomAreas'];
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
@@ -328,9 +327,6 @@ export interface ViewAtlasState extends ViewState {
   closeLevelSurfacePopover: UISlice['closeLevelSurfacePopover'];
   openMeasurePopover: UISlice['openMeasurePopover'];
   closeMeasurePopover: UISlice['closeMeasurePopover'];
-  openFogAreaPopover: UISlice['openFogAreaPopover'];
-  closeFogAreaPopover: UISlice['closeFogAreaPopover'];
-  selectFogArea: UISlice['selectFogArea'];
   setMeasureTool: UISlice['setMeasureTool'];
   setDrawTool: UISlice['setDrawTool'];
   setFogTool: UISlice['setFogTool'];
@@ -810,8 +806,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             draft.activeTool = tool;
-            // Revealing makes no areas: the fog tool comes back from it hiding.
-            if (tool === 'eraser' && draft.fogTool.areas) draft.fogTool = { ...draft.fogTool, areas: false };
           }),
 
           setSelectionMode: (mode) => set((draft) => {

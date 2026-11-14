@@ -1,12 +1,13 @@
 /**
  * The fog tool's Room shape: the room the walls enclose under the pointer (`fogRooms.ts`) is
  * outlined while the pointer rests in it, and a press released in place is a click in that room,
- * which the tool then hides or reveals, or in Areas mode makes an area, unless an area is that
- * room already: that area is selected instead. Where the walls enclose nothing, a notice says so.
+ * which the tool then hides or reveals. Fog that is remembered as that room already (an area) is
+ * hidden or revealed as the piece it is, so a room never has two. Where the walls enclose
+ * nothing, a notice says so.
  */
 import type { Graphics } from 'pixi.js';
 import type { StoreApi } from 'zustand';
-import { areaOutline, fogAreaList } from '../../fog/fogAreas';
+import { areaIsHidden, areaOutline, fogAreaList, type FogArea } from '../../fog/fogAreas';
 import { outlineRings } from '../../fog/fogKeyhole';
 import { isAreaOfRoom } from '../../fog/fogRoomAreas';
 import { roomAt, roomTexel, type RoomCorners } from '../../fog/fogRooms';
@@ -18,8 +19,10 @@ import type { Point } from '../../types/visionTypes';
 import { showNotice } from '../../ui/notice';
 import { wallList } from '../../vision/wallList';
 import { canvasBadgeTheme } from '../utils/canvasBadgeColors';
-import { CLICK_SLOP } from './FogAreaEditor';
 import { drawAreaOutlines } from './fogAreaOutlines';
+
+/** Screen pixels the pointer may move from where it was pressed before the press is no click. */
+const CLICK_SLOP = 4;
 
 export interface FogRoomClickDeps {
   readonly store: Pick<StoreApi<ViewAtlasState>, 'getState'>;
@@ -29,9 +32,8 @@ export interface FogRoomClickDeps {
   readonly outline: Graphics;
   /** Screen pixels per world pixel. */
   readonly zoom: () => number;
-  /** Whether a click selects the area that is the room clicked in: the tool makes areas, and Alt is not held. */
-  readonly selects: () => boolean;
-  readonly select: (areaId: string) => void;
+  /** Whether a click made now hides the room; else it reveals it. */
+  readonly hides: () => boolean;
   /** Fills the room clicked in at the world point: its corners become the tool's shape. */
   readonly fill: (world: Point, room: Point[]) => void;
 }
@@ -59,9 +61,11 @@ export class FogRoomClick {
       showNotice(t('fog.roomNotEnclosed'));
       return;
     }
-    const area = this.deps.selects() ? this.areaOf(room) : null;
-    if (area !== null) this.deps.select(area);
-    else this.deps.fill(world, room.map(({ x, y }) => ({ x, y })));
+    const hides = this.deps.hides();
+    const piece = this.areaOf(room);
+    // The room is remembered already: that piece is hidden or revealed. One that is hidden stays so.
+    if (piece && areaIsHidden(piece) !== hides) this.deps.store.getState().flipFogArea(piece.id);
+    else if (!piece || !hides) this.deps.fill(world, room.map(({ x, y }) => ({ x, y })));
   }
 
   /** The pointer is at `world` (`screen` on the canvas): the room there is outlined, anew only for another room. A press that left its place is no click. */
@@ -94,12 +98,12 @@ export class FogRoomClick {
   }
 
   /** The area of the level shown that is `room` already, or null. */
-  private areaOf(room: RoomCorners): string | null {
+  private areaOf(room: RoomCorners): FogArea | null {
     const state = this.deps.store.getState();
     const mapRect = this.deps.mapRect();
     if (!mapRect) return null;
     const reach = roomTexel(mapRect, state.grid?.size ?? 0);
-    return fogAreaList(levelObjects(state).fog).find((area) => isAreaOfRoom(room, areaOutline(area), reach))?.id ?? null;
+    return fogAreaList(levelObjects(state).fog).find((area) => isAreaOfRoom(room, areaOutline(area), reach)) ?? null;
   }
 
   private show(room: RoomCorners | null): void {

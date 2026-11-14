@@ -81,7 +81,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(tools.left).toBeCloseTo(whats.right + 8, 0);
     expect(tools.bottom).toBeCloseTo(whats.bottom, 0);
     expect(tools.height).toBeCloseTo(whats.height, 1);
-    expect(rects(`${WHATS} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual([32, 32, 32]);
+    expect(rects(`${WHATS} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual([32, 32]);
     const controls = rects(`${TOOLS} .atlas-tool-button`);
     expect(controls.map((item) => [Math.round(item.width), Math.round(item.height)])).toEqual(Array.from({ length: 10 }, () => [32, 32]));
     // Brush, Rectangle, Polygon, Lasso, Cells, Room, the size | Cover all, Reveal all | More
@@ -137,7 +137,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
       }
     });
     same();
-    for (const name of ['Room', 'Areas', 'Hide', 'Brush']) {
+    for (const name of ['Room', 'Reveal', 'Hide', 'Brush']) {
       act(() => button(name).click());
       same();
     }
@@ -182,12 +182,12 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(hint.getBoundingClientRect().right).toBeCloseTo(row.right, 1);
     expect(hint.getBoundingClientRect().height).toBeGreaterThan(1.5 * parseFloat(getComputedStyle(hint).fontSize));
     expect(more.width).toBeLessThan(300);
-    // The menu has one text edge: its two actions begin on it with their icons, where the switch's and the sliders' names begin.
+    // The menu has one text edge: its action begins on it with its icon, where the switch's and the sliders' names begin.
     const edge = rect(`${TOOLS} .atlas-dropdown-toggle-row__label`).left;
     expect(rect(`${TOOLS} .atlas-dropdown-slider-row .atlas-dropdown-label`).left + parseFloat(getComputedStyle(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row .atlas-dropdown-label`)!).paddingLeft)).toBeCloseTo(edge, 1);
     const across = rect(`${TOOLS} .atlas-dropdown-content .slider-root`);
     const actions = [...document.querySelectorAll<HTMLElement>(`${TOOLS} .atlas-dropdown-content .atlas-dropdown-menu-item`)];
-    expect(actions.map((action) => action.textContent)).toEqual(['Areas from walls', 'Delete all areas']);
+    expect(actions.map((action) => action.textContent)).toEqual(['Hide all rooms']);
     for (const action of actions) {
       const [icon, label] = [action.querySelector('svg')!.getBoundingClientRect(), action.querySelector('span')!.getBoundingClientRect()];
       expect(icon.left).toBeCloseTo(edge, 1);

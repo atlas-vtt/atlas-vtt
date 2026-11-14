@@ -220,13 +220,13 @@ describe('the fog tool\'s Room shape on the map', () => {
     expect(accentAlong(outside, 16, 20, 108)).toBe(0);
   });
 
-  it('makes an area of every room from the walls, each with its badge, in one undo step', async () => {
+  it('hides every room the walls enclose as a piece of its own, in one undo step, and marks none of them on the map', async () => {
     const s = await scene();
     s.showMapImage(MAP);
     withWalls(s.store);
     const history = getHistoryStore(s.store)!;
 
-    expect(s.store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 3, full: false });
+    expect(s.store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 3 });
     expect(history.getState().pastStates).toHaveLength(1);
     const areas = fogAreaList(s.store.getState().objects.fog);
     expect(areas.map((area) => areaOutline(area).map(({ x, y }) => `${x},${y}`).sort()).sort()).toEqual([
@@ -236,28 +236,22 @@ describe('the fog tool\'s Room shape on the map', () => {
     ]);
     expectFogOver(s.frame(), [HALL, VAULT, CELL]);
 
-    // One badge in the middle of each room, on the GM's canvas alone.
-    const spots = areas.map((area) => s.fog.areaBadgeSpot(area.id));
-    expect(spots.map((spot) => `${spot?.x},${spot?.y}`).sort()).toEqual(['40,110', '40,48', '88,48']);
+    // With another tool than the fog tool nothing marks the rooms: a picture of the scene is the GM's canvas.
+    s.store.getState().setActiveTool('move');
     const gm = s.rgba();
     const picture = s.rgba(s.fog.getGmViewLayers());
-    const marked = (x: number, y: number): boolean => [0, 1, 2].some((channel) => Math.abs(gm[(y * SIZE + x) * 4 + channel]! - picture[(y * SIZE + x) * 4 + channel]!) > 8);
-    for (const spot of spots) {
-      let pixels = 0;
-      for (let y = spot!.y - 14; y < spot!.y + 14; y++) for (let x = spot!.x - 14; x < spot!.x + 14; x++) if (marked(x, y)) pixels++;
-      expect(pixels).toBeGreaterThan(300);
-    }
-    // No badge where there is no room.
-    expect(marked(100, 104)).toBe(false);
+    expect(gm.some((value, at) => Math.abs(value - picture[at]!) > 8)).toBe(false);
 
-    // A click on a room's badge reveals it: the vault and the cell stay hidden.
+    // One room revealed: the vault and the cell stay hidden.
     s.store.getState().flipFogArea(areas.find((area) => areaOutline(area).some((corner) => corner.x === 16))!.id);
     expectFogOver(s.frame(), [VAULT, CELL]);
 
-    // Again there is nothing to make.
-    expect(s.store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 0, full: false });
-    history.getState().undo();
-    history.getState().undo();
+    // Again: the room that was revealed is hidden again as the piece it is, and nothing else is made.
+    expect(s.store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 1 });
+    expect(fogAreaList(s.store.getState().objects.fog)).toHaveLength(3);
+    expectFogOver(s.frame(), [HALL, VAULT, CELL]);
+    expect(s.store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 0 });
+    for (let step = 0; step < 3; step++) history.getState().undo();
     expect(fogAreaList(s.store.getState().objects.fog)).toEqual([]);
     expectFogOver(s.frame(), []);
   });

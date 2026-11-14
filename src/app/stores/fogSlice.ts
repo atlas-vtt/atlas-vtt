@@ -1,29 +1,15 @@
 /** Fog operations (`FogOperation`) in the view store: scene objects of one level each, every change one undo step. */
 
-import { areaGeometry, areaIsHidden, areaName, areaOutline, flippedArea, fogAreaOutlines, isFogArea, MAX_AREA_NAME, MAX_FOG_AREAS, type FogArea, type FogAreaGeometry, type FogAreaShape } from '../fog/fogAreas';
+import { areaGeometry, areaIsHidden, areaOutline, flippedArea, fogAreaList, isFogArea, MAX_FOG_AREAS, type FogArea, type FogAreaGeometry, type FogAreaShape } from '../fog/fogAreas';
 import { planRoomAreas, type RoomAreasMade } from '../fog/fogRoomAreas';
 import { roomsOfWalls, roomTexel } from '../fog/fogRooms';
 import type { MapRect } from '../grid/cellNumbering';
 import { levelObjects } from '../levels/levelObjects';
 import { onLevel, placedOnViewedLevel, viewedLevelId } from '../levels/sceneLevels';
-import type { FogAreaMark, FogOperation, FogOperationInput } from '../types/fogTypes';
+import type { FogOperation, FogOperationInput } from '../types/fogTypes';
 import type { Point } from '../types/visionTypes';
 import type { ViewState } from '../types/viewState';
 import { wallList } from '../vision/wallList';
-
-/**
- * What changes of an area. `points` is a new outline, which makes its operation a lasso; `x`,
- * `y`, `width` and `height` change a rectangle that stays one (and nothing of a lasso, or beside
- * `points`). A `name` given as undefined or blank takes the name away.
- */
-export interface FogAreaChanges {
-  points?: readonly Point[];
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  name?: string | undefined;
-}
 
 export interface FogSlice {
   /** Adds an operation on the level shown and returns its id: it acts after all the fog there is. */
@@ -34,8 +20,8 @@ export interface FogSlice {
    */
   addFogOperations: (data: readonly FogOperationInput[]) => string[];
   /**
-   * Reveals the whole level the view shows, in one undo step: its fog goes, and its areas stay,
-   * revealed. Other floors keep theirs.
+   * Reveals the whole level the view shows, in one undo step: all its fog goes, the pieces that
+   * were remembered with it. Other floors keep theirs.
    */
   clearFog: () => void;
   /**
@@ -47,16 +33,19 @@ export interface FogSlice {
    * Adds an area of `shape` on the level shown, hidden, in one undo step, and returns its id.
    * Null, and nothing added, where the shape encloses nothing or the level holds as many areas as are read.
    */
-  addFogArea: (shape: FogAreaShape, name?: string) => string | null;
+  addFogArea: (shape: FogAreaShape) => string | null;
   /** Switches an area of the level shown between hidden and revealed, in one undo step; false for an id that is none. */
   flipFogArea: (id: string) => boolean;
-  /** Changes the outline or the name of an area of the level shown, in one undo step; false where nothing changed. */
-  updateFogArea: (id: string, changes: FogAreaChanges) => boolean;
-  /** Deletes those of `ids` that are areas of the level shown, in one undo step. */
-  deleteFogAreas: (ids: readonly string[]) => void;
   /**
-   * Makes an area, hidden, of every room the walls of the level shown enclose, in one undo step:
-   * none of a room that an area already is. `mapRect` is the map as the view draws it.
+   * Gives an area of the level shown the outline `points`, in one undo step. It is hidden anew
+   * with it, after all the fog there is, so nothing of its new ground stays open. False where
+   * the outline is the one it has, or encloses nothing.
+   */
+  reshapeFogArea: (id: string, points: readonly Point[]) => boolean;
+  /**
+   * Hides every room the walls of the level shown enclose, in one undo step: an area, hidden, of
+   * each room that is none yet (plain fog once the level holds as many areas as are read), and
+   * the area of a room hidden again where it was revealed. `mapRect` is the map as the view draws it.
    */
   addRoomAreas: (mapRect: MapRect | null) => RoomAreasMade;
 }
@@ -86,42 +75,17 @@ function viewedAreaCount(view: FogDraft): number {
 }
 
 /**
- * The fog of `view` with the areas of the level it shows all `hidden`, or all revealed: each is
- * flipped where it is the other way, after all the fog there is. The level's other fog stays
- * only with `plain`; the fog of other levels always does.
+ * The fog of `view` with the areas of the level it shows all hidden: each that is revealed is
+ * flipped, after all the fog there is. Everything else stays.
  */
-function withAreasAs(view: FogDraft, hidden: boolean, plain: boolean): Record<string, FogOperation> {
+function withAreasHidden(view: FogDraft): Record<string, FogOperation> {
   let time = timeAfterAll(view.objects.fog);
   const fog: Record<string, FogOperation> = {};
   for (const [id, operation] of Object.entries(view.objects.fog)) {
-    if (!onViewedLevel(view, operation)) fog[id] = operation;
-    else if (isFogArea(operation)) fog[id] = areaIsHidden(operation) === hidden ? operation : flippedArea(operation, time++);
-    else if (plain) fog[id] = operation;
+    const revealed = onViewedLevel(view, operation) && isFogArea(operation) && !areaIsHidden(operation);
+    fog[id] = revealed ? flippedArea(operation, time++) : operation;
   }
   return fog;
-}
-
-/** Whether `fog` holds the same operations as `other`, in the same order. */
-function sameFog(fog: Record<string, FogOperation>, other: Record<string, FogOperation>): boolean {
-  const ids = Object.keys(fog);
-  const others = Object.keys(other);
-  return ids.length === others.length && ids.every((id, index) => others[index] === id && fog[id] === other[id]);
-}
-
-/** The mark of an area named `name`: none where the name is blank. */
-function markOf(name: string | undefined): FogAreaMark {
-  const trimmed = name?.trim().slice(0, MAX_AREA_NAME) ?? '';
-  return trimmed === '' ? {} : { name: trimmed };
-}
-
-/** The outline `changes` give `area`, or null where they give none. */
-function changedShape(area: FogArea, changes: FogAreaChanges): FogAreaShape | null {
-  if (changes.points) return { type: 'lasso', points: changes.points };
-  if (area.type !== 'rectangle') return null;
-  const { x, y, width, height } = changes;
-  if (x === undefined && y === undefined && width === undefined && height === undefined) return null;
-  // What is given is where the area lies on the map: an offset an older file holds is taken in.
-  return { type: 'rectangle', x: x ?? area.x + (area.offsetX ?? 0), y: y ?? area.y + (area.offsetY ?? 0), width: width ?? area.width, height: height ?? area.height };
 }
 
 /** `area` with another outline. Its other fields stay, also those a newer Atlas wrote; an offset goes, since the outline is where the area lies. */
@@ -192,8 +156,12 @@ export function createFogActions(set: ImmerSet, get: () => FogDraft): FogSlice {
 
     clearFog: () => {
       // Nothing to reveal leaves no undo step.
-      if (sameFog(withAreasAs(get(), false, false), get().objects.fog)) return;
-      set((draft) => { draft.objects.fog = withAreasAs(draft, false, false); });
+      if (!Object.values(get().objects.fog).some((operation) => onViewedLevel(get(), operation))) return;
+      set((draft) => {
+        for (const [id, operation] of Object.entries(draft.objects.fog)) {
+          if (onViewedLevel(draft, operation)) delete draft.objects.fog[id];
+        }
+      });
     },
 
     coverAllFog: (mapRect) => {
@@ -201,17 +169,17 @@ export function createFogActions(set: ImmerSet, get: () => FogDraft): FogSlice {
       const { x, y, width, height } = mapRect;
       set((draft) => {
         // The level's areas are hidden with it, so each is one click from revealed.
-        draft.objects.fog = withAreasAs(draft, true, true);
+        draft.objects.fog = withAreasHidden(draft);
         append(draft, [{ type: 'rectangle', isErasing: false, x, y, width, height }]);
       });
       return true;
     },
 
-    addFogArea: (shape, name) => {
+    addFogArea: (shape) => {
       const geometry = areaGeometry(shape);
       if (!geometry || viewedAreaCount(get()) >= MAX_FOG_AREAS) return null;
       let ids: string[] = [];
-      set((draft) => { ids = append(draft, [{ ...geometry, isErasing: false, area: markOf(name) }]); });
+      set((draft) => { ids = append(draft, [{ ...geometry, isErasing: false, area: {} }]); });
       return ids[0] ?? null;
     },
 
@@ -224,48 +192,42 @@ export function createFogActions(set: ImmerSet, get: () => FogDraft): FogSlice {
       return true;
     },
 
-    updateFogArea: (id, changes) => {
+    reshapeFogArea: (id, points) => {
       const area = viewedArea(get(), id);
-      if (!area) return false;
-      const shape = changedShape(area, changes);
-      const given = shape && areaGeometry(shape);
-      const geometry = given && !keepsOutline(area, given) ? given : null;
-      const mark = 'name' in changes ? markOf(changes.name) : null;
-      const renamed = mark !== null && mark.name !== areaName(area);
-      if (!geometry && !renamed) return false;
+      const geometry = area && areaGeometry({ type: 'lasso', points });
+      if (!area || !geometry || keepsOutline(area, geometry)) return false;
       set((draft) => {
         const current = viewedArea(draft, id);
-        if (!current) return;
-        if (renamed) {
-          const { name: _name, ...kept } = current.area;
-          current.area = { ...kept, ...mark };
-        }
-        if (geometry) draft.objects.fog[id] = reshapedArea(current, geometry);
+        if (current) draft.objects.fog[id] = { ...reshapedArea(current, geometry), isErasing: false, timestamp: timeAfterAll(draft.objects.fog) };
       });
       return true;
     },
 
-    deleteFogAreas: (ids) => {
-      const areas = ids.filter((id) => viewedArea(get(), id));
-      if (areas.length === 0) return;
-      set((draft) => {
-        for (const id of areas) delete draft.objects.fog[id];
-      });
-    },
-
     addRoomAreas: (mapRect) => {
       const view = get();
-      if (!isArea(mapRect)) return { rooms: 0, made: 0, full: false };
+      if (!isArea(mapRect)) return { rooms: 0, made: 0 };
       const { walls, fog } = levelObjects(view);
       const cell = view.grid?.size ?? 0;
       const rooms = roomsOfWalls(wallList(walls), mapRect, cell);
-      const plan = planRoomAreas(rooms, fogAreaOutlines(fog), roomTexel(mapRect, cell), MAX_FOG_AREAS - viewedAreaCount(view));
-      const areas = plan.shapes.flatMap((shape) => {
+      const pieces = fogAreaList(fog).filter((area) => areaOutline(area).length >= 3);
+      const plan = planRoomAreas(rooms, pieces.map((area) => ({ outline: areaOutline(area), hidden: areaIsHidden(area) })), roomTexel(mapRect, cell));
+      let room = MAX_FOG_AREAS - viewedAreaCount(view);
+      const areas = plan.shapes.flatMap((shape): FogOperationInput[] => {
         const geometry = areaGeometry(shape);
-        return geometry ? [{ ...geometry, isErasing: false, area: {} }] : [];
+        if (!geometry) return [];
+        return [room-- > 0 ? { ...geometry, isErasing: false, area: {} } : { ...geometry, isErasing: false }];
       });
-      if (areas.length > 0) set((draft) => { append(draft, areas); });
-      return { rooms: rooms.length, made: areas.length, full: plan.full };
+      const hide = plan.hide.map((index) => pieces[index]!.id);
+      if (areas.length + hide.length > 0) {
+        set((draft) => {
+          for (const id of hide) {
+            const area = viewedArea(draft, id);
+            if (area) draft.objects.fog[id] = flippedArea(area, timeAfterAll(draft.objects.fog));
+          }
+          append(draft, areas);
+        });
+      }
+      return { rooms: rooms.length, made: areas.length + hide.length };
     },
   };
 }

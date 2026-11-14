@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fogAreaList, isFogArea, MAX_FOG_AREAS, type FogArea, type FogAreaShape } from '../../src/app/fog/fogAreas';
+import { fogAreaList, MAX_FOG_AREAS, type FogAreaShape } from '../../src/app/fog/fogAreas';
 import { fogCoverage } from '../../src/app/fog/fogCoverage';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
-import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction, getHistoryStore } from '../../src/app/stores/history';
+import { getHistoryStore } from '../../src/app/stores/history';
 import type { FogOperation } from '../../src/app/types/fogTypes';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -36,14 +36,13 @@ function scene(): { store: ViewAtlasStore; fog: () => Record<string, FogOperatio
 afterEach(() => vi.useRealTimers());
 
 describe('adding a fog area', () => {
-  it('adds a hidden area, named or not, in one undo step each', () => {
+  it('adds a hidden area, in one undo step each', () => {
     const { store, fog, covers, steps, undo, redo } = scene();
-    const hall = store.getState().addFogArea(HALL, '  Hall ')!;
+    const hall = store.getState().addFogArea(HALL)!;
     const crypt = store.getState().addFogArea(CRYPT)!;
     expect(steps()).toBe(2);
-    expect(fog()[hall]).toMatchObject({ id: hall, kind: 'fog', type: 'rectangle', isErasing: false, x: 100, y: 100, width: 200, height: 100, area: { name: 'Hall' } });
+    expect(fog()[hall]).toMatchObject({ id: hall, kind: 'fog', type: 'rectangle', isErasing: false, x: 100, y: 100, width: 200, height: 100, area: {} });
     expect(fog()[crypt]).toMatchObject({ type: 'lasso', isErasing: false, area: {} });
-    expect(fog()[crypt]).not.toHaveProperty('area.name');
     expect(covers(IN_HALL)).toBe(true);
     expect(covers(IN_CRYPT)).toBe(true);
     expect(covers(ELSEWHERE)).toBe(false);
@@ -153,129 +152,93 @@ describe('flipping a fog area', () => {
   });
 });
 
-describe('changing a fog area', () => {
-  it('names it, renames it and takes its name away, each one undo step', () => {
-    const { store, fog, steps, undo } = scene();
-    const hall = store.getState().addFogArea(HALL)!;
-    const before = steps();
-    expect(store.getState().updateFogArea(hall, { name: ' Great hall ' })).toBe(true);
-    expect(fog()[hall]).toMatchObject({ area: { name: 'Great hall' } });
-    expect(store.getState().updateFogArea(hall, { name: 'Great hall' })).toBe(false);
-    expect(steps()).toBe(before + 1);
-    for (const blank of ['   ', undefined]) {
-      store.getState().updateFogArea(hall, { name: 'Hall' });
-      expect(store.getState().updateFogArea(hall, { name: blank })).toBe(true);
-      expect(fog()[hall]).not.toHaveProperty('area.name');
-      expect(isFogArea(fog()[hall])).toBe(true);
-    }
-    undo();
-    expect(fog()[hall]).toMatchObject({ area: { name: 'Hall' } });
-    // Changes that say nothing of the name leave it.
-    expect(store.getState().updateFogArea(hall, {})).toBe(false);
-    expect(fog()[hall]).toMatchObject({ area: { name: 'Hall' } });
-  });
+describe('giving a fog area another outline', () => {
+  const YARD = [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 0, y: 300 }];
 
-  it('gives a rectangle another corner or size and keeps it a rectangle', () => {
+  it('makes it a lasso of the corners given and hides it anew, after all the fog there is, in one undo step', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(5_000);
     const { store, fog, covers, steps, undo } = scene();
-    const hall = store.getState().addFogArea(HALL, 'Hall')!;
-    const { timestamp } = fog()[hall]!;
-    const before = steps();
-    expect(store.getState().updateFogArea(hall, { x: 400, width: 300 })).toBe(true);
-    expect(fog()[hall]).toEqual({ id: hall, kind: 'fog', type: 'rectangle', timestamp, isErasing: false, x: 400, y: 100, width: 300, height: 100, area: { name: 'Hall' } });
+    const hall = store.getState().addFogArea(HALL)!;
+    // Ground the new outline takes in was revealed since the area was made.
+    vi.setSystemTime(8_000);
+    store.getState().addFogOperation({ type: 'rectangle', isErasing: true, ...MAP });
     expect(covers(IN_HALL)).toBe(false);
-    expect(covers({ x: 650, y: 150 })).toBe(true);
-    expect(steps()).toBe(before + 1);
-    // The outline it has already is no change.
-    expect(store.getState().updateFogArea(hall, { x: 400, y: 100, width: 300, height: 100 })).toBe(false);
+    vi.setSystemTime(100);
+    const before = steps();
+    expect(store.getState().reshapeFogArea(hall, YARD)).toBe(true);
+    expect(fog()[hall]).toEqual({ id: hall, kind: 'fog', type: 'lasso', timestamp: 8_001, isErasing: false, points: YARD, area: {} });
+    expect(covers({ x: 50, y: 50 })).toBe(true);
+    expect(covers(IN_HALL)).toBe(false);
     expect(steps()).toBe(before + 1);
     undo();
-    expect(fog()[hall]).toMatchObject({ x: 100, width: 200 });
+    expect(fog()[hall]).toMatchObject({ type: 'rectangle', x: 100, width: 200, timestamp: 5_000 });
   });
 
-  it('makes the area a lasso when it is given corners, keeping when it acts, what it does and its name', () => {
-    const { store, fog, covers } = scene();
-    const hall = store.getState().addFogArea(HALL, 'Hall')!;
+  it('hides a revealed area with it', () => {
+    const { store, fog } = scene();
+    const hall = store.getState().addFogArea(HALL)!;
     store.getState().flipFogArea(hall);
-    const { timestamp } = fog()[hall]!;
-    const corners = [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 0, y: 300 }];
-    expect(store.getState().updateFogArea(hall, { points: corners, name: 'Yard' })).toBe(true);
-    expect(fog()[hall]).toEqual({ id: hall, kind: 'fog', type: 'lasso', timestamp, isErasing: true, points: corners, area: { name: 'Yard' } });
-    store.getState().flipFogArea(hall);
-    expect(covers({ x: 50, y: 50 })).toBe(true);
-    expect(covers({ x: 250, y: 150 })).toBe(false);
+    expect(store.getState().reshapeFogArea(hall, YARD)).toBe(true);
+    expect(fog()[hall]).toMatchObject({ type: 'lasso', isErasing: false });
   });
 
-  it('takes in an offset an older file holds, and keeps fields it does not know', () => {
+  it('lets an offset an older file holds go, and keeps fields it does not know, a name too', () => {
     const { store, fog } = scene();
     const stored = { id: 'old', kind: 'fog', type: 'rectangle', timestamp: 4, isErasing: false, x: 10, y: 20, width: 30, height: 40, offsetX: 100, offsetY: 200, area: { name: 'Old', tint: 'red' }, later: true } as unknown as FogOperation;
     store.setState((state) => ({ objects: { ...state.objects, fog: { old: stored } } }));
-    expect(store.getState().updateFogArea('old', { width: 50 })).toBe(true);
-    expect(fog().old).toEqual({ id: 'old', kind: 'fog', type: 'rectangle', timestamp: 4, isErasing: false, x: 110, y: 220, width: 50, height: 40, area: { name: 'Old', tint: 'red' }, later: true });
-    expect(store.getState().updateFogArea('old', { name: '' })).toBe(true);
-    expect(fog().old).toMatchObject({ area: { tint: 'red' }, later: true });
-    expect(fog().old).not.toHaveProperty('area.name');
+    expect(store.getState().reshapeFogArea('old', YARD)).toBe(true);
+    expect(fog().old).toEqual({ id: 'old', kind: 'fog', type: 'lasso', timestamp: expect.any(Number), isErasing: false, points: YARD, area: { name: 'Old', tint: 'red' }, later: true });
   });
 
-  it('refuses an outline that encloses nothing, a rectangle\'s fields on a lasso, and an id that is no area', () => {
+  it('refuses an outline that encloses nothing, the outline the area has, and an id that is no area', () => {
     const { store, fog, steps } = scene();
     const hall = store.getState().addFogArea(HALL)!;
     const crypt = store.getState().addFogArea(CRYPT)!;
     const plain = store.getState().addFogOperation({ type: 'rectangle', isErasing: false, x: 0, y: 0, width: 10, height: 10 });
     const before = steps();
     const record = fog();
-    expect(store.getState().updateFogArea(hall, { points: [{ x: 0, y: 0 }, { x: 5, y: 5 }] })).toBe(false);
-    expect(store.getState().updateFogArea(hall, { width: 0 })).toBe(false);
-    expect(store.getState().updateFogArea(hall, { x: Number.NaN })).toBe(false);
-    expect(store.getState().updateFogArea(crypt, { x: 5, width: 40 })).toBe(false);
-    expect(store.getState().updateFogArea(plain, { name: 'Not an area' })).toBe(false);
-    expect(store.getState().updateFogArea('nothing', { name: 'x' })).toBe(false);
+    expect(store.getState().reshapeFogArea(hall, [{ x: 0, y: 0 }, { x: 5, y: 5 }])).toBe(false);
+    expect(store.getState().reshapeFogArea(hall, [{ x: 0, y: 0 }, { x: Number.NaN, y: 5 }, { x: 9, y: 0 }])).toBe(false);
+    expect(store.getState().reshapeFogArea(crypt, CRYPT.type === 'lasso' ? CRYPT.points : [])).toBe(false);
+    expect(store.getState().reshapeFogArea(plain, YARD)).toBe(false);
+    expect(store.getState().reshapeFogArea('nothing', YARD)).toBe(false);
     expect(fog()).toBe(record);
     expect(steps()).toBe(before);
   });
 });
 
-describe('deleting fog areas', () => {
-  it('deletes the areas named, of the level shown, in one undo step', () => {
-    const { store, fog, steps, undo } = scene();
-    store.setState({ levels: LEVELS, viewedLevel: 'ground' });
-    const plain = store.getState().addFogOperation({ type: 'rectangle', isErasing: false, x: 0, y: 0, width: 10, height: 10 });
-    const hall = store.getState().addFogArea(HALL)!;
-    const crypt = store.getState().addFogArea(CRYPT)!;
-    store.getState().setViewedLevel('upper');
-    const above = store.getState().addFogArea(HALL)!;
-    store.getState().setViewedLevel('ground');
-    const before = steps();
-    store.getState().deleteFogAreas([hall, crypt, plain, above, 'nothing']);
-    expect(Object.keys(fog())).toEqual([plain, above]);
-    expect(steps()).toBe(before + 1);
-    undo();
-    expect(Object.keys(fog()).sort()).toEqual([plain, hall, crypt, above].sort());
-    // Nothing to delete leaves no step.
-    store.getState().deleteFogAreas([plain, above]);
-    expect(steps()).toBe(before);
-  });
-});
-
 describe('the whole map and its areas', () => {
-  it('keeps the areas when all is revealed, each revealed, in the one undo step', () => {
+  it('forgets the areas when all is revealed: all the level\'s fog goes, in the one undo step', () => {
     const { store, fog, covers, steps, undo } = scene();
-    const hall = store.getState().addFogArea(HALL, 'Hall')!;
+    const hall = store.getState().addFogArea(HALL)!;
     const crypt = store.getState().addFogArea(CRYPT)!;
     store.getState().flipFogArea(crypt);
     store.getState().coverAllFog(MAP);
     const before = steps();
     store.getState().clearFog();
     expect(steps()).toBe(before + 1);
-    expect(fogAreaList(fog()).map((area) => [area.id, area.isErasing])).toEqual([[hall, true], [crypt, true]].sort());
-    expect(Object.keys(fog())).toHaveLength(2);
+    expect(fog()).toEqual({});
+    expect(fogAreaList(fog())).toEqual([]);
     expect(covers(IN_HALL)).toBe(false);
     expect(covers(ELSEWHERE)).toBe(false);
-    // Revealed already: nothing to do, and no step.
+    // Nothing left to reveal: nothing to do, and no step.
     store.getState().clearFog();
     expect(steps()).toBe(before + 1);
     undo();
     expect(Object.keys(fog())).toHaveLength(3);
-    expect(fog()[hall]).toMatchObject({ isErasing: false });
+    expect(fog()[hall]).toMatchObject({ isErasing: false, area: {} });
+    expect(fogAreaList(fog())).toHaveLength(2);
+  });
+
+  it('forgets revealed areas too, though they hide nothing', () => {
+    const { store, fog, steps } = scene();
+    const hall = store.getState().addFogArea(HALL)!;
+    store.getState().flipFogArea(hall);
+    const before = steps();
+    store.getState().clearFog();
+    expect(fog()).toEqual({});
+    expect(steps()).toBe(before + 1);
   });
 
   it('hides the areas with the map when all is covered, so each is one click from revealed', () => {
@@ -302,40 +265,14 @@ describe('the whole map and its areas', () => {
     const below = store.getState().addFogArea(HALL)!;
     store.getState().setViewedLevel('upper');
     const above = store.getState().addFogArea(HALL)!;
-    store.getState().clearFog();
-    expect(fog()[below]).toMatchObject({ isErasing: false });
-    expect(fog()[above]).toMatchObject({ isErasing: true });
+    store.getState().flipFogArea(above);
     store.getState().setViewedLevel('ground');
     store.getState().flipFogArea(below);
     store.getState().setViewedLevel('upper');
     store.getState().coverAllFog(MAP);
     expect(fog()[below]).toMatchObject({ isErasing: true });
     expect(fog()[above]).toMatchObject({ isErasing: false });
-  });
-});
-
-describe('a gesture on a fog area', () => {
-  it('is one undo step however often it reshapes the area', () => {
-    const { store, fog, steps, undo } = scene();
-    const hall = store.getState().addFogArea(HALL)!;
-    const before = steps();
-    beginHistoryTransaction(store);
-    for (const width of [210, 260, 300]) store.getState().updateFogArea(hall, { width });
-    endHistoryTransaction(store);
-    expect(fog()[hall]).toMatchObject({ width: 300 });
-    expect(steps()).toBe(before + 1);
-    undo();
-    expect(fog()[hall]).toMatchObject({ width: 200 });
-  });
-
-  it('selects an area without an undo step', () => {
-    const { store, steps } = scene();
-    const hall = store.getState().addFogArea(HALL)!;
-    const before = steps();
-    store.getState().selectFogArea(hall);
-    expect(store.getState().fogAreaSelected).toBe(hall);
-    store.getState().selectFogArea(null);
-    expect(store.getState().fogAreaSelected).toBeNull();
-    expect(steps()).toBe(before);
+    store.getState().clearFog();
+    expect(Object.keys(fog())).toEqual([below]);
   });
 });

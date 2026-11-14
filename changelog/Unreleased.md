@@ -25,23 +25,23 @@
 - Cells colours squares and hexes: drag to fill them, Unfill to clear them
 
 **New Feature: Fog tools**
-- The fog tool has its own secondary toolbar: Hide, Reveal and Areas, and the shapes Brush, Rectangle, Polygon, Lasso, Cells and Room
+- The fog tool has its own secondary toolbar: Hide and Reveal, and the shapes Brush, Rectangle, Polygon, Lasso, Cells and Room
 - Cover all hides the whole map in one step, Reveal all clears it. Undo takes either back
-- Rectangles and polygons snap to the grid, to walls and to other areas. Hold Ctrl or Cmd to place them freely
+- Rectangles and polygons snap to the grid, to walls and to fog you hid with a shape. Hold Ctrl or Cmd to place them freely
 - Cells hides or reveals whole grid cells, squares and hexes alike
 - Hold Alt to do the other thing: reveal with Hide, hide with Reveal. , and . size the brush; hold one to keep sizing
 - Fog fades when it changes, on your map and in the player window
 - More sets how dark fog looks to you in GM View. Hold H to see it as your players do
 
-**Fog areas**
-- Draw the rooms of a map once in Areas, then reveal or hide each with one click on its badge, with any tool
-- A new area ends where its neighbours begin, so areas never overlap. Start inside an area to add to it, hold Alt to take away
-- Click an area to drag its corners, move it or delete it. Right-click its badge to name it
-- Only you see the badges and outlines
+**Reveal a whole room**
+- Fog you hide with a shape is remembered as one piece: right-click it and choose Reveal, right-click the place again to hide it
+- A new piece ends where the hidden pieces beside it begin, so revealing one never opens another. Start a shape inside a hidden piece to add to it
+- Right-click fog painted with the brush to reveal that body of fog and nothing else
+- While the fog tool is chosen, each piece shows a thin outline. Only you see it
 
 **Rooms from walls**
 - Room: on a map with walls, click inside a room to hide or reveal it. It ends at its walls and doors
-- More makes an area of every room the walls enclose, in one step
+- Hide all rooms, in More, hides every room the walls enclose in one step, each a piece of its own
 
 **Party tokens clear fog**
 - Switch it on in More: fog clears around the party's tokens as they are moved, as far as the distance you set. Walls stop it
@@ -61,12 +61,9 @@
 
 ## Fixed
 
-- Tokens and pins under fog can be clicked and dragged: fog no longer takes their clicks. Fog is changed with the fog tool only
+- Tokens and pins under fog can be clicked and dragged: fog no longer takes their clicks
 - The TrueScale frame and its bar on the map show only while TrueScale is on
 - The player window no longer says "Camera paused" after you come back to the scene it shows
-
-## Fixed
-
 - The eye on a scene tab shows the scene to players again, in the player view and online, and the tab's close button closes it: both had become hard to click. Reported by Tanaros, Meisterdieb, George and Theo Chronis
 - Online, the eye on a floor shows that floor to players at once; before, they saw it only after a refresh. Reported by Theo Chronis
 - Ctrl/Cmd and hover shows a token's statblock with the measure tool and the other tools too, not only with Move and Select. Reported by George

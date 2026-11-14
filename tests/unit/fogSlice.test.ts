@@ -186,8 +186,7 @@ describe('the fog tool\'s choices in the view store', () => {
     expect(store.getState().fogTool).toEqual(DEFAULT_FOG_TOOL);
     store.getState().setFogTool({ shape: 'lasso' });
     store.getState().setFogTool({ brushSize: 120 });
-    store.getState().setFogTool({ areas: true });
-    expect(store.getState().fogTool).toEqual({ areas: true, shape: 'lasso', brushSize: 120 });
+    expect(store.getState().fogTool).toEqual({ shape: 'lasso', brushSize: 120 });
     expect(steps()).toBe(0);
   });
 
@@ -199,18 +198,11 @@ describe('the fog tool\'s choices in the view store', () => {
     expect(store.getState().fogTool.brushSize).toBe(FOG_BRUSH_SIZES.min);
   });
 
-  it('stop making areas when the revealing tool is chosen, and stay as they are for any other tool', () => {
+  it('stay the same object whichever tool is chosen: nothing that reads them is told', () => {
     const { store } = scene();
-    store.getState().setFogTool({ areas: true });
-    store.getState().setActiveTool('fog');
-    store.getState().setActiveTool('move');
-    expect(store.getState().fogTool.areas).toBe(true);
-    store.getState().setActiveTool('eraser');
-    expect(store.getState().fogTool.areas).toBe(false);
-    // Unchanged choices stay the same object: nothing that reads them is told.
+    store.getState().setFogTool({ shape: 'polygon' });
     const choices = store.getState().fogTool;
-    store.getState().setActiveTool('fog');
-    store.getState().setActiveTool('eraser');
+    for (const tool of ['fog', 'move', 'eraser', 'fog'] as const) store.getState().setActiveTool(tool);
     expect(store.getState().fogTool).toBe(choices);
   });
 });

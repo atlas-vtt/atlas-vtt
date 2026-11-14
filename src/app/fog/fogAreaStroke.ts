@@ -1,65 +1,31 @@
 /**
- * What a shape drawn in the fog tool's Areas mode does: where it starts decides. Begun outside
- * every area it is a new area, fitted to its neighbours; begun inside an area it is added to that
- * area, or with Alt taken away from every area it covers. The plan is what the preview shows
- * while the shape is drawn and what the store is given when it ends.
+ * What a shape drawn to hide leaves (a rectangle, a polygon, a lasso, cells, a room; never the
+ * brush, which is plain paint): fog that is remembered as one piece (an area, `fogAreas.ts`).
+ * Where it starts decides. Begun inside a remembered piece that is hidden it is added to that
+ * piece; anywhere else it is a piece of its own, fitted to the hidden pieces beside it so that
+ * revealing one never opens a strip of the other. What was drawn is fog afterwards, all of it:
+ * where it lies over a hidden piece whose fog was cleared since, plain fog fills the gap.
  */
 
+import { intersectShapes, shapeParts, subtractShapes, unionShapes } from '../lighting/polygonClip';
 import type { StrokeShape } from '../tools/shapeStroke';
+import type { QShape } from '../types/shapeTypes';
 import type { Point } from '../types/visionTypes';
-import { pointInPolygon } from '../vision/visibility';
-import { areaOutline, type FogArea, type FogAreaShape } from './fogAreas';
-import { fittedArea, joinedArea, outerOutlines, trimmedAreas } from './fogAreaShapes';
+import { areaIsHidden, areaOutline, type FogArea, type FogAreaShape } from './fogAreas';
+import { fittedArea, joinedArea } from './fogAreaShapes';
+import { hiddenGround, outlinesOf } from './fogBody';
+import { shapeOf } from './fogOutlineShape';
 
-/** What a shape becomes: an area of its own, part of the area it began in, or a piece taken off areas. */
-export type AreaStrokeKind = 'new' | 'join' | 'trim';
-
-export interface AreaStrokePlan {
-  readonly kind: AreaStrokeKind;
-  /** The areas the shape adds. */
+export interface HideStrokePlan {
+  /** The pieces the shapes add. */
   readonly add: readonly FogAreaShape[];
-  /** The areas that get another outline. */
-  readonly reshape: ReadonlyArray<{ readonly id: string; readonly points: Point[] }>;
-  /** The areas left as they are because the shape would leave them in pieces, with a hole or gone; for a join, 1 where it makes no single outline. */
-  readonly refused: number;
+  /** The piece that takes the shapes in, with the outline it then has; null where none does. */
+  readonly join: { readonly id: string; readonly points: Point[] } | null;
+  /** Outlines to paint as plain fog: what was drawn over hidden pieces where their fog had been cleared. */
+  readonly paint: readonly Point[][];
 }
 
-/** What a shape begun in the area `startsIn` (null: outside every area) becomes; `alt` is whether Alt is held. */
-export function areaStrokeKind(startsIn: string | null, alt: boolean): AreaStrokeKind {
-  if (startsIn === null) return 'new';
-  return alt ? 'trim' : 'join';
-}
-
-function twiceArea(outline: readonly Point[]): number {
-  let twice = 0;
-  for (let i = 0; i < outline.length; i++) {
-    const a = outline[i]!;
-    const b = outline[(i + 1) % outline.length]!;
-    twice += a.x * b.y - b.x * a.y;
-  }
-  return Math.abs(twice);
-}
-
-/** Whether `point` lies inside the closed `outline`. */
-export function insideOutline(point: Point, outline: readonly Point[]): boolean {
-  return outline.length >= 3 && pointInPolygon(point, outline as Point[]);
-}
-
-/** The area `point` lies in: the smallest of them where areas overlap, so one inside another can be reached. Null outside every area. */
-export function areaAtPoint(areas: readonly FogArea[], point: Point): FogArea | null {
-  let found: FogArea | null = null;
-  let size = Infinity;
-  for (const area of areas) {
-    const outline = areaOutline(area);
-    if (!insideOutline(point, outline)) continue;
-    const own = twiceArea(outline);
-    if (own < size) {
-      size = own;
-      found = area;
-    }
-  }
-  return found;
-}
+const NOTHING: HideStrokePlan = { add: [], join: null, paint: [] };
 
 /** The corners of a stroke's shape; none for a brush stroke, which has no outline. */
 function cornersOf(shape: StrokeShape): Point[] {
@@ -72,12 +38,25 @@ function cornersOf(shape: StrokeShape): Point[] {
 const sameCorners = (a: readonly Point[], b: readonly Point[]): boolean =>
   a.length === b.length && a.every((point, index) => point.x === b[index]!.x && point.y === b[index]!.y);
 
-/** New areas of `shapes`, each fitted to the areas there are and to those made before it. A rectangle nothing cut stays one. */
-function added(shapes: readonly StrokeShape[], areas: readonly FogArea[]): FogAreaShape[] {
-  const others = areas.map(areaOutline).filter((outline) => outline.length >= 3);
+/**
+ * The outlines of what several shapes cover together, one per piece: shapes that touch are one
+ * piece, and ground they enclose without covering it stays a hole in it. Shapes that lie apart,
+ * each one outline, come back as they were given, to the last bit.
+ */
+function piecesOf(outlines: ReadonlyArray<readonly Point[]>): Point[][] {
+  const given = outlines.map((outline) => outline.map(({ x, y }) => ({ x, y })));
+  const all = drawnShape(outlines);
+  if (!all) return given;
+  const parts = shapeParts(all);
+  return parts.length === given.length && parts.every((part) => part.holes.length === 0) ? given : outlinesOf(all);
+}
+
+/** New pieces of `shapes`, each fitted to the hidden pieces there are and to those made before it. A rectangle nothing cut stays one. */
+function added(shapes: readonly StrokeShape[], hidden: readonly FogArea[]): FogAreaShape[] {
+  const others = hidden.map(areaOutline).filter((outline) => outline.length >= 3);
   const [only] = shapes;
-  // Several shapes are the pieces of one drag over cells: what hangs together is one area.
-  const outlines = shapes.length === 1 && only ? [cornersOf(only)] : outerOutlines(shapes.map(cornersOf));
+  // Several shapes are the pieces of one drag over cells: what hangs together is one piece.
+  const outlines = shapes.length === 1 && only ? [cornersOf(only)] : piecesOf(shapes.map(cornersOf));
   const made: FogAreaShape[] = [];
   for (const outline of outlines) {
     if (outline.length < 3) continue;
@@ -88,25 +67,43 @@ function added(shapes: readonly StrokeShape[], areas: readonly FogArea[]): FogAr
   return made;
 }
 
-/**
- * What `shapes`, the shapes of one stroke, do to `areas`, the areas of the level shown. `startsIn`
- * is the area the stroke began in (null: none, or one that is gone) and `alt` whether Alt is held.
- */
-export function planAreaStroke(shapes: readonly StrokeShape[], areas: readonly FogArea[], startsIn: string | null, alt: boolean): AreaStrokePlan {
-  const target = startsIn === null ? undefined : areas.find((area) => area.id === startsIn);
-  const kind = areaStrokeKind(target ? target.id : null, alt);
-  const outlines = shapes.map(cornersOf).filter((outline) => outline.length >= 3);
-  if (outlines.length === 0) return { kind, add: [], reshape: [], refused: 0 };
-  if (kind === 'new') return { kind, add: added(shapes, areas), reshape: [], refused: 0 };
-  if (kind === 'join' && target) {
-    const points = joinedArea(areaOutline(target), ...outlines);
-    return { kind, add: [], reshape: points ? [{ id: target.id, points }] : [], refused: points ? 0 : 1 };
+/** What `outlines` cover together; null where one of them cannot be read. */
+function drawnShape(outlines: ReadonlyArray<readonly Point[]>): QShape | null {
+  let all: QShape = [];
+  for (const outline of outlines) {
+    const shape = shapeOf(outline);
+    if (!shape) return null;
+    all = unionShapes(all, shape);
   }
-  const reshape: { id: string; points: Point[] }[] = [];
-  let refused = 0;
-  trimmedAreas(areas.map(areaOutline), outlines).forEach((points, index) => {
-    if (points) reshape.push({ id: areas[index]!.id, points });
-    else if (points === null) refused++;
-  });
-  return { kind, add: [], reshape, refused };
+  return all;
+}
+
+/** What of `drawn`, the shape of `outlines`, lies over the hidden pieces among `areas` and is no fog in `coverage`. */
+function gaps(drawn: QShape, outlines: ReadonlyArray<readonly Point[]>, areas: readonly FogArea[], coverage: QShape | null): Point[][] {
+  if (!coverage) return [];
+  const kept = hiddenGround(areas, outlines.flat());
+  if (kept.length === 0) return [];
+  return outlinesOf(subtractShapes(intersectShapes(drawn, kept), coverage));
+}
+
+/**
+ * What `shapes`, the shapes of one stroke that hides, leave among `areas`, the remembered pieces
+ * of the level shown. `startsIn` is the hidden piece the stroke began in (null: none, or one
+ * that is gone or revealed since) and `coverage` the level's fog as it is (null where it cannot
+ * be worked out: no gap is filled then).
+ */
+export function planHideStroke(shapes: readonly StrokeShape[], areas: readonly FogArea[], startsIn: string | null, coverage: QShape | null): HideStrokePlan {
+  const outlines = shapes.map(cornersOf).filter((outline) => outline.length >= 3);
+  const drawn = outlines.length > 0 ? drawnShape(outlines) : null;
+  if (!drawn || drawn.length === 0) return NOTHING;
+  const target = startsIn === null ? undefined : areas.find((area) => area.id === startsIn && areaIsHidden(area));
+  if (target) {
+    const own = shapeOf(areaOutline(target));
+    // Drawn inside the piece, it changes no outline: only what was cleared there is fog again.
+    if (own && subtractShapes(drawn, own).length === 0) return { add: [], join: null, paint: gaps(drawn, outlines, areas, coverage) };
+    const points = joinedArea(areaOutline(target), ...outlines);
+    // The piece is hidden anew with what it takes in, so nothing of the shape is left open.
+    if (points) return { add: [], join: { id: target.id, points }, paint: [] };
+  }
+  return { add: added(shapes, areas.filter(areaIsHidden)), join: null, paint: gaps(drawn, outlines, areas, coverage) };
 }

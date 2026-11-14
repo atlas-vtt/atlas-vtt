@@ -1,8 +1,7 @@
 /**
  * The fog tool's gesture: what the pointer does on the map while the tool is chosen. A press is
- * routed by the shape and the mode the bar has chosen: a drag, a polygon's corner or a click in
- * a room, which are the stroke's to draw, show and commit (`FogStroke`), or in Areas mode a
- * press that selects and edits areas before it is a shape (`FogAreasMode`).
+ * routed by the shape the bar has chosen: a drag, a polygon's corner or a click in a room, which
+ * are the stroke's to draw, show and commit (`FogStroke`).
  */
 import type * as PIXI from 'pixi.js';
 import type { Point } from '../../types/visionTypes';
@@ -10,22 +9,15 @@ import { isFogTool, type FogShape, type FogToolChoices } from '../../fog/fogTool
 import type { LayerVisibility } from '../playerSafeFrame';
 import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
-import { FogAreasMode } from './FogAreasMode';
-import { placeKeysOf, type PlaceKeys } from './FogSnapping';
+import { placeKeysOf } from './FogSnapping';
 import { FogStroke, type FogStrokeDeps } from './FogStroke';
 
-export interface FogGestureDeps extends FogStrokeDeps {
-  /** The selected area is held by a drag that shows its outline as it will be (null: no longer). */
-  readonly areaHeld?: (areaId: string | null) => void;
-}
+export type FogGestureDeps = FogStrokeDeps;
 
 export class FogGesture {
   /** The shape the bar has chosen. */
   private shape: FogShape;
-  /** Whether the bar has the tool make areas. */
-  private makesAreas: boolean;
   private readonly stroke: FogStroke;
-  private readonly areas: FogAreasMode;
   /** Where the pointer is on the canvas; null once it has left it. */
   private over: PIXI.PointData | null = null;
 
@@ -33,30 +25,14 @@ export class FogGesture {
   private readonly onPointerMove = (event: PIXI.FederatedPointerEvent): void => this.pointerMove(event);
   private readonly onPointerUp = (): void => this.pointerUp();
   private readonly onPointerLeave = (): void => this.pointerLeave();
-  private readonly onZoomed = (): void => {
-    this.stroke.rescale();
-    this.areas.rescale();
-  };
+  private readonly onZoomed = (): void => this.stroke.rescale();
 
   constructor(private readonly deps: FogGestureDeps) {
-    const { layer, viewport, store } = deps;
-    this.stroke = new FogStroke(deps, () => this.areas);
-    this.areas = new FogAreasMode({
-      layer, viewport, canvas: deps.canvas, store, snapping: this.stroke.snapping, picture: deps.host,
-      busy: () => this.active,
-      ...(deps.keysBelongToMap && { keysBelongToMap: deps.keysBelongToMap }),
-      ...(deps.showsPlayers && { showsPlayers: deps.showsPlayers }),
-      ...(deps.areaHeld && { held: deps.areaHeld }),
-      host: {
-        begin: (world, screen, keys) => this.begin(world, screen, keys),
-        click: (world, screen, keys) => this.click(world, screen, keys),
-        rest: () => this.rest(),
-      },
-    });
+    const { viewport, store } = deps;
+    this.stroke = new FogStroke(deps);
 
     const { fogTool } = store.getState();
     this.shape = fogTool.shape;
-    this.makesAreas = fogTool.areas;
     this.stroke.setBrushSize(fogTool.brushSize);
 
     viewport.on('pointerdown', this.onPointerDown);
@@ -100,13 +76,12 @@ export class FogGesture {
     this.stroke.refresh();
   }
 
-  /** The tool's choices changed in its bar or by a key: the brush takes its size, and another shape, or areas in place of fog, drops what is under way. */
+  /** The tool's choices changed in its bar or by a key: the brush takes its size, and another shape drops what is under way. */
   follow(choices: FogToolChoices): void {
     this.stroke.setBrushSize(choices.brushSize);
-    if (choices.shape === this.shape && choices.areas === this.makesAreas) return;
+    if (choices.shape === this.shape) return;
     this.drop();
     this.shape = choices.shape;
-    this.makesAreas = choices.areas;
     if (isFogTool(this.deps.store.getState().activeTool) && this.shape === 'brush') this.ringAtPointer();
     else this.stroke.hideRing();
   }
@@ -117,27 +92,16 @@ export class FogGesture {
   }
 
   /**
-   * The canvas shows another view (the GM's, or the players'): a selected area is the GM's
-   * alone, and so are the ring, the outline and the guide, which a peek hides for as long as it lasts.
+   * The canvas shows another view (the GM's, or the players'): the ring, the outline and the
+   * guide are the GM's alone, and a peek hides them for as long as it lasts.
    */
   refreshVisibility(): void {
-    this.areas.refresh();
     this.stroke.showMarks(!this.peeking());
   }
 
-  /** The cursor at a world point where a press would take the selected area (a corner, its inside); null elsewhere, and while a shape is under way. */
-  cursorAt(world: Point): string | null {
-    return this.active ? null : this.areas.editor.cursorAt(world);
-  }
-
-  /** What is the GM's alone: the ring, the outline of what is under way, the wash over what it will reveal, the snapping guide and what Areas mode shows. */
+  /** What is the GM's alone: the ring, the outline of what is under way, the wash over what it will reveal and the snapping guide. */
   playerLayers(): LayerVisibility[] {
-    return [...this.stroke.layers(), ...this.areaLayers()];
-  }
-
-  /** What Areas mode shows on the map: the selected area's handles and the outline a drag will leave it, the outlines a stroke will leave. No picture of the scene has them. */
-  areaLayers(): LayerVisibility[] {
-    return this.areas.layers();
+    return this.stroke.layers();
   }
 
   /** Nothing would begin where the pointer is, or what would has changed (the walls): the guide and the outline of the cell or room under it go. */
@@ -153,8 +117,6 @@ export class FogGesture {
     viewport.off('pointerupoutside', this.onPointerUp);
     viewport.off('zoomed', this.onZoomed);
     canvas().removeEventListener('pointerleave', this.onPointerLeave);
-    // The mode's own cancelling clears the guide, which is the stroke's.
-    this.areas.destroy();
     this.stroke.destroy();
   }
 
@@ -186,15 +148,9 @@ export class FogGesture {
     const keys = placeKeysOf(event);
     this.over = screen;
     this.stroke.pointer = world;
-    // In Areas mode a press is a shape only once the pointer moves: in place it selects.
-    if (this.areas.on && !this.stroke.polygon.active) this.areas.press(world, screen, keys, this.stroke.altHeld);
-    else this.begin(world, screen, keys);
-  }
-
-  /** Begins the shape chosen at `world`, or places the next corner of the polygon under way. A room is no shape until the press is released in place. */
-  private begin(world: Point, screen: Point, keys: PlaceKeys): void {
-    if (this.shape !== 'room') this.stroke.begin(this.shape, world, screen, keys);
-    else if (!this.areas.on) this.stroke.pressRoom(screen);
+    // A room is no shape until the press is released in place.
+    if (this.shape === 'room') this.stroke.pressRoom(screen);
+    else this.stroke.begin(this.shape, world, screen, keys);
   }
 
   private pointerMove(event: PIXI.FederatedPointerEvent): void {
@@ -205,12 +161,6 @@ export class FogGesture {
     const world = this.worldOf(screen);
     const keys = placeKeysOf(event);
     this.over = screen;
-
-    // Areas mode: a drag of the selected area, a press that is no shape yet, a handle under the pointer.
-    if (fogTool && !this.active && this.areas.on && this.areas.move(world, screen, keys)) {
-      this.stroke.pointer = world;
-      return;
-    }
 
     if (this.shape === 'brush' && fogTool) this.stroke.moveRing(world);
 
@@ -227,14 +177,7 @@ export class FogGesture {
   }
 
   private pointerUp(): void {
-    if (!this.active && this.areas.release()) return;
     this.stroke.release();
-  }
-
-  /** A click in Areas mode that selected no area: a polygon's first corner, or the room clicked in. */
-  private click(world: Point, screen: Point, keys: PlaceKeys): void {
-    if (this.shape === 'polygon') this.begin(world, screen, keys);
-    else if (this.shape === 'room') this.stroke.clickRoom(world);
   }
 
   private worldOf(screen: PIXI.PointData): Point {

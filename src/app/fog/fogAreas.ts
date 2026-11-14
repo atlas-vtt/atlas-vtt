@@ -1,26 +1,23 @@
 /**
- * Fog areas: the lasso and rectangle operations the GM keeps as objects (`FogAreaMark`), drawn
- * once in prep and flipped between hidden and revealed at the table. An area is hidden while its
- * operation paints and revealed while it erases, so whoever ignores the mark replays the plain
- * operation and shows the same fog. Everything that reads areas reads them here.
+ * Fog areas: the fog Atlas remembers as one piece. A shape drawn to hide is a lasso or rectangle
+ * operation with a mark (`FogAreaMark`), which is revealed and hidden again as a whole. An area
+ * is hidden while its operation paints and revealed while it erases, so whoever ignores the mark
+ * replays the plain operation and shows the same fog. The GM never reads the word: to them it is
+ * fog that a right-click reveals. Everything that reads areas reads them here.
  */
 
 import type { FogAreaMark, FogLassoFill, FogOperation, FogRectangleFill } from '../types/fogTypes';
 import type { Point } from '../types/visionTypes';
 import { hasArea } from '../vision/polygonArea';
-import { areaBadgePoint } from './fogAreaBadge';
 import { simplifiedOutline } from './fogAreaShapes';
 import { validateFogOperation } from './fogOperationShape';
 
-export { areaBadgePoint };
-export { fittedArea, joinedArea, outerOutlines, simplifiedOutline, trimmedAreas } from './fogAreaShapes';
+export { fittedArea, joinedArea, simplifiedOutline } from './fogAreaShapes';
 
 /** The areas of one level that are read; a record that holds more keeps them as plain fog. */
 export const MAX_FOG_AREAS = 500;
-/** The corners an area's outline is thinned towards when it is made, and past which the editor adds none. */
+/** The corners an area's outline is thinned towards when it is made. */
 export const MAX_AREA_CORNERS = 200;
-/** The characters of a name that are read. */
-export const MAX_AREA_NAME = 60;
 
 /** A fog operation that is an area. */
 export type FogArea = (FogLassoFill | FogRectangleFill) & { area: FogAreaMark };
@@ -66,14 +63,6 @@ export function fogAreaList(fog: Operations): readonly FogArea[] {
   }
   lists.set(fog, areas);
   return areas;
-}
-
-/** The name the GM gave the area; a name that is no text, or blank, is none. */
-export function areaName(area: FogArea): string | undefined {
-  const name: unknown = area.area.name;
-  if (typeof name !== 'string') return undefined;
-  const trimmed = name.trim().slice(0, MAX_AREA_NAME);
-  return trimmed === '' ? undefined : trimmed;
 }
 
 /** Whether the area hides what it covers: it does while its operation paints. */
@@ -126,21 +115,6 @@ export function fogAreaOutlines(fog: Operations): ReadonlyArray<readonly Point[]
     outlineLists.set(fog, list);
   }
   return list;
-}
-
-const spots = new WeakMap<object, Point | null>();
-
-/**
- * Where the badge of a lasso or rectangle operation sits: the place inside its outline farthest
- * from its edges (`areaBadgePoint`), or null where it encloses nothing. Worked out once per operation.
- */
-export function areaBadgeSpot(operation: FogLassoFill | FogRectangleFill): Point | null {
-  let spot = spots.get(operation);
-  if (spot === undefined) {
-    spot = areaBadgePoint(areaOutline(operation));
-    spots.set(operation, spot);
-  }
-  return spot;
 }
 
 /**

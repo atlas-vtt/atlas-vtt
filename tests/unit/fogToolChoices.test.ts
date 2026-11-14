@@ -1,26 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { clampBrushSize, DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogStrokeReveals, fogToolFor, fogWhat, isFogTool, makesFogAreas, settledFogTool, steppedBrushSize } from '../../src/app/fog/fogToolChoices';
+import { clampBrushSize, DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, fogStrokeReveals, fogToolFor, fogWhat, isFogTool, settledFogTool, steppedBrushSize } from '../../src/app/fog/fogToolChoices';
 import { DEFAULT_GM_FOG_OPACITY, readGmFogOpacity } from '../../src/app/fog/gmFogOpacity';
 
 describe('what the fog tool does', () => {
-  const state = (activeTool: string, areas = false): { activeTool: string; fogTool: { areas: boolean } } => ({ activeTool, fogTool: { areas } });
-
-  it('hides with the fog tool, reveals with its eraser, and makes areas only while it hides', () => {
-    expect(fogWhat(state('fog'))).toBe('hide');
-    expect(fogWhat(state('eraser'))).toBe('reveal');
-    expect(fogWhat(state('fog', true))).toBe('areas');
-    // The revealing tool makes no areas, whatever the choice says.
-    expect(fogWhat(state('eraser', true))).toBe('reveal');
+  it('hides with the fog tool and reveals with its eraser', () => {
+    expect(fogWhat({ activeTool: 'fog' })).toBe('hide');
+    expect(fogWhat({ activeTool: 'eraser' })).toBe('reveal');
+    // Another tool in use: the fog tool would hide.
+    expect(fogWhat({ activeTool: 'move' })).toBe('hide');
   });
 
-  it('names the tool and the mode for each thing it does, which read back as that thing', () => {
-    expect(fogToolFor('hide')).toEqual({ tool: 'fog', areas: false });
-    expect(fogToolFor('reveal')).toEqual({ tool: 'eraser', areas: false });
-    expect(fogToolFor('areas')).toEqual({ tool: 'fog', areas: true });
-    for (const what of ['hide', 'reveal', 'areas'] as const) {
-      const { tool, areas } = fogToolFor(what);
-      expect(fogWhat(state(tool, areas))).toBe(what);
-    }
+  it('names the tool for each thing it does, which reads back as that thing', () => {
+    expect(fogToolFor('hide')).toBe('fog');
+    expect(fogToolFor('reveal')).toBe('eraser');
+    for (const what of ['hide', 'reveal'] as const) expect(fogWhat({ activeTool: fogToolFor(what) })).toBe(what);
   });
 
   it('knows its two tools', () => {
@@ -37,21 +30,13 @@ describe('what the fog tool does', () => {
 });
 
 describe('the choices the fog tool can hold', () => {
-  it('have no brush while the tool makes areas: the rectangle takes its place', () => {
-    expect(settledFogTool({ areas: true, shape: 'brush', brushSize: 50 })).toEqual({ areas: true, shape: 'rectangle', brushSize: 50 });
-    expect(settledFogTool({ areas: false, shape: 'brush', brushSize: 50 }).shape).toBe('brush');
-    expect(settledFogTool({ areas: true, shape: 'lasso', brushSize: 50 }).shape).toBe('lasso');
-  });
-
-  it('make areas only while the hiding tool is the one in use', () => {
-    expect(makesFogAreas({ activeTool: 'fog', fogTool: { areas: true } })).toBe(true);
-    expect(makesFogAreas({ activeTool: 'fog', fogTool: { areas: false } })).toBe(false);
-    expect(makesFogAreas({ activeTool: 'move', fogTool: { areas: true } })).toBe(false);
-    expect(makesFogAreas({ activeTool: 'eraser', fogTool: { areas: true } })).toBe(false);
+  it('keep the shape chosen, the brush too, whatever the tool does', () => {
+    expect(settledFogTool({ shape: 'brush', brushSize: 50 })).toEqual({ shape: 'brush', brushSize: 50 });
+    expect(settledFogTool({ shape: 'lasso', brushSize: 50 }).shape).toBe('lasso');
   });
 
   it('keep the brush within its limits', () => {
-    expect(settledFogTool({ areas: false, shape: 'brush', brushSize: 9000 }).brushSize).toBe(FOG_BRUSH_SIZES.max);
+    expect(settledFogTool({ shape: 'brush', brushSize: 9000 }).brushSize).toBe(FOG_BRUSH_SIZES.max);
   });
 });
 

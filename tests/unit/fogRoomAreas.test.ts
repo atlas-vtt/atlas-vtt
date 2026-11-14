@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { coveredShare } from '../../src/app/fog/fogAreaShapes';
 import { areaOutline, fogAreaList, MAX_FOG_AREAS, type FogArea } from '../../src/app/fog/fogAreas';
 import { fogCoverage } from '../../src/app/fog/fogCoverage';
-import { areaOfRoom, isAreaOfRoom, planRoomAreas } from '../../src/app/fog/fogRoomAreas';
+import { areaOfRoom, isAreaOfRoom, planRoomAreas, type RoomPiece } from '../../src/app/fog/fogRoomAreas';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
@@ -14,6 +14,7 @@ const rect = (x: number, y: number, width: number, height: number): Point[] => [
 /** A texel of a room's raster on an ordinary map. */
 const REACH = 4;
 const HALL = rect(140, 140, 280, 280);
+const hidden = (...outlines: Point[][]): RoomPiece[] => outlines.map((outline) => ({ outline, hidden: true }));
 
 describe('the share of an outline another covers', () => {
   it('is all of it, a part, or nothing', () => {
@@ -62,15 +63,19 @@ describe('the areas made of a map\'s rooms', () => {
   const CELL = rect(700, 490, 140, 140);
 
   it('are one per room, as the room is, and none of a room that is an area already', () => {
-    const plan = planRoomAreas([HALL, VAULT, CELL], [rect(141, 141, 279, 279)], REACH, 100);
-    expect(plan.full).toBe(false);
-    expect(plan.shapes).toEqual([{ type: 'lasso', points: VAULT }, { type: 'lasso', points: CELL }]);
-    expect(planRoomAreas([], [], REACH, 100)).toEqual({ shapes: [], full: false });
+    const plan = planRoomAreas([HALL, VAULT, CELL], hidden(rect(141, 141, 279, 279)), REACH);
+    expect(plan).toEqual({ shapes: [{ type: 'lasso', points: VAULT }, { type: 'lasso', points: CELL }], hide: [] });
+    expect(planRoomAreas([], [], REACH)).toEqual({ shapes: [], hide: [] });
+  });
+
+  it('hide the area of a room again where it is revealed, and make none of it', () => {
+    const pieces: RoomPiece[] = [{ outline: VAULT, hidden: true }, { outline: rect(141, 141, 279, 279), hidden: false }, { outline: CELL, hidden: false }];
+    expect(planRoomAreas([HALL, VAULT, CELL], pieces, REACH)).toEqual({ shapes: [], hide: [1, 2] });
   });
 
   it('end where the areas there are begin', () => {
     // An area over the right two fifths of the vault: the vault's area is the rest of it.
-    const { shapes } = planRoomAreas([VAULT], [rect(588, 100, 400, 400)], REACH, 100);
+    const { shapes } = planRoomAreas([VAULT], hidden(rect(588, 100, 400, 400)), REACH);
     expect(shapes).toHaveLength(1);
     const [shape] = shapes;
     expect(shape?.type === 'lasso' ? shape.points.map(({ x, y }) => `${x},${y}`).sort() : []).toEqual(['420,140', '420,420', '588,140', '588,420']);
@@ -78,21 +83,14 @@ describe('the areas made of a map\'s rooms', () => {
 
   it('are none of a room the areas there are cover more than half of, one area or several together', () => {
     // An area drawn by hand over the left three fifths of the hall: pressed again, nothing is stacked on it.
-    expect(planRoomAreas([HALL, VAULT], [rect(100, 100, 208, 400)], REACH, 100).shapes).toEqual([{ type: 'lasso', points: VAULT }]);
+    expect(planRoomAreas([HALL, VAULT], hidden(rect(100, 100, 208, 400)), REACH).shapes).toEqual([{ type: 'lasso', points: VAULT }]);
     // Two areas of a third and a quarter of the hall, apart: together more than half.
-    expect(planRoomAreas([HALL], [rect(140, 140, 94, 280), rect(350, 140, 70, 280)], REACH, 100).shapes).toEqual([]);
+    expect(planRoomAreas([HALL], hidden(rect(140, 140, 94, 280), rect(350, 140, 70, 280)), REACH).shapes).toEqual([]);
     // The same two over each other cover a third: the hall gets its area, less them.
-    const { shapes } = planRoomAreas([HALL], [rect(140, 140, 94, 280), rect(140, 140, 70, 280)], REACH, 100);
+    const { shapes } = planRoomAreas([HALL], hidden(rect(140, 140, 94, 280), rect(140, 140, 70, 280)), REACH);
     expect(shapes).toHaveLength(1);
     // Exactly half is not more than half.
-    expect(planRoomAreas([HALL], [rect(140, 140, 140, 280)], REACH, 100).shapes).toHaveLength(1);
-  });
-
-  it('are no more than the level can still hold, and say that rooms were left', () => {
-    expect(planRoomAreas([HALL, VAULT, CELL], [], REACH, 2)).toEqual({ shapes: [{ type: 'lasso', points: HALL }, { type: 'lasso', points: VAULT }], full: true });
-    expect(planRoomAreas([HALL], [], REACH, 0)).toEqual({ shapes: [], full: true });
-    // A room that is an area already is no room left.
-    expect(planRoomAreas([HALL], [HALL], REACH, 0)).toEqual({ shapes: [], full: false });
+    expect(planRoomAreas([HALL], hidden(rect(140, 140, 140, 280)), REACH).shapes).toHaveLength(1);
   });
 });
 
@@ -118,12 +116,12 @@ function scene(): { store: ViewAtlasStore; areas: () => readonly FogArea[]; step
 }
 const outlines = (areas: readonly FogArea[]): string[][] => areas.map((area) => areaOutline(area).map(({ x, y }) => `${x},${y}`).sort()).sort();
 
-describe('areas from walls in the store', () => {
+describe('hiding every room in the store', () => {
   it('makes a hidden area of every room, in one undo step that undo takes back whole', () => {
     const { store, areas, steps, undo, redo } = scene();
     for (const wall of [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280), ...roomWalls(700, 490, 280, 140)]) store.getState().addWall(wall);
     const before = steps();
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 3, full: false });
+    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 3 });
     expect(steps()).toBe(before + 1);
     expect(outlines(areas())).toEqual([
       ['140,140', '140,420', '420,140', '420,420'],
@@ -142,17 +140,36 @@ describe('areas from walls in the store', () => {
     expect(areas()).toHaveLength(3);
 
     // Again there is nothing to make, and no undo step.
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 0, full: false });
+    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 0 });
     expect(steps()).toBe(before + 1);
+  });
+
+  it('hides a room again whose area was revealed, with the others, in the one undo step', () => {
+    const { store, areas, steps, undo } = scene();
+    for (const wall of [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280)]) store.getState().addWall(wall);
+    store.getState().addRoomAreas(MAP);
+    const hall = areas().find((area) => areaOutline(area).some((corner) => corner.x === 140))!;
+    store.getState().flipFogArea(hall.id);
+    // A room walled in since.
+    for (const wall of roomWalls(700, 490, 280, 140)) store.getState().addWall(wall);
+    const before = steps();
+    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 3, made: 2 });
+    expect(steps()).toBe(before + 1);
+    expect(areas()).toHaveLength(3);
+    expect(areas().every((area) => area.isErasing === false)).toBe(true);
+    expect(fogCoverage(store.getState().objects.fog).covers({ x: 300, y: 300 })).toBe(true);
+    undo();
+    expect(areas()).toHaveLength(2);
+    expect(areas().find((area) => area.id === hall.id)).toMatchObject({ isErasing: true });
   });
 
   it('makes nothing without a map, without walls, or where the walls enclose nothing', () => {
     const { store, areas, steps } = scene();
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 0, made: 0, full: false });
+    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 0, made: 0 });
     for (const wall of roomWalls(140, 140, 280, 280).slice(0, 3)) store.getState().addWall(wall);
     const before = steps();
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 0, made: 0, full: false });
-    expect(store.getState().addRoomAreas(null)).toEqual({ rooms: 0, made: 0, full: false });
+    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 0, made: 0 });
+    expect(store.getState().addRoomAreas(null)).toEqual({ rooms: 0, made: 0 });
     expect(areas()).toEqual([]);
     expect(steps()).toBe(before);
   });
@@ -162,16 +179,16 @@ describe('areas from walls in the store', () => {
     store.setState({ levels: LEVELS, viewedLevel: 'ground' });
     for (const wall of roomWalls(140, 140, 280, 280)) store.getState().addWall(wall);
     store.getState().setViewedLevel('upper');
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 0, made: 0, full: false });
+    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 0, made: 0 });
     for (const wall of roomWalls(700, 140, 210, 280)) store.getState().addWall(wall);
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 1, made: 1, full: false });
+    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 1, made: 1 });
     expect(areas()).toEqual([expect.objectContaining({ level: 'upper' })]);
     store.getState().setViewedLevel('ground');
     expect(store.getState().addRoomAreas(MAP)).toMatchObject({ rooms: 1, made: 1 });
     expect(areas().map((area) => area.level).sort()).toEqual(['ground', 'upper']);
   });
 
-  it(`makes no more areas than a level holds (${MAX_FOG_AREAS}), and says that rooms were left`, () => {
+  it(`hides the rooms past the areas a level holds (${MAX_FOG_AREAS}) as plain fog`, () => {
     const { store, areas } = scene();
     for (const wall of [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280)]) store.getState().addWall(wall);
     store.setState((state) => ({
@@ -180,8 +197,10 @@ describe('areas from walls in the store', () => {
         fog: Object.fromEntries(Array.from({ length: MAX_FOG_AREAS - 1 }, (_, index) => [`a${String(index).padStart(4, '0')}`, { id: `a${String(index).padStart(4, '0')}`, kind: 'fog', timestamp: index, type: 'rectangle', isErasing: false, x: 1200, y: index, width: 1, height: 1, area: {} }])),
       },
     }));
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 2, made: 1, full: true });
+    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 2, made: 2 });
     expect(areas()).toHaveLength(MAX_FOG_AREAS);
-    expect(store.getState().addRoomAreas(MAP)).toEqual({ rooms: 2, made: 0, full: true });
+    expect(Object.keys(store.getState().objects.fog)).toHaveLength(MAX_FOG_AREAS + 1);
+    const fog = fogCoverage(store.getState().objects.fog);
+    expect([fog.covers({ x: 300, y: 300 }), fog.covers({ x: 800, y: 300 })]).toEqual([true, true]);
   });
 });
