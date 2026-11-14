@@ -68,7 +68,8 @@ export interface AnnotationInteractionDeps {
  * (`ownKind`: a stamp in Stamp mode; a text in Text mode, unless Alt is held). A press selects (with its group; Shift adds or takes away) and
  * drags; a press on a handle scales, stretches, turns or moves a line's point; a right click opens
  * the menu (the press released in place: a right-drag pans); a double click edits a text or
- * removes a line's point, and so does the first click on a text in Text mode.
+ * removes a line's point, and so does the first click on a text in Text mode; a text opens on the
+ * release in place, so a drag from it moves it.
  */
 export class AnnotationInteraction {
   /** What the dispatch calls. */
@@ -280,11 +281,9 @@ export class AnnotationInteraction {
       this.startMove(this.read(), null, event);
       return true;
     }
-    // Text mode opens a text with the first click; a locked one is only selected.
-    if (at.kind === 'text' && ((own === 'text' && !at.locked) || this.doubleClicks.pressed(at.id, event.global))) {
-      this.deps.editText(at);
-      return true;
-    }
+    // A click in place opens a text for typing: the first in Text mode (a locked one is only selected), the second of a
+    // double click anywhere. Only the release in place opens it, so a drag from a text moves it, as it moves a stamp.
+    const opens = at.kind === 'text' && ((own === 'text' && !at.locked) || this.doubleClicks.pressed(at.id, event.global)) ? at : null;
     // A group is selected as one, also from the mode that takes only one kind of it.
     const group = withGroups([at.id], read.list, own ? 'all' : read.scope);
     const selected = state.selectedIds.includes(at.id);
@@ -297,19 +296,24 @@ export class AnnotationInteraction {
     this.hover(null);
     // A click on the edge of the one line that shows its points adds a point there; a drag moves the line.
     const edge = selected && handle?.kind === 'edge' && read.handles?.line === at ? handle : null;
-    this.startMove(this.read(), edge, event);
+    this.startMove(this.read(), edge, event, opens);
     return true;
   }
 
   /** Moves the selected annotations that may be moved with the pointer, and the tokens selected with them. */
-  private startMove(read: SelectionRead, edge: Extract<HandleRef, { kind: 'edge' }> | null, event: FederatedPointerEvent): void {
+  private startMove(read: SelectionRead, edge: Extract<HandleRef, { kind: 'edge' }> | null, event: FederatedPointerEvent, opens: TextAnnotation | null = null): void {
     const { movable, handles, withTokens } = read;
     // Before this move listens: the tokens' drag copies what is selected before anything has moved.
     if (withTokens) this.deps.dragTokens(event);
-    if (movable.length === 0) return;
+    if (movable.length === 0) {
+      // Nothing to drag (a locked text): the press itself opens it.
+      if (opens) this.deps.editText(opens);
+      return;
+    }
+    const click = opens ? () => this.deps.editText(opens) : edge && handles ? () => this.gestures.addPoint(handles, edge.after, edge.at) : null;
     this.gestures.move(movable, event, {
       handles,
-      ...(edge && handles && { click: () => this.gestures.addPoint(handles, edge.after, edge.at) }),
+      ...(click && { click }),
       // Tokens dragged with them write as they go: both are one undo step, and the tokens' drag copies for both.
       ...(withTokens
         ? { withTokens: this.tokenSteps() }

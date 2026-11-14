@@ -189,6 +189,30 @@ describe('Text mode and a text that is there', () => {
     expect(placing(s)).toBeNull();
   });
 
+  it('moves the text a drag starts on and opens no field: only a click in place opens it', () => {
+    let id = '';
+    const s = scene((made) => { id = made.store.getState().addText(label(200, 300)); });
+    s.tool({ mode: 'text' });
+    const from = s.texts()[0]!;
+    expect(s.pull([[200, 300], [260, 340]])).toBe(true);
+    expect(s.field()).toBeNull();
+    expect(selected(s)).toEqual([id]);
+    expect(s.texts()).toHaveLength(1);
+    expect({ x: s.texts()[0]!.x - from.x, y: s.texts()[0]!.y - from.y }).toEqual({ x: 60, y: 40 });
+  });
+
+  it('moves a text pressed twice in quick succession when the second press drags, in Select mode and with the move tool', () => {
+    const s = scene((made) => { made.store.getState().addText(label(200, 300)); });
+    for (const take of [() => s.tool({ mode: 'select' }), () => s.store.getState().setActiveTool('move')]) {
+      take();
+      const from = s.texts()[0]!;
+      s.pull([[from.x, from.y]]);
+      expect(s.pull([[from.x, from.y], [from.x + 60, from.y + 40]], { soon: true })).toBe(true);
+      expect(s.field()).toBeNull();
+      expect({ x: s.texts()[0]!.x - from.x, y: s.texts()[0]!.y - from.y }).toEqual({ x: 60, y: 40 });
+    }
+  });
+
   it('starts a new text over it with Alt held', () => {
     const s = scene((made) => { made.store.getState().addText(label(200, 300)); });
     s.tool({ mode: 'text' });
