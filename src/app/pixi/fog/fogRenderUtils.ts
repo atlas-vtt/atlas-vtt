@@ -1,8 +1,6 @@
 /**
- * Shared rendering functions for fog operations on Canvas 2D.
- *
- * Used by both FogCanvasCompositor (full-canvas preview) and
- * FogOperationCanvas (per-operation sprite rendering).
+ * Rendering functions for fog operations on Canvas 2D: what `FogCanvasCompositor` draws a
+ * stroke under way with, and the bounds of an operation.
  */
 import type { FogBounds, FogOperation, FogBrushStroke, FogLassoFill, FogRectangleFill } from '../../types/fogTypes';
 
@@ -139,6 +137,41 @@ export function renderOperation(
     }
   } finally {
     ctx.restore();
+  }
+}
+
+/**
+ * Draws the shapes of one stroke (the cells of a drag). Its lassos and rectangles are one path,
+ * filled once: filled one by one, Canvas anti-aliases every shape's edge by itself, and shapes
+ * that meet show a seam between them. All hide or all reveal, as the first does.
+ */
+export function renderOperations(ctx: CanvasRenderingContext2D, ops: readonly FogOperation[], bounds: FogBounds, scale: number): void {
+  const [first] = ops;
+  if (!first) return;
+  ctx.save();
+  try {
+    ctx.globalCompositeOperation = first.isErasing ? 'destination-out' : 'source-over';
+    ctx.fillStyle = FOG_COLOR;
+    ctx.beginPath();
+    for (const op of ops) {
+      const left = (op.offsetX ?? 0) - bounds.x;
+      const top = (op.offsetY ?? 0) - bounds.y;
+      if (op.type === 'rectangle') {
+        ctx.rect((op.x + left) * scale, (op.y + top) * scale, op.width * scale, op.height * scale);
+      } else if (op.type === 'lasso' && op.points.length >= 3) {
+        op.points.forEach((point, index) => {
+          if (index === 0) ctx.moveTo((point.x + left) * scale, (point.y + top) * scale);
+          else ctx.lineTo((point.x + left) * scale, (point.y + top) * scale);
+        });
+        ctx.closePath();
+      }
+    }
+    ctx.fill('nonzero');
+  } finally {
+    ctx.restore();
+  }
+  for (const op of ops) {
+    if (op.type === 'brush') renderOperation(ctx, op, bounds, scale, op.offsetX ?? 0, op.offsetY ?? 0);
   }
 }
 

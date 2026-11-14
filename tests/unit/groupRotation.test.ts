@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
 import { describe, expect, it, vi } from 'vitest';
-import { Container, Sprite } from 'pixi.js';
+import { Container } from 'pixi.js';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { snapTokenCenter } from '../../src/app/grid/gridPlacement';
@@ -10,7 +9,6 @@ import { AnnotationEdit, type EditLayer } from '../../src/app/pixi/annotations/A
 import { GroupRotation, type GroupTurnHost } from '../../src/app/pixi/selection/GroupRotation';
 import { gridPivot } from '../../src/app/pixi/selection/groupTurn';
 import type { DrawingStroke, TokenEntity } from '../../src/app/types';
-import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 // jsdom draws no glyphs: the button's rotate glyph never arrives
@@ -279,47 +277,5 @@ describe('GroupRotation', () => {
     const loading = store.getState().objects;
     release();
     expect(store.getState().objects).toBe(loading);
-  });
-});
-
-describe('turning a selection with fog in it', () => {
-  it('turns a frame that holds only the tokens and leaves the fog where it is', () => {
-    const store = createViewAtlasStore(createInMemoryApp().app, `group-rotation-fog-${Math.random()}`);
-    store.setState({
-      persistenceEnabled: false, activeTool: 'select', selectedIds: ['a', 'b', 'smoke'],
-      objects: { ...store.getState().objects, tokens: { a: token('a', 35, 35), b: token('b', 175, 35) } },
-    });
-    const group = (x: number, y: number): Container => {
-      const view = new Container();
-      const art = view.addChild(new Sprite());
-      art.label = 'tokenSprite';
-      art.width = 70;
-      art.height = 70;
-      view.position.set(x, y);
-      return view;
-    };
-    const sprites = { a: group(35, 35), b: group(175, 35) };
-    const viewport = Object.assign(new Container(), {
-      toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }),
-      plugins: { pause: vi.fn(), resume: vi.fn() },
-      options: { events: { domElement: document.createElement('canvas') } },
-    });
-    const fog = viewport.addChild(new Sprite());
-    fog.position.set(600, 300);
-    fog.width = 100;
-    fog.height = 100;
-    const manager = new SelectionManager(viewport as never, () => sprites, () => ({ smoke: fog }), store, new EventEmitter());
-    manager.setGroupTurnHost({ pivot: (middle) => middle, showFacings: () => undefined });
-    const withoutFog = manager['highlights'].groupFrameBox();
-
-    const handle = viewport.getChildByLabel('groupRotateHandle', true)!;
-    handle.emit('pointerdown', { button: 0, global: { x: 105, y: -60 }, stopPropagation: vi.fn() } as never);
-    viewport.emit('pointermove', { button: 0, global: { x: 200, y: 35 }, shiftKey: false } as never);
-
-    expect(manager['highlights'].groupFrameBox()).toEqual(withoutFog);
-    expect(withoutFog!.x + withoutFog!.width).toBeLessThan(600);
-    expect(fog.position).toMatchObject({ x: 600, y: 300 });
-    expect(store.getState().objects.tokens.a).toMatchObject({ x: 105, y: -35 });
-    manager.destroy();
   });
 });

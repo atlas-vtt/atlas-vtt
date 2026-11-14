@@ -12,6 +12,8 @@ import type { Tool } from "./toolFaces"
 import { levelObjects } from '../../../levels/levelObjects';
 import { mapOffersRanges } from "../../../services/mapRanges"
 import { mapTokens } from "../../../tokens/offMap"
+import { isFogTool, steppedBrushSize } from "../../../fog/fogToolChoices"
+import type { ViewAtlasState } from "../../../storeFactory"
 
 const MOVE_TOOLS: readonly Tool[] = ["move", "laser-pointer"]
 const FOG_TOOLS: readonly Tool[] = ["fog", "eraser"]
@@ -20,6 +22,11 @@ const FOG_TOOLS: readonly Tool[] = ["fog", "eraser"]
 function cycleTool<T extends Tool>(family: readonly T[], activeTool: Tool): T {
   const index = family.indexOf(activeTool as T)
   return family[(index + 1) % family.length]!
+}
+
+/** Steps the fog brush's size, only while the fog tool is in use. */
+function stepFogBrush(state: ViewAtlasState, direction: 1 | -1): void {
+  if (isFogTool(state.activeTool)) state.setFogTool({ brushSize: steppedBrushSize(state.fogTool.brushSize, direction) })
 }
 
 interface ToolbarHotkeyActions {
@@ -43,10 +50,11 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
   const dmOnly = (action: () => void) => (): void => {
     if (!isPlayerView) action()
   }
-  /** An action of the Draw tool's bars: only while the tool is in use, in the GM's view. */
-  const whileDrawing = (action: () => void) => dmOnly(() => {
+  /** The size of the tool in use, a step smaller or larger: the Draw tool's in the GM's view, else the fog brush. */
+  const stepSize = (direction: 1 | -1) => dmOnly(() => {
     const state = store.getState()
-    if (state.activeTool === "draw" && state.isGMView) action()
+    if (state.activeTool !== "draw") stepFogBrush(state, direction)
+    else if (state.isGMView) stepDrawSize(store, direction)
   })
 
   // The mode the Draw tool had before its eraser, which the eraser's key goes back to.
@@ -92,8 +100,8 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
       if (state.activeTool !== "draw") selectTool("eraser")
       else if (state.isGMView) state.setDrawTool({ mode: eraserOrBack(state.drawTool.mode, drawnWith.current, state.grid) })
     }),
-    drawSmaller: whileDrawing(() => stepDrawSize(store, -1)),
-    drawLarger: whileDrawing(() => stepDrawSize(store, 1)),
+    drawSmaller: stepSize(-1),
+    drawLarger: stepSize(1),
     gmView: dmOnly(toggleGMView),
     selectAll: dmOnly(() => {
       const state = store.getState()

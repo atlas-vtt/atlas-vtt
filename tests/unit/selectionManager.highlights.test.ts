@@ -20,24 +20,14 @@ function token(x: number, y: number): Container {
   return group;
 }
 
-/** A fog operation covering 600..700 × 300..400 of the world. */
-function fogArea(viewport: Container): Container {
-  const sprite = viewport.addChild(new Sprite());
-  sprite.position.set(600, 300);
-  sprite.width = 100;
-  sprite.height = 100;
-  return sprite;
-}
-
 function setup(selectedIds: string[], bars: (zoom: number) => BarsSpan = () => ({ halfWidth: 50, reach: 24 })) {
   const tokens = { goblin: token(100, 100), orc: token(300, 100) };
   const viewport = Object.assign(new Container(), { toWorld: (point: { x: number; y: number }) => point });
-  const fog = { smoke: fogArea(viewport) };
   const store = createStore(subscribeWithSelector(() => ({
     selectedIds, activeTool: 'select', drawTool: DEFAULT_DRAW_TOOL, selectionMode: 'box',
     objects: { tokens: { goblin: { id: 'goblin' }, orc: { id: 'orc' } }, drawings: {} },
   })));
-  const manager = new SelectionManager(viewport as never, () => tokens, () => fog, store as never, new EventEmitter());
+  const manager = new SelectionManager(viewport as never, () => tokens, store as never, new EventEmitter());
   manager.barsProvider = () => bars(viewport.scale.x);
   manager.updateSelectionOverlay();
   const layer = manager.getPlayerViewLayers()[0]!.layer as Container;
@@ -116,15 +106,10 @@ describe('SelectionManager highlights', () => {
     expect(manager.groupFrameContains(200, 100 + 35 + 48 + 2 * SELECTION_LOOK.groupGap - 1)).toBe(true);
   });
 
-  it('outlines selected fog but frames and grabs only what a group drag moves', () => {
-    const withFog = setup(['goblin', 'orc', 'smoke']);
-    expect(withFog.highlights()).toHaveLength(3);
-    expect(withFog.manager.groupFrameContains(200, 100)).toBe(true);
-    expect(withFog.manager.groupFrameContains(650, 350)).toBe(false);
-    const oneToken = setup(['goblin', 'smoke']);
-    expect(oneToken.highlights()).toHaveLength(2);
-    expect(oneToken.group.context.instructions).toHaveLength(0);
-    expect(oneToken.manager.groupFrameContains(650, 350)).toBe(false);
-    expect(oneToken.manager.groupFrameContains(100, 100)).toBe(false);
+  it('marks nothing for an id that is neither a token nor a drawing, as fog\'s is', () => {
+    const { highlights, group, manager } = setup(['goblin', 'fog_1']);
+    expect(highlights()).toHaveLength(1);
+    expect(group.context.instructions).toHaveLength(0);
+    expect(manager.groupFrameContains(100, 100)).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import {
-  MAX_SIGHT_TOKENS, type JsonRecord, type SharedEffect, type SharedFog, type SharedFogOperation, type SharedLightingScene, type SharedSight,
+  MAX_FOG_OPERATIONS, MAX_FOG_POINTS, MAX_SIGHT_TOKENS, type JsonRecord, type SharedEffect, type SharedFog, type SharedFogOperation, type SharedLightingScene, type SharedSight,
   type SharedVision, type SharedWall, type SightToken,
 } from '../protocol/index.ts';
 import { validateFogOperation } from '../../fog/fogOperationShape';
@@ -35,12 +35,31 @@ function sharedOperation(operation: FogOperation, id: string): SharedFogOperatio
 }
 
 /**
+ * Whether the fog is more than one message may carry: more operations, or more points in all
+ * (x and y each count once), than a player's page reads. It refuses such a message whole.
+ */
+export function fogPastLimits(operations: Readonly<Record<string, FogOperation>>): boolean {
+  // A map file is kept as it came: an entry may be anything.
+  const entries = Object.values<unknown>(operations);
+  if (entries.length > MAX_FOG_OPERATIONS) return true;
+  let points = 0;
+  for (const entry of entries) {
+    if (typeof entry !== 'object' || entry === null || !('points' in entry) || !Array.isArray(entry.points)) continue;
+    points += entry.points.length * 2;
+    if (points > MAX_FOG_POINTS) return true;
+  }
+  return false;
+}
+
+/**
  * The scene's committed fog as players get it: every operation in the order Atlas replays them
  * (by time, then as stored), with its drag offset applied and the random id `alias` gives its key
  * (so a delta can name it). Null when an operation cannot be read, which covers the whole map for
- * the players as it does in Atlas's own player frame.
+ * the players as it does in Atlas's own player frame, and when the fog is more than a message may
+ * carry (`fogPastLimits`): a page that got it would refuse it and show the map without fog.
  */
 export function sharedFog(operations: Readonly<Record<string, FogOperation>>, alias: (key: string) => string): SharedFog {
+  if (fogPastLimits(operations)) return null;
   try {
     const ordered = Object.entries(operations).map(([key, operation], index) => {
       validateFogOperation(operation);

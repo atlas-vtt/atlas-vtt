@@ -4,6 +4,7 @@ import { isLightingQualityLevel, type LightingQualityLevel } from '../lighting/l
 import { parseGraphicsChoice, type GraphicsChoice } from '../lighting/graphicsSettings';
 import type { DrawToolChoices } from '../annotations/annotationTypes';
 import { drawToolFrom, rememberedDrawTool } from '../annotations/drawToolMemory';
+import { readGmFogOpacity } from '../fog/gmFogOpacity';
 
 /**
  * Facts about this device, which Atlas keeps in the vault's local storage: they never sync,
@@ -24,6 +25,8 @@ export const INITIATIVE_COLLAPSED_STORAGE_KEY = 'atlas-vtt:initiative-tracker';
 export const PLAYER_VIEW_4K_STORAGE_KEY = 'atlas-vtt:player-view-4k';
 /** The Draw tool's last style on this device (`RememberedDrawTool` as JSON). */
 export const DRAW_TOOL_STORAGE_KEY = 'atlas-vtt:draw-tool';
+/** How opaque fog is in the GM's view on this device: a number from 0 to 1 as text, never a falsy value Obsidian would drop. */
+export const GM_FOG_OPACITY_STORAGE_KEY = 'atlas-vtt:gm-fog-opacity';
 
 /**
  * The vault's local storage. Obsidian stores a value only when it is truthy: `false`, `0` and `''`
@@ -187,5 +190,23 @@ export function saveDrawTool(storage: DeviceStorage, choices: DrawToolChoices): 
     storage.saveLocalStorage(DRAW_TOOL_STORAGE_KEY, JSON.stringify(rememberedDrawTool(choices)));
   } catch (error) {
     console.error('[Atlas] Could not save the draw tool\'s choices of this device', error);
+  }
+}
+
+/** How opaque fog is in the GM's view on this device; the default until chosen, and where what is stored is no opacity. */
+export function loadGmFogOpacity(storage: DeviceStorage): number {
+  try {
+    return readGmFogOpacity(storage.loadLocalStorage(GM_FOG_OPACITY_STORAGE_KEY));
+  } catch (error) {
+    console.error('[Atlas] Could not read the fog opacity of this device', error);
+    return readGmFogOpacity(null);
+  }
+}
+
+export function saveGmFogOpacity(storage: DeviceStorage, opacity: number): void {
+  try {
+    storage.saveLocalStorage(GM_FOG_OPACITY_STORAGE_KEY, String(readGmFogOpacity(opacity)));
+  } catch (error) {
+    console.error('[Atlas] Could not save the fog opacity of this device', error);
   }
 }

@@ -4,12 +4,13 @@ import type { SceneState, SceneStore } from './atlasView.ts';
 import { toBase64 } from './assetServe.ts';
 import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 import { Pacer, type PacerClock } from '../marks/index.ts';
-import { sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
+import { fogPastLimits, sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
 import { SequencedList } from './sequencedList.ts';
 import { maskBytes } from './exploredMaskAlpha.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelExploredMask } from '../../levels/sceneLevels';
+import { t } from '../../i18n';
 
 export interface InputSharePorts extends PacerClock {
   send(body: GmMessage, to?: string): void;
@@ -22,6 +23,8 @@ export interface InputSharePorts extends PacerClock {
   lightingSource(): LightingSource | null;
   /** How players are handed an explored memory too large to go inline; without it they get none. */
   stored?: AssetStoring | undefined;
+  /** Tells the GM something in words. */
+  notice?(text: string): void;
 }
 
 /** The shortest time between two sends of the scene's inputs, as for the token list. */
@@ -61,6 +64,8 @@ export class InputShare {
   private scene: { readonly id: string; readonly lit: boolean } | null = null;
   private readonly last = new Map<GmMessage['t'], Sent>();
   private fogOf: unknown = undefined;
+  /** The scene's fog is more than players can be sent, and the GM was told. */
+  private fogTooMuch = false;
   private lighting: LightingKey | null = null;
   private readonly lightAliases = new Map<string, string>();
   /** The random ids of the shared scene's fog operations, by their keys in the store. */
@@ -95,6 +100,7 @@ export class InputShare {
     this.fog.reset();
     this.sight.reset();
     this.fogOf = undefined;
+    this.fogTooMuch = false;
     this.fogAliases.clear();
     this.lighting = null;
     this.releaseMask();
@@ -153,6 +159,7 @@ export class InputShare {
     if (levelObjects(state).fog !== this.fogOf) {
       this.fogOf = levelObjects(state).fog;
       this.fog.publish(scene.id, { fog: sharedFog(levelObjects(state).fog, (key) => this.fogAlias(key)) });
+      this.tellFogTooMuch(fogPastLimits(levelObjects(state).fog));
     }
     if (!scene.lit) return;
     const source = this.ports.lightingSource();
@@ -227,6 +234,12 @@ export class InputShare {
     if (last?.scene === scene.id && last.text === text) return;
     this.last.set(body.t, { scene: scene.id, text, body });
     this.ports.send(body);
+  }
+
+  /** Players see the map covered while its fog is more than they can be sent: the GM is told when that begins, once until it has ended. */
+  private tellFogTooMuch(tooMuch: boolean): void {
+    if (tooMuch && !this.fogTooMuch) this.ports.notice?.(t('online.fogTooMuch'));
+    this.fogTooMuch = tooMuch;
   }
 
   private fogAlias(key: string): string {

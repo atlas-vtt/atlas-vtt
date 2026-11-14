@@ -1,6 +1,6 @@
 import { HARD_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
 import { createSceneSource } from './plugin/host/sceneSource';
-import { canRunMapHotkeys, matchesMapHotkey } from './keyboard/mapHotkeys';
+import { canRunMapHotkeys, DEFAULT_MAP_HOTKEYS, matchesHotkey, matchesMapHotkey } from './keyboard/mapHotkeys';
 import { SettingsService, type AtlasSettings } from './services/SettingsService';
 import { DEFAULT_LASER_POINTER_SETTINGS } from './tools/laserPointerSettings';
 import { Application, Container, type FederatedPointerEvent, type Renderer } from "pixi.js";
@@ -119,6 +119,7 @@ export class PixiRendererOrchestrator { // Renamed class
   /** The drawings and texts on the map, and the Draw tool that makes them. */
   private annotations?: AnnotationsRenderer;
   private stopAnnotationsFollowingPlayers: (() => void) | undefined;
+  private stopFogAreasFollowingPlayers: (() => void) | undefined;
   /** The GM view's walls, lights and sight; the player view has none. */
   private lighting?: LightingController;
   /** The roof of the level shown, above the lighting. */
@@ -421,7 +422,6 @@ export class PixiRendererOrchestrator { // Renamed class
     this.selectionManager = new SelectionManager(
         viewport,
         () => this.tokenRenderer?.getTokenSprites() || {},
-        () => this.fogRenderer?.getFogSprites() || {},
         this.store,
         this.eventBus
     );
@@ -429,6 +429,9 @@ export class PixiRendererOrchestrator { // Renamed class
 
     // Initialize FogOfWarRenderer after pins so it can be on top when active
     this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getMapRect());
+    // A polygon placed click by click holds Enter, Backspace, Escape and the undo key: only while they are this map's
+    this.fogRenderer.keysBelongToMap = (event) => canRunMapHotkeys(event, this.viewId);
+    this.fogRenderer.isUndoKey = (event) => matchesHotkey(event, (SettingsService.forApp(this.obsApp)?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS).undo, true);
     this.followFogEdge();
     this.pinRenderer.setPlayerSight((points) => this.playersSeeMapAt(points));
     this.pinRenderer.setMapSize(() => this.getMapRect());
@@ -586,7 +589,7 @@ export class PixiRendererOrchestrator { // Renamed class
         );
         // Set PIXI app reference for renderer access
         this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
-        // Wire viewport-level dispatch providers (fog, pins, selection hit-testing)
+        // Wire viewport-level dispatch providers (pins, selection hit-testing)
         this.wireViewportDispatchProviders();
         // Re-order SelectionManager listeners so they fire after TokenRenderer's viewport handlers
         this.selectionManager?.reorderViewportListeners();
@@ -670,12 +673,16 @@ export class PixiRendererOrchestrator { // Renamed class
     return { view: { left: rect.x, top: rect.y, right: rect.x + rect.width, bottom: rect.y + rect.height }, scale: frame.scale };
   }
 
-  /** Gives the fog the edge the GM set, now and when it changes; a hard edge, which the fog starts with, asks for nothing. */
+  /**
+   * Gives the fog the edge the GM set and the opacity it has in the GM's view on this device, now
+   * and when they change; a hard edge, which the fog starts with, asks for nothing.
+   */
   private followFogEdge(): void {
     const settings = SettingsService.forApp(this.obsApp);
     if (!settings) return;
     let edge = HARD_FOG_EDGE;
     const follow = (): void => {
+      this.fogRenderer?.setGmOpacity(settings.getGmFogOpacity());
       const next = settings.getFogEdge();
       if (sameFogEdge(next, edge)) return;
       edge = next;
@@ -1152,12 +1159,7 @@ export class PixiRendererOrchestrator { // Renamed class
 
     if (this.fogRenderer) {
       this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
-      this.tokenRenderer.setFogHitTestProvider(
-        (x, y) => this.fogRenderer!.hitTestFog(x, y)
-      );
-      this.tokenRenderer.setFogClickHandler(
-        (fogId, e) => this.fogRenderer!.handleViewportFogPointerDown(fogId, e)
-      );
+      this.wireFogAreas(this.fogRenderer, this.tokenRenderer);
     }
     // The drawings and texts are made after the first wiring pass, so they are resolved when asked
     this.tokenRenderer.setAnnotationHandlers({
@@ -1207,6 +1209,15 @@ export class PixiRendererOrchestrator { // Renamed class
         // Future: hover feedback for audio sources
       });
     }
+  }
+
+  /** The badges of fog areas take the pointer with any tool, and show only while the canvas shows the GM's view: not in session view, a peek or the palette's player mode. */
+  private wireFogAreas(fog: FogOfWarRenderer, tokens: TokenRenderer): void {
+    tokens.setFogAreaHandlers(fog.areaPointer());
+    fog.showsPlayers = () => tokens.playersSeeOnCanvas() !== null;
+    this.stopFogAreasFollowingPlayers?.();
+    this.stopFogAreasFollowingPlayers = tokens.onPlayersViewChange(() => fog.refreshVisibility());
+    fog.refreshVisibility();
   }
 
   /** What only the GM sees of the drawings and texts follows what the canvas shows: session view, a peek, the palette's player mode. */
@@ -1358,6 +1369,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.measureRenderer?.destroy(); // Destroy MeasureRenderer
     this.laserPointerRenderer?.destroy(); // Destroy LaserPointerRenderer
     this.stopAnnotationsFollowingPlayers?.();
+    this.stopFogAreasFollowingPlayers?.();
     this.annotations?.destroy();
     this.lighting?.destroy();
     this.roofs?.destroy();

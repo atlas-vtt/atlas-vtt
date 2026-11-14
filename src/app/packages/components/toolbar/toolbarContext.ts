@@ -7,7 +7,7 @@ import type { Tool } from "./toolFaces"
 import type { ToolGroupControls } from "./ToolGroup"
 
 /** Tool groups whose options menu is open; only one at a time. */
-export type ToolMenu = 'move' | 'fog' | 'measure' | 'wall' | 'pin'
+export type ToolMenu = 'move' | 'measure' | 'wall' | 'pin'
 
 /**
  * What MainToolbar hands every control's item builder. Gates (player view,

@@ -4,7 +4,6 @@ import { CoinIcon } from "../../../react/components/CoinIcon"
 import { DiceDropdownMenu } from "../../../react/components/dice/DiceDropdownMenu"
 import type { ToolbarControlId } from "../../../toolbar/toolbarCatalog"
 import { ToolButton } from "../primitives/ToolButton"
-import { FogToolGroup } from "./FogToolGroup"
 import { LightingToolGroup } from "./LightingToolGroup"
 import { MeasureToolGroup } from "./MeasureToolGroup"
 import { MoveToolGroup } from "./MoveToolGroup"
@@ -22,7 +21,8 @@ function toolButtonItem(ctx: ToolbarContext, face: ToolFace, shortcut: string): 
 /** How each control of the catalog (`toolbar/toolbarCatalog.ts`) renders in the bar and in "More tools". */
 export const TOOLBAR_CONTROL_ITEMS = {
   move: ctx => toolGroupItem(ctx, 'move', moveToolFace(ctx.activeTool), <MoveToolGroup {...ctx.groupControls('move')} />),
-  fog: ctx => toolGroupItem(ctx, 'fog', fogToolFace(ctx.activeTool), <FogToolGroup {...ctx.groupControls('fog')} />),
+  // The fog tool has no menu: its bars above the toolbar hold all of it.
+  fog: ctx => toolButtonItem(ctx, fogToolFace(ctx.activeTool), ctx.hotkeyLabel('fog')),
   // The Draw tool has no menu: its bars above the toolbar hold all of it.
   draw: ctx => toolButtonItem(ctx, drawToolFace(ctx.activeTool, ctx.drawMode), ctx.hotkeyLabel('draw')),
   measure: ctx => toolGroupItem(ctx, 'measure', measureToolFace(ctx.activeTool, ctx.measureMode), <MeasureToolGroup {...ctx.groupControls('measure')} />),

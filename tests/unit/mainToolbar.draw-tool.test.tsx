@@ -90,8 +90,6 @@ vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
         getToolController: () => null,
         getNotePreviewUIManager: () => null,
       },
-      setFogBrushSize: vi.fn(),
-      clearAllFog: vi.fn(),
     },
     mapData: null,
     renderer: { getTokenRenderer: () => ({ visibleTokenIds: () => visibleTokenIds }) },

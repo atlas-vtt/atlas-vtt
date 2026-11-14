@@ -44,6 +44,40 @@ it('stays under a pointer that stands still while the map is scrolled beneath it
   expect({ x, y }).toEqual({ x: 65, y: 35 });
 });
 
+it('is a light line over a dark one, both as wide on screen at any zoom', () => {
+  const { camera, cursor } = ring();
+  const graphics = cursor.getDisplayObject();
+  const strokes: { width: number; color: number }[] = [];
+  const stroke = graphics.stroke.bind(graphics);
+  graphics.stroke = ((style: { width: number; color: number }) => {
+    strokes.push({ width: style.width, color: style.color });
+    return stroke(style);
+  }) as typeof graphics.stroke;
+  const drawn = (): { width: number; color: number }[] => strokes.splice(0);
+
+  cursor.show(false);
+  const [dark, light] = drawn();
+  expect(dark).toEqual({ width: 4, color: 0x000000 });
+  expect(light).toEqual({ width: 1.5, color: 0xffffff });
+
+  // Zoomed in twice: half as wide in the world, so as wide on screen. The red line reveals.
+  camera.scale.set(2);
+  cursor.show(true);
+  expect(drawn()).toEqual([{ width: 2, color: 0x000000 }, { width: 0.75, color: 0xff4444 }]);
+
+  // A zoom by the wheel or by a key draws the lines anew; a pan draws nothing.
+  cursor.updatePosition(50, 40);
+  camera.scale.set(4);
+  camera.scrollBy(0, 0);
+  expect(drawn().map((line) => line.width)).toEqual([1, 0.375]);
+  camera.scrollBy(10, 0);
+  expect(drawn()).toEqual([]);
+  camera.scale.set(1);
+  cursor.updatePosition(60, 40);
+  expect(drawn().map((line) => line.width)).toEqual([4, 1.5]);
+  cursor.destroy();
+});
+
 it('stays where it was while it is hidden, and stops following once destroyed', () => {
   const { camera, cursor } = ring();
   cursor.show(false);

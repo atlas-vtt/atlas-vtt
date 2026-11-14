@@ -30,9 +30,19 @@ export interface FogBrushStroke extends FogOperationBase {
   brushRadius: number;
 }
 
+/**
+ * What makes a lasso or rectangle operation an area: fog the GM keeps as an object, hidden while
+ * it paints and revealed while it erases (`fog/fogAreas.ts`). Whoever ignores the mark reads the
+ * plain operation and shows the same fog.
+ */
+export interface FogAreaMark {
+  name?: string;
+}
+
 export interface FogLassoFill extends FogOperationBase {
   type: 'lasso';
   points: Array<{ x: number; y: number }>;
+  area?: FogAreaMark;
 }
 
 export interface FogRectangleFill extends FogOperationBase {
@@ -41,6 +51,7 @@ export interface FogRectangleFill extends FogOperationBase {
   y: number;
   width: number;
   height: number;
+  area?: FogAreaMark;
 }
 
 /** Discriminated union of all fog operation types */
@@ -51,6 +62,16 @@ type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : n
 
 /** Input type for creating a fog operation (without auto-generated fields) */
 export type FogOperationInput = DistributiveOmit<FogOperation, 'id' | 'kind' | 'timestamp'>;
+
+// ── Scene option ────────────────────────────────────────────────────────
+
+/**
+ * The scene's option that fog clears around party tokens as they are put down: `distance` is how
+ * far, in grid cells. Unset is off. Read with `readFogExplore` (`fog/fogExplore.ts`).
+ */
+export interface FogExplore {
+  distance: number;
+}
 
 // ── Helper ──────────────────────────────────────────────────────────────
 

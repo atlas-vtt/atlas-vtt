@@ -1,4 +1,4 @@
-import { GlProgram, Mesh, MeshGeometry, Shader, Texture, UniformGroup, type Container, type Sprite } from 'pixi.js';
+import { GlProgram, Mesh, MeshGeometry, Shader, Texture, UniformGroup, type Container, type Sprite, type TextureSource } from 'pixi.js';
 import { destroyTree } from '../utils/destroyTree';
 import { GLSL_VERSION } from '../lighting/engine/glsl';
 import { fogEdgeBlur, type FogEdge } from '../../fog/fogEdge';
@@ -35,7 +35,7 @@ export function crackleCells(blurPx: number): [number, number, number] {
  * It reads the fog canvas itself (`uFog`) and applies the sprite's opacity (the GM's see-through fog)
  * after the cut: fog already made translucent in 8 bits moved the cut by pixels at half opacity.
  */
-const CRACKLE_FRAGMENT = `${GLSL_VERSION}
+const FRAGMENT_HEAD = `${GLSL_VERSION}
 precision highp float;
 in vec2 vUv;
 out vec4 finalColor;
@@ -57,7 +57,18 @@ float noise(vec2 p) {
   vec2 u = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
+`;
 
+/** The noise at the pixel's place on the map, into `grain`. */
+const GRAIN = `
+    vec2 world = uSpriteRect.xy + uv * uSpriteRect.zw;
+    grain = (noise(world / uCells.x) - 0.5) * ${CRACKLE_WEIGHTS[0].toFixed(3)}
+      + (noise(world / uCells.y + 17.0) - 0.5) * ${CRACKLE_WEIGHTS[1].toFixed(3)}
+      + (noise(world / uCells.z + 41.0) - 0.5) * ${CRACKLE_WEIGHTS[2].toFixed(3)};`;
+const TAPER = CRACKLE_TAPER.toFixed(3);
+const PUSH = (CRACKLE_AMOUNT * 2).toFixed(3);
+
+const CRACKLE_FRAGMENT = `${FRAGMENT_HEAD}
 void main() {
   vec2 uv = vUv;
   vec4 fog = textureLod(uFog, clamp(uv, 0.0, 1.0), 0.0);
@@ -65,20 +76,60 @@ void main() {
   float alpha = fog.a * inside;
   // The noise moves the edge less towards solid fog and open ground and not at all on them
   // (CRACKLE_TAPER), so the cut meets both without a seam, and is worked out only where it can
-  float reach = smoothstep(0.0, ${CRACKLE_TAPER.toFixed(3)}, min(alpha, 1.0 - alpha));
+  float reach = smoothstep(0.0, ${TAPER}, min(alpha, 1.0 - alpha));
   float grain = 0.0;
-  if (reach > 0.0 && uCrackle > 0.5) {
-    vec2 world = uSpriteRect.xy + uv * uSpriteRect.zw;
-    grain = (noise(world / uCells.x) - 0.5) * ${CRACKLE_WEIGHTS[0].toFixed(3)}
-      + (noise(world / uCells.y + 17.0) - 0.5) * ${CRACKLE_WEIGHTS[1].toFixed(3)}
-      + (noise(world / uCells.z + 41.0) - 0.5) * ${CRACKLE_WEIGHTS[2].toFixed(3)};
+  if (reach > 0.0 && uCrackle > 0.5) {${GRAIN}
   }
   // Where the edge lies: past it on the fog's side, the fog stays. The cut is antialiased over a
   // pixel and a half of the screen at any zoom. Its derivative is taken outside any branch: within
   // one, a neighbour that left it gives it garbage
-  float side = alpha + grain * reach * ${(CRACKLE_AMOUNT * 2).toFixed(3)} - 0.5;
+  float side = alpha + grain * reach * ${PUSH} - 0.5;
   float cut = clamp(0.5 + side / max(1.5 * fwidth(side), 1e-5), 0.0, 1.0);
   finalColor = vec4(fog.rgb / max(fog.a, 1e-4), 1.0) * mix(alpha, cut, uCrackle) * uOpacity;
+}`;
+
+/**
+ * The same over two pictures of the fog while one fades into the other: the fog as it was
+ * (`uBefore`) and as it is (`uFog`), each with its edge, and `uMix` of the way from the one to the
+ * other. Only their difference moves: where both hold the same, it is exactly nothing, so fog
+ * neither picture changed is drawn as it is without the fade, at any opacity. The picture before
+ * is kept only where the fog changed (`uBeforeRect`, in the sprite's own coordinates): around it,
+ * and in its outermost ring of pixels, which the pixels beyond would have a share in, the fog was
+ * what it is. It may itself be a mix of two pictures (a change during a fade), whose edge cannot
+ * be cut again (`uBeforeCrackle` 0): half-faded fog would break into cracks all over.
+ */
+const FADE_FRAGMENT = `${FRAGMENT_HEAD}
+uniform sampler2D uBefore;
+uniform vec4 uBeforeRect;
+uniform float uMix;
+uniform float uBeforeCrackle;
+
+void main() {
+  vec2 uv = vUv;
+  vec2 at = clamp(uv, 0.0, 1.0);
+  vec4 fog = textureLod(uFog, at, 0.0);
+  float inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+  float alpha = fog.a * inside;
+  vec2 size = vec2(textureSize(uBefore, 0));
+  vec2 place = (at - uBeforeRect.xy) / uBeforeRect.zw;
+  vec2 pixel = place * size;
+  float kept = step(1.0, pixel.x) * step(pixel.x, size.x - 1.0) * step(1.0, pixel.y) * step(pixel.y, size.y - 1.0);
+  vec4 was = textureLod(uBefore, clamp(place, 0.0, 1.0), 0.0) * kept;
+  float before = mix(alpha, was.a * inside, kept);
+  float reach = smoothstep(0.0, ${TAPER}, min(alpha, 1.0 - alpha));
+  float reachBefore = smoothstep(0.0, ${TAPER}, min(before, 1.0 - before));
+  float grain = 0.0;
+  if (max(reach, reachBefore) > 0.0 && uCrackle > 0.5) {${GRAIN}
+  }
+  float side = alpha + grain * reach * ${PUSH} - 0.5;
+  float sideBefore = before + grain * reachBefore * ${PUSH} - 0.5;
+  float cut = clamp(0.5 + side / max(1.5 * fwidth(side), 1e-5), 0.0, 1.0);
+  float cutBefore = clamp(0.5 + sideBefore / max(1.5 * fwidth(sideBefore), 1e-5), 0.0, 1.0);
+  float now = mix(alpha, cut, uCrackle);
+  float then = mix(before, cutBefore, uBeforeCrackle);
+  float shown = then + (now - then) * uMix;
+  // Both pictures are the fog's one colour, premultiplied: whichever holds any gives it
+  finalColor = vec4((fog.rgb + was.rgb) / max(fog.a + was.a, 1e-4), 1.0) * shown * uOpacity;
 }`;
 
 const CRACKLE_VERTEX = `${GLSL_VERSION}
@@ -96,6 +147,22 @@ void main() {
 }`;
 
 let program: GlProgram | null = null;
+let fadeProgram: GlProgram | null = null;
+
+/** The picture a fade of the fog comes from. */
+export interface FogBefore {
+  readonly source: TextureSource;
+  /** Where it lies on the fog's sprite: left, top, width and height as shares of the sprite's. */
+  readonly rect: readonly [number, number, number, number];
+  /** Whether its edge is cut like the fog's; a mix of two pictures has none to cut. */
+  readonly cut: boolean;
+}
+
+/**
+ * A sprite's opacity as PIXI's batcher draws it, in 8 bits: the mesh that stands in for a
+ * hard-edged sprite during a fade must draw fog nothing changed exactly as that sprite does.
+ */
+const batchedOpacity = (opacity: number): number => ((opacity * 255) | 0) / 255;
 
 /**
  * The edge of one fog sprite, drawn in its place by a mesh with the edge's shader, never through a
@@ -110,11 +177,20 @@ export class FogEdgeMesh {
     uCells: { value: new Float32Array(3), type: 'vec3<f32>' },
     uOpacity: { value: 1, type: 'f32' },
     uCrackle: { value: 0, type: 'f32' },
+    uMix: { value: 1, type: 'f32' },
+    uBeforeCrackle: { value: 0, type: 'f32' },
+    uBeforeRect: { value: new Float32Array([0, 0, 1, 1]), type: 'vec4<f32>' },
   });
   private readonly shader = new Shader({
     glProgram: program ??= GlProgram.from({ vertex: CRACKLE_VERTEX, fragment: CRACKLE_FRAGMENT, name: 'atlas-fog-edge' }),
     resources: { crackle: this.group, uFog: Texture.EMPTY.source },
   });
+  /** Draws the fog while it fades from another picture; made with the first fade. */
+  private fadeShader: Shader | null = null;
+  /** The picture a fade comes from; null while none runs. */
+  private before: FogBefore | null = null;
+  /** Whether the edge is hard: the mesh then stands in for a sprite PIXI would draw itself. */
+  private hard = false;
   private readonly mesh = new Mesh({
     geometry: new MeshGeometry({ positions: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), indices: new Uint32Array([0, 1, 2, 0, 2, 3]) }),
     shader: this.shader,
@@ -133,8 +209,40 @@ export class FogEdgeMesh {
 
   /** The edge's look, and its width in world pixels, which the cracks' sizes follow. */
   setEdge({ style, width }: FogEdge): void {
+    this.hard = width <= 0;
     (this.group.uniforms.uCells as Float32Array).set(crackleCells(fogEdgeBlur(width)));
-    this.group.uniforms.uCrackle = style === 'crackle' ? 1 : 0;
+    this.group.uniforms.uCrackle = style === 'crackle' && !this.hard ? 1 : 0;
+    this.group.update();
+  }
+
+  /**
+   * Fades from the picture `before` to the sprite's, as far as `setMix` says. Null ends the fade:
+   * the sprite's picture alone is drawn.
+   */
+  fadeFrom(before: FogBefore | null): void {
+    this.before = before;
+    if (before) {
+      this.fadeShader ??= new Shader({
+        glProgram: fadeProgram ??= GlProgram.from({ vertex: CRACKLE_VERTEX, fragment: FADE_FRAGMENT, name: 'atlas-fog-fade' }),
+        resources: { crackle: this.group, uFog: Texture.EMPTY.source, uBefore: Texture.EMPTY.source },
+      });
+      this.fadeShader.resources.uBefore = before.source;
+      (this.group.uniforms.uBeforeRect as Float32Array).set(before.rect);
+      this.group.update();
+    } else if (this.fadeShader) {
+      // The picture it came from is destroyed once the fade has ended
+      this.fadeShader.resources.uBefore = Texture.EMPTY.source;
+    }
+    const shown = before && this.fadeShader ? this.fadeShader : this.shader;
+    // The shader that rests lets go of the fog's texture: a fade's end destroys the one it began on
+    const resting = shown === this.shader ? this.fadeShader : this.shader;
+    if (resting) resting.resources.uFog = Texture.EMPTY.source;
+    this.mesh.shader = shown;
+  }
+
+  /** How far a fade has come: 0 shows the picture before, 1 the sprite's. */
+  setMix(mix: number): void {
+    this.group.uniforms.uMix = mix;
     this.group.update();
   }
 
@@ -148,8 +256,10 @@ export class FogEdgeMesh {
     // The mesh's own alpha stays 1: the shader applies the sprite's and its parents' after the cut
     let opacity = 1;
     for (let node: Container | null = sprite; node; node = node.parent) opacity *= node.alpha;
-    uniforms.uOpacity = opacity;
-    this.shader.resources.uFog = sprite.texture.source;
+    uniforms.uOpacity = this.hard ? batchedOpacity(opacity) : opacity;
+    uniforms.uBeforeCrackle = this.before?.cut ? uniforms.uCrackle : 0;
+    const shader = this.before && this.fadeShader ? this.fadeShader : this.shader;
+    shader.resources.uFog = sprite.texture.source;
     this.group.update();
   }
 
@@ -160,5 +270,6 @@ export class FogEdgeMesh {
     destroyTree(this.mesh);
     geometry.destroy();
     this.shader.destroy();
+    this.fadeShader?.destroy();
   }
 }

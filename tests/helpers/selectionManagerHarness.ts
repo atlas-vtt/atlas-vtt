@@ -22,8 +22,6 @@ export interface SelectionScene {
   tokens: Record<string, Container>;
   drawings?: Record<string, DrawingStroke>;
   texts?: Record<string, TextElement>;
-  /** Fog sprites by id, as the fog renderer hands them over. */
-  fog?: Record<string, Container>;
   /** The tool in hand; the select tool unless named. `'draw'` is the Draw tool in its Select mode. */
   tool?: 'select' | 'move' | 'draw';
   /** What the view's drawings and texts tell the selection; unset, nothing. */
@@ -48,9 +46,9 @@ export function penStroke(id: string, points: Array<{ x: number; y: number }>): 
 
 /**
  * A `SelectionManager` with the select tool, on a viewport whose world
- * coordinates are its screen coordinates, over the given tokens, drawings and fog.
+ * coordinates are its screen coordinates, over the given tokens and drawings.
  */
-export function selectionHarness({ selectionMode = 'box', tokens, drawings = {}, texts = {}, fog = {}, tool = 'select', annotations }: SelectionScene): SelectionHarness {
+export function selectionHarness({ selectionMode = 'box', tokens, drawings = {}, texts = {}, tool = 'select', annotations }: SelectionScene): SelectionHarness {
   const viewport = Object.assign(new Container(), { toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }) });
   const tokenRecords = Object.fromEntries(Object.keys(tokens).map((id) => [id, { id }]));
   const store = createStore(subscribeWithSelector(() => ({
@@ -61,7 +59,7 @@ export function selectionHarness({ selectionMode = 'box', tokens, drawings = {},
     objects: { tokens: tokenRecords, drawings, texts },
     setSelection(ids: string[]) { store.setState({ selectedIds: ids }); },
   })));
-  const manager = new SelectionManager(viewport as never, () => tokens, () => fog, store as never, new EventEmitter());
+  const manager = new SelectionManager(viewport as never, () => tokens, store as never, new EventEmitter());
   manager.setHitTestTokensProvider(() => null);
   if (annotations) manager.setAnnotationHost(annotations);
   const event = ([x, y]: ScreenPoint): FederatedPointerEvent => ({ button: 0, global: { x, y }, stopPropagation: () => undefined }) as unknown as FederatedPointerEvent;

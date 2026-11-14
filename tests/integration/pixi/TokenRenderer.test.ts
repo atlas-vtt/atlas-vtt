@@ -31,6 +31,7 @@ import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { DEFAULT_SETTINGS } from '../../../src/app/services/atlasSettings';
 import { fogCoverage } from '../../../src/app/fog/fogCoverage';
 import { fogRectangle } from '../../helpers/fogOperations';
+import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
 import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
@@ -972,41 +973,78 @@ describe('TokenRenderer Integration Tests', () => {
     });
   });
 
+  // Fog is changed with the fog tool only: with any other tool a press goes to what lies under it.
+  describe('Fog under the select and move tools', () => {
+    let fog: FogOfWarRenderer;
+
+    beforeEach(() => {
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
+      fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      viewport.addChild(fog.getContainer());
+      fog.reorderViewportListeners();
+      store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
+      openContextMenuGlobal.mockClear();
+    });
+
+    afterEach(() => {
+      fog.destroy();
+      vi.restoreAllMocks();
+    });
+
+    it.each(['select', 'move'] as const)('gives a press on fog to the token under it with the %s tool', async (tool) => {
+      store.getState().setActiveTool(tool);
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
+      await waitForTokens('token-1');
+      expect(fog.getCommittedCoverage()?.covers({ x: 105, y: 105 })).toBe(true);
+      const fogBefore = store.getState().objects.fog;
+
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointerup', pointerEvent(105, 105));
+      expect(store.getState().selectedIds).toEqual(['token-1']);
+
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointermove', pointerEvent(180, 105));
+      viewport.emit('pointerup', pointerEvent(180, 105));
+      expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 175, y: 105 });
+      expect(store.getState().selectedIds).toEqual(['token-1']);
+      expect(store.getState().objects.fog).toBe(fogBefore);
+    });
+
+    it.each(['select', 'move'] as const)('leaves a press on fog over the empty map to the marquee and the pan with the %s tool: no fog is selected, moved or deleted', (tool) => {
+      store.getState().setActiveTool(tool);
+      const fogBefore = store.getState().objects.fog;
+
+      const press = pointerEvent(900, 900);
+      viewport.emit('pointerdown', press);
+      expect(isHandled(press)).toBe(false);
+      viewport.emit('pointermove', pointerEvent(960, 940));
+      viewport.emit('pointerup', pointerEvent(960, 940));
+      expect(store.getState().selectedIds).toEqual([]);
+
+      const rightPress = { ...pointerEvent(900, 900), button: 2 } as unknown as FederatedPointerEvent;
+      viewport.emit('pointerdown', rightPress);
+      viewport.emit('pointerup', rightPress);
+      expect(openContextMenuGlobal).not.toHaveBeenCalled();
+      expect(store.getState().objects.fog).toBe(fogBefore);
+    });
+  });
+
   describe('Right-click', () => {
     const rightClick = (x: number, y: number): FederatedPointerEvent =>
       ({ ...pointerEvent(x, y), button: 2, clientX: x + 300, clientY: y + 40 }) as unknown as FederatedPointerEvent;
 
-    it('opens the token menu at the pointer for a token inside fog, and the fog menu beside it', async () => {
-      const fogClickHandler = vi.fn();
-      tokenRenderer.setFogHitTestProvider(() => 'fog-1');
-      tokenRenderer.setFogClickHandler(fogClickHandler);
+    it('opens the token menu at the pointer for a token inside fog, and no menu on the fog beside it', async () => {
+      store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
       await waitForTokens('token-1');
+      openContextMenuGlobal.mockClear();
 
       viewport.emit('pointerdown', rightClick(105, 105));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-      expect(openContextMenuGlobal).toHaveBeenCalledWith(expect.any(Array), { x: 405, y: 145 });
+      expect(openContextMenuGlobal).toHaveBeenCalledExactlyOnceWith(expect.any(Array), { x: 405, y: 145 });
 
       viewport.emit('pointerdown', rightClick(900, 900));
       viewport.emit('pointerup', rightClick(900, 900));
-      expect(fogClickHandler).toHaveBeenCalledWith('fog-1', expect.anything());
-    });
-
-    it('leaves a right press on fog to the pan and opens the fog menu only when it is released in place', () => {
-      const fogClickHandler = vi.fn();
-      tokenRenderer.setFogHitTestProvider(() => 'fog-1');
-      tokenRenderer.setFogClickHandler(fogClickHandler);
-
-      viewport.emit('pointerdown', rightClick(900, 900));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-      viewport.emit('pointermove', rightClick(960, 900));
-      viewport.emit('pointerup', rightClick(960, 900));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-
-      viewport.emit('pointerdown', rightClick(900, 900));
-      viewport.emit('pointermove', rightClick(902, 900));
-      viewport.emit('pointerup', rightClick(902, 900));
-      expect(fogClickHandler).toHaveBeenCalledExactlyOnceWith('fog-1', expect.objectContaining({ clientX: 1202 }));
+      expect(openContextMenuGlobal).toHaveBeenCalledTimes(1);
     });
 
     it('leaves a right press with the wall tool to the pan and opens the wall menu only when it is released in place', () => {

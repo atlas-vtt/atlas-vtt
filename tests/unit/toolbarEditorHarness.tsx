@@ -56,8 +56,6 @@ export function renderToolbar({ player = false, stored = {}, space = null, noteP
     viewId: 'view-1',
     getViewType: () => (player ? 'atlas-vtt-player' : 'atlas-vtt'),
     serviceManager: { getEventBus: () => bus, getToolController: () => null, getNotePreviewUIManager: () => notePreviews ?? null, getRendererService: () => null },
-    setFogBrushSize: vi.fn(),
-    clearAllFog: vi.fn(),
     openSceneBrowser: vi.fn(),
   };
   const ui = { app, view, pixiApp: null, renderer: { getTokenRenderer: () => ({ visibleTokenIds: () => [] }) } } as unknown as AtlasUIContextValue;
