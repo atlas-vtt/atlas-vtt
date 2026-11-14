@@ -15,7 +15,8 @@
 
 **Hide, layer and edit drawings**
 - Players see it: switch it off and a drawing or text is yours alone
-- Under tokens: lays a drawing on the floor, under the grid and the tokens. It is lit like the map, so players see it only where they see the map
+- With dynamic lighting, drawings, stamps and texts are lit like the map: players see them only where they see or remember the map
+- Under tokens: lays a drawing on the floor, under the grid and the tokens
 - Select mode selects only drawings and texts. A frame with handles moves, resizes and turns them, and a line's points can be dragged, added and removed
 - Lock, group, bring to front and send to back
 
@@ -28,7 +29,7 @@
 - Cover all hides the whole map in one step, Reveal all clears it. Undo takes either back
 - Rectangles and polygons snap to the grid, to walls and to other areas. Hold Ctrl or Cmd to place them freely
 - Cells hides or reveals whole grid cells, squares and hexes alike
-- Hold Alt to do the other thing: reveal with Hide, hide with Reveal. , and . size the brush
+- Hold Alt to do the other thing: reveal with Hide, hide with Reveal. , and . size the brush; hold one to keep sizing
 - Fog fades when it changes, on your map and in the player window
 - More sets how dark fog looks to you in GM View. Hold H to see it as your players do
 
@@ -56,6 +57,7 @@
 - Tools with options in the toolbar look like every other tool: hovering, pressing or choosing one highlights the whole tool as one rounded button, and the arrow beside it for its options has a highlight of its own
 - The player window bar has a pause and play button: paused, players stay on what they see while you pan and zoom. With TrueScale on, the pin on its frame does this instead
 - The player window bar is slimmer: as tall as the scene tabs above it
+- Every toolbar has the same rounded corners: the main toolbar, the undo bar, a tool's own bars, the scene tabs and the player window bar. The scene tabs are no longer a pill
 
 ## Fixed
 

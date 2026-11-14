@@ -87,7 +87,7 @@ describe('the measure tool\'s bars above the toolbar', () => {
     expect(controls.slice(1).map((item, index) => Math.round(item.left - controls[index]!.right))).toEqual([8, 8, 8]);
     expect(controls[0]!.left - choices.left).toBeCloseTo(choices.right - controls[3]!.right, 1);
     const corner = (selector: string): number => parseFloat(getComputedStyle(document.querySelector(selector)!).borderTopLeftRadius);
-    expect(corner(CHOICES) / choices.height).toBeCloseTo(corner('.atlas-main-toolbar') / toolbar.height, 2);
+    expect(corner(CHOICES)).toBe(corner('.atlas-main-toolbar'));
     // The dot shows the colour the next measurement takes: the theme's accent until one is chosen.
     const dot = document.querySelector<HTMLElement>('.atlas-tool-bar__dot')!;
     expect(getComputedStyle(dot).backgroundColor).toBe('rgb(127, 109, 242)');

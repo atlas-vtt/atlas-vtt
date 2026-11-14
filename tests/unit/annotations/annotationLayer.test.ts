@@ -106,6 +106,10 @@ describe('AnnotationLayer', () => {
     expect(MAP_LAYER_Z.annotationsOnMap).toBeGreaterThan(MAP_LAYER_Z.liquids);
     expect(MAP_LAYER_Z.annotationsOnMap).toBeLessThan(MAP_LAYER_Z.measureBodies);
     expect(s.layer.above.zIndex).toBe(MAP_LAYER_Z.annotations);
+    // Above the tokens and still under the lighting (90), which hides it from players where they see no map; the handles stand over it.
+    expect(MAP_LAYER_Z.annotations).toBeGreaterThan(MAP_LAYER_Z.measureBodies);
+    expect(MAP_LAYER_Z.annotations).toBeLessThan(90);
+    expect(MAP_LAYER_Z.annotationChrome).toBeGreaterThan(MAP_LAYER_Z.groupRotate);
   });
 
   it('moves a node into the other layer when its drawing is shown to the players, or hidden from them', () => {

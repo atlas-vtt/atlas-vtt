@@ -89,6 +89,35 @@ describe('the fog tool\'s keys', () => {
     expect(size(store)).toBe(kept);
   });
 
+  it('goes on sizing the brush while a key is held, in finer steps than a press, to either end; no other key repeats', () => {
+    const store = mount();
+    press('f');
+    const hold = (key: string): boolean => fireEvent.keyDown(window, { key, repeat: true });
+    const start = size(store);
+    press('.');
+    const pressed = size(store) - start;
+    // Held, the key was left alone before: the brush stood still.
+    expect(hold('.')).toBe(false);
+    const held = size(store) - start - pressed;
+    expect(held).toBeGreaterThan(0);
+    expect(held).toBeLessThan(pressed);
+    const sizes = [size(store)];
+    for (let i = 0; i < 5; i++) {
+      hold('.');
+      sizes.push(size(store));
+    }
+    expect(sizes).toEqual([...sizes].sort((a, b) => a - b));
+    expect(new Set(sizes).size).toBe(sizes.length);
+    for (let i = 0; i < 200; i++) hold('.');
+    expect(size(store)).toBe(FOG_BRUSH_SIZES.max);
+    for (let i = 0; i < 200; i++) hold(',');
+    expect(size(store)).toBe(FOG_BRUSH_SIZES.min);
+    expect(getHistoryStore(store)!.getState().pastStates).toHaveLength(0);
+    // A held F does not flip between hiding and revealing.
+    expect(hold('f')).toBe(true);
+    expect(store.getState().activeTool).toBe('fog');
+  });
+
   it('stops at the smallest and the largest brush', () => {
     const store = mount();
     press('f');

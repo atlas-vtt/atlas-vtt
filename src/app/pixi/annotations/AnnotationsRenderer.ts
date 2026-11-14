@@ -107,7 +107,7 @@ export class AnnotationsRenderer {
    * the drawings, and the GM's alone. Never in a players' frame or a picture of the scene, and
    * hidden while the canvas shows the players' picture.
    */
-  readonly chrome = new Container({ label: 'annotation-chrome', zIndex: MAP_LAYER_Z.annotations, eventMode: 'none', interactiveChildren: false });
+  readonly chrome = new Container({ label: 'annotation-chrome', zIndex: MAP_LAYER_Z.annotationChrome, eventMode: 'none', interactiveChildren: false });
   private readonly players: AnnotationPlayersView;
   private readonly views: PictureViews;
   private readonly handles: AnnotationHandles;
