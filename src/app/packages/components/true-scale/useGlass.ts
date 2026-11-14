@@ -12,6 +12,7 @@ import { observeResize } from '../../../utils/observeResize';
 import { showNotice } from '../../../ui/notice';
 import { t } from '../../../i18n';
 import { trackGlassDrag } from './glassDrag';
+import { arrivalOf } from './glassArrival';
 import { trackLiveDrag } from './glassLiveDrag';
 import { glassDragSteps } from './glassSession';
 import { chipPlace, measureChipRoom, readGlass, type Glass } from './glassState';
@@ -104,6 +105,8 @@ export function useGlass(
     let ghostAt: { x: number; y: number } | null = null;
     /** Where the GM staged the glass on the map players see, until it is shown to them, discarded or they see another map. */
     let stagedAt: { x: number; y: number } | null = null;
+    /** Where players glide to from the staged frame, which stays where it is until they arrive. */
+    let arriving: { x: number; y: number } | null = null;
     let glass: Glass | null = null;
     let dragging: (() => void) | null = null;
 
@@ -156,7 +159,16 @@ export function useGlass(
       saved.refresh();
       const onShownMap = playerWindowStore.getState().shownTabId === tabId();
       if (onShownMap) ghostAt = null;
-      else stagedAt = null;
+      else {
+        stagedAt = null;
+        arriving = null;
+      }
+      if (arriving) {
+        const id = tabId();
+        const arrival = arrivalOf(id ? service.glassOf(id) : null, arriving, service.isFrozen());
+        if (arrival === 'arrived') stagedAt = null;
+        if (arrival !== 'waiting') arriving = null;
+      }
       glass = readGlass(service, tabId(), {
         // Sized on this map, which players do not see: its grid decides true scale
         size: () => service.playerViewWorldSize(frameSourceOf(view)),
@@ -200,6 +212,8 @@ export function useGlass(
       const id = tabId();
       if (event.button !== 0 || !id || !playersFrame()) return;
       dragging?.();
+      // Players moved by hand no longer glide to the staged frame
+      arriving = null;
       const deps = { service, tabId: id, frame: playersFrame, grid: () => view.atlasStore.getState().grid, toWorld };
       dragging = trackLiveDrag(element, event, deps, () => { dragging = null; });
     };
@@ -231,9 +245,12 @@ export function useGlass(
         if (!id || glass?.look !== 'ghost') return;
         const { centerX, centerY } = glass.frame;
         if (glass.players) {
-          stagedAt = null;
+          // The staged frame stays where it is while players glide to it; `refresh` forgets it on arrival
+          arriving = { x: centerX, y: centerY };
           // Glides players there and keeps the frame they return to
-          if (!service.framePlayersOn(id, centerX, centerY)) refresh();
+          if (!service.framePlayersOn(id, centerX, centerY)) arriving = null;
+          // Where players jump there, or cannot go, nothing glides: the frame is forgotten or kept at once
+          refresh();
           return;
         }
         const camera = service.playerCameraAt(centerX, centerY);
@@ -241,12 +258,14 @@ export function useGlass(
       },
       discard: () => {
         stagedAt = null;
+        arriving = null;
         refresh();
       },
       pointerDown: (event) => {
         const id = tabId();
         if (event.button !== 0 || !id || !glass) return;
         dragging?.();
+        arriving = null;
         // On the map players see the glass is staged; elsewhere it is the ghost
         const staging = glass.look === 'live' || !!glass.players;
         const steps = glassDragSteps({

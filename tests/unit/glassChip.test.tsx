@@ -838,6 +838,55 @@ describe('moving players live', () => {
       expect(outline.setGlass).toHaveBeenLastCalledWith({ ...FRAME, centerX: 200, centerY: 200 }, 'ghost');
     });
 
+    it('stays where it is while players glide to it, and is forgotten when they arrive', async () => {
+      render(<GlassChip view={fakeView()} />);
+      const outline = fakes.outlines[0]!;
+      stage();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      // A glide: the first step lands halfway, a later one at the staged frame
+      service.framePlayersOn.mockImplementationOnce(() => service.dragPlayersTo('tab-a', 150, 150));
+      fireEvent.click(screen.getByRole('button', { name: 'Move the players here' }));
+
+      expect(outline.setGlass).toHaveBeenLastCalledWith({ ...FRAME, centerX: 200, centerY: 200 }, 'ghost');
+      expect(outline.setOrigin).toHaveBeenLastCalledWith({ ...FRAME, centerX: 150, centerY: 150 });
+      expect(screen.getByRole('group', { name: 'Show players here' })).toBeTruthy();
+
+      act(() => { service.dragPlayersTo('tab-a', 200, 200); });
+      expect(outline.setGlass).toHaveBeenLastCalledWith({ ...FRAME, centerX: 200, centerY: 200 }, 'live');
+      expect(outline.setOrigin).toHaveBeenLastCalledWith(null);
+      expect(screen.getByRole('group', { name: 'Players' })).toBeTruthy();
+    });
+
+    it('keeps the staged frame when players are moved by hand during the glide, even through its place', async () => {
+      render(<GlassChip view={fakeView()} />);
+      const outline = fakes.outlines[0]!;
+      stage();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      service.framePlayersOn.mockImplementationOnce(() => service.dragPlayersTo('tab-a', 150, 150));
+      fireEvent.click(screen.getByRole('button', { name: 'Move the players here' }));
+
+      // Players are halfway: the grip takes them on from (150, 150), and a step puts them on the staged frame
+      dragGrip('players', [{ x: 150, y: 100 }]);
+      expect(service.dragPlayersTo).toHaveBeenLastCalledWith('tab-a', 200, 200);
+      expect(outline.setGlass).toHaveBeenLastCalledWith({ ...FRAME, centerX: 200, centerY: 200 }, 'ghost');
+      expect(screen.getByRole('group', { name: 'Show players here' })).toBeTruthy();
+    });
+
+    it('keeps the staged frame when players follow the GM again during the glide', async () => {
+      render(<GlassChip view={fakeView()} />);
+      const outline = fakes.outlines[0]!;
+      stage();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      service.framePlayersOn.mockImplementationOnce(() => service.dragPlayersTo('tab-a', 150, 150));
+      fireEvent.click(screen.getByRole('button', { name: 'Move the players here' }));
+
+      act(() => { service.unfreezeCamera(); });
+      // Later the camera happens to pass the staged frame's place: no glide is on its way to it any more
+      act(() => { service.dragPlayersTo('tab-a', 200, 200); });
+      expect(outline.setGlass).toHaveBeenLastCalledWith({ ...FRAME, centerX: 200, centerY: 200 }, 'ghost');
+      expect(screen.getByRole('group', { name: 'Show players here' })).toBeTruthy();
+    });
+
     it('goes when the staged frame is forgotten', async () => {
       render(<GlassChip view={fakeView()} />);
       stage();
