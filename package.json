@@ -55,7 +55,7 @@
     "jszip": "^3.10.2",
     "lucide-react": "^0.503.0",
     "pixi-filters": "^6.1.5",
-    "pixi-viewport": "^6.0.3",
+    "pixi-viewport": "^7.0.2",
     "pixi.js": "^8.22.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
