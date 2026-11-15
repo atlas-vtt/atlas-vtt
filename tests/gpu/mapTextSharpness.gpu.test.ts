@@ -2,10 +2,9 @@ import '../setup/obsidianDom';
 import { Container, RenderTexture, Sprite, Text, Texture, Ticker, type WebGLRenderer } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { GridSystem } from '../../src/app/grid/GridSystem';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import { maxTextureSide } from '../../src/app/pixi/lighting/engine/gpu';
-import { TextRenderer } from '../../src/app/pixi/TextRenderer';
+import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsRenderer';
 import { TEXT_SETTLE_MS } from '../../src/app/pixi/TextSharpening';
 import { TEXT_CONTENT_LABEL } from '../../src/app/pixi/textElementView';
 import { TEXT_TEXTURE_LIMITS } from '../../src/app/pixi/textSharpness';
@@ -30,7 +29,7 @@ interface Picture {
 interface Scene {
   renderer: WebGLRenderer;
   viewport: Viewport;
-  texts: TextRenderer;
+  texts: AnnotationsRenderer;
   store: ReturnType<typeof createViewAtlasStore>;
   /** One frame of the view's loop. */
   tick(): void;
@@ -59,9 +58,9 @@ async function scene(resolution = 1): Promise<Scene> {
   stage.addChild(floor, viewport);
   const store = createViewAtlasStore(createInMemoryApp().app, 'map-text-test');
   store.getState().setPersistenceEnabled(false);
-  const texts = new TextRenderer(viewport, {} as GridSystem, () => {}, store, false, {
-    resolution: () => renderer.resolution,
-    maxTextureSide: () => maxTextureSide(renderer),
+  const texts = new AnnotationsRenderer({
+    viewport, store, grid: () => null,
+    sharpness: { resolution: () => renderer.resolution, maxTextureSide: () => maxTextureSide(renderer) },
   });
   const target = RenderTexture.create({ width: VIEW, height: VIEW, resolution });
   const rasters = vi.spyOn(renderer.canvasText, 'getTexture');
@@ -85,10 +84,7 @@ async function scene(resolution = 1): Promise<Scene> {
       renderer.render({ container: stage, target, clear: true });
       return { data: renderer.extract.pixels({ target }).pixels, side: VIEW * resolution };
     },
-    textOf: (id) => {
-      const view = texts.getContainer().children.find((child) => child.label === id);
-      return view?.getChildByLabel(TEXT_CONTENT_LABEL) as Text;
-    },
+    textOf: (id) => texts.layer.node('text', id)?.getChildByLabel(TEXT_CONTENT_LABEL) as Text,
     drawn: () => rasters.mock.calls.length,
     lastTexture: () => {
       const texture = rasters.mock.results.at(-1)?.value as Texture;

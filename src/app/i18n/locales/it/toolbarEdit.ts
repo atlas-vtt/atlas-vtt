@@ -6,9 +6,9 @@ export const toolbarEdit = {
   "toolbarEdit.fog.label": "Nebbia di guerra",
   "toolbarEdit.fog.description": "Nascondi parti della mappa ai giocatori e rivelale man mano che esplorano.",
   "toolbarEdit.draw.label": "Disegna",
-  "toolbarEdit.draw.description": "Disegna linee e posiziona icone sulla mappa oppure cancellale.",
-  "toolbarEdit.text.label": "Testo",
-  "toolbarEdit.text.description": "Scrivi etichette e brevi note direttamente sulla mappa.",
+  "toolbarEdit.draw.description": "Disegna, scrivi e applica timbri sulla mappa oppure cancella ciò che hai aggiunto.",
+
+
   "toolbarEdit.measure.label": "Misura",
   "toolbarEdit.measure.description": "Misura una distanza o un’area, conservala sulla mappa oppure visualizza la portata di un token.",
   "toolbarEdit.wall.label": "Illuminazione",

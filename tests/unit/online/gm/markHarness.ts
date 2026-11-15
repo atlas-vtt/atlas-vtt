@@ -1,3 +1,5 @@
+import { UnderWay } from '../../../../src/app/annotations/underWay';
+import type { FogCoverage } from '../../../../src/app/fog/fogCoverage';
 import type { CursorSource, LaserSource, Press, TrailBatch } from '../../../../src/app/online/marks/index.ts';
 import type { GmMessage, LaserState, MarkPoint, MarksMessage, SharedCursor } from '../../../../src/app/online/protocol/index.ts';
 import type { Measurements } from '../../../../src/app/pixi/measure/measurements';
@@ -96,6 +98,10 @@ export interface MarkHarness {
   readonly shows: PlayerMarks[];
   readonly laser: FakeLaser;
   readonly cursor: FakeCursor;
+  /** The drawing the GM's Draw tool is making. */
+  readonly stroke: UnderWay;
+  /** The committed fog a drawing under way is judged by; none covers anything by default, and null cannot be read. */
+  fog: FogCoverage | null;
   /** Whether the GM lets everyone see each other's cursor. */
   cursorsOn: boolean;
   /** Every list of players' cursors the GM's overlay was told to draw, in order. */
@@ -121,6 +127,7 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
   const listeners = new Set<(next: Measurements, previous: Measurements) => void>();
   const laser = new FakeLaser();
   const cursor = new FakeCursor();
+  const stroke = new UnderWay();
   const names: Record<string, string> = { ['a'.repeat(20)]: 'Ana', ['b'.repeat(20)]: 'Ben' };
   const source: GmMarkSource = {
     measurements: {
@@ -135,6 +142,8 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
     laserLook: () => ({ color: '#ff0059', size: 16 }),
     footprints: () => harness.footprints,
     seen: () => harness.seen,
+    stroke,
+    fog: () => harness.fog,
   };
   const harness: MarkHarness = {
     sent: [],
@@ -143,6 +152,8 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
     shows: [],
     laser,
     cursor,
+    stroke,
+    fog: { shape: [], covers: () => false },
     cursorsOn: false,
     cursorShows: [],
     footprints: [],

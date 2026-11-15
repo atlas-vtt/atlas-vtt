@@ -3,7 +3,6 @@ import { StoreApi } from 'zustand';
 import { ToolMode } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import { ToolState } from '../tools/ToolState';
-import { FogTool, FogSettings } from '../tools/FogTool';
 import { NotePinTool } from '../tools/NotePinTool';
 import { DiceTool } from '../tools/DiceTool';
 import { AudioTool } from '../tools/AudioTool';
@@ -14,7 +13,6 @@ import type { App } from 'obsidian';
 export class ToolController {
   /** Delegates all fine‑grained logic to dedicated tool classes. */
   private readonly toolState: ToolState;
-  private readonly fogTool: FogTool;
   private readonly notePinTool: NotePinTool;
   private readonly diceTool: DiceTool;
   private readonly audioTool: AudioTool;
@@ -27,7 +25,6 @@ export class ToolController {
 
     // Instantiate dedicated segments
     this.toolState = new ToolState(eventBus);
-    this.fogTool = new FogTool(eventBus);
     this.notePinTool = new NotePinTool(eventBus, app, store);
     this.diceTool = new DiceTool(eventBus, () => mapDiceSet(app, store.getState().mapPath), offlineDiceInputs());
     this.audioTool = new AudioTool(eventBus);
@@ -99,21 +96,6 @@ export class ToolController {
   }
   
   /**
-   * Set fog brush size
-   * @param size The brush size in pixels
-   */
-  public setFogBrushSize(size: number): void {
-    this.fogTool.setBrushSize(size);
-  }
-  
-  /**
-   * Clear all fog
-   */
-  public clearAllFog(): void {
-    this.fogTool.clearAll();
-  }
-  
-  /**
    * Open a note linked from a note pin
    * @param notePath The path to the note
    */
@@ -137,14 +119,6 @@ export class ToolController {
     return this.toolState.isInPlayerMode();
   }
   
-  
-  /**
-   * Get the fog settings
-   * @returns The fog settings
-   */
-  public getFogSettings(): FogSettings {
-    return this.fogTool.getSettings();
-  }
   
   /**
    * Get the note pin tool instance

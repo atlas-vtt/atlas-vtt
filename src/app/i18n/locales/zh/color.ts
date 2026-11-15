@@ -14,7 +14,6 @@ export const color: Translation = {
   'color.white': '白色',
   'color.yellow': '黄色',
   'color.cyan': '青色',
-  'color.darkGray': '深灰',
   'color.brown': '棕色',
   'color.default': '默认',
 };

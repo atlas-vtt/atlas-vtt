@@ -7,8 +7,6 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.fog.description': 'Скрывайте части карты от игроков и раскрывайте их по мере исследования.',
   'toolbarEdit.draw.label': 'Рисование',
   'toolbarEdit.draw.description': 'Рисуйте линии, ставьте значки на карту и стирайте их.',
-  'toolbarEdit.text.label': 'Текст',
-  'toolbarEdit.text.description': 'Пишите подписи и короткие заметки прямо на карте.',
   'toolbarEdit.measure.label': 'Линейка',
   'toolbarEdit.measure.description': 'Измеряйте расстояние или охват круга и конуса в единицах сетки.',
   'toolbarEdit.wall.label': 'Освещение',

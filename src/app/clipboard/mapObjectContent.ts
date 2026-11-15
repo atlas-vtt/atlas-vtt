@@ -5,6 +5,7 @@ import { copiedLevelLink, type CopiedLevelLink } from '../levels/levelLinkCopies
 import { levelLinkList } from '../levels/levelLinks';
 import { viewedLevelId, type LevelView } from '../levels/sceneLevels';
 import { mapTokens } from '../tokens/offMap';
+import { anchorsAndHolesMoved } from '../annotations/annotationList';
 
 export interface Point {
   x: number;
@@ -101,6 +102,8 @@ export function translateMapObjects(
     drawings: content.drawings.map((drawing) => ({
       ...structuredClone(drawing),
       points: drawing.points.map(shift),
+      // What lies with the points goes with them: a curved path's anchors, the holes of a fill
+      ...anchorsAndHolesMoved(drawing, shift),
     })),
     texts: content.texts.map(move),
     pins: content.pins.map(move),

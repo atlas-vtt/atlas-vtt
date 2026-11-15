@@ -11,12 +11,6 @@ import { AdvancedFilterPanel } from './search/AdvancedFilterPanel';
 import { SearchSuggestions } from './search/SearchSuggestions';
 import { t } from '../../../../i18n';
 import { modShortcut } from '../utils/modShortcut';
-import { isSearchUntouched, touchSearch } from './search/searchFocus';
-
-/** Keys an untouched, empty search leaves to the window: Escape closes it, the arrows enter the grid. */
-const WINDOW_KEYS_WHILE_UNTOUCHED = new Set(['Escape', 'ArrowDown', 'ArrowUp']);
-/** Keys pressed on their own for a shortcut (Cmd+2): they use nothing of the field. */
-const MODIFIER_KEYS = new Set(['Meta', 'Control', 'Alt', 'Shift']);
 
 export interface HeaderSearchProps {
   app: App;
@@ -71,9 +65,6 @@ export function HeaderSearch({
    * in, whose next Escape is its own (closing the asset manager).
    */
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
-    // Focused as the window opened and empty: Escape closes the window and the arrows reach the grid (decision #38).
-    if (isSearchUntouched(event.currentTarget) && search === '' && WINDOW_KEYS_WHILE_UNTOUCHED.has(event.key)) return;
-    if (!MODIFIER_KEYS.has(event.key) && event.key !== 'Escape') touchSearch(event.currentTarget);
     if (autocomplete.onKeyDown(event) || event.key !== 'Escape') return;
     event.preventDefault();
     event.stopPropagation();
@@ -105,7 +96,7 @@ export function HeaderSearch({
 
       <div className="atlas-asset-manager-search">
         <Search />
-        {/* Names the key on hover; never while the field has focus, where the suggestions hang (and it opens focused). */}
+        {/* Names the key on hover; never while the field has focus, where the suggestions hang. */}
         <LabelTooltip
           label={t('search.label')}
           {...focusKeycap}

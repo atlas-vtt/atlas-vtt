@@ -34,6 +34,17 @@ function orientation(ax: number, ay: number, bx: number, by: number, x: number, 
   return exact < 0n ? -1 : exact > 0n ? 1 : 0;
 }
 
+/** What an edge says of a point that lies on it. */
+const ON_EDGE = 2;
+
+/** What the edge from a to b adds to the winding number round a point, or `ON_EDGE` where the point lies on it. */
+function edgeTurn(ax: number, ay: number, bx: number, by: number, x: number, y: number): number {
+  const cross = orientation(ax, ay, bx, by, x, y);
+  if (cross === 0 && x >= Math.min(ax, bx) && x <= Math.max(ax, bx) && y >= Math.min(ay, by) && y <= Math.max(ay, by)) return ON_EDGE;
+  if (ay <= y) return by > y && cross > 0 ? 1 : 0;
+  return by <= y && cross < 0 ? -1 : 0;
+}
+
 /** NonZero membership of canonical boundary rings; retained boundaries count as covered. */
 export function shapeContains(shape: QShape, point: Point): boolean {
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new RangeError('Shape queries must have finite coordinates');
@@ -44,16 +55,56 @@ export function shapeContains(shape: QShape, point: Point): boolean {
   for (const ring of shape) {
     for (let i = 0; i < ring.length; i += 2) {
       const next = (i + 2) % ring.length;
-      const ax = ring[i]!;
-      const ay = ring[i + 1]!;
-      const bx = ring[next]!;
-      const by = ring[next + 1]!;
-      const cross = orientation(ax, ay, bx, by, x, y);
-      if (cross === 0 && x >= Math.min(ax, bx) && x <= Math.max(ax, bx) && y >= Math.min(ay, by) && y <= Math.max(ay, by)) return true;
-      if (ay <= y) {
-        if (by > y && cross > 0) winding++;
-      } else if (by <= y && cross < 0) winding--;
+      const turn = edgeTurn(ring[i]!, ring[i + 1]!, ring[next]!, ring[next + 1]!, x, y);
+      if (turn === ON_EDGE) return true;
+      winding += turn;
     }
   }
   return winding !== 0;
+}
+
+/** Most bands a shape's edges are filed in. */
+const MOST_BANDS = 4096;
+
+/**
+ * `shapeContains` for many points of one shape: the same answer for every point, from the few edges
+ * that pass the point's height instead of all of them. An edge says nothing of a point above or
+ * below it, so the edges are filed by the level bands they pass, each about as tall as an edge.
+ */
+export function shapeContainment(shape: QShape): (point: Point) => boolean {
+  let [top, bottom, edges, heights] = [Infinity, -Infinity, 0, 0];
+  for (const ring of shape) {
+    for (let i = 1; i < ring.length; i += 2) {
+      const [ay, by] = [ring[i]!, ring[(i + 2) % ring.length]!];
+      top = Math.min(top, ay);
+      bottom = Math.max(bottom, ay);
+      heights += Math.abs(by - ay);
+      edges++;
+    }
+  }
+  if (edges === 0 || !Number.isFinite(top) || !Number.isFinite(bottom)) return (point) => shapeContains(shape, point);
+  const band = Math.max(Q_SCALE, heights / edges, (bottom - top) / MOST_BANDS);
+  const bandOf = (y: number): number => Math.floor((y - top) / band);
+  const bands: number[][] = Array.from({ length: bandOf(bottom) + 1 }, () => []);
+  for (const ring of shape) {
+    for (let i = 0; i < ring.length; i += 2) {
+      const next = (i + 2) % ring.length;
+      const [ax, ay, bx, by] = [ring[i]!, ring[i + 1]!, ring[next]!, ring[next + 1]!];
+      for (let at = bandOf(Math.min(ay, by)); at <= bandOf(Math.max(ay, by)); at++) bands[at]!.push(ax, ay, bx, by);
+    }
+  }
+  return (point) => {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new RangeError('Shape queries must have finite coordinates');
+    const x = point.x * Q_SCALE;
+    const y = point.y * Q_SCALE;
+    if (Math.abs(x) > MAX_Q || Math.abs(y) > MAX_Q || y < top || y > bottom) return false;
+    const filed = bands[bandOf(y)]!;
+    let winding = 0;
+    for (let i = 0; i < filed.length; i += 4) {
+      const turn = edgeTurn(filed[i]!, filed[i + 1]!, filed[i + 2]!, filed[i + 3]!, x, y);
+      if (turn === ON_EDGE) return true;
+      winding += turn;
+    }
+    return winding !== 0;
+  };
 }

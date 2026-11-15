@@ -16,10 +16,10 @@ export const palette = {
   "palette.footer.navigate": "per navigare",
   "palette.footer.select": "per selezionare",
   "palette.footer.switchTabs": "per cambiare scheda",
-  "palette.freezePlayerCamera": "Blocca inquadratura dei giocatori",
+  "palette.freezePlayerCamera": "Metti in pausa la vista giocatori",
   "palette.gridAppearance": "Aspetto della griglia",
   "palette.gridSettings": "Impostazioni della griglia",
-  "palette.localPlayerViewSettings": "Impostazioni della vista giocatori locale",
+
   "palette.measureTool": "Strumento misurazione",
   "palette.moveTool": "Strumento spostamento",
   "palette.noPlayerWindow": "Nessuna finestra giocatori aperta",
@@ -30,7 +30,7 @@ export const palette = {
   "palette.openLootRoller": "Apri tabelle casuali",
   "palette.openSceneBrowser": "Apri elenco delle scene",
   "palette.panel.grid": "Impostazioni della griglia",
-  "palette.panel.localPlayerView": "Impostazioni della vista giocatori locale",
+
   "palette.panel.snapshots": "Istantanee della scena",
   "palette.panel.tokens": "Impostazioni dei token",
   "palette.panel.widgets": "Impostazioni dei widget",
@@ -51,4 +51,7 @@ export const palette = {
   "palette.tour.ownBody": "Regola griglia, token e widget dalle Impostazioni. Sulla mappa, premi {key} per vedere le scorciatoie. Modificale in Impostazioni di Obsidian → Atlas VTT → Scorciatoie della mappa.",
   "palette.tour.ownTitle": "Personalizza la mappa",
   "palette.widgetSettings": "Impostazioni dei widget"
+,
+  "palette.playerViewSettings": "Impostazioni della vista giocatori",
+  "palette.panel.playerView": "Impostazioni della vista giocatori",
 } satisfies Translation;

@@ -14,7 +14,7 @@ export const color = {
   "color.white": "Bianco",
   "color.yellow": "Giallo",
   "color.cyan": "Ciano",
-  "color.darkGray": "Grigio scuro",
+
   "color.brown": "Marrone",
   "color.default": "Predefinito"
 } satisfies Translation;

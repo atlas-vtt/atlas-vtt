@@ -1,3 +1,4 @@
+import { draw } from './draw';
 import { measure } from './measure';
 import type { Translation } from '../../types';
 import { experimental } from './experimental';
@@ -106,6 +107,7 @@ import { wall } from './wall';
 import { widgets } from './widgets';
 
 export const it = {
+  ...draw,
   ...measure,
   ...experimental,
   ...align,

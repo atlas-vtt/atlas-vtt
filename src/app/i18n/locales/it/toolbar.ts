@@ -3,22 +3,22 @@ import type { Translation } from '../../types';
 export const toolbar = {
   "toolbar.ambientSound": "Suono ambientale",
   "toolbar.assetManager": "Gestione risorse",
-  "toolbar.bold": "Grassetto",
-  "toolbar.brushSize": "Dimensione del pennello",
+
+
   "toolbar.circle": "Cerchio",
   "toolbar.colour": "Colore",
   "toolbar.commandPalette": "Riquadro comandi",
   "toolbar.cone": "Cono",
-  "toolbar.deleteDrawings": "Elimina tutti i disegni",
-  "toolbar.deleteFog": "Elimina tutta la nebbia",
-  "toolbar.drawOptions": "Opzioni di disegno",
-  "toolbar.drawingEraser": "Gomma dei disegni",
-  "toolbar.eraserSize": "Dimensione della gomma",
+
+
+
+
+
   "toolbar.fogEraser": "Gomma della nebbia",
-  "toolbar.fogOptions": "Opzioni della nebbia",
+
   "toolbar.fogTool": "Strumento nebbia",
-  "toolbar.iconStamp": "Timbro icona",
-  "toolbar.ink": "Inchiostro",
+
+
   "toolbar.laser": "Puntatore laser",
   "toolbar.lassoSelection": "Selezione a lazo",
 
@@ -27,22 +27,22 @@ export const toolbar = {
   "toolbar.moveOptions": "Opzioni di spostamento",
   "toolbar.notePin": "Strumento segnaposto nota",
   "toolbar.stairs": "Scale",
-  "toolbar.penSize": "Dimensione della penna",
-  "toolbar.pen": "Penna",
+
+
 
   "toolbar.rollDice": "Tira dadi",
-  "toolbar.size": "Dimensioni",
-  "toolbar.textOptions": "Opzioni del testo",
-  "toolbar.textTool": "Strumento testo",
+
+
+
   "toolbar.moveSelect": "Sposta/seleziona",
-  "toolbar.drawTool": "Strumento disegno",
+
 
 
 
   "toolbar.brush": "Pennello",
   "toolbar.lasso": "Lazo",
   "toolbar.rectangle": "Rettangolo",
-  "toolbar.icons": "Icone",
+
   "toolbar.drawWalls": "Disegna muri",
   "toolbar.pointToPoint": "Da punto a punto",
   "toolbar.gmView": "Vista GM ({key})",

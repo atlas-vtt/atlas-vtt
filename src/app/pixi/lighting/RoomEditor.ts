@@ -6,7 +6,6 @@ import { carvedWalls, filledWalls } from '../../lighting/wallCarving';
 import { wallSpaces } from '../../lighting/wallSpaces';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasStore } from '../../storeFactory';
-import { runHistoryTransaction } from '../../stores/history';
 import { ShapeStroke } from '../../tools/shapeStroke';
 import type { WallToolSubMode } from '../../tools/WallTool';
 import type { Point } from '../../types/visionTypes';
@@ -37,7 +36,7 @@ const SHADE_REST_MS = 120;
 /**
  * The lighting tool's rooms mode: rooms are carved out of the rock with a rectangle, corner by
  * corner, with a lasso or a brush, and filled back in the same ways. A room is its walls and
- * nothing else: carving writes walls like any others (`carvedWalls`), one undo step, which the
+ * nothing else: carving writes walls like any others (`carvedWalls`), one write and one undo step, which the
  * walls mode then edits, and a shape carved into a room opens into it. A door is dragged across
  * an opening, its ends reaching the walls beside it.
  */
@@ -228,16 +227,12 @@ export class RoomEditor {
   /** Carves `area` or fills it in, as one edit of the level's walls and one undo step. */
   private apply(area: RoomArea): void {
     if (area.length === 0) return;
-    const { store } = this.deps;
-    const state = store.getState();
+    const state = this.deps.store.getState();
     const walls = levelObjects(state).walls;
     const chain = `room_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const { remove, add } = (this.filling ? filledWalls : carvedWalls)(area, wallList(walls), wallSpaces(walls), chain);
     if (remove.length === 0 && add.length === 0) return;
-    runHistoryTransaction(store, () => {
-      if (remove.length > 0) state.deleteWalls(remove);
-      for (const wall of add) state.addWall(wall);
-    });
+    state.editWalls(remove, add);
     // What was just carved shows at once.
     this.shadeNow(true);
   }

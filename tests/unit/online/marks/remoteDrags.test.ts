@@ -24,7 +24,7 @@ const drag = (path: readonly [number, number][], changes: Partial<RemoteDrag> = 
 /** What Atlas's own drag ruler labels a path of a token of `size` with, the token held and snapped to `grid`. */
 function atlasLabel(grid: FormationGrid, settings: MeasurementSettings, points: readonly { x: number; y: number }[], size: number): string | undefined {
   const draw = vi.fn();
-  const view = { draw, clear: vi.fn(), destroy: vi.fn(), layers: [], playersLayers: [] };
+  const view = { draw, clear: vi.fn(), destroy: vi.fn(), layers: [] };
   const state = { grid: { snapToGrid: true }, objects: { tokens: { t: { id: 't', size } } } };
   // The points are snapped already: the grid hands them back as they are.
   const gridSystem = { getOptions: () => grid, snapTokenCenter: (x: number, y: number) => ({ x, y }) };
