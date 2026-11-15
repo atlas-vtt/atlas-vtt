@@ -310,6 +310,8 @@ export class Dock {
       assign: (ids, playerId) => api.assign(ids, playerId),
       release: (ids) => api.release(ids),
       kick: (playerId) => api.kick(playerId),
+      drawingsOf: (playerId) => api.playerDrawings(playerId),
+      clearDrawings: (playerId) => api.clearPlayerDrawings(playerId),
       copyPlayerCode: playerCodeCopier(api, this.root),
       newPlayerCode: (playerId) => api.newPlayerCode(playerId),
       renamePlayer: (playerId, name) => api.renamePlayer(playerId, name),

@@ -10,6 +10,7 @@ import type { Point } from './hexGeometry';
 import type { MapMove } from './mapStretch';
 import { isOffMap, sceneTokens } from '../tokens/offMap';
 import { liquidMovedWithMap } from '../liquids/liquids';
+import { anchorsAndHolesMoved } from '../annotations/annotationList';
 import { measureMovedWithMap } from '../measure/keptMeasures';
 
 type SceneObjects = ViewState['objects'];
@@ -58,7 +59,8 @@ export function objectsMovedWithMap(objects: SceneObjects, move: MapMove, moves?
     // An area light's area follows the map with its middle.
     lights: mapRecord(objects.lights, (light) => ({ ...placed<typeof light>(move)(light), ...(Array.isArray(light.area) && { area: light.area.map(move) }) }), moves),
     audios: mapRecord(objects.audios, placed(move), moves),
-    drawings: mapRecord(objects.drawings, (drawing) => ({ ...drawing, points: drawing.points.map(move) }), moves),
+    // A drawing's anchors and the holes of its fill lie with its points and follow the map with them.
+    drawings: mapRecord(objects.drawings, (drawing) => ({ ...drawing, points: drawing.points.map(move), ...anchorsAndHolesMoved(drawing, move) }), moves),
     walls: mapRecord(objects.walls, (wall) => ({ ...wall, p1: move(wall.p1), p2: move(wall.p2) }), moves),
     fog: mapRecord(objects.fog, (operation) => movedFog(operation, move), moves),
     ...(objects.lightZones ? { lightZones: mapRecord(objects.lightZones, (zone) => ({ ...zone, polygon: zone.polygon.map(move) }), moves) } : {}),

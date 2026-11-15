@@ -6,8 +6,12 @@ import { isHandled } from "./utils/handledEvents";
 import { isPrimaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { EventEmitter } from 'events';
-import { getDrawingBounds, type DrawingBounds } from './drawingGeometry';
+import { annotationList } from '../annotations/annotationList';
+import { pressScope, type PressScope } from '../annotations/annotationPress';
+import type { Annotation } from '../annotations/annotationTypes';
+import type { AnnotationEdit } from './annotations/AnnotationEdit';
 import { SelectionHighlights } from './selection/SelectionHighlights';
+import { measureTextView } from './textLayout';
 import { NO_BARS, selectionTargets } from './selection/selectionTargets';
 import type { BarsSpan } from './token-renderer/types';
 import { prefersReducedMotion } from '../utils/motion';
@@ -18,17 +22,39 @@ import { levelObjects } from '../levels/levelObjects';
 import { GroupRotation, type GroupTurnHost } from './selection/GroupRotation';
 import { mapTokens } from '../tokens/offMap';
 
+/** What the drawings and texts of a view tell the selection (`AnnotationsRenderer`). */
+export interface AnnotationSelectionHost {
+  /** The ids of the annotations their own handles frame: the selection marks them no second time. */
+  framedIds(): ReadonlySet<string>;
+  /** The annotations among `ids` as a gesture that turns with a group of tokens; null where none of them turns. */
+  turnAlong(ids: readonly string[]): AnnotationEdit | null;
+}
+
+const annotationsById = new WeakMap<readonly Annotation[], Map<string, Annotation>>();
+
+/** The annotations of `list` by their ids, worked out once for each list. */
+function byId(list: readonly Annotation[]): Map<string, Annotation> {
+  let map = annotationsById.get(list);
+  if (!map) annotationsById.set(list, map = new Map(list.map((annotation) => [annotation.id, annotation])));
+  return map;
+}
+
+/** What says whether a press on the empty map draws a marquee, and what it takes: the tool. */
+const marqueeScope = (state: Pick<ViewAtlasState, 'activeTool'>): PressScope => pressScope(state.activeTool);
+/** A marquee is drawn with the move and select tools. */
+const drawsMarquee = (scope: PressScope): boolean => scope === 'move';
+
 export class SelectionManager {
   private viewport: Viewport;
   private tokenRendererProvider: () => ({ [id: string]: Container });
   /** How far a selected token's bars stand out from it, in world units; a group's frame encloses them. */
   public barsProvider: (tokenId: string) => BarsSpan = () => NO_BARS;
-  private fogSpriteProvider: () => ({ [id: string]: Container });
   private hitTestTokensProvider?: (worldX: number, worldY: number) => string | null;
 
   private readonly highlights: SelectionHighlights;
   private readonly groupRotation: GroupRotation;
   private groupTurnHost: GroupTurnHost | null = null;
+  private annotationHost: AnnotationSelectionHost | null = null;
   private marqueeGraphics: Graphics;
   private selectionStart: { x: number; y: number } | null = null;
   private selectionMode: 'box' | 'lasso' = 'box';
@@ -50,13 +76,11 @@ export class SelectionManager {
   constructor(
     viewport: Viewport,
     tokenRendererProvider: () => ({ [id: string]: Container }),
-    fogSpriteProvider: () => ({ [id: string]: Container }),
     store: ViewAtlasStore,
     eventBus: EventEmitter
   ) {
     this.viewport = viewport;
     this.tokenRendererProvider = tokenRendererProvider;
-    this.fogSpriteProvider = fogSpriteProvider;
     this.store = store;
     this.eventBus = eventBus;
 
@@ -78,6 +102,7 @@ export class SelectionManager {
       host: () => this.groupTurnHost,
       frame: () => this.highlights.groupFrameBox(),
       turnFrame: (turn) => this.highlights.turnGroup(turn),
+      annotations: (ids) => this.annotationHost?.turnAlong(ids) ?? null,
       refresh: () => this.updateSelectionOverlay(),
       accent: () => cssColorToHexNumber(getObsidianAccentColor()),
       reducedMotion: () => typeof window === 'undefined' || prefersReducedMotion(viewport.options?.events?.domElement ?? document.body),
@@ -127,6 +152,12 @@ export class SelectionManager {
     this.updateSelectionOverlay();
   }
 
+  /** What the view's drawings and texts tell the selection: which of them their own handles frame, and how they turn with a group. */
+  public setAnnotationHost(host: AnnotationSelectionHost): void {
+    this.annotationHost = host;
+    this.updateSelectionOverlay();
+  }
+
   /** Escape cancels a group being turned; whether it did. */
   public handleEscape(): boolean {
     return this.groupRotation.cancel();
@@ -139,17 +170,17 @@ export class SelectionManager {
       { fireImmediately: true }
     );
 
-    // Dragged or undone drawings move without the selection changing
+    // Dragged or undone drawings and texts move without the selection changing
     this._unsubscribeFromDrawingChanges = this.store.subscribe(
-      (state: ViewAtlasState) => levelObjects(state).drawings,
+      (state: ViewAtlasState) => annotationList(levelObjects(state)),
       () => this.updateSelectionOverlay()
     );
 
     this._unsubscribeFromToolChanges = this.store.subscribe(
-      (state: ViewAtlasState) => state.activeTool,
-      (tool: string) => {
-        // Enable marquee selection for both 'move' and 'select' tools
-        if (tool === 'select' || tool === 'move') {
+      marqueeScope,
+      (scope: PressScope) => {
+        // A marquee is drawn with the move and select tools
+        if (drawsMarquee(scope)) {
           // Switching between the two must not add the handlers a second time
           this.viewport.off('pointerdown', this.marqueeDownHandler);
           this.viewport.off('pointermove', this.marqueeMoveHandler);
@@ -177,18 +208,20 @@ export class SelectionManager {
   }
 
   private handleMarqueeStart(e: FederatedPointerEvent): void {
-    const activeTool = this.store.getState().activeTool;
-    if (activeTool !== 'select' && activeTool !== 'move') return;
+    const scope = marqueeScope(this.store.getState());
+    if (!drawsMarquee(scope)) return;
     
     // Only handle left mouse button (button 0) for marquee selection
     if (!isPrimaryPress(e)) return;
 
-    // Skip if another handler already claimed this event (e.g. token or fog click)
+    // Skip if another handler already claimed this event (e.g. a token or pin click)
     if (isHandled(e)) return;
     
-    // Don't start marquee if clicking on a token (geometry-based fallback)
+    // Don't start marquee if clicking on a token (geometry-based fallback); the Draw tool takes no token
     const worldPos = this.viewport.toWorld(e.global);
-    if (this.hitTestTokensProvider) {
+    if (scope === 'all') {
+      // Its marquee takes drawings and texts alone
+    } else if (this.hitTestTokensProvider) {
       if (this.hitTestTokensProvider(worldPos.x, worldPos.y) != null) {
         return;
       }
@@ -212,8 +245,7 @@ export class SelectionManager {
   }
 
   private handleMarqueeMove(e: FederatedPointerEvent): void {
-    const activeTool = this.store.getState().activeTool;
-    if (!this.selectionStart || (activeTool !== 'select' && activeTool !== 'move')) return;
+    if (!this.selectionStart || !drawsMarquee(marqueeScope(this.store.getState()))) return;
     e.stopPropagation();
     const worldPos = this.viewport.toWorld(e.global);
     
@@ -261,95 +293,24 @@ export class SelectionManager {
   }
 
   private handleMarqueeEnd(e: FederatedPointerEvent): void {
-    const activeTool = this.store.getState().activeTool;
-    if (!this.selectionStart || (activeTool !== 'select' && activeTool !== 'move')) return;
+    const scope = marqueeScope(this.store.getState());
+    if (!this.selectionStart || !drawsMarquee(scope)) return;
     e.stopPropagation();
     const worldPos = this.viewport.toWorld(e.global);
-    
-    const selectedIds: string[] = [];
-    const tokenSprites = this.tokenRendererProvider(); // Get current token sprites
-    
-    const fogSprites = this.fogSpriteProvider();
-
-    if (this.selectionMode === 'lasso' && this.lassoPoints.length > 2) {
-      // Complete the lasso path
+    const lasso = this.selectionMode === 'lasso' && this.lassoPoints.length > 2;
+    if (lasso) {
       const firstPoint = this.lassoPoints[0];
-      if (firstPoint) {
-        this.lassoPoints.push({ x: firstPoint.x, y: firstPoint.y });
-      }
-
-      // Check which tokens are inside the lasso polygon; a token the canvas hides (session view) is not selectable
-      for (const [id, tokenGroup] of Object.entries(tokenSprites)) {
-        if (tokenGroup?.visible) {
-          const tokenX = tokenGroup.position.x;
-          const tokenY = tokenGroup.position.y;
-
-          if (pointInPolygon({ x: tokenX, y: tokenY }, this.lassoPoints)) {
-            selectedIds.push(id);
-          }
-        }
-      }
-
-      for (const [id, bounds] of this.getDrawingBoundsById()) {
-        if (pointInPolygon({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, this.lassoPoints)) {
-          selectedIds.push(id);
-        }
-      }
-
-      // Check fog sprites (use center of bounds)
-      for (const [id, fogSprite] of Object.entries(fogSprites)) {
-        if (fogSprite) {
-          const bounds = fogSprite.getBounds();
-          const cx = bounds.x + bounds.width / 2;
-          const cy = bounds.y + bounds.height / 2;
-          if (pointInPolygon({ x: cx, y: cy }, this.lassoPoints)) {
-            selectedIds.push(id);
-          }
-        }
-      }
-    } else {
-      // Box selection mode
-      const selectionRect = new Rectangle(
-        Math.min(this.selectionStart.x, worldPos.x),
-        Math.min(this.selectionStart.y, worldPos.y),
-        Math.abs(worldPos.x - this.selectionStart.x),
-        Math.abs(worldPos.y - this.selectionStart.y)
-      );
-
-      for (const [id, tokenGroup] of Object.entries(tokenSprites)) {
-        if (tokenGroup?.visible) {
-          const halfSize = 35;
-          const tokenBounds = {
-            x: tokenGroup.position.x - halfSize,
-            y: tokenGroup.position.y - halfSize,
-            width: halfSize * 2,
-            height: halfSize * 2
-          };
-          const tokenRect = new Rectangle(tokenBounds.x, tokenBounds.y, tokenBounds.width, tokenBounds.height);
-          if (selectionRect.intersects(tokenRect) || selectionRect.contains(tokenRect.x, tokenRect.y)) {
-            selectedIds.push(id);
-          }
-        }
-      }
-
-      for (const [id, bounds] of this.getDrawingBoundsById()) {
-        if (selectionRect.intersects(new Rectangle(bounds.x, bounds.y, bounds.width, bounds.height))) {
-          selectedIds.push(id);
-        }
-      }
-
-      // Check fog sprites
-      for (const [id, fogSprite] of Object.entries(fogSprites)) {
-        if (fogSprite) {
-          const b = fogSprite.getBounds();
-          const fogRect = new Rectangle(b.x, b.y, b.width, b.height);
-          if (selectionRect.intersects(fogRect)) {
-            selectedIds.push(id);
-          }
-        }
-      }
+      if (firstPoint) this.lassoPoints.push({ x: firstPoint.x, y: firstPoint.y });
     }
-    
+    const box = new Rectangle(
+      Math.min(this.selectionStart.x, worldPos.x),
+      Math.min(this.selectionStart.y, worldPos.y),
+      Math.abs(worldPos.x - this.selectionStart.x),
+      Math.abs(worldPos.y - this.selectionStart.y)
+    );
+    // A marquee takes tokens alone: drawings and texts are selected by a press, and the bar under them is theirs.
+    const selectedIds = this.tokensIn(lasso ? this.lassoPoints : null, box);
+
     if (this.marqueeGraphics && !this.marqueeGraphics.destroyed) {
       this.marqueeGraphics.clear();
     }
@@ -358,14 +319,22 @@ export class SelectionManager {
     // The store subscription shows the new selection, now without a marquee under way
     this.store.getState().setSelection(selectedIds);
   }
-  
-  private getDrawingBoundsById(): Array<[string, DrawingBounds]> {
-    const entries: Array<[string, DrawingBounds]> = [];
-    for (const stroke of Object.values(levelObjects(this.store.getState()).drawings)) {
-      const bounds = getDrawingBounds(stroke);
-      if (bounds) entries.push([stroke.id, bounds]);
+
+  /** The tokens a lasso or, without one, a marquee's box takes. A token the canvas hides (session view) is not selectable. */
+  private tokensIn(lasso: { x: number; y: number }[] | null, box: Rectangle): string[] {
+    const ids: string[] = [];
+    for (const [id, tokenGroup] of Object.entries(this.tokenRendererProvider())) {
+      if (!tokenGroup?.visible) continue;
+      const { x, y } = tokenGroup.position;
+      if (lasso) {
+        if (pointInPolygon({ x, y }, lasso)) ids.push(id);
+        continue;
+      }
+      const halfSize = 35;
+      const tokenRect = new Rectangle(x - halfSize, y - halfSize, halfSize * 2, halfSize * 2);
+      if (box.intersects(tokenRect) || box.contains(tokenRect.x, tokenRect.y)) ids.push(id);
     }
-    return entries;
+    return ids;
   }
 
   // Helper method to check if a target is part of a token hierarchy
@@ -401,11 +370,13 @@ export class SelectionManager {
     const state = this.store.getState();
     const { selectedIds } = state;
     const objects = levelObjects(state);
+    const annotations = byId(annotationList(objects));
+    // What its own handles frame is marked by them
+    const framed = this.annotationHost?.framedIds();
     const targets = selectionTargets(selectedIds, {
-      world: this.viewport,
       tokens: this.tokenRendererProvider(),
-      drawings: objects.drawings,
-      fog: this.fogSpriteProvider(),
+      annotation: (id) => (framed?.has(id) ? null : annotations.get(id) ?? null),
+      measure: measureTextView,
       bars: this.barsProvider,
     });
     this.highlights.show(targets);
@@ -417,8 +388,7 @@ export class SelectionManager {
   /** Re-registers viewport event listeners, pushing them to the end of the listener queue.
    *  Call after adding other viewport pointerdown handlers to ensure correct firing order. */
   public reorderViewportListeners(): void {
-    const activeTool = this.store.getState().activeTool;
-    if (activeTool === 'select' || activeTool === 'move') {
+    if (drawsMarquee(marqueeScope(this.store.getState()))) {
       this.viewport.off('pointerdown', this.marqueeDownHandler);
       this.viewport.off('pointermove', this.marqueeMoveHandler);
       this.viewport.off('pointerup', this.marqueeUpHandler);

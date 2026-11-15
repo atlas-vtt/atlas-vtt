@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { Container, Sprite } from 'pixi.js';
 import { EventEmitter } from 'eventemitter3';
 import { createStore } from 'zustand/vanilla';
+import { DEFAULT_FOG_TOOL } from '../../src/app/fog/fogToolChoices';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 
@@ -14,13 +15,13 @@ it('captures painted fog at full opacity and preserves the DM preview across rep
     clearRect() {}, save() {}, restore() {}, fillRect() {},
   } as unknown as CanvasRenderingContext2D);
   const store = createStore(() => ({
-    isPlayerView: false, isGMView: true, isMapLoading: false, activeTool: 'select',
+    isPlayerView: false, isGMView: true, isMapLoading: false, activeTool: 'select', fogTool: DEFAULT_FOG_TOOL,
     objects: { fog: { painted: {
       id: 'painted', kind: 'fog', type: 'rectangle', timestamp: 1,
       x: 0, y: 0, width: 100, height: 100, isErasing: false,
     } } },
   }));
-  const renderer = new FogOfWarRenderer(new Container() as any, { canvas: createEl('canvas') } as any, new EventEmitter(), store as any, () => null);
+  const renderer = new FogOfWarRenderer(Object.assign(new Container(), { options: {} }) as any, { canvas: createEl('canvas') } as any, new EventEmitter(), store as any, () => null);
   try {
     const fog = renderer.getContainer().children.find(child => child instanceof Sprite && child.alpha > 0)!;
     expect(fog.visible).toBe(true);

@@ -2,6 +2,76 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.16.0 — Draw, Text and Fog tools
+
+2026-11-14
+
+### New
+
+**Updated: Draw and Text tool**
+- Draw and Text are now one tool with its own toolbar: Pen, Line, Rectangle, Ellipse, Text, Stamp, Cells and Eraser
+- Drag to draw a line or shape, or click point by point
+- Shapes and stamps snap to the grid, hold Alt to place them freely
+- The eraser cuts only where it passes, hold Alt to remove whole drawings
+- Shortcuts: B for the Draw tool, T for Text, E for the eraser remain
+
+**Text on the map**
+- Type on the map: click for a label, drag for a text box
+- Three fonts (Medieval, Sci-fi, Mono) and three looks (outline, dark plate, plain)
+
+**Hide, layer and edit drawings**
+- Hide a drawing or text from your players
+- Lock, group, bring to front and send to back
+
+**Stamps and cells**
+- Stamps use every pin symbol in any colour
+- Cells colours whole squares and hexes
+
+**Updated: Fog tools**
+- The fog tool has its own toolbar: Fog and Eraser, with the shapes Brush, Rectangle, Polygon, Lasso, Cells and Room
+- Cover all hides the whole map, Delete all fog clears it
+- Rectangles and polygons snap to the grid and to walls, hold Ctrl or Cmd to place them freely
+- Cells adds or erases fog on whole grid cells
+- Hold Alt to do the opposite: erase with Fog, add fog with Eraser
+- , and . change the brush size
+- Set how dark fog looks to you in GM View, and hold H to see it as your players do
+
+**Reveal, hide and delete fog**
+- Fog that touches becomes one area
+- Right-click fog to reveal it, hide it again or delete it
+
+**Rooms from walls**
+- Room: click inside a room to fill it with fog or clear it
+- Hide all rooms covers every room on the map in one step
+
+### Improved
+
+- Carving and filling rooms is much faster on large maps. (Thanks ThatMattLatt)
+- On Windows and Linux, the window buttons hide over a map so they no longer cover the widgets (hover to reveal)
+- Players now see a dragged token's move description as you do
+- Freeze player view is no renamed to "Pause player view" and has a button in the player view bar shown when opening a local player view
+- Local player view settings renamed to "Player View Settings". Now separates options which pertain to online play
+- Optimised search for Atlas Command Palette
+
+### Fixed
+
+- Tokens and pins under fog can be clicked and dragged
+- The TrueScale frame and its bar show only while TrueScale is on
+- The player window no longer says "Camera paused" after you return to its scene
+- The eye and the close button on a scene tab are easy to click again. Reported by Tanaros, Meisterdieb, George and Theo Chronis (thanks guys)
+- Online, the eye on a floor shows that floor to players at once.
+- Ctrl/Cmd and hover shows a token's statblock with every tool.
+- Laser pointer is no longer pixelated on Linux
+
+### Atlas Online
+
+- Draw tool added for players (can be toggled in player view settings)
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daniel Mensinga, Daria Ambrose, Deus Ex Minima, Dewwww, Eskil Bolsøy, George Young, Giodude, Hannes Pingel, Ionazh, Josh Zindler, Joshua Herrin, Kevin Hait, Krangal, LittleBlueShyGuy, Markus Baumann, Michael Breuer, MrEhm, Nick, Pau Benazet Montobbio, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Tim Roddick-Hull, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
 ## 0.15.0 — Measure tool, spell effects and movement
 
 2026-11-13

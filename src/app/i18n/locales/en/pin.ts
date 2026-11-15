@@ -77,6 +77,7 @@ export const pin = {
   'pin.icon.important': 'Important',
   'pin.icon.npc': 'NPC',
   'pin.icon.secret': 'Secret',
+  'pin.group.marks': 'Marks',
   'pin.group.realm': 'Realm',
   'pin.group.wilderness': 'Wilderness',
   'pin.group.landmarks': 'Landmarks',

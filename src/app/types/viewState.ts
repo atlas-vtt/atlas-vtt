@@ -129,7 +129,7 @@ export interface ViewState extends ViewUIState {
   _audioDirty: boolean;
 
   // Tool and selection state
-  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio' | 'stairs';
+  activeTool: 'move' | 'select' | 'fog' | 'draw' | 'measure' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'wall' | 'audio' | 'stairs';
   selectionMode: 'box' | 'lasso';
   selectedIds: string[];
 

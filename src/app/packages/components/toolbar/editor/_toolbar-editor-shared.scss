@@ -1,10 +1,9 @@
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
 
-// A control's corners in the main toolbar and the editor's tray: those at either end of its bar
-// follow the bar's (see .atlas-vtt-toolbar).
-$control-corners: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-  var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+// A control's corners in the main toolbar and the editor's tray: concentric with its bar's on
+// every side (see .atlas-vtt-toolbar).
+$control-corners: var(--atlas-bar-control-radius, #{$radius-l});
 
 // A ring inside a control, drawn by a pseudo-element of the content that lies above its handle.
 @mixin toolbar-control-ring($colour) {

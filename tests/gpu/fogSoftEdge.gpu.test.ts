@@ -93,15 +93,6 @@ describe('a soft fog edge', () => {
     expect(alphas(switched)).toEqual(alphas(hard));
   });
 
-  it('draws the fog as its shapes are for what reads its pixels', () => {
-    const ops = { paint: rect('paint', 1, 40, 40, 100, 100) };
-    const hard = compositor(0);
-    hard.composite(ops);
-    const faded = compositor();
-    faded.composite(ops, undefined, false);
-    expect(alphas(faded)).toEqual(alphas(hard));
-  });
-
   it('still covers the whole canvas, unblurred, where the geometry cannot be read', () => {
     const c = compositor();
     expect(c.composite({ broken: rect('broken', 1, Number.NaN, 0, 10, 10) })).toBe(false);
@@ -120,20 +111,6 @@ describe('a soft fog edge', () => {
 
 describe('the fog tool with a soft edge', () => {
   const { scene } = fogScenes();
-
-  // Deleting erases the piece under the pointer by the fog's pixels: read faded, two pieces closer than the fade are one
-  it('deletes one piece of fog, not the piece beside it within the fade', async () => {
-    const s = await scene({ left: rect('left', 1, 8, 8, 40, 112), right: rect('right', 2, 72, 8, 40, 112) });
-    s.showMapImage({ x: 0, y: 0, width: 128, height: 128 });
-    s.fog.setEdge({ style: 'soft', width: 12 });
-    // The blur's depth in a piece this narrow differs by renderer, so the piece beside it is held to itself
-    const beside = s.read(92, 64);
-    expect(beside).toBeLessThan(60);
-    const erase = s.fog as unknown as { eraseConnectedVisibleRegionAt(x: number, y: number): boolean };
-    expect(erase.eraseConnectedVisibleRegionAt(28, 64)).toBe(true);
-    expect(s.read(28, 64)).toBeGreaterThan(200);
-    expect(s.read(92, 64)).toBe(beside);
-  });
 
   it('shows the players the fade, and nothing of a map fogged whole', async () => {
     const s = await scene({ half: rect('half', 1, 0, 0, 64, 128) });

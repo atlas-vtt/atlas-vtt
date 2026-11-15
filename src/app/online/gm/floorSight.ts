@@ -77,6 +77,12 @@ export class FloorSight {
     return this.roofed() ? points.map(() => false) : playerPointSight(lighting, points, fog);
   }
 
+  /** What the floor's sight is worked out from now, each part the same object while it is the same; null as for the doors. */
+  sightParts(): readonly unknown[] | null {
+    const lighting = this.lighting();
+    return lighting === null ? null : [lighting.currentSight(), lighting.ambientLight(), lighting.lightReaches()];
+  }
+
   /** The tokens players only sense now, as outlines of `cell`-sized tokens; none on a roofed floor. */
   sensed(cell: number): SensedMark[] | null {
     const state = this.ports.state();
@@ -147,6 +153,7 @@ export function floorLayerSource(sight: FloorSight, base: MapLayerSource | null,
     rules: () => base.rules(),
     doorsSeen: (walls, fog) => sight.doorsSeen(walls, fog),
     pointsSeen: (points, fog) => sight.pointsSeen(points, fog),
+    sightParts: () => sight.sightParts(),
     sensed: () => sight.sensed(cell()),
   };
 }

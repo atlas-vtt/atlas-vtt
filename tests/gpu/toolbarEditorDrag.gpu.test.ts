@@ -12,7 +12,7 @@ vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindo
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
 const slot = (id: string): HTMLElement => query(`.atlas-main-toolbar > [data-toolbar-item="${id}"]`);
@@ -137,7 +137,7 @@ describe('dragging in the toolbar editor', () => {
     await mouse.up(stop.x, stop.y);
     await eachFrame(SETTLE_FRAMES, watch);
     expect(harness.settings.getToolbarLayout().hidden).toEqual(['loot']);
-    expect(barIds()).toEqual(['move', 'draw', 'text', 'measure', 'fog', 'wall', 'pin', 'dice', 'assets', 'palette']);
+    expect(barIds()).toEqual(['move', 'draw', 'measure', 'fog', 'wall', 'pin', 'dice', 'assets', 'palette']);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
     if (!lastGhost) throw new Error('no ghost settled');
     expectSameBox(rectOf(query('.atlas-main-toolbar > [data-toolbar-item="fog"] > .atlas-toolbar-item__content')), lastGhost);
@@ -165,9 +165,10 @@ describe('dragging in the toolbar editor', () => {
     expect(document.body.classList.contains('atlas-toolbar-grabbing')).toBe(false);
   });
 
-  it('overflows from the right at 520 px, and a tool dragged onto the full bar lands in "More tools"', async () => {
-    await page.viewport(520, 800);
-    await mount({ hidden: ['draw'] });
+  it('overflows from the right at 480 px, and a tool dragged onto the full bar lands in "More tools"', async () => {
+    await page.viewport(480, 800);
+    // Hidden as this version stores it: with the id of the Text control it took in.
+    await mount({ hidden: ['draw', 'text'] });
     // The active tool (Move) and the Command palette are pinned; everything else left from the right.
     expect(barIds()).toEqual(['move', 'palette']);
     const pickup = centreOf(handle('draw', 'tray'));
@@ -189,9 +190,11 @@ describe('dragging in the toolbar editor', () => {
   });
 
   it('closes the rightmost control live to make room on a full bar, and never the Command palette', async () => {
-    await page.viewport(760, 800);
-    await mount({ hidden: ['draw'] });
-    expect(barIds()).toEqual(['move', 'fog', 'text', 'palette']);
+    // As wide as leaves Draw, a single button, no room beside the four that show (Fog is a single button too).
+    await page.viewport(616, 800);
+    // Hidden as this version stores it: with the id of the Text control it took in.
+    await mount({ hidden: ['draw', 'text'] });
+    expect(barIds()).toEqual(['move', 'fog', 'measure', 'palette']);
     const pickup = centreOf(handle('draw', 'tray'));
     await mouse.down(pickup.x, pickup.y);
     const bar = rectOf(query('.atlas-main-toolbar'));
@@ -200,7 +203,7 @@ describe('dragging in the toolbar editor', () => {
       await glide(pickup, { x: bar.left + 30, y: bar.top + bar.height / 2 });
       await eachFrame(SETTLE_FRAMES / 2, () => undefined);
     });
-    expect(closing).toEqual(['text']);
+    expect(closing).toEqual(['measure']);
     expect(barIds()).toEqual(['move', 'fog', 'palette']);
     expect(openWell()).toBeDefined();
 
@@ -230,8 +233,8 @@ describe('dragging in the toolbar editor', () => {
     const well = openWell();
     if (!well) throw new Error('no well at the start');
     expect(query('.atlas-main-toolbar').firstElementChild).toBe(well);
-    expect(getComputedStyle(well).borderTopLeftRadius).toBe('14.5px');
-    expect(getComputedStyle(well).borderBottomLeftRadius).toBe('14.5px');
+    expect(getComputedStyle(well).borderTopLeftRadius).toBe('10.5px');
+    expect(getComputedStyle(well).borderBottomLeftRadius).toBe('10.5px');
 
     await glide({ x: bar.left + 2, y }, { x: bar.left + bar.width - 2, y });
     await settle(30);
@@ -239,8 +242,8 @@ describe('dragging in the toolbar editor', () => {
     if (!last) throw new Error('no well at the end');
     expect(last.previousElementSibling).toBe(slot('palette'));
     // After the last control comes the GM view switch, which keeps the bar's end corner.
-    expect(getComputedStyle(query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle')).borderTopRightRadius).toBe('14.5px');
-    expect(getComputedStyle(query('[data-toolbar-item="move"] .atlas-tool-group')).borderTopLeftRadius).toBe('14.5px');
+    expect(getComputedStyle(query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle')).borderTopRightRadius).toBe('10.5px');
+    expect(getComputedStyle(query('[data-toolbar-item="move"] .atlas-tool-group')).borderTopLeftRadius).toBe('10.5px');
     await userEvent.keyboard('{Escape}');
     await mouse.up(bar.left, y);
   });
@@ -248,7 +251,8 @@ describe('dragging in the toolbar editor', () => {
   it('with reduced motion, opens each well at full width at once and drops without a settling ghost', async () => {
     await cdp().send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     await settle(5);
-    await mount({ hidden: ['draw'] });
+    // Hidden as this version stores it: with the id of the Text control it took in.
+    await mount({ hidden: ['draw', 'text'] });
     const pickup = centreOf(handle('draw', 'tray'));
     await mouse.down(pickup.x, pickup.y);
     const bar = rectOf(query('.atlas-main-toolbar'));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalForm, signedAreaTwice } from '../../src/app/lighting/canonicalForm';
-import { inflatePolyline, normalizePolygon, subtractShapes, unionShapes } from '../../src/app/lighting/polygonClip';
+import { inflatePolyline, inflatePolylines, normalizePolygon, shapeParts, subtractShapes, unionShapes } from '../../src/app/lighting/polygonClip';
 import { shapeContains } from '../../src/app/lighting/shapeContains';
 import { MAX_Q } from '../../src/app/types/shapeTypes';
 import { hasCrossing, qRectangle } from '../helpers/fogShapeAssertions';
@@ -85,5 +85,34 @@ describe('integer polygon operations', () => {
   it('rejects generated coordinates outside the supported range', () => {
     expect(() => inflatePolyline([MAX_Q, 0], 8)).toThrow(RangeError);
     expect(() => unionShapes([[Infinity, 0]], [])).toThrow(RangeError);
+  });
+
+  it('widens several lines into one shape that covers their crossing once', () => {
+    const across = [0, 0, 160, 0];
+    const down = [80, -80, 80, 80];
+    const cross = inflatePolylines([across, down], 16);
+    expect(cross).toHaveLength(1);
+    expect(hasCrossing(cross)).toBe(false);
+    expect(cross).toEqual(unionShapes(inflatePolyline(across, 16), inflatePolyline(down, 16)));
+    expect(inflatePolylines([across], 16)).toEqual(inflatePolyline(across, 16));
+    // Lines apart stay apart; an empty line adds nothing; a dot is a disc.
+    expect(inflatePolylines([across, [], [0, 400, 160, 400]], 16)).toHaveLength(2);
+    expect(inflatePolylines([[], []], 16)).toEqual([]);
+    expect(inflatePolylines([across], 0)).toEqual([]);
+    expect(shapeContains(inflatePolylines([across, [400, 400]], 16), { x: 51.5, y: 50 })).toBe(true);
+    expect(() => inflatePolylines([across], -1)).toThrow(RangeError);
+  });
+
+  it('tells a shape\'s areas apart, each with its own holes', () => {
+    const ring = subtractShapes([qRectangle(0, 0, 80, 80)], [qRectangle(16, 16, 48, 48)]);
+    const island = unionShapes(ring, [qRectangle(32, 32, 16, 16)]);
+    const both = unionShapes(island, [qRectangle(200, 0, 40, 40)]);
+    const parts = shapeParts(both);
+    expect(parts).toHaveLength(3);
+    const byArea = [...parts].sort((a, b) => Number(signedAreaTwice(b.outline) - signedAreaTwice(a.outline)));
+    expect(byArea.map((part) => [signedAreaTwice(part.outline), part.holes.map(signedAreaTwice)])).toEqual([[12800n, [-4608n]], [3200n, []], [512n, []]]);
+    // Every ring of the shape is an outline or a hole of exactly one area, as the union cleaned it.
+    expect(parts.flatMap((part) => [part.outline, ...part.holes]).map((ring) => ring.join()).sort()).toEqual(both.map((ring) => ring.join()).sort());
+    expect(shapeParts([])).toEqual([]);
   });
 });

@@ -43,7 +43,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: $radius-2xl;
+      border-radius: $toolbar-radius;
       background: var(--background-modifier-hover);
       pointer-events: none;
       animation: atlas-toolbar-fade-in $transition-fast $transition-ease-out;
@@ -69,7 +69,7 @@
   // bar: its hover fill and focus ring follow the bar's corners.
   > .atlas-toolbar-handle {
     z-index: 1;
-    border-radius: $radius-2xl;
+    border-radius: $toolbar-radius;
 
     &:focus-visible {
       outline: 2px solid var(--interactive-accent);

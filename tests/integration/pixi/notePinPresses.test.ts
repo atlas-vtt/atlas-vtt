@@ -5,7 +5,7 @@ import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from 'events';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
-import { DrawingRenderer } from '../../../src/app/pixi/DrawingRenderer';
+import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/AnnotationsRenderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { AssetService } from '../../../src/app/services/AssetService';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
@@ -45,7 +45,7 @@ describe('Presses with the note pin tool', () => {
   let store: ViewStore;
   let eventBus: EventEmitter;
   let pins: PinRenderer;
-  let drawing: DrawingRenderer;
+  let drawing: AnnotationsRenderer;
   let fog: FogOfWarRenderer;
   let tokens: TokenRenderer;
   let restoreGraphics: () => void;
@@ -72,7 +72,7 @@ describe('Presses with the note pin tool', () => {
 
     pins = new PinRenderer(viewport, eventBus, store);
     fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
-    drawing = new DrawingRenderer(viewport, eventBus, store);
+    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
     tokens = new TokenRenderer(app, viewport, gridSystem, vi.fn(), store, eventBus, 'pin-press-view');
     tokens.setPixiApp({
       ticker: { add: vi.fn(), remove: vi.fn(), lastTime: 0 },
@@ -83,7 +83,7 @@ describe('Presses with the note pin tool', () => {
     tokens.setPinClickHandler((pinId, e) => pins.handleViewportPinPointerDown(pinId, e));
     // As the view does once the dispatch listens (`_initGridInternal`)
     pins.reorderViewportListeners();
-    drawing.reorderViewportListeners();
+    drawing.hearPressesLast();
     fog.reorderViewportListeners();
 
     placed = vi.fn();
@@ -123,10 +123,27 @@ describe('Presses with the note pin tool', () => {
   });
 
   it('draws no stroke on a pin, and one on the first press after it', () => {
-    store.getState().setActiveTool('draw-pen');
+    store.getState().setDrawTool({ mode: 'pen' });
+    store.getState().setActiveTool('draw');
     press(100, 100);
     expect(store.getState().objects.drawings).toEqual({});
     press(500, 400);
+    expect(Object.keys(store.getState().objects.drawings)).toHaveLength(1);
+  });
+
+  it('draws no stroke on a pin with a Draw tool that was in hand before the dispatch listened', () => {
+    drawing.destroy();
+    store.getState().setDrawTool({ mode: 'pen' });
+    store.getState().setActiveTool('draw');
+    // Built with the tool in hand, it listens at once: before a dispatch made after it.
+    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
+    tokens.destroy();
+    tokens = new TokenRenderer(createInMemoryApp({ files: {} }).app, viewport, gridSystem, vi.fn(), store, eventBus, 'pin-press-view');
+    tokens.setPinHitTestProvider((x, y) => pins.hitTestPins(x, y));
+    tokens.setPinClickHandler((pinId, e) => pins.handleViewportPinPointerDown(pinId, e));
+    drawing.hearPressesLast();
+    press(500, 400);
+    press(100, 100);
     expect(Object.keys(store.getState().objects.drawings)).toHaveLength(1);
   });
 
