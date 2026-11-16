@@ -3,9 +3,9 @@ import { t } from '../i18n';
 import { SettingsService } from '../services/SettingsService';
 
 /**
- * Features the GM switches on in the command palette's Experimental features page. All are off
- * until then, and the choice is stored in Atlas' settings (`AtlasSettings.experimental`) under
- * the feature's id, so never rename one.
+ * Features the GM switches on in the command palette's Experimental features page or in Atlas'
+ * settings tab. All are off until then, and the choice is stored in Atlas' settings
+ * (`AtlasSettings.experimental`) under the feature's id, so never rename one.
  */
 export const EXPERIMENTAL_FEATURES = [
   {
