@@ -80,7 +80,7 @@ describe('the distance per square of a collection', () => {
     expect(tab.stored()).toBeNaN();
     expect(tab.field().value).toBe(text);
     expect(marked(tab.field())).toBe(true);
-    expect(tab.hint()?.textContent).toBe('Distance per Square needs a number from 0.000001 to 1,000,000.');
+    expect(tab.hint()?.textContent).toBe('Distance per square needs a number from 0.000001 to 1,000,000.');
   });
 
   it('drops the mark once the text is a distance again', () => {

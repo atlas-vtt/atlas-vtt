@@ -5,4 +5,5 @@ export const contents: Translation = {
   'contents.includeAll': '包含全部{group}',
   'contents.none': '无',
   'contents.orphaned': '只被你排除的内容使用',
+  'contents.title': '包含的内容',
 };

@@ -6,6 +6,7 @@ import { openContextMenuGlobal, type ContextMenuEntry } from '../../react/root/C
 import type { DoorPlacement } from '../vision/DoorPlacement';
 import type { WallInteraction } from '../vision/WallInteraction';
 import type { WallRenderer } from '../vision/WallRenderer';
+import { splitWall } from './wallEdits';
 import { removeDoor, removeJoint } from './wallJoints';
 import { t } from '../../i18n';
 import { levelObjects } from '../../levels/levelObjects';
@@ -90,6 +91,11 @@ export function showWallMenu(context: LightingMenuContext, worldX: number, world
     const doorRemoval = removeDoor(allWalls, segment.id);
     if (doorRemoval) entries.push({ type: 'item', label: t('wall.removeDoor'), icon: 'brick-wall', onClick: () => walls.apply(doorRemoval) });
   }
+
+  // A wall clicked along its length takes a new point there, which can then be dragged; a door stays one piece.
+  const hitSegment = segmentId ? allWalls[segmentId] : undefined;
+  const halves = hitSegment && hitSegment.type !== 'door' && hitSegment.type !== 'secret-door' ? splitWall(hitSegment, { x: worldX, y: worldY }) : null;
+  if (hitSegment && halves) entries.push({ type: 'item', label: t('wall.addPoint'), icon: 'circle-plus', onClick: () => walls.apply({ remove: [hitSegment.id], add: halves }) });
 
   const jointRemoval = joint ? removeJoint(allWalls, joint) : null;
   if (jointRemoval) entries.push({ type: 'item', label: t('wall.removePoint'), icon: 'circle-minus', onClick: () => walls.apply(jointRemoval) });

@@ -109,10 +109,11 @@ export function LibraryView({ query, onQuery: setQuery }: LibraryViewProps): Rea
   // Where a file is on this device changes with what the library has read.
   const soundsByPath = useMemo(() => recordsByFile(sounds, library), [sounds, library, musicFiles, ambienceFiles, read]);
   // Rows keep their objects while the files and records do, so a walk that found nothing new renders none of them.
+  const copiesRead = library.copies.revision;
   const shelves = useMemo<Record<SoundKind, RootShelf>>(() => ({
     music: shelfOf(library, sounds, soundsByPath, 'music'),
     ambience: shelfOf(library, sounds, soundsByPath, 'ambience'),
-  }), [library, sounds, soundsByPath]);
+  }), [library, sounds, soundsByPath, copiesRead]);
   const shelf = shelves[place.kind];
 
   // A tag selected that no track has any more selects nothing.
@@ -179,7 +180,7 @@ export function LibraryView({ query, onQuery: setQuery }: LibraryViewProps): Rea
         dropFiles([...event.dataTransfer.files]);
       }}
     >
-      <LibraryRail library={library} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />
+      <LibraryRail library={library} director={director} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />
       <div className="atlas-sound-lib__main">
         <LibraryHead library={library} actions={actions} kind={place.kind} rows={found ?? listed} scope={found ? 'results' : selected.length > 0 ? 'tagged' : 'all'} query={query} onQuery={setQuery} shuffle={shuffle} first={playFirst} />
         <LibraryRows

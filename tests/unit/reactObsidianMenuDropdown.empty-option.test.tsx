@@ -10,7 +10,7 @@ describe('React ObsidianMenuDropdown empty option labels', () => {
       <ObsidianMenuDropdown value="" options={{ '': '', one: 'One' }} onChange={() => {}} />,
     );
 
-    fireEvent.keyDown(getByRole('button', { name: 'Select...' }), { key: 'Enter' });
+    fireEvent.keyDown(getByRole('button', { name: 'Select…' }), { key: 'Enter' });
     expect(await screen.findByRole('menuitemcheckbox', { name: 'None' })).toBeTruthy();
   });
 });

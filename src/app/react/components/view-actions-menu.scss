@@ -12,7 +12,7 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
+  border-radius: $radius-m;
   color: var(--text-normal);
   cursor: pointer;
   transition: all 0.2s ease;

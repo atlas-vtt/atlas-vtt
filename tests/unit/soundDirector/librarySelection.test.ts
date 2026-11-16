@@ -121,9 +121,10 @@ describe('a selection sent to the mix', () => {
     for (const id of ['a', 'b']) rig.files.add(`audio/${id}.ogg`);
     await fileToMix(deps, select().slice(0, 2), 'now');
     await settle();
-    rig.conversions.shift()?.fail(new Error('unreadable'));
+    // Both convert at once, and which hash answers first is the machine's: each is found by its file.
+    rig.conversions.find((conversion) => conversion.job.from === 'a.ogg')?.fail(new Error('unreadable'));
     await settle();
-    rig.conversions.shift()?.finish();
+    rig.conversions.find((conversion) => conversion.job.from === 'b.ogg')?.finish();
     await settle();
     await settle();
     expect(keys()).toEqual(['b']);

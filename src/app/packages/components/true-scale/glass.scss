@@ -1,6 +1,7 @@
 @use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
 
-// The glass's chip over the map (GlassChip.tsx): a capsule with the toolbars' surface
+// The glass's chip over the map (GlassChip.tsx): a small bar with the toolbars' surface
 // (`.atlas-vtt-toolbar`), placed with `translate` by useGlass on the glass's top edge.
 .atlas-glass-chip {
   position: absolute;
@@ -32,15 +33,19 @@
 }
 
 // What the chips hold, small: they stand over the map at any zoom, where a frame may be narrower
-// than a toolbar's capsule. Above the toolbar's own padding, gap and button size.
+// than a toolbar. Above the toolbar's own padding, gap and button size; its buttons run
+// concentric with its corner from 2 px inside.
+$chip-inset: 2px;
+
 .atlas-vtt-plugin .atlas-vtt-toolbar.atlas-glass-chip {
-  gap: 2px;
-  padding: 2px;
+  gap: $chip-inset;
+  padding: $chip-inset;
+
+  --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($chip-inset, $button-height-s * 0.5)};
 
   .atlas-tool-button > span > .btn {
     width: $button-height-s;
     height: $button-height-s;
-    border-radius: $radius-full;
   }
 }
 

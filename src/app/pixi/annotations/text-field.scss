@@ -1,0 +1,97 @@
+// The field a map text is typed in (`TextField.ts`): a textarea over the canvas, laid out in the
+// text's own units and brought to the screen by one transform. Its values are set by the field.
+
+&.atlas-map-text-field {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  // Over the canvas, under the view's bars and panels.
+  z-index: 1;
+  transform-origin: 0 0;
+  transform: var(--atlas-text-field-transform, none);
+  pointer-events: none;
+}
+
+.atlas-map-text-field__plate {
+  display: none;
+  position: absolute;
+  left: calc(-1 * var(--atlas-text-field-plate-reach));
+  top: calc(-1 * var(--atlas-text-field-plate-reach));
+  width: calc(var(--atlas-text-field-width) + 2 * var(--atlas-text-field-plate-reach));
+  height: calc(var(--atlas-text-field-height) + 2 * var(--atlas-text-field-plate-reach));
+  border-radius: var(--atlas-text-field-plate-radius);
+  background: var(--atlas-text-field-plate);
+}
+
+&.atlas-map-text-field--plate .atlas-map-text-field__plate {
+  display: block;
+}
+
+// Obsidian styles every textarea (ground, border, padding, focus ring): all of it is taken off,
+// in every state, so only the words show.
+.atlas-map-text-field__input,
+.atlas-map-text-field__input:hover,
+.atlas-map-text-field__input:focus,
+.atlas-map-text-field__input:focus-visible,
+.atlas-map-text-field__input:active {
+  position: absolute;
+  left: calc(-1 * var(--atlas-text-field-room));
+  top: var(--atlas-text-field-shift);
+  box-sizing: content-box;
+  width: var(--atlas-text-field-width);
+  height: var(--atlas-text-field-height);
+  min-height: 0;
+  margin: 0;
+  // Room beside the words for the caret at a line's end; the words' box itself is the map's.
+  padding: 0 var(--atlas-text-field-room);
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  transition: none;
+  pointer-events: auto;
+  font: var(--atlas-text-field-font);
+  line-height: var(--atlas-text-field-line);
+  letter-spacing: 0;
+  color: var(--atlas-text-field-color);
+  caret-color: var(--atlas-text-field-color);
+  text-align: var(--atlas-text-field-align);
+  // As wide as its words: a line breaks only where one is typed.
+  white-space: pre;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  // The Outline look: a line around the letters, under their fill, as the canvas draws it.
+  -webkit-text-stroke: var(--atlas-text-field-halo);
+  paint-order: stroke fill;
+}
+
+// A text with a width wraps at spaces, and inside a word only where the word is longer than the width.
+&.atlas-map-text-field--wraps .atlas-map-text-field__input {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+// The field's hidden twin: one line of its face and line height, with a mark that stands on the
+// line's baseline. Never transformed, so the baseline is read in the field's own units.
+&.atlas-map-text-probe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: pre;
+  font: var(--atlas-text-field-font);
+  line-height: var(--atlas-text-field-line);
+  letter-spacing: 0;
+}
+
+.atlas-map-text-probe__mark {
+  display: inline-block;
+  width: 0;
+  height: 0;
+}

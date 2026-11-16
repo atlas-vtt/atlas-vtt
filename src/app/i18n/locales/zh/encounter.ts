@@ -4,7 +4,7 @@ export const encounter: Translation = {
   'encounter.saveTitle': '存为遭遇',
   'encounter.createWith': { other: '用 {count} 个棋子创建遭遇：' },
   'encounter.tokens': '棋子：',
-  'encounter.namePlaceholder': '输入遭遇名称...',
+  'encounter.namePlaceholder': '输入遭遇名称…',
   'encounter.defaultName': '遭遇 {date}',
   'encounter.save': '保存遭遇',
   'encounter.noTokens': '没有可存为遭遇的棋子',

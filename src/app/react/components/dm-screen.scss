@@ -173,7 +173,7 @@ $page-shift: clamp(24px, 3cqi, 56px);
     flex-shrink: 0;
     gap: 2px;
     padding: 4px;
-    border-radius: $radius-xl;
+    border-radius: $radius-m + $spacing-xs;
     background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
     box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 9%, transparent);
   }
@@ -183,7 +183,7 @@ $page-shift: clamp(24px, 3cqi, 56px);
     min-width: 128px;
     height: 36px;
     padding: 0 $spacing-xl;
-    border-radius: calc(#{$radius-xl} - 4px);
+    border-radius: $radius-m;
     font-size: $font-ui-medium;
     box-shadow: none;
     color: var(--text-muted);
@@ -211,11 +211,10 @@ $page-shift: clamp(24px, 3cqi, 56px);
       position: absolute;
       inset: 4px auto 4px 4px;
       width: calc((100% - 10px) / 2);
-      border-radius: calc(#{$radius-xl} - 4px);
+      border-radius: $radius-m;
       background: var(--background-primary);
       box-shadow: 0 1px 2px color-mix(in oklch, black 40%, transparent);
       transition: transform $page-turn $transition-ease-out;
-      @include atlas-corner-shape;
     }
 
     &:has(.atlas-segmented__option:nth-of-type(2).atlas-active)::before {
@@ -241,7 +240,7 @@ $page-shift: clamp(24px, 3cqi, 56px);
   padding: 0 $spacing-s;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) 14%, transparent);
   border-bottom-width: 3px;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
   color: var(--text-muted);
   font-family: var(--font-interface);
@@ -378,16 +377,8 @@ $page-shift: clamp(24px, 3cqi, 56px);
     transparent 100%
   );
 
-  // Hide scrollbar but keep scrolling functionality
-  &::-webkit-scrollbar {
-    display: none;
-  }
-
-  // Hide scrollbar for Firefox
-  scrollbar-width: none;
-
-  // Hide scrollbar for IE/Edge
-  -ms-overflow-style: none;
+  // Scrolls without a scrollbar, under its fading edge.
+  @include atlas-scrollbar-none;
 }
 
 // `StatblockFeeds` sizes and places the statblocks itself (dm-screen/feedLayout.ts).

@@ -10,7 +10,7 @@
 import type { BuiltInTemplate } from '../model/templateTypes';
 import { builtIn, descriptionField, hiddenParts, nameField, portraitField, runInStat } from './presetParts';
 
-export const BX_CREATURE: BuiltInTemplate = builtIn('builtin:bx-creature', 'B/X-style creature', 2, {
+export const BX_CREATURE: BuiltInTemplate = builtIn('builtin:bx-creature', 'B/X-style creature', 3, {
   fields: [
     nameField(),
     portraitField(),
@@ -20,7 +20,7 @@ export const BX_CREATURE: BuiltInTemplate = builtIn('builtin:bx-creature', 'B/X-
     // A rating, as hit dice read: "3+1*".
     { key: 'hit_dice', label: 'Hit Dice', type: 'rating', meaning: 'rating' },
     { key: 'hp', label: 'Hit Points', type: 'number', meaning: 'hit-points' },
-    { key: 'movement', label: 'Movement', type: 'text' },
+    { key: 'movement', label: 'Movement', type: 'text', meaning: 'speed' },
     { key: 'attacks', label: 'Attacks', type: 'text' },
     { key: 'saves', label: 'Saves', type: 'text' },
     { key: 'morale', label: 'Morale', type: 'number' },

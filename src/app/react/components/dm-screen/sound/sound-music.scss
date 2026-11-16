@@ -138,8 +138,8 @@ $transport-pad: $spacing-xs;
   height: 36px + 2 * $transport-pad;
   margin: (-$transport-pad) 0;
   padding: $transport-pad;
-  // Drawn at 12 (the panels' step, these are the card's largest buttons), so the box rounds at the cards' 16.
-  border-radius: calc(#{$radius-xl} + #{$transport-pad});
+  // The 36 px middle keeps the control radius, so the box rounds at that plus its padding.
+  border-radius: $radius-m + $transport-pad;
   background-clip: content-box;
 }
 
@@ -187,7 +187,6 @@ $transport-pad: $spacing-xs;
 }
 
 .atlas-sound-queue {
-  @include atlas-scrollbar;
   grid-column: 1 / -1;
   grid-row: 4;
   align-self: stretch;
@@ -257,7 +256,6 @@ $transport-pad: $spacing-xs;
 .atlas-sound-track {
   @include atlas-flex-row($spacing-xs);
   border-radius: $control-radius;
-  @include atlas-corner-shape;
 
   .atlas-sound-icon {
     flex-shrink: 0;

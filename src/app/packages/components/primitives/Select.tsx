@@ -9,6 +9,19 @@ export interface SelectOption<T extends string> {
   label: string;
   /** A quiet word after the label in the list ("Built-in"); the closed select shows the label alone. */
   detail?: string;
+  /** The heading of the run of options it belongs to in the list ("Ability scores"); a run is the options in a row that share it. */
+  group?: string;
+}
+
+/** The options in runs of one group each, in their order; a run without a group has no heading. */
+function runsOf<T extends string>(options: readonly SelectOption<T>[]): { group: string | undefined; options: SelectOption<T>[] }[] {
+  const runs: { group: string | undefined; options: SelectOption<T>[] }[] = [];
+  for (const option of options) {
+    const last = runs[runs.length - 1];
+    if (last && last.group === option.group) last.options.push(option);
+    else runs.push({ group: option.group, options: [option] });
+  }
+  return runs;
 }
 
 interface SelectProps<T extends string> {
@@ -37,7 +50,7 @@ export function Select<T extends string>({ value, options, onChange, labelledBy,
   const listRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const selected = options.find(option => option.value === value);
-  const { fit, style } = useListPlacement(isOpen, triggerRef, listRef, layer, options.length);
+  const { fit, style, alignEnd } = useListPlacement(isOpen, triggerRef, listRef, layer, options.length);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -87,14 +100,20 @@ export function Select<T extends string>({ value, options, onChange, labelledBy,
   };
 
   const list = isOpen && <div ref={listRef} id={listId} role="listbox" aria-labelledby={labelledBy} onKeyDown={onListKeyDown}
-    className={cn('atlas-select-content', fit.up && 'atlas-select-content--up', layer && 'atlas-select-content--layered')}
+    className={cn('atlas-select-content', fit.up && 'atlas-select-content--up', alignEnd && 'atlas-select-content--end', layer && 'atlas-select-content--layered')}
     style={layer ? style : fit.maxHeight === null ? undefined : { maxHeight: fit.maxHeight }}>
-    {options.map(option => <button key={option.value} type="button" role="option" aria-selected={option.value === value}
-      className={cn('atlas-select-option', option.value === value && 'atlas-selected')} onClick={() => pick(option.value)}>
-      <span className="atlas-select-option-text">{option.label}</span>
-      {option.detail && <span className="atlas-select-option-detail">{option.detail}</span>}
-      <Check aria-hidden="true" className="atlas-select-check" />
-    </button>)}
+    {runsOf(options).map(({ group, options: run }) => {
+      const buttons = run.map(option => <button key={option.value} type="button" role="option" aria-selected={option.value === value}
+        className={cn('atlas-select-option', option.value === value && 'atlas-selected')} onClick={() => pick(option.value)}>
+        <span className="atlas-select-option-text">{option.label}</span>
+        {option.detail && <span className="atlas-select-option-detail">{option.detail}</span>}
+        <Check aria-hidden="true" className="atlas-select-check" />
+      </button>);
+      return group === undefined ? buttons : <div key={`group:${group}`} role="group" aria-label={group} className="atlas-select-group">
+        <span aria-hidden="true" className="atlas-select-group-label">{group}</span>
+        {buttons}
+      </div>;
+    })}
   </div>;
 
   return <div ref={rootRef} className={cn('atlas-select', isOpen && 'atlas-open')}>

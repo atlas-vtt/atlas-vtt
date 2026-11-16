@@ -16,12 +16,10 @@
   .atlas-tab-button {
     @include atlas-tab-button;
 
+    // A count is information, so it reads at AA (the shared tab mixin's is faint).
     .atlas-tab-count {
       min-width: 2ch;
       text-align: left;
-    }
-
-    &.atlas-active .atlas-tab-count {
       color: var(--text-muted);
     }
   }
@@ -35,7 +33,7 @@
 .atlas-am-tab-menu-trigger {
   &.btn {
     gap: $spacing-xs;
-    height: $control-height;
+    height: $header-control-height;
     padding: 0 $spacing-s 0 $spacing-m;
     border-radius: $radius-m;
     background: var(--background-secondary);
@@ -60,7 +58,7 @@
   }
 
   .atlas-tab-count {
-    color: var(--text-faint);
+    color: var(--text-muted);
     font-size: $font-ui-smaller;
     font-weight: $font-weight-normal;
     font-variant-numeric: tabular-nums;
@@ -105,15 +103,16 @@
   // The same on every tab: room for typed filters and the filter button. Its
   // width is the toolbar's track (`_header.scss`), which narrows before the
   // asset type tabs give up their room.
-  height: $control-height;
+  height: $header-control-height;
+  // The buttons at its end sit $spacing-xs from the border above, below and beside them.
   padding: 0 $spacing-xs 0 $spacing-s;
   background: var(--background-modifier-form-field);
-  border: $border-width-s solid var(--background-modifier-border);
+  border: $border-width-s solid $am-control-border;
   border-radius: $radius-m;
   transition: border-color $transition-fast $transition-ease;
 
   &:focus-within {
-    border-color: var(--background-modifier-border-focus);
+    border-color: $am-control-border-focus;
   }
 
   > svg {
@@ -141,17 +140,28 @@
     }
   }
 
+  // The face fills what the field's height leaves inside that inset; a hit area around a face smaller than 24 px
+  // gives the smallest target WCAG 2.2 accepts.
   .atlas-am-icon-btn {
     &.btn,
     &.btn--icon {
-      width: 20px;
-      height: 20px;
+      $face: calc(#{$header-control-height} - 2 * (#{$border-width-s} + #{$spacing-xs}));
+      position: relative;
+      width: $face;
+      height: $face;
+      flex-shrink: 0;
       border-radius: $radius-s;
+
+      &::before {
+        position: absolute;
+        inset: min(0px, calc((100% - #{$search-button-size}) / 2));
+        content: '';
+      }
     }
 
     svg {
-      width: 12px;
-      height: 12px;
+      width: $icon-xs;
+      height: $icon-xs;
     }
   }
 }
@@ -204,8 +214,8 @@
 .atlas-asset-manager-create-btn {
   &.btn,
   &.btn--icon {
-    width: $control-height;
-    height: $control-height;
+    width: $header-control-height;
+    height: $header-control-height;
     border-radius: $radius-m;
     @include atlas-concentric-corner(top-right, $window-radius, $window-corner-inset);
     flex-shrink: 0;

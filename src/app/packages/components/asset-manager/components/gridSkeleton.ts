@@ -13,8 +13,10 @@ export interface CardLayout {
   name: { y: number; height: number; fontSize: number };
 }
 
-/** A stretch of the grid whose rows are not mounted, in px from the grid's top left corner. */
+/** A row of the grid that is not mounted, in px from the grid's top left corner. */
 export interface RestRegion {
+  /** The row's index, which keys its element: a row keeps its place and size while the grid scrolls. */
+  row: number;
   top: number;
   height: number;
   /** Set for a last row that is not full; otherwise the region spans the grid. */
@@ -77,18 +79,23 @@ interface MountedRows {
 
 /**
  * The rows around the mounted ones that hold assets, up to `REACH_PX` away: what
- * a scroll shows before the grid has rendered again. A last row that is not full
- * is a region of its own, as wide as its cards.
+ * a scroll shows before the grid has rendered again. One region per row, so a
+ * scroll only adds and removes rows at the ends and never resizes one (a region
+ * per stretch was given a new height on every row scrolled). A last row that is
+ * not full is as wide as its cards.
  */
 export function unmountedRegions({ firstRow, lastRow, assetCount, columns, pitchX, pitchY, gap }: MountedRows): RestRegion[] {
   if (firstRow === null || lastRow === null || pitchY <= 0) return [];
   const reach = Math.ceil(REACH_PX / pitchY);
   const fullRows = Math.floor(assetCount / columns);
   const inLastRow = assetCount % columns;
-  const rows = (from: number, to: number): RestRegion[] => (to > from ? [{ top: from * pitchY, height: (to - from) * pitchY - gap }] : []);
+  const rows = (from: number, to: number): RestRegion[] => Array.from({ length: Math.max(0, to - from) }, (_, index) => {
+    const row = from + index;
+    return { row, top: row * pitchY, height: pitchY - gap };
+  });
   const below = lastRow + 1;
   const lastRowRegion = inLastRow > 0 && fullRows >= below && fullRows < below + reach
-    ? [{ top: fullRows * pitchY, height: pitchY - gap, width: inLastRow * pitchX - gap }]
+    ? [{ row: fullRows, top: fullRows * pitchY, height: pitchY - gap, width: inLastRow * pitchX - gap }]
     : [];
   return [
     ...rows(Math.max(0, firstRow - reach), firstRow),

@@ -42,7 +42,7 @@ describe('scenes from several maps', () => {
   it('offers the dialog for one map and a scene per map for several', async () => {
     const { vault, assets } = await library();
     const openCreateScene = vi.fn();
-    const deps = { app: vault.app, assetService: assets, collectionId: COLLECTION, openCreateScene, loadAssetsForActiveTab: vi.fn(async () => {}) };
+    const deps = { app: vault.app, view: null, onClose: vi.fn(), assetService: assets, collectionId: COLLECTION, openCreateScene, loadAssetsForActiveTab: vi.fn(async () => {}) };
     const [one] = sceneMenuEntries(mapCard('Cave'), [mapCard('Cave')], deps);
     if (one?.type !== 'item') throw new Error('No menu item');
     await one.onClick?.();
@@ -53,7 +53,7 @@ describe('scenes from several maps', () => {
     expect(entries).toHaveLength(1);
     const [many] = entries;
     if (many?.type !== 'item') throw new Error('No menu item');
-    expect(many.label).toBe('Create 2 Scenes');
+    expect(many.label).toBe('Create 2 scenes');
     await many.onClick?.();
     expect((await scenes(assets)).map((scene) => scene.name).sort()).toEqual(['Cave', 'Tower']);
     expect(deps.loadAssetsForActiveTab).toHaveBeenCalled();

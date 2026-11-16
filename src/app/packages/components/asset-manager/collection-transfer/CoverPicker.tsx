@@ -1,8 +1,7 @@
-import React, { useId, useRef, useState } from 'react';
+import React, { useId, useRef } from 'react';
 import { ImageOff, ImagePlus } from 'lucide-react';
 import type { CoverCandidate, CoverChoice, CurrentCover } from '../../../../services/collectionBundle/collectionCover';
 import { RevealImage } from '../../primitives/RevealImage';
-import { useScrollActivity } from '../../primitives/useScrollActivity';
 import { CoverCard } from './CoverCard';
 import { t } from '../../../../i18n';
 
@@ -20,8 +19,6 @@ interface CoverPickerProps {
 export function CoverPicker({ value, current, candidates, upload, onUpload, onChange }: CoverPickerProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
-  const [list, setList] = useState<HTMLDivElement | null>(null);
-  useScrollActivity(list);
   const isArtwork = (path: string): boolean => value.kind === 'artwork' && value.path === path;
   return (
     <section className="atlas-transfer-covers" aria-labelledby={titleId}>
@@ -29,7 +26,7 @@ export function CoverPicker({ value, current, candidates, upload, onUpload, onCh
         <span id={titleId} className="atlas-transfer-eyebrow">{t('cover.title')}</span>
         <span className="atlas-transfer-covers__hint">{t('cover.hint')}</span>
       </div>
-      <div ref={setList} className="atlas-transfer-covers__list" role="radiogroup" aria-labelledby={titleId}>
+      <div className="atlas-transfer-covers__list" role="radiogroup" aria-labelledby={titleId}>
         <CoverCard label={t('cover.upload')} hint={t('cover.uploadHint')} variant="action" isOption={false} onSelect={() => inputRef.current?.click()}>
           <ImagePlus aria-hidden="true" />
         </CoverCard>

@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { App, TFile } from 'obsidian';
 import '../../setup/obsidianDom';
 import { act } from '@testing-library/react';
 import React, { Profiler } from 'react';
@@ -23,11 +23,12 @@ import { SoundDirector } from '@/app/soundDirector/SoundDirector';
 import { MoodStore } from '@/app/soundLibrary/MoodStore';
 import { recordIdFor } from '@/app/soundLibrary/libraryRecords';
 import { SoundLibrary } from '@/app/soundLibrary/SoundLibrary';
+import type { SharedSoundRoots } from '@/app/soundLibrary/soundRootsStore';
 import { soundRecordOf } from '@/app/soundLibrary/soundRecords';
 import { SoundRecordStore } from '@/app/soundLibrary/SoundRecordStore';
 import { createViewAtlasStore, type ViewAtlasStore } from '@/app/storeFactory';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
-import { fakeLibrary, type LibraryRig } from '../../helpers/libraryRig';
+import { fakeLibrary, type LibraryRig, type LibraryRigOptions } from '../../helpers/libraryRig';
 import { fillMockLibrary, MOCK_LIBRARY } from './libraryScene';
 import { withSound } from '../../mocks/experimentalFeatures';
 
@@ -140,9 +141,10 @@ interface SoundApp {
   records: Map<string, SoundRecord>;
   release: () => void;
   library: SoundLibrary;
+  place: SoundPlace;
 }
 
-/** The real director, real copies in IndexedDB and a real context, over an in-memory vault. The theme is the variables Obsidian sets. */
+/** The real director, real copies in the linked folders and a real context, over an in-memory vault. The theme is the variables Obsidian sets. */
 async function soundApp(theme: string, appId: string, sounds: Record<string, TabSound>, linked: boolean): Promise<SoundApp> {
   const style = document.createElement('style');
   style.id = 'sound-tab-theme';
@@ -152,25 +154,31 @@ async function soundApp(theme: string, appId: string, sounds: Record<string, Tab
   document.body.classList.toggle('theme-light', theme === LIGHT);
   document.body.classList.toggle('theme-dark', theme !== LIGHT);
 
-  const paths = Object.fromEntries(Object.keys(sounds).map((name) => [`audio/${name}.ogg`, 'audio']));
-  const { app } = createInMemoryApp({ files: paths });
+  const { app } = createInMemoryApp();
   Object.assign(app, { appId });
-  const bytes = new Map<string, ArrayBuffer>();
-  for (const [name, { url, synth }] of Object.entries(sounds)) bytes.set(`audio/${name}.ogg`, url ? await (await fetch(url)).arrayBuffer() : synthWav(synth?.seconds ?? 1, synth?.seed ?? 1));
-  // A file of no bytes never arrives: its copy stays on its way, and those after it, as copies are made one at a time.
-  app.vault.readBinary = vi.fn((file: { path: string }) => {
-    const held = bytes.get(file.path);
-    return held && held.byteLength > 44 + 2 ? Promise.resolve(held.slice(0)) : new Promise<ArrayBuffer>(() => undefined);
+  const settings = new SettingsService(app);
+  // Read first: a setting changed before the data was read is lost to it.
+  await settings.initialize();
+  withSound(app);
+  const held = linked ? fakeLibrary(app, KEEPING_LIBRARY) : null;
+  if (held) await fillMockLibrary(held.locations);
+  else settings.setSoundRoots(HARNESS_ROOTS);
+  const library = SoundLibrary.forApp(app);
+  const place = soundPlace(library, held);
+  for (const [name, { url, synth, kind }] of Object.entries(sounds)) {
+    await place.put(kind, `${name}.ogg`, url ? await (await fetch(url)).arrayBuffer() : synthWav(synth?.seconds ?? 1, synth?.seed ?? 1));
+  }
+  // A file of no bytes never arrives: its copy stays on its way.
+  const readBinary = app.vault.readBinary.bind(app.vault);
+  app.vault.readBinary = vi.fn(async (file: TFile) => {
+    const bytes = await readBinary(file);
+    return bytes.byteLength > 44 + 2 ? bytes : new Promise<ArrayBuffer>(() => undefined);
   }) as typeof app.vault.readBinary;
 
-  new SettingsService(app);
-  withSound(app);
   const stored = SoundRecordStore.forApp(app);
   await stored.whenLoaded();
-  stored.add(Object.entries(sounds).map(([name, { kind }]) => ({ id: recordIdFor(`audio/${name}.ogg`), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath: `audio/${name}.ogg`, kind })));
+  stored.add(Object.entries(sounds).map(([name, { kind }]) => ({ id: recordIdFor(`audio/${name}.ogg`), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath: place.audioPath(kind, `${name}.ogg`), kind })));
   await stored.flush();
-  const held = linked ? fakeLibrary(app, MOCK_LIBRARY) : null;
-  if (held) await fillMockLibrary(held.locations);
   const moods = MoodStore.forApp(app);
   await moods.whenLoaded();
   const director = SoundDirector.forApp(app);
@@ -180,12 +188,55 @@ async function soundApp(theme: string, appId: string, sounds: Record<string, Tab
     MoodStore.release(app);
     SoundRecordStore.release(app);
   };
-  return { app, stored, held, moods, director, records, release, library: SoundLibrary.forApp(app) };
+  return { app, stored, held, moods, director, records, release, library, place };
+}
+
+/** The mock library, keeping originals: the tab holds its records as they were first read, which name the originals. */
+const KEEPING_LIBRARY: LibraryRigOptions = {
+  ...MOCK_LIBRARY,
+  shared: { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio/Ambience', originals: 'keep' } },
+  originals: 'keep',
+};
+
+/** The tab's own folders, linked in the vault where no mock library is: the GM agreed to keep originals beside their copies. */
+const HARNESS_ROOTS: SharedSoundRoots = {
+  music: { type: 'vault', path: 'audio/music', originals: 'keep' },
+  ambience: { type: 'vault', path: 'audio/ambience', originals: 'keep' },
+};
+
+/** Where the tab's files lie: the mock library's folders where it has them, the vault's otherwise. */
+interface SoundPlace {
+  put(kind: SoundRecord['kind'], name: string, bytes: ArrayBuffer): Promise<void>;
+  audioPath(kind: SoundRecord['kind'], name: string): string;
+}
+
+function soundPlace(library: SoundLibrary, held: ReturnType<typeof fakeLibrary> | null): SoundPlace {
+  const audioPath = (kind: SoundRecord['kind'], name: string): string => {
+    const path = library.audioPathOf(kind, name);
+    if (path === null) throw new Error(`The ${kind} folder is not linked.`);
+    return path;
+  };
+  return {
+    audioPath,
+    put: async (kind, name, bytes) => {
+      if (held) {
+        if (bytes.byteLength > 44 + 2) held.locations[kind].put(name, new Blob([bytes]));
+        else {
+          held.locations[kind].addFile(name, 0);
+          const before = held.locations[kind].blobOf;
+          held.locations[kind].blobOf = (path) => (path === name ? new Promise<Blob>(() => undefined) : before(path));
+        }
+        return;
+      }
+      await library.locationOf(kind)?.makeFolder('');
+      await library.locationOf(kind)?.write(name, new Blob([bytes]));
+    },
+  };
 }
 
 /** The real DM screen on `soundApp`: all that is not Obsidian is the plugin's own. */
 export async function openSoundTab(theme: string, viewport: HTMLElement, appId = `sound-tab-${Math.random()}`, sounds: Record<string, TabSound> = SOUNDS, linked = false): Promise<SoundTab> {
-  const { app, stored, held, moods, director, records, release, library } = await soundApp(theme, appId, sounds, linked);
+  const { app, stored, held, moods, director, records, release, library, place } = await soundApp(theme, appId, sounds, linked);
   const store = createViewAtlasStore(app, `sound-tab-${Math.random()}`);
   store.setState({ persistenceEnabled: false, isDMScreenOpen: true, dmScreenPage: 'sound', mapPath: 'atlas-vtt/collections/Fen/scenes/a.atlasmap' });
   viewport.className = 'workspace-leaf mod-active';
@@ -216,9 +267,8 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
     moods,
     locations: held?.locations ?? null,
     addUnfinished: async (name, kind) => {
-      const audioPath = `audio/${name}.ogg`;
-      await app.vault.adapter.write(audioPath, '');
-      stored.add([{ id: recordIdFor(audioPath), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath, kind }]);
+      await place.put(kind, `${name}.ogg`, new ArrayBuffer(0));
+      stored.add([{ id: recordIdFor(`audio/${name}.ogg`), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath: place.audioPath(kind, `${name}.ogg`), kind }]);
     },
     moodsOf: () => moods.moods(),
     unmount: () => {

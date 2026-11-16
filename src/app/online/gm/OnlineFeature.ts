@@ -38,6 +38,7 @@ import { appCampaignChoices } from './campaignChoices.ts';
 import { DASHBOARD_VIEW_TYPE } from '../../dashboard-view';
 import { DEFAULT_SETTINGS, onlineSettingsSections, readSettings, type OnlineSettings } from './settings.ts';
 import { t } from '../../i18n';
+import { nameAnnotationAuthors } from '../../annotations/annotationAuthors';
 import { secretSaltStore } from './account/saltStore.ts';
 import { AssetSalt } from './assets/assetSalt.ts';
 import { AssetStoreClient } from './assets/storeClient.ts';
@@ -183,6 +184,8 @@ export class OnlineFeature extends Component {
       this.savedTable = table;
       void this.saveSettings();
     }, this.host(), { read: () => this.savedLog, write: (entries) => this.keepLog(entries) }, this.books);
+    // A drawing an online player made says who made it, while the campaign's players are known.
+    this.register(nameAnnotationAuthors((id) => ownership.nameOf(id)));
     // Atlas's "Display on player view" reaches the players online too, while a table runs.
     const images = new ImageTakeover<TFile>(() => atlasImageDisplay(this.app), {
       share: () => this.online.table?.image ?? null,

@@ -2,12 +2,12 @@ import { sha256Hex } from '../assetServe.ts';
 import type { AssetStoring } from '../assets/assetUses.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import { AskedAnswer } from './askedAnswer.ts';
-import { MapImages, type FileStat, type MapImage, type MapImageProblem } from './mapImages.ts';
+import { MapImages, type FileStat, type MapForm, type MapImage, type MapImageProblem } from './mapImages.ts';
 import type { WorldMapTree } from './worldMapGate.ts';
 import { worldMapOf, type WorldMapFile } from './worldMapLevels.ts';
 import { t } from '../../../i18n';
 
-export type { FileStat, MapImageProblem } from './mapImages.ts';
+export type { FileStat, MapForm, MapImageProblem } from './mapImages.ts';
 export type { WorldMapFile } from './worldMapLevels.ts';
 export type { WorldMapTree } from './worldMapGate.ts';
 
@@ -51,8 +51,9 @@ async function named(tree: WorldMapTree | null): Promise<NamedTree | null> {
 
 /**
  * The campaign's world map as players are sent it, with every map its GM's pins lead into: each
- * image by hash with its size in pixels (`MapImages`). Which maps they are is asked once and again
- * after `forget`; an image is read once and kept while its file stays as it is.
+ * image by hash with its size in pixels (`MapImages`), as its tile pyramid for a page that draws one
+ * and as one image for any other. Which maps they are is asked once and again after `forget`; an
+ * image is read once per form and kept while its file stays as it is.
  */
 export class WorldMaps {
   private readonly tree: AskedAnswer<NamedTree | null>;
@@ -63,8 +64,8 @@ export class WorldMaps {
     this.images = new MapImages({ stat: (path) => ports.stat(path), readImage: (path) => ports.readImage(path), stored: ports.stored, read: () => ports.read() });
   }
 
-  /** The world map: null for none, undefined while it is being looked up or read (`read` hears when it has been). */
-  get(): WorldMapFile | null | undefined {
+  /** The world map in `form`: null for none, undefined while it is being looked up or read (`read` hears when it has been). */
+  get(form: MapForm = 'tiles'): WorldMapFile | null | undefined {
     const asked = this.tree.get();
     if (asked === undefined) return undefined;
     if (asked === null) return null;
@@ -73,7 +74,7 @@ export class WorldMaps {
     const images = new Map<string, MapImage | null>();
     let reading = false;
     for (const path of paths) {
-      const image = this.images.get(path);
+      const image = this.images.get(path, form);
       if (image === undefined) reading = true;
       else images.set(path, image);
     }
@@ -88,6 +89,11 @@ export class WorldMaps {
     const asked = this.tree.get();
     const root = asked?.tree.levels.find((level) => level.key === asked.tree.root);
     return root === undefined ? null : this.images.problemOf(root.image);
+  }
+
+  /** No page holds the maps as images any more: what was made only for such pages is let go of. */
+  releaseWhole(): void {
+    this.images.releaseWhole();
   }
 
   /** Reads every image again: the store may no longer keep one players were sent. */

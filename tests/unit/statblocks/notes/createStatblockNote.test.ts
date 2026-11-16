@@ -93,6 +93,17 @@ describe('createStatblockNote', () => {
     expect(service.linkTokenToStatblock).toHaveBeenCalledWith('art/warden.webp', 'Bestiary/Warden.md');
   });
 
+  it('keeps the note when linking the token throws, and reports it unlinked', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    linkService().linkTokenToStatblock.mockRejectedValue(new Error('index busy'));
+    const harness = vault({});
+
+    const { file, linked } = await createStatblockNote(harness.app, { name: 'Warden', templateId: TEMPLATE, folder: 'Bestiary', tokenImagePath: 'art/warden.webp' });
+
+    expect([file.path, linked]).toEqual(['Bestiary/Warden.md', false]);
+    expect(harness.files.get(file.path)).toContain('image: art/warden.webp');
+  });
+
   it('starts the note with the text of the note beside its template\'s file', async () => {
     linkService();
     const harness = vault({ [MARSH_PATH]: marshText(), [templateBodyPath(MARSH_PATH)]: '## Lair\n\nWhere it sleeps.\n' });

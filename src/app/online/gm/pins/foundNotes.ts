@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { App, TFile } from 'obsidian';
 import { bookLine, MAX_FOUND_TITLE, type FoundNote, type QuestImage } from '../../protocol/index.ts';
 import { questBody, withoutComments } from '../../../campaigns/quests/questText';
 import type { QuestImages } from '../../../plugin/questImages';
@@ -22,22 +22,41 @@ export interface FoundHandout {
 }
 
 /**
- * What players read of the note a pin links (`notePath`, from the map `mapPath`): the whole note
- * without its frontmatter, or, for `note#heading`, only that heading's section (to the next heading
- * of its level or higher, as Obsidian resolves the link), without the heading's own line, which is
- * the title. The GM's comments (`%% %%`, `<!-- -->`) are left out. Null where the note or its
- * heading is gone or is no Markdown.
+ * What players read of the note a link names (a pin's `notePath`, from the map `sourcePath`; a
+ * link in a statblock note): the whole note without its frontmatter, or, for `note#heading`, only
+ * that heading's section (to the next heading of its level or higher, as Obsidian resolves the
+ * link), without the heading's own line, which is the title; `#heading` alone is a heading of the
+ * source. The GM's comments (`%% %%`, `<!-- -->`) are left out. Null where the note or its heading
+ * is gone or is no Markdown.
  */
-export async function readPinNote(app: App, notePath: string, mapPath: string): Promise<NoteReading | null> {
-  const { linkpath, heading } = pinNoteLink(notePath);
-  const file = noteFile(app, linkpath, mapPath);
+export async function readPinNote(app: App, notePath: string, sourcePath: string): Promise<NoteReading | null> {
+  const file = pinNoteFile(app, notePath, sourcePath);
   if (file === null) return null;
+  const { heading } = pinNoteLink(notePath);
   const content = await app.vault.cachedRead(file);
   if (heading === null) return { path: file.path, title: file.basename, body: questBody(content) };
   const cache = app.metadataCache.getFileCache(file);
   const section = cache === null ? null : headingSection(cache, heading);
   if (section === null) return null;
   return { path: file.path, title: section.heading, body: withoutComments(content.slice(section.start, section.end ?? content.length)) };
+}
+
+/** The note file a pin's link names from the map `sourcePath` (`#heading` alone names the map's own note), or null. */
+export function pinNoteFile(app: App, notePath: string, sourcePath: string): TFile | null {
+  const { linkpath } = pinNoteLink(notePath);
+  return noteFile(app, linkpath === '' ? sourcePath : linkpath, sourcePath);
+}
+
+/**
+ * The text of a heading of the note at `notePath` that `link` names (`#Heading`, or the note's own
+ * name with a heading), as `readPinNote` reads it; null for a whole note, another note, or a heading
+ * the note lacks. What a statblock's ability names link: players wrote such names before they were
+ * refused one, so a link never reaches beyond the character's own note.
+ */
+export async function readOwnSection(app: App, link: string, notePath: string): Promise<string | null> {
+  if (pinNoteLink(link).heading === null) return null;
+  const reading = await readPinNote(app, link, notePath);
+  return reading?.path === notePath ? reading.body : null;
 }
 
 /** A title as players are sent it: one line, cut with an ellipsis where it is longer than a title may be. */

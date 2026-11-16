@@ -1,8 +1,8 @@
-import { App, TFile } from 'obsidian';
+import type { App } from 'obsidian';
 import { AssetService, Asset } from './AssetService';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { normalizeImagePath } from '../utils/pathUtils';
-import { mapThumbnailPath } from '../utils/dataFileMigration';
+import { moveSceneThumbnail } from './sceneThumbnailFile';
 import { movedFolderPathOf, movedPathOf, rewriteMapReferences, type MovedPath, type PathMove } from './renamedPaths';
 import { SceneSnapshotService } from '../snapshots/SceneSnapshotService';
 import { allSnapshotFiles, hiddenSnapshotFiles } from '../snapshots/sceneSnapshotFolders';
@@ -10,6 +10,8 @@ import { STATBLOCK_IMAGE_KEYS } from './statblockImageKeys';
 import { NoteFieldWriter } from '../statblocks/notes/NoteFieldWriter';
 import type { NotePatch } from '../statblocks/notes/patchTypes';
 import { withMovedTableNotes } from '../randomTables/tableSettings';
+import { workSlices } from '../utils/workSlices';
+import { mayNameMoves } from './movedPathNeedles';
 
 /**
  * Propagates file path changes (renames/moves) across all storage layers:
@@ -44,8 +46,8 @@ export class FileReferenceService {
 
     await this.updateAssetMetadata(moved);
     await this.updateScenes(moved);
-    for (const { from, to } of fileMoves) await this.renameMapThumbnail(from, to);
-    await this.updateMapFiles(moved);
+    for (const { from, to } of fileMoves) await moveSceneThumbnail(this.app, from, to);
+    await this.updateMapFiles(moved, fileMoves);
     await this.updateStatblockFrontmatter(moved);
     await this.updateRandomTableSources(moved);
   }
@@ -64,7 +66,7 @@ export class FileReferenceService {
 
   /** Points what maps and snapshots name at or below moved folders (pins rolling a folder of encounters) at the folders' new places. */
   async followMovedFolders(moves: readonly PathMove[]): Promise<void> {
-    if (moves.length > 0) await this.updateMapFiles(movedFolderPathOf(moves));
+    if (moves.length > 0) await this.updateMapFiles(movedFolderPathOf(moves), moves);
   }
 
   // ---------------------------------------------------------------------------
@@ -111,7 +113,7 @@ export class FileReferenceService {
   }
 
   // ---------------------------------------------------------------------------
-  // Scenes and thumbnails of a renamed map
+  // Scenes of a renamed map
   // ---------------------------------------------------------------------------
 
   /** Scene records follow their map; a scene named after its file takes the new file name. */
@@ -128,38 +130,32 @@ export class FileReferenceService {
     }
   }
 
-  private async renameMapThumbnail(oldPath: string, newPath: string): Promise<void> {
-    if (!oldPath.endsWith('.atlasmap') || !newPath.endsWith('.atlasmap')) return;
-    const thumbnail = this.app.vault.getAbstractFileByPath(mapThumbnailPath(oldPath));
-    const target = mapThumbnailPath(newPath);
-    if (!(thumbnail instanceof TFile)) return;
-    try {
-      // A thumbnail at the new path is a leftover of a deleted scene: no scene can be renamed onto a living one
-      const leftover = this.app.vault.getAbstractFileByPath(target);
-      if (leftover instanceof TFile) await this.app.fileManager.trashFile(leftover);
-      await this.app.vault.rename(thumbnail, target);
-    } catch (error) {
-      console.error(`[FileReferenceService] Error renaming thumbnail ${thumbnail.path}:`, error);
-    }
-  }
-
   // ---------------------------------------------------------------------------
   // .atlasmap files
   // ---------------------------------------------------------------------------
 
-  private async updateMapFiles(moved: MovedPath): Promise<boolean> {
+  /**
+   * Rewrites every map and snapshot that names a moved path. Only texts that can name
+   * one are parsed (`mayNameMoves`), and the maps are read in slices, so following
+   * a move costs the frames after it little however large the library.
+   */
+  private async updateMapFiles(moved: MovedPath, moves: readonly PathMove[]): Promise<boolean> {
     const mapFiles = this.app.vault.getFiles().filter(f => f.extension === 'atlasmap');
     const snapshots = new SceneSnapshotService(this.app);
+    const mayName = mayNameMoves(moves);
+    const pause = workSlices();
     let anyChanged = false;
 
     /** Returns the rewritten map JSON, or null when the map references none of the moved files. */
     const rewriteMap = (content: string): string | null => {
+      if (!mayName(content)) return null;
       const mapData: unknown = JSON.parse(content);
       if (!isPersistedMapEnvelope(mapData)) return null;
       return rewriteMapReferences(mapData.state, moved) ? JSON.stringify(mapData, null, 2) : null;
     };
 
     for (const mapFile of mapFiles) {
+      await pause();
       try {
         if (rewriteMap(await this.app.vault.read(mapFile)) !== null) {
           await this.app.vault.process(mapFile, (latest) => rewriteMap(latest) ?? latest);

@@ -26,7 +26,8 @@ $campaigns-shown: 5;
     font-weight: $font-weight-semibold;
   }
 
-  .atlas-online-campaigns__note {
+  .atlas-online-campaigns__note,
+  .atlas-online-campaigns__system {
     padding: 0 $online-text-inset;
   }
 
@@ -43,10 +44,9 @@ $campaigns-shown: 5;
     height: $online-control;
     padding: 0 $spacing-xs 0 $spacing-s;
     border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-modifier-form-field);
     transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
-    @include atlas-corner-shape;
 
     &:hover {
       border-color: var(--background-modifier-border-hover);
@@ -164,7 +164,6 @@ $campaigns-shown: 5;
       text-align: start;
       cursor: pointer;
       transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
-      @include atlas-corner-shape;
     }
 
     &:hover {
@@ -202,10 +201,9 @@ $campaigns-shown: 5;
     width: $campaign-art-width;
     height: $campaign-art-height;
     overflow: hidden;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-secondary-alt);
     box-shadow: inset 0 0 0 1px var(--background-modifier-border);
-    @include atlas-corner-shape;
 
     img {
       display: block;

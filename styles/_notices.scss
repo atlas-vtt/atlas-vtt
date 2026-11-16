@@ -16,8 +16,9 @@
 }
 
 .notice.atlas-notice {
+  @include atlas-host-layout;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-panel-padding;
 
   position: relative;
@@ -53,7 +54,7 @@
   flex: none;
   width: 40px;
   height: 40px;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 }
 
 .atlas-update-notice__body {

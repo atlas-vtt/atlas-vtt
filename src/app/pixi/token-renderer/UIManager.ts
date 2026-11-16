@@ -18,6 +18,7 @@ import { TOKEN_UI_Z_INDEX, TokenControlsUI } from '../TokenControlsUI';
 import { TokenRotationUI } from '../TokenRotationUI';
 import { TokenResizeUI } from '../TokenResizeUI';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
+import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { destroyTree } from '../utils/destroyTree';
 import { restingTokenUIScale } from './tokenSizing';
 import { levelObjects } from '../../levels/levelObjects';
@@ -47,6 +48,8 @@ export class UIManager implements ITokenUIManager {
   public conditionDefsProvider: (() => ConditionDefinition[]) | null = null;
   /** The resources of the map's collection; read on every draw, so set it before tokens are created. */
   public resourceDefsProvider: ResourceDefsProvider = () => [];
+  /** What the map measures in, for the tokens' height chips. */
+  public measurementProvider: (() => MeasurementSettings) | null = null;
   /** Called once the handles and controls of a new selection stand: the selection highlight passes behind them. */
   public onSelectionUIChange: (() => void) | null = null;
 
@@ -141,6 +144,7 @@ export class UIManager implements ITokenUIManager {
     const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
     ui.conditionDefsProvider = this.conditionDefsProvider;
     ui.resourceDefsProvider = () => this.resourceDefsProvider();
+    ui.measurementProvider = this.measurementProvider;
     ui.zoomProvider = () => this.viewport.scale.x;
     ui.onScaleChange = (scale) => this.tokenControlsUI?.setScaleFor(tokenId, scale);
     ui.setPlayersView(this.playersView);
@@ -557,6 +561,7 @@ export class UIManager implements ITokenUIManager {
       }
       ui.conditionDefsProvider = this.conditionDefsProvider;
       ui.resourceDefsProvider = () => this.resourceDefsProvider();
+      ui.measurementProvider = this.measurementProvider;
       ui.update(token, sprite.tokenSize || 70, settings);
       ui.getContainer().position.copyFrom(sprite.position);
       ui.getContainer().renderable = sprite.visible && !token.isHidden && isSeen(tokenId);

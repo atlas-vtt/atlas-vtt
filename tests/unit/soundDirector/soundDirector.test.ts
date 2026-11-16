@@ -5,7 +5,7 @@ import type { SceneSound, TableSound } from '@/app/sound/soundTypes';
 import { heldInMix } from '@/app/soundDirector/libraryDesk';
 import { SCENE_FOLLOW_DELAY_MS } from '@/app/soundDirector/sceneFollow';
 import type { FightState, FightStore } from '@/app/soundDirector/fightWatch';
-import { directorRig, mood, record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
+import { directorRig, factsOf, mood, record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
 
 const RAIN = record('rain');
 const WIND = record('wind');
@@ -51,12 +51,9 @@ describe('the sound director', () => {
     vi.useRealTimers();
   });
 
-  it('works out the waveform of music once and of no ambience, and keeps it with the copy', async () => {
+  it('reads the waveform of music from its file, and none of ambience', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    await settle();
-    expect(rig.copies.get('hash-audio/song.ogg')?.peaks).toEqual(Uint8Array.of(10, 200, 30));
-    expect(rig.copies.get('hash-audio/rain.ogg')?.peaks).toBeUndefined();
     expect(rig.director.shelf.peaksOfKey('hash-audio/song.ogg')).toEqual(Uint8Array.of(10, 200, 30));
     expect(rig.director.shelf.peaksOfKey('hash-audio/rain.ogg')).toBeNull();
   });
@@ -218,6 +215,15 @@ describe('the sound director', () => {
     expect(rig.director.snapshot().mix.waitingLayers).toEqual([]);
   });
 
+  it('tells the copy maker the sound key and the file name it writes into the copy', async () => {
+    rig = directorRig([record('rain', 'music')], { ready: false });
+    await ready(rig);
+    rig.director.shelf.request([rig.records[0]!], true);
+    await settle();
+    const { sha256 } = await import('@/app/utils/hashing');
+    expect(rig.conversions[0]?.job).toMatchObject({ key: await sha256(new TextEncoder().encode('audio/rain.ogg').buffer), from: 'rain.ogg', kind: 'music' });
+  });
+
   it('tells a refusal once, and shows it on the sound', async () => {
     rig = directorRig([RAIN], { ready: false });
     await ready(rig);
@@ -233,14 +239,51 @@ describe('the sound director', () => {
     expect(rig.conversions).toHaveLength(1);
   });
 
-  it('never makes a copy of a file already copied elsewhere: the cache answers by hash', async () => {
+  it('never converts a file that is a copy already: the file says so itself', async () => {
     rig = directorRig([RAIN], { ready: false });
-    rig.copies.set(await (await import('@/app/utils/hashing')).sha256(new TextEncoder().encode(RAIN.filePath).buffer), { hash: 'x', byteLength: 1, frames: 480000, channels: 2, lufs: -20, truePeakDb: -3, lastUsed: 0 });
+    rig.copies.set(RAIN.filePath, { facts: factsOf('x'), blob: new Blob([new Uint8Array(4)]) });
     await ready(rig);
     rig.director.shelf.request([RAIN], true);
     await settle();
     expect(rig.director.shelf.stateOf(RAIN).state).toBe('ready');
     expect(rig.conversions).toHaveLength(0);
+  });
+
+  it('names a copy by its record, though a file without one holds the same copy', async () => {
+    rig = directorRig([RAIN]);
+    await ready(rig);
+    const row = record('row');
+    rig.files.add(row.filePath);
+    rig.copies.set(row.filePath, { facts: factsOf(`hash-${RAIN.filePath}`), blob: new Blob([new Uint8Array(4)]) });
+    rig.director.shelf.stateOf(row);
+    await settle();
+    expect(rig.director.shelf.stateOf(row).state).toBe('ready');
+    expect(rig.director.shelf.recordOfKey(`hash-${RAIN.filePath}`)?.id).toBe('rain');
+  });
+
+  it('refuses a sound outside every linked folder, and takes it once its folder is linked, without a restart', async () => {
+    rig = directorRig([RAIN], { ready: false });
+    rig.folder.outsidePaths.add(RAIN.filePath);
+    await ready(rig);
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    expect(rig.director.shelf.stateOf(RAIN)).toEqual({ state: 'refused', reason: 'outside-folder' });
+    expect(rig.notices).toEqual([]);
+    rig.folder.outsidePaths.delete(RAIN.filePath);
+    rig.fireFileChange();
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    expect(rig.conversions).toHaveLength(1);
+  });
+
+  it('converts nothing in a folder the GM has not agreed to', async () => {
+    rig = directorRig([RAIN], { ready: false });
+    rig.folder.choice = null;
+    await ready(rig);
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    expect(rig.conversions).toHaveLength(0);
+    expect(rig.director.shelf.stateOf(RAIN).state).toBe('not-converted');
   });
 
   it('a preview is no state of the table and reaches nobody listening to it', async () => {

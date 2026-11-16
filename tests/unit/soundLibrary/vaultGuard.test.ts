@@ -124,6 +124,8 @@ describe('linking Atlas\' own folders', () => {
     onSharedChange: () => () => undefined,
     local: () => null,
     setLocal: () => undefined,
+    localOriginals: () => null,
+    setLocalOriginals: () => undefined,
     vaultBase: () => '/home/gm/vault',
     realPath: async (value) => value,
   });

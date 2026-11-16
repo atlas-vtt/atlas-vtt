@@ -1,0 +1,104 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'variables' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Asset Manager – Rules for the open window and everything it opens
+// ═══════════════════════════════════════════════════════════════════════════
+// The window, its dialogs (which mount beside it) and its menus all render into Atlas' floating layer under <body>
+// (`.atlas-portal-host`), so these rules stand at the root, outside the plugin's namespace, and hold while that layer
+// holds the window: by the class the body carries while the window is mounted, its exit included
+// (`useOverlayBodyClass`), never by `:has()` on the body, which every change Obsidian makes would have the browser
+// test again (`scripts/root-has.js`). Nothing behind the window changes.
+
+$open-window: 'body.atlas-asset-manager-open > .atlas-portal-host';
+
+// ── Muted text in dark ──────────────────────────────────────────────────────
+// Obsidian's muted text (labels, counts, card names) reads at APCA Lc 55–60 on the window's dark surfaces. A third
+// of the way towards normal text it reaches Lc 62–67 and still sits clearly below it. Mixed from the theme's own two
+// colours, and Obsidian's variable is left alone outside the window.
+#{$open-window}:is(.theme-dark *) {
+  --atlas-am-theme-muted: var(--text-muted);
+
+  > * {
+    --text-muted: color-mix(in srgb, var(--atlas-am-theme-muted) 67%, var(--text-normal));
+  }
+}
+
+// ── Field edges (decision #60) ──────────────────────────────────────────────
+// Every field of the window and its dialogs shows its edge in one quiet colour, `$am-control-border` (a shade above
+// Obsidian's border), a step stronger under the pointer, and the softened accent while it is typed in
+// (`$am-control-border-focus`). The colours are resolved on the layer's children (after the dark muted text above),
+// then handed to each field as Obsidian's own border variables, which its native field rule and Atlas' input mixins
+// (`atlas-text-input`, `atlas-select-trigger`) read. So no rule gains specificity: a field drawn without a frame (a
+// search inside a framed row, the token card's name) stays without one.
+#{$open-window} > * {
+  --atlas-am-field-border: #{$am-control-border};
+  --atlas-am-field-border-hover: #{$am-control-border-hover};
+  --atlas-am-field-border-focus: #{$am-control-border-focus};
+
+  :where(input:is([type='text'], [type='search'], [type='number'], [type='email'], [type='password'], :not([type])), textarea, .atlas-select-trigger) {
+    --background-modifier-border: var(--atlas-am-field-border);
+    --background-modifier-border-hover: var(--atlas-am-field-border-hover);
+    --background-modifier-border-focus: var(--atlas-am-field-border-focus);
+  }
+}
+
+// ── Targets under a coarse pointer ──────────────────────────────────────────
+// A fine pointer keeps the dense desktop sizes (32 px rows, 24–30 px controls). A finger needs 44 px (WCAG 2.5.5,
+// Apple HIG), so under `(pointer: coarse)` Obsidian's control height (fields, the × and everything sized from it)
+// takes it and, as a floor, so does every row, button and option. Checkboxes and slider thumbs keep their look and
+// take 44 px hit areas of their own around it (`atlas-coarse-checkbox-hit`, `primitives/slider.css`, the creator's
+// card check); toggle switches keep their size (a switch drawn as a whole row is a button and grows). The cards' ⋯
+// button keeps a small face over the art and takes its 44 px with a hit area of its own (`_asset-card-actions.scss`),
+// as does the × of the sidebar's starter tokens offer (`_sidebar.scss`).
+@media (pointer: coarse) {
+  #{$open-window} {
+    --input-height: #{$touch-target};
+
+    :is(
+      button,
+      .btn,
+      [role='button'],
+      [role='option'],
+      [role='menuitem'],
+      [role='menuitemcheckbox'],
+      [role='menuitemradio'],
+      [role='tab'],
+      [role='radio'],
+      [role='combobox'],
+      input:not([type='checkbox'], [type='radio'], [type='range']),
+      select
+    ):not([role='checkbox'], [role='switch']:not(button), [role='slider'], .atlas-asset-card-more, .atlas-bestiary-offer__dismiss) {
+      min-height: $touch-target;
+    }
+
+    // A button with an icon or a short word alone is as wide as it is tall.
+    :is(button, .btn):not([role='checkbox'], .atlas-asset-card-more, .atlas-bestiary-offer__dismiss) {
+      min-width: $touch-target;
+    }
+  }
+}
+
+// ── Card tooltips under the window's layers ─────────────────────────────────
+// A card's tooltip, the window, its menus and its dialogs all lie in the floating layer. The shared tooltip stands at
+// 100000, over everything; a card's stands above the window (200) and below every menu and dialog the window opens
+// (context menu 2000, dialogs 9999 and up), so it never covers a layer opened from it (a dialog's close button once).
+// It is gone the moment it closes, with no exit to linger in over the dialog or menu that closed it. The name (shown
+// while the card cuts it) stands over the hint with the gap of the tooltip's own padding, as in every container.
+#{$open-window} .tooltip-content.atlas-asset-card-tooltip {
+  z-index: $z-tooltip;
+  @include atlas-flex-col($gap: $spacing-s);
+
+  &[data-state='closed'] {
+    display: none;
+  }
+}
+
+#{$open-window} .atlas-asset-card-tooltip__name {
+  font-weight: $font-weight-medium;
+}
+
+#{$open-window} .atlas-asset-card-tooltip__hint {
+  color: var(--text-muted);
+}

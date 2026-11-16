@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useId } from 'react';
 import { GripHorizontal, Volume2, Play } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import type { StoreApi } from 'zustand';
@@ -11,6 +11,7 @@ import './audio-config-panel.scss';
 import { useDraggablePosition } from '../../react/hooks/useDraggablePosition';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
+import { ToggleSwitch } from '../../packages/components/primitives/Toggle';
 import { unitLabelFor } from '../../grid/measurementFormat';
 import { t } from '../../i18n';
 import { levelObjects } from '../../levels/levelObjects';
@@ -52,6 +53,7 @@ function AudioConfigPanelInner({
   const unitDistance = grid?.unitDistance ?? 5;
   const unitLabel = unitLabelFor(grid?.unitType);
 
+  const loopLabelId = useId();
   const [soundId, setSoundId] = useState(audio.soundId);
   const [volume, setVolume] = useState(Math.round(audio.volume * 100));
   const [innerUnits, setInnerUnits] = useState(
@@ -219,12 +221,8 @@ function AudioConfigPanelInner({
 
         {/* Loop toggle */}
         <div className="atlas-audio-config__loop-row">
-          <label className="atlas-audio-config__label">{t('audio.loop')}</label>
-          <input
-            type="checkbox"
-            checked={loop}
-            onChange={(e) => setLoop(e.target.checked)}
-          />
+          <span id={loopLabelId} className="atlas-audio-config__label">{t('audio.loop')}</span>
+          <ToggleSwitch size="s" labelledBy={loopLabelId} value={loop} onChange={() => setLoop(!loop)} />
         </div>
 
         {/* Delete */}

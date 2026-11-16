@@ -47,10 +47,11 @@ const LIVE: ValueEditing = {
 const cells = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>('.atlas-sb-counter')];
 const pipRects = (cell: HTMLElement): DOMRect[] => [...cell.querySelectorAll<HTMLElement>('.atlas-sb-counter__pip')].map((pip) => pip.getBoundingClientRect());
 
-function mount(editing: ValueEditing | null): void {
+/** `host`: the class of what holds the card, Atlas' own element or a linked statblock outside it (a hover preview). */
+function mount(editing: ValueEditing | null, host = 'atlas-vtt-plugin'): void {
   const sheet = React.createElement(StatblockSheet, { template: TEMPLATE, name: 'Counters', fields: { slots: SLOTS }, variant: 'feed' });
   const card = editing ? React.createElement(ValueEditingContext.Provider, { value: editing }, sheet) : sheet;
-  render(React.createElement('div', { className: 'atlas-vtt-plugin', style: { width: 380, padding: 16 } }, card));
+  render(React.createElement('div', { className: host, style: { width: 380, padding: 16 } }, card));
 }
 
 /** A Counters block: small cells wrapping three or four to a line, each its name over a row of diamond pips. */
@@ -89,6 +90,17 @@ describe('Counters in the real stylesheet', () => {
     const drawn = cells().map(pipRects);
     cleanup();
     mount(LIVE);
+    const pressable = cells().map(pipRects);
+    pressable.forEach((rects, cell) => rects.forEach((rect, pip) => {
+      expect(rect.left, `cell ${cell} pip ${pip}`).toBeCloseTo(drawn[cell]![pip]!.left, 0);
+    }));
+  });
+
+  it('stands its pressable pips in place in a hover preview, outside Atlas\' own elements, too', () => {
+    mount(null, 'atlas-linked-statblock');
+    const drawn = cells().map(pipRects);
+    cleanup();
+    mount(LIVE, 'atlas-linked-statblock');
     const pressable = cells().map(pipRects);
     pressable.forEach((rects, cell) => rects.forEach((rect, pip) => {
       expect(rect.left, `cell ${cell} pip ${pip}`).toBeCloseTo(drawn[cell]![pip]!.left, 0);

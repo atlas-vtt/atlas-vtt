@@ -11,6 +11,7 @@ import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
 import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
 import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
+import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../measure/dragDistance';
 
 /**
  * How wheel events drive the map viewport.
@@ -37,6 +38,11 @@ export interface AtlasSettings {
   onboarding: { enabled: boolean; completed: Partial<Record<TutorialId, boolean>>; tokenImported: boolean };
   /** The starter tokens were added to the default collection once; deleted ones stay deleted. */
   starterTokensAdded: boolean;
+  /**
+   * Uids of the collections whose sidebar no longer offers the starter tokens: a uid outlives a rename of the
+   * collection's folder. Absent while none is hidden. Read with `isStarterOfferHidden`.
+   */
+  hiddenStarterOffers?: readonly string[] | undefined;
   /** A fact about this device, kept in its local storage and never in the plugin's data (`deviceSettings.ts`). */
   navigation: NavigationSettings;
   laserPointer: LaserPointerSettings;
@@ -52,6 +58,8 @@ export interface AtlasSettings {
   detectGridOnNewScenes: boolean;
   /** How the fog's edge looks, on the GM's map and the players'. Read with `getFogEdge`. */
   fogEdge: FogEdge;
+  /** When a dragged token shows how far it has moved: always, only while a fight runs, or never. Read with `getDragDistance`. */
+  dragDistance: DragDistance;
   /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
@@ -86,6 +94,8 @@ export interface AtlasSettings {
     showCommandPalette: boolean;
     /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
     showCursors: boolean;
+    /** Online play: players draw and write on the shared map with a Draw tool of their own. */
+    playersDraw: boolean;
   };
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
@@ -108,6 +118,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   sound: DEFAULT_SOUND_SETTINGS,
   detectGridOnNewScenes: true,
   fogEdge: DEFAULT_FOG_EDGE,
+  dragDistance: DEFAULT_DRAG_DISTANCE,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
   initiativeNames: false,
@@ -129,6 +140,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showDiceRolls: false,
     showCommandPalette: false, // Hide command palette
     showCursors: false,
+    playersDraw: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };
@@ -177,10 +189,18 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
       tableTv: readTableTvSettings(record.tableTv),
+      hiddenStarterOffers: readUidList(record.hiddenStarterOffers),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),
   };
+}
+
+/** A list of collection uids as stored; anything else reads as none. */
+function readUidList(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const uids = value.filter((uid): uid is string => typeof uid === 'string' && uid !== '');
+  return uids.length > 0 ? [...new Set(uids)] : undefined;
 }
 
 /** What goes into the plugin's data: the preferences, with the bindings of a newer Atlas kept. */

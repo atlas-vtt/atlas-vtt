@@ -5,9 +5,9 @@
 // The DM screen's Sound page: one surface, the library and the moods side by side above a recessed desk.
 .atlas-sound-pane {
   @include atlas-elevated-surface;
-  // The surface's stroke as a ring just outside its box, not a border inside it: the box's own corner (24) is then
-  // what the cards are concentric with, and one $spacing-s in they round at a whole 16 (not 24 − 1.5 − 8 = 14.5).
-  @include atlas-panel-radius($radius-2xl, 0px);
+  // The surface's stroke as a ring just outside its box, not a border inside it, so the parts inset in it measure
+  // from the box's own corner.
+  @include atlas-panel-radius($surface-radius, 0px);
   border: none;
   box-shadow: 0 0 0 $border-width-m color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent), $shadow-elevated;
   // How deep the desk and a fader's slot lie: darkening is all that reads as lower, on any theme.
@@ -65,8 +65,7 @@
 }
 
 .atlas-sound-moods {
-  @include atlas-scrollbar;
-  @include atlas-scroll-padding($card-inset);
+  padding: $card-inset;
   flex: 42 1 0;
   min-width: 0;
   min-height: 0;
@@ -192,7 +191,6 @@
   font-size: $font-ui-smaller;
   font-weight: $font-weight-semibold;
   font-variant-numeric: tabular-nums;
-  @include atlas-corner-shape;
 
   svg {
     width: 12px;

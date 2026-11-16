@@ -3,15 +3,16 @@ import { BlobWindow } from './demux/blobWindow';
 import { SoundImportError } from './demux/demuxTypes';
 import { opusPacketFrames, readOpusHead, writeOpusHead } from './opusFormat';
 import { queueRoom } from './opusOutput';
+import type { PeakCollector } from './soundPeaks';
 
 const PROGRESS_STEP = 0.05;
 
 /**
  * Reads a written file through its pages and a real decoder, and holds its length to what went in: encoder
  * timing is not settled (w3c/webcodecs #626), so this must not be taken on trust. Refuses rather than keep a
- * sound that would not loop right.
+ * sound that would not loop right. `peaks` hears the first channel of what it decodes.
  */
-export async function verifyOggOpus(file: Blob, frames: number, channels: number, onProgress: (share: number) => void): Promise<void> {
+export async function verifyOggOpus(file: Blob, frames: number, channels: number, onProgress: (share: number) => void, peaks?: PeakCollector): Promise<void> {
   const window = new BlobWindow(file);
   let total = 0;
   let packetFrames = 0;
@@ -21,6 +22,7 @@ export async function verifyOggOpus(file: Blob, frames: number, channels: number
   const decoder = new AudioDecoder({
     output: (data) => {
       total += data.numberOfFrames;
+      peaks?.take(data);
       data.close();
     },
     error: (error) => {

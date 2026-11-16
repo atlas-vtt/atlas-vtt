@@ -1,3 +1,4 @@
+import { isSide } from './asset.ts';
 import { isRecord } from './shape.ts';
 
 /**
@@ -33,6 +34,18 @@ export interface SharedMapPlacement {
   readonly stretch?: SharedMapStretch;
   /** A fitted floor's placement; absent for a floor drawn as the scene's map is. */
   readonly fit?: SharedLevelFit;
+  /**
+   * The map image's own size in pixels, as the GM's Atlas read it from the file: with `stretch` and
+   * `fit` it says where the map lies in the world before its art arrives. Added later: an older GM
+   * sends none, and the page then knows the map's place only from its art.
+   */
+  readonly size?: SharedImageSize;
+}
+
+/** An image's own size in whole pixels. */
+export interface SharedImageSize {
+  readonly width: number;
+  readonly height: number;
 }
 
 /** A map only ever grows along an axis, and by no more than half. */
@@ -73,9 +86,15 @@ export function parseLevelFit(value: unknown): SharedLevelFit | null {
   return isOffset(offset.x) && isOffset(offset.y) ? { scale, offset: { x: offset.x, y: offset.y } } : null;
 }
 
+/** An image's size as a client reads it: whole pixels, each side above 0 and within `isSide`'s bound; null for anything else. */
+export function parseImageSize(value: unknown): SharedImageSize | null {
+  return isRecord(value) && isSide(value.width) && isSide(value.height) ? { width: value.width, height: value.height } : null;
+}
+
 /** The placement fields of a scene with a map, each where it is given and well formed: a malformed one is left out, so the scene still shows. */
 export function parseMapPlacement(value: Readonly<Record<string, unknown>>): SharedMapPlacement {
   const stretch = parseMapStretch(value.stretch);
   const fit = parseLevelFit(value.fit);
-  return { ...(stretch !== null && { stretch }), ...(fit !== null && { fit }) };
+  const size = parseImageSize(value.size);
+  return { ...(stretch !== null && { stretch }), ...(fit !== null && { fit }), ...(size !== null && { size }) };
 }

@@ -36,6 +36,8 @@ export interface InitiativeTurnActions {
 export interface TurnStoreState {
   initiative: InitiativeState;
   objects: { tokens: Record<string, TokenEntity> };
+  /** How many fights the view has started (`ViewState.fightsStarted`); a store without the count leaves it out. */
+  fightsStarted?: number | undefined;
 }
 
 type ImmerSet = (fn: (draft: TurnStoreState) => void) => void;
@@ -76,6 +78,8 @@ export function createInitiativeTurnActions(set: ImmerSet, get: () => TurnStoreS
       set((draft) => {
         draft.initiative.isActive = true;
         draft.initiative.round = 1;
+        // Another fight: what tokens moved in the turns of the last one counts for none of its turns.
+        draft.fightsStarted = (draft.fightsStarted ?? 0) + 1;
         draft.initiative.entries.forEach((entry) => { entry.isActive = false; });
         clearSittingOut(draft.initiative);
         endDelays(draft.initiative);

@@ -1,0 +1,30 @@
+@use '../../../../../../styles/tokens' as *;
+
+// ── One column (WCAG 1.4.10 Reflow: 320 CSS px, 400 % zoom) ─────────────────
+// Narrower than the sidebar and one feed side by side, the sidebar stands over the feed at the window's full width,
+// at most part of its height (its filters scroll inside), and the count, chips, feed and tray take the rest below.
+// Under the overlay's class: this module's rules come before the builder's own in the stylesheet.
+
+// The sidebar's 320 px and a feed of one narrow card beside it.
+$builder-stack-below: 720px;
+
+.atlas-encounter-builder {
+  // The window asks the room the overlay gives it.
+  container: atlas-encounter-builder / inline-size;
+}
+
+@container atlas-encounter-builder (max-width: #{$builder-stack-below}) {
+  .atlas-encounter-builder .atlas-encounter-builder__window {
+    flex-direction: column;
+  }
+
+  .atlas-encounter-builder .atlas-encounter-builder__sidebar {
+    flex: 0 1 auto;
+    width: auto;
+    max-height: 45%;
+  }
+
+  .atlas-encounter-builder .atlas-encounter-builder__main {
+    min-height: 0;
+  }
+}

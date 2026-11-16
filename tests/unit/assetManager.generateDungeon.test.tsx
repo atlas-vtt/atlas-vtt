@@ -6,7 +6,7 @@ import AssetManager from '../../src/app/packages/components/asset-manager/AssetM
 import { showDungeonGenerator } from '../../src/app/packages/components/dungeon-generator/openDungeonGenerator';
 import { AssetService } from '../../src/app/services/AssetService';
 
-const app = vi.hoisted(() => ({ workspace: { on: () => ({}), offref: () => {} } }));
+const app = vi.hoisted(() => ({ workspace: { on: () => ({}), offref: () => {} }, keymap: { pushScope: () => {}, popScope: () => {} } }));
 
 vi.mock('../../src/app/packages/components/dungeon-generator/openDungeonGenerator', () => ({ showDungeonGenerator: vi.fn(async () => {}) }));
 vi.mock('../../src/app/packages/components/asset-manager/hooks/useAssetData', () => ({

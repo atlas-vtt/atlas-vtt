@@ -84,11 +84,11 @@ describe('a player\'s streamed drag on the real Atlas store', () => {
   it.each([
     ['its player stops sending', (): void => void vi.advanceTimersByTime(DRAG_IDLE_MS + 1_000)],
     ['its player leaves', (t: Table): void => t.moves.playerLeft(ANA)],
-  ])('ends where the token is when %s, closing its step and letting go', (_, end) => {
+  ])('ends on the cell the token is on when %s, closing its step and letting go', (_, end) => {
     const t = table();
     stream(t, [[150, 120], [300, 200]]);
     end(t);
-    expect(place(t)).toEqual([300, 200]);
+    expect(place(t)).toEqual([315, 175]);
     expect(t.store.getState().heldTokens).toEqual({});
     expect(t.history.getState().pastStates).toHaveLength(1);
     t.store.getState().moveToken('wolf', 600, 105);

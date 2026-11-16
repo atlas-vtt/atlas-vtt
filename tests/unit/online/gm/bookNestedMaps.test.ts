@@ -17,6 +17,7 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
     showPlayers(): void {}
     showPlayerDrags(): void {}
     showPlayerCursors(): void {}
+    showPlayerStrokes(): void {}
     dispose(): void {}
   },
 }));
@@ -84,6 +85,21 @@ describe('the maps the world map leads into', () => {
     expect(lastBook(sent, ANA)?.worldMap).toEqual(map);
     const text = JSON.stringify(sent);
     for (const secret of ['world"', 'town"', 'inn"', 'collections/', 'Lowmoor.png']) expect(text).not.toContain(secret);
+    online.stop();
+  });
+
+  it('carry the readable pins of each map as signs, by alias, to every player', async () => {
+    const { online, socket } = await openTable(new BookShelf(), PLAYERS);
+    workspace.files.set(TOWN, png(400, 200));
+    workspace.files.set(INN, png(100, 100));
+    const sign = { map: 'atlas-vtt/collections/Cairn/scenes/Lowmoor.atlasmap', pin: 'well', link: 'Places/Well.md', icon: 'castle' };
+    nameWorldMapTree({ ...TREE, levels: TREE.levels.map((level) => (level.key === 'town' ? { ...level, signs: [{ x: 150, y: 50, ...sign }] } : level)) });
+    await advance(200);
+    const sent = delivered(socket);
+    const town = lastBook(sent, BEN)?.worldMap?.maps?.[0];
+    expect(town?.signs).toEqual([{ id: expect.stringMatching(/^[0-9a-f]{24}$/), x: 0.25, y: 0.25, icon: 'castle', found: null }]);
+    expect(lastBook(sent, ANA)?.worldMap?.maps?.[0]?.signs).toEqual(town?.signs);
+    for (const secret of ['Well', 'well"', 'Lowmoor.atlasmap']) expect(JSON.stringify(sent)).not.toContain(secret);
     online.stop();
   });
 

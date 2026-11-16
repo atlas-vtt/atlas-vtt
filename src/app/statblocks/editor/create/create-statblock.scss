@@ -11,6 +11,13 @@
   display: contents;
 }
 
+// The role menu of "New statblock…" in a dialog's footer. The dialog stands at
+// $z-atlas-modal in the portal host beside the menu, so the menu stands over it,
+// as confirmations do; Radix gives its popper wrapper the same z-index.
+.atlas-ctx-menu.atlas-sb-role-menu {
+  z-index: $z-atlas-modal + 1;
+}
+
 // The point a role menu hangs from: nothing to see or press.
 .atlas-sb-create-anchor {
   position: fixed;
@@ -30,7 +37,7 @@
 // field's lower corners run concentric with the popover's.
 .atlas-sb-new-popover {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-flex-col($gap: $spacing-s);
   width: min(320px, calc(100vw - #{$spacing-l * 2}));
   padding: $spacing-s;

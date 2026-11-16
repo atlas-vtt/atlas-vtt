@@ -3,7 +3,7 @@ import type { Translation } from '../../types';
 export const dashboard: Translation = {
   'dashboard.linkNote': '为此地图关联一篇笔记',
   'dashboard.linkOther': '关联另一篇笔记',
-  'dashboard.loading': '正在加载属性块...',
+  'dashboard.loading': '正在加载属性块…',
   'dashboard.openNote': '在新标签页打开笔记',
   'dashboard.pickNote': '选一篇笔记放在地图旁边',
   'dashboard.justNow': '刚刚',

@@ -8,6 +8,7 @@ import { linkedStatblockPaths } from '../../../../creatures/creatureFacts';
 import { PaneDiceRolls } from '../../../../statblocks/editor/statblock-pane/PaneDiceRolls';
 import { isShortcutScopeActive } from '../../../../utils/activeLeafGuard';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../primitives/dialogMotion';
+import { useFocusTrap } from '../../primitives/useFocusTrap';
 import { ActiveFilterBar } from '../components/search/ActiveFilterBar';
 import { t } from '../../../../i18n';
 import type { Quantity } from '../../../../encounters/encounterQuantity';
@@ -44,6 +45,7 @@ export function EncounterBuilder({ app, assetService, collectionId, editEncounte
   const draft = useEncounterDraft(app, assetService, collectionId, editEncounter, roster);
   const { picks, setPicks, saving } = draft;
   const windowRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(windowRef);
   const titleId = useId();
   const windowVariants = useDialogWindowVariants();
 
@@ -138,7 +140,7 @@ export function EncounterBuilder({ app, assetService, collectionId, editEncounte
         aria-labelledby={titleId}
         onClick={(event) => event.stopPropagation()}
       >
-        <PaneDiceRolls app={app} collectionId={collectionId} coversMaps>
+        <PaneDiceRolls app={app} collectionId={collectionId}>
           <EncounterSidebar
             app={app}
             titleId={titleId}

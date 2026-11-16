@@ -8,6 +8,9 @@ import { LinkedFolderWatch } from '../soundDirector/linkedFolderWatch';
 import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
+import { registerConversionConsent } from './soundConsent';
+import { whileSoundOn } from './whileSoundOn';
+import { removeSoundCache } from './removeSoundCache';
 import { runInBackground } from '../utils/backgroundTask';
 
 const STATUS_REFRESH_MS = 5000;
@@ -144,11 +147,16 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
  */
 export function registerSoundDirector(plugin: Plugin): SoundDirector {
   const director = SoundDirector.forApp(plugin.app);
+  const library = (): SoundLibrary => SoundLibrary.forApp(plugin.app);
   // Linked folders are prepared as they come, once the workspace is up, so a start is not held by a folder's walk.
   plugin.app.workspace.onLayoutReady(() => {
-    const watch = new LinkedFolderWatch({ records: SoundRecordStore.forApp(plugin.app), library: SoundLibrary.forApp(plugin.app), director });
-    plugin.register(() => watch.dispose());
+    runInBackground(removeSoundCache(plugin.app), 'Removing the old sound copy cache');
+    plugin.register(whileSoundOn(director, library, (live) => {
+      const watch = new LinkedFolderWatch({ records: SoundRecordStore.forApp(plugin.app), library: live, director });
+      return () => watch.dispose();
+    }));
   });
+  plugin.register(whileSoundOn(director, library, (live) => registerConversionConsent(plugin, live, director)));
   registerSoundCommands(plugin, director);
   plugin.register(registerMoodCommands(plugin, director));
   plugin.register(registerSoundStatusBar(plugin, director));

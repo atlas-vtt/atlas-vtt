@@ -17,7 +17,7 @@ import { AssetService } from '../../../../src/app/services/AssetService';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import { createStatblock } from '../../../../src/app/statblocks/editor/create/createFlow';
 import { openStatblockEditor } from '../../../../src/app/statblocks/editor/openStatblockEditor';
-import type { RoleChoice } from '../../../../src/app/statblocks/editor/create/roleChoices';
+import type { TemplateOffer } from '../../../../src/app/statblocks/editor/create/templateOffers';
 import { withStatblockEditor } from '../../../mocks/experimentalFeatures';
 import { noteHarness, type NoteHarness } from '../notes/noteHarness';
 
@@ -64,7 +64,7 @@ describe('the token card\'s menu', () => {
     expect(cardMenu({ ...WARDEN, statblockPath: NATIVE }).labels).not.toContain('Create statblock');
 
     const { entries, onClose, labels } = cardMenu(WARDEN);
-    expect(labels.indexOf('Create statblock')).toBe(labels.indexOf('Link Statblock') + 1);
+    expect(labels.indexOf('Create statblock')).toBe(labels.indexOf('Link statblock…') + 1);
     const create = entries.find((entry) => entry.type === 'submenu' && entry.label === 'Create statblock');
     if (create?.type !== 'submenu' || typeof create.children === 'function') throw new Error('expected the role menu');
     const first = create.children[0];
@@ -77,14 +77,25 @@ describe('the token card\'s menu', () => {
 });
 
 describe('the card\'s statblock button (D9)', () => {
-  function handlers(): { open: (path: string) => void; onClose: ReturnType<typeof vi.fn> } {
+  function handlers(): { open: (path: string) => void; onClose: ReturnType<typeof vi.fn>; onLinkStatblock: ReturnType<typeof vi.fn> } {
     const onClose = vi.fn();
+    const onLinkStatblock = vi.fn();
     const { result } = renderHook(() => useAssetCardHandlers({
       app: app(), openAsset: vi.fn(), selectedAssetIds: [], setDraggedItems: vi.fn(),
-      onAssetSelect: vi.fn(), onAssetContextMenu: vi.fn(), onSpawnCountChange: vi.fn(), onArtNeeded: vi.fn(), onClose,
+      onAssetSelect: vi.fn(), onAssetContextMenu: vi.fn(), onSpawnCountChange: vi.fn(), onArtNeeded: vi.fn(), onLinkStatblock, onClose,
     }));
-    return { open: (path) => result.current.onOpenStatblock(path), onClose };
+    return { open: (path) => result.current.onOpenStatblock({ ...WARDEN, statblockPath: path }), onClose, onLinkStatblock };
   }
+
+  it('never opens a note that is gone, which Obsidian would make anew, and offers to link another (#612)', () => {
+    withStatblockEditor(app());
+    const { open, onClose, onLinkStatblock } = handlers();
+    open('Bestiary/Gone.md');
+    expect(harness.app.workspace.openLinkText).not.toHaveBeenCalled();
+    expect(openStatblockEditor).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onLinkStatblock).toHaveBeenCalledWith({ ...WARDEN, statblockPath: 'Bestiary/Gone.md' });
+  });
 
   it('opens a native statblock\'s note and gets the asset manager out of the way', () => {
     withStatblockEditor(app());
@@ -98,8 +109,8 @@ describe('the card\'s statblock button (D9)', () => {
     const { open, onClose } = handlers();
     open(NATIVE);
     open(FANTASY);
-    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith('', NATIVE, true);
-    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith('', FANTASY, true);
+    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith(NATIVE, '', true);
+    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith(FANTASY, '', true);
     expect(openStatblockEditor).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -108,16 +119,16 @@ describe('the card\'s statblock button (D9)', () => {
     withStatblockEditor(app());
     const { open } = handlers();
     open(FANTASY);
-    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith('', FANTASY, true);
+    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith(FANTASY, '', true);
     expect(openStatblockEditor).not.toHaveBeenCalled();
   });
 });
 
 describe('the link dialog\'s New statblock…', () => {
-  const MONSTER: RoleChoice = { roleId: 'monster', name: 'Monster', templateName: 'Creature' };
-  const NPC: RoleChoice = { roleId: 'npc', name: 'NPC', templateName: 'NPC' };
+  const MONSTER: TemplateOffer = { templateId: 'builtin:generic-creature', roleId: 'monster', label: 'Monster', detail: 'Creature' };
+  const NPC: TemplateOffer = { templateId: 'builtin:generic-npc', roleId: 'npc', label: 'NPC', detail: 'NPC' };
 
-  function dialog(choices?: RoleChoice[]): { onClose: ReturnType<typeof vi.fn>; onChoose: ReturnType<typeof vi.fn> } {
+  function dialog(choices?: TemplateOffer[]): { onClose: ReturnType<typeof vi.fn>; onChoose: ReturnType<typeof vi.fn> } {
     const onClose = vi.fn();
     const onChoose = vi.fn();
     render(
@@ -142,7 +153,7 @@ describe('the link dialog\'s New statblock…', () => {
     const { onClose, onChoose } = dialog([MONSTER]);
     fireEvent.click(screen.getByRole('button', { name: 'New statblock' }));
     expect(onClose).toHaveBeenCalled();
-    expect(onChoose).toHaveBeenCalledWith('monster');
+    expect(onChoose).toHaveBeenCalledWith(MONSTER);
   });
 
   it('leaves Escape to its role menu while the menu is open', async () => {
@@ -157,6 +168,6 @@ describe('the link dialog\'s New statblock…', () => {
     fireEvent.keyDown(trigger, { key: 'Enter' });
     fireEvent.click(await screen.findByRole('menuitem', { name: /NPC/ }));
     expect(onClose).toHaveBeenCalled();
-    expect(onChoose).toHaveBeenCalledWith('npc');
+    expect(onChoose).toHaveBeenCalledWith(NPC);
   });
 });

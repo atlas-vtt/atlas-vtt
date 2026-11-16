@@ -1,26 +1,38 @@
-import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type CursorViewport, type MeasureRules, type OverlayHost, type RemoteDrag, type TapViewport } from '../marks/index.ts';
-import { LIVE_INTERVAL_MS, type SharedCursor } from '../protocol/index.ts';
+import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type CursorViewport, type LayBodies, type MeasureRules, type OverlayHost, type RemoteDrag, type TapViewport } from '../marks/index.ts';
+import { LIVE_INTERVAL_MS, type SharedCursor, type SharedStroke } from '../protocol/index.ts';
+import { Container } from 'pixi.js';
+import { placeUnderTokens } from '../../pixi/measure/MeasureLayer';
 import type { HeldPlayout } from '../../pixi/token-renderer/TokenGlide';
 import type { App } from 'obsidian';
+import type { UnderWaySource } from '../../annotations/underWay';
+import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { SceneSource } from '../../host/sceneSource';
-import type { Measurements } from '../../pixi/MeasureRenderer';
+import type { Measurements } from '../../pixi/measure/measurements';
 import type { ViewState } from '../../types/viewState';
 import { tokenFootprints, type TokenFootprint } from '../../vision/measureOrigin';
 import { atlasLaserLook, field } from './atlasLighting.ts';
 import { asTokenSource, call, type SceneState, type SceneStore } from './atlasView.ts';
 import type { GmMarkSource, PlayerMarks } from './MarkShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
+import { levelMapKey } from '../../levels/sceneLevels';
 import { mapTokens } from '../../tokens/offMap';
 
 type Viewport = TapViewport & CursorViewport & OverlayHost['viewport'];
 
 const isFunction = (value: unknown): value is (...args: never[]) => unknown => typeof value === 'function';
 const hasMethods = (value: unknown, names: readonly string[]): boolean => typeof value === 'object' && value !== null && names.every((name) => isFunction(field(value, name)));
+const isContainer = (value: unknown): value is Container => value instanceof Container;
 
 /** The renderer's measurements as data (`MeasureRenderer.measurements`, a private renderer field), or null. */
 function measurementsOf(renderer: unknown): SceneSource<Measurements> | null {
   const source = field(field(renderer, 'measureRenderer'), 'measurements');
   return hasMethods(source, ['get', 'subscribe']) ? (source as SceneSource<Measurements>) : null;
+}
+
+/** The drawing the tab's Draw tool is making (`AnnotationsRenderer.underWay`, a private renderer field), or null in a build without it. */
+function strokeOf(renderer: unknown): UnderWaySource | null {
+  const source = field(field(renderer, 'annotations'), 'underWay');
+  return hasMethods(source, ['get', 'subscribe']) ? (source as UnderWaySource) : null;
 }
 
 /** Tells an Atlas tab's token renderer how to draw the tokens players drag (`TokenRenderer.setHeldPlayout`), where it can be told. */
@@ -34,20 +46,23 @@ function setHeldPlayout(tokens: unknown, playout: HeldPlayout | null): void {
  * and canvas. Measurement records came later than the rest (public PR 345): without them the laser
  * and the players' marks still work, and the GM's measurements stay with the GM.
  */
-function rendererParts(renderer: unknown): { readonly measurements: SceneSource<Measurements> | null; readonly viewport: Viewport; readonly canvas: HTMLCanvasElement; readonly tokens: unknown } | null {
+function rendererParts(renderer: unknown): { readonly measurements: SceneSource<Measurements> | null; readonly viewport: Viewport; readonly canvas: HTMLCanvasElement; readonly tokens: unknown; readonly layBodies: LayBodies | null } | null {
   const viewport = call(renderer, 'getViewportInstance');
   const canvas = call(renderer, 'getCanvasElement');
   if (!hasMethods(viewport, ['on', 'off', 'toWorld']) || !hasMethods(canvas, ['addEventListener', 'getContext'])) return null;
   const measurements = measurementsOf(renderer);
   if (measurements === null) console.warn('Atlas Online: this Atlas build keeps no measurement records, so players do not see the GM\'s measurements. Update Atlas.');
-  return { measurements, viewport: viewport as Viewport, canvas: canvas as HTMLCanvasElement, tokens: call(renderer, 'getTokenRenderer') };
+  // The bodies of the areas players measure lie in the map itself, where Atlas's own lie: under its tokens and its lighting.
+  const layBodies: LayBodies | null = isContainer(viewport) ? (layer) => placeUnderTokens(viewport, layer) : null;
+  return { measurements, viewport: viewport as Viewport, canvas: canvas as HTMLCanvasElement, tokens: call(renderer, 'getTokenRenderer'), layBodies };
 }
 
 /**
  * The GM's marks on a shared Atlas tab, read from its renderer: the measure renderer's records, a
  * `PointerTap` on its viewport for Atlas's laser (whose state is private), and what the players see of
  * the tokens (`playerRollTokens`, the token list's own source). Built anew when the tab builds its
- * renderer anew. Also draws the players' marks and the rulers of their drags over the tab (`MarkOverlay`) and their cursors
+ * renderer anew. Also draws the players' marks and the rulers of their drags over the tab (`MarkOverlay`; the bodies of the
+ * areas they measure in the tab's own map, under its tokens and lighting) and their cursors
  * (`CursorOverlay`), and follows the GM's own cursor (`CursorTap`). A token a player drags is drawn as far
  * behind as that player's cursor, so the two move as one (`HeldPlayout`).
  */
@@ -60,8 +75,10 @@ export class GmMarks {
   private readonly draggerOf: (tokenId: string) => string | undefined;
   private readonly overlay: MarkOverlay;
   private readonly cursors = new CursorOverlay((cursor) => cursor.name ?? '');
+  /** The committed fog a drawing under way is judged by. */
+  private readonly fog = new FogCoverageCache();
   /** What the overlay shows: the players' marks and the rulers of their drags, each kept until it changes. */
-  private shown: { players: PlayerMarks; drags: readonly RemoteDrag[] } = { players: { lasers: [], measures: [] }, drags: [] };
+  private shown: { players: PlayerMarks; drags: readonly RemoteDrag[]; strokes: readonly SharedStroke[] } = { players: { lasers: [], measures: [] }, drags: [], strokes: [] };
   private built: { readonly renderer: unknown; readonly source: GmMarkSource; readonly taps: readonly { destroy(): void }[]; readonly host: OverlayHost; readonly tokens: unknown } | null = null;
   private readonly playout: HeldPlayout = {
     interval: LIVE_INTERVAL_MS,
@@ -90,10 +107,16 @@ export class GmMarks {
     const state = (): SceneState & Partial<Pick<ViewState, 'activeTool' | 'tokenSettings'>> => this.store.getState();
     const tap = new PointerTap(parts.viewport, parts.canvas, () => state().activeTool === 'laser-pointer');
     const cursor = new CursorTap(parts.viewport, parts.canvas);
+    const stroke = strokeOf(renderer);
     const source: GmMarkSource = {
       measurements: parts.measurements,
       laser: tap,
       cursor,
+      ...(stroke !== null && { stroke }),
+      fog: () => {
+        const scene = state();
+        return this.fog.get(levelObjects(scene).fog, levelMapKey(scene.mapPath, scene));
+      },
       laserLook: () => atlasLaserLook(this.app),
       footprints: () => this.footprints(parts.tokens, state()),
       seen: () => {
@@ -108,7 +131,8 @@ export class GmMarks {
       },
     };
     setHeldPlayout(parts.tokens, this.playout);
-    this.built = { renderer, source, taps: [tap, cursor], host: { canvas: parts.canvas, viewport: parts.viewport }, tokens: parts.tokens };
+    const host: OverlayHost = { canvas: parts.canvas, viewport: parts.viewport, ...(parts.layBodies && { layBodies: parts.layBodies }) };
+    this.built = { renderer, source, taps: [tap, cursor], host, tokens: parts.tokens };
     return source;
   }
 
@@ -121,6 +145,12 @@ export class GmMarks {
   /** Draws the rulers of the players' drags over the tab's map. */
   showPlayerDrags(drags: readonly RemoteDrag[]): void {
     this.shown.drags = drags;
+    this.showOverlay();
+  }
+
+  /** Draws the drawings players are making over the tab's map, each as it was last told. */
+  showPlayerStrokes(strokes: readonly SharedStroke[]): void {
+    this.shown.strokes = strokes;
     this.showOverlay();
   }
 
@@ -146,7 +176,7 @@ export class GmMarks {
 
   private showOverlay(): void {
     this.source();
-    if (this.built !== null) this.overlay.show({ ...this.shown.players, drags: this.shown.drags }, this.built.host);
+    if (this.built !== null) this.overlay.show({ ...this.shown.players, drags: this.shown.drags, strokes: this.shown.strokes }, this.built.host);
   }
 
   /** Where every token stands, hidden ones included, as Atlas's measurements judge their start. */

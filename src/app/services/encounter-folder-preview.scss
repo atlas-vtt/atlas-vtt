@@ -10,7 +10,7 @@ $face-size: 26px;
 
 .atlas-encounter-folder-preview {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-flex-col($spacing-s);
   position: fixed;
   z-index: $z-popover;
@@ -29,7 +29,7 @@ $face-size: 26px;
   justify-content: center;
   width: $row-height;
   height: $row-height;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   @include atlas-panel-inset-radius($spacing-s, top-left);
   color: var(--color-orange);
   background: color-mix(in oklch, var(--color-orange) 14%, transparent);
@@ -61,7 +61,6 @@ $face-size: 26px;
 
 .atlas-encounter-folder-preview__list {
   @include atlas-flex-col(0);
-  @include atlas-scrollbar;
   // Five and a half rows, so a longer list shows it scrolls
   max-height: $row-height * 5.5;
   overflow-y: auto;
@@ -74,7 +73,7 @@ $face-size: 26px;
   height: $row-height;
   padding: 0 $spacing-s;
   border: none;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: transparent;
   box-shadow: none;
   color: var(--text-normal);
@@ -144,7 +143,7 @@ $face-size: 26px;
   gap: $spacing-s;
   width: 100%;
   height: $row-height;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   font-weight: $font-weight-semibold;
   @include atlas-panel-inset-radius($spacing-s, bottom-left, bottom-right);
 }

@@ -1,6 +1,6 @@
 import { TFile, type App } from 'obsidian';
 import { COLLECTIONS_DIR, type Asset, type CollectionMetadata } from '../AssetService';
-import { isPersistedMapEnvelope } from '../MapPersistence';
+import { sceneBackground } from '../sceneBackground';
 import { readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { optimizeImage } from '../../imageProcessing/imageProcessing';
 import { baseName } from '../../utils/pathUtils';
@@ -54,18 +54,6 @@ function imageUrl(app: App, path: string | undefined): string | null {
 export function currentCover(app: App, collection: CollectionMetadata): CurrentCover | undefined {
   const url = imageUrl(app, collection.coverPath);
   return url && collection.coverPath ? { path: collection.coverPath, url } : undefined;
-}
-
-/** The background image a scene's map file shows, if it can be read. */
-async function sceneBackground(app: App, mapPath: string): Promise<string | undefined> {
-  const file = app.vault.getAbstractFileByPath(mapPath);
-  if (!(file instanceof TFile)) return undefined;
-  try {
-    const envelope: unknown = JSON.parse(await app.vault.cachedRead(file));
-    return isPersistedMapEnvelope(envelope) ? envelope.state?.background ?? undefined : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /** `path` where it is an image a cover can be made of; an animated map's video is none, its thumbnail stands in. */

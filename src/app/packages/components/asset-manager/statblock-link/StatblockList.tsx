@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link2 } from 'lucide-react';
-import { useScrollActivity } from '../../primitives/useScrollActivity';
-import { useScrollbarGutter } from '../../primitives/useScrollbarGutter';
 import type { StatblockEntry } from './statblockEntries';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../primitives/Skeleton';
 import { STANDING_LIST } from '../../../../keyboard/tooltipEscape';
@@ -56,11 +54,9 @@ export function StatblockList({
   empty,
   loading = false,
 }: StatblockListProps): React.JSX.Element {
-  // State rather than a ref: the scroll hooks need the element once it exists.
+  // State rather than a ref: the effect below runs again once the element exists.
   const [list, setList] = useState<HTMLDivElement | null>(null);
   const hasScrolled = useRef(false);
-  useScrollActivity(list);
-  useScrollbarGutter(list);
 
   // The first time centres the linked creature; later moves only reveal the active row.
   useEffect(() => {

@@ -65,8 +65,7 @@ $shown-image-share: 0.9;
     max-width: calc(var(--atlas-image-layer-w) * #{$shown-image-share});
     max-height: calc(var(--atlas-image-layer-h) * #{$shown-image-share});
     // The same corners as every floating surface; they scale with the image's zoom
-    border-radius: $radius-2xl;
-    @include atlas-corner-shape;
+    border-radius: $surface-radius;
     transform-origin: center center;
     transition: none;
     pointer-events: none;

@@ -5,6 +5,8 @@ interface UnitDistanceFieldProps {
   /** The distance in the settings being edited; anything that is no distance marks the field. */
   value: number;
   onChange: (distance: number) => void;
+  /** Id of the visible label that names the field. */
+  labelledBy?: string;
 }
 
 /**
@@ -13,7 +15,7 @@ interface UnitDistanceFieldProps {
  * bands it hands on whatever is typed, text that is no distance as NaN, so the settings can not
  * be saved until it is one.
  */
-export function UnitDistanceField({ value, onChange }: UnitDistanceFieldProps): React.ReactElement {
+export function UnitDistanceField({ value, onChange, labelledBy }: UnitDistanceFieldProps): React.ReactElement {
   const [draft, setDraft] = React.useState<string | null>(null);
   const valid = isUnitDistance(value);
 
@@ -24,6 +26,7 @@ export function UnitDistanceField({ value, onChange }: UnitDistanceFieldProps): 
       className="atlas-csm-input atlas-csm-input--number"
       value={draft ?? (valid ? String(value) : '')}
       aria-invalid={!valid || undefined}
+      aria-labelledby={labelledBy}
       onChange={(event) => {
         const text = event.target.value;
         setDraft(text);

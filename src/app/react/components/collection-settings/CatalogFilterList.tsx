@@ -4,6 +4,7 @@ import { countCreaturesWith } from '../../../creatures/creatureFieldDiscovery';
 import { filterFields } from '../../../creatures/creatureFilterDefinitions';
 import type { IndexedCreature } from '../../../creatures/CreatureIndex';
 import type { CreatureFilterDefinition } from '../../../types/creatureFilterTypes';
+import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { t } from '../../../i18n';
 
 interface CatalogFilterListProps {
@@ -39,15 +40,11 @@ export function CatalogFilterList({ hidden, onHiddenChange, creatures, pending, 
               <code className="atlas-csm-hint">{fields.length > 1 ? `${fields[0]} +${fields.length - 1}` : fields[0]}</code>
             </div>
             <span className="atlas-csm-creature-field__count">{coverage}</span>
-            <label className="atlas-csm-switch">
-              <input
-                type="checkbox"
-                aria-label={t('csm.filters.filterBy', { field: filter.label.toLocaleLowerCase() })}
-                checked={!hidden.includes(filter.id)}
-                onChange={() => toggle(filter.id)}
-              />
-              <span className="atlas-csm-switch-track" />
-            </label>
+            <ToggleSwitch
+              aria-label={t('csm.filters.filterBy', { field: filter.label.toLocaleLowerCase() })}
+              value={!hidden.includes(filter.id)}
+              onChange={() => toggle(filter.id)}
+            />
           </li>
         );
       })}

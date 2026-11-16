@@ -59,14 +59,14 @@ describe('a collection\'s rules while a campaign with a game system is played', 
     openSettings(app);
     act(() => play.play('saga'));
     expect(screen.getByText(NOTICE)).toBeTruthy();
-    for (const name of ['Game System', 'Dice', 'Conditions', 'Resources']) {
+    for (const name of ['Game system', 'Dice', 'Conditions', 'Resources']) {
       fireEvent.click(tab(name));
       expect(screen.getByText(NOTICE)).toBeTruthy();
     }
-    fireEvent.click(tab('Creature Filters'));
+    fireEvent.click(tab('Creature filters'));
     expect(screen.queryByText(NOTICE)).toBeNull();
     act(() => play.stop());
-    fireEvent.click(tab('Grid & Measure'));
+    fireEvent.click(tab('Grid and measurement'));
     expect(screen.queryByText(NOTICE)).toBeNull();
   });
 
@@ -76,25 +76,26 @@ describe('a collection\'s rules while a campaign with a game system is played', 
     openSettings(app);
     fireEvent.click(screen.getByRole('button', { name: 'Edit campaign rules' }));
 
-    expect(screen.getByRole('heading', { name: 'Saga: Game System' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Feet' })).toBeTruthy();
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Feet' }), { key: 'Enter' });
-    fireEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Meters' }));
+    expect(screen.getByRole('heading', { name: 'Saga: Game system' })).toBeTruthy();
+    const unit = screen.getByRole('combobox', { name: 'One square is' });
+    expect(unit.textContent).toBe('Feet');
+    fireEvent.click(unit);
+    fireEvent.click(screen.getByRole('option', { name: 'Meters' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(storedSystem()?.gridDefaults.unitType).toBe('meters');
 
     await waitFor(() => expect(screen.getByRole('heading', { name: /dungeon/ })).toBeTruthy());
     expect(screen.getByText(NOTICE)).toBeTruthy();
   });
-  it('say on Default Widgets, above the initiative rules, that the campaign\'s apply, and open them on its Initiative tab', () => {
+  it('say on Default widgets, above the initiative rules, that the campaign\'s apply, and open them on its Initiative tab', () => {
     const { app, play } = world();
     play.play('saga');
     openSettings(app);
-    fireEvent.click(tab('Default Widgets'));
+    fireEvent.click(tab('Default widgets'));
     const notice = screen.getByText(NOTICE);
-    expect(notice.compareDocumentPosition(screen.getByText('Initiative Tracker')) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(notice.compareDocumentPosition(screen.getByText('Initiative tracker')) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Edit campaign rules' }));
-    expect(screen.getByRole('heading', { name: 'Saga: Game System' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Saga: Game system' })).toBeTruthy();
     expect(tab('Initiative').classList.contains('atlas-active')).toBe(true);
   });
 
@@ -103,11 +104,11 @@ describe('a collection\'s rules while a campaign with a game system is played', 
     play.play('saga');
     openSettings(app);
     fireEvent.click(screen.getByRole('button', { name: 'Edit campaign rules' }));
-    expect(screen.getByRole('heading', { name: 'Saga: Game System' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Saga: Game system' })).toBeTruthy();
     act(() => play.stop());
-    expect(screen.queryByRole('heading', { name: 'Saga: Game System' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Saga: Game system' })).toBeNull();
     act(() => play.play('saga'));
-    expect(screen.queryByRole('heading', { name: 'Saga: Game System' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Saga: Game system' })).toBeNull();
     expect(screen.getByText(NOTICE)).toBeTruthy();
   });
 });

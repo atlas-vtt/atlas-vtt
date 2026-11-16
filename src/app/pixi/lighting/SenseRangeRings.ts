@@ -5,7 +5,7 @@ import { unitScaleOf } from '../../lighting/lightingUnits';
 import type { SceneStore } from '../../lighting/shownTokens';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { Point } from '../../types/visionTypes';
-import { GM_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
+import { GM_SIGHT_POLICY, sightPolicyFor } from '../../vision/tokenSightPolicy';
 import { sightSources } from '../../vision/sight';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
@@ -90,9 +90,10 @@ export class SenseRangeRings {
     const state = store.getState();
     const map = bounds();
     if (!shown() || !map) return [];
+    const { givesSight } = sightPolicyFor(GM_SIGHT_POLICY, rules());
     const tokens = state.selectedIds.flatMap((id) => {
       const token = mapTokens(levelObjects(state))[id];
-      return token && GM_SIGHT_POLICY.givesSight(token) ? [token] : [];
+      return token && givesSight(token) ? [token] : [];
     });
     if (tokens.length === 0 || tokens.length > MAX_TOKENS) return [];
     const settings = measurement();

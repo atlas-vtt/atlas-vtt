@@ -1,16 +1,19 @@
 import type * as React from 'react';
-import { useState } from 'react';
-import { TFolder, App as ObsidianApp } from 'obsidian';
+import { startTransition, useState } from 'react';
+import type { App as ObsidianApp } from 'obsidian';
 import type { AnyAsset, CollectionOption, EncounterAsset, TokenAsset, Folder, Tab, InputModalState } from '../types';
 import { saveEncounter, type EncounterTokenDraft } from '../../../../encounters/encounterSaveService';
 import type { AssetService } from '../../../../services/AssetService';
 import { showAtlasToast } from '../../../../react/components/AtlasToast';
-import { ensureFolder } from '../../../../plugin/vaultFolders';
+import { ensureFolder, isPathTaken } from '../../../../plugin/vaultFolders';
 import { useCollectionTransfer, type CollectionTransferActions } from './useCollectionTransfer';
 import { t } from '../../../../i18n';
 import { folderIdOf, tabFolderPath } from '../utils/assetFolders';
-import { folderMoveProblem, moveAssetsIntoFolder } from '../utils/assetFolderMove';
+import { useFolderMove } from './useFolderMove';
+import { moveFoldersInto, type FolderMoveContext } from '../utils/folderMoveActions';
+import { runInBackground } from '../../../../utils/backgroundTask';
 import { tabHasFolders } from '../utils/tabKinds';
+import type { CollectionPick } from '../utils/collectionTransferActions';
 
 /** Background and name carried over when a scene is created from a map asset. */
 export interface CreateScenePrefill {
@@ -30,6 +33,9 @@ export interface AssetCrudActions extends CollectionTransferActions {
   createScenePrefill: CreateScenePrefill | null;
   isCreateFolderModalOpen: boolean;
   isMoveModalOpen: boolean;
+  /** The Move or Copy to collection… dialog's errand while it is open (decision #41). */
+  collectionPick: CollectionPick | null;
+  setCollectionPick: (pick: CollectionPick | null) => void;
   moveTargetFolderId: string | null;
   moveFolderSearch: string;
   moveFolderListOpen: boolean;
@@ -62,11 +68,14 @@ export interface AssetCrudActions extends CollectionTransferActions {
   // Handlers
   handleCreateFolder: () => void;
   handleCreateMap: () => void;
+  /** Opens the dialog for a new scene without a map picked. */
   handleCreateCollection: () => void;
   handleRefresh: () => Promise<void>;
-  createFolderInVault: (folderName: string) => Promise<void>;
+  /** Makes a folder of this name in the open folder; resolves to its id, or null when none was made. */
+  createFolderInVault: (folderName: string) => Promise<string | null>;
+  /** Whether a new folder of this name would take the place of a file or folder already there. */
+  isFolderNameTaken: (folderName: string) => boolean;
   deleteAssetFromVault: (asset: { id: string; name: string }) => Promise<boolean>;
-  deleteFolderFromVault: (folder: Folder) => Promise<void>;
   moveAssetsToFolder: (assetIds: string[], targetFolderId: string | null) => Promise<void>;
   handleDrop: (targetFolderId: string | null) => void;
   handleSaveAsEncounter: (tokenAssets: AnyAsset[]) => Promise<void>;
@@ -87,7 +96,12 @@ export function useAssetCrud(
   loadAssetsForActiveTab: () => Promise<void>,
   draggedItems: { type: 'asset' | 'folder'; ids: string[] } | null,
   setDraggedItems: React.Dispatch<React.SetStateAction<{ type: 'asset' | 'folder'; ids: string[] } | null>>,
-  setDropTarget: React.Dispatch<React.SetStateAction<string | null>>
+  setDropTarget: React.Dispatch<React.SetStateAction<string | null>>,
+  setAssets: React.Dispatch<React.SetStateAction<AnyAsset[]>>,
+  /** Opens a folder of the tab shown (null: its top level) with the moved cards selected: where a move's notice takes the GM. */
+  openFolder: (folderId: string | null, assetIds: readonly string[]) => void,
+  /** What follows folders a drop moved into another folder: Back and Forward, and the folders selected. */
+  folderMoves: Pick<FolderMoveContext, 'followFolderMoves' | 'setSelectedFolderIds'>,
 ): AssetCrudActions {
 
   const [isTokenCreatorOpen, setIsTokenCreatorOpen] = useState(false);
@@ -107,6 +121,7 @@ export function useAssetCrud(
   const [createScenePrefill, setCreateScenePrefill] = useState<CreateScenePrefill | null>(null);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [collectionPick, setCollectionPick] = useState<CollectionPick | null>(null);
   const [moveTargetFolderId, setMoveTargetFolderId] = useState<string | null>(null);
   const [moveFolderSearch, setMoveFolderSearch] = useState('');
   const [moveFolderListOpen, setMoveFolderListOpen] = useState(false);
@@ -120,7 +135,8 @@ export function useAssetCrud(
   });
 
   const handleCreateFolder = (): void => setIsCreateFolderModalOpen(true);
-  const handleCreateMap = (): void => setIsMapCreatorOpen(true);
+  // A transition: React renders the map creator in slices between frames, not in the click's task (F4).
+  const handleCreateMap = (): void => startTransition(() => setIsMapCreatorOpen(true));
   const openCreateSceneModalFromMap = (prefill: CreateScenePrefill): void => {
     setCreateScenePrefill(prefill);
     setIsCreateSceneModalOpen(true);
@@ -130,16 +146,20 @@ export function useAssetCrud(
     if (assetService && app) await loadAssetsForActiveTab();
   };
 
-  const createFolderInVault = async (folderName: string): Promise<void> => {
-    if (!folderName.trim() || !app) return;
+  /** Where a new folder of this name goes: inside the open folder, else at the tab's top level. */
+  const newFolderPath = (folderName: string): string => {
+    const parent = selectedFolderId ? folders.find((f) => f.id === selectedFolderId) : undefined;
+    const tabBase = tabFolderPath(selectedCollection, activeTab);
+    return `${parent ? `${tabBase}/${parent.path}` : tabBase}/${folderName.trim()}`;
+  };
+  const isFolderNameTaken = (folderName: string): boolean => !!app && isPathTaken(app, newFolderPath(folderName));
+
+  const createFolderInVault = async (folderName: string): Promise<string | null> => {
+    // A taken name keeps the dialog open, where it says so beside the name.
+    if (!folderName.trim() || !app || isFolderNameTaken(folderName)) return null;
     try {
       const tabBase = tabFolderPath(selectedCollection, activeTab);
-      let path = tabBase;
-      if (selectedFolderId) {
-        const parent = folders.find((f) => f.id === selectedFolderId);
-        if (parent) path = `${path}/${parent.path}`;
-      }
-      path = `${path}/${folderName.trim()}`;
+      const path = newFolderPath(folderName);
 
       await ensureFolder(app, path);
 
@@ -154,8 +174,10 @@ export function useAssetCrud(
       setIsCreateFolderModalOpen(false);
       setTargetFolderName('');
       void loadAssetsForActiveTab();
+      return newFolder.id;
     } catch (error) {
       console.error('[useAssetCrud] Error creating folder:', error);
+      return null;
     }
   };
 
@@ -171,40 +193,9 @@ export function useAssetCrud(
     }
   };
 
-  const deleteFolderFromVault = async (folder: Folder): Promise<void> => {
-    if (!app) return;
-    try {
-      let folderPath = tabFolderPath(selectedCollection, folder.type);
-      const buildFullPath = (f: Folder): string => {
-        if (f.parentId) {
-          const parent = folders.find((p) => p.id === f.parentId);
-          if (parent) return `${buildFullPath(parent)}/${f.name}`;
-        }
-        return f.name;
-      };
-      if (folder.parentId) {
-        const parent = folders.find((p) => p.id === folder.parentId);
-        if (parent) folderPath = `${folderPath}/${buildFullPath(parent)}`;
-      }
-      folderPath = `${folderPath}/${folder.name}`;
-
-      const folderFile = app.vault.getAbstractFileByPath(folderPath);
-      if (folderFile instanceof TFolder && folderFile.children.length === 0) {
-        await app.fileManager.trashFile(folderFile);
-      }
-    } catch (error) {
-      console.error('[useAssetCrud] Error deleting folder:', error);
-    }
-  };
-
-  const moveAssetsToFolder = async (assetIds: string[], targetFolderId: string | null): Promise<void> => {
-    if (!app || !assetService) return;
-    const tabBase = tabFolderPath(selectedCollection, activeTab);
-    const result = await moveAssetsIntoFolder(app, assetService, assetIds, tabBase, targetFolderId);
-    const problem = folderMoveProblem(result);
-    if (problem) showAtlasToast(problem);
-    if (result.moved.length > 0) await loadAssetsForActiveTab();
-  };
+  const moveAssetsToFolder = useFolderMove({
+    app, assetService, activeTab, selectedCollection, folders, setAssets, loadAssetsForActiveTab, openFolder,
+  });
 
   const handleDrop = (targetFolderId: string | null): void => {
     if (!draggedItems) return;
@@ -212,11 +203,12 @@ export function useAssetCrud(
       // The party is shown flat: a card let go on its background stays in the folder it lies in.
       if (tabHasFolders(activeTab)) void moveAssetsToFolder(draggedItems.ids, targetFolderId);
     } else {
-      setFolders((prev) =>
-        prev.map((f) =>
-          draggedItems.ids.includes(f.id) ? { ...f, parentId: targetFolderId } : f
-        )
-      );
+      const { followFolderMoves, setSelectedFolderIds } = folderMoves;
+      const context: FolderMoveContext = {
+        app, assetService, tabBasePath: tabFolderPath(selectedCollection, activeTab),
+        followFolderMoves, setSelectedFolderIds, loadFoldersForActiveTab, loadAssetsForActiveTab,
+      };
+      runInBackground(moveFoldersInto(context, draggedItems.ids, targetFolderId), 'Moving folders into a folder', t('am.folder.moveFailed'));
     }
     setDraggedItems(null);
     setDropTarget(null);
@@ -262,7 +254,7 @@ export function useAssetCrud(
   return {
     isTokenCreatorOpen, isEncounterBuilderOpen, isMapCreatorOpen, editingToken, editingEncounter,
     isCreateSceneModalOpen, createScenePrefill,
-    isCreateFolderModalOpen, isMoveModalOpen,
+    isCreateFolderModalOpen, isMoveModalOpen, collectionPick, setCollectionPick,
     moveTargetFolderId, moveFolderSearch, moveFolderListOpen,
     targetFolderName, settingsModalCollectionId, isCreateCollectionModalOpen, inputModalState,
     setIsTokenCreatorOpen, setIsEncounterBuilderOpen, setIsMapCreatorOpen, setEditingToken, editEncounter, closeEncounterBuilder,
@@ -272,7 +264,7 @@ export function useAssetCrud(
     setTargetFolderName, setSettingsModalCollectionId, setIsCreateCollectionModalOpen, showCreatedCollection, setInputModalState,
     handleCreateFolder, handleCreateMap,
     handleCreateCollection, handleRefresh,
-    createFolderInVault, deleteAssetFromVault, deleteFolderFromVault,
+    createFolderInVault, isFolderNameTaken, deleteAssetFromVault,
     moveAssetsToFolder, handleDrop, handleSaveAsEncounter,
     ...transfer,
   };

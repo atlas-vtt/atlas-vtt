@@ -13,7 +13,8 @@ const KEEP: AnyAsset = { id: 'keep', name: 'Keep', type: 'maps', imageUrl: '', m
 const loaded: { tab: Tab | null; assets: AnyAsset[] } = { tab: 'tokens', assets: [GOBLIN] };
 
 // The asset manager listens to workspace events (collection settings changes).
-const workspaceApp = { workspace: { on: () => ({}), offref: () => {} } };
+// The manager pushes its Cmd/Ctrl key scope (useAssetManagerShortcuts).
+const workspaceApp = { workspace: { on: () => ({}), offref: () => {} }, keymap: { pushScope: () => {}, popScope: () => {} } };
 
 vi.mock('../../src/app/packages/components/asset-manager/hooks/useAssetData', () => ({
   useAssetData: (activeTab: Tab) => ({

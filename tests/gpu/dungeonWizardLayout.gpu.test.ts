@@ -11,6 +11,7 @@ import { DUNGEON_STYLES } from '../../src/app/dungeons/styleCatalog';
 import { DungeonWorkerClient } from '../../src/app/dungeons/worker/DungeonWorkerClient';
 import { DungeonWizard, WIZARD_PANEL_WIDTH } from '../../src/app/packages/components/dungeon-generator/DungeonWizard';
 import { WIZARD_GAP, WIZARD_MARGIN, type Box } from '../../src/app/packages/components/dungeon-generator/wizardLayout';
+import { OverlayScrollbars } from '../../src/app/ui/overlayScrollbars/OverlayScrollbars';
 
 /**
  * The dungeon wizard over the Atlas view, laid out by the plugin's real stylesheet and drawn by the
@@ -176,13 +177,17 @@ describe('the dungeon wizard over the Atlas view', () => {
     const area = tab.querySelector<HTMLElement>('.atlas-dungeon-wizard__scroll')!;
     expect(area.scrollHeight).toBeGreaterThan(area.clientHeight);
     expect(box('.atlas-dungeon-style-gallery').width).toBe(themesWidth);
-    // The scrollbar shows only while the step scrolls, never just under the pointer
-    const thumb = tab.querySelector<HTMLElement>('.atlas-dungeon-wizard__body .atlas-overlay-scroll__thumb')!;
-    await expect.poll(() => getComputedStyle(thumb).opacity, { timeout: 4000 }).toBe('0');
-    area.scrollTop = 200;
-    area.dispatchEvent(new Event('scroll'));
-    await expect.poll(() => getComputedStyle(thumb).opacity, { timeout: 2000 }).toBe('1');
-    await expect.poll(() => getComputedStyle(thumb).opacity, { timeout: 4000 }).toBe('0');
+    // Its overlay scrollbar takes no room, shows while the step scrolls and fades a second later
+    expect(area.offsetWidth - area.clientWidth).toBe(0);
+    const scrollbars = new OverlayScrollbars(document);
+    try {
+      area.scrollTop = 200;
+      const frame = (): HTMLElement | null | undefined => area.shadowRoot?.querySelector<HTMLElement>('[part~="frame"]');
+      await expect.poll(() => frame() && getComputedStyle(frame()!).opacity, { timeout: 2000 }).toBe('1');
+      await expect.poll(() => getComputedStyle(frame()!).opacity, { timeout: 4000 }).toBe('0');
+    } finally {
+      scrollbars.destroy();
+    }
     // The next step starts at its top
     goTo('Name');
     await expect.poll(() => area.scrollTop).toBe(0);

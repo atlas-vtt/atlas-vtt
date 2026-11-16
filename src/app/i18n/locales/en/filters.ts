@@ -2,7 +2,7 @@ import type { Message } from '../../types';
 
 export const filters = {
   'filters.removeChip': 'Remove {category}: {label}',
-  'filters.removeAll': 'Remove all',
+  'filters.removeAll': 'Clear',
   'filters.active': 'Active filters',
   'filters.all': 'All',
   'filters.withStatblock': 'With statblock',
@@ -36,4 +36,5 @@ export const filters = {
   'filters.filterBy': 'Filter by',
   'filters.excludeField': 'Exclude {field}',
   'filters.keyword.range': '{label}: a value or a range, like {example1} or {example2}',
+  'filters.noValueMatch': 'No matches for “{value}”',
 } as const satisfies Record<string, Message>;

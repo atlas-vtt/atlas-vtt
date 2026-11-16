@@ -75,24 +75,24 @@ afterEach(() => {
 });
 
 describe('the map token menu and statblocks', () => {
-  it('shows only Link Statblock while the switch is off, and gives its dialog no New statblock', () => {
+  it('shows only Link statblock while the switch is off, and gives its dialog no New statblock', () => {
     const { app, rightClick } = setup(undefined, false);
     rightClick();
-    expect(labels()).toContain('Link Statblock');
+    expect(labels()).toContain('Link statblock…');
     expect(labels()).not.toContain('Create statblock');
 
-    const link = entryNamed('Link Statblock');
+    const link = entryNamed('Link statblock…');
     if (link?.type === 'item') void link.onClick();
     const dialog = vi.mocked(StatblockDialogService).mock.instances.at(-1) as unknown as { showStatblockDialog: ReturnType<typeof vi.fn> };
     expect(dialog.showStatblockDialog.mock.calls[0]?.[4]).toBeUndefined();
     TemplateLibrary.release(app);
   });
 
-  it('offers Create statblock beside Link Statblock, with the map\'s collection, linking the token on this map', async () => {
+  it('offers Create statblock beside Link statblock, with the map\'s collection, linking the token on this map', async () => {
     const { app, store, rightClick } = setup();
     rightClick();
     const names = labels();
-    expect(names.indexOf('Create statblock')).toBe(names.indexOf('Link Statblock') + 1);
+    expect(names.indexOf('Create statblock')).toBe(names.indexOf('Link statblock…') + 1);
 
     const create = entryNamed('Create statblock');
     if (create?.type !== 'submenu' || typeof create.children === 'function') throw new Error('expected the role menu');
@@ -105,41 +105,17 @@ describe('the map token menu and statblocks', () => {
     creation.onLinked?.(NATIVE);
     expect(store.getState().objects.tokens.w).toEqual(expect.objectContaining({ statblockPath: NATIVE }));
 
-    const link = entryNamed('Link Statblock');
+    const link = entryNamed('Link statblock…');
     if (link?.type === 'item') void link.onClick();
     const dialog = vi.mocked(StatblockDialogService).mock.instances.at(-1) as unknown as { showStatblockDialog: ReturnType<typeof vi.fn> };
     expect(dialog.showStatblockDialog.mock.calls[0]?.[4]).toEqual(expect.objectContaining({ choices: expect.any(Array) }));
     TemplateLibrary.release(app);
   });
 
-  it('opens the note from Edit Statblock for a native statblock, with its statblock beside it', () => {
-    const { app, rightClick } = setup(NATIVE);
+  it('offers nothing about the statblock of a token that has one: editing and unlinking are the asset manager\'s', () => {
+    const { rightClick } = setup(NATIVE);
     rightClick();
-    expect(labels()).not.toContain('Create statblock');
-    const edit = entryNamed('Edit Statblock');
-    if (edit?.type === 'item') void edit.onClick();
-    expect(openStatblockEditor).toHaveBeenCalledWith(app, { notePath: NATIVE, collectionId: 'marsh', from: 'map' });
-    expect(app.workspace.openLinkText).not.toHaveBeenCalled();
-  });
-
-  it('opens a Fantasy Statblocks statblock\'s note from Edit Statblock as before (M6)', async () => {
-    const { app, rightClick } = setup(FANTASY);
-    rightClick();
-    const edit = entryNamed('Edit Statblock');
-    if (edit?.type === 'item') await edit.onClick();
-    expect(app.workspace.openLinkText).toHaveBeenCalledWith(FANTASY, '', true);
-    expect(openStatblockEditor).not.toHaveBeenCalled();
-  });
-
-  it('keeps opening the note for every statblock while the switch is off', async () => {
-    for (const path of [FANTASY, NATIVE]) {
-      const { app, rightClick } = setup(path, false);
-      rightClick();
-      const edit = entryNamed('Edit Statblock');
-      if (edit?.type === 'item') await edit.onClick();
-      expect(app.workspace.openLinkText).toHaveBeenCalledWith(path, '', true);
-      vi.restoreAllMocks();
-    }
-    expect(openStatblockEditor).not.toHaveBeenCalled();
+    expect(labels()).toContain('Edit token');
+    for (const label of ['Edit Statblock', 'Unlink statblock', 'Link statblock…', 'Create statblock']) expect(labels()).not.toContain(label);
   });
 });

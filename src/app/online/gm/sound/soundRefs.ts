@@ -1,6 +1,6 @@
 import { AUDIO_MIME_TYPE, type AssetRef } from '../../protocol/index.ts';
 import type { GrowingCopy } from '../../../sound/codec/growingCopy';
-import { CODEC_VERSION } from '../../../sound/codec/opusCache';
+import { CODEC_VERSION } from '../../../sound/codec/atlasOpus';
 import { LiveSegments } from './liveSegments.ts';
 import { randomHex } from '../../../utils/randomHex';
 import type { SoundBytes } from '../../../sound/soundTypes';

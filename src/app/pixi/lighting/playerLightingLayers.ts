@@ -19,6 +19,8 @@ export type GmOverlays = {
   levelSurfaces: HideableLayer;
   /** What the scene remembers, tinted, and the stroke that edits it: shown in the lighting tool's explored-memory mode. */
   exploredMemory: HideableLayer;
+  /** The shape the rooms mode has under way. */
+  rooms: HideableLayer;
   doorBadges: HideableLayer;
   /** The badges on placed lights. */
   lightMarkers: HideableLayer;

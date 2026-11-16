@@ -1,4 +1,8 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
+import type { LightingToolOptions } from '../lighting/lightingTool';
+import type { DrawToolChoices } from '../annotations/annotationTypes';
+import type { FogToolChoices } from '../fog/fogToolChoices';
+import type { MeasureToolOptions } from '../measure/measureTypes';
 import type { Point } from './visionTypes';
 
 /** The tokens held at their starting positions. */
@@ -41,8 +45,16 @@ export interface ViewUIState {
   levelLinkPopover: string | null;
   /** The opening or floor (level surface) whose popover is open. */
   levelSurfacePopover: string | null;
-  /** The scene lighting settings panel, opened from the lighting tool's menu. */
-  isSceneLightingPanelOpen: boolean;
+  /** The kept measurement whose popover is open. */
+  measurePopover: string | null;
+  /** The measure tool's mode and choices: the bar above the toolbar sets them, the tool reads them. Never saved. */
+  measureTool: MeasureToolOptions;
+  /** The Draw tool's mode and choices: its bars set them, the tool reads them. Never saved with the scene; its style is remembered on the device. */
+  drawTool: DrawToolChoices;
+  /** The fog tool's choices: its bars set them, the fog reads them. Whether it adds fog or erases it is the tool chosen. Never saved. */
+  fogTool: FogToolChoices;
+  /** The lighting tool's mode and choices: the bar above the toolbar sets them, the controller hands them to its editors. */
+  lightingTool: LightingToolOptions;
   /** The tokens the pointer holds (pressed or dragged), each where it stood when taken; set through `holdTokens`. */
   heldTokens: HeldTokens;
   /** What the lighting tool's explored-memory mode does with a stroke: the one place the menu and the tool read it from. */

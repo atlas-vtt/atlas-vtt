@@ -4,8 +4,7 @@ import { openContextMenuGlobal } from '../../../react/root/ContextMenuContext';
 import { useExperimentalFeature } from '../../../react/hooks/useExperimentalFeature';
 import { useMapCollectionId } from '../../../react/hooks/useMapCollectionId';
 import { SettingsService } from '../../../services/SettingsService';
-import { runInBackground } from '../../../utils/backgroundTask';
-import { editInStatblockPane } from './entryPoints';
+import { openStatblockNote } from './entryPoints';
 import { ImageDisplayService } from '../../../services/ImageDisplayService';
 import { t } from '../../../i18n';
 import './create-statblock.scss';
@@ -31,9 +30,7 @@ export function StatblockFeedMenu({ app, path, onOpened, children }: StatblockFe
   if (!editorOn) return <>{children}</>;
 
   const edit = (): void => {
-    if (!editInStatblockPane(app, path, { collectionId, from: 'map' })) {
-      runInBackground(app.workspace.openLinkText('', path, true), `Opening ${path}`, t('statblockEditor.openNoteFailed'));
-    }
+    openStatblockNote(app, path, { collectionId, from: 'map' });
     onOpened();
   };
   const onContextMenu = (event: React.MouseEvent): void => {

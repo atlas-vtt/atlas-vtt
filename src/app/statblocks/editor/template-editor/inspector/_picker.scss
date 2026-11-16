@@ -3,10 +3,8 @@
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
 
-// The context menu's geometry: 28 px capsule rows, $spacing-xs inside the border.
-$row-height: 28px;
-$menu-inset: $spacing-xs;
-$menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
+// The context menu's geometry: rows $surface-inset inside the border.
+$menu-inset: $surface-inset;
 
 .atlas-vtt-plugin {
   // ── Field picker ────────────────────────────────────────────────────────
@@ -32,7 +30,7 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
 
   .atlas-te-choices {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($menu-radius);
+    @include atlas-panel-radius($surface-radius);
     @include atlas-flex-col(var(--size-2-1));
     @include atlas-keep-in-view;
     position: absolute;
@@ -47,7 +45,6 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     padding: $menu-inset;
     overflow-y: auto;
     box-shadow: $shadow-md;
-    @include atlas-scrollbar;
   }
 
   .atlas-te-choices__group {

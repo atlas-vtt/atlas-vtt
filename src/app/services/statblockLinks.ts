@@ -1,3 +1,5 @@
+import { markdownLinkAt } from './markdownLink';
+
 /**
  * Fantasy Statblocks hands out bestiary values with their links encoded:
  * `<STATBLOCK-WIKI-LINK>path|alias<STATBLOCK-WIKI-LINK>` for `[[path|alias]]` and
@@ -12,7 +14,6 @@ const BRACKETED_PATH = /^<([\s\S]*)>$/;
 const TITLED_DESTINATION = /^\S+\s+(?:"[^"]*"|'[^']*'|\([^)]*\))$/;
 
 const WIKI_LINK = /!?\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g;
-const MARKDOWN_LINK = /!?\[([^\]]*)\]\(<?([^)>]*)>?\)/g;
 
 /** The links of a bestiary value as the note wrote them, as Fantasy Statblocks' own `stringifyLinks` does. */
 export function decodeStatblockLinks(text: string): string {
@@ -39,9 +40,27 @@ function linkText(target: string, alias: string | undefined): string {
   return alias?.trim() ? alias.trim() : linkedNoteName(target);
 }
 
+/** Text with each Markdown link, an embedded one too (`![words](address)`), as the words it shows. */
+function markdownLinksAsText(text: string): string {
+  let read = '';
+  let from = 0;
+  // Where a link's words meet its address: none ahead, no link ahead.
+  let joint = -1;
+  for (let at = text.indexOf('['); at >= 0; at = text.indexOf('[', at + 1)) {
+    if (joint < at) joint = text.indexOf('](', at);
+    if (joint < 0) break;
+    const link = markdownLinkAt(text, at);
+    if (!link) continue;
+    const start = at > from && text[at - 1] === '!' ? at - 1 : at;
+    read += text.slice(from, start) + linkText(link.address, link.words);
+    from = link.end;
+    at = link.end - 1;
+  }
+  return read + text.slice(from);
+}
+
 /** Statblock text with every link, encoded or written out, as the words it shows. */
 export function statblockLinksAsText(text: string): string {
-  return decodeStatblockLinks(text)
-    .replace(WIKI_LINK, (_match, target: string, alias: string | undefined) => linkText(target, alias))
-    .replace(MARKDOWN_LINK, (_match, label: string, target: string) => linkText(target, label));
+  return markdownLinksAsText(decodeStatblockLinks(text)
+    .replace(WIKI_LINK, (_match, target: string, alias: string | undefined) => linkText(target, alias)));
 }

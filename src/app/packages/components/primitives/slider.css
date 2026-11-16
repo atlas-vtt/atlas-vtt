@@ -28,19 +28,57 @@
   background-color: var(--interactive-accent);
 }
 
+/* The thumb is its hit area; the disc drawn in it is the look, set through these properties
+ * (`--atlas-slider-thumb-bg`, `--atlas-slider-thumb-border`). A fine pointer gets a 16 px thumb, a finger
+ * a 44 px one (WCAG 2.5.5) around the same 16 px disc. */
 .slider-thumb {
+  position: relative;
   display: block;
   width: 1rem; /* 16px */
   height: 1rem;
-  background-color: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
   border-radius: 9999px;
+}
+
+.slider-thumb::before {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: var(--atlas-slider-thumb-border, 1px solid var(--background-modifier-border));
+  border-radius: 9999px;
+  background-color: var(--atlas-slider-thumb-bg, var(--background-secondary));
+  content: '';
   transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .slider-thumb:focus-visible {
+  outline: none;
+}
+
+.slider-thumb:focus-visible::before {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
+}
+
+/* Radix keeps a thumb inside the root by half its width: the root reaches 14 px past the track at each end, so the
+ * 44 px thumb's disc stops where the 16 px thumb's did. */
+@media (pointer: coarse) {
+  .slider-root {
+    width: calc(100% + 28px);
+    margin-inline: -14px;
+  }
+
+  .slider-track {
+    margin-inline: 14px;
+  }
+
+  .slider-thumb {
+    width: 44px;
+    height: 44px;
+  }
+
+  .slider-thumb::before {
+    inset: 14px;
+  }
 }
 
 .slider-thumb[data-disabled] {

@@ -64,12 +64,16 @@ export function liquidDetail(qualityFps: number): LiquidDetail {
   return qualityFps >= 30 ? 2 : qualityFps >= 15 ? 1 : 0;
 }
 
+/** What moves on a view's map by the liquids' rules reads of the view: its frame clock, what is seen of it, and how often and how finely it may move. */
+export type ViewPlayback = Pick<LiquidLayerDeps, 'ticker' | 'requestRender' | 'inView' | 'drawable'> & Required<Pick<LiquidLayerDeps, 'fps' | 'detail'>>;
+
 /**
- * The liquid surfaces of a view's scene, moving on its stage, as often as `quality` lets them,
- * while the view or the player window it shows live (`players`) sees them: players framed
- * elsewhere, or closer than the GM's zoom, see them move as the GM's view would there.
+ * How what moves on a view's map is played: as often as `quality` lets it, while the view or the
+ * player window it shows live (`players`) sees it: players framed elsewhere, or closer than the
+ * GM's zoom, see it move as the GM's view would there. The liquids and the effects of measured
+ * areas are both played by it.
  */
-export function createViewLiquids(app: Application, viewport: Viewport, store: LiquidLayerDeps['store'], quality?: LightingQualitySource, players: () => PlayersView | null = () => null): LiquidLayer {
+export function viewPlayback(app: Application, viewport: Viewport, store: Pick<LiquidLayerDeps['store'], 'getState'>, quality?: LightingQualitySource, players: () => PlayersView | null = () => null): ViewPlayback {
   const qualityFps = (): number => (quality?.current() ?? DEFAULT_LIGHTING_QUALITY).liquidFps;
   // Working the players' frame out reads the window and the TV's settings: once a tick, for every surface
   let shown: { at: number; view: PlayersView | null } | null = null;
@@ -77,13 +81,17 @@ export function createViewLiquids(app: Application, viewport: Viewport, store: L
     if (shown?.at !== app.ticker.lastTime) shown = { at: app.ticker.lastTime, view: players() };
     return shown.view;
   };
-  return new LiquidLayer({
-    store,
+  return {
     ticker: app.ticker,
     requestRender: () => requestRender(app),
     inView: (box) => liquidSeen(viewport.getVisibleBounds(), playersNow(), box),
     fps: () => seenLiquidFps(qualityFps(), store.getState().grid?.size ?? 0, viewport.scale.x, playersNow),
     detail: () => liquidDetail(qualityFps()),
     drawable: app.renderer.name === 'webgl',
-  });
+  };
+}
+
+/** The liquid surfaces of a view's scene, moving on its stage (`viewPlayback`). */
+export function createViewLiquids(app: Application, viewport: Viewport, store: LiquidLayerDeps['store'], quality?: LightingQualitySource, players: () => PlayersView | null = () => null): LiquidLayer {
+  return new LiquidLayer({ store, ...viewPlayback(app, viewport, store, quality, players) });
 }

@@ -44,6 +44,7 @@ export function DMStatblocksPane({ app, shown, scopeSwitch, loading, onClose }: 
                     variant="feed"
                     tokens={statblock.tokens.map(toTokenVitals)}
                     originContext={statblock.originContext}
+                    pressableCounters
                     tokenActions={{
                       definitions,
                       onUpdateToken: (id, updates) => updateToken(id, updates),

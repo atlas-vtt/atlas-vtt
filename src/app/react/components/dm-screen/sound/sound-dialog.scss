@@ -17,7 +17,7 @@ $tone-size: 22px;
 .atlas-sound-popover {
   @include atlas-elevated-surface;
   @include sound-muted-text;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-flex-col($spacing-m);
   position: absolute;
   align-items: stretch;
@@ -49,7 +49,7 @@ $tone-size: 22px;
   border: inherit;
   border-right: none;
   border-bottom: none;
-  border-radius: 2px 0 0;
+  border-radius: $radius-s 0 0;
   translate: -50% calc(-50% - #{$border-width-m} / 2);
   rotate: 45deg;
 
@@ -121,7 +121,6 @@ $tone-size: 22px;
 }
 
 .atlas-sound-look__crests {
-  @include atlas-scrollbar;
   @include atlas-flex-col($spacing-s);
   --atlas-sound-tone: var(--atlas-sound-tone-light);
   align-items: stretch;

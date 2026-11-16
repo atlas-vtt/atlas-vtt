@@ -25,6 +25,7 @@ export const SETTINGS_PANEL_IDS = [
   'dice-settings',
   'experimental-features',
   'graphics-settings',
+  'lighting-settings',
 ] as const;
 
 export type SettingsPanelId = (typeof SETTINGS_PANEL_IDS)[number];

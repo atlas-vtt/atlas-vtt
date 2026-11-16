@@ -34,7 +34,9 @@ export interface NodeFsModule {
     mkdir(path: string, options: { recursive: boolean }): Promise<unknown>;
     rename(from: string, to: string): Promise<void>;
     open(path: string, flags: string): Promise<NodeFileHandle>;
+    access(path: string, mode?: number): Promise<void>;
   };
+  constants: { W_OK: number };
   watch(path: string, options: { recursive: boolean }, listener: (event: string, name: string | Uint8Array | null) => void): NodeWatcher;
 }
 

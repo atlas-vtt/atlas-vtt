@@ -13,6 +13,7 @@ export const wall: Translation = {
   'wall.lockDoor': 'Запереть дверь',
   'wall.unlockDoor': 'Отпереть дверь',
   'wall.removeDoor': 'Убрать дверь',
+  'wall.addPoint': 'Добавить точку',
   'wall.removePoint': 'Убрать точку',
   'wall.blocks': 'Ограничивает',
   'wall.blocksBoth': 'Зрение и свет',

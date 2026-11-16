@@ -42,7 +42,7 @@ function Card(): React.JSX.Element {
 
 it('moves the image after the ring is turned on for a token that had none', () => {
   const view = render(<Card />);
-  const ringToggle = view.getByLabelText('Toggle token ring for Acolyte');
+  const ringToggle = view.getByLabelText('Token ring for Acolyte');
   act(() => ringToggle.click());
   // The detached unframed well now measures 0, as a browser reports it
   act(() => FakeResizeObserver.all.forEach((observer) => observer.notify()));

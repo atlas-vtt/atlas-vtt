@@ -267,6 +267,11 @@ describe('the DM screen’s Sound page', () => {
     await page.viewport(1644, 960);
     viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1644px; height: 960px; contain: strict; overflow: hidden';
     tab = await openSoundTab(DARK, viewport);
+    // The page before any folder is linked.
+    act(() => {
+      tab?.library.roots.unlink('music');
+      tab?.library.roots.unlink('ambience');
+    });
     await act(async () => { await sleep(100); });
     expect(document.querySelector('.atlas-sound-no-moods h2')?.textContent).toBe('No moods yet');
     expect(document.querySelectorAll('.atlas-sound-no-moods p')).toHaveLength(1);

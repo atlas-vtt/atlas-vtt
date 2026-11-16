@@ -80,6 +80,31 @@ export function readOpusComment(packet: Uint8Array, name: string): string | null
   return null;
 }
 
+/** More than any copy Atlas writes carries: a count past it is no comment header of a sound to keep. */
+export const MAX_COMMENTS = 64;
+
+/** Every comment, or null where the header does not hold what it says it holds. */
+export function readOpusComments(packet: Uint8Array): string[] | null {
+  if (packet.length < 16 || !startsWith(packet, OPUS_TAGS)) return null;
+  const view = new DataView(packet.buffer, packet.byteOffset, packet.byteLength);
+  let offset = 12 + view.getUint32(8, true);
+  if (offset + 4 > packet.length) return null;
+  const count = view.getUint32(offset, true);
+  if (count > MAX_COMMENTS) return null;
+  offset += 4;
+  const decoder = new TextDecoder();
+  const comments: string[] = [];
+  for (let i = 0; i < count; i++) {
+    if (offset + 4 > packet.length) return null;
+    const length = view.getUint32(offset, true);
+    offset += 4;
+    if (offset + length > packet.length) return null;
+    comments.push(decoder.decode(packet.subarray(offset, offset + length)));
+    offset += length;
+  }
+  return comments;
+}
+
 /** Samples per frame at 48 kHz for each of the 32 configurations of RFC 6716, section 3.1. */
 const FRAME_SAMPLES = [
   480, 960, 1920, 2880, 480, 960, 1920, 2880, 480, 960, 1920, 2880, 480, 960, 480, 960,

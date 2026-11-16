@@ -11,6 +11,8 @@ import { VaultLocation } from './vaultLocation';
 
 const localKey = (kind: SoundKind): string => `atlas-vtt:sound-root:${kind}`;
 
+const originalsKey = (kind: SoundKind): string => `atlas-vtt:sound-root-originals:${kind}`;
+
 const vaultFolderOf = (app: App): string | null => (app.vault.adapter instanceof FileSystemAdapter ? app.vault.adapter.getBasePath() : null);
 
 function rootFacts(app: App): SoundRootFacts {
@@ -24,6 +26,11 @@ function rootFacts(app: App): SoundRootFacts {
       return typeof path === 'string' && path !== '' ? path : null;
     },
     setLocal: (kind, path) => app.saveLocalStorage(localKey(kind), path),
+    localOriginals: (kind) => {
+      const choice: unknown = app.loadLocalStorage(originalsKey(kind));
+      return choice === 'trash' || choice === 'keep' ? choice : null;
+    },
+    setLocalOriginals: (kind, choice) => app.saveLocalStorage(originalsKey(kind), choice),
     vaultBase: () => vaultFolderOf(app),
     realPath: async (path) => {
       const files = nodeFilesOf(window);

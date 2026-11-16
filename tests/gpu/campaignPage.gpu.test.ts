@@ -192,7 +192,7 @@ describe('a campaign\'s page', () => {
       await settle(250);
       expect(box(short).top).toBeGreaterThanOrEqual(box(view).top);
       expect(box(short).bottom).toBeLessThanOrEqual(box(view).bottom);
-      const list = query('.world-map-picker__list');
+      const list = query('.atlas-world-map-picker__list');
       expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
       await shot(`world-map-picker-capped-${theme}`);
     });

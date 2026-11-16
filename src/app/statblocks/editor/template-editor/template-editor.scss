@@ -37,7 +37,7 @@
   .atlas-te-bar {
     @include atlas-flex-col($spacing-s);
     padding: $spacing-s;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-secondary);
     color: var(--text-muted);
     font-size: $font-ui-smaller;
@@ -74,7 +74,6 @@
     margin: 0;
     padding-inline-start: $spacing-l;
     overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   // What floats over the editor (the toolbar, the insert menu) is drawn here.

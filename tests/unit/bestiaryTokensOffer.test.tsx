@@ -30,7 +30,7 @@ it("keeps the button's label while it downloads, and shows how far it got in a b
   });
 
   const view = render(<BestiaryTokensOffer app={app} assets={assets} collection={assets.getDefaultCollectionId()} variant="empty" fallback={<p>hint</p>} />);
-  const button = await view.findByRole('button', { name: /Download 155 free tokens/ });
+  const button = await view.findByRole('button', { name: /Get 155 free tokens/ });
   await act(async () => button.click());
   await act(async () => view.getByRole('button', { name: /Download · \d+ MB/ }).click());
 

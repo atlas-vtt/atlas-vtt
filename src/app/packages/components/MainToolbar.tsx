@@ -37,6 +37,8 @@ interface MainToolbarProps {
 export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewId }, ref) => {
   const activeTool = useAtlasStore(state => state.activeTool)
   const setActiveTool = useAtlasStore(state => state.setActiveTool)
+  const measureMode = useAtlasStore(state => state.measureTool.mode)
+  const drawMode = useAtlasStore(state => state.drawTool.mode)
   const store = useViewStoreHook()
   const { view } = useAtlasUI()
   const isGMView = useAtlasStore(state => state.isGMView)
@@ -137,6 +139,8 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
 
   const ctx: ToolbarContext = {
     activeTool,
+    measureMode,
+    drawMode,
     selectTool: handleToolClick,
     hotkeyLabel,
     openMenu,
@@ -234,7 +238,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           background: 'var(--background-primary)',
           padding: 'var(--atlas-spacing-xl)',
           border: '1px solid var(--background-modifier-border)',
-          borderRadius: 'var(--atlas-radius-l)',
+          borderRadius: 'var(--atlas-radius-m)',
           zIndex: 1000
         }}>
           <p>{t('toolbar.diceFailed')}</p>

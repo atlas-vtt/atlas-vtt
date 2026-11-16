@@ -241,7 +241,10 @@ export class SoundDirector {
       copies.onChanged(() => this.onCopies()),
       deps.presented.onChange(() => this.fights.follow.presentedChanged()),
       deps.onLibraryChange(() => void this.refreshShelf()),
-      deps.onAudioFileChange(() => this.desk.requestWaiting()),
+      deps.onAudioFileChange(() => {
+        this.shelf.recheckOutside();
+        this.desk.requestWaiting();
+      }),
       this.output.watchVisibility(),
     ];
     this.publish({ lastMix: loadLastMix(deps.storage), output: this.choice.apply() });

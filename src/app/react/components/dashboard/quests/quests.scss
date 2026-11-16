@@ -60,7 +60,7 @@ $quest-status-width: 112px;
   width: 100%;
   height: var(--input-height);
   padding: 0 $spacing-s;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   box-shadow: none;
   font-size: $font-ui-smaller;
   font-weight: $font-weight-medium;
@@ -89,7 +89,7 @@ $quest-status-width: 112px;
   position: relative;
   min-width: 0;
   padding: $spacing-xs;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   transition: background-color $transition-fast $transition-ease;
 
   &:hover {

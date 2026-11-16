@@ -12,7 +12,7 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { HP, STR } from '../mocks/resourceFixtures';
 
 /**
- * The Edit Token dialog as the map shows it, laid out by the plugin's real stylesheet. The
+ * The Edit token dialog as the map shows it, laid out by the plugin's real stylesheet. The
  * variables below stand in for Obsidian's theme: its sizes, radii and the height of a button.
  */
 const THEME = `
@@ -59,7 +59,7 @@ function marginsInOverlay(): number[] {
   return [frame.top - area.top - padding, area.bottom - padding - frame.bottom].map(Math.round);
 }
 
-describe('the layout of the Edit Token dialog', () => {
+describe('the layout of the Edit token dialog', () => {
   const style = document.createElement('style');
   style.textContent = THEME + css;
 

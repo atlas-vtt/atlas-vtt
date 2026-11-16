@@ -3,6 +3,7 @@ import { AREA_OUTLINE_GLSL } from './areaTileShader';
 import { LIGHT_FALLOFF_GLSL } from './lightMapShader';
 import { WEDGE_GLSL } from './wedges';
 import { BAND_GLSL } from './wallBandShader';
+import { ONE_WAY_BAND_GLSL } from './oneWayBand';
 
 /** Texels over which a light rises from nothing on a shadow's edge to the lit half of its penumbra: fewer show the texel grid's steps. */
 const SHADOW_EDGE_TEXELS = 1.5;
@@ -34,18 +35,21 @@ vec2 texelCentre() {
  * of a flame's penumbra does, half the light on the shadow's edge, rising from nothing there over
  * a texel and a half so no edge shows the texel grid's steps (`WEDGE_GLSL`): soft, never past the
  * rule's edge, and dark only along it. The reach ends on the walls' centre lines, so the
- * texels of the walls' band (`BAND_GLSL`) are left out, and those beside it take only their share
- * (`wallShade`): no bilinear read carries the light across, and it ends along a wall smoothly.
+ * texels of the walls' band (`BAND_GLSL`, and of the one-way walls that end this light,
+ * `ONE_WAY_BAND_GLSL`) are left out, and those beside it take only their share: no bilinear read
+ * carries the light across, and it ends along a wall smoothly. A one-way wall it shines through
+ * from its open side has no band for it.
  */
 export const polygonLightFragment = `${GLSL_VERSION}
 out vec4 finalColor;
 ${LIGHT_FALLOFF_GLSL}
 ${TEXEL_CENTRE_GLSL}
 ${BAND_GLSL}
+${ONE_WAY_BAND_GLSL}
 ${WEDGE_GLSL}
 void main() {
   vec2 vWorld = texelCentre();
-  float shade = wallShade(vWorld);
+  float shade = min(wallShade(vWorld), oneWayShade(vWorld));
   if (shade <= 0.0) discard;
   float d = distance(vWorld, uLight);
   vec2 light = lightAt(d);
@@ -59,7 +63,7 @@ void main() {
  * and the reaches of its outline the rule counts (`LightReach.parts`), each a fan, max-blended, so
  * a texel two parts cover is lit once, with the falloff from the area's outline (`uCorners`): red
  * the light before its colour, green that at the bright level. The walls' band is left out, as a
- * light's reach leaves it out (`polygonLightFragment`).
+ * light's reach leaves it out (`polygonLightFragment`), with every one-way wall's: the rule ends an area light at one from either side.
  */
 export const areaPictureFragment = `${GLSL_VERSION}
 out vec4 finalColor;
@@ -67,9 +71,10 @@ ${LIGHT_FALLOFF_GLSL}
 ${AREA_OUTLINE_GLSL}
 ${TEXEL_CENTRE_GLSL}
 ${BAND_GLSL}
+${ONE_WAY_BAND_GLSL}
 void main() {
   vec2 vWorld = texelCentre();
-  float shade = wallShade(vWorld);
+  float shade = min(wallShade(vWorld), oneWayShade(vWorld));
   if (shade <= 0.0) discard;
   vec2 nearest;
   vec2 light = lightAt(max(outlineDistance(vWorld, nearest), 0.0));

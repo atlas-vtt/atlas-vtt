@@ -26,7 +26,12 @@ export const MAP_HOTKEYS = [
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
   { id: 'erase', label: t('hotkey.erase'), group: t('hotkey.group.tools'), defaultKey: 'e', dmOnly: true },
   { id: 'text', label: t('hotkey.text'), group: t('hotkey.group.tools'), defaultKey: 't', dmOnly: true },
+  // Run only while the Draw tool or the fog tool is in use (`useToolbarHotkeys`): the size of whichever it is.
+  { id: 'drawSmaller', label: t('hotkey.drawSmaller'), group: t('hotkey.group.tools'), defaultKey: ',', dmOnly: true, repeats: true },
+  { id: 'drawLarger', label: t('hotkey.drawLarger'), group: t('hotkey.group.tools'), defaultKey: '.', dmOnly: true, repeats: true },
   { id: 'measure', label: t('hotkey.measure'), group: t('hotkey.group.tools'), defaultKey: 'm' },
+  // Runs only while the measure tool is in use (`useToolbarHotkeys`).
+  { id: 'measureKeep', label: t('hotkey.measureKeep'), group: t('hotkey.group.tools'), defaultKey: 'k', dmOnly: true },
   { id: 'pin', label: t('hotkey.pin'), group: t('hotkey.group.tools'), defaultKey: 'p', dmOnly: true },
   { id: 'wall', label: t('hotkey.wall'), group: t('hotkey.group.tools'), defaultKey: 'w', dmOnly: true },
   { id: 'audio', label: t('hotkey.audio'), group: t('hotkey.group.tools'), defaultKey: 's', dmOnly: true, enabled: AMBIENT_AUDIO_ENABLED },
@@ -87,8 +92,9 @@ export function hotkeyFromEvent(event: KeyboardEvent): string | null {
 export function matchesHotkey(event: KeyboardEvent, binding: string, allowRepeat = false): boolean {
   return !!binding && (allowRepeat || !event.repeat) && !event.isComposing && hotkeyFromEvent(event) === binding;
 }
+/** Whether `event` is the key of the action `id`. A key that is held counts only for an action that `repeats` (the size keys). */
 export function matchesMapHotkey(event: KeyboardEvent, id: MapHotkeyId, settings?: SettingsService): boolean {
-  return matchesHotkey(event, (settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS)[id]);
+  return matchesHotkey(event, (settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS)[id], event.repeat && 'repeats' in hotkeyAction(id));
 }
 const UNASSIGNED_HOTKEY = t('hotkey.unassigned');
 export function formatHotkey(binding: string): string {
@@ -98,10 +104,18 @@ export function formatHotkey(binding: string): string {
 export function namesHotkey(label: string): boolean {
   return label !== '' && label !== UNASSIGNED_HOTKEY;
 }
+/** The note pin's picker while it is open: not once it fades out, nor while what it creates works in its place. */
+const NOTE_PIN_PICKER = '.atlas-note-pin-dropdown:not(.atlas-panel-leaving):not(.atlas-away)';
+/** The Draw tool's symbol flyout while it is open (`StampSymbolTool`). */
+const STAMP_SYMBOLS = '.atlas-stamp-symbols .pin-place-flyout.is-open';
 export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean {
   if (handledByAnotherControl(event) || event.isComposing || !isActiveAtlasLeaf(viewId)) return false;
   if (isTextEntryTarget(event.target)) return false;
   // Modals and overlays open in the focused window
   if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
+  // The note pin's picker takes a name: a key pressed while it is open, on one of its buttons too, is no shortcut of the map
+  if (activeDocument.querySelector(NOTE_PIN_PICKER)) return false;
+  // Nor while the Stamp mode's symbols are open: a name typed there searches them
+  if (activeDocument.querySelector(STAMP_SYMBOLS)) return false;
   return true;
 }

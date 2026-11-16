@@ -9,6 +9,7 @@ import type { CreatureFilterPanel } from '../../hooks/useCreatureFilters';
 import { FilterSection } from './FilterSection';
 import { OptionFilter } from './OptionFilter';
 import { RangeFilter } from './RangeFilter';
+import { filterGlyph } from '../../search/filterGlyphs';
 import { t } from '../../../../../i18n';
 
 const STATBLOCK_CHOICES = [
@@ -92,6 +93,7 @@ export function CreatureFilterControls({ panel, statblockFilter = true }: Creatu
     <OptionFilter
       key={facet.definition.id}
       title={facet.definition.label}
+      icon={filterGlyph(facet.definition.id)}
       options={facet.options}
       onChange={(key, state) => setSelection((current) => withOptionState(current, facet.definition.id, key, state))}
     />

@@ -27,11 +27,16 @@ export interface SoundRootFacts {
   onSharedChange(listener: () => void): () => void;
   local(kind: SoundKind): string | null;
   setLocal(kind: SoundKind, path: string | null): void;
+  localOriginals(kind: SoundKind): OriginalsChoice | null;
+  setLocalOriginals(kind: SoundKind, choice: OriginalsChoice | null): void;
   /** The vault's folder on this device; null where it has none on a disk. */
   vaultBase(): string | null;
   /** A folder's path with its symbolic links resolved, as far as that can be told. */
   realPath(path: string): Promise<string>;
 }
+
+/** What the GM chose to do with the originals of the sounds Atlas converts: send them to the trash, or leave them. */
+export type OriginalsChoice = 'trash' | 'keep';
 
 export type LinkOutcome = 'linked' | 'overlap' | 'reserved';
 
@@ -58,6 +63,21 @@ export class SoundRoots {
     return shared.type === 'vault' ? { kind, status: 'vault', path: shared.path } : { kind, status: 'not-linked-here' };
   }
 
+  /** The GM's choice about originals: a vault root shares it with every device, a folder on disk keeps it on this one. Null before the GM chose. */
+  originalsOf(kind: SoundKind): OriginalsChoice | null {
+    if (this.facts.local(kind)) return this.facts.localOriginals(kind);
+    const shared = this.facts.shared()[kind];
+    return shared?.type === 'vault' ? shared.originals ?? null : null;
+  }
+
+  setOriginals(kind: SoundKind, choice: OriginalsChoice): void {
+    const state = this.stateOf(kind);
+    if (state.status === 'external') {
+      this.facts.setLocalOriginals(kind, choice);
+      this.changed();
+    } else if (state.status === 'vault') this.write(kind, { type: 'vault', path: state.path, originals: choice });
+  }
+
   /** Links a folder the system's dialog gave. Inside the vault it is stored as a vault path, whichever way it was reached. */
   async linkChosen(kind: SoundKind, absolute: string): Promise<LinkOutcome> {
     const base = this.facts.vaultBase();
@@ -71,6 +91,7 @@ export class SoundRoots {
     const other = this.stateOf(OTHER[kind]);
     if (other.status === 'vault' && (isWithin(other.path, path) || isWithin(path, other.path))) return 'overlap';
     this.facts.setLocal(kind, null);
+    this.facts.setLocalOriginals(kind, null);
     this.write(kind, { type: 'vault', path });
     return 'linked';
   }
@@ -79,6 +100,7 @@ export class SoundRoots {
     const other = this.stateOf(OTHER[kind]);
     if (other.status === 'external' && (relativeBelow(other.path, path) !== null || relativeBelow(path, other.path) !== null)) return 'overlap';
     this.facts.setLocal(kind, path);
+    this.facts.setLocalOriginals(kind, null);
     this.write(kind, { type: 'external' });
     return 'linked';
   }
@@ -88,13 +110,14 @@ export class SoundRoots {
     for (const kind of ['music', 'ambience'] as const) {
       const shared = this.facts.shared()[kind];
       const moved = shared?.type === 'vault' ? movedRelative(shared.path, from, to) : null;
-      if (moved !== null) this.write(kind, { type: 'vault', path: moved });
+      if (moved !== null && shared?.type === 'vault') this.write(kind, { ...shared, path: moved });
     }
   }
 
   /** Forgets the link on this device and for the devices that share its settings. A device with a folder of its own keeps that. */
   unlink(kind: SoundKind): void {
     this.facts.setLocal(kind, null);
+    this.facts.setLocalOriginals(kind, null);
     this.write(kind, null);
   }
 

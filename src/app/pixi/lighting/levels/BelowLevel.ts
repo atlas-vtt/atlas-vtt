@@ -16,7 +16,7 @@ import type { TokenEntity } from '../../../types';
 import type { Point } from '../../../types/visionTypes';
 import { exploredShapes } from '../../../vision/exploredShapes';
 import { SceneModelBuilder, SceneSpots, type SceneModel } from '../../../vision/sceneModel';
-import type { AmbientZone, Sight } from '../../../vision/sight';
+import { SEES_ALL, type AmbientZone, type Sight } from '../../../vision/sight';
 import type { SightRules } from '../../../vision/sightRules';
 import { GM_SIGHT_POLICY } from '../../../vision/tokenSightPolicy';
 import { SightBelow, type BelowSight } from '../../../vision/throughSight';
@@ -31,13 +31,15 @@ import type { LightingState } from '../LightingRenderer';
 import { BelowFog } from './BelowFog';
 import { BelowStage } from './BelowStage';
 import { BelowTokens, type BelowTokenLook } from './BelowTokens';
-import { levelRoof, Roof } from './Roof';
+import { levelRoof, Roof, type RoofLighting } from './Roof';
 
 const DEFAULT_CELL_SIZE = 70;
 const NO_PLACES: readonly Point[] = [];
 const NO_ZONES: readonly AmbientZone[] = [];
 /** How translucent the GM sees the committed fog of a level below, as on the level itself. */
 const GM_FOG_ALPHA = 0.5;
+/** What the rules read of a level below a scene without lighting: all of it seen, in daylight. */
+const UNLIT_RULE: Omit<BelowSight, 'stack' | 'index'> = { sight: SEES_ALL, ambient: { ambient: 1 }, reaches: [] };
 
 export type { BelowLevelDeps, BelowLiquids, BelowLook, BelowMapImage, SnapshotDrawn } from './belowLevelTypes';
 
@@ -45,7 +47,9 @@ export type { BelowLevelDeps, BelowLiquids, BelowLook, BelowMapImage, SnapshotDr
  * One level below the view, seen through the view's openings (`LevelsBelow`): its own map image,
  * liquids, tokens, fog, lighting (a second `LightingEngine` at a lower quality, off-screen) and
  * explored memory, all of that level, in the same world pixels as the view. What its engine draws
- * as seen is `sightBelow`: the view's lines of sight and the level's own tokens' sight. It is drawn
+ * as seen is `sightBelow`: the view's lines of sight and the level's own tokens' sight. Below a
+ * scene without lighting (`lit` off) its engine and memory stay unused: its map, liquids, tokens,
+ * roof and fog are drawn as they are. It is drawn
  * into world-space snapshots over the stack's box (`draw`), only when something it shows changed:
  * the view's camera never enters it, so panning and zooming cost it nothing.
  */
@@ -57,7 +61,7 @@ export class BelowLevel {
   private readonly image: BelowMapImage;
   private readonly liquids: BelowLiquids | null;
   private grid: SnapshotGrid | null = null;
-  /** What the engine was last given, compared by identity: a change draws the snapshot anew. */
+  /** What the level was last drawn from (`follow`). */
   private inputs: readonly unknown[] = [];
   private readonly memory: ExploredMemory;
   private readonly tokens: BelowTokens;
@@ -112,6 +116,8 @@ export class BelowLevel {
     });
     this.roof = new Roof({ host: deps.roofs, requestRender: this.changed, onReady: deps.onReady, fadeMs: deps.fadeMs, camera: this.camera });
     this.stage = new BelowStage({ map: this.image.layer, liquids: this.liquids?.container, tokens: this.tokens.view, lighting: this.engine.layer, roof: this.roof.layer.view, fog: this.fog.view });
+    // Unlit, nothing of the engine is ever drawn.
+    if (!deps.lit) this.engine.setEnabled(false);
   }
 
   get id(): string {
@@ -129,9 +135,9 @@ export class BelowLevel {
     return rect && rect.width > 0 && rect.height > 0 ? { width: rect.width, height: rect.height } : null;
   }
 
-  /** Its picture can be drawn: the image is in, and its engine has built a world. */
+  /** Its picture can be drawn: the image is in, and its engine has built a world (unlit: the level was read once). */
   ready(): boolean {
-    return this.bounds() !== null && this.model !== null && this.engine.hasWorld();
+    return this.bounds() !== null && this.rule !== null && (!this.deps.lit || this.engine.hasWorld());
   }
 
   /** Shows the level's own map, as the scene places it, loading it where another was shown. */
@@ -151,15 +157,29 @@ export class BelowLevel {
   }
 
   /**
-   * Lights the level from the store, as a view of it would, and draws as seen what the view's
-   * players and GM (`viewed`) see of it through the openings and what its own tokens see. Its
-   * memory records what its tokens see (and `recordThrough` what the view sees of it).
+   * Follows the store. On a lit scene the level is lit as a view of it would be (`light`); on a
+   * scene without lighting it is drawn as it is. Its tokens, fog and roof follow either way.
    */
   update(state: LightingState, viewed: { sight: Sight; gmSight: Sight }, measurement: () => MeasurementSettings, rules?: () => SightRules): void {
     const bounds = this.bounds();
     if (!bounds) return;
     const id = this.deps.id;
     const seen = { ...state, viewedLevel: id };
+    const roofLight = this.deps.lit ? this.light(state, seen, bounds, viewed, measurement, rules) : this.leaveUnlit(state, bounds);
+    const objects = levelObjectsOn(state, id);
+    this.tokens.sync(mapTokens(objects), state.grid?.size ?? DEFAULT_CELL_SIZE, state.tokenSettings?.tokenRingSize ?? 1);
+    this.fog.sync(objects.fog, bounds, levelMapKey(state.mapPath, seen));
+    // The level's roof: faded where its party stands, seen as the players see this level from above.
+    this.roof.update({ ...levelRoof(state, id), background: this.image.imageSize, party: partyPlaces(mapTokens(objects)), selected: NO_PLACES, lit: roofLight });
+  }
+
+  /**
+   * Lights the level, and draws as seen what the view's players and GM (`viewed`) see of it through
+   * the openings and what its own tokens see. Its memory records what its tokens see (and
+   * `recordThrough` what the view sees of it). Returns how its roof is lit.
+   */
+  private light(state: LightingState, seen: LightingState, bounds: MapBounds, viewed: { sight: Sight; gmSight: Sight }, measurement: () => MeasurementSettings, rules?: () => SightRules): RoofLighting {
+    const id = this.deps.id;
     this.memory.sync(bounds, exploredMaskOf(state, id), id);
     const { model, rebuilt } = this.builder.update(seen, bounds, measurement, rules);
     this.model = model;
@@ -170,25 +190,28 @@ export class BelowLevel {
     const spots = this.spots.update(model, seen, measurement, rules);
     const gmSpots = own === model.sight ? spots : this.gmSpots.update(model, seen, measurement, rules, own);
     this.rule = { sight: player, ambient: model.ambient, reaches: model.reaches };
-    const inputs = [model, gm, player, spots, gmSpots, state.lighting, state.grid?.size, bounds.width, bounds.height];
-    if (inputs.length !== this.inputs.length || inputs.some((input, i) => input !== this.inputs[i])) {
-      this.inputs = inputs;
-      this.revision++;
-    }
+    this.follow([model, gm, player, spots, gmSpots, state.lighting, state.grid?.size, bounds.width, bounds.height]);
     this.engine.setEnabled(true);
     this.engine.update({
       bounds, walls: model.walls, lights: model.lights, albedo: null, zones: model.zones,
       sight: gm, spots: gmSpots, ...(gm !== player && { playerSight: player, playerSpots: spots }),
       sightRadius: (state.grid?.size ?? DEFAULT_CELL_SIZE) * 0.5, cellSize: state.grid?.size ?? DEFAULT_CELL_SIZE, ...sceneLook(state.lighting),
     });
-    const objects = levelObjectsOn(state, id);
-    this.tokens.sync(mapTokens(objects), state.grid?.size ?? DEFAULT_CELL_SIZE, state.tokenSettings?.tokenRingSize ?? 1);
-    this.fog.sync(objects.fog, bounds, levelMapKey(state.mapPath, seen));
-    // The level's roof: faded where its party stands, seen as the players see this level from above.
-    this.roof.update({
-      ...levelRoof(state, id), background: this.image.imageSize, party: partyPlaces(mapTokens(objects)), selected: NO_PLACES,
-      lit: { lighting: state.lighting, zones: model.ambient.zones ?? NO_ZONES, bounds, sight: player, tokens: mapTokens(everyLevelObjects(state)) },
-    });
+    return { lighting: state.lighting, zones: model.ambient.zones ?? NO_ZONES, bounds, sight: player, tokens: mapTokens(everyLevelObjects(state)) };
+  }
+
+  /** A scene without lighting: nothing is lit, hidden or remembered; the roof is drawn as its image is (null). */
+  private leaveUnlit(state: LightingState, bounds: MapBounds): null {
+    this.rule = UNLIT_RULE;
+    this.follow([state.grid?.size, bounds.width, bounds.height]);
+    return null;
+  }
+
+  /** What the snapshot is drawn from, compared by identity: a change draws it anew. */
+  private follow(inputs: readonly unknown[]): void {
+    if (inputs.length === this.inputs.length && inputs.every((input, i) => input === this.inputs[i])) return;
+    this.inputs = inputs;
+    this.revision++;
   }
 
   /** Whether the level's drawn roof covers `point` in the players' picture: a token of it there is not seen. */
@@ -270,7 +293,8 @@ export class BelowLevel {
   destroy(flush: boolean): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    if (flush) this.deps.guard(() => this.memory.beforeMapUnload());
+    // An unlit level never took its memory up: there is nothing of it to save.
+    if (flush && this.deps.lit) this.deps.guard(() => this.memory.beforeMapUnload());
     this.stage.release();
     this.roof.destroy();
     this.engine.destroy();

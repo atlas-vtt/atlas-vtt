@@ -4,6 +4,6 @@ export const search = {
   'search.label': 'Search',
   'search.current': 'Search: {query}',
   'search.assets': 'Search assets',
-  'search.placeholderFilters': 'Search… try cr:1-3 or type:beast',
+  'search.placeholderFilters': 'Search or cr:1-3',
   'search.placeholder': 'Search…',
 } as const satisfies Record<string, Message>;

@@ -3,7 +3,7 @@ import type { Translation } from '../../types';
 export const dashboard: Translation = {
   'dashboard.linkNote': 'Привяжите заметку к карте',
   'dashboard.linkOther': 'Привязать другую заметку',
-  'dashboard.loading': 'Загрузка статблоков...',
+  'dashboard.loading': 'Загрузка статблоков…',
   'dashboard.openNote': 'Открыть заметку в новой вкладке',
   'dashboard.pickNote': 'Выберите заметку, которая будет рядом с картой',
   'dashboard.justNow': 'Только что',

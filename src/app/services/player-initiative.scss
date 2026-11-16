@@ -3,7 +3,7 @@
 
 .atlas-player-initiative {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   position: absolute;
   top: 50%;
   right: $spacing-m;
@@ -36,7 +36,7 @@
     gap: $spacing-s;
     min-height: 0;
     overflow-y: auto;
-    scrollbar-width: none;
+    @include atlas-scrollbar-none;
   }
 
   // A side of a fight by sides: its combatants under its name
@@ -111,7 +111,7 @@
     padding: $spacing-s;
     background: var(--background-modifier-hover);
     border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-l;
+    border-radius: $radius-m;
 
     // The first card sits $spacing-s below the panel's top border.
     &:first-child {
@@ -197,7 +197,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 9px;
+    border-radius: $radius-full;
     background: #000;
     border: 1.5px solid #555;
     color: #fff;

@@ -2,10 +2,11 @@ import type { App } from 'obsidian';
 import type { SoundKind } from '../sound/soundTypes';
 import { realLibraryDeps } from './soundLibraryDeps';
 import { FolderTree, type IndexedFile } from './FolderTree';
+import { KnownCopies } from './knownCopies';
 import { OpenPlace } from './libraryPlace';
 import { SoundLengths } from './soundLengths';
 import type { SoundFileEntry, SoundLocation } from './soundLocation';
-import { externalAudioPath, isExternalAudioPath, joinRelative, nameOfRelative, parentOfRelative, readExternalAudioPath, relativeBelow } from './soundPaths';
+import { externalAudioPath, isExternalAudioPath, joinRelative, parentOfRelative, readExternalAudioPath, relativeBelow } from './soundPaths';
 import { isLinked, type LinkedSoundRoot, type SoundRootState, type SoundRoots } from './SoundRoots';
 
 /** A file of the library, wherever it lies. */
@@ -79,6 +80,8 @@ export class SoundLibrary {
   }
 
   readonly place = new OpenPlace();
+  /** The Atlas copies read in the roots: a source beside its own copy is listed as the copy alone. */
+  readonly copies = new KnownCopies((kind, path) => this.opened(kind)?.tree.fileAt(path) ?? null, () => this.changed());
   private readonly open = new Map<SoundKind, OpenRoot>();
   private readonly viewListeners = new Set<() => void>();
   private revision = 0;
@@ -121,13 +124,18 @@ export class SoundLibrary {
     return this.opened(kind)?.tree.countBelow(folder) ?? null;
   }
 
-  /** Files of both roots whose path holds every word, music first. */
+  /** Files of both roots whose path holds every word, music first; a source beside its own copy is found as the copy. */
   search(query: string): LibraryFile[] {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     if (words.length === 0) return [];
     return KINDS.flatMap((kind) => this.filesOf(kind)
-      .filter((file) => words.every((word) => file.words.includes(word)))
+      .filter((file) => words.every((word) => file.words.includes(word)) && !this.isCopied(kind, file.entry.path))
       .map(({ entry }) => ({ ...entry, kind })));
+  }
+
+  /** Whether a file of a root is a source with its own Atlas copy beside it, which the library does not list. */
+  isCopied(kind: SoundKind, path: string): boolean {
+    return this.copies.copyOf(kind, path) !== null;
   }
 
   /** The view shows: read everything, in the background. A rescan just made is not made again. */
@@ -188,11 +196,15 @@ export class SoundLibrary {
     return place.opened.location.read(this.filed(place.opened, place.path, audioSize)?.path ?? place.path, onStep);
   }
 
-  /** What a record's file is called on this device, as `audioPathOf` writes it: what the record says where nothing else is known. */
-  pathNow(audioPath: string, audioSize?: number): string {
+  /**
+   * What a record's file is called on this device, as `audioPathOf` writes it: what the record says where nothing else is known.
+   * A source beside its own copy is called as the copy, whose row it belongs to, unless `asCopy` is false (converting, storing).
+   */
+  pathNow(audioPath: string, audioSize?: number, asCopy = true): string {
     const place = this.placeOf(audioPath);
     const entry = place && this.filed(place.opened, place.path, audioSize);
-    return (entry && this.audioPathOf(place.kind, entry.path)) ?? audioPath;
+    const shown = entry && ((asCopy && this.copies.copyOf(place.kind, entry.path)) || entry.path);
+    return (place && shown && this.audioPathOf(place.kind, shown)) ?? audioPath;
   }
 
   /** Reads what `paths` changed, at once: an operation of the library's own does not wait for the watch. */
@@ -218,6 +230,7 @@ export class SoundLibrary {
 
   destroy(): void {
     this.dropRoots();
+    this.copies.dispose();
     this.deps.dispose?.();
     this.lengths.stop();
     for (const kind of KINDS) this.close(kind);
@@ -243,12 +256,12 @@ export class SoundLibrary {
   }
 
   /**
-   * The file a record stands for on this device: where the record says, else the file of its name and size in that
-   * root. Devices keep one file in different folders, so this is worked out when read and held in memory only:
-   * written back, each device's walk would take the sound from the other.
+   * The file a record stands for on this device (`FolderTree.recordFile`). Devices keep one file in different folders,
+   * and convert at their own time, so this is worked out when read and held in memory only: written back, each
+   * device's walk would take the sound from the other.
    */
   private filed(opened: OpenRoot, path: string, audioSize: number | undefined): SoundFileEntry | null {
-    return opened.tree.fileAt(path) ?? (audioSize === undefined ? null : opened.tree.fileNamed(nameOfRelative(path), audioSize));
+    return opened.tree.recordFile(path, audioSize);
   }
 
   /** The record's place and open root, where this device can reach them: an external path only in a root on disk. */

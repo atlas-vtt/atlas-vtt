@@ -2,6 +2,7 @@ import type { Message } from '../../types';
 
 export const sceneLight = {
   'sceneLight.day': 'Day',
+  'sceneLight.memoryNeeded': 'Needs a lit scene that remembers what was explored',
   'sceneLight.dusk': 'Dusk',
   'sceneLight.night': 'Night',
   'sceneLight.dark': 'Pitch black',
@@ -12,7 +13,7 @@ export const sceneLight = {
   'sceneLight.forgetExplored': 'Forget explored areas',
   'sceneLight.openSettings': 'Lighting settings…',
   'sceneLight.settings': 'Lighting settings',
-  'sceneLight.closeSettings': 'Close lighting settings',
+  'sceneLight.settingsHint': 'Sight, explored areas and darkvision',
   'sceneLight.tokenVision': 'Token vision',
   'sceneLight.tokenVisionOn': 'Players see only what their tokens see',
   'sceneLight.tokenVisionOff': 'Players see everything the light shows',
@@ -36,10 +37,10 @@ export const sceneLight = {
   'sceneLight.mode.memory': 'Explored memory',
   'sceneLight.memory.reveal': 'Reveal',
   'sceneLight.memory.forget': 'Forget',
+  'sceneLight.memory.revealTip': 'Mark an area as explored for the players',
+  'sceneLight.memory.forgetTip': 'Make the players forget an area',
   'sceneLight.memory.brush': 'Brush',
   'sceneLight.memory.lasso': 'Lasso',
   'sceneLight.memory.rectangle': 'Rectangle',
-  'sceneLight.memory.strokeMode': 'What a stroke does',
-  'sceneLight.memory.strokeShape': 'Shape of a stroke',
   'sceneLight.memory.brushSize': 'Brush size',
 } as const satisfies Record<string, Message>;

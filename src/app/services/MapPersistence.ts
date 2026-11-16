@@ -13,6 +13,9 @@ import { levelLinksFromFile } from '../levels/levelLinks';
 import { levelSurfacesFromFile } from '../levels/levelSurfaces';
 import { mapFeaturesFromFile } from '../mapFeatures/mapFeatures';
 import { liquidsFromFile } from '../liquids/liquids';
+import { measuresFromFile } from '../measure/keptMeasures';
+import type { KeptMeasure } from '../measure/measureTypes';
+import { roomsIntoWalls, wallsOfSavedRooms } from '../lighting/legacyRooms';
 import type { MapFeature } from '../types/mapFeatureTypes';
 import type { LiquidSurface } from '../types/liquidTypes';
 import { normalizeImagePath } from '../utils/pathUtils';
@@ -74,6 +77,8 @@ export interface MapFile {
     mapFeatures?: Record<string, MapFeature>;
     /** Water, lava and acid that move on animated maps; absent until a map has some. */
     liquids?: Record<string, LiquidSurface>;
+    /** Measurements that stay on the map; absent until a map has some. */
+    measures?: Record<string, KeptMeasure>;
   };
   camera: CameraState;
   /** Frames the GM saved for the players' TV; absent in older files and until a scene has one. Read with `readPlayerFrames`. */
@@ -256,6 +261,8 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       // for a new scene or by an import leave out the kinds they hold nothing of
       const state = parsed.state;
       if (state?.objects) fillObjectKinds(state.objects);
+      // Rooms as 0.14.0 saved them are walls now
+      if (state?.objects) roomsIntoWalls(state.objects);
       // Files keep the token fields older versions of Atlas read; in memory tokens hold resources
       if (state) Object.assign(state, sceneFromFile(state));
       // A timer stops when its scene closes: a run in the file was cut short by a quit or crash
@@ -438,6 +445,9 @@ export function migrateMapFile(persisted: unknown): MapFile {
   const surfaces = levelSurfacesFromFile(persisted.objects?.levelSurfaces);
   const features = mapFeaturesFromFile(persisted.objects?.mapFeatures);
   const liquids = liquidsFromFile(persisted.objects?.liquids);
+  const measures = measuresFromFile(persisted.objects?.measures);
+  const savedObjects: unknown = persisted.objects;
+  const savedRooms: unknown = isRecord(savedObjects) ? savedObjects.rooms : undefined;
   const background = persisted.background ?? null;
   const levels = readSceneLevels(persisted.levels, background);
 
@@ -457,13 +467,15 @@ export function migrateMapFile(persisted: unknown): MapFile {
       texts: persisted.objects?.texts || {},
       drawings: persisted.objects?.drawings || {},
       // Kept as the file has them: what cannot be read is passed over at reading (`lightingObjects.ts`), and saved back.
-      walls: isRecord(persisted.objects?.walls) ? persisted.objects.walls : {},
+      // Rooms as 0.14.0 saved them are walls now; the file's own walls stand as they are.
+      walls: { ...wallsOfSavedRooms(savedRooms), ...(isRecord(persisted.objects?.walls) ? persisted.objects.walls : {}) },
       lights: isRecord(persisted.objects?.lights) ? persisted.objects.lights : {},
       ...(zones && { lightZones: zones }),
       ...(links && { levelLinks: links }),
       ...(surfaces && { levelSurfaces: surfaces }),
       ...(features && { mapFeatures: features }),
       ...(liquids && { liquids }),
+      ...(measures && { measures }),
     },
     grid: persisted.grid ? migrateGrid(persisted.grid) : initial.grid,
     camera: persisted.camera || initial.camera

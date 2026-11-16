@@ -5,7 +5,7 @@
 
 import { t } from '../../../i18n';
 import React, { useState } from 'react';
-import { unitLabelFor } from '../../../grid/measurementFormat';
+import { collectionUnitName, unitLabelFor } from '../../../grid/measurementFormat';
 import { hasVisionDefaults } from '../../../gameSystems/visionDefaults';
 import {
   VISION_FIELDS,
@@ -35,7 +35,7 @@ export function VisionTab({ gridDefaults, vision, onChange, senses, onSensesChan
   const [form, setForm] = useState<VisionDefaultsForm>(() => visionDefaultsForm(vision, senses));
   // The default this form shows; it differs from `vision` only when the draft changed it from outside, e.g. loaded after mount.
   const [shown, setShown] = useState(vision);
-  const unit = unitLabelFor(gridDefaults.unitType);
+  const unit = unitLabelFor(gridDefaults.unitType, collectionUnitName(gridDefaults));
 
   if (vision !== shown) {
     setShown(vision);

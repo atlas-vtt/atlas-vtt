@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CloseButton } from './CloseButton';
 import { Button } from './button';
 import { dialogOverlayMotion, useDialogWindowVariants } from './dialogMotion';
+import { useFocusTrap } from './useFocusTrap';
 import { t } from '../../../i18n';
 
 interface InputModalProps {
@@ -13,7 +14,7 @@ interface InputModalProps {
   defaultValue?: string | undefined;
   onConfirm: (value: string) => void;
   validation?: ((value: string) => string | null) | undefined;
-  /** Names the field for screen readers; the placeholder too when none is given. */
+  /** Names the field for screen readers (else the dialog's title does); the placeholder too when none is given. */
   label?: string | undefined;
   /** The confirm button's words, where "Confirm" says less than the action. */
   confirmLabel?: string | undefined;
@@ -33,7 +34,11 @@ const InputModal: React.FC<InputModalProps> = ({
   const [value, setValue] = useState(defaultValue);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const windowRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(windowRef, isOpen);
   const windowVariants = useDialogWindowVariants();
+  const titleId = useId();
+  const errorId = useId();
 
   useEffect(() => {
     if (isOpen) {
@@ -73,7 +78,7 @@ const InputModal: React.FC<InputModalProps> = ({
     const trimmedValue = value.trim();
     
     if (!trimmedValue) {
-      setError('Value cannot be empty');
+      setError(t('common.valueEmpty'));
       return;
     }
 
@@ -101,9 +106,17 @@ const InputModal: React.FC<InputModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div {...dialogOverlayMotion} className="atlas-modal-overlay" onClick={handleCancel}>
-          <motion.div className="atlas-modal atlas-input-modal" variants={windowVariants} onClick={(e) => e.stopPropagation()}>
+          <motion.div
+            ref={windowRef}
+            className="atlas-modal atlas-input-modal"
+            variants={windowVariants}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="atlas-modal-header">
-              <h3>{title}</h3>
+              <h3 id={titleId}>{title}</h3>
               <CloseButton onClick={handleCancel} />
             </div>
         
@@ -118,10 +131,12 @@ const InputModal: React.FC<InputModalProps> = ({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder || label}
-                aria-label={label}
+                {...(label ? { 'aria-label': label } : { 'aria-labelledby': titleId })}
+                aria-invalid={error !== null || undefined}
+                {...(error && { 'aria-describedby': errorId })}
                 className="atlas-input"
               />
-              {error && <div className="atlas-input-error">{error}</div>}
+              {error && <div id={errorId} className="atlas-input-error" role="alert">{error}</div>}
             </div>
 
             <div className="atlas-modal-footer">

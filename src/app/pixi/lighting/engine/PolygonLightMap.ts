@@ -1,4 +1,6 @@
 import { Container, Mesh, UniformGroup, type BufferImageSource, type Geometry, type Renderer, type RenderTexture, type Shader } from 'pixi.js';
+import type { WallSegment } from '../../../types/wallTypes';
+import { polygonBox } from '../../../vision/polygonBounds';
 import { sightWedges } from '../../../vision/sightWedges';
 import type { MapBounds, Polygon } from '../../../vision/visibility';
 import { destroyTree } from '../../utils/destroyTree';
@@ -11,6 +13,7 @@ import { MAX_WEDGES, wedgeTexture } from './wedges';
 import type { EngineLight } from './types';
 import { sameLights } from './SceneMaps';
 import type { WallBand } from './WallBand';
+import { OneWayList, oneWayEnding } from './oneWayBand';
 
 /** A light as the polygon picture draws it: its reach, the polygon the rule counts, star-shaped around it. */
 export interface DrawnReach {
@@ -45,6 +48,9 @@ interface ReachSlot {
   falloff: Falloff;
   /** The soft edges of its shadows (`sightWedges`, `wedgeTexture`). */
   wedges: BufferImageSource;
+  /** The one-way walls that end it (`OneWayList`), and the polygon and walls they were listed for. */
+  oneWay: OneWayList;
+  oneWayFor: { polygon: Polygon; walls: readonly WallSegment[] } | null;
   /** What its geometry and wedges were made for: made anew when any of it changes. */
   polygon: Polygon | null;
   shadows: Polygon | null;
@@ -65,8 +71,8 @@ interface AreaSlot {
  * Lights drawn from the polygons the rule counts into a world-space target over the map: a light
  * is its reach as a fan with the falloff of the traced picture; an area light its picture; lights
  * add up, and a darkness erases what was drawn before it within its area, so the list `draw` takes
- * is in order of priority. Nothing is drawn on the walls' band (`WallBand`), so no bilinear read
- * carries light past a wall.
+ * is in order of priority. Nothing is drawn on the walls' band (`WallBand`), nor on that of the
+ * one-way walls that end the light, so no bilinear read carries light past a wall.
  */
 class LightLayer {
   private readonly scene = new Container();
@@ -102,10 +108,11 @@ class LightLayer {
   }
 
   destroy(): void {
-    for (const { mesh, wedges } of this.reaches) {
+    for (const { mesh, wedges, oneWay } of this.reaches) {
       mesh.geometry.destroy(true);
       mesh.shader?.destroy();
       wedges.destroy();
+      oneWay.destroy();
     }
     for (const { mesh } of this.areas) mesh.shader?.destroy();
     for (const slot of this.darkSlots) {
@@ -141,6 +148,18 @@ class LightLayer {
       slot.penumbra = penumbra;
     }
     setFalloff(slot.falloff, light);
+    this.setOneWay(slot, light, polygon);
+  }
+
+  /** Lists the one-way walls that end `light` within its reach, `polygon`, when either changed. */
+  private setOneWay(slot: ReachSlot, light: EngineLight, polygon: Polygon): void {
+    const walls = this.band.oneWayWalls;
+    if (slot.oneWayFor?.polygon === polygon && slot.oneWayFor.walls === walls) return;
+    slot.oneWayFor = { polygon, walls };
+    const { minX, minY, maxX, maxY } = polygonBox(polygon);
+    const margin = this.band.reach;
+    slot.oneWay.set(oneWayEnding(walls, { x: light.x, y: light.y }, [minX - margin, minY - margin, maxX - minX + 2 * margin, maxY - minY + 2 * margin]));
+    slot.mesh.shader!.resources.uOneWayBand = this.band.oneWayFallback();
   }
 
   private setArea(slot: AreaSlot, item: DrawnArea | undefined): void {
@@ -160,11 +179,12 @@ class LightLayer {
   private createReach(): ReachSlot {
     const falloff = createFalloff(this.texel, [0, 0, this.world[0], this.world[1]]);
     const wedges = wedgeTexture([], { x: 0, y: 0 });
-    const shader = createShader(ENGINE_SHADERS.polygonLight, { falloffUniforms: falloff.uniforms, uWedges: wedges, ...this.band.resources() });
+    const oneWay = new OneWayList();
+    const shader = createShader(ENGINE_SHADERS.polygonLight, { falloffUniforms: falloff.uniforms, uWedges: wedges, ...this.band.oneWayResources(), ...oneWay.resources() });
     const mesh = new Mesh({ geometry: fansGeometry([], this.texel), shader });
     mesh.blendMode = 'add';
     this.scene.addChild(mesh);
-    return { mesh, falloff, wedges, polygon: null, shadows: null, penumbra: 0 };
+    return { mesh, falloff, wedges, oneWay, oneWayFor: null, polygon: null, shadows: null, penumbra: 0 };
   }
 
   private createArea(): AreaSlot {

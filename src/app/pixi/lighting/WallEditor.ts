@@ -155,6 +155,16 @@ export class WallEditor {
     return this.renderer.hitTestWalls(point.x, point.y) ? 'pointer' : 'crosshair';
   }
 
+  /** A wall, a door or a wall's end lies at the point, or a door is being placed: a press there is the editor's in any mode of the tool. */
+  takesPress(point: Point): boolean {
+    return this.shown && (this.doors.active || this.renderer.hitTestVertices(point.x, point.y) !== null || this.renderer.hitTestWalls(point.x, point.y) !== null);
+  }
+
+  /** A wall's end is held or a door is being placed: the pointer's moves are the editor's. */
+  get busy(): boolean {
+    return this.shown && (this.walls.isDragging() || this.doors.active);
+  }
+
   /** The editor takes a press at the point before a light's marker beneath it: on a wall's handle, and anywhere while a chain is drawn or a door placed. */
   handleAt(point: Point): boolean {
     return this.shown && (this.doors.active || this.drawingChain || this.renderer.hitTestVertices(point.x, point.y) !== null);

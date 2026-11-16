@@ -82,10 +82,10 @@ describe('advantage in the dice lab', () => {
 
   it('offers the tens die alone only for a d100 set', () => {
     const { stored, writes } = setup([PERCENT], 'percent');
-    fireEvent.click(within(lab()).getByRole('checkbox', { name: 'Extra tens die only' }));
+    fireEvent.click(within(lab()).getByRole('switch', { name: 'Extra tens die only' }));
     expect(writes.count).toBe(1);
     expect(stored().advantage).toEqual({ kind: 'keep', tensOnly: true });
-    expect(within(lab()).queryAllByRole('checkbox', { name: 'Extra tens die only' })).toHaveLength(1);
+    expect(within(lab()).queryAllByRole('switch', { name: 'Extra tens die only' })).toHaveLength(1);
   });
 
   it('lays the die a side adds on the tray apart from the set\'s, set up with its fan, one write each', () => {

@@ -15,6 +15,7 @@ import { flatZoneFragment, zoneFragment } from './zoneShader';
 import { areaLightFragment, areaPictureFragment, polygonLightFragment, polygonVertex } from './polygonLightShader';
 import { wallBandFragment } from './wallBandShader';
 import { roofFragment } from './roofShader';
+import { unlitOpeningsFragment } from './unlitOpeningsShader';
 import { reflectionBlurFragment, reflectionFragment, reflectionVertex } from './reflectionShader';
 
 export interface EngineShaderSource {
@@ -55,4 +56,5 @@ export const ENGINE_SHADERS = {
   compositePolygons: { name: 'atlas-lighting-composite-polygons', vertex: defaultFilterVert, fragment: compositeFragmentFor('polygons') },
   compositeUpscale: { name: 'atlas-lighting-composite-upscale', vertex: defaultFilterVert, fragment: compositeUpscaleFragment },
   roof: { name: 'atlas-roof', vertex: defaultFilterVert, fragment: roofFragment },
+  unlitOpenings: { name: 'atlas-unlit-openings', vertex: sightVertex, fragment: unlitOpeningsFragment },
 } as const satisfies Record<string, EngineShaderSource>;

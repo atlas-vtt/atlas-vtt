@@ -26,6 +26,8 @@ export interface StatblockSheetPorts {
   panelWidth?(): number | undefined;
   /** How players are handed the whole texts a statblock names; without it they get each text's opening alone. */
   readonly stored?: AssetStoring | undefined;
+  /** The text a link in an ability's name of the note at `path` names (`readLink`); unset, links are not followed. */
+  readLink?(path: string, link: string): Promise<string | null>;
   /** The note at `path` was read or its statblock drawn anew: the books of its characters are looked at again. */
   changed(path: string): void;
 }
@@ -38,9 +40,11 @@ interface Held extends WrittenValue {
   settledAt: number | null;
 }
 
+/** One character's drawing of a note: the note and inputs it was asked for, and the statblock once it is drawn. */
 interface Drawing {
   readonly source: ResolvedStatblock;
   readonly inputs: string;
+  drawn: DrawnStatblock | undefined;
 }
 
 interface Entry {
@@ -54,9 +58,8 @@ interface Entry {
   readonly written: Map<string, Held>;
   /** The note as last read with what was written since: what is drawn and checked. */
   source: ResolvedStatblock | null | undefined;
-  asked: Drawing | null;
-  /** The drawing of what was last asked for, once it is made. */
-  drawn: DrawnStatblock | undefined;
+  /** The drawing last asked for by each character whose statblock the note is, by the character's key. */
+  readonly drawings: Map<string, Drawing>;
 }
 
 /** What a player without a statblock is sent. */
@@ -78,7 +81,10 @@ function withWritten(resolved: ResolvedStatblock, written: ReadonlyMap<string, H
 /**
  * The statblocks of the characters' notes, as their players are sent them: each note read through
  * Atlas's resolver once and again only when it may read otherwise (`forget`), each drawn once for
- * the resources it is drawn with, so the books' poll costs a lookup. Edits are checked against
+ * every character whose statblock it is, with the resources that character's token holds, so the
+ * books' poll costs a lookup. Characters that share a note (two tokens linking one statblock) each
+ * keep their own drawing: with one drawing per note each would throw the other's away, and every
+ * finished drawing has the books ask for both again, without end. Edits are checked against
  * what the note holds with the values this GM side is writing or wrote and has not seen read back
  * yet, so a player's second quick edit names what the first one wrote; a value is drawn once its
  * write was taken, so the statblock that answers an edit shows it before the note reads it back.
@@ -90,24 +96,31 @@ export class StatblockSheets {
 
   constructor(private readonly ports: StatblockSheetPorts) {}
 
-  /** The drawn statblock of a note for these resources; undefined while it is read or drawn, so nothing older is sent for it. */
-  drawn(path: string, definitions: readonly ResourceDefinition[], resources: Readonly<Record<string, ResourceValue>> | undefined): DrawnStatblock | undefined {
+  /** The drawn statblock of a note for one character (by key) and these resources; undefined while it is read or drawn, so nothing older is sent for it. */
+  drawn(path: string, character: string, definitions: readonly ResourceDefinition[], resources: Readonly<Record<string, ResourceValue>> | undefined): DrawnStatblock | undefined {
     const entry = this.entry(path);
     const source = this.source(entry);
     if (source === undefined) return undefined;
     if (source === null) return NO_STATBLOCK;
     const panelWidth = this.ports.panelWidth?.();
     const inputs = JSON.stringify([definitions, resources ?? null, panelWidth ?? null]);
-    if (entry.asked?.source === source && entry.asked.inputs === inputs) return entry.drawn;
-    const asked: Drawing = { source, inputs };
-    entry.asked = asked;
-    entry.drawn = undefined;
-    void drawnStatblock({ resolved: source, definitions, resources, ...(panelWidth !== undefined && { panelWidth }) }, this.ports.stored).then((drawn) => {
-      if (entry.asked !== asked || this.entries.get(path) !== entry) return;
-      entry.drawn = drawn;
+    const last = entry.drawings.get(character);
+    if (last?.source === source && last.inputs === inputs) return last.drawn;
+    // Drawings of the note as it read before answer nobody any more, those of characters that left it included.
+    for (const [key, drawing] of entry.drawings) if (drawing.source !== source) entry.drawings.delete(key);
+    const asked: Drawing = { source, inputs, drawn: undefined };
+    entry.drawings.set(character, asked);
+    const readLink = this.ports.readLink?.bind(this.ports);
+    void drawnStatblock({
+      resolved: source, definitions, resources,
+      ...(panelWidth !== undefined && { panelWidth }),
+      ...(readLink !== undefined && { readLink: (link: string) => readLink(path, link) }),
+    }, this.ports.stored).then((drawn) => {
+      if (entry.drawings.get(character) !== asked || this.entries.get(path) !== entry) return;
+      asked.drawn = drawn;
       this.ports.changed(path);
     }, (error: unknown) => console.error('[Atlas] Drawing a player\'s statblock failed:', error));
-    return entry.drawn;
+    return undefined;
   }
 
   /** The note as it is drawn now (what was written since it was read included), undefined before it was read. */
@@ -178,7 +191,7 @@ export class StatblockSheets {
   private entry(path: string): Entry {
     let entry = this.entries.get(path);
     if (entry === undefined) {
-      entry = { resolved: undefined, reading: false, stale: false, doubted: 0, trusted: 0, written: new Map(), source: undefined, asked: null, drawn: undefined };
+      entry = { resolved: undefined, reading: false, stale: false, doubted: 0, trusted: 0, written: new Map(), source: undefined, drawings: new Map() };
       this.entries.set(path, entry);
     }
     this.readIfStale(path, entry);

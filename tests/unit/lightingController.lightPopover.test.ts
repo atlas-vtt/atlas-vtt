@@ -22,6 +22,7 @@ describe('opening a light', () => {
   it('opens from the lighting tool\'s context menu, which a right-click keeps', () => {
     const { store, torch, contextMenu } = setup();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     contextMenu(400, 300, 10, 10);
     const entries = contextMenuOpened.mock.calls[0]![0] as { label: string; onClick: () => void }[];
     entries.find((entry) => entry.label === 'Configure light…')!.onClick();
@@ -31,6 +32,7 @@ describe('opening a light', () => {
   it('does not place another light on a marker with the lighting tool, and opens it instead', () => {
     const { store, eventBus, torch, click, wallDown } = setup();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     eventBus.emit('wall-submode-changed', 'place-light');
     expect(click(400, 300)).toBe(true);
     expect(Object.keys(store.getState().objects.lights)).toHaveLength(2);
@@ -44,6 +46,7 @@ describe('opening a light', () => {
   it('leaves a press to the lighting tool where a wall handle is, and with Shift, which draws past lights', () => {
     const { store, light, click } = setup();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     store.getState().addWall({ type: 'solid', p1: { x: 402, y: 300 }, p2: { x: 402, y: 500 }, closed: true });
     expect(click(400, 300)).toBe(false);
     expect(light.cursorAt(400, 300)).toBeNull();
@@ -84,6 +87,7 @@ describe('closing the light popover', () => {
   it('cancels a light being dragged with Escape, putting it back', () => {
     const { controller, store, light, viewport, torch } = setup();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     light.pointerDown(400, 300, event(400, 300));
     viewport.emit('pointermove', event(470, 330) as never);
     expect(store.getState().objects.lights[torch]).toMatchObject({ x: 470, y: 330 });

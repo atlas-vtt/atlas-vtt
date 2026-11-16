@@ -8,6 +8,7 @@ import { createShader, createTarget, renderInto } from './gpu';
 import { createFalloff, fansGeometry, middleOf, setFalloff, type Fan } from './polygonFans';
 import type { EngineLight } from './types';
 import type { WallBand } from './WallBand';
+import { OneWayList } from './oneWayBand';
 
 /** An area light's picture: its light over the texels around it, before its colour (`areaPictureFragment`). */
 export interface AreaPicture {
@@ -33,6 +34,8 @@ interface Entry {
 export class AreaLightPictures {
   private readonly entries = new Map<string, Entry>();
   private readonly world: readonly [number, number];
+  /** What every picture lists of the one-way walls: all of them, since the rule ends an area light at one from either side (`areaParts`). */
+  private readonly oneWay = new OneWayList();
 
   constructor(private readonly renderer: Renderer, bounds: MapBounds, private readonly texel: number, private readonly band: WallBand) {
     this.world = [Math.ceil(bounds.width / texel) * texel, Math.ceil(bounds.height / texel) * texel];
@@ -65,6 +68,7 @@ export class AreaLightPictures {
   destroy(): void {
     for (const { picture } of this.entries.values()) picture.texture.destroy(true);
     this.entries.clear();
+    this.oneWay.destroy();
   }
 
   private draw(light: EngineLight, parts: readonly Fan[]): AreaPicture | null {
@@ -85,7 +89,8 @@ export class AreaLightPictures {
       uCount: { value: count, type: 'i32' },
     });
     const geometry: Geometry = fansGeometry(fans, this.texel);
-    const shader: Shader = createShader(ENGINE_SHADERS.areaPicture, { falloffUniforms: falloff.uniforms, outlineUniforms: outline, ...this.band.resources() });
+    this.oneWay.set(this.band.everyOneWay());
+    const shader: Shader = createShader(ENGINE_SHADERS.areaPicture, { falloffUniforms: falloff.uniforms, outlineUniforms: outline, ...this.band.oneWayResources(), ...this.oneWay.resources() });
     const mesh = new Mesh({ geometry, shader });
     mesh.blendMode = 'max';
     const scene = new Container();

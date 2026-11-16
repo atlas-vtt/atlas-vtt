@@ -38,6 +38,25 @@ describe('the rules players measure by', () => {
     expect(rules?.measurement).toMatchObject({ mode: 'metric', unitType: 'meters', unitDistance: 1.5 });
   });
 
+  it('tell an older page only what it can read, and the rule itself beside it: Manhattan diagonals as 5/10/5, a unit the GM named as a bare number', () => {
+    const metric: MeasurementSettings = { ...DAGGERHEART, mode: 'metric', rangeBands: [], diagonalRule: 'manhattan', unitName: 'ly' };
+    const rules = sharedRules(GRID, metric, null);
+    const older = { mode: 'metric', unitType: 'custom', unitDistance: 5, ruleDistance: 5, diagonalRule: 'alternating', coneAngle: 60, rangeBands: [] };
+    expect(rules?.measurement).toEqual({ ...older, manhattan: true, unitName: 'ly' });
+    expect(parseGmMessage(JSON.parse(JSON.stringify({ t: 'rules', scene: 's1', ...rules })))).toEqual({ t: 'rules', scene: 's1', ...rules });
+  });
+
+  it('say how an area is shaped only where it is not what a page takes it for: a flat cone, and cells counted by another rule than half', () => {
+    const settled: MeasurementSettings = { ...DAGGERHEART, areaCellRule: 'half', coneEnd: 'round' };
+    expect(sharedRules(GRID, settled, null)?.measurement).toEqual(DAGGERHEART);
+    const rules = sharedRules(GRID, { ...DAGGERHEART, areaCellRule: 'any', coneEnd: 'flat' }, null);
+    expect(rules?.measurement).toEqual({ ...DAGGERHEART, cellRule: 'any', coneEnd: 'flat' });
+    expect(sharedRules(GRID, { ...DAGGERHEART, areaCellRule: 'centre' }, null)?.measurement).toEqual({ ...DAGGERHEART, cellRule: 'centre' });
+    expect(parseGmMessage(JSON.parse(JSON.stringify({ t: 'rules', scene: 's1', ...rules })))).toEqual({ t: 'rules', scene: 's1', ...rules });
+    // A name that is none goes out as none.
+    expect(sharedRules(GRID, { ...DAGGERHEART, unitName: '   ' }, null)?.measurement).not.toHaveProperty('unitName');
+  });
+
   it('say that everyone shows their cursor only while the GM lets them', () => {
     expect(sharedRules(GRID, DAGGERHEART, null)).not.toHaveProperty('cursors');
     const rules = sharedRules(GRID, DAGGERHEART, null, true);

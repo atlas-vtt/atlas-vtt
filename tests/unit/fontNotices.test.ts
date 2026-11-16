@@ -40,12 +40,14 @@ const MISSING_NOTICE = 'no preserved font licence notice';
 const FONT_HASHES: Record<string, string> = {
   'src/app/assets/fonts/fantaisie-artistique.ttf': '59339564e6efe55b0403fc14744d0f6a5a31478c87e28dcf67ce27a1494b7f95',
   'src/app/assets/fonts/oxanium.ttf': '2ce01d946e1e1ffc8d7eecfffbda8623bedd63eaf811a20488c4b69af45babb0',
+  'src/app/assets/fonts/courier-prime.ttf': '72f793376f8e2841656bf21d77a5de010f2929bd6956a22ee848ad0c7eb978af',
 };
 /** SHA-256 of the SIL Open Font License 1.1 from "This Font Software is licensed under" to its end. */
 const OFL_BODY_HASH = 'fb755fa3280d1d215a20df2e64fe6a0f75f8208439b11671978214aae60d2997';
 /** SHA-256 of licence files copied whole from the font's own repository. */
 const UPSTREAM_LICENCE_HASHES: Record<string, string> = {
   'src/app/assets/fonts/oxanium-OFL.txt': 'fe17c0f2581d71b4e1ea7e636e7f4877c29223e11bb1dd1a871e8c3f2a86336b',
+  'src/app/assets/fonts/courier-prime-OFL.txt': '9a755af092b494944c99f471be6fddd19b006a448fefdc4717e4ee0aa09a97b0',
 };
 
 function readText(file: string): string {

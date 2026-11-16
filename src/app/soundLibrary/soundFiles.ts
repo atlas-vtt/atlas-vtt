@@ -20,7 +20,8 @@ export const isSoundDataPath = (path: string): boolean =>
 export const isAtlasOwn = (path: string): boolean =>
   path === ATLAS_VTT_DIR || path === SOUNDS_DIR || isSoundDataPath(path) || (path.startsWith(`${ATLAS_VTT_DIR}/`) && !path.startsWith(`${SOUNDS_DIR}/`));
 
-const AUDIO_EXTENSIONS: ReadonlySet<string> = new Set(['mp3', 'wav', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'webm']);
+/** The audio a library lists, by extension, in the order a converted file's source is looked for. */
+export const AUDIO_EXTENSIONS: ReadonlySet<string> = new Set(['mp3', 'wav', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'webm']);
 
 /** What a file picker offers: the extensions, since the system knows no type for some of them. */
 export const AUDIO_ACCEPT = [...AUDIO_EXTENSIONS].map((extension) => `.${extension}`).join(',');

@@ -3,7 +3,7 @@ import type { LightZone, SceneLighting } from '../types/lightingTypes';
 import type { SenseDefinition } from '../types/senseTypes';
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
-import { PLAYER_SIGHT_POLICY, visionOn, type SightPolicy } from './tokenSightPolicy';
+import { PLAYER_SIGHT_POLICY, sightPolicyFor, visionOn, type SightPolicy } from './tokenSightPolicy';
 import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
 import { gameUnitsToWorld, type UnitScale } from '../lighting/lightingUnits';
 import { tokenVisionOn } from '../lighting/sceneLightingOptions';
@@ -123,7 +123,8 @@ export type LightReachKind = Pick<LightReach, 'darkness' | 'priority' | 'cone'>;
 
 /**
  * The tokens `policy` lets give sight (the players' picture unless another is named), with ranges
- * converted to world pixels; never a token without vision on, whatever the policy says. A blinded token keeps
+ * converted to world pixels; never a token without vision on, whatever the policy says, nor one the rules count as
+ * defeated (`sightPolicyFor`). A blinded token keeps
  * only its senses that work while blinded; a sense that lets the eyes see invisible things is
  * not a sense of its own. A token whose way of perceiving is not known yet (`TokenSight.pending`)
  * is a source that perceives nothing: it must not see, or record as explored, what its statblock
@@ -138,8 +139,9 @@ export function sightSources(
 ): SightSource[] {
   const unlimited = Math.hypot(bounds.width, bounds.height);
   const sources: SightSource[] = [];
+  const { givesSight } = sightPolicyFor(policy, rules);
   for (const token of Object.values(tokens)) {
-    if (!visionOn(token) || !policy.givesSight(token)) continue;
+    if (!visionOn(token) || !givesSight(token)) continue;
     const origin = { x: token.x, y: token.y };
     const how = rules.visionOf?.(token) ?? { senses: tokenSenses(token.vision, rules.definitions), ...(token.vision.range !== undefined && { sightRange: token.vision.range }) };
     if (how.pending) {

@@ -1,0 +1,11 @@
+// Obsidian draws a native checkbox's border in `--text-faint`, which reads at 2.3:1 on
+// the light theme's background and 3:1 on the dark one (WCAG 1.4.11 asks 3:1). Inside
+// Atlas' own dialogs and panels the border moves towards `--text-muted` (4.2:1 light,
+// 5.5:1 dark on Obsidian's defaults); hover still darkens it to `--text-muted` itself.
+// Only the checkbox's own variables change, never Obsidian's theme variables, and a
+// note's task list rendered inside Atlas (previews, embedded leaves) keeps Obsidian's look.
+:where(.atlas-vtt-root, .atlas-native-modal)
+  input[type='checkbox']:not(:where(.markdown-rendered, .markdown-source-view, .atlas-embedded-leaf-view) *) {
+  --checkbox-border-color: color-mix(in srgb, var(--text-muted) 60%, var(--text-faint));
+  --checkbox-border-color-hover: var(--text-muted);
+}

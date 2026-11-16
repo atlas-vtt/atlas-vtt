@@ -33,6 +33,8 @@
   top: 0;
   left: 0;
   z-index: 1;
+  // What changes inside a card (hover, selection, its art arriving) lays out that card alone.
+  contain: layout style;
 }
 
 // Folders are compact rows so they do not compete with artwork.
@@ -54,8 +56,7 @@
   color: var(--text-normal);
   cursor: pointer;
   outline: none;
-  transition: box-shadow $transition-fast $transition-ease,
-              transform $transition-press $transition-ease-out;
+  transition: transform $transition-press $transition-ease-out;
 
   &:hover {
     background: var(--background-modifier-hover);
@@ -119,4 +120,11 @@
   .atlas-folder-icon {
     color: var(--text-accent);
   }
+}
+
+// ── Selection announcer ─────────────────────────────────────────────────────
+// A live region that tells screen readers how many items are selected; never seen.
+
+.atlas-am-announcer {
+  @include atlas-visually-hidden;
 }

@@ -1,10 +1,11 @@
 import React, { useEffect, useId, useState } from 'react';
 import { DropdownSwatchGrid } from '../../packages/components/primitives/DropdownSwatchGrid';
+import { Select } from '../../packages/components/primitives/Select';
 import { Slider } from '../../packages/components/primitives/slider';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { editEmission, withEmissionValue } from '../../lighting/lightEmissionForm';
 import { formatRange, rangeSliderScale, type RangeField } from '../../lighting/lightRanges';
-import type { LightEmission } from '../../types/lightingTypes';
+import type { LightAnimation, LightEmission } from '../../types/lightingTypes';
 import { useColourPick, type ColourPick } from './useGestureTransactions';
 import { t } from '../../i18n';
 
@@ -36,6 +37,26 @@ export function ColorSwatches({ color, ...pick }: ColourPick & { color: string }
         </LabelTooltip>
       </span>
     </DropdownSwatchGrid>
+  );
+}
+
+const FLICKERS: { value: LightAnimation; label: string }[] = [
+  { value: 'none', label: t('light.flicker.steady') },
+  { value: 'torch', label: t('light.flicker.torch') },
+  { value: 'candle', label: t('light.flicker.candle') },
+  { value: 'pulse', label: t('light.flicker.pulse') },
+  { value: 'magic', label: t('light.flicker.shimmer') },
+  { value: 'smoulder', label: t('light.flicker.smoulder') },
+];
+
+/** How the light moves: steady, or one of the flickers. */
+export function FlickerField({ emission, onChange }: EmissionFieldProps): React.ReactElement {
+  const id = useId();
+  return (
+    <div className="atlas-light-popover__flicker">
+      <span id={id}>{t('light.flicker')}</span>
+      <Select value={emission.animation} options={FLICKERS} labelledBy={id} onChange={(animation) => onChange({ ...emission, animation })} />
+    </div>
   );
 }
 

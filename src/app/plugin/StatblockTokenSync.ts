@@ -2,8 +2,10 @@ import { App, TFile, type EventRef } from 'obsidian';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { TokenEntity } from '../types';
 import type { TokenUpdates } from '../types/viewState';
-import type { ResourceDefsProvider } from '../resources/resourceTypes';
-import { fillMissingResources, type StatblockFields } from '../resources/statblockResourceSync';
+import type { ResourceDefinition, ResourceDefsProvider } from '../resources/resourceTypes';
+import {
+  fillMissingResources, followStatblockResources, refieldedResources, type ResourceTokens, type StatblockFields,
+} from '../resources/statblockResourceSync';
 import { runUntracked } from '../stores/history';
 import type { TokenStatblockLinkService, LinkChangeEvent } from '../services/TokenStatblockLinkService';
 import { buildStatblockLinkUpdates } from '../pixi/token-renderer/statblockFrontmatter';
@@ -24,6 +26,8 @@ export class StatblockTokenSync {
   /** Link changes of the statblock link service, applied in the order they came. */
   private linkChanges: Promise<void> = Promise.resolve();
   private destroyed = false;
+  /** The resource definitions this map's tokens last followed, and the map they were read for. */
+  private followedRules: { mapPath: string | null; definitions: readonly ResourceDefinition[] } | null = null;
 
   constructor(
     private readonly obsApp: App,
@@ -89,19 +93,43 @@ export class StatblockTokenSync {
     this.linkChanges = this.linkChanges.then(() => this.applyStatblockLinkChange(event));
   };
 
+  /**
+   * Linked tokens follow the map's rules as they are now (a map loaded, a collection's settings
+   * saved): a resource that reads another statblock field than when they last followed them takes
+   * that field's maximum, and they start the resources they do not hold yet.
+   */
+  public followRules(): void {
+    const state = this.store.getState();
+    if (state.isPlayerView) return;
+    const definitions = this.resourceDefsProvider();
+    const seen = this.followedRules;
+    this.followedRules = { mapPath: state.mapPath, definitions };
+    // Another map's rules say nothing of what this map's tokens hold
+    const refielded = seen?.mapPath === state.mapPath ? refieldedResources(seen.definitions, definitions) : [];
+    runInBackground(
+      followStatblockResources(this.resourceTokens(), definitions, refielded, this.readStatblock),
+      'Following token resources',
+    );
+  }
+
   /** Linked tokens start the collection's resources they do not hold yet, e.g. one defined after they were placed. */
   public fillMissingResources(): void {
     if (this.store.getState().isPlayerView) return;
-    runInBackground(fillMissingResources(
-      {
-        tokens: () => this.store.getState().objects.tokens,
-        // Not an edit of the game master's: it must not become an undo step.
-        apply: (entries) => runUntracked(this.store, () => this.store.getState().updateTokens(entries)),
-      },
-      this.resourceDefsProvider(),
-      (path) => this.tokenStatblockLinkService.readStatblockRecord(path),
-    ), 'Starting missing token resources');
+    runInBackground(
+      fillMissingResources(this.resourceTokens(), this.resourceDefsProvider(), this.readStatblock),
+      'Starting missing token resources',
+    );
   }
+
+  private resourceTokens(): ResourceTokens {
+    return {
+      tokens: () => this.store.getState().objects.tokens,
+      // Not an edit of the game master's: it must not become an undo step.
+      apply: (entries) => runUntracked(this.store, () => this.store.getState().updateTokens(entries)),
+    };
+  }
+
+  private readonly readStatblock = (path: string): Promise<StatblockFields | null> => this.tokenStatblockLinkService.readStatblockRecord(path);
 
   /**
    * Applies a link change to the open map. A link reads its statblock through the resolver first,

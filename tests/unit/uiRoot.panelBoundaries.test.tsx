@@ -25,7 +25,6 @@ vi.mock('../../src/app/react/components/scene-switcher/SceneSwitcher', () => ({ 
 vi.mock('../../src/app/react/components/GridSettingsModalSimple', () => ({ GridSettingsModal: surface('grid-settings') }));
 vi.mock('../../src/app/react/components/GridAlignmentOverlay', () => ({ GridAlignmentOverlay: surface('grid-alignment') }));
 vi.mock('../../src/app/pixi/lighting/LightPopover', () => ({ LightPopoverHost: surface('light-popover') }));
-vi.mock('../../src/app/pixi/lighting/SceneLightingPanel', () => ({ SceneLightingPanelHost: surface('scene-lighting') }));
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentTab: vi.fn() }));
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ addTokenHighlight: vi.fn() }));
 vi.mock('../../src/app/pixi/tokenFocus', () => ({ focusToken: vi.fn() }));

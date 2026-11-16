@@ -11,6 +11,7 @@ import { statblockCount, type LayoutStatblocks } from '../../fs/fsLayoutStatbloc
 import { moveLabel, readyTitle } from './importReportText';
 import { partsOnlyFsShows } from './layoutImportActions';
 import { AdoptionSection, ImportSummary } from './LayoutImportParts';
+import { notesWithOtherValues } from './statblockMove';
 import { useLayoutAdoption } from './useLayoutAdoption';
 import { t } from '../../../i18n';
 import './layout-import-dialog.scss';
@@ -35,17 +36,20 @@ export interface LayoutImportDialogProps {
  * that moves the layout's statblocks to Atlas (§6.4), in one dialog: what
  * Atlas can show now, then "Move 214 statblocks to Atlas" with what moving
  * does and the statblocks folded away, progress, Cancel and what it did.
+ * Notes that hold other values than their statblocks stay as they are on
+ * Done; "Use the statblock's values" moves them as one more batch.
  */
 export function LayoutImportDialog({ app, doc, layout, imported, statblocks, onOpenTemplate, onClose }: LayoutImportDialogProps): React.JSX.Element {
   const windowVariants = useDialogWindowVariants();
   const titleId = useId();
   const windowRef = useRef<HTMLDivElement>(null);
-  const { phase, adopt, cancel } = useLayoutAdoption(app, statblocks, imported.id);
+  const { phase, adopt, takeStatblockValues, cancel } = useLayoutAdoption(app, statblocks, imported.id);
   const [fsOnlyParts] = useState(() => partsOnlyFsShows(app, imported));
   const total = statblockCount(statblocks);
   const name = layout.name.trim() || imported.name;
   const running = phase.kind === 'running';
   const offersMove = total > 0 && phase.kind === 'ready';
+  const offersStatblockValues = phase.kind === 'finished' && phase.result !== null && notesWithOtherValues(phase.result).length > 0;
   // Closing while notes are switched stops at the next note.
   const close = (): void => {
     cancel();
@@ -91,7 +95,12 @@ export function LayoutImportDialog({ app, doc, layout, imported, statblocks, onO
                   <Button type="button" size="sm" onClick={adopt}>{moveLabel(total)}</Button>
                 </>
               ) : (
-                <Button type="button" size="sm" onClick={close}>{t('statblockEditor.done')}</Button>
+                <>
+                  {offersStatblockValues && (
+                    <Button type="button" variant="outline" size="sm" onClick={takeStatblockValues}>{t('statblockEditor.fs.useStatblockValues')}</Button>
+                  )}
+                  <Button type="button" size="sm" onClick={close}>{t('statblockEditor.done')}</Button>
+                </>
               )}
             </>
           )}

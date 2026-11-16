@@ -4,9 +4,9 @@ import { QuestImages } from '../../../plugin/questImages';
 import type { FoundPin, GmLogEntry } from '../log/logEntries.ts';
 import type { TableLog } from '../log/TableLog.ts';
 import type { AssetStoring } from '../assets/assetUses.ts';
-import { foundHandout, readPinNote, type FoundHandout, type NoteReading } from './foundNotes.ts';
+import { foundHandout, pinNoteFile, readPinNote, type FoundHandout, type NoteReading } from './foundNotes.ts';
 
-type FoundEntry = Extract<GmLogEntry, { readonly kind: 'found' }>;
+export type FoundEntry = Extract<GmLogEntry, { readonly kind: 'found' }>;
 
 /** A found note as last handed on: where it was read, its link, and what its entry and assets hold. */
 interface Kept {
@@ -66,6 +66,26 @@ export class FoundTexts {
   keep(id: string, read: FoundRead, pin: FoundPin): void {
     this.kept.set(id, { path: read.reading.path, pin, handout: read.handout });
     this.listen();
+  }
+
+  /**
+   * Points an entry at the note its pin links now (`pin.link`). A readable note is read and its text
+   * replaces the entry's, which follows that note from then on (a heading the note lacks yet is found
+   * once the note has it); any other keeps the entry's text and follows no note.
+   */
+  relink(entry: FoundEntry, pin: FoundPin, readable: boolean): void {
+    const { id } = entry;
+    this.log.revise({ ...entry, pin });
+    const kept = this.kept.get(id);
+    this.kept.delete(id);
+    if (!readable) {
+      // A read of the old link still under way is outrun: only the last read of an entry counts (`refresh`).
+      this.reads.set(id, (this.reads.get(id) ?? 0) + 1);
+      return;
+    }
+    const file = pinNoteFile(this.app, pin.link, pin.map);
+    if (kept !== undefined && file !== null) this.kept.set(id, { ...kept, path: file.path, pin });
+    void this.refresh(id, pin.link, pin);
   }
 
   /** Hears of the vault's changes while any found note is kept. */

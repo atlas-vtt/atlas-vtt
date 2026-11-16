@@ -87,6 +87,7 @@ function setUp(pins: Record<string, NotePin>, lit: boolean): Table {
     stored: fakeStoring(), layers: () => harness.share.layers,
   });
   harness.foundPin = (mapPath, pinId) => found.entryOf(mapPath, pinId);
+  harness.pinsChanged = (mapPath, pins) => found.followPins(mapPath, pins);
   found.start();
   const scene = (): string => ofKind(harness.sent, 'scene').at(-1)?.scene?.id ?? '';
   const shown = (): readonly SharedPin[] => ofKind(harness.sent, 'pins').at(-1)?.pins ?? [];
@@ -184,6 +185,49 @@ describe('finding a readable pin', () => {
     expect(shown()[0]?.found).toBeNull();
     await open(BEN, alias);
     expect(log.entries().find((logged) => logged.kind === 'found')).toMatchObject({ who: BEN });
+  });
+});
+
+describe('a found pin the GM points at another note', () => {
+  /** The GM points the pin `id` at `notePath`, as the pin's editor writes it. */
+  async function relink(made: Table, id: string, notePath: string): Promise<void> {
+    const state = made.harness.state();
+    const pins = state.objects.pins;
+    await made.harness.set({ ...state, objects: { ...state.objects, pins: { ...pins, [id]: { ...pins[id]!, notePath } } } });
+    await made.harness.advance(MAP_LAYER_INTERVAL_MS);
+    await settled();
+  }
+  const foundEntries = (log: TableLog): ReturnType<TableLog['entries']> => log.entries().filter((entry) => entry.kind === 'found');
+
+  it('hands players the heading or note it links now, in the same entry, and follows that note from then on', async () => {
+    const made = await table({ keep: pin('keep', 300) });
+    const { log, shown, open, vault, sent } = made;
+    const alias = shown()[0]?.id ?? '';
+    await open(ANA, alias);
+    const id = foundEntries(log)[0]?.id;
+    await relink(made, 'keep', `${NOTE}#Tower`);
+    expect(foundEntries(log)).toEqual([expect.objectContaining({ id, title: 'Tower', body: expect.stringContaining('Wind howls') })]);
+    expect(foundEntries(log)[0]).toMatchObject({ pin: { link: `${NOTE}#Tower` } });
+    expect(sent.some(({ body }) => body.t === 'log-entry' && body.entry.id === id && body.entry.kind === 'found' && body.entry.title === 'Tower')).toBe(true);
+    vault.write('Places/Inn.md', 'A warm fire.');
+    await relink(made, 'keep', 'Places/Inn.md');
+    expect(foundEntries(log)).toEqual([expect.objectContaining({ id, title: 'Inn', body: expect.stringContaining('A warm fire.') })]);
+    vault.write('Places/Inn.md', 'A cold hearth.');
+    vault.write(NOTE, KEEP.replace('Wind howls', 'Rain falls'));
+    await settled();
+    expect(foundEntries(log)[0]).toMatchObject({ body: expect.stringContaining('A cold hearth.') });
+    await open(BEN, alias);
+    expect(foundEntries(log)).toHaveLength(1);
+  });
+
+  it('gives players nothing of a note they may not read, and stops following the old one', async () => {
+    const made = await table({ keep: pin('keep', 300) });
+    const { log, shown, open, vault } = made;
+    await open(ANA, shown()[0]?.id ?? '');
+    await relink(made, 'keep', 'Scenes/Crypt.atlasmap');
+    vault.write(NOTE, KEEP.replace('on a hill', 'on a cliff'));
+    await settled();
+    expect(foundEntries(log)).toEqual([expect.objectContaining({ title: 'Keep', body: expect.stringContaining('on a hill'), pin: expect.objectContaining({ link: 'Scenes/Crypt.atlasmap' }) })]);
   });
 });
 

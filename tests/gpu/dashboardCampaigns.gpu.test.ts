@@ -217,7 +217,7 @@ describe('the dashboard', () => {
       await settle(300);
       const modal = query('.atlas-collection-settings-modal');
       const tabs = [...modal.querySelectorAll('.atlas-collection-settings-tab')].map((tab) => tab.textContent);
-      expect(tabs).toEqual(['Game System', 'Dice', 'Grid & Measure', 'Vision', 'Conditions', 'Resources', 'Initiative']);
+      expect(tabs).toEqual(['Game system', 'Dice', 'Grid and measurement', 'Vision', 'Conditions', 'Resources', 'Initiative']);
       // The campaign's rules open fullscreen, as a collection's settings do: the window less the overlay's margin
       const window = box(modal);
       expect(window.left).toBeCloseTo(32, 0);

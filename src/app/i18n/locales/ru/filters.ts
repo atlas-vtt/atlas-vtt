@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const filters: Translation = {
   'filters.removeChip': 'Убрать {category}: {label}',
-  'filters.removeAll': 'Убрать все',
+  'filters.removeAll': 'Очистить',
   'filters.active': 'Активные фильтры',
   'filters.all': 'Все',
   'filters.withStatblock': 'Со статблоком',
@@ -36,4 +36,5 @@ export const filters: Translation = {
   'filters.keyword.text': 'Текст статблока: слово или фраза где угодно в нём, например text:огонь или text:тактика стаи',
   'filters.text': 'Текст',
   'filters.templateFields': 'Из шаблона статблока',
+  'filters.noValueMatch': 'Нет совпадений для «{value}»',
 };

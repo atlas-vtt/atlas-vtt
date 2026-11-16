@@ -4,7 +4,8 @@
 
 import React from 'react';
 import { t } from '../../../i18n';
-import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
+import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
+import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { isValidDefaultRoll } from '../../../gameSystems/diceRules';
 import type { FieldSuggestion } from '../../../resources/resourceFieldSuggestions';
 import type { NamedModifierStatblock } from '../../../initiative/modifierPreview';
@@ -12,6 +13,7 @@ import type { InitiativeMode, InitiativeRules } from '../../../types/initiativeR
 import { InitiativeModifierFields } from './InitiativeModifierFields';
 import { InitiativeSideFields } from './InitiativeSideFields';
 import { InitiativeCardFields } from './InitiativeCardFields';
+import { SettingRow } from './SettingRow';
 
 interface InitiativeFieldsProps {
   initiative: InitiativeRules;
@@ -22,11 +24,11 @@ interface InitiativeFieldsProps {
   modifierStatblocks?: readonly NamedModifierStatblock[] | undefined;
 }
 
-const MODE_OPTIONS: Record<InitiativeMode, string> = {
-  'turn-order': t('initiative.rules.turnOrder'),
-  sides: t('initiative.rules.sides'),
-  cards: t('initRules.mode.cards'),
-};
+const MODE_OPTIONS: SelectOption<InitiativeMode>[] = [
+  { value: 'turn-order', label: t('initiative.rules.turnOrder') },
+  { value: 'sides', label: t('initiative.rules.sides') },
+  { value: 'cards', label: t('initRules.mode.cards') },
+];
 
 const MODE_DESCRIPTIONS: Record<InitiativeMode, string> = {
   'turn-order': t('initiative.rules.turnOrderHint'),
@@ -38,60 +40,50 @@ export function InitiativeFields({ initiative, onChange, fieldSuggestions, modif
   const rollValid = isValidDefaultRoll(initiative.roll);
 
   return (
-    <>
-      <div className="atlas-csm-field">
-        <label className="atlas-csm-label">{t('initiative.rules.title')}</label>
-        <ObsidianMenuDropdown
-          className="atlas-setting-dropdown atlas-csm-dropdown"
-          value={initiative.mode}
-          options={MODE_OPTIONS}
-          onChange={(value) => onChange({ ...initiative, mode: value as InitiativeMode })}
-        />
-        <p className="atlas-csm-hint">
-          {MODE_DESCRIPTIONS[initiative.mode]} {t('initiative.rules.appliesHint')}
-        </p>
-      </div>
+    <section className="atlas-csm-section" aria-labelledby="atlas-csm-initiative-title">
+      <h4 id="atlas-csm-initiative-title" className="atlas-csm-section-title">{t('initiative.rules.title')}</h4>
+      <SettingRow
+        label={t('initiative.rules.order')}
+        info={`${MODE_DESCRIPTIONS[initiative.mode]} ${t('initiative.rules.appliesHint')}`}
+        control={(labelId) => (
+          <Select value={initiative.mode} options={MODE_OPTIONS} labelledBy={labelId} onChange={(mode) => onChange({ ...initiative, mode })} />
+        )}
+      />
 
       {initiative.mode === 'turn-order' && (
         <>
-          <div className="atlas-csm-field">
-            <label className="atlas-csm-label" htmlFor="atlas-csm-initiative-roll">{t('initiative.rules.roll')}</label>
-            <input
-              id="atlas-csm-initiative-roll"
-              type="text"
-              className="atlas-csm-input"
-              placeholder="1d20"
-              spellCheck={false}
-              aria-invalid={!rollValid || undefined}
-              value={initiative.roll}
-              onChange={(e) => onChange({ ...initiative, roll: e.target.value })}
-            />
-            {!rollValid && (
-              <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">{t('initiative.rules.rollError')}</p>
+          <SettingRow
+            label={t('initiative.rules.rollShort')}
+            info={t('initiative.rules.rollInfo')}
+            control={(labelId) => (
+              <input
+                type="text"
+                className="atlas-csm-input"
+                placeholder="1d20"
+                spellCheck={false}
+                aria-labelledby={labelId}
+                aria-invalid={!rollValid || undefined}
+                value={initiative.roll}
+                onChange={(e) => onChange({ ...initiative, roll: e.target.value })}
+              />
             )}
-          </div>
+          >
+            {!rollValid && <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">{t('initiative.rules.rollError')}</p>}
+          </SettingRow>
           <InitiativeModifierFields initiative={initiative} onChange={onChange} fieldSuggestions={fieldSuggestions} statblocks={modifierStatblocks} />
         </>
       )}
       {initiative.mode === 'sides' && <InitiativeSideFields initiative={initiative} onChange={onChange} />}
       {initiative.mode === 'cards' && <InitiativeCardFields initiative={initiative} onChange={onChange} />}
 
-      <div className="atlas-csm-toggle-row">
-        <div>
-          <div className="atlas-csm-toggle-label">{t('initiative.rollHitPoints')}</div>
-          <div className="atlas-csm-hint">{t('initiative.rollHitPointsHint')}</div>
-        </div>
-        <label className="atlas-csm-switch">
-          <input
-            type="checkbox"
-            aria-label={t('initiative.rollHitPoints')}
-            checked={initiative.rollHitPoints === true}
-            onChange={(e) => onChange(withHitPointRolls(initiative, e.target.checked))}
-          />
-          <span className="atlas-csm-switch-track" />
-        </label>
-      </div>
-    </>
+      <SettingRow
+        label={t('initiative.rollHitPoints')}
+        info={t('initiative.rollHitPointsHint')}
+        control={(labelId) => (
+          <ToggleSwitch labelledBy={labelId} value={initiative.rollHitPoints === true} onChange={() => onChange(withHitPointRolls(initiative, initiative.rollHitPoints !== true))} />
+        )}
+      />
+    </section>
   );
 }
 

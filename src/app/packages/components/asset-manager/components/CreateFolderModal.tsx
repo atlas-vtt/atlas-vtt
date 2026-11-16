@@ -1,11 +1,12 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useId, useRef } from 'react';
 import { FolderPlus } from 'lucide-react';
 import type { Tab } from '../types';
 import { getTabDisplayName } from '../types';
-import { CloseButton } from '../../primitives/CloseButton';
-import { Button } from '../../primitives/button';
-import { dialogOverlayMotion, useDialogWindowVariants } from '../../primitives/dialogMotion';
+import { useDialogEscape } from '../../primitives/useDialogEscape';
+import { useFocusTrap } from '../../primitives/useFocusTrap';
+import { folderNameProblem } from '../utils/folderName';
+import { useFocusReturn } from '../hooks/useFocusReturn';
+import { PickerDialog } from './PickerDialog';
 import { t } from '../../../../i18n';
 
 export interface CreateFolderModalProps {
@@ -15,54 +16,51 @@ export interface CreateFolderModalProps {
   setTargetFolderName: (name: string) => void;
   onClose: () => void;
   onConfirm: () => void;
+  /** Whether a file or folder of this (trimmed) name already lies where the new folder would go. */
+  isNameTaken: (name: string) => boolean;
 }
 
 export function CreateFolderModal({
   selectedFolderId, activeTab, targetFolderName,
-  setTargetFolderName, onClose, onConfirm,
+  setTargetFolderName, onClose, onConfirm, isNameTaken,
 }: CreateFolderModalProps): React.JSX.Element {
-  const windowVariants = useDialogWindowVariants();
+  const windowRef = useRef<HTMLDivElement>(null);
+  // Escape and Tab are this dialog's; neither reaches the asset manager behind it.
+  useDialogEscape(windowRef, onClose);
+  useFocusTrap(windowRef);
+  useFocusReturn(windowRef);
+  const nameId = useId();
+  const errorId = useId();
+  // Checked as the name is typed, so the dialog keeps the name and says what is wrong beside it.
+  const nameError = folderNameProblem(targetFolderName, isNameTaken);
+  const canCreate = targetFolderName.trim() !== '' && nameError === null;
   return (
-    <motion.div
-      {...dialogOverlayMotion}
-      className="atlas-asset-manager-move-modal atlas-asset-manager-create-folder-modal"
-      onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}
-      onMouseDown={(e) => e.stopPropagation()}
+    <PickerDialog
+      windowRef={windowRef}
+      className="atlas-asset-manager-create-folder-modal"
+      // The title says where the folder goes, so the dialog needs no line of its own for it.
+      title={<><FolderPlus /> {selectedFolderId ? t('am.folder.newSubfolder') : t('am.folder.newIn', { tab: getTabDisplayName(activeTab) })}</>}
+      confirmLabel={t('am.folder.create')}
+      canConfirm={canCreate}
+      onConfirm={onConfirm}
+      onClose={onClose}
     >
-      <motion.div className="atlas-asset-manager-move-container" variants={windowVariants} onClick={(e) => e.stopPropagation()}>
-        <div className="atlas-asset-manager-move-header">
-          <h3><FolderPlus /> {t('am.folder.newTitle')}</h3>
-          <CloseButton onClick={(e) => { e.stopPropagation(); onClose(); }} />
-        </div>
-        <div className="atlas-asset-manager-move-body">
-          <p className="atlas-asset-manager-move-info">
-            {t(selectedFolderId ? 'am.folder.createsInside' : 'am.folder.createsTop', { tab: getTabDisplayName(activeTab).toLocaleLowerCase() })}
-          </p>
-          <div className="atlas-asset-manager-move-collections">
-            <div className="atlas-asset-manager-move-label">{t('am.folder.name')}</div>
-            <input
-              type="text"
-              placeholder={t('am.folder.namePlaceholder')}
-              value={targetFolderName}
-              onChange={(e) => setTargetFolderName(e.target.value)}
-              className="atlas-asset-manager-move-input"
-              autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter' && targetFolderName.trim()) onConfirm(); }}
-            />
-          </div>
-        </div>
-        <div className="atlas-asset-manager-move-footer">
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onClose(); }}>{t('common.cancel')}</Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); onConfirm(); }}
-            disabled={!targetFolderName.trim()}
-          >
-            {t('am.folder.create')}
-          </Button>
-        </div>
-      </motion.div>
-    </motion.div>
+      <div className="atlas-asset-manager-move-collections">
+        <label htmlFor={nameId} className="atlas-asset-manager-move-label">{t('am.folder.name')}</label>
+        <input
+          id={nameId}
+          type="text"
+          placeholder={t('am.folder.namePlaceholder')}
+          value={targetFolderName}
+          onChange={(e) => setTargetFolderName(e.target.value)}
+          className="atlas-asset-manager-move-input"
+          aria-invalid={nameError !== null || undefined}
+          {...(nameError ? { 'aria-describedby': errorId } : {})}
+          autoFocus
+          onKeyDown={(e) => { if (e.key === 'Enter' && canCreate) onConfirm(); }}
+        />
+        {nameError && <p id={errorId} className="atlas-csm-hint atlas-csm-hint--error" role="alert">{nameError}</p>}
+      </div>
+    </PickerDialog>
   );
 }

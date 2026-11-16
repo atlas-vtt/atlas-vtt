@@ -1,5 +1,6 @@
 import React from 'react';
-import { FolderOpen, Map as MapIcon } from 'lucide-react';
+import { Map as MapIcon } from 'lucide-react';
+import { CollectionGlyph } from './collectionGlyph';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
 import type { TagGroup } from '../../../../services/tagGroups';
 import { t } from '../../../../i18n';
@@ -9,7 +10,7 @@ export type TagManagerTab = TagGroup | 'collections';
 const TABS: readonly { id: TagManagerTab; label: string; icon: React.ReactElement }[] = [
   { id: 'maps', label: t('am.manage.mapTags'), icon: <MapIcon /> },
   { id: 'tokens', label: t('am.manage.characterTags'), icon: <TokenIcon /> },
-  { id: 'collections', label: t('am.manage.collections'), icon: <FolderOpen /> },
+  { id: 'collections', label: t('am.manage.collections'), icon: <CollectionGlyph /> },
 ];
 
 interface TagManagerTabsProps {
@@ -17,7 +18,7 @@ interface TagManagerTabsProps {
   onSelect: (tab: TagManagerTab) => void;
 }
 
-/** Map tags, character tags and collections: the lists Manage Tags & Collections edits. */
+/** Map tags, token tags and collections: the lists Manage Tags & Collections edits. */
 export function TagManagerTabs({ activeTab, onSelect }: TagManagerTabsProps): React.JSX.Element {
   return (
     <div className="atlas-tag-manager-tabs">
@@ -32,7 +33,7 @@ export function TagManagerTabs({ activeTab, onSelect }: TagManagerTabsProps): Re
             onClick={() => onSelect(tab.id)}
           >
             {tab.icon}
-            {tab.label}
+            <span className="atlas-tab-button__label">{tab.label}</span>
           </button>
         ))}
       </div>

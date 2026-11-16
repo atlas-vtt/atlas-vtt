@@ -17,14 +17,14 @@ describe("Atlas's markup the control relies on", () => {
     expect(row).toContain(`className="${ROW_CLASS}"`);
     expect(row).toContain(`className="${START_CLASS}"`);
     // The row measures the start slot, so the spacer's width reaches the toolbar's room.
-    expect(row).toMatch(/observeResize\(\[row, startSlot, endSlot\]/);
+    expect(row).toMatch(/observeResize\(\[row, startSlot, endSlot[,\]]/);
   });
 
   it('has the token portrait the panel draws, and the bars the collapsed control stands level with', () => {
     expect(read('src/app/packages/components/shared/tokenPortraitElement.ts')).toContain("cls: 'atlas-token-portrait'");
-    // dock.scss sizes the button as a 40 px control with $spacing-s around it, as Atlas's bars are.
+    // dock.scss sizes the button as a 40 px control with $surface-inset around it, as Atlas's bars are.
     const styles = read('styles/main.scss');
-    expect(styles).toMatch(/\.atlas-vtt-toolbar \{[^}]*padding: \$spacing-s;/);
+    expect(styles).toMatch(/\.atlas-vtt-toolbar \{[^}]*padding: \$surface-inset;/);
     expect(styles).toMatch(/\.btn--icon \{\s*width: \$button-height-l;\s*height: \$button-height-l;/);
   });
 
