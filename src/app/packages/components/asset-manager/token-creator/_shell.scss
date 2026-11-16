@@ -120,10 +120,6 @@ $creator-stack-below: 600px;
     flex-wrap: wrap;
     justify-content: flex-end;
     margin-left: auto;
-
-    > .btn:last-child {
-      @include atlas-modal-corner-control(bottom-right);
-    }
   }
 
   .atlas-token-creator__kbd {

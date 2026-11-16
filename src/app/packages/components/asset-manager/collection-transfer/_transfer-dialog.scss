@@ -25,7 +25,7 @@ $hero-height: 288px;
   width: min(760px, 100%);
   height: min(820px, 100%);
   overflow: hidden;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   color: var(--text-normal);
   font-size: $font-ui-small;
   transition: opacity 260ms $transition-ease-out, transform 260ms $transition-ease-out;
@@ -100,16 +100,11 @@ $hero-height: 288px;
     background: color-mix(in oklch, var(--background-secondary) 84%, transparent);
   }
 
-  // In the window's bottom-right corner only without the rail (and stacked, `_transfer-narrow.scss`).
   &__footer {
-    @include atlas-modal-footer(null);
+    @include atlas-modal-footer;
     grid-column: 1 / -1;
     background: color-mix(in oklch, var(--background-primary) 88%, transparent);
     backdrop-filter: blur(12px);
-  }
-
-  &:not([data-with-aside]) > &__footer > .btn:last-child {
-    @include atlas-modal-corner-control(bottom-right);
   }
 
   &[data-with-aside] > &__footer {

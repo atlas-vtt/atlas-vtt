@@ -55,7 +55,6 @@ $accent-line: color-mix(in oklch, var(--interactive-accent) 45%, transparent);
   padding: 0;
   border: none !important;
   border-radius: $radius-m !important;
-  @include atlas-corner-shape;
   background: transparent !important;
   box-shadow: none !important;
   cursor: pointer;
@@ -187,7 +186,6 @@ $accent-line: color-mix(in oklch, var(--interactive-accent) 45%, transparent);
   .atlas-rc-spot {
     inset: -$border-width-s;
     border-radius: $radius-full !important;
-    corner-shape: round;
   }
 
   // A chip is never clipped: its badge sits on its corner

@@ -43,7 +43,7 @@
 // stage's alignment as its only item would be, so both stand where a lone surface stands.
 .atlas-dungeon-preview__map {
   position: absolute;
-  @include atlas-panel-radius($radius-2xl, 0px);
+  @include atlas-panel-radius($surface-radius, 0px);
   box-shadow: $shadow-elevated;
 
   // A hairline over the picture, so a white or black look keeps its edge on any theme.
@@ -61,7 +61,7 @@
 // through to the map but for its controls.
 .atlas-dungeon-preview__chrome {
   position: absolute;
-  @include atlas-panel-radius($radius-2xl, 0px);
+  @include atlas-panel-radius($surface-radius, 0px);
   pointer-events: none;
 
   > * {
@@ -77,7 +77,6 @@
   height: 100%;
   object-fit: contain;
   border-radius: inherit;
-  @include atlas-corner-shape;
   transition: filter $transition-slow $transition-ease;
 }
 
@@ -100,7 +99,7 @@
 .atlas-dungeon-preview__skeleton-map {
   flex: 1;
   width: 70%;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 }
 
 .atlas-dungeon-preview__failed {
@@ -169,7 +168,7 @@
 // The map PNG's cell size, asked under the map's tools.
 .atlas-dungeon-cell-dialog {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-flex-col($gap: $spacing-s);
   position: absolute;
   top: calc(100% + #{$spacing-s});

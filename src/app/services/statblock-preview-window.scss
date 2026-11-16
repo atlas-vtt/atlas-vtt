@@ -2,10 +2,9 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-// The controls of a map's preview: a capsule of $controls-inset around its controls.
+// The controls of a map's preview: a bar of $controls-inset around its controls.
 $control: 28px;
-$controls-inset: $spacing-xs;
-$controls-radius: ($control + 2 * $controls-inset) * 0.5 + $border-width-m;
+$controls-inset: $surface-inset;
 $controls-end-radius: atlas-panel-inset-radius-value($controls-inset, $control * 0.5);
 
 // Imperative CMD+hover preview window for tokens on the map, in the asset
@@ -45,13 +44,13 @@ $controls-end-radius: atlas-panel-inset-radius-value($controls-inset, $control *
   }
 }
 
-// A map's preview: pin, close and the grip that moves the window, in a capsule hanging above
+// A map's preview: pin, close and the grip that moves the window, in a bar hanging above
 // the card's top right edge, so the card keeps its look and its corner. It also moves the
 // window from its own padding. It shows while the pointer or focus is in the window and while
 // the window is pinned or dragged; always on touch screens.
 .atlas-statblock-preview-window__controls {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($controls-radius);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-flex-row($controls-inset);
   position: absolute;
   right: $spacing-s;
@@ -95,7 +94,6 @@ $controls-end-radius: atlas-panel-inset-radius-value($controls-inset, $control *
 }
 
 .atlas-statblock-preview-window__controls .atlas-statblock-preview-window__button {
-  @include atlas-corner-shape;
   @include atlas-ghost-button;
   display: grid;
   place-items: center;

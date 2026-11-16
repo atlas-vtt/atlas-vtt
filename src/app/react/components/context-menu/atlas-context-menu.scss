@@ -1,15 +1,15 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// Rows are capsules; the menu's corner is set so every row runs concentric with it.
+// Rows stand $surface-inset inside the menu's border, concentric with its corner.
 $ctx-row-height: 28px;
-$ctx-inset: $spacing-xs;
+$ctx-inset: $surface-inset;
 
 // ── Menu container ──────────────────────────────────────────────────────────
 
 .atlas-ctx-menu {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($ctx-row-height * 0.5 + $ctx-inset + $border-width-m);
+  @include atlas-panel-radius($surface-radius);
   box-shadow: $shadow-md;
   display: flex;
   flex-direction: column;

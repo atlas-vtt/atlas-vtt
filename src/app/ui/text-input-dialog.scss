@@ -52,10 +52,6 @@
     button.mod-warning {
       @include atlas-danger-fill;
     }
-
-    > button:last-child {
-      @include atlas-modal-corner-control(bottom-right);
-    }
   }
 
   &__message {

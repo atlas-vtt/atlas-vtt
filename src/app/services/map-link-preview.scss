@@ -24,8 +24,7 @@
   display: block;
   width: 100%;
   height: auto;
-  // Inner radius = outer ($radius-xl 12px) minus border (~1.5px) ≈ 10.5 → use $radius-l
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 }
 
 // ── Button overlay ───────────────────────────────────────────────────────
@@ -41,14 +40,14 @@
   // Gradient scrim so the button is readable on any thumbnail
   background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, transparent 100%);
   pointer-events: none;
-  border-radius: 0 0 $radius-l $radius-l;
+  border-radius: 0 0 $radius-m $radius-m;
 }
 
 .atlas-map-link-preview__button {
   pointer-events: auto;
   padding: $spacing-s $spacing-l;
   border: none;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   font-size: var(--font-ui-small);

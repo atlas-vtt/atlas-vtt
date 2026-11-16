@@ -11,7 +11,7 @@ $gap: $spacing-s;
 
 .atlas-light-popover {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   // Placed with `translate` by useLightPopoverPosition, which also sets the light as its
   // transform origin, so the scale it opens and closes with grows out of the marker.
   position: absolute;
@@ -68,7 +68,7 @@ $gap: $spacing-s;
   .atlas-toggle__thumb {
     width: $thumb;
     height: $thumb;
-    border-radius: calc(#{$radius-xl} - #{$pad} - #{$border-width-s});
+    border-radius: calc(#{$surface-radius} - #{$pad} - #{$border-width-s});
   }
 
   .atlas-toggle__thumb--on {

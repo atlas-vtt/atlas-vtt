@@ -27,7 +27,7 @@ $wizard-height: 600px;
 
 .atlas-dungeon-wizard {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   position: absolute;
   display: flex;
   flex-direction: column;

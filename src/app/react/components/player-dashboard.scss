@@ -5,7 +5,7 @@ div.player-dashboard-widget {
   right: 0px !important; // Attached to right edge
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px 0 0 8px; // Only round left corners
+  border-radius: $radius-m 0 0 $radius-m; // Only round left corners
   border-right: none; // No right border since attached to edge
   padding: 8px;
   box-shadow: var(--shadow-l);
@@ -49,7 +49,7 @@ div.player-dashboard-widget {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-right: none; // No border on screen edge
-  border-radius: 8px 0 0 8px; // Only round left corners
+  border-radius: $radius-m 0 0 $radius-m; // Only round left corners
   padding: 32px 8px; // Twice as tall vertically, wider for larger chevron
   box-shadow: var(--shadow-s);
   backdrop-filter: blur(8px);
@@ -108,7 +108,7 @@ div.player-dashboard-widget {
 .player-character-card {
   background: var(--background-secondary-alt);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
+  border-radius: $radius-m;
   padding: 10px;
   transition: all 0.2s ease;
   min-width: 260px; // Ensure wide enough for all content
@@ -302,7 +302,7 @@ div.player-dashboard-widget {
 .character-avatar-large {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: $radius-m;
   background: var(--background-modifier-border);
   display: flex;
   align-items: center;
@@ -336,7 +336,7 @@ div.player-dashboard-widget {
 .character-avatar-top {
   width: 64px;
   height: 64px;
-  border-radius: 10px;
+  border-radius: $radius-m;
   background: var(--background-modifier-border);
   display: flex;
   align-items: center;
@@ -379,7 +379,7 @@ div.player-dashboard-widget {
 .character-avatar {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: $radius-m;
   background: var(--background-modifier-border);
   display: flex;
   align-items: center;
@@ -501,7 +501,7 @@ div.player-dashboard-widget {
     width: 12px;
     height: 12px;
     border: 1px solid var(--text-muted);
-    border-radius: 2px;
+    border-radius: $radius-s;
     background: transparent;
     transition: all 0.15s ease;
     cursor: default;
@@ -590,7 +590,7 @@ div.player-dashboard-widget {
     width: 12px; // Much bigger boxes
     height: 10px; // Much bigger height
     border: 1px solid var(--text-muted);
-    border-radius: 2px;
+    border-radius: $radius-s;
     background: transparent;
     transition: all 0.15s ease;
     cursor: default;
@@ -889,7 +889,7 @@ div.player-dashboard-widget {
     text-align: center;
     background: var(--background-secondary);
     padding: 0 4px;
-    border-radius: 2px;
+    border-radius: $radius-s;
   }
 }
 

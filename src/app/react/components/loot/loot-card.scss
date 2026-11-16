@@ -15,7 +15,6 @@ $loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
   // The rarity's colour: the classic ladder in the theme's own hues.
   --atlas-loot-tone: var(--text-muted);
   @include atlas-flex-col($spacing-s);
-  @include atlas-corner-shape;
   padding: $spacing-m;
   border: $border-width-s solid var(--background-modifier-border);
   border-radius: $loot-inset-radius;
