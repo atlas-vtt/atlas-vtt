@@ -220,6 +220,16 @@ describe('DM screen while Fantasy Statblocks parses the vault', () => {
 });
 
 describe('DM screen token actions', () => {
+  it('closes on Escape', async () => {
+    const onClose = vi.fn();
+    const { container } = showDMScreen([creaturePath], onClose);
+    const wrapper = container.querySelector<HTMLElement>('.atlas-dm-screen-wrapper')!;
+    wrapper.focus();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
   it('persists an independent resource update through the map store', async () => {
     showDMScreen([legacyPath, creaturePath, creaturePath]);
     const entry = await screen.findByRole('group', { name: 'Acid Burrower #2' });

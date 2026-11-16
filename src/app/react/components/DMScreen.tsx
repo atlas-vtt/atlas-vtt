@@ -111,6 +111,11 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
       if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container')) return;
       const target = e.target as Element | null;
       if (target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleClose();
+        return;
+      }
       if (matchesMapHotkey(e, 'dashboard', SettingsService.forApp(app))) {
         e.preventDefault();
         handleClose();

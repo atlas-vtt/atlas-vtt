@@ -1,5 +1,5 @@
 import { Tutorial } from '../../onboarding/Tutorial';
-import { useHotkeyLabels } from '../../keyboard/useMapHotkeys';
+import {useAtlasSettings, useHotkeyLabels} from '../../keyboard/useMapHotkeys';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import {
@@ -26,7 +26,8 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge, SunMoon } from 'lucide-react';
+  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox
+} from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
@@ -110,7 +111,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const isPlayerWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
   const isPlayerMode = view?.isInPlayerMode?.() ?? false;
   const setPlayerMode = (mode: boolean): void => view?.setPlayerMode?.(mode);
-
+  
+  const settingsService = useAtlasSettings();
+  
   const widgetSettings = useAtlasStore(state => state.widgetSettings);
   const setWidgetSettings = useAtlasStore(state => state.setWidgetSettings);
   const updateWidget = useAtlasStore(state => state.updateWidget);
@@ -266,6 +269,31 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         view?.openSceneBrowser();
       },
     },
+    {
+      id: "open-dm-screen",
+      icon: <LayoutDashboard />,
+      label: t('palette.openDMScreen'),
+      keywords: ["dm", "screen"],
+      shortcut: hotkeyLabel('dashboard'),
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("statblocks");
+        store.getState().setDMScreenOpen(true);
+      },
+    },
+    ...(settingsService?.isExperimentalOn("sound") ? [{
+        id: "open-soundboard",
+        icon: <BoomBox />,
+        label: t('palette.openSoundboard'),
+        keywords: ["sound", "audio", "music", "soundboard"],
+        section: "tools",
+        action: () => {
+          onClose();
+          store.getState().setDMScreenPage("sound");
+          store.getState().setDMScreenOpen(true);
+        },
+      }] : []),
     {
       id: "scene-snapshots",
       icon: <History />,

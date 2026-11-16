@@ -23,6 +23,8 @@ export const palette = {
   'palette.openDiceLog': 'Open dice log',
   'palette.openLootRoller': 'Open random tables',
   'palette.openSceneBrowser': 'Open scene browser',
+  'palette.openDMScreen': 'Open DM screen',
+  'palette.openSoundboard': 'Open soundboard',
   'palette.panel.grid': 'Grid Settings',
   'palette.panel.playerView': 'Player View Settings',
   'palette.panel.snapshots': 'Scene Snapshots',
