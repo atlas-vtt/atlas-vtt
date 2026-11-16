@@ -11,6 +11,7 @@ export const quest = {
   'quest.sideQuests': 'Side quests',
   'quest.over': 'Done and failed',
   'quest.none': 'No quests yet.',
+  'quest.placeHint': 'Link a world map pin to a quest\'s note: players see that pin while the quest is Active.',
   'quest.status.open': 'Open',
   'quest.status.active': 'Active',
   'quest.status.done': 'Done',
