@@ -30,7 +30,7 @@
     flex-shrink: 0;
     box-sizing: content-box;
     border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     overflow: hidden;
   }
   // Rows are placed by the virtual list; each but the first draws the line above it.

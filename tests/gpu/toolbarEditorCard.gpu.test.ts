@@ -69,8 +69,8 @@ describe('the toolbar editor\'s card in a real layout', () => {
     if (!image) throw new Error('no screenshot');
     await image.decode();
     expect(image.naturalWidth).toBe(560);
-    // Concentric with the card's corners on the two that face them.
-    expect(getComputedStyle(image).borderTopLeftRadius).toBe('14.5px');
+    // 8 px inside the card, deeper than a surface's corner controls: the control radius.
+    expect(getComputedStyle(image).borderTopLeftRadius).toBe('8px');
     expect(getComputedStyle(image).borderBottomLeftRadius).toBe('8px');
 
     // Above the tray, centred over its tool.

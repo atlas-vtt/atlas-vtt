@@ -1,4 +1,8 @@
 ## Improved
 
-- TrueScale: The frame players see has a grip again that moves them along with you at once, as before 0.13.1. It snaps to the grid, Alt (Option on a Mac) moves it freely, and Escape puts the players back. While a frame is staged, the dashed frame where players are has the same grip, and the staged frame stays where it is. Staging a frame and "Show players here" work as before.
-- TrueScale: When you press Show players here, the staged frame stays in place while the frame players see glides over to it
+- TrueScale: drag the frame players see by its new grip to move them with you at once, as before 0.13.1. Alt moves it off the grid, Escape puts the players back. Contributed by aryistia
+- TrueScale: Show players here keeps the staged frame in place while the players' frame glides to it. Contributed by aryistia
+
+## Fixed
+
+- Edit Token stays where it opened: switching vision or a carried light on or off no longer moves the dialog away from the pointer. Contributed by bbell-sys

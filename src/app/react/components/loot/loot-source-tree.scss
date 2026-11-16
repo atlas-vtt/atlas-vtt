@@ -34,7 +34,6 @@
 .atlas-loot-tree__row {
   @include atlas-flex-row(2px);
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   transition: background-color $transition-fast $transition-ease;
 
   &:hover {

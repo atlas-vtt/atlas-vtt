@@ -97,8 +97,8 @@ $picker-max-width: 360px;
 
 .atlas-collection-dropdown-content {
   @include atlas-select-popover;
-  // The context menus' language: 28 px capsule rows $spacing-xs inside the border, the corner concentric with them.
-  @include atlas-panel-radius($picker-row-height * 0.5 + $spacing-xs + $border-width-s, $border-width-s);
+  // The context menus' language: rows $spacing-xs inside the border, concentric with its corner.
+  @include atlas-panel-radius($surface-radius, $border-width-s);
 }
 
 // The sidebar's picker: portaled out of the sidebar, which clips, into the window's container, and placed under its

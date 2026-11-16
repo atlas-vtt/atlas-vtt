@@ -2,6 +2,11 @@
   "version": "0.16.1-beta.0",
   "releases": [
     {
+      "version": "0.16.1-beta.0",
+      "title": "Coming in 0.16.1",
+      "markdown": "## Improved\n\n- TrueScale: drag the frame players see by its new grip to move them with you at once, as before 0.13.1. Alt moves it off the grid, Escape puts the players back. Contributed by aryistia\n- TrueScale: Show players here keeps the staged frame in place while the players' frame glides to it. Contributed by aryistia\n\n## Fixed\n\n- Edit Token stays where it opened: switching vision or a carried light on or off no longer moves the dialog away from the pointer. Contributed by bbell-sys"
+    },
+    {
       "version": "0.16.0",
       "date": "2026-11-14",
       "title": "Draw, Text and Fog tools",

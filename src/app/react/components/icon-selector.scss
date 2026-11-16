@@ -7,7 +7,7 @@
   border: 1px solid var(--background-modifier-border);
   background: var(--background-modifier-form-field);
   color: var(--text-normal);
-  border-radius: 4px;
+  border-radius: $radius-s;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -35,7 +35,7 @@
   margin-top: 0.25rem;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
+  border-radius: $radius-s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 1001;
   display: grid;
@@ -50,7 +50,7 @@
   border: none;
   background: transparent;
   color: var(--text-muted);
-  border-radius: 4px;
+  border-radius: $radius-s;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;

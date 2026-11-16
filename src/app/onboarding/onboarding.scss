@@ -11,7 +11,7 @@
 .atlas-onboarding-spotlight {
   position: fixed;
   border: $border-width-l solid var(--interactive-accent);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   box-shadow: 0 0 0 100vmax var(--background-modifier-cover);
   pointer-events: none;
 }
@@ -63,7 +63,7 @@
   max-height: calc(100dvh - #{$spacing-2xl});
   display: flex;
   flex-direction: column;
-  @include atlas-panel-radius($radius-2xl, $border-width-s);
+  @include atlas-panel-radius($surface-radius, $border-width-s);
 }
 // Reaches past the card's padding to its top-right corner, where the close button belongs.
 .atlas-hotkey-help-header {

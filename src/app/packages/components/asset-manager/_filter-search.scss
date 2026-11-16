@@ -58,7 +58,7 @@
   padding: $spacing-xs;
   background: var(--menu-background);
   border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
   box-shadow: var(--menu-shadow, #{$shadow-md});
   transform-origin: top right;
   transition: opacity 150ms $transition-ease-out, transform 150ms $transition-ease-out;
@@ -153,7 +153,7 @@
   right: $spacing-m;
   z-index: $z-popover;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   display: flex;
   flex-direction: column;
   width: 380px;
@@ -556,7 +556,7 @@ input.atlas-filter-range__input {
   padding: $spacing-xs;
   background: var(--menu-background);
   border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-  border-radius: $radius-xl;
+  border-radius: $radius-m;
   box-shadow: var(--menu-shadow, #{$shadow-md});
 }
 

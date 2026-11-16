@@ -30,7 +30,6 @@ $log-on-accent: var(--atlas-online-text-on-accent, var(--text-on-accent));
   color: inherit;
   font: inherit;
   cursor: pointer;
-  @include atlas-corner-shape;
 }
 
 @mixin log-button-states($fill: transparent, $shadow: null) {
