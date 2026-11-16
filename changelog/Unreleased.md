@@ -1,10 +1,14 @@
 ## Improved
 
+- TrueScale: drag the frame players see by its new grip to move them with you at once, as before 0.13.1. Alt moves it off the grid, Escape puts the players back. Contributed by aryistia
+- TrueScale: Show players here keeps the staged frame in place while the players' frame glides to it. Contributed by aryistia
 - Experimental features can now be switched on and off in Atlas's settings tab, not only in the command palette
 - The Saver lighting now shows light reflected into shadows, like the other quality levels
 
 ## Fixed
 
+- Edit Token stays where it opened: switching vision or a carried light on or off no longer moves the dialog away from the pointer. Contributed by bbell-sys
+- The token creator saves zoom and position for tokens without a ring. Contributed by aecorn
 - Players no longer see tokens standing just outside a lantern's beam in the dark
 - A door drawn in Rooms mode now stays where you put it instead of stretching to the nearest corner, and opening it opens the wall it was drawn on
 - Music tracks in a linked folder now show their waveform while they play, as dragged-in tracks always did
