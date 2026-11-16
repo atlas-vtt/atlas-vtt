@@ -26,7 +26,9 @@ function storing(pyramids: boolean): { readonly store: AssetStoring; readonly st
 }
 
 async function read(maps: WorldMaps, form: MapForm): Promise<AssetRef | undefined> {
-  for (let round = 0; round < 5 && maps.get(form) === undefined; round += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+  // Hashing and storing take more than a few turns on a busy machine: wait up to two seconds.
+  const until = Date.now() + 2000;
+  while (maps.get(form) === undefined && Date.now() < until) await new Promise((resolve) => setTimeout(resolve, 0));
   return maps.get(form)?.map.image;
 }
 
