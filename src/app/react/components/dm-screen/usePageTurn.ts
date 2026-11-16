@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { DMScreenPage } from '../../../types/viewUIState';
 
 /** The pages in the order the page control and the arrow keys go through them. */
-const ORDER: readonly DMScreenPage[] = ['statblocks', 'sound'];
+const ORDER: readonly DMScreenPage[] = ['statblocks', 'title', 'sound'];
 
 /** How long a page that is turned away stays drawn: its slide out (`dm-screen.scss`, `$page-turn`). */
 export const PAGE_TURN_MS = 340;

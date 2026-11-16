@@ -218,8 +218,17 @@ $page-shift: clamp(24px, 3cqi, 56px);
       @include atlas-corner-shape;
     }
 
+    &:has(.atlas-segmented__option:nth-of-type(3))::before {
+      width: calc((100% - 12px) / 3);
+    }
+
     &:has(.atlas-segmented__option:nth-of-type(2).atlas-active)::before {
       transform: translateX(calc(100% + 2px));
+    }
+
+
+    &:has(.atlas-segmented__option:nth-of-type(3).atlas-active)::before {
+      transform: translateX(calc(200% + 4px));
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -252,7 +261,8 @@ $page-shift: clamp(24px, 3cqi, 56px);
   user-select: none;
 }
 
-.atlas-dm-sound-page {
+.atlas-dm-sound-page,
+.atlas-dm-title-page {
   min-height: 0;
   display: flex;
 

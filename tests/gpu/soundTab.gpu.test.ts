@@ -180,7 +180,7 @@ describe('the DM screen’s Sound page', () => {
     expect(surface.top).toBeGreaterThanOrEqual(pages.bottom);
     expect(document.querySelectorAll('.atlas-sound-views, .atlas-sound-pane [role="radiogroup"]')).toHaveLength(0);
     expect(parseFloat(getComputedStyle(document.querySelector('.atlas-sound-pane')!).borderRadius)).toBe(24);
-    expect(document.querySelectorAll('.atlas-dm-screen-pages [role="radio"]')).toHaveLength(2);
+    expect(document.querySelectorAll('.atlas-dm-screen-pages [role="radio"]')).toHaveLength(3);
 
     // The library takes about 58 % and the moods the rest, parted by the moods' hairline, on one line.
     const library = box('.atlas-sound-lib');
@@ -714,7 +714,8 @@ describe('the DM screen’s Sound page', () => {
     const shiftOf = (element: HTMLElement): number => new DOMMatrix(getComputedStyle(element).transform).e;
     const options = document.querySelectorAll<HTMLElement>('.atlas-dm-screen-pages [role="radio"]');
     expect(options[0]!.getBoundingClientRect().width).toBeCloseTo(options[1]!.getBoundingClientRect().width, 0);
-    expect(options[1]!.textContent).toBe('Sound');
+    expect(options[1]!.textContent).toBe('Title');
+    expect(options[2]!.textContent).toBe('Sound');
     await expect.poll(thumbX).toBeGreaterThan(100);
 
     act(() => document.querySelector<HTMLElement>('.atlas-sound-pane')?.focus());

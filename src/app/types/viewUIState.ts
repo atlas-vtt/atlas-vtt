@@ -21,7 +21,7 @@ export interface DungeonGeneratorRequest {
 }
 
 /** Which page of the DM screen shows. */
-export type DMScreenPage = 'statblocks' | 'sound';
+export type DMScreenPage = 'statblocks' | 'title' | 'sound';
 
 export interface ViewUIState {
 

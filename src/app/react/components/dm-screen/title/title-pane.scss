@@ -1,0 +1,190 @@
+@use '../../../../../../styles/mixins' as *;
+
+.atlas-title-pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 20px;
+  overflow: auto;
+  color: var(--text-normal);
+  container: atlas-title-library / inline-size;
+
+  button {
+    cursor: pointer;
+  }
+}
+
+.atlas-title-header,
+.atlas-title-toolbar,
+.atlas-title-editor-heading,
+.atlas-title-editor-actions,
+.atlas-title-card-actions,
+.atlas-title-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.atlas-title-header {
+  h1 { margin: 0; font-size: 1.5em; }
+  p { margin: 5px 0 0; color: var(--text-muted); }
+}
+
+.atlas-title-primary,
+.atlas-title-empty button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 12px;
+  @include atlas-accent-fill;
+  border: 1px solid var(--interactive-accent);
+  border-radius: var(--radius-m);
+  font-weight: 600;
+}
+
+.atlas-title-toolbar { justify-content: flex-end; }
+
+.atlas-title-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+  padding: 7px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  color: var(--text-muted);
+  background: var(--background-secondary);
+
+  input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--text-normal); }
+}
+
+.atlas-title-layout {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+
+  button {
+    display: grid;
+    width: 32px;
+    height: 30px;
+    place-items: center;
+    border: 0;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--text-muted);
+
+    &[aria-pressed='true'] { background: var(--background-primary); color: var(--text-normal); box-shadow: 0 1px 3px #0002; }
+  }
+}
+
+.atlas-title-cards {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+
+  &--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  &--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  &--list { grid-template-columns: minmax(0, 1fr); }
+}
+
+.atlas-title-card {
+  @include atlas-elevated-surface;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--background-secondary);
+}
+
+.atlas-title-card-preview {
+  display: flex;
+  min-height: 130px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--interactive-accent) 38%, transparent), transparent 65%), linear-gradient(135deg, var(--background-primary-alt), var(--background-primary));
+  text-align: center;
+
+  > span { align-self: flex-end; color: var(--text-faint); font-size: 9px; letter-spacing: .12em; }
+  > div { margin: auto; }
+  h2 { margin: 0; font-family: var(--font-text); font-size: clamp(1.2rem, 2.5vw, 1.8rem); font-weight: 700; }
+  p { margin: 5px 0 0; color: var(--text-muted); }
+}
+
+.atlas-title-card-content { display: flex; flex-direction: column; gap: 10px; padding: 13px 14px; }
+.atlas-title-card-copy h3 { margin: 0; font-size: 1em; }
+.atlas-title-card-subtitle { margin: 3px 0 0; color: var(--text-muted); font-size: .9em; }
+.atlas-title-card-description { display: -webkit-box; overflow: hidden; margin: 7px 0 0; color: var(--text-muted); font-size: .88em; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.atlas-title-card-meta { justify-content: flex-start; gap: 12px; color: var(--text-faint); font-size: .78em; }
+.atlas-title-card-meta span:first-child { padding: 3px 7px; border-radius: 20px; background: var(--background-primary); color: var(--text-muted); }
+.atlas-title-card-actions { justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--background-modifier-border); }
+.atlas-title-card-actions button,
+.atlas-title-icon-button,
+.atlas-title-editor-actions > button:first-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+}
+.atlas-title-card-actions button:hover,
+.atlas-title-icon-button:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+
+.atlas-title-empty {
+  display: grid;
+  flex: 1;
+  min-height: 220px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  color: var(--text-muted);
+  h2 { margin: 0; color: var(--text-normal); }
+  p { max-width: 440px; }
+}
+
+.atlas-title-editor {
+  @include atlas-elevated-surface;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--background-secondary);
+
+  h2 { margin: 0; font-size: 1.05em; }
+  label { display: flex; flex-direction: column; gap: 5px; color: var(--text-muted); font-size: .88em; }
+  input, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); background: var(--background-primary); color: var(--text-normal); }
+  textarea { resize: vertical; }
+}
+.atlas-title-editor-actions { justify-content: flex-end; }
+.atlas-title-editor-actions .atlas-title-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+.atlas-title-cards--list .atlas-title-card { display: grid; grid-template-columns: minmax(220px, 32%) minmax(0, 1fr); }
+.atlas-title-cards--list .atlas-title-card-preview { min-height: 100%; }
+.atlas-title-cards--list .atlas-title-card-content { justify-content: center; }
+
+@container atlas-title-library (max-width: 760px) {
+  .atlas-title-cards--three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container atlas-title-library (max-width: 520px) {
+  .atlas-title-cards--two,
+  .atlas-title-cards--three { grid-template-columns: minmax(0, 1fr); }
+  .atlas-title-cards--list .atlas-title-card { grid-template-columns: minmax(0, 1fr); }
+  .atlas-title-cards--list .atlas-title-card-preview { min-height: 130px; }
+  .atlas-title-header { align-items: flex-start; flex-direction: column; }
+  .atlas-title-toolbar { align-items: stretch; }
+}

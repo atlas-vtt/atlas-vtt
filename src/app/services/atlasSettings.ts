@@ -12,6 +12,7 @@ import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
 import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../measure/dragDistance';
+import { readTitleCardLayout, readTitleCards, type TitleCard, type TitleCardLayout } from '../titleCards/titleCardTypes';
 
 /**
  * How wheel events drive the map viewport.
@@ -97,6 +98,10 @@ export interface AtlasSettings {
     /** Online play: players draw and write on the shared map with a Draw tool of their own. */
     playersDraw: boolean;
   };
+  /** Reusable GM presentation cards, shared through plugin settings. */
+  titleCards: TitleCard[];
+  /** Preferred arrangement of the Title card library. */
+  titleCardLayout: TitleCardLayout;
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
 }
@@ -143,6 +148,8 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     playersDraw: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
+  titleCards: [],
+  titleCardLayout: 'list',
 };
 
 /**
@@ -189,6 +196,8 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
       tableTv: readTableTvSettings(record.tableTv),
+      titleCards: readTitleCards(record.titleCards),
+      titleCardLayout: readTitleCardLayout(record.titleCardLayout),
       hiddenStarterOffers: readUidList(record.hiddenStarterOffers),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.

@@ -12,6 +12,7 @@ import { DMNotePane } from './dm-screen/DMNotePane';
 import { DMStatblocksPane } from './dm-screen/DMStatblocksPane';
 import { arrowDirection, isControlTarget, screenTakesKey } from './dm-screen/screenKeys';
 import { SoundPane } from './dm-screen/sound/SoundPane';
+import { TitlePane } from './dm-screen/title/TitlePane';
 import { useDMScreenStatblocks } from './dm-screen/useDMScreenStatblocks';
 import { useFightStatblocks } from './dm-screen/useFightStatblocks';
 import { useNoteFocus } from './dm-screen/useNoteFocus';
@@ -24,6 +25,7 @@ interface DMScreenProps {
 
 const PAGES: readonly SegmentedOption<DMScreenPage>[] = [
   { value: 'statblocks', label: t('audio.screen.statblocks') },
+  { value: 'title', label: t('titleCards.tab') },
   { value: 'sound', label: t('audio.screen.sound') },
 ];
 
@@ -59,15 +61,17 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   const setPage = useAtlasStore((state) => state.setDMScreenPage);
   const { app, view } = useAtlasUI();
   const soundOn = useExperimentalFeature('sound', SettingsService.forApp(app));
-  const page: DMScreenPage = soundOn ? storedPage : 'statblocks';
+  const page: DMScreenPage = soundOn || storedPage !== 'sound' ? storedPage : 'statblocks';
+  const visiblePages = soundOn ? PAGES : PAGES.filter((option) => option.value !== 'sound');
   const { statblocks, loading } = useDMScreenStatblocks(isOpen, app, { viewId: view?.viewId, mapPath, mapLoaded, isMapLoading, tokens });
   const { shown, scopeSwitch } = useFightStatblocks(statblocks, tokens);
   const [contentReady, setContentReady] = useState(false);
   const [closing, setClosing] = useState(false);
   const screenRef = useRef<HTMLDivElement>(null);
   const [isNoteFocused, setIsNoteFocused] = useNoteFocus(isOpen, screenRef);
-  // Mounted on first open, and kept: what it shows lives in the sound's owner anyway.
+  // Pages mount on first visit and stay mounted until the DM screen closes.
   const soundOpened = usePageOpened(page === 'sound', isOpen);
+  const titleOpened = usePageOpened(page === 'title', isOpen);
   // The note beside the statblocks (an editor, or the picker that reads every note) waits until its page shows.
   const statblocksOpened = usePageOpened(page === 'statblocks', isOpen);
   const leaving = usePageTurn(page, isOpen);
@@ -120,11 +124,9 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleClose, isNoteFocused, app, view]);
 
-  // Left and right change pages, as a game's shoulder buttons do; the keycaps beside the page control say so.
-  // On the Sound page they always do, since nothing there takes the arrows for focus (owner, 2026-11-03);
-  // on the statblocks page a control in focus keeps them (tab strips, selects), and a note's editor always.
+  // Left and right change DM-screen pages; focused controls and the note editor keep their own arrow keys.
   useEffect(() => {
-    if (!isOpen || !soundOn) return undefined;
+    if (!isOpen) return undefined;
     const handleArrow = (e: KeyboardEvent): void => {
       const direction = arrowDirection(e.key);
       if ((direction !== 'left' && direction !== 'right') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
@@ -135,9 +137,11 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
       if (target?.closest?.('.atlas-dm-notes-section, [aria-expanded="true"], [role="listbox"]')) return;
       e.preventDefault();
       e.stopPropagation();
-      const next: DMScreenPage = page === 'statblocks' ? 'sound' : 'statblocks';
+      const currentIndex = visiblePages.findIndex((option) => option.value === page);
+      const nextIndex = (currentIndex + (direction === 'right' ? 1 : -1) + visiblePages.length) % visiblePages.length;
+      const next = visiblePages[nextIndex].value;
       setPage(next);
-      if (onPages) screenRef.current?.querySelector<HTMLElement>(`.atlas-dm-screen-pages .atlas-segmented__option:nth-of-type(${next === 'statblocks' ? 1 : 2})`)?.focus();
+      if (onPages) screenRef.current?.querySelector<HTMLElement>(`.atlas-dm-screen-pages .atlas-segmented__option:nth-of-type(${nextIndex + 1})`)?.focus();
     };
     window.addEventListener('keydown', handleArrow, true);
     return () => window.removeEventListener('keydown', handleArrow, true);
@@ -149,20 +153,23 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
     <div className="atlas-dm-screen-wrapper" ref={screenRef} tabIndex={-1}>
       <div className={`atlas-dm-screen-backdrop ${closing ? 'is-closing' : ''}`} onClick={handleClose} />
 
-      <div className={`atlas-dm-screen ${soundOn ? 'atlas-dm-screen--pages' : ''} ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
-        {soundOn && (
-          <div className="atlas-dm-screen-header">
-            <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
-            <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
-            <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
-          </div>
-        )}
+      <div className={`atlas-dm-screen atlas-dm-screen--pages ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
+        <div className="atlas-dm-screen-header">
+          <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
+          <SegmentedControl className="atlas-dm-screen-pages" value={page} options={visiblePages} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
+          <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
+        </div>
         <div className="atlas-dm-screen-stage" data-turning={leaving !== null || undefined}>
           {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
           <div className="atlas-dm-screen-content atlas-dm-page" {...pageProps('statblocks')}>
             <DMStatblocksPane app={app} shown={shown} scopeSwitch={scopeSwitch} loading={loading} onClose={handleClose} />
             <DMNotePane app={app} shown={statblocksOpened} onNoteFocus={() => setIsNoteFocused(true)} />
           </div>
+          {titleOpened && (
+            <div className="atlas-dm-title-page atlas-dm-page" {...pageProps('title')}>
+              <TitlePane app={app} />
+            </div>
+          )}
           {soundOn && soundOpened && (
             <div className="atlas-dm-sound-page atlas-dm-page" {...pageProps('sound')}>
               <SoundPane active={page === 'sound'} />
