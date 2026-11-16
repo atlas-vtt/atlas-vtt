@@ -4,7 +4,7 @@
     {
       "version": "0.16.1-beta.0",
       "title": "Coming in 0.16.1",
-      "markdown": "## Fixed\n\n- The token creator saves zoom and position for tokens without a ring. Contributed by aecorn"
+      "markdown": "## Fixed\n\n- Edit Token stays where it opened: switching vision or a carried light on or off no longer moves the dialog away from the pointer. Contributed by bbell-sys\n- The token creator saves zoom and position for tokens without a ring. Contributed by aecorn"
     },
     {
       "version": "0.16.0",
