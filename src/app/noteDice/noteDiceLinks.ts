@@ -1,5 +1,6 @@
 import { t } from '../i18n';
-import { rollPieces, writtenRoll } from '../tools/textRolls';
+import { rollPieces } from '../tools/textRolls';
+import { parseFormula } from '../tools/parseFormula';
 
 const STATBLOCK = '.atlas-statblock, .atlas-statblock-fence, .atlas-sb-markdown';
 const SKIP = `a, button, input, textarea, select, pre, code, svg, script, style, [contenteditable], ${STATBLOCK}, .atlas-note-dice-link`;
@@ -15,16 +16,19 @@ function makeLink(doc: Document, text: string, formula: string): HTMLElement {
   return link;
 }
 
-/** Adds roll links only to rendered note text and explicitly marked inline code. */
+/** Adds roll links to rendered note text and inline code containing a complete formula. */
 export function linkNoteDice(root: HTMLElement): boolean {
   if (root.closest(STATBLOCK)) return false;
   let linked = false;
   for (const code of root.querySelectorAll<HTMLElement>('code')) {
     if (code.querySelector('.atlas-note-dice-link') || code.closest(`pre, a, button, [contenteditable], ${STATBLOCK}, .atlas-note-dice-link`)) continue;
-    const match = /(\d+d\d+)/.exec(code.textContent ?? '');
-    const formula = match ? writtenRoll(match[1]!) : null;
-    if (!formula) continue;
-    code.replaceWith(makeLink(root.ownerDocument, formula ?? '', formula));
+    const text = code.textContent ?? '';
+    const prefix = /^[ \t]*dice:[ \t]?/i.exec(text);
+    const expression = prefix ? text.slice(prefix[0].length) : text;
+    if (!parseFormula(expression).ok) continue;
+    const formula = expression.replace(/^[ \t]+|[ \t]+$/g, '');
+    if (!prefix && !/^\d+d\d+/i.test(formula)) continue;
+    code.replaceChildren(makeLink(root.ownerDocument, formula, formula));
     linked = true;
   }
   const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
