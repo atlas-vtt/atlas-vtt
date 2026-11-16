@@ -19,8 +19,7 @@ $embed-caption-height: calc(2 * #{$spacing-m} + 2.6em);
 .atlas-link-embed__card {
   position: relative;
   overflow: hidden;
-  border-radius: $radius-xl;
-  @include atlas-corner-shape;
+  border-radius: $surface-radius;
 }
 
 .atlas-link-embed__art {

@@ -47,7 +47,6 @@
 
   .atlas-sb-change-template__option {
     @include atlas-flex-row($spacing-s);
-    @include atlas-corner-shape;
     min-height: var(--input-height);
     padding: 0 $spacing-s;
     border-radius: $radius-m;

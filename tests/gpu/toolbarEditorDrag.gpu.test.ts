@@ -233,8 +233,8 @@ describe('dragging in the toolbar editor', () => {
     const well = openWell();
     if (!well) throw new Error('no well at the start');
     expect(query('.atlas-main-toolbar').firstElementChild).toBe(well);
-    expect(getComputedStyle(well).borderTopLeftRadius).toBe('10.5px');
-    expect(getComputedStyle(well).borderBottomLeftRadius).toBe('10.5px');
+    expect(getComputedStyle(well).borderTopLeftRadius).toBe('8px');
+    expect(getComputedStyle(well).borderBottomLeftRadius).toBe('8px');
 
     await glide({ x: bar.left + 2, y }, { x: bar.left + bar.width - 2, y });
     await settle(30);
@@ -242,8 +242,8 @@ describe('dragging in the toolbar editor', () => {
     if (!last) throw new Error('no well at the end');
     expect(last.previousElementSibling).toBe(slot('palette'));
     // After the last control comes the GM view switch, which keeps the bar's end corner.
-    expect(getComputedStyle(query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle')).borderTopRightRadius).toBe('10.5px');
-    expect(getComputedStyle(query('[data-toolbar-item="move"] .atlas-tool-group')).borderTopLeftRadius).toBe('10.5px');
+    expect(getComputedStyle(query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle')).borderTopRightRadius).toBe('8px');
+    expect(getComputedStyle(query('[data-toolbar-item="move"] .atlas-tool-group')).borderTopLeftRadius).toBe('8px');
     await userEvent.keyboard('{Escape}');
     await mouse.up(bar.left, y);
   });

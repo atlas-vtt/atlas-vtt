@@ -47,7 +47,7 @@
 .atlas-dice-panel {
   background: var(--background-primary);
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   box-shadow: $shadow-elevated;
   padding: $spacing-s;
   display: flex;
@@ -93,7 +93,6 @@ $tray-art: 32px;
   padding: 0;
   box-shadow: none;
   cursor: pointer;
-  @include atlas-corner-shape;
   transition: background-color $transition-fast $transition-ease;
 
   &:disabled {
@@ -107,7 +106,7 @@ $tray-art: 32px;
   height: $tray-face;
   background: var(--background-secondary);
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 
   &:hover:not(:disabled) {
     background: var(--background-modifier-hover);
@@ -242,14 +241,13 @@ $tray-art: 32px;
   margin: 0;
   padding: $spacing-xs $spacing-s;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-secondary);
   text-align: center;
   font-family: $font-dice-display;
   font-size: $font-ui-medium;
   font-variant-numeric: tabular-nums;
   color: var(--text-normal);
-  @include atlas-corner-shape;
 
   &--empty {
     font-style: italic;
@@ -263,7 +261,7 @@ $tray-art: 32px;
 
   .btn {
     height: $button-height-m;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
   }
 
   // The buttons sit in the panel's bottom corners.

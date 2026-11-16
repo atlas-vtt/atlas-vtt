@@ -37,7 +37,7 @@
 
   .atlas-sb-token-panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
     display: flex;
     flex-direction: column;
     max-height: min(880px, var(--atlas-keep-in-view-max-height, 880px));

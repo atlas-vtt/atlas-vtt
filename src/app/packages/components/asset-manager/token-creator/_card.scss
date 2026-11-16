@@ -11,7 +11,7 @@
   position: relative;
   @include atlas-flex-col($gap: $spacing-s);
   padding: $spacing-s;
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
   background: var(--background-secondary);
   animation: atlas-token-card-enter 240ms $transition-ease-out both;
   animation-delay: calc(var(--atlas-enter-index, 0) * 30ms);
@@ -57,7 +57,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: color-mix(in oklch, var(--mono-0) 14%, var(--background-primary));
   overflow: hidden;
   transition: box-shadow $transition-fast $transition-ease;

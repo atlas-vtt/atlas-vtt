@@ -44,7 +44,7 @@
 .atlas-uvtt-floors__floor {
   @include atlas-flex-row($spacing-xs);
   padding: $spacing-xs;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 
   &:hover {
     background: var(--background-modifier-hover);

@@ -129,7 +129,6 @@ button.atlas-sound-who,
     position: absolute;
     inset: 0;
     border-radius: $card-radius;
-    @include atlas-corner-shape;
     background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
     box-shadow: inset 0 0 0 $border-width-m var(--interactive-accent);
     opacity: 0;
@@ -228,7 +227,6 @@ button.atlas-sound-who,
   border-radius: $card-radius;
   color: var(--atlas-sound-muted);
   text-align: center;
-  @include atlas-corner-shape;
 
   p {
     margin: 0;

@@ -24,7 +24,7 @@ $card-content-width: 280px;
   padding: $spacing-s;
   pointer-events: none;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 
   &[hidden] {
     display: none;
@@ -39,7 +39,7 @@ $card-content-width: 280px;
   aspect-ratio: 16 / 10;
   object-fit: cover;
   background: var(--background-secondary);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   @include atlas-panel-inset-radius($spacing-s, top-left, top-right);
 }
 
