@@ -1,5 +1,6 @@
 import { Tutorial } from '../../onboarding/Tutorial';
-import {useAtlasSettings, useHotkeyLabels} from '../../keyboard/useMapHotkeys';
+import { useHotkeyLabels } from '../../keyboard/useMapHotkeys';
+import { useExperimentalFeature } from '../hooks/useExperimentalFeature';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import {
@@ -26,8 +27,7 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox
-} from 'lucide-react';
+  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
@@ -111,9 +111,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const isPlayerWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
   const isPlayerMode = view?.isInPlayerMode?.() ?? false;
   const setPlayerMode = (mode: boolean): void => view?.setPlayerMode?.(mode);
-  
-  const settingsService = useAtlasSettings();
-  
+  const soundOn = useExperimentalFeature('sound');
+
   const widgetSettings = useAtlasStore(state => state.widgetSettings);
   const setWidgetSettings = useAtlasStore(state => state.setWidgetSettings);
   const updateWidget = useAtlasStore(state => state.updateWidget);
@@ -282,11 +281,11 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         store.getState().setDMScreenOpen(true);
       },
     },
-    ...(settingsService?.isExperimentalOn("sound") ? [{
-        id: "open-soundboard",
+    ...(soundOn ? [{
+        id: "open-sound-page",
         icon: <BoomBox />,
-        label: t('palette.openSoundboard'),
-        keywords: ["sound", "audio", "music", "soundboard"],
+        label: t('palette.openSoundPage'),
+        keywords: ["sound", "audio", "music", "ambience"],
         section: "tools",
         action: () => {
           onClose();

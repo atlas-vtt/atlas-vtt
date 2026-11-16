@@ -230,6 +230,16 @@ describe('DM screen token actions', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
+  it('stays open on an Escape a control inside it used', async () => {
+    const onClose = vi.fn();
+    showDMScreen([creaturePath], onClose);
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    event.preventDefault();
+    window.dispatchEvent(event);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('persists an independent resource update through the map store', async () => {
     showDMScreen([legacyPath, creaturePath, creaturePath]);
     const entry = await screen.findByRole('group', { name: 'Acid Burrower #2' });
