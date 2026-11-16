@@ -2,6 +2,11 @@
   "version": "0.16.1-beta.0",
   "releases": [
     {
+      "version": "0.16.1-beta.0",
+      "title": "Coming in 0.16.1",
+      "markdown": "## Improved\n\n- Experimental features can now be switched on and off in Atlas's settings tab, not only in the command palette\n- The Saver lighting now shows light reflected into shadows, like the other quality levels\n\n## Fixed\n\n- Players no longer see tokens standing just outside a lantern's beam in the dark\n- A door drawn in Rooms mode now stays where you put it instead of stretching to the nearest corner, and opening it opens the wall it was drawn on\n- Music tracks in a linked folder now show their waveform while they play, as dragged-in tracks always did\n- Map photos taken in portrait on a phone no longer show parts of the map in the wrong places or squeezed when zoomed out\n- The TrueScale frame on the map no longer lags behind, flickers or shakes while you pan with the player window open\n- Tokens without a ring are now as large as tokens with a ring and fill their square\n- Grid alignment by measuring now accepts corners anywhere on the map, so levels padded with black can be aligned\n- The player window keeps following the map when it sits on another virtual desktop\n\n## Atlas Online\n\n- Players now see the fog edge the GM chose instead of a hard edge\n- Quest pins on maps inside the world map now show to players while the quest is Active, and the campaign page says when players see a quest's pin\n- A note shared with players that contains a table now shows it as a table instead of raw | lines"
+    },
+    {
       "version": "0.16.0",
       "date": "2026-11-14",
       "title": "Draw, Text and Fog tools",
