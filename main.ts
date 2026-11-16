@@ -1,5 +1,5 @@
 import './src/app/plugin/host/initializeHost';
-import { Plugin } from 'obsidian';
+import { Plugin, type Component } from 'obsidian';
 // Tailwind first, so the custom SCSS can override it.
 import './styles/index.css';
 import './styles/main.scss';
@@ -103,6 +103,8 @@ import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
 import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
 import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
+import { guardChildUnload, guardedCleanup } from './src/app/plugin/guardedTeardown';
+import { showNotice } from './src/app/ui/notice';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -196,7 +198,13 @@ export default class AtlasVTTPlugin extends Plugin {
     registerAccentColorSync(this);
     // Views first, so workspace restore can resolve persisted Atlas tabs
     // before the slower startup path finishes.
-    this.registerAtlasViews();
+    try {
+      this.registerAtlasViews();
+    } catch (error) {
+      // An earlier Atlas that failed to unload still holds them; only a restart frees them.
+      showNotice(t('notice.restartForAtlas'));
+      throw error;
+    }
     // Before the first await, so notes restored at startup draw their statblock fence.
     registerStatblockFence(this, (path) => { editInStatblockPane(this.app, path, { collectionId: null, from: 'note' }); });
     // A native statblock note is frontmatter alone: its link preview shows its card.
@@ -276,6 +284,16 @@ export default class AtlasVTTPlugin extends Plugin {
     await assets.initialize();
     await storeLegacyCollectionResources(this.app);
     await migratePlayerResourceVisibility(this.settingsService, assets);
+  }
+
+  /** Every cleanup runs on unload, even after another one failed (see `guardedCleanup`). */
+  override register(cleanup: () => unknown): void {
+    super.register(guardedCleanup(cleanup));
+  }
+
+  override addChild<T extends Component>(component: T): T {
+    guardChildUnload(component);
+    return super.addChild(component);
   }
 
   /** Obsidian calls this when `data.json` changed on disk, e.g. a sync brought another device's settings. */
