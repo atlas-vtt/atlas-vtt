@@ -56,8 +56,7 @@ button.atlas-dice-lab__side {
   height: auto;
   padding: $spacing-xs;
   border: none;
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
@@ -109,8 +108,7 @@ button.atlas-dice-lab__side {
 .atlas-dice-lab__other {
   @include atlas-flex-row($spacing-xs);
   padding: $spacing-xs;
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
 
   &.atlas-selected {

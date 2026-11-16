@@ -18,7 +18,6 @@
   padding: 0 $spacing-s;
   border: $border-width-s solid var(--background-modifier-border);
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   background: var(--background-modifier-form-field);
   color: var(--text-faint);
   transition: border-color $transition-fast $transition-ease;
@@ -67,7 +66,6 @@
   padding: $spacing-xs $spacing-s;
   border: none;
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   box-shadow: none;
   background: transparent;
   color: var(--text-normal);
@@ -148,7 +146,6 @@
   padding: 0;
   border: none;
   border-radius: $radius-s;
-  @include atlas-corner-shape;
   box-shadow: none;
   background: transparent;
   color: var(--text-muted);

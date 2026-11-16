@@ -24,8 +24,6 @@ $swatch: $button-height-s;
   padding: 0;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
   border-radius: $radius-full;
-  // A circle on every platform: Obsidian's corner shape for buttons would make it a squircle.
-  corner-shape: round;
   box-shadow: none;
   cursor: pointer;
   transition: scale $transition-fast $transition-ease;

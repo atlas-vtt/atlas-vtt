@@ -31,7 +31,7 @@ $sidebar-width: 320px;
 .atlas-encounter-builder__sidebar,
 .atlas-encounter-tray {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 }
 
 .atlas-encounter-builder__sidebar {

@@ -9,4 +9,5 @@ export const notice = {
   'notice.drawingCutFull': 'This drawing cannot be cut any further. Erase it whole instead.',
   'notice.drawingsLeftOut': 'This map has more than {count} drawings. Only the first {count} are shown.',
   'notice.textsLeftOut': 'This map has more than {count} texts. Only the first {count} are shown.',
+  'notice.restartForAtlas': 'An earlier Atlas is still loaded. Restart Obsidian to load this one.',
 } as const satisfies Record<string, Message>;

@@ -28,7 +28,6 @@
     color: inherit;
     font: inherit;
     cursor: var(--cursor);
-    @include atlas-corner-shape;
   }
 
   // Black would make a grey well of a white page.

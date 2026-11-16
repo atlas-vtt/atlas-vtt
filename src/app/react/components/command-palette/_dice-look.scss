@@ -21,10 +21,9 @@ $dice-preview: 72px;
   padding: $spacing-s;
   background: transparent;
   border: $border-width-m solid transparent;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   box-shadow: none;
   cursor: pointer;
-  @include atlas-corner-shape;
   transition: background-color $transition-fast $transition-ease, border-color $transition-fast $transition-ease;
 
   &:hover {

@@ -2,8 +2,8 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// Floors are capsules like a context menu's rows; the panel's corner is set so every floor runs concentric with it.
-$level-switcher-inset: $spacing-xs;
+// Floors are rows like a context menu's, concentric with the panel's corner.
+$level-switcher-inset: $surface-inset;
 $level-height: 28px;
 
 .atlas-level-switcher {
@@ -23,7 +23,7 @@ $level-height: 28px;
   pointer-events: auto;
 
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($level-height * 0.5 + $level-switcher-inset + $border-width-m);
+  @include atlas-panel-radius($surface-radius);
 }
 
 .atlas-level-switcher__level {
@@ -73,9 +73,7 @@ $level-height: 28px;
   height: 16px;
   padding: 0;
   border: none;
-  // Concentric with the floor's capsule: its 6px padding leaves a circle
   border-radius: 50%;
-  @include atlas-corner-shape;
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);

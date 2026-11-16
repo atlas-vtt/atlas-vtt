@@ -52,7 +52,7 @@
   @include atlas-flex-row($spacing-s);
   padding: $spacing-s;
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 
   &.is-active {
     background: var(--background-modifier-hover);

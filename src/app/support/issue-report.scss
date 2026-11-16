@@ -84,10 +84,5 @@
     .setting-item-control {
       gap: $spacing-s;
     }
-
-    // The last action sits in the dialog's corner and runs concentric with it.
-    button:last-child {
-      @include atlas-native-modal-corner-button;
-    }
   }
 }

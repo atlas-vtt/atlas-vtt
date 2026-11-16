@@ -1,15 +1,17 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// The switch is a small padded container and the thumb the element inside it, so their radii
-// step down the scale like a panel's and its buttons'. A toggle in the corner of a panel or bar
-// gets the corners that face it set concentric with it there (dropdown-menu.scss, the toolbar
-// in main.scss): on `.atlas-toggle`, whose radius the switch and the focus ring both take.
+// The switch is a small padded container and the thumb a control inside it: the thumb keeps the
+// control radius and the switch's corner is that plus its padding and border, so the two run
+// concentric. A toggle in the corner of a panel or bar gets the corners that face it set
+// concentric with it there (dropdown-menu.scss, the toolbar in main.scss): on `.atlas-toggle`,
+// whose radius the switch and the focus ring both take.
+$switch-padding: 6px;
+
 .atlas-toggle {
   position: relative;
   cursor: pointer;
-  border-radius: $radius-xl;
-  @include atlas-corner-shape;
+  border-radius: $radius-m + $switch-padding + $border-width-s;
   @include atlas-focus-ring;
 }
 
@@ -24,11 +26,10 @@
   width: 60px;
   display: flex;
   align-items: center;
-  padding: 6px;
+  padding: $switch-padding;
   transition: background-color 200ms ease;
   border: $border-width-s solid var(--background-modifier-border);
   border-radius: inherit;
-  @include atlas-corner-shape;
 }
 
 .atlas-toggle__switch--on {
@@ -48,8 +49,7 @@
   transition: transform 200ms ease;
   background-color: var(--background-primary);
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.12);
 }
 

@@ -23,7 +23,7 @@ $settings-page-width: 760px;
 // ── Modal Card ─────────────────────────────────────────────────────────────
 .atlas-collection-settings-modal {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   position: relative;
   // A dialog with a sidebar (`_sidebar-dialog.scss`). The tabs' body (`RulesSettingsTabs`) lends its parts to the
   // window's grid. Where the sidebar gives way to a select, the sidebar's column takes no room and the select stands
@@ -172,10 +172,9 @@ $settings-stack-below: 520px;
 // place, over a campaign's while it is not played and no map plays by them.
 .atlas-csm-played-notice {
   @include atlas-flex-row($spacing-s);
-  @include atlas-corner-shape;
   justify-content: space-between;
   padding: $spacing-s;
-  border-radius: $radius-xl;
+  border-radius: $radius-m;
   background: var(--background-modifier-hover);
   font-size: $font-ui-small;
   color: var(--text-muted);
@@ -187,7 +186,7 @@ $settings-stack-below: 520px;
 
 .atlas-csm-played-notice__action.btn {
   flex-shrink: 0;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 }
 
 // ── Footer ─────────────────────────────────────────────────────────────────
@@ -254,7 +253,7 @@ $settings-stack-below: 520px;
 
 .atlas-csm-dropdown.atlas-setting-dropdown {
   width: 100%;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 }
 
 .atlas-csm-input {
@@ -285,7 +284,7 @@ $settings-stack-below: 520px;
   justify-content: space-between;
   gap: $spacing-s;
   padding: $spacing-s;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-secondary);
   border: $border-width-s solid var(--background-modifier-border);
 }
@@ -323,7 +322,7 @@ $settings-stack-below: 520px;
   padding: $spacing-xs $spacing-s;
   background: var(--background-secondary);
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 
   .atlas-csm-input {
     flex: 1;

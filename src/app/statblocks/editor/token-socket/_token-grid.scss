@@ -17,8 +17,7 @@
     @include atlas-flex-col($spacing-xs);
     align-items: center;
     padding: $spacing-xs;
-    border-radius: $radius-l;
-    @include atlas-corner-shape;
+    border-radius: $radius-m;
     color: var(--text-normal);
     font-size: $font-ui-smaller;
     text-align: center;

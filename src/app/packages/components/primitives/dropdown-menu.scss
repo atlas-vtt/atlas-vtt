@@ -35,12 +35,12 @@
   flex-direction: column;
   min-width: 220px;
   z-index: $z-atlas-dropdown;
-  padding: $spacing-s;
+  padding: $surface-inset;
 
   // Elevated surface styles (consistent with toolbar/modals)
   background: var(--background-primary);
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   box-shadow: $shadow-elevated;
   @include atlas-keep-in-view;
 
@@ -54,16 +54,16 @@
   // track, run concentric with it. `:where` leaves the rows' rule as specific as it was.
   .btn:where(:not(.atlas-segmented__option)),
   .atlas-segmented {
-    @include atlas-panel-inset-radius($spacing-s);
+    @include atlas-panel-inset-radius($surface-inset);
   }
 
   .atlas-segmented__option {
-    @include atlas-panel-inset-radius($spacing-s + $spacing-xs);
+    @include atlas-panel-inset-radius($surface-inset + $spacing-xs);
   }
 
   // A toggle closing the menu sits in its bottom-right corner, like a button would.
   > .atlas-dropdown-section:last-child .atlas-dropdown-toggle-row:last-child .atlas-toggle {
-    @include atlas-panel-inset-radius($spacing-s, bottom-right);
+    @include atlas-panel-inset-radius($surface-inset, bottom-right);
   }
 }
 
@@ -310,19 +310,19 @@
 // Counted by type: each swatch is followed by its tooltip's hidden name.
 .atlas-swatch-grid--fills-menu > .atlas-swatch {
   &:first-of-type {
-    @include atlas-panel-inset-radius($spacing-s, top-left);
+    @include atlas-panel-inset-radius($surface-inset, top-left);
   }
 
   &:nth-of-type(8) {
-    @include atlas-panel-inset-radius($spacing-s, top-right);
+    @include atlas-panel-inset-radius($surface-inset, top-right);
   }
 
   &:nth-of-type(8n + 1):nth-last-of-type(-n + 8) {
-    @include atlas-panel-inset-radius($spacing-s, bottom-left);
+    @include atlas-panel-inset-radius($surface-inset, bottom-left);
   }
 
   &:nth-of-type(8n):last-of-type {
-    @include atlas-panel-inset-radius($spacing-s, bottom-right);
+    @include atlas-panel-inset-radius($surface-inset, bottom-right);
   }
 }
 

@@ -43,7 +43,7 @@ $snapshot-ease: $transition-ease-out;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   isolation: isolate;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   transition: transform $transition-press $snapshot-ease;
 
   &::after {

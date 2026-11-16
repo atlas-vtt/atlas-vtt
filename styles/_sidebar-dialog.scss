@@ -91,23 +91,10 @@ $_stacked-rows: (header: 1, top: 2, side: 2, body: 3, footer: 4);
   @include atlas-scroll-shadow($layer);
 }
 
-/// The actions at the foot of the column beside the sidebar. With the sidebar at the window's end its last button
-/// stands in no corner of the window, unless the window stacks.
-@mixin atlas-sidebar-dialog-footer($side: start, $stack-below: null, $container: atlas-sidebar-dialog) {
-  @if $side == start {
-    @include atlas-modal-footer;
-  } @else {
-    @include atlas-modal-footer(null);
-  }
+/// The actions at the foot of the column beside the sidebar.
+@mixin atlas-sidebar-dialog-footer($stack-below: null, $container: atlas-sidebar-dialog) {
+  @include atlas-modal-footer;
   @include atlas-sidebar-dialog-area(footer, $stack-below, $container);
-
-  @if $side == end and $stack-below {
-    @container #{$container} (max-width: #{$stack-below}) {
-      > .btn:last-child {
-        @include atlas-modal-corner-control(bottom-right);
-      }
-    }
-  }
 }
 
 /// The close button where the sidebar stands at the window's end: in the window's corner over the sidebar, out of
