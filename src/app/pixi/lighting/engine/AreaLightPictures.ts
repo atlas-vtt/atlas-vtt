@@ -5,7 +5,7 @@ import type { MapBounds } from '../../../vision/visibility';
 import { AREA_CORNER_VECTORS } from './areaTileShader';
 import { ENGINE_SHADERS } from './engineShaders';
 import { createShader, createTarget, renderInto } from './gpu';
-import { createFalloff, fansGeometry, middleOf, setFalloff, type Fan } from './polygonFans';
+import { createFalloff, fansGeometry, middleOf, setFalloff, texelRect, type Fan } from './polygonFans';
 import type { EngineLight } from './types';
 import type { WallBand } from './WallBand';
 import { OneWayList } from './oneWayBand';
@@ -74,7 +74,7 @@ export class AreaLightPictures {
   private draw(light: EngineLight, parts: readonly Fan[]): AreaPicture | null {
     const surface = light.surface!;
     const fans: Fan[] = [...filledPieces(surface).map((piece) => ({ origin: middleOf(piece), polygon: piece })), ...parts];
-    const rect = this.rectOf(fans);
+    const rect = texelRect(fans, this.texel, this.world);
     if (!rect) return null;
     const texture = createTarget(Math.round(rect[2] / this.texel), Math.round(rect[3] / this.texel), 'rg16float', 'nearest');
     // The picture's texels lie on the light map's: its rect is whole texels from a texel's corner.
@@ -104,25 +104,6 @@ export class AreaLightPictures {
       scene.destroy();
     }
     return { texture, rect: covered };
-  }
-
-  /** The texels around `fans`, on the light map's grid and within the map; null where none is left. */
-  private rectOf(fans: readonly Fan[]): Rect | null {
-    let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity];
-    for (const { polygon } of fans) {
-      for (const p of polygon) {
-        minX = Math.min(minX, p.x);
-        minY = Math.min(minY, p.y);
-        maxX = Math.max(maxX, p.x);
-        maxY = Math.max(maxY, p.y);
-      }
-    }
-    const { texel } = this;
-    const x0 = Math.max(0, Math.floor(minX / texel) * texel);
-    const y0 = Math.max(0, Math.floor(minY / texel) * texel);
-    const x1 = Math.min(this.world[0], Math.ceil(maxX / texel) * texel);
-    const y1 = Math.min(this.world[1], Math.ceil(maxY / texel) * texel);
-    return x1 > x0 && y1 > y0 ? [x0, y0, x1 - x0, y1 - y0] : null;
   }
 }
 
