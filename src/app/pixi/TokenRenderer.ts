@@ -794,7 +794,7 @@ export class TokenRenderer {
     const selectedIds = this.store.getState().selectedIds;
     if (!selectedIds.includes(tokenId)) return;
     if (selectedIds.length === 1) {
-      const tokenSize = this.tokenSprites[tokenId]?.getChildByLabel('tokenSprite')?.width || 70;
+      const tokenSize = this.tokenSprites[tokenId]?.tokenSize || 70;
       this.uiManager.updateControlsPosition(x, y, tokenSize);
     }
     this.selectionOverlayUpdater();

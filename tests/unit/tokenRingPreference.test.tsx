@@ -32,21 +32,23 @@ it('leaves the ring image to the stylesheet and sets only the tint inline', () =
 });
 
 it('keeps unframed art proportional and unmasked when resized or reframed', () => {
-  const container = Object.assign(new Container(), { tokenData: { showRing: false } }) as TokenGroupContainer;
+  const container = Object.assign(new Container(), { tokenData: { showRing: false }, strokeWidth: 4 }) as TokenGroupContainer;
   const sprite = new Sprite(new Texture({ source: new TextureSource({ width: 200, height: 100 }) }));
   sprite.label = 'tokenSprite';
   const mask = new Graphics(); mask.label = 'tokenArtMask';
   const glass = new Sprite(Texture.EMPTY); glass.label = 'glassOverlay';
   container.addChild(sprite, mask, glass);
   syncTokenArtwork(container, 100);
-  expect(sprite.width).toBe(100);
-  expect(sprite.height).toBe(50);
+  // Out to where a ring's outer edge would be
+  expect(sprite.width).toBe(108);
+  expect(sprite.height).toBe(54);
   expect(sprite.mask).toBeFalsy();
   expect(glass.visible).toBe(false);
   syncTokenArtwork(container, 200);
-  expect(sprite.height).toBe(100);
+  expect(sprite.height).toBe(104);
   container.tokenData.showRing = true;
   syncTokenArtwork(container, 100);
+  expect([sprite.width, sprite.height]).toEqual([100, 100]);
   expect(sprite.mask).toBe(mask);
   expect(glass.visible).toBe(true);
 });

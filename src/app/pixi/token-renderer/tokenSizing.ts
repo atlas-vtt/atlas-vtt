@@ -2,7 +2,8 @@ import { t } from '../../i18n';
 /**
  * Shared token sizing derived from the grid cell size.
  *
- * A size-1 token fills one cell minus a stroke inset on each side. On hex grids
+ * A size-1 token fills one cell minus a stroke inset on each side, where its ring is
+ * drawn (unframed art covers the inset instead). On hex grids
  * the cell size is the flat-to-flat distance, so the same formula fits the
  * hex's inscribed circle. Larger tokens span (2n - 1) cells so they stay
  * centered on a cell.

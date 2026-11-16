@@ -1,4 +1,5 @@
 import { Graphics, Sprite } from 'pixi.js';
+import { tokenArtBox } from './tokenRingMetrics';
 import type { TokenGroupContainer } from './types';
 
 /** Keep full, unframed artwork proportional when a token is placed or resized. */
@@ -14,10 +15,9 @@ export function syncTokenArtwork(container: TokenGroupContainer, size: number): 
   }
   const glass = container.getChildByLabel('glassOverlay');
   if (glass) glass.visible = framed;
-  const width = sprite.texture.width || 1;
-  const height = sprite.texture.height || 1;
-  sprite.width = framed ? size : size * width / Math.max(width, height);
-  sprite.height = framed ? size : size * height / Math.max(width, height);
+  const box = tokenArtBox(size, container.strokeWidth, framed, sprite.texture.width, sprite.texture.height);
+  sprite.width = box.width;
+  sprite.height = box.height;
 }
 
 /** Fits the artwork to the token again after its texture changed. */
