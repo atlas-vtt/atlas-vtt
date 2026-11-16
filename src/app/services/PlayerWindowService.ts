@@ -26,6 +26,7 @@ import { CURTAIN_DOWN_MS, removePlayerCurtain, showPlayerCurtain } from './playe
 import { PlayerSceneFade } from './playerSceneFade';
 import { watchPlayerWindowDisplay } from './playerWindowDisplay';
 import { keepPlayerWindowAwake } from './playerWindowThrottling';
+import { PlayerMirrorFallback } from './playerMirrorFallback';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
 const PLAYER_WINDOW_BODY_CLASS = 'atlas-player-window';
@@ -75,6 +76,8 @@ export class PlayerWindowService {
   private isCleaningUp = false;
   /** Brings frames of the presented scene into the window; exists while frames are being mirrored. */
   private mirror: PlayerFrameMirror | null = null;
+  /** Steps the mirror from the main window while the player window gets no display frames (another virtual desktop). */
+  private mirrorFallback: PlayerMirrorFallback | null = null;
   /** Identifies the running frame loop; a newer loop ends older ones. */
   private mirrorLoopId = 0;
   /** Identifies the running glide of frozen players; any other change of their camera ends it. */
@@ -720,18 +723,32 @@ export class PlayerWindowService {
     });
     this.mirror = mirror;
 
-    const mirrorFrame = (): void => {
-      if (loopId !== this.mirrorLoopId) return;
+    /** The player window while this loop runs; ends the loop once the window or its scene is gone. */
+    const loopWindow = (): Window | null => {
+      if (loopId !== this.mirrorLoopId) return null;
       if (!this.playerWindow || this.playerWindow.closed || !this.streamSource) {
         this.cleanup();
-        return;
+        return null;
       }
-
-      this.animationFrame = this.playerWindow.requestAnimationFrame(mirrorFrame);
+      return this.playerWindow;
+    };
+    const step = (): void => {
       this.sceneFade.expire(performance.now());
       mirror.frame();
     };
+    this.mirrorFallback?.stop();
+    const fallback = new PlayerMirrorFallback(loopWindow, step);
+    this.mirrorFallback = fallback;
 
+    const mirrorFrame = (): void => {
+      const win = loopWindow();
+      if (!win) return;
+      this.animationFrame = win.requestAnimationFrame(mirrorFrame);
+      fallback.displayFrame();
+      step();
+    };
+
+    fallback.start();
     mirrorFrame();
   }
 
@@ -781,6 +798,8 @@ export class PlayerWindowService {
     this.mirrorLoopId++;
     this.mirror?.stop();
     this.mirror = null;
+    this.mirrorFallback?.stop();
+    this.mirrorFallback = null;
 
     if (this.animationFrame) {
       this.playerWindow?.cancelAnimationFrame(this.animationFrame);
